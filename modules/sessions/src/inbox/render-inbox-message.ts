@@ -11,6 +11,8 @@ import { renderOwnerText } from '../utils/render-owner-text';
 import { renderActionFailure } from './render-action-failure';
 import type { ActionResultBlock } from './render-action-result';
 import { renderApprovalAnswer } from './render-approval-answer';
+import { renderHandoverAsked } from './render-handover-asked';
+import { renderHandoverClosed } from './render-handover-closed';
 import { renderLimitNotice } from './render-limit-notice';
 import { renderProposalDecline } from './render-proposal-decline';
 import { renderProposalDefer } from './render-proposal-defer';
@@ -68,6 +70,14 @@ export function renderInboxMessage(
 
   if (record.kind === 'computer.takeover_ended') {
     return renderTakeoverEnded(record, times, view.messaging.ownerName);
+  }
+
+  if (record.kind === 'computer.handover_asked') {
+    return renderHandoverAsked(record, times, view.messaging.ownerName);
+  }
+
+  if (record.kind === 'computer.handover_closed') {
+    return renderHandoverClosed(record, times);
   }
 
   if (record.kind === 'policy.action_answered') {

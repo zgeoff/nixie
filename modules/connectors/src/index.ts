@@ -90,6 +90,7 @@ export {
   legacyComputerToolNames,
 } from './computer/build-computer-tools';
 
+export { handoverToolNames } from './computer/handover/build-handover-tools';
 export type { ComputerToolOptions } from './computer/computer-tool-options';
 export type { Computer, ComputerOptions } from './computer/start-computer';
 export { startComputer } from './computer/start-computer';
@@ -115,5 +116,17 @@ export {
 } from './computer/takeover/takeover-ended-codec';
 
 export { takeoverStartedCodec } from './computer/takeover/takeover-started-codec';
+export type { Handover, HandoverRecords } from './computer/handover/types';
+export { makeHandoverRecords } from './computer/handover/make-handover-records';
+export { resumeOpenHandover } from './computer/handover/resume-open-handover';
+export { readOpenHandover } from './computer/handover/read-open-handover';
+export type { OpenHandover } from './computer/handover/read-open-handover';
+
+export {
+  handoverAskedCodec,
+  handoverAskedFieldsSchema,
+} from './computer/handover/handover-asked-codec';
+
+export { handoverClosedCodec, handoverCloses } from './computer/handover/handover-closed-codec';
 export { computerOwner, legacyComputerOwners } from './computer/computer-owner';
 export { makeUnexemptScans } from './computer/run-computer-call';

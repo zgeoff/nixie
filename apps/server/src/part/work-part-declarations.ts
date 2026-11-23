@@ -3,7 +3,11 @@ import {
   createFirstEnrolmentCode,
   defaultPolicySettings,
 } from '@heynixie/api';
-import { endTakeoverCutByRestart, makeTakeoverRecords } from '@heynixie/connectors';
+import {
+  endTakeoverCutByRestart,
+  makeTakeoverRecords,
+  resumeOpenHandover,
+} from '@heynixie/connectors';
 import {
   makeRetireOneShot,
   runGapChecks,
@@ -63,12 +67,15 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
     }),
   },
   {
-    // A hold lives in memory, so one that was open when nixie stopped ends now. Its record needs the
-    // definitions that the seed puts in place, which the computer part starts before.
+    // A hold lives in memory, so one that was open when nixie stopped ends now, and an ask that was
+    // open opens again with the time it had left. Their records need the definitions that the seed
+    // puts in place, which the computer part starts before.
     name: 'takeover_restart',
     needs: ['server_parts', 'definitions_seed', 'computer'],
     start: async (reader) => {
       const parts = reader.get('server_parts');
+
+      await resumeOpenHandover(parts.context.log, reader.get('computer').handover);
 
       if (reader.get('computer').takeover.isHeld()) {
         return;

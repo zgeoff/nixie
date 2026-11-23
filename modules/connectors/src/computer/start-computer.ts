@@ -3,23 +3,23 @@ import type { Clock } from '@heynixie/clock';
 import { systemClock } from '@heynixie/clock';
 import type { Logger } from '@heynixie/logger';
 import type { Sandbox, SandboxAdapter } from '@heynixie/sandbox';
-import { buildSandboxSpec, findKeptSandbox, sandboxSizes } from '@heynixie/sandbox';
 import { buildTabs } from './build-tabs';
 import type { ComputerTabs } from './build-tabs';
 import { computerOwner, legacyComputerOwners } from './computer-owner';
-import { computerFolders, copyComputerFolder } from './copy-computer-folder';
+import { makeHandover } from './handover/make-handover';
+import type { Handover, HandoverRecords } from './handover/types';
 import type { GuestSession, OutOfCallScans } from './make-guest-session';
 import { makeGuestSession } from './make-guest-session';
-import { moveOldSandboxes, wakeOld } from './move-old-sandboxes';
+import { moveOldSandboxes } from './move-old-sandboxes';
+import { readySandbox } from './ready-sandbox';
 import { takeTurn } from './take-turn';
 import { admitRunningCall, findAdmission } from './takeover/admit-running-call';
 import { makeGuestHooks } from './takeover/make-guest-hooks';
 import { makeTakeover } from './takeover/make-takeover';
 import { trackRunningCall } from './takeover/track-running-call';
-import type { ComputerTakeover, Takeover, TakeoverRecords } from './takeover/types';
-import type { RunningCall } from './takeover/wait-for-running-calls';
+import type { ComputerTakeover, TakeoverRecords } from './takeover/types';
 import { waitForRunningCalls } from './takeover/wait-for-running-calls';
-import type { CallResult, ComputerCall } from './types';
+import type { CallResult, ComputerCall, ComputerContext, DesktopState } from './types';
 import type { WatchHost } from './watch/open-computer-watch';
 import type { WatchConnection, WatchSocket } from './watch/types';
 import { watchAsDevice } from './watch/watch-as-device';
@@ -66,6 +66,13 @@ export interface ComputerOptions {
     readonly idleMs: number;
     readonly records: TakeoverRecords;
   };
+
+  // the assistant's ask for a take-over: how long it stands with no answer, and where it writes its
+  // records; an ask with no records writer writes none
+  readonly handover?: {
+    readonly expiryMs: number;
+    readonly records: HandoverRecords;
+  };
 }
 
 type MoveGate = 'ready' | 'moving' | 'busy';
@@ -88,6 +95,9 @@ export interface Computer {
   // the hold that a device session takes on the desktop and gives back
   readonly takeover: ComputerTakeover;
 
+  // the assistant's ask for a person to take the desktop
+  readonly handover: Handover;
+
   // true while a watch is open
   readonly isWatched: () => boolean;
 
@@ -98,41 +108,6 @@ export interface Computer {
   readonly stop: () => Promise<void>;
 }
 
-interface ComputerState {
-  sandbox: Sandbox | null;
-  guest: GuestSession | null;
-  isAsleep: boolean;
-
-  // true once no sandbox of an earlier release is left, in this process
-  isMoved: boolean;
-
-  // the end of the chain of calls, which holds the sandbox one call at a time
-  turn: Promise<void>;
-  holds: number;
-  idle: AbortController | null;
-  readonly tabs: Map<string, string>;
-  tabCount: number;
-
-  // the watches open now, which hold no turn
-  readonly watches: { count: number };
-
-  // the calls from the tools, which a take-over waits for
-  readonly running: Set<RunningCall>;
-
-  // the actions' calls admitted past the hold, which count among the running calls
-  readonly admitted: Set<RunningCall>;
-
-  // the admission whose work runs now, so a computer call moves the limit of its own admission
-  readonly scope: AsyncLocalStorage<RunningCall>;
-  takeover: Takeover | null;
-}
-
-interface ComputerContext {
-  readonly options: ComputerOptions;
-  readonly clock: Clock;
-  readonly state: ComputerState;
-}
-
 const defaultTakeoverIdleMs = 30 * 60 * 1000;
 
 const noTakeoverRecords: TakeoverRecords = {
@@ -140,10 +115,17 @@ const noTakeoverRecords: TakeoverRecords = {
   writeEnded: () => Promise.resolve(),
 };
 
+const defaultHandoverExpiryMs = 60 * 60 * 1000;
+
+const noHandoverRecords: HandoverRecords = {
+  writeAsked: () => Promise.resolve(),
+  writeClosed: () => Promise.resolve(),
+};
+
 const defaultTurnWaitMs = 60_000;
 
 export function startComputer(options: ComputerOptions): Computer {
-  const state: ComputerState = {
+  const state: DesktopState = {
     sandbox: null,
     guest: null,
     isAsleep: false,
@@ -187,6 +169,14 @@ export function startComputer(options: ComputerOptions): Computer {
 
   state.takeover = takeover;
 
+  const handover = makeHandover({
+    clock: context.clock,
+    logger: options.logger,
+    records: options.handover?.records ?? noHandoverRecords,
+    expiryMs: options.handover?.expiryMs ?? defaultHandoverExpiryMs,
+    isHeld: takeover.isHeld,
+  });
+
   return {
     call: (call) => runCall(context, call),
     settleMove: () => settleMove(context),
@@ -195,7 +185,15 @@ export function startComputer(options: ComputerOptions): Computer {
     takeover: {
       isHeld: takeover.isHeld,
       epoch: takeover.epoch,
-      start: takeover.start,
+      start: async (deviceID) => {
+        const result = await takeover.start(deviceID);
+
+        if (result.kind === 'started') {
+          handover.answer();
+        }
+
+        return result;
+      },
       end: takeover.end,
       admit: () =>
         admitRunningCall({
@@ -206,6 +204,7 @@ export function startComputer(options: ComputerOptions): Computer {
         }),
       isAdmitted: () => findAdmission(state) !== null,
     },
+    handover,
     isWatched: () => state.watches.count > 0,
     reset: () => resetComputer(context),
     tabs: buildTabs(state),
@@ -213,6 +212,7 @@ export function startComputer(options: ComputerOptions): Computer {
     // The hold of a server that stops ends at the next start, which writes its record.
     stop: () => {
       takeover.stop();
+      handover.stop();
 
       state.takeover = null;
 
@@ -304,7 +304,7 @@ async function sleepAfterIdle(
 }
 
 // A guest that stops takes the desktop's windows with it, so a hold on it ends.
-async function stopGuest(state: ComputerState): Promise<void> {
+async function stopGuest(state: DesktopState): Promise<void> {
   const guest = state.guest;
 
   state.guest = null;
@@ -364,89 +364,6 @@ async function readWatchGuest(
   } finally {
     release();
     scheduleSleep(context);
-  }
-}
-
-// The computer's sandbox: the kept one that holds today's spec, or a new one. A kept sandbox of an
-// older spec gives its disk to the new one, which replaces it.
-async function readySandbox(context: ComputerContext): Promise<Sandbox> {
-  const state = context.state;
-
-  if (state.sandbox !== null && !state.sandbox.isRetired) {
-    if (state.isAsleep) {
-      await wakeSandbox(state, state.sandbox);
-    }
-
-    return state.sandbox;
-  }
-
-  const spec = buildComputerSpec(context);
-
-  const existing = await context.options.adapter.list(computerOwner);
-
-  const kept = findKeptSandbox(existing, spec);
-
-  if (kept !== undefined) {
-    state.sandbox = kept;
-    state.isAsleep = false;
-
-    return kept;
-  }
-
-  const created = await context.options.adapter.create(spec);
-
-  await replaceOld(context, existing, created);
-
-  state.sandbox = created;
-  state.isAsleep = false;
-
-  state.tabs.clear();
-
-  return created;
-}
-
-async function wakeSandbox(state: ComputerState, sandbox: Sandbox): Promise<void> {
-  if (sandbox.suspension.kind === 'memory') {
-    await sandbox.suspension.wake();
-  }
-
-  state.isAsleep = false;
-}
-
-function buildComputerSpec(context: ComputerContext) {
-  return buildSandboxSpec({
-    kind: 'computer',
-    image: context.options.image,
-    owner: computerOwner,
-    limits: sandboxSizes.computer,
-  });
-}
-
-async function replaceOld(
-  context: ComputerContext,
-  old: readonly Sandbox[],
-  created: Sandbox,
-): Promise<void> {
-  const homeEnv = context.options.homeEnv ?? {};
-
-  for (const sandbox of old) {
-    try {
-      await wakeOld(sandbox);
-
-      for (const folder of computerFolders) {
-        await copyComputerFolder({
-          from: sandbox,
-          fromEnv: homeEnv,
-          to: created,
-          toEnv: homeEnv,
-          folder,
-        });
-      }
-    } catch (error) {
-      context.options.logger('computer.copy_failed', { reason: String(error) }, 'warn');
-    }
-
-    await sandbox.destroy();
   }
 }
 

@@ -4,6 +4,7 @@ import { mintBlockID, renderSystemMessage } from '@heynixie/wire';
 import { formatMessageTime } from '../message/format-message-time';
 import type { MessageTimeOptions } from '../types';
 import { capitalizeFirst } from './capitalize-first';
+import { renderUntrustedText } from './render-untrusted-text';
 
 // What the assistant reads when the desktop comes back, in the owner's name, or "the user" when none
 // is set.
@@ -75,15 +76,7 @@ function renderSeen(fields: EndedFields | null, mint: () => string): string[] {
     return [...sites, `Now: ${label}`];
   }
 
-  const fence = mint();
-
-  return [
-    ...sites,
-    `Now: ${label}`,
-    `<tool-result source="untrusted" fence="${fence}">`,
-    JSON.stringify(now.text),
-    `</tool-result fence="${fence}">`,
-  ];
+  return [...sites, `Now: ${label}`, ...renderUntrustedText(now.text, mint)];
 }
 
 // a secure site by its host alone, and any other with its scheme, so a plain address shows as one

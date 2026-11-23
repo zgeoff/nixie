@@ -2,6 +2,7 @@ import { join } from 'node:path';
 import type { ComputerTools } from '@heynixie/connectors';
 import {
   buildComputerTools,
+  makeHandoverRecords,
   makeTakeoverRecords,
   makeUnexemptScans,
   startComputer,
@@ -70,6 +71,10 @@ export async function startComputerPart(inputs: ComputerPartInputs): Promise<Com
     scans: makeUnexemptScans({ findSecret, logger: options.log }),
     logger: options.log,
     takeover: { idleMs: options.config.computer.idle_hand_back_minutes * 60_000, records },
+    handover: {
+      expiryMs: options.config.computer.handover_expiry_minutes * 60_000,
+      records: makeHandoverRecords({ log: inputs.log, definitions: inputs.definitions }),
+    },
   });
 
   await options.cleanup.defer(() => computer.stop());

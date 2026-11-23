@@ -26,6 +26,22 @@ test('it asks before a sandbox task start with memory read and no persona, under
   });
 });
 
+test('it allows computer.take_back, under the starter rule for taking the computer back', async () => {
+  const decide = readStarterDecisionPoint(() => ({
+    effects: ['computer_take_back'],
+    destinations: [],
+    amount: null,
+    content: [],
+    results: {},
+  }));
+
+  const decided = await decide(
+    buildPolicyCall({ tool: 'computer.take_back', toolList: ['computer.take_back'], args: {} }),
+  );
+
+  expect(decided.decision).toMatchObject({ outcome: 'allow', rule: { id: 'allow-take-back' } });
+});
+
 test('it allows a sandbox task start that keeps the persona, under the starter rule for notes', async () => {
   const decide = readStarterDecisionPoint(() => ({
     effects: ['note'],

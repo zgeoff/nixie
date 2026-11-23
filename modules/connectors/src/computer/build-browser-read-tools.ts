@@ -2,6 +2,7 @@ import type { DirectResult, ToolDefinition } from '@heynixie/tools';
 import { z } from 'zod';
 import type { ComputerState } from './computer-state';
 import type { ComputerToolOptions } from './computer-tool-options';
+import { buildChallengeField } from './handover/challenge-line';
 import { refuseComputer, runComputerCall } from './run-computer-call';
 import { showPicture } from './show-picture';
 import { writeComputerPage } from './write-computer-page';
@@ -45,6 +46,7 @@ const pageOutput = {
     parts: { type: 'number' },
     text: { type: 'string' },
     isDiskNew: { type: 'boolean' },
+    challenge: { type: 'string' },
     refused: { type: 'object' },
   },
   additionalProperties: false,
@@ -60,6 +62,7 @@ const pageResults = {
   parts: 'untrusted',
   text: 'untrusted',
   isDiskNew: 'owner_data',
+  challenge: 'owner_data',
   refused: 'untrusted',
 } as const;
 
@@ -224,6 +227,7 @@ const pictureResults = {
   width: 'untrusted',
   height: 'untrusted',
   isShown: 'owner_data',
+  challenge: 'owner_data',
   refused: 'untrusted',
 } as const;
 
@@ -253,6 +257,7 @@ function buildScreenshotTool(options: ComputerToolOptions): ToolDefinition {
         width: { type: 'number' },
         height: { type: 'number' },
         isShown: { type: 'boolean' },
+        challenge: { type: 'string' },
         refused: { type: 'object' },
       },
       additionalProperties: false,
@@ -295,6 +300,7 @@ function buildScreenshotTool(options: ComputerToolOptions): ToolDefinition {
           url: outcome.reply.url,
           width: outcome.reply.width,
           height: outcome.reply.height,
+          ...buildChallengeField(outcome.reply.hasChallenge),
         },
       });
     },

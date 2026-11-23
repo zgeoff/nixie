@@ -1,5 +1,47 @@
+import type { AsyncLocalStorage } from 'node:async_hooks';
+import type { Clock } from '@heynixie/clock';
 import type { JSONObject } from '@heynixie/log';
+import type { Sandbox } from '@heynixie/sandbox';
 import type { ComputerReply, ComputerRequest } from '@heynixie/wire';
+import type { GuestSession } from './make-guest-session';
+import type { ComputerOptions } from './start-computer';
+import type { Takeover } from './takeover/types';
+import type { RunningCall } from './takeover/wait-for-running-calls';
+
+export interface DesktopState {
+  sandbox: Sandbox | null;
+  guest: GuestSession | null;
+  isAsleep: boolean;
+
+  // true once no sandbox of an earlier release is left, in this process
+  isMoved: boolean;
+
+  // the end of the chain of calls, which holds the sandbox one call at a time
+  turn: Promise<void>;
+  holds: number;
+  idle: AbortController | null;
+  readonly tabs: Map<string, string>;
+  tabCount: number;
+
+  // the watches open now, which hold no turn
+  readonly watches: { count: number };
+
+  // the calls from the tools, which a take-over waits for
+  readonly running: Set<RunningCall>;
+
+  // the actions' calls admitted past the hold, which count among the running calls
+  readonly admitted: Set<RunningCall>;
+
+  // the admission whose work runs now, so a computer call moves the limit of its own admission
+  readonly scope: AsyncLocalStorage<RunningCall>;
+  takeover: Takeover | null;
+}
+
+export interface ComputerContext {
+  readonly options: ComputerOptions;
+  readonly clock: Clock;
+  readonly state: DesktopState;
+}
 
 // the server's verdict on a URL a guest is about to request
 export type ScanVerdict =

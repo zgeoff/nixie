@@ -8,6 +8,7 @@ import { buildShellTools, runShellCommand } from './build-shell-tools';
 import type { ComputerState } from './computer-state';
 import { buildComputerState } from './computer-state';
 import type { ComputerToolOptions } from './computer-tool-options';
+import { buildHandoverTools } from './handover/build-handover-tools';
 import { refuseComputer, refuseUntilMoved } from './run-computer-call';
 import type { Computer } from './start-computer';
 import type { ComputerAttempt } from './types';
@@ -24,6 +25,9 @@ export interface ComputerTools {
 
   // the hold that a device session takes on the desktop and gives back
   readonly takeover: Computer['takeover'];
+
+  // the assistant's ask for a take-over, which a restart reopens
+  readonly handover: Computer['handover'];
 }
 
 const refusedSchema = z.object({ code: z.string(), message: z.string() });
@@ -37,11 +41,13 @@ export function buildComputerTools(options: ComputerToolOptions): ComputerTools 
   return {
     watch: options.computer.watch,
     takeover: options.computer.takeover,
+    handover: options.computer.handover,
     tools: [
       ...buildBrowserReadTools(options, state),
       ...buildBrowserActTools(options, state),
       ...buildScreenTools(options, state),
       ...buildShellTools(options, state),
+      ...buildHandoverTools(options),
     ].map((tool) => withTakeoverGate(options, withMoveGate(options, tool))),
     connector: {
       reconcile: { kind: 'none' },
@@ -198,4 +204,7 @@ export const computerToolNames = [
   'computer.read_file',
   'computer.write_file',
   'computer.export_file',
+  'computer.handover',
+  'computer.handover_cancel',
+  'computer.take_back',
 ] as const;
