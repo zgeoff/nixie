@@ -87,24 +87,27 @@ it may retry. A reset destroys the old sandboxes too.
 
 ## Tools
 
-| Tool                          | Effect         | Runs   | Result                                                              |
-| ----------------------------- | -------------- | ------ | ------------------------------------------------------------------- |
-| `computer.browser_open`       | `fetch`        | direct | a new tab and its page text                                         |
-| `computer.browser_read`       | `note`         | direct | the page again, as `text` or as a `snapshot` that marks controls    |
-| `computer.browser_screenshot` | `note`         | direct | the viewport's picture, or one control's box, beside the result     |
-| `computer.browser_scroll`     | `note`         | direct | `isAtEnd` and the viewport's picture beside it, with no page stored |
-| `computer.browser_close`      | `note`         | direct | the tab closed                                                      |
-| `computer.browser_download`   | `fetch`        | direct | a file saved to `downloads/` in the files                           |
-| `computer.browser_fill`       | `send`         | queued | the page after the typed value, with `submit` to press Enter        |
-| `computer.browser_click`      | `send`         | queued | the page after the click                                            |
-| `computer.screenshot`         | `note`         | direct | the whole desktop's picture and the window in focus                 |
-| `computer.screen_scroll`      | `note`         | direct | the wheel turned over a point, the picture and the window in focus  |
-| `computer.screen_click`       | `send`         | queued | a click at a point, the window in focus and the picture after it    |
-| `computer.screen_type`        | `send`         | queued | text or one key chord typed, the window in focus and the picture    |
-| `computer.run`                | `computer_run` | queued | the exit code, `stdout` and `stderr` (each cut at a limit), seconds |
-| `computer.read_file`          | `note`         | direct | the text of a file under `~/files`                                  |
-| `computer.write_file`         | `note`         | direct | a file written under `~/files`, which replaces one of that name     |
-| `computer.export_file`        | `note`         | direct | a file kept with the result, so `file.send` can send it             |
+| Tool                          | Effect               | Runs   | Result                                                              |
+| ----------------------------- | -------------------- | ------ | ------------------------------------------------------------------- |
+| `computer.browser_open`       | `fetch`              | direct | a new tab and its page text                                         |
+| `computer.browser_read`       | `note`               | direct | the page again, as `text` or as a `snapshot` that marks controls    |
+| `computer.browser_screenshot` | `note`               | direct | the viewport's picture, or one control's box, beside the result     |
+| `computer.browser_scroll`     | `note`               | direct | `isAtEnd` and the viewport's picture beside it, with no page stored |
+| `computer.browser_close`      | `note`               | direct | the tab closed                                                      |
+| `computer.browser_download`   | `fetch`              | direct | a file saved to `downloads/` in the files                           |
+| `computer.browser_fill`       | `send`               | queued | the page after the typed value, with `submit` to press Enter        |
+| `computer.browser_click`      | `send`               | queued | the page after the click                                            |
+| `computer.screenshot`         | `note`               | direct | the whole desktop's picture and the window in focus                 |
+| `computer.screen_scroll`      | `note`               | direct | the wheel turned over a point, the picture and the window in focus  |
+| `computer.screen_click`       | `send`               | queued | a click at a point, the window in focus and the picture after it    |
+| `computer.screen_type`        | `send`               | queued | text or one key chord typed, the window in focus and the picture    |
+| `computer.run`                | `computer_run`       | queued | the exit code, `stdout` and `stderr` (each cut at a limit), seconds |
+| `computer.read_file`          | `note`               | direct | the text of a file under `~/files`                                  |
+| `computer.write_file`         | `note`               | direct | a file written under `~/files`, which replaces one of that name     |
+| `computer.export_file`        | `note`               | direct | a file kept with the result, so `file.send` can send it             |
+| `computer.handover`           | `note`               | direct | `asked`, after it asks the user to take over the computer           |
+| `computer.handover_cancel`    | `note`               | direct | `cancelled`, after it withdraws the standing ask                    |
+| `computer.take_back`          | `computer_take_back` | direct | `durationSeconds` of the hold it ended                              |
 
 Every result field except the tab, the flags and a refusal's code is untrusted. A refusal comes back
 as a result with `refused: { code, message }`, never as an error.
@@ -123,6 +126,15 @@ page, so it never counts toward a tab's 5 pages. `browser_screenshot` takes an o
 and then pictures that control's box, cut to the viewport, without scrolling the page, so a person
 who holds the desktop keeps their view. A picture of a control wholly outside the viewport returns
 `STALE_ELEMENT`, and so does either tool for a control that no longer holds its number.
+
+**Challenges.** `browser_open`, `browser_read` and `browser_screenshot` each look once at the tab
+they name for a CAPTCHA or human check, however the assistant came to the tab. The guest reads the
+address of each frame in the tab, and it counts the tab's elements for known markers. The frames and
+markers are those of reCAPTCHA, hCaptcha, Cloudflare Turnstile and its interstitial, and Arkose. The
+check never reads page text, so a site cannot write words that pass for a challenge or hide one.
+When it finds one, the result carries a `challenge` line that nixie writes, beside the page's text
+and never inside it. The line says that a person must solve the check and to call
+`computer.handover` with a reason.
 
 **Old names.** Every browser tool carries the `browser_` prefix, and a call under a name from before
 it is an unknown tool. An action queued under `computer.fill` or `computer.click` before the rename
@@ -309,12 +321,44 @@ device holds the desktop at a time, and the hold lives in memory only.
   terminal is in focus. The text that the screen cleared is not in the terminal's text.
 
 A hold writes 2 records on the conversation's thread. `computer.takeover_started` names the device
-and wakes nothing. `computer.takeover_ended` names what ended the hold and for how long, and wakes
-the assistant. Both carry a short ID. The ended record keeps the sites and the window in focus as
+and wakes nothing. `computer.takeover_ended` names what ended the hold, which is `user`,
+`assistant`, `idle` or `restart`, and for how long, and wakes the assistant. Both carry a short ID.
+The ended record keeps the sites and the window in focus as
 [erasable fields](../core/erasable-fields.md), so a forget of the record erases them. The assistant
 reads the window's text inside the untrusted-text markers of a page read. Each marker carries a
 random ID that the text never holds, so the text cannot close the block early. The assistant names
 the record by its short ID.
+
+## Asking for a take-over
+
+The assistant asks the user to take over with `computer.handover`, which takes a `reason` of at most
+500 characters. The call writes `computer.handover_asked` and changes nothing else: the hold starts
+only when the user takes over. The 3 tools below are on the conversation's tool list alone, and a
+task never holds them.
+
+- `computer.handover` answers `ALREADY_ASKED` while an ask stands and `TAKEN_OVER` while a hold is
+  open or a take-over waits.
+- `computer.handover_cancel` closes the standing ask, writes `computer.handover_closed` with
+  `by: 'assistant'`, and answers `NOT_ASKED` when none stands.
+- `computer.take_back` ends the hold at once with `by: 'assistant'`, and the relay then drops the
+  user's input. It answers `NOT_TAKEN_OVER` when no hold is open. The `allow-take-back` starter rule
+  allows its effect, `computer_take_back`, and without the rule a call asks first.
+
+One ask stands at a time, in memory. It ends when a take-over starts, which writes no record of its
+own, when the assistant cancels it, or when it expires. An ask that no take-over answers within
+`computer.handover_expiry_minutes`, 60 by default, writes `computer.handover_closed` with
+`by: 'expired'`. A restart reopens the ask that its record shows still standing, with the time that
+was left, and an ask whose time has passed expires at once.
+
+`computer.handover_asked` keeps its reason as an [erasable field](../core/erasable-fields.md).
+`computer.handover_closed` keeps who closed the ask and how long it stood. Both carry a short ID,
+and neither the ask nor a cancel wakes the assistant. An expiry does, so the assistant does not wait
+for a take-over that is not coming. The turn that wrote an ask or a cancel already holds it, so the
+inbox passes neither on. The assistant reads an expiry as "Your handover ask lapsed after 60 min
+with no take-over."
+
+Every connected [web client](../channels/client.md#the-handover-banner) shows the ask on a banner
+until a take-over starts or the ask closes.
 
 ## The checking proxy
 

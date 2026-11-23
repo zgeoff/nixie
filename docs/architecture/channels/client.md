@@ -355,6 +355,19 @@ in the browser only, because the library reads the window when it loads.
   which asks for a new ticket. A server with no computer shows no button and says it has none.
 - Leaving the page closes the socket and stops the viewer.
 
+## The handover banner
+
+While the assistant asks the user to take over the computer, every signed-in page shows a banner
+with the assistant's reason and a Take over button. The client reads `computer.readHandover` once,
+which gives the standing ask and a log sequence, and then follows the live stream from that sequence
+for every thread. A `computer.handover_asked` record opens the banner on every open client, and a
+`computer.takeover_started` or `computer.handover_closed` record clears it, so a take-over from one
+device clears the banner on the others. The client reads the ask again every minute and when the
+window gains focus.
+
+Take over opens `/computer` with the search parameter `takeOver`. The computer page takes over once,
+as soon as it shows the desktop, so the user presses one button.
+
 ## The notebook pages
 
 The notebook pages show the [notebook](../memory/notebook.md) read-only. Forget is the one control
