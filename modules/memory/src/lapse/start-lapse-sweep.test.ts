@@ -146,3 +146,30 @@ test('it reports a failed lapse once and sweeps again after onError throws', asy
 
   await expect(waitForCondition(() => lapseProposals.mock.calls.length === 2)).toResolve();
 });
+
+test('it ends the pass after one report when the item lapse fails and onError throws', async () => {
+  const ctx = await setupTest();
+
+  const lapseProposals = mock(() => Promise.resolve(0));
+
+  const onError = mock<(error: unknown) => void>(() => {
+    throw new Error('the log is closed');
+  });
+
+  ctx.start({
+    store: {
+      lapse: () => Promise.reject(new Error('the database is locked')),
+      proposals: { lapse: lapseProposals },
+    },
+    onError,
+  });
+
+  await waitForCondition(() => ctx.clock.countPending() === 1);
+
+  ctx.clock.advance(3_600_000);
+
+  await waitForCondition(() => onError.mock.calls.length === 1 && ctx.clock.countPending() === 1);
+
+  expect(lapseProposals).toHaveBeenCalledTimes(0);
+  expect(onError).toHaveBeenCalledTimes(1);
+});

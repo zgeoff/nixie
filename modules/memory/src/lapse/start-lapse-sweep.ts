@@ -29,8 +29,13 @@ export function startLapseSweep(options: LapseSweepOptions): LapseSweep {
 }
 
 async function runLapseSweep(options: LapseSweepOptions): Promise<void> {
-  await tryRunLapse(() => options.store.lapse(), options.onError);
-  await tryRunLapse(() => options.store.proposals.lapse(), options.onError);
+  try {
+    await tryRunLapse(() => options.store.lapse(), options.onError);
+    await tryRunLapse(() => options.store.proposals.lapse(), options.onError);
+  } catch {
+    // A throw from onError ends the pass and loses only its own report. The shared loop would
+    // report it to the same onError.
+  }
 }
 
 async function tryRunLapse(
@@ -40,9 +45,6 @@ async function tryRunLapse(
   try {
     await lapse();
   } catch (error) {
-    // A throw from onError is swallowed here: the shared loop would report it to the same onError.
-    try {
-      onError(error);
-    } catch {}
+    onError(error);
   }
 }

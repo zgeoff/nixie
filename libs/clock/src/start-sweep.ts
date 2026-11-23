@@ -22,8 +22,8 @@ export interface Sweep {
 }
 
 // Runs `run` in a loop on the injected clock. The next run starts one interval after the last run
-// started, or at once when that run lasted longer, so ticks keep their fixed spacing and runs never
-// overlap. A run that throws goes to onError, and the loop goes on.
+// started, or on the next tick after the run ends when it lasted longer, so ticks keep their fixed
+// spacing and runs never overlap. A run that throws goes to onError, and the loop goes on.
 export function startSweep(options: SweepOptions): Sweep {
   const stopped = new AbortController();
 
@@ -57,6 +57,8 @@ export function startSweep(options: SweepOptions): Sweep {
       } catch (error) {
         reportFailure(options.onError, error);
       }
+
+      nextDueMs = skipMissedTicks(nextDueMs, options.clock.now(), options.intervalMs);
     }
   })();
 
@@ -86,4 +88,13 @@ function reportFailure(onError: (error: unknown) => void, error: unknown): void 
   } catch {
     // A throw from onError loses only its own report, and the loop goes on.
   }
+}
+
+// A tick that falls while a run is in flight is skipped, so the next one stays on the fixed spacing.
+function skipMissedTicks(nextDueMs: number, nowMs: number, intervalMs: number): number {
+  if (nextDueMs > nowMs) {
+    return nextDueMs;
+  }
+
+  return nextDueMs + (Math.floor((nowMs - nextDueMs) / intervalMs) + 1) * intervalMs;
 }

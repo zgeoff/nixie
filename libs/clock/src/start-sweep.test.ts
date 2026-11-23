@@ -78,7 +78,7 @@ test('it starts the next run one interval after the last run started', async () 
   expect(ctx.clock.readNextDueMs()).toBe(1000);
 });
 
-test('it starts the next run at once when the last run outlasted the interval', async () => {
+test('it skips the tick that falls in a run and sleeps to the next one', async () => {
   const ctx = setupTest();
   const held = Promise.withResolvers<void>();
 
@@ -89,12 +89,15 @@ test('it starts the next run at once when the last run outlasted the interval', 
     expect(ctx.run).toHaveBeenCalledTimes(1);
   });
 
-  ctx.clock.advance(5000);
+  ctx.clock.advance(1500);
   held.resolve();
 
   await waitFor(() => {
-    expect(ctx.run).toHaveBeenCalledTimes(2);
+    expect(ctx.clock.countPending()).toBe(1);
   });
+
+  expect(ctx.clock.readNextDueMs()).toBe(2000);
+  expect(ctx.run).toHaveBeenCalledTimes(1);
 });
 
 test('it never starts a run while one is in flight', async () => {

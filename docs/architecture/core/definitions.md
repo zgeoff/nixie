@@ -171,7 +171,8 @@ moves, once: to adopted, superseded or retired.
 
 nixie exports each written skill in force to the user's definitions repo as a pull request, and the
 user merges it. The export runs at start, after each approval and each choice on a conflict, and on
-every hour after the last export started, which retries a failed export. Each skill has one branch,
+every hour, which retries a failed export. An hourly tick that falls while an export runs is
+skipped, so the next export waits for the tick after the export ends. Each skill has one branch,
 which the export builds again on the base branch's newest commit, so a later approval of the same
 skill updates the open pull request. Each export pins that commit once and reads the skill's folder
 at it, so the change writes the skill's folder and removes each file that the folder holds at that
