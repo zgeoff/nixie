@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 type InetTable = 'tcp' | 'tcp6' | 'udp' | 'udp6';
 
-export interface InetSocket {
+interface InetSocket {
   readonly table: InetTable;
   readonly local: string;
 
@@ -12,7 +12,7 @@ export interface InetSocket {
 
 // the sockets that one process holds open: each TCP or UDP socket with its local address in the
 // kernel's hex form and its state, and the path of each Unix socket that has one
-export interface OwnedSockets {
+interface OwnedSockets {
   readonly pid: number;
   readonly inet: readonly InetSocket[];
   readonly unixPaths: readonly string[];
