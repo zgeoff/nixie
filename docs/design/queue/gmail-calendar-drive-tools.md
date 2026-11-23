@@ -291,8 +291,6 @@ The check runs at least 5 minutes after the attempt started, and asks Gmail 2 wa
 
 - Every read calls Google at the time of the call. nixie keeps no index, cache or copy of mail,
   events or files.
-- Each tool that reads text returns at most one part of it per call: `part` names the part, counted
-  from 1, and `parts` gives how many there are.
 - Each text part is at most the `text_bytes` of the `web_fetch` config section, cut as
   [pages and parts](../../architecture/connectors/web-fetch.md#pages-and-parts) sets. The tool reads
   the item from Google again for each part, and runs the fetch sandbox again for an HTML body. The
