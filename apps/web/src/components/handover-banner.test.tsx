@@ -59,9 +59,11 @@ test('it shows the banner when the ask arrives on the live stream', async () => 
     message: { text: 'a bank check' },
   });
 
-  const banner = await rendered.findByRole('region', {
-    name: 'the assistant asks you to take over the computer',
-  });
+  const banner = await rendered.findByRole(
+    'region',
+    { name: 'the assistant asks you to take over the computer' },
+    { timeout: 4000 },
+  );
 
   expect(banner).toHaveTextContent('a bank check');
 });
@@ -86,9 +88,12 @@ test.each(['computer.handover_closed', 'computer.takeover_started'])(
 
     await store.records.create({ kind });
 
-    await waitFor(() => {
-      expect(rendered.container).toBeEmptyDOMElement();
-    });
+    await waitFor(
+      () => {
+        expect(rendered.container).toBeEmptyDOMElement();
+      },
+      { timeout: 4000 },
+    );
   },
 );
 

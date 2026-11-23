@@ -171,12 +171,12 @@ moves, once: to adopted, superseded or retired.
 
 nixie exports each written skill in force to the user's definitions repo as a pull request, and the
 user merges it. The export runs at start, after each approval and each choice on a conflict, and on
-a fixed interval that retries a failed export. Each skill has one branch, which the export builds
-again on the base branch's newest commit, so a later approval of the same skill updates the open
-pull request. Each export pins that commit once and reads the skill's folder at it, so the change
-writes the skill's folder and removes each file that the folder holds at that commit and the written
-version lacks. It also removes a vendored skill's lock entry, so the seed after the merge reads the
-folder as the user's own skill and marks the written skill adopted.
+one hour after the last export ends, which retries a failed export. Each skill has one branch, which
+the export builds again on the base branch's newest commit, so a later approval of the same skill
+updates the open pull request. Each export pins that commit once and reads the skill's folder at it,
+so the change writes the skill's folder and removes each file that the folder holds at that commit
+and the written version lacks. It also removes a vendored skill's lock entry, so the seed after the
+merge reads the folder as the user's own skill and marks the written skill adopted.
 
 The export serves any kind of approved change, and nixie registers 4 kinds: a written skill, an
 approved [prompt override](./prompts.md), the

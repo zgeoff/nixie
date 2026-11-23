@@ -12,5 +12,8 @@
   },
   "dependencies": {
     "@zgeoff/std": "catalog:"
+  },
+  "devDependencies": {
+    "@zgeoff/testing": "catalog:"
   }
 }

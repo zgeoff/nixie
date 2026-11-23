@@ -1,4 +1,6 @@
 import { join } from 'node:path';
+import type { Sweep } from '@heynixie/clock';
+import { startSweep } from '@heynixie/clock';
 import type { CloseCapturesOptions } from './capture/close-captures';
 import { closeCaptures } from './capture/close-captures';
 import { openCapture } from './capture/open-capture';
@@ -19,8 +21,6 @@ import type { SetInputLogRequest, SetInputLogResult } from './state/set-input-lo
 import { setInputLog } from './state/set-input-log';
 import type { Capture, OpenCaptureInput, TurnInputsContext, TurnInputsOptions } from './types';
 import { createLane } from './utils/create-lane';
-import type { Interval } from './utils/start-interval';
-import { startInterval } from './utils/start-interval';
 
 export interface TurnInputsWork {
   readonly stop: () => Promise<void>;
@@ -83,14 +83,14 @@ function startWork(ctx: TurnInputsContext): TurnInputsWork {
     ctx.logger('turn_input.work_failed', { reason: 'tick' }, 'warn');
   };
 
-  const intervals: readonly Interval[] = [
-    startInterval({
+  const intervals: readonly Sweep[] = [
+    startSweep({
       clock: ctx.clock,
       intervalMs: intakeMs,
       run: () => runIntakeTick(ctx),
       onError,
     }),
-    startInterval({
+    startSweep({
       clock: ctx.clock,
       intervalMs: sweepMs,
       run: () => ctx.lane.run(() => runTurnInputSweep(ctx)),
