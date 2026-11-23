@@ -566,13 +566,15 @@ The export fails, calls `onError` and opens no pull request when:
   style (`{format: 3}`);
 - a file blocks the raise; the error lists each such file, and tells the user to review them and
   raise the format by hand, or remove them;
-- the seed's parse of the changed repo refuses a task folder;
-- no file of the change differs from the repo, because the repo already holds the changes and the
-  next seed adopts them.
+- the seed's parse of the changed repo refuses a task folder.
 
-A failed export keeps its attempt mark, so the next run retries it. When no exported change is left,
-each open export closes its pull request on the branch, and a merged pull request stays. A pull
-request that the user closes by hand opens again at the next export.
+When no file of the change differs from the repo, the repo already holds the changes and the next
+seed adopts them. The export opens no pull request, logs `definitions.export_skipped` at info, and
+does not call `onError`.
+
+A failed or skipped export keeps its attempt mark, so the next run retries it. When no exported
+change is left, each open export closes its pull request on the branch, and a merged pull request
+stays. A pull request that the user closes by hand opens again at the next export.
 
 ### Changes from the conversation
 

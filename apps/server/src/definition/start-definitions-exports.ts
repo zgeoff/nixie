@@ -38,7 +38,13 @@ export async function startDefinitionsExports(
       buildSkillChangeKind(text),
       buildPromptChangeKind(options.log, text),
       buildRuleChangeKind(),
-      buildTaskChangeKind({ log: options.log, tasks: options.tasks }),
+      buildTaskChangeKind({
+        log: options.log,
+        tasks: options.tasks,
+        onHeld: () => {
+          options.logEvent('definitions.export_skipped', { reason: 'repo_holds_changes' }, 'info');
+        },
+      }),
     ],
     onError: (error) => {
       options.logEvent('definitions.export_failed', toErrorFields(error), 'error');

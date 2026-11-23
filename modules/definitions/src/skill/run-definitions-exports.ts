@@ -66,7 +66,11 @@ async function runKindExports(
     try {
       const outcome = await writeExport(options, kind, row);
 
-      (outcome === 'opened' ? exported : closed).push(row.approvalID);
+      if (outcome === 'opened') {
+        exported.push(row.approvalID);
+      } else if (outcome === 'closed') {
+        closed.push(row.approvalID);
+      }
     } catch (error) {
       options.onError(error);
     }
@@ -133,7 +137,7 @@ async function writeExport(
   options: DefinitionsExportOptions,
   kind: DefinitionsChangeKind,
   row: DueDefinitionsExport,
-): Promise<'opened' | 'closed'> {
+): Promise<'opened' | 'closed' | 'skipped'> {
   const source = await row.readSource(options.log.writer.db);
 
   // GitHub can apply a write whose answer is lost, so the mark goes first and a later close still
@@ -158,6 +162,11 @@ async function writeExport(
 
   const revision = await options.repo.readBaseRevision();
   const change = await source.readChange(options.repo, revision);
+
+  if (change === null) {
+    return 'skipped';
+  }
+
   const pullRequest = await options.repo.writePullRequest(change, revision);
 
   const isOpened = await withWriteTransaction(options.log.writer, async (tx) => {
