@@ -134,8 +134,9 @@ approvals:
     prompt: 14
 ```
 
-- A proposal lapses at the earlier of its creation plus its family's `lapse_days` and its deadline.
-  A mandate lapses only at its deadline, which is its expiry, and keeps its own expiry timer.
+- A new proposal lapses at the earlier of its creation plus its family's `lapse_days` and its
+  deadline. A defer or a memory merge sets a new lapse from its own time, by the same rule. A
+  mandate lapses only at its deadline, which is its expiry, and keeps its own expiry timer.
 - A memory merge extends the shared row's lapse by `lapse_days.memory`, recorded in the merge record
   as today.
 - The core's sweep, built on the shared sweep helper, lapses every family. Memory's own sweep keeps
@@ -160,8 +161,8 @@ type ProposalSettledNote = {
 
 A prompt override's export after approval stays a note of its own: it isn't a settlement.
 
-- `proposals.settled` is written on the proposal's thread. It is an inbox record for a task and a
-  turn note for the conversation.
+- `proposals.settled` is written on the proposal's thread. Outside the action family, it is an inbox
+  record for a task and a turn note for the conversation.
 - An action proposal's settlement is never an inbox record. The task hears `action.outcome`, which
   the action module already writes when an approval queues the action, or when a decline or a lapse
   fails the held action.
@@ -227,7 +228,8 @@ It replaces `memory.pending` and `skill_pending`.
 
 ## Release order
 
-Each step ships in its own release, so a rollback by one release still reads every row.
+Each step ships in its own release, so a rollback by one release still reads every row. The one
+exception is a rollback past N+2, which meets prompt rows; the open question on it holds.
 
 | Release | Ships                                                                                      |
 | ------- | ------------------------------------------------------------------------------------------ |
