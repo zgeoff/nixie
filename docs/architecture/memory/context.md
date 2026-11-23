@@ -116,6 +116,27 @@ them, so an approved item keeps outside content as its source and still reads as
 The model ID that wrote an item stays in `memory.recall`, because it serves checking an item and not
 answering with it.
 
+## Item usage
+
+Each item in a `memory.recall` result carries a usage line with how often memory surfaced it, such
+as `surfaced 14 times (9 by search, 5 by push), last 3 days ago · recalled by ID 2 weeks ago`, or
+`never surfaced`. The model reads it to judge whether an item earns its place. The counts come from
+the `memory.recalled` records written before the call, so a recall never counts itself:
+
+- A record with a search mode inside a `memory.recall` call counts as a search, and one outside any
+  call counts as a push.
+- A recall by ID that returned its result adds only the `recalled by ID` time. A list, a turn note
+  and a call that never wrote its result count for nothing.
+- The date after the counts shows only for an item saved before the log's first usage record, so the
+  reader knows the counts miss part of its life.
+
+`memory.usage({ days })` lists the active items, pinned ones too, that no search or push surfaced in
+the last `days` days, with the never-surfaced items first and then the longest unsurfaced. Each
+entry holds the item's short ID, topic, gist and usage line, and `neverFiredTriggers`: the trigger
+phrases of an item that no push ever placed, which are the ones to reword. A page that outgrows the
+recall page limit ends with a `next` cursor that the model passes back as `cursor`. The tool writes
+no `memory.recalled` record, so listing usage never changes it.
+
 ## Per-turn retrieval
 
 Before each turn, the conversation asks memory once, through one method of its memory port, what the
@@ -182,8 +203,12 @@ session rebuilt after an invalidation, holds what its step delivered. A turn tha
 lost reads its context again without the exclusion, and the new session counts what that turn
 retrieved and what its opening recalled, because the step's first recall served the lost session.
 
-An edit makes a new version, which the session has not seen, so an edited item matches again. A
-recall that the model calls itself excludes nothing.
+An edit makes a new version that the session has not seen, so an edited item matches again. The
+exception is an item the session wrote, because the model already has its text: the push picks no
+item that a memory write on the thread touched since the session's start, whether the write made a
+version, changed a label or pinned the item. The user's own writes from the screens carry no thread,
+so they never count. A recall that the model calls itself excludes nothing, and `memory.recall`
+still returns an item the session wrote.
 
 When a search or a log read rejects, the turn's step records the error and retries after a delay,
 and a task fails after 3 errors in a row.

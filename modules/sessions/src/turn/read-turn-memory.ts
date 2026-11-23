@@ -1,5 +1,6 @@
 import type { LogRecord } from '@heynixie/log';
 import { readSessionDeliveries } from '../session/read-session-deliveries';
+import { readSessionStart } from '../session/read-session-start';
 import type { ConversationRun, MemoryItem } from '../types';
 import type { TurnContextQuery } from './read-turn-context';
 
@@ -37,6 +38,8 @@ export async function readTurnMemory(
 
         return delivered.versions;
       },
+      readWriteStart: () =>
+        query.isNewSession ? Promise.resolve(null) : readSessionStart(run.context, query.taskID),
     },
   });
 

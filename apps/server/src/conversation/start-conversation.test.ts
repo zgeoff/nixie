@@ -933,6 +933,97 @@ test('it places an edited item even though the session holds its earlier version
   ).toStrictEqual([[{ ...key }], [{ ...edited }]]);
 });
 
+test('it keeps an item the opening turn saved out of retrieval for the rest of the session, and places an item you saved in the same gap', async () => {
+  const provenance = {
+    origin: 'owner',
+    source: 'owner',
+    taskID: null,
+    proposalID: null,
+    checks: null,
+  } as const;
+
+  const saved: { remember: () => Promise<unknown> } = { remember: () => Promise.resolve(null) };
+
+  const ctx = await setupTest({
+    tools: {
+      definitions: [
+        {
+          name: 'notes_save',
+          description: 'Saves a memory item.',
+          input: { type: 'object', properties: {}, additionalProperties: false },
+          output: {
+            type: 'object',
+            properties: { text: { type: 'string' } },
+            required: ['text'],
+            additionalProperties: false,
+          },
+          declaration: {
+            effects: ['read'],
+            destinations: [],
+            amount: null,
+            content: [],
+            results: { text: 'owner_data' },
+          },
+          execution: 'direct',
+          run: async () => {
+            await saved.remember();
+
+            return { status: 'ok', result: { text: 'saved' } };
+          },
+        },
+      ],
+      decide: readStarterDecisionPoint(() => ({
+        effects: ['read'],
+        destinations: [],
+        amount: null,
+        content: [],
+        results: { text: 'owner_data' },
+      })),
+    },
+  });
+
+  saved.remember = () =>
+    ctx.memory.remember({
+      text: 'The spare key hangs by the door',
+      provenance: {
+        ...provenance,
+        origin: 'conversation',
+        taskID: 'conversation',
+        thread: 'conversation',
+      },
+      labels: { gist: 'door key', topic: 'home', triggers: ['spare key'] },
+    });
+
+  await Promise.all([
+    ctx.startRunner({ image: 'nixie-conversation-0123456789ab', toolNames: ['notes_save'] }),
+    createConversationTask(ctx.context),
+  ]);
+
+  ctx.guest.addReplies(
+    { toolUse: { name: 'mcp__nixie__notes_save', input: {} } },
+    { text: 'Saved.' },
+    { text: 'By the door.' },
+  );
+
+  await ctx.conversation.send('Remember that the spare key hangs by the door.');
+
+  const owned = await ctx.memory.remember({
+    text: 'The spare key also sits under the blue flowerpot',
+    provenance,
+    labels: { gist: 'flowerpot key', topic: 'home', triggers: ['spare key'] },
+  });
+
+  await ctx.conversation.send('Where is the spare key?');
+
+  const records = await ctx.readRecords();
+
+  expect(
+    records
+      .filter((record) => record.kind === 'model.turn_ended')
+      .map((record) => record.payload['retrieved']),
+  ).toStrictEqual([[], [{ ...owned }]]);
+});
+
 test("it matches your message to an item on its other words and never on the agent's name", async () => {
   const ctx = await setupTest();
 

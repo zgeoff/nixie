@@ -1,6 +1,7 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
 import { buildStubEncoder } from '../test-utils/build-stub-encoder';
 import type { SemanticSearch } from '../types';
+import { buildTriggerKey } from '../utils/build-trigger-key';
 import { startTriggerIndex } from './start-trigger-index';
 
 async function setupTest(semantic?: SemanticSearch) {
@@ -26,7 +27,13 @@ test('it returns one match for an item whose phrases both match', async () => {
   const result = await ctx.triggers.readMatches('piano tuning fork', ctx.options);
 
   expect(result).toStrictEqual({
-    matches: [{ itemID: 'item-piano', score: expect.toBeNumber() }],
+    matches: [
+      {
+        itemID: 'item-piano',
+        score: expect.toBeNumber(),
+        triggers: [buildTriggerKey('piano tuning')],
+      },
+    ],
     searchMode: 'keyword',
   });
 });
@@ -134,7 +141,13 @@ test('it matches a phrase by meaning through the encoder once the vectors are re
   });
 
   expect(result).toStrictEqual({
-    matches: [{ itemID: 'item-family', similarity: expect.toBeNumber() }],
+    matches: [
+      {
+        itemID: 'item-family',
+        similarity: expect.toBeNumber(),
+        triggers: [buildTriggerKey('my sister')],
+      },
+    ],
     searchMode: 'hybrid',
   });
 });

@@ -30,7 +30,7 @@ async function setupTest(overrides: TurnOverrides = {}) {
     text,
     thread: 'conversation',
     excludedWords: [],
-    held: { readVersions, ...held },
+    held: { readVersions, readWriteStart: () => Promise.resolve(null), ...held },
   });
 
   return {
@@ -286,4 +286,108 @@ test('it places no conversation message in the turn of a task that holds no log 
   });
 
   expect(result).toStrictEqual({ kind: 'none' });
+});
+
+test('it never places an item that a memory write on the thread made in the session', async () => {
+  const ctx = await setupTest();
+
+  await ctx.memory.store.remember({
+    text: 'Piano is tuned in spring',
+    provenance: buildMockProvenance({ thread: 'conversation' }),
+    labels: { gist: 'piano', topic: 'home', triggers: ['piano tuning'] },
+  });
+
+  const result = await ctx.memory.store.readTurnMemory(
+    ctx.buildAsk('piano tuning', { readWriteStart: () => Promise.resolve(0) }),
+  );
+
+  expect(result).toStrictEqual({ kind: 'none' });
+});
+
+test('it never places an item that an edit in the session touched, though an earlier session wrote it', async () => {
+  const ctx = await setupTest();
+  const piano = await ctx.remember('Piano is tuned in spring', ['piano tuning']);
+  const [record] = await readRecords(ctx.memory.log, { afterSequence: 0, limit: 1 });
+
+  await ctx.memory.store.remember({
+    text: 'Piano is tuned in autumn',
+    target: piano,
+    provenance: buildMockProvenance({ thread: 'conversation' }),
+  });
+
+  const result = await ctx.memory.store.readTurnMemory(
+    ctx.buildAsk('piano tuning', {
+      readWriteStart: () => Promise.resolve(record?.record.sequence ?? 0),
+    }),
+  );
+
+  expect(result).toStrictEqual({ kind: 'none' });
+});
+
+test('it places an item that a write from another thread made', async () => {
+  const ctx = await setupTest();
+
+  await ctx.memory.store.remember({
+    text: 'Piano is tuned in spring',
+    provenance: buildMockProvenance({ thread: 'a-task' }),
+    labels: { gist: 'piano', topic: 'home', triggers: ['piano tuning'] },
+  });
+
+  const result = await ctx.memory.store.readTurnMemory(
+    ctx.buildAsk('piano tuning', { readWriteStart: () => Promise.resolve(0) }),
+  );
+
+  expect(result.kind).toBe('placed');
+});
+
+test('it places an item that the thread wrote before the session began', async () => {
+  const ctx = await setupTest();
+
+  await ctx.memory.store.remember({
+    text: 'Piano is tuned in spring',
+    provenance: buildMockProvenance({ thread: 'conversation' }),
+    labels: { gist: 'piano', topic: 'home', triggers: ['piano tuning'] },
+  });
+
+  const [last] = await readRecords(ctx.memory.log, {
+    afterSequence: 0,
+    order: 'newest',
+    limit: 1,
+  });
+
+  const result = await ctx.memory.store.readTurnMemory(
+    ctx.buildAsk('piano tuning', {
+      readWriteStart: () => Promise.resolve(last?.record.sequence ?? 0),
+    }),
+  );
+
+  expect(result.kind).toBe('placed');
+});
+
+test('it places an item that the thread wrote when the session is a new one', async () => {
+  const ctx = await setupTest();
+
+  await ctx.memory.store.remember({
+    text: 'Piano is tuned in spring',
+    provenance: buildMockProvenance({ thread: 'conversation' }),
+    labels: { gist: 'piano', topic: 'home', triggers: ['piano tuning'] },
+  });
+
+  const result = await ctx.memory.store.readTurnMemory(ctx.buildAsk('piano tuning'));
+
+  expect(result.kind).toBe('placed');
+});
+
+test('it still recalls an item that the session wrote', async () => {
+  const ctx = await setupTest();
+
+  const written = await ctx.memory.store.remember({
+    text: 'Piano is tuned in spring',
+    provenance: buildMockProvenance({ thread: 'conversation' }),
+    labels: { gist: 'piano', topic: 'home', triggers: ['piano tuning'] },
+  });
+
+  const recalled = await ctx.memory.store.recall({ itemIDs: [written.itemID] });
+
+  expect(recalled.items.map((item) => item.itemID)).toStrictEqual([written.itemID]);
 });

@@ -69,6 +69,7 @@ async function writeRecallRecord(parts: StoreParts, recall: TurnRecallRecord): P
               version: item.version,
               ...(pick?.score === undefined ? {} : { score: pick.score }),
               ...(pick?.similarity === undefined ? {} : { similarity: pick.similarity }),
+              ...(pick === undefined ? {} : { triggers: [...pick.triggers] }),
             };
           }),
           searchMode: recall.searchMode,

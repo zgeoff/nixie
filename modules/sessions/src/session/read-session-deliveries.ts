@@ -9,6 +9,7 @@ import {
 import type { TasksContext } from '@heynixie/tasks';
 import type { MemoryRef } from '../types';
 import { memoryRecalledCodec } from '../utils/memory-recalled-codec';
+import { sessionResetKinds as resetKinds } from './session-reset-kinds';
 
 export interface SessionDeliveries {
   readonly versions: readonly MemoryRef[];
@@ -48,13 +49,6 @@ export async function readSessionDeliveries(
 }
 
 const pageSize = 200;
-
-const resetKinds: readonly RecordKind[] = [
-  'model.compacted',
-  'model.session_opened',
-  'model.session_rebuilt',
-  'model.session_invalidated',
-];
 
 const replayKinds: readonly RecordKind[] = [
   'memory.recalled',

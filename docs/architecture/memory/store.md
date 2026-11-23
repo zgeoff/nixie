@@ -46,12 +46,12 @@ came from. nixie sets every provenance field from the turn or the client action 
 version, and a tool's arguments never reach them. The provenance sits in plain columns, so the
 memory view and a review of poisoned memory filter on it without decrypting anything.
 
-The text, the evidence quote and the user's request to retire the item sit together in one sealed
-value. A version's record carries it in its payload, which a projection reads, and not in its
-erasable fields, which a projection never reads
-([what a record holds](../core/event-log.md#what-a-record-holds)), so a rebuild from the log gives
-the live versions rows. The sealed value is ciphertext under the item's keys, so the log's copy of
-each version falls to the same forget as the table's copy.
+The text sits in one sealed value, and the evidence quote and the user's request to retire the item
+sit sealed apart from it, as [Keys](#keys) says. A version's record carries the text value in its
+payload, which a projection reads. It keeps the value out of its erasable fields, which a projection
+never reads ([what a record holds](../core/event-log.md#what-a-record-holds)), so a rebuild from the
+log gives the live versions rows. The sealed values are ciphertext under the item's keys, so the
+log's copy of each version falls to the same forget as the table's copy.
 
 ## Labels and the revision
 
@@ -110,10 +110,10 @@ An item is in one of 4 states:
 | forgetting | Never                             | none; the forget completes it                       |
 | forgotten  | Never                             | none; the keys are gone and nothing reads           |
 
-Retirement ends a fact that stopped being true, and the item stays readable with its history. A
+Retire an item when its fact stopped being true: the item stays readable with its history. A
 retirement takes the item out of the pinned core, and a restore does not pin it again. Forgetting
-destroys an item, and only a checked action in the client forgets one, so a misread "forget that" in
-the conversation retires an item and never destroys it.
+destroys an item, and only a checked action in the client or a reset of the memories at the host
+forgets one, so a misread "forget that" in the conversation only retires an item.
 
 ## Changing an item
 
@@ -524,6 +524,7 @@ then runs as in a bulk forget of retired items.
 | ----------------- | -------------- | ----------------------------------------------------------- |
 | `memory.recall`   | `read`         | Recalls items by query, by ID, by topic or a page at a time |
 | `memory.pending`  | `read`         | Lists the proposals that wait for the user's review         |
+| `memory.usage`    | `read`         | Lists the active items that no search or push surfaced      |
 | `memory.remember` | `memory_write` | Creates an item, with a quote or a photo as its source      |
 | `memory.edit`     | `memory_write` | Edits an item at a revision it read, with a quote           |
 | `memory.retire`   | `memory_write` | Retires an item at a revision it read, with an intent quote |

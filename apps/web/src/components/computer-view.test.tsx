@@ -241,7 +241,7 @@ test('it takes the desktop over and lets the viewer send input until it hands ba
   const handBackButton = await rendered.findByRole('button', { name: 'Hand back' });
 
   await user.click(handBackButton);
-  await rendered.findByRole('button', { name: 'Take over' });
+  await rendered.findByText('The computer is waking.');
 
   expect([calls, ctx.inputs]).toStrictEqual([
     ['takeOver', 'handBack'],

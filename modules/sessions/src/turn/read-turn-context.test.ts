@@ -4,6 +4,8 @@ import { buildTestTaskRun } from '@heynixie/tasks/test-utils';
 import { renderRunBlocks } from '../task/render-run-blocks';
 import { buildMockDefinitionBrief } from '../test-utils/build-mock-definition-brief';
 import { buildStubMemory } from '../test-utils/build-stub-memory';
+import { seedSessionInvalidated } from '../test-utils/seed-session-invalidated';
+import { seedTurnEnded } from '../test-utils/seed-turn-ended';
 import { startTestTasks } from '../test-utils/start-test-tasks';
 import { readTurnContext } from './read-turn-context';
 
@@ -507,6 +509,51 @@ test('it hands the memory held lists that read nothing until called, and none fo
   const versions = await held?.readVersions();
 
   expect(versions).toStrictEqual([]);
+});
+
+test('it hands the memory the start of the session that its writes belong to, and none for a new session', async () => {
+  const ctx = await setupTest();
+  const ended = await seedTurnEnded(ctx.tasks.context);
+
+  await seedSessionInvalidated(ctx.tasks.context);
+
+  const askWriteStart = async (isNewSession: boolean) => {
+    const memory = buildStubMemory({
+      pinned: [],
+      pinnedUse: { items: 0, tokens: 0, budget: 2000 },
+    });
+
+    await readTurnContext(
+      {
+        context: ctx.tasks.context,
+        frame: { kind: 'conversation' } as const,
+        memory: () => memory,
+        memorySettings: ctx.memorySettings,
+        messaging: { directory: [], unlisted: [], hopLimit: 20, ownerName: null, agentName: null },
+        defaultZone: 'UTC',
+      },
+      {
+        taskID: 'conversation',
+        persona: 'You are Pip.',
+        prompts: {},
+        skillCatalog: null,
+        runBlocks: null,
+        batch: [],
+        brief: null,
+        previousCore: null,
+        isNewSession,
+        isFirstSession: false,
+        isContinuation: false,
+      },
+    );
+
+    return memory.readTurnMemory.mock.calls[0]?.[0].held.readWriteStart();
+  };
+
+  expect({
+    resumed: await askWriteStart(false),
+    fresh: await askWriteStart(true),
+  }).toStrictEqual({ resumed: ended.sequence, fresh: null });
 });
 
 test('it asks nothing of a run with no memory', async () => {
