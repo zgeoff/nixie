@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.103.0](https://github.com/zgeoff/nixie/compare/v0.102.0...v0.103.0) (2026-11-23)
+
+
+### Features
+
+* **computer:** take over the computer and hand it back ([#1390](https://github.com/zgeoff/nixie/issues/1390)) ([d601236](https://github.com/zgeoff/nixie/commit/d601236c6ba8ffb2ce80098925824700b1c9c7b6))
+
 ## [0.102.0](https://github.com/zgeoff/nixie/compare/v0.101.0...v0.102.0) (2026-11-22)
 
 
