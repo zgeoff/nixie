@@ -68,14 +68,15 @@ per-turn search or the next session's index.
 
 The block has its own token budget, `index_tokens`, apart from the pinned core's. The store counts
 every line of the block with the same estimate it uses for the core. While the count is over the
-budget, it folds the sub-topic with the most items, or the topic with the most items that has no
-sub-topic, to its count and 3 items, and keeps the sibling sub-topics open. A topic with sub-topics
-shows the items filed under the topic itself, then each sub-topic on its own, open or folded. The
-store folds a whole topic only once every sub-topic of it is folded, and then the row shows its
-count, its 3 items and its sub-topics with their counts. A topic or sub-topic with 3 items or fewer
-shows them all when folded, so the store never folds it. A topic with no sub-topic, or a sub-topic,
-with more than `index_open_topic_items` items starts folded, and so does a topic whose every
-sub-topic starts folded.
+budget, it folds the sub-topic with the most items, in any topic, to its count and 3 items, and
+keeps the sibling sub-topics open. A topic with sub-topics shows the items filed under the topic
+itself, then each sub-topic on its own, open or folded. The store folds a whole topic only once
+every sub-topic in the block is folded, including each sub-topic with 3 items or fewer, which shows
+the same items folded. It then folds the topic with the most items, and the row shows its count, its
+3 items and its sub-topics with their counts. A topic with 3 items or fewer shows them all when
+folded, so the store never folds it. A topic with no sub-topic, or a sub-topic, with more than
+`index_open_topic_items` items starts folded, and so does a topic whose every sub-topic starts
+folded.
 
 A folded row shows the 3 newest items unless `memory.fold` set the topic's order to oldest, which
 shows the 3 oldest, labelled `oldest:` in place of `newest:`

@@ -116,3 +116,47 @@ test.each([
   expect(outcome).toStrictEqual({ status: 'error', message });
   expect(records).toStrictEqual([]);
 });
+
+test('it removes the fold order of a topic with the forget of its last item, and keeps it while another item holds the topic', async () => {
+  const ctx = await setupTest();
+
+  const first = await createMemoryItem(ctx.memory.store, {
+    text: 'Fact garden 1',
+    labels: { gist: 'garden gist 1', topic: 'garden', triggers: [] },
+  });
+
+  const last = await createMemoryItem(ctx.memory.store, {
+    text: 'Fact garden 2',
+    labels: { gist: 'garden gist 2', topic: 'Garden/beds', triggers: [] },
+  });
+
+  await ctx.run({ topic: 'garden', subject: 'owner', order: 'oldest' });
+
+  const provenance = {
+    origin: 'owner',
+    source: 'owner',
+    taskID: null,
+    proposalID: null,
+    checks: null,
+  } as const;
+
+  await ctx.memory.store.forget({ target: first, provenance });
+
+  const kept = await readRecords(ctx.memory.log, {
+    afterSequence: 0,
+    kinds: ['memory.fold_ordered'],
+  });
+
+  await ctx.memory.store.forget({ target: last, provenance });
+
+  const removed = await readRecords(ctx.memory.log, {
+    afterSequence: 0,
+    kinds: ['memory.fold_ordered'],
+  });
+
+  expect(kept.map((entry) => entry.record.erasable)).toStrictEqual([
+    { status: 'readable', fields: { topic: 'garden' } },
+  ]);
+
+  expect(removed.map((entry) => entry.record.erasable)).toStrictEqual([{ status: 'shredded' }]);
+});

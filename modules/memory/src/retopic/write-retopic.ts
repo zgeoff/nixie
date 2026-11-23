@@ -21,6 +21,10 @@ export interface RetopicRequest {
 
   // what the decision point said; a call with none ran after the user approved it
   readonly verdict?: MemoryWriteVerdict;
+
+  // the IDs of the items that the approval card showed, for a call that ran after the user approved
+  // it; a move of any other items refuses
+  readonly shown?: readonly string[];
 }
 
 // Moves the items of the plan in one write transaction, and writes the same record per item that a
@@ -31,6 +35,7 @@ export function writeRetopic(parts: StoreParts, request: RetopicRequest): Promis
     const plan = await requireRetopicPlan(parts, request.source, request.to);
 
     requireMoveCovered(plan, request);
+    requireMoveShown(plan, request);
 
     const newest = await readNewestMessage(parts.context.log, request.caller.thread);
 
@@ -58,26 +63,36 @@ export function writeRetopic(parts: StoreParts, request: RetopicRequest): Promis
 }
 
 // A move that touches a self-note needs an allow rule that checks subject, as a label edit of one
-// does, unless the user approved the call.
+// does. The decision point holds such a move for the user otherwise, and the user's approval covers
+// it, so only a call that a rule allowed is checked.
 function requireMoveCovered(plan: RetopicPlan, request: RetopicRequest): void {
   const touchesSelf =
     plan.to.subject === 'self' || plan.moves.some((move) => move.fromSubject === 'self');
 
-  if (!touchesSelf) {
-    return;
-  }
-
-  const covering = pickCoveringRule(request.verdict, 'self_note');
-
-  if (request.verdict?.kind === 'rule-allow' && covering === null) {
+  if (
+    touchesSelf &&
+    request.verdict?.kind === 'rule-allow' &&
+    pickCoveringRule(request.verdict, 'self_note') === null
+  ) {
     throw new SelfNoteError(
       'a move that touches a self-note needs an allow rule that checks subject eq self',
     );
   }
+}
 
-  if (request.verdict === undefined && request.caller.origin !== 'conversation') {
-    throw new SelfNoteError(
-      `only the conversation moves a self-note, and this write came from the ${request.caller.origin}`,
+// The user approved the items on the card, so a move of other items, such as one added to the topic
+// since, waits for a new card.
+function requireMoveShown(plan: RetopicPlan, request: RetopicRequest): void {
+  if (request.shown === undefined) {
+    return;
+  }
+
+  const shown = new Set(request.shown);
+
+  if (plan.moves.length !== shown.size || plan.moves.some((move) => !shown.has(move.itemID))) {
+    throw new TopicMoveError(
+      'CHANGED_SINCE_SHOWN',
+      'refused: the items of this move changed after the card showed them, so ask for the move again',
     );
   }
 }

@@ -12,8 +12,8 @@ import type {
 import { z } from 'zod';
 import type { ModelWriteStore } from '../gate/gate-context';
 import { labelInputSchema } from '../label/label-input-schema';
-import type { RetopicPlan, RetopicSource } from '../retopic/types';
-import type { ItemIDStore } from '../types';
+import { buildRetopicCard } from '../retopic/build-retopic-card';
+import type { RetopicSource } from '../retopic/types';
 import { isWriteRefusal } from '../utils/error/is-write-refusal';
 import { TopicMoveError } from '../utils/error/topic-move-error';
 import { makeInputRecorder } from '../utils/make-input-recorder';
@@ -53,7 +53,6 @@ const retopicInput = {
     items: {
       type: 'array',
       items: { type: 'string', minLength: 1 },
-      minItems: 1,
       maxItems,
       description: 'the itemIDs to move',
     },
@@ -76,7 +75,7 @@ const retopicOutput = {
   additionalProperties: false,
 };
 
-type RetopicStore = ModelWriteStore & ItemIDStore;
+type RetopicStore = ModelWriteStore;
 
 export function buildRetopicTool(memory: RetopicStore): ToolDefinition {
   return {
@@ -99,8 +98,7 @@ export function buildRetopicTool(memory: RetopicStore): ToolDefinition {
     },
     execution: 'direct',
     recordInput: makeInputRecorder(['from', 'to']),
-    resolvePolicyFacts: (rawInput, context) =>
-      Promise.resolve(resolveRetopicFacts(rawInput, context)),
+    resolvePolicyFacts: (rawInput, context) => resolveRetopicFacts(memory, rawInput, context),
     prepare: (rawInput) => prepareRetopic(memory, rawInput),
     run: (call, context) => runRetopic(memory, call, context),
   };
@@ -117,88 +115,79 @@ const retopicArguments = z.object({
   to: sideArguments,
 });
 
-// The call's subject for a rule is the one it moves to.
-function resolveRetopicFacts(
+const bothOrNeitherMessage = 'refused: pass either from or items, and not both';
+
+// What a rule on memory.edit sees of the call: the subject of every item the move touches, so a
+// rule that checks subject covers a move into or out of that subject, the topic the items move to
+// and the short ID of each item that moves.
+async function resolveRetopicFacts(
+  memory: RetopicStore,
   rawInput: JSONObject,
   context: ToolResolveContext,
-): PolicyFactsResolution {
+): Promise<PolicyFactsResolution> {
   const input = retopicArguments.safeParse(rawInput);
+  const source = input.success ? buildSource(input.data) : null;
 
-  if (!input.success) {
-    return { status: 'error', message: 'refused: pass to, and from or items' };
+  if (!input.success || source === null) {
+    return { status: 'error', message: bothOrNeitherMessage };
   }
+
+  const planned = await memory.writes.readRetopicPlan(source, input.data.to);
+
+  const moves = planned.status === 'planned' ? planned.plan.moves : [];
+
+  const subjects = [
+    ...new Set([
+      input.data.to.subject,
+      ...(source.kind === 'topic' ? [source.subject] : []),
+      ...moves.map((move) => move.fromSubject),
+    ]),
+  ];
 
   return {
     status: 'ok',
     sources: pickWriteSources(false, buildWriteCaller(context)),
-    args: { ...rawInput, subject: input.data.to.subject },
+    args: {
+      ...rawInput,
+      subject: subjects.length === 1 ? input.data.to.subject : subjects,
+      topic: input.data.to.topic,
+      ...(moves.length === 0 ? {} : { itemID: moves.map((move) => move.shortID) }),
+    },
   };
-}
-
-async function prepareRetopic(
-  memory: RetopicStore,
-  rawInput: JSONObject,
-): Promise<Prepared | DirectResult> {
-  try {
-    const input = retopicArguments.parse(rawInput);
-
-    const source = await readSource(memory, input);
-    const plan = await memory.writes.readRetopicPlan(source, input.to);
-
-    return { destinations: [], attachments: [encodePlan(plan)] };
-  } catch (error) {
-    if (isWriteRefusal(error)) {
-      return {
-        result: { status: 'refused', message: error.message },
-        refusalCode: error instanceof TopicMoveError ? error.code : 'REFUSED',
-      };
-    }
-
-    throw error;
-  }
 }
 
 type RetopicArguments = z.infer<typeof retopicArguments>;
 
-async function readSource(memory: RetopicStore, input: RetopicArguments): Promise<RetopicSource> {
-  if ((input.from === undefined) === (input.items === undefined)) {
-    throw new TopicMoveError('EMPTY_MOVE', 'refused: pass either from or items, and not both');
-  }
-
-  if (input.from !== undefined) {
+// The source a call names, or null when it names both or neither.
+function buildSource(input: RetopicArguments): RetopicSource | null {
+  if (input.from !== undefined && input.items === undefined) {
     return { kind: 'topic', topic: input.from.topic, subject: input.from.subject };
   }
 
-  const shortIDs = [...new Set(input.items)];
-
-  const found = await memory.readItemIDMap(shortIDs);
-
-  return {
-    kind: 'items',
-    items: shortIDs.map((shortID) => {
-      const itemID = found.get(shortID);
-
-      if (itemID === undefined) {
-        throw new TopicMoveError('UNKNOWN_ITEM', `refused: no memory item ${shortID} to move`);
-      }
-
-      return { itemID, shortID };
-    }),
-  };
+  return input.from === undefined && input.items !== undefined
+    ? { kind: 'items', shortIDs: input.items }
+    : null;
 }
 
-// What the approval card shows under the move: the gist of each item and where it moves from.
-function encodePlan(plan: RetopicPlan): Uint8Array<ArrayBuffer> {
-  return new TextEncoder().encode(
-    JSON.stringify({
-      sentence: plan.sentence,
-      items: plan.moves.map((move) => ({
-        id: move.shortID,
-        gist: move.gist,
-        from: `${move.fromSubject}/${move.fromTopic}`,
-      })),
-    }),
-  );
+// The refusal of a move waits for run, after the decision point, so a refusal never tells the model
+// what a rule meant to keep from it. What prepare stores shows the user the move, or its refusal.
+async function prepareRetopic(
+  memory: RetopicStore,
+  rawInput: JSONObject,
+): Promise<Prepared | DirectResult> {
+  const input = retopicArguments.parse(rawInput);
+  const source = buildSource(input);
+
+  if (source === null) {
+    return {
+      result: { status: 'refused', message: bothOrNeitherMessage },
+      refusalCode: 'EMPTY_MOVE',
+    };
+  }
+
+  const planned = await memory.writes.readRetopicPlan(source, input.to);
+
+  return { destinations: [], attachments: [buildRetopicCard(planned)] };
 }
 
 async function runRetopic(
@@ -208,14 +197,31 @@ async function runRetopic(
 ): Promise<ToolOutcome> {
   try {
     const input = retopicArguments.parse(call.input);
+    const source = buildSource(input);
 
-    const source = await readSource(memory, input);
+    if (source === null) {
+      throw new TopicMoveError('EMPTY_MOVE', bothOrNeitherMessage);
+    }
+
+    // a call with no verdict ran after the user approved it, and moves what the card showed
+    const shown =
+      context.verdict === undefined
+        ? await memory.writes.readRetopicShown(context.callSequence)
+        : undefined;
+
+    if (shown === null) {
+      throw new TopicMoveError(
+        'CHANGED_SINCE_SHOWN',
+        'refused: the card of this move is gone, so ask for the move again',
+      );
+    }
 
     const plan = await memory.writes.retopic({
       source,
       to: input.to,
       caller: buildWriteCaller(context),
       ...(context.verdict === undefined ? {} : { verdict: context.verdict }),
+      ...(shown === undefined ? {} : { shown }),
     });
 
     return {

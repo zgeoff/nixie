@@ -412,20 +412,34 @@ subject refuses.
 
 A move refuses, with a named code and no write, when it holds no item (`EMPTY_MOVE`), names an item
 that does not exist (`UNKNOWN_ITEM`), puts every item where it already is (`SAME_TOPIC`), passes 40
-characters (`TOPIC_TOO_LONG`), moves a pinned item to another subject (`PINNED_SUBJECT_MOVE`) or
-holds an invisible character (`INVISIBLE_CHARACTER`). The model reads and passes short IDs only.
+characters (`TOPIC_TOO_LONG`), moves a pinned item to another subject (`PINNED_SUBJECT_MOVE`), holds
+an invisible character (`INVISIBLE_CHARACTER`) or moves other items than the card showed
+(`CHANGED_SINCE_SHOWN`). The model reads and passes short IDs only, and an item's internal ID names
+no item. The refusal for the contents of a move, such as an unknown item, comes from the call's run,
+after the decision point, so a deny rule keeps what the memory holds from the model. A call with
+both `from` and `items`, or neither, refuses before the decision point, because that reads no
+memory.
+
+A subject change keeps its own record kind, so an item that changes subject gets 2 records, the
+label record and the subject record, and an item that keeps its subject gets one.
 
 The same rules cover `memory.retopic` as cover `memory.edit`: an allow, ask or deny rule that names
-`memory.edit` or the effect `memory_write` matches it, and a rule can check the subject the call
-moves to as `subject`, and `from.topic`, `to.topic` and `items`. A move that touches self needs an
-allow rule that checks `subject` `eq` `self`, as a label edit of a self-note does.
+`memory.edit` or the effect `memory_write` matches it. A rule can check `subject`, the subject of
+every item the move touches, `topic`, the topic the items move to, `itemID`, the short ID of each
+item that moves, and `from.topic`, `to.topic` and `items`. A move into or out of self touches a
+self-note, so an allow rule that covers it must check `subject` `eq` `self`, which only a move from
+self to self meets, and no other allow rule counts. Always allow offers no rule for a move, because
+no check pins free-text topics.
 
 A call that no allow rule covers, and a call that an ask rule matches, waits for the user as an
 action proposal, never as a memory proposal, because one call moves many items. The call stores the
-move, such as `self/lines → self/diary, 20 items`, and the gist of each item, sealed under its own
-record. The proposal's card shows the move as its sentence and the gists under it, one line for each
-item. The user's approval runs the call as it stands, and a forget of the call's record leaves the
-card without a body.
+move, such as `self/lines → self/diary, 20 items`, the gist of each item and the item's ID, sealed
+under its own record. The proposal's card shows the move as its sentence and the item count with the
+gists folded under it. The user's approval runs the call only when it moves the items the card
+showed, so an item that joined the topic since refuses the call and waits for a new card. A forget
+of an item removes the key of each stored card that names it, so the card then shows no body and the
+call refuses. The self-note rule that holds for the conversation does not apply to an approved call,
+because the user approved the move.
 
 ### The folded order
 
@@ -437,8 +451,8 @@ and each sub-topic under it. The call refuses a topic that no active item holds 
 The setting lives in a `memory.fold_ordered` record, which holds the subject and the order in its
 payload and the topic in its erasable fields, because a topic name is label text. The index reads
 the records when it renders, and the latest record of a subject and topic wins, so the setting
-survives a restart and needs no table. The record stays after a forget of every item under its
-topic, and no record forget takes it, so it can keep a topic name that no item holds any more.
+survives a restart and needs no table. The forget of an item removes the key of each fold record
+whose topic no item holds under that subject any more, so the topic name goes with the last item.
 
 ### The indexes
 

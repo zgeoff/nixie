@@ -3,7 +3,7 @@ import { readRecordAttachments } from '@heynixie/log';
 import type { BodyFields, BodyFieldsRequest } from '@heynixie/policy';
 import { z } from 'zod';
 
-export const retopicToolName = 'memory.retopic';
+const retopicToolName = 'memory.retopic';
 const itemSchema = z.object({ id: z.string(), gist: z.string() });
 const planSchema = z.object({ sentence: z.string(), items: z.array(itemSchema) });
 

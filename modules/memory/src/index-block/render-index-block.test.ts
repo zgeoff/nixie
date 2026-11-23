@@ -169,9 +169,13 @@ test.each([
   },
 );
 
-test('it applies the folded order of a topic to its folded sub-topics, and only for its own subject', () => {
+test('it applies the folded order of a topic to a folded sub-topic of an open row, and only for its own subject', () => {
   const rows = collectTopicRows(
-    [...buildIndexRows('people/friends', 30, 100), ...buildIndexRows('home', 30, 1)],
+    [
+      ...buildIndexRows('people/friends', 30, 100),
+      ...buildIndexRows('people/family', 5, 200),
+      ...buildIndexRows('home', 30, 1),
+    ],
     [
       { subject: 'owner', topic: 'people', order: 'oldest' },
       { subject: 'shared', topic: 'home', order: 'oldest' },
@@ -184,8 +188,27 @@ test('it applies the folded order of a topic to its folded sub-topics, and only 
     ownerName: 'Robin',
   }).replaceAll(/\s+/gu, ' ');
 
-  expect(text).toInclude('people (30) folded · oldest: [pe00000100]');
+  expect(text).toInclude('friends (30) folded · oldest: [pe00000100]');
+  expect(text).toInclude('family (5): [pe00000204]');
   expect(text).toInclude('home (30) folded · newest: [ho00000030]');
+});
+
+test('it folds every sub-topic of the index before a topic with none', () => {
+  const rows = collectTopicRows([
+    ...buildIndexRows('people/family', 7, 1),
+    ...buildIndexRows('people/friends', 8, 100),
+    ...buildIndexRows('home', 20, 500),
+  ]);
+
+  const text = renderIndexBlock(rows, {
+    budget: 560,
+    openTopicItems: 25,
+    ownerName: 'Robin',
+  }).replaceAll(/\s+/gu, ' ');
+
+  expect(text).toInclude('family (7) folded');
+  expect(text).toInclude('friends (8) folded');
+  expect(text).toInclude('home (20) [ho00000519]');
 });
 
 test('it folds a topic with no sub-topic to its newest items alone', () => {

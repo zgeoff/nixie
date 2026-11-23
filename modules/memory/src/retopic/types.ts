@@ -1,11 +1,12 @@
 import type { Labels, MemorySubject } from '../types';
+import type { TopicMoveCode } from '../utils/error/topic-move-error';
 
 export interface RetopicTarget {
   readonly topic: string;
   readonly subject: MemorySubject;
 }
 
-export interface RetopicItemRef {
+interface RetopicItemRef {
   readonly itemID: string;
   readonly shortID: string;
 }
@@ -13,7 +14,7 @@ export interface RetopicItemRef {
 // A move names a whole topic with the sub-topics under it, or items one by one.
 export type RetopicSource =
   | { readonly kind: 'topic'; readonly topic: string; readonly subject: MemorySubject }
-  | { readonly kind: 'items'; readonly items: readonly RetopicItemRef[] };
+  | { readonly kind: 'items'; readonly shortIDs: readonly string[] };
 
 // An active or retired item, as the move reads it.
 export interface RetopicItem extends RetopicItemRef {
@@ -36,3 +37,7 @@ export interface RetopicPlan {
   // the move in words, such as `self/lines → self/diary, 20 items`
   readonly sentence: string;
 }
+
+export type RetopicPlanResult =
+  | { readonly status: 'planned'; readonly plan: RetopicPlan }
+  | { readonly status: 'refused'; readonly code: TopicMoveCode; readonly message: string };

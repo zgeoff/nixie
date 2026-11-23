@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import type { JSONObject } from '@heynixie/log';
+import { isActionHeldMemoryTool } from '../memory/is-action-held-memory-tool';
 import type { Rule, RuleCheck, RuleForm } from '../types';
 import { toCanonicalText } from '../utils/to-canonical-text';
 import { buildCommandPattern } from './is-command-match';
@@ -34,6 +35,11 @@ const unpinnableDestination = /[\s*]/u;
 // each argument that is not free text. An action with an argument that no eq check can pin gets
 // no rule. A screen act pins its host alone, and with no host it gets no rule.
 export function buildAlwaysAllowRule(facts: AlwaysAllowFacts): AlwaysAllowRule | null {
+  // a move's topics are free text that no check can pin, so a rule for one move would allow any
+  if (isActionHeldMemoryTool(facts.tool)) {
+    return null;
+  }
+
   const checks: RuleCheck[] = [];
   const isScreenAct = screenTools.includes(facts.tool);
 

@@ -48,7 +48,8 @@ rule" ask at stage 9. When no rule decided it at stages 3 to 7, stage 8 gives th
 with no rule and no cause. The memory gate then decides the write. The log stores `gate` as it
 stores any outcome, so the record shows that no rule decided the write. The one exception is
 `memory.retopic`: with no deciding rule it skips the memory gate and the checker, and asks at stage
-9 with the cause `no_rule`, so the call waits as an action proposal.
+9 with the cause `no_rule`, so the call waits as an action proposal. A call that moves into or out
+of self ignores each allow rule that checks no `subject`, so it waits too.
 
 Before the decision, the tool sets the call's sources and arguments, because the model's words and
 the step's own sources would misstate them:

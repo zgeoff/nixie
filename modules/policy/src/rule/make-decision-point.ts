@@ -2,6 +2,7 @@ import type { ConsentCheck, DecisionLift, DestinationPermission } from '@heynixi
 import type { ConsentFacts } from '../consent/check-consent';
 import { alwaysAskEffects } from '../effect/always-ask-effects';
 import { isActionHeldMemoryTool } from '../memory/is-action-held-memory-tool';
+import { pickEntriesOfCall } from '../memory/pick-entries-of-call';
 import type {
   AllowingRule,
   DecisionDetail,
@@ -101,7 +102,7 @@ async function runRuleStages(run: StageRun): Promise<PolicyDecision> {
   const call = run.call;
   const declaration = run.declaration;
   const progress = run.progress;
-  const entries = [...getFixedRules(), ...run.inputs.rules];
+  const entries = pickEntriesOfCall([...getFixedRules(), ...run.inputs.rules], call);
   const ruleCall = buildRuleCall(run);
   const pickEntry = makeEntryPicker(entries, ruleCall);
   const answers = makeConsentReader(run);
@@ -341,7 +342,7 @@ function listNamingRules(run: StageRun): readonly NamingRule[] {
 function listMatchedAllowEntries(run: StageRun): readonly RuleEntry[] {
   const ruleCall = buildRuleCall(run);
 
-  const matched = [...getFixedRules(), ...run.inputs.rules].filter(
+  const matched = pickEntriesOfCall([...getFixedRules(), ...run.inputs.rules], run.call).filter(
     (entry) => entry.rule.outcome === 'allow' && isRuleMatch(entry.rule, ruleCall),
   );
 

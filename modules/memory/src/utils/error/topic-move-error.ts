@@ -1,4 +1,5 @@
 export type TopicMoveCode =
+  | 'CHANGED_SINCE_SHOWN'
   | 'EMPTY_MOVE'
   | 'INVISIBLE_CHARACTER'
   | 'PINNED_SUBJECT_MOVE'

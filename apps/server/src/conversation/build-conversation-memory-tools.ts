@@ -47,6 +47,7 @@ export function buildConversationMemoryTools(
         readTopics: (excludedItemID) => requireStore().writes.readTopics(excludedItemID),
         retopic: (request) => requireStore().writes.retopic(request),
         readRetopicPlan: (source, target) => requireStore().writes.readRetopicPlan(source, target),
+        readRetopicShown: (callSequence) => requireStore().writes.readRetopicShown(callSequence),
         writeFoldOrder: (request) => requireStore().writes.writeFoldOrder(request),
       },
       renderReviewReason: (reason) => requireStore().renderReviewReason(reason),

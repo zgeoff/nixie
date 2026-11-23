@@ -1,5 +1,5 @@
+import { runForgetCleanup } from '../forget/run-forget-cleanup';
 import type { MemoryTables, StoreParts } from '../types';
-import { runForgetCleanup } from '../utils/run-forget-cleanup';
 
 export async function runPendingForgets(parts: StoreParts): Promise<void> {
   const pending = await parts.context.log.writer.db

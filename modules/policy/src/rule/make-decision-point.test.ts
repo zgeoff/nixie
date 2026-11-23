@@ -801,6 +801,57 @@ test('it lets an allow rule that names memory.edit allow a re-file, and tells th
   });
 });
 
+test.each([
+  ['a self-note', 'self'],
+  ['a move from self to another subject', ['owner', 'self']],
+])(
+  'it holds a re-file of %s that only an allow rule with no subject check allows',
+  async (_name, subject) => {
+    const ctx = buildTestDecisionPoint({
+      declaration: buildTestDeclaration({ effects: ['memory_write'], destinations: [] }),
+      rules: [buildRuleEntry('edits', { outcome: 'allow', tools: ['memory.edit'] })],
+    });
+
+    const decided = await ctx.decide(
+      buildPolicyCall({
+        tool: 'memory.retopic',
+        toolList: ['memory.retopic'],
+        args: { subject },
+      }),
+    );
+
+    expect(decided.decision).toMatchObject({ outcome: 'ask', stage: 9, cause: 'no_rule' });
+    expect(decided.memoryWrite).toStrictEqual({ allowing: [], holdsAsAction: true });
+  },
+);
+
+test('it lets an allow rule that checks subject eq self allow a re-file into self', async () => {
+  const ctx = buildTestDecisionPoint({
+    declaration: buildTestDeclaration({ effects: ['memory_write'], destinations: [] }),
+    rules: [
+      buildRuleEntry('self-edits', {
+        outcome: 'allow',
+        tools: ['memory.edit'],
+        checks: [{ arg: 'subject', op: 'eq', value: 'self' }],
+      }),
+    ],
+  });
+
+  const decided = await ctx.decide(
+    buildPolicyCall({
+      tool: 'memory.retopic',
+      toolList: ['memory.retopic'],
+      args: { subject: 'self' },
+    }),
+  );
+
+  expect(decided.decision).toMatchObject({
+    outcome: 'allow',
+    stage: 7,
+    rule: { id: 'self-edits' },
+  });
+});
+
 test('it does not let an allow rule that names memory.retopic cover memory.edit', async () => {
   const ctx = buildTestDecisionPoint({
     declaration: buildTestDeclaration({ effects: ['memory_write'], destinations: [] }),

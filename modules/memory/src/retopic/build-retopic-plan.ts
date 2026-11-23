@@ -1,10 +1,12 @@
 import { pickTopicSpelling } from '../label/pick-topic-spelling';
 import type { TopicMoveCode } from '../utils/error/topic-move-error';
-import type { RetopicItem, RetopicMove, RetopicPlan, RetopicSource, RetopicTarget } from './types';
-
-export type RetopicPlanResult =
-  | { readonly status: 'planned'; readonly plan: RetopicPlan }
-  | { readonly status: 'refused'; readonly code: TopicMoveCode; readonly message: string };
+import type {
+  RetopicItem,
+  RetopicMove,
+  RetopicPlanResult,
+  RetopicSource,
+  RetopicTarget,
+} from './types';
 
 const topicLimit = 40;
 const invisible = /\p{Cf}/u;
@@ -74,28 +76,29 @@ export function buildRetopicPlan(
   return { status: 'planned', plan: { to, moves: due, sentence: buildSentence(source, to, due) } };
 }
 
-function refuse(
-  code: TopicMoveCode,
-  message: string,
-): { readonly status: 'refused'; readonly code: TopicMoveCode; readonly message: string } {
+type RefusedPlan = Extract<RetopicPlanResult, { readonly status: 'refused' }>;
+
+function refuse(code: TopicMoveCode, message: string): RefusedPlan {
   return { status: 'refused', code, message };
 }
 
 type ChosenItems =
   | { readonly status: 'chosen'; readonly items: readonly RetopicItem[] }
-  | { readonly status: 'refused'; readonly code: TopicMoveCode; readonly message: string };
+  | RefusedPlan;
 
 function pickSourceItems(items: readonly RetopicItem[], source: RetopicSource): ChosenItems {
   if (source.kind === 'items') {
-    if (source.items.length === 0) {
+    const shortIDs = [...new Set(source.shortIDs)];
+
+    if (shortIDs.length === 0) {
       return refuse('EMPTY_MOVE', 'refused: pass at least one item to move');
     }
 
-    const found = source.items.map((ref) => items.find((item) => item.itemID === ref.itemID));
-    const missing = source.items.find((_ref, index) => found[index] === undefined);
+    const found = shortIDs.map((shortID) => items.find((item) => item.shortID === shortID));
+    const missing = shortIDs.find((_shortID, index) => found[index] === undefined);
 
     if (missing !== undefined) {
-      return refuse('UNKNOWN_ITEM', `refused: no memory item ${missing.shortID} to move`);
+      return refuse('UNKNOWN_ITEM', `refused: no memory item ${missing} to move`);
     }
 
     return { status: 'chosen', items: found.filter((item) => item !== undefined) };
@@ -121,8 +124,17 @@ function buildMove(item: RetopicItem, source: RetopicSource, topic: string): Ret
     gist: item.labels.gist,
     fromSubject: item.subject,
     fromTopic: item.labels.topic,
-    toTopic: source.kind === 'topic' ? topic + item.labels.topic.slice(source.topic.length) : topic,
+    toTopic:
+      source.kind === 'topic' ? topic + getSubTopicSuffix(item.labels.topic, source.topic) : topic,
   };
+}
+
+// The sub-topics that follow the matched prefix, as the item spells them. The prefix matches in
+// lower case, where a letter can change length, so the suffix is cut at a slash, never at a length.
+function getSubTopicSuffix(held: string, prefix: string): string {
+  const rest = held.split('/').slice(prefix.split('/').length);
+
+  return rest.length === 0 ? '' : `/${rest.join('/')}`;
 }
 
 function buildSentence(

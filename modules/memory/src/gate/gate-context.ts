@@ -6,7 +6,12 @@ import type { RunCheck } from '@heynixie/sessions';
 import type { MemoryWriteVerdict } from '@heynixie/tools';
 import type { Selectable } from 'kysely';
 import type { FoldOrderRequest } from '../fold/write-fold-order';
-import type { RetopicPlan, RetopicSource, RetopicTarget } from '../retopic/types';
+import type {
+  RetopicPlan,
+  RetopicPlanResult,
+  RetopicSource,
+  RetopicTarget,
+} from '../retopic/types';
 import type { RetopicRequest } from '../retopic/write-retopic';
 import type {
   Labels,
@@ -173,8 +178,14 @@ export interface MemoryWrites {
   // an unknown item or onto the same topic and subject.
   readonly retopic: (request: RetopicRequest) => Promise<RetopicPlan>;
 
-  // what a move would change, without writing anything
-  readonly readRetopicPlan: (source: RetopicSource, target: RetopicTarget) => Promise<RetopicPlan>;
+  // what a move would change, or the refusal it would earn, without writing anything
+  readonly readRetopicPlan: (
+    source: RetopicSource,
+    target: RetopicTarget,
+  ) => Promise<RetopicPlanResult>;
+
+  // the IDs of the items that a call's approval card showed, or null when the card is gone
+  readonly readRetopicShown: (callSequence: number) => Promise<readonly string[] | null>;
 
   // sets the order a topic's folded rows show their items in, and returns the topic's spelling
   readonly writeFoldOrder: (request: FoldOrderRequest) => Promise<string>;
@@ -197,6 +208,7 @@ export interface ModelWriteStore {
     | 'readTopics'
     | 'retopic'
     | 'readRetopicPlan'
+    | 'readRetopicShown'
     | 'writeFoldOrder'
   >;
   readonly renderReviewReason: (reason: ReviewReason) => string;

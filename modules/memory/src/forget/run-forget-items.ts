@@ -8,7 +8,7 @@ import type {
   WriteInTransaction,
 } from '../types';
 import { readEvidenceSequences } from '../utils/read-evidence-sequences';
-import { runForgetCleanup } from '../utils/run-forget-cleanup';
+import { runForgetCleanup } from './run-forget-cleanup';
 
 export interface ForgetItems {
   readonly provenance: Provenance;

@@ -1,5 +1,6 @@
 import type { MemoryTables, StoreParts } from '../types';
 import { getRowSubject } from '../utils/get-row-subject';
+import { getItemShortID } from '../utils/item/get-item-short-id';
 import type { RetopicItem } from './types';
 
 // Every active or retired item with its labels from the in-memory entries. The caller holds the
@@ -17,12 +18,12 @@ export async function readRetopicItems(
   return rows.flatMap((row) => {
     const labels = parts.labels.find(row.item_id);
 
-    return labels === undefined || row.short_id === null
+    return labels === undefined
       ? []
       : [
           {
             itemID: row.item_id,
-            shortID: row.short_id,
+            shortID: getItemShortID(row),
             subject: getRowSubject(row),
             isPinned: row.is_pinned === 1,
             labels,

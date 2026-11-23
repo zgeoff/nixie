@@ -1,8 +1,8 @@
 import { removeRecordKey } from '@heynixie/log';
 import { waitAtFaultPoint } from '@heynixie/tasks';
 import { match } from 'ts-pattern';
+import { runForgetCleanup } from '../forget/run-forget-cleanup';
 import type { PurgeRequest, StoreParts } from '../types';
-import { runForgetCleanup } from '../utils/run-forget-cleanup';
 import { pickPurgePlan } from './pick-purge-plan';
 import { readClosedKeyIDs } from './read-closed-key-ids';
 import { readPurgeFacts } from './read-purge-facts';
