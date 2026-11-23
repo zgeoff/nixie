@@ -15,7 +15,7 @@ export function readIndex(parts: StoreParts): Promise<SessionIndex> {
   return parts.lock(async () => {
     const settings = getIndexSettings(parts);
 
-    const rows = await readIndexRows(parts);
+    const rows = await readIndexRows(parts, { isPinnedIncluded: false });
 
     if (settings.tokens === 0 || rows.length === 0) {
       return { text: '', items: rows.length, tokens: 0, budget: settings.tokens };

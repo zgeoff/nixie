@@ -26,9 +26,15 @@ export async function selectTurnMemory(
   }
 
   const held = await ask.held.readVersions();
+  const writeStart = await ask.held.readWriteStart();
   const states = await sources.readItemStates();
 
-  const exclusions = buildPushExclusions(states, held);
+  const written =
+    writeStart === null
+      ? []
+      : await sources.readWrittenItemIDs({ thread: ask.thread, afterSequence: writeStart });
+
+  const exclusions = buildPushExclusions(states, held, written);
   const picks: PushPick[] = [];
   const searchModes: SearchMode[] = [];
 

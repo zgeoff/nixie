@@ -10,7 +10,7 @@ export function readTopicLines(
   request: TopicRequest & { readonly topic: string },
 ): Promise<EntryPage<IndexLine>> {
   return parts.lock(async () => {
-    const rows = await readIndexRows(parts);
+    const rows = await readIndexRows(parts, { isPinnedIncluded: false });
 
     return cutEntryPage(
       parts,

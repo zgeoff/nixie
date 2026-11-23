@@ -9,7 +9,7 @@ test('it excludes a lapsed item, a pinned item and an item whose current version
     { itemID: 'free', version: 1, isPinned: false, isSelf: false, isLapsed: false },
   ];
 
-  const excluded = buildPushExclusions(states, [{ itemID: 'held', version: 2 }]);
+  const excluded = buildPushExclusions(states, [{ itemID: 'held', version: 2 }], []);
 
   expect(excluded).toStrictEqual(['lapsed', 'pinned', 'held']);
 });
@@ -19,7 +19,18 @@ test('it keeps an item whose held version is no longer the current one', () => {
     { itemID: 'edited', version: 3, isPinned: false, isSelf: false, isLapsed: false },
   ];
 
-  const excluded = buildPushExclusions(states, [{ itemID: 'edited', version: 2 }]);
+  const excluded = buildPushExclusions(states, [{ itemID: 'edited', version: 2 }], []);
 
   expect(excluded).toStrictEqual([]);
+});
+
+test('it excludes an item that a write in the session touched, whatever version the session holds', () => {
+  const states = [
+    { itemID: 'written', version: 3, isPinned: false, isSelf: false, isLapsed: false },
+    { itemID: 'free', version: 1, isPinned: false, isSelf: false, isLapsed: false },
+  ];
+
+  const excluded = buildPushExclusions(states, [], ['written']);
+
+  expect(excluded).toStrictEqual(['written']);
 });
