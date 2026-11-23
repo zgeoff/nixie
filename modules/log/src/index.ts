@@ -101,3 +101,6 @@ export { pauseNixieInTransaction } from './pause/pause-nixie-in-transaction';
 export { readPause } from './pause/read-pause';
 export { readPauseSince } from './pause/read-pause-since';
 export { resumeNixieInTransaction } from './pause/resume-nixie-in-transaction';
+export { readSpendStopSince } from './pause/read-spend-stop-since';
+export { spendStopClearedCodec } from './pause/spend-stop-cleared-codec';
+export { spendStopTrippedCodec } from './pause/spend-stop-tripped-codec';

@@ -1,7 +1,6 @@
-import type { Projection } from '@heynixie/log';
-import { spendStopClearedCodec } from '../record/spend-stop-cleared-codec';
-import { spendStopTrippedCodec } from '../record/spend-stop-tripped-codec';
-import type { SpendTables } from '../types';
+import { spendStopClearedCodec } from '../pause/spend-stop-cleared-codec';
+import { spendStopTrippedCodec } from '../pause/spend-stop-tripped-codec';
+import type { LogTables, Projection } from '../types';
 
 const stopKey = '1';
 
@@ -14,7 +13,7 @@ export const spendStopProjection: Projection = {
       return [];
     }
 
-    const tables = tx.$extendTables<SpendTables>();
+    const tables = tx.$extendTables<LogTables>();
 
     if (record.kind === spendStopClearedCodec.kind) {
       await tables.deleteFrom('spend_stop').execute();

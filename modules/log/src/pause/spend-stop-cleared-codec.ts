@@ -1,5 +1,5 @@
-import { defineRecordCodec } from '@heynixie/log';
 import { z } from 'zod';
+import { defineRecordCodec } from '../utils/define-record-codec';
 
 export const spendStopClearedCodec = defineRecordCodec(
   'spend.stop_cleared',
