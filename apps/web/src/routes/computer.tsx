@@ -2,9 +2,11 @@
 
 import { createFileRoute, useRouter } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
+import { useState } from 'react';
 import { ComputerView } from '../components/computer-view';
 import { SignedInPage } from '../components/signed-in-page';
 import { loadNoVNCViewer } from '../computer/load-novnc-viewer';
+import { readTakeOverRequest } from '../computer/read-take-over-request';
 import { readRouteSession } from '../conversation/read-route-session';
 
 export const Route = createFileRoute('/computer')({
@@ -14,6 +16,7 @@ export const Route = createFileRoute('/computer')({
 
 function Computer(): ReactNode {
   const data = Route.useLoaderData();
+  const [startsTakeOver] = useState(readTakeOverRequest);
   const router = useRouter();
 
   return (
@@ -23,7 +26,7 @@ function Computer(): ReactNode {
       }}
       session={data.session}
     >
-      <ComputerView loadViewer={loadNoVNCViewer} />
+      <ComputerView loadViewer={loadNoVNCViewer} startsTakeOver={startsTakeOver} />
     </SignedInPage>
   );
 }

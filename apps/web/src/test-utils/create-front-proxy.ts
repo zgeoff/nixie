@@ -3,7 +3,8 @@ import invariant from 'tiny-invariant';
 import { buildEndingResponse } from './build-ending-response';
 
 export interface FrontProxyTargets {
-  readonly apiURL: string;
+  // a function names the address again on each request, for an API that restarts on a new port
+  readonly apiURL: string | (() => string);
   readonly webURL: string;
 }
 
@@ -21,7 +22,8 @@ export function createFrontProxy(targets: FrontProxyTargets): Bun.Server<BridgeD
   const answerRequest = (request: Request, server: Bun.Server<BridgeData>) => {
     const url = new URL(request.url);
 
-    const target = url.pathname.startsWith('/rpc/') ? targets.apiURL : targets.webURL;
+    const apiURL = typeof targets.apiURL === 'function' ? targets.apiURL() : targets.apiURL;
+    const target = url.pathname.startsWith('/rpc/') ? apiURL : targets.webURL;
 
     if (request.headers.get('upgrade')?.toLowerCase() === 'websocket') {
       const upstreamURL = `${target.replace(/^http/u, 'ws')}${url.pathname}${url.search}`;

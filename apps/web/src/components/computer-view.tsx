@@ -8,6 +8,9 @@ import { useNixieClient } from '../utils/use-nixie-client';
 
 export interface ComputerViewProps {
   readonly loadViewer: LoadViewer;
+
+  // takes over once, as soon as the desktop shows: the user pressed Take over on the handover banner
+  readonly startsTakeOver?: boolean;
 }
 
 const page = css({
@@ -110,6 +113,20 @@ export function ComputerView(props: ComputerViewProps): ReactNode {
       setTakeover({ kind: 'refused', message: toRefusal(error) });
     }
   };
+
+  const hasAutoTakeOver = useRef(false);
+
+  useEffect(() => {
+    if (
+      props.startsTakeOver === true &&
+      !hasAutoTakeOver.current &&
+      state.kind === 'watching' &&
+      takeover.kind === 'watching'
+    ) {
+      hasAutoTakeOver.current = true;
+      void takeOver();
+    }
+  });
 
   const handBack = async (): Promise<void> => {
     try {

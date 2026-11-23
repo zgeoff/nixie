@@ -4,6 +4,7 @@ import {
   buildImageTools,
   buildSearchTool,
   buildTimeTool,
+  handoverToolNames,
   readMessageTimeZone,
 } from '@heynixie/connectors';
 import type { DefinitionsContext, DefinitionsInForce } from '@heynixie/definitions';
@@ -200,7 +201,11 @@ export async function startConversationEndpoint(
   const bounds = buildTaskStartBounds(
     options.config.models,
     buildConversationMemoryTools(memory),
-    [...skills, ...definitionTools],
+    [
+      ...skills,
+      ...definitionTools,
+      ...tools.computer.filter((tool) => handoverToolNames.some((name) => name === tool.name)),
+    ],
     options.context.runSettings.reportDefaults,
   );
 

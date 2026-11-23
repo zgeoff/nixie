@@ -856,12 +856,19 @@
     },
     "computer": {
       "default": {
-        "idle_hand_back_minutes": 30
+        "idle_hand_back_minutes": 30,
+        "handover_expiry_minutes": 60
       },
       "type": "object",
       "properties": {
         "idle_hand_back_minutes": {
           "default": 30,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "handover_expiry_minutes": {
+          "default": 60,
           "type": "integer",
           "exclusiveMinimum": 0,
           "maximum": 9007199254740991

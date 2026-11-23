@@ -10,6 +10,7 @@ export const effectNames = [
   'schedule',
   'code_run',
   'computer_run',
+  'computer_take_back',
   'device',
   'policy_widen',
   'policy_narrow',

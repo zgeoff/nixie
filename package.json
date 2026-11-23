@@ -137,6 +137,7 @@
     "typecheck": "workers=$(bun scripts/read-worker-count.ts) && tsrs --fast --noEmit --checkers $workers && turbo run typecheck --concurrency=$workers -- --checkers $workers",
     "verify": "bun verify/src/verify/verify.ts",
     "verify:lint": "bun verify/src/verify/verify.ts lint",
+    "ci:install-browser": "bun run --cwd guests/computer playwright-core install --with-deps chromium",
     "ci:verify-gate": "bun scripts/verify-gate/run-verify-gate.ts",
     "test:related": "bun run models && bun run test:bundles && bun run test:templates && rig related",
     "ci:compatibility:find-last-release": "bun scripts/compatibility/find-last-release.ts",

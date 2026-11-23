@@ -20,8 +20,14 @@ export function isWakingRecord(
   // the connectors module registers this kind, and tasks depends on no connector
   const kind: string = record.kind;
 
-  if (kind === 'computer.takeover_started') {
+  if (kind === 'computer.takeover_started' || kind === 'computer.handover_asked') {
     return false;
+  }
+
+  // The assistant's own cancel wakes nothing. An ask that lapsed wakes the conversation, which
+  // would otherwise wait on an answer that is not coming.
+  if (kind === 'computer.handover_closed') {
+    return record.payload['by'] === 'expired';
   }
 
   if (isQueuedApproval(record)) {

@@ -38,6 +38,25 @@ export function buildScriptedReplies(
       ? []
       : [{ toolUse: { name: 'mcp__nixie__notebook_forget', input: { id: reply.forgetNote } } }];
 
+  const handover =
+    reply.handover === undefined
+      ? []
+      : [
+          {
+            toolUse: {
+              name: 'mcp__nixie__computer_handover',
+              input: { reason: reply.handover.reason },
+            },
+            ...forConversation,
+          },
+        ];
+
+  // the turn reads the record of its own ask as it ends, and answers it with one more reply
+  const handoverAnswer =
+    reply.handover === undefined
+      ? []
+      : [{ text: 'I will wait for you to take over.', ...forConversation }];
+
   if (reply.task === undefined) {
     return [
       ...memory,
@@ -45,7 +64,9 @@ export function buildScriptedReplies(
       ...drawing,
       ...notebook,
       ...forgetNote,
+      ...handover,
       { text: reply.text },
+      ...handoverAnswer,
     ];
   }
 
@@ -56,8 +77,10 @@ export function buildScriptedReplies(
     ...memoryExport,
     ...notebook,
     ...forgetNote,
+    ...handover,
     { toolUse: { name: 'mcp__nixie__task_start', input: task }, ...forConversation },
     { text: reply.text, ...forConversation },
+    ...handoverAnswer,
     { text: taskReply, when: (body: ScriptedBody) => !isConversationTurn(body) },
   ];
 }

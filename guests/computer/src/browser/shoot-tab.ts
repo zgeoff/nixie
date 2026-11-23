@@ -1,5 +1,6 @@
 import type { ComputerReply } from '@heynixie/wire';
 import { toSelector } from './act-on-tab';
+import { probeChallenge } from './probe-challenge';
 import type { Tab } from './types';
 
 // The viewport's picture, or the box of one control when a control is named. A control that no
@@ -23,6 +24,7 @@ export async function shootTab(
     width: picture.width,
     height: picture.height,
     base64: picture.bytes.toString('base64'),
+    hasChallenge: await probeChallenge(tab.page),
   };
 }
 

@@ -41,6 +41,9 @@ const pageReplySchema = z.strictObject({
   tab: textSchema,
   page: pageBodySchema,
   isDiskNew: z.boolean(),
+
+  // true when the tab shows a CAPTCHA or human check, found from its frames and markers alone
+  hasChallenge: z.boolean(),
 });
 
 const screenshotReplySchema = z.strictObject({
@@ -51,6 +54,7 @@ const screenshotReplySchema = z.strictObject({
   width: numberSchema,
   height: numberSchema,
   base64: textSchema,
+  hasChallenge: z.boolean(),
 });
 
 const scrollReplySchema = z.strictObject({

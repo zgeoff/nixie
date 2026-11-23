@@ -140,6 +140,14 @@ limits, or `HELD_ELSEWHERE` when another device holds the desktop. `handBack` an
 `COMPUTER_UNAVAILABLE` when the server runs no computer.
 [The computer](../connectors/computer.md#taking-over) describes the hold.
 
+`computer.readHandover` reads the assistant's
+[standing ask](../connectors/computer.md#asking-for-a-take-over) for a take-over. It answers the
+ask, with its sequence and its reason, or `null`, and the log sequence it read at, so a client
+follows the live stream from there. The ask is the newest of the records `computer.handover_asked`,
+`computer.handover_closed` and `computer.takeover_started` on the conversation's thread, when that
+record is an ask. A caller of a scope below full, and a server with no computer, get `null`. A
+`computer.handover_asked` record on the stream carries its reason while the reason is readable.
+
 ## Refusals
 
 A call whose token resolves to nobody gets a refusal record, which holds the channel, the external

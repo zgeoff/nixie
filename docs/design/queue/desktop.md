@@ -32,17 +32,15 @@ Every tool keeps the `computer.` namespace. The 7 built browser tools gain the `
 keep their inputs, results, effects and refusals, except where the sketch below shows a change.
 `computer.run` and the file tools keep their names.
 
-| Tool                                                     | Status                                              | Runs                         |
-| -------------------------------------------------------- | --------------------------------------------------- | ---------------------------- |
-| `computer.browser_open`, `_read`, `_click`, `_fill`      | renamed from `computer.open` etc.                   | as today                     |
-| `computer.browser_close`, `_download`                    | renamed                                             | as today                     |
-| `computer.browser_screenshot`                            | renamed from `computer.screenshot`, gains `control` | direct, `note`               |
-| `computer.browser_scroll`                                | new                                                 | direct, `note`               |
-| `computer.screenshot`, `computer.screen_scroll`          | new                                                 | direct, `note`               |
-| `computer.screen_click`, `computer.screen_type`          | new                                                 | queued                       |
-| `computer.handover`, `computer.handover_cancel`          | new                                                 | direct, `note`               |
-| `computer.take_back`                                     | new                                                 | direct, `computer_take_back` |
-| `computer.run`, `read_file`, `write_file`, `export_file` | unchanged                                           | as today                     |
+| Tool                                                     | Status                                              | Runs           |
+| -------------------------------------------------------- | --------------------------------------------------- | -------------- |
+| `computer.browser_open`, `_read`, `_click`, `_fill`      | renamed from `computer.open` etc.                   | as today       |
+| `computer.browser_close`, `_download`                    | renamed                                             | as today       |
+| `computer.browser_screenshot`                            | renamed from `computer.screenshot`, gains `control` | direct, `note` |
+| `computer.browser_scroll`                                | new                                                 | direct, `note` |
+| `computer.screenshot`, `computer.screen_scroll`          | new                                                 | direct, `note` |
+| `computer.screen_click`, `computer.screen_type`          | new                                                 | queued         |
+| `computer.run`, `read_file`, `write_file`, `export_file` | unchanged                                           | as today       |
 
 A direct call runs inside the turn when its rules allow it, and a queued call goes to the action
 queue, as [reads and acts](../../architecture/connectors/computer.md#reads-and-acts) describes.
@@ -71,16 +69,6 @@ computer.screen_click({ x: 412, y: 233, button: 'left' }); // button: 'left' | '
 computer.screen_type({ text: 'hello' }); // exactly one of text (at most 1,000 characters) or keys
 computer.screen_type({ keys: 'ctrl+l' }); // keys: one chord, such as 'enter' or 'shift+tab'
 // → { focus } with a picture beside it, or SCREEN_CHANGED
-
-computer.handover({ reason: 'itch.io asks for a CAPTCHA' }); // conversation only
-// → { asked: true } or ALREADY_ASKED (an ask is open until a take-over starts, the assistant
-//   cancels it, or it expires) | TAKEN_OVER
-
-computer.handover_cancel({}); // conversation only; for a problem the assistant got past or gave up on
-// → { cancelled: true } or NOT_ASKED
-
-computer.take_back({}); // conversation only
-// → { durationSeconds: 63 } or NOT_TAKEN_OVER
 ```
 
 ```ts
@@ -98,11 +86,10 @@ interface ScreenBinding {
 
 ### Effects
 
-| Call                             | Effect               | Destination            |
-| -------------------------------- | -------------------- | ---------------------- |
-| a screen act on a browser window | `send`               | the focused tab's host |
-| a screen act on another window   | `send`               | none                   |
-| `computer.take_back`             | `computer_take_back` | none                   |
+| Call                             | Effect | Destination            |
+| -------------------------------- | ------ | ---------------------- |
+| a screen act on a browser window | `send` | the focused tab's host |
+| a screen act on another window   | `send` | none                   |
 
 The card for a screen act shows its screenshot with the point marked, or the text or keys it types.
 Its "always allow" pins the host alone, so one answer covers every later screen act on that site,
@@ -113,67 +100,11 @@ instead". A screen act on Chromium's address bar or tab strip, and a chord that 
 bar, such as `ctrl+l`, returns `USE_BROWSER_OPEN`, with the message "Use the computer.browser_open
 tool instead". The guest checks both against the focused window when the act runs.
 
-```yaml
-# deploy/compose/definitions: a new starter rule
-allow-take-back:
-  outcome: allow
-  effects: [computer_take_back]
-```
+### The push notice
 
-### Records
-
-```text
-computer.handover_asked    -- payload: reason (erasable)
-computer.handover_closed   -- payload: by: 'assistant' | 'expired'; an ask that no take-over answered
-computer.takeover_started  -- payload: device (the session that holds the desktop)
-computer.takeover_ended    -- payload: by, durationSeconds, origins, now (erasable)
-  -- by: 'user' | 'assistant' | 'idle' | 'restart'
-  -- origins: each site the browser showed during the hold, in order, scheme and host only, at most 20
-  -- now: the focused window's kind and tab, and its text as computer.browser_read returns its
-  --      first part, or the terminal's visible lines; read from the guest at the hand-back
-```
-
-The four records sit on the conversation's thread.
-
-### The messages the assistant reads
-
-The server renders each record for the model, with `owner.name`, or "the user" when it is unset:
-
-```text
-Sam took over the computer. You can read the screen and your tabs; your clicks, typing and commands
-wait until it comes back.
-
-Sam handed the computer back after 3 min.
-Sites: itch.io → accounts.itch.io → itch.io
-Now: browser tab t4
-<the now text>
-```
-
-When the assistant took the computer back, the first line reads "You took the computer back from Sam
-after 1 min." An idle hand-back reads "The computer came back to you after 30 min with no input from
-Sam." A restart reads "The computer came back to you when nixie restarted." An expired ask reads
-"Your handover ask lapsed after 60 min with no take-over."
-
-### The web client's calls
-
-```ts
-// contract lib; each is a checked action, and only a device session may call them
-computer.watch({ clientActionID }); // → { streamURL } a WebSocket URL with a one-use ticket
-computer.takeOver({ clientActionID }); // → { takenOverAt } or BUSY_TOO_LONG | HELD_ELSEWHERE
-computer.handBack({ clientActionID }); // → { durationSeconds } or NOT_TAKEN_OVER
-```
-
-The live stream carries the four records. A `computer.handover_asked` shows as a banner with Take
-over on every open client, until a take-over starts or a `computer.handover_closed` clears it. It
-also goes out as a [push notice](push-notice.md), so an ask reaches you with no client open.
-
-### Config
-
-```yaml
-computer:
-  idle_hand_back_minutes: 30 # a hold with no input from its device this long ends with by 'idle'
-  handover_expiry_minutes: 60 # an ask with no take-over this long closes with by 'expired'
-```
+A `computer.handover_asked` record also goes out as a [push notice](push-notice.md), so an ask
+reaches you with no client open. Work:
+[the Telegram push notifier](https://linear.app/zgeoff/issue/GEO-1812).
 
 ### The sandbox and its size
 
@@ -231,48 +162,6 @@ Watching:
 - A watch holds the sandbox awake, as a call does, and opening the view wakes a sleeping sandbox.
 - nixie stores no frame of the stream.
 
-Taking over and handing back:
-
-- `computer.handover` writes `computer.handover_asked` and changes nothing else. The hold starts
-  when you press Take over.
-- `computer.takeOver` waits for the call in progress to finish, up to that call's own timeout, and
-  returns `BUSY_TOO_LONG` past it. One device session holds the desktop at a time, and a second
-  device gets `HELD_ELSEWHERE`.
-- While you hold the desktop, the assistant's direct reads run: `browser_read`,
-  `browser_screenshot`, `screenshot` and `read_file`. Both scroll tools return `TAKEN_OVER`, so the
-  assistant never moves your view.
-- While you hold the desktop, every queued computer act stays pending: the runner claims none, as it
-  claims none for a paused task, and records no attempt and no wake. The runner claims them after
-  the hand-back, and the `expectURL` or `ScreenBinding` check refuses one whose page moved. A task's
-  act waits the same way, and its outcome wakes that task.
-- While you hold the desktop, the other direct calls return `TAKEN_OVER`: `browser_open`,
-  `browser_close`, `browser_download`, `write_file` and `export_file`.
-- A hold counts as a change to the disk at its start and its end, so a `computer.run` that waits for
-  a decision returns `FILES_CHANGED`.
-- The runner asks the computer connector whether a hold is open before it claims an action whose
-  tool is in the `computer.` namespace. The hold lives in memory.
-- From the moment `computer.takeOver` is called, the hold rules above apply to each new call and
-  claim. The take-over then waits for the calls already running.
-- The `now` text reaches the model inside the same untrusted-content markers as a page that
-  `computer.browser_read` returns.
-- Each of the four records takes a short ID from `createShortID`.
-- An expired ask writes `computer.handover_closed` with `by: 'expired'`, which wakes the
-  conversation. A cancel writes it with `by: 'assistant'`, which wakes nothing.
-- When the scan refuses a request that no tool call made, the guest writes no record, and the
-  request fails in the page.
-- `computer.take_back` ends the hold at once, and the relay drops your input after it.
-- The hand-back record wakes the conversation. The start record and the handover record wake
-  nothing.
-- A server or sandbox restart ends a hold. The server writes `computer.takeover_ended` with
-  `by: 'restart'` at its next start, with no origins and no `now`.
-
-The tools:
-
-- `computer.handover`, `computer.handover_cancel` and `computer.take_back` are on the conversation's
-  tool list alone.
-- The descriptions of `computer.browser_open` and `computer.run` say when to reach for the computer:
-  when the result must still be there tomorrow, or when a site needs the assistant signed in.
-
 ## Decisions
 
 - **One desktop holds the browser and the terminal.** You drive one computer, as a person uses one.
@@ -283,8 +172,6 @@ The tools:
 - **The assistant knows when you watch, and watching leaves no record.** Knowing lets it narrate for
   you, as the notebook tells it when you read its notes. You hold the keys to everything it has, so
   a record would add nothing.
-- **A hand-back message records sites, never keystrokes or paths.** You type passwords and card
-  codes while you hold the desktop, and a reset link can carry its token in the path.
 - **The assistant's page tools stay its main way in.** Page text costs far fewer tokens than a
   screenshot, and a control ID tells you what a click presses.
 - **The assistant never drives the terminal window or the address bar.** nixie's rules read a

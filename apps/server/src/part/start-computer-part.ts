@@ -2,6 +2,7 @@ import { join } from 'node:path';
 import type { ComputerTools } from '@heynixie/connectors';
 import {
   buildComputerTools,
+  makeHandoverRecords,
   makeTakeoverRecords,
   makeUnexemptScans,
   startComputer,
@@ -18,7 +19,7 @@ import type { ServerPartsOptions } from '../server/start-server';
 export interface ComputerPartInputs {
   readonly options: Pick<
     ServerPartsOptions,
-    'sandbox' | 'images' | 'config' | 'cleanup' | 'log'
+    'sandbox' | 'images' | 'config' | 'cleanup' | 'log' | 'harness'
   > & {
     readonly secrets: Pick<Secrets, 'collectOwnValues'>;
   };
@@ -69,7 +70,12 @@ export async function startComputerPart(inputs: ComputerPartInputs): Promise<Com
     timeZone: options.config.time.default_zone,
     scans: makeUnexemptScans({ findSecret, logger: options.log }),
     logger: options.log,
+    ...(options.harness === undefined ? {} : { clock: options.harness.link.clock }),
     takeover: { idleMs: options.config.computer.idle_hand_back_minutes * 60_000, records },
+    handover: {
+      expiryMs: options.config.computer.handover_expiry_minutes * 60_000,
+      records: makeHandoverRecords({ log: inputs.log, definitions: inputs.definitions }),
+    },
   });
 
   await options.cleanup.defer(() => computer.stop());

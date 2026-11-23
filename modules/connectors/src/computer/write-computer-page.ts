@@ -4,6 +4,7 @@ import type { ComputerReply } from '@heynixie/wire';
 import { getPageSession } from '../utils/get-page-session';
 import { writeWebFetchPage } from '../web/write-web-fetch-page';
 import type { ComputerToolOptions } from './computer-tool-options';
+import { buildChallengeField } from './handover/build-challenge-field';
 import { refuseComputer } from './run-computer-call';
 
 type PageReply = Extract<ComputerReply, { kind: 'page' }>;
@@ -51,6 +52,7 @@ export async function writeComputerPage(
     parts: stored.parts.length,
     text: stored.parts[0] ?? '',
     isDiskNew: reply.isDiskNew,
+    ...buildChallengeField(reply.hasChallenge),
   };
 
   return { result };

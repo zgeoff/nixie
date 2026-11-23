@@ -25,13 +25,16 @@ export async function startWebJourney(): Promise<WebJourney> {
   const nixie = await startSpawnedNixie();
 
   const relay = startAPIRelay();
+  const target = { nixieURL: relay.url };
 
   const startServer = async () => {
     const server = nixie.harness.start();
 
     const [listening] = await Promise.all([server.waitForLogEvent('http.listening'), server.ready]);
 
-    relay.retarget(`http://127.0.0.1:${String(listening['port'])}`);
+    target.nixieURL = `http://127.0.0.1:${String(listening['port'])}`;
+
+    relay.retarget(target.nixieURL);
 
     return server;
   };
@@ -40,7 +43,8 @@ export async function startWebJourney(): Promise<WebJourney> {
   const issued = await server.waitForLogEvent('enrolment_code.issued');
   const web = await startBuiltWeb(relay.url);
 
-  const app = startFrontProxy({ apiURL: relay.url, webURL: web.url });
+  // the relay forwards requests only, so the front proxy bridges a WebSocket to nixie itself
+  const app = startFrontProxy({ apiURL: () => target.nixieURL, webURL: web.url });
 
   const view = new Bun.WebView({ backend: 'chrome' });
 

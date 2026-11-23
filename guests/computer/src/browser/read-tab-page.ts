@@ -1,6 +1,7 @@
 import type { ComputerReply } from '@heynixie/wire';
 import { z } from 'zod';
 import { buildSnapshotScript } from './build-snapshot-script';
+import { probeChallenge } from './probe-challenge';
 import type { Tab } from './types';
 
 const pageSchema = z.object({
@@ -32,5 +33,6 @@ export async function readTabPage(id: string, tab: Tab, options: ReadOptions): P
     tab: id,
     page: { url: page.url, status: tab.status, title: page.title, text, links: page.links },
     isDiskNew: options.isDiskNew,
+    hasChallenge: await probeChallenge(tab.page),
   };
 }

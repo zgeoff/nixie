@@ -9,12 +9,23 @@ export async function waitForPage(
   expression: string,
   timeoutMs: number = defaultTimeoutMs,
 ): Promise<void> {
-  await waitForCondition(async () => (await view.evaluate(expression)) === true, {
-    intervalMs: 50,
-    timeoutMs,
-  }).catch((error: unknown) => {
-    throw new Error(`the page never made this true within ${timeoutMs} ms: ${expression}`, {
-      cause: error,
-    });
-  });
+  const [waited] = await Promise.allSettled([
+    waitForCondition(async () => (await view.evaluate(expression)) === true, {
+      intervalMs: 50,
+      timeoutMs,
+    }),
+  ]);
+
+  if (waited.status === 'fulfilled') {
+    return;
+  }
+
+  const [shown] = await Promise.allSettled([view.evaluate('document.body.innerText')]);
+
+  const text = shown.status === 'fulfilled' ? String(shown.value) : 'a text that did not read';
+
+  throw new Error(
+    `the page never made this true within ${timeoutMs} ms: ${expression}\nThe page showed: ${text.slice(0, 400)}`,
+    { cause: waited.reason },
+  );
 }

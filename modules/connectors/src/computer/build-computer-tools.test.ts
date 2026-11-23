@@ -40,6 +40,7 @@ async function setupTest(options: SetupOptions) {
       ok: true as const,
       tab: 'g1',
       isDiskNew: false,
+      hasChallenge: false,
       page: {
         url: 'https://site.test/form',
         status: 200,
@@ -66,6 +67,7 @@ async function setupTest(options: SetupOptions) {
       url: 'https://site.test/form',
       width: 120,
       height: 30,
+      hasChallenge: false,
       base64:
         'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==',
     },
@@ -479,6 +481,9 @@ test('it offers the renamed browser tools and none under an old name', async () 
     'computer.read_file',
     'computer.write_file',
     'computer.export_file',
+    'computer.handover',
+    'computer.handover_cancel',
+    'computer.take_back',
   ]);
 });
 
@@ -1209,4 +1214,158 @@ test('it refuses a waiting click after a hold on the desktop came and went', asy
     kind: 'refused',
     reason: expect.stringContaining('screen may have changed'),
   });
+});
+
+test('it opens a handover ask with a reason, and refuses a second one while it stands', async () => {
+  const ctx = await setupTest({});
+  const first = await ctx.call('computer.handover', { reason: 'itch.io asks for a CAPTCHA' });
+  const second = await ctx.call('computer.handover', { reason: 'again' });
+
+  expect([first, second]).toMatchObject([
+    { status: 'ok', result: { asked: true } },
+    { status: 'ok', refusalCode: 'ALREADY_ASKED' },
+  ]);
+});
+
+test('it refuses a handover ask while the user holds the computer', async () => {
+  const ctx = await setupTest({});
+
+  await ctx.computer.takeover.start('laptop');
+
+  const outcome = await ctx.call('computer.handover', { reason: 'a CAPTCHA' });
+
+  expect(outcome).toMatchObject({ status: 'ok', refusalCode: 'TAKEN_OVER' });
+});
+
+test('it refuses an empty handover reason', async () => {
+  const ctx = await setupTest({});
+
+  expect(() => ctx.call('computer.handover', { reason: '' })).toThrow();
+});
+
+test('it cancels a standing ask, and refuses a cancel when none stands', async () => {
+  const ctx = await setupTest({});
+  const none = await ctx.call('computer.handover_cancel', {});
+
+  await ctx.call('computer.handover', { reason: 'a CAPTCHA' });
+
+  const cancelled = await ctx.call('computer.handover_cancel', {});
+  const again = await ctx.call('computer.handover', { reason: 'a CAPTCHA again' });
+
+  expect([none, cancelled, again]).toMatchObject([
+    { status: 'ok', refusalCode: 'NOT_ASKED' },
+    { status: 'ok', result: { cancelled: true } },
+    { status: 'ok', result: { asked: true } },
+  ]);
+});
+
+test('it refuses a take-back when the user holds nothing', async () => {
+  const ctx = await setupTest({});
+  const outcome = await ctx.call('computer.take_back', {});
+
+  expect(outcome).toMatchObject({ status: 'ok', refusalCode: 'NOT_TAKEN_OVER' });
+});
+
+test('it takes the computer back from the user at once and lets the assistant act again', async () => {
+  const ctx = await setupTest({ answer: (replies) => () => Promise.resolve(replies.page) });
+
+  await ctx.computer.takeover.start('laptop');
+
+  const outcome = await ctx.call('computer.take_back', {});
+  const opened = await ctx.call('computer.browser_open', { url: 'https://site.test/form' });
+
+  expect([outcome, ctx.computer.takeover.isHeld(), opened]).toMatchObject([
+    { status: 'ok', result: { durationSeconds: expect.any(Number) } },
+    false,
+    { status: 'ok', result: { tab: 't1' } },
+  ]);
+});
+
+test('it ends the ask when the user takes over', async () => {
+  const ctx = await setupTest({});
+
+  await ctx.call('computer.handover', { reason: 'a CAPTCHA' });
+  await ctx.computer.takeover.start('laptop');
+  await ctx.computer.takeover.end('user', 'laptop');
+
+  const outcome = await ctx.call('computer.handover_cancel', {});
+
+  expect(outcome).toMatchObject({ refusalCode: 'NOT_ASKED' });
+});
+
+test('it carries a line outside the page text when an opened tab shows a challenge', async () => {
+  const ctx = await setupTest({
+    answer: (replies) => () => Promise.resolve({ ...replies.page, hasChallenge: true }),
+  });
+
+  const outcome = await ctx.call('computer.browser_open', { url: 'https://site.test/form' });
+
+  expect(outcome).toMatchObject({
+    status: 'ok',
+    result: {
+      text: 'Name [E1 textbox "Name"]',
+      challenge: expect.stringContaining('call computer.handover with a reason'),
+    },
+  });
+});
+
+test('it carries the challenge line on a read and a screenshot of a tab that shows one', async () => {
+  const ctx = await setupTest({
+    answer: (replies) => (request) => {
+      const reply =
+        request.op === 'screenshot'
+          ? { ...replies.shot, hasChallenge: true }
+          : { ...replies.page, hasChallenge: request.op === 'read' };
+
+      return Promise.resolve(reply);
+    },
+  });
+
+  const opened = await ctx.call('computer.browser_open', { url: 'https://site.test/form' });
+  const read = await ctx.call('computer.browser_read', { tab: 't1', mode: 'text' });
+  const shot = await ctx.call('computer.browser_screenshot', { tab: 't1' });
+
+  expect([opened, read, shot]).toMatchObject([
+    { result: { tab: 't1' } },
+    { result: { challenge: expect.stringContaining('A person must solve it') } },
+    { result: { challenge: expect.stringContaining('A person must solve it') } },
+  ]);
+
+  expect(opened).not.toHaveProperty('result.challenge');
+});
+
+test('it carries no challenge line for a page that shows none', async () => {
+  const ctx = await setupTest({ answer: (replies) => () => Promise.resolve(replies.page) });
+  const outcome = await ctx.call('computer.browser_open', { url: 'https://site.test/form' });
+
+  expect(outcome).not.toHaveProperty('result.challenge');
+});
+
+test('it tells the tab with a challenge from the tab without when the model reads each', async () => {
+  const opens = { count: 0 };
+
+  const ctx = await setupTest({
+    answer: (replies) => (request) => {
+      if (request.op === 'open') {
+        opens.count += 1;
+
+        return Promise.resolve({ ...replies.page, tab: `g${String(opens.count)}` });
+      }
+
+      return Promise.resolve({
+        ...replies.page,
+        tab: request.op === 'read' ? request.tab : 'g1',
+        hasChallenge: request.op === 'read' && request.tab === 'g2',
+      });
+    },
+  });
+
+  await ctx.call('computer.browser_open', { url: 'https://one.test/' });
+  await ctx.call('computer.browser_open', { url: 'https://two.test/' });
+
+  const first = await ctx.call('computer.browser_read', { tab: 't1', mode: 'text' });
+  const second = await ctx.call('computer.browser_read', { tab: 't2', mode: 'text' });
+
+  expect(first).not.toHaveProperty('result.challenge');
+  expect(second).toHaveProperty('result.challenge');
 });
