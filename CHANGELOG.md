@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.110.0](https://github.com/zgeoff/nixie/compare/v0.109.0...v0.110.0) (2026-11-23)
+
+
+### Features
+
+* **definitions:** accept the self-note grant in task.define and ask ([#1431](https://github.com/zgeoff/nixie/issues/1431)) ([ae896d8](https://github.com/zgeoff/nixie/commit/ae896d895bfcb3bc7fac6e06929db6c01946aee5))
+
 ## [0.109.0](https://github.com/zgeoff/nixie/compare/v0.108.0...v0.109.0) (2026-11-23)
 
 
