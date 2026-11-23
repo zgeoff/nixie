@@ -74,10 +74,11 @@ type Period = { kind: PeriodKind; start: string; startsAtMs: number; endsAtMs: n
 | a search               | `search.price_micros` in the server config        | micros of a dollar per call  |
 | a picture of each size | `images.profiles.<id>.prices`, as today           | micros of a dollar per image |
 
-- With a gateway, nixie never prices a model call itself: every model dollar it limits is the
-  gateway's count. A profile's `prices` is then unused, and the server logs a warning at start when
-  it differs from the route's. The release after this design drops the requirement that a profile
-  set `prices` when a gateway runs, so a rollback by one release still reads the config.
+- With a gateway, every model dollar nixie limits is the gateway's count. The one exception is a
+  worker run whose end read gets no answer, as the task meter section sets out. A profile's `prices`
+  is then unused, and the server logs a warning at start when it differs from the route's. The
+  release after this design drops the requirement that a profile set `prices` when a gateway runs,
+  so a rollback by one release still reads the config.
 - `search.price_micros` defaults to Kagi's 12,000. The search tool charges it and records it as the
   call's cost, from the one value. A deployment sets it only once the release after this design
   runs, so the release before still reads the config.
@@ -104,9 +105,9 @@ const hold = pickRequestHold(body, route); // buildReplyEstimate, worked out bef
 { "type": "error", "error": { "type": "limit_reached", "counter": "day", "message": "…" } }
 ```
 
-- The hold is exactly today's estimate of a reply with no usage, its 4,096-token allowance included:
-  the body's measured input at the highest input-side rate, plus `max_tokens`, or the route's
-  `maxOutputTokens`, for output.
+- For a request the estimate can bound, the hold is exactly today's estimate of a reply with no
+  usage, its 4,096-token allowance included: the body's measured input at the highest input-side
+  rate, plus `max_tokens`, or the route's `maxOutputTokens`, for output.
 - A request whose input the estimate can't bound, such as one that continues a stored response,
   holds the route's `contextWindow` in place of the measured input, and settles to that hold when
   its reply has no usage, with no lost mark. Every route sets `contextWindow`. A request with no
@@ -212,12 +213,12 @@ spend_ledger          plain table, log module
 
 ### What counts where
 
-| Spend           | Counted by the gateway         | Counted in the ledger                        |
-| --------------- | ------------------------------ | -------------------------------------------- |
-| a model call    | day, month, the call's sandbox | `task_run` or `worker_run`, from the gateway |
-| a search        | no                             | `budget:search-*`                            |
-| a picture       | no                             | `budget:image.draw-*`                        |
-| a card purchase | no                             | `budget:card-<account>`                      |
+| Spend           | Counted by the gateway         | Counted in the ledger                                                                                |
+| --------------- | ------------------------------ | ---------------------------------------------------------------------------------------------------- |
+| a model call    | day, month, the call's sandbox | a task's or a worker's call: `task_run` or `worker_run`, from the gateway; a conversation's call: no |
+| a search        | no                             | `budget:search-*`                                                                                    |
+| a picture       | no                             | `budget:image.draw-*`                                                                                |
+| a card purchase | no                             | `budget:card-<account>`                                                                              |
 
 - The stop reads the gateway's day and month and the turn count, as today. A paid tool counts
   against its budget and never against the stop. Model dollars on a plan are notional, while tool
