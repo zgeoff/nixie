@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.105.0](https://github.com/zgeoff/nixie/compare/v0.104.0...v0.105.0) (2026-11-23)
+
+
+### Features
+
+* **memory:** fold sub-topics first and re-file with memory.retopic ([#1403](https://github.com/zgeoff/nixie/issues/1403)) ([58318b4](https://github.com/zgeoff/nixie/commit/58318b47f088de69d55e54b70c8e770f25c9a9e7))
+* **notebook:** let the assistant forget her own notes ([#1395](https://github.com/zgeoff/nixie/issues/1395)) ([993a205](https://github.com/zgeoff/nixie/commit/993a20504aebd03374760c48e44c95e4816a3d91))
+
+
+### Bug Fixes
+
+* **definitions:** skip an export the repo already holds ([#1405](https://github.com/zgeoff/nixie/issues/1405)) ([86a6f04](https://github.com/zgeoff/nixie/commit/86a6f04d19d26b2fa41c612f2b6272d8472fc17f))
+* **definitions:** write rule files the repo's formatter accepts ([#1401](https://github.com/zgeoff/nixie/issues/1401)) ([f72ac59](https://github.com/zgeoff/nixie/commit/f72ac5972af0e1d271437dbaa5a2b04d7b8f748a))
+
 ## [0.104.0](https://github.com/zgeoff/nixie/compare/v0.103.0...v0.104.0) (2026-11-23)
 
 
