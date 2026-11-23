@@ -58,10 +58,10 @@ type TaskHoldReason =
   | 'task'; // the task is paused; a pause you asked for counts once task.paused is written
 ```
 
-- The log module owns the spending stop's projection, beside the pause tables, and exports its write
-  as it exports `pauseNixieInTransaction`. The spend module keeps the record kinds and calls that
-  write. The table keeps its name, and a rebuild fills it. The tasks module can't import the spend
-  module without a cycle, and this keeps the gate one read.
+- Put the spending stop's projection in the log module, beside the pause tables, and export its
+  write the way `pauseNixieInTransaction` is exported. The spend module keeps the record kinds and
+  calls that write. The table keeps its name, and a rebuild fills it. The tasks module can't import
+  the spend module without a cycle, so the gate reads the log module's table in one read.
 - The spending stop holds a task through its own row, whatever the nixie pause's cause. A trip still
   pauses nixie, and nixie can't resume while the stop stands, as today.
 - One predicate builder takes the caller, and each claim filter is built from it in SQL. A test per
@@ -129,10 +129,10 @@ The rename shares no code with the gate and ships as its own work item.
 | stored or public | –                 | –                           | `recoveries` table, `recovery.started`, `recovery.notice`, `recovery.read` |
 | fault points     | `recovery.step.*` | `restart_sweep.*`           | `recovery.pause.*`                                                         |
 
-The crash side gives up the word and becomes the restart sweep. The restore side keeps "recovery",
-because its names are stored and published: renaming them would need a migration, new record kinds
-while the old ones are still read, and a new API route beside the old one. The crash side holds only
-code names and fault point IDs.
+Call the crash side the restart sweep. Keep "recovery" for the restore side, because its names are
+stored and published: renaming them would need a migration, new record kinds while the old ones are
+still read, and a new API route beside the old one. The crash side holds only code names and fault
+point IDs.
 
 ## Constraints
 
