@@ -165,3 +165,24 @@ test('it finishes a forget whose session cleanup failed once', async () => {
 
   expect([outcome.status, records.length]).toStrictEqual(['ok', 1]);
 });
+
+test('it keeps running the cleanup of a confirmed forget until it ends', async () => {
+  let attempts = 0;
+
+  const ctx = await setupTest({
+    cleanupSessions: () => {
+      attempts += 1;
+
+      return attempts <= 12 ? Promise.reject(new Error('cleanup failed')) : Promise.resolve();
+    },
+  });
+
+  const note = await ctx.write('Boiler');
+
+  await ctx.call('notebook.forget', { id: note });
+  await ctx.notebook.waitForForgets();
+
+  const records = await ctx.readRecords(['notebook.note_forgotten']);
+
+  expect([attempts, records.length]).toStrictEqual([13, 1]);
+});

@@ -76,7 +76,6 @@ export interface StartNotebookOptions extends NotebookContext {
 }
 
 const defaultCleanupRetryMs = 1000;
-const maxCleanupAttempts = 10;
 
 // Starts the in-process indexes from every active note, and finishes each forget that a crash cut
 // short.
@@ -89,15 +88,14 @@ export async function startNotebook(options: StartNotebookOptions): Promise<Note
 
   await runBegunNoteForgets(context, index);
 
-  // A tool's forget runs inside a turn, and the cleanup waits for that turn to end, so the cleanup
-  // runs beside it. A cleanup that fails runs again, and one that fails every try leaves the note
-  // forgetting, which the next start finishes.
+  // A tool's forget runs inside a turn, and the cleanup waits for that turn to end, so it runs
+  // beside it. A failed cleanup runs again until it ends or the notebook stops.
   const cleanups: Promise<void>[] = [];
   const retryMs = options.cleanupRetryMs ?? defaultCleanupRetryMs;
   const state = { isStopping: false };
 
   const runCleanupBeside = async (noteID: string): Promise<void> => {
-    for (let attempt = 1; attempt <= maxCleanupAttempts && !state.isStopping; attempt += 1) {
+    while (!state.isStopping) {
       try {
         await runNoteForgetCleanup(context, index, noteID);
 
