@@ -159,7 +159,6 @@ test('it renders every rule of the starter template as one sentence', async () =
         `**Allow** \`computer.run\` when every effect it has is \`computer_run\` and \`command\` matches \`${name} *\`.`,
       ],
     ),
-    ['allow-take-back', '**Allow** a call when every effect it has is `computer_take_back`.'],
     ['ask-exports', '**Ask** before a call when it has the effect `export`.'],
     ['ask-permanent-deletes', '**Ask** before a call when it has the effect `delete`.'],
     [

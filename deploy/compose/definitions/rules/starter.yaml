@@ -24,11 +24,6 @@ allow-sandboxed-code:
   outcome: allow
   effects: [code_run]
 
-allow-take-back:
-  outcome: allow
-  effects: [computer_take_back]
-  note: The user is at the screen, and a hand-back only returns the computer to the assistant.
-
 # Shell commands that only read. Each rule allows a line only when every command on it is that one
 # command, with plain words and no redirection, substitution or variable.
 allow-shell-cat:
