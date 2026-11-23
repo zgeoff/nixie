@@ -360,8 +360,9 @@ and neither the ask nor a cancel wakes the assistant. An expiry does, so the ass
 for a take-over that is not coming. The inbox passes each of the three on as a message with its
 short ID. The assistant reads its ask as "You asked Sam to take over the computer." with the reason
 inside the untrusted-content markers, escaped as a page read is, and a cancel as "You withdrew your
-ask for Sam to take over the computer." It reads an expiry as "Your handover ask lapsed after 60 min
-with no take-over." Each message names the user by name, or writes "the user" when no name is set.
+ask for Sam to take over the computer." It reads an expiry as "Your handover ask lapsed after
+`<time>` with no take-over." Each message names the user by name, or writes "the user" when no name
+is set.
 
 Every connected [web client](../channels/client.md#the-handover-banner) shows the ask on a banner
 until a take-over starts or the ask closes.

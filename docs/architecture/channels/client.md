@@ -362,8 +362,9 @@ with the assistant's reason and a Take over button. The client reads `computer.r
 which gives the standing ask and a log sequence, and then follows the live stream from that sequence
 for every thread. A `computer.handover_asked` record opens the banner on every open client, and a
 `computer.takeover_started` or `computer.handover_closed` record clears it, so a take-over from one
-device clears the banner on the others. The client reads the ask again every minute and when the
-window gains focus.
+device clears the banner on the others. A forget of the ask's record removes the reason from the
+open banner, which then shows the ask without it. The client reads the ask again every minute and
+when the window gains focus.
 
 Take over leaves a one-time mark in the tab's session storage and opens `/computer`. The computer
 page reads and clears the mark, and takes over once, as soon as it shows the desktop, so the user
