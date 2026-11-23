@@ -9,12 +9,14 @@
 - **Decision records:** [0009](../../decisions/0009-mcp-proxy.md)
 
 The assistant uses the tools of an outside MCP server through nixie's proxy. Each tool takes the
-name `<serverID>.<tool>` and is pinned: the proxy exposes it only in the form you reviewed, under an
+name `<serverID>.<tool>` and is pinned: the proxy exposes it only in the form you allowed, under an
 effect declaration you approved. Each call passes the decision point like any of nixie's tools, its
 result reaches the model inside untrusted markers, and the server's credential never leaves the
 credential store. The first build serves 2 HTTP servers of your own: a work tracker and a
 delivery-metrics server. [The MCP proxy design](../platform/connectors/mcp-proxy.md) sets the rules
 for pins, failed listings and declarations, and this design adds the contracts the build follows.
+Once the owner settles the [open questions](#open-questions) and sets Status to agreed, the proxy
+item is built from it.
 
 ## Shape
 
@@ -35,7 +37,8 @@ flowchart LR
 
 - A **server listing** is one MCP `tools/list` of one server.
 - A **tool form** is one tool as a server listing returns it, in canonical JSON.
-- A tool's **pin** is the hash of the tool form you reviewed.
+- A tool's **pin** is the hash of the tool form you allowed: one you reviewed, or a trusted server's
+  later change, which you allowed when you trusted the server.
 
 ## The first two servers
 
@@ -223,8 +226,9 @@ mcp_tool_forms, a projection, one row per tool form a server listing has held
 - Each pin move calls `onPinMoved(tx, move)` inside its transaction. The 2 items that build on this
   one add their writes there, and this item ships it with no listener.
 - When a forget has made a pinned form unreadable, the next server listing that holds the hash
-  writes `mcp.tool_listed` again. When no listing holds it, the tool leaves the tool lists until you
-  allow its latest form.
+  writes `mcp.tool_listed` again. When no listing holds it, the proxy has no form to show, so the
+  tool leaves the tool lists until you allow its latest form. This is the one stopped tool that
+  leaves them.
 
 ### Names
 
@@ -298,8 +302,8 @@ interface ToolSource {
   // Built from the current pin, and cached per hash. Every proxied definition passes the registry's
   // existing checks at each pin move; one that fails stays hidden_new.
   findTool(name: string): RegisteredTool | null;
-  // Lists each server the names reach before the task run's first step reads its tool list. It
-  // never rejects: a failed server listing leaves the pinned tools in place.
+  // Lists each server the names reach, unless its backoff is running, before the task run's first
+  // step reads its tool list. It never rejects: a failed listing leaves the pinned tools in place.
   prepareTaskRun(tools: readonly string[]): Promise<void>;
 }
 
@@ -429,8 +433,8 @@ const answer: CallToolResult = {
 ## Builder decides
 
 - Internal names, the projections' indexes and the order of their folds.
-- The other `nixie mcp` commands, such as `list`, `tools` and `diff`, their module, and their
-  output.
+- The `nixie mcp` commands beyond `declare` and `allow`, such as `diff`, the module that holds them,
+  and the layout of their output beyond the fields this design names.
 - The defaults that the connectors module's `Reconcile` needs beyond the file's fields.
 - The wording of each error, notice and change note.
 - How the store shares one token exchange among requests that wait on it.
