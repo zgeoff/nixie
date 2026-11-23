@@ -3,7 +3,7 @@ import { z } from 'zod';
 
 // the sizes that devices.resize received, so a test reads what the page sent
 const resizes = new Collection({
-  schema: z.object({ width: z.int(), height: z.int() }),
+  schema: z.object({ width: z.int(), height: z.int(), pixelRatio: z.number() }),
 });
 
 // the sessions that hold no device row: a session has one unless it is listed here

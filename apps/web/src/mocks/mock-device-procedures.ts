@@ -44,7 +44,11 @@ export const mockDeviceProcedures = {
       throw options.errors.NOT_A_DEVICE();
     }
 
-    await deviceStore.resizes.create({ width: options.input.width, height: options.input.height });
+    await deviceStore.resizes.create({
+      width: options.input.width,
+      height: options.input.height,
+      pixelRatio: options.input.pixelRatio,
+    });
 
     return {};
   }),

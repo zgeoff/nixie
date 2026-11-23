@@ -40,7 +40,9 @@ async function setupTest() {
     appURL: proxy.url,
     view,
     readResizes: () =>
-      deviceStore.resizes.findMany().map((row) => ({ width: row.width, height: row.height })),
+      deviceStore.resizes
+        .findMany()
+        .map((row) => ({ width: row.width, height: row.height, pixelRatio: row.pixelRatio })),
     watchResizeEvents: () =>
       view.evaluate(
         `(globalThis.resizeEventSize = null, addEventListener('resize', () => { resizeEventSize = innerWidth + 'x' + innerHeight }), true)`,
@@ -140,5 +142,5 @@ test('it sends one resize with the new size after the window resizes', async () 
   await ctx.waitForPage('innerWidth === 820 && innerHeight === 610');
   await ctx.advancePageClock(2500);
 
-  expect(ctx.readResizes()).toStrictEqual([{ width: 820, height: 610 }]);
+  expect(ctx.readResizes()).toStrictEqual([{ width: 820, height: 610, pixelRatio: 1 }]);
 });

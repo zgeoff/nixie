@@ -2,12 +2,13 @@ import type { ContractClient, DeviceEvent } from '@heynixie/contract';
 import { ORPCError } from '@orpc/client';
 import { pickReconnectDelay } from '../conversation/pick-reconnect-delay';
 import type { StartTimer } from '../utils/start-platform-timer';
+import type { ScreenPixels } from './read-screen-pixels';
 
 export interface DeviceSubscription {
   readonly client: ContractClient;
 
   // read at each connect, so a reconnect sends the size the screen has by then
-  readonly readPixels: () => { readonly width: number; readonly height: number };
+  readonly readPixels: () => ScreenPixels;
 
   readonly onConnection: (state: 'open' | 'lost' | 'refused') => void;
   readonly onEvent: (event: DeviceEvent) => void;
@@ -51,6 +52,11 @@ async function readDeviceStream(options: DeviceSubscription): Promise<StreamOutc
     );
 
     for await (const event of events) {
+      // a stream sends a layout only when the device holds one, so each stream starts with none
+      if (!state.isConnected) {
+        options.onEvent({ kind: 'layout', layout: null });
+      }
+
       state.isConnected = true;
 
       options.onConnection('open');
