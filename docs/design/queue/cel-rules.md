@@ -9,8 +9,12 @@ PDF". A rule already carries a `cel` field for such a condition, but nixie never
 allow with a condition never matches, and an ask or a deny matches on its other fields alone. With
 this design, nixie evaluates the condition with `@marcbachmann/cel-js`, inside a subset of CEL that
 nixie checks when the rule is written and tests with its own conformance suite. Every rule with a
-condition carries a note in your words, and its card puts the condition in plain words, with the raw
-CEL behind a control.
+condition carries a note, a sentence that says what the condition means, and its card puts the
+condition in plain words, with the raw CEL behind a control.
+
+Once the owner approves this design and answers its [open questions](#open-questions), build the CEL
+part of [the rules work item](https://linear.app/zgeoff/issue/GEO-2785) from it and from the built
+[rules](../../architecture/policy/rules.md) it extends.
 
 ## Shape
 
@@ -313,7 +317,8 @@ changes it.
   condition on it an error with the code `input_too_large`.
 - A test in the unit lane evaluates the costliest condition the limits allow over the largest input
   they allow, and fails above 50 ms. That case takes about 4 ms on a desktop machine.
-- nixie parses each condition once per rule hash and reuses the parsed form.
+- nixie parses and checks each condition text once, and reuses the cached result, keyed by the
+  condition's canonical text.
 - The environment registers no function of its own and no async function.
 - `@marcbachmann/cel-js` is pinned at an exact version in the root catalog, and the
   `zgeoff/import-zones` lint rule refuses an import of it outside the policy module.
