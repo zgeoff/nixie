@@ -600,71 +600,7 @@ test('it refuses worker.run for a task whose starter lacks it', () => {
   expect(planned).toMatchObject({ status: 'refused', refusal: { reason: 'wider_tools' } });
 });
 
-test('it gives a definition with self notes the read tools and the 4 self-note write tools, and no pin', () => {
-  const plan = planTaskStart(
-    { memory: 'self_notes' },
-    {
-      tools: [
-        'tasks.list',
-        'task.message',
-        'memory.recall',
-        'memory.remember',
-        'memory.edit',
-        'memory.retopic',
-        'memory.retire',
-        'memory.pin',
-      ],
-      memory: 'self_notes',
-      persona: 'default',
-      log: 'own',
-    },
-    buildMockTaskStartBounds({
-      memoryTools: {
-        read: ['memory.recall'],
-        write: ['memory.remember', 'memory.edit', 'memory.retopic', 'memory.retire', 'memory.pin'],
-      },
-    }),
-  );
-
-  expect(plan).toMatchObject({
-    status: 'planned',
-    options: {
-      memory: 'self_notes',
-      tools: [
-        'tasks.list',
-        'task.message',
-        'task.report',
-        'memory.recall',
-        'memory.remember',
-        'memory.edit',
-        'memory.retopic',
-        'memory.retire',
-      ],
-    },
-  });
-});
-
-test.each(['memory.pin', 'memory.unpin', 'memory.fold'])(
-  'it refuses %s for a task with self notes',
-  (tool) => {
-    const plan = planTaskStart(
-      { memory: 'self_notes', tools: [tool] },
-      {
-        tools: ['tasks.list', 'task.message', 'memory.recall', tool],
-        memory: 'self_notes',
-        persona: 'default',
-        log: 'own',
-      },
-      buildMockTaskStartBounds({
-        memoryTools: { read: ['memory.recall'], write: ['memory.remember', tool] },
-      }),
-    );
-
-    expect(plan).toMatchObject({ status: 'refused', refusal: { reason: 'memory_tools' } });
-  },
-);
-
-test.each(['read', 'none'] as const)(
+test.each(['read', 'none', 'self_notes'] as const)(
   'it refuses self notes from a starter that holds memory at %s',
   (memory) => {
     const plan = planTaskStart(
@@ -688,5 +624,5 @@ test('it refuses self notes for a task with no persona', () => {
     buildMockTaskStartBounds(),
   );
 
-  expect(plan).toStrictEqual({ status: 'refused', refusal: { reason: 'stranger_with_memory' } });
+  expect(plan).toStrictEqual({ status: 'refused', refusal: { reason: 'self_notes_start' } });
 });

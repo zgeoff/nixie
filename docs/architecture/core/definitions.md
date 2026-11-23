@@ -281,8 +281,9 @@ conversation tool, which [changes from the conversation](#changes-from-the-conve
 and a memory tool unless its `memory` is `read`. A version whose `memory` is `read` may list any
 memory tool and gets the read-only ones without listing them. A version whose `memory` is
 `self_notes` gets the read-only tools and the 4 self-note write tools without listing them, as
-[start options](./started-tasks.md#start-options) describes. Until the release after this one, the
-seed and `task.define` refuse `self_notes`.
+[start options](./started-tasks.md#start-options) describes, and the run drops every other memory
+write tool that the version lists. The seed and `task.define` refuse `self_notes`, and the run of a
+stored version that holds it gets the grant.
 
 One fault refuses the whole seed, and the definitions of the last accepted seed stay in force. The
 refusal is a `TaskSeedRefusedError`, a kind of definitions parse error. Its `problems` field, which

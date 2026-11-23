@@ -125,6 +125,14 @@ async function setupTest() {
         agentNames: [],
       },
       memoryReadTools: ['memory.recall', 'moment.find'],
+      memoryWriteTools: [
+        'memory.remember',
+        'memory.edit',
+        'memory.retopic',
+        'memory.retire',
+        'memory.fold',
+        'memory.unpin',
+      ],
       compaction: { threshold: 0.8, headsUp: 0.7, summaryTokens: 2000 },
       defaultZone: 'UTC',
       messaging: { directory: [], unlisted: [], hopLimit: 20, ownerName: 'Robin', agentName: null },
@@ -3082,6 +3090,57 @@ test('it adds the read tools and the self-note write tools to a definition task 
       ],
       hasSelfNoteGrant: true,
     },
+  ]);
+});
+
+test('it leaves the run of a started task ungranted, whatever memory its stored options hold', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tidy the notes',
+    brief: 'Merge the duplicate notes about yourself.',
+    options: { persona: 'default', memory: 'self_notes' },
+  });
+
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+
+  expect(ctx.runs.map((run) => 'hasSelfNoteGrant' in run)).toStrictEqual([false]);
+});
+
+test('it keeps a memory write tool outside the self-note ones off the tool list of a definition task with self notes', async () => {
+  const ctx = await setupTest();
+
+  const taskID = await ctx.writeDefinitionTask({
+    definitionID: 'tidy-the-notes',
+    definitionHash: 'hash-1',
+    version: {
+      memory: 'self_notes',
+      tools: ['tasks.list', 'memory.fold', 'mcp__nixie__memory_unpin', 'memory.edit'],
+    },
+  });
+
+  await ctx.writeFire(taskID, 'hash-1', 'fire-3');
+
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+
+  expect(ctx.runs.map((run) => run.tools)).toStrictEqual([
+    [
+      'tasks.list',
+      'memory.edit',
+      'memory.recall',
+      'moment.find',
+      'memory.remember',
+      'memory.retopic',
+      'memory.retire',
+      'turn.end_silently',
+      'task.report',
+    ],
   ]);
 });
 

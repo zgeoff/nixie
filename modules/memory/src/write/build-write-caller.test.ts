@@ -14,12 +14,12 @@ test('it marks a task run that holds the grant as granted', () => {
   });
 });
 
-test('it leaves a task run with no grant unmarked', () => {
+test('it marks a task run with no grant as ungranted', () => {
   const context = buildMockToolContext({
     run: { ...buildMockToolContext().run, thread: 'task-1' },
   });
 
-  expect(buildWriteCaller(context)).not.toHaveProperty('hasSelfNoteGrant');
+  expect(buildWriteCaller(context)).toMatchObject({ origin: 'task', hasSelfNoteGrant: false });
 });
 
 test('it never marks the conversation as granted', () => {

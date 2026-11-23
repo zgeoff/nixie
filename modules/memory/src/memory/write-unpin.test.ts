@@ -42,10 +42,9 @@ test('it refuses a granted task an unpin, and keeps the item pinned', async () =
   const note = await memory.store.remember({
     text: 'I like tidy lists',
     subject: 'self',
+    isPinned: true,
     provenance: buildMockProvenance(),
   });
-
-  await memory.store.writes.pin({ target: note, caller: buildMockWriteCaller() });
 
   const write = memory.store.writes.unpin({
     itemID: note.itemID,
@@ -57,5 +56,10 @@ test('it refuses a granted task an unpin, and keeps the item pinned', async () =
     }),
   });
 
+  await Promise.allSettled([write]);
+
+  const core = await memory.store.readPinnedCore();
+
   expect(write).rejects.toThrowWithMessage(SelfNoteError, /a pin or an unpin is not one/u);
+  expect(core).toMatchObject([{ itemID: note.itemID }]);
 });

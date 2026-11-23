@@ -3,6 +3,7 @@ import { requireLiveEvidence } from '../evidence/require-live-evidence';
 import { requireUnforgottenQuote } from '../evidence/require-unforgotten-quote';
 import { buildAskReview } from '../gate/build-ask-review';
 import type { ContentGateResult, GatedRetireRequest, WriteOutcome } from '../gate/gate-context';
+import { hasSelfNoteGrant } from '../gate/has-self-note-grant';
 import { pickCoveringRule } from '../gate/pick-covering-rule';
 import { runIntentGate } from '../gate/run-intent-gate';
 import { readItemText } from '../item/read-item-text';
@@ -70,7 +71,7 @@ function runRetirementGate(
 
   if (
     item.isSelfNote &&
-    (request.caller.origin === 'conversation' || request.caller.hasSelfNoteGrant)
+    (request.caller.origin === 'conversation' || hasSelfNoteGrant(request.caller))
   ) {
     return Promise.resolve(selfNoteRetirement);
   }

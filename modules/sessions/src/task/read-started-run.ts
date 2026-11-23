@@ -14,6 +14,7 @@ import {
   startedTaskDefaultTools,
 } from '@heynixie/tasks';
 import type { ToolRunModel } from '@heynixie/tools';
+import { findHeldToolName } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
 import { match } from 'ts-pattern';
 import { buildGuestCommand } from './build-guest-command';
@@ -31,6 +32,10 @@ export interface StartedRun {
 
   // the version hash a definition's task runs, which its endpoint's tool list comes from
   readonly definitionHash: string | null;
+
+  // set for a definition's task whose version holds the self-note grant, and for no other run: a
+  // started task's options never grant it
+  readonly hasSelfNoteGrant: boolean;
 
   // set for a definition's task under a fresh context: the session reads the log after it
   readonly sinceSequence: number | null;
@@ -82,16 +87,20 @@ async function readDefinitionRun(runner: RunReader, taskID: string): Promise<Sta
       persona: version.persona,
       memory: version.memory,
       log: version.log,
-      tools: pickRunTools(version, runner.options.memoryReadTools),
+      tools: pickRunTools(version, runner.options),
       report: found.report.mode,
       limits: runner.options.models.limits.taskRun.default,
     },
     definitionHash: found.definitionHash,
+    hasSelfNoteGrant: version.memory === 'self_notes',
     sinceSequence: pickSinceSequence(version.context, found),
   });
 }
 
-type RunParts = Pick<StartedRun, 'startedBy' | 'options' | 'definitionHash' | 'sinceSequence'>;
+type RunParts = Pick<
+  StartedRun,
+  'startedBy' | 'options' | 'definitionHash' | 'hasSelfNoteGrant' | 'sinceSequence'
+>;
 
 function buildRunParts(runner: RunReader, parts: RunParts): StartedRun {
   const profile =
@@ -112,16 +121,24 @@ function buildRunParts(runner: RunReader, parts: RunParts): StartedRun {
   };
 }
 
+// A version with the self-note grant gets the memory read tools and the 4 self-note write tools,
+// and no other memory write tool, whatever its list names.
 function pickRunTools(
   version: Pick<DefinitionVersion, 'memory' | 'tools'>,
-  memoryReadTools: readonly string[],
+  options: Pick<SandboxRunnerOptions, 'memoryReadTools' | 'memoryWriteTools'>,
 ): readonly string[] {
   return match(version.memory)
     .with('none', () => version.tools)
-    .with('read', () => [...new Set([...version.tools, ...memoryReadTools])])
-    .with('self_notes', () => [
-      ...new Set([...version.tools, ...memoryReadTools, ...selfNoteToolNames]),
-    ])
+    .with('read', () => [...new Set([...version.tools, ...options.memoryReadTools])])
+    .with('self_notes', () => {
+      const listed = version.tools.filter(
+        (tool) =>
+          findHeldToolName(tool, options.memoryWriteTools) === null ||
+          findHeldToolName(tool, selfNoteToolNames) !== null,
+      );
+
+      return [...new Set([...listed, ...options.memoryReadTools, ...selfNoteToolNames])];
+    })
     .exhaustive();
 }
 
@@ -150,6 +167,7 @@ function buildStartedRun(runner: RunReader, setup: StartedTaskSetup): StartedRun
     startedBy: setup.startedBy,
     options,
     definitionHash: null,
+    hasSelfNoteGrant: false,
     sinceSequence: null,
   });
 }

@@ -230,6 +230,7 @@ async function setupTest() {
           agentNames: [],
         },
         memoryReadTools: [],
+        memoryWriteTools: [],
         compaction: { threshold: 0.8, headsUp: 0.7, summaryTokens: 2000 },
         defaultZone: 'Australia/Sydney',
         messaging: {

@@ -259,7 +259,7 @@ function buildTaskImpParts(runner: TaskRunner, taskID: string): TaskImpParts {
         logThread: run.options.log === 'conversation' ? conversationTaskID : taskID,
         tools: [...new Set([...run.options.tools, silentEndToolName, taskReportToolName])],
         model: run.model,
-        ...(run.options.memory === 'self_notes' ? { hasSelfNoteGrant: true } : {}),
+        ...(run.hasSelfNoteGrant ? { hasSelfNoteGrant: true } : {}),
         toolUseMetaKey: run.harness.toolUseMetaKey,
       });
     },

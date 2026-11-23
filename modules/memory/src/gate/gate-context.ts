@@ -75,8 +75,7 @@ export interface MessageSpan {
 
 export type ReviewReason = (typeof reviewReasons)[number];
 
-export interface WriteCaller {
-  readonly origin: 'conversation' | 'task';
+interface WriteCallerFields {
   readonly thread: string;
 
   // the thread a cited event is read from: ToolRun.logThread
@@ -84,10 +83,20 @@ export interface WriteCaller {
   readonly taskID: string;
   readonly runID: string;
   readonly model: string;
-
-  // a task whose definition grants it the assistant's self-note writes
-  readonly hasSelfNoteGrant?: boolean | undefined;
 }
+
+export interface ConversationWriteCaller extends WriteCallerFields {
+  readonly origin: 'conversation';
+}
+
+export interface TaskWriteCaller extends WriteCallerFields {
+  readonly origin: 'task';
+
+  // whether the task's definition grants it the assistant's self-note writes
+  readonly hasSelfNoteGrant: boolean;
+}
+
+export type WriteCaller = ConversationWriteCaller | TaskWriteCaller;
 
 export interface GatedRememberRequest {
   readonly text: string;

@@ -1,6 +1,7 @@
 import type { ToolCall, ToolContext, ToolDefinition, ToolOutcome } from '@heynixie/tools';
 import { z } from 'zod';
 import type { GatedRetireRequest, ModelWriteStore } from '../gate/gate-context';
+import { requireGrantedSelfSubject } from '../subject/require-granted-self-subject';
 import type { ItemIDStore } from '../types';
 import { readItemIDs } from '../utils/item/read-item-ids';
 import { makeInputRecorder } from '../utils/make-input-recorder';
@@ -63,6 +64,8 @@ export function buildRetireTool(memory: ModelWriteStore & ItemIDStore): ToolDefi
 
         const [itemID = input.itemID] = await readItemIDs(memory, [input.itemID]);
         const subject = await memory.writes.readItemSubject(itemID);
+
+        requireGrantedSelfSubject(buildWriteCaller(context), [subject]);
 
         return {
           sources: await memory.writes.readRetireSources(

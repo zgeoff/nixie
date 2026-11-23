@@ -2566,7 +2566,7 @@ test('it refuses a task with no grant a self-note text write', async () => {
   );
 });
 
-test('it keeps a granted task remember apart from an owner item with the same text', async () => {
+test('it approves a granted task self-note as a new item beside an owner item and a shared item with the same text', async () => {
   const memory = await startTestMemory();
 
   const owner = await memory.store.remember({
@@ -2575,7 +2575,13 @@ test('it keeps a granted task remember apart from an owner item with the same te
     provenance: buildMockProvenance(),
   });
 
-  const outcome = await memory.store.writes.remember({
+  const shared = await memory.store.remember({
+    text: 'Likes quiet mornings and tidy lists',
+    subject: 'shared',
+    provenance: buildMockProvenance(),
+  });
+
+  const proposed = await memory.store.writes.remember({
     text: 'Likes quiet mornings and tidy lists',
     subject: 'self',
     caller: buildMockWriteCaller({
@@ -2584,22 +2590,35 @@ test('it keeps a granted task remember apart from an owner item with the same te
       taskID: 'task-1',
       hasSelfNoteGrant: true,
     }),
-    verdict: buildAllowVerdict([{ arg: 'subject', op: 'eq', value: 'self' }]),
+    verdict: { kind: 'gate' },
   });
 
-  invariant(outcome.status === 'applied');
+  invariant(proposed.status === 'proposed');
 
-  const items = await memory.store.recall({
-    itemIDs: [owner.itemID, outcome.itemID],
+  const [pending] = await memory.store.proposals.listPending();
+
+  invariant(pending);
+
+  const approved = await memory.store.proposals.approve({
+    proposalID: pending.proposalID,
+    actionHash: pending.actionHash,
+    identityID: 'identity-1',
+  });
+
+  invariant(approved.status === 'applied');
+
+  const recalled = await memory.store.recall({
+    itemIDs: [owner.itemID, shared.itemID, approved.itemID],
     thread: 'task-1',
   });
 
-  expect(outcome.itemID).not.toBe(owner.itemID);
+  expect(approved.itemID).not.toBeOneOf([owner.itemID, shared.itemID]);
 
-  expect(items.items.map((entry) => [entry.itemID, entry.subject])).toStrictEqual(
-    expect.arrayContaining([
-      [owner.itemID, 'owner'],
-      [outcome.itemID, 'self'],
-    ]),
-  );
+  expect(
+    recalled.items.map((entry) => [entry.itemID, entry.subject, entry.revision]),
+  ).toIncludeSameMembers([
+    [owner.itemID, 'owner', 1],
+    [shared.itemID, 'shared', 1],
+    [approved.itemID, 'self', 1],
+  ]);
 });

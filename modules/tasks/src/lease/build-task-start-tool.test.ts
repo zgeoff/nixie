@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import { readRecords } from '@heynixie/log';
+import { buildToolRegistry } from '@heynixie/tools';
 import { buildMockToolCall, buildMockToolContext } from '@heynixie/tools/test-utils';
 import invariant from 'tiny-invariant';
 import { buildStepRunID } from '../step/build-step-run-id';
@@ -1025,4 +1026,42 @@ test('it describes a task as work that needs its own context, whether the owner 
   expect(tool.description).toStartWith(
     'Starts a new task for work that needs its own context, can wait, or lasts beyond this turn, whether Robin asked for it or you saw it needed doing. Give it a short name,',
   );
+});
+
+test('it takes self notes through the input schema, then refuses the start with the instruction to define the task', async () => {
+  const ctx = await setupTest();
+  const claim = await createTestConversationClaim(ctx.context, 'Tidy my self-notes weekly.');
+
+  const tool = buildTaskStartTool(
+    ctx.context,
+    { hopLimit: 20, ownerName: null },
+    buildMockTaskStartBounds(),
+  );
+
+  const input = {
+    name: 'Tidy notes',
+    brief: 'Merge the duplicate self-notes.',
+    memory: 'self_notes',
+  };
+
+  const checked = buildToolRegistry([tool]).findTool('task.start')?.parseInput(input);
+
+  const outcome = await tool.run(
+    buildMockToolCall({ tool: 'task.start', input }),
+    buildMockToolContext({
+      run: {
+        thread: 'conversation',
+        stepRunID: buildStepRunID(claim),
+        tools: ['tasks.list', 'task.message', 'task.start', 'memory.recall'],
+      },
+    }),
+  );
+
+  expect(checked).toStrictEqual({ isValid: true });
+
+  expect(outcome).toStrictEqual({
+    status: 'error',
+    message:
+      'only a task definition grants self-note writes, so define the task with task.define and nixie started nothing',
+  });
 });

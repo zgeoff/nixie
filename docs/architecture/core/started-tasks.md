@@ -58,10 +58,11 @@ a task everything that `read` gives, and the self-note writes of the assistant: 
 `memory.edit`, `memory.retopic` and `memory.retire`, by default. It gives no pin tool, and the
 task's writes reach only items whose subject is self, as
 [self-notes](../memory/writes.md#self-notes) says. A `task.start` with `memory: self_notes` is
-refused with a sentence that says to define the task, whoever starts it, and a task never starts a
-task with a wider grant than its own. A worker holds no memory tool. While the previous release
-cannot read the value, the definitions repo and `task.define` refuse it with "available in the next
-release", and a stored version that holds it reads as `self_notes`.
+refused with a sentence that says to define the task, whoever starts it, so a task never starts a
+task with the grant. The input schema of `task.start` lists the value, so the refusal reaches the
+planner and the model reads that sentence. The run of a started task never holds the grant, even
+when its stored options name the value. A worker holds no memory tool. The definitions repo and
+`task.define` refuse `self_notes`, and the run of a stored version that holds it gets the grant.
 
 The `log` option is the log grant. With `log: conversation`, the task's `log.read` and
 `log.read_image` read the conversation's thread of the [event log](../core/event-log.md), and with

@@ -7,7 +7,7 @@ import { SelfNoteError } from '../utils/error/self-note-error';
 test('it moves self-notes to another topic for a granted task', async () => {
   const memory = await startTestMemory();
 
-  await memory.store.remember({
+  const item = await memory.store.remember({
     text: 'I like tidy lists',
     subject: 'self',
     labels: { gist: 'tidy lists', topic: 'habits', triggers: [] },
@@ -25,7 +25,10 @@ test('it moves self-notes to another topic for a granted task', async () => {
     }),
   });
 
+  const labels = await memory.store.writes.readItemLabels(item.itemID);
+
   expect(plan.moves).toMatchObject([{ fromSubject: 'self', toTopic: 'diary' }]);
+  expect(labels.topic).toBe('diary');
 });
 
 test.each([

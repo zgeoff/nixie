@@ -24,6 +24,10 @@ export interface SandboxRunnerOptions extends SystemTaskOptions {
   // the memory tools that only read, which task.start gives a task with memory read, so the task
   // run of a definition with memory read gets them too
   readonly memoryReadTools: readonly string[];
+
+  // the memory tools that write, of which the task run of a definition with the self-note grant
+  // keeps only the self-note ones
+  readonly memoryWriteTools: readonly string[];
   readonly compaction: CompactionSettings;
   readonly defaultZone: string;
   readonly messaging: TaskMessaging;

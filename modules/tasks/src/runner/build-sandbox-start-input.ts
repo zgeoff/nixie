@@ -25,10 +25,11 @@ export function buildSandboxStartInput(bounds: TaskStartBounds): JSONObject {
       },
       memory: {
         type: 'string',
-        enum: ['none', 'read'],
+        enum: ['none', 'read', 'self_notes'],
         description:
           'read gives the task your pinned memory, recall and the memory read tools; none ' +
-          'gives it none of them',
+          'gives it none of them; self_notes is the grant of a task definition, so task.start ' +
+          'refuses it and you define the task with task.define instead',
       },
       log: {
         type: 'string',

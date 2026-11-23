@@ -4,6 +4,7 @@ import { z } from 'zod';
 import type { GatedRememberRequest, ModelWriteStore } from '../gate/gate-context';
 import { labelInputSchema } from '../label/label-input-schema';
 import { pickTopicSpelling } from '../label/pick-topic-spelling';
+import { requireGrantedSelfSubject } from '../subject/require-granted-self-subject';
 import type { ItemIDStore } from '../types';
 import { TextLimitError } from '../utils/error/text-limit-error';
 import { makeInputRecorder } from '../utils/make-input-recorder';
@@ -124,6 +125,9 @@ export function buildRememberTool(
       resolveWriteFacts(async () => {
         const input = rememberArguments.parse(rawInput);
         const subject = input.subject ?? 'owner';
+
+        requireGrantedSelfSubject(buildWriteCaller(context), [subject]);
+
         const limitError = findTextLimitError(input.text, subject, true);
 
         if (limitError !== null) {

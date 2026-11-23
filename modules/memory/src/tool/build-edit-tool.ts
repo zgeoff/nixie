@@ -5,6 +5,7 @@ import { z } from 'zod';
 import type { GatedRememberRequest, ModelWriteStore } from '../gate/gate-context';
 import { labelInputSchema } from '../label/label-input-schema';
 import { pickTopicSpelling } from '../label/pick-topic-spelling';
+import { requireGrantedSelfSubject } from '../subject/require-granted-self-subject';
 import type { ItemIDStore, Labels } from '../types';
 import { TextLimitError } from '../utils/error/text-limit-error';
 import { readItemIDs } from '../utils/item/read-item-ids';
@@ -117,6 +118,8 @@ export function buildEditTool(memory: ModelWriteStore & ItemIDStore): ToolDefini
         const itemSubject = await memory.writes.readItemSubject(itemID);
 
         const subject = input.subject ?? itemSubject;
+
+        requireGrantedSelfSubject(buildWriteCaller(context), [itemSubject, subject]);
 
         const limitError =
           input.text === undefined ? null : findTextLimitError(input.text, subject, true);
