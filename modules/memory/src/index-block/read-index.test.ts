@@ -127,4 +127,5 @@ test('it folds a topic past the open limit the config names', async () => {
 
   expect(index.text.replaceAll(/\s+/gu, ' ')).toInclude('garden (3) folded · newest: ');
   expect(index.text).toInclude('sub-topics: beds 3');
+  expect(index.text).toInclude('sub-topics: beds 3');
 });

@@ -5,6 +5,9 @@ import type { PromptOverrides } from '@heynixie/prompts';
 import type { RunCheck } from '@heynixie/sessions';
 import type { MemoryWriteVerdict } from '@heynixie/tools';
 import type { Selectable } from 'kysely';
+import type { FoldOrderRequest } from '../fold/write-fold-order';
+import type { RetopicPlan, RetopicSource, RetopicTarget } from '../retopic/types';
+import type { RetopicRequest } from '../retopic/write-retopic';
 import type {
   Labels,
   MemoryChange,
@@ -164,6 +167,17 @@ export interface MemoryWrites {
 
   // the topics that exist, so a write reuses the spelling of one that does
   readonly readTopics: (excludedItemID: string | null) => Promise<readonly string[]>;
+
+  // Moves a whole topic or a list of items to a topic and subject, in one transaction. It writes
+  // what a label-only edit writes for each item, and it throws a refusal for a move of nothing, of
+  // an unknown item or onto the same topic and subject.
+  readonly retopic: (request: RetopicRequest) => Promise<RetopicPlan>;
+
+  // what a move would change, without writing anything
+  readonly readRetopicPlan: (source: RetopicSource, target: RetopicTarget) => Promise<RetopicPlan>;
+
+  // sets the order a topic's folded rows show their items in, and returns the topic's spelling
+  readonly writeFoldOrder: (request: FoldOrderRequest) => Promise<string>;
 }
 
 export type WriteSource = Extract<RuleSource, 'owner' | 'outside' | 'task'>;
@@ -181,6 +195,9 @@ export interface ModelWriteStore {
     | 'readItemSubject'
     | 'readItemLabels'
     | 'readTopics'
+    | 'retopic'
+    | 'readRetopicPlan'
+    | 'writeFoldOrder'
   >;
   readonly renderReviewReason: (reason: ReviewReason) => string;
 }

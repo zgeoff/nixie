@@ -58,27 +58,134 @@ test('it opens by saying how to read an item and how to open a topic', () => {
   expect(opening).toInclude('memory.recall and topic');
 });
 
-test('it folds a topic past the open limit to its 3 newest items and its sub-topics', () => {
+test('it shows each sub-topic of an open topic on its own, after the items of the topic itself', () => {
+  const rows = [
+    ...buildIndexRows('people', 1, 1),
+    ...buildIndexRows('people/family', 2, 10),
+    ...buildIndexRows('people/friends', 1, 20),
+  ];
+
+  const text = renderIndexBlock(collectTopicRows(rows), {
+    budget: 3000,
+    openTopicItems: 25,
+    ownerName: 'Robin',
+  }).replaceAll(/\s+/gu, ' ');
+
+  expect(text).toInclude(
+    'people (4) [pe00000001] people fact number 1 about the household | family (2): [pe00000011] people/family fact number 11 about the household · [pe00000010] people/family fact number 10 about the household | friends (1): [pe00000020] people/friends fact number 20 about the household',
+  );
+});
+
+test('it folds the biggest sub-topic first, to its count and 3 items, and keeps its sibling open', () => {
   const rows = [
     ...buildIndexRows('people/family', 12, 1),
     ...buildIndexRows('people/friends', 20, 100),
     ...buildIndexRows('home', 2, 500),
   ];
 
-  const lines = renderIndexBlock(collectTopicRows(rows), {
+  const text = renderIndexBlock(collectTopicRows(rows), {
+    budget: 500,
+    openTopicItems: 25,
+    ownerName: 'Robin',
+  }).replaceAll(/\s+/gu, ' ');
+
+  expect(text).toInclude(
+    'friends (20) folded · newest: [pe00000119] people/friends fact number 119 about the household · [pe00000118]',
+  );
+
+  expect(text).toInclude('family (12): [pe00000012]');
+  expect(text).toInclude('[pe00000001]');
+  expect(text).not.toInclude('[pe00000116]');
+  expect(text).not.toInclude('people (32) folded');
+});
+
+test('it folds a whole topic only once every one of its sub-topics is folded', () => {
+  const rows = collectTopicRows([
+    ...buildIndexRows('people/family', 12, 1),
+    ...buildIndexRows('people/friends', 20, 100),
+    ...buildIndexRows('home', 2, 500),
+  ]);
+
+  const [open, subsFolded, wholeFolded] = [500, 300, 200].map((budget) =>
+    renderIndexBlock(rows, { budget, openTopicItems: 25, ownerName: 'Robin' }).replaceAll(
+      /\s+/gu,
+      ' ',
+    ),
+  );
+
+  expect(open).not.toInclude('family (12) folded');
+  expect(subsFolded).toInclude('family (12) folded');
+  expect(subsFolded).toInclude('friends (20) folded');
+  expect(subsFolded).not.toInclude('people (32) folded');
+  expect(wholeFolded).toInclude('people (32) folded · newest: [pe00000119]');
+  expect(wholeFolded).toInclude('sub-topics: family 12, friends 20');
+});
+
+test('it starts a sub-topic past the open limit folded, and the topic with it when every sub-topic is', () => {
+  const text = renderIndexBlock(collectTopicRows(buildIndexRows('garden/beds', 30)), {
     budget: 3000,
     openTopicItems: 25,
     ownerName: 'Robin',
-  }).split('\n');
+  }).replaceAll(/\s+/gu, ' ');
 
-  const people = lines.slice(2).join(' ').replaceAll(/\s+/gu, ' ');
+  expect(text).toInclude('garden (30) folded · newest: [ga00000030]');
+  expect(text).toInclude('sub-topics: beds 30');
+});
 
-  expect(people).toInclude(
-    'people (32) folded · newest: [pe00000119] people/friends fact number 119',
+test('it keeps a sub-topic past the open limit folded while its sibling shows every item', () => {
+  const rows = collectTopicRows([
+    ...buildIndexRows('people/family', 5, 1),
+    ...buildIndexRows('people/friends', 30, 100),
+  ]);
+
+  const text = renderIndexBlock(rows, {
+    budget: 3000,
+    openTopicItems: 25,
+    ownerName: 'Robin',
+  }).replaceAll(/\s+/gu, ' ');
+
+  expect(text).toInclude('family (5): [pe00000005]');
+  expect(text).toInclude('friends (30) folded · newest: [pe00000129]');
+  expect(text).not.toInclude('people (35) folded');
+});
+
+test.each([
+  ['newest', '[ho00000030] home fact number 30 about the household · [ho00000029]'],
+  ['oldest', '[ho00000001] home fact number 1 about the household · [ho00000002]'],
+] as const)(
+  'it shows the 3 %s items of a folded row in the topic’s folded order',
+  (order, shown) => {
+    const rows = collectTopicRows(buildIndexRows('home', 30), [
+      { subject: 'owner', topic: 'Home', order },
+    ]);
+
+    const text = renderIndexBlock(rows, {
+      budget: 3000,
+      openTopicItems: 25,
+      ownerName: 'Robin',
+    }).replaceAll(/\s+/gu, ' ');
+
+    expect(text).toInclude(`home (30) folded · ${order}: ${shown}`);
+  },
+);
+
+test('it applies the folded order of a topic to its folded sub-topics, and only for its own subject', () => {
+  const rows = collectTopicRows(
+    [...buildIndexRows('people/friends', 30, 100), ...buildIndexRows('home', 30, 1)],
+    [
+      { subject: 'owner', topic: 'people', order: 'oldest' },
+      { subject: 'shared', topic: 'home', order: 'oldest' },
+    ],
   );
 
-  expect(people).toInclude('sub-topics: family 12, friends 20');
-  expect(lines.join('\n')).not.toInclude('[pe00000001]');
+  const text = renderIndexBlock(rows, {
+    budget: 100_000,
+    openTopicItems: 25,
+    ownerName: 'Robin',
+  }).replaceAll(/\s+/gu, ' ');
+
+  expect(text).toInclude('people (30) folded · oldest: [pe00000100]');
+  expect(text).toInclude('home (30) folded · newest: [ho00000030]');
 });
 
 test('it folds a topic with no sub-topic to its newest items alone', () => {

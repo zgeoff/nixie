@@ -2,8 +2,10 @@ import type { ToolDefinition } from '@heynixie/tools';
 import type { ModelWriteStore } from '../gate/gate-context';
 import { buildPinTool } from '../pin/build-pin-tool';
 import { buildEditTool } from '../tool/build-edit-tool';
+import { buildFoldTool } from '../tool/build-fold-tool';
 import { buildRememberTool } from '../tool/build-remember-tool';
 import { buildRetireTool } from '../tool/build-retire-tool';
+import { buildRetopicTool } from '../tool/build-retopic-tool';
 import { buildUnpinTool } from '../tool/build-unpin-tool';
 import type { ItemIDStore } from '../types';
 
@@ -14,5 +16,7 @@ export function buildWriteTools(memory: ModelWriteStore & ItemIDStore): readonly
     buildRetireTool(memory),
     buildPinTool(memory),
     buildUnpinTool(memory),
+    buildRetopicTool(memory),
+    buildFoldTool(memory),
   ];
 }
