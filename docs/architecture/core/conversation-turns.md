@@ -329,8 +329,9 @@ element.
 
 ## System messages
 
-Every block that nixie writes into a user message is a system message: a `<system-message>` element
-with a type, a random ID and the time nixie wrote it, as in
+Every block that nixie writes into a user message, apart from the user's own message and the sealed
+elements above, is a system message: a `<system-message>` element with a type, a random ID and the
+time nixie wrote it, as in
 `<system-message type="events" id="7f3a9c21b04e" at="Tue 14 Oct, 22:50, Sydney">`. The closing tag
 repeats the ID, which is fresh for each element as a pasted block's is, so a memory or an event
 whose text holds a closing tag cannot end the element early. The ID proves nothing about the sender,
