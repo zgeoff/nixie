@@ -82,7 +82,7 @@ async function runPinCall(
     () =>
       memory.writes.pin({
         target: { itemID, version: input.version },
-        caller: buildWriteCaller(context),
+        caller: buildWriteCaller(context, 'memory.pin'),
         ...(context.verdict === undefined ? {} : { verdict: context.verdict }),
       }),
     itemID,

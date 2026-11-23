@@ -3081,6 +3081,7 @@ test('it adds the read tools and the self-note write tools to a definition task 
         'task.report',
       ],
       hasSelfNoteGrant: true,
+      selfNoteOnlyTools: ['memory.remember', 'memory.edit', 'memory.retopic', 'memory.retire'],
     },
   ]);
 });
@@ -3131,6 +3132,26 @@ test('it keeps a memory write tool that the list of a definition task with self 
       'turn.end_silently',
       'task.report',
     ],
+  ]);
+});
+
+test('it limits to self-notes the self-note tools that only the grant gives a definition task', async () => {
+  const ctx = await setupTest();
+
+  const taskID = await ctx.writeDefinitionTask({
+    definitionID: 'tidy-the-notes',
+    definitionHash: 'hash-1',
+    version: { memory: 'self_notes', tools: ['tasks.list', 'memory.fold', 'memory.edit'] },
+  });
+
+  await ctx.writeFire(taskID, 'hash-1', 'fire-3');
+
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+
+  expect(ctx.runs.map((run) => run.selfNoteOnlyTools)).toStrictEqual([
+    ['memory.remember', 'memory.retopic', 'memory.retire'],
   ]);
 });
 

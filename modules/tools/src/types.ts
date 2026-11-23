@@ -289,6 +289,10 @@ export interface ToolRun {
   // assistant's self-notes
   readonly hasSelfNoteGrant?: boolean;
 
+  // the self-note tools that only the grant gives this run, because its definition's list leaves
+  // them out: they write self-notes and nothing else
+  readonly selfNoteOnlyTools?: readonly string[];
+
   readonly stepRunID?: string;
 
   // the open task run, with the caps of its limits; a started task passes none

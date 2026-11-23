@@ -84,7 +84,7 @@ async function runFoldCall(
       subject: input.subject,
       topic: input.topic,
       order: input.order,
-      caller: buildWriteCaller(context),
+      caller: buildWriteCaller(context, 'memory.fold'),
     });
 
     return { status: 'ok', result: { status: 'applied', topic, order: input.order } };

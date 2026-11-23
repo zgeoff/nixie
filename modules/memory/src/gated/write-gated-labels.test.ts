@@ -452,7 +452,7 @@ test('it makes a label-only edit a proposal with the reason ask_rule under an as
   expect(outcome).toMatchObject({ status: 'proposed', reason: 'ask_rule' });
 });
 
-test('it edits the labels of a self-note for a granted task', async () => {
+test('it holds a granted task self-note label edit for review, and its approval stores the labels', async () => {
   const memory = await startTestMemory();
 
   const note = await memory.store.remember({
@@ -464,17 +464,62 @@ test('it edits the labels of a self-note for a granted task', async () => {
 
   const outcome = await memory.store.writes.editLabels({
     target: note,
-    labels: { gist: 'tidy dated lists', topic: 'self', triggers: [] },
+    labels: { gist: 'tidy lists', topic: 'habits', triggers: [] },
     caller: buildMockWriteCaller({
       origin: 'task',
       thread: 'task-1',
       taskID: 'task-1',
       hasSelfNoteGrant: true,
     }),
-    verdict: buildAllowVerdict([{ arg: 'subject', op: 'eq', value: 'self' }]),
   });
 
-  expect(outcome).toMatchObject({ status: 'applied', itemID: note.itemID });
+  const [pending] = await memory.store.proposals.listPending();
+
+  invariant(pending);
+
+  await memory.store.proposals.approve({
+    proposalID: pending.proposalID,
+    actionHash: pending.actionHash,
+    identityID: 'identity-1',
+  });
+
+  const recalled = await memory.store.recall({ itemIDs: [note.itemID], includeHistory: true });
+
+  expect(outcome).toMatchObject({ status: 'proposed', reason: 'labels' });
+
+  expect(recalled.items).toMatchObject([
+    {
+      topic: 'habits',
+      labelHistory: [
+        { revision: 1, topic: 'self' },
+        { revision: 2, topic: 'habits' },
+      ],
+    },
+  ]);
+});
+
+test('it refuses a label edit of an owner item through a tool that only the grant gives a task', async () => {
+  const memory = await startTestMemory();
+
+  const item = await memory.store.remember({
+    text: 'Lives on Elm Street',
+    labels: { gist: 'home', topic: 'home', triggers: [] },
+    provenance: buildMockProvenance(),
+  });
+
+  const write = memory.store.writes.editLabels({
+    target: item,
+    labels: { gist: 'home', topic: 'address', triggers: [] },
+    caller: buildMockWriteCaller({
+      origin: 'task',
+      thread: 'task-1',
+      taskID: 'task-1',
+      hasSelfNoteGrant: true,
+      isSelfNoteOnly: true,
+    }),
+  });
+
+  expect(write).rejects.toThrow(SelfNoteError);
 });
 
 test('it refuses a task with no grant a self-note label edit', async () => {

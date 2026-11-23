@@ -18,6 +18,7 @@ test('it applies overrides on top of the defaults', () => {
   ).toStrictEqual({
     origin: 'task',
     hasSelfNoteGrant: false,
+    isSelfNoteOnly: false,
     thread: 'task-3',
     logThread: 'task-3',
     taskID: 'conversation',

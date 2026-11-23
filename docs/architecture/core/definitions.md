@@ -281,9 +281,10 @@ conversation tool, which [changes from the conversation](#changes-from-the-conve
 and a memory tool unless its `memory` is `read`. A version whose `memory` is `read` may list any
 memory tool and gets the read-only ones without listing them. A version whose `memory` is
 `self_notes` gets the read-only tools and the 4 self-note write tools without listing them, and
-keeps each memory tool it lists, as `read` does. The seed and `task.define` refuse `self_notes` with
-a sentence that says it is not available yet. A stored version that holds it parses and reads back,
-and the task run of that version holds the self-note grant that
+keeps each memory tool it lists, as `read` does. A self-note write tool that the version leaves out
+of its list writes self-notes alone. The seed and `task.define` refuse `self_notes` with a sentence
+that says it is not available yet. A stored version that holds it parses and reads back, and the
+task run of that version holds the self-note grant that
 [started tasks](./started-tasks.md#start-options) describes.
 
 One fault refuses the whole seed, and the definitions of the last accepted seed stay in force. The

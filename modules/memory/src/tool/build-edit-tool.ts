@@ -159,7 +159,7 @@ export function buildEditTool(memory: ModelWriteStore & ItemIDStore): ToolDefini
             return memory.writes.editLabels({
               target: { itemID, version: input.version },
               labels,
-              caller: buildWriteCaller(context),
+              caller: buildWriteCaller(context, 'memory.edit'),
               ...(context.verdict === undefined ? {} : { verdict: context.verdict }),
             });
           }
@@ -184,7 +184,7 @@ function buildEditRequest(
   return {
     text: input.text ?? '',
     target: { itemID, version: input.version },
-    caller: buildWriteCaller(context),
+    caller: buildWriteCaller(context, 'memory.edit'),
     ...(context.verdict === undefined ? {} : { verdict: context.verdict }),
     ...(input.quote === undefined ? {} : { quote: input.quote }),
     ...(input.eventID === undefined ? {} : { eventID: Number(input.eventID.replace(/^#/u, '')) }),

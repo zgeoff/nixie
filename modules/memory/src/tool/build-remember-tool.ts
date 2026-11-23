@@ -168,7 +168,7 @@ function buildRememberRequest(
 ): GatedRememberRequest {
   return {
     text: input.text,
-    caller: buildWriteCaller(context),
+    caller: buildWriteCaller(context, 'memory.remember'),
     ...(context.verdict === undefined ? {} : { verdict: context.verdict }),
     ...(until === undefined || until === null ? {} : { until }),
     ...(input.quote === undefined ? {} : { quote: input.quote }),

@@ -1,11 +1,17 @@
 import { faker } from '@faker-js/faker';
 import type { WriteCaller } from '../gate/gate-context';
 
-type MockWriteCallerFields = Partial<Omit<WriteCaller, 'origin' | 'hasSelfNoteGrant'>>;
+type MockWriteCallerFields = Partial<
+  Omit<WriteCaller, 'origin' | 'hasSelfNoteGrant' | 'isSelfNoteOnly'>
+>;
 
 export type MockWriteCallerOverrides =
   | (MockWriteCallerFields & { readonly origin?: 'conversation' })
-  | (MockWriteCallerFields & { readonly origin: 'task'; readonly hasSelfNoteGrant?: boolean });
+  | (MockWriteCallerFields & {
+      readonly origin: 'task';
+      readonly hasSelfNoteGrant?: boolean;
+      readonly isSelfNoteOnly?: boolean;
+    });
 
 export function buildMockWriteCaller(overrides: MockWriteCallerOverrides = {}): WriteCaller {
   const thread = overrides.thread ?? 'conversation';
@@ -20,6 +26,11 @@ export function buildMockWriteCaller(overrides: MockWriteCallerOverrides = {}): 
   };
 
   return overrides.origin === 'task'
-    ? { ...fields, origin: 'task', hasSelfNoteGrant: overrides.hasSelfNoteGrant ?? false }
+    ? {
+        ...fields,
+        origin: 'task',
+        hasSelfNoteGrant: overrides.hasSelfNoteGrant ?? false,
+        isSelfNoteOnly: overrides.isSelfNoteOnly ?? false,
+      }
     : { ...fields, origin: 'conversation' };
 }

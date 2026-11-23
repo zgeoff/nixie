@@ -94,6 +94,10 @@ export interface TaskWriteCaller extends WriteCallerFields {
 
   // whether the task's definition grants it the assistant's self-note writes
   readonly hasSelfNoteGrant: boolean;
+
+  // whether the tool of this write reaches the task only through the grant, so it writes self-notes
+  // alone
+  readonly isSelfNoteOnly: boolean;
 }
 
 export type WriteCaller = ConversationWriteCaller | TaskWriteCaller;

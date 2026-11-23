@@ -77,6 +77,10 @@ export function planTaskStart(
 ): TaskStartPlan {
   const starterTools = starter.tools;
 
+  if (choice.memory === 'self_notes') {
+    return refuse({ reason: 'self_notes_start' });
+  }
+
   const model =
     choice.model === undefined
       ? null
@@ -100,10 +104,6 @@ export function planTaskStart(
 
   if (persona === 'default' && starter.persona === 'none') {
     return refuse({ reason: 'wider_persona' });
-  }
-
-  if (memory === 'self_notes') {
-    return refuse({ reason: 'self_notes_start' });
   }
 
   // The starter rule that asks before this combination needs a decision point that can ask, so

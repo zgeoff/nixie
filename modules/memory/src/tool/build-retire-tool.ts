@@ -82,7 +82,7 @@ function buildRetireRequest(
 ): GatedRetireRequest {
   return {
     target: { itemID, version: input.version },
-    caller: buildWriteCaller(context),
+    caller: buildWriteCaller(context, 'memory.retire'),
     ...(context.verdict === undefined ? {} : { verdict: context.verdict }),
     ...(input.intentQuote === undefined ? {} : { intentQuote: input.intentQuote }),
   };

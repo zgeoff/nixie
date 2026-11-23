@@ -147,7 +147,7 @@ async function resolveRetopicFacts(
 
   return {
     status: 'ok',
-    sources: pickWriteSources(false, buildWriteCaller(context)),
+    sources: pickWriteSources(false, buildWriteCaller(context, 'memory.retopic')),
     args: {
       ...rawInput,
       subject: subjects.length === 1 ? input.data.to.subject : subjects,
@@ -233,7 +233,7 @@ async function runRetopic(
     const plan = await memory.writes.retopic({
       source,
       to: input.to,
-      caller: buildWriteCaller(context),
+      caller: buildWriteCaller(context, 'memory.retopic'),
       ...(context.verdict === undefined ? {} : { verdict: context.verdict }),
       ...(shown === undefined ? {} : { shown }),
     });

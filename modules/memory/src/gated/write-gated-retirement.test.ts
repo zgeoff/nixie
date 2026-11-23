@@ -9,6 +9,7 @@ import { buildMockWriteCaller } from '../test-utils/build-mock-write-caller';
 import { readVersionChecks } from '../test-utils/read-version-checks';
 import { startTestMemory } from '../test-utils/start-test-memory';
 import { writeOwnerMessageRecord } from '../test-utils/write-owner-message-record';
+import { SelfNoteError } from '../utils/error/self-note-error';
 import { readVersion } from '../version/read-version';
 
 test('it retires an item you asked to retire, with your intent quote and the checks', async () => {
@@ -632,7 +633,7 @@ test.each([
   },
 );
 
-test('it retires a self-note for a granted task with no intent quote', async () => {
+test('it retires a self-note for a granted task with no intent quote, and stores the retirement', async () => {
   const memory = await startTestMemory();
 
   const note = await memory.store.remember({
@@ -651,5 +652,41 @@ test('it retires a self-note for a granted task with no intent quote', async () 
     }),
   });
 
-  expect(outcome).toMatchObject({ status: 'applied', itemID: note.itemID });
+  invariant(outcome.status === 'applied');
+
+  const retired = await readVersion(memory.log, memory.writer.db, outcome);
+  const recalled = await memory.store.recall({ itemIDs: [note.itemID], includeRetired: true });
+
+  expect(outcome).toStrictEqual({ status: 'applied', itemID: note.itemID, version: 2 });
+
+  expect(retired.text).toStrictEqual({
+    text: 'I like tidy lists',
+    evidenceQuote: null,
+    intentQuote: null,
+  });
+
+  expect(retired.row.intent_evidence).toBeNull();
+  expect(recalled.items).toMatchObject([{ state: 'retired', subject: 'self' }]);
+});
+
+test('it refuses a retirement of an owner item through a tool that only the grant gives a task', async () => {
+  const memory = await startTestMemory();
+
+  const item = await memory.store.remember({
+    text: 'Lives on Elm Street',
+    provenance: buildMockProvenance(),
+  });
+
+  const write = memory.store.writes.retire({
+    target: item,
+    caller: buildMockWriteCaller({
+      origin: 'task',
+      thread: 'task-1',
+      taskID: 'task-1',
+      hasSelfNoteGrant: true,
+      isSelfNoteOnly: true,
+    }),
+  });
+
+  expect(write).rejects.toThrow(SelfNoteError);
 });

@@ -626,3 +626,13 @@ test('it refuses self notes for a task with no persona', () => {
 
   expect(plan).toStrictEqual({ status: 'refused', refusal: { reason: 'self_notes_start' } });
 });
+
+test('it refuses self notes with the instruction to define the task, whatever persona a task with no persona asks for', () => {
+  const plan = planTaskStart(
+    { memory: 'self_notes', persona: 'default' },
+    { tools: ['tasks.list', 'task.message'], memory: 'none', persona: 'none', log: 'own' },
+    buildMockTaskStartBounds(),
+  );
+
+  expect(plan).toStrictEqual({ status: 'refused', refusal: { reason: 'self_notes_start' } });
+});

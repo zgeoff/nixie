@@ -36,6 +36,10 @@ export interface StartedRun {
   // started task's options never grant it
   readonly hasSelfNoteGrant: boolean;
 
+  // the self-note tools that the grant adds because the version's list leaves them out: they write
+  // self-notes and nothing else
+  readonly selfNoteOnlyTools: readonly string[];
+
   // set for a definition's task under a fresh context: the session reads the log after it
   readonly sinceSequence: number | null;
   readonly options: TaskRunOptions;
@@ -92,13 +96,19 @@ async function readDefinitionRun(runner: RunReader, taskID: string): Promise<Sta
     },
     definitionHash: found.definitionHash,
     hasSelfNoteGrant: version.memory === 'self_notes',
+    selfNoteOnlyTools: pickSelfNoteOnlyTools(version),
     sinceSequence: pickSinceSequence(version.context, found),
   });
 }
 
 type RunParts = Pick<
   StartedRun,
-  'startedBy' | 'options' | 'definitionHash' | 'hasSelfNoteGrant' | 'sinceSequence'
+  | 'startedBy'
+  | 'options'
+  | 'definitionHash'
+  | 'hasSelfNoteGrant'
+  | 'selfNoteOnlyTools'
+  | 'sinceSequence'
 >;
 
 function buildRunParts(runner: RunReader, parts: RunParts): StartedRun {
@@ -135,6 +145,14 @@ function pickRunTools(
     .exhaustive();
 }
 
+// A tool the version's list names writes as it does at memory read, so only the tools the grant
+// adds are held to self-notes.
+function pickSelfNoteOnlyTools(version: Pick<DefinitionVersion, 'memory' | 'tools'>): string[] {
+  return version.memory === 'self_notes'
+    ? selfNoteToolNames.filter((name) => !version.tools.includes(name))
+    : [];
+}
+
 // A fresh context opens a session at each piece of work, and a continuing one keeps the last.
 function pickSinceSequence(
   context: 'fresh' | 'continuing',
@@ -161,6 +179,7 @@ function buildStartedRun(runner: RunReader, setup: StartedTaskSetup): StartedRun
     options,
     definitionHash: null,
     hasSelfNoteGrant: false,
+    selfNoteOnlyTools: [],
     sinceSequence: null,
   });
 }
