@@ -40,11 +40,11 @@ encoding to end.
 
 The `notebook` section of the deployment config holds `note_chars`, the most characters of one body
 (50,000), `max_notes`, the active notes, where a write past it is `NOTEBOOK_FULL`, and
-`check_reason_repeats`, the number of links that must repeat a reason before the check reports it
-(3). The default `notebook.max_notes` sits below the 1,000 notes of the first design, because a
-start with that many full notes encoded for longer and held more memory than the notebook's budget
-allows. The measurement and the budget sit in a comment beside the default in the code. A deployment
-with more cores or shorter notes can raise the limit.
+`check_reason_repeats` (3): the check reports a reason only when more links than this repeat it. The
+default `notebook.max_notes` sits below the 1,000 notes of the first design, because a start with
+that many full notes encoded for longer and held more memory than the notebook's budget allows. The
+measurement and the budget sit in a comment beside the default in the code. A deployment with more
+cores or shorter notes can raise the limit.
 
 ## The tools
 
@@ -88,9 +88,9 @@ conversation holds all 10, and a task holds one only when its tool list names it
   the run's tool list holds `log.read`, and an item's gist only when the list holds `memory.recall`.
   Otherwise the node holds the ID alone. The web client is the user's own view, so
   `notebook.readNote` shows every target's title or gist.
-- A walk follows links both ways and visits each node once. It returns references and labels, such
-  as a title or a gist, and never the body of a note or the full text of an item, a moment or a
-  record. A target that was forgotten is listed as gone and the walk goes no further from it.
+- A walk follows links both ways and visits each node once. It returns only references and labels,
+  such as a title or a gist, with no note body and no full text of an item, a moment or a record. A
+  target that was forgotten is listed as gone and the walk goes no further from it.
 - The check is built when it is read. An orphan is an active note that holds no link and that no
   active note links to, and a note named only in another note's text counts as one. Two reasons are
   the same when they match after trimming, collapsing runs of spaces and ignoring case, and the
