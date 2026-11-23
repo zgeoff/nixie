@@ -278,6 +278,39 @@ async function setupTest() {
       });
     },
 
+    // delivers the events, then breaks as a connection reset does
+    buildBreakingStream: (events: readonly string[]): ReadableStream<Uint8Array> => {
+      const encoder = new TextEncoder();
+
+      const pending = [...events];
+
+      return new ReadableStream<Uint8Array>({
+        pull: (controller) => {
+          const event = pending.shift();
+
+          if (event === undefined) {
+            controller.error(new Error('connection reset'));
+          } else {
+            controller.enqueue(encoder.encode(event));
+          }
+        },
+      });
+    },
+
+    // sends the Messages request of the stream tests, which sets a 1,000-token output bound
+    askStream: (handler: (request: Request) => Promise<Response>) =>
+      handler(
+        new Request('http://proxy.test/preview/v1/messages', {
+          method: 'POST',
+          body: JSON.stringify({
+            model: 'model-small',
+            messages: [],
+            stream: true,
+            max_tokens: 1000,
+          }),
+        }),
+      ),
+
     // leaves the reader open, so the caller decides when the reader stops
     readUntil: async (body: ReadableStream<Uint8Array> | null, marker: string) => {
       invariant(body !== null, 'a stream reply has a body');
@@ -950,11 +983,7 @@ test('it counts the estimate, so the next request passes, when a streamed reply 
   const sendUpstream = mock<(url: string, init: RequestInit) => Promise<Response>>(() =>
     Promise.resolve(
       new Response(
-        new ReadableStream({
-          pull: (controller) => {
-            controller.error(new Error('connection reset'));
-          },
-        }),
+        ctx.buildBreakingStream(['data: {"type":"content_block_delta","delta":{}}\n\n']),
         { headers: { 'content-type': 'text/event-stream' } },
       ),
     ),
@@ -2507,27 +2536,16 @@ test.each([
 test('it counts the estimate of a Messages stream that breaks after its message start, per sandbox, and admits the next request', async () => {
   const ctx = await setupTest();
 
-  const encoder = new TextEncoder();
+  const messageStart = JSON.stringify({
+    type: 'message_start',
+    message: { usage: { input_tokens: 100, output_tokens: 1 } },
+  });
 
   const sendUpstream = mock<(url: string, init: RequestInit) => Promise<Response>>(() =>
     Promise.resolve(
-      new Response(
-        new ReadableStream<Uint8Array>({
-          pull: (controller) => {
-            controller.enqueue(
-              encoder.encode(
-                `data: ${JSON.stringify({
-                  type: 'message_start',
-                  message: { usage: { input_tokens: 100, output_tokens: 1 } },
-                })}\n\n`,
-              ),
-            );
-
-            controller.error(new Error('connection reset'));
-          },
-        }),
-        { headers: { 'content-type': 'text/event-stream' } },
-      ),
+      new Response(ctx.buildBreakingStream([`data: ${messageStart}\n\n`]), {
+        headers: { 'content-type': 'text/event-stream' },
+      }),
     ),
   );
 
@@ -2639,11 +2657,7 @@ test('it counts the estimate from the route maxOutputTokens for a Responses stre
   const sendUpstream = mock<(url: string, init: RequestInit) => Promise<Response>>(() =>
     Promise.resolve(
       new Response(
-        new ReadableStream({
-          pull: (controller) => {
-            controller.error(new Error('connection reset'));
-          },
-        }),
+        ctx.buildBreakingStream(['data: {"type":"response.created","response":{}}\n\n']),
         { headers: { 'content-type': 'text/event-stream' } },
       ),
     ),
@@ -2805,6 +2819,548 @@ test.each([
     expect.objectContaining({ route: 'preview', reason: 'cut' }),
     'warn',
   );
+});
+
+test.each([
+  {
+    title: 'an error event',
+    events: [{ type: 'error', error: { type: 'overloaded_error', message: 'Overloaded' } }],
+    tokens: 0,
+    errorType: 'overloaded_error',
+    errorMessage: 'Overloaded',
+  },
+  {
+    title: 'a ping and then an error event',
+    events: [
+      { type: 'ping' },
+      { type: 'error', error: { type: 'api_error', message: 'Internal server error' } },
+    ],
+    tokens: 0,
+    errorType: 'api_error',
+    errorMessage: 'Internal server error',
+  },
+  {
+    title: 'only a ping',
+    events: [{ type: 'ping' }],
+    tokens: 0,
+    errorType: null,
+    errorMessage: null,
+  },
+  { title: 'no event', events: [], tokens: 0, errorType: null, errorMessage: null },
+])('it counts nothing for a Messages stream that holds $title and ends', async (row) => {
+  const ctx = await setupTest();
+
+  const lines = row.events.map((event) => `data: ${JSON.stringify(event)}\n\n`);
+
+  const started = await ctx.startLimitsHandler(
+    { api: 'anthropic-messages', maxOutputTokens: null },
+    () =>
+      Promise.resolve(
+        new Response(ctx.buildEventStream(lines), {
+          headers: { 'content-type': 'text/event-stream' },
+        }),
+      ),
+  );
+
+  const response = await started.handler(
+    new Request('http://proxy.test/preview/v1/messages', {
+      method: 'POST',
+      body: JSON.stringify({ model: 'model-small', messages: [], stream: true, max_tokens: 1000 }),
+    }),
+  );
+
+  await response.text();
+
+  const counted = await started.store.read();
+
+  expect([counted.tokens, counted.dollars, counted.lost]).toStrictEqual([row.tokens, 0, false]);
+
+  expect(ctx.log).toHaveBeenCalledWith(
+    'count.skipped',
+    {
+      route: 'preview',
+      sandbox: null,
+      reason: 'no_usage',
+      status: 200,
+      errorType: row.errorType,
+      errorMessage: row.errorMessage,
+    },
+    'warn',
+  );
+
+  expect(ctx.log).not.toHaveBeenCalledWith('count.estimated', expect.anything(), 'warn');
+});
+
+test.each([
+  {
+    title: 'an event stream whose body is a JSON error',
+    headers: { 'content-type': 'text/event-stream' },
+    status: 400,
+  },
+  {
+    title: 'a JSON error body',
+    headers: { 'content-type': 'application/json' },
+    status: 400,
+  },
+])(
+  'it counts nothing and logs the error for $title that says the prompt is too long',
+  async (row) => {
+    const ctx = await setupTest();
+
+    const error = {
+      type: 'error',
+      error: {
+        type: 'invalid_request_error',
+        message: 'prompt is too long: 230000 tokens > 200000',
+      },
+    };
+
+    const started = await ctx.startLimitsHandler(
+      { api: 'anthropic-messages', maxOutputTokens: null },
+      () =>
+        Promise.resolve(
+          new Response(`${JSON.stringify(error)}\n`, { status: row.status, headers: row.headers }),
+        ),
+    );
+
+    const response = await started.handler(
+      new Request('http://proxy.test/preview/v1/messages', {
+        method: 'POST',
+        body: JSON.stringify({
+          model: 'model-small',
+          messages: [],
+          stream: true,
+          max_tokens: 1000,
+        }),
+      }),
+    );
+
+    await response.text();
+
+    const counted = await started.store.read();
+
+    expect([response.status, counted.tokens, counted.lost]).toStrictEqual([400, 0, false]);
+
+    expect(ctx.log).toHaveBeenCalledWith(
+      'upstream.refused',
+      expect.objectContaining({
+        status: 400,
+        errorType: 'invalid_request_error',
+        errorMessage: 'prompt is too long: 230000 tokens > 200000',
+      }),
+      'warn',
+    );
+  },
+);
+
+test('it counts the estimate for a Messages stream that breaks before any event', async () => {
+  const ctx = await setupTest();
+
+  const started = await ctx.startLimitsHandler(
+    { api: 'anthropic-messages', maxOutputTokens: null },
+    () =>
+      Promise.resolve(
+        new Response(ctx.buildBreakingStream([]), {
+          headers: { 'content-type': 'text/event-stream' },
+        }),
+      ),
+  );
+
+  const response = await ctx.askStream(started.handler);
+
+  await response.text().catch(() => null);
+
+  const counted = await started.store.read();
+
+  // 4,165 input tokens, the body's 69 bytes and the allowance, and 1,000 output tokens
+  expect([counted.tokens, counted.lost]).toStrictEqual([5165, false]);
+  expect(counted.dollars).toBeCloseTo(0.01333, 9);
+});
+
+test('it counts the estimate when its reader stops while a message start waits behind a ping', async () => {
+  const ctx = await setupTest();
+
+  const lines = [
+    { type: 'ping' },
+    { type: 'message_start', message: { usage: { input_tokens: 100, output_tokens: 1 } } },
+  ].map((event) => `data: ${JSON.stringify(event)}\n\n`);
+
+  const started = await ctx.startLimitsHandler(
+    { api: 'anthropic-messages', maxOutputTokens: null },
+    () =>
+      Promise.resolve(
+        new Response(ctx.buildEventStream(lines, true), {
+          headers: { 'content-type': 'text/event-stream' },
+        }),
+      ),
+  );
+
+  const response = await ctx.askStream(started.handler);
+  const reader = await ctx.readUntil(response.body, 'ping');
+
+  await reader.cancel();
+
+  const counted = await started.store.read();
+
+  expect([counted.tokens, counted.lost]).toStrictEqual([5165, false]);
+  expect(counted.dollars).toBeCloseTo(0.01333, 9);
+  expect(ctx.log).not.toHaveBeenCalledWith('count.skipped', expect.anything(), 'warn');
+});
+
+test('it counts the estimate for a message start that breaks halfway through its JSON', async () => {
+  const ctx = await setupTest();
+
+  const started = await ctx.startLimitsHandler(
+    { api: 'anthropic-messages', maxOutputTokens: null },
+    () =>
+      Promise.resolve(
+        new Response(
+          ctx.buildBreakingStream(['data: {"type":"message_start","message":{"usage":{"input_tok']),
+          { headers: { 'content-type': 'text/event-stream' } },
+        ),
+      ),
+  );
+
+  const response = await ctx.askStream(started.handler);
+
+  await response.text().catch(() => null);
+
+  const counted = await started.store.read();
+
+  expect([counted.tokens, counted.lost]).toStrictEqual([5165, false]);
+  expect(counted.dollars).toBeCloseTo(0.01333, 9);
+});
+
+test('it keeps the input usage of a message start that arrives split across 2 data lines', async () => {
+  const ctx = await setupTest();
+
+  const lines = [
+    'data: {"type":"message_start",\n',
+    'data: "message":{"usage":{"input_tokens":9000,"output_tokens":1}}}\n\n',
+  ];
+
+  const started = await ctx.startLimitsHandler(
+    { api: 'anthropic-messages', maxOutputTokens: null },
+    () =>
+      Promise.resolve(
+        new Response(ctx.buildBreakingStream(lines), {
+          headers: { 'content-type': 'text/event-stream' },
+        }),
+      ),
+  );
+
+  const response = await ctx.askStream(started.handler);
+
+  await response.text().catch(() => null);
+
+  const counted = await started.store.read();
+
+  // the 9,000 input tokens the start reported, above the 4,165 of the byte bound, at the highest
+  // input rate of 2, and the 1,000 output tokens of the bound at 5, per million
+  expect([counted.tokens, counted.lost]).toStrictEqual([10_000, false]);
+  expect(counted.dollars).toBeCloseTo(0.023, 9);
+});
+
+test('it counts the estimate for a stream that holds a message start and a delta but no message stop', async () => {
+  const ctx = await setupTest();
+
+  const lines = [
+    { type: 'message_start', message: { usage: { input_tokens: 9000, output_tokens: 1 } } },
+    { type: 'message_delta', usage: { output_tokens: 2 } },
+    { type: 'error', error: { type: 'overloaded_error', message: 'Overloaded' } },
+  ].map((event) => `data: ${JSON.stringify(event)}\n\n`);
+
+  const started = await ctx.startLimitsHandler(
+    { api: 'anthropic-messages', maxOutputTokens: null },
+    () =>
+      Promise.resolve(
+        new Response(ctx.buildEventStream(lines), {
+          headers: { 'content-type': 'text/event-stream' },
+        }),
+      ),
+  );
+
+  const response = await ctx.askStream(started.handler);
+
+  await response.text();
+
+  const counted = await started.store.read();
+
+  expect([counted.tokens, counted.lost]).toStrictEqual([10_000, false]);
+  expect(counted.dollars).toBeCloseTo(0.023, 9);
+});
+
+test('it counts nothing for an error-only stream that is still open when the gateway stops', async () => {
+  const ctx = await setupTest();
+
+  const lines = [{ type: 'error', error: { type: 'overloaded_error', message: 'Overloaded' } }].map(
+    (event) => `data: ${JSON.stringify(event)}\n\n`,
+  );
+
+  const started = await ctx.startLimitsHandler(
+    { api: 'anthropic-messages', maxOutputTokens: null },
+    () =>
+      Promise.resolve(
+        new Response(ctx.buildEventStream(lines, true), {
+          headers: { 'content-type': 'text/event-stream' },
+        }),
+      ),
+  );
+
+  const response = await ctx.askStream(started.handler);
+  const reader = await ctx.readUntil(response.body, 'overloaded_error');
+
+  await started.openReplies.countAtStop();
+
+  const counted = await started.store.read();
+
+  expect([counted.tokens, counted.dollars, counted.lost]).toStrictEqual([0, 0, false]);
+
+  await reader.cancel();
+});
+
+test('it counts nothing for a 204 reply with no body', async () => {
+  const ctx = await setupTest();
+
+  const started = await ctx.startLimitsHandler(
+    { api: 'anthropic-messages', maxOutputTokens: null },
+    () => Promise.resolve(new Response(null, { status: 204 })),
+  );
+
+  const response = await ctx.askStream(started.handler);
+  const counted = await started.store.read();
+
+  expect([response.status, counted.tokens, counted.dollars, counted.lost]).toStrictEqual([
+    204,
+    0,
+    0,
+    false,
+  ]);
+});
+
+test.each([
+  {
+    title: 'an event stream that sends an error and then resets',
+    body: 'data: {"type":"error","error":{"type":"api_error","message":"Failed"}}\n\n',
+    breaks: true,
+    errorType: null,
+    errorMessage: null,
+  },
+  {
+    title: 'a JSON body that holds an error and a complete usage block',
+    body: '{"type":"error","error":{"type":"api_error","message":"Failed"},"usage":{"input_tokens":10,"output_tokens":2}}',
+    breaks: false,
+    errorType: 'api_error',
+    errorMessage: 'Failed',
+  },
+  {
+    title: 'no body',
+    body: null,
+    breaks: false,
+    errorType: null,
+    errorMessage: null,
+  },
+  {
+    title: 'an event stream with a ping and then an error',
+    body: 'data: {"type":"ping"}\n\ndata: {"type":"error","error":{"type":"api_error","message":"Failed"}}\n\n',
+    breaks: false,
+    errorType: 'api_error',
+    errorMessage: 'Failed',
+  },
+])('it passes a 400 with $title through, counts nothing and logs the refusal', async (row) => {
+  const ctx = await setupTest();
+
+  const replyBody =
+    row.breaks && row.body !== null ? ctx.buildBreakingStream([row.body]) : row.body;
+
+  const started = await ctx.startLimitsHandler(
+    { api: 'anthropic-messages', maxOutputTokens: null },
+    () =>
+      Promise.resolve(
+        new Response(replyBody, {
+          status: 400,
+          headers: { 'content-type': 'text/event-stream' },
+        }),
+      ),
+  );
+
+  const response = await ctx.askStream(started.handler);
+
+  await response.text().catch(() => null);
+
+  const counted = await started.store.read();
+
+  expect([response.status, counted.tokens, counted.dollars, counted.lost]).toStrictEqual([
+    400,
+    0,
+    0,
+    false,
+  ]);
+
+  expect(ctx.log).toHaveBeenCalledWith(
+    'upstream.refused',
+    {
+      route: 'preview',
+      sandbox: null,
+      status: 400,
+      errorType: row.errorType,
+      errorMessage: row.errorMessage,
+    },
+    'warn',
+  );
+});
+
+test.each([
+  ['CR', '\r'],
+  ['CRLF', '\r\n'],
+  ['LF', '\n'],
+])('it counts the usage of a Messages stream whose lines end in %s', async (_name, ending) => {
+  const ctx = await setupTest();
+
+  const lines = [
+    { type: 'message_start', message: { usage: { input_tokens: 10, output_tokens: 1 } } },
+    { type: 'message_delta', usage: { output_tokens: 2 } },
+    { type: 'message_stop' },
+  ].map((event) => `data: ${JSON.stringify(event)}${ending}${ending}`);
+
+  const started = await ctx.startLimitsHandler(
+    { api: 'anthropic-messages', maxOutputTokens: null },
+    () =>
+      Promise.resolve(
+        new Response(ctx.buildEventStream(lines), {
+          headers: { 'content-type': 'text/event-stream' },
+        }),
+      ),
+  );
+
+  const response = await ctx.askStream(started.handler);
+
+  await response.text();
+
+  const counted = await started.store.read();
+
+  expect([counted.tokens, counted.lost]).toStrictEqual([12, false]);
+  expect(counted.dollars).toBeCloseTo(0.00002, 9);
+});
+
+test('it counts nothing and logs the refusal for a 400 JSON problem body that claims to be an event stream', async () => {
+  const ctx = await setupTest();
+
+  const problem = JSON.stringify(
+    { error: { type: 'invalid_request_error', message: 'prompt is too long' } },
+    null,
+    2,
+  );
+
+  const started = await ctx.startLimitsHandler(
+    { api: 'anthropic-messages', maxOutputTokens: null },
+    () =>
+      Promise.resolve(
+        new Response(problem, { status: 400, headers: { 'content-type': 'text/event-stream' } }),
+      ),
+  );
+
+  const response = await ctx.askStream(started.handler);
+
+  await response.text();
+
+  const counted = await started.store.read();
+
+  expect([response.status, counted.tokens, counted.dollars, counted.lost]).toStrictEqual([
+    400,
+    0,
+    0,
+    false,
+  ]);
+
+  expect(ctx.log).toHaveBeenCalledWith(
+    'upstream.refused',
+    {
+      route: 'preview',
+      sandbox: null,
+      status: 400,
+      errorType: 'invalid_request_error',
+      errorMessage: 'prompt is too long',
+    },
+    'warn',
+  );
+});
+
+test('it counts the estimate for a Messages stream that its reader stops after content began', async () => {
+  const ctx = await setupTest();
+
+  const lines = [{ type: 'content_block_delta', delta: { type: 'text_delta', text: 'hi' } }].map(
+    (event) => `data: ${JSON.stringify(event)}\n\n`,
+  );
+
+  const started = await ctx.startLimitsHandler(
+    { api: 'anthropic-messages', maxOutputTokens: null },
+    () =>
+      Promise.resolve(
+        new Response(ctx.buildEventStream(lines, true), {
+          headers: { 'content-type': 'text/event-stream' },
+        }),
+      ),
+  );
+
+  const response = await started.handler(
+    new Request('http://proxy.test/preview/v1/messages', {
+      method: 'POST',
+      body: JSON.stringify({ model: 'model-small', messages: [], stream: true, max_tokens: 1000 }),
+    }),
+  );
+
+  const reader = await ctx.readUntil(response.body, 'content_block_delta');
+
+  await reader.cancel();
+
+  const counted = await started.store.read();
+
+  // 4,165 input tokens, the body's 69 bytes and the allowance, and 1,000 output tokens
+  expect([counted.tokens, counted.lost]).toStrictEqual([5165, false]);
+  expect(counted.dollars).toBeCloseTo(0.01333, 9);
+
+  expect(ctx.log).toHaveBeenCalledWith(
+    'count.estimated',
+    expect.objectContaining({ route: 'preview', reason: 'cut', tokens: 5165 }),
+    'warn',
+  );
+});
+
+test('it counts the usage of a Messages stream that holds its message start and its last delta', async () => {
+  const ctx = await setupTest();
+
+  const lines = [
+    { type: 'message_start', message: { usage: { input_tokens: 10, output_tokens: 1 } } },
+    { type: 'content_block_delta', delta: { type: 'text_delta', text: 'hi' } },
+    { type: 'message_delta', usage: { output_tokens: 2 } },
+    { type: 'message_stop' },
+  ].map((event) => `data: ${JSON.stringify(event)}\n\n`);
+
+  const started = await ctx.startLimitsHandler(
+    { api: 'anthropic-messages', maxOutputTokens: null },
+    () =>
+      Promise.resolve(
+        new Response(ctx.buildEventStream(lines), {
+          headers: { 'content-type': 'text/event-stream' },
+        }),
+      ),
+  );
+
+  const response = await started.handler(
+    new Request('http://proxy.test/preview/v1/messages', {
+      method: 'POST',
+      body: JSON.stringify({ model: 'model-small', messages: [], stream: true, max_tokens: 1000 }),
+    }),
+  );
+
+  await response.text();
+
+  const counted = await started.store.read();
+
+  expect([counted.tokens, counted.lost]).toStrictEqual([12, false]);
+  expect(counted.dollars).toBeCloseTo(0.00002, 9);
+  expect(ctx.log).not.toHaveBeenCalledWith('count.skipped', expect.anything(), 'warn');
 });
 
 test.each([

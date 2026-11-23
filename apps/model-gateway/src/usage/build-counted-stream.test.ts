@@ -49,6 +49,7 @@ test('it passes every byte through and reports the usage of the message start an
       hasInput: true,
     },
     true,
+    { started: true, errorType: null, errorMessage: null },
   );
 });
 
@@ -87,6 +88,7 @@ test('it reports the usage seen so far when the reader stops early', async () =>
       hasInput: true,
     },
     false,
+    { started: true, errorType: null, errorMessage: null },
   );
 });
 
@@ -133,6 +135,7 @@ test('it reports the usage seen so far and fails the stream when the upstream br
       hasInput: true,
     },
     false,
+    { started: true, errorType: null, errorMessage: null },
   );
 });
 
@@ -152,6 +155,7 @@ test('it reports no usage for a stream with no usage event', async () => {
   expect(onEnd).toHaveBeenCalledExactlyOnceWith(
     { usage: null, isFinal: false, hasInput: false },
     true,
+    { started: false, errorType: null, errorMessage: null },
   );
 });
 
@@ -184,5 +188,28 @@ test('it does not call the usage final when the last delta carries no output cou
   expect(onEnd).toHaveBeenCalledExactlyOnceWith(
     { usage: expect.anything(), isFinal: false, hasInput: true },
     true,
+    { started: true, errorType: null, errorMessage: null },
+  );
+});
+
+test('it reports the type of an error event, and that no reply started', async () => {
+  const onEnd = mock(async () => {});
+
+  const upstream = new Response(
+    'event: error\ndata: {"type":"error","error":{"type":"overloaded_error","message":"Overloaded"}}\n\n',
+  ).body;
+
+  if (upstream === null) {
+    throw new Error('the test response has no body');
+  }
+
+  await new Response(
+    buildCountedStream(upstream, usageDialects['anthropic-messages'], onEnd),
+  ).text();
+
+  expect(onEnd).toHaveBeenCalledExactlyOnceWith(
+    { usage: null, isFinal: false, hasInput: false },
+    true,
+    { started: false, errorType: 'overloaded_error', errorMessage: 'Overloaded' },
   );
 });

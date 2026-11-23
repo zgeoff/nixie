@@ -11,7 +11,8 @@ import {
 import invariant from 'tiny-invariant';
 import type { PlanLogin } from '../login/create-plan-login';
 import type { CounterStore, ProxyLimits, ProxyRoute } from '../types';
-import { buildCountedStream } from '../usage/build-counted-stream';
+import type { StreamFacts } from '../usage/build-counted-stream';
+import { buildCountedStream, isReplyAbsent } from '../usage/build-counted-stream';
 import { buildReplyEstimate } from '../usage/build-reply-estimate';
 import type { CaptureSpool } from '../usage/create-capture-spool';
 import type { ReadUsage } from '../usage/usage-dialects';
@@ -196,6 +197,7 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
 
     // what the reply reported so far, which a stop that gives up counts
     let latest: ReadUsage = noUsageRead;
+    let latestFacts: StreamFacts = { started: false, errorType: null, errorMessage: null };
 
     const countReply = (
       read: ReadUsage,
@@ -215,15 +217,18 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
         reason,
       });
 
-    // a stream whose last event already arrived holds its whole usage when the gateway stops
+    // A stream whose last event already arrived holds its whole usage when the gateway stops, and one
+    // that carried only an error spent nothing.
     const countOnce = endpoint.spends
       ? openReplies.open(() =>
-          countReply(
-            latest,
-            latest.isFinal && usageDialects[target.route.api].isFinalEventLast,
-            true,
-            'shutdown',
-          ),
+          isReplyAbsent(latestFacts, false)
+            ? Promise.resolve()
+            : countReply(
+                latest,
+                latest.isFinal && usageDialects[target.route.api].isFinalEventLast,
+                true,
+                'shutdown',
+              ),
         )
       : (count: () => Promise<void>) => count();
 
@@ -264,30 +269,71 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
       headers: buildDownstreamHeaders(upstream.headers),
     };
 
-    // a successful message reply has spent, and an error reply has not
-    const spent = endpoint.spends && upstream.ok;
+    // An error reply has spent nothing, whatever its content type and its body say, and however its
+    // body ends. The caller gets its status.
+    if (!upstream.ok) {
+      const refusedText = upstream.body === null ? null : await upstream.text().catch(() => null);
+
+      deps.log(
+        'upstream.refused',
+        {
+          route: target.routeID,
+          sandbox: target.sandbox,
+          status: upstream.status,
+          ...getBodyError(refusedText ?? ''),
+        },
+        'warn',
+      );
+
+      await countOnce(() => countReply(noUsageRead, true, false, 'no_usage'));
+
+      return new Response(refusedText, init);
+    }
+
+    const spent = endpoint.spends;
     const dialect = usageDialects[target.route.api];
 
+    // a reply with no body has no event, so the model began no reply
     if (upstream.body === null) {
-      await countOnce(() => countReply(noUsageRead, true, spent, 'no_usage'));
+      await countOnce(() => countReply(noUsageRead, true, false, 'no_usage'));
 
       return new Response(null, init);
     }
 
-    // a stream that broke or was cancelled before its first usage event may still have spent
+    // A stream that broke or was cancelled before its end may have begun a reply in events the
+    // gateway did not read, so it may have spent. One whose body ended with no reply begun, or that
+    // carried only an error, spent nothing.
     if (isEventStreamReply(upstream, parsed?.data ?? null)) {
       return new Response(
         buildCountedStream(
           upstream.body,
           dialect,
-          (read, complete) => {
+          (read, complete, facts) => {
             const whole = read.isFinal && (complete || dialect.isFinalEventLast);
             const reason = complete ? 'no_usage' : 'cut';
 
+            if (isReplyAbsent(facts, complete)) {
+              deps.log(
+                'count.skipped',
+                {
+                  route: target.routeID,
+                  sandbox: target.sandbox,
+                  reason,
+                  status: upstream.status,
+                  errorType: facts.errorType,
+                  errorMessage: facts.errorMessage,
+                },
+                'warn',
+              );
+
+              return countOnce(() => Promise.resolve());
+            }
+
             return countOnce(() => countReply(read, whole, spent || !whole, reason));
           },
-          (read) => {
+          (read, facts) => {
             latest = read;
+            latestFacts = facts;
           },
         ),
         init,
@@ -475,6 +521,35 @@ function buildDownstreamHeaders(received: Headers): Headers {
   return headers;
 }
 
+// the type and the message, cut to 200 characters, of the error an upstream error body holds
+function getBodyError(text: string): { errorType: string | null; errorMessage: string | null } {
+  const parsed = findBodyRecord(text);
+  const error = isRecord(parsed) ? parsed['error'] : null;
+  const type = isRecord(error) ? error['type'] : null;
+  const message = isRecord(error) ? error['message'] : null;
+
+  return {
+    errorType: typeof type === 'string' ? type : null,
+    errorMessage: typeof message === 'string' ? message.slice(0, 200) : null,
+  };
+}
+
+// the JSON object of a reply body, or of the first event that holds an error in a body sent as events
+function findBodyRecord(text: string): unknown {
+  const whole = parseJSONOrNull(text);
+
+  if (isRecord(whole)) {
+    return whole;
+  }
+
+  const events = text
+    .split(/\r\n|\r|\n/u)
+    .filter((line) => line.startsWith('data:'))
+    .map((line) => parseJSONOrNull(line.slice('data:'.length).trim()));
+
+  return events.find((event) => isRecord(event) && isRecord(event['error'])) ?? null;
+}
+
 // ChatGPT's Codex backend sends its stream with no content type
 function isEventStreamReply(upstream: Response, body: object | null): boolean {
   const type = upstream.headers.get('content-type');
@@ -483,7 +558,7 @@ function isEventStreamReply(upstream: Response, body: object | null): boolean {
     return type.startsWith('text/event-stream');
   }
 
-  return upstream.ok && body !== null && 'stream' in body && body.stream === true;
+  return body !== null && 'stream' in body && body.stream === true;
 }
 
 function findBodyUsage(text: string): unknown {
