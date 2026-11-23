@@ -7,9 +7,9 @@
 
 nixie reads, searches and labels your Gmail, sends mail, and reads and changes your calendar and the
 Drive files you give it, through one Google connection. Every read asks Google live, inside the
-model's turn: nixie syncs nothing, and the only copy of your mail, events or files it keeps is the
-text a call returned, in that call's own records. A change or a send runs as an
-[action](../../architecture/core/actions.md), and the
+model's turn: nixie syncs nothing. The only copies of your mail, events or files it keeps are in a
+call's own records: the text the call returned, and the card fields its `prepare` read. A change or
+a send runs as an [action](../../architecture/core/actions.md), and the
 [decision point](../../architecture/policy/decision-point.md) decides it before every attempt from
 the effects the tool declares and the destinations nixie reads from Google. When an attempt's
 outcome is unknown, a read-only check at Google settles it, and nixie never repeats a send blind.

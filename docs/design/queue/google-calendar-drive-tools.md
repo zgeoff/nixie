@@ -7,8 +7,9 @@
 
 nixie reads and changes your calendar, and reads and writes the Drive files you give it. nixie asks
 Google live for each read. Each change runs as an action under the decision point, and an event
-change that emails guests is a send with its own tool. When an attempt's outcome is unknown, nixie
-checks for a private marker that the change wrote on the event or the file.
+change that emails guests is a send with its own tool. When an attempt's outcome is unknown, a
+read-only check settles it: for a create or a change, it looks for a private marker that the change
+wrote on the event or the file, and for a cancel or a response, it reads the event's status.
 
 Read this page to build the [Calendar and Drive](https://linear.app/zgeoff/issue/GEO-1826) work
 item, after the Gmail work item, whose shared attachment reader and `prepare` card fields it reuses.
@@ -180,7 +181,8 @@ connections.checkPicked({ connection: 'k3x9m2p7qa', files: ['1Bx9QvR2…', '1Zq7
 ## Constraints
 
 - A calendar tool without guests calls Google with `sendUpdates: 'none'`, and a with-guests tool
-  with `'all'`, so a `write` tool never makes Google email anyone.
+  with `'all'`, so a `write` tool never makes Google email anyone. `calendar.respond` is a `send`
+  and calls Google with `'all'`, so the organizer gets your answer.
 - A tool without guests has no guest argument. A with-guests tool refuses with `no_guests` when the
   event has no guest before the change and none after it.
 - A change or cancel tool without guests reads the event before the decision point and again in its
