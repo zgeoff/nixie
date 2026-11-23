@@ -35,6 +35,18 @@ test('it rejects with the expression when the page never makes it true', async (
   expect(waited).rejects.toThrow("document.title === 'kettle boiled'");
 });
 
+test('it names the text the page showed when it never makes the expression true', async () => {
+  const ctx = await setupTest();
+
+  await ctx.view.evaluate("document.body.innerText = 'the kettle is cold'");
+
+  const waited = waitForPage(ctx.view, "document.title === 'kettle boiled'", 200);
+
+  await Promise.allSettled([waited]);
+
+  expect(waited).rejects.toThrow('The page showed: the kettle is cold');
+});
+
 test('it gives up after 5 s when the caller passes no timeout', async () => {
   const ctx = await setupTest();
 
