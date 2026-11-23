@@ -105,7 +105,8 @@ type PlaceKey =
 - A `site` or `mail_domain` key with `subdomains: true` never names a public suffix. The matcher
   reads the list through `tldts` with `allowPrivateDomains: true`, and every writer of an entry
   refuses such a key. An exact key on a public suffix, such as `github.io` alone, stays allowed.
-  `tldts` goes in the root catalog at an exact version at least two weeks old, such as 7.4.19.
+  `tldts` goes in the root catalog at an exact version. It takes `tldts-core` through a `^` range,
+  which the lockfile pins and Bun's minimum release age holds back like any other package.
 
 `parsePlacePattern('@shop.example')` reads a place key from what you or a rule write: a domain gives
 a `site` key with `subdomains: true`, `@domain` gives a `mail_domain` key, and `=example.org` gives
@@ -221,8 +222,10 @@ type DecisionDetail = { place: { placeID: string; shortID: string } | null }; //
 - `search` with `sites`, `computer.browser_download` and a device page's fetches declare their URL's
   host too, in their own work items.
 - `computer.screen_click` and `computer.screen_type` declare the host of the browser tab in front
-  when the browser window has focus. With any other window in front they declare no destination, so
-  no place allows the call and the rules decide it, as today.
+  when the browser window has focus. With any other window in front they declare no destination, and
+  the call asks: stage 7 lets no place and no allow rule pass a screen act call with no destination.
+- `computer.screenshot` and `computer.screen_scroll` declare no destination, as the
+  [open question](#open-questions) says.
 - `computer.browser_fill` declares `send`, with the tab's host.
 - `computer.browser_click` declares `send` with the tab's host, unless its element is a plain link.
   On a plain link it declares `fetch`, with the tab's host and the link's host.
@@ -392,6 +395,13 @@ and when a call last used it. You add, change and remove entries there. The host
 - How the guest reads the clicked element: a new read mode, or a field on the snapshot read.
 - How the Always allow rules that pin only a host are left: they keep working, and the builder may
   offer a one-time conversion to places on the page.
+
+## Open questions
+
+- **Do the screen read tools respect a blocked site?** The owner settles it in
+  [GEO-2828](https://linear.app/zgeoff/issue/GEO-2828). Until then, `computer.screenshot` and
+  `computer.screen_scroll` declare no destination, and a `blocked` site on screen stays readable
+  through them.
 
 ## Out of scope
 
