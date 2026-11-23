@@ -61,8 +61,8 @@ design once the owner agrees it, and the calendar poll moves to an item of its o
   matches, until the rule expires.
 - **Wake:** one `trigger.mail_woke` record in a task's inbox, which shows one or more mails.
 - **Window:** the time after a rule's wake during which its later matches wait, to arrive together.
-- **Throttle:** the time after any wake of a task from one mailbox during which that task's other
-  rules on that mailbox wait too, so several rules can't wake one task in quick turns.
+- **Throttle:** the time after any wake of a task from one mailbox during which every rule of that
+  task on that mailbox waits, so several rules can't wake one task in quick turns.
 
 ## Decisions
 
