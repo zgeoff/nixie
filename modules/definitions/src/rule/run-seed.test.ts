@@ -2325,6 +2325,36 @@ test('it reads the conversation log of a definition file that sets it', async ()
   expect(version?.log).toBe('conversation');
 });
 
+test('it stores the self-note grant of a definition file that sets it', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 4\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await mkdir(join(ctx.root, 'tasks', 'rain-gauge'), { recursive: true });
+
+  await writeFile(
+    join(ctx.root, 'tasks', 'rain-gauge', 'task.yaml'),
+    'name: Check the rain gauge\nbrief: Read the gauge.\nmemory: self_notes\n',
+  );
+
+  await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
+
+  const inForce = await readDefinitionsInForce(ctx.writer.db);
+
+  const hash = inForce?.tasks[0]?.hash;
+
+  invariant(hash !== undefined);
+
+  const version = await readDefinitionVersion(ctx.writer.db, hash);
+
+  expect(version?.memory).toBe('self_notes');
+});
+
 test('it fills a version with the file starter defaults when the file omits them', async () => {
   const ctx = await setupTest();
 

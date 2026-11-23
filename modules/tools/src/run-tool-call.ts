@@ -302,14 +302,20 @@ function withPreparedAmount(
     : { ...args, [name]: prepared.amount };
 }
 
-// A prepared call's effects stand in for the declared ones in the proposal the call may write.
+// A prepared call's effects join the declared ones in the proposal the call may write.
 function pickCallDeclaration(
   registered: RegisteredTool | null,
   effects: readonly Effect[] | undefined,
 ): EffectDeclaration | null {
   const declaration = registered?.definition.declaration ?? null;
 
-  return declaration === null || effects === undefined ? declaration : { ...declaration, effects };
+  return declaration === null || effects === undefined
+    ? declaration
+    : { ...declaration, effects: joinEffects(declaration.effects, effects) };
+}
+
+function joinEffects(declared: readonly Effect[], added: readonly Effect[]): readonly Effect[] {
+  return [...new Set([...declared, ...added])];
 }
 
 function renderCallCapRefusal(run: ToolRun, tool: string): string {
@@ -455,7 +461,10 @@ async function runQueued(allowed: AllowedCall): Promise<Settled> {
       expectWindow: allowed.prepared?.expectWindow,
     }),
     deadlineAt: allowed.deadlineAt,
-    effects: allowed.prepared?.effects ?? allowed.registered.definition.declaration.effects,
+    effects: joinEffects(
+      allowed.registered.definition.declaration.effects,
+      allowed.prepared?.effects ?? [],
+    ),
     destinations: allowed.destinations,
     content: allowed.registered.definition.declaration.content,
   });

@@ -133,13 +133,13 @@ export function buildTaskDefineTool(options: ChatToolOptions): ToolDefinition {
 }
 
 // A define that sets `memory` to `self_notes` hands the task the self-note write tools, so the call
-// also declares `policy_widen`: stage 4 of the decision point then asks before it applies, whatever
-// rule or request would have allowed a plain define.
+// adds `policy_widen` to the tool's effects: stage 4 then asks before it applies, and a deny rule on
+// any effect of the tool still denies at stage 3.
 function prepareDefine(input: JSONObject) {
   const parsed = taskDefineInputSchema.safeParse(input);
 
   return parsed.success && parsed.data.memory === 'self_notes'
-    ? { destinations: [], effects: ['schedule', 'policy_widen'] as const }
+    ? { destinations: [], effects: ['policy_widen'] as const }
     : { destinations: [] };
 }
 

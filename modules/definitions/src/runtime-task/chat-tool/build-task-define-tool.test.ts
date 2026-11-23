@@ -213,7 +213,7 @@ test('it declares policy_widen for a call that sets self notes, so the call asks
   );
 
   expect(prepared).toStrictEqual([
-    { destinations: [], effects: ['schedule', 'policy_widen'] },
+    { destinations: [], effects: ['policy_widen'] },
     { destinations: [] },
     { destinations: [] },
   ]);

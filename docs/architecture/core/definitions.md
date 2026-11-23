@@ -654,9 +654,10 @@ No fixed rule names `task.define` or `task.undefine`, so the decision point trea
 tool of the `schedule` effect with no destination. The user's own request allows a call at the
 consent stage, stage 8 of [the decision point's stages](../policy/decision-point.md#the-stages), and
 any other call asks at stage 9, the no-rule stage. A `task.define` that sets `memory` to
-`self_notes` declares `policy_widen` as well, through the tool's `prepare` step, because the
-definition hands a task the self-note writes. Stage 4 then asks before the define applies, whatever
-allow rule or request would cover a plain define.
+`self_notes` adds `policy_widen` to the effects in force for the tool, through the tool's `prepare`
+step, because the definition hands a task the self-note writes. The tool's other effects stay, so a
+deny rule on any of them still denies at stage 3, and stage 4 then asks before the define applies,
+whatever allow rule or request would cover a plain define.
 
 Each change shows in the conversation as a notice that carries an undo. A notice is not stored.
 `readDefinitionNotices` builds it for the `definition.changed` records that a read returns, from the

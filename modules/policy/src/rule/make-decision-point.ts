@@ -47,7 +47,7 @@ export function makeDecisionPoint(options: DecisionPointOptions): DecisionPoint 
     const declaration =
       declared === null || call.effects === undefined
         ? declared
-        : { ...declared, effects: call.effects };
+        : { ...declared, effects: [...new Set([...declared.effects, ...call.effects])] };
 
     if (declaration === null || declaration.effects.length === 0) {
       return buildStageDenial(

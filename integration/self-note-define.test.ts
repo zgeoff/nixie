@@ -1,17 +1,21 @@
 import { expect, test } from 'bun:test';
-import { buildTaskDefineTool, readDefinitionVersion } from '@heynixie/definitions';
-import {
-  buildTestDefineInput,
-  readTestRuntimeTasks,
-  startTestDefinitions,
-} from '@heynixie/definitions/test-utils';
+import { buildTaskDefineTool } from '@heynixie/definitions';
+import { buildTestDefineInput, startTestDefinitions } from '@heynixie/definitions/test-utils';
 import { parseJSONObject } from '@heynixie/log';
-import type { PolicyCall } from '@heynixie/policy';
+import type { Effect, PolicyCall, Rule } from '@heynixie/policy';
 import { makeDecisionPoint } from '@heynixie/policy';
-import { buildMockToolCall, buildMockToolContext } from '@heynixie/tools/test-utils';
+import { buildMockToolContext } from '@heynixie/tools/test-utils';
 import invariant from 'tiny-invariant';
 
-async function setupTest() {
+interface SetupConfig {
+  readonly rules?: readonly Rule[];
+
+  // the effects that the snapshot in force declares for task.define, which the decision point reads
+  // before the declaration in code
+  readonly snapshotEffects?: readonly Effect[];
+}
+
+async function setupTest(config: SetupConfig = {}) {
   const ctx = await startTestDefinitions();
 
   await ctx.seed();
@@ -26,19 +30,23 @@ async function setupTest() {
   const prepare = tool.prepare;
 
   // an owner allow rule for every call of the schedule effect, which a plain define falls under
+  const rules = [
+    { id: 'allow-schedule', outcome: 'allow', effects: ['schedule'] } satisfies Rule,
+    ...(config.rules ?? []),
+  ];
+
+  const snapshotEffects = config.snapshotEffects;
+
   const decide = makeDecisionPoint({
     findDeclaration: (name) => (name === 'task.define' ? tool.declaration : null),
     readInputs: () =>
       Promise.resolve({
-        rules: [
-          {
-            id: 'allow-schedule',
-            revision: 1,
-            rule: { id: 'allow-schedule', outcome: 'allow', effects: ['schedule'] },
-          },
-        ],
+        rules: rules.map((rule) => ({ id: rule.id, revision: 1, rule })),
         contacts: [],
-        tools: new Map(),
+        tools:
+          snapshotEffects === undefined
+            ? new Map()
+            : new Map([['task.define', { ...tool.declaration, effects: snapshotEffects }]]),
         ownerDestinations: [],
       }),
     findTaskDestinations: () => [],
@@ -89,25 +97,23 @@ test('it asks before a define that sets self notes applies, though an allow rule
   ]);
 });
 
-test('it puts a definition with the self-note grant in force, and reads the grant back from its stored version', async () => {
-  const ctx = await setupTest();
+test('it denies a define that sets self notes under a deny rule on an effect the snapshot declares for the tool', async () => {
+  const ctx = await setupTest({
+    rules: [{ id: 'deny-send', outcome: 'deny', effects: ['send'] }],
+    snapshotEffects: ['schedule', 'send'],
+  });
 
-  const input = parseJSONObject(
-    JSON.stringify(buildTestDefineInput({ name: 'Tidy the notes', memory: 'self_notes' })),
-  );
+  const granting = await ctx.decideDefine(buildTestDefineInput({ memory: 'self_notes' }));
 
-  const outcome = await ctx.tool.run(
-    buildMockToolCall({ tool: 'task.define', input }),
-    buildMockToolContext(),
-  );
+  expect([granting.decision.outcome, granting.decision.stage]).toStrictEqual(['deny', 3]);
+});
 
-  const rows = await readTestRuntimeTasks(ctx.writer);
+test('it denies a define that sets self notes under a deny rule on schedule', async () => {
+  const ctx = await setupTest({
+    rules: [{ id: 'deny-schedule', outcome: 'deny', effects: ['schedule'] }],
+  });
 
-  const hash = rows.find((row) => row.definition_hash !== null)?.definition_hash;
+  const granting = await ctx.decideDefine(buildTestDefineInput({ memory: 'self_notes' }));
 
-  invariant(hash, 'the define stored a version');
-
-  const version = await readDefinitionVersion(ctx.writer.db, hash);
-
-  expect([outcome.status, version?.memory]).toStrictEqual(['ok', 'self_notes']);
+  expect([granting.decision.outcome, granting.decision.stage]).toStrictEqual(['deny', 3]);
 });

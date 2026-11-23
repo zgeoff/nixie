@@ -70,7 +70,7 @@ export interface DecisionInputs {
   readonly turnMessageSequence: number | null;
   readonly onBehalfOf: readonly number[];
 
-  // the effects a tool's prepare step set for the call, when it replaced the declared ones
+  // the effects a tool's prepare step set for the call, when it added to the declared ones
   readonly effects?: readonly string[];
 }
 
