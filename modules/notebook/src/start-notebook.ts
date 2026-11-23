@@ -17,7 +17,7 @@ import type { NoteForgetPreviewRead } from './forget/read-note-forget-preview';
 import { readNoteForgetPreview } from './forget/read-note-forget-preview';
 import { readNoteForgottenSequence } from './forget/read-note-forgotten-sequence';
 import { runBegunNoteForgets } from './forget/run-begun-note-forgets';
-import type { NoteForget, NoteForgetBeside, NoteForgetTarget } from './forget/run-note-forget';
+import type { BegunNoteForget, NoteForget, NoteForgetTarget } from './forget/run-note-forget';
 import { beginNoteForget, runNoteForget } from './forget/run-note-forget';
 import { startNoteIndex } from './index/start-note-index';
 import { readNoteRow } from './note/read-note-row';
@@ -72,13 +72,9 @@ export interface StartNotebookOptions extends NotebookContext {
 
   // the wait before a tool forget's cleanup runs again after it failed
   readonly cleanupRetryMs?: number;
-
-  // how long a tool forget waits for its cleanup before it answers that the forget still runs
-  readonly forgetWaitMs?: number;
 }
 
 const defaultCleanupRetryMs = 1000;
-const defaultForgetWaitMs = 1000;
 
 // Starts the in-process indexes from every active note, and finishes each forget that a crash cut
 // short.
@@ -92,12 +88,11 @@ export async function startNotebook(options: StartNotebookOptions): Promise<Note
   await runBegunNoteForgets(context, index);
 
   // A tool's forget runs inside a turn, and the cleanup waits for that turn to end, so it runs
-  // beside it. A failed cleanup runs again until it ends or the notebook stops, and the next start
-  // finishes one that a stop cut short.
-  const cleanups = new Set<Promise<void>>();
+  // beside it and the tool answers before it ends. A failed cleanup runs again until it ends or the
+  // notebook stops, and the next start finishes one that a stop cut short.
+  const cleanups = new Map<string, Promise<void>>();
 
   const retryMs = options.cleanupRetryMs ?? defaultCleanupRetryMs;
-  const waitMs = options.forgetWaitMs ?? defaultForgetWaitMs;
   const state = { isStopping: false };
 
   const runFinishBeside = async (noteID: string): Promise<void> => {
@@ -113,35 +108,21 @@ export async function startNotebook(options: StartNotebookOptions): Promise<Note
   };
 
   const runTrackedFinish = async (noteID: string): Promise<void> => {
-    const ended = Promise.withResolvers<void>();
-
-    cleanups.add(ended.promise);
-
     try {
       await runFinishBeside(noteID);
     } finally {
-      cleanups.delete(ended.promise);
-      ended.resolve();
+      cleanups.delete(noteID);
     }
   };
 
-  const forgetBeside = async (target: NoteForgetTarget): Promise<NoteForgetBeside> => {
+  const forgetBeside = async (target: NoteForgetTarget): Promise<BegunNoteForget> => {
     const begun = await beginNoteForget(context, target);
 
-    if (begun.status === 'refused') {
-      return begun;
+    if (begun.status === 'begun') {
+      cleanups.set(begun.noteID, runTrackedFinish(begun.noteID));
     }
 
-    await Promise.race([runTrackedFinish(begun.noteID), Bun.sleep(waitMs)]);
-
-    const sequence = await readNoteForgottenSequence(context.log, begun.noteID);
-
-    return {
-      status: sequence === null ? 'forgetting' : 'forgotten',
-      noteID: begun.noteID,
-      shortID: begun.shortID,
-      title: begun.title,
-    };
+    return begun;
   };
 
   return {
@@ -181,13 +162,13 @@ export async function startNotebook(options: StartNotebookOptions): Promise<Note
     readLinkingNotes: (sequence) => readNotesLinkingEvent(context.log, sequence),
 
     waitForForgets: async () => {
-      await Promise.all(cleanups);
+      await Promise.all(cleanups.values());
     },
     waitForSemanticIndex: () => index.waitForLoadedVectors(),
     stop: async () => {
       state.isStopping = true;
 
-      await Promise.all(cleanups);
+      await Promise.all(cleanups.values());
       await index.stop();
     },
   };

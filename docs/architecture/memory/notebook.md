@@ -75,11 +75,11 @@ conversation holds all 10, and a task holds one only when its tool list names it
   chunk above the floor of `memory.recall`, and reciprocal rank fusion merges the two. A walk stops
   at 200 nodes, or sooner when its result would pass the tool output limit, and sets `isCut`.
 - `notebook.forget` takes a note's short ID and forgets the note for good, with no approval, because
-  the notebook is the assistant's. It answers the short ID, the title and a status, or
-  `UNKNOWN_NOTE` for an ID that is unknown or was forgotten. The status is `forgotten` once the
-  cleanup ended, and `forgetting` while the cleanup still runs, with a message that the note is
-  hidden and its erasure finishes in the background. It takes no version and forgets the note as it
-  stands. [Forgetting a note](#forgetting-a-note) covers what it erases.
+  the notebook is the assistant's. It answers the short ID, the title, the status `forgetting` and a
+  message that the note is hidden and its erasure finishes in the background, or `UNKNOWN_NOTE` for
+  an ID that is unknown or was forgotten. It never answers that the note is forgotten, because the
+  erasure can end only after the turn that called the tool. It takes no version and forgets the note
+  as it stands. [Forgetting a note](#forgetting-a-note) covers what it erases.
 - A note holds at most one link of each type to each target, and a second `notebook.link` with the
   same source, target and type replaces the reason. `PART_OF_CYCLE` checks the part-of links that
   exist when the link commits. A note ID written in a body is text: only `notebook.link` makes a
@@ -88,9 +88,9 @@ conversation holds all 10, and a task holds one only when its tool list names it
   the run's tool list holds `log.read`, and an item's gist only when the list holds `memory.recall`.
   Otherwise the node holds the ID alone. The web client is the user's own view, so
   `notebook.readNote` shows every target's title or gist.
-- A walk follows links both ways and visits each node once. It returns references and labels, never
-  the text of a note, an item, a moment or a record. A target that was forgotten is listed as gone
-  and the walk goes no further from it.
+- A walk follows links both ways and visits each node once. It returns references and labels, such
+  as a title or a gist, and never the body of a note or the full text of an item, a moment or a
+  record. A target that was forgotten is listed as gone and the walk goes no further from it.
 - The check is built when it is read. An orphan is an active note that holds no link and that no
   active note links to, and a note named only in another note's text counts as one. Two reasons are
   the same when they match after trimming, collapsing runs of spaces and ignoring case, and the
@@ -153,10 +153,9 @@ which differ only in who forgot. The client's call is in the
    user.
 
 The cleanup aborts every turn in flight and waits for each to end, the turn that called the tool
-included. The tool therefore never waits for the whole cleanup: it runs part 1, starts the cleanup
-beside the turn, and waits a short time for it. The tool answers `forgotten` only when
-`notebook.note_forgotten` is in the log. Otherwise it answers `forgetting`. The turn's step fails
-and runs again after its retry delay, on a rebuilt session, as
+included. The tool therefore never waits for the cleanup: it runs part 1, starts the cleanup beside
+the turn, and answers `forgetting`. When the cleanup aborts the turn before it ends, the turn's step
+fails and runs again after its retry delay, on a rebuilt session, as
 [the live session](./context.md#forgetting-and-the-live-session) describes. A cleanup that fails
 runs again after a short wait until it ends, through the same step that the server's start runs for
 a note left `forgetting`. The next start finishes a cleanup that a stop cut short.

@@ -30,12 +30,20 @@ async function setupTest(options: TestNotebookOptions = {}) {
   return { ...ctx, write, readNoteID };
 }
 
-test('it forgets a note by its short ID and confirms the short ID and the title', async () => {
+test('it forgets a note by its short ID and answers forgetting with the short ID and the title', async () => {
   const ctx = await setupTest();
   const note = await ctx.write('Boiler');
   const outcome = await ctx.call('notebook.forget', { id: note });
 
-  expect(outcome).toMatchObject({ status: 'ok', result: { note, title: 'Boiler' } });
+  expect(outcome).toMatchObject({
+    status: 'ok',
+    result: {
+      note,
+      title: 'Boiler',
+      status: 'forgetting',
+      message: expect.stringContaining('in the background'),
+    },
+  });
 });
 
 test('it erases the note as the owner forget does', async () => {
@@ -168,7 +176,6 @@ test('it finishes a forget whose session cleanup failed once', async () => {
 
 test('it answers forgetting, and records no forgotten note, while the session cleanup keeps failing', async () => {
   const ctx = await setupTest({
-    forgetWaitMs: 1,
     cleanupSessions: () => Promise.reject(new Error('cleanup failed')),
   });
 
@@ -194,7 +201,6 @@ test('it finishes at the next start a forget whose session cleanup kept failing'
   const cleanup = { isFailing: true };
 
   const ctx = await setupTest({
-    forgetWaitMs: 1,
     cleanupSessions: () =>
       cleanup.isFailing ? Promise.reject(new Error('cleanup failed')) : Promise.resolve(),
   });
