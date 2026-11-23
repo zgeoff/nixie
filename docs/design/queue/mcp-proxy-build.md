@@ -68,8 +68,7 @@ mcp:
       privateRange: null # a CIDR range when the host resolves to a non-public address
 ```
 
-- A server ID matches `^[a-z][a-z0-9]{1,15}$`. The config load refuses an ID that equals the first
-  segment of a tool nixie registers, such as `memory` or `task`.
+- A server ID matches `^[a-z][a-z0-9]{1,15}$`, and [Names](#names) lists the IDs the load refuses.
 - `privateRange` is one CIDR range. The load refuses a range that holds a loopback, link-local or
   unspecified address, except in a test build (`NIXIE_TEST_BUILD`).
 
@@ -101,12 +100,20 @@ const fetch = store.fetcher(binding, ['https://tracker.example.internal'], {
 });
 ```
 
+- [The credential store item](https://linear.app/zgeoff/issue/GEO-1824) builds the store, its file
+  backend and its fetcher. This item adds the `service_client` kind, and the fetcher's `pairing` and
+  `stream`, as their first caller.
+- The proxy passes `stream: true`, so a server may answer a request as an SSE stream, which the
+  fetcher scrubs chunk by chunk. The proxy holds no long-lived stream open.
 - The store exchanges the secret for an access token at the first request, with
   `client_secret_basic`, and holds the token in process memory only. A restart forgets it.
 - The fetcher sends the token as `Authorization: Bearer` on every request except the one to
   `tokenURL`. Once the token's `expires_in` has passed, the store exchanges again first.
 - When the server answers 401, the store exchanges once more and resends the request once. A second
-  401 fails the request as `unauthorised`.
+  401 fails the request as `unauthorised`. The server refuses a 401 at its bearer check, before it
+  runs a tool, so the resend never repeats a write.
+- A token endpoint that answers 400 or 401 fails the request as `unauthorised`, and any other
+  failure as `error`.
 - The fetcher removes both the secret and the token from every response and error.
 
 ### Server facts and approvals
@@ -145,14 +152,22 @@ type McpOperation =
   | { change: 'allow'; tool: string; fromHash: string; hash: string }; // allow a changed tool
 ```
 
-- Each widening is one proposal of the new family `mcp` on the proposals core, of kind
-  `internal_change`. Its "same thing" key is the server ID for `server` and the tool name for
-  `declare` and `allow`, so a newer proposal for the same server or tool replaces the open one.
-- The start writes a `server` proposal, with cause `mcp_config`. A `server` proposal is always-ask,
-  so you approve it with the passkey. `declare` and `allow` proposals are routine.
-- `nixie mcp declare` writes a `declare` proposal. A tool's first declaration is always one.
-- The server listing that leaves an untrusted server's tool `stopped_changed` writes its `allow`
-  proposal, in the same transaction.
+- Each widening is one proposal of the new family `mcp`, of kind `internal_change`, on the proposals
+  core of [the proposals design](https://github.com/zgeoff/nixie/pull/1411). Its "same thing" key is
+  the server ID for `server` and the tool name for `declare` and `allow`, so a newer proposal for
+  the same server or tool replaces the open one.
+- A second appended migration rebuilds the `proposals` table, to add `mcp` to its family check.
+- The `mcp` handler sets the risk class by operation: `always_ask` for `server`, so you approve it
+  with the passkey, and `routine` for `declare` and `allow`. The causes are `mcp_config`,
+  `mcp_declare` and `mcp_allow`.
+- The start writes a `server` proposal. `nixie mcp declare` writes a `declare` proposal, and a
+  tool's first declaration is always one.
+- The server listing that leaves a tool `stopped_changed` writes its `allow` proposal, in the same
+  transaction. `nixie mcp allow <tool>` writes one again after you decline or it lapses.
+- A declined or lapsed `server` proposal leaves the server `held`. A later start proposes again only
+  when the config entry differs from the declined facts.
+- An approved `server` proposal registers the new binding while nixie runs. When the secrets file
+  lacks the new reference, the server stays `held`, and `nixie mcp list` shows why.
 - The `mcp` handler recomputes the operation from the current facts and the tool's latest hash at
   each answer, so an answer from a card that showed older facts or an older form fails as
   `CONFLICT`.
@@ -197,11 +212,14 @@ mcp_tool_forms, a projection, one row per tool form a server listing has held
 
 - An approved `declare` or `allow` moves the pin to the hash its operation holds, never to a later
   one. A `declare` pins the latest form, so it also clears `stopped_changed` and `stopped_unfit`.
-- A trusted server's change moves the pin to the new hash, unless the new input schema adds a
-  property, which stops the tool as `stopped_changed`. A new argument may carry a destination or
-  free text that the declaration never names.
-- A stopped tool stays on each tool list in its pinned form. A call to it returns an error such as
-  "tracker.item_get changed and waits for your review". A hidden or removed tool is on no tool list.
+- A trusted server's change moves the pin to the new hash, description changes included, unless the
+  new input schema adds a property at any depth. That change stops the tool as `stopped_changed`,
+  because a new argument may carry a destination or free text that the declaration never names.
+- After a pin move, the fit check runs on the new form. A tool both changed and unfit shows
+  `stopped_changed` until the change is allowed, then `stopped_unfit` until a new declaration.
+- A stopped tool, and every tool of a `held` server, stays on each tool list in its pinned form. A
+  call to it returns an error such as "tracker.item_get changed and waits for your review". A hidden
+  tool, a removed tool and every tool of a `removed` server are on no tool list.
 - Each pin move calls `onPinMoved(tx, move)` inside its transaction. The 2 items that build on this
   one add their writes there, and this item ships it with no listener.
 - When a forget has made a pinned form unreadable, the next server listing that holds the hash
@@ -217,7 +235,11 @@ mcp_tool_forms, a projection, one row per tool form a server listing has held
   stopped tools included.
 - The definitions parser keeps any name whose first segment is a configured server ID, so a task can
   name a tool before you declare it. The endpoint holds the name once the tool is on the tool lists.
-- The model reads `mcp__nixie__tracker_item_get`, from the existing `toSDKToolName`.
+- The model reads `mcp__nixie__tracker_item_get`, from the existing `toSDKToolName`, where `nixie`
+  is the name of the one MCP server the model reaches, nixie's tool endpoint.
+- The config load refuses a server ID when a tool nixie registers starts with `<id>.` or `<id>_`,
+  such as `web` for `web_fetch`. A release that adds such a tool refuses to start, with an error
+  that names the server.
 - The proxy keeps a tool `hidden_new`, with the reason in `nixie mcp tools`, when the server's name
   falls outside `^[A-Za-z0-9_-]{1,64}$`, when its model name passes 64 characters, or when another
   tool already holds its model name.
@@ -251,14 +273,20 @@ interface ToolDeclared {
 - `nixie mcp declare --prefill <tool>` prints a file from the latest form's annotations:
   `readOnlyHint: true` gives `[read]`, and `destructiveHint: false` drops `delete`. With no
   annotations it gives `[write, delete, send]`. Only the declaration you approve counts.
-- A change that only adds an effect, a destination, the amount or a content argument narrows and
-  applies at once, because each addition makes more of your rules match the call. So does a change
-  that only removes `reconcile`, because an interrupted call then comes to you. Every other change
-  is a `declare` proposal.
+- A declaration narrows when every call meets the same checks or stricter ones, and narrowing
+  applies at once. Adding an effect, a destination, the amount or a content argument narrows,
+  because each addition lets more of your ask and deny rules match the call. Removing `reconcile`
+  narrows, because an interrupted call then comes to you. Every other change is a `declare`
+  proposal.
 - The declaration's `results` maps every output field to `untrusted`, and nobody declares it.
-- The composition root passes the definitions module a reader of each proxied tool's pin and
-  declaration, and the [snapshot hash](../platform/policy/rules.md#the-snapshot-hash) covers them. A
-  pin move or a declaration changes the hash of each later call.
+- Each proxied call's records hold the pin and the `mcp.tool_declared` sequence in force, so a
+  replay reads the decision under the form and declaration it ran under. The
+  [snapshot](../platform/policy/rules.md#the-snapshot-hash) holds no proxied tool, so the decision
+  point reads a proxied declaration from the registry.
+- A queued proxied tool reaches the action runners through a `findConnector(tool)` lookup, which
+  replaces their fixed map, and the mcp module answers it for proxied tools. `idempotencyKey` has
+  the proxy fill that argument with the action ID. `check` calls the named read tool with the call's
+  input: a result counts as done, and an empty one as not done.
 
 ### The registry
 
@@ -295,8 +323,10 @@ const definition: ToolDefinition = {
 ```
 
 - The conversation holds every proxied tool on the tool lists, as it holds every tool the registry
-  names. A task holds the proxied tools its definition names.
-- A tool's turn reads the tool list once, at its start. Each call reads the current pin.
+  names, and reads the names again at each turn's start. A task holds the proxied tools its
+  definition names.
+- The endpoint's start awaits `prepareTaskRun` before it reads the names, bounded by the listing
+  timeout. A turn reads the tool list once, at its start. Each call reads the current pin.
 - A tool whose pinned form has no output schema returns `{ text }`: the result's text blocks joined
   by a blank line. Image blocks go back as the result's images, under the turn's image caps. The
   proxy drops every other block kind, and `text` ends with a line that counts them.
@@ -321,6 +351,8 @@ const answer: CallToolResult = {
 
 - The endpoint never sends `structuredContent` for a proxied tool, because the model would read it
   without the markers.
+- nixie's own errors for a proxied call, such as a stopped tool, a held server or an unreachable
+  one, are plain text with no markers, as every other tool's errors are.
 - A queued proxied call's result reaches the task through the inbox, which wraps it in the same
   markers as every action result.
 - The MCP client runs in `auto` protocol mode, with no sampling, roots, logging or input-request
@@ -333,10 +365,13 @@ const answer: CallToolResult = {
 
 - The proxy keeps one health state per server, in memory, shared by every task run: the failed
   server listings in a row, the next try, and the last error, one of `refused`, `error`,
-  `unparsable`, `timeout` or `unauthorised`. A start resets it.
+  `unparsable`, `timeout` or `unauthorised`. A listing the store fails as `unauthorised` counts like
+  any other failure, and this build has no credential status.
 - Failed listings back off with `libs/retry`, from 1 min to 1 h. After 3 in a row the server is
   unhealthy. The proxy writes `mcp.health_changed { serverID, isUnhealthy, lastError, nextTryAt }`
-  when the server becomes unhealthy and when it recovers, and the web client shows each.
+  when the server becomes unhealthy and when it recovers, and `nixie mcp list` shows the state.
+- A start resets every health state, and writes a recovery record for each server whose last
+  `mcp.health_changed` said unhealthy.
 - When the latest listing failed and the next try is due, a call makes that try itself before it
   calls the tool.
 - When the latest listing failed and the next try is not due, or the call's own try fails, the call
@@ -347,9 +382,10 @@ const answer: CallToolResult = {
 
 ### Server listings and calls
 
-- The proxy runs a server listing when the server is added or its widening is approved, when the
-  server reports a changed list, when a task run's endpoint starts with one of its tools, when a
-  call finds the next try due, and on the backoff.
+- The proxy runs a server listing when the server is added or its widening is approved, when a task
+  run's endpoint starts with one of its tools, when a call finds the next try due, and on the
+  backoff. A task run that starts during the backoff skips the listing.
+- At most one listing of a server runs at a time, and every caller that wants one awaits it.
 - The proxy never lists a `held` or `removed` server. A held server's tools stay on each tool list
   in their pinned form, and a call returns an error that says the server waits for your approval.
 - A call reaches the server only when the latest server listing passed and left the tool `exposed`.
@@ -364,13 +400,14 @@ const answer: CallToolResult = {
   that `mcp_tools` has not held, and `mcp.pin_moved { tool, fromHash, toHash, cause }` for each
   move. A server listing that changes nothing writes nothing.
 - `mcp_servers`, `mcp_tools` and `mcp_tool_forms` arrive in one appended migration that only adds
-  tables.
+  tables. The `proposals` rebuild is a migration of its own.
 
 ### Tests
 
 - The mcp module's test utilities export a stand-in Streamable HTTP server and token endpoint on
   loopback, with a read tool, a write tool that names a destination, and a tool that answers
-  `isError`. Only a test build loads a config that pairs a host with a loopback range.
+  `isError`. Only a test build loads a config that pairs a host with a loopback range, and only
+  there does the config accept `http` for that host.
 - A test changes a tool form, fails the next server listing, drops a tool between 2 listings, or
   expires the access token.
 
@@ -394,7 +431,6 @@ const answer: CallToolResult = {
 - Internal names, the projections' indexes and the order of their folds.
 - The other `nixie mcp` commands, such as `list`, `tools` and `diff`, their module, and their
   output.
-- How the endpoint awaits `prepareTaskRun` within its start.
 - The defaults that the connectors module's `Reconcile` needs beyond the file's fields.
 - The wording of each error, notice and change note.
 - How the store shares one token exchange among requests that wait on it.
@@ -409,6 +445,9 @@ const answer: CallToolResult = {
 - Input requests from a server. Neither first server sends one, and
   [the input-request spike](https://linear.app/zgeoff/issue/GEO-269) measures the window first.
 - Sampling, roots and logging from a server, and a server reached through a sandbox's own egress.
+- A list-change notice from a server. The proxy sees a changed list at its next listing.
+- A server list in the web client. The `mcp` proposal cards show their bodies through the existing
+  approval cards.
 
 ## Open questions
 
