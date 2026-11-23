@@ -45,6 +45,8 @@ export { codexEfforts, hostFrameSchema } from './utils/host-frame';
 export type { FrameDecoder } from './frame/make-frame-decoder';
 export { makeFrameDecoder } from './frame/make-frame-decoder';
 export { mintBlockID } from './backup/mint-block-id';
+export type { FencedText } from './backup/render-fenced';
+export { renderFenced } from './backup/render-fenced';
 export type { ModelCallUsage } from './frame/model-call-usage';
 export { modelCallUsageSchema } from './frame/model-call-usage';
 export { parseAnthropicCallUsage } from './frame/parse-anthropic-call-usage';
