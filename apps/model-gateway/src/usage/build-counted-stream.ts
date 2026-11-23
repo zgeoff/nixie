@@ -5,7 +5,8 @@ import type { ReadUsage, StreamEventKind, UsageDialect } from './usage-dialects'
 
 // What the events of a stream say about whether the model began its reply
 export interface StreamFacts {
-  // an event other than an error or a ping arrived, so the model began a reply
+  // an event other than an error or a ping arrived, or an event arrived that the gateway could not
+  // read, so the model may have begun a reply
   readonly started: boolean;
 
   // the type of the last error event, or null when the stream carried none
@@ -17,23 +18,49 @@ export interface StreamFacts {
 
 // The stream ends for its reader only after the count is written, so a caller that read a whole
 // reply never races its own next request past the count. A reader that stops early, or an upstream
-// that breaks, still counts what the events reported; onProgress hears the usage after each event.
+// that breaks, still counts what the events reported.
 export function buildCountedStream(
   body: ReadableStream<Uint8Array>,
   dialect: UsageDialect,
   onEnd: (read: ReadUsage, complete: boolean, facts: StreamFacts) => Promise<void>,
-  onProgress: (read: ReadUsage) => void = () => {},
+  onProgress: (read: ReadUsage, facts: StreamFacts) => void = () => {},
 ): ReadableStream<Uint8Array> {
   const reader = body.getReader();
 
   const decoder = new TextDecoder();
 
   let pending = '';
+  let dataLines: string[] = [];
   let reported: ReportedUsage = {};
   let ended = false;
   let facts: StreamFacts = { started: false, errorType: null, errorMessage: null };
 
   const seen = new Set<StreamEventKind>();
+
+  // an event of the stream holds one or more data lines, joined with a newline, and ends at a blank
+  // line
+  const dispatchEvent = () => {
+    if (dataLines.length === 0) {
+      return;
+    }
+
+    const text = dataLines.join('\n');
+
+    dataLines = [];
+
+    const event = parseJSONOrNull(text);
+
+    if (!isRecord(event)) {
+      facts = { ...facts, started: facts.started || text.trim() !== '[DONE]' };
+
+      return;
+    }
+
+    seen.add(dialect.pickStreamEventKind(event));
+
+    reported = dialect.foldStreamEvent(reported, event);
+    facts = foldStreamFacts(facts, event);
+  };
 
   const readEvents = (text: string) => {
     pending += text;
@@ -42,18 +69,17 @@ export function buildCountedStream(
 
     pending = lines.pop() ?? '';
 
-    for (const line of lines) {
-      const event = readEventLine(line);
+    for (const rawLine of lines) {
+      const line = rawLine.endsWith('\r') ? rawLine.slice(0, -1) : rawLine;
 
-      if (event !== null) {
-        seen.add(dialect.pickStreamEventKind(event));
-
-        reported = dialect.foldStreamEvent(reported, event);
-        facts = foldStreamFacts(facts, event);
+      if (line === '') {
+        dispatchEvent();
+      } else if (line.startsWith('data:')) {
+        dataLines.push(line.slice('data:'.length).replace(/^ /u, ''));
       }
     }
 
-    onProgress(dialect.parseUsage(reported, seen));
+    onProgress(dialect.parseUsage(reported, seen), facts);
   };
 
   const finish = async (complete: boolean) => {
@@ -64,6 +90,7 @@ export function buildCountedStream(
     ended = true;
 
     readEvents(`${decoder.decode()}\n`);
+    dispatchEvent();
 
     await onEnd(dialect.parseUsage(reported, seen), complete, facts);
   };
@@ -103,23 +130,20 @@ export function buildCountedStream(
   });
 }
 
-// an error reply that holds a JSON body in place of events arrives as one line with no data prefix
-function readEventLine(line: string): unknown {
-  if (line.startsWith('{')) {
-    return parseJSONOrNull(line);
-  }
-
-  if (!line.startsWith('data:')) {
-    return null;
-  }
-
-  return parseJSONOrNull(line.slice('data:'.length).trim());
+// The model began no reply when the body ended with no event that starts one, or when an error event
+// arrived and no reply had begun: an error event ends a stream. A stream that stops before either
+// may have begun a reply in the events the gateway did not read.
+export function isReplyAbsent(facts: StreamFacts, isEnded: boolean): boolean {
+  return !facts.started && (isEnded || facts.errorType !== null);
 }
 
-function foldStreamFacts(facts: StreamFacts, event: unknown): StreamFacts {
-  const type = isRecord(event) ? event['type'] : null;
+function foldStreamFacts(
+  facts: StreamFacts,
+  event: Readonly<Record<string, unknown>>,
+): StreamFacts {
+  const type = event['type'];
 
-  if (typeof type !== 'string' || type === 'ping') {
+  if (type === 'ping') {
     return facts;
   }
 

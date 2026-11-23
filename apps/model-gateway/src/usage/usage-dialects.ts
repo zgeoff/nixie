@@ -17,7 +17,7 @@ export interface ReadUsage {
 }
 
 // the events of a stream that change what a reply's usage holds
-export type StreamEventKind = 'start' | 'final' | null;
+export type StreamEventKind = 'start' | 'final' | 'stop' | null;
 
 export interface UsageDialect {
   // folds one server-sent event of a streamed reply into the usage it reported so far
@@ -44,6 +44,10 @@ export const usageDialects: Readonly<Record<ModelAPI, UsageDialect>> = {
 
       if (type === 'message_start') {
         return 'start';
+      }
+
+      if (type === 'message_stop') {
+        return 'stop';
       }
 
       return type === 'message_delta' && isOutputCountCarried(event) ? 'final' : null;
@@ -96,7 +100,8 @@ function parseAnthropicUsage(
 
   const hasInput = seen.has('start') && hasInputCount;
 
-  return { usage, isFinal: hasInput && seen.has('final'), hasInput };
+  // the deltas of a reply carry its running count, so the count is final only once the reply stops
+  return { usage, isFinal: hasInput && seen.has('final') && seen.has('stop'), hasInput };
 }
 
 function parseOpenAIUsage(reported: unknown): ReadUsage {
