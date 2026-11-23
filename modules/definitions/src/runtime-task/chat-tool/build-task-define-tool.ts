@@ -1,3 +1,4 @@
+import type { JSONObject } from '@heynixie/log';
 import { parseJSONObject } from '@heynixie/log';
 import type { ToolDefinition } from '@heynixie/tools';
 import { buildOffsetAt, checkSchedule } from '@heynixie/triggers';
@@ -57,6 +58,7 @@ export function buildTaskDefineTool(options: ChatToolOptions): ToolDefinition {
       },
     },
     execution: 'direct',
+    prepare: (input) => Promise.resolve(prepareDefine(input)),
     run: async (call) => {
       const parsed = taskDefineInputSchema.safeParse(call.input);
 
@@ -128,6 +130,17 @@ export function buildTaskDefineTool(options: ChatToolOptions): ToolDefinition {
       };
     },
   };
+}
+
+// A define that sets `memory` to `self_notes` hands the task the self-note write tools, so the call
+// also declares `policy_widen`: stage 4 of the decision point then asks before it applies, whatever
+// rule or request would have allowed a plain define.
+function prepareDefine(input: JSONObject) {
+  const parsed = taskDefineInputSchema.safeParse(input);
+
+  return parsed.success && parsed.data.memory === 'self_notes'
+    ? { destinations: [], effects: ['schedule', 'policy_widen'] as const }
+    : { destinations: [] };
 }
 
 type TriggerInput = z.output<typeof taskDefineInputSchema>['trigger'];
