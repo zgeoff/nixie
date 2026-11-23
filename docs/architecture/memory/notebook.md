@@ -78,8 +78,8 @@ conversation holds all 10, and a task holds one only when its tool list names it
   the notebook is the assistant's. It answers the short ID, the title and a status, or
   `UNKNOWN_NOTE` for an ID that is unknown or was forgotten. The status is `forgotten` once the
   cleanup ended, and `forgetting` while the cleanup still runs, with a message that the note is
-  hidden and its erasure finishes in the background. It never takes a version, so it forgets the
-  note as it stands. [Forgetting a note](#forgetting-a-note) covers what it erases.
+  hidden and its erasure finishes in the background. It takes no version and forgets the note as it
+  stands. [Forgetting a note](#forgetting-a-note) covers what it erases.
 - A note holds at most one link of each type to each target, and a second `notebook.link` with the
   same source, target and type replaces the reason. `PART_OF_CYCLE` checks the part-of links that
   exist when the link commits. A note ID written in a body is text: only `notebook.link` makes a
@@ -137,9 +137,10 @@ it, and the `notebook.forget` tool forgets one as it forgets any other.
 ## Forgetting a note
 
 The user forgets a note through the checked action `notebook.forget` in the web client, and the
-assistant forgets one of her own with the `notebook.forget` tool. Both take the same path and leave
-the same trace. The [API](../channels/api.md#forgetting-a-note) owns the client's call. The forget
-runs in 2 parts, as a [moment destroy](./moments.md#destroying-a-moment) does:
+assistant forgets one of her own with the `notebook.forget` tool. Both append the same records,
+which differ only in who forgot. The client's call is in the
+[API](../channels/api.md#forgetting-a-note). The forget runs in 2 parts, as a
+[moment destroy](./moments.md#destroying-a-moment) does:
 
 1. One write transaction commits the client action, checks the version and appends
    `notebook.note_forgetting`, which records who forgot, `user` or `assistant`. From then on no tool
@@ -151,13 +152,14 @@ runs in 2 parts, as a [moment destroy](./moments.md#destroying-a-moment) does:
    `notebook.note_forgotten`, with the same `by`. A record that has no `by` reads as a forget by the
    user.
 
-The cleanup aborts every turn in flight and waits for it, so a forget that the assistant makes
-inside a turn runs part 1, then runs the cleanup beside the turn. The tool waits a short time for
-the cleanup and answers `forgotten` only when `notebook.note_forgotten` is in the log. Otherwise it
-answers `forgetting`. The turn's step fails and runs again after its retry delay, on a rebuilt
-session, as [the live session](./context.md#forgetting-and-the-live-session) describes. A cleanup
-that fails runs again after a short wait until it ends, through the same step that the server's
-start runs for a note left `forgetting`. The next start finishes a cleanup that a stop cut short.
+The cleanup aborts every turn in flight and waits for each to end, the turn that called the tool
+included. The tool therefore never waits for the whole cleanup: it runs part 1, starts the cleanup
+beside the turn, and waits a short time for it. The tool answers `forgotten` only when
+`notebook.note_forgotten` is in the log. Otherwise it answers `forgetting`. The turn's step fails
+and runs again after its retry delay, on a rebuilt session, as
+[the live session](./context.md#forgetting-and-the-live-session) describes. A cleanup that fails
+runs again after a short wait until it ends, through the same step that the server's start runs for
+a note left `forgetting`. The next start finishes a cleanup that a stop cut short.
 
 Every step is safe to run twice, so the server's start finishes a forget that a crash cut short. The
 session cleanup runs for the conversation and for each open task whose tool list holds a notebook

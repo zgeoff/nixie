@@ -2,12 +2,12 @@
 
 Contents: [Journey](#journey), [End state](#end-state).
 
-The notebook pages show what the assistant wrote with the notebook tools, read-only. `/notebook`
-lists the notes, newest edit first. A note's page at `/notebook/<note ID>` shows its body, links and
-backlinks. A private note is absent until the user ticks "Show private", which sets `?private=1` and
-writes nothing. Its body stays folded until the user presses Open, which appends one
-`notebook.private_opened` record. Forget on a note's page removes the whole note, and so does the
-assistant's `notebook.forget`.
+Read what the assistant wrote with the notebook tools on the notebook pages, which never edit a
+note. `/notebook` lists the notes, newest edit first. A note's page at `/notebook/<note ID>` shows
+its body, links and backlinks. A private note is absent until the user ticks "Show private", which
+sets `?private=1` and writes nothing. Its body stays folded until the user presses Open, which
+appends one `notebook.private_opened` record. Forget on a note's page removes the whole note, and so
+does the assistant's `notebook.forget`.
 
 Follow the steps in [Check a change](../SKILL.md#check-a-change) for this journey. Read that section
 for the commands `up` and `done`, and for the `data` field of each command's JSON output.
