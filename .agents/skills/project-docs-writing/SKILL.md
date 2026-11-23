@@ -18,9 +18,6 @@ metadata:
   [Describe the system as it is now](../docs-writing/SKILL.md#describe-the-system-as-it-is-now) rule
   leaves tracker links out of docs. nixie's designs describe work not yet built, so link the issue
   to keep one copy of each open question.
-- In a design, address the person nixie works for as "you", as a guide does. This rule replaces the
-  design-docs skill's rule to write "the owner" there. In nixie, "the owner" is the person who
-  approves a design, and using it for both people would merge two roles.
 
 ## Spikes
 
@@ -41,9 +38,10 @@ metadata:
 
 ## The owner of a design
 
-- In `docs/design/`, write "the owner" for the person who approves each design and settles its open
-  questions, as in the design-docs skill. That is a role in the project, apart from the person a
-  deployment works for.
+- In `docs/design/`, write "the owner" only for the person who approves each design and settles its
+  open questions. That is a role in the project, apart from the person a deployment works for.
+- In a design, address the person a deployment works for as "you". This replaces the design-docs
+  skill's rule to write "the owner" for them: nixie keeps the two roles apart.
 
 ## Runs
 
