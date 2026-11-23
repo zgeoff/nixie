@@ -1,6 +1,6 @@
 # One gate for every hold on a task
 
-- **Status:** draft
+- **Status:** agreed
 
 A task is held when you paused it, you paused all of nixie, the spending stop tripped, or the task
 reached one of its limits. Today each check reads only some of these. The claim filter reads the
@@ -60,8 +60,8 @@ type TaskHoldReason =
 
 - The log module owns the spending stop's projection, beside the pause tables, and exports its write
   as it exports `pauseNixieInTransaction`. The spend module keeps the record kinds and calls that
-  write. The table keeps its name, and a rebuild fills it. This is the default of the first open
-  question.
+  write. The table keeps its name, and a rebuild fills it. The tasks module can't import the spend
+  module without a cycle, and this keeps the gate one read.
 - The spending stop holds a task through its own row, whatever the nixie pause's cause. A trip still
   pauses nixie, and nixie can't resume while the stop stands, as today.
 - One predicate builder takes the caller, and each claim filter is built from it in SQL. A test per
@@ -129,8 +129,10 @@ The rename shares no code with the gate and ships as its own work item.
 | stored or public | –                 | –                           | `recoveries` table, `recovery.started`, `recovery.notice`, `recovery.read` |
 | fault points     | `recovery.step.*` | `restart_sweep.*`           | `recovery.pause.*`                                                         |
 
-The table shows the second open question's default: the restore side keeps the word, because its
-names are stored and published, and the crash side holds only code names and fault point IDs.
+The crash side gives up the word and becomes the restart sweep. The restore side keeps "recovery",
+because its names are stored and published: renaming them would need a migration, new record kinds
+while the old ones are still read, and a new API route beside the old one. The crash side holds only
+code names and fault point IDs.
 
 ## Constraints
 
@@ -154,16 +156,3 @@ names are stored and published, and the crash side holds only code names and fau
 
 - What a resume does, and which tasks can be exempt. The [pause design](pause.md) holds them.
 - The spending stop's limits and its watcher.
-
-## Open questions
-
-- **Where the spending stop's row lives.** The gate needs it, and the tasks module can't import the
-  spend module without a cycle. Moving the row to the log module, beside the pause tables, keeps the
-  gate one read. The other choice is a reader that the server passes in. Until the owner decides,
-  the design assumes the row moves.
-
-- **Which side gives up "recovery".** The restore side's names are stored and published, so renaming
-  them needs a migration, new record kinds while the old ones are still read, and a new API route
-  beside the old one for a minor release. Renaming the crash side touches code and fault point IDs
-  only. The design shows the crash-side rename. Until the owner decides, the rename's work item
-  waits, and the gate ships without it.
