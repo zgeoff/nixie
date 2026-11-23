@@ -14,7 +14,14 @@ answer keeps its own list. With the directory, you trust a site once, on one pag
 sees the same answer.
 
 The owner approves this design. The builder of each work item above starts from it, together with
-the [decision point](../../architecture/policy/decision-point.md) it extends.
+the [decision point](../../architecture/policy/decision-point.md) it extends. The directory's own
+work items, filed when the owner approves, are:
+
+1. the matcher, the directory, its records and the decision point's changes, with the contacts
+   folded in and `web_fetch` declaring its host;
+2. the card's answers, `places.propose` and `places.narrow`;
+3. the places page and `nixie places`, which retire the contacts code;
+4. the one evidence window and the skill guard's move to first use.
 
 ## Shape
 
@@ -23,11 +30,11 @@ flowchart LR
   call[tool call] --> dest[destinations]
   dest -->|"parsePlace"| key[place key]
   key --> dir[(directory)]
-  dir -->|"trust level"| stage5[decision point stage 5]
+  dir -->|"trust level"| dp[decision point: stages 3, 5, 7]
   page[places page] --> dir
   card[approval card] -->|"trust this place"| dir
-  nix[places.propose] -->|"asks"| card
-  dir --> users[vault, wallet, mail, devices]
+  propose[places.propose] -->|"asks"| card
+  dir --> users[vault, wallet, mail, devices read keys]
 ```
 
 ## Terms
@@ -36,7 +43,7 @@ flowchart LR
   handle.
 - A **place key** is the normal form of a place, the only form the directory stores and compares.
 - A **reading effect** is `read` or `fetch`. An **acting effect** is any other effect except
-  `spend`, which always asks as it does today.
+  `spend`, which no place covers.
 
 ## Contracts
 
@@ -126,7 +133,8 @@ interface Place {
 }
 ```
 
-Records, on the thread of the place's owner (you), each with the place's short ID:
+Records. The first three carry no thread, as contact records don't today, and each makes a new
+definitions snapshot. `places.acted` goes on the call's thread and makes none.
 
 ```text
 places.added    { placeID, shortID, key, trust, name, addedBy }
@@ -135,49 +143,64 @@ places.removed  { placeID }
 places.acted    { placeID, shortID, callID }  // a call that an 'act' place allowed
 ```
 
-The projection `places` holds the live entries. For an `address`, `phone` or `handle` place, the key
-and the name are erasable fields, as a known contact's are today: a forget erases them, and the
-erased place covers nothing. A `site` or `mail_domain` key is plain.
+- The `places` projection holds each entry's IDs, kind, level and sequences. For an `address`,
+  `phone` or `handle` place, the key and the name are erasable fields of `places.added`, read back
+  from the record as a contact's are today, and `places.added` joins the forgettable kinds.
+- The projection keeps a keyed hash of each key, under the deployment's key, for the
+  one-entry-per-key check. A forget clears the hash.
+- A forget of a place removes it, whatever its level: forgetting a `blocked` address unblocks it.
+  You forget a place to remove every trace of it.
 
 ### The decision point
 
-Stage 5 reads the directory. A call's destinations come from its tool as today, and each goes
-through `parsePlace` first.
+The directory changes three of the [stages](../../architecture/policy/decision-point.md#the-stages).
+A call's destinations come from its tool as today, and each goes through `parsePlace` first.
+
+| Level     | Stage 3, deny   | Stage 5, destinations                                                   | Stage 7, before the allow rules          |
+| --------- | --------------- | ----------------------------------------------------------------------- | ---------------------------------------- |
+| `blocked` | denies the call | –                                                                       | –                                        |
+| `known`   | –               | gives a permission                                                      | –                                        |
+| `read`    | –               | gives a permission                                                      | allows a call with only reading effects  |
+| `act`     | –               | gives a permission                                                      | allows any call but `spend`, with notice |
+| `self`    | –               | gives a permission                                                      | allows any call but `spend`              |
+| no entry  | –               | a permission for a call with only reading effects; else the other tiers | –                                        |
 
 ```ts
-// policy module. Replaces the owner and known_contact tiers of stage 5.
+// log module, where the decision record's types live. Replaces the owner and known_contact tiers.
 type DestinationPermission =
-  | { by: 'place'; placeID: string; trust: 'read' | 'act' | 'self' }
+  | { by: 'place'; placeID: string; trust: 'known' | 'read' | 'act' | 'self' }
+  | { by: 'reading' } // a destination with no entry, on a call with only reading effects
   | { by: 'reply_target' }
   | { by: 'task' }
   | { by: 'rule'; ruleID: string };
+
+// …existing DecisionDetail fields
+type DecisionDetail = { place: { placeID: string; shortID: string } | null }; // set for a deny at a
+// blocked place, or an allow at stage 7 through places; rule is null then
 ```
 
-- Stage 3: a destination whose place is `blocked` denies the call, before any rule. The decision
-  records the place in place of a rule, and the model reads "you blocked <place>".
-- Stage 5: every level but `blocked` gives the destination a permission. The place tier comes first.
-  A destination with no entry also gets a permission when every effect of the call is a reading
-  effect, so a read from an unlisted site stays free as it is today.
-- `owner` and `known_contact` leave `DestinationPermission`, and `ownerDestinations` leaves the
-  decision point's inputs. A decision recorded before this design keeps its old strings, and the
-  decision schema reads both forms.
-- A new stage 6b, after the ask rules and before the allow rules: the call is allowed when every
-  destination's place allows it. `read` allows a call whose effects are all reading effects. `act`
-  and `self` allow a call with any effect but `spend`. A call with no destination never passes 6b.
-- So an ask rule still asks at a trusted place, and an untrusted call goes on to stage 7 as today.
-- When the decision at 6b allows a call through an `act` place, the decision point writes
-  `places.acted` on the call's thread. The conversation shows it as a notice. A call that a rule or
-  consent allowed writes none.
-- A destination with no entry falls through to the reply target, task and rule tiers, then to the
-  consent check, as today.
+- Stage 3 checks places before the deny rules. The model reads the place's short ID only: "you
+  blocked P4".
+- Stage 7 checks places first: the call is allowed when every destination's place allows it. A call
+  with no destination never passes this check. An ask rule at stage 6 still asks at a trusted place.
+- The stage numbers stay 1 to 9. A place allow records stage 7 with `place` set and `rule` null.
+- `ownerDestinations` leaves the decision point's inputs, and `self` places take the owner tier's
+  place. A decision recorded before this design keeps its old strings, and the decision schema reads
+  both forms. No published contract type carries decision permissions.
+- The tool runner writes `places.acted` on the call's thread, beside `tool_called`, when the
+  decision allowed the call through an `act` place. The decision point stays a pure function, so a
+  replay writes nothing.
 - When several entries cover a destination, a `blocked` entry wins. Otherwise the most specific
-  entry wins: an exact key before a domain, and a longer domain before a shorter one.
-- The decision reads the keys of the snapshot's place IDs from the `places` projection at call time.
-  An erased key covers nothing.
+  entry wins: an exact key, then the longer domain.
 - A rule's `destinations` keep their patterns and the `*` match. Both the pattern and the
   destination are put in lower case before the match, so case no longer splits a match.
-- `web_fetch`, `search` with `sites`, `computer.browser_download` and a device page's fetches
-  declare the URL's host as a destination. The fetcher refuses a redirect hop to a `blocked` site.
+- `web_fetch` declares the host of its `url`, or of the link a `link` call names, through
+  `resolveDestinations`. A call that reads a stored page fetches nothing and declares none.
+- `search` with `sites`, `computer.browser_download` and a device page's fetches declare their URL's
+  host too, in their own work items.
+- The server's hop gate refuses a redirect hop to a `blocked` site. The browser tools read the tab's
+  host at each call, so the next call on a tab that a redirect or a click took to a `blocked` site
+  is denied. Navigation inside the browser between calls isn't checked.
 
 ### The card and the proposal
 
@@ -197,8 +220,10 @@ const proposal = await tools.call('places.propose', {
 
 - When every destination of a held call is one place, the card offers "Trust this place to read" and
   "Trust this place to act". The answer adds or raises the entry. It writes no rule.
+- A card or a proposal offers the exact host, with `subdomains: false`. You widen an entry to its
+  subdomains on the places page.
 - `places.propose` declares `policy_widen`, so it always asks.
-- Nix narrows a place with `places.narrow`. It declares `policy_narrow` and applies at once with a
+- nixie narrows a place with `places.narrow`. It declares `policy_narrow` and applies at once with a
   notice.
 
 ```ts
@@ -215,11 +240,12 @@ window, the consent check's, and one comparison, `isPlaceCovered` over `parsePla
 place you typed. The secret scan's exemption for a URL you typed keeps its own rule, the whole URL,
 because it guards a secret, not a place.
 
-### The skill guard
+### The skill guard moves to first use
 
-`skill_write` applies under its rules, with no check of the places a skill names. A skill that names
-a place you never trusted takes effect, and its first call to that place meets the decision point
-like any other call.
+The owner decided that nixie writes its own skills freely. `skill_write` applies under its rules,
+and no longer checks the places a skill names. A skill that names a place you never trusted takes
+effect, and its first call to that place meets the decision point like any other call: an acting
+call there asks.
 
 ### The places page
 
@@ -234,7 +260,7 @@ and when a call last used it. You add, change and remove entries there. The host
   place tier and falls through.
 - An entry covers a place by key alone. A site entry never covers an address at that domain.
 - A `blocked` entry beats every rule, mandate and lift.
-- `spend` always asks, whatever the level, unless a lift covers it.
+- `spend` asks at every level. A lift covers it as it does today; a place never does.
 - Each call reads the directory of its own definitions snapshot. Each place record makes a new
   snapshot, as a contact record does today. The snapshot's form holds `policy.places`, the place IDs
   and levels, in place of `policy.contacts`, and never an address.
@@ -248,14 +274,17 @@ and when a call last used it. You add, change and remove entries there. The host
 - The skill guard checks a place when a skill's call reaches it, never when the skill is written. A
   write can't reach anyone; a call can, and every call meets the decision point.
 - Known contacts become places at `known` with no new records: the `places` projection also folds
-  `policy.contact_marked_known` and `policy.contact_unmarked`. A contact's destination goes through
-  `parsePlace`, and one it can't read becomes a `raw` key. No call a contact covers gains an allow,
-  and a forget of the old record erases the place.
-- The consent check's typed-name match, `nixie contacts` and the contract's known-contact schema
-  move to places in the directory's work item. The contract keeps the old schema beside the new one
-  until the places page ships, so the published contract never drops a type in a minor release.
-- The `self` places replace the owner tier of stage 5, which the server fills with an empty list
-  today.
+  `policy.contact_marked_known` and `policy.contact_unmarked`. A migrated place's ID is its contact
+  ID, and its short ID comes from `buildShortIDFromUUID`, so a rebuild gives the same short ID. Old
+  snapshots' contact IDs read as places at `known`.
+- A contact's destination goes through `parsePlace`, and one it can't read becomes a `raw` key.
+  `isPlaceCovered` also takes the destination's original string, and a `raw` key covers the exact
+  NFC string. No call a contact covers gains an allow or loses one, except that an address now
+  matches in any case.
+- A forget of the old contact record erases the place.
+- The consent check's typed-name match, `nixie contacts`, `contacts.mark_known` and the contract's
+  known-contact schema keep working over the `places` projection until the page's work item moves
+  them. The `known_contacts` table goes when they do.
 - The definitions repo may hold `places.yaml` with `site` and `mail_domain` entries, seeded like
   rules. An `address`, `phone` or `handle` place never leaves the database.
 
@@ -281,5 +310,8 @@ and when a call last used it. You add, change and remove entries there. The host
   stand.
 - **Reads from an unlisted site.** The design keeps them free, as `allow-reads` does today. The
   owner may prefer that a fetch from an unlisted site asks once. Until then, reads stay free.
+- **Whole-domain entries for shared suffixes.** A two-label minimum still allows an entry for
+  `co.uk` with subdomains. A public-suffix list would refuse it, at the cost of a library. Until the
+  owner decides, only you can make a subdomain entry, on the page, so a broad one needs your hand.
 - **Who sees the notice of an act.** The design shows it in the conversation. The owner may want a
   digest instead.
