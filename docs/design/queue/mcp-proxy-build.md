@@ -13,11 +13,11 @@ name `<serverID>.<tool>` and is pinned: the proxy exposes it only in the form yo
 effect declaration you approved. Each call passes the decision point like any of nixie's tools, its
 result reaches the model inside untrusted markers, and the server's credential never leaves the
 credential store. The first build serves 2 HTTP servers of your own: a work tracker and a
-delivery-metrics server. [The MCP proxy design](../platform/connectors/mcp-proxy.md) sets the rules
-for pins, failed listings and declarations, and this design adds the contracts the build follows.
-Once the owner sets Status to agreed, and the credential store and marker items have landed, the
-proxy item is built from it. The [open questions](#open-questions) change only config values and
-declarations, so the build ships with the default each one gives, and needs no answer first.
+delivery-metrics server. [The MCP proxy design](../platform/connectors/mcp-proxy.md) holds the rules
+for pins, failed listings and declarations, and this design holds the contracts the build follows.
+Build the proxy item from this design once the owner sets Status to agreed and the credential store
+and marker items have landed. Each [open question](#open-questions) changes only a config value or a
+declaration, so the build ships with each one's default and needs no answer first.
 
 ## Shape
 
@@ -308,14 +308,14 @@ interface ToolSource {
   // Built from the current pin, and cached per hash. Every proxied definition passes the registry's
   // existing checks at each pin move; one that fails stays hidden_new.
   findTool(name: string): RegisteredTool | null;
-  // Lists each server the names reach, unless its backoff is running, before the task run's first
-  // step reads its tool list. It never rejects: a failed listing leaves the pinned tools in place.
+  // Lists the server of each named tool, unless that server's backoff is running, before the task
+  // run's first step reads its tool list. It never rejects: a failed listing leaves the pinned tools in place.
   prepareTaskRun(tools: readonly string[]): Promise<void>;
 }
 
 declare function buildToolRegistry(
   definitions: readonly ToolDefinition[], // …existing
-  sources: readonly ToolSource[], // nixie's own tools win a name
+  sources: readonly ToolSource[], // nixie's own tool wins a name clash
 ): ToolRegistry; // toolNames merges each source's names at each read
 ```
 
