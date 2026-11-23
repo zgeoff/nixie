@@ -154,15 +154,17 @@ async function runInStepAction(
     return null;
   }
 
-  const run = await options
-    .runCall({
-      actionID: action.action_id,
-      tool: action.tool,
-      input: args,
-      callSequence: action.call_sequence,
-      actionHash: action.action_hash,
-    })
-    .finally(start.release);
+  const request = {
+    actionID: action.action_id,
+    tool: action.tool,
+    input: args,
+    callSequence: action.call_sequence,
+    actionHash: action.action_hash,
+  };
+
+  const run = await start.admission
+    .run(() => options.runCall(request))
+    .finally(start.admission.release);
 
   if (NIXIE_TEST_BUILD) {
     await waitAtFaultPoint('attempt.result.before', { kind: 'action', id: action.action_id });

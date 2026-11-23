@@ -1,14 +1,15 @@
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import type { TasksContext } from '@heynixie/tasks';
 import { probeTaskPaused, requireLease, resetLease, waitAtFaultPoint } from '@heynixie/tasks';
-import type { ActionRow, ActionsTables, AdmitTool } from '../types';
+import type { ActionRow, ActionsTables, Admission, AdmitTool } from '../types';
 import { buildCancelledCheck } from './build-cancelled-check';
 import { buildHeldCheck } from './build-held-check';
 import type { Attempt } from './leased-records';
 
-// A started attempt holds its admission until its call has settled, and then calls `release`.
+// A started attempt runs its call inside its admission, and releases the admission once the call
+// has settled.
 export type AttemptStart =
-  | { readonly kind: 'started'; readonly release: () => void }
+  | { readonly kind: 'started'; readonly admission: Admission }
   | { readonly kind: 'barred' }
   | { readonly kind: 'past_deadline' };
 
@@ -55,8 +56,8 @@ class HoldBegunError extends Error {
 }
 
 // the admission the transaction took, which a failed commit gives back
-interface Admission {
-  release: (() => void) | null;
+interface TakenAdmission {
+  admission: Admission | null;
 }
 
 async function runAttemptStart(
@@ -64,12 +65,12 @@ async function runAttemptStart(
   attempt: Attempt,
   options: AttemptStartOptions,
 ): Promise<AttemptStart> {
-  const admission: Admission = { release: null };
+  const taken: TakenAdmission = { admission: null };
 
   try {
-    return await readAndWriteStart(context, attempt, options, admission);
+    return await readAndWriteStart(context, attempt, options, taken);
   } catch (error) {
-    admission.release?.();
+    taken.admission?.release();
 
     if (!(error instanceof HoldBegunError)) {
       throw error;
@@ -85,11 +86,13 @@ async function runAttemptStart(
   return { kind: 'barred' };
 }
 
+const noAdmission: Admission = { run: (work) => work(), release: () => {} };
+
 function readAndWriteStart(
   context: TasksContext,
   attempt: Attempt,
   options: AttemptStartOptions,
-  admission: Admission,
+  taken: TakenAdmission,
 ): Promise<AttemptStart> {
   return withWriteTransaction(context.log.writer, async (tx): Promise<AttemptStart> => {
     const now = context.clock.now();
@@ -140,16 +143,16 @@ function readAndWriteStart(
 
     // The admission checks the hold and counts the call as running in one synchronous step, so a
     // hold either rolls this attempt back or waits for its call.
-    const release =
-      options.admitTool === undefined ? releaseNothing : options.admitTool(action.tool);
+    const admission =
+      options.admitTool === undefined ? noAdmission : options.admitTool(action.tool);
 
-    if (release === null) {
+    if (admission === null) {
       throw new HoldBegunError();
     }
 
-    admission.release = release;
+    taken.admission = admission;
 
-    return { kind: 'started', release };
+    return { kind: 'started', admission };
   });
 }
 
@@ -158,5 +161,3 @@ function probeToolHeld(options: AttemptStartOptions, tool: string): boolean {
 
   return heldPrefixes.some((prefix) => tool.startsWith(prefix));
 }
-
-function releaseNothing(): void {}

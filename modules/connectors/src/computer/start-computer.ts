@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
 import type { Clock } from '@heynixie/clock';
 import { systemClock } from '@heynixie/clock';
 import type { Logger } from '@heynixie/logger';
@@ -11,7 +12,7 @@ import type { GuestSession, OutOfCallScans } from './make-guest-session';
 import { makeGuestSession } from './make-guest-session';
 import { moveOldSandboxes, wakeOld } from './move-old-sandboxes';
 import { takeTurn } from './take-turn';
-import { admitRunningCall, extendAdmissions } from './takeover/admit-running-call';
+import { admitRunningCall, findAdmission } from './takeover/admit-running-call';
 import { makeGuestHooks } from './takeover/make-guest-hooks';
 import { makeTakeover } from './takeover/make-takeover';
 import { trackRunningCall } from './takeover/track-running-call';
@@ -120,6 +121,9 @@ interface ComputerState {
 
   // the actions' calls admitted past the hold, which count among the running calls
   readonly admitted: Set<RunningCall>;
+
+  // the admission whose work runs now, so a computer call moves the limit of its own admission
+  readonly scope: AsyncLocalStorage<RunningCall>;
   takeover: Takeover | null;
 }
 
@@ -152,6 +156,7 @@ export function startComputer(options: ComputerOptions): Computer {
     watches: { count: 0 },
     running: new Set(),
     admitted: new Set(),
+    scope: new AsyncLocalStorage(),
     takeover: null,
   };
 
@@ -194,12 +199,12 @@ export function startComputer(options: ComputerOptions): Computer {
       end: takeover.end,
       admit: () =>
         admitRunningCall({
+          ...state,
           clock: context.clock,
-          running: state.running,
-          admitted: state.admitted,
           isHeld: takeover.isHeld,
           turnWaitMs: options.turnWaitMs ?? defaultTurnWaitMs,
         }),
+      isAdmitted: () => findAdmission(state) !== null,
     },
     isWatched: () => state.watches.count > 0,
     reset: () => resetComputer(context),
@@ -561,18 +566,15 @@ async function runInTurn(context: ComputerContext, call: ComputerCall): Promise<
 
 // A call from a tool counts as running from the moment it asks for its turn, until it is answered,
 // so a take-over waits for it. Its limit is the turn wait, and then its own timeout from the moment
-// it takes the turn.
+// it takes the turn. A call inside an admission gives that admission the same limit.
 function runCall(context: ComputerContext, call: ComputerCall): Promise<CallResult> {
-  const turnWaitMs = context.options.turnWaitMs ?? defaultTurnWaitMs;
-  const endsAtMs = context.clock.now() + turnWaitMs;
+  const state = context.state;
+  const endsAtMs = context.clock.now() + (context.options.turnWaitMs ?? defaultTurnWaitMs);
+  const calls = { running: state.running, admission: findAdmission(state) };
 
-  extendAdmissions(context.state.admitted, endsAtMs);
-
-  return trackRunningCall(context.state.running, endsAtMs, (running) =>
+  return trackRunningCall(calls, endsAtMs, (moveLimit) =>
     runInTurnOrBusy(context, call, () => {
-      running.endsAtMs = context.clock.now() + call.timeoutMs;
-
-      extendAdmissions(context.state.admitted, running.endsAtMs);
+      moveLimit(context.clock.now() + call.timeoutMs);
     }),
   );
 }

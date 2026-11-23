@@ -885,8 +885,11 @@ test('it keeps the admission of an attempt through its call, and ends it once th
     admitTool: () => {
       admissions.open += 1;
 
-      return () => {
-        admissions.open -= 1;
+      return {
+        run: (work) => work(),
+        release: () => {
+          admissions.open -= 1;
+        },
       };
     },
   });
@@ -926,7 +929,7 @@ test('it starts no attempt and calls nothing when a hold begins between the last
     connectors: new Map([['test.send', stub.connector]]),
     leaseMs: 60_000,
     readHeldToolPrefixes: () => (hold.isHeld ? ['test.'] : []),
-    admitTool: () => (hold.isHeld ? null : () => {}),
+    admitTool: () => (hold.isHeld ? null : { run: (work) => work(), release: () => {} }),
     checkAttempt: () => Promise.resolve({ kind: 'go', destinations: [] }),
   });
 

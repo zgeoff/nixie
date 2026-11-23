@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test';
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { createFakeClock } from '@zgeoff/testing/clock';
-import { admitRunningCall, extendAdmissions } from './admit-running-call';
+import { admitRunningCall, findAdmission } from './admit-running-call';
 import type { RunningCall } from './wait-for-running-calls';
 import { waitForRunningCalls } from './wait-for-running-calls';
 
@@ -12,6 +13,7 @@ function setupTest() {
     clock,
     running: new Set<RunningCall>(),
     admitted: new Set<RunningCall>(),
+    scope: new AsyncLocalStorage<RunningCall>(),
     isHeld: () => hold.isHeld,
     turnWaitMs: 30_000,
   };
@@ -21,6 +23,7 @@ function setupTest() {
     hold,
     admissions,
     admit: () => admitRunningCall(admissions),
+    find: () => findAdmission(admissions),
     wait: () => waitForRunningCalls({ clock, running: admissions.running }),
   };
 }
@@ -35,7 +38,7 @@ test('it admits no call while a hold is open', () => {
 
 test('it keeps a take-over waiting for an admitted call until the admission ends', async () => {
   const ctx = setupTest();
-  const release = ctx.admit();
+  const admission = ctx.admit();
   const progress = { isSettled: false };
 
   const waitAndMark = async () => {
@@ -53,16 +56,16 @@ test('it keeps a take-over waiting for an admitted call until the admission ends
 
   const settledWhileAdmitted = progress.isSettled;
 
-  release?.();
+  admission?.release();
   expect([settledWhileAdmitted, await result]).toStrictEqual([false, true]);
 });
 
 test('it ends an admission once however often its release runs', () => {
   const ctx = setupTest();
-  const release = ctx.admit();
+  const admission = ctx.admit();
 
-  release?.();
-  release?.();
+  admission?.release();
+  admission?.release();
   expect([ctx.admissions.running.size, ctx.admissions.admitted.size]).toStrictEqual([0, 0]);
 });
 
@@ -80,34 +83,36 @@ test('it gives up on an admitted call past the turn wait', async () => {
   expect(isCleared).toBe(false);
 });
 
-test('#extendAdmissions moves an open admission up to the limit of its computer call', async () => {
+test('#findAdmission finds the admission inside its work, past an await', async () => {
   const ctx = setupTest();
-  const release = ctx.admit();
+  const admission = ctx.admit();
 
-  extendAdmissions(ctx.admissions.admitted, 1_090_000);
+  const found = await admission?.run(async () => {
+    await Promise.resolve();
 
-  const result = ctx.wait();
+    return ctx.find();
+  });
 
-  ctx.clock.advance(60_000);
-  release?.();
-
-  const isCleared = await result;
-
-  expect(isCleared).toBe(true);
+  expect(found).toStrictEqual({ endsAtMs: 1_030_000, ended: expect.any(Promise) });
 });
 
-test('#extendAdmissions never moves an admission to an earlier limit', async () => {
+test('#findAdmission finds no admission outside its work', () => {
   const ctx = setupTest();
-  const release = ctx.admit();
 
-  extendAdmissions(ctx.admissions.admitted, 1_010_000);
+  ctx.admit();
 
-  const result = ctx.wait();
+  expect(ctx.find()).toBeNull();
+});
 
-  ctx.clock.advance(20_000);
-  release?.();
+test('#findAdmission finds no admission inside its work once it is released', async () => {
+  const ctx = setupTest();
+  const admission = ctx.admit();
 
-  const isCleared = await result;
+  const found = await admission?.run(() => {
+    admission.release();
 
-  expect(isCleared).toBe(true);
+    return Promise.resolve(ctx.find());
+  });
+
+  expect(found).toBeNull();
 });

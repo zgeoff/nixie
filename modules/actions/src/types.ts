@@ -32,9 +32,16 @@ export type OwnerReason =
 export type ActionRiskClass = 'routine' | 'always_ask' | 'lifting';
 
 // Lets one call of the tool start, or answers null while the tool is held. The call counts as
-// running from that moment, so a hold that begins later waits for it, until the returned function
+// running from that moment, so a hold that begins later waits for it, until its admission's release
 // ends it.
-export type AdmitTool = (tool: string) => (() => void) | null;
+export type AdmitTool = (tool: string) => Admission | null;
+
+// One call let past a hold. The call runs inside `run`, so the tool's system can tell it from a call
+// that was not admitted. `release` may run more than once.
+export interface Admission {
+  readonly run: <Result>(work: () => Promise<Result>) => Promise<Result>;
+  readonly release: () => void;
+}
 
 export type CheckAnswer = 'found' | 'not_found' | 'inconclusive';
 

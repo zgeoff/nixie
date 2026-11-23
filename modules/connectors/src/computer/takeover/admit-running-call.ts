@@ -1,4 +1,6 @@
+import type { AsyncLocalStorage } from 'node:async_hooks';
 import type { Clock } from '@heynixie/clock';
+import type { Admission } from './types';
 import type { RunningCall } from './wait-for-running-calls';
 
 export interface Admissions {
@@ -10,16 +12,18 @@ export interface Admissions {
   // the admitted calls among them, open until their action's call settles
   readonly admitted: Set<RunningCall>;
 
+  // the admission of the call that runs now, which its computer calls read
+  readonly scope: AsyncLocalStorage<RunningCall>;
+
   readonly isHeld: () => boolean;
 
   // how long an admitted call has to reach its computer call, which then sets the limit
   readonly turnWaitMs: number;
 }
 
-// Lets an action's call start unless a hold is open, and counts it as running in the same
-// synchronous step, so a take-over that begins later waits for it. It answers null while a hold is
-// open. The returned function ends the admission, and may run more than once.
-export function admitRunningCall(admissions: Admissions): (() => void) | null {
+// Lets a call start unless a hold is open, and counts it as running in the same synchronous step,
+// so a later take-over waits for it. Only the computer calls inside its work move its limit.
+export function admitRunningCall(admissions: Admissions): Admission | null {
   if (admissions.isHeld()) {
     return null;
   }
@@ -34,17 +38,23 @@ export function admitRunningCall(admissions: Admissions): (() => void) | null {
   admissions.running.add(call);
   admissions.admitted.add(call);
 
-  return () => {
-    admissions.running.delete(call);
-    admissions.admitted.delete(call);
-    ended.resolve();
+  return {
+    run: (work) => admissions.scope.run(call, work),
+    release: () => {
+      admissions.running.delete(call);
+      admissions.admitted.delete(call);
+      ended.resolve();
+    },
   };
 }
 
-// A take-over gives up once any call it waits for passes its limit, so the computer call of an
-// admitted action moves the admission's limit up to its own, and never down.
-export function extendAdmissions(admitted: ReadonlySet<RunningCall>, endsAtMs: number): void {
-  for (const call of admitted) {
-    call.endsAtMs = Math.max(call.endsAtMs, endsAtMs);
-  }
+// The open admission of the call that runs now. A promise that the call started outside its own
+// work, such as a timer of the guest, still sees the admission after it ends, so an ended one
+// counts as none.
+export function findAdmission(
+  admissions: Pick<Admissions, 'admitted' | 'scope'>,
+): RunningCall | null {
+  const call = admissions.scope.getStore();
+
+  return call !== undefined && admissions.admitted.has(call) ? call : null;
 }

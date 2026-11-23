@@ -1,4 +1,4 @@
-import type { DirectResult, ToolDefinition } from '@heynixie/tools';
+import type { DirectResult, ToolDefinition, ToolOutcome } from '@heynixie/tools';
 import { z } from 'zod';
 import type { ActionConnector, ProviderResponse } from '../types';
 import { buildBrowserActTools, runBrowserAct } from './build-browser-act-tools';
@@ -45,26 +45,27 @@ export function buildComputerTools(options: ComputerToolOptions): ComputerTools 
     ].map((tool) => withTakeoverGate(options, withMoveGate(options, tool))),
     connector: {
       reconcile: { kind: 'none' },
-      run: async (attempt) => {
-        if (options.computer.takeover.isHeld()) {
-          return { kind: 'refused_retryable', reason: takenOverMessage };
-        }
+      run: (attempt) =>
+        runPastHold(
+          options.computer.takeover,
+          async (): Promise<ProviderResponse> => {
+            const moving = await refuseUntilMoved(options);
+            const result = await (moving ?? runQueued(options, state, attempt));
 
-        const moving = await refuseUntilMoved(options);
-        const result = await (moving ?? runQueued(options, state, attempt));
+            const refused = refusedSchema.safeParse(result.result['refused']);
 
-        const refused = refusedSchema.safeParse(result.result['refused']);
-
-        return refused.success
-          ? toRefusal(refused.data)
-          : {
-              kind: 'success',
-              result: result.result,
-              ...(result.images === undefined || result.images.length === 0
-                ? {}
-                : { images: result.images }),
-            };
-      },
+            return refused.success
+              ? toRefusal(refused.data)
+              : {
+                  kind: 'success',
+                  result: result.result,
+                  ...(result.images === undefined || result.images.length === 0
+                    ? {}
+                    : { images: result.images }),
+                };
+          },
+          { kind: 'refused_retryable', reason: takenOverMessage },
+        ),
     },
   };
 }
@@ -89,10 +90,32 @@ function withTakeoverGate(options: ComputerToolOptions, tool: ToolDefinition): T
   return {
     ...tool,
     run: (call, context) =>
-      options.computer.takeover.isHeld()
-        ? Promise.resolve({ status: 'ok', ...refuseComputer('TAKEN_OVER', takenOverMessage) })
-        : tool.run(call, context),
+      runPastHold<ToolOutcome>(options.computer.takeover, () => tool.run(call, context), {
+        status: 'ok',
+        ...refuseComputer('TAKEN_OVER', takenOverMessage),
+      }),
   };
+}
+
+// An attempt's start admits its call past the hold, so a call inside an admission runs, and the
+// take-over waits for it. Any other call takes an admission of its own, so a take-over either
+// refuses it or waits for it.
+function runPastHold<Result>(
+  takeover: Computer['takeover'],
+  work: () => Promise<Result>,
+  refusal: Result,
+): Promise<Result> {
+  if (takeover.isAdmitted()) {
+    return work();
+  }
+
+  const admission = takeover.admit();
+
+  if (admission === null) {
+    return Promise.resolve(refusal);
+  }
+
+  return admission.run(work).finally(admission.release);
 }
 
 // Every tool answers COMPUTER_MOVING until the disks of an earlier release are copied, whatever

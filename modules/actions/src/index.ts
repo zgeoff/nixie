@@ -45,6 +45,7 @@ export type {
   ApprovedCall,
   ActionsTables,
   AdmitTool,
+  Admission,
   AllowedCall,
   ListedAction,
   ModelView,

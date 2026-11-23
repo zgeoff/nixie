@@ -174,12 +174,16 @@ async function runAttempt(
 
   const startedAt = context.clock.now();
 
-  const response = await runConnector(context, attempt, {
-    connector,
-    args,
-    destinations: step.destinations,
-    options,
-  }).finally(start.release);
+  const response = await start.admission
+    .run(() =>
+      runConnector(context, attempt, {
+        connector,
+        args,
+        destinations: step.destinations,
+        options,
+      }),
+    )
+    .finally(start.admission.release);
 
   await writeAttemptResult(context, attempt, {
     response,

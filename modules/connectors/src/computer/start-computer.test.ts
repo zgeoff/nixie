@@ -1087,3 +1087,39 @@ test('it sleeps the sandbox after the hold ends and the idle time passes', async
 
   await waitForCondition(() => ctx.state.sleeps === 1);
 });
+
+test('it gives up a take-over at an admitted call’s own limit, however long another call runs', async () => {
+  const requests: ComputerRequest[] = [];
+  const hung = Promise.withResolvers<ComputerReply>();
+
+  onTestFinished(() => {
+    hung.resolve({ kind: 'closed', ok: true });
+  });
+
+  const ctx = await setupTest({
+    answer: (request) => {
+      requests.push(request);
+
+      return hung.promise;
+    },
+  });
+
+  ctx.computer.takeover.admit();
+
+  void ctx.computer.call({
+    request: ctx.run('sleep 600'),
+    scan: ctx.pass,
+    scanText: ctx.pass,
+    timeoutMs: 10_000,
+  });
+
+  await waitForCondition(() => requests.length === 1);
+
+  const takeOver = ctx.computer.takeover.start('laptop');
+
+  ctx.clock.advance(100);
+
+  const result = await takeOver;
+
+  expect(result).toStrictEqual({ kind: 'busy_too_long' });
+});

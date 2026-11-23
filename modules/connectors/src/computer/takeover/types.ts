@@ -71,6 +71,16 @@ export interface Takeover {
 // passes to start
 export interface ComputerTakeover extends Pick<Takeover, 'isHeld' | 'epoch' | 'start' | 'end'> {
   // Lets an action's call start unless a hold is open, and counts it as a running call that a
-  // take-over waits for until the returned function runs. It answers null while a hold is open.
-  readonly admit: () => (() => void) | null;
+  // take-over waits for until its release runs. It answers null while a hold is open.
+  readonly admit: () => Admission | null;
+
+  // true inside the work of an admission that has not been released, which a hold lets run
+  readonly isAdmitted: () => boolean;
+}
+
+// One call let past the hold. The call runs inside `run`, so the take-over waits for it up to the
+// limit of its own computer call. `release` ends the admission, and may run more than once.
+export interface Admission {
+  readonly run: <Result>(work: () => Promise<Result>) => Promise<Result>;
+  readonly release: () => void;
 }

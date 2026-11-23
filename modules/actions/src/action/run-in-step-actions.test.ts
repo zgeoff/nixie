@@ -449,7 +449,7 @@ test('it runs no call and records no attempt when a hold begins between the last
   const settled = await ctx.runStep({
     runCall: ctx.runCall({ status: 'done', resultSequence: 7, result: {}, images: [] }),
     readHeldToolPrefixes: () => (hold.isHeld ? ['test.'] : []),
-    admitTool: () => (hold.isHeld ? null : () => {}),
+    admitTool: () => (hold.isHeld ? null : { run: (work) => work(), release: () => {} }),
     checkAttempt: () => Promise.resolve({ kind: 'go', destinations: [] }),
   });
 
