@@ -56,7 +56,8 @@ the work item that moves it; until then the runner leaves it to its own pipeline
 // turn inputs and sandboxes.
 interface ErasableDescriptor {
   kind: ErasableKind; // 'memory_item' | 'moment' | 'note' | 'record' | 'image' | 'conversation'
-  //                     | 'vault_entry' | 'locked_entry' (the last two join when they are built)
+  //                     | 'vault_entry' | 'locked_entry' | 'credential' (these three join when
+  //                     they are built; 'credential' is a credential in the database backend)
   recordKinds: {
     erasable: readonly string[]; // records this erasable's own forget erases
     forgettable: readonly string[]; // records a record forget may target (the record erasable only)
@@ -175,9 +176,9 @@ erasure.finished  { erasureID, kind, targetID, shortID, by, removedKeys }
 - The backup state follows
   [a forget's backup state](../../architecture/deployment/backups.md#a-forgets-backup-state):
   complete only once a set at or after `erasure.finished` is published.
-- The backup module reads `erasure.finished` and each descriptor's `legacyEnds` to decide a set is
-  due. The backup job never publishes a set staged before a finished erasure that no published set
-  covers yet.
+- A set falls due on `erasure.finished`, on each descriptor's `legacyEnds`, and on a vault lock or
+  unlock record. The backup job never publishes a set staged before a finished erasure that no
+  published set covers yet.
 - A script generates the contract's forgettable kinds list from the descriptors, because the
   published contract lib can't import a module. A check fails when the committed list differs.
 - Every record kind of the server sits in exactly one descriptor list, or carries no erasable field.
