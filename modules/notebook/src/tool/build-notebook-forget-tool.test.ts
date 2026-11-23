@@ -4,6 +4,7 @@ import { waitFor } from '@zgeoff/testing';
 import invariant from 'tiny-invariant';
 import { pickText, startTestNotebook } from '../test-utils';
 import type { TestNotebookOptions } from '../test-utils';
+import type { RunningStepClaim } from '../types';
 
 async function setupTest(options: TestNotebookOptions = {}) {
   const ctx = await startTestNotebook(options);
@@ -221,13 +222,16 @@ test('it finishes at the next start a forget whose session cleanup kept failing'
 });
 
 test('it runs the session cleanup only once the step that called the forget has ended', async () => {
-  const step: { key: string | null; reads: number } = { key: 'conversation:1', reads: 0 };
+  const step: { running: RunningStepClaim | null; reads: number } = {
+    running: { stepKey: 'conversation:1', generation: 1 },
+    reads: 0,
+  };
 
   const ctx = await setupTest({
-    readStartedStep: () => {
+    readRunningStep: () => {
       step.reads += 1;
 
-      return Promise.resolve(step.key);
+      return Promise.resolve(step.running);
     },
   });
 
@@ -241,21 +245,36 @@ test('it runs the session cleanup only once the step that called the forget has 
 
   const whileRunning = ctx.cleanups.length;
 
-  step.key = null;
+  step.running = null;
 
   await ctx.notebook.waitForForgets();
 
   expect([whileRunning, ctx.cleanups.length]).toStrictEqual([0, 1]);
 });
 
+test('it runs the session cleanup once a rerun of the calling step claims it again', async () => {
+  const step = { running: { stepKey: 'conversation:1', generation: 1 } };
+
+  const ctx = await setupTest({ readRunningStep: () => Promise.resolve(step.running) });
+  const note = await ctx.write('Boiler');
+
+  await ctx.call('notebook.forget', { id: note });
+
+  step.running = { stepKey: 'conversation:1', generation: 2 };
+
+  await ctx.notebook.waitForForgets();
+
+  expect(ctx.cleanups).toHaveLength(1);
+});
+
 test('it drops the note from a search while the step that called the forget still runs', async () => {
   const step = { reads: 0 };
 
   const ctx = await setupTest({
-    readStartedStep: () => {
+    readRunningStep: () => {
       step.reads += 1;
 
-      return Promise.resolve('conversation:1');
+      return Promise.resolve({ stepKey: 'conversation:1', generation: 1 });
     },
   });
 
@@ -273,7 +292,10 @@ test('it drops the note from a search while the step that called the forget stil
 });
 
 test('it finishes at the next start a forget whose calling step still ran at the stop', async () => {
-  const ctx = await setupTest({ readStartedStep: () => Promise.resolve('conversation:1') });
+  const ctx = await setupTest({
+    readRunningStep: () => Promise.resolve({ stepKey: 'conversation:1', generation: 1 }),
+  });
+
   const note = await ctx.write('Boiler');
 
   await ctx.call('notebook.forget', { id: note });

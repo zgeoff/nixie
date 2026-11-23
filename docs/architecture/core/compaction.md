@@ -128,6 +128,8 @@ guest's transcripts. nixie cannot tell which summary holds the forgotten text wi
 one, so it erases them all. The next session then opens as a rebuild with no summary, and its status
 says that the forget erased the summary of earlier sessions.
 
-A compaction that started before the forget can commit its summary after the cleanup erased the
-others. The step that opens the rebuilt session therefore deletes every summary key again before it
-builds the opening, so a late summary never reaches the model.
+A compaction that started before the forget commits its summary with its step. The cleanup waits for
+that step to commit, fail or lose its lease before it erases the summaries, so it erases that
+summary with the others. The step that opens the rebuilt session also deletes every summary key
+again before it builds the opening, so a summary that reaches the log by any other path never
+reaches the model.

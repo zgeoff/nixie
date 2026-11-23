@@ -25,7 +25,7 @@ import { readFoundNotes } from './read/read-found-notes';
 import { readNote } from './read/read-note';
 import { readNoteHistory } from './read/read-note-history';
 import type { NotebookToolStore } from './tool/notebook-tool-store';
-import type { NoteForgetCaller, NotebookContext } from './types';
+import type { NoteForgetCaller, NotebookContext, RunningStepClaim } from './types';
 import { readWalk } from './walk/read-walk';
 import { writeNote } from './write/write-note';
 import { writeNoteEdit } from './write/write-note-edit';
@@ -70,8 +70,8 @@ export interface StartNotebookOptions extends NotebookContext {
   // without it, meaning search is never ready and a search reports a partial meaning
   readonly semanticSearch?: SemanticSearch;
 
-  // the key of the step that the task of a thread runs, or null when none runs
-  readonly readStartedStep: (thread: string) => Promise<string | null>;
+  // the step that the task of a thread runs, or null when none runs or its lease has expired
+  readonly readRunningStep: (thread: string) => Promise<RunningStepClaim | null>;
 
   // the wait before a tool forget's cleanup checks the calling step again, or runs again after it
   // failed
@@ -80,9 +80,8 @@ export interface StartNotebookOptions extends NotebookContext {
 
 const defaultCleanupRetryMs = 1000;
 
-interface CallingStep {
+interface CallingStep extends RunningStepClaim {
   readonly thread: string;
-  readonly stepKey: string;
 }
 
 // Starts the in-process indexes from every active note, and finishes each forget that a crash cut
@@ -109,12 +108,16 @@ export async function startNotebook(options: StartNotebookOptions): Promise<Note
       return;
     }
 
-    while ((await options.readStartedStep(step.thread)) === step.stepKey) {
+    let current = await options.readRunningStep(step.thread);
+
+    while (isSameStep(current, step)) {
       if (state.isStopping) {
         throw new Error('the notebook stopped before the calling step ended');
       }
 
       await Bun.sleep(retryMs);
+
+      current = await options.readRunningStep(step.thread);
     }
   };
 
@@ -149,9 +152,9 @@ export async function startNotebook(options: StartNotebookOptions): Promise<Note
     const begun = await beginNoteForget(context, target);
 
     if (begun.status === 'begun') {
-      const stepKey = await options.readStartedStep(caller.thread);
+      const running = await options.readRunningStep(caller.thread);
 
-      const step = stepKey === null ? null : { thread: caller.thread, stepKey };
+      const step = running === null ? null : { ...running, thread: caller.thread };
 
       cleanups.set(begun.noteID, runTrackedFinish(begun.noteID, step));
     }
@@ -206,4 +209,8 @@ export async function startNotebook(options: StartNotebookOptions): Promise<Note
       await index.stop();
     },
   };
+}
+
+function isSameStep(running: RunningStepClaim | null, step: RunningStepClaim): boolean {
+  return running?.stepKey === step.stepKey && running.generation === step.generation;
 }

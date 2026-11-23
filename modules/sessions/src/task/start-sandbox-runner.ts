@@ -34,6 +34,7 @@ import { createWorkerSandbox } from '../utils/create-worker-sandbox';
 import type { SessionGuard } from '../utils/make-session-guard';
 import { makeSessionGuard } from '../utils/make-session-guard';
 import { runGuestPurge } from '../utils/run-guest-purge';
+import { waitForStepEnd } from '../utils/wait-for-step-end';
 import { buildReachedLimit } from './build-reached-limit';
 import { buildSpendRecord } from './build-spend-record';
 import { buildTaskRun } from './build-task-run';
@@ -501,14 +502,16 @@ async function runTaskSessionCleanup(
   }
 }
 
-// The invalidation goes in even before the task's first session opens, because a step that ended
-// before the forget can still commit that session after the cleanup returns.
+// The invalidation goes in even before the task's first session opens, because the step whose turn
+// ended before the forget commits that session only now.
 async function cleanTaskSession(
   runner: TaskRunner,
   taskID: string,
   cause: SessionCleanupCause,
 ): Promise<void> {
   const context = runner.options.context;
+
+  await waitForStepEnd(context, taskID);
 
   await writeRecords(context.log, [
     {

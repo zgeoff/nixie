@@ -22,7 +22,7 @@ import { buildNotebookMemory } from '../memory/build-notebook-memory';
 import { notebookProjections } from '../projection/notebook-projections';
 import { startNotebook } from '../start-notebook';
 import type { NotebookStore } from '../start-notebook';
-import type { NotebookSettings } from '../types';
+import type { NotebookSettings, RunningStepClaim } from '../types';
 import { defaultNotebookSettings } from '../types';
 import { buildNotebookToolCaller } from './build-notebook-tool-caller';
 
@@ -39,7 +39,7 @@ export interface TestNotebookOptions {
   readonly cleanupRetryMs?: number;
 
   // the step a thread runs; without it, no step runs, so a tool's forget cleans at once
-  readonly readStartedStep?: (thread: string) => Promise<string | null>;
+  readonly readRunningStep?: (thread: string) => Promise<RunningStepClaim | null>;
 }
 
 // Starts a log with the notebook over it, and a memory store beside it, so a test calls a tool and
@@ -109,7 +109,7 @@ export async function startTestNotebook(options: TestNotebookOptions = {}) {
       clock,
       settings: { ...defaultNotebookSettings, ...options.settings },
       cleanupRetryMs: options.cleanupRetryMs ?? 1,
-      readStartedStep: options.readStartedStep ?? (() => Promise.resolve(null)),
+      readRunningStep: options.readRunningStep ?? (() => Promise.resolve(null)),
       memory: buildNotebookMemory(() => memory),
       cleanupSessions: (cause) => {
         cleanups.push(cause);

@@ -10,7 +10,7 @@ import {
 } from '@heynixie/notebook';
 import { readStarterDecisionPoint } from '@heynixie/policy/test-utils';
 import { sandboxCreatedCodec } from '@heynixie/sandbox';
-import { conversationTaskID, createConversationTask, readStartedStepKey } from '@heynixie/tasks';
+import { conversationTaskID, createConversationTask, readRunningStep } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
 import { buildConversationDriver } from '../test-utils/build-conversation-driver';
 import { buildTestModelsConfig } from '../test-utils/build-test-models-config';
@@ -1285,7 +1285,7 @@ test('it delivers a message once when the turn that answers it forgets a note', 
     settings: defaultNotebookSettings,
     memory: buildNotebookMemory(() => ctx.memory),
     cleanupSessions: (cause) => runner.cleanupSessions(cause),
-    readStartedStep: (thread) => readStartedStepKey(ctx.context, thread),
+    readRunningStep: (thread) => readRunningStep(ctx.context, thread),
     cleanupRetryMs: 1,
   });
 

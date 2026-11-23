@@ -2,7 +2,7 @@ import { toErrorFields } from '@heynixie/logger';
 import type { CleanupSessions, StartedMemoryStore } from '@heynixie/memory';
 import type { NotebookStore } from '@heynixie/notebook';
 import { buildNotebookMemory, startNotebook } from '@heynixie/notebook';
-import { readStartedStepKey } from '@heynixie/tasks';
+import { readRunningStep } from '@heynixie/tasks';
 import type { ServerParts } from '../types';
 
 // Starts the notebook after memory: it reads item IDs and gists from memory, and its forget runs
@@ -19,7 +19,7 @@ export async function startNotebookPart(
     settings: parts.config.notebook,
     memory: buildNotebookMemory(() => memory),
     cleanupSessions,
-    readStartedStep: (thread) => readStartedStepKey(parts.context, thread),
+    readRunningStep: (thread) => readRunningStep(parts.context, thread),
     ...(parts.encoder === null
       ? {}
       : {

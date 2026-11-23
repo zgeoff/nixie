@@ -12,7 +12,7 @@ import {
   conversationTaskID,
   createConversationTask,
   getTaskName,
-  readStartedStepKey,
+  readRunningStep,
 } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
 import { startConversation } from '../conversation/start-conversation';
@@ -41,7 +41,7 @@ async function setupTest() {
     settings: defaultNotebookSettings,
     memory: buildNotebookMemory(() => memory),
     cleanupSessions: () => Promise.resolve(),
-    readStartedStep: (thread) => readStartedStepKey(server.context, thread),
+    readRunningStep: (thread) => readRunningStep(server.context, thread),
   });
 
   onTestFinished(() => notebook.stop());

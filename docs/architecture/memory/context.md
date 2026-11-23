@@ -295,16 +295,19 @@ record it ran for. The cleanup runs in order:
    that a live CLI still writes. The assistant's own `notebook.forget` starts the cleanup only after
    its calling step has ended, so that turn is never aborted
    ([forgetting a note](./notebook.md#forgetting-a-note)).
-2. It commits a session-invalidated record on the conversation's thread. From then on, no turn
-   resumes a session that existed before the record, even one whose step commits later.
-3. It deletes the key of every session summary on the conversation's thread, because any summary can
+2. It waits until the step that ran the last turn commits, fails or loses its lease, because a step
+   whose turn ended before the forget can still commit a session summary, and the later steps erase
+   that summary once it is in the log.
+3. It commits a session-invalidated record on the conversation's thread. From then on, no turn
+   resumes a session that existed before the record.
+4. It deletes the key of every session summary on the conversation's thread, because any summary can
    hold the forgotten text ([compaction](../core/compaction.md#forgetting)).
-4. It removes every link the thread's sessions numbered, for a fetched page or a search hit, and
+5. It removes every link the thread's sessions numbered, for a fetched page or a search hit, and
    every page they stored, because a link's target or a page can hold the forgotten text
    ([web fetch](../connectors/web-fetch.md#link-ids)).
-5. It starts the guest in the conversation's sandbox with a purge frame, and the guest removes the
+6. It starts the guest in the conversation's sandbox with a purge frame, and the guest removes the
    CLI's whole state directory, every transcript and fork included.
-6. It commits a session-cleanup-completed record.
+7. It commits a session-cleanup-completed record.
 
 The cleanup then runs the same steps on the thread and in the sandbox of each open
 [started task](../core/started-tasks.md) that reads memory, one task at a time. A forget of a record

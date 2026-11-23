@@ -128,6 +128,12 @@ export interface NoteForgetCaller {
   readonly thread: string;
 }
 
+// A step that runs: a rerun or a takeover of the same step key claims a new generation.
+export interface RunningStepClaim {
+  readonly stepKey: string;
+  readonly generation: number;
+}
+
 // Who writes: the conversation, or the task whose run called the tool. The server sets both from
 // the turn, never from a tool's input.
 export interface NoteWriter {
