@@ -104,8 +104,9 @@ const fetch = store.fetcher(binding, ['https://tracker.example.internal'], {
 });
 ```
 
-- [The credential store item](https://linear.app/zgeoff/issue/GEO-1824) builds the store, its file
-  backend and its fetcher. This item adds the `service_client` kind, and the fetcher's `pairing` and
+- [The credential store item](https://linear.app/zgeoff/issue/GEO-1824) builds the store, its
+  database backend and its fetcher. The file backend comes from the credentials design rewrite, and
+  this item needs it. This item adds the `service_client` kind, and the fetcher's `pairing` and
   `stream`, as their first caller.
 - The proxy passes `stream: true`, so a server may answer a request as an SSE stream, which the
   fetcher scrubs chunk by chunk. The proxy holds no long-lived stream open.
