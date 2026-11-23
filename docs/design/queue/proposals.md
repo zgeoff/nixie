@@ -8,9 +8,9 @@ table and sweep, prompt overrides live outside the shared table, each family nam
 differently, and a task that proposed something hears only some outcomes. After this design, a
 memory write, a skill write, a rule change, a held action and a prompt override all show in your
 approvals list, can all be deferred, lapse on the same schedule rules, and all report back the same
-way. A held action is the one exception to the message: its task hears the action's own outcome. The
-proposer can list its open proposals and those of the tasks it started, withdraw its own, and
-replace one by proposing the same thing again.
+way. A held action's task hears the action's own outcome in place of the message. The proposer can
+list its open proposals and those of the tasks it started, withdraw its own, and replace one by
+proposing the same thing again.
 
 Once the owner approves this design, build each of its work items from it and the built
 [approvals](../../architecture/policy/approvals.md) it extends.
@@ -145,7 +145,7 @@ proposals.withdrawn …existing; written beside proposals.settled until release 
   which holds only for records written before this design. A rebuild over a log that mixes old and
   new records creates exactly one row per proposal, and a test checks it.
 - When a family's approval record carries data the apply needs, such as `skills.write_approved` with
-  edited files, an approval still writes it, beside `proposals.settled`.
+  edited files, an approval still writes it, beside `proposals.settled`, in every release.
 - The family records for a decline and a lapse stop at release N+2 of the
   [release order](#release-order). Until then `discard` writes them as well, with the answer's
   identity and note. Their codecs and mappers stay, so a rebuild still folds every old record. No
@@ -202,9 +202,10 @@ approvals:
   as today.
 - One sweep in the core lapses every family's open proposals once their lapse passes, through each
   family's `discard`. A row whose family has no handler stays open, as today. The sweep lapses a
-  memory proposal in memory's own transaction, one row at a time, and a row whose lapse fails stays
-  open for the next sweep. Memory's own sweep keeps only its item lapses and the key-store cleanup
-  of closed proposals, after the commit. The prompt sweep runs until prompt joins the shared table.
+  memory proposal in memory's own transaction, one row at a time, and a row whose lapse throws an
+  error stays open for the next sweep. Memory's own sweep keeps only its item lapses and the
+  key-store cleanup of closed proposals, after the commit. The prompt sweep runs until prompt joins
+  the shared table.
 
 ### Telling the proposer
 
@@ -368,7 +369,8 @@ fails to load it, so that rollback needs a restore from a backup taken before N+
   `memory_proposals.status` and `lapse_at` stop. The prompt family joins the shared table, and
   memory draws its short IDs.
 
-The `[#n]` fix for take-over notices and the suggested rules rename ship in any release.
+The `[#n]` fix for take-over notices and the suggested rules rename ship in any release, each in a
+release of its own. A rollback across the rename still reads every renamed row and record.
 
 ## Builder decides
 
