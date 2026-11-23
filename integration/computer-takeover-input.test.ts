@@ -104,9 +104,12 @@ async function setupTest() {
       // A whole-screen update request always passes, so once the guest has seen the marker of one,
       // it has seen every message the viewer sent before it.
       return {
-        sendPointer: () => socket.send(new Uint8Array([5, 0, 0, 10, 0, 10])),
-        sendMarker: (marker: number) =>
-          socket.send(new Uint8Array([3, 0, 0, marker, 0, 0, 0, 1, 0, 1])),
+        sendPointer: () => {
+          socket.send(new Uint8Array([5, 0, 0, 10, 0, 10]));
+        },
+        sendMarker: (marker: number) => {
+          socket.send(new Uint8Array([3, 0, 0, marker, 0, 0, 0, 1, 0, 1]));
+        },
       };
     },
     waitForMarker: (marker: number) =>

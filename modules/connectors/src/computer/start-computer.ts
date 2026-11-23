@@ -485,10 +485,10 @@ async function readyGuest(context: ComputerContext, sandbox: Sandbox): Promise<G
 
 // The hold's own calls to the guest take their turn as any call does, but no take-over waits for
 // them, because they belong to the hold.
-async function runHoldCall(context: ComputerContext, request: ComputerCall['request']) {
+function runHoldCall(context: ComputerContext, request: ComputerCall['request']) {
   const scans = context.options.scans;
 
-  return await runInTurnOrBusy(context, { request, timeoutMs: 30_000, ...scans });
+  return runInTurnOrBusy(context, { request, timeoutMs: 30_000, ...scans });
 }
 
 async function runInTurnOrBusy(

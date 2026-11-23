@@ -184,7 +184,8 @@ const takeoverRefusals: Record<string, string> = {
 
 function toRefusal(error: unknown): string {
   return (
-    (error instanceof ORPCError ? takeoverRefusals[error.code] : undefined) ??
-    'The computer can’t be taken over right now.'
+    (error instanceof ORPCError && typeof error.code === 'string'
+      ? takeoverRefusals[error.code]
+      : undefined) ?? 'The computer can’t be taken over right now.'
   );
 }

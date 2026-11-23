@@ -15,7 +15,12 @@ function setupTest() {
 
     running.add(call);
 
-    return { call, end: () => ended.resolve() };
+    return {
+      call,
+      end: () => {
+        ended.resolve();
+      },
+    };
   };
 
   return { clock, running, addCall, wait: () => waitForRunningCalls({ clock, running }) };
@@ -24,7 +29,9 @@ function setupTest() {
 test('it answers true at once when no call runs', async () => {
   const ctx = setupTest();
 
-  await expect(ctx.wait()).resolves.toBe(true);
+  const isCleared = await ctx.wait();
+
+  expect(isCleared).toBe(true);
 });
 
 test('it answers true when the calls that ran at the start end, though a later call still runs', async () => {
@@ -35,7 +42,9 @@ test('it answers true when the calls that ran at the start end, though a later c
   ctx.addCall(1_090_000);
   original.end();
 
-  await expect(result).resolves.toBe(true);
+  const isCleared = await result;
+
+  expect(isCleared).toBe(true);
 });
 
 test('it answers false when a call outlasts its own limit', async () => {
@@ -47,7 +56,9 @@ test('it answers false when a call outlasts its own limit', async () => {
 
   ctx.clock.advance(60_000);
 
-  await expect(result).resolves.toBe(false);
+  const isCleared = await result;
+
+  expect(isCleared).toBe(false);
 });
 
 test('it waits to the new limit of a call that took its turn late', async () => {
@@ -89,7 +100,9 @@ test('it answers false at the limit of the first call to overrun, before a later
 
   ctx.clock.advance(30_000);
 
-  await expect(result).resolves.toBe(false);
+  const isCleared = await result;
+
+  expect(isCleared).toBe(false);
 });
 
 test('it ignores the limit of a call that has ended and waits for the others', async () => {
@@ -120,5 +133,7 @@ test('it ignores the limit of a call that has ended and waits for the others', a
 
   slow.end();
 
-  await expect(result).resolves.toBe(true);
+  const isCleared = await result;
+
+  expect(isCleared).toBe(true);
 });

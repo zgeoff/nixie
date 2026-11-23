@@ -75,7 +75,9 @@ test('it gives up on an admitted call past the turn wait', async () => {
 
   ctx.clock.advance(30_000);
 
-  await expect(result).resolves.toBe(false);
+  const isCleared = await result;
+
+  expect(isCleared).toBe(false);
 });
 
 test('#extendAdmissions moves an open admission up to the limit of its computer call', async () => {
@@ -89,7 +91,9 @@ test('#extendAdmissions moves an open admission up to the limit of its computer 
   ctx.clock.advance(60_000);
   release?.();
 
-  await expect(result).resolves.toBe(true);
+  const isCleared = await result;
+
+  expect(isCleared).toBe(true);
 });
 
 test('#extendAdmissions never moves an admission to an earlier limit', async () => {
@@ -103,5 +107,7 @@ test('#extendAdmissions never moves an admission to an earlier limit', async () 
   ctx.clock.advance(20_000);
   release?.();
 
-  await expect(result).resolves.toBe(true);
+  const isCleared = await result;
+
+  expect(isCleared).toBe(true);
 });
