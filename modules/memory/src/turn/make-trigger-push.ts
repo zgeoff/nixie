@@ -24,6 +24,7 @@ export function makeTriggerPush(trigger: TurnMemorySettings['trigger']): SelectP
                 itemID: state.itemID,
                 version: state.version,
                 isSelf: state.isSelf,
+                triggers: match.triggers,
                 ...(match.score === undefined ? {} : { score: match.score }),
                 ...(match.similarity === undefined ? {} : { similarity: match.similarity }),
               },

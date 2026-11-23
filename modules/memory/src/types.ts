@@ -22,6 +22,9 @@ import type { MemoryIndexConfig } from './index-block/default-index-settings';
 import type { EntryPage, TopicRequest } from './index-block/types';
 import type { StoreIndexes } from './moment/store/start-store-indexes';
 import type { TurnMemorySettings } from './turn/types';
+import type { UsageListEntry } from './usage/collect-usage-list';
+import type { UsageListRequest } from './usage/read-usage-list';
+import type { MemoryUsage } from './usage/types';
 import type { DeliveryLock } from './utils/make-delivery-lock';
 import type { ItemHistory, MemoryView } from './view/memory-view';
 
@@ -312,6 +315,12 @@ export interface MemoryStore {
   readonly readHistory: (itemID: string) => Promise<ItemHistory | null>;
 
   readonly readSubjectCounts: () => Promise<MemorySubjectCounts>;
+
+  // Each read of usage counts only the records before the sequence.
+  readonly readUsage: (beforeSequence: number) => Promise<MemoryUsage>;
+
+  readonly readSavedTimes: (itemIDs: readonly string[]) => Promise<ReadonlyMap<string, number>>;
+  readonly readUsageList: (request: UsageListRequest) => Promise<readonly UsageListEntry[]>;
 
   readonly view: MemoryView;
 }

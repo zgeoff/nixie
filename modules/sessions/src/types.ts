@@ -93,6 +93,10 @@ export interface TurnMemoryAsk {
 export interface SessionHeld {
   // each read is lazy: the memory module calls it only when it needs the answer
   readonly readVersions: () => Promise<readonly MemoryRef[]>;
+
+  // The sequence after which the thread's memory writes belong to the session, or null when the
+  // session holds none. No push picks an item that the session wrote.
+  readonly readWriteStart: () => Promise<number | null>;
 }
 
 export type TurnMemory =

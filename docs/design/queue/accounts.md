@@ -12,7 +12,11 @@ password. Its [mailbox and phone number](mail-and-phone.md) are each account's u
 in. Each account's secret sits in a vault that only the server reads. When the assistant asks to
 sign in, the request passes your rules like any other action, and on allow the server sends the
 secret over the browser guest's private channel, where it goes straight into the page's password
-field. [The wallet](wallet.md) keeps a card in the same vault and fills it the same way.
+field. [The wallet](wallet.md) keeps cards in the same vault and fills them the same way.
+
+Each entry sits in a group that the owner names, such as `nix` or `household`, and rules match a
+group the way they match a host. An entry can be [locked](locked-entries.md), so each use waits for
+your passkey, whatever the rules say.
 
 ## Shape
 
@@ -34,8 +38,9 @@ flowchart LR
 
 ```ts
 account.list({});
-// → { accounts: [{ account: 'a7q2m9x4kd', kind: 'password', label: 'library card',
-//                  origins: ['https://library.example.org'], username: 'nix@example.net', state: 'ready' }] }
+// → { accounts: [{ account: 'a7q2m9x4kd', kind: 'password', label: 'library card', group: 'nix',
+//                  isLocked: false, origins: ['https://library.example.org'],
+//                  username: 'nix@example.net', state: 'ready' }] }
 //   a forgotten entry is left out
 
 account.sign_in({ tab: 't1', account: 'a7q2m9x4kd', submit: 'E7' });
@@ -64,6 +69,7 @@ account.sign_up({
   username: 'nix@example.net',
   submit: 'E9',
   passwordRules: { maxLength: 20, symbols: false }, // optional: the site's stated rules
+  group: 'nix', // optional: an existing group; the default group when left out
 });
 // → { status: 'signed_in', account: 'a7q2m9x4kd', state: 'ready', … the sign_in result's fields }
 //   state is 'ready' for signed_in and next_step, else 'pending'. The broker makes the password, fills every
@@ -98,14 +104,17 @@ to do next.
 | `ORIGIN_MISMATCH`     | sign_in, rotate             | the tab's origin is not one of the entry's; carries `origin`                                              |
 | `ORIGIN_KNOWN`        | add_origin                  | the entry already holds the tab's origin                                                                  |
 | `BAD_RULES`           | sign_up, rotate             | `maxLength` outside 8 to 64                                                                               |
+| `UNKNOWN_GROUP`       | sign_up                     | no group has that name                                                                                    |
+| `NOT_OWN_ACCOUNT`     | rotate                      | the entry is not the assistant's own account                                                              |
 | `NO_FIELD`            | sign_in, sign_up, rotate    | no field to fill; for sign_up, no new-password field; for rotate, no new-password field; carries `report` |
 | `CROSS_ORIGIN_SUBMIT` | sign_in, sign_up, rotate    | the form posts to another origin; carries `report`                                                        |
 | `STALE_ELEMENT`       | sign_in, sign_up, rotate    | `submit` no longer holds its number                                                                       |
 | `PAGE_CHANGED`        | sign_in, sign_up, rotate    | the tab's URL differs from the one the prepare hook read                                                  |
+| `ENTRY_CHANGED`       | sign_in, rotate             | the entry's secret, group or lock changed after the approval                                              |
 | `TAB_GONE`            | every tool but list         | the tab closed                                                                                            |
 | `FAILED`              | sign_in, sign_up, rotate    | the guest threw; carries `report`                                                                         |
 
-The first 6 return from the prepare hook before the decision, as a direct result, so no card shows.
+The first 8 return from the prepare hook before the decision, as a direct result, so no card shows.
 The guest checks the submit element and the form before it fills, so a refusal fills nothing. A
 result of `filled` carries `report` too.
 
@@ -119,44 +128,68 @@ result of `filled` carries `report` too.
 //   entry's origins beside the new one.
 // policy module: sign_in joins the routine risk class and account_origin the always-ask class, in
 //   the effect list, so add_origin asks with your passkey and offers no "always allow".
+// policy module: a rule's match gains vaultGroups, read from the entry the call names:
+//   { tools: ['account.sign_in'], vaultGroups: ['household'], outcome: 'ask' }
+//   A call on a locked entry asks with the passkey whatever the rules say, and its card offers no
+//   "always allow".
 // No tool takes an origin. The prepare hook reads the tab's origin and URL from the guest before the
 // decision. The fill happens only on that origin.
 ```
 
-The approval card for a sign-in shows the account's label, its username and the origin, read from
-the vault when the card renders, and "forgotten" once the entry is.
+The approval card for a sign-in shows the account's short ID, label, group, username and the origin,
+from the entry's version that the proposal recorded, "locked" for a locked entry, and "forgotten"
+once the entry is.
 
 ### The vault
 
 ```ts
 // connectors module; the vault_entries table, a projection of the vault.* records
 // records: vault.entry_added, vault.entry_ready, vault.secret_changed, vault.origin_added,
-//   vault.entry_forgotten, vault.revealed. entry_added and secret_changed carry the sealed label
-//   and secrets as erasable fields under the entry's key; no record holds a secret in the clear.
+//   vault.entry_forgotten, vault.revealed, vault.group_changed, vault.lock_changed, and
+//   vault.group_added and vault.group_removed for the vault_groups table. entry_added and
+//   secret_changed carry the sealed label and secret as erasable fields; no record holds a secret
+//   in the clear.
 interface VaultEntry {
-  entryID: string; // crypto.randomUUID(); keys the entry's own erasure key in the key store
+  entryID: string; // crypto.randomUUID(); keys the entry's erasure keys in the key store
   account: string; // short ID from createShortID; the only ID the model sees
-  label: string; // sealed under the entry's key, with secret
+  label: string; // sealed under the entry's label key, which a lock never wraps
   kind: 'password' | 'card';
+  groupID: string; // a vault_groups row's random ID; rules match it, and show its name
+  isLocked: boolean; // the secret key is wrapped under the owner's passkeys: see locked-entries.md
+  isAssistantOwned: boolean; // true for a sign_up; the owner sets it on vault.add
   origins: string[]; // exact origins, no wildcards; a card has none; kept after a forget
-  username: string | null; // the assistant's own address; kept after a forget
-  secret: SealedValue; // a password, or a card's number, expiry and code
+  username: string | null; // kept after a forget
+  secret: SealedValue; // under the entry's secret key: a password, or a card's number, expiry and code
+  version: number; // rises on every change to the secret, the group or the lock
   state: 'pending' | 'ready' | 'forgotten'; // a card starts ready
-  // a card's fingerprint, frameOrigins and currency: see the wallet design
+  // a card's fingerprint, frameOrigins, currency and budget: see the wallet design
 }
 
-// contract lib: owner calls from a device session. add, remove and reveal take a passkey assertion
-// bound to a SHA-256 of the request's canonical JSON, a new challenge kind in the published contract.
+// contract lib: owner calls from a device session. Every vault call that writes, and reveal, takes a
+// passkey assertion bound to a SHA-256 of the request's canonical JSON, a new challenge kind in the
+// published contract.
 vault.add({
   kind: 'password',
   label: 'forum',
   origins: ['https://forum.example.org'],
   username,
   secret: { password },
+  group: 'household',
+  isAssistantOwned: false, // an account the owner shares; the assistant never rotates or resets it
 }); // → { account: 'b5n2x8q1rw' }
-vault.remove({ account: 'b5n2x8q1rw' }); // destroys the key; the row stays with state 'forgotten'
-vault.list({}); // → every entry with its state; a forgotten one shows the label "forgotten"
-vault.reveal({ account: 'a7q2m9x4kd' }); // → { password }; writes vault.revealed, with no secret
+vault.update({ account: 'b5n2x8q1rw', group: 'nix', secret }); // either field
+vault.lock({ account: 'b5n2x8q1rw', prf }); // and vault.unlock: see locked-entries.md
+vault.remove({ account: 'b5n2x8q1rw' }); // destroys its keys; the row stays with state 'forgotten'
+vault.list({}); // → every entry with its state, group and isLocked; a forgotten one shows "forgotten"
+vault.reveal({ account: 'a7q2m9x4kd', prf }); // → { password }; prf only for a locked entry; writes
+//   vault.revealed, with no secret
+
+vault.groups.list({}); // → { groups: [{ name: 'nix', isDefault: true, entries: 4 }, { name: 'household', … }] }
+vault.groups.add({ name: 'household' });
+vault.groups.remove({ name: 'household' }); // GROUP_NOT_EMPTY while an entry sits in it;
+//   GROUP_IS_DEFAULT for the default group
+vault.groups.setDefault({ name: 'nix' }); // the group a sign_up with no group lands in
+// a deployment starts with one group, 'nix', as its default
 ```
 
 ### The fill frame
@@ -270,11 +303,30 @@ Entry state:
 - A forget of an entry, or of any of its `vault.*` records, destroys the entry's key.
 - An entry holds one password. A `rotate` that returns `changed` makes the new password the secret,
   and one that returns `filled` keeps the old one.
-- A `sign_in` that returns `filled` tells the assistant in its message to reset the password: open
-  the site's reset link from its mailbox, then call `rotate` on the reset page.
+- A `sign_in` that returns `filled` on an entry with `isAssistantOwned` tells the assistant in its
+  message to reset the password: open the site's reset link from its mailbox, then call `rotate` on
+  the reset page. On any other entry, or before the mailbox exists, the message tells the assistant
+  to ask the owner.
+- `rotate` refuses with `NOT_OWN_ACCOUNT` on an entry without `isAssistantOwned`. A login name alone
+  doesn't show where the site sends its reset mail.
 - A page can fake a `changed` result by navigating away from a refused password, so the entry can
   end up holding a password the site never took. The next sign-in then fails, and the reset puts the
   account right with no step of yours.
+
+Groups:
+
+- Every entry sits in exactly one group. A group name is 1 to 32 lowercase letters, digits and
+  hyphens, unique among live groups.
+- A rule names groups and stores their IDs, so a group removed and added again under the same name
+  matches no rule that named the old one. The rule editor shows each ID by its group's name.
+- A rule that names `vaultGroups` matches only a call whose entry sits in one of them. `sign_up`
+  matches on the group it names, or the default group, which its prepare hook resolves before the
+  decision. `wallet.pay` matches on the card's group.
+- Removing `vaultGroups` from an allow or a lift widens the rule, so the widening check asks for it.
+- The default group can't be removed.
+- An approval records the entry's version. An attempt whose entry's version changed since, or whose
+  entry is forgotten, refuses with `ENTRY_CHANGED` before it fills, so the assistant asks again.
+  Policy runs again before each attempt, and a deny wins.
 
 Debugging a fill:
 
@@ -306,9 +358,12 @@ Debugging a fill:
   page's own text in a changed form, such as with spaces between the characters, where the assistant
   reads it and a page dump keeps it past the dots. The origin checks keep the secret off every page
   of every other site, and the account's own site already holds it.
-- **The assistant can reset its own passwords.** Its mailbox is every account's way back in. The
-  vault keeps secrets out of the model's context; it can't stop the assistant from using its own
-  mail.
+- **The assistant can reset its own passwords.** Its mailbox is the way back in to every account it
+  signed up for, so it resets those alone, and asks you about any other account. The vault keeps
+  secrets out of the model's context; it can't stop the assistant from using its own mail.
+- **Groups sit in the vault, and rules match them.** Several vaults with rules of their own would
+  put access rules in two places, the vault and the policy. One vault with groups keeps every rule
+  in the policy.
 - **An entry holds one password, and a reset recovers a wrong one.** A page can make a rotate look
   like it worked when the site kept the old password. A mail reset fixes that with no step of yours,
   where keeping both passwords would ask you to pick one after every rotate.
@@ -324,7 +379,8 @@ Debugging a fill:
 
 - Two-factor apps and passkeys for the assistant's accounts.
 - Solving a CAPTCHA. The assistant hands the desktop over to you.
-- Signing in to your accounts. Every account here is the assistant's own.
+- Rotating or resetting an account that isn't the assistant's own. The owner keeps that password
+  current with `vault.update`.
 
 ## Open questions
 

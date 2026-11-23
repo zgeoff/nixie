@@ -16,6 +16,9 @@ import type {
   RecalledItem,
   RecalledVersion,
 } from '../types';
+import { buildUsageReport } from '../usage/build-usage-report';
+import { formatUsageLine } from '../usage/format-usage-line';
+import type { MemoryUsage } from '../usage/types';
 import { buildHiddenUUIDs } from '../utils/build-hidden-uuids';
 import { readItemIDs } from '../utils/item/read-item-ids';
 import { makeInputRecorder } from '../utils/make-input-recorder';
@@ -77,7 +80,7 @@ export interface RecallLineOptions {
 
 type RecallDependencies = Pick<
   StartedMemoryStore,
-  'recall' | 'readTopicLines' | 'readTopicCounts'
+  'recall' | 'readTopicLines' | 'readTopicCounts' | 'readUsage' | 'readSavedTimes'
 > &
   Pick<ItemIDStore, 'readItemIDMap'> & { readonly moments: Pick<MomentStore, 'readLinks'> };
 
@@ -104,7 +107,8 @@ export function buildRecallTool(
       'An item linked to a moment lists its momentID and title: read the moment with ' +
       'moment.read when the reason behind the fact matters. A version made from a photo the ' +
       'owner attached names that image: open it with log.read_image when seeing it would ' +
-      'change your answer.',
+      'change your answer. Each item shows its usage: how often searches and pushes surfaced it ' +
+      'and when you last recalled it by ID.',
     input: recallInput,
     output: recallOutputSchema,
     declaration: {
@@ -124,13 +128,19 @@ export function buildRecallTool(
     execution: 'direct',
 
     recordInput: makeInputRecorder(['query']),
-    run: (call, context) => runRecallCall(memory, options, { call, thread: context.run.thread }),
+    run: (call, context) =>
+      runRecallCall(memory, options, {
+        call,
+        thread: context.run.thread,
+        callSequence: context.callSequence,
+      }),
   };
 }
 
 interface RecallCall {
   readonly call: ToolCall;
   readonly thread: string;
+  readonly callSequence: number;
 }
 
 const recallArguments = z.object({
@@ -172,7 +182,12 @@ async function runRecallCall(
     now: new Date(options.clock.now()),
   };
 
-  const readRendered = makeItemReader(memory, lines);
+  const readRendered = makeItemReader(memory, lines, {
+    readUsage: makeUsageReader(memory, recall.callSequence),
+    nowMs: options.clock.now(),
+    defaultZone: options.defaultZone,
+  });
+
   const searched = buildSearched(input);
 
   const itemIDs =
@@ -197,7 +212,12 @@ async function runRecallCall(
   const fitted =
     first === undefined || !isOversized
       ? { body, links: entries.map((entry) => entry.links) }
-      : fitFirstItem(body, { item: first, links: entries[0]?.links ?? [], lines });
+      : fitFirstItem(body, {
+          item: first,
+          links: entries[0]?.links ?? [],
+          lines,
+          usage: entries[0]?.usage ?? '',
+        });
 
   return {
     status: 'ok',
@@ -241,13 +261,21 @@ function pickRefusal(input: RecallInput): string | null {
 interface RenderedItem {
   readonly json: JSONObject;
   readonly links: readonly MomentLink[];
+  readonly usage: string;
+}
+
+interface UsageSource {
+  readonly readUsage: () => Promise<MemoryUsage>;
+  readonly nowMs: number;
+  readonly defaultZone: string;
 }
 
 // The rendering that the measure reads is the one the result returns, so a later clock reading
 // cannot change a size after the store counted it.
 function makeItemReader(
-  memory: Pick<RecallDependencies, 'moments'>,
+  memory: Pick<RecallDependencies, 'moments' | 'readSavedTimes'>,
   lines: MemoryLineOptions,
+  usageSource: UsageSource,
 ): (item: RecalledItem) => Promise<RenderedItem> {
   const rendered = new Map<RecalledItem, Promise<RenderedItem>>();
 
@@ -256,7 +284,23 @@ function makeItemReader(
 
     const itemLinks = links.get(item.itemID) ?? [];
 
-    return { json: toItemJSON(item, lines, itemLinks), links: itemLinks };
+    const [usage, savedTimes] = await Promise.all([
+      usageSource.readUsage(),
+      memory.readSavedTimes([item.itemID]),
+    ]);
+
+    const report = buildUsageReport(usage, {
+      itemID: item.itemID,
+      savedAtMs: savedTimes.get(item.itemID),
+    });
+
+    const usageLine = formatUsageLine(report, usageSource);
+
+    return {
+      json: toItemJSON(item, lines, { links: itemLinks, usage: usageLine }),
+      links: itemLinks,
+      usage: usageLine,
+    };
   };
 
   return (item) => {
@@ -274,17 +318,21 @@ function makeItemReader(
   };
 }
 
-function toItemJSON(
-  item: RecalledItem,
-  lines: MemoryLineOptions,
-  links: readonly MomentLink[],
-): JSONObject {
+interface ItemExtras {
+  readonly links: readonly MomentLink[];
+  readonly usage: string;
+}
+
+function toItemJSON(item: RecalledItem, lines: MemoryLineOptions, extras: ItemExtras): JSONObject {
+  const links = extras.links;
+
   return {
     ...toVersionJSON(item, lines, { next: null, number: { version: item.revision } }),
     gist: item.gist,
     topic: item.topic,
     triggers: [...item.triggers],
     itemID: item.shortID,
+    usage: extras.usage,
     isPinned: item.isPinned,
     subject: item.subject,
     ...(item.disputedBy === undefined ? {} : { disputedBy: item.disputedBy }),
@@ -356,6 +404,20 @@ function toPastVersionJSON(
     next,
     number: { textVersion: version.version },
   });
+}
+
+// The usage counts only the records before this call, so a recall never counts itself.
+function makeUsageReader(
+  memory: Pick<RecallDependencies, 'readUsage'>,
+  callSequence: number,
+): () => Promise<MemoryUsage> {
+  const state: { usage: Promise<MemoryUsage> | null } = { usage: null };
+
+  return () => {
+    state.usage ??= memory.readUsage(callSequence);
+
+    return state.usage;
+  };
 }
 
 const searchedQueryLength = 200;
@@ -461,6 +523,7 @@ interface OversizedItem {
   readonly item: RecalledItem;
   readonly links: readonly MomentLink[];
   readonly lines: MemoryLineOptions;
+  readonly usage: string;
 }
 
 interface FittedResult {
@@ -475,7 +538,11 @@ function fitFirstItem(body: JSONObject, oversized: OversizedItem): FittedResult 
 
   while (links.length > 0 && Buffer.byteLength(JSON.stringify(candidate)) > recallPageLimitBytes) {
     links = links.slice(0, -1);
-    candidate = { ...body, items: [toItemJSON(oversized.item, oversized.lines, links)] };
+
+    candidate = {
+      ...body,
+      items: [toItemJSON(oversized.item, oversized.lines, { links, usage: oversized.usage })],
+    };
   }
 
   return { body: candidate, links: [links] };

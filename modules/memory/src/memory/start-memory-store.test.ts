@@ -129,7 +129,7 @@ test('it starts on a log that holds a memory.rated record and still places a tri
     text: 'piano tuning',
     thread: 'conversation',
     excludedWords: [],
-    held: { readVersions: () => Promise.resolve([]) },
+    held: { readVersions: () => Promise.resolve([]), readWriteStart: () => Promise.resolve(null) },
   });
 
   expect(result).toMatchObject({
