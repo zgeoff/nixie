@@ -9,9 +9,6 @@ import { toGitHubPath } from './to-github-path';
 export interface GitHubDefinitionsOptions {
   readonly repository: string;
   readonly base: string;
-
-  // Reads the token each request sends. A fine-grained token or an App installation token needs
-  // contents and pull-requests write on the definitions repo alone.
   readonly readToken: () => Promise<string>;
 
   readonly apiURL: string;

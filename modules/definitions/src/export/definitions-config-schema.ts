@@ -24,7 +24,6 @@ export interface DefinitionsExportConfig {
   readonly base: string;
   readonly apiURL: string;
 
-  // the GitHub App that signs the export in, with its private key in the secrets file
   readonly app: { readonly clientID: string; readonly installationID: number } | null;
 
   readonly title: string | null;

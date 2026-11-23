@@ -6,8 +6,6 @@ export interface InstallationTokenOptions {
   readonly apiURL: string;
   readonly clientID: string;
   readonly installationID: number;
-
-  // the App's private key as a PEM
   readonly privateKey: string;
   readonly readNowMs: () => number;
 }
@@ -17,8 +15,6 @@ interface CachedToken {
   readonly renewAtMs: number;
 }
 
-// Trades a signed App JWT for an installation token, keeps the token and mints a new one from 5 min
-// before it expires. An error quotes GitHub's status and message, never the key, the JWT or a token.
 export function makeInstallationTokenReader(
   options: InstallationTokenOptions,
 ): () => Promise<string> {

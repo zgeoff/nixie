@@ -9,34 +9,23 @@ import { createMockGitHubRepo } from './mocks/create-mock-github-repo';
 import { githubAPIURL } from './mocks/github-api-url';
 
 function setupTest() {
-  const mintURL = `${githubAPIURL}/app/installations/4242/access_tokens`;
-  const startMs = Date.parse('2030-01-01T00:00:00Z');
   const keys = generateKeyPairSync('rsa', { modulusLength: 2048 });
   const privateKeyPEM = keys.privateKey.export({ type: 'pkcs8', format: 'pem' });
-  const clock = { nowMs: startMs, advance: (deltaMs: number) => void (clock.nowMs += deltaMs) };
-  const mints: string[] = [];
 
-  const answerMints = (expiresInMs: number) => {
-    network.use(
-      http.post(mintURL, (info) => {
-        mints.push(info.request.headers.get('authorization') ?? '');
-
-        return HttpResponse.json({
-          token: `installation-token-${mints.length}`,
-          expires_at: new Date(clock.nowMs + expiresInMs).toISOString(),
-        });
-      }),
-    );
+  const clock = {
+    nowMs: 0,
+    set: (nowMs: number) => void (clock.nowMs = nowMs),
+    advance: (deltaMs: number) => void (clock.nowMs += deltaMs),
   };
+
+  const mints: string[] = [];
 
   return {
     clock,
     mints,
-    startMs,
-    mintURL,
+    mintURL: `${githubAPIURL}/app/installations/4242/access_tokens`,
     publicKey: keys.publicKey,
     privateKeyPEM,
-    answerMints,
     readToken: makeInstallationTokenReader({
       apiURL: githubAPIURL,
       clientID: 'Iv1.harbour',
@@ -50,7 +39,18 @@ function setupTest() {
 test('it mints an installation token with a JWT that the App key signed', async () => {
   const ctx = setupTest();
 
-  ctx.answerMints(3_600_000);
+  ctx.clock.set(Date.parse('2030-01-01T00:00:00Z'));
+
+  network.use(
+    http.post(ctx.mintURL, (info) => {
+      ctx.mints.push(info.request.headers.get('authorization') ?? '');
+
+      return HttpResponse.json({
+        token: `installation-token-${ctx.mints.length}`,
+        expires_at: new Date(ctx.clock.nowMs + 3_600_000).toISOString(),
+      });
+    }),
+  );
 
   const token = await ctx.readToken();
 
@@ -66,8 +66,8 @@ test('it mints an installation token with a JWT that the App key signed', async 
 
   expect(JSON.parse(Buffer.from(claims, 'base64url').toString())).toStrictEqual({
     iss: 'Iv1.harbour',
-    iat: ctx.startMs / 1000 - 60,
-    exp: ctx.startMs / 1000 + 540,
+    iat: 1_893_455_940,
+    exp: 1_893_456_540,
   });
 
   expect(
@@ -83,13 +83,24 @@ test('it mints an installation token with a JWT that the App key signed', async 
 test('it signs the export in with the minted token', async () => {
   const ctx = setupTest();
 
+  ctx.clock.set(Date.parse('2030-01-01T00:00:00Z'));
+
   await createMockGitHubRepo({
     repository: 'harbour/definitions',
     base: 'main',
     token: 'installation-token-1',
   });
 
-  ctx.answerMints(3_600_000);
+  network.use(
+    http.post(ctx.mintURL, (info) => {
+      ctx.mints.push(info.request.headers.get('authorization') ?? '');
+
+      return HttpResponse.json({
+        token: `installation-token-${ctx.mints.length}`,
+        expires_at: new Date(ctx.clock.nowMs + 3_600_000).toISOString(),
+      });
+    }),
+  );
 
   const repo = buildGitHubDefinitionsRepo({
     repository: 'harbour/definitions',
@@ -104,7 +115,18 @@ test('it signs the export in with the minted token', async () => {
 test('it reuses the token until 5 min before it expires', async () => {
   const ctx = setupTest();
 
-  ctx.answerMints(3_600_000);
+  ctx.clock.set(Date.parse('2030-01-01T00:00:00Z'));
+
+  network.use(
+    http.post(ctx.mintURL, (info) => {
+      ctx.mints.push(info.request.headers.get('authorization') ?? '');
+
+      return HttpResponse.json({
+        token: `installation-token-${ctx.mints.length}`,
+        expires_at: new Date(ctx.clock.nowMs + 3_600_000).toISOString(),
+      });
+    }),
+  );
 
   await ctx.readToken();
 
@@ -119,7 +141,18 @@ test('it reuses the token until 5 min before it expires', async () => {
 test('it mints again once the token is within 5 min of its expiry', async () => {
   const ctx = setupTest();
 
-  ctx.answerMints(3_600_000);
+  ctx.clock.set(Date.parse('2030-01-01T00:00:00Z'));
+
+  network.use(
+    http.post(ctx.mintURL, (info) => {
+      ctx.mints.push(info.request.headers.get('authorization') ?? '');
+
+      return HttpResponse.json({
+        token: `installation-token-${ctx.mints.length}`,
+        expires_at: new Date(ctx.clock.nowMs + 3_600_000).toISOString(),
+      });
+    }),
+  );
 
   await ctx.readToken();
 
@@ -134,7 +167,18 @@ test('it mints again once the token is within 5 min of its expiry', async () => 
 test('it mints once for requests that arrive together', async () => {
   const ctx = setupTest();
 
-  ctx.answerMints(3_600_000);
+  ctx.clock.set(Date.parse('2030-01-01T00:00:00Z'));
+
+  network.use(
+    http.post(ctx.mintURL, (info) => {
+      ctx.mints.push(info.request.headers.get('authorization') ?? '');
+
+      return HttpResponse.json({
+        token: `installation-token-${ctx.mints.length}`,
+        expires_at: new Date(ctx.clock.nowMs + 3_600_000).toISOString(),
+      });
+    }),
+  );
 
   const tokens = await Promise.all([ctx.readToken(), ctx.readToken()]);
 
