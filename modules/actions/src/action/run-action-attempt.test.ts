@@ -1139,8 +1139,16 @@ test('it settles nothing when a task limit lands while the policy check runs, an
     },
   });
 
+  const leases = await readTestLeases(ctx.writer);
   const action = await readTestAction(ctx.writer, queued.action_id);
 
   expect(stub.calls).toStrictEqual([]);
   expect(action).toMatchObject({ status: 'pending', attempt_count: 0 });
+
+  expect(leases).toContainEqual({
+    kind: 'action',
+    workID: queued.action_id,
+    holder: null,
+    generation: 1,
+  });
 });

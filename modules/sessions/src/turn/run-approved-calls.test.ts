@@ -72,6 +72,16 @@ async function setupTest() {
     },
   });
 
+  const pauseNixie = () =>
+    withWriteTransaction(tasks.writer, (tx) =>
+      pauseNixieInTransaction(tx, log, {
+        cause: 'owner',
+        recoveryID: null,
+        by: 'session-a',
+        definitions,
+      }),
+    );
+
   const inStepActions: InStepActions = {
     replies: new Map(),
     probePending: () => {
@@ -94,14 +104,7 @@ async function setupTest() {
         call.duringRun?.();
 
         if (call.isNixiePaused === true) {
-          await withWriteTransaction(tasks.writer, (tx) =>
-            pauseNixieInTransaction(tx, log, {
-              cause: 'owner',
-              recoveryID: null,
-              by: 'session-a',
-              definitions,
-            }),
-          );
+          await pauseNixie();
         }
 
         if (call.failure !== undefined) {
@@ -211,6 +214,7 @@ async function setupTest() {
     sandboxes,
     tools,
     state,
+    pauseNixie,
     startRunner,
     writeMessage: (text: string) =>
       writeInboxRecords(context, [
@@ -555,6 +559,33 @@ test('it runs a step to its commit when nixie pauses during the step', async () 
 
   ctx.sandboxes.setGuestScript(buildStubTurnScript(() => ({ reply: 'Done.' })));
   ctx.state.pending.push({ text: 'the memory export is ready', isNixiePaused: true });
+
+  await ctx.writeMessage('Export my memory.');
+
+  await runNextStep(ctx.context, runner.runStep);
+
+  const progress = await ctx.readProgress();
+  const commits = await ctx.readStepCommitCount();
+
+  expect(ctx.sandboxes.turns).toHaveLength(1);
+  expect(commits).toBe(1);
+  expect(progress.state).toBe('waiting');
+});
+
+test('it runs a step to its commit when nixie pauses after the guest turn has started', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const runner = await ctx.startRunner();
+
+  const script = buildStubTurnScript(() => ({ reply: 'Done.' }));
+
+  ctx.sandboxes.setGuestScript(async (turn, guest) => {
+    await ctx.pauseNixie();
+
+    return script(turn, guest);
+  });
 
   await ctx.writeMessage('Export my memory.');
 
