@@ -11,6 +11,9 @@ revocation at Google, then the keys go. This part is the credential store's data
 Google. [Google connections](google-connections.md) holds the connector, consent and the API that
 read and write it.
 
+Read this part to build the storage half of
+[the connections](https://linear.app/zgeoff/issue/GEO-1824) work item, beside the connections page.
+
 ## Shape
 
 ```mermaid
@@ -179,7 +182,7 @@ which the connections module registers with the
 - `readForgetStatus` reads `revocation` from `connection.revocation_recorded`, and is `pending`
   until one exists.
 - The web client shows erasure, revocation and backup state apart. Beside a revocation that is not
-  `confirmed`, it links the guide's section on revoking by hand.
+  `confirmed`, it links the section on revoking by hand in the setup guide, `docs/guides/google.md`.
 - A forgotten connection keeps its row, with its short ID and scopes and no sealed value, so a job
   pin can name it.
 - Forget erases nixie's own copies of the connection: its tokens, label and account. Text that names
@@ -199,8 +202,8 @@ which the connections module registers with the
   server begins a Forget of each connection whose binding is `enabled` and whose `token_key_id` the
   key store lacks, and that Forget records `not_attempted`.
 - A restore of a data copy from before a connection existed loses the connection, and its grant
-  stays live at Google. In the restore steps, you check the third-party access page of each Google
-  account you connected.
+  stays live at Google. In the [restore steps](../../runbooks/restore.md), you check the third-party
+  access page of each Google account you connected.
 - A Forget left part way finishes only at the server start of a release that has this design.
 
 ## Decisions

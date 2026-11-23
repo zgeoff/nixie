@@ -1,8 +1,8 @@
 # Google connections
 
 - **Status:** draft
-- **Work items:** [the connections](https://linear.app/zgeoff/issue/GEO-1824). The return route
-  waits on [the OAuth return spike](https://linear.app/zgeoff/issue/GEO-267).
+- **Work items:** [the connections](https://linear.app/zgeoff/issue/GEO-1824). The
+  [OAuth return spike](https://linear.app/zgeoff/issue/GEO-267) settles this page's open question.
 - **Decision records:** [0010](../../decisions/0010-oauth-clients.md),
   [0007](../../decisions/0007-crypto-shredding.md)
 
@@ -15,7 +15,10 @@ the key repository ([backups](../../architecture/deployment/backups.md)). Using 
 takes a fresh consent.
 
 Every Google tool reads Google live. nixie keeps no copy of your mail, events or files, and the text
-a tool returned lives only in that call's record. The Google design has these parts:
+a tool returned lives only in that call's record.
+
+The owner reads this page to approve the Google design and settle its open questions. A builder
+reads it, then the part that their work item builds. The Google design has these parts:
 
 | Part                                                        | What it holds                                                                        |
 | ----------------------------------------------------------- | ------------------------------------------------------------------------------------ |
@@ -361,8 +364,6 @@ stays a `POST` with nixie's custom client header
 - The read call that `check` makes per scope.
 - Where Settings → Connections sits in the web client's navigation, and the layout of its pages,
   which the owner reviews on the build's pull request.
-- Whether the return route is built before the OAuth return spike reports, against a fake Google,
-  with PKCE behind a switch.
 
 ## Out of scope
 
@@ -371,8 +372,9 @@ stays a `POST` with nixie's custom client header
 ## Open questions
 
 - **Does Google accept a redirect URI on a private-network HTTPS name, and PKCE on a Web application
-  client?** [The OAuth return spike](https://linear.app/zgeoff/issue/GEO-267) settles it. Until
-  then, the return route is built as above, and the guide asks for a redirect URI host under a
-  public suffix. The browser follows the redirect, so a public name that resolves only inside the
-  private network works. When Google refuses PKCE on a Web application client, nixie drops it,
-  because the return's security never rests on it.
+  client?** [The OAuth return spike](https://linear.app/zgeoff/issue/GEO-267) settles it. The return
+  route does not wait for it: it is built as above and tested against a fake Google, with PKCE
+  behind a switch. Until the spike reports, the guide asks for a redirect URI host under a public
+  suffix. The browser follows the redirect, so a public name that resolves only inside the private
+  network works. When Google refuses PKCE on a Web application client, nixie drops it, because the
+  return's security never rests on it.

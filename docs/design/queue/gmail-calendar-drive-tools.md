@@ -7,8 +7,9 @@
 
 nixie reads, searches and labels your Gmail, sends mail, and reads and changes your calendar and the
 Drive files you give it, through one Google connection. Every read asks Google live, inside the
-model's turn: nixie syncs nothing and keeps no copy of your mail, events or files. A change or a
-send runs as an [action](../../architecture/core/actions.md), and the
+model's turn: nixie syncs nothing, and the only copy of your mail, events or files it keeps is the
+text a call returned, in that call's own records. A change or a send runs as an
+[action](../../architecture/core/actions.md), and the
 [decision point](../../architecture/policy/decision-point.md) decides it before every attempt from
 the effects the tool declares and the destinations nixie reads from Google. When an attempt's
 outcome is unknown, a read-only check at Google settles it, and nixie never repeats a send blind.
@@ -21,6 +22,9 @@ Below are the rules every Google tool keeps, and the Gmail tools. Find the rest 
 `gmail.reply`, which the mail polls work item builds. The tokens, the consent and the scopes belong
 to the [Google connection](google-connections.md). How a call and its errors reach the model is in
 [tool calls](../../architecture/connectors/tool-calls.md).
+
+Read this page to build the [Gmail](https://linear.app/zgeoff/issue/GEO-1825) work item, after the
+Google connection. The owner settles its open questions.
 
 ## Shape
 
@@ -67,10 +71,10 @@ interface Prepared {
 Each tool, attempt and check reaches its connection through `connections.readContext` from the
 [Google connection](google-connections.md#the-connector).
 
-- Every item ID a Google tool returns starts with its connection's short ID and a dot, such as
-  `k3x9m2p7qa.18c2f0a9b4d1e7c3`, and the model passes it back whole. A tool that takes an item ID
-  takes its connection from that prefix. The endpoint checks the prefix against the caller's
-  connections and the job's pins, as it checks a
+- Every message, thread, event and file ID a Google tool returns starts with its connection's short
+  ID and a dot, such as `k3x9m2p7qa.18c2f0a9b4d1e7c3`, and the model passes it back whole. A tool
+  that takes an item ID takes its connection from that prefix. The endpoint checks the prefix
+  against the caller's connections and the job's pins, as it checks a
   [connection argument](../platform/connectors/connector.md#the-connection-argument), with the same
   errors.
 - Every other tool takes the connection argument when its caller can reach 2 or more Google
@@ -197,11 +201,12 @@ gmail.reply({ message: 'k3x9m2p7qa.18c2f0a9b4d1e7c3', text: 'Thanks, got it.', r
 // → done: { message, thread }
 ```
 
-| `owner_data`                                    | `untrusted`                                                      | `untrusted` and endorsed                                 |
-| ----------------------------------------------- | ---------------------------------------------------------------- | -------------------------------------------------------- |
-| message, thread, labels, next, threads, created | from, replyTo, to, cc, subject, snippet, text, attachments, name | date, isUnread, hasAttachments, type, bytes, unsupported |
+| `owner_data`                                    | `untrusted`                                                            | `untrusted` and endorsed                           |
+| ----------------------------------------------- | ---------------------------------------------------------------------- | -------------------------------------------------- |
+| message, thread, labels, next, threads, created | from, replyTo, to, cc, subject, snippet, text, attachments, name, type | date, isUnread, hasAttachments, bytes, unsupported |
 
-`part` and `parts` are `owner_data` and endorsed.
+`part` and `parts` are `owner_data` and endorsed. An attachment ID, such as `1.2`, is a MIME part ID
+within its message, and carries no prefix.
 
 - `gmail.label` takes up to 50 threads of one connection, and refuses with `mixed_connections` when
   they name 2. `add` and `remove` take user label names and the system labels `INBOX`, `UNREAD`,
@@ -281,15 +286,15 @@ The check runs at least 5 minutes after the attempt started, and asks Gmail 2 wa
 ### Checks
 
 - Found wins over every other answer. A check never answers not found while any read it makes fails.
-  Every other answer is inconclusive, including a response or a label that differs, because a later
-  change can have replaced it.
+  An answer that no found or not-found row names is inconclusive, including a response or a label
+  that differs, because a later change can have replaced it.
 - An inconclusive answer brings the action to you, as
   [reconciliation](../../architecture/core/actions.md#reconciling-an-unknown-outcome) sets.
 
 ### The read path
 
-- Every read calls Google at the time of the call. nixie keeps no index, cache or copy of mail,
-  events or files.
+- Every read calls Google at the time of the call. nixie keeps no index or cache of mail, events or
+  files.
 - Each text part is at most the `text_bytes` of the `web_fetch` config section, cut as
   [pages and parts](../../architecture/connectors/web-fetch.md#pages-and-parts) sets. The tool reads
   the item from Google again for each part, and runs the fetch sandbox again for an HTML body. The
@@ -333,8 +338,8 @@ The check runs at least 5 minutes after the attempt started, and asks Gmail 2 wa
   account, and the reply leaves from the account that received the message.
 - **The action ID rides in `Message-ID` alone.** The check needs one header, and a header that names
   nixie would tell each recipient you use an assistant.
-- **A mail the Sent-folder check does not find comes to you, and nixie never resends it.** A
-  duplicate mail to someone outside is worse than asking you once.
+- **A mail the Sent-folder check does not find comes to you, and nixie never resends it on its
+  own.** A duplicate mail to someone outside is worse than asking you once.
 - **Recipients and guests come from Google, never from the model's text.**
 
 ## Builder decides

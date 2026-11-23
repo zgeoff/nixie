@@ -10,6 +10,9 @@ Google live for each read. Each change runs as an action under the decision poin
 change that emails guests is a send with its own tool. When an attempt's outcome is unknown, nixie
 checks for a private marker that the change wrote on the event or the file.
 
+Read this page to build the [Calendar and Drive](https://linear.app/zgeoff/issue/GEO-1826) work
+item, after the Gmail work item, whose shared attachment reader and `prepare` card fields it reuses.
+
 ## Shape
 
 ```mermaid
