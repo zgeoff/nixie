@@ -274,15 +274,33 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
       return new Response(null, init);
     }
 
-    // a stream that broke or was cancelled before its first usage event may still have spent
+    // A stream that broke or was cancelled after its reply began may still have spent. One that never
+    // began a reply, or that carried only an error, spent nothing.
     if (isEventStreamReply(upstream, parsed?.data ?? null)) {
       return new Response(
         buildCountedStream(
           upstream.body,
           dialect,
-          (read, complete) => {
+          (read, complete, facts) => {
             const whole = read.isFinal && (complete || dialect.isFinalEventLast);
             const reason = complete ? 'no_usage' : 'cut';
+
+            if (!facts.started && read.usage === null) {
+              deps.log(
+                'count.skipped',
+                {
+                  route: target.routeID,
+                  sandbox: target.sandbox,
+                  reason,
+                  status: upstream.status,
+                  errorType: facts.errorType,
+                  errorMessage: facts.errorMessage,
+                },
+                'warn',
+              );
+
+              return countOnce(() => Promise.resolve());
+            }
 
             return countOnce(() => countReply(read, whole, spent || !whole, reason));
           },
@@ -305,6 +323,19 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
       await countOnce(() => countReply(noUsageRead, false, endpoint.spends, 'body_failed'));
 
       return renderAPIError(502, 'api_error', 'the model gateway lost the reply of the model API');
+    }
+
+    if (!upstream.ok) {
+      deps.log(
+        'upstream.refused',
+        {
+          route: target.routeID,
+          sandbox: target.sandbox,
+          status: upstream.status,
+          ...getBodyError(text),
+        },
+        'warn',
+      );
     }
 
     await countOnce(() => {
@@ -484,6 +515,19 @@ function isEventStreamReply(upstream: Response, body: object | null): boolean {
   }
 
   return upstream.ok && body !== null && 'stream' in body && body.stream === true;
+}
+
+// the type and the message, cut to 200 characters, of the error an upstream error body holds
+function getBodyError(text: string): { errorType: string | null; errorMessage: string | null } {
+  const parsed = parseJSONOrNull(text);
+  const error = isRecord(parsed) ? parsed['error'] : null;
+  const type = isRecord(error) ? error['type'] : null;
+  const message = isRecord(error) ? error['message'] : null;
+
+  return {
+    errorType: typeof type === 'string' ? type : null,
+    errorMessage: typeof message === 'string' ? message.slice(0, 200) : null,
+  };
 }
 
 function findBodyUsage(text: string): unknown {

@@ -276,7 +276,14 @@ ChatGPT's Codex backend sends its stream with no content type. The gateway reads
 pass on to the caller. The streamed reply ends for the caller only after the count is written, so a
 caller that reads a whole reply and sends again never gets ahead of its own count. A caller that
 stops reading early, and an upstream that breaks mid-stream, still leave the count of the events
-that arrived. A reply with no usage that spent nothing, such as an error, adds nothing. A reply that
+that arrived. A reply with no usage that spent nothing, such as an error, adds nothing. A stream
+that never began a reply also adds nothing, whether it ended with no event, held only an `error`
+event such as `overloaded_error`, or broke before any event: the model began no reply, so it spent
+nothing. A stream has begun once any event other than an `error` or a `ping` has arrived. The
+gateway logs each such stream as `count.skipped`, at the warn level, with the route, the sandbox,
+the reason, the upstream status, and the type and message of the error event (each `null` when it
+held none, the message cut to 200 characters). A non-2xx reply with a JSON body adds nothing either,
+and the gateway logs it as `upstream.refused` with the same status, type and message. A reply that
 spent, or may have, with no whole usage the gateway can read adds [an estimate](#the-estimate).
 
 The gateway logs each reply it counts from its whole usage as `count.charged`, at the info level,
@@ -289,11 +296,11 @@ so it never copies a key, a prompt or a reply.
 
 A reply that spent, or may have, and ends without its whole usage, adds a cautious estimate to the
 count and the gateway keeps serving. That covers a reply with no usage block, usage in a shape the
-gateway cannot read, a stream that breaks or that its caller cancels before its final usage, a
-connection that fails after the request went out, a reply whose body breaks, and a reply still open
-when a stop gives up. The estimate is an upper bound on the provider's bill for the request, so the
-count never lets spend grow past it. The gateway builds it from the request alone and makes no call
-to the provider.
+gateway cannot read, a stream that breaks or that its caller cancels after its reply began and
+before its final usage, a connection that fails after the request went out, a reply whose body
+breaks, and a reply still open when a stop gives up. The estimate is an upper bound on the
+provider's bill for the request, so the count never lets spend grow past it. The gateway builds it
+from the request alone and makes no call to the provider.
 
 - **Input.** The input tokens are the UTF-8 byte length of the request body, plus an allowance of
   4,096 tokens for what the provider adds, such as the tool-use system prompt and message framing. A
@@ -311,8 +318,8 @@ to the provider.
   the larger of the byte bound and the input the partial usage reported. A stop that cuts off an
   open reply charges what it had reported by then, the same way.
 
-A cut or cancelled stream charges the full output bound. That over-counts the budget, and never the
-real bill.
+A stream cut or cancelled after its reply began charges the full output bound. That over-counts the
+budget, and never the real bill.
 
 The estimate leaves a request unbounded when the byte count cannot bound its input, or when it has
 no output bound. A reply that spent with no usage, to such a request, marks the count as lost, and
