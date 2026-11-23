@@ -1,5 +1,5 @@
+import { buildDurationSchema } from '@heynixie/clock';
 import { z } from 'zod';
-import { parseDuration } from './utils/parse-duration';
 
 const turnInputRoles = ['conversation', 'task'] as const;
 
@@ -62,23 +62,6 @@ export const turnInputLogConfigSchema = z
     retention: config.retention,
     sources: buildSources(config.sources),
   }));
-
-function buildDurationSchema(fallback: string) {
-  return z
-    .string()
-    .default(fallback)
-    .transform((text, issues) => {
-      const durationMs = parseDuration(text);
-
-      if (durationMs === null) {
-        issues.addIssue({ code: 'custom', message: 'a duration such as 500ms, 5s, 10m or 24h' });
-
-        return z.NEVER;
-      }
-
-      return durationMs;
-    });
-}
 
 function buildSources(
   sources: Readonly<Record<string, z.infer<typeof sourceSchema>>>,

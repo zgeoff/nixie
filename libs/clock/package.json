@@ -11,7 +11,8 @@
     "typecheck": "tsrs --fast --noEmit"
   },
   "dependencies": {
-    "@zgeoff/std": "catalog:"
+    "@zgeoff/std": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@zgeoff/testing": "catalog:"

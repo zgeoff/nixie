@@ -1,4 +1,4 @@
-import { parseDuration } from '@heynixie/turn-inputs';
+import { parseDuration } from '@heynixie/clock';
 import invariant from 'tiny-invariant';
 import type { CLIFlags, CLIIO, Command, HostTransport } from '../types';
 
