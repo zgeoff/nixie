@@ -276,8 +276,9 @@ successful reply with no content type as a stream when the request set `stream: 
 ChatGPT's Codex backend sends its stream with no content type. The gateway reads the events as they
 pass on to the caller. The streamed reply ends for the caller only after the count is written, so a
 caller that reads a whole reply and sends again never gets ahead of its own count. A caller that
-stops reading early, and an upstream that breaks mid-stream, still leave the count of the events
-that arrived. A reply with no usage that spent nothing, such as an error, adds nothing.
+stops reading early, and an upstream that breaks mid-stream, still count: the usage of the events
+that arrived when it was whole, and [an estimate](#the-estimate) when it was not. A reply with no
+usage that spent nothing, such as an error, adds nothing.
 
 A stream that began no reply adds nothing. That is a stream whose body ended with no event except a
 `ping`, or that held an `error` event such as `overloaded_error` and no event before it. A stream
