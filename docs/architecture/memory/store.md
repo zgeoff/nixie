@@ -433,19 +433,19 @@ every item the move touches, `topic`, the topic each item moves to, one value or
 move of a whole topic gives each sub-topic its own, `itemID`, the short ID of each item that moves,
 and `from.topic`, `to.topic` and `items`. A move into or out of self touches a self-note, so an
 allow rule that covers it must check `subject` `eq` `self`, which only a move from self to self
-meets, and no other allow rule counts. Always allow offers no rule for a move, because no check pins
+meets, and no other allow rule counts. A move has no always-allow choice, because no check pins
 free-text topics.
 
 A call that no allow rule covers, and a call that an ask rule matches, waits for the user as an
-action proposal, never as a memory proposal, because one call moves many items. The call stores the
-move, such as `self/lines → self/diary, 20 items`, the gist of each item and the item's ID, sealed
-under its own record. The proposal's card shows the move as its sentence and the item count with the
-gists folded under it. The user's approval runs the call only when it moves the items the card
-showed, so an item that joined the topic since refuses the call and waits for a new card. A forget
-of an item removes the key of each stored card that names it, so the card then shows no body and the
-call refuses. A card stored after the forget finished is checked once the call's record holds it,
-and loses its key then, so no gist outlives its item. The self-note rule that holds for the
-conversation does not apply to an approved call, because the user approved the move.
+action proposal, because one call moves many items. The call stores the move, such as
+`self/lines → self/diary, 20 items`, the gist of each item and the item's ID, sealed under its own
+record. The proposal's card shows the move as its sentence and the item count with the gists folded
+under it. The user's approval runs the call only when it moves the items the card showed, so an item
+that joined the topic since refuses the call and waits for a new card. A forget of an item removes
+the key of each stored card that names it, so the card then shows no body and the call refuses. A
+card stored after the forget finished is checked once the call's record holds it, and loses its key
+then, so no gist outlives its item. The self-note rule that holds for the conversation does not
+apply to an approved call, because the user approved the move.
 
 ### The folded order
 
@@ -603,8 +603,8 @@ Each tool runs direct, and the user's rules decide each call by its effect or it
 rules `allow-reads` and `allow-notes` allow `read` and `note`. No starter rule allows
 `memory_write`, so the memory gate decides those calls
 ([rules on memory writes](./writes.md#rules-on-memory-writes)). `memory.retopic` is the exception:
-the memory gate holds no call of it, and a call that no allow rule covers waits for the user as an
-[action proposal](#moving-a-topic).
+the memory gate decides none of its calls, and a call that no allow rule covers waits for the user
+as an [action proposal](#moving-a-topic).
 
 Each write tool runs its gate, and returns either the revision it applied or the proposal it became,
 with its review reason. A missing quote never fails the tool, because the gate turns it into a
