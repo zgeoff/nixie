@@ -179,11 +179,11 @@ type Decision = {
 };
 ```
 
-| The rule | `true`          | `false`          | `error`                                         |
-| -------- | --------------- | ---------------- | ----------------------------------------------- |
-| allow    | covers the call | doesn't cover it | doesn't cover it                                |
-| ask      | catches it      | doesn't catch it | catches it                                      |
-| deny     | catches it      | doesn't catch it | the call asks, with the cause `condition_error` |
+| The rule | `true`          | `false`          | `error`                                                                        |
+| -------- | --------------- | ---------------- | ------------------------------------------------------------------------------ |
+| allow    | covers the call | doesn't cover it | doesn't cover it                                                               |
+| ask      | catches it      | doesn't catch it | catches it                                                                     |
+| deny     | catches it      | doesn't catch it | the call asks with the cause `condition_error`, unless another deny catches it |
 
 - A deny whose condition errors makes the call ask, so a broken condition never refuses a call that
   you can't see. The decision point's deny stage sets such a deny aside when no other deny matches,
@@ -233,8 +233,9 @@ type Literal = string | number | boolean | Literal[];
 // rule notice.
 type RuleCondition = {
   note: string;
-  // 'nixie' when the rule in force is a runtime change whose changed_by is nixie; no path makes one
-  // with a condition yet, and a mandate would if its open question allows conditions
+  // 'you' for a rule from the definitions repo or from your edit through rules.editProposedRule;
+  // 'nixie' for a runtime change whose changed_by is nixie, which only a mandate would make if
+  // its open question allows conditions
   noteBy: 'you' | 'nixie';
   words: string; // the view as one sentence: "the hour in Europe/London is before 17, and …"
   source: string; // the raw CEL
