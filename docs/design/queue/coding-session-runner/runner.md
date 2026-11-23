@@ -374,9 +374,10 @@ tasks.list({ runner: 'atc', state: 'waiting', limit: 20 });
   `gone`, because a session out of sight can come back: a daemon back up, or a host that wakes.
 - A stop, a close or a failure calls the definition's `ended` after its transaction commits.
 - After a stop, `ended` queues a `coding.stop` action for the bound session, started or joined, and
-  writes `coding.session_unbound` in the same commit. The queue runs the action although the task is
-  stopped, and no step reads its outcome. When you deny a joined session's stop, the session runs on
-  in atc. A failed `coding.stop` leaves the session running, and nixie logs it.
+  writes `coding.session_unbound` in the same commit. A stop cancels only the actions queued before
+  it commits, so the queue runs this one although the task is stopped, and no step reads its
+  outcome. When you deny a joined session's stop, the session runs on in atc. A failed `coding.stop`
+  leaves the session running, and nixie logs it.
 - After a close or a failure, `ended` calls `stop` on a started session, and writes
   `coding.session_unbound` once the call answers `ok` or `no_such_session`. For a joined session it
   writes `coding.session_unbound` at once and calls no adapter.
