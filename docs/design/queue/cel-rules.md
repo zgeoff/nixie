@@ -49,7 +49,8 @@ allow-term-mail-in-hours:
 - The parser refuses a rule that holds `cel` without `note`, with the fault
   `condition_note_missing`.
 - The condition is one more test after the fixed fields: a rule matches a call when every fixed
-  field matches and then the condition is true.
+  field matches and then the condition is true. When the condition errors, the table in
+  [Evaluating a condition](#evaluating-a-condition) gives the result for each outcome.
 
 ### What a condition reads
 
@@ -151,8 +152,9 @@ type ConditionFault =
 - A read of the rule store never runs the check. The first evaluation of each condition text runs
   steps 1 to 4 and caches the result, and a stored condition that fails them, such as one written
   before this design, evaluates as an error with the code `condition_invalid`.
-- Evaluation, the card's new sentence and the check on every write path ship in one release, so no
-  release shows a condition as working while `isRuleMatch` still skips it.
+- Evaluation, the card's new sentence and the check on each path that accepts a new or changed
+  condition ship in one release, so no release shows a condition as working while `isRuleMatch`
+  still skips it.
 
 ### Evaluating a condition
 
@@ -353,8 +355,8 @@ changes it.
 
 ## Out of scope
 
-- A condition field in the web client's rule form. A condition comes from the definitions repo, or
-  stays as it is through an edit in the client.
+- A condition field in the web client's rule form. The form keeps a rule's condition as it is, so a
+  new or changed condition comes from the definitions repo or from `rules.editProposedRule`.
 - A widening check that reads CEL. Any change to a condition widens.
 - Custom functions, such as a lookup of a contact or a place.
 
