@@ -176,7 +176,7 @@
   },
   "devDependencies": {
     "@commitlint/cli": "21.2.4",
-    "@stylistic/eslint-plugin": "5.10.0",
+    "@stylistic/eslint-plugin": "6.0.1",
     "@tsconfig/strictest": "2.0.9",
     "@types/bun": "1.4.4",
     "@zgeoff/agent-hooks": "0.3.2",
