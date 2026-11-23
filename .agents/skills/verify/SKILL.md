@@ -65,6 +65,7 @@ Read a feature's file before you run its journey.
 | computer-watch    | Watch the assistant's desktop                                              | [references/feature-computer-watch.md](references/feature-computer-watch.md)       |
 | device-in-browser | Make a signed-in browser a device                                          | [references/feature-device-in-browser.md](references/feature-device-in-browser.md) |
 | device-screen     | Enrol a device and see a picture on it                                     | [references/feature-device-screen.md](references/feature-device-screen.md)         |
+| device-layout     | Lay out a device screen in regions, update one and time another out        | [references/feature-device-layout.md](references/feature-device-layout.md)         |
 
 <!-- /wringer:features -->
 

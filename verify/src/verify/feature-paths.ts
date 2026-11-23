@@ -28,6 +28,7 @@ export const featurePaths = {
   'notebook-pages': [...everyJourney],
   'device-in-browser': [...everyJourney],
   'device-screen': [...everyJourney],
+  'device-layout': [...everyJourney],
   'computer-browser': [...everyJourney],
   'computer-shell': [...everyJourney],
   'computer-screen': [...everyJourney],

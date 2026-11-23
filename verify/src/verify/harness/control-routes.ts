@@ -82,6 +82,12 @@ export const controlRoutes = {
     input: z.strictObject({ fit: z.enum(['whole', 'fill']), text: z.string().min(1) }),
     output: z.strictObject({ replies: z.int().positive() }),
   },
+  layoutOnDevice: {
+    method: 'POST',
+    path: '/control/layout-on-device',
+    input: z.strictObject({ step: z.enum(['set', 'update']), text: z.string().min(1) }),
+    output: z.strictObject({ replies: z.int().positive() }),
+  },
   useComputer: {
     method: 'POST',
     path: '/control/use-computer',
