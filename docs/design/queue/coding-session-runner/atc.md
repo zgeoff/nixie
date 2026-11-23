@@ -136,8 +136,8 @@ declare function buildCodingSource(adapter: CodingAdapter, context: CodingContex
 
 For each `TaskInputEvent`, the core's `deliverTriggerBatch` writes one `trigger.task_input` record
 on the task's thread, in the batch's transaction, with its dedupe key in `trigger_keys`. The record
-is an inbox record when `wake` is true. `buildStepWake` gives hop 0 to every waking record that is
-not a task message, and it reads the `hop` of a `trigger.task_input`.
+is an inbox record when `wake` is true. `buildStepWake` reads the `hop` of a `trigger.task_input`,
+and gives hop 0 to every other waking record that is not a task message.
 
 ### The atc adapter
 

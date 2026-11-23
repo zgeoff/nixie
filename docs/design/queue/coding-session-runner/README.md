@@ -12,6 +12,9 @@ shows as a task in nixie. You message it like any other task, and so does the co
 where nixie talks with you. This design adds the code that runs such a task, the coding runner, and
 its first adapter: the package `coding-atc`, whose adapter ID is `atc`.
 
+The owner reads this design to approve it, and the builder of
+[the atc runner](https://linear.app/zgeoff/issue/GEO-1843) starts from it and its two parts.
+
 The coding runner calls no model of its own. Each step of a coding task passes the messages in the
 task's inbox to the session, and turns what the session does into task messages and one report per
 task run. The runner plugs into the [task runner port](../../../architecture/core/tasks.md), and
@@ -135,4 +138,5 @@ as `task_message` records.
 - **When does a line that nixie types into a session carry your authority?** A design session with
   the owner, held after the approval forwarding design, settles it, with the questions of
   [GEO-945](https://linear.app/zgeoff/issue/GEO-945). Until then, nixie types nothing into a
-  session.
+  session's terminal. Typing means keystrokes, such as an answer to the session's question or its
+  permission menu, and differs from a `coding.message`, which atc delivers as a message.

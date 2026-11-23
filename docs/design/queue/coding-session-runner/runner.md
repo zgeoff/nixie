@@ -147,7 +147,7 @@ const codingMessageDeclaration: EffectDeclaration = {
 ### The records and the projection
 
 ```ts
-// coding module. Both sit on the coding task's thread, and neither is an inbox record.
+// coding module. All 3 sit on the coding task's thread, and none is an inbox record.
 // coding.session_bound: written by the step that reads the spawn's outcome, or by the join
 interface CodingSessionBound {
   taskID: string;
@@ -213,7 +213,7 @@ its next inbox record.
 | `trigger.task_input`, `note`                     | sends a `progress` message to the report target, which wakes it for `blocked` and `decision` only                                                                                                                                     |
 | `trigger.task_input`, `state` `waiting`          | sends a `progress` message with the session's question to the report target, which wakes it                                                                                                                                           |
 | `trigger.task_input`, `state` `idle`             | for a started session, ends the open task run with a report, unless a delivery is queued or waits on an answer; for a joined session, nothing                                                                                         |
-| `trigger.task_input`, `state` `ended`            | ends the task run with a report when one is open, and returns `done`                                                                                                                                                                  |
+| `trigger.task_input`, `state` `ended`            | for a started session, ends the task run with a report when one is open, and returns `done`; for a joined session, as `gone`                                                                                                          |
 | `trigger.task_input`, `state` `gone`             | for a joined session, ends the open task run with a report that nixie lost sight of the session, and returns `wait`; for a started one, as `ended`                                                                                    |
 
 A runner with no model already returns its report in `StepResult.run.report`. The step result gains
