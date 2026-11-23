@@ -8,10 +8,10 @@
 
 nixie keeps one directory of the places it deals with: websites, email addresses, mail domains,
 phone numbers and chat handles. Each entry carries one trust level, and the decision point reads the
-level for every tool that reaches the place. Today `web_fetch` reads a website without asking,
-`computer.browser_open` asks before it opens the same site, and each click asks again, because each
-tool and each Always allow answer has its own list. With the directory, you trust a site once, on
-one page, and every tool sees the same answer.
+level for every call that declares the place as a destination. Today `web_fetch` reads a website
+without asking, `computer.browser_open` asks before it opens the same site, and each click asks
+again, because each tool and each Always allow answer has its own list. With the directory, you
+trust a site once, on one page, and every tool sees the same answer.
 
 Once the owner approves this design, build each work item above from it and the
 [decision point](../../architecture/policy/decision-point.md) it extends. The directory's own work
@@ -410,8 +410,8 @@ and when a call last used it. You add, change and remove entries there. The host
   name a site by its domain, and rarely type the host a tool reaches. Typing a public suffix, such
   as `github.io`, names that exact name only. This rule covers typed evidence only; an entry covers
   subdomains only when its key has `subdomains: true`.
-- The skill guard checks a place when a skill's call reaches it, never when the skill is written. A
-  write can't reach anyone; a call can, and every call meets the decision point.
+- Nothing checks the places a skill names when the skill is written. A write can't reach anyone; a
+  call can, and the decision point checks each place a skill's call reaches.
 - Known contacts become places at `known` with no new records: the `places` projection also folds
   `policy.contact_marked_known` and `policy.contact_unmarked`. A migrated place's ID is its contact
   ID, and its short ID comes from `buildShortIDFromUUID`, so a rebuild gives the same short ID. Old
