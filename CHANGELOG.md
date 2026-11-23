@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.106.0](https://github.com/zgeoff/nixie/compare/v0.105.1...v0.106.0) (2026-11-23)
+
+
+### Features
+
+* **computer:** add handover tools, ask records and captcha checks ([#1406](https://github.com/zgeoff/nixie/issues/1406)) ([2be40ab](https://github.com/zgeoff/nixie/commit/2be40ab52037bc34e81df046714026fc235ff89b))
+
 ## [0.105.1](https://github.com/zgeoff/nixie/compare/v0.105.0...v0.105.1) (2026-11-23)
 
 
