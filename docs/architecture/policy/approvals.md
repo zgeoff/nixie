@@ -135,11 +135,15 @@ the evening and morning times that clients offer.
 
 ## memory_write
 
-`memory_write` is an effect name. `memory.remember`, `memory.edit`, `memory.retire` and `memory.pin`
-declare it, in the conversation and a task run alike. `memory.unpin` declares `note`, so a rule on
-`memory_write` never reaches an unpin. A rule on the tool name `memory.unpin` still decides it, and
-with the starter rules it applies at once. A rule that matches by tool name and a rule that matches
-by the `memory_write` effect cover the same memory writes.
+`memory_write` is an effect name. `memory.remember`, `memory.edit`, `memory.retire`, `memory.pin`
+and `memory.retopic` declare it, in the conversation and a task run alike. `memory.unpin` declares
+`note`, so a rule on `memory_write` never reaches an unpin. A rule on the tool name `memory.unpin`
+still decides it, and with the starter rules it applies at once. A rule that matches by tool name
+and a rule that matches by the `memory_write` effect cover the same memory writes.
+
+A rule that names `memory.edit` also covers `memory.retopic`, which moves a topic or a list of
+items. An ask rule, and a call that no rule decides, hold a `memory.retopic` call as an action
+proposal instead of a memory proposal, as [moving a topic](../memory/store.md#moving-a-topic) says.
 
 A rule on `memory_write` matches as a rule on any other effect does:
 

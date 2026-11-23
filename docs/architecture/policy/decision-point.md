@@ -30,7 +30,8 @@ the latest.
 | 9. No rule     | Always, because nothing else decided                          | Ask     |
 
 A call that declares `memory_write` skips the checker of stage 8 and the ask of stage 9: it gets the
-outcome `gate` at stage 8, as [memory writes](#memory-writes) says.
+outcome `gate` at stage 8, as [memory writes](#memory-writes) says. `memory.retopic` is the
+exception that asks at stage 9.
 
 The caller's tool list is the run's own: the task definition's list for a task run of a definition,
 and the subset its caller passed for a worker. A tool that the registry knows but the run was not
@@ -45,7 +46,9 @@ rules of one outcome match, the first by rule ID decides, and the decision names
 A call to a tool that declares `memory_write` never reaches the consent check at stage 8 or the "no
 rule" ask at stage 9. When no rule decided it at stages 3 to 7, stage 8 gives the outcome `gate`,
 with no rule and no cause. The memory gate then decides the write. The log stores `gate` as it
-stores any outcome, so the record shows that no rule decided the write.
+stores any outcome, so the record shows that no rule decided the write. The one exception is
+`memory.retopic`: with no deciding rule it skips the memory gate and the checker, and asks at stage
+9 with the cause `no_rule`, so the call waits as an action proposal.
 
 Before the decision, the tool sets the call's sources and arguments, because the model's words and
 the step's own sources would misstate them:
