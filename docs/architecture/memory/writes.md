@@ -241,20 +241,30 @@ everything the user typed in the evidence window. Without a covering rule, the w
 proposal with the reason `self_note` whatever the token check found, and the proposal keeps the
 token verdict, so the review shows a destination the user never typed.
 
-Only the conversation writes a self-note, because only the conversation speaks as nixie's persona. A
-task's write that creates a self-note, edits one, edits its labels, or moves an item into or out of
-self fails and writes nothing, unless an allow rule covers it. A covering rule is the user's consent
-to nixie's own notes, so a task may then write them. Under an ask rule, or with no rule, a task's
-self-note write still fails. A proposal merges only with a pending proposal of the same subject.
-When the user approves a proposal for a new item, the search for a [close match](#memory-proposals)
-looks only at items of the proposal's subject, so a fact about the user never becomes a revision of
-a self-note.
+The conversation writes self-notes, because it speaks as nixie's persona. A task whose definition
+sets `memory: self_notes` writes them too. The run's tool endpoint carries that grant on its tool
+run, and `buildWriteCaller` copies it to the write caller, so a tool's input never sets it. Every
+other task's write that creates a self-note, edits one, edits its labels, or moves an item into or
+out of self fails and writes nothing, unless an allow rule covers it. A covering rule is the user's
+consent to nixie's own notes, so a task may then write them. Under an ask rule, or with no rule,
+such a task's self-note write still fails.
+
+A task with the grant meets every rule that the conversation meets, and one more: it writes only
+items whose subject is self. A remember, an edit, a label edit, a retirement or a topic move that
+touches an item of another subject, or that moves an item to another subject, fails with a
+`SelfNoteError` that names the grant, and writes nothing. The grant covers no pin and no unpin, so
+the pin and unpin writes fail for such a task. A proposal merges only with a pending proposal of the
+same subject, so a granted task's remember never merges into an item or proposal of the user or of
+shared. When the user approves a proposal for a new item, the search for a
+[close match](#memory-proposals) looks only at items of the proposal's subject, so a fact about the
+user never becomes a revision of a self-note.
 
 Unless an ask rule matches, the conversation's retire of a self-note skips the intent gate and
 applies at once, with a notice entry whose undo brings the note back, because the note was nixie's
 own and a retirement only narrows what the conversation reads. Its version records no intent quote.
-A task's retire of a self-note runs the intent gate as any retirement does, unless an allow rule
-that checks `subject` `eq` `self` covers it.
+A retire of a self-note by a task with the grant applies at once the same way. Any other task's
+retire of a self-note runs the intent gate as any retirement does, unless an allow rule that checks
+`subject` `eq` `self` covers it.
 
 ## Subject changes
 

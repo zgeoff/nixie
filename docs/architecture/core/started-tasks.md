@@ -31,16 +31,16 @@ start of the same step committed in between.
 The start tool takes these options beside the name and the brief. The start checks each one in code,
 writes nothing when one fails, and tells the model why:
 
-| Option       | Values                       | When the start leaves it out            | The start refuses                                                                                 |
-| ------------ | ---------------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `model`      | a name of a selectable model | the `task` role's profile               | a name that is not a choice, or a model whose harness lacks what a task needs                     |
-| `persona`    | `default` or `none`          | the starter's persona                   | `none` with `memory: read`, or `default` from a starter with none                                 |
-| `memory`     | `none` or `read`             | `none`                                  | a memory tool, read or write, that the value leaves out, or `read` from a starter that reads none |
-| `log`        | `own` or `conversation`      | `own`                                   | `conversation` from a starter that does not hold the conversation's log                           |
-| `tools`      | names of tools               | the clock                               | a tool that the starter does not hold, under either of its names                                  |
-| `report`     | `wake`, `next_turn`, `none`  | `wake`                                  | nothing                                                                                           |
-| `disposable` | `true` or `false`            | `true`                                  | nothing                                                                                           |
-| `limits`     | turns, dollars or both       | the defaults of `models.limits.taskRun` | a value above the max of `models.limits.taskRun`                                                  |
+| Option       | Values                       | When the start leaves it out            | The start refuses                                                                                                  |
+| ------------ | ---------------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `model`      | a name of a selectable model | the `task` role's profile               | a name that is not a choice, or a model whose harness lacks what a task needs                                      |
+| `persona`    | `default` or `none`          | the starter's persona                   | `none` with `memory: read`, or `default` from a starter with none                                                  |
+| `memory`     | `none` or `read`             | `none`                                  | a memory tool, read or write, that the value leaves out, or `read` from a starter that reads none, or `self_notes` |
+| `log`        | `own` or `conversation`      | `own`                                   | `conversation` from a starter that does not hold the conversation's log                                            |
+| `tools`      | names of tools               | the clock                               | a tool that the starter does not hold, under either of its names                                                   |
+| `report`     | `wake`, `next_turn`, `none`  | `wake`                                  | nothing                                                                                                            |
+| `disposable` | `true` or `false`            | `true`                                  | nothing                                                                                                            |
+| `limits`     | turns, dollars or both       | the defaults of `models.limits.taskRun` | a value above the max of `models.limits.taskRun`                                                                   |
 
 The [selectable models](./model-profiles.md#selectable-models) give the choices of `model`, which
 the tool's input schema lists with their descriptions. The conversation has the persona and reads
@@ -52,6 +52,16 @@ whatever its start named. A start with `memory: read` also gives the task each m
 reads and that its starter holds. A task gets a memory tool that writes only when all 3 hold: the
 start names it in `tools`, the starter holds it, and the start sets `memory: read`. A start never
 gives a write tool by default. A start with `memory: none` may name no memory tool at all.
+
+The value `self_notes` is the memory grant of a task definition, and a start never sets it. It gives
+a task everything that `read` gives, and the self-note writes of the assistant: `memory.remember`,
+`memory.edit`, `memory.retopic` and `memory.retire`, by default. It gives no pin tool, and the
+task's writes reach only items whose subject is self, as
+[self-notes](../memory/writes.md#self-notes) says. A `task.start` with `memory: self_notes` is
+refused with a sentence that says to define the task, whoever starts it, and a task never starts a
+task with a wider grant than its own. A worker holds no memory tool. While the previous release
+cannot read the value, the definitions repo and `task.define` refuse it with "available in the next
+release", and a stored version that holds it reads as `self_notes`.
 
 The `log` option is the log grant. With `log: conversation`, the task's `log.read` and
 `log.read_image` read the conversation's thread of the [event log](../core/event-log.md), and with

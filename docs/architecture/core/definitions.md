@@ -279,7 +279,10 @@ server. It also runs the server's check of a start: the sandbox runner's plan, w
 the conversation's `task.start`. A definition in `tasks/` may list any registered tool except a
 conversation tool, which [changes from the conversation](#changes-from-the-conversation) describes,
 and a memory tool unless its `memory` is `read`. A version whose `memory` is `read` may list any
-memory tool and gets the read-only ones without listing them.
+memory tool and gets the read-only ones without listing them. A version whose `memory` is
+`self_notes` gets the read-only tools and the 4 self-note write tools without listing them, as
+[start options](./started-tasks.md#start-options) describes. Until the release after this one, the
+seed and `task.define` refuse `self_notes`.
 
 One fault refuses the whole seed, and the definitions of the last accepted seed stay in force. The
 refusal is a `TaskSeedRefusedError`, a kind of definitions parse error. Its `problems` field, which
