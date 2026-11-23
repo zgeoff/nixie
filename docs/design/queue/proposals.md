@@ -3,7 +3,7 @@
 - **Status:** draft
 
 Every family of proposal goes through one lifecycle: one row, one lapse sweep, one set of records
-for its outcome, and one message that tells the proposer how it ended. Today memory keeps its own
+for its outcome, and one message to the proposer about how it ended. Today memory keeps its own
 table and sweep, prompt overrides live outside the shared table, each family names its outcomes
 differently, and a task that proposed something hears only some outcomes. After this design, a
 memory write, a skill write, a rule change, a held action and a prompt override all show in your
@@ -37,9 +37,9 @@ flowchart LR
   `internal_change`) keeps its meaning; a prompt override takes `internal_change`, with the cause
   `prompt_override`.
 - The **proposer** is the conversation or the task whose thread the proposal was made on. A proposal
-  that nixie makes on its own has no proposer, such as a rule nixie suggested after you approved the
-  same kind of action several times. This design calls those **suggested rules**. A memory proposal
-  has one proposer for each write that merged into it, as well as the first.
+  that nixie makes on its own has no proposer. One such is a **suggested rule**: a rule nixie
+  suggests after you approve the same kind of action several times. A memory proposal has a proposer
+  for its first write and one for each write that merged into it.
 - A proposal **settles** when it is approved, declined, lapses or is withdrawn. A settled proposal
   never reopens.
 - Two proposals are **the same thing** when they share a family, a proposer and the key in this
@@ -236,14 +236,15 @@ A prompt override's export after approval stays a note of its own: it isn't a se
 - The core writes `proposals.settled` on each proposer's thread. Outside the action family, it
   reaches a task as an inbox record that wakes it, and the conversation as a turn note.
 - When the proposing task has closed, the core writes `proposals.settled` on the thread of the task
-  run's report target instead, with `task` set: the report target the task run pinned, else the
-  starter of a started task. When the task has no report target, the record stays on the task's
-  thread and sends no message.
+  run's report target instead, with `task` set. The report target is the one the task run pinned,
+  else the starter of a started task. When the task has no report target, the record stays on the
+  task's thread and sends no message.
 - The turn-note builder folds every `proposals.settled` since the conversation's last turn into one
   note, in log order. The inbox renderer does the same for every one since the task's last wake, and
-  they wake the task once.
-- A proposal with no proposer writes its lapse on the thread of nixie's one conversation, where the
-  batched note carries it, and every other outcome with no thread and no message.
+  those records wake the task once.
+- For a proposal with no proposer, the core writes a lapse on the thread of nixie's one
+  conversation, where the batched note carries it. It writes every other outcome with no thread, and
+  sends no message.
 - An action proposal's settlement is never an inbox record. The task hears `action.outcome`, which
   the action module already writes when an approval queues the action, or when a decline or a lapse
   fails the held action.
@@ -298,7 +299,7 @@ type PendingRow = {
 
 - `proposeInTransaction` stores every new proposal's short ID in `proposals.proposed`, so a rebuild
   keeps it. It creates the short ID with `createShortID`.
-- Memory draws its short ID like every other family from release N+2. Before then it passes one
+- From release N+2, memory draws its short ID like every other family. Before then it passes one
   derived from the UUID, because a release before N+1 derives it again at read time and must show
   the same ID. From N+1, every reader of a memory proposal takes its short ID from the shared row.
 - Every proposal's ID is a UUID, skills and prompts included. A release before this design shows the
@@ -374,5 +375,5 @@ The `[#n]` fix for take-over notices and the suggested rules rename ship in any 
 
 ## Out of scope
 
-- A digest of settled proposals. The [push notice design](push-notice.md) owns the digest.
+- A digest of settled proposals, which the [push notice design](push-notice.md) covers.
 - Changes to what each family proposes or applies.
