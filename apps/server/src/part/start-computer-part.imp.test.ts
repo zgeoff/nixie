@@ -598,11 +598,12 @@ test.skipIf(!hasImpHost)(
 );
 
 test.skipIf(!hasImpHost)(
-  'it gives a page in Chromium no WebSocket to the VNC port, though a Worker reaches another loopback port',
+  'it gives a Worker of a page in Chromium no WebSocket to the VNC port, or to a loopback port that a server listens on',
   async () => {
     const ctx = await setupTest();
 
-    // A stand-in server on 5901 shows that a Worker's WebSocket can reach a loopback port at all.
+    // The server on 5901 shows that the browser refuses the Worker's WebSocket, and that a closed
+    // port alone does not.
     const server = await ctx.startSocketServer(5901);
 
     onTestFinished(() => server.stop());
@@ -623,6 +624,6 @@ test.skipIf(!hasImpHost)(
 
     const title = await ctx.readTitle();
 
-    expect(title).toBe('failed,failed,open');
+    expect(title).toBe('failed,failed,failed');
   },
 );

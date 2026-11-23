@@ -2,7 +2,9 @@
 // `waiting` until the Worker has tried them all, then one `open` or `failed` for each, joined by
 // commas, in the order given.
 export function buildWorkerSocketPageURL(socketURLs: readonly string[]): string {
+  // A Worker of a data URL runs a classic script, where a top-level await does not parse.
   const worker = [
+    '(async () => {',
     `const urls = ${JSON.stringify(socketURLs)};`,
     'const results = [];',
     'for (const url of urls) {',
@@ -16,6 +18,7 @@ export function buildWorkerSocketPageURL(socketURLs: readonly string[]): string 
     '  }));',
     '}',
     "postMessage(results.join(','));",
+    '})();',
   ].join('\n');
 
   const page = [
