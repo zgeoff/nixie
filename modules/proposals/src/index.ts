@@ -38,8 +38,6 @@ export type {
 } from './answer/proposal-kind-handler';
 
 export { proposalLapseMs } from './proposal-lapse-ms';
-export type { ProposalLapseSweep, ProposalLapseSweepOptions } from './start-proposal-lapse-sweep';
-export { startProposalLapseSweep } from './start-proposal-lapse-sweep';
 
 export type {
   ProposalFamily,

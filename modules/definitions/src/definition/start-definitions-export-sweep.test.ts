@@ -35,6 +35,7 @@ async function setupTest() {
   ]);
 
   return {
+    clock: createFakeClock({ startMs: 0 }),
     writer,
     log: { writer, deploymentKey, projections: [] },
     repo: buildStubDefinitionsRepo(root),
@@ -47,6 +48,7 @@ test('it exports a skill approved after it started once woken', async () => {
   const sweep = startDefinitionsExportSweep({
     log: ctx.log,
     repo: ctx.repo,
+    clock: ctx.clock,
     kinds: [
       buildSkillChangeKind({
         title: 'skills: {operation} {skill}',
@@ -90,7 +92,6 @@ test('it passes a failed run to onError, and runs again each interval', async ()
   const ctx = await setupTest();
 
   const onError = mock<(error: unknown) => void>();
-  const clock = createFakeClock({ startMs: 0 });
 
   await ctx.writer.stop();
 
@@ -99,15 +100,15 @@ test('it passes a failed run to onError, and runs again each interval', async ()
     repo: ctx.repo,
     kinds: [buildSkillChangeKind({ title: null, message: null, agentName: null, ownerName: null })],
     intervalMs: 3_600_000,
-    clock,
+    clock: ctx.clock,
     onError,
   });
 
   onTestFinished(() => sweep.stop());
 
-  await waitForCondition(() => onError.mock.calls.length === 1 && clock.countPending() === 1);
+  await waitForCondition(() => onError.mock.calls.length === 1 && ctx.clock.countPending() === 1);
 
-  clock.advance(3_600_000);
+  ctx.clock.advance(3_600_000);
 
   await waitForCondition(() => onError.mock.calls.length === 2);
 

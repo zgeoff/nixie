@@ -52,6 +52,7 @@ export async function startMemory(
 
   const sweep = startLapseSweep({
     store,
+    clock: parts.context.clock,
     onError: (error) => {
       parts.log('memory.lapse_failed', toErrorFields(error));
     },

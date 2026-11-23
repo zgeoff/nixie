@@ -1,7 +1,5 @@
-import type { Clock } from '@heynixie/clock';
-import { systemClock } from '@heynixie/clock';
-import { createActor, toPromise } from 'xstate';
-import { definitionsExportSweepMachine } from '../export/definitions-export-sweep-machine';
+import type { Clock, Sweep } from '@heynixie/clock';
+import { startSweep, systemClock } from '@heynixie/clock';
 import type { DefinitionsExportOptions } from '../skill/run-definitions-exports';
 import { runDefinitionsExports } from '../skill/run-definitions-exports';
 
@@ -11,40 +9,18 @@ export interface DefinitionsExportSweepOptions extends DefinitionsExportOptions 
   readonly clock?: Clock;
 }
 
-export interface DefinitionsExportSweep {
-  readonly wake: () => void;
-
-  readonly stop: () => Promise<void>;
-}
+export type DefinitionsExportSweep = Sweep;
 
 const exportSweepMs = 60 * 60 * 1000;
 
 export function startDefinitionsExportSweep(
   options: DefinitionsExportSweepOptions,
 ): DefinitionsExportSweep {
-  const sweep = createActor(definitionsExportSweepMachine, {
-    input: {
-      sweep: () => runDefinitionsExports(options),
-      clock: options.clock ?? systemClock,
-      intervalMs: options.intervalMs ?? exportSweepMs,
-      onError: options.onError,
-    },
+  return startSweep({
+    clock: options.clock ?? systemClock,
+    intervalMs: options.intervalMs ?? exportSweepMs,
+    run: () => runDefinitionsExports(options),
+    onError: options.onError,
+    runOnStart: true,
   });
-
-  sweep.start();
-
-  return {
-    wake: () => {
-      if (sweep.getSnapshot().status === 'active') {
-        sweep.send({ type: 'wake' });
-      }
-    },
-    stop: async () => {
-      if (sweep.getSnapshot().status === 'active') {
-        sweep.send({ type: 'stop' });
-      }
-
-      await toPromise(sweep);
-    },
-  };
 }

@@ -1,3 +1,5 @@
+import type { Clock, Sweep } from '@heynixie/clock';
+import { startSweep } from '@heynixie/clock';
 import type { MemoryProposals } from '../gate/gate-context';
 import type { MemoryStore } from '../types';
 
@@ -6,44 +8,34 @@ export interface LapseSweepOptions {
     readonly proposals: Pick<MemoryProposals, 'lapse'>;
   };
 
+  readonly clock: Clock;
+
   readonly intervalMs?: number;
 
   readonly onError: (error: unknown) => void;
 }
 
-export interface LapseSweep {
-  readonly stop: () => Promise<void>;
-}
+export type LapseSweep = Sweep;
 
 const lapseSweepMs = 60 * 60 * 1000;
 
 export function startLapseSweep(options: LapseSweepOptions): LapseSweep {
-  let running: Promise<void> | null = null;
-
-  const sweep = setInterval(() => {
-    running ??= (async () => {
-      try {
-        await runLapseSweep(options);
-      } catch {
-        // A throw from onError loses only its own report, and the next sweep still runs.
-      } finally {
-        running = null;
-      }
-    })();
-  }, options.intervalMs ?? lapseSweepMs);
-
-  return {
-    stop: async () => {
-      clearInterval(sweep);
-
-      await running;
-    },
-  };
+  return startSweep({
+    clock: options.clock,
+    intervalMs: options.intervalMs ?? lapseSweepMs,
+    run: () => runLapseSweep(options),
+    onError: options.onError,
+  });
 }
 
 async function runLapseSweep(options: LapseSweepOptions): Promise<void> {
-  await tryRunLapse(() => options.store.lapse(), options.onError);
-  await tryRunLapse(() => options.store.proposals.lapse(), options.onError);
+  try {
+    await tryRunLapse(() => options.store.lapse(), options.onError);
+    await tryRunLapse(() => options.store.proposals.lapse(), options.onError);
+  } catch {
+    // A throw from onError ends the pass and loses only its own report. The shared loop would
+    // report it to the same onError.
+  }
 }
 
 async function tryRunLapse(

@@ -1,6 +1,6 @@
-import type { Clock } from '@heynixie/clock';
-import type { ProposalContext, ProposalLapseSweep } from '@heynixie/proposals';
-import { startProposalLapseSweep } from '@heynixie/proposals';
+import type { Clock, Sweep } from '@heynixie/clock';
+import { startSweep } from '@heynixie/clock';
+import type { ProposalContext } from '@heynixie/proposals';
 import { writePromptProposalLapses } from './write-prompt-proposal-lapses';
 
 export interface PromptLapseSweepOptions {
@@ -11,10 +11,13 @@ export interface PromptLapseSweepOptions {
   readonly onError: (error: unknown) => void;
 }
 
-export function startPromptLapseSweep(options: PromptLapseSweepOptions): ProposalLapseSweep {
-  return startProposalLapseSweep({
-    sweep: () => writePromptProposalLapses(options.context),
+const lapseSweepMs = 60 * 60 * 1000;
+
+export function startPromptLapseSweep(options: PromptLapseSweepOptions): Sweep {
+  return startSweep({
     clock: options.clock,
+    intervalMs: lapseSweepMs,
+    run: () => writePromptProposalLapses(options.context),
     onError: options.onError,
   });
 }
