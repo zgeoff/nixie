@@ -4,13 +4,13 @@
 - **Work items:** [the rest of the rules design](https://linear.app/zgeoff/issue/GEO-2785)
 - **Decision records:** [0004](../../decisions/0004-rule-engine.md)
 
-A rule's fixed fields can't say "only before 17:00 in London" or "only when every attachment is a
-PDF". A rule already carries a `cel` field for such a condition, but nixie never evaluates it: an
-allow with a condition never matches, and an ask or a deny matches on its other fields alone. With
-this design, nixie evaluates the condition with `@marcbachmann/cel-js`, inside a subset of CEL that
-nixie checks when the rule is written and tests with its own conformance suite. Every rule with a
-condition carries a note, a sentence that says what the condition means, and its card puts the
-condition in plain words, with the raw CEL behind a control.
+With a rule's fixed fields alone, you can't write "only before 17:00 in London" or "only when every
+attachment is a PDF". A rule already carries a `cel` field for such a condition, but nixie never
+evaluates it: an allow with a condition never matches, and an ask or a deny matches on its other
+fields alone. With this design, nixie evaluates the condition with `@marcbachmann/cel-js`. A
+condition may use only a subset of CEL, which nixie checks when the rule is written and tests with
+its own conformance suite. Every rule with a condition carries a note, a sentence that says what the
+condition means. Its card shows the condition in plain words, with the raw CEL behind a control.
 
 Once the owner approves this design and answers its [open questions](#open-questions), build the CEL
 part of [the rules work item](https://linear.app/zgeoff/issue/GEO-2785) from it and from the built
@@ -49,8 +49,8 @@ allow-term-mail-in-hours:
 - The parser refuses a rule that holds `cel` without `note`, with the fault
   `condition_note_missing`.
 - The condition is one more test after the fixed fields: a rule matches a call when every fixed
-  field matches and then the condition is true. When the condition errors, the table in
-  [Evaluating a condition](#evaluating-a-condition) gives the result for each outcome.
+  field matches and then the condition is true. For the result when the condition errors, see the
+  table in [Evaluating a condition](#evaluating-a-condition).
 
 ### What a condition reads
 
@@ -149,12 +149,12 @@ type ConditionFault =
 
 - The rules-file parser reports a fault as a problem of the rule's file, with the fault code and the
   detail as its reason, and refuses the seed, as it does for any rule fault.
-- A read of the rule store never runs the check. The first evaluation of each condition text runs
-  steps 1 to 4 and caches the result, and a stored condition that fails them, such as one written
-  before this design, evaluates as an error with the code `condition_invalid`.
-- Evaluation, the card's new sentence and the check on each path that accepts a new or changed
-  condition ship in one release, so no release shows a condition as working while `isRuleMatch`
-  still skips it.
+- nixie never runs the check when it reads the rule store. It runs steps 1 to 4 the first time it
+  evaluates each condition text, and caches the result. A stored condition that fails them, such as
+  one written before this design, evaluates as an error with the code `condition_invalid`.
+- Ship evaluation, the card's new sentence and the check on each path that accepts a new or changed
+  condition in one release, so no release shows a condition as working while `isRuleMatch` still
+  skips it.
 
 ### Evaluating a condition
 
@@ -189,11 +189,11 @@ type Decision = {
   you can't see. The decision point's deny stage sets such a deny aside when no other deny matches,
   and its ask-rule stage counts it as an ask rule with the cause `condition_error`. A deny that
   matches wins over one that errored.
-- A call that leaves out an argument a deny's condition reads errors with `no_such_key`, so it asks
-  where the deny meant to refuse. To refuse such a call, write the condition so a missing argument
-  gives true, such as `!has(args.to) || …`.
+- When a call leaves out an argument that a deny's condition reads, the condition errors with
+  `no_such_key`, and the call asks where the deny meant to refuse it. To refuse such a call, write
+  the condition so a missing argument gives true, such as `!has(args.to) || …`.
 - The approval card for a call that asks with `condition_error`, or through an ask rule whose
-  condition errored, names each rule in `conditionErrors` with its code.
+  condition errored, shows each rule in `conditionErrors` with its code.
 - The record holds the error code and never the library's message, which can quote argument text.
 - The lift check and the destination permissions read allow rules through `isRuleMatch`, so they
   evaluate a condition the same way. A caller that matches rules against a call it built itself,
@@ -316,8 +316,8 @@ changes it.
 - A condition evaluates only after every fixed field of its rule matched the call.
 - The library evaluates synchronously, so no timer can stop it. The limits bound the work instead:
   one macro level, every list in the condition input at most 1,000 elements, and the strings in it
-  at most 262,144 UTF-16 code units in total. A call whose input exceeds either bound makes every
-  condition on it an error with the code `input_too_large`.
+  at most 262,144 UTF-16 code units in total. When a call's input exceeds either bound, every
+  condition on it errors with the code `input_too_large`.
 - A test in the unit lane evaluates the costliest condition the limits allow over the largest input
   they allow, and fails above 50 ms. That case takes about 4 ms on a desktop machine.
 - nixie parses and checks each condition text once, and reuses the cached result, keyed by the
@@ -327,8 +327,8 @@ changes it.
   `zgeoff/import-zones` lint rule refuses an import of it outside the policy module.
 - A version bump of `@marcbachmann/cel-js` merges only with the conformance suite green on its head
   commit. Renovate never merges such a bump on its own.
-- A replay evaluates each condition again with the library in force. The conformance suite is the
-  check that a bump keeps past verdicts.
+- A replay evaluates each condition again with the library in force. The conformance suite checks
+  that a bump keeps past verdicts.
 
 ## Decisions
 
