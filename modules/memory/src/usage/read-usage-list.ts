@@ -3,6 +3,7 @@ import type { StoreParts } from '../types';
 import type { UsageListEntry } from './collect-usage-list';
 import { collectUsageList } from './collect-usage-list';
 import { readMemoryUsage } from './read-memory-usage';
+import { readPhraseAddedTimes } from './read-phrase-added-times';
 import { readSavedTimes } from './read-saved-times';
 
 export interface UsageListRequest {
@@ -29,6 +30,11 @@ export async function readUsageList(
     listed.map((row) => row.itemID),
   );
 
+  const phraseAddedTimes = await readPhraseAddedTimes(
+    parts,
+    listed.map((row) => row.itemID),
+  );
+
   const current = await parts.lock(async () => {
     const found = await readIndexRows(parts, { isPinnedIncluded: true });
 
@@ -41,7 +47,7 @@ export async function readUsageList(
   });
 
   return collectUsageList(
-    { rows: current.rows, triggers: current.triggers, usage, savedTimes },
+    { rows: current.rows, triggers: current.triggers, usage, savedTimes, phraseAddedTimes },
     request.days,
     nowMs,
   );

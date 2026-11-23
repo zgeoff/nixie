@@ -12,7 +12,7 @@ test('it counts a record outside every recall call as a push', () => {
     lastSurfacedAtMs: 1000,
     lastRecalledByIDAtMs: null,
     firedTriggers: [],
-    hasUnkeyedPush: true,
+    lastUnkeyedPushAtMs: 1000,
   });
 });
 
@@ -34,7 +34,7 @@ test('it counts a record with no search mode inside an ID call as a recall by ID
     lastSurfacedAtMs: null,
     lastRecalledByIDAtMs: 4000,
     firedTriggers: [],
-    hasUnkeyedPush: false,
+    lastUnkeyedPushAtMs: null,
   });
 });
 
@@ -88,10 +88,10 @@ test('it keeps the trigger keys that push records name, and notes a push that na
 
   expect([
     usage.items.get('item-a')?.firedTriggers,
-    usage.items.get('item-a')?.hasUnkeyedPush,
+    usage.items.get('item-a')?.lastUnkeyedPushAtMs,
     usage.items.get('item-b')?.firedTriggers,
-    usage.items.get('item-b')?.hasUnkeyedPush,
-  ]).toStrictEqual([['key-1', 'key-2'], false, [], true]);
+    usage.items.get('item-b')?.lastUnkeyedPushAtMs,
+  ]).toStrictEqual([['key-1', 'key-2'], null, [], 1000]);
 });
 
 test('it ends a call with no result at the next record of its thread that is no recalled record, so a later push counts as a push', () => {
@@ -121,4 +121,16 @@ test('it reports the earliest record time over every record, whether or not it c
 
 test('it reports no earliest time with no record', () => {
   expect(collectMemoryUsage([], []).earliestAtMs).toBeNull();
+});
+
+test('it reports the earliest record time over a million records', () => {
+  const entries = Array.from({ length: 1_000_000 }, (_unused, index) =>
+    buildMockRecalledEntry({
+      sequence: index + 1,
+      itemIDs: [],
+      recordedAtMs: 9000 - (index % 100),
+    }),
+  );
+
+  expect(collectMemoryUsage(entries, []).earliestAtMs).toBe(8901);
 });

@@ -12,8 +12,9 @@ export interface ItemUsage {
   // the keys of the trigger phrases that placed the item in a push
   readonly firedTriggers: readonly string[];
 
-  // true when a push placed the item and its record names no phrase, so no phrase can be ruled out
-  readonly hasUnkeyedPush: boolean;
+  // the time of the newest push that placed the item with no phrase named in its record, so no
+  // phrase added before then can be ruled out; null when no such push exists
+  readonly lastUnkeyedPushAtMs: number | null;
 }
 
 export interface MemoryUsage {

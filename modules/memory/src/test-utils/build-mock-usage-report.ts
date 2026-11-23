@@ -7,7 +7,7 @@ export function buildMockUsageReport(overrides: Partial<ItemUsageReport> = {}): 
     lastSurfacedAtMs: null,
     lastRecalledByIDAtMs: null,
     firedTriggers: [],
-    hasUnkeyedPush: false,
+    lastUnkeyedPushAtMs: null,
     sinceMs: null,
     ...overrides,
   };

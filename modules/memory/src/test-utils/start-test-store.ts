@@ -22,7 +22,10 @@ export async function startTestStore(
   wiring.defer(() => writer.stop());
 
   const log: Log = {
-    writer,
+    writer:
+      options.dbPlugin === undefined
+        ? writer
+        : { ...writer, db: writer.db.withPlugin(options.dbPlugin) },
     deploymentKey: wiring.deploymentKey,
     projections: [...logProjections, ...memoryProjections],
   };

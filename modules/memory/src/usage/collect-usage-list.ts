@@ -28,6 +28,9 @@ export interface UsageListInput {
   readonly triggers: ReadonlyMap<string, readonly string[]>;
   readonly usage: MemoryUsage;
   readonly savedTimes: ReadonlyMap<string, number>;
+
+  // the time each item's phrases first appeared, by item and then by phrase key
+  readonly phraseAddedTimes: ReadonlyMap<string, ReadonlyMap<string, number>>;
 }
 
 const dayMs = 24 * 60 * 60 * 1000;
@@ -68,16 +71,31 @@ export function collectUsageList(
       neverFiredTriggers: collectNeverFired(
         input.triggers.get(stale.row.itemID) ?? [],
         stale.report,
+        input.phraseAddedTimes.get(stale.row.itemID),
       ),
       report: stale.report,
     }));
 }
 
-// A push that names no phrase leaves every phrase possibly fired, so none is reported.
-function collectNeverFired(phrases: readonly string[], report: ItemUsageReport): readonly string[] {
-  if (report.hasUnkeyedPush) {
-    return [];
-  }
+// A push that names no phrase leaves every phrase that existed then possibly fired. A phrase added
+// after that push, or one whose add time is unknown, is not covered by it.
+function collectNeverFired(
+  phrases: readonly string[],
+  report: ItemUsageReport,
+  addedTimes: ReadonlyMap<string, number> | undefined,
+): readonly string[] {
+  return phrases.filter((phrase) => {
+    const key = buildTriggerKey(phrase);
 
-  return phrases.filter((phrase) => !report.firedTriggers.includes(buildTriggerKey(phrase)));
+    if (report.firedTriggers.includes(key)) {
+      return false;
+    }
+
+    const addedAtMs = addedTimes?.get(key);
+
+    return !(
+      report.lastUnkeyedPushAtMs !== null &&
+      (addedAtMs === undefined || addedAtMs <= report.lastUnkeyedPushAtMs)
+    );
+  });
 }

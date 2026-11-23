@@ -6,7 +6,7 @@ const emptyUsage: ItemUsage = {
   lastSurfacedAtMs: null,
   lastRecalledByIDAtMs: null,
   firedTriggers: [],
-  hasUnkeyedPush: false,
+  lastUnkeyedPushAtMs: null,
 };
 
 // A recall call writes its record between its own record and its result, on its own thread. A
@@ -36,9 +36,7 @@ export function collectMemoryUsage(
     }
   }
 
-  const times = entries.map((entry) => entry.recordedAtMs);
-
-  return { items, earliestAtMs: times.length === 0 ? null : Math.min(...times) };
+  return { items, earliestAtMs: findEarliestTime(entries) };
 }
 
 type Surface = 'search' | 'push' | 'id';
@@ -88,6 +86,20 @@ function addSurface(usage: ItemUsage, surface: Surface, mark: SurfaceMark): Item
       surface === 'push'
         ? [...new Set([...usage.firedTriggers, ...(mark.triggers ?? [])])]
         : usage.firedTriggers,
-    hasUnkeyedPush: usage.hasUnkeyedPush || isUnkeyed,
+    lastUnkeyedPushAtMs: isUnkeyed
+      ? Math.max(usage.lastUnkeyedPushAtMs ?? mark.atMs, mark.atMs)
+      : usage.lastUnkeyedPushAtMs,
   };
+}
+
+function findEarliestTime(entries: readonly RecalledEntry[]): number | null {
+  let earliest: number | null = null;
+
+  for (const entry of entries) {
+    if (earliest === null || entry.recordedAtMs < earliest) {
+      earliest = entry.recordedAtMs;
+    }
+  }
+
+  return earliest;
 }

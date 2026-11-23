@@ -11,8 +11,31 @@ import { startTestMemory } from '../test-utils/start-test-memory';
 async function setupTest() {
   const dayMs = 24 * 60 * 60 * 1000;
   const clock = createFakeClock({ startMs: Date.parse('2026-09-01T09:00:00Z') });
+  const hold = { isArmed: false, queryIDs: new Set<string>() };
+  const reached = Promise.withResolvers<void>();
+  const released = Promise.withResolvers<void>();
 
   const memory = await startTestMemory({
+    dbPlugin: {
+      transformQuery: (args) => {
+        if (hold.isArmed && JSON.stringify(args.node).includes('memory.recalled')) {
+          hold.isArmed = false;
+
+          hold.queryIDs.add(args.queryId.queryId);
+        }
+
+        return args.node;
+      },
+      transformResult: async (args) => {
+        if (hold.queryIDs.has(args.queryId.queryId)) {
+          reached.resolve();
+
+          await released.promise;
+        }
+
+        return args.result;
+      },
+    },
     logClock: clock,
     gate: { clock },
     turn: { trigger: { items: 3, minScore: 0, minSimilarity: 1 } },
@@ -36,7 +59,7 @@ async function setupTest() {
     queuedWaitMs: 1000,
   };
 
-  const callTool = (tool: string, input: JSONObject) =>
+  const callToolWith = (calls: typeof toolCallOptions, tool: string, input: JSONObject) =>
     runToolCall(
       { tool, input: structuredClone(input), toolUseID: null },
       {
@@ -46,8 +69,40 @@ async function setupTest() {
         tools: [tool],
         model: { model: 'test-model', profile: 'standard' },
       },
-      toolCallOptions,
+      calls,
     );
+
+  const callTool = (tool: string, input: JSONObject) => callToolWith(toolCallOptions, tool, input);
+
+  // A recall by ID that returns its items and then never finishes, as a call cut off before its
+  // result is written.
+  const interruptRecall = async (input: JSONObject) => {
+    const recalledOnce = Promise.withResolvers<void>();
+
+    const interruptedRegistry = buildToolRegistry(
+      buildMemoryTools(
+        {
+          ...memory.store,
+          recall: async (request) => {
+            const recalled = await memory.store.recall(request);
+
+            recalledOnce.resolve();
+
+            return await new Promise<typeof recalled>(() => {});
+          },
+        },
+        { clock, ownerName: null, defaultZone: 'UTC' },
+      ),
+    );
+
+    void callToolWith(
+      { ...toolCallOptions, registry: interruptedRegistry },
+      'memory.recall',
+      input,
+    );
+
+    await recalledOnce.promise;
+  };
 
   const usageItemSchema = z.object({
     itemID: z.string(),
@@ -87,6 +142,14 @@ async function setupTest() {
         },
       }),
     callTool,
+    interruptRecall,
+
+    // holds the next read of the usage history after it reads, until the release runs
+    holdUsageRead: () => {
+      hold.isArmed = true;
+
+      return { isReached: reached.promise, release: released.resolve };
+    },
     buildLongPhrases: (gist: string) =>
       Array.from({ length: 5 }, (_, index) => `${gist} phrase ${String(index)} ${'w'.repeat(40)}`),
     readUsage: async (input: JSONObject) => {
@@ -134,6 +197,23 @@ test('it counts pushes and searches, and shows a recall by ID, on the next recal
 
   expect(recalled.items[0]?.usage).toBe(
     'surfaced 3 times (1 by search, 2 by push), last 3 days ago · recalled by ID 2 days ago',
+  );
+});
+
+test('it counts a push after a recall by ID that never finished as a push, not as a search', async () => {
+  const ctx = await setupTest();
+  const piano = await ctx.remember('piano tuning', ['piano tuning']);
+
+  await ctx.interruptRecall({ itemIDs: [piano.shortID] });
+  await ctx.readRecall({});
+  await ctx.push('piano tuning');
+
+  ctx.clock.advance(ctx.dayMs);
+
+  const recalled = await ctx.readRecall({ itemIDs: [piano.shortID] });
+
+  expect(recalled.items[0]?.usage).toBe(
+    'surfaced 1 time (1 by push), last 1 day ago · recalled by ID 1 day ago',
   );
 });
 
@@ -339,6 +419,26 @@ test('it skips no item on the next page when an item of the first page surfaces 
   expect([...first.items.slice(1), ...second.items].map((item) => item.gist)).toStrictEqual(
     gists.slice(1),
   );
+});
+
+test('it leaves out an item that a forget removes while the usage history is being read', async () => {
+  const ctx = await setupTest();
+  const piano = await ctx.remember('piano tuning', []);
+
+  await ctx.remember('bin day', []);
+
+  const held = ctx.holdUsageRead();
+  const listing = ctx.readUsage({ days: 1 });
+
+  await held.isReached;
+
+  await ctx.memory.store.forget({ target: piano, provenance: buildMockProvenance() });
+
+  held.release();
+
+  const listed = await listing;
+
+  expect(listed.items.map((item) => item.gist)).toStrictEqual(['bin day']);
 });
 
 test.each([

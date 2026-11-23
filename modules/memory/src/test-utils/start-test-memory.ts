@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Clock } from '@heynixie/clock';
 import type { Log, Writer } from '@heynixie/log';
+import type { KyselyPlugin } from 'kysely';
 import type { GateContext } from '../gate/gate-context';
 import type { MemoryIndexConfig } from '../index-block/default-index-settings';
 import type { StartedMemoryStore } from '../memory/start-memory-store';
@@ -36,6 +37,9 @@ export interface TestMemoryOptions {
   readonly turn?: TurnMemorySettings;
 
   readonly keyStoreBusyTimeoutMs?: number;
+
+  // a plugin on the log's database, which the store reads and writes through
+  readonly dbPlugin?: KyselyPlugin;
 }
 
 export async function startTestMemory(options: TestMemoryOptions = {}): Promise<TestMemory> {
