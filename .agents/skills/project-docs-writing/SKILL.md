@@ -18,9 +18,9 @@ metadata:
   [Describe the system as it is now](../docs-writing/SKILL.md#describe-the-system-as-it-is-now) rule
   leaves tracker links out of docs. nixie's designs describe work not yet built, so link the issue
   to keep one copy of each open question.
-- In a design, address the person nixie works for as "you", as every other nixie doc does. The
-  design-docs skill asks for "the owner" there. In nixie, "the owner" names the person who approves
-  a design, so using it for both people would merge two roles.
+- In a design, address the person nixie works for as "you", as a guide does. This rule replaces the
+  design-docs skill's rule to write "the owner" there. In nixie, "the owner" is the person who
+  approves a design, and using it for both people would merge two roles.
 
 ## Spikes
 
