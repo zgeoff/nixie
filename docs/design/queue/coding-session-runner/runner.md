@@ -10,7 +10,8 @@ and ends the task with a report when the session ends. This doc holds the start 
 coding task, the runner's definition, its records, what one step does, and how the task ends. The
 tools nixie calls on a coding task are in [the tools](tools.md), and the adapter that the step calls
 is in [the atc adapter](atc.md). The terms, such as a bound session, a joined session, a hop and a
-variant, are in the [README](README.md#terms).
+variant, are in the [README](README.md#terms). Once the owner approves the design, build this part
+in [the atc runner](https://linear.app/zgeoff/issue/GEO-1843).
 
 ## Shape
 
@@ -85,7 +86,7 @@ type RunnerStartPlan<Options> =
 // the decision point, as every action's attempt does, with the task that owns the thread as its
 // caller.
 interface RunnerAction {
-  tool: string; // a connector tool that no tool list holds, such as 'coding.start'
+  tool: string; // a connector tool that no model's tool list holds, such as 'coding.start'
   args: JSONObject; // erasable, as every action's arguments are
   hashParts: readonly string[]; // the action hash; a step that runs again with the same parts queues nothing
   causedBy: { kind: 'tool_call'; callID: string } | { kind: 'record'; sequence: number };
@@ -369,7 +370,7 @@ tasks.list({ runner: 'atc', state: 'waiting', limit: 20 });
 
 ### Ends, stops and the sweep
 
-- A coding task ends as `done` when its session ends, started or joined alike. It waits only on
+- A coding task ends as `done` when its session ends, started or joined alike. It keeps waiting on
   `gone`, because a session out of sight can come back: a daemon back up, or a host that wakes.
 - A stop, a close or a failure calls the definition's `ended` after its transaction commits.
 - After a stop, `ended` queues a `coding.stop` action for the bound session, started or joined, and

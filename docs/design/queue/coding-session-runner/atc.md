@@ -12,7 +12,8 @@ release pairs. The step that calls the adapter is in [the runner](runner.md), an
 call it are in [the tools](tools.md). The terms, such as reach, a target, a steer and a bound
 session, are in the [README](README.md#terms). The action queue is in
 [actions](../../../architecture/core/actions.md), and the trigger core in
-[the trigger core](../../../architecture/core/triggers.md).
+[the trigger core](../../../architecture/core/triggers.md). Once the owner approves the design,
+build the adapter and the source in [the atc runner](https://linear.app/zgeoff/issue/GEO-1843).
 
 ## Shape
 
@@ -262,8 +263,8 @@ HTTP refusal carries none:
 | any other code                                                                                              | `refused`, `canClear: false`                                             |
 
 - atc refuses a note with `unsupported` while the session's message bridge has not attached, up to
-  15 s after the session started, and for an agent that takes no notes. The adapter reads the
-  session's start time to tell the two apart.
+  15 s after the session started, and for an agent that takes no notes. The adapter takes an
+  `unsupported` in the session's first minute as a refusal that may clear, and a later one as final.
 - atc's MCP answer carries only the error's code and `problem`, so the adapter cannot tell a daemon
   whose identity changed under a key from a daemon that is down. A keyed call takes either as
   `unknown`, and the queue resends it under the same key.
@@ -340,7 +341,8 @@ service tokens and every tool this adapter calls.
   events: the source logs it with the daemon's name.
 - The source writes an event with `wake: true` when the event is `ended`, or its kind is in the
   session's wake set: the state for a `state` event, and the label for a `note`. Every other event
-  gets `wake: false`, and the core's write updates `coding_sessions` and wakes no step.
+  gets `wake: false`, and its record wakes no step: only the coding module's fold of it updates
+  `coding_sessions`.
 - The source drops an event of a task that is done, failed or closed, and of a session whose row has
   `unbound_at` set, and still moves its cursor.
 - After a failed read, the source waits from 1 s, doubling to 5 min, and reports itself unhealthy

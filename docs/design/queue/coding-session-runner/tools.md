@@ -8,7 +8,8 @@ can join, steers a session by typing into its input, sends a note through atc's 
 session, and picks the events that wake it. Below are each tool's contract, its effect declaration
 and its policy. The start and the join are in [the runner](runner.md), and the adapter calls that
 each tool makes are in [the atc adapter](atc.md). The terms, such as a steer, a note, the wake set
-and a bound session, are in the [README](README.md#terms).
+and a bound session, are in the [README](README.md#terms). Once the owner approves the design, build
+these tools in [the atc runner](https://linear.app/zgeoff/issue/GEO-1843).
 
 ## Shape
 
@@ -169,9 +170,9 @@ coding:
 - A start or a join takes the `wake` option. Without it, the task takes the default set for its
   origin from `coding.wake`.
 - The coding source writes each event of a bound session on the coding task's thread. An event in
-  the wake set wakes the step. Every other event lands as a record that wakes nothing and changes
-  only `coding_sessions`.
-- `ended` always wakes the step, in or out of the wake set, because the step ends the task.
+  the wake set, and `ended` in or out of it, wakes the step; `ended` always wakes it because the
+  step ends the task. Every other event lands as a record that wakes nothing and changes only
+  `coding_sessions`.
 - `coding.watch` takes a whole set. An empty set is valid: then only the session's end and the
   report reach nixie.
 
@@ -186,8 +187,9 @@ coding:
 
 ## Decisions
 
-- **The step forwards an event and never summarises it.** The `task_message` carries the event's
-  kind, the state, and the question or the note's text. nixie calls `coding.read` for more.
+- **The step forwards an event to the report target and never summarises it.** The `task_message` to
+  the report target carries the event's kind, the state, and the question or the note's text. nixie
+  calls `coding.read` for more.
 - **`coding.read` is lean by default.** Its default answer fits one screen, so a check on a session
   costs nixie's context little. The prompt and the tail come only on request.
 - **The tail reads atc's transcript from the start, a page at a time.** atc's transcript read has no

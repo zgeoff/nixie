@@ -7,11 +7,11 @@
 You ask nixie for a coding session, such as "fix the flaky login test in the shop repo", and nixie
 starts it in atc, a separate program that runs coding agents, once your policy rules allow it. Or
 you point nixie at a session you already run in atc, and nixie joins it. Either way the session
-shows as a task in nixie. nixie steers the session by typing into its input, so each line nixie
-sends is a user turn of the session, as a line you type is. nixie reads the session's state and last
-reply when it needs them, and only the session events that nixie picked wake it. This design adds
-the code that runs such a task, the coding runner, its tools, and its first adapter: the package
-`coding-atc`, whose adapter ID is `atc`.
+shows as a task in nixie. nixie steers the session by typing into its input, so each steer is a user
+turn of the session, as a line you type is. nixie reads the session's state and last reply when it
+needs them, and only the session events that nixie picked wake it. This design adds the code that
+runs such a task, the coding runner, its tools, and its first adapter: the package `coding-atc`,
+whose adapter ID is `atc`.
 
 Once the owner approves this design, build
 [the atc runner](https://linear.app/zgeoff/issue/GEO-1843) from it and its three parts.
@@ -116,7 +116,8 @@ This work changes these modules that every runner or connector uses:
   for it.
 - **One task run spans the whole binding.** The start or the join opens it, and the session's end, a
   failed start, a stop, a close or a failure ends it, with one report. Between those, each event in
-  the wake set reaches the report target as a `task_message`, and no event ends the task run.
+  the wake set reaches the report target as a `task_message`, and no event but `ended` ends the task
+  run.
 - **This runner's key is `atc`.** The config section `coding.atc` and the variant `task.start/atc`
   take their names from the key.
 - **The coding runner is generic over `CodingAdapter`, and its key is the adapter's ID.** A later
