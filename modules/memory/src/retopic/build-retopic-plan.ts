@@ -35,7 +35,7 @@ export function buildRetopicPlan(
   }
 
   const moves = chosen.items.map((item) => buildMove(item, source, topic));
-  const long = moves.find((move) => [...move.toTopic].length > topicLimit);
+  const long = moves.find((move) => (move.toTopic.match(/./gsu)?.length ?? 0) > topicLimit);
 
   if (long !== undefined) {
     return refuse(
