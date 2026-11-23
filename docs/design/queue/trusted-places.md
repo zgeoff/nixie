@@ -73,8 +73,8 @@ parsePlace('not a place');
 // → null
 
 isPlaceCovered(entry.key, { parsed: parsePlace(destination), raw: destination });
-// → true when the entry covers the destination. A raw key matches when its value is the NFC form
-// of raw, whatever parsed holds. A null parsed destination matches only a raw key.
+// → true when the entry covers the destination. A raw key matches when its value equals raw
+// exactly, whatever parsed holds. A null parsed destination matches only a raw key.
 ```
 
 ```ts
@@ -106,10 +106,12 @@ type PlaceKey =
 - An IP address or a host with one label, such as `localhost`, parses as a `site`.
 - Tools keep declaring the destination strings they declare today. The decision point runs
   `parsePlace` for places only, and a rule's `destinations` match the declared string.
-- A site's normal form drops every leading `www.` label, unless what remains is a public suffix. So
-  an entry for `example.org` covers `www.example.org`, and an entry typed as `www.example.org` is
-  the entry for `example.org`. Parsing a normal form gives the same form back, so a key listed by
-  `places.list` never widens when it is read again. Every other subdomain needs its own entry or
+- A site's normal form drops one leading `www.` label, unless what remains is a public suffix. So an
+  entry for `example.org` covers `www.example.org`, and an entry typed as `www.example.org` is the
+  entry for `example.org`. `parsePlacePattern` returns `null` for a site whose normal form still
+  starts with `www.`, such as `www.www.example.org`, so a key that `places.list` shows never changes
+  when it is read again. A destination `www.www.example.org` parses to `www.example.org`, which only
+  a `subdomains: true` entry covers. Every other subdomain needs its own entry or
   `subdomains: true`. A mail domain keeps its `www.`.
 - A `site` or `mail_domain` key with `subdomains: true` never names a public suffix. The matcher
   reads the list through `tldts` with `allowPrivateDomains: true`, and every writer of an entry
@@ -430,8 +432,9 @@ and when a call last used it. You add, change and remove entries there. The host
   snapshots' contact IDs read as places at `known`.
 - A contact's destination becomes an `address`, `phone` or `handle` key through `parsePlace`. Any
   other contact, such as a site, becomes a `raw` key, and so does a contact whose key another place
-  already holds, including one marked after the upgrade. A `raw` key covers the exact NFC string. No
-  call a contact covers gains an allow or loses one, except that an address now matches in any case.
+  already holds, including one marked after the upgrade. A `raw` key covers the exact string, as a
+  contact does today. No call a contact covers gains an allow or loses one, except that an address
+  now matches in any case.
 - A migrated place's kind comes from its erasable destination, so the projection sets it in
   `afterRebuild`.
 - A forget of the old contact record erases the place.
