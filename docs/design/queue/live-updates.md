@@ -2,12 +2,15 @@
 
 - **Status:** draft
 
-This design gives the server one way to push changes to the web client and to devices: one
-server-sent stream per client tab, `live.follow`, in place of today's 2 streams and 7 polls of 15 to
-60 s. The stream carries the records of the thread on screen, a `changed` event that names each kind
-of state a commit changed, such as the pause or the task list, and a device's screen. One in-memory
-registry in the API holds presence and device online state, and the push notifier and the devices
-module read it.
+The web client hears of a pause, a spending stop or a backup notice up to a minute late, because it
+polls for them, and one page can hold 3 record streams. This design gives the server one way to push
+changes to the web client and to devices: one server-sent stream per client tab, `live.follow`, in
+place of today's 2 kinds of stream and 7 polls of 15 to 60 s.
+
+A page's stream carries the records of the thread on screen, and a `changed` event that names each
+kind of state a commit changed, such as the pause or the task list. A device screen's stream carries
+only its screen. One in-memory client registry in the API holds presence and the open device
+streams, and the push notifier and the devices module each read their part.
 
 ## Shape
 
@@ -19,9 +22,9 @@ flowchart LR
   log[event log] -->|"records of the thread on screen"| stream
   stream -->|"opened, record, changed, device"| client[client]
   client -->|"read again"| reads[TanStack Query reads]
-  client -->|"sessions.shown"| presence[presence registry]
-  stream -->|"device stream opens and closes"| presence
-  presence --> readers[push notifier, devices module]
+  client -->|"sessions.shown"| registry[client registry]
+  stream -->|"device stream opens and closes"| registry
+  registry -->|"isPresent; open device streams"| readers[push notifier; devices module]
 ```
 
 ## Contracts
@@ -60,15 +63,16 @@ const followLive = signedIn
     NOT_A_DEVICE: notADeviceError, // the device form from a full session with no device row
   })
   .input(
+    // Strict objects, so a device form never parses as a page form with its key stripped.
     z.union([
       // The page form: opened, then record and changed events.
-      z.object({
+      z.strictObject({
         afterSequence: sequenceSchema.optional(), // the read's readAtSequence; none starts at the head
         thread: threadSchema.optional(), // with none, the stream sends no records
         clipPayloads: z.boolean().optional(),
       }),
       // The device form: opened, then device events only.
-      z.object({ device: z.object({ pixels: pixelsSchema }) }),
+      z.strictObject({ device: z.object({ pixels: pixelsSchema }) }),
     ]),
   )
   .output(
@@ -103,8 +107,20 @@ A new task can belong to a definition, so a write that creates a task marks both
 
 ### Marking a topic
 
+A record marks its topics through the log. A write with no record, or a change that no write makes,
+marks them by hand.
+
 ```ts
-// log module. Inside a write transaction: the topics join the transaction's commit.
+// log module. At startup, each module that owns record kinds gives the topics each kind changes.
+// The log marks them for every record that a transaction appends.
+registerRecordTopics(writer, {
+  'task.created': ['tasks', 'definitions'],
+  'trigger.skipped': ['tasks'],
+  'definition.changed': ['definitions'],
+  'session.labelled': [], // a kind that changes no topic says so
+});
+
+// A write with no record: the topics join the transaction's commit.
 await withWriteTransaction(writer, async (tx) => {
   await insertBackupNotices(tx, notices);
   markChanged(tx, ['backups']);
@@ -125,6 +141,9 @@ class ChangedEvent extends Event {
 
 ### A read that changes with time
 
+A task due on a schedule moves in the task list with no write, so no topic can announce it.
+`tasks.list` says when its answer next changes on its own.
+
 ```ts
 // contract: tasks.list
 await client.tasks.list({});
@@ -134,20 +153,23 @@ await client.tasks.list({});
 changesAt: z.date().nullable(), // the earliest time a listed task changes with no write
 ```
 
-### Presence
+### The client registry
 
 This build adds `sessions.shown` and the client's beat, with the shape and rules in
-[the push notice](push-notice.md#presence).
+[the push notice](push-notice.md#presence). The registry keeps two facts apart: presence, from
+`sessions.shown` beats, and the open device streams, which make a device online.
 
 ```ts
 // api module. In memory: a restart forgets it, and each client calls and opens again.
+interface ClientRegistry {
+  readonly presence: Presence; // read by the push notifier
+  readonly devices: DeviceStreams; // read by the devices module; its type, as createDeviceStreams gives today
+}
+
 interface Presence {
   // true while any session's newest sessions.shown lies within withinMs; the notifier passes
   // its channels.telegram.presence_seconds
   readonly isPresent: (withinMs: number) => boolean;
-
-  // the open device streams: open, isOnline, readPixels, resize, as createDeviceStreams gives today
-  readonly devices: DeviceStreams; // devices module type
 }
 ```
 
@@ -155,24 +177,24 @@ interface Presence {
 
 ### The stream
 
-- The web client opens at most one `live.follow` per tab, and each page reads records and topics
-  from that stream.
+- The web client holds one `live.follow` per tab, and each page reads records and topics from that
+  stream. A tab holds 2 only while it switches threads.
 - The stream sends `opened` first, as soon as it has registered, and before any other event.
 - The stream sends a `record` event only for a record whose thread is the input's `thread`, in
   sequence order.
 - The stream starts after `lastEventId` when that is a sequence of 1 to 15 digits, and otherwise
   after `afterSequence`, with the start clamped to the head.
-- A `session.revoked` record that names the caller ends the stream with `UNAUTHORIZED`, whether or
-  not the stream sends records.
+- A `session.revoked` record that names the caller ends a page stream with `UNAUTHORIZED`, whether
+  or not it sends records. A revoke ends a device-form stream as it ends `devices.follow`.
 - A shredded record arrives with `isRemoved`, as on `records.follow`.
 - The stream sends each topic within 1 s of its commit, and may merge the topics of several commits
   into one `changed` event.
 - When a tab with no open stream gets `opened`, the client invalidates the reads of every topic.
   This covers the tab's first open and each reconnect, because a `changed` event carries no ID and a
   closed stream misses it.
-- When the thread on screen changes, the client opens a new stream from that page's
-  `readAtSequence`, and closes the old one once the new one sends `opened`. It then invalidates
-  nothing.
+- When the thread on screen changes, including to or from a page with no thread, the client opens a
+  new stream from that page's `readAtSequence`, and closes the old one once the new one sends
+  `opened`. It then invalidates nothing.
 - While the client shows live updates as unavailable, it reads each topic's reads every 60 s.
 - When `tasks.list` returns a `changesAt`, the client reads the list again at that time.
 - No page in the web client sets `refetchInterval` on a read that a topic covers.
@@ -181,14 +203,19 @@ interface Presence {
 
 ### Topics
 
-- Each write that changes what a topic's reads return calls `markChanged` in its transaction.
-- The tasks projection calls `markChanged(tx, ['tasks'])` for each record it folds that moves a
-  listed task, so a module that appends such a record needs no mark of its own.
-- The proposal writers and the actions module mark `approvals`. The actions module marks it when an
-  action's call leaves `waiting`.
-- The computer module marks `computer` with each `computer.handover_*` record.
+- Every record kind has an entry in `registerRecordTopics`, an empty list included. A test walks
+  every record kind the modules declare and fails on a kind with no entry.
+- The `tasks` entries cover each kind the task list reads: every `task.*` and `action.*` kind, the
+  inbox kinds, `owner_message`, `task_message`, `timer.fired`, `trigger.fired`, `trigger.skipped`
+  and `log_reset`.
+- The proposal kinds and the action kinds that end a `waiting` call mark `approvals`, and each
+  `computer.handover_*` kind marks `computer`.
+- Each write with no record that changes what a topic's reads return calls `markChanged` in its
+  transaction, such as a backup notice.
+- A transaction that rolls back drops its topics.
 - A module that learns of a change from outside nixie calls `publishChanged` when it sees the
-  change. The spend watcher calls it when the gateway's stop or reachability changes.
+  change. The spend watcher calls it when the stop it reads, or its reachability, differs from its
+  last read.
 - A test for each topic makes the change and asserts that an open stream receives `changed` with
   that topic.
 - A design that adds a read the client keeps fresh adds its topic to `liveTopicSchema`.
@@ -206,8 +233,7 @@ interface Presence {
 
 - An open stream never counts as present. Only a `sessions.shown` beat does.
 - A device-scope session never calls `sessions.shown`, and a browser in device mode never calls it.
-- The push notifier reads `isPresent`, and the devices module reads `devices`, from the one
-  registry.
+- The push notifier reads `presence`, and the devices module reads `devices`, from the one registry.
 - When a client goes away, the server ends its stream and drops it from the registry within 10 s. A
   test closes the connection and asserts the device turns offline.
 
@@ -226,18 +252,19 @@ interface Presence {
 ## Decisions
 
 - **One stream per tab.** One stream keeps one keepalive, one reconnect loop and one place that
-  registers a client. A browser opens at most 6 HTTP/1.1 connections to one origin, and a page can
-  hold 3 record streams.
+  registers a client. A browser opens at most 6 HTTP/1.1 connections to one origin across its tabs,
+  and one page can hold 3 record streams.
 - **A topic names the data that changed, and the client reads it again.** The reads exist and are
   tested, and a backup notice or a gateway stop changes with no record to send.
   [Open question](https://linear.app/zgeoff/issue/GEO-2823).
-- **The writer marks a topic in its transaction.** The module that writes knows what changed. A map
-  from record kinds to topics would miss writes with no record, such as a backup notice.
+- **A record kind marks its topics, and a write with no record marks its own.** The module that owns
+  a kind knows what it changes, and the test over every kind catches a new kind with no entry.
+  Writes with no record are few, such as a backup notice.
 - **Records go only for the thread on screen.** The task list, the views and the handover banner
   follow topics, so no page needs every thread's records.
 - **The device screen is a form of `live.follow`.** A device screen and a page share the transport,
   the keepalive and the registry, and each form gets only its own events.
-- **The API module owns the presence registry.** It serves `sessions.shown` and every stream, and
+- **The API module owns the client registry.** It serves `sessions.shown` and every stream, and
   hands each reader the narrow view it reads. This moves the registry out of the channels module
   that [the push notice](push-notice.md#presence) named.
 - **`records.follow`, `log.follow` and `devices.follow` stay, deprecated, and serve their events as
