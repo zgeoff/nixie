@@ -15,13 +15,13 @@ export interface DeviceRow {
   readonly updated_at: number;
 }
 
-export interface DeviceLayoutRow {
+interface DeviceLayoutRow {
   readonly device_id: string;
   readonly layout_sequence: number;
   readonly updated_at: number;
 }
 
-export interface DeviceRegionRow {
+interface DeviceRegionRow {
   readonly device_id: string;
   readonly region: string;
   readonly shown_sequence: number;
