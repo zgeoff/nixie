@@ -15,9 +15,8 @@ test('#makeDeviceToolPreparer answers the refusal of a call to a device that doe
 
 test('#makeDeviceToolPreparer fails for a tool that reads nothing before its call', async () => {
   const ctx = await startTestDevices();
-  const outcome = await Promise.allSettled([ctx.prepare('devices.list', {})]);
 
-  expect(outcome).toStrictEqual([
-    { status: 'rejected', reason: new Error('devices.list reads nothing before its call') },
-  ]);
+  expect(() => ctx.prepare('devices.list', {})).toThrow(
+    'devices.list reads nothing before its call',
+  );
 });
