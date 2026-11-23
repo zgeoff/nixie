@@ -41,13 +41,14 @@ async function setupTest() {
     view,
     readResizes: () =>
       deviceStore.resizes.findMany().map((row) => ({ width: row.width, height: row.height })),
-    countResizeEvents: () =>
+    watchResizeEvents: () =>
       view.evaluate(
-        `(globalThis.resizeEventCount = 0, addEventListener('resize', () => { resizeEventCount += 1 }), true)`,
+        `(globalThis.resizeEventSize = null, addEventListener('resize', () => { resizeEventSize = innerWidth + 'x' + innerHeight }), true)`,
       ),
 
-    // Chrome still renders and delivers resize events while the virtual clock is paused, but runs
-    // no timer, so the debounce window lasts until the test advances the clock
+    // The page runs no timer while the virtual clock is paused, so the debounce window lasts until
+    // the test advances the clock. Chrome applies each size at once, but can hold a resize event
+    // after the first until a timer runs, so the test waits for the page's size, not that event
     pausePageClock: () => view.cdp('Emulation.setVirtualTimePolicy', { policy: 'pause' }),
 
     // Chrome holds the virtual clock while a request is in flight, so the budget covers the page's
@@ -128,12 +129,15 @@ test('it sends one resize with the new size after the window resizes', async () 
   await ctx.waitForPage(`document.body.innerText.includes('Switch on screen')`);
   await ctx.view.click('button');
   await ctx.waitForPage(`document.querySelector('[data-testid="screen"] h1') !== null`);
-  await ctx.countResizeEvents();
+  await ctx.watchResizeEvents();
   await ctx.pausePageClock();
   await ctx.setViewport({ width: 800, height: 600 });
-  await ctx.waitForPage('resizeEventCount === 1');
+
+  // the page has seen a resize event at the first size, so a page that sends on every event
+  // stores this size too
+  await ctx.waitForPage(`resizeEventSize === '800x600'`);
   await ctx.setViewport({ width: 820, height: 610 });
-  await ctx.waitForPage('resizeEventCount === 2');
+  await ctx.waitForPage('innerWidth === 820 && innerHeight === 610');
   await ctx.advancePageClock(2500);
 
   expect(ctx.readResizes()).toStrictEqual([{ width: 820, height: 610 }]);
