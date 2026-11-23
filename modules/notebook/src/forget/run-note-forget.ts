@@ -57,6 +57,17 @@ export async function runNoteForget(
   };
 }
 
+// A forget whose cleanup runs beside the call: forgetting while the cleanup has not ended, with the
+// note already out of reach of every tool and read.
+export type NoteForgetBeside =
+  | {
+      readonly status: 'forgotten' | 'forgetting';
+      readonly noteID: string;
+      readonly shortID: string;
+      readonly title: string;
+    }
+  | { readonly status: 'refused'; readonly reason: 'not_found' | 'stale' };
+
 export type BegunNoteForget =
   | {
       readonly status: 'begun';

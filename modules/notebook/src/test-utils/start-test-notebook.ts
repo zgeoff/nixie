@@ -37,6 +37,9 @@ export interface TestNotebookOptions {
 
   // the wait before a tool forget's cleanup runs again; a test sets it short
   readonly cleanupRetryMs?: number;
+
+  // how long a tool forget waits for its cleanup before it answers forgetting
+  readonly forgetWaitMs?: number;
 }
 
 // Starts a log with the notebook over it, and a memory store beside it, so a test calls a tool and
@@ -106,6 +109,7 @@ export async function startTestNotebook(options: TestNotebookOptions = {}) {
       clock,
       settings: { ...defaultNotebookSettings, ...options.settings },
       cleanupRetryMs: options.cleanupRetryMs ?? 1,
+      ...(options.forgetWaitMs === undefined ? {} : { forgetWaitMs: options.forgetWaitMs }),
       memory: buildNotebookMemory(() => memory),
       cleanupSessions: (cause) => {
         cleanups.push(cause);

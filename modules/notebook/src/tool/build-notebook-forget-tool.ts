@@ -3,16 +3,19 @@ import { z } from 'zod';
 import { buildUnknownNote } from '../write/write-note-link';
 import { buildNoteHidden } from './build-note-hidden';
 import type { NotebookToolStore } from './notebook-tool-store';
-import { noteIDInput, ownerData, refusalOutput } from './one-line-pattern';
+import { noteIDInput, ownerData, refusalOutput, untrusted } from './one-line-pattern';
 import { refuseNote } from './refuse-note';
 
 const forgetArguments = z.object({ id: z.string() });
+
+const forgettingMessage =
+  'The note is hidden from every tool and read now, and its erasure finishes in the background.';
 
 export function buildNotebookForgetTool(readStore: () => NotebookToolStore): ToolDefinition {
   return {
     name: 'notebook.forget',
     description:
-      "Forgets one of your notes for good: every version and every link from the note is erased, and a link to it from another note reads as gone. A forget can't be undone, and it needs no approval, because the notebook is yours. Pass the note's short ID as id. The result gives the short ID and the title of the note you forgot. A note that is forgotten or unknown is refused.",
+      "Forgets one of your notes for good: every version and every link from the note is erased, and a link to it from another note reads as gone. A forget can't be undone, and it needs no approval, because the notebook is yours. Pass the note's short ID as id. The result gives the short ID and the title of the note you forgot, and a status: forgotten once the erasure ended, or forgetting while it still runs in the background, with the note already hidden. A note that is forgotten or unknown is refused.",
     input: {
       type: 'object',
       properties: { id: noteIDInput },
@@ -21,7 +24,12 @@ export function buildNotebookForgetTool(readStore: () => NotebookToolStore): Too
     },
     output: {
       type: 'object',
-      properties: { note: { type: 'string' }, title: { type: 'string' }, ...refusalOutput },
+      properties: {
+        note: { type: 'string' },
+        title: { type: 'string' },
+        status: { type: 'string', enum: ['forgotten', 'forgetting'] },
+        ...refusalOutput,
+      },
       additionalProperties: false,
     },
     declaration: {
@@ -29,7 +37,13 @@ export function buildNotebookForgetTool(readStore: () => NotebookToolStore): Too
       destinations: [],
       amount: null,
       content: [],
-      results: { note: ownerData, title: ownerData, refused: ownerData, message: ownerData },
+      results: {
+        note: ownerData,
+        title: untrusted,
+        status: ownerData,
+        refused: ownerData,
+        message: ownerData,
+      },
     },
     execution: 'direct',
     run: async (call) => {
@@ -46,10 +60,17 @@ export function buildNotebookForgetTool(readStore: () => NotebookToolStore): Too
         return { status: 'ok', ...refuseNote(buildUnknownNote(input.id).refusal) };
       }
 
+      const message = forgotten.status === 'forgetting' ? { message: forgettingMessage } : {};
+
       return {
         status: 'ok',
-        result: { note: forgotten.shortID, title: forgotten.title },
-        record: { note: forgotten.shortID },
+        result: {
+          note: forgotten.shortID,
+          title: forgotten.title,
+          status: forgotten.status,
+          ...message,
+        },
+        record: { note: forgotten.shortID, status: forgotten.status },
         ...buildNoteHidden({ [forgotten.shortID]: forgotten.noteID }),
       };
     },

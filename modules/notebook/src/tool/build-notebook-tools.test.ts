@@ -50,6 +50,8 @@ test.each([
   ['notebook.walk', 'gone', 'owner_data'],
   ['notebook.write', 'note', 'owner_data'],
   ['notebook.edit', 'version', 'owner_data'],
+  ['notebook.forget', 'note', 'owner_data'],
+  ['notebook.forget', 'title', 'untrusted'],
 ] as const)('it marks the %s result field %s as %s', async (name, field, mark) => {
   const ctx = await startTestNotebook();
 

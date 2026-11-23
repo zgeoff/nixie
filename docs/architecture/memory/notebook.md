@@ -75,9 +75,11 @@ conversation holds all 10, and a task holds one only when its tool list names it
   chunk above the floor of `memory.recall`, and reciprocal rank fusion merges the two. A walk stops
   at 200 nodes, or sooner when its result would pass the tool output limit, and sets `isCut`.
 - `notebook.forget` takes a note's short ID and forgets the note for good, with no approval, because
-  the notebook is the assistant's. It answers the short ID and the title, or `UNKNOWN_NOTE` for an
-  ID that is unknown or was forgotten. It never takes a version, so it forgets the note as it
-  stands. [Forgetting a note](#forgetting-a-note) covers what it erases.
+  the notebook is the assistant's. It answers the short ID, the title and a status, or
+  `UNKNOWN_NOTE` for an ID that is unknown or was forgotten. The status is `forgotten` once the
+  cleanup ended, and `forgetting` while the cleanup still runs, with a message that the note is
+  hidden and its erasure finishes in the background. It never takes a version, so it forgets the
+  note as it stands. [Forgetting a note](#forgetting-a-note) covers what it erases.
 - A note holds at most one link of each type to each target, and a second `notebook.link` with the
   same source, target and type replaces the reason. `PART_OF_CYCLE` checks the part-of links that
   exist when the link commits. A note ID written in a body is text: only `notebook.link` makes a
@@ -150,10 +152,12 @@ runs in 2 parts, as a [moment destroy](./moments.md#destroying-a-moment) does:
    user.
 
 The cleanup aborts every turn in flight and waits for it, so a forget that the assistant makes
-inside a turn runs part 1 and returns, and the cleanup runs beside the turn. The turn's step fails
-and runs again after its retry delay, on a rebuilt session, as
-[the live session](./context.md#forgetting-and-the-live-session) describes. A cleanup that fails
-runs again after a short wait until it ends, and the next start finishes one that a stop cut short.
+inside a turn runs part 1, then runs the cleanup beside the turn. The tool waits a short time for
+the cleanup and answers `forgotten` only when `notebook.note_forgotten` is in the log. Otherwise it
+answers `forgetting`. The turn's step fails and runs again after its retry delay, on a rebuilt
+session, as [the live session](./context.md#forgetting-and-the-live-session) describes. A cleanup
+that fails runs again after a short wait until it ends, through the same step that the server's
+start runs for a note left `forgetting`. The next start finishes a cleanup that a stop cut short.
 
 Every step is safe to run twice, so the server's start finishes a forget that a crash cut short. The
 session cleanup runs for the conversation and for each open task whose tool list holds a notebook
@@ -162,8 +166,9 @@ dangling in the check. A forget never reaches a `code.run` result or a file its 
 backup schedule counts `notebook.note_forgotten` as a forget record.
 
 When the user forgets an item, a moment or a record that a note links to, the link stays and the
-note's own text keeps whatever it quoted until the user forgets the note. The confirmation of a
-record forget lists the active notes that link to the record, with a private note's title left out.
+note's own text keeps whatever it quoted until the user or the assistant forgets the note. The
+confirmation of a record forget lists the active notes that link to the record, with a private
+note's title left out.
 
 ## The forget line
 

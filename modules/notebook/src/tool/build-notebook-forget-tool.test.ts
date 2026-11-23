@@ -166,6 +166,53 @@ test('it finishes a forget whose session cleanup failed once', async () => {
   expect([outcome.status, records.length]).toStrictEqual(['ok', 1]);
 });
 
+test('it answers forgetting, and records no forgotten note, while the session cleanup keeps failing', async () => {
+  const ctx = await setupTest({
+    forgetWaitMs: 1,
+    cleanupSessions: () => Promise.reject(new Error('cleanup failed')),
+  });
+
+  const note = await ctx.write('Boiler');
+  const outcome = await ctx.call('notebook.forget', { id: note });
+  const records = await ctx.readRecords(['notebook.note_forgotten']);
+
+  expect([outcome, records.length]).toMatchObject([
+    {
+      status: 'ok',
+      result: {
+        note,
+        title: 'Boiler',
+        status: 'forgetting',
+        message: expect.stringContaining('in the background'),
+      },
+    },
+    0,
+  ]);
+});
+
+test('it finishes at the next start a forget whose session cleanup kept failing', async () => {
+  const cleanup = { isFailing: true };
+
+  const ctx = await setupTest({
+    forgetWaitMs: 1,
+    cleanupSessions: () =>
+      cleanup.isFailing ? Promise.reject(new Error('cleanup failed')) : Promise.resolve(),
+  });
+
+  const note = await ctx.write('Boiler');
+
+  await ctx.call('notebook.forget', { id: note });
+  await ctx.notebook.stop();
+
+  cleanup.isFailing = false;
+
+  await ctx.start();
+
+  const records = await ctx.readRecords(['notebook.note_forgotten']);
+
+  expect(records.map((entry) => entry.record.payload['by'])).toStrictEqual(['assistant']);
+});
+
 test('it keeps running the cleanup of a confirmed forget until it ends', async () => {
   let attempts = 0;
 
