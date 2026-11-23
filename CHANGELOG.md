@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.107.0](https://github.com/zgeoff/nixie/compare/v0.106.0...v0.107.0) (2026-11-23)
+
+
+### Features
+
+* **devices:** add device layouts, regions and live values ([#1408](https://github.com/zgeoff/nixie/issues/1408)) ([0f338e5](https://github.com/zgeoff/nixie/commit/0f338e565a5860bf24dcee240670492f3a6c51ce))
+
 ## [0.106.0](https://github.com/zgeoff/nixie/compare/v0.105.1...v0.106.0) (2026-11-23)
 
 
