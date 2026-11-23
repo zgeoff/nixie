@@ -6,11 +6,11 @@
 
 A rule's fixed fields can't say "only before 17:00 in London" or "only when every attachment is a
 PDF". A rule already carries a `cel` field for such a condition, but nixie never evaluates it: an
-allow with a condition never matches, and an ask or a deny matches on its other fields alone. This
-design makes nixie evaluate the condition with `@marcbachmann/cel-js`, inside a subset of CEL that
+allow with a condition never matches, and an ask or a deny matches on its other fields alone. With
+this design, nixie evaluates the condition with `@marcbachmann/cel-js`, inside a subset of CEL that
 nixie checks when the rule is written and tests with its own conformance suite. Every rule with a
-condition carries a note in your words, and shows to you as a card that phrases the condition in
-plain words, never as raw CEL alone.
+condition carries a note in your words, and its card puts the condition in plain words, with the raw
+CEL behind a control.
 
 ## Shape
 
@@ -66,9 +66,9 @@ interface ConditionInput {
 The environment declares each name with its CEL type: `args` is `map<string, dyn>`, `now` is
 `google.protobuf.Timestamp`, the lists are `list<string>`, and the rest are `string`.
 
-- `args` converts JSON as follows: an integral number becomes a CEL `int`, any other number a
-  `double`, and every string is in Unicode NFC. String literals in the condition normalise to NFC
-  when the rule is parsed, as the fixed checks do.
+- In `args`, an integral JSON number becomes a CEL `int`, any other number a `double`, and every
+  string is in Unicode NFC. String literals in the condition normalise to NFC when the rule is
+  parsed, as the fixed checks do.
 - A number in `args` compares with an `int` or a `double` literal alike, because its type is `dyn`:
   `args.amount < 100` is true for `99.5`. Two literals of different number types, such as
   `1 == 1.0`, fail the type check.
@@ -77,9 +77,9 @@ The environment declares each name with its CEL type: `args` is `map<string, dyn
   out. The fixed `checks` read `args` as today.
 - A condition never reads memory, secrets, the vault, contacts, budgets or spend, the conversation,
   the task's history or another call's result, because `RuleCall` holds none of them.
-- A condition never reads a place or its trust level. A rule about a place uses `destinations` or
-  [the trusted places](https://github.com/zgeoff/nixie/pull/1410) directory, and a condition sees
-  only the declared destination strings.
+- A condition never reads a place or its trust level, and sees only the declared destination
+  strings. For a rule about a place, use `destinations` or
+  [the trusted places](https://github.com/zgeoff/nixie/pull/1410) directory.
 - A content argument, such as a mail body or a memory item's text, is left out of `args`, so a
   condition that reads one errors with `no_such_key` and fails closed. Whether any rule may read
   content is [open](#open-questions).
@@ -142,8 +142,8 @@ type ConditionFault =
    result of type `dyn` is refused too, so `args.flag` fails and `args.flag == true` passes.
 5. Building the structured view.
 
-- In the rules-file parser, a fault is a problem of the rule's file, with the fault code and the
-  detail as its reason, and it refuses the seed as any rule fault does.
+- The rules-file parser reports a fault as a problem of the rule's file, with the fault code and the
+  detail as its reason, and refuses the seed, as it does for any rule fault.
 - A read of the rule store never runs the check. The first evaluation of each condition text runs
   steps 1 to 4 and caches the result, and a stored condition that fails them, such as one written
   before this design, evaluates as an error with the code `condition_invalid`.
@@ -222,8 +222,9 @@ type Literal = string | number | boolean | Literal[];
 ```
 
 ```ts
-// libs/contract. Every schema that carries a rule's sentence gains `condition`: the rule in force
-// (ruleInForceSchema), the rule versions in a proposal, the approval card's rule and the rule notice.
+// libs/contract. Every schema that carries a rule's sentence gains `condition`: the rule in
+// force (ruleInForceSchema), the rule versions in a proposal, the approval card's rule and the
+// rule notice.
 type RuleCondition = {
   note: string;
   // 'nixie' when the rule in force is a runtime change whose changed_by is nixie; no path makes one
@@ -274,7 +275,7 @@ sentence.
   destination from a rule with a condition, and the edit narrows.
 - An edit that changes the outcome follows the outcome rules of today: an allow that becomes an ask
   or a deny narrows, and a test covers it for a rule with a condition.
-- An edit to the note alone is unchanged, as today.
+- The check classes an edit to the note alone as unchanged, as today.
 
 ### The conformance suite
 
@@ -314,12 +315,12 @@ changes it.
   they allow, and fails above 50 ms. That case takes about 4 ms on a desktop machine.
 - nixie parses each condition once per rule hash and reuses the parsed form.
 - The environment registers no function of its own and no async function.
-- `@marcbachmann/cel-js` is pinned at an exact version in the root catalog, and only the policy
-  module imports it, through the `zgeoff/import-zones` lint rule.
+- `@marcbachmann/cel-js` is pinned at an exact version in the root catalog, and the
+  `zgeoff/import-zones` lint rule refuses an import of it outside the policy module.
 - A version bump of `@marcbachmann/cel-js` merges only with the conformance suite green on its head
   commit. Renovate never merges such a bump on its own.
 - A replay evaluates each condition again with the library in force. The conformance suite is the
-  guard that a bump keeps past verdicts.
+  check that a bump keeps past verdicts.
 
 ## Decisions
 
@@ -334,16 +335,15 @@ changes it.
   describes.
 - **An error never grants access, and never refuses a call unseen.** An allow stops covering, and an
   ask or a deny asks.
-- **The snapshot holds no library version.** The conformance suite gates each bump instead, so the
-  snapshot hash changes only with the definitions.
+- **The snapshot holds no library version.** The snapshot hash changes only with the definitions,
+  and the conformance suite gates each bump instead.
 
 ## Builder decides
 
 - The names of the internal functions, and the file layout in the policy module.
 - How the walk over the parsed tree is written, and how the view's words read, within the card order
   above.
-- The JSON-number conversion's handling of a number beyond 2^53, provided a conformance case pins
-  it.
+- How the JSON conversion handles a number beyond 2^53, provided a conformance case pins it.
 - The wording of each fault's detail and of the "Show the expression" control.
 
 ## Out of scope
