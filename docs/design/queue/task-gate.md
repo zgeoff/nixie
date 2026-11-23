@@ -8,10 +8,8 @@ filter reads the task's state and the nixie pause, the attempt check reads anoth
 the spending stop runs a check of its own before each turn, and a schedule reads only the task's own
 pause and limit. So a schedule fires into a task's inbox while all of nixie is paused, which the
 [pause design](pause.md) says never happens. After this design, one function answers whether a task
-may go on and why not, and every claim, action attempt, turn and trigger fire asks it.
-
-The same cleanup settles a word. "Recovery" means two things today, the restart sweep after a crash
-and one restore. After this design it means one.
+may go on and why not, and every claim, action attempt, step and trigger fire asks it. A small
+rename at the end gives "recovery" one meaning.
 
 Once the owner approves this design, build its work items from it and the built
 [claim path](../../architecture/core/leases-and-recovery.md#the-claim-path) it extends.
@@ -23,7 +21,7 @@ flowchart LR
   claim[task claim] --> gate{readTaskGate}
   attempt[action attempt] --> gate
   fire[trigger fire] --> gate
-  turn[turn start] --> gate
+  step[step start] --> gate
   gate -->|"open"| go[go on]
   gate -->|"held: ended, task or limit"| skip[skip; a fire writes a record]
   gate -->|"held: nixie or spend"| wait[wait; a fire comes again]
@@ -46,42 +44,49 @@ const gate = await readTaskGate(tx, taskID);
 
 ```ts
 // tasks module. The one answer to "may this task go on", read inside the caller's transaction.
-// since: the recorded time, in epoch ms, of the record that started the hold, such as
-// task.stopped, spend.stop_tripped, nixie.paused, task.paused or task.limit_reached. The task
-// list shows it as "paused since".
+// since: the recorded time, in epoch ms, of the record that put the task in its present hold:
+// the record that set an ended state, the stop row's or the pause row's own record,
+// task.limit_reached or task.paused. A later pause or trip that replaces the row moves it.
 type TaskGate = { open: true } | { open: false; reason: TaskHoldReason; since: number };
 
 // In order of precedence: the first that holds is the reason. An ended task comes first, because
 // it never runs again, so a caller never waits on it.
 type TaskHoldReason =
-  | 'ended' // the task is stopped, failed or closed
+  | 'ended' // the task is done, stopped, failed or closed
   | 'spend' // the spending stop's row stands; an exemption doesn't lift it
   | 'nixie' // nixie is paused, by you or by a restore, and the task isn't exempt
-  | 'task' // the task is paused; a pause you asked for counts once task.paused is written
-  | 'limit'; // the task reached a limit and nothing raised it
+  | 'limit' // the task reached a limit and nothing raised it, whether or not it is paused too
+  | 'task'; // the task is paused; a pause you asked for counts once task.paused is written
 ```
 
-- The log module owns the spending stop's row, beside the pause tables, so the tasks module reads it
-  with no cycle. The spend module writes the row through the log module, as it writes the pause
-  today.
+- The log module owns the spending stop's projection, beside the pause tables, and exports its write
+  as it exports `pauseNixieInTransaction`. The spend module keeps the record kinds and calls that
+  write. The table keeps its name, and a rebuild fills it. This is the default of the first open
+  question.
 - The spending stop holds a task through its own row, whatever the nixie pause's cause. A trip still
   pauses nixie, and nixie can't resume while the stop stands, as today.
-- The claim filter keeps its SQL form and builds it from the same predicate the gate uses. A test
-  runs the gate and the filter over every reason and checks they agree.
-- The claim filter leaves out `limit`. A task at a limit is claimed once, and the step start writes
-  `task.paused`, as today; from then on its reason is `task`.
+- One predicate builder takes the caller, and each claim filter is built from it in SQL. A test per
+  caller runs the gate and the filter over every reason and checks they agree.
+- The task claim's filter leaves out `limit`. A task at a limit is claimed once, and the step start
+  writes `task.paused`, as today. Its reason stays `limit`, with `since` at `task.limit_reached`,
+  because `limit` comes before `task`.
 - `readTaskGate` replaces `probeTaskPaused`, the attempt check's list of states and the definition
   fire's held check.
+- No caller shows `since` yet. A later work item can show it in the task list.
 
 ### What each caller does when held
 
-| Caller         | `ended`                            | `task` or `limit`                                        | `nixie` or `spend`                                       |
-| -------------- | ---------------------------------- | -------------------------------------------------------- | -------------------------------------------------------- |
-| task claim     | skips the task                     | skips the task                                           | skips the task                                           |
-| action attempt | cancelled, as today                | barred, stays pending; a started attempt runs to its end | barred, stays pending, and the lease is freed            |
-| schedule fire  | `trigger.skipped` with `task_held` | `trigger.skipped` with `task_held`, as today             | writes nothing and claims no trigger key; it comes again |
-| turn start     | the claim already skipped it       | the claim already skipped it                             | the step ends at once, with no error and no record       |
+| Caller         | `ended`                            | `task` or `limit`                             | `nixie` or `spend`                                       |
+| -------------- | ---------------------------------- | --------------------------------------------- | -------------------------------------------------------- |
+| task claim     | skips the task                     | skips the task                                | skips the task                                           |
+| action claim   | as today, by the task's state      | skips an unstarted attempt                    | skips every attempt                                      |
+| action attempt | as today, by the task's state      | barred, stays pending, and the lease is freed | barred, stays pending, and the lease is freed            |
+| schedule fire  | `trigger.skipped` with `task_held` | `trigger.skipped` with `task_held`, as today  | writes nothing and claims no trigger key; it comes again |
+| step start     | the claim already skipped it       | the claim already skipped it                  | `spend` ends the step; `nixie` lets it run to its commit |
 
+- "As today, by the task's state": a stop cancels the task's actions, a closed task's unstarted
+  attempt is barred, and a done or failed task's action runs.
+- An attempt already started runs to its outcome for every reason but `nixie` and `spend`.
 - An unstarted action of a task at a limit waits until the limit is raised.
 - A schedule fire that nixie holds claims no trigger key, the key that stops a fire landing twice,
   so the source's next tick delivers it again. When the hold ends, the fire is late, and the
@@ -90,33 +95,38 @@ type TaskHoldReason =
 - A one-shot schedule that waits is not retired. It retires when it fires or is skipped.
 - Poll sources, such as mail, never read the gate. They keep their cursor, and their events land in
   the inbox while nixie is paused, and wait there.
-- A trigger whose target is the conversation reads the gate of the conversation's task, like any
-  other target.
+- A trigger whose target is the conversation reads the gate of the conversation's task, and heeds
+  only `nixie` and `spend`. It fires into a conversation you paused yourself, as today, so a
+  reminder still lands.
 - A step already under way when its task is paused finishes, as a pause request does today.
 - Timers, inbox records and action outcomes land while a task is held, as they do today.
 
-### The turn start
+### The step start
 
-The claim filter already holds a task that is held when its step starts. The turn start covers a
-spending stop that trips during a step.
+The claim filter already holds a task that is held when it is claimed. The step start covers a
+spending stop that trips after the claim.
 
-- Before each model call, the step trips the stop if the turn count reached its limit, then reads
-  the gate in a read transaction. It covers conversation steps, task steps and worker runs; a worker
-  run reads the gate of the task that started it.
-- A held turn ends the step at once. The claim filter holds the next claim. The two-second wait of
-  today's spending check goes.
+- Once per step, before its turn, where today's spending check runs, the step trips the stop if the
+  turn count reached its limit, then reads the gate in a read transaction.
+- A step held for `spend` ends at once and commits nothing. The claim filter holds the next claim.
+  The two-second wait of today's spending check goes.
+- A step under way when nixie pauses runs to its commit, as the [pause design](pause.md) says.
+- A worker run reads the gate of the step that started it, the conversation's task for a
+  conversation step. Held for `spend`, it returns today's "spending is stopped" sentence.
+- A stop that trips during a turn lets that turn finish. The stop's limit has room for one turn past
+  it.
 
 ### The two recoveries
 
 The rename shares no code with the gate and ships as its own work item.
 
-| Name             | Crash side, after the rename | Restore side, unchanged                                                    |
-| ---------------- | ---------------------------- | -------------------------------------------------------------------------- |
-| the thing        | the restart sweep            | recovery: one restore under one `recoveryID`                               |
-| start part       | `restart_sweep`              | –                                                                          |
-| entry point      | `runRestartSweep`            | `installRestorePause`                                                      |
-| stored or public | –                            | `recoveries` table, `recovery.started`, `recovery.notice`, `recovery.read` |
-| fault points     | `restart_sweep.*`            | `recovery.pause.*`                                                         |
+| Name             | Crash side today  | Crash side after the rename | Restore side, unchanged                                                    |
+| ---------------- | ----------------- | --------------------------- | -------------------------------------------------------------------------- |
+| what it is       | crash recovery    | the restart sweep           | recovery: one restore under one `recoveryID`                               |
+| start part       | `recovery`        | `restart_sweep`             | –                                                                          |
+| entry point      | `runRecovery`     | `runRestartSweep`           | `installRestorePause`                                                      |
+| stored or public | –                 | –                           | `recoveries` table, `recovery.started`, `recovery.notice`, `recovery.read` |
+| fault points     | `recovery.step.*` | `restart_sweep.*`           | `recovery.pause.*`                                                         |
 
 The restore side keeps the word, because its names are stored and published. The crash side holds
 only code names and fault point IDs.
@@ -124,7 +134,7 @@ only code names and fault point IDs.
 ## Constraints
 
 - Every claim, attempt start and trigger fire reads `readTaskGate` in the same transaction as the
-  write it guards. A turn start writes nothing and reads it in a read transaction of its own.
+  write it guards. A step start writes nothing and reads it in a read transaction of its own.
 - A hold never drops a fire. A fire lands, waits for the next delivery, or is skipped with a record
   that gives the reason.
 - The gate reads only the database.
