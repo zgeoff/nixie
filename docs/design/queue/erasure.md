@@ -8,8 +8,9 @@ that could still show it. Today each of those has its own pipeline, with its own
 catch-up after a crash and its own reply, and two lists that must name every pipeline are kept by
 hand. So a moment's destroy reports no backup state, a conversation reset can't finish after a
 crash, and the vault and locked entries would each add another pipeline. After this design, each
-store registers what it can forget, one runner takes every forget through the same steps, two
-records mark each forget, and both lists come from the registry.
+store registers what it can forget, one runner takes every forget through the same steps, the same
+two records mark each forget, and both lists come from the registry. Stores move onto the runner one
+at a time, and for one release each keeps writing its old records beside the new ones.
 
 Once the owner approves this design, build its work items from it and the built
 [forgetting in the memory store](../../architecture/memory/store.md#forgetting) it generalises.
@@ -37,7 +38,8 @@ flowchart LR
 - An **erasure** is one forget of one target, from `erasure.started` to `erasure.finished`.
 - A **child** is an erasure that must finish before its parent, such as the images a record holds.
 - An **evidence purge** re-keys a memory item that quotes a forgotten record, so the quote goes and
-  the item's own text stays. It belongs to an erasure but isn't one.
+  the item's own text stays. It isn't an erasure. An erasure starts it, and a purge an older release
+  started may have no erasure.
 - The **floor** is the lowest log sequence where a target's text can exist. A null floor covers
   every captured turn input on the erasure's threads.
 
@@ -110,9 +112,8 @@ erasure.finished  { erasureID, kind, targetID, shortID, by, removedKeys }
   record and its new one exist, the two folds set the same state.
 - `erasureID` is a UUID and never reaches the model.
 - For one release, the runner also writes each store's old start and end records, so the release
-  before can finish a forget the new release began. The release after stops them. A reset that the
-  new release began finishes only on the new release, because the release before writes no reset
-  start.
+  before can finish a forget the new release began. The release after stops them. A reset has no old
+  start record, so the third open question covers its rollback.
 - The release before skips a record kind it doesn't know. Check this in the first work item, and
   when the skip is missing, ship it a release ahead of the rest.
 - The evidence purge keeps its own three records.
@@ -122,6 +123,7 @@ erasure.finished  { erasureID, kind, targetID, shortID, by, removedKeys }
 1. Run `before`, if any. Then, under the store's lock, or in the write transaction for a store with
    no lock: call `start`, write `erasure.started` with the capture, and commit. Then call `hide`.
 2. Close every open turn-input capture, on every thread, so no spool file lands after the sweep.
+   Capture stays closed while any erasure is between this step and step 8.
 3. Find the children, start each as an erasure with `parentID` in its own transaction under its
    store's lock, and repeat until a pass finds no new target.
 4. Destroy every code sandbox in the tree. When one destroy fails, no key goes.
@@ -129,8 +131,8 @@ erasure.finished  { erasureID, kind, targetID, shortID, by, removedKeys }
 6. Scan for children again. A new one runs steps 3 to 5 before the parent goes on.
 7. Clean the indexes and close the sessions for each erasure, then run the evidence purges. A purge
    waits for an item forget already under way.
-8. Remove the turn inputs from the floor on, on the captured threads and the cleaned ones, then
-   reopen capture.
+8. Remove the turn inputs from the floor on, on the captured threads and the cleaned ones. Reopen
+   capture when no other erasure holds it closed.
 9. Write `erasure.finished` for each child, then the parent.
 
 - A target that already has an open erasure joins it: the open erasure does the work, and a parent
@@ -138,7 +140,7 @@ erasure.finished  { erasureID, kind, targetID, shortID, by, removedKeys }
   and cyclic children finish once.
 - At each start, after the session-cleanup parts and before any claim pool or turn-input intake
   starts, the runner finishes every `erasure.started` with no `erasure.finished`, children before
-  parents, and every evidence purge no erasure owns. A crash in step 3 leaves the parent open, and
+  parents, and every evidence purge with no erasure. A crash in step 3 leaves the parent open, and
   the catch-up runs step 3 again.
 - For one release, each store also keeps its old catch-up, for a forget an older release began with
   its old records.
@@ -159,9 +161,9 @@ erasure.finished  { erasureID, kind, targetID, shortID, by, removedKeys }
 
 ### The reply
 
-- Each route keeps its output and its backup state, `forgetBackupSchema`, unchanged. A route with no
-  backup state today, such as the moment destroy, gains it as an optional field, in the work item
-  that moves its store.
+- Each route keeps its output. Every backup state uses `forgetBackupSchema` as it is. A route with
+  no backup state today, such as the moment destroy, gains one as an optional field, in the work
+  item that moves its store.
 - A route runs the forget to its end before it replies, as today. When a step fails, it replies
   pending. A retry with the same client action returns the stored result when the forget is done, or
   finds the open erasure by target and finishes it.
@@ -207,3 +209,7 @@ erasure.finished  { erasureID, kind, targetID, shortID, by, removedKeys }
 - **Purging quotes on a reset.** A reset today leaves memory items that quote the conversation
   readable. This design purges those quotes. The owner may keep today's reset. Until the owner
   decides, the reset purges.
+- **Rolling back during a reset.** The release before reads no `erasure.started`. So when the new
+  release begins a reset and a crash interrupts it, a rollback by one release leaves the reset half
+  done until the new release runs again. The owner may accept that, or move the reset a release
+  after the rest. Until the owner decides, the reset moves with the rest.
