@@ -104,7 +104,7 @@ proposals.settled   { proposalID, shortID, family, outcome, answeredBy, usedBy, 
                     // reason erasable; answeredBy and usedBy null on a lapse or withdrawal
 proposals.deferred  …existing
 proposals.returned  …existing
-proposals.withdrawn …existing; new withdrawals write proposals.settled instead
+proposals.withdrawn …existing; written beside proposals.settled until release N+2, then stops
 ```
 
 - `proposals.proposed` creates the row, and its sequence is the row's `created_sequence`. A family
@@ -145,7 +145,7 @@ approvals:
 ### Telling the proposer
 
 ```ts
-// The message a proposer reads, for every family and every outcome.
+// The message a proposer reads, for every outcome of every family but action.
 // Conversation: a turn note. Task: an inbox record that wakes the task.
 // "Your skill write K7 was declined: not this week."
 type ProposalSettledNote = {
@@ -185,9 +185,9 @@ It replaces `memory.pending` and `skill_pending`.
 
 ### Short IDs
 
-- `proposeInTransaction` creates every new proposal's short ID with `createShortID` and stores it in
-  `proposals.proposed`, so a rebuild keeps it. Memory passes the short ID it derives from the UUID,
-  so a rollback rebuilds the same IDs.
+- `proposeInTransaction` stores every new proposal's short ID in `proposals.proposed`, so a rebuild
+  keeps it. It creates the short ID with `createShortID`, except for memory, which passes the one it
+  derives from the UUID, so a rollback rebuilds the same IDs.
 - Every proposal's ID is a UUID, skills and prompts included. A release before this design shows a
   new skill or prompt proposal's UUID where it shows a short ID.
 - A proposal's UUID never reaches the model. The answer path finds a proposal by its short ID among
