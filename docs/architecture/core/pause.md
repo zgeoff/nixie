@@ -13,7 +13,7 @@ flowchart LR
   user[user] -->|"pause, resume, resume one task"| log
   log --> pause[(nixie_pause, pause_exemptions)]
   log -->|"close while paused"| gate[reader gate]
-  pause -->|"refuse a paused task"| claim[claimLease]
+  pause -->|"hold a task"| claim[task gate]
 ```
 
 ## The pause and its records
@@ -57,20 +57,60 @@ while nixie is paused is paused too, such as a task that an exempt task starts. 
 on each task's thread, and every task control works. nixie takes no step that reads them until the
 resume, or until the user resumes that task, which then takes its inbox as it stands.
 
-- `claimLease` refuses a candidate whose task is paused, in the transaction that would write the
-  lease. The refusal covers every claim: by any runner, for a retry, by the start part `recovery`,
-  and for an action that started an attempt before a backup. A refused claim writes nothing.
-- Each candidate query filters with `buildPauseCheck`, so a paused task at the head of the order
-  never hides an exempt task's work behind it. Under `NIXIE_TEST_BUILD`, `claimLease` throws when a
-  candidate query returns paused work.
-- The attempt start reads `probeTaskPaused` in the transaction that writes the attempt record, so a
-  pause between a claim and its attempt starts no attempt. The action stays pending until a resume.
+- `claimLease` refuses a candidate whose task nixie's pause holds, in the transaction that would
+  write the lease. The refusal covers every claim: by any runner, for a retry, by the start part
+  `recovery`, and for an action that started an attempt before a backup. A refused claim writes
+  nothing.
+- Each candidate query filters with the predicate of the [task gate](#the-task-gate), so a paused
+  task at the head of the order never hides an exempt task's work behind it. Under
+  `NIXIE_TEST_BUILD`, `claimLease` throws when a candidate query returns held work.
+- The attempt start reads the task's holds in the transaction that writes the attempt record, so a
+  pause between a claim and its attempt starts no attempt. The action stays pending until a resume,
+  and its lease is freed.
 - When nixie pauses on a running server, a step that holds a lease runs to its commit, and a started
   attempt runs to its outcome. Nothing new starts after either.
 - While nixie is paused, each task reads as paused in the client, and its resume exempts it, as
   [pause, stop and close](tasks.md#pause-stop-and-close) describes.
 
-A schedule still fires into a paused task: the trigger core reads no pause.
+A schedule fire waits while nixie is paused: the trigger core writes nothing for it and takes no
+key, so the schedule source delivers it again at its next tick. After the resume, or after you
+resume the task, the fire is late, and the catch-up rule of
+[the schedule source](triggers.md#the-schedule-source) decides. A fire at the conversation waits
+too, though a conversation you paused yourself still takes its fires.
+
+## The task gate
+
+`readTaskGate` in the tasks module answers whether a task may go on, in the caller's transaction. It
+gives `open`, or a hold with the first reason that applies, in this order, and `since`, the time of
+the record that put the task in that hold:
+
+| Reason  | The task is held because                                                                   |
+| ------- | ------------------------------------------------------------------------------------------ |
+| `ended` | it is done, stopped, failed or closed                                                      |
+| `spend` | the row of the [spending stop](../policy/spending-stop.md) stands, whatever the exemptions |
+| `nixie` | nixie is paused and the task is not on the exemption list                                  |
+| `limit` | the newest limit record on its thread is `task.limit_reached`                              |
+| `task`  | its state is `paused`; a pause request counts once `task.paused` is written                |
+
+The spending stop's row lives in the log module, beside the pause tables, so the tasks module reads
+it without importing the spend module. A trip still pauses nixie, and the gate reports `spend`
+first. Each caller applies its own rule to the reasons:
+
+| Caller         | `ended`                            | `spend`, `nixie`               | `limit`, `task`                                    |
+| -------------- | ---------------------------------- | ------------------------------ | -------------------------------------------------- |
+| task claim     | skips the task                     | skips the task                 | skips a paused task; claims a task at a limit once |
+| action claim   | by the task's state, as in actions | skips every action             | skips an action with no started attempt            |
+| action attempt | by the task's state, as in actions | barred, and its lease is freed | barred when no attempt has started                 |
+| schedule fire  | `trigger.skipped` with `task_held` | writes nothing, takes no key   | `trigger.skipped` with `task_held`                 |
+| step start     | the claim skipped the task         | `spend` ends the step at once  | at a limit, writes `task.paused` and ends          |
+
+- Every claim query, and the attempt start, read each reason on its own, so an ended task's action
+  is still held while nixie is paused. A conversation target of a schedule heeds only `nixie` and
+  `spend`.
+- The claim filter and the gate build from the same SQL check for each reason, and a test per caller
+  checks that they agree.
+- A step under way when nixie pauses runs to its commit. A step that finds the spending stop at its
+  start ends before its turn and writes no record.
 
 ## The reader gate
 

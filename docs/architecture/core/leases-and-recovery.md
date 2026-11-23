@@ -20,14 +20,17 @@ step's start in the same transaction, so a lease never exists without the step i
 that takes back an expired lease on a task with a pause request pauses the task instead, and runs no
 step.
 
-While nixie is paused, a claim refuses the work of every task except one on the exemption list. A
-task joins the list when the user resumes it, and Resume nixie empties the list. Each candidate
-query filters paused tasks out in its where clause, so a paused task at the head of the order never
-hides an exempt task's work. The candidate also names its task, and the claim checks that task
-before it takes the lease, so a candidate query that skips the filter still takes nothing. Under the
-test build, such a candidate makes the claim throw. A refused claim writes nothing. Inbox records,
-fired timers and action outcomes still land on a paused task's thread, and the claim that follows
-them is refused until the resume. [Pausing nixie](pause.md) holds the rest.
+A claim refuses the work of a task that the [task gate](pause.md#the-task-gate) holds: while nixie
+is paused, every task except one on the exemption list, and every task while the spending stop
+stands. A task joins the list when the user resumes it, and Resume nixie empties the list. Each
+candidate query applies the gate's predicate in its where clause, so a held task at the head of the
+order never hides another task's work. The candidate also names its task, and the claim checks that
+task before it takes the lease, with the rule of its caller: an action with a started attempt of a
+paused task passes, and a task at a limit is claimed once. So a candidate query that skips the
+filter still takes nothing. Under the test build, such a candidate makes the claim throw. A refused
+claim writes nothing. Inbox records, fired timers and action outcomes still land on a paused task's
+thread, and the claim that follows them is refused until the resume. [Pausing nixie](pause.md) holds
+the rest.
 
 The generation is what makes a lease safe to lose. Every write a step or an attempt makes checks,
 first and inside its own transaction, that its lease still stands with the same holder and

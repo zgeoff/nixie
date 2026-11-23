@@ -387,12 +387,14 @@ In the transaction that delivers a fire, the [trigger core](./triggers.md) asks 
 whether the task takes the fire, before it writes the fire's record. The first answer that holds
 decides:
 
-1. `held`: the task is paused, stopped or failed, or held at a limit. The core records a skip with
-   `task_held`, and the definition fires again at the first slot after the user resumes, restarts or
-   raises the task.
-2. `still_running`: the task has a pending task run, or an open one that is active or waiting on a
+1. `held`: the task's [gate](./pause.md#the-task-gate) answers `ended`, `limit` or `task`. The core
+   records a skip with `task_held`, and the definition fires again at the first slot after the user
+   resumes, restarts or raises the task.
+2. `wait`: the gate answers `spend` or `nixie`. The core writes nothing and takes no key, so the
+   source delivers the fire again at its next tick.
+3. `still_running`: the task has a pending task run, or an open one that is active or waiting on a
    reply. The core records a skip with `still_running`.
-3. `take`: the task has no pending task run, and its open task run is idle or absent. The core
+4. `take`: the task has no pending task run, and its open task run is idle or absent. The core
    records the fire.
 
 The answer computes whether a task run is pending, because no table holds one. With no open task
@@ -401,9 +403,9 @@ idle open task run, it is pending when the inbox holds an unread fire whose key 
 task therefore holds at most one unread fire, except after a stop, when it can hold 2. nixie skips a
 fire and never queues it, because 2 task runs at once would write to one thread, and a queue would
 hide a task run that never ends. A fire that was written before a hold opens a task run after the
-hold ends, however old it is. nixie writes no record for a fire of a disabled definition. The answer
-never reads the pause: while nixie is paused, the core delivers no schedule fire to a paused task,
-and the catch-up rule decides the first fire after the resume.
+hold ends, however old it is. nixie writes no record for a fire of a disabled definition. While
+nixie is paused, the core delivers no schedule fire to a paused task, and the catch-up rule decides
+the first fire after the resume.
 
 The task listing and the dashboard show a definition's task while its hash in force is not null,
 with the name, brief and model of that version, and while a task run of a task out of force is
@@ -425,8 +427,8 @@ the hash that the fire pins. The next claim opens a task run for it, and the rec
 `task.run_opened` holds the hash, the fire's dedupe key as the trigger key, the report mode and
 target, the report shape, and the limits of the version's file over the defaults. An idle task run
 ends with the cause `no_report` when a fire arrives, and the new task run opens in the same
-transaction. A task that is paused, stopped, failed or held at a limit holds the fire, and a task
-that works or has a fire waiting answers `still_running`. The trigger core reads that answer with
+transaction. A task that is ended, paused or held at a limit holds the fire, and a task that works
+or has a fire waiting answers `still_running`. The trigger core reads that answer with
 `readDefinitionTaskInTransaction`.
 
 When a task run ends at a limit, stopped or failed, a raise of the task's limits or a restart opens

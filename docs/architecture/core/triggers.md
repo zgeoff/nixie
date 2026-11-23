@@ -50,10 +50,20 @@ decides:
 | --- | ------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
 | 1   | `trigger_keys` holds the event's key, or an earlier event of the batch took it                                                        | nothing                                               |
 | 2   | the definition has no row, is withdrawn, is on another source or holds another hash; or a schedule slot is at or before the watermark | nothing                                               |
-| 3   | the event holds `skip`                                                                                                                | `trigger.skipped` with that reason                    |
-| 4   | the trigger's `target` is `conversation`, which a [reminder](./reminders.md) arms                                                     | `trigger.fired` on the conversation's thread          |
-| 5   | `readDefinitionTask` answers `take`                                                                                                   | `trigger.fired` on the task's thread                  |
-| 6   | `readDefinitionTask` answers `still_running` or `held`                                                                                | `trigger.skipped` with `still_running` or `task_held` |
+| 3   | the task's [gate](./pause.md#the-task-gate) answers `nixie` or `spend`                                                                | nothing; the key stays free                           |
+| 4   | the event holds `skip`                                                                                                                | `trigger.skipped` with that reason                    |
+| 5   | the trigger's `target` is `conversation`, which a [reminder](./reminders.md) arms                                                     | `trigger.fired` on the conversation's thread          |
+| 6   | `readDefinitionTask` answers `take`                                                                                                   | `trigger.fired` on the task's thread                  |
+| 7   | `readDefinitionTask` answers `still_running` or `held`                                                                                | `trigger.skipped` with `still_running` or `task_held` |
+
+Row 3 reads the task's gate. For a task target, an ended task outranks the stop and nixie's pause,
+so it reaches row 7, while a task at a limit or paused by the user ranks below them, so row 3 holds
+the fire first. A conversation target heeds only nixie's pause and the spending stop, whatever the
+conversation's state, so a reminder still lands in a conversation that the user paused. A fire that
+row 3 holds takes no key, so the source's next tick builds the same event again. The slot is then
+late, and the catch-up rule of [the schedule source](#the-schedule-source) decides: one catch-up
+within half the interval, otherwise a `too_late` skip. A one-shot leaves force only when its fire is
+written or skipped, so a one-shot that waits stays armed.
 
 Each record is written before the core reads for the next event, and its fold adds the key to
 `trigger_keys` at once. A second fire of one definition in one batch therefore skips with
