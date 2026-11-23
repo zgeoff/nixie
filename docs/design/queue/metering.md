@@ -9,9 +9,9 @@ task run, a worker run or a budget. Today a model's prices live in two config fi
 compares, a search's price is a constant in its adapter, and a task run's dollars come from the
 server pricing turn records its own way, so they disagree with the gateway's count of the same
 replies. Budgets keep integer micros while the task meter sums floats, and each counter has its own
-idea of a day. After this design, each price has one source. When a gateway runs, it counts every
-model dollar nixie limits, a task run's dollars included, and holds a request's worst case before it
-sends it. Every other money count lands in one ledger keyed by counter, unit and period, and one
+idea of a day. After this design, each price has one source. When a gateway runs, it counts the
+model dollars nixie limits, a task run's dollars included, and holds a request's worst case before
+it sends it. Every other money count lands in one ledger keyed by counter, unit and period, and one
 helper works out when every period starts. Near a limit, a request with a large `max_tokens` is
 refused where today it would pass.
 
@@ -121,8 +121,8 @@ const hold = pickRequestHold(body, route); // buildReplyEstimate, worked out bef
 - A step whose sandbox refused it, by `lastRefusal` since the step began, ends with `limit`. A
   conversation step or a task step refused on the day or the month waits and retries as a step does
   while the stop is unreachable.
-- Settling replaces the hold with the charge that today's rules pick: the reply's usage, the
-  estimate when the reply spent with no usage, and nothing when the provider refused it.
+- Settling replaces the hold with the reply's usage, with the hold itself when the reply spent with
+  no usage, or with nothing when the provider refused the request.
 - A hold counts against the period it settles in, so the open holds carry into a new day or month.
 
 #### The holds file
