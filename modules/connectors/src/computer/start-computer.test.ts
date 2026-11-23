@@ -9,6 +9,7 @@ function setupTest() {
   const clock = createFakeClock({ startMs: 1_000_000 });
   const closes: string[] = [];
   const startedWrite = Promise.withResolvers<void>();
+  const startedWriteEntered = Promise.withResolvers<void>();
 
   const adapter = buildStubSandboxAdapter(async (stdin, stdout) => {
     await runComputerGuest(
@@ -42,7 +43,14 @@ function setupTest() {
     clock,
     takeover: {
       idleMs: 60 * 60 * 1000,
-      records: { writeStarted: () => startedWrite.promise, writeEnded: () => Promise.resolve() },
+      records: {
+        writeStarted: () => {
+          startedWriteEntered.resolve();
+
+          return startedWrite.promise;
+        },
+        writeEnded: () => Promise.resolve(),
+      },
     },
     handover: {
       expiryMs: 60 * 60 * 1000,
@@ -61,7 +69,13 @@ function setupTest() {
     await computer.stop();
   });
 
-  return { clock, closes, computer, finishStartedWrite: () => startedWrite.resolve() };
+  return {
+    clock,
+    closes,
+    computer,
+    waitForStartedWrite: () => startedWriteEntered.promise,
+    finishStartedWrite: () => startedWrite.resolve(),
+  };
 }
 
 test('it writes no expiry for an ask that a take-over answers while its start record is still being written', async () => {
@@ -71,7 +85,7 @@ test('it writes no expiry for an ask that a take-over answers while its start re
 
   const started = ctx.computer.takeover.start('laptop');
 
-  await waitFor(() => ctx.computer.takeover.isHeld());
+  await ctx.waitForStartedWrite();
 
   ctx.clock.advance(60 * 60 * 1000 + 1000);
 

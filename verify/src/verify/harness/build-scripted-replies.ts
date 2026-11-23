@@ -50,6 +50,10 @@ export function buildScriptedReplies(
           },
         ];
 
+  // the turn reads the record of its own ask as it ends, and answers it with one more reply
+  const handoverAnswer =
+    reply.handover === undefined ? [] : [{ text: 'I will wait for you to take over.' }];
+
   if (reply.task === undefined) {
     return [
       ...memory,
@@ -59,6 +63,7 @@ export function buildScriptedReplies(
       ...forgetNote,
       ...handover,
       { text: reply.text },
+      ...handoverAnswer,
     ];
   }
 

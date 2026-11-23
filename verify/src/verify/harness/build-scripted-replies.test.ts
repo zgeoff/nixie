@@ -88,7 +88,7 @@ test('it queues a draw, an edit of the drawn picture, and a list before the repl
   ]);
 });
 
-test('it queues a handover ask with its reason before the reply', () => {
+test('it queues a handover ask with its reason before the reply, and an answer to the record of the ask after it', () => {
   const replies = buildScriptedReplies({
     text: 'I asked you to take over.',
     handover: { reason: 'itch.io asks for a CAPTCHA' },
@@ -102,6 +102,7 @@ test('it queues a handover ask with its reason before the reply', () => {
       },
     },
     { text: 'I asked you to take over.' },
+    { text: 'I will wait for you to take over.' },
   ]);
 });
 

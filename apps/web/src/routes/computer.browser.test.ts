@@ -170,3 +170,51 @@ test('it takes over from the handover banner and clears the banner once the take
 
   expect(text).toInclude('You have taken over the computer');
 });
+
+test('it starts no take-over on a refresh of the computer page after a take-over from the banner is handed back', async () => {
+  const ctx = await setupTest();
+  const session = await store.sessions.create({});
+
+  await setupSignedInBrowser(ctx.view, { appURL: ctx.appURL, token: session.token });
+
+  await store.records.create({
+    kind: 'computer.handover_asked',
+    message: { text: 'itch.io asks for a CAPTCHA' },
+  });
+
+  await ctx.view.navigate(`${ctx.appURL}/tasks`);
+
+  await waitForPage(ctx.view, "document.body.innerText.includes('asks you to take over')");
+
+  await ctx.view.evaluate(
+    "[...document.querySelectorAll('section button')].find((button) => button.innerText === 'Take over').click()",
+  );
+
+  await waitForPage(
+    ctx.view,
+    "document.body.innerText.includes('You have taken over the computer')",
+  );
+
+  await ctx.view.evaluate("document.querySelector('main button').click()");
+
+  await waitForPage(
+    ctx.view,
+    "document.body.innerText.includes('reach the computer until you take over.')",
+  );
+
+  await ctx.view.reload();
+
+  await waitForPage(
+    ctx.view,
+    "document.body.innerText.includes('reach the computer until you take over.')",
+  );
+
+  await waitForPage(
+    ctx.view,
+    "[...document.querySelectorAll('button:enabled')].some((button) => button.innerText === 'Take over')",
+  );
+
+  const text: unknown = await ctx.view.evaluate('document.querySelector("main").innerText');
+
+  expect(text).not.toInclude('You have taken over the computer');
+});

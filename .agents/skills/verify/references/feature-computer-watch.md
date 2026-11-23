@@ -78,7 +78,7 @@ that turn no reply, so the turn fails.
    bun verify db query "select kind from records where kind like 'computer.handover_%' order by sequence"
    ```
 
-   Expect: each command exits 0, and `data.replies` of the first is 2. The snapshot shows a banner
+   Expect: each command exits 0, and `data.replies` of the first is 3. The snapshot shows a banner
    with the reason and a button "Take over". The query returns one row, `computer.handover_asked`.
 
 6. Answer the ask with the banner's Take over button, and check the records:

@@ -7,6 +7,7 @@ import { chromium } from 'playwright-core';
 import { makeStubDriver } from '../screen/make-stub-driver';
 import { makeBrowserHandler } from './make-browser-handler';
 import { isChallengeFrameURL } from './probe-challenge';
+import type { BrowserState } from './types';
 
 const hasChromium = await chromium.launch({ headless: true }).then(
   async (browser) => {
@@ -105,6 +106,7 @@ async function setupTest() {
   };
 
   const site = Bun.serve({ port: 0, hostname: '127.0.0.1', fetch: answerRequest });
+  const views: BrowserState[] = [];
 
   const handle = makeBrowserHandler({
     home,
@@ -114,7 +116,14 @@ async function setupTest() {
     gate: { scan: () => Promise.resolve(), scanText: () => Promise.resolve() },
     checkAddress: () => true,
     resolveHost: () => Promise.resolve(['127.0.0.1']),
-    screen: { makeDriver: (state) => makeStubDriver(state.tabs), settleMs: 50 },
+    screen: {
+      makeDriver: (state) => {
+        views.push(state);
+
+        return makeStubDriver(state.tabs);
+      },
+      settleMs: 50,
+    },
   });
 
   onTestFinished(async () => {
@@ -132,6 +141,11 @@ async function setupTest() {
 
   return {
     send,
+
+    // brings a tab to the front of the browser, as a person's switch to it does
+    switchTo: async (tab: string) => {
+      await views[0]?.tabs.get(tab)?.page.bringToFront();
+    },
     open: (path: string) =>
       send({
         op: 'open',
@@ -237,7 +251,12 @@ test.skipIf(!hasChromium)(
     await ctx.open('/recaptcha-frame');
     await ctx.open('/plain');
 
+    // the screen tools build the driver, and with it the view of the browser, on their first call
     const plain = await ctx.send({ op: 'screenshot', tab: 't2' });
+
+    await ctx.send({ op: 'desktopShot' });
+    await ctx.switchTo('t1');
+
     const read = await ctx.send({ op: 'read', tab: 't1', mode: 'text' });
     const shot = await ctx.send({ op: 'screenshot', tab: 't1' });
 
