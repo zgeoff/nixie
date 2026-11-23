@@ -9,18 +9,18 @@ task run, a worker run or a budget. Today a model's prices live in two config fi
 compares, a search's price is a constant in its adapter, and a task run's dollars come from the
 server pricing turn records its own way, so they disagree with the gateway's count of the same
 replies. Budgets keep integer micros while the task meter sums floats, and each counter has its own
-idea of a day. After this design, each price has one source. The gateway counts every model dollar
-nixie limits, a task run's dollars included, and holds a request's worst case before it sends it.
-Every other money count lands in one ledger keyed by counter, unit and period, and one helper works
-out when every period starts. Near a limit, a request with a large `max_tokens` is refused where
-today it would pass.
+idea of a day. After this design, each price has one source. When a gateway runs, it counts every
+model dollar nixie limits, a task run's dollars included, and holds a request's worst case before it
+sends it. Every other money count lands in one ledger keyed by counter, unit and period, and one
+helper works out when every period starts. Near a limit, a request with a large `max_tokens` is
+refused where today it would pass.
 
 Once the owner approves this design, build its work items from it and the built
 [spending stop](../../architecture/policy/spending-stop.md),
 [budgets](../../architecture/policy/budgets.md) and
-[model gateway](../../architecture/policy/model-gateway.md) it changes. The gateway's held admission
-and the period helper come first, in either order, then the task meter's move to the gateway, then
-the ledger. The wallet builds on the ledger.
+[model gateway](../../architecture/policy/model-gateway.md) it changes. The task meter's move needs
+the gateway's held admission, the ledger needs the task meter's `task.meter_read`, and the wallet
+needs the ledger.
 
 ## Shape
 
@@ -205,8 +205,8 @@ spend_ledger          plain table, log module
   `budget_ledger`.
 - Every amount in the ledger is an integer. A dollar amount from the gateway converts to micros
   rounded up.
-- `search_calls`, the search tool's daily call count, and the turn count stay outside the ledger:
-  neither is money.
+- `search_calls`, the search tool's daily call count, and the turn count stay in their own tables:
+  each counts calls or turns, and its limit reads that table.
 - A wallet card's budget, `card-<account>`, is a budget like any other, counted in the card's
   currency. Its charge, its conversion and its lifecycle are [the wallet's](wallet.md).
 
@@ -225,7 +225,8 @@ spend_ledger          plain table, log module
 
 ## Constraints
 
-- Every limit reads exactly one counter, and every counter has exactly one writer.
+- Every counter has exactly one writer. A limit reads one counter, except a task run's limit, which
+  reads its sandboxes' counts and its worker runs' counters as the task meter section sets out.
 - A budget charge and its ledger row commit in the transaction of the record that causes them.
 - The gateway never reads nixie's ledger, and nixie changes the gateway's store only through the
   control listener's calls.
@@ -236,7 +237,7 @@ spend_ledger          plain table, log module
 
 ## Builder decides
 
-- How the work splits into pull requests within the order above.
+- The build order and how the work splits into pull requests, within the needs in the opening.
 - How the client lays out the ledger's counters.
 - The name of the warning when a profile's prices differ from its route's.
 
