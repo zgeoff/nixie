@@ -65,30 +65,81 @@ while it has no `until` or its `until` is ahead, or else the idle scene. A new s
 before it, and an `until` that passes returns the screen to the idle scene, never to an older show.
 An idle device with no scene shows black.
 
+## Layouts and regions
+
+A layout is a grid of 1 to 6 columns and 1 to 6 rows, each a whole number of `fr` from 1 to 12, with
+up to 12 named regions. A region name is 1 to 32 characters of `a-z`, `0-9` and hyphens, and a
+region spans one or more tracks without overlapping another or leaving the grid. A region holds
+markdown (20,000 characters), an image with `fit` `whole` or `fill`, or a live value: a clock in
+`HH:mm`, `HH:mm:ss` or `EEE d MMM`, or a countdown to a time with an optional label. A region cannot
+hold a page yet, and a call that sends one gets `PAGE_NOT_BUILT`.
+
+Two records and two tables hold the state:
+
+- `device.layout_set` holds the grid and a short ID. A clear writes one with no grid.
+- `device.region_shown` holds one region's content, sealed under the record's own key, with the
+  content kind, `until`, the `onEnd` choice and the short ID that `devices.list` shows.
+- `device_layouts` points each device at its newest `device.layout_set` record.
+- `device_regions` points each region at its newest `device.region_shown` record.
+
+A new layout writes its record, repoints the device and deletes every region pointer, so each region
+starts blank. A layout never times out.
+
+`readLayout` reads a region at the time it is asked, so no timer writes and a restart loses nothing.
+A region shows its newest record while the record has no `until` or its `until` is ahead. After that
+the region goes blank, or with `then: 'previous'` shows the record it covered, which follows the
+same rule and its own `onEnd`. A forget of a record erases its content, and the region goes blank. A
+region whose image is forgotten or missing goes blank too. A reset, a revoke and a device removal
+delete the layout and region pointers.
+
+A show covers the layout without touching it, so a region's minutes keep counting under a show. The
+screen draws, in order, an unexpired `device.show`, the layout while at least one region shows
+content, then the idle scene.
+
+`device.region` reads the layout when its call runs, so a call that waited for approval fails with
+`UNKNOWN_REGION` when a new layout or a clear removed its region in the meantime. Until then the
+region keeps its content.
+
 ## The streams
 
-`devices.follow` takes the screen's size in pixels, which the device sends again on each reconnect.
-The server keeps each open stream and its size in memory in `createDeviceStreams`, and a device is
-online while it has one open. `devices.resize({ width, height })` gives every open stream of the
-caller's device a new size, and `devices.list` reads the new size at once. One pixels schema bounds
-the size in both calls. The first event is what the screen shows now. A later event follows a commit
-that touches the device, and the stream sends an event only when the state changes. The event of a
-show carries the `fit` of an image, `whole` or `fill`.
+`devices.follow` takes the screen's size in pixels and its `pixelRatio`, device pixels per CSS
+pixel, which the device sends again on each reconnect and in each `devices.resize`. The server keeps
+each open stream and its size in memory in `createDeviceStreams`, and a device is online while it
+has one open. `devices.resize({ width, height })` gives every open stream of the caller's device a
+new size, and `devices.list` reads the new size at once. One pixels schema bounds the size in both
+calls. The first event is what the screen shows now. A later event follows a commit that touches the
+device, and the stream sends an event only when the state changes. The event of a show carries the
+`fit` of an image, `whole` or `fill`.
 
-`devices.readImage` serves an image only while it is in the current show or the idle scene, and
-returns `NOT_SHOWN` otherwise.
+The layout travels in `layout` events, apart from the `show` and `idle` events. A stream sends one
+when the device holds a layout, and again when the grid or a region's content changes, a region's
+minutes pass or a forget blanks a region. A cleared layout sends a `layout` event with no layout. A
+device that holds no layout gets none. The stream wakes at the earliest end among the show and the
+regions, including while a show covers the layout.
+
+`devices.readImage` serves an image only while it is in the current show, the idle scene or a region
+of the layout, and returns `NOT_SHOWN` otherwise.
 
 ## The tools
 
-| Tool             | What it does                                                                                   |
-| ---------------- | ---------------------------------------------------------------------------------------------- |
-| `devices.list`   | Lists each device: ID, name, screen, camera, online, pixels and what it shows                  |
-| `device.show`    | Shows markdown or an image, with `fit` `whole` or `fill`, for `minutes` or until the next show |
-| `device.setIdle` | Sets the idle scene: up to 8 blocks and 20,000 characters of markdown in all                   |
+| Tool             | What it does                                                                                                  |
+| ---------------- | ------------------------------------------------------------------------------------------------------------- |
+| `devices.list`   | Lists each device: ID, name, screen, camera, online, pixels, `pixelRatio`, what it shows and its saved layout |
+| `device.show`    | Shows markdown or an image, with `fit` `whole` or `fill`, for `minutes` or until the next show                |
+| `device.setIdle` | Sets the idle scene: up to 8 blocks and 20,000 characters of markdown in all                                  |
+| `device.layout`  | Sets the grid and its named regions, or clears the layout with `clear: true`                                  |
+| `device.region`  | Fills one region, for `minutes` with `then` `blank` or `previous`, or until its next call                     |
 
-All 3 declare the `note` effect and run direct. `device.show` checks in this order and returns the
+All 5 declare the `note` effect and run direct. `device.show` checks in this order and returns the
 first refusal: `UNKNOWN_DEVICE`, `SCREEN_OFF`, then the image refusals `UNKNOWN_IMAGE` and
 `IMAGE_FORGOTTEN`, then `OFFLINE`. An image is an [image store](../connectors/images.md) short ID.
+`device.layout` returns `UNKNOWN_DEVICE`, `SCREEN_OFF`, `BAD_LAYOUT` with the reason, then
+`OFFLINE`. `device.region` returns `UNKNOWN_DEVICE`, `SCREEN_OFF`, `UNKNOWN_REGION`,
+`PAGE_NOT_BUILT`, the image refusals, then `OFFLINE`.
+
+`devices.list` shows the saved layout whether or not the device is online, apart from `showing`.
+Each region lists its kind, `until` and the short ID of its `device.region_shown` record, and never
+its content. A blank region has a null kind.
 
 ## Device mode
 
@@ -104,12 +155,14 @@ browser holds:
   switches the screen. A page that registers a device starts with the screen off, whatever the
   browser stored before.
 
-With the screen on, the page follows `devices.follow` and renders markdown like a reply and an image
-on black: `whole` scales it to fit and centres it, `fill` covers the screen and crops evenly. The
-page sends `devices.resize` after the window resizes, at most once per debounce window and only when
-the size differs from the one the server has, which each stream connect and each answered resize
-set, so the assistant reads the new size within a second. A button toggles full screen on the page's
-root element with the Fullscreen API. Its label reads Full screen or Leave full screen, and follows
+With the screen on, the page follows `devices.follow`. A layout draws as a CSS grid, and each region
+keeps its place as another updates. A clock or a countdown ticks each second from the browser's own
+time, with no event from the server. The page renders markdown like a reply and an image on black:
+`whole` scales it to fit and centres it, `fill` covers the screen and crops evenly. The page sends
+`devices.resize` after the window resizes, at most once per debounce window and only when the size
+differs from the one the server has, which each stream connect and each answered resize set, so the
+assistant reads the new size within a second. A button toggles full screen on the page's root
+element with the Fullscreen API. Its label reads Full screen or Leave full screen, and follows
 `fullscreenchange`, so Escape updates it. The page keeps the screen awake with the Wake Lock API
 while a stream is open, and asks for the lock again when the page shows again. The web server sends
 the page with a Content-Security-Policy that includes `frame-ancestors 'none'`.
