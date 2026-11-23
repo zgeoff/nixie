@@ -4,16 +4,17 @@
 
 The web client hears of a pause, a spending stop or a backup notice up to a minute late, because it
 polls for them. One page can also hold 3 record streams. The server pushes changes to the web client
-and to devices through one server-sent stream in each client tab, `live.follow`, in place of today's
-2 kinds of stream and 7 polls of 15 to 60 s, with a short overlap when a tab switches threads.
+and to devices through `live.follow`, one server-sent stream in each client tab. It replaces today's
+2 kinds of stream and 7 polls of 15 to 60 s. A tab holds 2 streams for a short overlap when it
+switches threads.
 
 A page's stream carries the records of the thread on screen, and a `changed` event that names each
 kind of state a commit changed, such as the pause or the task list. A device screen's stream carries
 only its screen. One in-memory client registry in the API holds presence and the open device
 streams, and the push notifier and the devices module each read their part.
 
-The owner approves this design and settles its open questions. The builder of the stream, the topic
-marks, the web client's move onto the stream and the client registry starts from it.
+The owner approves this design and settles its open questions. A builder starts from it to build the
+stream, the topic marks, the client registry and the web client's move onto the stream.
 
 ## Shape
 
@@ -183,7 +184,7 @@ interface Presence {
 - The web client holds one `live.follow` in each tab, and each page reads records and topics from
   that stream. The one exception is the overlap of a thread switch, below.
 - The stream sends `opened` first, once it listens on `writer.commits` and, for the device form,
-  once its device stream is open. It sends no event before `opened`.
+  once its device stream is open.
 - The stream sends a `record` event only for a record whose thread is the input's `thread`, in
   sequence order.
 - The stream starts after `lastEventId` when that is a sequence of 1 to 15 digits, and otherwise
@@ -199,7 +200,7 @@ interface Presence {
 - When the thread on screen changes, including to or from a page with no thread, the client opens a
   new stream from that page's `readAtSequence`, and closes the old one once the new one sends
   `opened`. It then invalidates nothing.
-- While the client shows live updates as unavailable, it reads each topic's reads every 60 s.
+- While the client shows live updates as unavailable, it runs each topic's reads again every 60 s.
 - When `tasks.list` returns a `changesAt`, the client reads the list again at that time.
 - No page in the web client sets `refetchInterval` on a read that a topic covers.
 - The stream wakes on `writer.commits` in the process. One process holds the writer and every stream
@@ -267,8 +268,8 @@ interface Presence {
 - **The device screen is a form of `live.follow`.** A device screen and a page share the transport,
   the keepalive and the registry, and each form gets only its own events.
 - **The API module owns the client registry.** It serves `sessions.shown` and every stream, and
-  hands each reader the narrow view it reads. This moves the registry out of the channels module
-  that [the push notice](push-notice.md#presence) named.
+  hands each reader the narrow view it reads. This moves the registry out of the channels module,
+  where [the push notice](push-notice.md#presence) put it.
 - **The web client keeps its own reconnect loop.** It resumes by `afterSequence`, so it needs no
   `ClientRetryPlugin` and sends no `Last-Event-ID`. The server's `lastEventId` path serves other
   clients.
