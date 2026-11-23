@@ -2,8 +2,8 @@
 
 A definitions source is the adapter through which nixie reads your definitions: the persona, jobs
 and policy seed. The one source is a local path, such as a directory that a git-sync sidecar keeps
-current. Every source returns a snapshot: the files, a revision that says where they came from, and
-a content hash that is the same for the same files from any source. The
+current. Every source returns a snapshot: the files, a revision that records where they came from,
+and a content hash that is the same for the same files from any source. The
 [deployment design](../deployment/deployment.md) owns seeding.
 
 ## The interface, the content hash and the filter

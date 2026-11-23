@@ -2,9 +2,9 @@
 
 - Decisions: [0005](../../../decisions/0005-untrusted-conversation.md)
 
-A trigger source starts work without you: a schedule or a poll. A batch of events commits in one
-transaction with the source's cursor and the fire and skip records and task wake-ups it causes, so a
-restart neither misses nor repeats an event.
+A trigger source starts work without you: a schedule or a poll. Each batch of events commits in one
+transaction with the source's cursor, its fire and skip records and the task wake-ups it causes, so
+a restart neither misses nor repeats an event.
 
 ## The interface
 
@@ -126,8 +126,8 @@ record the possible gap.
 
 ## Webhooks and streams
 
-nixie takes no push from any service, through neither a webhook nor a held connection. A 5-minute
-poll covers mail and calendar with no inbound route.
+nixie takes no push from any service: no webhook and no held connection. A 5-minute poll covers mail
+and calendar with no inbound route.
 
 The connector supplies each poll's call and runs it under its read effect, the credential store
 gives the connector its token, and the definitions source supplies schedules and task definition

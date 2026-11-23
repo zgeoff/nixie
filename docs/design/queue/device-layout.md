@@ -5,11 +5,11 @@
   [a signed-in browser as a device](https://linear.app/zgeoff/issue/GEO-2804)
 
 Layouts are built: a grid of named regions, each holding markdown, an image or a live value, as
-[layouts and regions](../../architecture/channels/devices.md#layouts-and-regions) describes. A
-region also holds a web page the assistant writes. A page runs sealed in a sandboxed frame. It can
-load packages you approved, read the URLs declared with it, take messages from the assistant, and
-send events back when you touch it. The assistant sees a preview of the screen and each page's
-errors. Until pages are built, `device.region` refuses a page with `PAGE_NOT_BUILT`.
+[layouts and regions](../../architecture/channels/devices.md#layouts-and-regions) describes. One
+part remains: a region that holds a web page the assistant writes. A page runs sealed in a sandboxed
+frame. It can load packages you approved, read the URLs declared with it, take messages from the
+assistant, and send events back when you touch it. The assistant sees a preview of the screen and
+each page's errors. Until pages are built, `device.region` refuses a page with `PAGE_NOT_BUILT`.
 
 ## Shape
 
@@ -239,8 +239,8 @@ Regions:
 
 - `devices.list` shows a page region's packages and fetch URLs beside its kind, and never the page's
   HTML.
-- A page stays loaded while a `device.show` covers the layout, hidden, taking messages, events and
-  refreshes.
+- While a `device.show` covers the layout, a page stays loaded and hidden, and still takes messages,
+  events and refreshes.
 
 The preview:
 

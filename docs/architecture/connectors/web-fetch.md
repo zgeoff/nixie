@@ -307,8 +307,8 @@ reply, or when the time limit passes. The https try of an `http` URL is still ho
 nothing.
 
 **Why:** the scan runs on the server because nixie's secret values and rules never enter the
-sandbox, and the open stream costs a redirect no new sandbox. The wire holds no refusal frame
-because a fetcher that a hostile page has taken over could ignore a frame, but not a stop.
+sandbox, and with the stream held open, a redirect needs no new sandbox. The wire holds no refusal
+frame because a fetcher that a hostile page has taken over could ignore a frame, but not a stop.
 
 The server and the fetch image can be of different releases. A fetch image before the hop gate reads
 a redirect limit of 0 and sends no hop frame, so it never follows an unscanned redirect, and the

@@ -2,7 +2,7 @@
 
 The user can pause all of nixie at once. While nixie is paused, no task takes a step and no action
 starts an attempt. Messages, notices and action outcomes still land, and each waits until a resume.
-The user can resume one task while the rest stay paused, such as the conversation, to talk to the
+The user can resume one task, such as the conversation, while the rest stay paused, and talk to the
 assistant while checking the rest. A restore starts nixie paused, with a list of the tasks to check.
 
 ```mermaid
@@ -103,7 +103,7 @@ migrations run only at a start. So the next start pauses nixie:
 `toCheck` lists every task that was running at the backup, and every task that owns an action with
 no outcome, the conversation included. A done, stopped or closed task can own one, because a started
 attempt runs on to its outcome. The install reads each task's row before the start part `recovery`
-moves a running task. An existing `recoveries` row for the recovery ID makes the install write
+moves a running task. When a `recoveries` row exists for the recovery ID, the install writes
 nothing, so a repeated install never pauses nixie again after the user resumed.
 
 | A kill lands                              | The next start                                                          |

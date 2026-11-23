@@ -214,7 +214,7 @@ screen nobody looked at.
 
 The guest also refuses a screen act that belongs to another tool, both when it prepares the act and
 when it runs it. The rules read a command from `computer.run` and a site from
-`computer.browser_open`, and would see only keystrokes in a window:
+`computer.browser_open`, and from a screen act they would see only keystrokes in a window:
 
 - An act on the terminal window returns `USE_RUN`, with the message "Use the computer.run tool
   instead". A scroll over the terminal returns it too.
