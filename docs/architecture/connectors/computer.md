@@ -137,11 +137,11 @@ result carries `focus`, which is `{ kind: 'browser', tab, url }`, `{ kind: 'term
 `{ kind: 'other' }`, and `isWatched`, which is `true` while a [watch](#watching) is open.
 
 While a device holds the desktop, the direct reads still run: `browser_read`, `browser_screenshot`,
-`screenshot` and `read_file`. A scroll, a page open, a close, a download, a file write and a file
-export answer `TAKEN_OVER`, so the assistant never moves the person's view. A queued act stays
-pending, and the runner claims it after the hand-back, as [Taking over](#taking-over) says. A queued
-act that was prepared before a hold began, and runs after it ended, answers `SCREEN_CHANGED`,
-because the person may have moved the page or the focus.
+`screenshot` and `read_file`. A browser or screen scroll, a page open, a close, a download, a file
+write and a file export answer `TAKEN_OVER`, so the assistant never moves the person's view. A
+queued act stays pending, and the runner claims it after the hand-back, as
+[Taking over](#taking-over) says. A queued act that was prepared before a hold began, and runs after
+it ended, answers `SCREEN_CHANGED`, because the person may have moved the page or the focus.
 
 The result of a screen act carries the picture of the desktop after the act, as a screenshot does.
 The connector's response holds the picture beside the result. The action runner seals its bytes as
@@ -275,13 +275,13 @@ A device session takes over the desktop through `computer.takeOver` and gives it
 `computer.handBack`. [The API](../channels/api.md#watching-the-computer) holds those two calls. One
 device holds the desktop at a time, and the hold lives in memory only.
 
-- From the moment `takeOver` is called, the assistant's new calls that change the desktop wait. A
-  queued action of a `computer.` tool stays pending, with no attempt and no wake, until the hold
-  ends. The runner reads the hold at its claim. As the transaction that writes an attempt ends, the
-  attempt asks the computer to admit its call, which checks the hold and counts the call as running
-  in one synchronous step. When a hold has begun, the transaction rolls back, so the attempt leaves
-  no record and makes no call. A take-over after the admission waits for that call. An in-step
-  action starts its attempt the same way.
+- From the moment `takeOver` is called, a queued action of a `computer.` tool stays pending, with no
+  attempt and no wake, until the hold ends. A direct call that would move the view answers
+  `TAKEN_OVER`, as [the tools](#tools) say. The runner reads the hold at its claim. As the
+  transaction that writes an attempt ends, the attempt asks the computer to admit its call, which
+  checks the hold and counts the call as running in one synchronous step. When a hold has begun, the
+  transaction rolls back, so the attempt leaves no record and makes no call. A take-over after the
+  admission waits for that call. An in-step action starts its attempt the same way.
 - The take-over waits for the calls running when it was made, each up to its own limit, and a call
   that arrives later is not waited for. An admitted call's limit is the turn wait until its computer
   call takes the turn, and then that call's limit. The take-over answers `BUSY_TOO_LONG` when a call
