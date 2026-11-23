@@ -65,7 +65,8 @@ export function buildDesktopProcesses(options: DesktopProcessOptions): readonly 
         'x11vnc',
         '-display',
         display,
-        '-localhost',
+
+        // -localhost would allow only 127.0.0.1, and x11vnc names a client of its Unix socket localhost
         '-unixsock',
         vncSocketPath,
 

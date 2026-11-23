@@ -50,7 +50,6 @@ test('it listens for VNC on a Unix socket alone, with the clipboard off', () => 
   const vnc = ctx.readArgv('vnc');
 
   expect(vnc).toIncludeAllMembers([
-    '-localhost',
     '-nosel',
     '-noprimary',
     '-nosetprimary',
@@ -62,6 +61,12 @@ test('it listens for VNC on a Unix socket alone, with the clipboard off', () => 
   expect(vnc[vnc.indexOf('-unixsock') + 1]).toBe(vncSocketPath);
   expect(vnc[vnc.indexOf('-rfbport') + 1]).toBe('0');
   expect(vnc[vnc.indexOf('-rfbportv6') + 1]).toBe('-1');
+});
+
+test('it lets a client of the Unix socket through, which x11vnc turns away under -localhost', () => {
+  const ctx = setupTest();
+
+  expect(ctx.readArgv('vnc')).not.toContain('-localhost');
 });
 
 test('it refuses remote control commands that an X client sends through the display', () => {
