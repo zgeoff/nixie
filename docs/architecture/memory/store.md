@@ -405,8 +405,8 @@ the spelling of a topic that another item already holds.
 
 The call has the effect of a label-only edit. It writes the same `memory.labelled` record for each
 item it moves, all in one write transaction under the delivery lock, so a failure leaves every item
-and every in-memory label entry as it was. An item that changes subject also gets a
-`memory.subject_changed` record on its current version. A pinned item stays under its subject,
+and every in-memory label entry as it was. An item that changes subject carries its new and previous
+subject in that same record, so every item gets one record. A pinned item stays under its subject,
 because the pinned core renders each subject under its own heading, so a move that would change its
 subject refuses.
 
@@ -420,16 +420,21 @@ after the decision point, so a deny rule keeps what the memory holds from the mo
 both `from` and `items`, or neither, refuses before the decision point, because that reads no
 memory.
 
-A subject change keeps its own record kind, so an item that changes subject gets 2 records, the
-label record and the subject record, and an item that keeps its subject gets one.
+The label record accepts a field it does not know, so the release before reads the record and leaves
+the item under its old subject, with the new topic. The versions table records no previous subject
+for a move, so an undo of the item's last text change leaves its subject as it is.
+
+A refusal returns to the model as a result with `status` `refused`, its `code` and its message, and
+the call records the code as its refusal code.
 
 The same rules cover `memory.retopic` as cover `memory.edit`: an allow, ask or deny rule that names
 `memory.edit` or the effect `memory_write` matches it. A rule can check `subject`, the subject of
-every item the move touches, `topic`, the topic the items move to, `itemID`, the short ID of each
-item that moves, and `from.topic`, `to.topic` and `items`. A move into or out of self touches a
-self-note, so an allow rule that covers it must check `subject` `eq` `self`, which only a move from
-self to self meets, and no other allow rule counts. Always allow offers no rule for a move, because
-no check pins free-text topics.
+every item the move touches, `topic`, the topic each item moves to, one value or a list, since a
+move of a whole topic gives each sub-topic its own, `itemID`, the short ID of each item that moves,
+and `from.topic`, `to.topic` and `items`. A move into or out of self touches a self-note, so an
+allow rule that covers it must check `subject` `eq` `self`, which only a move from self to self
+meets, and no other allow rule counts. Always allow offers no rule for a move, because no check pins
+free-text topics.
 
 A call that no allow rule covers, and a call that an ask rule matches, waits for the user as an
 action proposal, never as a memory proposal, because one call moves many items. The call stores the
@@ -438,8 +443,9 @@ under its own record. The proposal's card shows the move as its sentence and the
 gists folded under it. The user's approval runs the call only when it moves the items the card
 showed, so an item that joined the topic since refuses the call and waits for a new card. A forget
 of an item removes the key of each stored card that names it, so the card then shows no body and the
-call refuses. The self-note rule that holds for the conversation does not apply to an approved call,
-because the user approved the move.
+call refuses. A card stored after the forget finished is checked once the call's record holds it,
+and loses its key then, so no gist outlives its item. The self-note rule that holds for the
+conversation does not apply to an approved call, because the user approved the move.
 
 ### The folded order
 

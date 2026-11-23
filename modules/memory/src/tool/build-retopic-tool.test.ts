@@ -28,6 +28,23 @@ async function setupTest() {
     return { ...item, shortID: await readItemShortID(memory.log, item.itemID) };
   };
 
+  const writeCardRecord = async (prepared: Awaited<ReturnType<NonNullable<Tool['prepare']>>>) => {
+    invariant('attachments' in prepared, 'the call is prepared');
+
+    const [record] = await writeRecords(memory.log, [
+      {
+        kind: 'tool_called',
+        definitions: { snapshotHash: 'sha256:aa11' },
+        payload: { tool: 'memory.retopic' },
+        ...(prepared.attachments === undefined ? {} : { attachments: prepared.attachments }),
+      },
+    ]);
+
+    invariant(record, 'the call is recorded');
+
+    return record.sequence;
+  };
+
   return {
     memory,
     tool,
@@ -37,25 +54,13 @@ async function setupTest() {
         { callID: 'call-1', tool: 'memory.retopic', input, toolUseID: null },
         buildMockToolContext({}, verdict),
       ),
+    writeCardRecord,
     writeCard: async (input: JSONObject) => {
       invariant(tool.prepare, 'memory.retopic prepares its call');
 
       const prepared = await tool.prepare(input, { run: buildMockToolContext().run });
 
-      invariant('attachments' in prepared, 'the call is prepared');
-
-      const [record] = await writeRecords(memory.log, [
-        {
-          kind: 'tool_called',
-          definitions: { snapshotHash: 'sha256:aa11' },
-          payload: { tool: 'memory.retopic' },
-          ...(prepared.attachments === undefined ? {} : { attachments: prepared.attachments }),
-        },
-      ]);
-
-      invariant(record, 'the call is recorded');
-
-      return record.sequence;
+      return writeCardRecord(prepared);
     },
     approve: (input: JSONObject, callSequence: number) =>
       tool.run(
@@ -189,26 +194,31 @@ test('it names the move and each item with its gist in what it stores for the ap
 test.each([
   [
     'a topic that no item has',
+    'EMPTY_MOVE',
     { from: { topic: 'nowhere', subject: 'owner' }, to: { topic: 'house', subject: 'owner' } },
     /no item has the topic nowhere/u,
   ],
   [
     'a move onto the same topic and subject',
+    'SAME_TOPIC',
     { from: { topic: 'home', subject: 'owner' }, to: { topic: 'HOME', subject: 'owner' } },
     /already under owner\/HOME/u,
   ],
   [
     'an item that does not exist',
+    'UNKNOWN_ITEM',
     { items: ['zzzzzzzzzz'], to: { topic: 'house', subject: 'owner' } },
     /no memory item zzzzzzzzzz to move/u,
   ],
   [
     'an empty list of items',
+    'EMPTY_MOVE',
     { items: [], to: { topic: 'house', subject: 'owner' } },
     /pass at least one item to move/u,
   ],
   [
     'a call with both from and items',
+    'EMPTY_MOVE',
     {
       from: { topic: 'home', subject: 'owner' },
       items: ['zzzzzzzzzz'],
@@ -218,16 +228,22 @@ test.each([
   ],
   [
     'a topic that would pass 40 characters',
+    'TOPIC_TOO_LONG',
     { from: { topic: 'home', subject: 'owner' }, to: { topic: 'x'.repeat(40), subject: 'owner' } },
     /longer than 40 characters/u,
   ],
-])('it refuses %s with a named refusal and writes nothing', async (_name, input, message) => {
+])('it refuses %s with a named refusal and writes nothing', async (_name, code, input, message) => {
   const ctx = await setupTest();
   const item = await ctx.createItem({ gist: 'spare pump', topic: 'home/pumps' });
   const outcome = await ctx.run(input);
   const labels = await ctx.memory.store.writes.readItemLabels(item.itemID);
 
-  expect(outcome).toStrictEqual({ status: 'error', message: expect.stringMatching(message) });
+  expect(outcome).toStrictEqual({
+    status: 'ok',
+    result: { status: 'refused', code, message: expect.stringMatching(message) },
+    refusalCode: code,
+  });
+
   expect(labels.topic).toBe('home/pumps');
 });
 
@@ -241,8 +257,13 @@ test('it refuses an item named by its internal ID, because only short IDs name a
   });
 
   expect(outcome).toStrictEqual({
-    status: 'error',
-    message: `refused: no memory item ${item.itemID} to move`,
+    status: 'ok',
+    result: {
+      status: 'refused',
+      code: 'UNKNOWN_ITEM',
+      message: `refused: no memory item ${item.itemID} to move`,
+    },
+    refusalCode: 'UNKNOWN_ITEM',
   });
 });
 
@@ -292,8 +313,13 @@ test('it refuses a move that is already done for every item on the list', async 
   });
 
   expect(outcome).toStrictEqual({
-    status: 'error',
-    message: 'refused: every item is already under owner/home',
+    status: 'ok',
+    result: {
+      status: 'refused',
+      code: 'SAME_TOPIC',
+      message: 'refused: every item is already under owner/home',
+    },
+    refusalCode: 'SAME_TOPIC',
   });
 });
 
@@ -334,8 +360,13 @@ test('it keeps every item in place when one item fails mid-move, records and lab
   const labels = await ctx.memory.store.writes.readItemLabels(first.itemID);
 
   expect(outcome).toStrictEqual({
-    status: 'error',
-    message: `refused: no memory item ${second.shortID} to move`,
+    status: 'ok',
+    result: {
+      status: 'refused',
+      code: 'UNKNOWN_ITEM',
+      message: `refused: no memory item ${second.shortID} to move`,
+    },
+    refusalCode: 'UNKNOWN_ITEM',
   });
 
   expect(labels.topic).toBe('home');
@@ -452,9 +483,14 @@ test('it refuses an approved move of a topic that took an item after the card sh
   );
 
   expect(outcome).toStrictEqual({
-    status: 'error',
-    message:
-      'refused: the items of this move changed after the card showed them, so ask for the move again',
+    status: 'ok',
+    result: {
+      status: 'refused',
+      code: 'CHANGED_SINCE_SHOWN',
+      message:
+        'refused: the items of this move changed after the card showed them, so ask for the move again',
+    },
+    refusalCode: 'CHANGED_SINCE_SHOWN',
   });
 
   expect(labels.map((entry) => entry.topic)).toStrictEqual(['home', 'home']);
@@ -473,8 +509,13 @@ test('it refuses an approved move whose card is gone', async () => {
   const outcome = await ctx.approve(input, 999);
 
   expect(outcome).toStrictEqual({
-    status: 'error',
-    message: 'refused: the card of this move is gone, so ask for the move again',
+    status: 'ok',
+    result: {
+      status: 'refused',
+      code: 'CHANGED_SINCE_SHOWN',
+      message: 'refused: the card of this move is gone, so ask for the move again',
+    },
+    refusalCode: 'CHANGED_SINCE_SHOWN',
   });
 });
 
@@ -494,7 +535,7 @@ test('it moves a self-note for a task after the user approved it, with no rule',
   expect(outcome).toMatchObject({ status: 'ok' });
 });
 
-test('it writes a label record and a subject record for each item that changes subject, and one record for each item that does not', async () => {
+test('it writes one record for each item it moves, whether or not the item changes subject', async () => {
   const ctx = await setupTest();
   const same = await ctx.createItem({ gist: 'spare pump', topic: 'home' });
   const across = await ctx.createItem({ gist: 'tent poles', topic: 'home' });
@@ -508,19 +549,58 @@ test('it writes a label record and a subject record for each item that changes s
     limit: 100,
   });
 
+  const subject = await ctx.memory.store.writes.readItemSubject(across.itemID);
+
   expect(
     records
-      .filter(
-        (entry) =>
-          entry.record.kind === 'memory.subject_changed' ||
-          entry.record.payload['change'] === 'edited',
-      )
+      .filter((entry) => entry.record.payload['change'] === 'edited')
       .map((entry) => [entry.record.kind, entry.record.payload['itemID']]),
   ).toStrictEqual([
     ['memory.labelled', same.itemID],
     ['memory.labelled', across.itemID],
-    ['memory.subject_changed', across.itemID],
   ]);
+
+  expect(records.map((entry) => entry.record.kind)).not.toContain('memory.subject_changed');
+  expect(subject).toBe('shared');
+});
+
+test('it gives a rule the topic each item of a whole-topic move lands under', async () => {
+  const ctx = await setupTest();
+
+  await ctx.createItem({ gist: 'spare pump', topic: 'notes' });
+  await ctx.createItem({ gist: 'piano tuned', topic: 'notes/private' });
+
+  const facts = await ctx.tool.resolvePolicyFacts?.(
+    { from: { topic: 'notes', subject: 'owner' }, to: { topic: 'diary', subject: 'owner' } },
+    { run: buildMockToolContext().run },
+  );
+
+  expect(facts).toMatchObject({ status: 'ok', args: { topic: ['diary', 'diary/private'] } });
+});
+
+test('it erases the card of a call that was stored after an item it names was forgotten', async () => {
+  const ctx = await setupTest();
+  const item = await ctx.createItem({ gist: 'spare pump', topic: 'home' });
+
+  const prepared = await ctx.prepare({
+    items: [item.shortID],
+    to: { topic: 'house', subject: 'owner' },
+  });
+
+  await ctx.memory.store.forget({
+    target: item,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const sequence = await ctx.writeCardRecord(prepared);
+
+  invariant('settleAttachments' in prepared, 'the call settles its card');
+
+  await prepared.settleAttachments?.(sequence);
+
+  const attachments = await readRecordAttachments(ctx.memory.log, [sequence]);
+
+  expect(attachments.get(sequence)).toStrictEqual({ status: 'shredded' });
 });
 
 test('it moves a sub-topic whose name changes length when lower-cased, keeping the name the item spells', async () => {

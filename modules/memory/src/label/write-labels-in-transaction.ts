@@ -1,7 +1,7 @@
 import type { Approval, ContentSource, RecordInput } from '@heynixie/log';
 import { writeRecordsInTransaction } from '@heynixie/log';
 import type { Transaction } from 'kysely';
-import type { LabelChange, LabelOrigin, Labels, StoreParts } from '../types';
+import type { LabelChange, LabelOrigin, Labels, MemorySubject, StoreParts } from '../types';
 import { itemLabelsCodec } from './item-labels-codec';
 
 export interface LabelWrite {
@@ -21,6 +21,13 @@ export interface LabelWrite {
   readonly proposalID: string | null;
   readonly model: string | null;
   readonly thread?: string;
+
+  // the move of the item to another subject that this record carries, so a move that changes the
+  // topic and the subject of an item writes one record
+  readonly subjectMove?: {
+    readonly subject: MemorySubject;
+    readonly previousSubject: MemorySubject;
+  };
 
   // the notice that the write joins, for a write the user learns of from a notice
   readonly noticeKey?: string;
@@ -62,6 +69,7 @@ export async function writeLabelsInTransaction(
       proposalID: write.proposalID,
       model: write.model,
       ...(write.noticeKey === undefined ? {} : { noticeKey: write.noticeKey }),
+      ...(write.subjectMove === undefined ? {} : write.subjectMove),
     },
   };
 

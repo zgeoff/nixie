@@ -1836,6 +1836,44 @@ test('it holds a re-file that no rule allows as one action proposal, and stores 
   expect(attached.get(1)).toMatchObject({ status: 'readable' });
 });
 
+test('it lets a tool settle the attachments it prepared once the call record holds them', async () => {
+  const settled: number[] = [];
+
+  const ctx = await setupTest({
+    tools: [
+      buildMockToolDefinition({
+        name: 'memory.retopic',
+        declaration: { effects: ['memory_write'] },
+        prepare: () =>
+          Promise.resolve({
+            destinations: [],
+            attachments: [new TextEncoder().encode('card')],
+            settleAttachments: (callSequence: number) => {
+              settled.push(callSequence);
+
+              return Promise.resolve();
+            },
+          }),
+        run: () => Promise.resolve({ status: 'ok', result: { text: 'moved' } }),
+      }),
+    ],
+  });
+
+  await runToolCall(
+    { tool: 'memory.retopic', input: { query: 'lines' }, toolUseID: null },
+    {
+      runID: 'run-1',
+      thread: 'conversation',
+      logThread: 'conversation',
+      tools: ['memory.retopic'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  expect(settled).toStrictEqual([1]);
+});
+
 test('it gates a memory write when the snapshot declaration keeps note beside memory_write until the owner approves its removal', async () => {
   const contexts: ToolContext[] = [];
 

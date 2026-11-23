@@ -1,5 +1,4 @@
-import type { RecordInput } from '@heynixie/log';
-import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
+import { withWriteTransaction } from '@heynixie/log';
 import type { MemoryWriteVerdict } from '@heynixie/tools';
 import type { Transaction } from 'kysely';
 import type { WriteCaller } from '../gate/gate-context';
@@ -28,8 +27,8 @@ export interface RetopicRequest {
 }
 
 // Moves the items of the plan in one write transaction, and writes the same record per item that a
-// label-only edit writes. A move that changes an item's subject also writes the subject change
-// record, on the item's current version. The item's text never changes, so no version is added.
+// label-only edit writes. A move that changes an item's subject carries the new subject in that
+// record. The item's text never changes, so no version is added.
 export function writeRetopic(parts: StoreParts, request: RetopicRequest): Promise<RetopicPlan> {
   return parts.lock(async () => {
     const plan = await requireRetopicPlan(parts, request.source, request.to);
@@ -150,23 +149,10 @@ async function writeMove(
     model: caller.model,
     thread: caller.thread,
     noticeKey: write.noticeKey,
+    ...(move.fromSubject === plan.to.subject
+      ? {}
+      : { subjectMove: { subject: plan.to.subject, previousSubject: move.fromSubject } }),
   });
-
-  if (move.fromSubject !== plan.to.subject) {
-    const changed: RecordInput = {
-      kind: 'memory.subject_changed',
-      definitions: parts.context.definitions(),
-      thread: caller.thread,
-      payload: {
-        itemID: move.itemID,
-        version: item.version,
-        subject: plan.to.subject,
-        previousSubject: move.fromSubject,
-      },
-    };
-
-    await writeRecordsInTransaction(tx, log, [changed]);
-  }
 }
 
 async function restoreLabels(

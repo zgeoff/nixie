@@ -1,6 +1,8 @@
 import type { ContentSource, EnvelopeRecord } from '@heynixie/log';
 import { z } from 'zod';
-import type { LabelChange, LabelOrigin } from '../../types';
+import type { LabelChange, LabelOrigin, MemorySubject } from '../../types';
+
+const subjectSchema = z.enum(['owner', 'self', 'shared']);
 
 // A later release can add a field, so the record accepts a key it does not know.
 const labelled = z.looseObject({
@@ -15,6 +17,8 @@ const labelled = z.looseObject({
   proposalID: z.string().nullable(),
   model: z.string().nullable(),
   noticeKey: z.string().nullable().default(null),
+  subject: subjectSchema.optional(),
+  previousSubject: subjectSchema.optional(),
 });
 
 const proposalLabelled = z.strictObject({
@@ -38,6 +42,9 @@ interface LabelledRecord {
   readonly proposalID: string | null;
   readonly model: string | null;
   readonly noticeKey: string | null;
+
+  // the subject the item moved to with this record, or null when the record moves none
+  readonly subject: MemorySubject | null;
 }
 
 interface ProposalLabelledRecord {
@@ -68,6 +75,7 @@ export function parseLabelRecord(record: EnvelopeRecord): LabelRecord | null {
       proposalID: parsed.proposalID,
       model: parsed.model,
       noticeKey: parsed.noticeKey,
+      subject: parsed.subject ?? null,
     };
   }
 

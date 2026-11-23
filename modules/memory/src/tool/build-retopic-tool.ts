@@ -117,9 +117,9 @@ const retopicArguments = z.object({
 
 const bothOrNeitherMessage = 'refused: pass either from or items, and not both';
 
-// What a rule on memory.edit sees of the call: the subject of every item the move touches, so a
-// rule that checks subject covers a move into or out of that subject, the topic the items move to
-// and the short ID of each item that moves.
+// What a rule on memory.edit sees of the call: the subject of every item the move touches, the
+// topic each item moves to, which a whole-topic move gives each sub-topic its own, and the short ID
+// of each item that moves.
 async function resolveRetopicFacts(
   memory: RetopicStore,
   rawInput: JSONObject,
@@ -135,6 +135,7 @@ async function resolveRetopicFacts(
   const planned = await memory.writes.readRetopicPlan(source, input.data.to);
 
   const moves = planned.status === 'planned' ? planned.plan.moves : [];
+  const topics = [...new Set(moves.map((move) => move.toTopic))];
 
   const subjects = [
     ...new Set([
@@ -150,7 +151,7 @@ async function resolveRetopicFacts(
     args: {
       ...rawInput,
       subject: subjects.length === 1 ? input.data.to.subject : subjects,
-      topic: input.data.to.topic,
+      topic: topics.length === 0 ? input.data.to.topic : singleOrList(topics),
       ...(moves.length === 0 ? {} : { itemID: moves.map((move) => move.shortID) }),
     },
   };
@@ -169,6 +170,12 @@ function buildSource(input: RetopicArguments): RetopicSource | null {
     : null;
 }
 
+function singleOrList(values: readonly string[]): string | readonly string[] {
+  const [only] = values;
+
+  return values.length === 1 && only !== undefined ? only : values;
+}
+
 // The refusal of a move waits for run, after the decision point, so a refusal never tells the model
 // what a rule meant to keep from it. What prepare stores shows the user the move, or its refusal.
 async function prepareRetopic(
@@ -180,14 +187,21 @@ async function prepareRetopic(
 
   if (source === null) {
     return {
-      result: { status: 'refused', message: bothOrNeitherMessage },
+      result: { status: 'refused', code: 'EMPTY_MOVE', message: bothOrNeitherMessage },
       refusalCode: 'EMPTY_MOVE',
     };
   }
 
   const planned = await memory.writes.readRetopicPlan(source, input.to);
 
-  return { destinations: [], attachments: [buildRetopicCard(planned)] };
+  const itemIDs = planned.status === 'planned' ? planned.plan.moves.map((move) => move.itemID) : [];
+
+  return {
+    destinations: [],
+    attachments: [buildRetopicCard(planned)],
+    settleAttachments: (callSequence) =>
+      memory.writes.removeRetopicCardOfForgotten(callSequence, itemIDs),
+  };
 }
 
 async function runRetopic(
@@ -229,6 +243,14 @@ async function runRetopic(
       result: { status: 'applied', moved: plan.moves.length, move: plan.sentence },
     };
   } catch (error) {
+    if (error instanceof TopicMoveError) {
+      return {
+        status: 'ok',
+        result: { status: 'refused', code: error.code, message: error.message },
+        refusalCode: error.code,
+      };
+    }
+
     if (isWriteRefusal(error)) {
       return { status: 'error', message: error.message };
     }

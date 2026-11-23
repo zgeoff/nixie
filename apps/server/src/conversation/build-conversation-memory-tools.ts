@@ -48,6 +48,8 @@ export function buildConversationMemoryTools(
         retopic: (request) => requireStore().writes.retopic(request),
         readRetopicPlan: (source, target) => requireStore().writes.readRetopicPlan(source, target),
         readRetopicShown: (callSequence) => requireStore().writes.readRetopicShown(callSequence),
+        removeRetopicCardOfForgotten: (callSequence, itemIDs) =>
+          requireStore().writes.removeRetopicCardOfForgotten(callSequence, itemIDs),
         writeFoldOrder: (request) => requireStore().writes.writeFoldOrder(request),
       },
       renderReviewReason: (reason) => requireStore().renderReviewReason(reason),

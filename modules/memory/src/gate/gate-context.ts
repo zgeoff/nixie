@@ -187,6 +187,13 @@ export interface MemoryWrites {
   // the IDs of the items that a call's approval card showed, or null when the card is gone
   readonly readRetopicShown: (callSequence: number) => Promise<readonly string[] | null>;
 
+  // Erases the approval card that a call stored with its record when an item the card names is
+  // being forgotten, so no copy of its gist outlives the item.
+  readonly removeRetopicCardOfForgotten: (
+    callSequence: number,
+    itemIDs: readonly string[],
+  ) => Promise<void>;
+
   // sets the order a topic's folded rows show their items in, and returns the topic's spelling
   readonly writeFoldOrder: (request: FoldOrderRequest) => Promise<string>;
 }
@@ -209,6 +216,7 @@ export interface ModelWriteStore {
     | 'retopic'
     | 'readRetopicPlan'
     | 'readRetopicShown'
+    | 'removeRetopicCardOfForgotten'
     | 'writeFoldOrder'
   >;
   readonly renderReviewReason: (reason: ReviewReason) => string;

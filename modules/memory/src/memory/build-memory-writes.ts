@@ -8,6 +8,7 @@ import { writeGatedRetirement } from '../gated/write-gated-retirement';
 import { readItemLabels } from '../label/read-item-labels';
 import { readRetopicPlan } from '../retopic/read-retopic-plan';
 import { readRetopicShown } from '../retopic/read-retopic-shown';
+import { removeRetopicCardOfForgotten } from '../retopic/remove-retopic-card-of-forgotten';
 import { writeRetopic } from '../retopic/write-retopic';
 import type { StoreParts } from '../types';
 import { readItemSubject } from '../write/read-item-subject';
@@ -30,6 +31,8 @@ export function buildMemoryWrites(parts: StoreParts): MemoryWrites {
     retopic: (request) => writeRetopic(parts, request),
     readRetopicPlan: (source, target) => readRetopicPlan(parts, source, target),
     readRetopicShown: (callSequence) => readRetopicShown(parts, callSequence),
+    removeRetopicCardOfForgotten: (callSequence, itemIDs) =>
+      removeRetopicCardOfForgotten(parts, callSequence, itemIDs),
     writeFoldOrder: (request) => writeFoldOrder(parts, request),
   };
 }

@@ -27,6 +27,15 @@ export const memoryItemsProjection: Projection = {
     const labelled = parseLabelRecord(record);
 
     if (labelled?.kind === 'memory.labelled') {
+      if (labelled.subject !== null) {
+        await tx
+          .$extendTables<MemoryTables>()
+          .updateTable('memory_items')
+          .set({ subject: labelled.subject, kind: labelled.subject === 'self' ? 'self' : 'fact' })
+          .where('item_id', '=', labelled.itemID)
+          .execute();
+      }
+
       if (labelled.change === 'edited') {
         await tx
           .$extendTables<MemoryTables>()
