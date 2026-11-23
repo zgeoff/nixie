@@ -17,6 +17,15 @@ const rules: Readonly<Record<GateCaller, Readonly<Record<TaskHoldReason, GateRul
     limit: 'skip_unstarted',
     task: 'skip_unstarted',
   },
+
+  // a reminder still lands in a conversation that its owner paused
+  conversation_trigger: {
+    ended: 'pass',
+    spend: 'skip',
+    nixie: 'skip',
+    limit: 'pass',
+    task: 'pass',
+  },
 };
 
 export function pickGateRule(caller: GateCaller, reason: TaskHoldReason): GateRule {

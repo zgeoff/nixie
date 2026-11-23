@@ -250,6 +250,34 @@ test('it writes trigger.skipped with task_held for a paused task, and fires at t
   ]);
 });
 
+test('it writes trigger.skipped with task_held, not too_late, for a late fire at a paused task', async () => {
+  const ctx = await setupTest();
+
+  const taskID = await seedDefinitionTask(ctx, {
+    definitionID: 'water-the-tomatoes',
+    definitionHash: 'hash-1',
+  });
+
+  await seedArmedDefinitions(ctx, [buildTestArmedDefinition()]);
+  await writeTaskControl(ctx.context, { taskID, control: 'pause' });
+
+  await ctx.deliver([
+    {
+      scheduledFor: '2027-03-09T21:00:00.000Z',
+      dedupeKey: 'water-the-tomatoes|2027-03-10T08:00',
+      skip: 'too_late',
+    },
+  ]);
+
+  const records = await ctx.readTriggerRecords();
+
+  expect(
+    records
+      .filter((record) => record.kind === 'trigger.skipped')
+      .map((record) => record.payload['reason']),
+  ).toStrictEqual(['task_held']);
+});
+
 test('it skips with still_running at each next slot while one fire waits unread beside an idle task run', async () => {
   const ctx = await setupTest();
 

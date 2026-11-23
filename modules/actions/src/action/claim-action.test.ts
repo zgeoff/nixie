@@ -7,6 +7,7 @@ import {
 } from '@heynixie/log';
 import { buildLogSeeder } from '@heynixie/log/test-utils';
 import { writeStepCommit, writeTaskControl, writeTaskResume } from '@heynixie/tasks';
+import { buildTaskSeeder } from '@heynixie/tasks/test-utils';
 import { buildActionSeeder } from '../test-utils/build-action-seeder';
 import { createTestStep } from '../test-utils/create-test-step';
 import { queueTestAction } from '../test-utils/queue-test-action';
@@ -24,6 +25,7 @@ async function setupTest() {
     ...actions,
     db: actions.writer.db.$extendTables<ActionsTables>(),
     seed: buildActionSeeder({ context: actions.context }),
+    taskSeed: buildTaskSeeder({ context: actions.context }),
     definitions,
     pauseNixie: () =>
       withWriteTransaction(actions.writer, (tx) =>
@@ -406,27 +408,28 @@ test('it claims no action of a done task while nixie is paused', async () => {
   expect(lease).toBeNull();
 });
 
-test('it claims no unstarted action of a task at its limit, and claims one with a started attempt', async () => {
+test('it claims no unstarted action of a task at its limit', async () => {
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
-  const queued = await ctx.seed.action({ step });
 
-  await buildLogSeeder(ctx.context).record({
-    kind: 'task.limit_reached',
-    thread: step.lease.workID,
-    payload: {
-      taskID: step.lease.workID,
-      stepKey: step.stepKey,
-      used: { turns: 1, dollars: 0.1 },
-      limits: { turns: 1, dollars: 2 },
-    },
-  });
+  await ctx.seed.action({ step });
+  await ctx.taskSeed.limitReached({ taskID: step.lease.workID, stepKey: step.stepKey });
 
-  const unstarted = await claimAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+  const lease = await claimAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
 
-  await ctx.db.updateTable('actions').set({ attempt_count: 1 }).execute();
+  expect(lease).toBeNull();
+});
 
-  const started = await claimAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+test('it claims an action with a started attempt of a task at its limit', async () => {
+  const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
+  const queued = await ctx.seed.pendingRetryScheduledAction({ step });
 
-  expect([unstarted, started?.workID]).toStrictEqual([null, queued.action_id]);
+  await ctx.taskSeed.limitReached({ taskID: step.lease.workID, stepKey: step.stepKey });
+
+  ctx.clock.advance(3_600_000);
+
+  const lease = await claimAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  expect(lease?.workID).toBe(queued.action_id);
 });

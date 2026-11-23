@@ -13,6 +13,7 @@ import { isBeforeTurnFailure } from '../step/is-before-turn-failure';
 import { startStepControlWatch } from '../step/start-step-control-watch';
 import { writeStepCommit } from '../step/write-step-commit';
 import { writeStepError } from '../step/write-step-error';
+import { writeStepHeld } from '../step/write-step-held';
 import type { RunStep, StartedClaim, StepErrored, StepResult, TasksContext } from '../types';
 import { LeaseLostError } from '../utils/lease-lost-error';
 import { readSessionBoundary } from './read-session-boundary';
@@ -83,6 +84,12 @@ async function tryCommitStep(
       inbox,
       sessionBoundary,
     });
+
+    if (result.isHeld === true) {
+      await writeStepHeld(context, claim);
+
+      return null;
+    }
 
     const spend =
       result.spentDollars === undefined

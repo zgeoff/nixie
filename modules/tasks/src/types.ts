@@ -114,7 +114,9 @@ export type TaskGate =
 export type TaskHolds = Readonly<Record<TaskHoldReason, boolean>>;
 
 // task_claim: a claim of a task. action: the claim of an action and each attempt it starts.
-export type GateCaller = 'task_claim' | 'action';
+// conversation_trigger: a trigger that targets the conversation, which heeds only nixie's pause and
+// the spending stop.
+export type GateCaller = 'task_claim' | 'action' | 'conversation_trigger';
 
 export interface Lease {
   readonly kind: LeaseKind;
@@ -264,6 +266,10 @@ export interface StepResult {
   // the dollars that only the step's records count, which a commit that fails records as spend
   // instead
   readonly spentDollars?: number;
+
+  // set by a step that the gate held for the spending stop before its turn: the step commits
+  // nothing and frees its lease
+  readonly isHeld?: true;
 }
 
 export interface StepInput {

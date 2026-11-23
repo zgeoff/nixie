@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test';
 import type { JSONObject, RecordKinds } from '@heynixie/log';
 import { readRecords, writeRecords } from '@heynixie/log';
+import { buildLogSeeder } from '@heynixie/log/test-utils';
 import { modelsConfigSchema } from '@heynixie/models';
 import { sandboxCreatedCodec } from '@heynixie/sandbox';
 import { createPlanLoginsHolder, spendProjections } from '@heynixie/spend';
@@ -284,6 +285,7 @@ async function setupTest(config: SetupConfig = {}) {
 
   return {
     ...host,
+    seed: buildLogSeeder(host.context),
     clock,
     gateway,
     spendChecks,
@@ -557,6 +559,22 @@ test('it refuses a worker at the turn limit of the spending stop, and starts no 
   expect(owners).toStrictEqual([]);
 });
 
+test('it refuses a worker while a spending stop stands, with no spending checks configured, and starts no sandbox', async () => {
+  const ctx = await setupTest();
+
+  await ctx.seed.spendStop();
+
+  const outcome = await ctx.callWorker({ question: 'Which cafes are open?' });
+  const owners = await ctx.readOwners();
+
+  expect(outcome).toStrictEqual({
+    status: 'error',
+    message: expect.toInclude('Model spending is stopped'),
+  });
+
+  expect(owners).toStrictEqual([]);
+});
+
 test('it fails a worker on a plan profile whose login the gateway holds no answer for, and sends no turn', async () => {
   const ctx = await setupTest({ spendDayTurns: 1000, workerProfile: 'worker-plan' });
   const outcome = await ctx.callWorker({ question: 'Which cafes are open?' });
@@ -642,7 +660,9 @@ test('it gives the cap sentence to a call past the cap that errors', async () =>
 
   ctx.caller.abort(new Error('the step ended'));
 
-  expect(first).rejects.toThrowWithMessage(Error, 'the step ended');
+  const [settled] = await Promise.allSettled([first]);
+
+  expect(settled).toStrictEqual({ status: 'rejected', reason: new Error('the step ended') });
 });
 
 test("it rejects the call of an aborted step, and writes the end record with the outcome 'aborted'", async () => {

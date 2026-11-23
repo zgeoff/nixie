@@ -14,7 +14,7 @@ import { startTestTasks } from '../test-utils/start-test-tasks';
 import type { GateCaller } from '../types';
 import { buildGateFilter } from './build-gate-filter';
 import { isGateBarring } from './is-gate-barring';
-import { readTaskHolds } from './read-task-holds';
+import { readTaskGate } from './read-task-gate';
 
 async function setupTest() {
   const tasks = await startTestTasks();
@@ -108,7 +108,8 @@ async function setupTest() {
 
       return Boolean(row.may_go_on);
     },
-    readHolds: (taskID: string) => readTaskHolds(tasks.writer.db, taskID),
+    readGate: (caller: GateCaller, taskID: string) =>
+      withWriteTransaction(tasks.writer, (tx) => readTaskGate(tx, taskID, caller)),
   };
 }
 
@@ -126,10 +127,10 @@ test.each([
   async (_hold, seeder, mayClaim) => {
     const ctx = await setupTest();
     const taskID = await ctx.seed[seeder]();
-    const holds = await ctx.readHolds(taskID);
+    const gate = await ctx.readGate('task_claim', taskID);
     const filtered = await ctx.readFilter('task_claim', taskID, false);
 
-    expect([filtered, !isGateBarring('task_claim', holds, { isStarted: false })]).toStrictEqual([
+    expect([filtered, !isGateBarring('task_claim', gate, { isStarted: false })]).toStrictEqual([
       mayClaim,
       mayClaim,
     ]);
@@ -150,15 +151,39 @@ test.each([
   async (_hold, seeder, mayClaimUnstarted, mayClaimStarted) => {
     const ctx = await setupTest();
     const taskID = await ctx.seed[seeder]();
-    const holds = await ctx.readHolds(taskID);
+    const gate = await ctx.readGate('action', taskID);
     const unstarted = await ctx.readFilter('action', taskID, false);
     const started = await ctx.readFilter('action', taskID, true);
 
     expect([
       unstarted,
       started,
-      !isGateBarring('action', holds, { isStarted: false }),
-      !isGateBarring('action', holds, { isStarted: true }),
+      !isGateBarring('action', gate, { isStarted: false }),
+      !isGateBarring('action', gate, { isStarted: true }),
     ]).toStrictEqual([mayClaimUnstarted, mayClaimStarted, mayClaimUnstarted, mayClaimStarted]);
+  },
+);
+
+test.each([
+  ['no hold', 'readyTask', true],
+  ['ended', 'stoppedTask', true],
+  ['task', 'pausedTask', true],
+  ['limit', 'limitedTask', true],
+  ['limit and task', 'limitedPausedTask', true],
+  ['nixie', 'nixiePausedTask', false],
+  ['spend, with the task exempt from the pause', 'spendStoppedExemptTask', false],
+  ['ended and nixie', 'stoppedNixiePausedTask', false],
+] as const)(
+  'it filters a conversation trigger with %s, and the gate agrees',
+  async (_hold, seeder, mayFire) => {
+    const ctx = await setupTest();
+    const taskID = await ctx.seed[seeder]();
+    const gate = await ctx.readGate('conversation_trigger', taskID);
+    const filtered = await ctx.readFilter('conversation_trigger', taskID, false);
+
+    expect([
+      filtered,
+      !isGateBarring('conversation_trigger', gate, { isStarted: false }),
+    ]).toStrictEqual([mayFire, mayFire]);
   },
 );

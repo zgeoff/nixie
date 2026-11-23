@@ -3,6 +3,7 @@ import { sql } from 'kysely';
 import { spendStopClearedCodec } from '../pause/spend-stop-cleared-codec';
 import { spendStopTrippedCodec } from '../pause/spend-stop-tripped-codec';
 import { startTestLog } from '../test-utils/start-test-log';
+import { runProjectionRebuild } from './run-projection-rebuild';
 import { writeRecords } from './write-records';
 
 async function setupTest() {
@@ -24,6 +25,7 @@ async function setupTest() {
           payload: spendStopClearedCodec.encode({ reason: 'lost_cleared' }),
         },
       ]),
+    rebuild: () => runProjectionRebuild(log.log),
     readRows: async () => {
       const result = await sql`select * from spend_stop order by 1`.execute(log.writer.db);
 
@@ -77,6 +79,43 @@ test('it removes the stop row at a clear', async () => {
 
   await ctx.writeTrip({ reason: 'lost', at: 1000 });
   await ctx.writeClear();
+
+  const rows = await ctx.readRows();
+
+  expect(rows).toStrictEqual([]);
+});
+
+test('it rebuilds the stop row equal to the live one after 2 trips', async () => {
+  const ctx = await setupTest();
+
+  await ctx.writeTrip({ reason: 'unreachable', at: 1000 });
+
+  await ctx.writeTrip({
+    reason: 'limit',
+    period: 'month',
+    measure: 'turns',
+    limit: 20_000,
+    spent: 20_001,
+    at: 3000,
+    resetsAt: 9000,
+  });
+
+  const live = await ctx.readRows();
+
+  await ctx.rebuild();
+
+  const rebuilt = await ctx.readRows();
+
+  expect(live).toHaveLength(1);
+  expect(rebuilt).toStrictEqual(live);
+});
+
+test('it rebuilds an empty stop table after a trip and a clear', async () => {
+  const ctx = await setupTest();
+
+  await ctx.writeTrip({ reason: 'lost', at: 1000 });
+  await ctx.writeClear();
+  await ctx.rebuild();
 
   const rows = await ctx.readRows();
 

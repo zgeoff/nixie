@@ -10,7 +10,7 @@ import {
 import { buildLogSeeder } from '@heynixie/log/test-utils';
 import { buildActionProposalInput } from '@heynixie/policy';
 import { setFaultPointHandler, writeStepCommit, writeTaskControl } from '@heynixie/tasks';
-import { readTestLeases } from '@heynixie/tasks/test-utils';
+import { buildTaskSeeder, readTestLeases } from '@heynixie/tasks/test-utils';
 import invariant from 'tiny-invariant';
 import { claimAction, runActionAttempt } from '../index';
 import { buildActionSeeder } from '../test-utils/build-action-seeder';
@@ -33,6 +33,7 @@ async function setupTest() {
     ...actions,
     db: actions.writer.db.$extendTables<ActionsTables>(),
     seed: buildActionSeeder({ context: actions.context }),
+    taskSeed: buildTaskSeeder({ context: actions.context }),
     definitions,
     pauseNixie: () =>
       withWriteTransaction(actions.writer, (tx) =>
@@ -1026,4 +1027,120 @@ test('it starts the next attempt of an action with a started attempt when its ta
 
   expect(lease.workID).toBe(queued.action_id);
   expect(stub.calls).toHaveLength(1);
+});
+
+test('it starts no attempt for an unstarted action whose task reached its limit after the claim, and frees the lease', async () => {
+  const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
+  const queued = await ctx.seed.action({ step });
+  const lease = await claimTestAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  const stub = buildStubConnector(() => ({ kind: 'success', result: {} }));
+
+  await ctx.taskSeed.limitReached({ taskID: step.lease.workID, stepKey: step.stepKey });
+
+  await runActionAttempt(ctx.context, lease, {
+    connectors: new Map([['test.send', stub.connector]]),
+    leaseMs: 60_000,
+  });
+
+  const leases = await readTestLeases(ctx.writer);
+  const action = await readTestAction(ctx.writer, queued.action_id);
+
+  expect(stub.calls).toStrictEqual([]);
+
+  expect(leases).toContainEqual({
+    kind: 'action',
+    workID: queued.action_id,
+    holder: null,
+    generation: 1,
+  });
+
+  expect(action).toMatchObject({ status: 'pending', attempt_count: 0 });
+});
+
+test('it starts the next attempt of an action with a started attempt when its task reached its limit', async () => {
+  const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
+  const queued = await ctx.seed.pendingRetryScheduledAction({ step });
+
+  await ctx.taskSeed.limitReached({ taskID: step.lease.workID, stepKey: step.stepKey });
+
+  ctx.clock.advance(3_600_000);
+
+  const lease = await claimTestAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  const stub = buildStubConnector(() => ({ kind: 'success', result: {} }));
+
+  await runActionAttempt(ctx.context, lease, {
+    connectors: new Map([['test.send', stub.connector]]),
+    leaseMs: 60_000,
+  });
+
+  expect(lease.workID).toBe(queued.action_id);
+  expect(stub.calls).toHaveLength(1);
+});
+
+test('it settles nothing when a spending stop lands while the policy check runs, and frees the lease', async () => {
+  const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
+  const queued = await ctx.seed.action({ step });
+  const lease = await claimTestAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  const stub = buildStubConnector(() => ({ kind: 'success', result: {} }));
+
+  await runActionAttempt(ctx.context, lease, {
+    connectors: new Map([['test.send', stub.connector]]),
+    leaseMs: 60_000,
+    checkAttempt: async () => {
+      await buildLogSeeder(ctx.context).spendStop();
+
+      return {
+        kind: 'deny',
+        rule: { id: 'owner.no-team', revision: 2 },
+        message: 'rule owner.no-team (r2)',
+      };
+    },
+  });
+
+  const leases = await readTestLeases(ctx.writer);
+  const action = await readTestAction(ctx.writer, queued.action_id);
+
+  expect(stub.calls).toStrictEqual([]);
+  expect(action).toMatchObject({ status: 'pending', attempt_count: 0 });
+
+  expect(leases).toContainEqual({
+    kind: 'action',
+    workID: queued.action_id,
+    holder: null,
+    generation: 1,
+  });
+});
+
+test('it settles nothing when a task limit lands while the policy check runs, and frees the lease', async () => {
+  const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
+  const queued = await ctx.seed.action({ step });
+  const lease = await claimTestAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  const stub = buildStubConnector(() => ({ kind: 'success', result: {} }));
+
+  await runActionAttempt(ctx.context, lease, {
+    connectors: new Map([['test.send', stub.connector]]),
+    leaseMs: 60_000,
+    checkAttempt: async () => {
+      await ctx.taskSeed.limitReached({ taskID: step.lease.workID, stepKey: step.stepKey });
+
+      return {
+        kind: 'deny',
+        rule: { id: 'owner.no-team', revision: 2 },
+        message: 'rule owner.no-team (r2)',
+      };
+    },
+  });
+
+  const action = await readTestAction(ctx.writer, queued.action_id);
+
+  expect(stub.calls).toStrictEqual([]);
+  expect(action).toMatchObject({ status: 'pending', attempt_count: 0 });
 });

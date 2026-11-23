@@ -2,7 +2,7 @@ import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import type { TasksContext } from '@heynixie/tasks';
 import {
   isGateBarring,
-  readTaskHolds,
+  readTaskGate,
   requireLease,
   resetLease,
   waitAtFaultPoint,
@@ -119,9 +119,9 @@ function readAndWriteStart(
       .where('actions.action_id', '=', attempt.action.action_id)
       .executeTakeFirstOrThrow();
 
-    const holds = await readTaskHolds(tx, attempt.action.task_id);
+    const gate = await readTaskGate(tx, attempt.action.task_id, 'action');
 
-    const isGateHeld = isGateBarring('action', holds, { isStarted: action.attempt_count > 0 });
+    const isGateHeld = isGateBarring('action', gate, { isStarted: action.attempt_count > 0 });
     const isBarred = action.is_barred === 1 || action.is_barred === true;
     const isToolHeld = probeToolHeld(options, action.tool);
 

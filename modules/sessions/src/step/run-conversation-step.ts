@@ -71,8 +71,8 @@ export async function runConversationStep(
 }
 
 // The step start: it trips the stop at a turn limit, then reads the gate. A step held for the stop
-// ends before a capture, an approved call or a model turn, and writes no record. The task keeps its
-// state and queued calls, and the claim filter holds its next claim until the clear.
+// ends before a capture, an approved call or a model turn, and commits nothing. The task keeps its
+// work and queued calls, and the claim filter holds its next claim until the clear.
 async function runSpendCheck(
   conversation: ConversationRun,
   input: StepInput,
@@ -92,6 +92,7 @@ async function runSpendCheck(
     records: [],
     acknowledged: [],
     sessionBoundary: input.sessionBoundary,
+    isHeld: true,
   };
 }
 

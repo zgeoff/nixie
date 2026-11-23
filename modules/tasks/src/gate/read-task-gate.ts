@@ -3,16 +3,25 @@ import { readPauseSince, readSpendStopSince } from '@heynixie/log';
 import type { Kysely } from 'kysely';
 import invariant from 'tiny-invariant';
 import { match } from 'ts-pattern';
-import type { TaskGate, TaskHoldReason, TasksTables } from '../types';
+import type { GateCaller, TaskGate, TaskHoldReason, TasksTables } from '../types';
 import { holdReasons } from './build-hold-checks';
+import { pickGateRule } from './pick-gate-rule';
 import { readTaskHolds } from './read-task-holds';
 
-// The one answer to "may this task go on": open, or held with the first reason that holds. The
-// caller passes the transaction of the write or the read that the answer guards.
-export async function readTaskGate(db: Kysely<unknown>, taskID: string): Promise<TaskGate> {
+// The one answer to "may this task go on": open, or held with the first reason that holds. A caller
+// that names itself skips the reasons its rule always passes, so a reason it passes never hides one
+// it heeds, such as an ended task under nixie's pause.
+export async function readTaskGate(
+  db: Kysely<unknown>,
+  taskID: string,
+  caller?: GateCaller,
+): Promise<TaskGate> {
   const holds = await readTaskHolds(db, taskID);
 
-  const reason = holdReasons.find((candidate) => holds[candidate]);
+  const reason = holdReasons.find(
+    (candidate) =>
+      holds[candidate] && (caller === undefined || pickGateRule(caller, candidate) !== 'pass'),
+  );
 
   if (reason === undefined) {
     return { open: true };

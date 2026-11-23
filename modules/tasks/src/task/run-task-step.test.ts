@@ -5,6 +5,7 @@ import { waitForCondition } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import { createConversationTask } from '../conversation/create-conversation-task';
 import { markBeforeTurnFailure } from '../step/mark-before-turn-failure';
+import { readTestLeases } from '../test-utils/read-test-leases';
 import { startTestTasks } from '../test-utils/start-test-tasks';
 import type { StepInput, StepResult, TasksTables } from '../types';
 import { claimTask } from './projection/claim-task';
@@ -442,6 +443,95 @@ test('it tells a running step that the user interrupted it, and commits what the
 
   expect(seen.isSignalAborted).toBeFalse();
   expect(task).toStrictEqual({ state: 'waiting', committed_steps: 1 });
+});
+
+test('it commits nothing for a step held for the spending stop, and returns the task to ready with its lease free', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  await writeInboxRecords(ctx.context, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'what is on today?' },
+    },
+  ]);
+
+  const claim = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  invariant(claim);
+
+  await runTaskStep(ctx.context, claim, {
+    runStep: () =>
+      Promise.resolve({ next: 'continue', records: [], acknowledged: [2], isHeld: true }),
+    leaseMs: 60_000,
+    logger: () => {},
+    maxStepErrors: 3,
+    retryDelayMs: 30_000,
+    maxRetryDelayMs: 300_000,
+  });
+
+  const task = await ctx.db
+    .selectFrom('tasks')
+    .select(['state', 'committed_steps', 'read_cursor', 'step_errors'])
+    .executeTakeFirstOrThrow();
+
+  const leases = await readTestLeases(ctx.writer);
+  const next = await claimTask(ctx.context, { holder: 'runner-b', leaseMs: 60_000 });
+
+  expect(task).toStrictEqual({
+    state: 'ready',
+    committed_steps: 0,
+    read_cursor: 0,
+    step_errors: 0,
+  });
+
+  expect(leases).toContainEqual({
+    kind: 'task',
+    workID: 'conversation',
+    holder: null,
+    generation: 1,
+  });
+
+  expect(next?.stepKey).toBe('conversation:1');
+});
+
+test('it keeps a stopped state when the task was stopped during a step held for the spending stop', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  await writeInboxRecords(ctx.context, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'what is on today?' },
+    },
+  ]);
+
+  const claim = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  invariant(claim);
+
+  await runTaskStep(ctx.context, claim, {
+    runStep: async () => {
+      await writeTaskControl(ctx.context, { taskID: 'conversation', control: 'stop' });
+
+      return { next: 'continue', records: [], acknowledged: [], isHeld: true };
+    },
+    leaseMs: 60_000,
+    logger: () => {},
+    maxStepErrors: 3,
+    retryDelayMs: 30_000,
+    maxRetryDelayMs: 300_000,
+  });
+
+  const task = await ctx.db.selectFrom('tasks').select('state').executeTakeFirstOrThrow();
+
+  expect(task.state).toBe('stopped');
 });
 
 test('it counts no step error when the step failed while the spending stop stands, and keeps the task ready with its inbox unread', async () => {

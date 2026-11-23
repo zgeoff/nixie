@@ -1,7 +1,7 @@
 import { withWriteTransaction } from '@heynixie/log';
 import type { Transaction } from 'kysely';
 import { isGateBarring } from '../gate/is-gate-barring';
-import { readTaskHolds } from '../gate/read-task-holds';
+import { readTaskGate } from '../gate/read-task-gate';
 import type { ClaimCandidate, Lease, LeaseKind, TasksContext, TasksTables } from '../types';
 import { waitAtFaultPoint } from './wait-at-fault-point';
 
@@ -68,19 +68,15 @@ async function probeRefusalByGate(
   kind: LeaseKind,
   candidate: ClaimCandidate,
 ): Promise<boolean> {
-  const holds = await readTaskHolds(tx, candidate.taskID);
-
   const caller = kind === 'task' ? 'task_claim' : 'action';
-  const isBarred = isGateBarring(caller, holds, { isStarted: candidate.isStarted === true });
+
+  const gate = await readTaskGate(tx, candidate.taskID, caller);
+
+  const isBarred = isGateBarring(caller, gate, { isStarted: candidate.isStarted === true });
 
   if (isBarred && NIXIE_TEST_BUILD) {
-    const reasons = Object.entries(holds)
-      .filter(([, isHeld]) => isHeld)
-      .map(([reason]) => reason)
-      .join(', ');
-
     throw new Error(
-      `a candidate query returned work ${candidate.workID} of task ${candidate.taskID}, which the task gate holds for ${reasons}`,
+      `a candidate query returned work ${candidate.workID} of task ${candidate.taskID}, which the task gate holds for ${gate.open ? 'nothing' : gate.reason}`,
     );
   }
 

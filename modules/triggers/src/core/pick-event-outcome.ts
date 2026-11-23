@@ -24,6 +24,11 @@ export function pickEventOutcome(
     return { kind: 'wait' };
   }
 
+  // a held task's reason outranks the source's own, so a late fire at a paused task reads task_held
+  if (answer?.fire === 'held') {
+    return { kind: 'skip', thread, reason: 'task_held' };
+  }
+
   if (event.skip !== undefined) {
     return { kind: 'skip', thread, reason: event.skip };
   }
@@ -40,6 +45,5 @@ export function pickEventOutcome(
       thread,
       reason: 'still_running' as const,
     }))
-    .with('held', () => ({ kind: 'skip' as const, thread, reason: 'task_held' as const }))
     .exhaustive();
 }

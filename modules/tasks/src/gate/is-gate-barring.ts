@@ -1,19 +1,21 @@
 import { match } from 'ts-pattern';
-import type { GateCaller, TaskHolds } from '../types';
-import { holdReasons } from './build-hold-checks';
+import type { GateCaller, TaskGate } from '../types';
 import { pickGateRule } from './pick-gate-rule';
 
 export interface GateWork {
   readonly isStarted: boolean;
 }
 
-// Whether the caller leaves the work alone, from the holds that stand on its task.
-export function isGateBarring(caller: GateCaller, holds: TaskHolds, work: GateWork): boolean {
-  return holdReasons.some((reason) =>
-    match(pickGateRule(caller, reason))
-      .with('skip', () => holds[reason])
-      .with('skip_unstarted', () => holds[reason] && !work.isStarted)
-      .with('pass', () => false)
-      .exhaustive(),
-  );
+// Whether the caller leaves the work alone, from the gate that readTaskGate read for the same
+// caller.
+export function isGateBarring(caller: GateCaller, gate: TaskGate, work: GateWork): boolean {
+  if (gate.open) {
+    return false;
+  }
+
+  return match(pickGateRule(caller, gate.reason))
+    .with('skip', () => true)
+    .with('skip_unstarted', () => !work.isStarted)
+    .with('pass', () => false)
+    .exhaustive();
 }

@@ -162,11 +162,9 @@ async function runOpenWorker(
 
 // The gate of the task whose step started the worker: for a conversation step, the conversation's.
 async function probeSpendStopped(deps: WorkerDeps, plan: WorkerPlan): Promise<boolean> {
-  if (deps.spend === undefined) {
-    return false;
+  if (deps.spend !== undefined) {
+    await checkSpendTurns(deps.spend);
   }
-
-  await checkSpendTurns(deps.spend);
 
   const gate = await readTaskGateSnapshot(deps, plan.caller.thread);
 

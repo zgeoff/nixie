@@ -8,6 +8,8 @@ import { seedEndedDefinitionRun } from './seed-ended-definition-run';
 import { seedFailedConversationTurn } from './seed-failed-conversation-turn';
 import { seedFailedTask } from './seed-failed-task';
 import { seedGoneHolderLease } from './seed-gone-holder-lease';
+import type { LimitReachedSeed } from './seed-limit-reached';
+import { seedLimitReached } from './seed-limit-reached';
 import type { DefinitionRunSeed } from './seed-open-definition-run';
 import { seedOpenDefinitionRun } from './seed-open-definition-run';
 import { seedPausedTask } from './seed-paused-task';
@@ -41,6 +43,7 @@ export function buildTaskSeeder(deps: TaskSeederDeps) {
     doneTask: (input: StartedTaskSeed) => seedDoneTask(deps.context, input),
     openDefinitionRun: (input: DefinitionRunSeed) => seedOpenDefinitionRun(deps.context, input),
     endedDefinitionRun: (input: DefinitionRunSeed) => seedEndedDefinitionRun(deps.context, input),
+    limitReached: (input: LimitReachedSeed) => seedLimitReached(deps.context, input),
     closedTask: (input: StartedTaskSeed) => seedClosedTask(deps.context, input),
   };
 }
