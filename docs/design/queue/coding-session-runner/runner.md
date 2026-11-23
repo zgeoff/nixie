@@ -384,8 +384,8 @@ tasks.list({ runner: 'atc', state: 'waiting', limit: 20 });
   that a crash or a failed `stop` cut short. For each coding task that is stopped, closed or failed
   and whose `coding_sessions` row has no `unbound_at`, the sweep does what `ended` does.
 - A spawn can finish after a stop, and no step then writes `coding.session_bound`. The sweep reads
-  the session's ID from the spawn's outcome, a record on the task's thread, calls `stop`, and writes
-  `coding.session_bound` and `coding.session_unbound` once the call answers `ok`.
+  the session's ID from the spawn's outcome, a record on the task's thread, writes
+  `coding.session_bound` for it, then does what `ended` does.
 - A coding runner lacks `restart` and `interrupt`, so both controls get `runner_lacks_control`. A
   stopped coding task can only be closed.
 - A pause holds the task's queued steers and notes. The session runs on in atc, and its events land

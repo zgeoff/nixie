@@ -258,7 +258,7 @@ HTTP refusal carries none:
 | `unsupported`, to a note in the session's first minute; `host_leased`, to a stop                            | `refused`, `canClear: true`                                              |
 | HTTP 401, or a connection refused before the request left                                                   | `refused`, `canClear: true`                                              |
 | `idempotency_conflict`                                                                                      | `refused`, `canClear: false`; a bug, since an action's args never change |
-| HTTP 403 `insufficient_scope`, `bad_args`, `target_forbidden`, `session_dead`, `unsupported`                | `refused`, `canClear: false`                                             |
+| HTTP 403 `insufficient_scope`, `bad_args`, `target_forbidden`, `session_dead`, any other `unsupported`      | `refused`, `canClear: false`                                             |
 | `menu_open`, the adapter's own refusal of a steer to a session in `waiting`                                 | `refused`, `canClear: false`                                             |
 | any other code                                                                                              | `refused`, `canClear: false`                                             |
 
@@ -274,8 +274,8 @@ HTTP refusal carries none:
   attempt sends the same spawn.
 - `coding.start` and `coding.message` declare `idempotency_key` reconciliation with `keptForMs` 23
   h. A daemon forgets a completed key 24 h after its call, and the gateway keeps its own binding of
-  the key for 48 h, so a resend in the first 23 h gets the first answer. The queue's own key expiry
-  then sends an unknown outcome to you.
+  the key for 48 h, so in the first 23 h a resend never runs the call twice. The queue's own key
+  expiry then sends an unknown outcome to you.
 - A refused attempt's key is spent at the gateway: a resend of it gets `outcome_unknown` and runs
   nothing. So the next attempt after a refusal takes the next key, `<action ID>.<n>`, and an attempt
   after an unknown outcome keeps its key, which the gateway resends to the daemon as a replay.

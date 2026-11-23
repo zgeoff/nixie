@@ -117,7 +117,7 @@ This work changes these modules that every runner or connector uses:
 - **One task run spans the whole binding.** The start or the join opens it, and the session's end, a
   failed start, a stop, a close or a failure ends it, with one report. Between those, each event in
   the wake set reaches the report target as a `task_message`, and no event but `ended` ends the task
-  run.
+  run. `gone` never ends it.
 - **This runner's key is `atc`.** The config section `coding.atc` and the variant `task.start/atc`
   take their names from the key.
 - **The coding runner is generic over `CodingAdapter`, and its key is the adapter's ID.** A later

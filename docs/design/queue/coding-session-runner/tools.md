@@ -58,6 +58,7 @@ const codingSteerDeclaration: EffectDeclaration = {
   results: {},
 };
 const codingMessageDeclaration = codingSteerDeclaration; // the same shape, under its own tool name
+// Reconciliation: a steer declares `none`; a note declares `idempotency_key` (see the atc adapter).
 ```
 
 A `task_message` or an `owner_message` to a coding task becomes a `coding.message` action; see
