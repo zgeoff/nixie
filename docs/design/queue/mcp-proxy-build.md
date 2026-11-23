@@ -2,8 +2,7 @@
 
 - **Status:** draft
 - **Work items:** [the proxy](https://linear.app/zgeoff/issue/GEO-1842). It needs
-  [the credential store](https://linear.app/zgeoff/issue/GEO-1824) and
-  [one marker for outside text](https://linear.app/zgeoff/issue/GEO-2836). Two items build on it:
+  [the credential store](https://linear.app/zgeoff/issue/GEO-1824). Two items build on it:
   [a changed tool in a running task](https://linear.app/zgeoff/issue/GEO-1254) and
   [the pin in the action hash](https://linear.app/zgeoff/issue/GEO-1255).
 - **Decision records:** [0009](../../decisions/0009-mcp-proxy.md)
@@ -16,8 +15,8 @@ credential store. The first build serves 2 HTTP servers of your own: a work trac
 delivery-metrics server. [The MCP proxy design](../platform/connectors/mcp-proxy.md) holds the rules
 for pins, failed listings and declarations, and this design holds the contracts the build follows.
 Build the proxy item from this design once the owner sets Status to agreed and the credential store
-and marker items have landed. Each [open question](#open-questions) changes only a config value or a
-declaration, so the build ships with each one's default and needs no answer first.
+item has landed. Each [open question](#open-questions) changes only a config value or a declaration,
+so the build ships with each one's default and needs no answer first.
 
 ## Shape
 
@@ -345,13 +344,26 @@ const definition: ToolDefinition = {
 ### Calls and the untrusted markers
 
 ```ts
-// libs/wire, from the marker work item: the one helper for outside text
-declare function renderFenced(tag: string, source: ContentSource, text: string): string;
+// libs/wire, built: the one helper for outside text
+declare function renderFenced(input: {
+  tag: string;
+  attributes: Record<string, string>;
+  text: string;
+  fence: string; // from mintBlockID()
+}): string;
 
 // tools module: the endpoint's answer to every proxied call
 const answer: CallToolResult = {
   content: [
-    { type: 'text', text: renderFenced('tool-result', 'untrusted', body) },
+    {
+      type: 'text',
+      text: renderFenced({
+        tag: 'tool-result',
+        attributes: { source: 'untrusted' },
+        text: body,
+        fence: mintBlockID(),
+      }),
+    },
     ...images, // image blocks, after the text
   ],
   isError: false, // true for a server's isError result, whose text takes the same markers
