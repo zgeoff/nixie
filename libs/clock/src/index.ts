@@ -1,4 +1,6 @@
+export { buildDurationSchema } from './build-duration-schema';
 export { formatAge } from './format-age';
+export { parseDuration } from './parse-duration';
 export { setWorkTracker } from './set-work-tracker';
 export type { Sweep, SweepOptions } from './start-sweep';
 export { startSweep } from './start-sweep';

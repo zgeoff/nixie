@@ -412,6 +412,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@zgeoff/std": "catalog:",
+        "zod": "catalog:",
       },
       "devDependencies": {
         "@zgeoff/testing": "catalog:",

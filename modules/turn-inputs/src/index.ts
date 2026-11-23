@@ -7,7 +7,6 @@ export type { TurnInputs, TurnInputsWork } from './create-turn-inputs';
 export { createTurnInputs } from './create-turn-inputs';
 export { inputLogSetCodec } from './state/input-log-set-codec';
 export { inputOpenedCodec } from './state/input-opened-codec';
-export { parseDuration } from './utils/parse-duration';
 
 export type {
   TurnInputLogConfig,
