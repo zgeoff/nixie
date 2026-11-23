@@ -56,11 +56,11 @@ type Period = { kind: PeriodKind; start: string; startsAtMs: number; endsAtMs: n
 ```
 
 - Every counter takes its period from `periodOf` with the time tool's `default_zone`. A day starts
-  at local midnight, a week on Monday, a month on the 1st. A clock change makes a day 23 or 25
-  hours.
+  at local midnight, a week on Monday, a month on the 1st. A clock change makes a day shorter or
+  longer by its shift.
 - `periodOf` replaces the gateway's reset helper, the budgets' period code and the turn count's
-  sums, and gives the same bounds they give today for every zone whose offset is a whole number of
-  15 minutes. The turn count keeps its 15-minute buckets.
+  sums, and gives the same bounds they give today. The turn count keeps its 15-minute buckets, so
+  the time tool refuses a `default_zone` whose offset isn't a whole number of 15 minutes.
 
 ### Prices
 
@@ -76,7 +76,8 @@ type Period = { kind: PeriodKind; start: string; startsAtMs: number; endsAtMs: n
   it differs from the route's. The release after this design drops the requirement that a profile
   set `prices` when a gateway runs, so a rollback by one release still reads the config.
 - `search.price_micros` defaults to Kagi's 12,000. The search tool charges it and records it as the
-  call's cost, from the one value.
+  call's cost, from the one value. A deployment sets it only once the release after this design
+  runs, so the release before still reads the config.
 - A changed price applies to calls after the process that holds it reads it, and never reprices a
   recorded call.
 
@@ -92,25 +93,32 @@ const hold = pickRequestHold(request, route); // the reply estimate's rule, run 
 - The gateway admits a request only when each counter's spend plus its open holds plus this hold
   stays within the limit, and adds the hold under the store's lock. Two requests can't both take the
   last of a limit.
-- The hold uses the estimate rule that prices a reply with no usage: the highest input-side rate,
-  and `max_tokens` or the route's `maxOutputTokens` for output. A request with neither bound is
-  refused, as today.
-- Settling replaces the hold with the reply's charge, or with the estimate when the reply has no
-  usage. A restart drops open holds, because the requests that held them are gone.
-- The store file keeps its version and its float dollars; holds live in memory only.
+- The hold prices the route's whole context window at the highest input-side rate, and `max_tokens`
+  or the route's `maxOutputTokens` for output, so a request that continues a stored response still
+  has a bound. A request with no output bound is refused, as today.
+- Settling replaces the hold with the charge that today's rules pick: the reply's usage, the
+  estimate when the reply spent with no usage, and nothing when the provider refused it.
+- A hold counts against the period it settles in, so the open holds carry into a new day or month at
+  its reset.
+- The gateway writes each open hold to a holds file beside its store before it sends the request,
+  and removes it when the hold settles. After a restart it settles every hold in the file at its
+  full amount. The store file keeps its version and its float dollars, and a gateway of the release
+  before ignores the holds file.
 
 ### The task and worker meters
 
 - With a gateway, a task run's dollars are the gateway's count for the task run's sandbox, plus each
-  of its worker runs' counts. The server reads them with `GET /sandboxes/<name>` before each step
-  and after each worker run.
+  of its worker runs' counts. The server reads them with `GET /sandboxes/<name>` before and after
+  each step, after each worker run, and when the run ends.
 - The server registers each task run's sandbox with a dollar limit: the run's limit less what its
-  worker runs spent. The gateway then refuses a call past it, and the runner ends the step with
+  worker runs spent. It changes the limit with `PATCH /sandboxes/<name>`, which sets the limit and
+  keeps the count. The gateway refuses a call past the limit, and the runner ends the step with
   `limit`.
 - A worker run keeps today's rule: its limit is the smaller of `workerRun` and what its task run has
-  left, and when the gateway doesn't answer at its end, it charges its planned dollars.
+  left, and when the gateway doesn't answer at its end, it charges the larger of its planned dollars
+  and its own tally.
 - Without a gateway, the task meter prices the guest's call frames with the profile's table, as
-  today.
+  today, and writes the same `task.meter_read` record at the same points.
 - A task run opened before this design keeps today's meter until it ends.
 
 ### The ledger
@@ -126,13 +134,16 @@ spend_ledger          plain table, log module
 ```
 
 - The ledger is a projection of `budget.charged`, `budget.credited`, `task.meter_read` and
-  `worker.run_ended`, so a rebuild reproduces it. `task.meter_read` is a new record of the gateway's
-  counts each time the server reads them for a task run.
+  `worker.run_ended`, so a rebuild reproduces it. `task.meter_read` is a new record, with the task
+  run's ID, of the meter's count each time the server reads it.
 - A budget charge records its `ledger_key`, and a credit subtracts from that key, so a credit lands
   on the row its charge added to, whatever the budget's period is by then. A charge from before this
-  design has no key, and its credit uses its budget ID and `periodStart`, as today.
+  design has no key, and its credit uses its budget ID, `periodStart` and the period kind the budget
+  had at the charge's sequence.
 - For one release the budgets module keeps writing `budget_ledger` beside `spend_ledger`, so the
-  release before reads current balances after a rollback. The release after drops it.
+  release before reads current balances after a rollback. The release before writes the same
+  records, and `spend_ledger` folds them when the new release runs again. The release after drops
+  `budget_ledger`.
 - Every amount in the ledger is an integer. A dollar amount from the gateway converts to micros
   rounded up.
 - `search_calls`, the search tool's daily call count, and the turn count stay outside the ledger:
