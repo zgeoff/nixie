@@ -21,7 +21,8 @@ export function buildDevicesListTool(options: DeviceToolOptions): ToolDefinition
     description:
       'Lists the devices the owner enrolled, each with its ID, name, whether its screen and camera ' +
       'are on, whether it is online, its screen size in pixels and what it shows now. The size ' +
-      'and what it shows are null while the device is offline. `layout` is the layout the device ' +
+      'and what it shows are null while the device is offline. What it shows is a show, the ' +
+      'layout while a region shows content, or the idle scene. `layout` is the layout the device ' +
       'holds, online or not, apart from what it shows: its grid and, for each region, its kind, ' +
       'the time it ends and the ID of its content. A region that is blank has no kind.',
     input: listInput,
@@ -55,14 +56,18 @@ async function readListedDevice(options: DeviceToolOptions, device: Device): Pro
       pixels === null
         ? null
         : { width: pixels.width, height: pixels.height, pixelRatio: pixels.pixelRatio },
-    showing: state === null ? null : toShowing(state),
+    showing: state === null ? null : toShowing(state, layout),
     layout: toListedLayout(layout),
   };
 }
 
-function toShowing(state: ScreenState): JSONObject {
+// What the screen draws, in the order the device draws it: a show, the layout while a region shows
+// content, then the idle scene.
+function toShowing(state: ScreenState, layout: LayoutView | null): JSONObject {
   if (state.kind === 'idle') {
-    return { kind: 'idle' };
+    const isLayoutVisible = layout?.regions.some((region) => region.shown !== null) ?? false;
+
+    return { kind: isLayoutVisible ? 'layout' : 'idle' };
   }
 
   return state.content.kind === 'image'

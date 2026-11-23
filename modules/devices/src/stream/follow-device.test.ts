@@ -1,8 +1,8 @@
 import { expect, test } from 'bun:test';
 import { withWriteTransaction } from '@heynixie/log';
+import { waitFor } from '@zgeoff/testing';
 import { removeDevice } from '../device/remove-device';
 import { startTestDevices } from '../test-utils';
-import { writeRegion } from '../tool/write-region';
 import { writeShow } from '../tool/write-show';
 import { followDevice } from './follow-device';
 
@@ -126,9 +126,15 @@ test('#followDevice sends the idle scene when a show ends, and never an older sh
 
   const second = await events.next();
 
+  const waiting = events.next();
+
+  await waitFor(() => {
+    expect(ctx.clock.countPending()).toBe(1);
+  });
+
   ctx.clock.advance(100);
 
-  const third = await events.next();
+  const third = await waiting;
 
   ctx.stop();
 
@@ -447,24 +453,24 @@ test('#followDevice sends the layout again with the region blank when its minute
   await ctx.seed.layout(device.deviceID);
   await events.next();
 
-  await writeRegion(
-    { log: ctx.log, definitions: ctx.definitions, clock: ctx.clock, streams: ctx.streams },
-    {
-      deviceID: device.deviceID,
-      thread: 'conversation',
-      region: 'note',
-      content: { kind: 'markdown', markdown: 'Bins go out tonight' },
-      untilMs: ctx.clock.now() + 50,
-      onEnd: 'blank',
-      previous: null,
-    },
-  );
+  await ctx.call('device.region', {
+    device: device.deviceID,
+    region: 'note',
+    content: { kind: 'markdown', markdown: 'Bins go out tonight' },
+    minutes: 1,
+  });
 
   const shown = await events.next();
 
-  ctx.clock.advance(100);
+  const waiting = events.next();
 
-  const blanked = await events.next();
+  await waitFor(() => {
+    expect(ctx.clock.countPending()).toBe(1);
+  });
+
+  ctx.clock.advance(60_000);
+
+  const blanked = await waiting;
 
   ctx.stop();
 
@@ -474,7 +480,7 @@ test('#followDevice sends the layout again with the region blank when its minute
       layout: {
         regions: [
           { name: 'pond', content: null },
-          { name: 'note', content: { kind: 'markdown' }, until: '2026-11-21T08:00:00.050Z' },
+          { name: 'note', content: { kind: 'markdown' }, until: '2026-11-21T08:01:00.000Z' },
           { name: 'clock', content: null },
         ],
       },

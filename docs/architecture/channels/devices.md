@@ -97,8 +97,11 @@ screen draws, in order, an unexpired `device.show`, the layout while at least on
 content, then the idle scene.
 
 `device.region` reads the layout when its call runs, so a call that waited for approval fails with
-`UNKNOWN_REGION` when a new layout or a clear removed its region in the meantime. Until then the
-region keeps its content.
+`UNKNOWN_REGION` when a clear or a new layout removed its region in the meantime. The layout's ID is
+part of the call's destination, so a new layout that keeps the region's name makes the approval
+stale, and nothing runs. The write reads the region and the content it covers in its own
+transaction, so two calls for one region never cover the same content. Until then the region keeps
+its content.
 
 ## The streams
 
@@ -138,8 +141,9 @@ first refusal: `UNKNOWN_DEVICE`, `SCREEN_OFF`, then the image refusals `UNKNOWN_
 `PAGE_NOT_BUILT`, the image refusals, then `OFFLINE`.
 
 `devices.list` shows the saved layout whether or not the device is online, apart from `showing`.
-Each region lists its kind, `until` and the short ID of its `device.region_shown` record, and never
-its content. A blank region has a null kind.
+`showing` follows the screen's order: it is `layout` while no show covers the layout and at least
+one region shows content. Each region lists its kind, `until` and the short ID of its
+`device.region_shown` record, and never its content. A blank region has a null kind.
 
 ## Device mode
 

@@ -7,12 +7,9 @@ import { readScreenRecord } from '../screen/read-screen-record';
 import type { ShownRegion } from '../types';
 import { isRegionActive } from './is-region-active';
 
-// the longest run of `then: 'previous'` links the reader follows
-const maxChain = 50;
-
 // What a region shows now, from the record its row points at. A record whose minutes passed gives
-// way to the one it covered when it asked for that, which gives way the same way, and else to a
-// blank region. A record that a forget or a reset removed, or whose image is gone, shows nothing.
+// way to the one it covered when it asked for that, and else to a blank region. A record that a
+// forget or a reset removed, or whose image is gone, shows nothing, at any time.
 export async function readRegionState(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   sequence: number,
@@ -20,20 +17,24 @@ export async function readRegionState(
 ): Promise<ShownRegion | null> {
   const next: { sequence: number | null } = { sequence };
 
-  for (let hops = 0; hops < maxChain && next.sequence !== null; hops += 1) {
+  while (next.sequence !== null) {
     const record = await readScreenRecord(log, next.sequence);
 
-    if (record === null) {
+    if (record === null || record.fields === null) {
       return null;
     }
 
     const payload = deviceRegionShownCodec.decode(record.payload);
 
     if (isRegionActive(payload.until, nowMs)) {
-      return readShown(log, next.sequence, payload, record.fields?.['content']);
+      return readShown(log, next.sequence, payload, record.fields['content']);
     }
 
-    next.sequence = payload.onEnd === 'previous' ? payload.previous : null;
+    // a record covers only an earlier one, so the walk ends
+    next.sequence =
+      payload.onEnd === 'previous' && payload.previous !== null && payload.previous < next.sequence
+        ? payload.previous
+        : null;
   }
 
   return null;

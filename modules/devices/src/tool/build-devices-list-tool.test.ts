@@ -81,3 +81,35 @@ test('it names the image an online device shows', async () => {
     result: { devices: [{ showing: { kind: 'image', image: 'k3x9m2p7qa', until: null } }] },
   });
 });
+
+test('it lists the screen as idle when no region shows content and no show covers the layout', async () => {
+  const ctx = await setupTest();
+  const device = await ctx.seed.screenOnDevice({ name: 'desk panel' });
+
+  ctx.streams.open(device.deviceID, { width: 1920, height: 480, pixelRatio: 1 });
+
+  await ctx.seed.layout(device.deviceID);
+
+  const listed = await ctx.call('devices.list', {});
+
+  expect(listed).toMatchObject({ result: { devices: [{ showing: { kind: 'idle' } }] } });
+});
+
+test('it lists the screen as the layout when a region shows content and no show covers it', async () => {
+  const ctx = await setupTest();
+  const device = await ctx.seed.screenOnDevice({ name: 'desk panel' });
+
+  ctx.streams.open(device.deviceID, { width: 1920, height: 480, pixelRatio: 1 });
+
+  await ctx.seed.layout(device.deviceID);
+
+  await ctx.call('device.region', {
+    device: device.deviceID,
+    region: 'note',
+    content: { kind: 'markdown', markdown: 'Bins go out tonight' },
+  });
+
+  const listed = await ctx.call('devices.list', {});
+
+  expect(listed).toMatchObject({ result: { devices: [{ showing: { kind: 'layout' } }] } });
+});

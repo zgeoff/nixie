@@ -1,14 +1,8 @@
-import { readImageState } from '@heynixie/connectors';
-import type { ImageState } from '@heynixie/connectors';
-import { clockFormats, regionContentSchema, regionMarkdownLimit } from '@heynixie/contract';
-import type { RegionContent } from '@heynixie/contract';
+import { clockFormats, regionMarkdownLimit } from '@heynixie/contract';
 import type { ToolDefinition } from '@heynixie/tools';
-import { z } from 'zod';
-import { readDeviceByShortID } from '../device/read-device-by-short-id';
-import { readLayout } from '../layout/read-layout';
 import type { DeviceToolOptions } from './device-tool-options';
 import { noteDeclaration } from './note-declaration';
-import { pickRegionRefusal } from './pick-region-refusal';
+import { readRegionCall } from './read-region-call';
 import { refuseDevice } from './refuse-device';
 import { writeRegion } from './write-region';
 
@@ -78,15 +72,6 @@ const regionInput = {
   additionalProperties: false,
 };
 
-const regionArguments = z.object({
-  device: z.string(),
-  region: z.string(),
-  content: z.looseObject({ kind: z.string() }),
-  minutes: z.int().min(1).max(1440).optional(),
-  // oxlint-disable-next-line unicorn/no-thenable -- the design names this input `then`
-  then: z.enum(['blank', 'previous']).optional(),
-});
-
 const regionOutput = {
   type: 'object',
   properties: {
@@ -123,90 +108,60 @@ export function buildDeviceRegionTool(options: DeviceToolOptions): ToolDefinitio
       },
     },
     execution: 'direct',
+    prepare: async (input) => {
+      const found = await readRegionCall(options, input);
+
+      if (found.status === 'refused') {
+        return refuseDevice(found.refusal);
+      }
+
+      // the layout is part of what the owner approves: a layout that replaced this one by the time
+      // the call runs changes the destination, so the call does not fill a region of the new layout
+      return {
+        destinations:
+          found.status === 'ready'
+            ? [`${found.device.deviceID}/${found.layout.layoutID}/${found.region.name}`]
+            : [],
+      };
+    },
     run: async (call, context) => {
-      const parsed = regionArguments.safeParse(call.input);
+      const found = await readRegionCall(options, call.input);
 
-      if (!parsed.success) {
-        return { status: 'error', message: z.prettifyError(parsed.error) };
+      if (found.status === 'invalid') {
+        return { status: 'error', message: found.message };
       }
 
-      const input = parsed.data;
-      const isPage = input.content.kind === 'page';
-      const content = regionContentSchema.safeParse(input.content);
-
-      if (!isPage && !content.success) {
-        return { status: 'error', message: z.prettifyError(content.error) };
-      }
-
-      const device = await readDeviceByShortID(options.log.writer.db, input.device);
-
-      // the layout is read when the call runs, so a call that waited for approval finds a region
-      // that a new layout removed in the meantime
-      const layout =
-        device === null
-          ? null
-          : await readLayout(options.log, device.deviceID, options.clock.now());
-
-      const region = layout?.regions.find((candidate) => candidate.name === input.region);
-      const named = content.success ? await nameImage(options, content.data) : null;
-
-      const refusal = pickRegionRefusal({
-        device,
-        isRegionKnown: region !== undefined,
-        isPage,
-        images: named === null ? [] : [named.state],
-        isOnline: options.streams.isOnline(input.device),
-      });
-
-      if (refusal !== null || device === null || region === undefined || named === null) {
-        return { status: 'ok', ...refuseDevice(refusal ?? 'UNKNOWN_REGION') };
+      if (found.status === 'refused') {
+        return { status: 'ok', ...refuseDevice(found.refusal) };
       }
 
       const untilMs =
-        input.minutes === undefined ? null : options.clock.now() + input.minutes * 60_000;
+        found.arguments.minutes === undefined
+          ? null
+          : options.clock.now() + found.arguments.minutes * 60_000;
 
-      const onEnd = input.then ?? 'blank';
-
-      await writeRegion(options, {
-        deviceID: device.deviceID,
+      const written = await writeRegion(options, {
+        deviceID: found.device.deviceID,
         thread: context.run.thread,
-        region: region.name,
-        content: named.content,
+        layoutID: found.layout.layoutID,
+        region: found.region.name,
+        content: found.content,
         untilMs,
-        onEnd,
-        previous: onEnd === 'previous' ? (region.shown?.sequence ?? null) : null,
+        onEnd: found.arguments.then ?? 'blank',
       });
+
+      if (written === null) {
+        return { status: 'ok', ...refuseDevice('UNKNOWN_REGION') };
+      }
 
       return {
         status: 'ok',
         result: {
-          device: device.deviceID,
-          region: region.name,
+          device: found.device.deviceID,
+          region: found.region.name,
           until: untilMs === null ? null : new Date(untilMs).toISOString(),
         },
       };
     },
-  };
-}
-
-interface NamedContent {
-  readonly content: RegionContent;
-  readonly state: ImageState;
-}
-
-// The content with its image named by its short ID, and the state of that image.
-async function nameImage(
-  options: DeviceToolOptions,
-  content: RegionContent,
-): Promise<NamedContent> {
-  if (content.kind !== 'image') {
-    return { content, state: 'ok' };
-  }
-
-  const found = await readImageState(options.log, content.image);
-
-  return {
-    content: { ...content, image: found.image ?? content.image },
-    state: found.state,
   };
 }

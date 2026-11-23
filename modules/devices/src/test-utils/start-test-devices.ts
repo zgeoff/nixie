@@ -4,7 +4,9 @@ import { readDeviceByIdentity } from '../device/read-device-by-identity';
 import { readLayout } from '../layout/read-layout';
 import { createDeviceStreams } from '../stream/create-device-streams';
 import { buildDeviceToolCaller } from './build-device-tool-caller';
+import { makeDeviceToolPreparer } from './make-device-tool-preparer';
 import { removeTestRecordKey } from './remove-test-record-key';
+import { restartTestLog } from './restart-test-log';
 import { seedDevice } from './seed-device';
 import type { DeviceSeed } from './seed-device';
 import { seedLayout } from './seed-layout';
@@ -36,15 +38,25 @@ export async function startTestDevices() {
     removeKey: (sequence: number) => removeTestRecordKey(log, sequence),
     readLayout: (deviceID: string) => readLayout(log, deviceID, clock.now()),
 
-    // the tools of a server that just started: no stream is open yet, and the log is the same
-    callAfterRestart: buildDeviceToolCaller({
-      log,
-      definitions,
-      clock,
-      streams: createDeviceStreams(),
-    }),
+    // a server that just started over the same data directory: the old writer is stopped, and no
+    // stream is open yet
+    restart: async () => {
+      const restarted = await restartTestLog(log, clock);
+
+      return {
+        log: restarted,
+        readLayout: (deviceID: string) => readLayout(restarted, deviceID, clock.now()),
+        call: buildDeviceToolCaller({
+          log: restarted,
+          definitions,
+          clock,
+          streams: createDeviceStreams(),
+        }),
+      };
+    },
     readDevice: (identityID: string) => readDeviceByIdentity(log.writer.db, identityID),
     call: buildDeviceToolCaller({ log, definitions, clock, streams }),
+    prepare: makeDeviceToolPreparer({ log, definitions, clock, streams }),
   };
 }
 

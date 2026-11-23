@@ -63,7 +63,7 @@ export async function* followDevice(
         yield layoutState;
       }
 
-      await waitForChange(wake.wait(), pickWakeDelayMs(state, layout, nowMs));
+      await waitForChange(wake.wait(), options.clock, pickWakeDelayMs(state, layout, nowMs));
     }
   } finally {
     wake.stop();
@@ -71,23 +71,22 @@ export async function* followDevice(
   }
 }
 
-async function waitForChange(woken: Promise<void>, delayMs: number | null): Promise<void> {
+// Waits for a commit, or for the delay on the stream's own clock, so a clock that a test or a
+// verify run moves forward wakes the stream as a real minute would.
+async function waitForChange(
+  woken: Promise<void>,
+  clock: Clock,
+  delayMs: number | null,
+): Promise<void> {
   if (delayMs === null) {
     await woken;
 
     return;
   }
 
-  const timer: { id: ReturnType<typeof setTimeout> | null } = { id: null };
+  const sleeping = new AbortController();
 
-  await Promise.race([
-    woken,
-    new Promise<void>((resolve) => {
-      timer.id = setTimeout(resolve, delayMs);
-    }),
-  ]);
+  await Promise.race([woken, clock.sleep(delayMs, sleeping.signal)]);
 
-  if (timer.id !== null) {
-    clearTimeout(timer.id);
-  }
+  sleeping.abort();
 }

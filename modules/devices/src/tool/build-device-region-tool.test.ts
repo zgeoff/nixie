@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import { startTestDevices } from '../test-utils';
+import { writeRegion } from './write-region';
 
 async function setupTest() {
   const ctx = await startTestDevices();
@@ -554,28 +555,22 @@ test('it keeps the layout and the regions through a restart', async () => {
     minutes: 60,
   });
 
-  const before = await ctx.readRegions();
-  const after = await ctx.callAfterRestart('devices.list', {});
+  const before = await ctx.readLayout(device.deviceID);
+  const restarted = await ctx.restart();
+  const after = await restarted.readLayout(device.deviceID);
+  const listed = await restarted.call('devices.list', {});
 
-  expect(after).toMatchObject({
-    status: 'ok',
-    result: {
-      devices: [
-        {
-          online: false,
-          layout: {
-            regions: [
-              { name: 'pond', kind: null },
-              { name: 'note', kind: 'markdown', until: '2026-11-21T09:00:00.000Z' },
-              { name: 'clock', kind: null },
-            ],
-          },
-        },
-      ],
-    },
+  expect(after).toStrictEqual(before);
+
+  expect(after?.regions[1]).toMatchObject({
+    name: 'note',
+    shown: { untilMs: Date.parse('2026-11-21T09:00:00.000Z') },
   });
 
-  expect(before).toMatchObject({ devices: [{ online: true }] });
+  expect(listed).toMatchObject({
+    status: 'ok',
+    result: { devices: [{ online: false, layout: { regions: [{}, { kind: 'markdown' }, {}] } }] },
+  });
 });
 
 test('it keeps counting the minutes of a region while a show covers the layout', async () => {
@@ -660,4 +655,216 @@ test('it fails a call for a region that a new layout dropped', async () => {
   });
 
   expect(outcome).toMatchObject({ status: 'ok', refusalCode: 'UNKNOWN_REGION' });
+});
+
+test('it makes an approval stale when a new layout keeps the name of the region', async () => {
+  const ctx = await setupTest();
+  const device = await ctx.seed.screenOnDevice();
+
+  ctx.streams.open(device.deviceID, { width: 1920, height: 480, pixelRatio: 1 });
+
+  await ctx.seed.layout(device.deviceID);
+
+  const input = {
+    device: device.deviceID,
+    region: 'note',
+    content: { kind: 'markdown', markdown: 'Dentist at 3' },
+  };
+
+  const first = await ctx.readLayout(device.deviceID);
+  const queued = await ctx.prepare('device.region', input);
+
+  await ctx.call('device.layout', {
+    device: device.deviceID,
+    columns: ['1fr'],
+    rows: ['1fr'],
+    regions: [{ name: 'note', column: 1, row: 1 }],
+  });
+
+  const second = await ctx.readLayout(device.deviceID);
+  const approved = await ctx.prepare('device.region', input);
+
+  expect([queued, approved]).toStrictEqual([
+    { destinations: [`${device.deviceID}/${first?.layoutID}/note`] },
+    { destinations: [`${device.deviceID}/${second?.layoutID}/note`] },
+  ]);
+
+  expect(first?.layoutID).not.toBe(second?.layoutID);
+});
+
+test('it keeps a region as it is until its call is approved, and fails it when the layout is gone', async () => {
+  const ctx = await setupTest();
+  const device = await ctx.seed.screenOnDevice();
+
+  ctx.streams.open(device.deviceID, { width: 1920, height: 480, pixelRatio: 1 });
+
+  await ctx.seed.layout(device.deviceID);
+
+  const input = {
+    device: device.deviceID,
+    region: 'note',
+    content: { kind: 'markdown', markdown: 'Dentist at 3' },
+  };
+
+  await ctx.prepare('device.region', input);
+
+  const unchanged = await ctx.readLayout(device.deviceID);
+
+  await ctx.call('device.layout', { device: device.deviceID, clear: true });
+
+  const approved = await ctx.prepare('device.region', input);
+
+  expect(unchanged?.regions.map((region) => region.shown)).toStrictEqual([null, null, null]);
+  expect(approved).toMatchObject({ refusalCode: 'UNKNOWN_REGION' });
+});
+
+test('it never fills a region of a layout that replaced the one the write read', async () => {
+  const ctx = await setupTest();
+  const device = await ctx.seed.screenOnDevice();
+
+  ctx.streams.open(device.deviceID, { width: 1920, height: 480, pixelRatio: 1 });
+
+  await ctx.seed.layout(device.deviceID);
+
+  const stale = await ctx.readLayout(device.deviceID);
+
+  await ctx.call('device.layout', {
+    device: device.deviceID,
+    columns: ['1fr'],
+    rows: ['1fr'],
+    regions: [{ name: 'note', column: 1, row: 1 }],
+  });
+
+  const written = await writeRegion(
+    { log: ctx.log, definitions: ctx.definitions, clock: ctx.clock, streams: ctx.streams },
+    {
+      deviceID: device.deviceID,
+      thread: 'conversation',
+      layoutID: stale?.layoutID ?? '',
+      region: 'note',
+      content: { kind: 'markdown', markdown: 'Dentist at 3' },
+      untilMs: null,
+      onEnd: 'blank',
+    },
+  );
+
+  const layout = await ctx.readLayout(device.deviceID);
+
+  expect(written).toBeNull();
+  expect(layout?.regions.map((region) => region.shown)).toStrictEqual([null]);
+});
+
+test('it covers the content an earlier call wrote when two calls for a region run together', async () => {
+  const ctx = await setupTest();
+  const device = await ctx.seed.screenOnDevice();
+
+  ctx.streams.open(device.deviceID, { width: 1920, height: 480, pixelRatio: 1 });
+
+  await ctx.seed.layout(device.deviceID);
+
+  await ctx.call('device.region', {
+    device: device.deviceID,
+    region: 'note',
+    content: { kind: 'markdown', markdown: 'base' },
+  });
+
+  await Promise.all([
+    ctx.call('device.region', {
+      device: device.deviceID,
+      region: 'note',
+      content: { kind: 'markdown', markdown: 'first' },
+      minutes: 60,
+    }),
+    ctx.call('device.region', {
+      device: device.deviceID,
+      region: 'note',
+      content: { kind: 'markdown', markdown: 'second' },
+      minutes: 10,
+      // oxlint-disable-next-line unicorn/no-thenable -- the tool's input is named then
+      then: 'previous',
+    }),
+  ]);
+
+  ctx.clock.advance(11 * 60_000);
+
+  const layout = await ctx.readLayout(device.deviceID);
+
+  expect(layout?.regions[1]?.shown?.content).toStrictEqual({
+    kind: 'markdown',
+    markdown: 'first',
+  });
+});
+
+test('it blanks a region whose forgotten update asked for previous, before and after its minutes pass', async () => {
+  const ctx = await setupTest();
+  const device = await ctx.seed.screenOnDevice();
+
+  ctx.streams.open(device.deviceID, { width: 1920, height: 480, pixelRatio: 1 });
+
+  await ctx.seed.layout(device.deviceID);
+
+  await ctx.call('device.region', {
+    device: device.deviceID,
+    region: 'note',
+    content: { kind: 'markdown', markdown: 'base' },
+  });
+
+  await ctx.call('device.region', {
+    device: device.deviceID,
+    region: 'note',
+    content: { kind: 'markdown', markdown: 'second' },
+    minutes: 10,
+    // oxlint-disable-next-line unicorn/no-thenable -- the tool's input is named then
+    then: 'previous',
+  });
+
+  const second = await ctx.readLayout(device.deviceID);
+
+  await ctx.removeKey(second?.regions[1]?.shown?.sequence ?? 0);
+
+  const beforeExpiry = await ctx.readLayout(device.deviceID);
+
+  ctx.clock.advance(11 * 60_000);
+
+  const afterExpiry = await ctx.readLayout(device.deviceID);
+
+  expect([beforeExpiry?.regions[1]?.shown, afterExpiry?.regions[1]?.shown]).toStrictEqual([
+    null,
+    null,
+  ]);
+});
+
+test('it shows a permanent value again after 50 timed updates over it expire together', async () => {
+  const ctx = await setupTest();
+  const device = await ctx.seed.screenOnDevice();
+
+  ctx.streams.open(device.deviceID, { width: 1920, height: 480, pixelRatio: 1 });
+
+  await ctx.seed.layout(device.deviceID);
+
+  await ctx.call('device.region', {
+    device: device.deviceID,
+    region: 'note',
+    content: { kind: 'markdown', markdown: 'base' },
+  });
+
+  for (let index = 0; index < 50; index += 1) {
+    await ctx.call('device.region', {
+      device: device.deviceID,
+      region: 'note',
+      content: { kind: 'markdown', markdown: `update ${String(index)}` },
+      minutes: 1,
+      // oxlint-disable-next-line unicorn/no-thenable -- the tool's input is named then
+      then: 'previous',
+    });
+  }
+
+  ctx.clock.advance(2 * 60_000);
+
+  const layout = await ctx.readLayout(device.deviceID);
+
+  expect(layout?.regions[1]?.shown?.content).toStrictEqual({
+    kind: 'markdown',
+    markdown: 'base',
+  });
 });

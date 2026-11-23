@@ -41,6 +41,13 @@ test('#parseLayout takes a region that spans several tracks', () => {
   ).toBe('ok');
 });
 
+test('#parseLayout takes a grid with no regions', () => {
+  expect(parseLayout({ columns: ['1fr'], rows: ['1fr'], regions: [] })).toStrictEqual({
+    status: 'ok',
+    layout: { columns: ['1fr'], rows: ['1fr'], regions: [] },
+  });
+});
+
 test.each<BadRow>([
   {
     title: 'no columns',
@@ -67,11 +74,6 @@ test.each<BadRow>([
     reason: /13fr is not one/u,
   },
   {
-    title: 'no regions',
-    input: { columns: ['1fr'], rows: ['1fr'], regions: [] },
-    reason: /1 to 12 regions/u,
-  },
-  {
     title: 'thirteen regions',
     input: {
       columns: ['1fr', '1fr', '1fr', '1fr', '1fr', '1fr'],
@@ -82,7 +84,7 @@ test.each<BadRow>([
         row: Math.floor(index / 6) + 1,
       })),
     },
-    reason: /1 to 12 regions/u,
+    reason: /up to 12 regions/u,
   },
   {
     title: 'a name with capitals',

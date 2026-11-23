@@ -3,6 +3,7 @@ import { createShortID } from '@heynixie/db';
 import type { JSONObject } from '@heynixie/log';
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import invariant from 'tiny-invariant';
+import { readLayout } from '../layout/read-layout';
 import { deviceRegionShownCodec } from '../record/device-region-shown-codec';
 import type { DeviceTables } from '../types';
 import type { DeviceToolOptions } from './device-tool-options';
@@ -10,19 +11,33 @@ import type { DeviceToolOptions } from './device-tool-options';
 interface RegionWrite {
   readonly deviceID: string;
   readonly thread: string;
+
+  // the layout the call read, which the region must still belong to when the write runs
+  readonly layoutID: string;
   readonly region: string;
   readonly content: RegionContent;
   readonly untilMs: number | null;
   readonly onEnd: 'blank' | 'previous';
-
-  // the record of the content this one covers, which an `onEnd` of 'previous' brings back
-  readonly previous: number | null;
 }
 
 // Records a region's content with the content sealed under the record's own key, and points the
-// region at it. The short ID of the record is the content's.
-export function writeRegion(options: DeviceToolOptions, write: RegionWrite): Promise<string> {
+// region at it. The layout and the content it covers are read in the write's own transaction, so
+// null comes back, with nothing written, when the device holds another layout or no such region.
+export function writeRegion(
+  options: DeviceToolOptions,
+  write: RegionWrite,
+): Promise<'written' | null> {
   return withWriteTransaction(options.log.writer, async (tx) => {
+    const inTransaction = { ...options.log, writer: { ...options.log.writer, db: tx } };
+
+    const layout = await readLayout(inTransaction, write.deviceID, options.clock.now());
+
+    const region = layout?.regions.find((candidate) => candidate.name === write.region);
+
+    if (layout?.layoutID !== write.layoutID || region === undefined) {
+      return null;
+    }
+
     const shownID = createShortID();
 
     const [record] = await writeRecordsInTransaction(tx, options.log, [
@@ -37,7 +52,7 @@ export function writeRegion(options: DeviceToolOptions, write: RegionWrite): Pro
           contentKind: write.content.kind,
           until: write.untilMs,
           onEnd: write.onEnd,
-          previous: write.previous,
+          previous: write.onEnd === 'previous' ? (region.shown?.sequence ?? null) : null,
         }),
         erasable: { content: toStoredContent(write.content) },
       },
@@ -65,7 +80,7 @@ export function writeRegion(options: DeviceToolOptions, write: RegionWrite): Pro
       .where('device_id', '=', write.deviceID)
       .execute();
 
-    return shownID;
+    return 'written';
   });
 }
 

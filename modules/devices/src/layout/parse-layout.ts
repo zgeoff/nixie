@@ -68,9 +68,7 @@ function pickTrackReason(axis: string, tracks: readonly string[]): string | null
 const maxRegions = 12;
 
 function pickRegionCountReason(count: number): string | null {
-  return count === 0 || count > maxRegions
-    ? `a layout takes 1 to ${String(maxRegions)} regions`
-    : null;
+  return count > maxRegions ? `a layout takes up to ${String(maxRegions)} regions` : null;
 }
 
 const namePattern = /^[a-z0-9-]{1,32}$/u;
