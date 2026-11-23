@@ -65,13 +65,13 @@ export function buildCountedStream(
   const readEvents = (text: string) => {
     pending += text;
 
-    const lines = pending.split('\n');
+    // a CR at the end of a chunk waits for the next chunk, which may start with its LF
+    const held = pending.endsWith('\r') ? '\r' : '';
+    const lines = pending.slice(0, pending.length - held.length).split(/\r\n|\r|\n/u);
 
-    pending = lines.pop() ?? '';
+    pending = (lines.pop() ?? '') + held;
 
-    for (const rawLine of lines) {
-      const line = rawLine.endsWith('\r') ? rawLine.slice(0, -1) : rawLine;
-
+    for (const line of lines) {
       if (line === '') {
         dispatchEvent();
       } else if (line.startsWith('data:')) {

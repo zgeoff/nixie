@@ -95,7 +95,8 @@ every other endpoint with a 403:
 | `anthropic-messages` | messages, token counts and the model list |
 | `openai-responses`   | creating a response, and the model list   |
 
-The method and path of each endpoint live in one table in
+A [plan route](#the-plan-route) refuses the model list with a 403 too. The method and path of each
+endpoint live in one table in
 [`find-model-api-endpoint.ts`](../../../libs/wire/src/spool/find-model-api-endpoint.ts). The
 scripted model that stands in for the model API in tests routes its requests through the same table.
 
@@ -285,15 +286,17 @@ A stream that began no reply adds nothing. That is a stream whose body ended wit
 that its reader stops or that breaks before its body ends adds the estimate, unless it already held
 an `error` event, because the events the gateway did not read may hold the start of a reply. A
 stream has begun once an event other than an `error` or a `ping` has arrived, or an event the
-gateway cannot read: it joins the data lines of one event with a newline, and counts an event that
-stops halfway through its JSON as begun. A reply with no body adds nothing. The gateway logs each
-such stream as `count.skipped`, at the warn level, with the route, the sandbox, the reason, the
-upstream status, and the type and message of the error event (each `null` when it held none, the
-message cut to 200 characters).
+gateway cannot read: it ends a line at CR, LF or CRLF, joins the data lines of one event with a
+newline, and counts an event that stops halfway through its JSON as begun. A reply with no body adds
+nothing. The gateway logs each such stream as `count.skipped`, at the warn level, with the route,
+the sandbox, the reason, the upstream status, and the type and message of the error event (each
+`null` when it held none, the message cut to 200 characters).
 
-A non-2xx reply adds nothing, whatever its content type says. The gateway reads its body whole and
-logs it as `upstream.refused` with the status and the type and message of the error it holds. A
-gateway that stops while a stream that held only an error stays open adds nothing for it.
+A non-2xx reply adds nothing, whatever its content type, its body or its usage says, and however its
+body ends: the caller gets its status. The gateway reads the body whole and logs the reply as
+`upstream.refused` with the status and the type and message of the first error the body holds, or
+`null` for each when it holds none or has no body. A gateway that stops while a stream that held
+only an error stays open adds nothing for it.
 
 A reply that spent, or may have, with no whole usage the gateway can read adds
 [an estimate](#the-estimate).
@@ -495,10 +498,13 @@ own profile, so a sandbox cannot send its model credential to another profile's 
 
 Before a sandbox's first model request, the server registers it with `PUT /sandboxes/<name>`:
 
-| Sandbox                                | Limit                                            |
-| -------------------------------------- | ------------------------------------------------ |
-| a worker run's sandbox                 | the run's planned dollars and tokens             |
-| the conversation, a task and the check | none: the gateway counts it and never refuses it |
+| Sandbox                                | Limit                                                    |
+| -------------------------------------- | -------------------------------------------------------- |
+| a worker run's sandbox                 | the run's planned dollars and tokens                     |
+| the conversation, a task and the check | none: the gateway counts it and sets no limit of its own |
+
+A sandbox with no limit of its own still gets the limit 403 once the day or month count reaches its
+limit.
 
 A worker run's planned limit is the worker's configured limit, held to what the calling task run has
 left, so the gateway and nixie hold one number. A registration that fails fails the sandbox's start.

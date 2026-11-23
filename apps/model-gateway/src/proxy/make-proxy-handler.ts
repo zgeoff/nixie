@@ -269,8 +269,28 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
       headers: buildDownstreamHeaders(upstream.headers),
     };
 
-    // a successful message reply has spent, and an error reply has not
-    const spent = endpoint.spends && upstream.ok;
+    // An error reply has spent nothing, whatever its content type and its body say, and however its
+    // body ends. The caller gets its status.
+    if (!upstream.ok) {
+      const refusedText = upstream.body === null ? null : await upstream.text().catch(() => null);
+
+      deps.log(
+        'upstream.refused',
+        {
+          route: target.routeID,
+          sandbox: target.sandbox,
+          status: upstream.status,
+          ...getBodyError(refusedText ?? ''),
+        },
+        'warn',
+      );
+
+      await countOnce(() => countReply(noUsageRead, true, false, 'no_usage'));
+
+      return new Response(refusedText, init);
+    }
+
+    const spent = endpoint.spends;
     const dialect = usageDialects[target.route.api];
 
     // a reply with no body has no event, so the model began no reply
@@ -331,19 +351,6 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
       await countOnce(() => countReply(noUsageRead, false, endpoint.spends, 'body_failed'));
 
       return renderAPIError(502, 'api_error', 'the model gateway lost the reply of the model API');
-    }
-
-    if (!upstream.ok) {
-      deps.log(
-        'upstream.refused',
-        {
-          route: target.routeID,
-          sandbox: target.sandbox,
-          status: upstream.status,
-          ...getBodyError(text),
-        },
-        'warn',
-      );
     }
 
     await countOnce(() => {
@@ -514,18 +521,6 @@ function buildDownstreamHeaders(received: Headers): Headers {
   return headers;
 }
 
-// ChatGPT's Codex backend sends its stream with no content type
-function isEventStreamReply(upstream: Response, body: object | null): boolean {
-  const type = upstream.headers.get('content-type');
-
-  // an error reply is read whole, whatever its content type says, so its refusal is logged
-  if (type !== null) {
-    return upstream.ok && type.startsWith('text/event-stream');
-  }
-
-  return upstream.ok && body !== null && 'stream' in body && body.stream === true;
-}
-
 // the type and the message, cut to 200 characters, of the error an upstream error body holds
 function getBodyError(text: string): { errorType: string | null; errorMessage: string | null } {
   const parsed = findBodyRecord(text);
@@ -539,7 +534,7 @@ function getBodyError(text: string): { errorType: string | null; errorMessage: s
   };
 }
 
-// the JSON object of a reply body, or of the first event of a body sent as events
+// the JSON object of a reply body, or of the first event that holds an error in a body sent as events
 function findBodyRecord(text: string): unknown {
   const whole = parseJSONOrNull(text);
 
@@ -548,11 +543,22 @@ function findBodyRecord(text: string): unknown {
   }
 
   const events = text
-    .split('\n')
+    .split(/\r\n|\r|\n/u)
     .filter((line) => line.startsWith('data:'))
     .map((line) => parseJSONOrNull(line.slice('data:'.length).trim()));
 
-  return events.find((event) => isRecord(event)) ?? null;
+  return events.find((event) => isRecord(event) && isRecord(event['error'])) ?? null;
+}
+
+// ChatGPT's Codex backend sends its stream with no content type
+function isEventStreamReply(upstream: Response, body: object | null): boolean {
+  const type = upstream.headers.get('content-type');
+
+  if (type !== null) {
+    return type.startsWith('text/event-stream');
+  }
+
+  return body !== null && 'stream' in body && body.stream === true;
 }
 
 function findBodyUsage(text: string): unknown {

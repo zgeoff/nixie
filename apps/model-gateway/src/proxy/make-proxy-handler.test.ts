@@ -3138,6 +3138,111 @@ test('it counts nothing for a 204 reply with no body', async () => {
   ]);
 });
 
+test.each([
+  {
+    title: 'an event stream that sends an error and then resets',
+    body: 'data: {"type":"error","error":{"type":"api_error","message":"Failed"}}\n\n',
+    breaks: true,
+    errorType: null,
+    errorMessage: null,
+  },
+  {
+    title: 'a JSON body that holds an error and a complete usage block',
+    body: '{"type":"error","error":{"type":"api_error","message":"Failed"},"usage":{"input_tokens":10,"output_tokens":2}}',
+    breaks: false,
+    errorType: 'api_error',
+    errorMessage: 'Failed',
+  },
+  {
+    title: 'no body',
+    body: null,
+    breaks: false,
+    errorType: null,
+    errorMessage: null,
+  },
+  {
+    title: 'an event stream with a ping and then an error',
+    body: 'data: {"type":"ping"}\n\ndata: {"type":"error","error":{"type":"api_error","message":"Failed"}}\n\n',
+    breaks: false,
+    errorType: 'api_error',
+    errorMessage: 'Failed',
+  },
+])('it passes a 400 with $title through, counts nothing and logs the refusal', async (row) => {
+  const ctx = await setupTest();
+
+  const replyBody =
+    row.breaks && row.body !== null ? ctx.buildBreakingStream([row.body]) : row.body;
+
+  const started = await ctx.startLimitsHandler(
+    { api: 'anthropic-messages', maxOutputTokens: null },
+    () =>
+      Promise.resolve(
+        new Response(replyBody, {
+          status: 400,
+          headers: { 'content-type': 'text/event-stream' },
+        }),
+      ),
+  );
+
+  const response = await ctx.askStream(started.handler);
+
+  await response.text().catch(() => null);
+
+  const counted = await started.store.read();
+
+  expect([response.status, counted.tokens, counted.dollars, counted.lost]).toStrictEqual([
+    400,
+    0,
+    0,
+    false,
+  ]);
+
+  expect(ctx.log).toHaveBeenCalledWith(
+    'upstream.refused',
+    {
+      route: 'preview',
+      sandbox: null,
+      status: 400,
+      errorType: row.errorType,
+      errorMessage: row.errorMessage,
+    },
+    'warn',
+  );
+});
+
+test.each([
+  ['CR', '\r'],
+  ['CRLF', '\r\n'],
+  ['LF', '\n'],
+])('it counts the usage of a Messages stream whose lines end in %s', async (_name, ending) => {
+  const ctx = await setupTest();
+
+  const lines = [
+    { type: 'message_start', message: { usage: { input_tokens: 10, output_tokens: 1 } } },
+    { type: 'message_delta', usage: { output_tokens: 2 } },
+    { type: 'message_stop' },
+  ].map((event) => `data: ${JSON.stringify(event)}${ending}${ending}`);
+
+  const started = await ctx.startLimitsHandler(
+    { api: 'anthropic-messages', maxOutputTokens: null },
+    () =>
+      Promise.resolve(
+        new Response(ctx.buildEventStream(lines), {
+          headers: { 'content-type': 'text/event-stream' },
+        }),
+      ),
+  );
+
+  const response = await ctx.askStream(started.handler);
+
+  await response.text();
+
+  const counted = await started.store.read();
+
+  expect([counted.tokens, counted.lost]).toStrictEqual([12, false]);
+  expect(counted.dollars).toBeCloseTo(0.00002, 9);
+});
+
 test('it counts nothing and logs the refusal for a 400 JSON problem body that claims to be an event stream', async () => {
   const ctx = await setupTest();
 
