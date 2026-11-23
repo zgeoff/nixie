@@ -282,10 +282,11 @@ and a memory tool unless its `memory` is `read`. A version whose `memory` is `re
 memory tool and gets the read-only ones without listing them. A version whose `memory` is
 `self_notes` gets the read-only tools and the 4 self-note write tools without listing them, and
 keeps each memory tool it lists, as `read` does. A self-note write tool that the version leaves out
-of its list writes self-notes alone. The seed and `task.define` refuse `self_notes` with a sentence
-that says it is not available yet. A stored version that holds it parses and reads back, and the
-task run of that version holds the self-note grant that
-[started tasks](./started-tasks.md#start-options) describes.
+of its list writes self-notes alone. The seed and `task.define` accept `self_notes`, and the task
+run of a version that holds it gets the self-note grant that
+[started tasks](./started-tasks.md#start-options) describes. The check of a start plans such a
+version as `read`, because the grant holds every tool that `read` does, and a `task.start` from the
+conversation still refuses the value.
 
 One fault refuses the whole seed, and the definitions of the last accepted seed stay in force. The
 refusal is a `TaskSeedRefusedError`, a kind of definitions parse error. Its `problems` field, which
@@ -652,7 +653,10 @@ wins.
 No fixed rule names `task.define` or `task.undefine`, so the decision point treats them like any
 tool of the `schedule` effect with no destination. The user's own request allows a call at the
 consent stage, stage 8 of [the decision point's stages](../policy/decision-point.md#the-stages), and
-any other call asks at stage 9, the no-rule stage.
+any other call asks at stage 9, the no-rule stage. A `task.define` that sets `memory` to
+`self_notes` declares `policy_widen` as well, through the tool's `prepare` step, because the
+definition hands a task the self-note writes. Stage 4 then asks before the define applies, whatever
+allow rule or request would cover a plain define.
 
 Each change shows in the conversation as a notice that carries an undo. A notice is not stored.
 `readDefinitionNotices` builds it for the `definition.changed` records that a read returns, from the

@@ -62,8 +62,8 @@ sentence that says to define the task, whoever starts it, so a task never starts
 grant. The input schema of `task.start` lists the value, so the refusal reaches the planner and the
 model reads that sentence. The task run of a started task never holds the grant, even when its
 stored options name the value. A worker holds no memory tool. The definitions repo and `task.define`
-refuse `self_notes` with a sentence that says it is not available yet, and the task run of a stored
-version that holds it gets the grant.
+accept `self_notes`, a `task.define` that sets it asks the user before it applies, and the task run
+of a stored version that holds it gets the grant.
 
 The `log` option is the log grant. With `log: conversation`, the task's `log.read` and
 `log.read_image` read the conversation's thread of the [event log](../core/event-log.md), and with
