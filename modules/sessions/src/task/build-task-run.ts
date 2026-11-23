@@ -52,7 +52,7 @@ export function buildTaskRun(options: SandboxRunnerOptions, parts: TaskRunParts)
         ? options.getDefinitions()
         : { ...options.getDefinitions(), persona: '', personaHash: '' },
     status: buildDefaultStatus(),
-    ...(parts.run.options.memory === 'read' ? { memory: options.memory } : {}),
+    ...(parts.run.options.memory === 'none' ? {} : { memory: options.memory }),
     memorySettings: options.memorySettings,
     compaction: options.compaction,
     defaultZone: options.defaultZone,

@@ -48,6 +48,7 @@ export type TaskStartChoiceRefusal =
     }
   | { readonly reason: 'stranger_with_memory' }
   | { readonly reason: 'wider_memory' }
+  | { readonly reason: 'self_notes_start' }
   | { readonly reason: 'wider_log' }
   | { readonly reason: 'wider_persona' }
   | {
@@ -75,6 +76,10 @@ export function planTaskStart(
   bounds: TaskStartBounds,
 ): TaskStartPlan {
   const starterTools = starter.tools;
+
+  if (choice.memory === 'self_notes') {
+    return refuse({ reason: 'self_notes_start' });
+  }
 
   const model =
     choice.model === undefined

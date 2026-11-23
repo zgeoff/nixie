@@ -76,6 +76,8 @@ test('it leaves out a rejected edit from outside the conversation', async () => 
     target: item,
     caller: {
       origin: 'task',
+      hasSelfNoteGrant: false,
+      isSelfNoteOnly: false,
       thread: 'task-garden',
       logThread: 'task-garden',
       taskID: 'task-garden',

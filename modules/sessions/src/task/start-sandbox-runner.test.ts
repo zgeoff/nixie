@@ -3052,6 +3052,127 @@ test('it adds the memory tools that only read to the tool list of a definition t
   ]);
 });
 
+test('it adds the read tools and the self-note write tools to a definition task with self notes, and marks its run granted', async () => {
+  const ctx = await setupTest();
+
+  const taskID = await ctx.writeDefinitionTask({
+    definitionID: 'tidy-the-notes',
+    definitionHash: 'hash-1',
+    version: { memory: 'self_notes', tools: ['tasks.list'] },
+  });
+
+  await ctx.writeFire(taskID, 'hash-1', 'fire-3');
+
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+
+  expect(ctx.runs).toMatchObject([
+    {
+      tools: [
+        'tasks.list',
+        'memory.recall',
+        'moment.find',
+        'memory.remember',
+        'memory.edit',
+        'memory.retopic',
+        'memory.retire',
+        'turn.end_silently',
+        'task.report',
+      ],
+      hasSelfNoteGrant: true,
+      selfNoteOnlyTools: ['memory.remember', 'memory.edit', 'memory.retopic', 'memory.retire'],
+    },
+  ]);
+});
+
+test('it leaves the run of a started task ungranted, whatever memory its stored options hold', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tidy the notes',
+    brief: 'Merge the duplicate notes about yourself.',
+    options: { persona: 'default', memory: 'self_notes' },
+  });
+
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+
+  expect(ctx.runs.map((run) => 'hasSelfNoteGrant' in run)).toStrictEqual([false]);
+});
+
+test('it keeps a memory write tool that the list of a definition task with self notes names, as it does at memory read', async () => {
+  const ctx = await setupTest();
+
+  const taskID = await ctx.writeDefinitionTask({
+    definitionID: 'tidy-the-notes',
+    definitionHash: 'hash-1',
+    version: { memory: 'self_notes', tools: ['tasks.list', 'memory.fold', 'memory.edit'] },
+  });
+
+  await ctx.writeFire(taskID, 'hash-1', 'fire-3');
+
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+
+  expect(ctx.runs.map((run) => run.tools)).toStrictEqual([
+    [
+      'tasks.list',
+      'memory.fold',
+      'memory.edit',
+      'memory.recall',
+      'moment.find',
+      'memory.remember',
+      'memory.retopic',
+      'memory.retire',
+      'turn.end_silently',
+      'task.report',
+    ],
+  ]);
+});
+
+test('it limits to self-notes the self-note tools that only the grant gives a definition task', async () => {
+  const ctx = await setupTest();
+
+  const taskID = await ctx.writeDefinitionTask({
+    definitionID: 'tidy-the-notes',
+    definitionHash: 'hash-1',
+    version: { memory: 'self_notes', tools: ['tasks.list', 'memory.fold', 'memory.edit'] },
+  });
+
+  await ctx.writeFire(taskID, 'hash-1', 'fire-3');
+
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+
+  expect(ctx.runs.map((run) => run.selfNoteOnlyTools)).toStrictEqual([
+    ['memory.remember', 'memory.retopic', 'memory.retire'],
+  ]);
+});
+
+test('it leaves the run of a definition task with memory read ungranted', async () => {
+  const ctx = await setupTest();
+
+  const taskID = await ctx.writeDefinitionTask({
+    definitionID: 'water-the-tomatoes',
+    definitionHash: 'hash-1',
+    version: { memory: 'read', tools: ['tasks.list'] },
+  });
+
+  await ctx.writeFire(taskID, 'hash-1', 'fire-3');
+
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+
+  expect(ctx.runs.map((run) => 'hasSelfNoteGrant' in run)).toStrictEqual([false]);
+});
+
 test('it starts a new endpoint for a task run that pins another version of a definition task', async () => {
   const ctx = await setupTest();
 

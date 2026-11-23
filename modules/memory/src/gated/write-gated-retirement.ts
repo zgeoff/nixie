@@ -3,12 +3,14 @@ import { requireLiveEvidence } from '../evidence/require-live-evidence';
 import { requireUnforgottenQuote } from '../evidence/require-unforgotten-quote';
 import { buildAskReview } from '../gate/build-ask-review';
 import type { ContentGateResult, GatedRetireRequest, WriteOutcome } from '../gate/gate-context';
+import { hasSelfNoteGrant } from '../gate/has-self-note-grant';
 import { pickCoveringRule } from '../gate/pick-covering-rule';
 import { runIntentGate } from '../gate/run-intent-gate';
 import { readItemText } from '../item/read-item-text';
 import { writeMemoryProposal } from '../memory/write-memory-proposal';
 import { readNewestMessage } from '../message/read-newest-message';
 import { writeRetirement } from '../retirement/write-retirement';
+import { requireSelfNoteOnlyWrite } from '../subject/require-self-note-only-write';
 import type { StoreParts, VersionRef } from '../types';
 import { requireCheckerSnapshot } from '../utils/checker/require-checker-snapshot';
 import { ForgottenEvidenceError } from '../utils/error/forgotten-evidence-error';
@@ -23,6 +25,8 @@ export async function writeGatedRetirement(
 
   const itemText = item.text;
   const textTarget = { itemID: request.target.itemID, version: item.version };
+
+  requireSelfNoteOnlyWrite(request.caller, [item.subject]);
 
   const gate = await runRetirementGate(parts, request, {
     textTarget,
@@ -65,7 +69,10 @@ function runRetirementGate(
     return Promise.resolve(buildAskReview(verdict.rule));
   }
 
-  if (item.isSelfNote && request.caller.origin === 'conversation') {
+  if (
+    item.isSelfNote &&
+    (request.caller.origin === 'conversation' || hasSelfNoteGrant(request.caller))
+  ) {
     return Promise.resolve(selfNoteRetirement);
   }
 

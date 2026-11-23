@@ -6,7 +6,7 @@ import { sandboxCreatedCodec } from '@heynixie/sandbox';
 import { createPlanLoginsHolder, spendProjections } from '@heynixie/spend';
 import { buildStubSpendGateway } from '@heynixie/spend/test-utils';
 import { waitForCondition } from '@heynixie/testing';
-import type { ToolOutcome, ToolStepHold } from '@heynixie/tools';
+import type { GuestToolRun, ToolOutcome, ToolStepHold } from '@heynixie/tools';
 import { buildMockToolContext, buildMockToolDefinition } from '@heynixie/tools/test-utils';
 import { createFakeClock } from '@zgeoff/testing/clock';
 import invariant from 'tiny-invariant';
@@ -145,6 +145,7 @@ async function setupTest(config: SetupConfig = {}) {
 
   const spent: number[] = [];
   const stoppedRuns: string[] = [];
+  const startedRuns: GuestToolRun[] = [];
   const endWrite = { hasFailed: false };
 
   const readDefinitions: typeof host.context.definitions = () => {
@@ -175,6 +176,8 @@ async function setupTest(config: SetupConfig = {}) {
     logger: () => {},
     readTools: () => ({
       startRun: async (options) => {
+        startedRuns.push(options);
+
         const run = await host.endpoint.startRun(options);
 
         return {
@@ -252,7 +255,11 @@ async function setupTest(config: SetupConfig = {}) {
 
   const callWorker = (
     input: JSONObject,
-    overrides: { readonly hold?: Partial<ToolStepHold>; readonly tools?: readonly string[] } = {},
+    overrides: {
+      readonly hold?: Partial<ToolStepHold>;
+      readonly tools?: readonly string[];
+      readonly hasSelfNoteGrant?: boolean;
+    } = {},
   ): Promise<ToolOutcome> =>
     tool.run(
       { callID: crypto.randomUUID(), tool: 'worker.run', input, toolUseID: null },
@@ -262,6 +269,9 @@ async function setupTest(config: SetupConfig = {}) {
           thread: 'task-1',
           logThread: 'task-1',
           tools: overrides.tools ?? ['notes_read'],
+          ...(overrides.hasSelfNoteGrant === undefined
+            ? {}
+            : { hasSelfNoteGrant: overrides.hasSelfNoteGrant }),
           stepRunID: 'step-a',
           session: {
             key: 'session-1',
@@ -280,6 +290,7 @@ async function setupTest(config: SetupConfig = {}) {
     spent,
     destroys,
     stoppedRuns,
+    startedRuns,
     caller,
     interrupt,
     callWorker,
@@ -483,6 +494,24 @@ test('it stops a run whose minutes pass, and writes the end with the minutes lim
     status: 'error',
     message: expect.toInclude('stopped at its minutes limit of 1'),
   });
+});
+
+test('it starts the tool run of a worker of a task that holds the self-note grant with no self-note grant', async () => {
+  const ctx = await setupTest();
+
+  ctx.guest.addKindReplies('worker', { text: 'Three cafes are open.' });
+
+  await ctx.callWorker({ question: 'Which cafes are open?' }, { hasSelfNoteGrant: true });
+
+  expect(
+    ctx.startedRuns.map((run) => ({
+      thread: run.thread,
+      hasSelfNoteGrant: run.hasSelfNoteGrant,
+      selfNoteOnlyTools: run.selfNoteOnlyTools,
+    })),
+  ).toStrictEqual([
+    { thread: 'task-1', hasSelfNoteGrant: undefined, selfNoteOnlyTools: undefined },
+  ]);
 });
 
 test('it refuses a tool that the caller does not hold, and starts no sandbox', async () => {

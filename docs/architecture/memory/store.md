@@ -442,11 +442,13 @@ action proposal, because one call moves many items. The call stores the move, su
 `self/lines → self/diary, 20 items`, the gist of each item and the item's ID, sealed under its own
 record. The proposal's card shows the move as its sentence and the item count with the gists folded
 under it. The user's approval runs the call only when it moves the items the card showed, so an item
-that joined the topic since refuses the call and waits for a new card. A forget of an item removes
-the key of each stored card that names it, so the card then shows no body and the call refuses. A
-card stored after the forget finished is checked once the call's record holds it, and loses its key
-then, so no gist outlives its item. The self-note rule that holds for the conversation does not
-apply to an approved call, because the user approved the move.
+that joined the topic since refuses the call and waits for a new card. The user's approval never
+lifts the self-note caller check: an approved move into or out of self by a task without the
+self-note grant fails ([self-notes](./writes.md#self-notes)).
+
+A forget of an item removes the key of each stored card that names it, so the card then shows no
+body and the call refuses. A card stored after the forget finished is checked once the call's record
+holds it, and loses its key then, so no gist outlives its item.
 
 ### The folded order
 

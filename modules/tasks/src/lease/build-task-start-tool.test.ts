@@ -1,6 +1,12 @@
 import { expect, test } from 'bun:test';
 import { readRecords } from '@heynixie/log';
-import { buildMockToolCall, buildMockToolContext } from '@heynixie/tools/test-utils';
+import { buildAllowingDecisionPoint } from '@heynixie/policy/test-utils';
+import { buildToolRegistry, runToolCall } from '@heynixie/tools';
+import {
+  buildMockToolCall,
+  buildMockToolContext,
+  buildStubActionQueue,
+} from '@heynixie/tools/test-utils';
 import invariant from 'tiny-invariant';
 import { buildStepRunID } from '../step/build-step-run-id';
 import { claimTask } from '../task/projection/claim-task';
@@ -1025,4 +1031,59 @@ test('it describes a task as work that needs its own context, whether the owner 
   expect(tool.description).toStartWith(
     'Starts a new task for work that needs its own context, can wait, or lasts beyond this turn, whether Robin asked for it or you saw it needed doing. Give it a short name,',
   );
+});
+
+test('it refuses a start with self notes through the public tool path, with the instruction to define the task', async () => {
+  const ctx = await setupTest();
+  const claim = await createTestConversationClaim(ctx.context, 'Tidy my self-notes weekly.');
+
+  const registry = buildToolRegistry([
+    buildTaskStartTool(ctx.context, { hopLimit: 20, ownerName: null }, buildMockTaskStartBounds()),
+  ]);
+
+  const result = await runToolCall(
+    {
+      tool: 'task.start',
+      input: {
+        name: 'Tidy notes',
+        brief: 'Merge the duplicate self-notes.',
+        memory: 'self_notes',
+      },
+      toolUseID: null,
+    },
+    {
+      runID: 'run-1',
+      thread: 'conversation',
+      logThread: 'conversation',
+      stepRunID: buildStepRunID(claim),
+      tools: ['task.start'],
+      model: { model: 'test-model', profile: 'standard' },
+    },
+    {
+      registry,
+      decide: buildAllowingDecisionPoint(),
+      log: ctx.context.log,
+      definitions: () => ({ snapshotHash: 'sha256:test' }),
+      queue: buildStubActionQueue().queue,
+      queuedWaitMs: 10_000,
+    },
+  );
+
+  const tasks = await ctx.db
+    .selectFrom('tasks')
+    .select('task_id')
+    .where('is_conversation', '=', 0)
+    .execute();
+
+  expect(result).toMatchObject({
+    isError: true,
+    content: [
+      {
+        type: 'text',
+        text: 'only a task definition grants self-note writes, so define the task with task.define and nixie started nothing',
+      },
+    ],
+  });
+
+  expect(tasks).toStrictEqual([]);
 });

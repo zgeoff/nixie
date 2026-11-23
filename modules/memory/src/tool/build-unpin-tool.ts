@@ -57,7 +57,7 @@ async function runUnpinCall(
 
   return runWriteCall(
     memory,
-    () => memory.writes.unpin({ itemID, caller: buildWriteCaller(context) }),
+    () => memory.writes.unpin({ itemID, caller: buildWriteCaller(context, 'memory.unpin') }),
     itemID,
   );
 }

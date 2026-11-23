@@ -983,6 +983,7 @@
         "zod": "catalog:",
       },
       "devDependencies": {
+        "@heynixie/policy": "workspace:*",
         "@heynixie/testing": "workspace:*",
         "@zgeoff/testing": "catalog:",
         "tiny-invariant": "catalog:",

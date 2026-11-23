@@ -81,6 +81,11 @@ test.each<
   ['a tool a worker never holds', { tools: ['task.start'], held: ['task.start'] }, 'can never use'],
   ['a conversation tool', { tools: ['log.forget'], held: ['log.forget'] }, 'can never use'],
   ['a memory tool', { tools: ['memory.recall'], held: ['memory.recall'] }, 'cannot get'],
+  [
+    'a self-note write tool',
+    { tools: ['memory.remember'], held: ['memory.remember'] },
+    'cannot get',
+  ],
   ['a stopped worker', { isRunning: false }, 'not running'],
 ])('it refuses %s', (_name, change, sentence) => {
   const facts = setupTest({ isRunning: change.isRunning ?? true }, change.left ?? null);
@@ -90,6 +95,25 @@ test.each<
   expect(planWorkerRun({ ...facts, call, run })).toStrictEqual({
     status: 'refused',
     sentence: expect.toInclude(sentence),
+  });
+});
+
+test('it refuses a memory write tool to a worker of a task that holds the self-note grant', () => {
+  const facts = setupTest();
+
+  const run = {
+    ...facts.run,
+    thread: 'task-1',
+    logThread: 'task-1',
+    hasSelfNoteGrant: true,
+    tools: [...facts.run.tools, 'memory.remember'],
+  };
+
+  const call = { ...facts.call, tools: ['memory.remember'] };
+
+  expect(planWorkerRun({ ...facts, call, run })).toStrictEqual({
+    status: 'refused',
+    sentence: expect.toInclude('cannot get'),
   });
 });
 

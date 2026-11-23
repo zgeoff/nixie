@@ -62,6 +62,7 @@ export type {
 } from './runner/types';
 
 export type { TaskStarter } from './task/start/plan-task-start';
+export { selfNoteToolNames } from './task/start/self-note-tool-names';
 export { buildStepRunID } from './step/build-step-run-id';
 export { buildTaskMessageTool } from './task/projection/build-task-message-tool';
 export { buildTaskStartTool } from './lease/build-task-start-tool';

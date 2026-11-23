@@ -60,3 +60,20 @@ test('it stores the tools of a version as given, and they read back after the ba
     'mcp__nixie__time_now',
   ]);
 });
+
+test('it stores a version that sets self notes, and reads it back with that memory', async () => {
+  const ctx = await setupTest();
+
+  const [seeded] = await seedTaskVersions(ctx.writer, [
+    {
+      definitionID: 'tidy-the-notes',
+      name: 'Tidy the notes',
+      brief: 'Merge the repeats.',
+      memory: 'self_notes',
+    },
+  ]);
+
+  const version = await ctx.readVersion(seeded?.definitionHash ?? '');
+
+  expect(version?.memory).toBe('self_notes');
+});

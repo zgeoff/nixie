@@ -599,3 +599,40 @@ test('it refuses worker.run for a task whose starter lacks it', () => {
 
   expect(planned).toMatchObject({ status: 'refused', refusal: { reason: 'wider_tools' } });
 });
+
+test.each(['read', 'none', 'self_notes'] as const)(
+  'it refuses self notes from a starter that holds memory at %s',
+  (memory) => {
+    const plan = planTaskStart(
+      { memory: 'self_notes' },
+      { tools: ['tasks.list', 'task.message'], memory, persona: 'default', log: 'own' },
+      buildMockTaskStartBounds(),
+    );
+
+    expect(plan).toStrictEqual({ status: 'refused', refusal: { reason: 'self_notes_start' } });
+  },
+);
+
+test('it tells the model to define the task when a start asks for self notes', () => {
+  expect(renderChoiceRefusal({ reason: 'self_notes_start' })).toContain('task.define');
+});
+
+test('it refuses self notes for a task with no persona', () => {
+  const plan = planTaskStart(
+    { memory: 'self_notes', persona: 'none' },
+    { tools: ['tasks.list', 'task.message'], memory: 'self_notes', persona: 'default', log: 'own' },
+    buildMockTaskStartBounds(),
+  );
+
+  expect(plan).toStrictEqual({ status: 'refused', refusal: { reason: 'self_notes_start' } });
+});
+
+test('it refuses self notes with the instruction to define the task, whatever persona a task with no persona asks for', () => {
+  const plan = planTaskStart(
+    { memory: 'self_notes', persona: 'default' },
+    { tools: ['tasks.list', 'task.message'], memory: 'none', persona: 'none', log: 'own' },
+    buildMockTaskStartBounds(),
+  );
+
+  expect(plan).toStrictEqual({ status: 'refused', refusal: { reason: 'self_notes_start' } });
+});

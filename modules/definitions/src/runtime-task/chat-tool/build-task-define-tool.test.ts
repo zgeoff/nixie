@@ -181,6 +181,28 @@ test('it returns INVALID with the reasons for a version that a start refuses', a
   });
 });
 
+test('it refuses a definition that sets self notes for now, and writes none', async () => {
+  const ctx = await setupTest();
+
+  await ctx.seed();
+
+  const outcome = await ctx.define(buildTestDefineInput({ memory: 'self_notes' }));
+  const hashes = await ctx.readHashes();
+
+  expect(outcome).toStrictEqual({
+    status: 'ok',
+    result: {
+      refused: {
+        code: 'INVALID',
+        reasons: ['memory self_notes is not available yet'],
+      },
+    },
+    refusalCode: 'INVALID',
+  });
+
+  expect(hashes).toStrictEqual([]);
+});
+
 test('it refuses a schedule that mixes fields with the field and a fix', async () => {
   const ctx = await setupTest();
 

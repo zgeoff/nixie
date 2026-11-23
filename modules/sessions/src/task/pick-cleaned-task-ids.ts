@@ -32,7 +32,9 @@ export function pickCleanedTaskIDs(
   return candidates
     .filter(
       (candidate) =>
-        (candidate.setup?.kind === 'started' && candidate.setup.options?.memory === 'read') ||
+        (candidate.setup?.kind === 'started' &&
+          (candidate.setup.options?.memory === 'read' ||
+            candidate.setup.options?.memory === 'self_notes')) ||
         candidate.setup?.kind === 'definition' ||
         (candidate.setup?.kind === 'started' &&
           candidate.setup.options?.log === 'conversation' &&

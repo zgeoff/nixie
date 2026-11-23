@@ -17,10 +17,19 @@ test('it applies overrides on top of the defaults', () => {
     buildMockWriteCaller({ origin: 'task', thread: 'task-3', model: 'model-a' }),
   ).toStrictEqual({
     origin: 'task',
+    hasSelfNoteGrant: false,
+    isSelfNoteOnly: false,
     thread: 'task-3',
     logThread: 'task-3',
     taskID: 'conversation',
     runID: 'conversation',
     model: 'model-a',
+  });
+});
+
+test('it builds a task caller that holds the self-note grant when told to', () => {
+  expect(buildMockWriteCaller({ origin: 'task', hasSelfNoteGrant: true })).toMatchObject({
+    origin: 'task',
+    hasSelfNoteGrant: true,
   });
 });

@@ -15,6 +15,7 @@ import { getRowSubject } from '../utils/get-row-subject';
 import { requireItem } from '../utils/item/require-item';
 import { pickSubjectChangeReview } from './pick-subject-change-review';
 import { requireSelfNoteCaller } from './require-self-note-caller';
+import { requireSelfNoteOnlyWrite } from './require-self-note-only-write';
 
 export interface SubjectGateResult {
   readonly gate: ContentGateResult;
@@ -57,6 +58,10 @@ export async function runSubjectGate(
     subject: newSubject ?? subject,
     hasImage: image !== undefined,
   });
+
+  const written = newSubject === null ? [subject] : [subject, newSubject];
+
+  requireSelfNoteOnlyWrite(request.caller, written);
 
   const checked = await runGateOfSubject(parts, request, { subject, newSubject, covering });
 

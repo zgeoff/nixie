@@ -1,10 +1,21 @@
 import type { Harness, ResolvedProfile } from '@heynixie/models';
 import { bindHarness } from '@heynixie/models';
 import type { GuestCommand } from '@heynixie/sandbox';
-import type { DefinitionRunContext, StartedTaskSetup, TaskRunOptions } from '@heynixie/tasks';
-import { readDefinitionRunContext, readTaskSetup, startedTaskDefaultTools } from '@heynixie/tasks';
+import type {
+  DefinitionRunContext,
+  DefinitionVersion,
+  StartedTaskSetup,
+  TaskRunOptions,
+} from '@heynixie/tasks';
+import {
+  readDefinitionRunContext,
+  readTaskSetup,
+  selfNoteToolNames,
+  startedTaskDefaultTools,
+} from '@heynixie/tasks';
 import type { ToolRunModel } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
+import { match } from 'ts-pattern';
 import { buildGuestCommand } from './build-guest-command';
 import type { SystemTaskSession } from './make-system-task-runner';
 import type { SandboxRunnerOptions } from './sandbox-runner-options';
@@ -20,6 +31,14 @@ export interface StartedRun {
 
   // the version hash a definition's task runs, which its endpoint's tool list comes from
   readonly definitionHash: string | null;
+
+  // set for a definition's task whose version holds the self-note grant, and for no other run: a
+  // started task's options never grant it
+  readonly hasSelfNoteGrant: boolean;
+
+  // the self-note tools that the grant adds because the version's list leaves them out: they write
+  // self-notes and nothing else
+  readonly selfNoteOnlyTools: readonly string[];
 
   // set for a definition's task under a fresh context: the session reads the log after it
   readonly sinceSequence: number | null;
@@ -71,19 +90,26 @@ async function readDefinitionRun(runner: RunReader, taskID: string): Promise<Sta
       persona: version.persona,
       memory: version.memory,
       log: version.log,
-      tools:
-        version.memory === 'read'
-          ? [...new Set([...version.tools, ...runner.options.memoryReadTools])]
-          : version.tools,
+      tools: pickRunTools(version, runner.options),
       report: found.report.mode,
       limits: runner.options.models.limits.taskRun.default,
     },
     definitionHash: found.definitionHash,
+    hasSelfNoteGrant: version.memory === 'self_notes',
+    selfNoteOnlyTools: pickSelfNoteOnlyTools(version),
     sinceSequence: pickSinceSequence(version.context, found),
   });
 }
 
-type RunParts = Pick<StartedRun, 'startedBy' | 'options' | 'definitionHash' | 'sinceSequence'>;
+type RunParts = Pick<
+  StartedRun,
+  | 'startedBy'
+  | 'options'
+  | 'definitionHash'
+  | 'hasSelfNoteGrant'
+  | 'selfNoteOnlyTools'
+  | 'sinceSequence'
+>;
 
 function buildRunParts(runner: RunReader, parts: RunParts): StartedRun {
   const profile =
@@ -102,6 +128,29 @@ function buildRunParts(runner: RunReader, parts: RunParts): StartedRun {
     command: buildGuestCommand(runner.options.sandboxes, harness.guest),
     model: { model: profile.profile.model, profile: profile.profile.id },
   };
+}
+
+// A version with memory read or the self-note grant gets the memory read tools, and the grant adds
+// the 4 self-note write tools. Each tool its list names stays, as it does at memory read.
+function pickRunTools(
+  version: Pick<DefinitionVersion, 'memory' | 'tools'>,
+  options: Pick<SandboxRunnerOptions, 'memoryReadTools'>,
+): readonly string[] {
+  return match(version.memory)
+    .with('none', () => version.tools)
+    .with('read', () => [...new Set([...version.tools, ...options.memoryReadTools])])
+    .with('self_notes', () => [
+      ...new Set([...version.tools, ...options.memoryReadTools, ...selfNoteToolNames]),
+    ])
+    .exhaustive();
+}
+
+// A tool the version's list names writes as it does at memory read, so only the tools the grant
+// adds are held to self-notes.
+function pickSelfNoteOnlyTools(version: Pick<DefinitionVersion, 'memory' | 'tools'>): string[] {
+  return version.memory === 'self_notes'
+    ? selfNoteToolNames.filter((name) => !version.tools.includes(name))
+    : [];
 }
 
 // A fresh context opens a session at each piece of work, and a continuing one keeps the last.
@@ -129,6 +178,8 @@ function buildStartedRun(runner: RunReader, setup: StartedTaskSetup): StartedRun
     startedBy: setup.startedBy,
     options,
     definitionHash: null,
+    hasSelfNoteGrant: false,
+    selfNoteOnlyTools: [],
     sinceSequence: null,
   });
 }

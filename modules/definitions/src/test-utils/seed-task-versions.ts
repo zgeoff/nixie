@@ -7,6 +7,7 @@ export interface TaskVersionSeed {
   readonly definitionID: string;
   readonly name: string;
   readonly brief: string;
+  readonly memory?: 'none' | 'read' | 'self_notes';
 
   // stored as given, as the parser stored a list before it mapped SDK names and added the base tools
   readonly tools?: readonly string[];
@@ -21,13 +22,18 @@ export async function seedTaskVersions(
 ): Promise<readonly { readonly definitionID: string; readonly definitionHash: string }[]> {
   const definitions = seeds.map((seed) => ({
     id: seed.definitionID,
-    hash: buildSHA256([seed.definitionID, seed.name, seed.brief, ...(seed.tools ?? [])].join('\n')),
+    hash: buildSHA256(
+      [seed.definitionID, seed.name, seed.brief, seed.memory ?? '', ...(seed.tools ?? [])].join(
+        '\n',
+      ),
+    ),
     form: {
       name: seed.name,
       brief: seed.brief,
       enabled: true,
       context: 'fresh',
       wakeable: false,
+      ...(seed.memory === undefined ? {} : { memory: seed.memory }),
       ...(seed.tools === undefined ? {} : { tools: [...seed.tools] }),
     },
     files: {},
