@@ -9,9 +9,9 @@ export interface NoteForgottenEvent {
 
 const readLimit = 1000;
 
-// The notebook's one entry in the events block: a line for each finished note forget, at the time
-// of notebook.note_forgotten, such as "Sam forgot note n4w8k2c6rd". The name is the owner's, or
-// "the owner" when it is unset, as in the session prompt.
+// The notebook's one entry in the events block: a line for each finished note forget by the user,
+// such as "Sam forgot note n4w8k2c6rd", with the owner's name or "the owner" when it is unset. A
+// forget by the assistant adds no line.
 export function buildNoteForgottenKind(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
 ): EventKind<NoteForgottenEvent> {
@@ -25,11 +25,19 @@ export function buildNoteForgottenKind(
         limit: readLimit,
       });
 
-      return records.map((entry) => ({
-        sequence: entry.record.sequence,
-        at: entry.record.recordedAt.getTime(),
-        detail: { shortID: noteForgottenCodec.decode(entry.record.payload).shortID },
-      }));
+      return records.flatMap((entry) => {
+        const forgotten = noteForgottenCodec.decode(entry.record.payload);
+
+        return forgotten.by === 'user'
+          ? [
+              {
+                sequence: entry.record.sequence,
+                at: entry.record.recordedAt.getTime(),
+                detail: { shortID: forgotten.shortID },
+              },
+            ]
+          : [];
+      });
     },
     render: (detail, settings) =>
       `${settings.ownerName ?? 'the owner'} forgot note ${detail.shortID}`,

@@ -494,13 +494,52 @@ test("it lists a finished note forget in the next turn's events, with the owner'
     {
       kind: 'notebook.note_forgotten',
       definitions: { snapshotHash: 'snapshot-a', personaVersion: 'persona-a' },
-      payload: noteForgottenCodec.encode({ note: 'note-uuid-a', shortID: 'n4w8k2c6rd' }),
+      payload: noteForgottenCodec.encode({
+        note: 'note-uuid-a',
+        shortID: 'n4w8k2c6rd',
+        by: 'user',
+      }),
     },
   ]);
 
   const turn = await conversation.send('And tomorrow?');
 
   expect(turn.input[0]?.text).toInclude('the owner forgot note n4w8k2c6rd');
+});
+
+test("it adds no line to the next turn's events for a note forget by the assistant", async () => {
+  const ctx = await setupTest();
+
+  const [runner] = await Promise.all([
+    ctx.startRunner('nixie-conversation-0123456789ab'),
+    createConversationTask(ctx.context),
+  ]);
+
+  const conversation = buildConversationDriver({
+    context: ctx.context,
+    guest: ctx.guest,
+    getRunStep: () => runner.runStep,
+  });
+
+  ctx.guest.addReplies({ text: 'High tide is at noon.' }, { text: 'Noted.' });
+
+  await conversation.send('When is high tide?');
+
+  await writeRecords(ctx.context.log, [
+    {
+      kind: 'notebook.note_forgotten',
+      definitions: { snapshotHash: 'snapshot-a', personaVersion: 'persona-a' },
+      payload: noteForgottenCodec.encode({
+        note: 'note-uuid-a',
+        shortID: 'n4w8k2c6rd',
+        by: 'assistant',
+      }),
+    },
+  ]);
+
+  const turn = await conversation.send('And tomorrow?');
+
+  expect(turn.input[0]?.text).not.toInclude('n4w8k2c6rd');
 });
 
 test("it leaves a finished note forget out of the next turn's events when the note notice is off", async () => {
@@ -525,7 +564,11 @@ test("it leaves a finished note forget out of the next turn's events when the no
     {
       kind: 'notebook.note_forgotten',
       definitions: { snapshotHash: 'snapshot-a', personaVersion: 'persona-a' },
-      payload: noteForgottenCodec.encode({ note: 'note-uuid-a', shortID: 'n4w8k2c6rd' }),
+      payload: noteForgottenCodec.encode({
+        note: 'note-uuid-a',
+        shortID: 'n4w8k2c6rd',
+        by: 'user',
+      }),
     },
   ]);
 

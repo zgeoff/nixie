@@ -3,7 +3,7 @@ import { startTestNotebook } from '../test-utils';
 import { buildNotebookTools } from './build-notebook-tools';
 import { notebookToolNames } from './notebook-tool-names';
 
-test('it builds the 9 tools under their names', async () => {
+test('it builds the 10 tools under their names', async () => {
   const ctx = await startTestNotebook();
 
   const tools = buildNotebookTools(() => ctx.notebook);
@@ -11,16 +11,19 @@ test('it builds the 9 tools under their names', async () => {
   expect(tools.map((tool) => tool.name)).toStrictEqual([...notebookToolNames]);
 });
 
-test.each(['notebook.write', 'notebook.edit', 'notebook.link', 'notebook.unlink'])(
-  'it declares the note effect and a direct run for %s',
-  async (name) => {
-    const ctx = await startTestNotebook();
+test.each([
+  'notebook.write',
+  'notebook.edit',
+  'notebook.link',
+  'notebook.unlink',
+  'notebook.forget',
+])('it declares the note effect and a direct run for %s', async (name) => {
+  const ctx = await startTestNotebook();
 
-    const tool = buildNotebookTools(() => ctx.notebook).find((entry) => entry.name === name);
+  const tool = buildNotebookTools(() => ctx.notebook).find((entry) => entry.name === name);
 
-    expect([tool?.declaration.effects, tool?.execution]).toStrictEqual([['note'], 'direct']);
-  },
-);
+  expect([tool?.declaration.effects, tool?.execution]).toStrictEqual([['note'], 'direct']);
+});
 
 test.each([
   'notebook.read',

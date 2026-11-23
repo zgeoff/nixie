@@ -1,4 +1,7 @@
 import { expect, test } from 'bun:test';
+import { buildNotebookTools } from '@heynixie/notebook';
+import { buildPolicyCall, readStarterDecisionPoint } from '@heynixie/policy/test-utils';
+import { waitForCondition } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
 import { createTestClient } from '../test-utils/create-test-client';
@@ -44,7 +47,7 @@ test('it lets the conversation write a note, which the web client then lists and
   expect(read).toMatchObject({ note, body: 'The trip happens after a cold night.', version: 1 });
 });
 
-test('it gives the conversation all 9 notebook tools', async () => {
+test('it gives the conversation the 9 notebook tools that read and link', async () => {
   const ctx = await setupTest();
   const written = await ctx.callTool('notebook.write', { title: 'First', body: 'Body.' });
 
@@ -87,6 +90,32 @@ test('it gives the conversation all 9 notebook tools', async () => {
   ]).toStrictEqual([2, 2, null, expect.any(Boolean), true, false, true, 2]);
 });
 
+test('it lets the conversation forget a note, which the web client then lists as gone', async () => {
+  const ctx = await setupTest();
+  const written = await ctx.callTool('notebook.write', { title: 'Boiler', body: 'Body.' });
+
+  const note = String(written?.['note']);
+
+  ctx.guest.addReplies({ toolUse: { name: 'notebook.forget', input: { id: note } } });
+
+  await ctx.api.client.conversation.send({
+    clientMessageId: crypto.randomUUID(),
+    spans: [],
+    text: 'Please forget the boiler note.',
+    thread: 'conversation',
+  });
+
+  await waitForCondition(async () => {
+    const listed = await ctx.api.client.notebook.listNotes({});
+
+    return listed.notes.length === 0;
+  });
+
+  const read = await ctx.api.client.notebook.readNote({ note }).catch((error: unknown) => error);
+
+  expect(read).toMatchObject({ code: 'UNKNOWN_NOTE' });
+});
+
 test('it forgets a note from the web client, and the conversation then reads it as unknown', async () => {
   const ctx = await setupTest();
   const written = await ctx.callTool('notebook.write', { title: 'Boiler', body: 'Body.' });
@@ -102,4 +131,24 @@ test('it forgets a note from the web client, and the conversation then reads it 
   const read = await ctx.callTool('notebook.read', { note });
 
   expect(read).toMatchObject({ refused: 'UNKNOWN_NOTE' });
+});
+
+test('it lets the starter rules run notebook.forget with no approval', async () => {
+  const tool = buildNotebookTools(() => {
+    throw new Error('no store is needed to read a declaration');
+  }).find((entry) => entry.name === 'notebook.forget');
+
+  invariant(tool);
+
+  const decide = readStarterDecisionPoint(() => tool.declaration);
+
+  const decided = await decide(
+    buildPolicyCall({
+      tool: 'notebook.forget',
+      toolList: ['notebook.forget'],
+      context: 'conversation',
+    }),
+  );
+
+  expect(decided.decision.outcome).toBe('allow');
 });

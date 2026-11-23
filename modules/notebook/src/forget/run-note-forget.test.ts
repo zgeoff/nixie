@@ -157,7 +157,7 @@ test('it runs the session cleanup with the note ID as its cause', async () => {
   expect(ctx.cleanups).toStrictEqual([{ noteID }]);
 });
 
-test('it writes notebook.note_forgotten once, with the note and its short ID', async () => {
+test('it writes notebook.note_forgotten once, with the note, its short ID and the user as who forgot', async () => {
   const ctx = await setupTest();
   const note = await ctx.write('Boiler');
   const noteID = await ctx.readNoteID(note);
@@ -167,7 +167,7 @@ test('it writes notebook.note_forgotten once, with the note and its short ID', a
   const records = await ctx.readRecords(['notebook.note_forgotten']);
 
   expect(records.map((entry) => entry.record.payload)).toStrictEqual([
-    { note: noteID, shortID: note },
+    { note: noteID, shortID: note, by: 'user' },
   ]);
 });
 

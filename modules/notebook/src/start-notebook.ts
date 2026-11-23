@@ -13,12 +13,12 @@ import { writeNoteOpened } from './client/write-note-opened';
 import type { LinkingNote } from './count/read-notes-linking-event';
 import { readNotesLinkingEvent } from './count/read-notes-linking-event';
 import { readNoteForgetFloor } from './forget/read-note-forget-floor';
-import type { NoteForgetPreviewRead } from './forget/read-note-forget-preview';
 import { readNoteForgetPreview } from './forget/read-note-forget-preview';
 import { readNoteForgottenSequence } from './forget/read-note-forgotten-sequence';
 import { runBegunNoteForgets } from './forget/run-begun-note-forgets';
 import type { NoteForget, NoteForgetTarget } from './forget/run-note-forget';
-import { runNoteForget } from './forget/run-note-forget';
+import { beginNoteForget, runNoteForget } from './forget/run-note-forget';
+import { runNoteForgetCleanup } from './forget/run-note-forget-cleanup';
 import { startNoteIndex } from './index/start-note-index';
 import { readNoteRow } from './note/read-note-row';
 import { readFoundNotes } from './read/read-found-notes';
@@ -33,7 +33,7 @@ import { writeNoteLink } from './write/write-note-link';
 import { writeNoteUnlink } from './write/write-note-unlink';
 
 // The notebook's own calls beside the tools': the client's reads, the owner's open of a private
-// note, and the forget.
+// note, and the forget with a client action's hook.
 export interface NotebookStore extends NotebookToolStore {
   readonly listNotes: (request: ClientListRequest) => Promise<ClientNoteList>;
   readonly readClientNote: (request: ClientNoteRequest) => Promise<ClientNoteRead>;
@@ -44,7 +44,6 @@ export interface NotebookStore extends NotebookToolStore {
     writeInTransaction?: (tx: WriteTransaction) => Promise<void>,
   ) => Promise<NoteOpened>;
 
-  readonly readForgetPreview: (note: string) => Promise<NoteForgetPreviewRead>;
   readonly forget: (
     target: NoteForgetTarget,
     writeInTransaction?: (tx: WriteTransaction) => Promise<void>,
@@ -57,6 +56,9 @@ export interface NotebookStore extends NotebookToolStore {
   readonly readForgottenSequence: (note: string) => Promise<number | null>;
   readonly readForgetFloor: (noteID: string) => Promise<number | null>;
   readonly readLinkingNotes: (sequence: number) => Promise<readonly LinkingNote[]>;
+
+  // resolves once the cleanups that a tool's forget left running have ended
+  readonly waitForForgets: () => Promise<void>;
 
   // resolves once the vectors of the notes read at start are encoded; true when they all were
   readonly waitForSemanticIndex: () => Promise<boolean>;
@@ -79,6 +81,32 @@ export async function startNotebook(options: StartNotebookOptions): Promise<Note
 
   await runBegunNoteForgets(context, index);
 
+  // A tool's forget runs inside a turn, and the cleanup waits for that turn to end, so the cleanup
+  // runs beside it. A cleanup that fails leaves the note forgetting, and the next start finishes it.
+  const cleanups: Promise<void>[] = [];
+
+  const runCleanupBeside = async (noteID: string): Promise<void> => {
+    try {
+      await runNoteForgetCleanup(context, index, noteID);
+    } catch {
+      // the note stays forgetting, which no tool reaches, and the next start finishes it
+    }
+  };
+
+  const forgetBeside = async (target: NoteForgetTarget): Promise<NoteForget> => {
+    const begun = await beginNoteForget(context, target);
+
+    if (begun.status === 'refused') {
+      return begun;
+    }
+
+    const cleanup = runCleanupBeside(begun.noteID);
+
+    cleanups.push(cleanup);
+
+    return { status: 'forgotten', noteID: begun.noteID, shortID: begun.shortID };
+  };
+
   return {
     write: (caller, input) => writeNote(context, index, caller, input),
     edit: (caller, note, input) => writeNoteEdit(context, index, caller, { note, input }),
@@ -89,6 +117,8 @@ export async function startNotebook(options: StartNotebookOptions): Promise<Note
     link: (request) => writeNoteLink(context, request),
     unlink: (request) => writeNoteUnlink(context, request),
     walk: (access, request) => readWalk(context, index, access, request),
+    readForgetPreview: (note) => readNoteForgetPreview(context, note),
+    forgetBeside,
 
     listNotes: (request) => listClientNotes(context, index, request),
     readClientNote: (request) => readClientNote(context, index, request),
@@ -96,7 +126,6 @@ export async function startNotebook(options: StartNotebookOptions): Promise<Note
     readPrivateBodies: (request) => readPrivateBodies(context, request),
     writeOpened: (note, writeInTransaction) => writeNoteOpened(context, note, writeInTransaction),
 
-    readForgetPreview: (note) => readNoteForgetPreview(context, note),
     forget: (target, writeInTransaction) =>
       runNoteForget(context, index, target, writeInTransaction),
     finishForget: async (note) => {
@@ -114,7 +143,13 @@ export async function startNotebook(options: StartNotebookOptions): Promise<Note
     readForgetFloor: (noteID) => readNoteForgetFloor(context.log, noteID),
     readLinkingNotes: (sequence) => readNotesLinkingEvent(context.log, sequence),
 
+    waitForForgets: async () => {
+      await Promise.all(cleanups);
+    },
     waitForSemanticIndex: () => index.waitForLoadedVectors(),
-    stop: () => index.stop(),
+    stop: async () => {
+      await Promise.all(cleanups);
+      await index.stop();
+    },
   };
 }

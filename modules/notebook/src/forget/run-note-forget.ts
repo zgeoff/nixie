@@ -2,13 +2,19 @@ import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import type { WriteTransaction } from '@heynixie/log';
 import type { NoteIndex } from '../index/start-note-index';
 import { readActiveNoteRow } from '../note/read-note-row';
+import type { ForgetBy } from '../record/forget-by-schema';
 import { noteForgettingCodec } from '../record/note-forgetting-codec';
 import type { NotebookContext } from '../types';
 import { runNoteForgetCleanup } from './run-note-forget-cleanup';
 
 export interface NoteForgetTarget {
   readonly note: string;
-  readonly version: number;
+
+  // the version the forget binds to; without it the forget takes the current version
+  readonly version?: number;
+
+  // who forgets: the user by default
+  readonly by?: ForgetBy;
 }
 
 export type NoteForget =
@@ -24,6 +30,28 @@ export async function runNoteForget(
   target: NoteForgetTarget,
   writeInTransaction?: (tx: WriteTransaction) => Promise<void>,
 ): Promise<NoteForget> {
+  const begun = await beginNoteForget(context, target, writeInTransaction);
+
+  if (begun.status === 'refused') {
+    return begun;
+  }
+
+  await runNoteForgetCleanup(context, index, begun.noteID);
+
+  return { status: 'forgotten', noteID: begun.noteID, shortID: begun.shortID };
+}
+
+export type BegunNoteForget =
+  | { readonly status: 'begun'; readonly noteID: string; readonly shortID: string }
+  | { readonly status: 'refused'; readonly reason: 'not_found' | 'stale' };
+
+// The first part alone, for a caller that runs inside a turn: the cleanup aborts every turn in
+// flight and waits for it to end, so a call that waited for the cleanup would wait for itself.
+export async function beginNoteForget(
+  context: NotebookContext,
+  target: NoteForgetTarget,
+  writeInTransaction?: (tx: WriteTransaction) => Promise<void>,
+): Promise<BegunNoteForget> {
   const begun = await withWriteTransaction(context.log.writer, async (tx) => {
     await writeInTransaction?.(tx);
 
@@ -33,7 +61,7 @@ export async function runNoteForget(
       throw new NoteForgetRefusedError('not_found');
     }
 
-    if (row.version !== target.version) {
+    if (target.version !== undefined && row.version !== target.version) {
       throw new NoteForgetRefusedError('stale');
     }
 
@@ -41,7 +69,11 @@ export async function runNoteForget(
       {
         kind: 'notebook.note_forgetting',
         definitions: context.definitions(),
-        payload: noteForgettingCodec.encode({ note: row.note_id, version: row.version }),
+        payload: noteForgettingCodec.encode({
+          note: row.note_id,
+          version: row.version,
+          by: target.by ?? 'user',
+        }),
       },
     ]);
 
@@ -58,9 +90,7 @@ export async function runNoteForget(
     return { status: 'refused', reason: begun.reason };
   }
 
-  await runNoteForgetCleanup(context, index, begun.noteID);
-
-  return { status: 'forgotten', ...begun };
+  return { status: 'begun', ...begun };
 }
 
 // A refusal throws inside the transaction, so a client action written by the hook rolls back with it.

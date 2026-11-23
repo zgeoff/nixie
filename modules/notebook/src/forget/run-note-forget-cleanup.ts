@@ -2,6 +2,8 @@ import type { LogTables } from '@heynixie/log';
 import { removeRecordKey, withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import { sql } from 'kysely';
 import type { NoteIndex } from '../index/start-note-index';
+import { forgetBySchema } from '../record/forget-by-schema';
+import { noteForgettingCodec } from '../record/note-forgetting-codec';
 import { noteForgottenCodec } from '../record/note-forgotten-codec';
 import type { NotebookContext, NotebookTables } from '../types';
 
@@ -50,11 +52,24 @@ export async function runNoteForgetCleanup(
       return;
     }
 
+    const begun = await tx
+      .$extendTables<LogTables>()
+      .selectFrom('records')
+      .select(sql`json_extract(payload, '$.by')`.as('by'))
+      .where('kind', '=', noteForgettingCodec.kind)
+      .where(sql`json_extract(payload, '$.note')`, '=', noteID)
+      .orderBy('sequence', 'desc')
+      .executeTakeFirst();
+
     await writeRecordsInTransaction(tx, context.log, [
       {
         kind: 'notebook.note_forgotten',
         definitions: context.definitions(),
-        payload: noteForgottenCodec.encode({ note: noteID, shortID: row.short_id }),
+        payload: noteForgottenCodec.encode({
+          note: noteID,
+          shortID: row.short_id,
+          by: forgetBySchema.parse(begun?.by ?? undefined),
+        }),
       },
     ]);
   });
