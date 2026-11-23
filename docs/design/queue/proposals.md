@@ -38,7 +38,8 @@ flowchart LR
   `prompt_override`.
 - The **proposer** is the conversation or the task whose thread the proposal was made on. A proposal
   that nixie makes on its own has no proposer, such as a rule nixie suggested after you approved the
-  same kind of action several times. This design calls those **suggested rules**.
+  same kind of action several times. This design calls those **suggested rules**. A memory proposal
+  has one proposer for each write that merged into it, as well as the first.
 - A proposal **settles** when it is approved, declined, lapses or is withdrawn. A settled proposal
   never reopens.
 - Two proposals are **the same thing** when they share a family, a proposer and the key in this
@@ -67,7 +68,7 @@ const proposal = await proposals.proposeInTransaction(tx, {
   thread: taskThread, // null for a proposal with no proposer
   taskID,
   deadlineAt: null,
-  shortID: undefined, // memory alone passes one, derived from the UUID, as it does today
+  shortID: undefined, // memory passes its UUID-derived ID until release N+2; the parameter then goes
 });
 // → { proposalID: '0c1d…', shortID: 'K9', lapsesAt: 1796548800000, replaced: 'K7' }
 // replaced is the short ID of the open proposal this one withdrew, or null
@@ -150,7 +151,9 @@ const result = await tools.call('proposals.withdraw', { shortID: 'K7' });
 
 - `proposals.withdraw` settles one of the caller's own open proposals, pending or deferred, as
   withdrawn, through `withdrawInTransaction`. The tool refuses a short ID of a settled proposal or
-  of a proposal on another thread, and nothing changes.
+  of a proposal the caller isn't a proposer of, and nothing changes.
+- Withdrawing a memory proposal withdraws it for every proposer whose write merged into it. Each of
+  the others hears the withdrawal in its settlement note.
 - When `proposeInTransaction` finds an open proposal that is the same thing, it withdraws that
   proposal in the same transaction, then writes the new one with `replaces` set. Both commit or
   neither does.
@@ -177,9 +180,9 @@ approvals:
   only at its deadline, which is its expiry, and keeps its own expiry timer.
 - A memory merge extends the shared row's lapse by `lapse_days.memory`, recorded in the merge record
   as today.
-- The core's sweep, built on the shared sweep helper, lapses every family. Memory's own sweep keeps
-  only its item lapses and the key-store cleanup of closed proposals, after the commit. Delete the
-  prompt sweep.
+- One sweep in the core lapses every family's open proposals once their lapse passes. Memory's own
+  sweep keeps only its item lapses and the key-store cleanup of closed proposals, after the commit.
+  Delete the prompt sweep.
 
 ### Telling the proposer
 
@@ -210,7 +213,7 @@ Proposals that settled since your last turn:
 
 A prompt override's export after approval stays a note of its own: it isn't a settlement.
 
-- The core writes `proposals.settled` on the proposer's thread. Outside the action family, it
+- The core writes `proposals.settled` on each proposer's thread. Outside the action family, it
   reaches a task as an inbox record that wakes it, and the conversation as a turn note.
 - When the proposing task has closed, the core writes `proposals.settled` on the thread of the task
   run's report target instead, with `task` set: the report target the task run pinned, else the
@@ -219,8 +222,9 @@ A prompt override's export after approval stays a note of its own: it isn't a se
 - The turn-note builder folds every `proposals.settled` since the conversation's last turn into one
   note, in log order. The inbox renderer does the same for every one since the task's last wake, and
   they wake the task once.
-- A proposal with no proposer settles with no message, except a lapse: the conversation reads it in
-  the batched note.
+- A proposal with no proposer writes `proposals.settled` with no thread, and sends no message. A
+  lapse is the exception: the core writes it on the conversation's thread, so the batched note
+  carries it.
 - An action proposal's settlement is never an inbox record. The task hears `action.outcome`, which
   the action module already writes when an approval queues the action, or when a decline or a lapse
   fails the held action.
@@ -255,7 +259,7 @@ type PendingRow = {
 } & (
   | {
       family: 'memory';
-      // as memory.pending returns them, where its 'new' is 'add'
+      // memory's change for a new item, 'new', shows as 'add'; edit, retire and pin keep their names
       change: 'add' | 'edit' | 'retire' | 'pin';
       gist: string | null;
       topic: string | null;
@@ -266,15 +270,17 @@ type PendingRow = {
 );
 ```
 
-- `proposals.pending` lists open proposals, pending or deferred: those on the caller's thread, and
-  those of every task the caller started, open or closed.
+- `proposals.pending` lists open proposals, pending or deferred: those the caller is a proposer of,
+  and those of every task the caller started, open or closed.
 - It replaces `memory.pending` and `skill_pending`.
 
 ### Short IDs
 
 - `proposeInTransaction` stores every new proposal's short ID in `proposals.proposed`, so a rebuild
-  keeps it. It creates the short ID with `createShortID`. Memory passes its own, derived from the
-  UUID, so a rollback rebuilds the same IDs.
+  keeps it. It creates the short ID with `createShortID`.
+- Memory draws its short ID like every other family from release N+2. Before then it passes one
+  derived from the UUID, because a release before N+1 derives it again at read time and must show
+  the same ID. From N+1, every reader of a memory proposal takes its short ID from the shared row.
 - Every proposal's ID is a UUID, skills and prompts included. A release before this design shows the
   UUID of a new skill or prompt proposal in place of its short ID.
 - A proposal's UUID never reaches the model. The answer path, `proposals.withdraw` and
@@ -301,8 +307,8 @@ type PendingRow = {
   defer.
 - A deferred proposal's lapse uses its family's `lapse_days`, the same value as a fresh one.
 - A new short ID is never reused: it differs from the short ID of every proposal ever made, open or
-  settled. `proposeInTransaction` draws again on a clash. A short ID that memory passes can't be
-  drawn again, so its clash fails the write, which a test covers.
+  settled. `proposeInTransaction` draws again on a clash. Before release N+2, a clash of a derived
+  memory short ID fails the write.
 - The core calls `approve` or `discard` first, and writes `proposals.settled` only when it succeeds,
   in the same transaction. For a family that owns its transaction, such as memory, the core writes
   it in a hook the family calls after its apply, inside that transaction. A refusal, or a memory
@@ -322,11 +328,11 @@ Each step ships in its own release, so a rollback by one release still reads eve
 exception is a rollback from N+2 to N+1: release N+1 reads a `prompt` row as an unknown family and
 fails to load it, so that rollback needs a restore from a backup taken before N+2.
 
-| Release | Ships                                                                                            |
-| ------- | ------------------------------------------------------------------------------------------------ |
-| N       | `proposals.proposed` and `proposals.settled` for every family but prompt, beside the old records |
-| N+1     | the readers switch to the new records; `memory.proposal_lapse_days` is read with a warning       |
-| N+2     | the old outcome records and the memory key stop; the prompt family joins the shared table        |
+| Release | Ships                                                                                                                 |
+| ------- | --------------------------------------------------------------------------------------------------------------------- |
+| N       | `proposals.proposed` and `proposals.settled` for every family but prompt, beside the old records                      |
+| N+1     | the readers switch to the new records and to stored short IDs; `memory.proposal_lapse_days` is read with a warning    |
+| N+2     | the old outcome records and the memory key stop; the prompt family joins the shared table; memory draws its short IDs |
 
 ## Builder decides
 
