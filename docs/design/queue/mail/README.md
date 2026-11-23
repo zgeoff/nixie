@@ -92,7 +92,7 @@ design once the owner agrees it, and the calendar poll moves to an item of its o
 
 - **Does a Gmail send's decision cover its reply rule?** The owner settles it in
   [GEO-2829](https://linear.app/zgeoff/issue/GEO-2829). The recommendation is yes, with the rule
-  shown on the send's approval card. Until then, the code does that.
+  shown on the send's approval card. Until then, the send's decision covers the rule.
 - **Can a task definition hold a standing mail trigger?** The owner settles it in
   [GEO-2830](https://linear.app/zgeoff/issue/GEO-2830). The recommendation is no: a definition that
   must see every mail runs on a schedule and searches since its last task run. Until then, the seed

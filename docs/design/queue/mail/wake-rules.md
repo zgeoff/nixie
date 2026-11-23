@@ -6,8 +6,8 @@
 The triggers module holds the wake rules and the one arrival path that both mail products share.
 Each mail source hands its new mail to the [trigger core](../../../architecture/core/triggers.md) as
 arrivals. The core matches each arrival against the live rules of its mailbox, and either wakes the
-rule's task at once or holds the match until the window ends. The [README](README.md) defines the
-terms. This part builds and tests against a fake mail source, so it waits on neither mailbox.
+rule's task at once or holds the match until the window ends. See the [README](README.md) for the
+terms. Build and test this part against a fake mail source, so it waits on neither mailbox.
 
 ## Shape
 
@@ -79,7 +79,7 @@ wake_rules                -- projection: one row per rule, with ended_at and rea
 
 - A set with the same mailbox, match and task as a live rule replaces that rule in place. The rule
   keeps its ID, short ID, `createdAt` and the time of its last wake, and takes the new expiry and
-  window length. The result says `replaced: true`.
+  window length. The result holds `replaced: true`.
 - An expired rule writes no record. It stops matching at `expiresAt`.
 - `readWakeRules` leaves out a rule that expired, ended, or belongs to a task that ended.
 - A rule's match is stored in plain text, as a definition's filter is.

@@ -117,8 +117,8 @@ gmail.wake_cancel({ rule: 'wz7p2k9q4m' }); // → { rule: 'wz7p2k9q4m', ended: t
   point.
 - A match wakes its task within `gmail.poll_interval` plus 1 minute of the mail's arrival, while the
   source reports `running` and the rule's window and throttle are open.
-- Forgetting a Google connection ends its rules and erases its mail text, as
-  [wake rules](wake-rules.md#erasure) says.
+- Forgetting a Google connection ends its rules and erases its mail text, by the steps in
+  [wake rules](wake-rules.md#erasure).
 
 ## Builder decides
 

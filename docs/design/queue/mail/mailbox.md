@@ -93,9 +93,9 @@ mail.wake_cancel({ rule: 'wq4k8m2x7p' }); // → { rule: 'wq4k8m2x7p', ended: tr
   calling task. `expires` runs from `1m` to `wake_rules.max_expiry`. `window` runs from `1m` to
   `expires`, and defaults to `wake_rules.window`. In the conversation, the tool refuses
   `CONVERSATION`.
-- A rule matches only mail received after it, so `recent` shows a code that arrived while the
-  assistant set the rule. The tool's description tells the assistant to set the rule before it asks
-  a site for a code, and to give a short window when it waits on one.
+- `recent` shows a code that arrived while the assistant set the rule, which the rule itself never
+  matches. In the tool's description, ask the assistant to set the rule before it asks a site for a
+  code, and to give a short window when it waits on one.
 - `mail.wake_cancel` refuses `UNKNOWN_RULE` for a rule of another task or another mailbox.
 - `files` takes up to 10 file IDs, 25 MiB in all. A file resolves only on the conversation or task
   run that made it.
