@@ -18,14 +18,14 @@ export function makeDeviceToolPreparer(options: DeviceToolOptions) {
     },
   };
 
-  return async (tool: string, input: JSONObject) => {
+  return (tool: string, input: JSONObject) => {
     const prepare = findTool(tools, tool).prepare;
 
     if (prepare === undefined) {
       throw new Error(`${tool} reads nothing before its call`);
     }
 
-    return await prepare(structuredClone(input), context);
+    return prepare(structuredClone(input), context);
   };
 }
 

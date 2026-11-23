@@ -3,10 +3,19 @@ import { getResultID } from './get-result-id';
 
 type ScriptedBody = NonNullable<ScriptedModelRequest['body']>;
 
+export interface LayoutReply {
+  readonly toolUse: {
+    readonly name: string;
+    readonly input:
+      | Readonly<Record<string, unknown>>
+      | ((body: ScriptedBody) => Readonly<Record<string, unknown>>);
+  };
+}
+
 // The calls that lay out the first device's screen and fill it, or that update its second region.
 // Each call names the device by the ID that the list result gave the model.
-export function buildLayoutReplies(step: 'set' | 'update') {
-  const listing = { toolUse: { name: 'mcp__nixie__devices_list', input: {} } };
+export function buildLayoutReplies(step: 'set' | 'update'): readonly LayoutReply[] {
+  const listing: LayoutReply = { toolUse: { name: 'mcp__nixie__devices_list', input: {} } };
 
   if (step === 'update') {
     return [listing, buildRegionReply('note', { kind: 'markdown', markdown: 'Dentist at 3' })];
@@ -35,7 +44,7 @@ export function buildLayoutReplies(step: 'set' | 'update') {
   ];
 }
 
-function buildRegionReply(region: string, content: object, minutes?: number) {
+function buildRegionReply(region: string, content: object, minutes?: number): LayoutReply {
   return {
     toolUse: {
       name: 'mcp__nixie__device_region',

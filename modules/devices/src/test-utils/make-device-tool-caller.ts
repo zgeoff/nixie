@@ -26,7 +26,7 @@ export function makeDeviceToolCaller(options: DeviceToolOptions) {
 
     const context: ToolContext = { callSequence: (newest?.record.sequence ?? 0) + 1, run };
 
-    return await findTool(tools, tool).run(
+    return findTool(tools, tool).run(
       { callID: 'call-1', tool, input: structuredClone(input), toolUseID: null },
       context,
     );
