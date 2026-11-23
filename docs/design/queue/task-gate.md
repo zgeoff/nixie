@@ -75,13 +75,13 @@ type TaskHoldReason =
 
 ### What each caller does when held
 
-| Caller         | `ended`                            | `task` or `limit`                                  | `nixie` or `spend`                                       |
-| -------------- | ---------------------------------- | -------------------------------------------------- | -------------------------------------------------------- |
-| task claim     | skips the task                     | skips a paused task; claims a task at a limit once | skips the task                                           |
-| action claim   | as today, by the task's state      | skips an unstarted attempt                         | skips every attempt                                      |
-| action attempt | as today, by the task's state      | barred, stays pending, and the lease is freed      | barred, stays pending, and the lease is freed            |
-| schedule fire  | `trigger.skipped` with `task_held` | `trigger.skipped` with `task_held`, as today       | writes nothing and claims no trigger key; it comes again |
-| step start     | the claim already skipped it       | the claim already skipped it                       | `spend` ends the step; `nixie` lets it run to its commit |
+| Caller         | `ended`                            | `task` or `limit`                                   | `nixie` or `spend`                                       |
+| -------------- | ---------------------------------- | --------------------------------------------------- | -------------------------------------------------------- |
+| task claim     | skips the task                     | skips a paused task; claims a task at a limit once  | skips the task                                           |
+| action claim   | as today, by the task's state      | skips an unstarted attempt                          | skips every attempt                                      |
+| action attempt | as today, by the task's state      | barred, stays pending, and the lease is freed       | barred, stays pending, and the lease is freed            |
+| schedule fire  | `trigger.skipped` with `task_held` | `trigger.skipped` with `task_held`, as today        | writes nothing and claims no trigger key; it comes again |
+| step start     | the claim already skipped it       | at a limit, writes `task.paused` and ends, as today | `spend` ends the step; `nixie` lets it run to its commit |
 
 - Where the table says "as today, by the task's state", a stop cancels the task's actions, a closed
   task's unstarted attempt is barred, and a done or failed task's action runs.
@@ -135,7 +135,7 @@ stored and published, and the crash side holds only code names and fault point I
 
 - Every attempt start and schedule fire reads `readTaskGate` in the same transaction as the write it
   guards. Every claim applies the filter built from the gate's predicate, in its claim transaction.
-  A step start writes nothing and reads the gate in a read transaction of its own.
+  A step start reads the gate in a read transaction of its own, after the trip that may write.
 - A hold never drops a fire. A fire lands, waits for the next delivery, or is skipped with a record
   that gives the reason.
 - The gate reads only the database.
