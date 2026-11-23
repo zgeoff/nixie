@@ -27,8 +27,9 @@ flowchart LR
 
 ```ts
 coding.sessions({ adapter: 'atc' });
-// → { sessions: [{ id: 'cloud.a1.s7-m4x2p', name: 'billing refactor', state: 'idle',
-//      target: 'cloud/cloud', cwd: '…/billing', boundTo: null }] }
+// → { sessions: [{ id: 'cloud.3f9a1c2e.5d0c7a14-2b6e-4f1a-9c3d-7e8f90a1b2c3',
+//      name: 'billing refactor', state: 'idle', target: 'cloud/cloud', cwd: '…/billing',
+//      boundTo: null }] }
 // coding module. Effects: read. Lists every session on a configured target that has not ended,
 // with the task that binds it, if any. Names and paths are untrusted text.
 ```
@@ -49,7 +50,7 @@ coding.message({ task: 't7k2', text: 'FYI: the CI fix for the cache landed on ma
 // coding module: the declarations of the two actions
 const codingSteerDeclaration: EffectDeclaration = {
   effects: ['send'],
-  destinations: [], // filled with the adapter ID and the session ID, such as 'atc:cloud.a1.s7-m4x2p'
+  destinations: [], // filled with '<adapter ID>:<session ID>', such as 'atc:cloud.3f9a1c2e.5d0c…'
   amount: null,
   content: ['text'],
   results: {},
@@ -142,6 +143,8 @@ coding:
 ### Steering
 
 - A steer types the whole text as one paste, newlines included, then presses Enter.
+- `coding.steer` and `coding.message` refuse a `text` over 32,000 characters. atc caps typed text
+  only by its 1 MiB request size.
 - The adapter reads the session's state before it types, and refuses a steer to a session in
   `waiting` with `canClear: false` and the reason `menu_open`. A waiting session shows a menu, and a
   typed Enter would pick its highlighted option.

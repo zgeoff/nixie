@@ -74,7 +74,9 @@ interface StartedSession {
 }
 
 interface SessionRef {
-  id: string; // the gateway's session ID, '<daemon>.<incarnation>.<id>', such as 'cloud.a1.s7-m4x2p'
+  // the gateway's session ID, '<daemon>.<incarnation>.<session UUID>', where the incarnation is the
+  // first 8 hex characters of the daemon's ID: 'cloud.3f9a1c2e.5d0c7a14-2b6e-4f1a-9c3d-7e8f90a1b2c3'
+  id: string;
 }
 
 interface ReachableSession {
@@ -157,19 +159,23 @@ and gives hop 0 to every other waking record that is not a task message.
 
 Each adapter call maps to atc-gateway's tools:
 
-| Adapter call | atc-gateway tools                                                                                     |
-| ------------ | ----------------------------------------------------------------------------------------------------- |
-| `start`      | `atc_events_read` with `limit` 1 and no cursor, then `atc_session_spawn` with `idempotencyKey`        |
-| `join`       | `atc_session_get`, then `atc_events_read` with `limit` 1 and no cursor                                |
-| `list`       | `atc_sessions_list`, kept to the sessions whose `locator` names a configured target                   |
-| `read`       | `atc_session_get` for the state, `pending`, `result` and `prompt`; `atc_transcript_read` for the tail |
-| `steer`      | `atc_session_get` for the state, then `atc_terminal_type`                                             |
-| `message`    | `atc_message_send`, with `idempotencyKey`                                                             |
-| `stop`       | `atc_session_stop`                                                                                    |
-| `events`     | `atc_events_read` with a cursor, `waitMs` 25,000 and `limit` 200; `atc_session_get` for each state    |
+| Adapter call | atc-gateway tools                                                                                      |
+| ------------ | ------------------------------------------------------------------------------------------------------ |
+| `start`      | `atc_events_read` with `limit` 1 and no cursor, then `atc_session_spawn` with `idempotencyKey`         |
+| `join`       | `atc_session_get`, then `atc_events_read` with `limit` 1 and no cursor                                 |
+| `list`       | `atc_sessions_list`, kept to the sessions whose `locator.daemon` and `locator.targetID` are configured |
+| `read`       | `atc_session_get` for the state, `pending`, `result` and `prompt`; `atc_transcript_read` for the tail  |
+| `steer`      | `atc_session_get` for the state, then `atc_terminal_type`                                              |
+| `message`    | `atc_message_send`, with `idempotencyKey`                                                              |
+| `stop`       | `atc_session_stop`                                                                                     |
+| `events`     | `atc_events_read` with a cursor, `waitMs` 25,000 and `limit` 200; `atc_session_get` for each state     |
 
 - `start`'s first read gives `fromCursor`. The spawn takes a git workspace from `repo`, and the
   `daemon` and `target` from the brief.
+- atc takes `trustClonedWorkspace` only for an agent and target that can trust a clone: stock Claude
+  Code on the daemon's local target, or stock Claude Code, a Claude gateway agent or Codex signed in
+  through atc's broker on a remote target that can trust a clone. Any other start gets `bad_args`
+  and fails.
 - A note's answer comes back through `events`.
 - `atc_session_stop` stops the session's process and keeps atc's record of the session. On a target
   that suspends its hosts, it puts the host to sleep.
@@ -202,6 +208,9 @@ The adapter maps the session's state from `atc_session_get`:
 | `exited`, otherwise                            | `ended`        |
 | the answer `no_such_session`                   | `gone`         |
 
+atc may add a state value in a later release. On a value the table lacks, the adapter keeps the last
+state it mapped and logs the value.
+
 `events` builds each `SessionEvent` from the trail as follows:
 
 - `message-answered` gives `answered`, with the whole answer from the event's `text`. An answer that
@@ -225,30 +234,36 @@ with `limit` 200 until `more` is false, groups the rows into turns, each one a `
 atc's answers map to replies. A failed tool call carries atc's code in its structured content; an
 HTTP refusal carries none:
 
-| atc answer                                                                                      | Reply                                                                    |
-| ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| `outcome_unknown`; a lost connection or a timeout after the request left                        | `unknown`                                                                |
-| `daemon_unavailable` with the reason `daemon_changed`, on a call with a key                     | `unknown`                                                                |
-| `no_such_session`, to a resent spawn                                                            | `unknown`                                                                |
-| `daemon_unavailable` otherwise, `target_unavailable`, `host_unavailable`, `timeout`, `too_slow` | `refused`, `canClear: true`                                              |
-| `permission_pending`, to a steer                                                                | `refused`, `canClear: true`                                              |
-| HTTP 401, or a connection refused before the request left                                       | `refused`, `canClear: true`                                              |
-| `idempotency_conflict`                                                                          | `refused`, `canClear: false`; a bug, since an action's args never change |
-| HTTP 403 `insufficient_scope`, `bad_args`, `target_forbidden`, `session_dead`, `unsupported`    | `refused`, `canClear: false`                                             |
-| `menu_open`, the adapter's own refusal of a steer to a session in `waiting`                     | `refused`, `canClear: false`                                             |
-| any other code                                                                                  | `refused`, `canClear: false`                                             |
+| atc answer                                                                                                  | Reply                                                                    |
+| ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `outcome_unknown`; a lost connection or a timeout after the request left                                    | `unknown`                                                                |
+| `daemon_unavailable`, on a call with a key                                                                  | `unknown`                                                                |
+| `no_such_session`, to a resent spawn                                                                        | `unknown`                                                                |
+| `daemon_unavailable` on a call with no key, `target_unavailable`, `host_unavailable`, `timeout`, `too_slow` | `refused`, `canClear: true`                                              |
+| `permission_pending`, to a steer                                                                            | `refused`, `canClear: true`                                              |
+| HTTP 401, or a connection refused before the request left                                                   | `refused`, `canClear: true`                                              |
+| `idempotency_conflict`                                                                                      | `refused`, `canClear: false`; a bug, since an action's args never change |
+| HTTP 403 `insufficient_scope`, `bad_args`, `target_forbidden`, `session_dead`, `unsupported`                | `refused`, `canClear: false`                                             |
+| `menu_open`, the adapter's own refusal of a steer to a session in `waiting`                                 | `refused`, `canClear: false`                                             |
+| any other code                                                                                              | `refused`, `canClear: false`                                             |
 
+- atc's MCP answer carries only the error's code and `problem`, so the adapter cannot tell a daemon
+  whose identity changed under a key from a daemon that is down. A keyed call takes either as
+  `unknown`, and the queue resends it under the same key.
 - A steer's lost connection after the request left is `unknown`, and its action's `none`
   reconciliation sends it to you, because the line may have reached the terminal.
 - The start's plan resolves `agent` and `target` from the config into the action's args, so every
   attempt sends the same spawn.
 - `coding.start` and `coding.message` declare `idempotency_key` reconciliation with `keptForMs` 23
-  h. atc forgets a key 24 h after its call completed, and the hour between keeps a resend from
-  reaching a key the gateway has dropped. The queue's own key expiry then sends an unknown outcome
-  to you.
+  h. A daemon forgets a completed key 24 h after its call, and the gateway keeps its own binding of
+  the key for 48 h, so a resend in the first 23 h gets the first answer. The queue's own key expiry
+  then sends an unknown outcome to you.
 - A refused attempt's key is spent at the gateway: a resend of it gets `outcome_unknown` and runs
   nothing. So the next attempt after a refusal takes the next key, `<action ID>.<n>`, and an attempt
   after an unknown outcome keeps its key, which the gateway resends to the daemon as a replay.
+- A replay gets the first answer only when the daemon holds the key as completed. When the first
+  send never reached the daemon, or the daemon holds the outcome as unknown, every resend gets
+  `outcome_unknown`, and the action's unknown outcome reaches you once its 23 h run out.
 
 ### The config and the token
 
@@ -276,8 +291,10 @@ tokens, which starts with `atcs_` and never expires.
 atc-gateway and its daemons deploy apart from nixie, and either side can roll back alone. Rule 12 of
 the [port rules](../../../architecture/ports.md) covers an implementation that runs in another
 process: its design lists the pairs of releases that work together, and nixie stops using it on a
-pair the list lacks. The gateway reports its version in its MCP server info, and refuses a daemon on
-another major atc version itself.
+pair the list lacks. The gateway reports its version in its MCP server info as
+`atc-gateway/<version>`, and refuses a daemon on another major atc version itself. The gateway
+releases on its own version line, apart from the daemons, and every gateway from 7.12.0 on serves
+service tokens and every tool this adapter calls.
 
 | nixie release                   | atc-gateway          | atc daemons |
 | ------------------------------- | -------------------- | ----------- |
@@ -298,8 +315,9 @@ another major atc version itself.
 - The source stores its cursor through `deliver`, so a batch's records and its cursor commit
   together. At its first start, it reads without a cursor and keeps only the cursor it gets, so it
   never replays the trail.
-- atc deletes events older than 30 days, and a cursor still reads every event after the deleted
-  ones. An outage longer than that loses only the deleted events.
+- atc deletes events older than 30 days, except each listed session's newest event, and a cursor
+  still reads every event after the deleted ones. An outage longer than that loses only the deleted
+  events.
 - A page that lists a daemon under `unavailable` keeps that daemon's place in the cursor, and the
   source reads it on the next call. A page that lists one under `truncated` lost that daemon's older
   events: the source logs it with the daemon's name.
@@ -313,10 +331,11 @@ another major atc version itself.
 
 ### Versions
 
-- The adapter reads the gateway's version from the server info of each MCP initialize. On a version
-  the table lacks, it sends nothing past the initialize. The source reports unhealthy and tries
-  again on its backoff. Each action attempt gets `refused` with `canClear: true`, so the queue tries
-  again on its backoff and fails the action when its tries run out.
+- The adapter reads the gateway's version from the server info of each MCP initialize, after the
+  `atc-gateway/` prefix. On a version the table lacks, it sends nothing past the initialize. The
+  source reports unhealthy and tries again on its backoff. Each action attempt gets `refused` with
+  `canClear: true`, so the queue tries again on its backoff and fails the action when its tries run
+  out.
 - A daemon on a version the gateway cannot serve answers `daemon_unavailable`, which the table above
   maps.
 

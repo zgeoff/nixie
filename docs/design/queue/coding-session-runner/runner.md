@@ -43,7 +43,7 @@ task.start({
   runner: 'atc',
   name: 'Your billing refactor',
   brief: 'Watch for a question, and check the migration once the work is done.',
-  session: 'cloud.a1.s7-m4x2p', // join: an atc session ID from coding.sessions
+  session: 'cloud.3f9a1c2e.5d0c7a14-2b6e-4f1a-9c3d-7e8f90a1b2c3', // join: from coding.sessions
   wake: ['waiting', 'idle', 'ended'], // optional: omitted: coding.wake.joined
 });
 // → { taskID: 't7k3' }
@@ -139,7 +139,7 @@ const codingStartDeclaration: EffectDeclaration = {
 // `coding.stop`: the action a stop of the task queues, for a started and a joined session alike
 const codingStopDeclaration: EffectDeclaration = {
   effects: ['coding_start'],
-  destinations: [], // the adapter ID and the session ID, such as 'atc:cloud.a1.s7-m4x2p'
+  destinations: [], // '<adapter ID>:<session ID>', such as 'atc:cloud.3f9a1c2e.5d0c…'
   amount: null,
   content: ['origin'], // 'started' | 'joined', which the starter rules match on
   results: {},
