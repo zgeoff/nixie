@@ -307,13 +307,13 @@ On the `agent-sdk` harness it is a declared value, and the conversation guest se
 per-server MCP tool-call timeout of nixie's tool server. When the value is null, the guest sets no
 timeout.
 
-## Fenced outside text
+## Sealed outside text
 
 Every piece of outside text that the model reads goes through one helper, `renderFenced` in
 `libs/wire`. It wraps the text in a tag whose opening and closing tags both carry a random ID that
 the caller mints with `mintBlockID`, and it throws when the text holds the closing tag with that ID.
 The attribute that carries the ID is `fence` for most elements and `id` for `<pasted>`, `<dropped>`
-and `<model-text>`. The fenced elements are:
+and `<model-text>`. The sealed elements are:
 
 - `<tool-result>`, for a tool's result and for text a page or the model supplied, with a `source`
   attribute;
@@ -324,7 +324,8 @@ and `<model-text>`. The fenced elements are:
 - `<memory-text>`, for the text of a memory item, as
   [How an item reads](../memory/context.md#how-an-item-reads) says.
 
-The fence stops the text from closing its element early. It does not prove who wrote the element.
+The random ID stops the text from closing its element early. It does not prove who wrote the
+element.
 
 ## System messages
 
