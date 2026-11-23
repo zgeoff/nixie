@@ -98,11 +98,13 @@ test.each<
   });
 });
 
-test('it refuses a memory write tool to a worker of a task that holds the self-note grant, and passes the grant on to none', () => {
+test('it refuses a memory write tool to a worker of a task that holds the self-note grant', () => {
   const facts = setupTest();
 
   const run = {
     ...facts.run,
+    thread: 'task-1',
+    logThread: 'task-1',
     hasSelfNoteGrant: true,
     tools: [...facts.run.tools, 'memory.remember'],
   };

@@ -519,11 +519,67 @@ test('it refuses an approved move whose card is gone', async () => {
   });
 });
 
-test('it moves a self-note for a task after the user approved it, with no rule', async () => {
+test('it refuses a user-approved move of a self-note by a task without the self-note grant, and leaves its topic', async () => {
   const ctx = await setupTest();
   const item = await ctx.createItem({ gist: 'tent poles', topic: 'lines' }, 'self');
 
-  const input = { items: [item.shortID], to: { topic: 'diary', subject: 'owner' } };
+  const input = { items: [item.shortID], to: { topic: 'diary', subject: 'self' } };
+
+  const sequence = await ctx.writeCard(input);
+
+  const outcome = await ctx.tool.run(
+    { callID: 'call-1', tool: 'memory.retopic', input, toolUseID: null },
+    {
+      ...buildMockToolContext({ thread: 'task-1', hasSelfNoteGrant: false }),
+      callSequence: sequence,
+    },
+  );
+
+  const labels = await ctx.memory.store.writes.readItemLabels(item.itemID);
+
+  expect(outcome).toStrictEqual({
+    status: 'error',
+    message: 'only the conversation writes a self-note, and this write came from the task',
+  });
+
+  expect(labels.topic).toBe('lines');
+});
+
+test('it applies a user-approved move of a self-note by a task with the self-note grant', async () => {
+  const ctx = await setupTest();
+  const item = await ctx.createItem({ gist: 'tent poles', topic: 'lines' }, 'self');
+
+  const input = { items: [item.shortID], to: { topic: 'diary', subject: 'self' } };
+
+  const sequence = await ctx.writeCard(input);
+
+  const outcome = await ctx.tool.run(
+    { callID: 'call-1', tool: 'memory.retopic', input, toolUseID: null },
+    {
+      ...buildMockToolContext({
+        thread: 'task-1',
+        hasSelfNoteGrant: true,
+        selfNoteOnlyTools: ['memory.retopic'],
+      }),
+      callSequence: sequence,
+    },
+  );
+
+  const labels = await ctx.memory.store.writes.readItemLabels(item.itemID);
+
+  expect(outcome).toStrictEqual({
+    status: 'ok',
+    result: { status: 'applied', moved: 1, move: 'self/lines → self/diary, 1 item' },
+  });
+
+  expect(labels.topic).toBe('diary');
+});
+
+test('it refuses a user-approved move of an owner item into self by a task without the self-note grant', async () => {
+  const ctx = await setupTest();
+  const item = await ctx.createItem({ gist: 'tent poles', topic: 'lines' });
+
+  const input = { items: [item.shortID], to: { topic: 'diary', subject: 'self' } };
 
   const sequence = await ctx.writeCard(input);
 
@@ -532,7 +588,33 @@ test('it moves a self-note for a task after the user approved it, with no rule',
     { ...buildMockToolContext({ thread: 'task-1' }), callSequence: sequence },
   );
 
-  expect(outcome).toMatchObject({ status: 'ok' });
+  const subject = await ctx.memory.store.writes.readItemSubject(item.itemID);
+
+  expect(outcome).toMatchObject({ status: 'error' });
+  expect(subject).toBe('owner');
+});
+
+test('it moves a self-note for a task without the self-note grant under an allow rule that checks subject eq self', async () => {
+  const ctx = await setupTest();
+  const item = await ctx.createItem({ gist: 'tent poles', topic: 'lines' }, 'self');
+
+  const outcome = await ctx.tool.run(
+    {
+      callID: 'call-1',
+      tool: 'memory.retopic',
+      input: { items: [item.shortID], to: { topic: 'diary', subject: 'self' } },
+      toolUseID: null,
+    },
+    buildMockToolContext(
+      { thread: 'task-1' },
+      buildAllowVerdict([{ arg: 'subject', op: 'eq', value: 'self' }]),
+    ),
+  );
+
+  const labels = await ctx.memory.store.writes.readItemLabels(item.itemID);
+
+  expect(outcome).toMatchObject({ status: 'ok', result: { status: 'applied' } });
+  expect(labels.topic).toBe('diary');
 });
 
 test('it writes one record for each item it moves, whether or not the item changes subject', async () => {

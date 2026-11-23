@@ -6,6 +6,7 @@ import { pickCoveringRule } from '../gate/pick-covering-rule';
 import { readCurrentItemKey } from '../item-key/read-current-item-key';
 import { writeLabelsInTransaction } from '../label/write-labels-in-transaction';
 import { readNewestMessage } from '../message/read-newest-message';
+import { requireSelfNoteCaller } from '../subject/require-self-note-caller';
 import { requireSelfNoteOnlyWrite } from '../subject/require-self-note-only-write';
 import type { Labels, MemoryTables, StoreParts } from '../types';
 import { SelfNoteError } from '../utils/error/self-note-error';
@@ -68,21 +69,23 @@ export function writeRetopic(parts: StoreParts, request: RetopicRequest): Promis
 }
 
 // A move that touches a self-note needs an allow rule that checks subject, as a label edit of one
-// does. The decision point holds such a move for the user otherwise, and the user's approval covers
-// it, so only a call that a rule allowed is checked.
+// does. Without such a rule, the move is a self-note write, which only a caller that writes
+// self-notes makes, even after the user approved it.
 function requireMoveCovered(plan: RetopicPlan, request: RetopicRequest): void {
   const touchesSelf =
     plan.to.subject === 'self' || plan.moves.some((move) => move.fromSubject === 'self');
 
-  if (
-    touchesSelf &&
-    request.verdict?.kind === 'rule-allow' &&
-    pickCoveringRule(request.verdict, 'self_note') === null
-  ) {
+  if (!touchesSelf || pickCoveringRule(request.verdict, 'self_note') !== null) {
+    return;
+  }
+
+  if (request.verdict?.kind === 'rule-allow') {
     throw new SelfNoteError(
       'a move that touches a self-note needs an allow rule that checks subject eq self',
     );
   }
+
+  requireSelfNoteCaller(request.caller);
 }
 
 // The user approved the items on the card, so a move of other items, such as one added to the topic

@@ -9,7 +9,8 @@ message asserts the memory. The first check that fails ends the gate, and the wr
 proposal with that check as its review reason, so nothing the model writes reaches memory on the
 model's word alone. A pin of an item outside the pinned core waits for review unless an allow rule
 covers it, and an unpin applies at once ([pins](#pins)). A write from a task passes the same gates
-as a write from the conversation.
+as a write from the conversation, except a write of a self-note by a task without the self-note
+grant, as [self-notes](#self-notes) says.
 
 A few writes fail outright instead. The tool returns an error to the model, and nothing is written:
 no item, no version and no proposal. These are:
@@ -25,8 +26,10 @@ no item, no version and no proposal. These are:
 - an edit of labels only that also passes a quote, an event ID, an end time or a subject, because
   each of those backs or changes text, and the edit has none;
 - an end time that has already passed;
-- a task's write that creates a self-note, edits one, or moves an item into or out of self, when no
-  allow rule covers it ([self-notes](#self-notes));
+- a write by a task without the self-note grant that creates a self-note, edits one, or moves an
+  item into or out of self, when no allow rule covers it ([self-notes](#self-notes)). Such a move
+  first waits for the user on its own approval card, and fails when the user approves it, with
+  nothing moved;
 - an image source that points at no image of the user's in the thread;
 - a quote or an event ID that cites a message whose removal from the event log has begun
   ([forgotten evidence](#forgotten-evidence));
@@ -247,9 +250,9 @@ run, and `buildWriteCaller` copies it to the write caller, so a tool's input nev
 other task's write that creates a self-note, edits one, or edits its labels fails and writes
 nothing, unless an allow rule covers it. A covering rule is the user's consent to nixie's own notes,
 so a task may then write them. Under an ask rule, or with no rule, such a task's self-note write
-still fails. A move of items into or out of self by a task needs no allow rule when the user
-approves it: the decision point holds the move for the user, and the approval carries it. A rule
-that allows such a move must check `subject` `eq` `self`.
+still fails. The same holds for such a task's move of items into or out of self: the decision point
+holds the move for the user, and the move fails when the user approves it. A rule that allows such a
+move must check `subject` `eq` `self`.
 
 The grant lifts only that caller check. A task with the grant writes a self-note under the same
 gates and approvals as the conversation. Its writes that touch an item of the user or of shared
