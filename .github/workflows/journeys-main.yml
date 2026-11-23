@@ -55,5 +55,9 @@ jobs:
       - name: Install
         run: bun install --frozen-lockfile
 
+      # the test build's computer drives a real Chromium, which a journey of its desktop needs
+      - name: Install the computer's browser
+        run: bun run --silent ci:install-browser
+
       - name: Journeys
         run: bun run test:journeys

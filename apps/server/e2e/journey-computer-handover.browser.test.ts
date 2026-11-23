@@ -159,32 +159,6 @@ test('it shows the banner for an ask after a CAPTCHA, then takes over from it an
     "[...document.querySelectorAll('section button')].find((button) => button.innerText === 'Take over').click()",
   );
 
-  await Promise.allSettled([
-    waitForPage(ctx.view, "document.body.innerText.includes('You have taken over the computer')"),
-  ]);
-
-  const diag = await ctx.nixie.readRecords();
-
-  console.log(
-    'DIAGLOG',
-    ctx.server
-      .readOutput()
-      .split('\n')
-      .filter((line) => !/memory_watch|image\.added/u.test(line))
-      .slice(-40)
-      .map((line) => line.slice(0, 260))
-      .join('\n'),
-  );
-
-  console.log(
-    'DIAG',
-    JSON.stringify(
-      diag
-        .filter((record) => record.kind.startsWith('computer.'))
-        .map((record) => [record.kind, record.payload]),
-    ),
-  );
-
   await waitForPage(
     ctx.view,
     "document.body.innerText.includes('You have taken over the computer')",
