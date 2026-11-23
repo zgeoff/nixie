@@ -9,8 +9,8 @@ message asserts the memory. The first check that fails ends the gate, and the wr
 proposal with that check as its review reason, so nothing the model writes reaches memory on the
 model's word alone. A pin of an item outside the pinned core waits for review unless an allow rule
 covers it, and an unpin applies at once ([pins](#pins)). A write from a task passes the same gates
-as a write from the conversation, except a write of a self-note by a task without the self-note
-grant, as [self-notes](#self-notes) says.
+as a write from the conversation. The exception is a write of a self-note by a task without the
+self-note grant ([self-notes](#self-notes)).
 
 A few writes fail outright instead. The tool returns an error to the model, and nothing is written:
 no item, no version and no proposal. These are:
@@ -244,15 +244,15 @@ everything the user typed in the evidence window. Without a covering rule, the w
 proposal with the reason `self_note` whatever the token check found, and the proposal keeps the
 token verdict, so the review shows a destination the user never typed.
 
-The conversation writes self-notes, because it speaks as nixie's persona. A task whose definition
+The conversation writes self-notes because it speaks as nixie's persona. A task whose definition
 sets `memory: self_notes` writes them too. The run's tool endpoint carries that grant on its tool
 run, and `buildWriteCaller` copies it to the write caller, so a tool's input never sets it. Every
-other task's write that creates a self-note, edits one, or edits its labels fails and writes
-nothing, unless an allow rule covers it. A covering rule is the user's consent to nixie's own notes,
-so a task may then write them. Under an ask rule, or with no rule, such a task's self-note write
-still fails. The same holds for such a task's move of items into or out of self: the decision point
-holds the move for the user, and the move fails when the user approves it. A rule that allows such a
-move must check `subject` `eq` `self`.
+other task fails and writes nothing when it creates, edits or relabels a self-note, unless an allow
+rule covers the write. A covering rule is the user's consent to nixie's own notes, so such a task
+may then write them. Under an ask rule, or with no rule, its self-note write still fails. The same
+holds for its move of items into or out of self: the decision point holds the move for the user, and
+the move fails when the user approves it. A rule that allows such a move must check `subject` `eq`
+`self`.
 
 The grant lifts only that caller check. A task with the grant writes a self-note under the same
 gates and approvals as the conversation. Its writes that touch an item of the user or of shared
