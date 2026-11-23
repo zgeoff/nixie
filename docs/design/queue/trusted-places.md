@@ -13,9 +13,9 @@ for `computer.browser_open`, and asks again for each click, because each tool an
 answer keeps its own list. With the directory, you trust a site once, on one page, and every tool
 sees the same answer.
 
-The owner approves this design. Build each work item above from it and the
+Once the owner approves this design, build each work item above from it and the
 [decision point](../../architecture/policy/decision-point.md) it extends. The directory's own work
-items, filed when the owner approves, are:
+items, filed at approval, are:
 
 1. the matcher, the directory, its records and the decision point's changes, with the contacts
    folded in and `web_fetch` declaring its host;
@@ -128,7 +128,7 @@ interface Place {
   shortID: string; // createShortID; the model reads and passes this, never placeID
   key: PlaceKey;
   trust: Trust;
-  name: string | null; // erasable
+  name: string | null; // erasable for an address, phone or handle place
   addedBy: 'you' | 'proposal' | 'card' | 'seed';
 }
 ```
@@ -260,7 +260,8 @@ and when a call last used it. You add, change and remove entries there. The host
   place tier and falls through.
 - An entry covers a place by key alone. A site entry never covers an address at that domain.
 - A `blocked` entry beats every rule, mandate and lift.
-- `spend` asks at every level. A lift covers it as it does today; a place never does.
+- No level allows a `spend` call: it asks at `known`, `read`, `act` and `self`, and `blocked` denies
+  it. A lift covers a spend as it does today.
 - Each call reads the directory of its own definitions snapshot. Each place record makes a new
   snapshot, as a contact record does today. The snapshot's form holds `policy.places`, the place IDs
   and levels, in place of `policy.contacts`, and never an address.
@@ -286,7 +287,8 @@ and when a call last used it. You add, change and remove entries there. The host
   known-contact schema keep working over the `places` projection until the page's work item moves
   them. The `known_contacts` table goes when they do.
 - The definitions repo may hold `places.yaml` with `site` and `mail_domain` entries, seeded like
-  rules. An `address`, `phone` or `handle` place never leaves the database.
+  rules. Each entry's key goes through `parsePlacePattern`, as a rule's pattern does. An `address`,
+  `phone` or `handle` place never leaves the database.
 
 ## Builder decides
 
@@ -301,7 +303,7 @@ and when a call last used it. You add, change and remove entries there. The host
 
 - Groups of places, such as "every bank". A later design can add them over the same keys.
 - A place's history beyond its records.
-- Trust for MCP servers, which the MCP proxy design keeps in its own config.
+- Trust for MCP servers, which the [MCP proxy design](mcp-proxy-build.md) keeps in its own config.
 
 ## Open questions
 
@@ -312,6 +314,6 @@ and when a call last used it. You add, change and remove entries there. The host
   owner may prefer that a fetch from an unlisted site asks once. Until then, reads stay free.
 - **Whole-domain entries for shared suffixes.** A two-label minimum still allows an entry for
   `co.uk` with subdomains. A public-suffix list would refuse it, at the cost of a library. Until the
-  owner decides, only you can make a subdomain entry, on the page.
+  owner decides, only you make a subdomain entry, on the page or in `places.yaml`.
 - **Who sees the notice of an act.** The design shows it in the conversation. The owner may want a
   digest instead.
