@@ -1,4 +1,4 @@
-import { pickRuleAliasTool } from '../memory/is-action-held-memory-tool';
+import { pickRuleAliasTool } from '../memory/pick-rule-alias-tool';
 import type { Rule } from '../types';
 
 // A pattern such as * matches every tool, so only the exact name, or the name of the tool whose

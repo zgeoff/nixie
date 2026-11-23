@@ -62,9 +62,11 @@ after the first `/` is a sub-topic.
 The block opens with a line that says what the index is, that `memory.recall` with `itemIDs` reads
 an item in full, and that `memory.recall` with `topic` opens a folded topic or a sub-topic such as
 `people/friends`. The store builds it from the in-memory label entries and one read of the item
-projection under the store lock, so it decrypts nothing and writes no record. The session renders
-the block once, when it opens. An item that lands later reaches the model through a recall, the
-per-turn search or the next session's index.
+projection under the store lock. It also reads each topic's
+[folded order](./store.md#the-folded-order) from the `memory.fold_ordered` records, which seal the
+topic name. It decrypts no item and writes no record. The session renders the block once, when it
+opens. An item that lands later reaches the model through a recall, the per-turn search or the next
+session's index.
 
 The block has its own token budget, `index_tokens`, apart from the pinned core's. The store counts
 every line of the block with the same estimate it uses for the core. While the count is over the

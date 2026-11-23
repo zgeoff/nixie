@@ -1,5 +1,5 @@
 import { match } from 'ts-pattern';
-import { pickRuleAliasTool } from '../memory/is-action-held-memory-tool';
+import { pickRuleAliasTool } from '../memory/pick-rule-alias-tool';
 import type { Rule, RuleCall, RuleCheck } from '../types';
 import { findArgument } from './find-argument';
 import { isCommandMatch, isCommandMentioned } from './is-command-match';

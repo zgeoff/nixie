@@ -4,8 +4,3 @@
 export function isActionHeldMemoryTool(tool: string): boolean {
   return tool === 'memory.retopic';
 }
-
-// The tool whose rules also cover the held tool's calls.
-export function pickRuleAliasTool(tool: string): string | null {
-  return isActionHeldMemoryTool(tool) ? 'memory.edit' : null;
-}
