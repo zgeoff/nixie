@@ -31,7 +31,9 @@ export function makeSessionGuard(): SessionGuard {
         await gate.current;
       }
 
-      if (step !== undefined) {
+      // Lease generations only grow, so a turn of an older claim that starts late must not hide
+      // the newer claim, which can still commit a summary.
+      if (step !== undefined && step.generation >= (turns.last?.generation ?? 0)) {
         turns.last = step;
       }
 
