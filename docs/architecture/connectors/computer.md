@@ -248,9 +248,9 @@ A `computer.run` is its own effect, `computer_run`, because the shell reaches th
 The user watches the desktop live in the web client's
 [computer page](../channels/client.md#the-computer-page). The picture takes no port of the sandbox.
 The VNC stream rides the guest's existing wire session as `vnc-open`, `vnc-data` and `vnc-close`
-frames, each carrying a stream ID, and the guest pipes each stream to the VNC server on its
-loopback. A VNC frame never waits behind a request in the guest's queue, so a long call never stalls
-the picture. The guest holds at most 4 streams, and the server never writes a frame to disk.
+frames, each carrying a stream ID, and the guest pipes each stream to the VNC server's Unix socket.
+A VNC frame never waits behind a request in the guest's queue, so a long call never stalls the
+picture. The guest holds at most 4 streams, and the server never writes a frame to disk.
 
 [The API](../channels/api.md#watching-the-computer) mints the ticket and holds the socket. The
 connector side, `openComputerWatch`, does the rest for each socket:
