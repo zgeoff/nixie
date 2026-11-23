@@ -4,8 +4,7 @@
 - **Work items:** [the vault](https://linear.app/zgeoff/issue/GEO-2731),
   [locked entries](https://linear.app/zgeoff/issue/GEO-2814),
   [the wallet](https://linear.app/zgeoff/issue/GEO-2757),
-  [devices](https://linear.app/zgeoff/issue/GEO-2758). Each uses the directory; its own work items
-  follow the opening.
+  [devices](https://linear.app/zgeoff/issue/GEO-2758). Each uses the directory.
 
 nixie keeps one directory of the places it deals with: websites, email addresses, mail domains,
 phone numbers and chat handles. Each entry carries one trust level, and the decision point reads the
@@ -113,9 +112,9 @@ type PlaceKey =
   domain keeps its `www.`.
 - A `site` or `mail_domain` key with `subdomains: true` never names a public suffix. The matcher
   reads the list through `tldts` with `allowPrivateDomains: true`, and every writer of an entry
-  refuses such a key. An exact key on a public suffix, such as `github.io` alone, stays allowed.
-  `tldts` goes in the root catalog at an exact version. It takes `tldts-core` through a `^` range,
-  which the lockfile pins and Bun's minimum release age holds back like any other package.
+  refuses such a key. An exact key on a public suffix, such as `github.io` alone, stays allowed. Add
+  `tldts` to the root catalog at an exact version. It takes `tldts-core` through a `^` range, which
+  the lockfile pins and Bun's minimum release age holds back like any other package.
 
 `parsePlacePattern` reads a place key from text that you or nixie write. `places.propose`,
 `places.narrow`, `places.list`, `places.yaml`, the page and a mail trigger's `from` all use this one
@@ -234,9 +233,9 @@ type DecisionDetail = { places: { placeID: string; shortID: string }[] | null };
 - Stage 7 checks places first: the call is allowed when every destination's place allows it. A call
   with no destination never passes this check. An ask rule at stage 6 still asks at a trusted place.
 - The stage numbers stay 1 to 9. A place allow records stage 7 with `places` set and `rule` null.
-- `ownerDestinations` leaves the decision point's inputs, and `self` places take the owner tier's
-  place. A decision recorded before this design keeps its old strings, and the decision schema reads
-  both forms. No published contract type carries decision permissions.
+- `ownerDestinations` leaves the decision point's inputs, and `self` places replace the owner tier.
+  A decision recorded before this design keeps its old strings, and the decision schema reads both
+  forms. No published contract type carries decision permissions.
 - The tool runner writes one `places.acted` for each `act` place, on the call's thread, when a call
   with an acting effect that places allowed runs. A queued call writes it when its attempt runs. A
   call with only reading effects writes none. The decision point stays a pure function, so a replay
@@ -285,10 +284,10 @@ interface ClickedElement {
 - A click handler that a script adds is invisible to `prepare`, so a plain-link click can start a
   script's action without asking. A plain link can act on its own too, such as a one-click
   unsubscribe. The design accepts both risks; a click inside a form still asks.
-- The server's hop gate refuses each hop to a `blocked` site, the rewritten URL and each redirect,
-  under the call's own snapshot. The browser act tools read the tab's host at each call, so the next
-  act on a tab that a redirect or a click took to a `blocked` site is denied. Navigation inside the
-  browser between calls isn't checked.
+- The server's hop gate refuses each hop to a `blocked` site, both the rewritten URL and each
+  redirect, under the call's own snapshot. The browser act tools read the tab's host at each call,
+  so the next act on a tab that a redirect or a click took to a `blocked` site is denied. Navigation
+  inside the browser between calls isn't checked.
 
 ### The notice of an act
 
@@ -441,8 +440,8 @@ and when a call last used it. You add, change and remove entries there. The host
 - The page's layout and its sort order.
 - Whether `places.narrow` is one tool or two.
 - How the guest reads the clicked element: a new read mode, or a field on the snapshot read.
-- How the Always allow rules that pin only a host are left: they keep working, and the builder may
-  offer a one-time conversion to places on the page.
+- What happens to the Always allow rules that pin only a host: they keep working, and the builder
+  may offer a one-time conversion to places on the page.
 
 ## Open questions
 
