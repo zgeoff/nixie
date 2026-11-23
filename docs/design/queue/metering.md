@@ -25,13 +25,14 @@ ledger. The wallet builds on the ledger.
 ```mermaid
 flowchart LR
   routes[(gateway routes: model prices)] --> gw[model gateway]
-  gw -->|"hold, then settle"| periods[day, month, each sandbox]
-  periods -->|"GET /sandboxes"| meter[task and worker meters]
+  gw -->|"hold, then settle"| counts[day, month, each sandbox]
+  counts --> stop[spending stop]
+  counts -->|"GET /sandboxes"| meter[task and worker meters]
   tools[(tool prices in config)] --> charge[budget charges]
   meter --> ledger[(spend_ledger)]
   charge --> ledger
-  period[periodOf] --> gw
-  period --> ledger
+  helper[periodOf] --> counts
+  helper --> ledger
 ```
 
 ## Terms
@@ -84,42 +85,66 @@ type Period = { kind: PeriodKind; start: string; startsAtMs: number; endsAtMs: n
 ### The gateway's held admission
 
 ```ts
-// model gateway. Admission adds a hold of the request's worst case to every counter it reads,
-// then the reply settles the hold to the charge.
-const hold = pickRequestHold(request, route); // the reply estimate's rule, run before the request
-// → { dollars: 0.43, tokens: 128000 }
+// model gateway. After it parses the body, admission adds a hold of the request's worst case to
+// the day, the month and the request's sandbox, in dollars and tokens; the reply settles it.
+const hold = pickRequestHold(body, route); // today's reply estimate, worked out before sending
+// → { dollars: 0.21, tokens: 41000 } for a 33,000-token body and max_tokens 8,000
+
+// GET /status and GET /sandboxes/<name> show the open holds beside each count.
+// → { count: { dollars: 1.84, tokens: 610000 }, held: { dollars: 0.21, tokens: 41000 }, … }
 ```
 
-- The gateway admits a request only when each counter's spend plus its open holds plus this hold
-  stays within the limit, and adds the hold under the store's lock. Two requests can't both take the
-  last of a limit.
-- The hold prices the route's whole context window at the highest input-side rate, and `max_tokens`
-  or the route's `maxOutputTokens` for output, so a request that continues a stored response still
-  has a bound. A request with no output bound is refused, as today.
-- Settling replaces the hold with the charge that today's rules pick: the reply's usage, the
+- The hold is today's estimate of a reply with no usage: the body's measured input at the highest
+  input-side rate, plus `max_tokens`, or the route's `maxOutputTokens`, for output.
+- A request whose input the estimate can't bound, such as one that continues a stored response,
+  holds the route's `contextWindow` in place of the measured input. A route that admits such
+  requests must set `contextWindow`, and the gateway refuses to start without it. A request with no
+  output bound gets a 400 and sends nothing, so no request leaves the gateway unbounded.
+- The gateway admits a request only when, for each counter, the count plus its open holds plus this
+  hold stays within the limit in force, raises and overrides included. It adds the hold under the
+  store's lock, so two requests can't both take the last of a limit.
+- A refusal for lack of room is a 403 with the error type `limit_reached`, whether the count or the
+  holds filled the room. The runner ends a step with `limit` on it. The spending stop still trips
+  only on the count.
+- Settling replaces the hold with the charge that today's rules pick: the reply's usage, today's
   estimate when the reply spent with no usage, and nothing when the provider refused it.
-- A hold counts against the period it settles in, so the open holds carry into a new day or month at
-  its reset.
-- The gateway writes each open hold to a holds file beside its store before it sends the request,
-  and removes it when the hold settles. After a restart it settles every hold in the file at its
-  full amount. The store file keeps its version and its float dollars, and a gateway of the release
-  before ignores the holds file.
+- A hold counts against the period it settles in, so the open holds carry into a new day or month.
+- The gateway writes each hold to `<store>.holds.json`, version 1, before it sends the request. It
+  adds the charge to the store before it removes the hold, so a crash between them counts twice and
+  never not at all. When the holds file can't be written, the request gets a 503 and sends nothing.
+- After a restart, the gateway settles each hold in the file at its full amount, into the current
+  day and month, and into its sandbox when the store still has it. The store file keeps its version
+  and its float dollars, and a gateway of the release before ignores the holds file.
+- Both the `periods` and the `limits` configs hold, so a preview holds too.
 
 ### The task and worker meters
 
-- With a gateway, a task run's dollars are the gateway's count for the task run's sandbox, plus each
-  of its worker runs' counts. The server reads them with `GET /sandboxes/<name>` before and after
-  each step, after each worker run, and when the run ends.
-- The server registers each task run's sandbox with a dollar limit: the run's limit less what its
-  worker runs spent. It changes the limit with `PATCH /sandboxes/<name>`, which sets the limit and
-  keeps the count. The gateway refuses a call past the limit, and the runner ends the step with
-  `limit`.
+```ts
+// model gateway control listener. PATCH sets a sandbox's limit and keeps its count and holds.
+PATCH / sandboxes / <name>{ limit: { dollars: 1.6 } | null }; // → 200, or 404 for an unknown name
+```
+
+- A task keeps its sandbox across its runs, so a run's dollars are the sandbox's count when the run
+  ends less its count when the run began, plus each of its worker runs' dollars.
+- At a run's start, the server sets the sandbox's limit to its count plus the run's limit. While a
+  worker runs, the limit drops by the worker's planned limit, and after it ends, by what the worker
+  spent. A `task-raise` patches the limit in the same transaction's after-commit step.
+- The server reads the count with `GET /sandboxes/<name>` before and after each step, after each
+  worker run and when the run ends, and writes each read as `task.meter_read`, with the run's ID and
+  the count in micros, rounded up. When a read gets no answer, the step doesn't start and retries as
+  a step does while the stop is unreachable.
+- At a restart, the server registers a sandbox with `PUT` only when the gateway has no such name,
+  and patches the limit of every other. The server refuses to start against a gateway that answers
+  405 to `PATCH`, so the gateway ships first.
 - A worker run keeps today's rule: its limit is the smaller of `workerRun` and what its task run has
   left, and when the gateway doesn't answer at its end, it charges the larger of its planned dollars
   and its own tally.
+- With a gateway, the runner's own pricing of each call, `task.failed_turn_spent` and
+  `task.turn_spend_unrecorded` go: the sandbox's limit replaces them.
 - Without a gateway, the task meter prices the guest's call frames with the profile's table, as
-  today, and writes the same `task.meter_read` record at the same points.
-- A task run opened before this design keeps today's meter until it ends.
+  today, and writes `task.meter_read` at the same points.
+- A run's start record gains `meter: 'gateway' | 'records'`. A run whose start record has no `meter`
+  began before this design, and keeps today's meter until it ends.
 
 ### The ledger
 
@@ -134,8 +159,9 @@ spend_ledger          plain table, log module
 ```
 
 - The ledger is a projection of `budget.charged`, `budget.credited`, `task.meter_read` and
-  `worker.run_ended`, so a rebuild reproduces it. `task.meter_read` is a new record, with the task
-  run's ID, of the meter's count each time the server reads it.
+  `worker.run_ended`, so a rebuild reproduces it. A budget charge adds to its row and a credit
+  subtracts. A `task.meter_read` or a `worker.run_ended` sets its run's row to the run's dollars,
+  and a worker run's row also holds its tokens.
 - A budget charge records its `ledger_key`, and a credit subtracts from that key, so a credit lands
   on the row its charge added to, whatever the budget's period is by then. A charge from before this
   design has no key, and its credit uses its budget ID, `periodStart` and the period kind the budget
@@ -168,7 +194,10 @@ spend_ledger          plain table, log module
 
 - Every limit reads exactly one counter, and every counter has exactly one writer.
 - A budget charge and its ledger row commit in the transaction of the record that causes them.
-- The gateway never reads nixie's ledger, and nixie never writes the gateway's store.
+- The gateway never reads nixie's ledger, and nixie changes the gateway's store only through the
+  control listener's calls.
+- The gateway takes its day and month from `periods.zone`, which the server's start check already
+  holds equal to the time tool's `default_zone`. A changed zone takes effect at the next reset.
 - Without a gateway, nothing stops model spend outside nixie, as today; the deployment's provider
   limit is the only backstop, as decision 0012 sets out.
 
