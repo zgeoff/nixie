@@ -3,9 +3,9 @@
 - **Status:** draft
 
 The web client hears of a pause, a spending stop or a backup notice up to a minute late, because it
-polls for them, and one page can hold 3 record streams. This design gives the server one way to push
-changes to the web client and to devices: one server-sent stream per client tab, `live.follow`, in
-place of today's 2 kinds of stream and 7 polls of 15 to 60 s.
+polls for them. One page can also hold 3 record streams. The server pushes changes to the web client
+and to devices through one server-sent stream per client tab, `live.follow`, in place of today's 2
+kinds of stream and 7 polls of 15 to 60 s.
 
 A page's stream carries the records of the thread on screen, and a `changed` event that names each
 kind of state a commit changed, such as the pause or the task list. A device screen's stream carries
@@ -89,8 +89,8 @@ const followLive = signedIn
 export type LiveTopic = z.output<typeof liveTopicSchema>;
 ```
 
-The web client maps each topic to the reads it invalidates. The last column names what the topic
-replaces in today's client:
+The web client maps each topic to the reads it invalidates, in place of the polls and streams in the
+last column:
 
 | Topic         | Reads the client invalidates                                     | Replaces                                    |
 | ------------- | ---------------------------------------------------------------- | ------------------------------------------- |
@@ -142,7 +142,7 @@ class ChangedEvent extends Event {
 ### A read that changes with time
 
 A task due on a schedule moves in the task list with no write, so no topic can announce it.
-`tasks.list` says when its answer next changes on its own.
+`tasks.list` returns the time its answer next changes on its own.
 
 ```ts
 // contract: tasks.list
