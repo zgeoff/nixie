@@ -73,8 +73,8 @@ parsePlace('not a place');
 // → null
 
 isPlaceCovered(entry.key, { parsed: parsePlace(destination), raw: destination });
-// → true when the entry covers the destination. A null parsed destination matches only a raw key
-// whose value is the NFC form of raw.
+// → true when the entry covers the destination. A raw key matches when its value is the NFC form
+// of raw, whatever parsed holds. A null parsed destination matches only a raw key.
 ```
 
 ```ts
@@ -106,10 +106,11 @@ type PlaceKey =
 - An IP address or a host with one label, such as `localhost`, parses as a `site`.
 - Tools keep declaring the destination strings they declare today. The decision point runs
   `parsePlace` for places only, and a rule's `destinations` match the declared string.
-- A site's normal form drops one leading `www.` label, unless what remains is a public suffix. So an
-  entry for `example.org` covers `www.example.org`, and an entry typed as `www.example.org` is the
-  entry for `example.org`. Every other subdomain needs its own entry or `subdomains: true`. A mail
-  domain keeps its `www.`.
+- A site's normal form drops every leading `www.` label, unless what remains is a public suffix. So
+  an entry for `example.org` covers `www.example.org`, and an entry typed as `www.example.org` is
+  the entry for `example.org`. Parsing a normal form gives the same form back, so a key listed by
+  `places.list` never widens when it is read again. Every other subdomain needs its own entry or
+  `subdomains: true`. A mail domain keeps its `www.`.
 - A `site` or `mail_domain` key with `subdomains: true` never names a public suffix. The matcher
   reads the list through `tldts` with `allowPrivateDomains: true`, and every writer of an entry
   refuses such a key. An exact key on a public suffix, such as `github.io` alone, stays allowed. Add
@@ -243,7 +244,9 @@ type DecisionDetail = { places: { placeID: string; shortID: string }[] | null };
 - When several entries cover a destination, a `blocked` entry wins. Otherwise the most specific
   entry wins: an exact or `raw` key, then the longer domain.
 - A rule's `destinations` keep their patterns and the `*` match. Both the pattern and the
-  destination are put in lower case before the match.
+  destination are put in lower case before the match, unless the destination parses as a `handle` or
+  as `null`. Those compare exactly, so a rule for a handle with capitals never matches the same
+  handle in other case.
 
 ### What the tools declare
 
@@ -252,11 +255,13 @@ type DecisionDetail = { places: { placeID: string; shortID: string }[] | null };
   nothing and declares none.
 - `search` with `sites`, `computer.browser_download` and a device page's fetches declare their URL's
   host too, in their own work items.
-- `computer.screen_click` and `computer.screen_type` declare the host of the browser tab in front
-  when the browser window has focus. With any other window in front they declare no destination, and
-  the call asks: their declarations carry a flag that stops stages 7 and 8 allowing them with no
-  destination. The flag is part of the declaration that the snapshot hash covers, and an `effects/`
-  override can't change it.
+- `computer.screen_click` and `computer.screen_type` declare the host of the browser tab in the
+  window that the act lands on, as the
+  [computer connector](../../architecture/connectors/computer.md) binds it: the window under the
+  point for a click, the focused window for typing. With any other window there they declare no
+  destination, and the call asks: their declarations carry a flag that stops stages 7 and 8 allowing
+  them with no destination. The flag is part of the declaration that the snapshot hash covers, and
+  an `effects/` override can't change it.
 - `computer.screenshot`, `computer.screen_scroll` and the browser read tools, such as
   `computer.browser_read`, declare no destination, as the [open question](#open-questions) says.
 - `computer.browser_fill` declares `send`, with the tab's host.
@@ -319,6 +324,9 @@ const proposal = await tools.call('places.propose', {
 
 - When every destination of a held call is one place, the card offers "Trust this place to read" and
   "Trust this place to act". Either answer adds the entry or raises its level, and writes no rule.
+  The card carries a place hash beside the action hash, over the key and the level it shows, and the
+  answer echoes both. The host checks the echo again, and refuses an answer that holds the action
+  hash alone, as it does for an Always allow rule's hash.
 - `places.propose` reads each `place` through `parsePlacePattern`. The card shows each in words,
   such as "library.example.org and every subdomain", with its level and its reason. The card has no
   subdomain checkbox.
@@ -334,6 +342,11 @@ await tools.call('places.narrow', { place: 'k3p9m2x7qa', trust: 'known' }); // o
 // → { place: 'k3p9m2x7qa', trust: 'known' }; refuses a level that isn't lower than the current one, and
 // refuses remove on a blocked entry, which would make the place free to read
 ```
+
+`places.narrow` also refuses a change that leaves a destination the entry covers at a higher level
+than before. Another entry can cause that: removing `forms.example.org` at `known` beside
+`*.example.org` at `act` leaves `forms.example.org` at `act`. Levels rise in the order `blocked`,
+`known`, `read`, `act`, and no entry counts as `known`.
 
 ### The list
 
@@ -449,6 +462,24 @@ and when a call last used it. You add, change and remove entries there. The host
   [GEO-2828](https://linear.app/zgeoff/issue/GEO-2828). Until then, `computer.screenshot`,
   `computer.screen_scroll` and the browser read tools declare `note` and no destination, and a
   `blocked` site that a tab reached between calls stays readable through them.
+
+- **Does a change to trust on the page, or a raise to `act` on a card, take the passkey check?** The
+  page is a browser surface, and a seeded `act` entry for nixie's own website would let a browser
+  act by nixie reach it. Recommendation: a raise to `act`, an unblock, or a `subdomains: true` key
+  takes the passkey check as a wider rule does, wherever it is made, and the page refuses a change
+  that comes from a browser act tool. Trade-off: one more prompt on the main route to trust. Until
+  the owner settles it, the card's answer binds the key and the level, and the page has no further
+  check.
+- **Does a frame inside a trusted tab take the tab's host?** A screen act has no view of a frame's
+  origin, so a click into a frame from a `blocked` site inside an `act` tab counts as the tab's
+  host. Recommendation: accept it, as for a script's click handler, because the page you trusted
+  chose to embed the frame. Alternative: a screen act at `act` asks when the guest reports a
+  cross-origin frame, at the cost of a guest read on every act.
+- **Do unlisted sites stay readable with no ask, when a URL can carry private text?** Today
+  `web_fetch` reads any site, and `allow-reads` allows it, so a request's query can send a private
+  value that the credential scan, which finds keys only, does not flag. The directory keeps that.
+  Recommendation: keep it, since asking before every new host removes the main use of `web_fetch`.
+  Alternative: ask when a URL's query or path holds text from a private memory item.
 
 ## Out of scope
 
