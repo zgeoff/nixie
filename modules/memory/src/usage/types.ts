@@ -55,6 +55,9 @@ export interface RecallCallEntry {
   // that is no recalled record, or null for a call that is the newest record of its thread
   readonly endSequence: number | null;
 
+  // whether the call wrote its result; a call cut off before it did returned nothing to the model
+  readonly hasResult: boolean;
+
   // the recorded input leaves the query out, so a call that names no items is a search, a list or a
   // topic read
   readonly kind: 'ids' | 'other';

@@ -11,7 +11,7 @@ const emptyUsage: ItemUsage = {
 
 // A recall call writes its record between its own record and its result, on its own thread. A
 // record with a search mode is a search inside a call and a push outside one. A record with none
-// is a recall by ID inside an ID call, and a list or a turn note counts for nothing.
+// is a recall by ID inside an ID call that has a result, and a list or a turn note counts for nothing.
 export function collectMemoryUsage(
   entries: readonly RecalledEntry[],
   calls: readonly RecallCallEntry[],
@@ -57,7 +57,7 @@ function pickSurface(entry: RecalledEntry, calls: readonly RecallCallEntry[]): S
     return within.length > 0 ? 'search' : 'push';
   }
 
-  return within.some((call) => call.kind === 'ids') ? 'id' : null;
+  return within.some((call) => call.kind === 'ids' && call.hasResult) ? 'id' : null;
 }
 
 interface SurfaceMark {

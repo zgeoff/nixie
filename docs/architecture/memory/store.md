@@ -524,6 +524,7 @@ then runs as in a bulk forget of retired items.
 | ----------------- | -------------- | ----------------------------------------------------------- |
 | `memory.recall`   | `read`         | Recalls items by query, by ID, by topic or a page at a time |
 | `memory.pending`  | `read`         | Lists the proposals that wait for the user's review         |
+| `memory.usage`    | `read`         | Lists the active items that no search or push surfaced      |
 | `memory.remember` | `memory_write` | Creates an item, with a quote or a photo as its source      |
 | `memory.edit`     | `memory_write` | Edits an item at a revision it read, with a quote           |
 | `memory.retire`   | `memory_write` | Retires an item at a revision it read, with an intent quote |

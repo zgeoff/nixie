@@ -200,7 +200,7 @@ test('it counts pushes and searches, and shows a recall by ID, on the next recal
   );
 });
 
-test('it counts a push after a recall by ID that never finished as a push, not as a search', async () => {
+test('it counts a push after a recall by ID that never finished as a push, and gives the unfinished recall no ID credit', async () => {
   const ctx = await setupTest();
   const piano = await ctx.remember('piano tuning', ['piano tuning']);
 
@@ -212,9 +212,7 @@ test('it counts a push after a recall by ID that never finished as a push, not a
 
   const recalled = await ctx.readRecall({ itemIDs: [piano.shortID] });
 
-  expect(recalled.items[0]?.usage).toBe(
-    'surfaced 1 time (1 by push), last 1 day ago · recalled by ID 1 day ago',
-  );
+  expect(recalled.items[0]?.usage).toBe('surfaced 1 time (1 by push), last 1 day ago');
 });
 
 test('it counts a list recall and a turn note for nothing', async () => {

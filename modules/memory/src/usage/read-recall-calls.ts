@@ -9,10 +9,11 @@ const rowSchema = z.object({
   sequence: z.number(),
   thread: z.string().nullable(),
   end_sequence: z.number().nullable(),
+  has_result: z.number(),
 });
 
 // Every `memory.recall` call before the sequence, with where its span ends: its result, or else the
-// next record on its thread that is no recalled record. Whether a call named items comes from its
+// next record on its thread that is no recalled record. Whether it named items comes from its
 // recorded input, which reads as `other` once a forget erased it.
 export async function readRecallCalls(
   parts: StoreParts,
@@ -28,7 +29,9 @@ export async function readRecallCalls(
           where next.thread is called.thread
             and next.sequence > called.sequence
             and next.kind <> 'memory.recalled')
-      ) as end_sequence
+      ) as end_sequence,
+      exists (select 1 from records as finished
+        where finished.kind = 'tool_result' and finished.parent = called.sequence) as has_result
     from records as called
     where called.kind = 'tool_called'
       and called.sequence < ${beforeSequence}
@@ -43,6 +46,7 @@ export async function readRecallCalls(
     sequence: row.sequence,
     thread: row.thread,
     endSequence: row.end_sequence,
+    hasResult: row.has_result === 1,
     kind: kinds.get(row.sequence) ?? 'other',
   }));
 }

@@ -6,6 +6,7 @@ test('it builds a finished call of the conversation and lets a field be replaced
     sequence: 5,
     thread: 'conversation',
     endSequence: 20,
+    hasResult: true,
     kind: 'ids',
   });
 });

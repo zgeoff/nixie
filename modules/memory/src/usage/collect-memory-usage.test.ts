@@ -94,17 +94,13 @@ test('it keeps the trigger keys that push records name, and notes a push that na
   ]).toStrictEqual([['key-1', 'key-2'], null, [], 1000]);
 });
 
-test('it ends a call with no result at the next record of its thread that is no recalled record, so a later push counts as a push', () => {
+test('it gives a recall by ID with no result no credit', () => {
   const usage = collectMemoryUsage(
-    [buildMockRecalledEntry({ sequence: 30 })],
-    [buildMockRecallCall({ sequence: 5, kind: 'ids', endSequence: 12 })],
+    [buildMockRecalledEntry({ hasSearchMode: false, recordedAtMs: 4000 })],
+    [buildMockRecallCall({ kind: 'ids', hasResult: false })],
   );
 
-  expect(usage.items.get('item-a')).toMatchObject({
-    searched: 0,
-    pushed: 1,
-    lastRecalledByIDAtMs: null,
-  });
+  expect(usage.items.size).toBe(0);
 });
 
 test('it reports the earliest record time over every record, whether or not it counts', () => {

@@ -5,6 +5,7 @@ export function buildMockRecallCall(overrides: Partial<RecallCallEntry> = {}): R
     sequence: 5,
     thread: 'conversation',
     endSequence: 20,
+    hasResult: true,
     kind: 'other',
     ...overrides,
   };
