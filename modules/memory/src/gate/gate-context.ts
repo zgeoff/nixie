@@ -85,11 +85,11 @@ interface WriteCallerFields {
   readonly model: string;
 }
 
-export interface ConversationWriteCaller extends WriteCallerFields {
+interface ConversationWriteCaller extends WriteCallerFields {
   readonly origin: 'conversation';
 }
 
-export interface TaskWriteCaller extends WriteCallerFields {
+interface TaskWriteCaller extends WriteCallerFields {
   readonly origin: 'task';
 
   // whether the task's definition grants it the assistant's self-note writes

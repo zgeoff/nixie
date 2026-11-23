@@ -13,7 +13,7 @@ export interface CheckTaskStartOptions {
   readonly conversationTools: readonly string[];
 }
 
-export const selfNotesNotWritableSentence = 'memory self_notes is not available yet';
+const selfNotesNotWritableSentence = 'memory self_notes is not available yet';
 
 // The one check of a start: the sandbox runner plans the input for the starter, with the bounds
 // that the conversation's task.start passes.
