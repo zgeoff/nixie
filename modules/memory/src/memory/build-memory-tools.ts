@@ -4,6 +4,7 @@ import { buildPendingTool } from '../pending/build-pending-tool';
 import type { RecallLineOptions } from '../recall/build-recall-tool';
 import { buildRecallTool } from '../recall/build-recall-tool';
 import type { MemoryToolStore } from '../tool/memory-tool-store';
+import { buildUsageTool } from '../usage/build-usage-tool';
 import { buildWriteTools } from '../write/build-write-tools';
 import { buildExportTool } from './build-export-tool';
 
@@ -13,6 +14,7 @@ export function buildMemoryTools(
 ): readonly ToolDefinition[] {
   return [
     buildRecallTool(memory, options),
+    buildUsageTool(memory, options),
     buildPendingTool(memory, options.clock),
     ...buildWriteTools(memory),
     buildExportTool(),

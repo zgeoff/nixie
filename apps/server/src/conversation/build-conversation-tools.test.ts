@@ -39,7 +39,7 @@ async function setupTest() {
   };
 }
 
-test('it lists the web fetch tool, the time tool, the log readers, the skill tools, the prompt reader and the 12 memory tools', async () => {
+test('it lists the web fetch tool, the time tool, the log readers, the skill tools, the prompt reader and the 13 memory tools', async () => {
   const ctx = await setupTest();
 
   const definitions = buildConversationTools(
@@ -100,6 +100,7 @@ test('it lists the web fetch tool, the time tool, the log readers, the skill too
     'skill_pending',
     'prompt_read',
     'memory.recall',
+    'memory.usage',
     'memory.pending',
     'memory.remember',
     'memory.edit',
@@ -303,6 +304,7 @@ test('it allows the time tool, the log reader and each memory tool but export an
     'log.read',
     'log.read_image',
     'memory.recall',
+    'memory.usage',
     'memory.pending',
     'memory.remember',
     'memory.edit',
@@ -318,6 +320,7 @@ test('it allows the time tool, the log reader and each memory tool but export an
   );
 
   expect(decided.map((entry) => entry.decision.outcome)).toStrictEqual([
+    'allow',
     'allow',
     'allow',
     'allow',

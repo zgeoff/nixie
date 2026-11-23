@@ -46,6 +46,12 @@ export const recallOutputSchema = {
             description: 'the phrases that bring the item up',
           },
           itemID: { type: 'string' },
+          usage: {
+            type: 'string',
+            description:
+              'how often searches and pushes surfaced the item, when it last surfaced and when ' +
+              'you last recalled it by ID',
+          },
           isPinned: { type: 'boolean' },
           subject: {
             type: 'string',
@@ -105,6 +111,7 @@ export const recallOutputSchema = {
           'topic',
           'triggers',
           'itemID',
+          'usage',
           'isPinned',
           'subject',
         ],
