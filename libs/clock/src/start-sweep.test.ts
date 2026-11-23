@@ -57,32 +57,12 @@ test('it runs at once on the start with runOnStart', async () => {
   expect(ctx.clock.now()).toBe(0);
 });
 
-test('it starts the next run one interval after the last run started', async () => {
+test('it starts the next run one interval after the last run ends', async () => {
   const ctx = setupTest();
   const held = Promise.withResolvers<void>();
 
   ctx.run.mockImplementationOnce(() => held.promise);
-  ctx.start({ runOnStart: true });
-
-  await waitFor(() => {
-    expect(ctx.run).toHaveBeenCalledTimes(1);
-  });
-
-  ctx.clock.advance(400);
-  held.resolve();
-
-  await waitFor(() => {
-    expect(ctx.clock.countPending()).toBe(1);
-  });
-
-  expect(ctx.clock.readNextDueMs()).toBe(1000);
-});
-
-test('it skips the tick that falls in a run and sleeps to the next one', async () => {
-  const ctx = setupTest();
-  const held = Promise.withResolvers<void>();
-
-  ctx.run.mockImplementationOnce(() => held.promise);
+  ctx.clock.advance(1000);
   ctx.start({ runOnStart: true });
 
   await waitFor(() => {
@@ -96,7 +76,7 @@ test('it skips the tick that falls in a run and sleeps to the next one', async (
     expect(ctx.clock.countPending()).toBe(1);
   });
 
-  expect(ctx.clock.readNextDueMs()).toBe(2000);
+  expect(ctx.clock.readNextDueMs()).toBe(3500);
   expect(ctx.run).toHaveBeenCalledTimes(1);
 });
 
