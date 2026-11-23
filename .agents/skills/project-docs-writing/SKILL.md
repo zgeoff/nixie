@@ -39,9 +39,9 @@ metadata:
 ## The owner of a design
 
 - In `docs/design/`, write "the owner" only for the person who approves each design and settles its
-  open questions. That is a role in the project, apart from the person a deployment works for.
+  open questions. That role is separate from the person a deployment works for.
 - In a design, address the person a deployment works for as "you". This replaces the design-docs
-  skill's rule to write "the owner" for them: nixie keeps the two roles apart.
+  skill's rule to write "the owner" for them.
 
 ## Runs
 
