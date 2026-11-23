@@ -27,8 +27,9 @@ user and nixie, such as a deal, a nickname or a running joke, and self for a
 [self-note](./writes.md#self-notes) that nixie writes about itself. A new item, or a new item's
 proposal, is owner unless the same write transaction commits a subject mark: a record of its own,
 `memory.shared_noted` or `memory.self_noted`, or the `memory.proposal_` form of each for a proposal.
-Later, only an approved [subject change](./writes.md#subject-changes), or an undo of one, moves the
-item, through a subject change record beside the version record that moves it.
+Later, only an approved [subject change](./writes.md#subject-changes), an undo of one, or a
+`memory.retopic` call moves the item. The first two write a subject change record beside the version
+record that moves it; [a re-file](#moving-a-topic) writes a label record.
 
 The subject travels in records of its own because nixie keeps its log and tables readable by the
 release before it, so a rollback by one release works
@@ -89,9 +90,9 @@ The label record always holds the whole label set, and one function writes it fo
 updates the in-memory entries. A waiting proposal writes nothing to its item. A label-only proposal
 matches a pending one only when both whole label sets are equal: a second proposal with the same
 labels merges into the pending one, and one with other labels waits beside it, so approving one
-makes the other stale. A change of an item's subject writes no label record, and the item keeps its
-labels. `undo` undoes the last text change only, so a label stays as it is until an edit changes it.
-A session that holds the number from before a label edit gets the stale error once and reads the
+makes the other stale. A subject change writes no label record, and the item keeps its labels.
+`undo` undoes the last text change only, so a label stays as it is until an edit changes it. A
+session that holds the number from before a label edit gets the stale error once and reads the
 revision from it. A label-only edit leaves the text unchanged, so `memory.retire` still accepts a
 recall of the text from before that edit as the
 [proof that the thread read the item](./writes.md#retirement-intent).
@@ -394,6 +395,72 @@ The tool refuses a call before it reaches the store, so with no record, when the
 than one of `query`, `itemIDs`, `topic` and `topics`, passes `after` with `query` or `itemIDs`, or
 passes `includeRetired`, `includeHistory` or `limit` with `topic` or `topics`.
 
+### Moving a topic
+
+`memory.retopic` moves either a whole topic, `from` a topic and subject, or a list of items, `items`
+by short ID, `to` a topic and subject, in one call. A move of a topic takes each active or retired
+item under that topic or a topic under it, and rewrites the matching part of each topic, so
+`people/friends` follows `people` to its new name. A topic that would pass 40 characters refuses the
+whole move. The item keeps its text, gist and triggers, so no version is added, and the call reuses
+the spelling of a topic that another item already holds.
+
+The call has the effect of a label-only edit. It writes the same `memory.labelled` record for each
+item it moves, all in one write transaction under the delivery lock, so a failure leaves every item
+and every in-memory label entry as it was. An item that changes subject carries its new and previous
+subject in that same record, so every item gets one record. A pinned item stays under its subject,
+because the pinned core renders each subject under its own heading, so a move that would change its
+subject refuses.
+
+A move refuses, with a named code and no write, when it holds no item (`EMPTY_MOVE`), names an item
+that does not exist (`UNKNOWN_ITEM`), puts every item where it already is (`SAME_TOPIC`), passes 40
+characters (`TOPIC_TOO_LONG`), moves a pinned item to another subject (`PINNED_SUBJECT_MOVE`), holds
+an invisible character (`INVISIBLE_CHARACTER`) or moves other items than the card showed
+(`CHANGED_SINCE_SHOWN`). The model reads and passes short IDs only, and an item's internal ID names
+no item. The refusal for the contents of a move, such as an unknown item, comes from the call's run,
+after the decision point, so a deny rule keeps what the memory holds from the model. A call with
+both `from` and `items`, or neither, refuses before the decision point, because that reads no
+memory.
+
+The label record accepts a field it does not know, so the release before reads the record and leaves
+the item under its old subject, with the new topic. The versions table records no previous subject
+for a move, so an undo of the item's last text change leaves its subject as it is.
+
+A refusal returns to the model as a result with `status` `refused`, its `code` and its message, and
+the call records the code as its refusal code.
+
+The same rules cover `memory.retopic` as cover `memory.edit`: an allow, ask or deny rule that names
+`memory.edit` or the effect `memory_write` matches it. A rule can check `subject`, the subject of
+every item the move touches, `topic`, the topic each item moves to, one value or a list, since a
+move of a whole topic gives each sub-topic its own, `itemID`, the short ID of each item that moves,
+and `from.topic`, `to.topic` and `items`. A move into or out of self touches a self-note, so an
+allow rule that covers it must check `subject` `eq` `self`, which only a move from self to self
+meets, and no other allow rule counts. A move has no always-allow choice, because no check pins
+free-text topics.
+
+A call that no allow rule covers, and a call that an ask rule matches, waits for the user as an
+action proposal, because one call moves many items. The call stores the move, such as
+`self/lines → self/diary, 20 items`, the gist of each item and the item's ID, sealed under its own
+record. The proposal's card shows the move as its sentence and the item count with the gists folded
+under it. The user's approval runs the call only when it moves the items the card showed, so an item
+that joined the topic since refuses the call and waits for a new card. A forget of an item removes
+the key of each stored card that names it, so the card then shows no body and the call refuses. A
+card stored after the forget finished is checked once the call's record holds it, and loses its key
+then, so no gist outlives its item. The self-note rule that holds for the conversation does not
+apply to an approved call, because the user approved the move.
+
+### The folded order
+
+`memory.fold` sets, for a topic of one subject, whether the folded rows of
+[the memory index](./context.md#the-memory-index) show the newest or the oldest 3 items. The default
+is the newest. The topic is the part before the first slash, and the setting covers the topic's row
+and each sub-topic under it. The call refuses a topic that no active item holds under that subject.
+
+The setting lives in a `memory.fold_ordered` record, which holds the subject and the order in its
+payload and the topic in its erasable fields, because a topic name is label text. The index reads
+the records when it renders, and the latest record of a subject and topic wins, so the setting
+survives a restart and needs no table. The forget of an item removes the key of each fold record
+whose topic no item holds under that subject any more, so the topic name goes with the last item.
+
 ### The indexes
 
 The keyword index is an FTS5 table with the porter tokenizer in an in-memory SQLite database. It
@@ -530,19 +597,23 @@ then runs as in a bulk forget of retired items.
 | `memory.retire`   | `memory_write` | Retires an item at a revision it read, with an intent quote |
 | `memory.pin`      | `memory_write` | Pins an item at a revision it read, or asks to              |
 | `memory.unpin`    | `note`         | Takes an item out of the pinned core                        |
+| `memory.retopic`  | `memory_write` | Moves a topic, or a list of items, to a topic and subject   |
+| `memory.fold`     | `note`         | Sets the order a topic's folded rows show their items in    |
 
 Each tool runs direct, and the user's rules decide each call by its effect or its name. The starter
 rules `allow-reads` and `allow-notes` allow `read` and `note`. No starter rule allows
 `memory_write`, so the memory gate decides those calls
-([rules on memory writes](./writes.md#rules-on-memory-writes)).
+([rules on memory writes](./writes.md#rules-on-memory-writes)). `memory.retopic` is the exception:
+the memory gate decides none of its calls, and a call that no allow rule covers waits for the user
+as an [action proposal](#moving-a-topic).
 
-Each write tool runs its gate, and returns either the revision it applied or the proposal it became,
-with its review reason. A missing quote never fails the tool, because the gate turns it into a
-proposal. The result gives the review reason as its code and a fixed sentence that says why the
-write waits for the user's review, rendered with the user's name and the gate's evidence window, the
-number of the user's latest messages it searches for a quote (`evidence_window`, 20 by default), so
-the model reads the rule the gate applied. The model never writes the sentence, so the reasons stay
-a closed set.
+Each write tool except `memory.retopic` runs its gate, and returns either the revision it applied or
+the proposal it became, with its review reason. A missing quote never fails the tool, because the
+gate turns it into a proposal. The result gives the review reason as its code and a fixed sentence
+that says why the write waits for the user's review, rendered with the user's name and the gate's
+evidence window, the number of the user's latest messages it searches for a quote
+(`evidence_window`, 20 by default), so the model reads the rule the gate applied. The model never
+writes the sentence, so the reasons stay a closed set.
 
 Each tool takes its provenance from the task run: the conversation's thread gives the conversation
 as origin, any other thread gives a task, and the run's model gives the model ID. nixie marks a

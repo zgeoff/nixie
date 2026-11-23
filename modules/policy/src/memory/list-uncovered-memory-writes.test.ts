@@ -25,8 +25,17 @@ test('#listUncoveredMemoryWrites lists the self-notes and photo writes that a pl
     'a self-note text edit',
     'a self-note label edit',
     'a move of an item into self',
+    'a re-file of items into self',
     'a write from a photo',
   ]);
+});
+
+test('#listUncoveredMemoryWrites counts a re-file as covered by a rule that names memory.edit', () => {
+  const rule: Rule = { id: 'edits', outcome: 'allow', tools: ['memory.edit'] };
+  const uncovered = listUncoveredMemoryWrites(rule);
+
+  expect(uncovered).toContain('a re-file of items into self');
+  expect(uncovered).not.toContain('a re-file of items to another topic');
 });
 
 test('#listUncoveredMemoryWrites lists every other kind for a rule on one tool', () => {
@@ -41,6 +50,8 @@ test('#listUncoveredMemoryWrites lists every other kind for a rule on one tool',
     'a self-note label edit',
     'a move of an item into self',
     'a move of an item out of self',
+    'a re-file of items to another topic',
+    'a re-file of items into self',
     'a write from a photo',
     'a retirement',
   ]);
@@ -59,6 +70,7 @@ test('#listUncoveredMemoryWrites leaves only the kinds outside self for a rule t
     'a text edit',
     'a label-only edit',
     'a move of an item out of self',
+    'a re-file of items to another topic',
     'a write from a photo',
   ]);
 });
@@ -80,6 +92,8 @@ test('#listUncoveredMemoryWrites covers a photo write for a rule with an image c
     'a self-note label edit',
     'a move of an item into self',
     'a move of an item out of self',
+    'a re-file of items to another topic',
+    'a re-file of items into self',
     'a pin',
     'a retirement',
   ]);

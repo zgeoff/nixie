@@ -187,6 +187,10 @@ export interface Prepared {
   // Sealed under the key of the call's own record, in order, when the call asks the owner, so a
   // card can show them. A forget of the record erases them.
   readonly attachments?: readonly Uint8Array<ArrayBuffer>[];
+
+  // Runs once the call's record holds the attachments, with its sequence, so a tool can erase them
+  // when what they show changed since it prepared them.
+  readonly settleAttachments?: (callSequence: number) => Promise<void>;
 }
 
 export interface PaidTool {

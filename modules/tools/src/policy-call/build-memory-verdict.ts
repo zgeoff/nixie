@@ -6,6 +6,7 @@ import type { MemoryWriteVerdict } from '../types';
 export function isMemoryRuleAsk(policy: PolicyDecision): boolean {
   return (
     policy.memoryWrite !== undefined &&
+    policy.memoryWrite.holdsAsAction !== true &&
     policy.decision.outcome === 'ask' &&
     policy.decision.cause === 'ask_rule' &&
     policy.decision.rule !== null

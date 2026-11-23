@@ -438,6 +438,6 @@ test('it shows on the card what each rule of a mandate will not cover in memory'
   ]);
 
   expect(fields['rule 1 will not cover']).toBe(
-    'a new fact; a new self-note; a self-note text edit; a self-note label edit; a move of an item into self; a write from a photo',
+    'a new fact; a new self-note; a self-note text edit; a self-note label edit; a move of an item into self; a re-file of items into self; a write from a photo',
   );
 });

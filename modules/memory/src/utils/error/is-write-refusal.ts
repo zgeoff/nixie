@@ -9,6 +9,7 @@ import { QuotedRecordForgettingError } from './quoted-record-forgetting-error';
 import { SelfNoteError } from './self-note-error';
 import { StaleVersionError } from './stale-version-error';
 import { TextLimitError } from './text-limit-error';
+import { TopicMoveError } from './topic-move-error';
 import { UntilPassedError } from './until-passed-error';
 
 // An error that a write call returns to the model as a message, and not as a failure of the tool.
@@ -25,6 +26,7 @@ export function isWriteRefusal(error: unknown): error is Error {
     error instanceof ItemPurgingError ||
     error instanceof QuotedRecordForgettingError ||
     error instanceof UntilPassedError ||
-    error instanceof TextLimitError
+    error instanceof TextLimitError ||
+    error instanceof TopicMoveError
   );
 }

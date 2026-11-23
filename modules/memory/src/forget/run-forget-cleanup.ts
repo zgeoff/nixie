@@ -4,11 +4,15 @@ import {
   writeRecordsInTransaction,
 } from '@heynixie/log';
 import { waitAtFaultPoint } from '@heynixie/tasks';
+import { removeOrphanFoldOrders } from '../fold/remove-orphan-fold-orders';
+import { removeRetopicCards } from '../retopic/remove-retopic-cards';
 import type { MemoryTables, StoreParts } from '../types';
 
 export async function runForgetCleanup(parts: StoreParts, itemID: string): Promise<void> {
   const log = parts.context.log;
 
+  await removeOrphanFoldOrders(parts);
+  await removeRetopicCards(parts, itemID);
   await removeRecordKeyFamily(log, itemID);
 
   if (NIXIE_TEST_BUILD) {

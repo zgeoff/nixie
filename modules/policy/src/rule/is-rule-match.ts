@@ -1,4 +1,5 @@
 import { match } from 'ts-pattern';
+import { pickRuleAliasTool } from '../memory/pick-rule-alias-tool';
 import type { Rule, RuleCall, RuleCheck } from '../types';
 import { findArgument } from './find-argument';
 import { isCommandMatch, isCommandMentioned } from './is-command-match';
@@ -27,8 +28,13 @@ export function isRuleMatch(rule: Rule, call: RuleCall): boolean {
 
 function isToolMatch(pattern: string, tool: string): boolean {
   const [name = tool] = tool.split('/', 1);
+  const alias = pickRuleAliasTool(tool);
 
-  return isPatternMatch(pattern, tool) || isPatternMatch(pattern, name);
+  return (
+    isPatternMatch(pattern, tool) ||
+    isPatternMatch(pattern, name) ||
+    (alias !== null && isPatternMatch(pattern, alias))
+  );
 }
 
 function isListMatch<Item>(

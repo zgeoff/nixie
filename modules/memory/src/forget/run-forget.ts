@@ -2,7 +2,7 @@ import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import type { ForgetRequest, MemoryTables, StoreParts } from '../types';
 import { requireItem } from '../utils/item/require-item';
 import { readEvidenceSequences } from '../utils/read-evidence-sequences';
-import { runForgetCleanup } from '../utils/run-forget-cleanup';
+import { runForgetCleanup } from './run-forget-cleanup';
 
 export async function runForget(parts: StoreParts, request: ForgetRequest): Promise<void> {
   const log = parts.context.log;

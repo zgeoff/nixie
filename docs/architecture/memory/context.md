@@ -62,21 +62,35 @@ after the first `/` is a sub-topic.
 The block opens with a line that says what the index is, that `memory.recall` with `itemIDs` reads
 an item in full, and that `memory.recall` with `topic` opens a folded topic or a sub-topic such as
 `people/friends`. The store builds it from the in-memory label entries and one read of the item
-projection under the store lock, so it decrypts nothing and writes no record. The session renders
-the block once, when it opens. An item that lands later reaches the model through a recall, the
-per-turn search or the next session's index.
+projection under the store lock. It also reads each topic's
+[folded order](./store.md#the-folded-order) from the `memory.fold_ordered` records, which seal the
+topic name. It decrypts no item and writes no record. The session renders the block once, when it
+opens. An item that lands later reaches the model through a recall, the per-turn search or the next
+session's index.
 
 The block has its own token budget, `index_tokens`, apart from the pinned core's. The store counts
 every line of the block with the same estimate it uses for the core. While the count is over the
-budget, it folds the open topic with the most items, which then shows its count, its 3 newest items
-and its sub-topics with their counts. A topic with 3 items or fewer shows them all when folded, so
-the store never folds it. A topic with more than `index_open_topic_items` items starts folded. When
-every foldable topic is folded and the count is still over, the store drops topics into a closing
-line that gives their number and their items, the topic with the fewest items first. A tie in either
-step goes to the later topic in the block's order. `memory.recall` with `topics` lists every topic,
-so a dropped topic stays reachable. A budget of 0 turns the block and its status lines off, and the
-schema refuses a budget from 1 to 2,999, so the block always fits its opening and closing lines. The
-closing line reads "and N more topics with M items: list them with memory.recall topics".
+budget, it folds the sub-topic with the most items, in any topic, to its count and 3 items, and
+keeps the sibling sub-topics open. A topic with sub-topics shows the items filed under the topic
+itself, then each sub-topic on its own, open or folded. The store folds a whole topic only once
+every sub-topic in the block is folded, including each sub-topic with 3 items or fewer, which shows
+the same items folded. It then folds the topic with the most items, and the row shows its count, its
+3 items and its sub-topics with their counts. A topic with 3 items or fewer shows them all when
+folded, so the store never folds it. A topic with no sub-topic, or a sub-topic, with more than
+`index_open_topic_items` items starts folded, and so does a topic whose every sub-topic starts
+folded.
+
+A folded row shows the 3 newest items unless `memory.fold` set the topic's order to oldest, which
+shows the 3 oldest, labelled `oldest:` in place of `newest:`
+([the folded order](./store.md#the-folded-order)).
+
+When every foldable topic is folded and the count is still over, the store drops topics into a
+closing line that gives their number and their items, the topic with the fewest items first. A tie
+in any step goes to the later topic or sub-topic in the block's order. `memory.recall` with `topics`
+lists every topic, so a dropped topic stays reachable. A budget of 0 turns the block and its status
+lines off, and the schema refuses a budget from 1 to 2,999, so the block always fits its opening and
+closing lines. The closing line reads "and N more topics with M items: list them with memory.recall
+topics".
 
 The status block gets 2 lines from the same read as the block: the count of active items that are
 not pinned, and the block's tokens against its budget. The opening record stores those 2 numbers, as

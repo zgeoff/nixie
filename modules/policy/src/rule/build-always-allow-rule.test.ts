@@ -146,3 +146,18 @@ test('it offers a screen act on a window with no host no rule', () => {
     }),
   ).toBeNull();
 });
+
+test('it offers no rule for a move of a topic, whose endpoints no check can pin', () => {
+  const rule = buildAlwaysAllowRule({
+    shortID: 'ab12cd34ef',
+    tool: 'memory.retopic',
+    input: {
+      from: { topic: 'lines', subject: 'self' },
+      to: { topic: 'diary', subject: 'self' },
+    },
+    destinations: [],
+    content: ['from', 'to'],
+  });
+
+  expect(rule).toBeNull();
+});

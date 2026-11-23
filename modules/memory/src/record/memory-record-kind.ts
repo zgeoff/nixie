@@ -4,6 +4,7 @@ export type MemoryRecordKind =
   | 'memory.evidence_purge_started'
   | 'memory.evidence_purged'
   | 'memory.forget_started'
+  | 'memory.fold_ordered'
   | 'memory.forgotten'
   | 'memory.image_offered'
   | 'memory.labelled'
@@ -32,6 +33,7 @@ export type MemoryRecordKind =
   | 'record.forgotten';
 
 export type MemoryErasableRecordKind =
+  | 'memory.fold_ordered'
   | 'memory.image_offered'
   | 'memory.proposal_rejected'
   | 'moment_edited'

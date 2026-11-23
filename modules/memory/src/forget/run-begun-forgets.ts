@@ -1,6 +1,6 @@
 import type { ForgetStatus, MemoryTables, StoreParts } from '../types';
 import { readForgetStatus } from '../utils/read-forget-status';
-import { runForgetCleanup } from '../utils/run-forget-cleanup';
+import { runForgetCleanup } from './run-forget-cleanup';
 
 export async function runBegunForgets(
   parts: StoreParts,

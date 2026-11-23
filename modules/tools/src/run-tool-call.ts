@@ -195,6 +195,8 @@ export async function runToolCall(
     ...(prepared?.attachments === undefined ? {} : { attachments: prepared.attachments }),
   });
 
+  await prepared?.settleAttachments?.(written.sequence);
+
   const settled = written.isCapped
     ? buildMessage('denied', renderCallCapRefusal(run, call.tool), { source: 'owner_data' })
     : await runDecidedCall({

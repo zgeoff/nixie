@@ -1,10 +1,15 @@
 import { withFreshChecker } from '../checker/with-fresh-checker';
+import { writeFoldOrder } from '../fold/write-fold-order';
 import type { MemoryWrites } from '../gate/gate-context';
 import { writeGatedLabels } from '../gated/write-gated-labels';
 import { writeGatedPin } from '../gated/write-gated-pin';
 import { writeGatedRemember } from '../gated/write-gated-remember';
 import { writeGatedRetirement } from '../gated/write-gated-retirement';
 import { readItemLabels } from '../label/read-item-labels';
+import { readRetopicPlan } from '../retopic/read-retopic-plan';
+import { readRetopicShown } from '../retopic/read-retopic-shown';
+import { removeRetopicCardOfForgotten } from '../retopic/remove-retopic-card-of-forgotten';
+import { writeRetopic } from '../retopic/write-retopic';
 import type { StoreParts } from '../types';
 import { readItemSubject } from '../write/read-item-subject';
 import { readRememberSources } from '../write/read-remember-sources';
@@ -23,5 +28,11 @@ export function buildMemoryWrites(parts: StoreParts): MemoryWrites {
     readItemSubject: (itemID) => readItemSubject(parts, itemID),
     readItemLabels: (itemID) => readItemLabels(parts, itemID),
     readTopics: (excludedItemID) => Promise.resolve(parts.labels.collectTopics(excludedItemID)),
+    retopic: (request) => writeRetopic(parts, request),
+    readRetopicPlan: (source, target) => readRetopicPlan(parts, source, target),
+    readRetopicShown: (callSequence) => readRetopicShown(parts, callSequence),
+    removeRetopicCardOfForgotten: (callSequence, itemIDs) =>
+      removeRetopicCardOfForgotten(parts, callSequence, itemIDs),
+    writeFoldOrder: (request) => writeFoldOrder(parts, request),
   };
 }

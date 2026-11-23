@@ -240,9 +240,6 @@ interface BoundsProps {
   readonly body: NonNullable<ApprovalRead['body']>;
 }
 
-// A mandate names each of its rules in a field `rule 1`, `rule 2` and on, as a rule sentence.
-const ruleFieldPattern = /^rule \d+$/u;
-
 function Bounds(props: BoundsProps): ReactNode {
   const fields = Object.entries(props.body.fields);
 
@@ -254,7 +251,7 @@ function Bounds(props: BoundsProps): ReactNode {
             <div key={name}>
               <dt className={css({ fontWeight: 'semibold' })}>{name}</dt>
               <dd className={css({ overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' })}>
-                {ruleFieldPattern.test(name) ? <RuleSentence sentence={value} /> : value}
+                {renderFieldValue(name, value)}
               </dd>
             </div>
           ))}
@@ -267,6 +264,32 @@ function Bounds(props: BoundsProps): ReactNode {
       )}
     </>
   );
+}
+
+// A mandate names each of its rules in a field `rule 1`, `rule 2` and on, as a rule sentence.
+const ruleFieldPattern = /^rule \d+$/u;
+
+// A field that lists one entry per line, such as the items of a move, stays folded under its count
+// until the user opens it.
+const foldedLineFields = new Set(['items']);
+
+function renderFieldValue(name: string, value: string): ReactNode {
+  if (foldedLineFields.has(name)) {
+    const lines = value.split('\n');
+
+    return (
+      <details>
+        <summary>{`${String(lines.length)} ${lines.length === 1 ? 'item' : 'items'}`}</summary>
+        <ul className={css({ listStyle: 'none', paddingInlineStart: '0' })}>
+          {lines.map((line) => (
+            <li key={line}>{line}</li>
+          ))}
+        </ul>
+      </details>
+    );
+  }
+
+  return ruleFieldPattern.test(name) ? <RuleSentence sentence={value} /> : value;
 }
 
 interface OutcomeLineProps {

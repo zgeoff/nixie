@@ -354,6 +354,34 @@ test('it shows each photo that an action would send on its card', async () => {
   expect(alts).toStrictEqual(['Photo 1', 'Photo 2']);
 });
 
+test('it shows the move of a re-file on its card with the gist of each item folded underneath', async () => {
+  const ctx = await setupTest();
+
+  await store.approvalRows.create({
+    cause: 'no_rule',
+    choices: ['approve', 'defer', 'decline'],
+    sentence: 'self/lines → self/diary, 2 items',
+    approveLabel: 'Run memory.retopic',
+    fields: { items: '[ab12cd34ef] tent poles\n[gh56ij78kl] piano tuned' },
+    thread: null,
+  });
+
+  await ctx.openLine('self/lines → self/diary, 2 items');
+
+  await ctx.waitForPage(
+    `document.querySelector('section[aria-label] dl details summary') !== null`,
+  );
+
+  const folded = await ctx.view.evaluate(
+    `(() => { const details = document.querySelector('section[aria-label] dl details'); return [details.open, details.querySelector('summary').textContent, details.querySelectorAll('li').length]; })()`,
+  );
+
+  await ctx.view.click('section[aria-label] dl details summary');
+  await ctx.waitForPage(`document.querySelector('section[aria-label] dl details').open === true`);
+
+  expect(folded).toStrictEqual([false, '2 items', 2]);
+});
+
 test('it shows the screen of a click with a ring at the point it lands on', async () => {
   const ctx = await setupTest();
 

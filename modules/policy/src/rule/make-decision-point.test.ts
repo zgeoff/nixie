@@ -763,6 +763,122 @@ test('it asks at stage 6 for a memory write that an ask rule names', async () =>
   });
 });
 
+test('it asks at stage 9 for a re-file that no rule decides, and never reads consent', async () => {
+  const ctx = buildTestDecisionPoint({
+    declaration: buildTestDeclaration({ effects: ['memory_write'], destinations: [] }),
+    messages: [buildTypedMessage(7, 'Move my lines topic to diary', 1_794_550_000_000)],
+  });
+
+  const decided = await ctx.decide(
+    buildPolicyCall({
+      tool: 'memory.retopic',
+      toolList: ['memory.retopic'],
+      turnMessageSequence: 7,
+    }),
+  );
+
+  expect(decided.decision).toMatchObject({ outcome: 'ask', stage: 9, cause: 'no_rule' });
+  expect(decided.memoryWrite).toStrictEqual({ allowing: [], holdsAsAction: true });
+  expect(ctx.asked).toStrictEqual([]);
+});
+
+test('it lets an allow rule that names memory.edit allow a re-file, and tells the tool which rule', async () => {
+  const ctx = buildTestDecisionPoint({
+    declaration: buildTestDeclaration({ effects: ['memory_write'], destinations: [] }),
+    rules: [buildRuleEntry('edits', { outcome: 'allow', tools: ['memory.edit'] })],
+  });
+
+  const decided = await ctx.decide(
+    buildPolicyCall({ tool: 'memory.retopic', toolList: ['memory.retopic'] }),
+  );
+
+  expect(decided.decision).toMatchObject({ outcome: 'allow', stage: 7, rule: { id: 'edits' } });
+  expect(decided.namingRules).toStrictEqual([{ id: 'edits', revision: 2 }]);
+
+  expect(decided.memoryWrite).toStrictEqual({
+    allowing: [{ id: 'edits', revision: 2, checks: [] }],
+    holdsAsAction: true,
+  });
+});
+
+test.each([
+  ['a self-note', 'self'],
+  ['a move from self to another subject', ['owner', 'self']],
+])(
+  'it holds a re-file of %s that only an allow rule with no subject check allows',
+  async (_name, subject) => {
+    const ctx = buildTestDecisionPoint({
+      declaration: buildTestDeclaration({ effects: ['memory_write'], destinations: [] }),
+      rules: [buildRuleEntry('edits', { outcome: 'allow', tools: ['memory.edit'] })],
+    });
+
+    const decided = await ctx.decide(
+      buildPolicyCall({
+        tool: 'memory.retopic',
+        toolList: ['memory.retopic'],
+        args: { subject },
+      }),
+    );
+
+    expect(decided.decision).toMatchObject({ outcome: 'ask', stage: 9, cause: 'no_rule' });
+    expect(decided.memoryWrite).toStrictEqual({ allowing: [], holdsAsAction: true });
+  },
+);
+
+test('it lets an allow rule that checks subject eq self allow a re-file into self', async () => {
+  const ctx = buildTestDecisionPoint({
+    declaration: buildTestDeclaration({ effects: ['memory_write'], destinations: [] }),
+    rules: [
+      buildRuleEntry('self-edits', {
+        outcome: 'allow',
+        tools: ['memory.edit'],
+        checks: [{ arg: 'subject', op: 'eq', value: 'self' }],
+      }),
+    ],
+  });
+
+  const decided = await ctx.decide(
+    buildPolicyCall({
+      tool: 'memory.retopic',
+      toolList: ['memory.retopic'],
+      args: { subject: 'self' },
+    }),
+  );
+
+  expect(decided.decision).toMatchObject({
+    outcome: 'allow',
+    stage: 7,
+    rule: { id: 'self-edits' },
+  });
+});
+
+test('it does not let an allow rule that names memory.retopic cover memory.edit', async () => {
+  const ctx = buildTestDecisionPoint({
+    declaration: buildTestDeclaration({ effects: ['memory_write'], destinations: [] }),
+    rules: [buildRuleEntry('retopics', { outcome: 'allow', tools: ['memory.retopic'] })],
+  });
+
+  const decided = await ctx.decide(
+    buildPolicyCall({ tool: 'memory.edit', toolList: ['memory.edit'] }),
+  );
+
+  expect(decided.decision.outcome).toBe('gate');
+});
+
+test('it holds a re-file that an ask rule on memory.edit names as an action proposal', async () => {
+  const ctx = buildTestDecisionPoint({
+    declaration: buildTestDeclaration({ effects: ['memory_write'], destinations: [] }),
+    rules: [buildRuleEntry('ask-edits', { outcome: 'ask', tools: ['memory.edit'] })],
+  });
+
+  const decided = await ctx.decide(
+    buildPolicyCall({ tool: 'memory.retopic', toolList: ['memory.retopic'] }),
+  );
+
+  expect(decided.decision).toMatchObject({ outcome: 'ask', stage: 6, cause: 'ask_rule' });
+  expect(decided.memoryWrite).toMatchObject({ holdsAsAction: true });
+});
+
 test('it leaves a call that declares note to the rules on note when a rule asks about memory_write', async () => {
   const ctx = buildTestDecisionPoint({
     declaration: buildTestDeclaration({ effects: ['note'], destinations: [] }),

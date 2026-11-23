@@ -17,6 +17,7 @@ function setupTest() {
     'device.idle_set': ['scene'],
     'device.shown': ['content'],
     'image.named': ['name'],
+    'memory.fold_ordered': ['topic'],
     'memory.image_offered': ['text'],
     'memory.proposal_rejected': ['reason'],
     'model.compaction_failed': ['message'],

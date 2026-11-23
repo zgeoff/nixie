@@ -1,5 +1,6 @@
 import { countTextTokens } from '@heynixie/compaction';
 import type { SessionIndex } from '@heynixie/sessions';
+import { readFoldOrders } from '../fold/read-fold-orders';
 import type { StoreParts } from '../types';
 import { collectTopicRows } from './collect-topic-rows';
 import type { MemoryIndexConfig } from './default-index-settings';
@@ -21,7 +22,9 @@ export function readIndex(parts: StoreParts): Promise<SessionIndex> {
       return { text: '', items: rows.length, tokens: 0, budget: settings.tokens };
     }
 
-    const text = renderIndexBlock(collectTopicRows(rows), {
+    const foldOrders = await readFoldOrders(parts);
+
+    const text = renderIndexBlock(collectTopicRows(rows, foldOrders), {
       budget: settings.tokens,
       openTopicItems: settings.openTopicItems,
       ownerName: parts.context.gate.ownerName,
