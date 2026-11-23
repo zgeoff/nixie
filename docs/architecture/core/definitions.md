@@ -70,12 +70,12 @@ commit a second hash.
 
 ## The definitions format
 
-The manifest holds the definitions format version. A release reads its own format and the one before
-it, and refuses any other, because an image upgrade and a definitions change land in separate repos,
-in either order. The persona must be UTF-8 text and not blank. From format 2, the seed applies each
-skill under `skills/`. From format 3, it applies the prompt overrides in the manifest's `prompts:`
-map, as [prompts](prompts.md#overrides-from-the-definitions) describes, and format 2 leaves that map
-and its files unapplied. Format 3 also applies each `rules/*.yaml` file as a rules file, as
+The manifest holds the definitions format version. A release reads formats 2 to 5 and refuses any
+other, because an image upgrade and a definitions change land in separate repos, in either order.
+The persona must be UTF-8 text and not blank. From format 2, the seed applies each skill under
+`skills/`. From format 3, it applies the prompt overrides in the manifest's `prompts:` map, as
+[prompts](prompts.md#overrides-from-the-definitions) describes, and format 2 leaves that map and its
+files unapplied. Format 3 also applies each `rules/*.yaml` file as a rules file, as
 [rules in force](../policy/rules.md#rules-in-force) describes, except a file that the `prompts:` map
 names as a prompt part. Format 3 therefore refuses a repo whose existing rule files fail the
 [rule format](../policy/rules.md#the-rule-format), and the error lists each file with its fault. The
@@ -278,7 +278,8 @@ under nixie's own name. To check each name, the parser takes the registered tool
 server. It also runs the server's check of a start: the sandbox runner's plan, with the bounds of
 the conversation's `task.start`. A definition in `tasks/` may list any registered tool except a
 conversation tool, which [changes from the conversation](#changes-from-the-conversation) describes,
-and a memory tool unless its `memory` is `read`.
+and a memory tool unless its `memory` is `read`. A version whose `memory` is `read` may list any
+memory tool and gets the read-only ones without listing them.
 
 One fault refuses the whole seed, and the definitions of the last accepted seed stay in force. The
 refusal is a `TaskSeedRefusedError`, a kind of definitions parse error. Its `problems` field, which
@@ -603,15 +604,15 @@ order: `NOT_FOUND`, `ID_TAKEN`, `FILE_ONLY_KEYS`, `UNCHANGED`, `ONE_SHOT_OVER_RE
 
 The ID of a defined task is the slug of its name: the lowercase name with each run of characters
 outside `a-z` and `0-9` turned into one hyphen, hyphens trimmed from both ends, and cut to 64
-characters. A name with an empty slug is refused with `INVALID`. An ID is taken when the last
-accepted seed of the repo holds it, enabled or not, or a runtime change in force holds it. An ID
-whose runtime definition was undone or undefined is free, and a new definition under it gets the
-same task back. A change takes the input as the whole version, so an optional key it omits takes its
-default and never the value in force. A change may turn a schedule into a one-shot, except over a
-definition that the repo holds. The tools take the starter `conversation`, so a runtime definition
-holds only what a `task.start` from the conversation can hold. A change that puts a definition in
-force, or an undefine, commits its notice in the same transaction, so every runtime change in force
-has one.
+characters. A name with an empty slug is refused with `INVALID`. A define that names no definition
+to replace is refused with `ID_TAKEN` when the repo's last accepted seed holds the ID, enabled or
+not, or a runtime change in force holds it. An ID whose runtime definition was undone or undefined
+is free, and a new definition under it gets the same task back. A change takes the input as the
+whole version, so an optional key it omits takes its default and never the value in force. A change
+may turn a schedule into a one-shot, except over a definition that the repo holds. The tools take
+the starter `conversation`, so a runtime definition holds only what a `task.start` from the
+conversation can hold. A change that puts a definition in force, or an undefine, commits its notice
+in the same transaction, so every runtime change in force has one.
 
 An undefine or an undo records the repo version it went on with, so the next seed compares it with
 the repo. A merge that the decision missed then ends as an adoption or a conflict and never as a
