@@ -9,8 +9,8 @@ test.each([
   ['trigger.fired', 'sweeper', {}, true],
   ['trigger.fired', 'conversation', {}, false],
   ['action.outcome', 'conversation', { actionID: 'a-1' }, false],
-  ['computer.handover_asked', 'conversation', {}, true],
-  ['computer.handover_closed', 'conversation', { by: 'assistant' }, true],
+  ['computer.handover_asked', 'conversation', {}, false],
+  ['computer.handover_closed', 'conversation', { by: 'assistant' }, false],
   ['computer.handover_closed', 'conversation', { by: 'expired' }, false],
 ] as const)(
   'it reads a %s record on thread %s with %o as silent: %p',

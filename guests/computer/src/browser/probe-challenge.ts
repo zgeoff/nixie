@@ -11,16 +11,16 @@ const challengeFrames: readonly { readonly host: string; readonly pathPrefix: st
   { host: 'funcaptcha.com', pathPrefix: '/' },
 ];
 
-// The widget and interstitial markers that a challenge puts in a page: its containers by class or
-// ID. The check reads no text, so a site cannot write words that pass for a challenge.
+// The widget and interstitial markers of a challenge, by class or ID, never by text. The
+// interstitial's form counts only with the Cloudflare token in its action: any site may name a form
+// challenge-form.
 const challengeSelector = [
   '.g-recaptcha',
   '.h-captcha',
   '.cf-turnstile',
   '#cf-challenge-running',
-  '#challenge-running',
-  '#challenge-stage',
-  '#challenge-form',
+  '#cf-please-wait',
+  'form#challenge-form[action*="__cf_chl"]',
   '#cf-chl-widget',
   '#FunCaptcha',
   '[data-arkose-public-key]',
@@ -50,7 +50,18 @@ export async function probeChallenge(page: Page): Promise<boolean> {
       return true;
     }
 
-    return (await page.locator(challengeSelector).count()) > 0;
+    // every frame is searched, because a widget sits in a frame of the site's own while its
+    // provider's frame has not loaded
+    const counts = await Promise.all(
+      page.frames().map((frame) =>
+        frame
+          .locator(challengeSelector)
+          .count()
+          .catch(() => 0),
+      ),
+    );
+
+    return counts.some((count) => count > 0);
   } catch {
     return false;
   }

@@ -1,6 +1,6 @@
 import type { Clock } from '@heynixie/clock';
 import type { Logger } from '@heynixie/logger';
-import type { AskResult, CancelResult, Handover, HandoverRecords } from './types';
+import type { AskResult, CancelResult, Handover, HandoverClose, HandoverRecords } from './types';
 
 export interface HandoverDependencies {
   readonly clock: Clock;
@@ -17,6 +17,9 @@ export interface HandoverDependencies {
 interface OpenAsk {
   readonly askedAtMs: number;
   readonly expiry: AbortController;
+
+  // the write of the record that closes the ask, while one is in flight
+  closing: Promise<void> | null;
 }
 
 interface HandoverState {
@@ -76,11 +79,14 @@ function openAsk(
   state: HandoverState,
   askedAtMs: number,
 ): void {
-  const open: OpenAsk = { askedAtMs, expiry: new AbortController() };
+  const open: OpenAsk = { askedAtMs, expiry: new AbortController(), closing: null };
 
   state.open = open;
   void expireAsk(dependencies, state, open);
 }
+
+// how long a failed expiry waits before it writes its record again
+const retryMs = 60_000;
 
 async function expireAsk(
   dependencies: HandoverDependencies,
@@ -93,19 +99,51 @@ async function expireAsk(
     await dependencies.clock.sleep(waitMs, open.expiry.signal);
   }
 
-  if (open.expiry.signal.aborted || state.open !== open) {
-    return;
+  while (!open.expiry.signal.aborted && state.open === open) {
+    // a take-over that was called before the deadline answers the ask, so the ask waits for its end
+    if (!dependencies.isHeld()) {
+      try {
+        await closeOpen(dependencies, state, open, 'expired');
+
+        return;
+      } catch (error) {
+        dependencies.logger('computer.handover_expiry_failed', { reason: String(error) }, 'error');
+      }
+    }
+
+    await dependencies.clock.sleep(retryMs, open.expiry.signal);
   }
+}
 
-  state.open = null;
+// Writes the record that closes the open ask, and forgets the ask only once the record is written,
+// so a failed write leaves the ask open for a retry.
+async function closeOpen(
+  dependencies: HandoverDependencies,
+  state: HandoverState,
+  open: OpenAsk,
+  by: HandoverClose,
+): Promise<void> {
+  open.closing ??= writeClose(dependencies, open, by);
 
+  await open.closing;
+
+  if (state.open === open) {
+    closeSilently(state);
+  }
+}
+
+async function writeClose(
+  dependencies: HandoverDependencies,
+  open: OpenAsk,
+  by: HandoverClose,
+): Promise<void> {
   try {
     await dependencies.records.writeClosed({
-      by: 'expired',
+      by,
       waitedSeconds: toSeconds(dependencies.clock.now() - open.askedAtMs),
     });
-  } catch (error) {
-    dependencies.logger('computer.handover_expiry_failed', { reason: String(error) }, 'error');
+  } finally {
+    open.closing = null;
   }
 }
 
@@ -128,12 +166,7 @@ async function cancelAsk(
     return { kind: 'not_asked' };
   }
 
-  closeSilently(state);
-
-  await dependencies.records.writeClosed({
-    by: 'assistant',
-    waitedSeconds: toSeconds(dependencies.clock.now() - open.askedAtMs),
-  });
+  await closeOpen(dependencies, state, open, 'assistant');
 
   return { kind: 'cancelled' };
 }

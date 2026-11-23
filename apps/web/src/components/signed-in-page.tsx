@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { useEffect } from 'react';
+import { writeTakeOverRequest } from '../computer/write-take-over-request';
 import type { SessionState } from '../conversation/read-session-state';
 import { BackupNotice } from './backup-notice';
 import { EnrolForm } from './enrol-form';
@@ -37,7 +38,9 @@ export function SignedInPage(props: SignedInPageProps): ReactNode {
       <PauseBanner />
       <HandoverBanner
         onTakeOver={() => {
-          globalThis.location.assign('/computer?takeOver=true');
+          writeTakeOverRequest();
+
+          globalThis.location.assign('/computer');
         }}
       />
       <SpendStopNotice />

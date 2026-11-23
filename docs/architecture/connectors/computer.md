@@ -129,12 +129,13 @@ who holds the desktop keeps their view. A picture of a control wholly outside th
 
 **Challenges.** `browser_open`, `browser_read` and `browser_screenshot` each look once at the tab
 they name for a CAPTCHA or human check, however the assistant came to the tab. The guest reads the
-address of each frame in the tab, and it counts the tab's elements for known markers. The frames and
-markers are those of reCAPTCHA, hCaptcha, Cloudflare Turnstile and its interstitial, and Arkose. The
-check never reads page text, so a site cannot write words that pass for a challenge or hide one.
-When it finds one, the result carries a `challenge` line that nixie writes, beside the page's text
-and never inside it. The line says that a person must solve the check and to call
-`computer.handover` with a reason.
+address of each frame in the tab, and it counts the elements of the page and of each frame for known
+markers. The frames and markers are those of reCAPTCHA, hCaptcha, Cloudflare Turnstile and its
+interstitial, and Arkose. The interstitial's form counts only with the Cloudflare token in its
+action, so an ordinary form with the same ID does not. The check never reads page text, so a site
+cannot write words that pass for a challenge or hide one. When it finds one, the result carries a
+`challenge` line that nixie writes, beside the page's text and never inside it. The line says that a
+person must solve the check and to call `computer.handover` with a reason.
 
 **Old names.** Every browser tool carries the `browser_` prefix, and a call under a name from before
 it is an unknown tool. An action queued under `computer.fill` or `computer.click` before the rename
@@ -347,15 +348,20 @@ task never holds them.
 One ask stands at a time, in memory. It ends when a take-over starts, which writes no record of its
 own, when the assistant cancels it, or when it expires. An ask that no take-over answers within
 `computer.handover_expiry_minutes`, 60 by default, writes `computer.handover_closed` with
-`by: 'expired'`. A restart reopens the ask that its record shows still standing, with the time that
+`by: 'expired'`. The record that closes an ask is written before the ask is forgotten, so a failed
+write leaves the ask standing: a cancel throws and can be called again, and an expiry tries again
+every minute. A take-over that is called before the deadline holds the expiry until the take-over
+starts or fails. A restart reopens the ask that its record shows still standing, with the time that
 was left, and an ask whose time has passed expires at once.
 
 `computer.handover_asked` keeps its reason as an [erasable field](../core/erasable-fields.md).
 `computer.handover_closed` keeps who closed the ask and how long it stood. Both carry a short ID,
 and neither the ask nor a cancel wakes the assistant. An expiry does, so the assistant does not wait
-for a take-over that is not coming. The turn that wrote an ask or a cancel already holds it, so the
-inbox passes neither on. The assistant reads an expiry as "Your handover ask lapsed after 60 min
-with no take-over."
+for a take-over that is not coming. The inbox passes each of the three on as a message with its
+short ID. The assistant reads its ask as "You asked Sam to take over the computer." with the reason
+inside the untrusted-content markers, escaped as a page read is, and a cancel as "You withdrew your
+ask for Sam to take over the computer." It reads an expiry as "Your handover ask lapsed after 60 min
+with no take-over." Each message names the user by name, or writes "the user" when no name is set.
 
 Every connected [web client](../channels/client.md#the-handover-banner) shows the ask on a banner
 until a take-over starts or the ask closes.

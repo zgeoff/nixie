@@ -2,26 +2,21 @@
 
 import { createFileRoute, useRouter } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
+import { useState } from 'react';
 import { ComputerView } from '../components/computer-view';
 import { SignedInPage } from '../components/signed-in-page';
 import { loadNoVNCViewer } from '../computer/load-novnc-viewer';
+import { readTakeOverRequest } from '../computer/read-take-over-request';
 import { readRouteSession } from '../conversation/read-route-session';
-
-interface ComputerSearch {
-  // set by the handover banner, so the page takes over once it shows the desktop
-  readonly takeOver?: true;
-}
 
 export const Route = createFileRoute('/computer')({
   component: Computer,
-  validateSearch: (search: Record<string, unknown>): ComputerSearch =>
-    search['takeOver'] === true || search['takeOver'] === 'true' ? { takeOver: true } : {},
   loader: (options) => readRouteSession(options.context),
 });
 
 function Computer(): ReactNode {
   const data = Route.useLoaderData();
-  const search = Route.useSearch();
+  const [startsTakeOver] = useState(readTakeOverRequest);
   const router = useRouter();
 
   return (
@@ -31,7 +26,7 @@ function Computer(): ReactNode {
       }}
       session={data.session}
     >
-      <ComputerView loadViewer={loadNoVNCViewer} startsTakeOver={search.takeOver === true} />
+      <ComputerView loadViewer={loadNoVNCViewer} startsTakeOver={startsTakeOver} />
     </SignedInPage>
   );
 }

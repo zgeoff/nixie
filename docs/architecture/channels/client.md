@@ -365,8 +365,9 @@ for every thread. A `computer.handover_asked` record opens the banner on every o
 device clears the banner on the others. The client reads the ask again every minute and when the
 window gains focus.
 
-Take over opens `/computer` with the search parameter `takeOver`. The computer page takes over once,
-as soon as it shows the desktop, so the user presses one button.
+Take over leaves a one-time mark in the tab's session storage and opens `/computer`. The computer
+page reads and clears the mark, and takes over once, as soon as it shows the desktop, so the user
+presses one button. A link to `/computer` or a refresh finds no mark and opens the page watching.
 
 ## The notebook pages
 

@@ -14,6 +14,7 @@ function setupTest() {
   const clock = createFakeClock({ startMs: 1_000_000 });
   const written: Written[] = [];
   const held = { value: false };
+  const closeFailures = { remaining: 0 };
 
   const handover = makeHandover({
     clock,
@@ -27,6 +28,12 @@ function setupTest() {
         return Promise.resolve();
       },
       writeClosed: (input) => {
+        if (closeFailures.remaining > 0) {
+          closeFailures.remaining -= 1;
+
+          return Promise.reject(new Error('the log refused the write'));
+        }
+
         written.push({ kind: 'closed', by: input.by, waitedSeconds: input.waitedSeconds });
 
         return Promise.resolve();
@@ -34,7 +41,7 @@ function setupTest() {
     },
   });
 
-  return { clock, written, held, handover };
+  return { clock, written, held, closeFailures, handover };
 }
 
 test('it opens an ask and writes its reason', async () => {
@@ -155,5 +162,101 @@ test('it keeps a resumed ask open for the time it has left', async () => {
   expect([result, ctx.written]).toStrictEqual([
     { kind: 'already_asked' },
     [{ kind: 'closed', by: 'expired', waitedSeconds: 3600 }],
+  ]);
+});
+
+test('it keeps an ask open for a retry when the write of its cancel fails', async () => {
+  const ctx = setupTest();
+
+  await ctx.handover.ask('first');
+
+  ctx.closeFailures.remaining = 1;
+
+  const failed = ctx.handover.cancel();
+
+  await expect(failed).rejects.toThrow('the log refused the write');
+
+  const retried = await ctx.handover.cancel();
+
+  expect([retried, ctx.written]).toStrictEqual([
+    { kind: 'cancelled' },
+    [
+      { kind: 'asked', reason: 'first' },
+      { kind: 'closed', by: 'assistant', waitedSeconds: 0 },
+    ],
+  ]);
+});
+
+test('it keeps the ask open and writes the expiry again when the first write fails', async () => {
+  const ctx = setupTest();
+
+  await ctx.handover.ask('first');
+
+  ctx.closeFailures.remaining = 1;
+
+  ctx.clock.advance(60 * 60 * 1000);
+
+  await waitForCondition(() => ctx.closeFailures.remaining === 0);
+
+  const again = await ctx.handover.ask('second');
+
+  ctx.clock.advance(60 * 1000);
+
+  await waitForCondition(() => ctx.written.length === 2);
+
+  expect([again, ctx.written]).toStrictEqual([
+    { kind: 'already_asked' },
+    [
+      { kind: 'asked', reason: 'first' },
+      { kind: 'closed', by: 'expired', waitedSeconds: 3660 },
+    ],
+  ]);
+});
+
+test('it does not expire an ask while a take-over that was called before its deadline is pending', async () => {
+  const ctx = setupTest();
+
+  await ctx.handover.ask('first');
+
+  ctx.held.value = true;
+
+  ctx.clock.advance(60 * 60 * 1000);
+
+  await waitForCondition(() => ctx.clock.readNextDueMs() !== null);
+
+  const writtenAtDeadline = [...ctx.written];
+
+  ctx.handover.answer();
+  ctx.clock.advance(2 * 60 * 60 * 1000);
+
+  const cancelled = await ctx.handover.cancel();
+
+  expect([writtenAtDeadline, cancelled, ctx.written]).toStrictEqual([
+    [{ kind: 'asked', reason: 'first' }],
+    { kind: 'not_asked' },
+    [{ kind: 'asked', reason: 'first' }],
+  ]);
+});
+
+test('it expires an ask once the take-over that held it at the deadline fails', async () => {
+  const ctx = setupTest();
+
+  await ctx.handover.ask('first');
+
+  ctx.held.value = true;
+
+  ctx.clock.advance(60 * 60 * 1000);
+
+  await waitForCondition(() => ctx.clock.readNextDueMs() !== null);
+
+  ctx.held.value = false;
+
+  ctx.clock.advance(60 * 1000);
+
+  await waitForCondition(() => ctx.written.length === 2);
+
+  expect(ctx.written).toStrictEqual([
+    { kind: 'asked', reason: 'first' },
+    { kind: 'closed', by: 'expired', waitedSeconds: 3660 },
   ]);
 });
