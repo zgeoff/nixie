@@ -244,6 +244,92 @@ test('it writes the lift of a rule as it writes every other field', () => {
   });
 
   expect([...change.files.values()].join('')).toContain(
-    'allow-groceries:\n  outcome: "allow"\n  tools: ["shop.order"]\n  lift: {"perAction":20,"budget":"shopping-month"}\n',
+    'allow-groceries:\n  outcome: "allow"\n  tools: ["shop.order"]\n  lift:\n    perAction: 20\n    budget: "shopping-month"\n',
+  );
+});
+
+// Each expected text below is what oxfmt leaves unchanged with its default options, checked by
+// formatting the text with oxfmt and comparing it with the original.
+test('it writes a short checks list as a block list of block mappings', () => {
+  const change = buildRuleExportChange({
+    changes: [
+      {
+        changeID: 'change-1',
+        ruleID: 'allow-fetch',
+        rule: {
+          hash: 'h-fetch',
+          rule: {
+            id: 'allow-fetch',
+            outcome: 'allow',
+            tools: ['web.fetch'],
+            checks: [{ arg: 'url', op: 'eq', value: 'https://example.com/a' }],
+          },
+        },
+        base: null,
+        beneath: null,
+        changedBy: 'owner',
+        reason: 'Allow one page.',
+        changedAt: 1,
+      },
+    ],
+    files: new Map(),
+  });
+
+  expect(change.files.get('rules/nixie.yaml')).toBe(
+    'allow-fetch:\n  outcome: "allow"\n  tools: ["web.fetch"]\n  checks:\n    - arg: "url"\n      op: "eq"\n      value: "https://example.com/a"\n',
+  );
+});
+
+test('it writes a long list of strings as a block list and a short list of checks as block mappings', () => {
+  const change = buildRuleExportChange({
+    changes: [
+      {
+        changeID: 'change-1',
+        ruleID: 'allow-fetch',
+        rule: {
+          hash: 'h-fetch',
+          rule: {
+            id: 'allow-fetch',
+            outcome: 'allow',
+            tools: [
+              'web.fetch.one.aaaaaaaaaaaa',
+              'web.fetch.two.bbbbbbbbbbbb',
+              'web.fetch.three.cccccccc',
+              'web.fetch.four.dddddddddd',
+            ],
+            checks: [
+              { arg: 'url', op: 'eq', value: 'https://example.com/a' },
+              { arg: 'command', op: 'matches', value: '^git ' },
+            ],
+          },
+        },
+        base: null,
+        beneath: null,
+        changedBy: 'owner',
+        reason: 'Allow some pages.',
+        changedAt: 1,
+      },
+    ],
+    files: new Map(),
+  });
+
+  expect(change.files.get('rules/nixie.yaml')).toBe(
+    [
+      'allow-fetch:',
+      '  outcome: "allow"',
+      '  tools:',
+      '    - "web.fetch.one.aaaaaaaaaaaa"',
+      '    - "web.fetch.two.bbbbbbbbbbbb"',
+      '    - "web.fetch.three.cccccccc"',
+      '    - "web.fetch.four.dddddddddd"',
+      '  checks:',
+      '    - arg: "url"',
+      '      op: "eq"',
+      '      value: "https://example.com/a"',
+      '    - arg: "command"',
+      '      op: "matches"',
+      '      value: "^git "',
+      '',
+    ].join('\n'),
   );
 });
