@@ -81,7 +81,8 @@ wake_rules                -- projection: one row per rule, with ended_at and rea
 - Setting a rule with the same mailbox, match and task as a live rule replaces that rule in place.
   The rule keeps its ID, short ID, `createdAt` and the time of its last wake, and takes the new
   expiry and window length. The result holds `replaced: true`.
-- An expired rule writes no record. It matches no mail received at or after `expiresAt`.
+- The core writes no record when a rule expires. A rule matches no mail received at or after
+  `expiresAt`.
 - `readWakeRules`, which the list tools call, leaves out a rule that expired, ended, or belongs to a
   task that ended.
 - A rule's match is stored in plain text, as a definition's filter is.
@@ -127,24 +128,25 @@ takes these, in the same write transaction:
 4. The core writes one `trigger.mail_arrived`. Its fold adds the key to `trigger_keys`, as the folds
    of `trigger.fired` and `trigger.skipped` do. The record holds each matching rule, and whether its
    task woke now or the match was held.
-5. When the mailbox is ready, the core writes one `trigger.mail_woke` through the
-   [inbox](../../../architecture/core/tasks.md#the-inbox) writer for each task with a ready matching
-   rule, with every matching rule of that task. It wakes the task with the cause `event`, at
+5. When the mailbox is ready, the core writes one `trigger.mail_woke` for each task with a ready
+   matching rule, through the [inbox](../../../architecture/core/tasks.md#the-inbox) writer. The
+   record holds every matching rule of that task. The core wakes the task with the cause `event`, at
    [hop](../../../architecture/core/task-messages.md#the-hop-limit) 0.
 6. The core holds every other match in `wake_held`.
 
 ### Windows, the throttle and the flush
 
 A wake starts a window for each rule in it. The wakes of one arrival or one flush start one throttle
-for their mailbox. While a window or the throttle runs, a match waits:
+for their mailbox. While a window or the throttle runs, a match waits. A rule or a mailbox is ready
+once its wait is over:
 
 - a rule is ready when its last wake was `windowMs` or more ago, or it never woke;
 - a mailbox is ready when its last wake, to any task, was `wake_rules.throttle` or more ago, or it
   never had one.
 
-So the throttle can hold back the first match of a new rule, for up to `wake_rules.throttle`, when
-another rule on the same mailbox woke a task just before. The flush runs every 20 seconds, in one
-write transaction per tick:
+So the throttle can hold back a new rule's first match for up to `wake_rules.throttle` when another
+rule on the same mailbox has just woken a task. The flush runs every 20 seconds, in one write
+transaction per tick:
 
 1. It finds each held match whose mailbox is ready and that has at least one ready rule.
 2. When the match's task has ended, it ends each of the task's rules as `task_ended`, with the
@@ -170,7 +172,7 @@ interface MailWoke {
   mailbox: string; // mailboxKey
   rules: { ruleID: string; shortID: string; match: WakeMatch; expiresAt: number }[];
   mails: {
-    arrived: number; // the sequence of its trigger.mail_arrived, which the folds clear from wake_held
+    arrived: number; // the sequence of its trigger.mail_arrived; the folds clear it from wake_held
     messageID: string;
     threadID: string;
     receivedAt: number;
@@ -221,7 +223,7 @@ wake_rules:
 
 - Nothing wakes the assistant on mail unless a wake rule matched that mail.
 - While its task lives, every match wakes the task, at once or in a later flush. Once the task has
-  ended, the core records no new match for it, and lists each match it still held in `released`. The
+  ended, the core records no new match for it, and lists each of its held matches in `released`. The
   mail itself stays in its mailbox.
 - A rule that has not ended matches mail received from its `createdAt` up to its `expiresAt`, both
   by the host's receive time, even when that mail is delivered after `expiresAt`.
@@ -229,13 +231,13 @@ wake_rules:
   the rule stood.
 - A match with a ready rule on a ready mailbox wakes its task in the transaction that delivers it. A
   held match wakes its task within 20 seconds of its mailbox and one of its rules becoming ready.
-- A mailbox wakes tasks at most once per throttle, however much mail arrives, and that one arrival
-  or flush wakes each of its tasks once. A wake happens only when at least one of the wake's rules
-  is ready, and a rule that is not ready joins that wake without causing it.
+- The core wakes tasks from one mailbox at most once per throttle, however much mail arrives: in one
+  arrival or one flush, which wakes each of its tasks once. A wake happens only when at least one of
+  the wake's rules is ready, and a rule that is not ready joins that wake without causing it.
 - One arrival gives each task at most one wake, however many of its rules match.
 - The core never reads the [task gate](../task-gate.md) for an arrival or a flush. While a task is
   held, its wakes land in its inbox and wait there, as the gate design says for poll sources.
-- The inbox writer is called only for a task that has not ended. The core and the flush check first.
+- The core and the flush check that a task has not ended before they call the inbox writer for it.
 - The core matches on the values the source just read from the host, never on erasable fields read
   back.
 - The From header proves nothing about the sender. A `from` match is a filter, never a trust check.
