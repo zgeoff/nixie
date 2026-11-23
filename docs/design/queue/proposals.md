@@ -135,8 +135,8 @@ approvals:
 ```
 
 - A new proposal lapses at the earlier of its creation plus its family's `lapse_days` and its
-  deadline. A defer or a memory merge sets a new lapse from its own time, by the same rule. A
-  mandate lapses only at its deadline, which is its expiry, and keeps its own expiry timer.
+  deadline. A defer sets a new lapse from its own time, by the same rule. A mandate lapses only at
+  its deadline, which is its expiry, and keeps its own expiry timer.
 - A memory merge extends the shared row's lapse by `lapse_days.memory`, recorded in the merge record
   as today.
 - The core's sweep, built on the shared sweep helper, lapses every family. Memory's own sweep keeps
@@ -214,7 +214,9 @@ It replaces `memory.pending` and `skill_pending`.
   approve, decline and defer, and always allow where the family supports it. Prompt overrides gain
   defer, as the owner asked for every card.
 - A deferred proposal's lapse uses its family's `lapse_days`, the same value as a fresh one.
-- An open short ID is unique among open proposals. `proposeInTransaction` draws again on a clash.
+- An open short ID is unique among open proposals. `proposeInTransaction` draws again on a clash. A
+  short ID that memory passes can't be drawn again, so its clash fails the write, which a test
+  covers.
 - The core calls `approve` or `discard` first, and writes `proposals.settled` only when it succeeds,
   in the same transaction. For a family that owns its transaction, such as memory, the core writes
   it in a hook the family calls after its apply, inside that transaction. A refusal, or a memory
@@ -231,11 +233,11 @@ It replaces `memory.pending` and `skill_pending`.
 Each step ships in its own release, so a rollback by one release still reads every row. The one
 exception is a rollback past N+2, which meets prompt rows; the open question on it holds.
 
-| Release | Ships                                                                                      |
-| ------- | ------------------------------------------------------------------------------------------ |
-| N       | `proposals.proposed` and `proposals.settled`, written beside each family's old records     |
-| N+1     | the readers switch to the new records; `memory.proposal_lapse_days` is read with a warning |
-| N+2     | the old outcome records and the memory key stop; the prompt family joins the shared table  |
+| Release | Ships                                                                                            |
+| ------- | ------------------------------------------------------------------------------------------------ |
+| N       | `proposals.proposed` and `proposals.settled` for every family but prompt, beside the old records |
+| N+1     | the readers switch to the new records; `memory.proposal_lapse_days` is read with a warning       |
+| N+2     | the old outcome records and the memory key stop; the prompt family joins the shared table        |
 
 ## Builder decides
 
