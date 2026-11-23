@@ -69,7 +69,7 @@ export async function writeLabelsInTransaction(
       proposalID: write.proposalID,
       model: write.model,
       ...(write.noticeKey === undefined ? {} : { noticeKey: write.noticeKey }),
-      ...(write.subjectMove === undefined ? {} : write.subjectMove),
+      ...write.subjectMove,
     },
   };
 
