@@ -9,11 +9,11 @@ task run, a worker run or a budget. Today a model's prices live in two config fi
 compares, a search's price is a constant in its adapter, and a task run's dollars come from the
 server pricing turn records its own way, so they disagree with the gateway's count of the same
 replies. Budgets keep integer micros while the task meter sums floats, and each counter has its own
-idea of a day. After this design, each price has one source, the gateway counts every model dollar
+idea of a day. After this design, each price has one source. The gateway counts every model dollar
 nixie limits, a task run's dollars included, and holds a request's worst case before it sends it.
-Every other money count lands in one ledger keyed by counter, unit and period, and one helper says
-when every period starts. Near a limit, a request with a large `max_tokens` is refused where today
-it would pass.
+Every other money count lands in one ledger keyed by counter, unit and period, and one helper works
+out when every period starts. Near a limit, a request with a large `max_tokens` is refused where
+today it would pass.
 
 Once the owner approves this design, build its work items from it and the built
 [spending stop](../../architecture/policy/spending-stop.md),
@@ -136,7 +136,8 @@ const hold = pickRequestHold(body, route); // buildReplyEstimate, worked out bef
   holds instead when the store changed after the holds file, which means a gateway of the release
   before ran in between and counted those requests itself.
 - The store file keeps its version and its float dollars. A gateway of the release before ignores
-  the holds file. Both the `periods` and the `limits` configs hold, so a preview holds too.
+  the holds file. The gateway holds under both the `periods` and the `limits` configs, so a preview
+  holds too.
 
 ### The task and worker meters
 
@@ -148,20 +149,20 @@ task.meter_read           { taskRunID, sandbox, reason, countMicros }
   reason: 'run_start' | 'step_start' | 'step_end' | 'worker_end' | 'run_end'
 ```
 
-- A task keeps its sandbox across its runs, and replaces it when the host loses it. A run's dollars
-  are, for each sandbox it used, the last count less the count at the run's start or at the
-  sandbox's creation, summed, plus each of its worker runs' dollars.
-- What a run has left is its limit less its dollars and its open holds.
-- At a run's start, the server sets the sandbox's limit to its count plus the run's limit. When a
-  worker starts, the limit drops by the worker's planned limit; when it ends, the planned limit
-  comes back and what the worker spent comes off. Each worker's planned limit is at most what the
-  run has left after the planned limits of the workers already running.
-- A `task-raise` patches the limit after its commit, retried until it succeeds; the next run's start
-  sets it too.
+- A task keeps its sandbox across its task runs, and replaces it when the host loses it. A task
+  run's dollars are, for each sandbox it used, the last count less the count at the task run's start
+  or at the sandbox's creation, summed, plus each of its worker runs' dollars.
+- What a task run has left is its limit less its dollars and its open holds.
+- At a task run's start, the server sets the sandbox's limit to its count plus the task run's limit.
+  When a worker run starts, the limit drops by the worker run's planned limit; when it ends, the
+  planned limit comes back and what the worker run spent comes off. Each worker run's planned limit
+  is at most what the task run has left after the planned limits of the worker runs already going.
+- A `task-raise` patches the limit after its commit, retried until it succeeds; the next task run's
+  start sets it too.
 - The server reads the count with `GET /sandboxes/<name>` at each reason above, and writes each read
   as `task.meter_read`, rounded up to the micro. When a read before a step gets no answer, the step
   doesn't start and retries as a step does while the stop is unreachable. When any other read gets
-  no answer, the next read catches up, and a run waits to close until its end read succeeds.
+  no answer, the next read catches up, and a task run waits to close until its end read succeeds.
 - At a restart, the server registers a sandbox with `PUT` only when the gateway has no such name,
   and patches every other. At start it sends a `PATCH` for a name no sandbox has, and refuses to
   start when the gateway answers 405 in place of 404, so the gateway ships first.
@@ -171,12 +172,12 @@ task.meter_read           { taskRunID, sandbox, reason, countMicros }
 - With a gateway, the runner's own pricing of each call, its interrupt at the dollar limit, its read
   of late spend, `task.failed_turn_spent` and `task.turn_spend_unrecorded` go: the sandbox's limit
   replaces them.
-- A rollback by one release prices a `meter: 'gateway'` run's turn records as today, and counts it
-  low for the rest of that run. The release before ignores the unknown `meter` field.
+- A rollback by one release prices a `meter: 'gateway'` task run's turn records as today, and counts
+  it low for the rest of that task run. The release before ignores the unknown `meter` field.
 - Without a gateway, the task meter prices the guest's call frames with the profile's table, as
   today, and writes `task.meter_read` at the same points.
-- A run's start record gains `meter: 'gateway' | 'records'`. A run whose start record has no `meter`
-  began before this design, and keeps today's meter until it ends.
+- A task run's start record gains `meter: 'gateway' | 'records'`. A task run whose start record has
+  no `meter` began before this design, and keeps today's meter until it ends.
 
 ### The ledger
 
@@ -192,8 +193,8 @@ spend_ledger          plain table, log module
 
 - The ledger is a projection of `budget.charged`, `budget.credited`, `task.meter_read` and
   `worker.run_ended`, so a rebuild reproduces it. A budget charge adds to its row and a credit
-  subtracts. A `task.meter_read` or a `worker.run_ended` sets its run's row to the run's dollars,
-  and a worker run's row also holds its tokens.
+  subtracts. A `task.meter_read` or a `worker.run_ended` sets its task run's or worker run's row to
+  that run's dollars, and a worker run's row also holds its tokens.
 - A budget charge records its `ledger_key`, and a credit subtracts from that key, so a credit lands
   on the row its charge added to, whatever the budget's period is by then. A charge from before this
   design has no key, and its credit uses its budget ID, `periodStart` and the period kind the budget
@@ -219,8 +220,8 @@ spend_ledger          plain table, log module
 | a card purchase | no                             | `budget:card-<account>`                      |
 
 - The stop reads the gateway's day and month and the turn count, as today. A paid tool counts
-  against its budget and never against the stop. **Why:** model dollars on a plan are notional,
-  while tool dollars are real, as [budgets](../platform/policy/budgets.md) sets out.
+  against its budget and never against the stop. Model dollars on a plan are notional, while tool
+  dollars are real, as [budgets](../../architecture/policy/budgets.md) sets out.
 
 ## Constraints
 
@@ -249,6 +250,8 @@ spend_ledger          plain table, log module
 
 ## Open questions
 
-- **The deployment currency.** Model and tool providers price in US dollars. The owner may want
-  limits and the client in another currency, which needs a rate source for every model call. Until
-  the owner decides, nixie counts in US dollars, and only a wallet card counts in its own currency.
+- **The deployment currency**
+  ([GEO-2821](https://linear.app/zgeoff/issue/GEO-2821/nixie-metering-choose-the-deployment-currency)).
+  Model and tool providers price in US dollars. The owner may want limits and the client in another
+  currency, which needs a rate source for every model call. Until the owner decides, nixie counts in
+  US dollars, and only a wallet card counts in its own currency.
