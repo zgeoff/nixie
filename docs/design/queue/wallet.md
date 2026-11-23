@@ -4,11 +4,13 @@
 - **Work items:** [the wallet](https://linear.app/zgeoff/issue/GEO-2757). It builds on
   [accounts and sign-in](accounts.md), which lands first.
 
-The assistant pays with a capped card that sits in the same vault as its passwords. It fills the
-card into a checkout the way it fills a password, so the card's number never reaches the model. A
-purchase is a `spend` action under the [budgets](../../architecture/policy/budgets.md) rules: a lift
-lets a small one through without asking, but only when the total on the page matches the amount the
-assistant declared. Every other purchase asks with your passkey.
+The assistant pays with cards that sit in the same vault as its passwords. It fills a card into a
+checkout the way it fills a password, so the card's number never reaches the model. A purchase is a
+`spend` action under the [budgets](../../architecture/policy/budgets.md) rules: a lift lets a small
+one through without asking, but only when the total on the page matches the amount the assistant
+declared. Every other purchase asks with your passkey. Each card has a monthly budget of its own and
+lifts of its own, so the assistant's card can lift small purchases while another card asks every
+time. A rule can also name a card's [group](accounts.md#the-vault) to ask or deny.
 
 ## Shape
 
@@ -47,8 +49,9 @@ wallet.pay({
 //   outcome that you settle, as the budgets rules settle one.
 
 wallet.read({});
-// → { month: { liftBudget: '100.00 AUD', liftSpent: '37.50 AUD', left: '62.50 AUD', approvedSpent: '40.00 AUD' },
-//     lifts: [{ merchants: ['https://fonts.example.com'], perAction: '25.00 AUD' }],
+// → { cards: [{ card: 'c3w8p1z6mt', label: 'wallet', group: 'nix', isLocked: false,
+//              month: { liftBudget: '100.00 AUD', liftSpent: '37.50 AUD', left: '62.50 AUD', approvedSpent: '40.00 AUD' } }],
+//     lifts: [{ card: 'c3w8p1z6mt', merchants: ['https://fonts.example.com'], perAction: '25.00 AUD' }],
 //     purchases: [{ purchase: 'pq3z8w1n5v', at, merchant: 'https://fonts.example.com', amount: '8.00 USD',
 //                   charged: '12.71 AUD', item: 'one font licence', approval: 'owner', repeats: 'monthly' }],
 //     subscriptions: [{ purchase: 'pq3z8w1n5v', merchant, item, repeats: 'monthly', charged: '12.71 AUD' }],
@@ -81,8 +84,9 @@ shows.
 // The prepare hook reads the tab's origin, its URL and the checkout's total from the guest.
 ```
 
-The approval card for a purchase shows the merchant, the declared amount, the total the guest read
-from the page or "no total found", `charged`, and whether it repeats.
+The approval card for a purchase shows the card's label and group, the merchant, the declared
+amount, the total the guest read from the page or "no total found", `charged`, and whether it
+repeats.
 
 ### The card in the vault
 
@@ -93,6 +97,7 @@ interface VaultEntry {
   fingerprint: string | null; // an HMAC of the number under a server key; the only form in records
   frameOrigins: string[]; // the payment frames you allow, such as https://js.pay.example; else []
   currency: string | null; // the ISO code the card bills in, which charged converts into
+  budget: string; // the name of the card's own spend budget in the ledger: `card-<account>`
 }
 vault.add({
   kind: 'card',
@@ -100,7 +105,10 @@ vault.add({
   currency: 'AUD',
   secret: { number, expiry, code },
   frameOrigins: [],
+  group: 'nix',
+  monthlyBudget: '100.00', // in the card's currency; sets the card's spend budget
 }); // → { account: 'c3w8p1z6mt' }
+// vault.update of a card also takes monthlyBudget, a change to a budget as budgets.md describes
 // vault.reveal of a card → { number, expiry, code }; behind your passkey, from a device session only
 ```
 
@@ -140,8 +148,9 @@ The card on the page:
 
 - A card part goes only into a field whose `autocomplete` names that part, in a frame whose own
   origin is the merchant's or one of the card's `frameOrigins`.
-- A tab holds a filled card field from the fill until `wallet.pay` clicks submit, the guest clears
-  the fields after a refusal, or the tab closes. The guest keeps which tabs hold one.
+- A tab holds a filled card field from the fill until the page navigates after the submit, the guest
+  finds no card field that still holds a value, the guest clears the fields after a refusal, or the
+  tab closes. The guest keeps which tabs hold one.
 - A card number shows in full in a picture, so while a tab holds a filled card field,
   `computer.browser_screenshot` on it and `computer.screenshot` while a window shows it return
   `FILLED_TAB`. `computer.browser_click`, `computer.browser_fill`, `computer.browser_download`,
@@ -164,9 +173,17 @@ Spending:
 - When the page's currency differs from the card's, the server converts the amount at the day's
   reference rate and adds a margin for the bank's conversion fee, a setting whose default is 3%.
   That `charged` amount is what a lift and the budget check.
-- A `wallet.pay` passes without asking only under a lifting rule whose destinations include the
-  merchant, whose `perAction` covers `charged`, and whose page total matched. Every other
-  `wallet.pay` asks with the passkey.
+- Each card has its own spend budget, `card-<account>`, in the budgets ledger, in the card's
+  currency. A lifting rule for `wallet.pay` names one card's budget, as every lift names a budget.
+- The prepare hook resolves the card before the decision, from the call's `card` or the vault's one
+  card, so the rule match and the ledger charge use the same card.
+- A `wallet.pay` passes without asking only under a lifting rule whose budget is the card's, whose
+  destinations include the merchant, whose `perAction` covers `charged`, and whose page total
+  matched, while the card's budget covers `charged`. The ledger reserves the charge as it does for
+  every lift, so two purchases at the card's last room can't both pass. Every other `wallet.pay`
+  asks with the passkey.
+- Adding a card makes its budget and no lift, so a new card never widens what another card's rule
+  allows.
 - A `wallet.pay` with `repeats` always asks with the passkey, and its approval card says it repeats.
 - A repeating purchase counts once, when it's made. nixie never sees a later charge.
 - A lift charges the budget when the action queues, as
@@ -174,9 +191,11 @@ Spending:
   against the budget. A `wallet.pay` that ends before its click credits the charge, and the guest
   clears the card fields it filled.
 - Every `wallet.pay` that clicks submit writes a `purchase.recorded` record.
-- The wallet starts with a budget of 100 AUD a month and a lifting rule of 25 AUD per purchase that
-  names no merchant, so it lifts nothing until you add one. The card's own limit in the bank's app
-  is the hard cap.
+- A new card starts with a monthly budget of 100 in its own currency and no lifting rule, so it
+  lifts nothing until you add one.
+- A purchase whose outcome is unknown after the click keeps its charge in the ledger when you drop
+  the unknown. It credits only when you answer that the purchase didn't happen.
+- The card's own limit in the bank's app is the hard cap.
 
 ## Decisions
 
