@@ -96,7 +96,6 @@ export type {
   NotedEvent,
   PinnedCoreUse,
   SessionCleanupCause,
-  SessionCleanupOptions,
   SessionIndex,
   SessionDefinitions,
   SessionHeld,

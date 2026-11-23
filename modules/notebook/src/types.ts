@@ -1,6 +1,7 @@
 import type { Clock } from '@heynixie/clock';
 import type { CheckedTables } from '@heynixie/db';
 import type { Definitions, Log } from '@heynixie/log';
+import type { CleanupSessions } from '@heynixie/memory';
 import type { Selectable } from 'kysely';
 
 export const linkTypes = ['supersedes', 'disputes', 'part-of', 'cites', 'related'] as const;
@@ -119,22 +120,13 @@ export interface NotebookContext {
 
   // Runs the session cleanup of a forget: it must be safe to run again, because a forget that a
   // crash cut short runs it again.
-  readonly cleanupSessions: NoteCleanupSessions;
+  readonly cleanupSessions: CleanupSessions;
 }
 
-export interface NoteCleanupOptions {
-  // the thread whose running turn called the forget tool, which the cleanup waits for unaborted
-  readonly sparedThread?: string;
+// The thread whose step called the forget tool: the forget's cleanup waits for that step to end.
+export interface NoteForgetCaller {
+  readonly thread: string;
 }
-
-export interface NoteCleanupCause {
-  readonly noteID: string;
-}
-
-export type NoteCleanupSessions = (
-  cause: NoteCleanupCause,
-  options?: NoteCleanupOptions,
-) => Promise<void>;
 
 // Who writes: the conversation, or the task whose run called the tool. The server sets both from
 // the turn, never from a tool's input.

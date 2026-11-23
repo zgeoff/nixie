@@ -25,7 +25,7 @@ import { readFoundNotes } from './read/read-found-notes';
 import { readNote } from './read/read-note';
 import { readNoteHistory } from './read/read-note-history';
 import type { NotebookToolStore } from './tool/notebook-tool-store';
-import type { NoteCleanupOptions, NotebookContext } from './types';
+import type { NoteForgetCaller, NotebookContext } from './types';
 import { readWalk } from './walk/read-walk';
 import { writeNote } from './write/write-note';
 import { writeNoteEdit } from './write/write-note-edit';
@@ -70,11 +70,20 @@ export interface StartNotebookOptions extends NotebookContext {
   // without it, meaning search is never ready and a search reports a partial meaning
   readonly semanticSearch?: SemanticSearch;
 
-  // the wait before a tool forget's cleanup runs again after it failed
+  // the key of the step that the task of a thread runs, or null when none runs
+  readonly readStartedStep: (thread: string) => Promise<string | null>;
+
+  // the wait before a tool forget's cleanup checks the calling step again, or runs again after it
+  // failed
   readonly cleanupRetryMs?: number;
 }
 
 const defaultCleanupRetryMs = 1000;
+
+interface CallingStep {
+  readonly thread: string;
+  readonly stepKey: string;
+}
 
 // Starts the in-process indexes from every active note, and finishes each forget that a crash cut
 // short.
@@ -87,29 +96,37 @@ export async function startNotebook(options: StartNotebookOptions): Promise<Note
 
   await runBegunNoteForgets(context, index);
 
-  // A tool's forget runs inside a turn, and the cleanup waits for that turn to end, so it runs
-  // beside it and the tool answers before it ends. A failed cleanup runs again until it ends or the
-  // notebook stops, and the next start finishes one that a stop cut short.
+  // A tool's forget runs inside a step, and the cleanup aborts every turn in flight, so it starts
+  // only once the calling step has committed what it wrote. The cleanup runs again until it ends or
+  // the notebook stops, and the next start finishes one that a stop cut short.
   const cleanups = new Map<string, Promise<void>>();
 
   const retryMs = options.cleanupRetryMs ?? defaultCleanupRetryMs;
   const state = { isStopping: false };
 
-  const runFinishBeside = async (noteID: string, cleanup: NoteCleanupOptions): Promise<void> => {
-    while (!state.isStopping) {
-      try {
-        await runBegunNoteForgets(context, index, noteID, cleanup);
-
-        return;
-      } catch {
-        await Bun.sleep(retryMs);
+  const runFinishOnce = async (noteID: string, step: CallingStep | null): Promise<boolean> => {
+    try {
+      if (step !== null && (await options.readStartedStep(step.thread)) === step.stepKey) {
+        return false;
       }
+
+      await runBegunNoteForgets(context, index, noteID);
+
+      return true;
+    } catch {
+      return false;
     }
   };
 
-  const runTrackedFinish = async (noteID: string, cleanup: NoteCleanupOptions): Promise<void> => {
+  const runFinishBeside = async (noteID: string, step: CallingStep | null): Promise<void> => {
+    while (!state.isStopping && !(await runFinishOnce(noteID, step))) {
+      await Bun.sleep(retryMs);
+    }
+  };
+
+  const runTrackedFinish = async (noteID: string, step: CallingStep | null): Promise<void> => {
     try {
-      await runFinishBeside(noteID, cleanup);
+      await runFinishBeside(noteID, step);
     } finally {
       cleanups.delete(noteID);
     }
@@ -117,12 +134,16 @@ export async function startNotebook(options: StartNotebookOptions): Promise<Note
 
   const forgetBeside = async (
     target: NoteForgetTarget,
-    cleanup: NoteCleanupOptions,
+    caller: NoteForgetCaller,
   ): Promise<BegunNoteForget> => {
     const begun = await beginNoteForget(context, target);
 
     if (begun.status === 'begun') {
-      cleanups.set(begun.noteID, runTrackedFinish(begun.noteID, cleanup));
+      const stepKey = await options.readStartedStep(caller.thread);
+
+      const step = stepKey === null ? null : { thread: caller.thread, stepKey };
+
+      cleanups.set(begun.noteID, runTrackedFinish(begun.noteID, step));
     }
 
     return begun;

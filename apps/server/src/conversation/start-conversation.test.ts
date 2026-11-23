@@ -10,7 +10,7 @@ import {
 } from '@heynixie/notebook';
 import { readStarterDecisionPoint } from '@heynixie/policy/test-utils';
 import { sandboxCreatedCodec } from '@heynixie/sandbox';
-import { conversationTaskID, createConversationTask } from '@heynixie/tasks';
+import { conversationTaskID, createConversationTask, readStartedStepKey } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
 import { buildConversationDriver } from '../test-utils/build-conversation-driver';
 import { buildTestModelsConfig } from '../test-utils/build-test-models-config';
@@ -1284,7 +1284,9 @@ test('it delivers a message once when the turn that answers it forgets a note', 
     clock: ctx.context.clock,
     settings: defaultNotebookSettings,
     memory: buildNotebookMemory(() => ctx.memory),
-    cleanupSessions: (cause, options) => runner.cleanupSessions(cause, options),
+    cleanupSessions: (cause) => runner.cleanupSessions(cause),
+    readStartedStep: (thread) => readStartedStepKey(ctx.context, thread),
+    cleanupRetryMs: 1,
   });
 
   store.notebook = notebook;
@@ -1322,6 +1324,7 @@ test('it delivers a message once when the turn that answers it forgets a note', 
     .map((record) => record.kind)
     .filter((kind) =>
       [
+        'task.step_committed',
         'task.step_errored',
         'model.session_invalidated',
         'model.session_cleanup_completed',
@@ -1331,7 +1334,13 @@ test('it delivers a message once when the turn that answers it forgets a note', 
 
   expect([deliveries.length, kinds]).toStrictEqual([
     1,
-    ['model.session_invalidated', 'model.session_cleanup_completed', 'notebook.note_forgotten'],
+    [
+      'task.step_committed',
+      'model.session_invalidated',
+      'model.session_cleanup_completed',
+      'notebook.note_forgotten',
+      'task.step_committed',
+    ],
   ]);
 });
 

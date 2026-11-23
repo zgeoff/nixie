@@ -7,7 +7,7 @@ import {
   buildStartTimeStatus,
   buildStatusRegistry,
 } from '@heynixie/sessions';
-import type { SessionCleanupCause, SessionCleanupOptions } from '@heynixie/sessions';
+import type { SessionCleanupCause } from '@heynixie/sessions';
 import type { RunStep } from '@heynixie/tasks';
 import { getTaskName } from '@heynixie/tasks';
 import { makeInStepActions } from '../action/make-in-step-actions';
@@ -24,10 +24,7 @@ import { startConversation } from './start-conversation';
 export interface ConversationImp {
   readonly runStep: RunStep;
 
-  readonly cleanupSessions: (
-    cause: SessionCleanupCause,
-    options?: SessionCleanupOptions,
-  ) => Promise<void>;
+  readonly cleanupSessions: (cause: SessionCleanupCause) => Promise<void>;
 }
 
 export async function startConversationImp(

@@ -52,7 +52,7 @@ export function buildNotebookForgetTool(readStore: () => NotebookToolStore): Too
 
       const forgotten = await store.forgetBeside(
         { note: input.id, by: 'assistant', isShortIDOnly: true },
-        { sparedThread: context.run.thread },
+        { thread: context.run.thread },
       );
 
       if (forgotten.status === 'refused') {

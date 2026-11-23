@@ -71,44 +71,6 @@ test('it aborts every running turn and runs the cleanup once they ended, before 
   ]);
 });
 
-test('it lets a running turn end unaborted before a cleanup that spares turns, and holds a later turn', async () => {
-  const guard = makeSessionGuard();
-  const order: string[] = [];
-  const started = Promise.withResolvers<void>();
-  const held = Promise.withResolvers<void>();
-
-  const turn = guard.withTurn(async (signal) => {
-    started.resolve();
-
-    await held.promise;
-
-    order.push(`turn ended, aborted: ${signal.aborted}`);
-  });
-
-  await started.promise;
-
-  const cleanup = guard.withInvalidation(
-    () => {
-      order.push('cleanup');
-
-      return Promise.resolve();
-    },
-    { shouldAbortTurns: false },
-  );
-
-  const later = guard.withTurn(() => {
-    order.push('later turn');
-
-    return Promise.resolve();
-  });
-
-  held.resolve();
-
-  await Promise.all([turn, cleanup, later]);
-
-  expect(order).toStrictEqual(['turn ended, aborted: false', 'cleanup', 'later turn']);
-});
-
 test('it aborts a turn that was still starting when the cleanup was asked for', async () => {
   const guard = makeSessionGuard();
   const order: string[] = [];

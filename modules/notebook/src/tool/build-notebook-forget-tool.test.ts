@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import { readRecords } from '@heynixie/log';
+import { waitFor } from '@zgeoff/testing';
 import invariant from 'tiny-invariant';
 import { pickText, startTestNotebook } from '../test-utils';
 import type { TestNotebookOptions } from '../test-utils';
@@ -212,6 +213,45 @@ test('it finishes at the next start a forget whose session cleanup kept failing'
 
   cleanup.isFailing = false;
 
+  await ctx.start();
+
+  const records = await ctx.readRecords(['notebook.note_forgotten']);
+
+  expect(records.map((entry) => entry.record.payload['by'])).toStrictEqual(['assistant']);
+});
+
+test('it runs the session cleanup only once the step that called the forget has ended', async () => {
+  const step: { key: string | null; reads: number } = { key: 'conversation:1', reads: 0 };
+
+  const ctx = await setupTest({
+    readStartedStep: () => {
+      step.reads += 1;
+
+      return Promise.resolve(step.key);
+    },
+  });
+
+  const note = await ctx.write('Boiler');
+
+  await ctx.call('notebook.forget', { id: note });
+
+  await waitFor(() => step.reads >= 3);
+
+  const whileRunning = ctx.cleanups.length;
+
+  step.key = null;
+
+  await ctx.notebook.waitForForgets();
+
+  expect([whileRunning, ctx.cleanups.length]).toStrictEqual([0, 1]);
+});
+
+test('it finishes at the next start a forget whose calling step still ran at the stop', async () => {
+  const ctx = await setupTest({ readStartedStep: () => Promise.resolve('conversation:1') });
+  const note = await ctx.write('Boiler');
+
+  await ctx.call('notebook.forget', { id: note });
+  await ctx.notebook.stop();
   await ctx.start();
 
   const records = await ctx.readRecords(['notebook.note_forgotten']);

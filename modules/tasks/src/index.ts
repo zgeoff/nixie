@@ -134,6 +134,7 @@ export { writeFailedTurnSpend } from './task/write-failed-turn-spend';
 export type { TaskLimitRaise, TaskLimitRaiseOutcome } from './task/limit/write-task-limit-raise';
 export { writeTaskLimitRaise } from './task/limit/write-task-limit-raise';
 export { readSessionBoundary } from './task/read-session-boundary';
+export { readStartedStepKey } from './task/read-started-step-key';
 export { requireLease } from './lease/require-lease';
 export { resetLease } from './utils/reset-lease';
 export { reviveHeldTasks } from './task/revive-held-tasks';

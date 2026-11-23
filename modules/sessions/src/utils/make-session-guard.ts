@@ -1,15 +1,7 @@
-export interface InvalidationOptions {
-  // false waits for each running turn to end on its own, for a cleanup that one of them asked for
-  readonly shouldAbortTurns: boolean;
-}
-
 export interface SessionGuard {
   readonly withTurn: <T>(run: (signal: AbortSignal) => Promise<T>) => Promise<T>;
 
-  readonly withInvalidation: (
-    cleanup: () => Promise<void>,
-    options?: InvalidationOptions,
-  ) => Promise<void>;
+  readonly withInvalidation: (cleanup: () => Promise<void>) => Promise<void>;
 }
 
 interface CleanupGate {
@@ -41,10 +33,10 @@ export function makeSessionGuard(): SessionGuard {
         done.resolve();
       }
     },
-    withInvalidation: (cleanup, options) => {
+    withInvalidation: (cleanup) => {
       const ran = runAfter([gate.current, ...active.values()], cleanup);
 
-      for (const controller of options?.shouldAbortTurns === false ? [] : active.keys()) {
+      for (const controller of active.keys()) {
         controller.abort(new Error('a forget invalidated the session'));
       }
 

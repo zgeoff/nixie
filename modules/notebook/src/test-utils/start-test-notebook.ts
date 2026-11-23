@@ -37,6 +37,9 @@ export interface TestNotebookOptions {
 
   // the wait before a tool forget's cleanup runs again; a test sets it short
   readonly cleanupRetryMs?: number;
+
+  // the step a thread runs; without it, no step runs, so a tool's forget cleans at once
+  readonly readStartedStep?: (thread: string) => Promise<string | null>;
 }
 
 // Starts a log with the notebook over it, and a memory store beside it, so a test calls a tool and
@@ -106,6 +109,7 @@ export async function startTestNotebook(options: TestNotebookOptions = {}) {
       clock,
       settings: { ...defaultNotebookSettings, ...options.settings },
       cleanupRetryMs: options.cleanupRetryMs ?? 1,
+      readStartedStep: options.readStartedStep ?? (() => Promise.resolve(null)),
       memory: buildNotebookMemory(() => memory),
       cleanupSessions: (cause) => {
         cleanups.push(cause);

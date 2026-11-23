@@ -66,8 +66,8 @@ export type BegunNoteForget =
     }
   | { readonly status: 'refused'; readonly reason: 'not_found' | 'stale' };
 
-// The first part alone, for a caller that runs inside a turn: the cleanup waits for every turn in
-// flight to end, so a call that waited for the cleanup would wait for itself.
+// The first part alone, for a caller that runs inside a turn: the cleanup aborts every turn in
+// flight and waits for it to end, so a call that waited for the cleanup would wait for itself.
 export async function beginNoteForget(
   context: NotebookContext,
   target: NoteForgetTarget,

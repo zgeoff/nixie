@@ -1,7 +1,8 @@
 import { toErrorFields } from '@heynixie/logger';
-import type { StartedMemoryStore } from '@heynixie/memory';
-import type { NoteCleanupSessions, NotebookStore } from '@heynixie/notebook';
+import type { CleanupSessions, StartedMemoryStore } from '@heynixie/memory';
+import type { NotebookStore } from '@heynixie/notebook';
 import { buildNotebookMemory, startNotebook } from '@heynixie/notebook';
+import { readStartedStepKey } from '@heynixie/tasks';
 import type { ServerParts } from '../types';
 
 // Starts the notebook after memory: it reads item IDs and gists from memory, and its forget runs
@@ -9,7 +10,7 @@ import type { ServerParts } from '../types';
 export async function startNotebookPart(
   parts: ServerParts,
   memory: StartedMemoryStore,
-  cleanupSessions: NoteCleanupSessions,
+  cleanupSessions: CleanupSessions,
 ): Promise<NotebookStore> {
   const store = await startNotebook({
     log: parts.context.log,
@@ -18,6 +19,7 @@ export async function startNotebookPart(
     settings: parts.config.notebook,
     memory: buildNotebookMemory(() => memory),
     cleanupSessions,
+    readStartedStep: (thread) => readStartedStepKey(parts.context, thread),
     ...(parts.encoder === null
       ? {}
       : {

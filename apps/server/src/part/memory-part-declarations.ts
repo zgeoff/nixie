@@ -39,9 +39,9 @@ export const memoryPartDeclarations: readonly AnyPartDeclaration<ServerPartValue
       const conversation = reader.get('conversation_imp');
       const tasks = reader.get('sandbox_runner');
 
-      return startNotebookPart(parts, reader.get('memory'), async (cause, options) => {
-        await conversation.cleanupSessions(cause, options);
-        await tasks.cleanupSessions(cause, options);
+      return startNotebookPart(parts, reader.get('memory'), async (cause) => {
+        await conversation.cleanupSessions(cause);
+        await tasks.cleanupSessions(cause);
 
         await runTurnInputForget(parts, cause);
       });

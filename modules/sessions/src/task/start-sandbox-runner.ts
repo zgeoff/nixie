@@ -29,7 +29,7 @@ import { taskImpMachine } from '../sandbox/task-imp-machine';
 import { runConversationStep } from '../step/run-conversation-step';
 import { voidLostReplies } from '../step/void-lost-replies';
 import { silentEndToolName } from '../turn/build-silent-end-tool';
-import type { SessionCleanupCause, SessionCleanupOptions } from '../types';
+import type { SessionCleanupCause } from '../types';
 import { createWorkerSandbox } from '../utils/create-worker-sandbox';
 import type { SessionGuard } from '../utils/make-session-guard';
 import { makeSessionGuard } from '../utils/make-session-guard';
@@ -57,10 +57,7 @@ import { writeTaskTurnSpend } from './write-task-turn-spend';
 export interface SandboxRunner {
   readonly runStep: RunStep;
 
-  readonly cleanupSessions: (
-    cause: SessionCleanupCause,
-    options?: SessionCleanupOptions,
-  ) => Promise<void>;
+  readonly cleanupSessions: (cause: SessionCleanupCause) => Promise<void>;
 }
 
 type TaskImpActor = Actor<typeof taskImpMachine>;
@@ -104,7 +101,7 @@ export const startSandboxRunner = makeSystemTaskRunner<SandboxRunnerOptions, San
 
     return {
       runStep: (input) => runStartedStep(runner, input),
-      cleanupSessions: (cause, cleanup) => runTaskSessionCleanup(runner, cause, cleanup),
+      cleanupSessions: (cause) => runTaskSessionCleanup(runner, cause),
     };
   },
 });
@@ -489,15 +486,13 @@ async function renewStaleImp(
 async function runTaskSessionCleanup(
   runner: TaskRunner,
   cause: SessionCleanupCause,
-  options: SessionCleanupOptions = {},
 ): Promise<void> {
   try {
     const cleaned = await readCleanedTaskIDs(runner.options.context, cause);
 
     for (const taskID of cleaned) {
-      await resolveTaskGuard(runner, taskID).withInvalidation(
-        () => cleanTaskSession(runner, taskID, cause),
-        { shouldAbortTurns: options.sparedThread !== taskID },
+      await resolveTaskGuard(runner, taskID).withInvalidation(() =>
+        cleanTaskSession(runner, taskID, cause),
       );
     }
   } finally {

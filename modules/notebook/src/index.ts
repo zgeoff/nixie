@@ -14,7 +14,6 @@ export type { NotebookStore, StartNotebookOptions } from './start-notebook';
 export { startNotebook } from './start-notebook';
 export { notebookToolNames } from './tool/notebook-tool-names';
 export { defaultNotebookSettings } from './types';
-export type { NoteCleanupSessions } from './types';
 export { notebookConfigSchema } from './config/notebook-config-schema';
 export type { NotebookConfig } from './config/notebook-config-schema';
 

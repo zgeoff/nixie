@@ -12,7 +12,6 @@ import type {
   ConversationRun,
   ImageTally,
   SessionCleanupCause,
-  SessionCleanupOptions,
 } from '../types';
 import { buildRoutedModel } from '../utils/build-routed-model';
 import { makeSessionGuard } from '../utils/make-session-guard';
@@ -73,10 +72,7 @@ export interface ConversationRunnerOptions {
 export interface ConversationRunner {
   readonly runStep: RunStep;
 
-  readonly cleanupSessions: (
-    cause: SessionCleanupCause,
-    options?: SessionCleanupOptions,
-  ) => Promise<void>;
+  readonly cleanupSessions: (cause: SessionCleanupCause) => Promise<void>;
   readonly stop: () => Promise<void>;
 }
 
@@ -160,7 +156,7 @@ export async function startConversationRunner(
 
       return runConversationStep(run, input);
     },
-    cleanupSessions: (cause, cleanup) => runSessionCleanup(run, cause, cleanup),
+    cleanupSessions: (cause) => runSessionCleanup(run, cause),
     stop: () => endpoint.stop(),
   };
 }

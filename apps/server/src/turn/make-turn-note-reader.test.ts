@@ -8,7 +8,12 @@ import {
   startNotebook,
 } from '@heynixie/notebook';
 import { recordSkillPin, skillsReloadedCodec } from '@heynixie/skills';
-import { conversationTaskID, createConversationTask, getTaskName } from '@heynixie/tasks';
+import {
+  conversationTaskID,
+  createConversationTask,
+  getTaskName,
+  readStartedStepKey,
+} from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
 import { startConversation } from '../conversation/start-conversation';
 import { buildConversationDriver } from '../test-utils/build-conversation-driver';
@@ -36,6 +41,7 @@ async function setupTest() {
     settings: defaultNotebookSettings,
     memory: buildNotebookMemory(() => memory),
     cleanupSessions: () => Promise.resolve(),
+    readStartedStep: (thread) => readStartedStepKey(server.context, thread),
   });
 
   onTestFinished(() => notebook.stop());
@@ -530,7 +536,7 @@ test("it adds no line to the next turn's events for a note forget by the assista
 
   await ctx.notebook.forgetBeside(
     { note: written.shortID, by: 'assistant' },
-    { sparedThread: conversationTaskID },
+    { thread: conversationTaskID },
   );
 
   await ctx.notebook.waitForForgets();
