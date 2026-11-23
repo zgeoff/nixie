@@ -113,8 +113,8 @@ erasure.finished  { erasureID, kind, targetID, shortID, by, removedKeys }
   before can finish a forget the new release began. The release after stops them. A reset that the
   new release began finishes only on the new release, because the release before writes no reset
   start.
-- The release before skips a record kind it doesn't know. The first work item checks this, and ships
-  the skip a release ahead of the rest when it is missing.
+- The release before skips a record kind it doesn't know. Check this in the first work item, and
+  when the skip is missing, ship it a release ahead of the rest.
 - The evidence purge keeps its own three records.
 
 ### The runner
@@ -182,7 +182,7 @@ erasure.finished  { erasureID, kind, targetID, shortID, by, removedKeys }
   The partition test reads the descriptors.
 - A vault entry's forget resolves any of its `vault.*` records to the entry, through the entry ID in
   the record, and never to its group. It erases the entry's page dumps, locked or not. The route
-  asks for a passkey, as the [vault design](accounts.md) says.
+  asks for a passkey, as in the [vault design](accounts.md).
 - A locked entry's forget deletes every passkey wrapper and waits for an attempt to drop its
   unwrapped key. A lock or an unlock writes a record that makes a backup due.
 - Who may forget each kind stays as it is: nixie forgets notes without asking, asks before it
@@ -205,5 +205,5 @@ erasure.finished  { erasureID, kind, targetID, shortID, by, removedKeys }
   shred a conversation. The owner may want one word everywhere, such as "Forget". Until the owner
   decides, each screen keeps its word.
 - **Purging quotes on a reset.** A reset today leaves memory items that quote the conversation
-  readable. This design purges those quotes, so a reset removes more than it does today. The owner
-  may keep today's reset. Until the owner decides, the reset purges.
+  readable. This design purges those quotes. The owner may keep today's reset. Until the owner
+  decides, the reset purges.
