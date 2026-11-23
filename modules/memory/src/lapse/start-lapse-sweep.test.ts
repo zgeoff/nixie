@@ -19,9 +19,13 @@ test('it retires a memory item past its end time on the next sweep', async () =>
 
   clock.advance(Date.parse('2026-10-20T00:41:00Z') - clock.now());
 
-  const sweep = startLapseSweep({ store: memory.store, intervalMs: 10, onError: () => {} });
+  const sweep = startLapseSweep({ store: memory.store, clock, onError: () => {} });
 
   onTestFinished(() => sweep.stop());
+
+  await waitForCondition(() => clock.countPending() === 1);
+
+  clock.advance(3_600_000);
 
   await waitForCondition(async () => {
     const recalled = await memory.store.recall({ itemIDs: [item.itemID], includeRetired: true });
@@ -50,9 +54,13 @@ test('it lapses a proposal past its lapse time on the next sweep', async () => {
 
   clock.advance(5000);
 
-  const sweep = startLapseSweep({ store: memory.store, intervalMs: 10, onError: () => {} });
+  const sweep = startLapseSweep({ store: memory.store, clock, onError: () => {} });
 
   onTestFinished(() => sweep.stop());
+
+  await waitForCondition(() => clock.countPending() === 1);
+
+  clock.advance(3_600_000);
 
   await waitForCondition(async () => {
     const pending = await memory.store.proposals.listPending();
@@ -68,6 +76,7 @@ test('it lapses a proposal past its lapse time on the next sweep', async () => {
 });
 
 test('it passes a failed sweep to onError, and sweeps again', async () => {
+  const clock = createFakeClock({ startMs: 0 });
   const onError = mock<(error: unknown) => void>();
 
   const sweep = startLapseSweep({
@@ -75,21 +84,30 @@ test('it passes a failed sweep to onError, and sweeps again', async () => {
       lapse: () => Promise.resolve(0),
       proposals: { lapse: () => Promise.reject(new Error('the database is locked')) },
     },
-    intervalMs: 10,
+    clock,
     onError,
   });
 
   onTestFinished(() => sweep.stop());
 
-  await waitForCondition(() => onError.mock.calls.length >= 2);
+  await waitForCondition(() => clock.countPending() === 1);
 
-  expect(onError.mock.calls.slice(0, 2)).toStrictEqual([
+  clock.advance(3_600_000);
+
+  await waitForCondition(() => onError.mock.calls.length === 1 && clock.countPending() === 1);
+
+  clock.advance(3_600_000);
+
+  await waitForCondition(() => onError.mock.calls.length === 2);
+
+  expect(onError.mock.calls).toStrictEqual([
     [new Error('the database is locked')],
     [new Error('the database is locked')],
   ]);
 });
 
 test('it sweeps again after onError throws', async () => {
+  const clock = createFakeClock({ startMs: 0 });
   const lapseProposals = mock(() => Promise.reject(new Error('the database is locked')));
 
   const sweep = startLapseSweep({
@@ -97,7 +115,7 @@ test('it sweeps again after onError throws', async () => {
       lapse: () => Promise.resolve(0),
       proposals: { lapse: lapseProposals },
     },
-    intervalMs: 10,
+    clock,
     onError: () => {
       throw new Error('the log is closed');
     },
@@ -105,7 +123,15 @@ test('it sweeps again after onError throws', async () => {
 
   onTestFinished(() => sweep.stop());
 
-  await waitForCondition(() => lapseProposals.mock.calls.length >= 2);
+  await waitForCondition(() => clock.countPending() === 1);
 
-  expect(lapseProposals.mock.calls.length).toBeGreaterThanOrEqual(2);
+  clock.advance(3_600_000);
+
+  await waitForCondition(
+    () => lapseProposals.mock.calls.length === 1 && clock.countPending() === 1,
+  );
+
+  clock.advance(3_600_000);
+
+  await expect(waitForCondition(() => lapseProposals.mock.calls.length === 2)).toResolve();
 });

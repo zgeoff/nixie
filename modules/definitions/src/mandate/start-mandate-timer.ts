@@ -1,6 +1,5 @@
-import type { Clock } from '@heynixie/clock';
-import type { ProposalLapseSweep } from '@heynixie/proposals';
-import { startProposalLapseSweep } from '@heynixie/proposals';
+import type { Clock, Sweep } from '@heynixie/clock';
+import { startSweep } from '@heynixie/clock';
 import type { RuleContext } from '../runtime/write-runtime-rule';
 import { runMandateExpiry } from './run-mandate-expiry';
 
@@ -13,11 +12,11 @@ export interface MandateTimerOptions {
 }
 
 // Each mandate ends within a minute of its end, whatever the interval.
-export function startMandateTimer(options: MandateTimerOptions): ProposalLapseSweep {
-  return startProposalLapseSweep({
-    sweep: () => runMandateExpiry(options.context),
+export function startMandateTimer(options: MandateTimerOptions): Sweep {
+  return startSweep({
     clock: options.clock,
     intervalMs: timerMs,
+    run: () => runMandateExpiry(options.context),
     onError: options.onError,
   });
 }

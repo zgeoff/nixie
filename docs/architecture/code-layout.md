@@ -197,7 +197,9 @@ The other packages each hold one piece the modules and apps share:
 - `libs/egress` holds the address checks and the checking proxy that the guests with public egress
   share.
 - `libs/clock` is the one clock that every time and every wait reads. A test build replaces it with
-  a clock the test steps.
+  a clock the test steps. It also holds `startSweep`, the loop that every periodic sweep runs on. A
+  sweep's next run starts one interval after its last run ends, so runs never overlap, and a failed
+  run goes to the sweep's `onError` while the loop goes on.
 - `libs/retry` is the backoff that sets the wait before each retry, so every part that retries backs
   off the same way.
 - `libs/task-control` holds the transition table of the task controls, so the tasks module and the

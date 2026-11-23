@@ -1,5 +1,7 @@
 export { formatAge } from './format-age';
 export { setWorkTracker } from './set-work-tracker';
+export type { Sweep, SweepOptions } from './start-sweep';
+export { startSweep } from './start-sweep';
 export { systemClock } from '@zgeoff/std';
 export type { Clock, WorkTracker } from './types';
 export { withTrackedWork } from './with-tracked-work';
