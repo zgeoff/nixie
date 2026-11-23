@@ -79,6 +79,9 @@ interface Erasable<Target> extends ErasableDescriptor {
   readChildren(tx: Transaction, target: Target): Promise<ErasureTarget[]>;
   cleanIndexes(target: Target): Promise<void>; // after the keys go; repeats hide's work safely
   before?(target: Target): Promise<void>; // the reset's stop-work barrier and guest destroy
+  // A credential's one revocation at its provider. The start records the attempt; the runner calls
+  // revoke once, after the start commits. A catch-up that finds no outcome records 'unknown'.
+  revoke?(target: Target): Promise<'confirmed' | 'refused' | 'unknown'>;
 }
 
 // Captured in the start transaction, while the target still reads, and stored in erasure.started.
@@ -127,7 +130,8 @@ erasure.finished  { erasureID, kind, targetID, shortID, by, removedKeys }
    Capture stays closed while any erasure is between this step and step 8.
 3. Find the children, start each as an erasure with `parentID` in its own transaction under its
    store's lock, and repeat until a pass finds no new target.
-4. Destroy every code sandbox in the tree. When one destroy fails, no key goes.
+4. Run `revoke` for each erasure that has one, then destroy every code sandbox in the tree. When one
+   destroy fails, no key goes.
 5. Delete every key in the tree, then checkpoint the key store.
 6. Scan for children again. A new one runs steps 3 to 5 before the parent goes on.
 7. Clean the indexes and close the sessions for each erasure, then run the evidence purges. A purge
@@ -176,9 +180,9 @@ erasure.finished  { erasureID, kind, targetID, shortID, by, removedKeys }
 - The backup state follows
   [a forget's backup state](../../architecture/deployment/backups.md#a-forgets-backup-state):
   complete only once a set at or after `erasure.finished` is published.
-- A set falls due on `erasure.finished`, on each descriptor's `legacyEnds`, and on a vault lock or
-  unlock record. The backup job never publishes a set staged before a finished erasure that no
-  published set covers yet.
+- A set falls due on `erasure.finished`, on each descriptor's `legacyEnds`, and on a vault lock, an
+  unlock or a passkey wrapper's removal. The backup job never publishes a set staged before a
+  finished erasure that no published set covers yet.
 - A script generates the contract's forgettable kinds list from the descriptors, because the
   published contract lib can't import a module. A check fails when the committed list differs.
 - Every record kind of the server sits in exactly one descriptor list, or carries no erasable field.
