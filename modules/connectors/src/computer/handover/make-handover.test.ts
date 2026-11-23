@@ -174,7 +174,7 @@ test('it keeps an ask open for a retry when the write of its cancel fails', asyn
 
   const failed = ctx.handover.cancel();
 
-  await expect(failed).rejects.toThrow('the log refused the write');
+  expect(failed).rejects.toThrow('the log refused the write');
 
   const retried = await ctx.handover.cancel();
 

@@ -119,7 +119,8 @@ test('it queues the handover ask for the conversation when the reply also starts
     .filter((reply) => reply.when?.(conversation) === true)
     .map(
       (reply) =>
-        ('toolUse' in reply ? reply.toolUse?.name : undefined) ?? Reflect.get(reply, 'text'),
+        ('toolUse' in reply ? reply.toolUse?.name : undefined) ??
+        ('text' in reply ? reply.text : undefined),
     );
 
   expect(forConversation).toStrictEqual([

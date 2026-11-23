@@ -74,7 +74,9 @@ function setupTest() {
     closes,
     computer,
     waitForStartedWrite: () => startedWriteEntered.promise,
-    finishStartedWrite: () => startedWrite.resolve(),
+    finishStartedWrite: () => {
+      startedWrite.resolve();
+    },
   };
 }
 

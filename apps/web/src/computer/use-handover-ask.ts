@@ -30,30 +30,28 @@ export function useHandoverAsk(): HandoverAsk | null {
   useEffect(() => {
     setStreamed(null);
 
-    if (afterSequence === undefined) {
-      return;
-    }
-
     const following = new AbortController();
 
     const current = { ask: readAsk ?? null };
 
-    void subscribeToLiveRecords({
-      afterSequence,
-      client,
-      onAvailability: () => {},
-      onRecord: (record) => {
-        const next = pickHandoverAsk(current.ask, record);
+    if (afterSequence !== undefined) {
+      void subscribeToLiveRecords({
+        afterSequence,
+        client,
+        onAvailability: () => {},
+        onRecord: (record) => {
+          const next = pickHandoverAsk(current.ask, record);
 
-        if (next !== current.ask) {
-          current.ask = next;
+          if (next !== current.ask) {
+            current.ask = next;
 
-          setStreamed({ ask: next });
-        }
-      },
-      signal: following.signal,
-      startTimer: startPlatformTimer,
-    });
+            setStreamed({ ask: next });
+          }
+        },
+        signal: following.signal,
+        startTimer: startPlatformTimer,
+      });
+    }
 
     return () => {
       following.abort();
