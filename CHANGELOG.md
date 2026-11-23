@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.108.0](https://github.com/zgeoff/nixie/compare/v0.107.0...v0.108.0) (2026-11-23)
+
+
+### Features
+
+* **sessions:** fence memory item text and share one fence helper ([#1422](https://github.com/zgeoff/nixie/issues/1422)) ([dd2b0eb](https://github.com/zgeoff/nixie/commit/dd2b0ebc037c59bca4f93cadd5965e7271e6cca7))
+
 ## [0.107.0](https://github.com/zgeoff/nixie/compare/v0.106.0...v0.107.0) (2026-11-23)
 
 
