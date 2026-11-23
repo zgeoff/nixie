@@ -49,12 +49,12 @@ vault.reveal({ account, prf }); // prf only for a locked entry
 - The vault reads a locked secret only inside an action whose approval carried a `prf` that the
   server verified for that action. It refuses a `prf` whose credential holds no copy for the entry,
   or whose assertion answers another proposal.
-- The unwrapped key and the PRF output live in memory for one attempt of one action, and the server
-  drops both when the attempt ends, whatever its outcome. A retry, an answer to an unknown outcome,
-  a restart and a task that pauses before its attempt each ask for the passkey again, and the queue
-  holds the retry until you answer from a device. The server drops both on success, refusal, timeout
-  and cancel, and also when the action ends before its attempt starts. The web client drops the PRF
-  output once the request returns. Nothing writes either to disk or to a log.
+- The unwrapped key and the PRF output live in memory for one attempt of one action. The server
+  drops both when the attempt ends, on success, refusal, timeout or cancel, and when the action ends
+  before its attempt starts. A retry, an answer to an unknown outcome, a restart and a task that
+  pauses before its attempt each ask for the passkey again, and the queue holds the retry until you
+  answer from a device. The web client drops the PRF output once the request returns. Nothing writes
+  either to disk or to a log.
 - `vault.lock` makes a new secret key, seals the secret again under it, wraps it, and destroys the
   old key, so a backup of the key store from before the lock can't open the secret sealed after it.
   `vault.unlock` makes a new secret key the same way.
@@ -62,8 +62,8 @@ vault.reveal({ account, prf }); // prf only for a locked entry
   before a forget does. The vault screen shows the lock's backup state the way
   [a forget's backup state](../../architecture/deployment/backups.md#a-forgets-backup-state) shows,
   and the lock is whole only once that state is complete.
-- A lock covers only the passkey that answered it. `vault.addLockPasskey` adds another, and each
-  copy needs that passkey's own PRF output.
+- `vault.lock` wraps the secret under only the passkey that answered it. Add another passkey with
+  `vault.addLockPasskey`, and give each copy that passkey's own PRF output.
 - Revoking a passkey removes its copies, and refuses while it holds the last copy of a locked entry,
   from a device and from the server's command line alike. Unlock or forget that entry first.
 - The redaction pass and the proxy's URL scan look for each unlocked secret and each locked secret
@@ -81,9 +81,8 @@ vault.reveal({ account, prf }); // prf only for a locked entry
 ## Decisions
 
 - **A locked entry stays sealed until you open it.** A rule decides whether nixie may use an entry
-  it can read. A locked entry stays sealed until your passkey opens it, so a wrong rule, a bug in
-  the decision point or a tricked assistant still gets nothing. It costs a tap per use, so you lock
-  only what deserves it.
+  it can read. Only your passkey opens a locked entry, so a wrong rule, a bug in the decision point
+  or a tricked assistant still gets nothing. It costs a tap per use, so lock only what deserves it.
 
 ## Builder decides
 
