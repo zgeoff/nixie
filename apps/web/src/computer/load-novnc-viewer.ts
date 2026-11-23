@@ -2,7 +2,8 @@ import type { StartViewer, ViewerEvents } from './types';
 import { waitForFrame } from './wait-for-frame';
 
 // noVNC reads the window when it loads, so the page loads it in the browser alone. The viewer is
-// view only: it sends no key, pointer or clipboard message, and the server drops any that arrive.
+// view only until the page turns input on, which it does while this device holds the desktop. It
+// sends no clipboard message, and the server drops any that arrive.
 export async function loadNoVNCViewer(): Promise<StartViewer> {
   const novnc = await import('@novnc/novnc');
 
@@ -28,11 +29,23 @@ export async function loadNoVNCViewer(): Promise<StartViewer> {
     viewer.addEventListener('connect', onConnect);
     viewer.addEventListener('disconnect', events.onDisconnect);
 
-    return () => {
-      frame.stop?.();
-      viewer.removeEventListener('connect', onConnect);
-      viewer.removeEventListener('disconnect', events.onDisconnect);
-      viewer.disconnect();
+    return {
+      setInput: (isOn) => {
+        viewer.viewOnly = !isOn;
+        viewer.focusOnClick = isOn;
+
+        if (isOn) {
+          viewer.focus();
+        } else {
+          viewer.blur();
+        }
+      },
+      stop: () => {
+        frame.stop?.();
+        viewer.removeEventListener('connect', onConnect);
+        viewer.removeEventListener('disconnect', events.onDisconnect);
+        viewer.disconnect();
+      },
     };
   };
 }

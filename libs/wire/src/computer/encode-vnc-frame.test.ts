@@ -6,6 +6,7 @@ import { vncChunkLimitBytes } from './vnc-frame';
 test.each([
   { kind: 'vnc-open', stream: 's1' } as const,
   { kind: 'vnc-close', stream: 's1' } as const,
+  { kind: 'vnc-flush', stream: 's1' } as const,
   { kind: 'vnc-data', stream: 's1', data: new Uint8Array([0, 1, 254, 255]) } as const,
 ])('#decodeVNCFrame reads back an encoded $kind frame', (frame) => {
   expect(decodeVNCFrame(encodeVNCFrame(frame))).toStrictEqual(frame);

@@ -48,6 +48,7 @@ export function makeStubVNCLink(events: VNCLinkEvents): VNCLink {
         // each pass takes one message from the buffer
       }
     },
+    flush: () => {},
     end: () => {
       state.buffer = new Uint8Array();
     },

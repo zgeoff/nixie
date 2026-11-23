@@ -1,5 +1,5 @@
 import type { BackupSchedule, ForgetBackup } from '@heynixie/backup';
-import type { WatchConnection, WatchSocket } from '@heynixie/connectors';
+import type { ComputerTakeover, WatchConnection, WatchSocket } from '@heynixie/connectors';
 import type { DefinitionNotice, ImageMediaType } from '@heynixie/contract';
 import type { CheckedTables } from '@heynixie/db';
 import type { DefinitionsContext } from '@heynixie/definitions';
@@ -79,7 +79,11 @@ export interface ComputerWatchPort {
   readonly logger: Logger;
 
   // Opens a watch for a socket. Null before the computer starts, and where the server holds none.
-  readonly readWatch: () => ((socket: WatchSocket) => WatchConnection) | null;
+  readonly readWatch: () => ((socket: WatchSocket, deviceID: string) => WatchConnection) | null;
+
+  // The hold on the desktop that a device session takes and gives back. Null before the computer
+  // starts, and where the server holds none.
+  readonly readTakeover: () => Pick<ComputerTakeover, 'start' | 'end'> | null;
 }
 
 export interface APIContext extends TasksContext {

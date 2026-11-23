@@ -34,6 +34,9 @@ interface VNCStreamListener {
 export interface VNCStream {
   readonly send: (bytes: Uint8Array) => Promise<void>;
 
+  // drops the bytes the guest holds for the stream and has not written to the VNC server
+  readonly flush: () => Promise<void>;
+
   // closes the stream and tells the guest, and the listener hears nothing more
   readonly close: () => void;
 }
@@ -54,6 +57,9 @@ export interface GuestSessionOptions {
   readonly scans: OutOfCallScans;
   readonly clock: Clock;
   readonly logger: Logger;
+
+  // runs once the guest's output ends or fails, for a guest that stops on its own
+  readonly onClosed?: () => void;
 }
 
 interface ActiveCall {
@@ -114,6 +120,8 @@ async function pumpFrames(
       kind: 'broken',
       message: 'the guest closed its output with no reply',
     });
+
+    options.onClosed?.();
   } catch (error) {
     closeStreams(streams);
 
@@ -121,6 +129,8 @@ async function pumpFrames(
       kind: 'broken',
       message: error instanceof Error ? error.message : String(error),
     });
+
+    options.onClosed?.();
   }
 }
 
@@ -212,6 +222,7 @@ function openStream(
         await sendFrame({ kind: 'vnc-data', stream: id, data });
       }
     },
+    flush: () => sendFrame({ kind: 'vnc-flush', stream: id }),
     close: () => {
       if (streams.delete(id)) {
         void sendQuietly(sendFrame({ kind: 'vnc-close', stream: id }), options.logger);

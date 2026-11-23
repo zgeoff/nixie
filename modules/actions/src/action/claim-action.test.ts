@@ -299,3 +299,78 @@ test('it claims the action of a done task once the resume of the task exempts it
 
   expect(lease?.workID).toBe(queued.action_id);
 });
+
+test('it leaves a queued action of a held tool prefix pending, and claims it once the prefix is free', async () => {
+  const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
+
+  await queueTestAction(ctx.context, {
+    step,
+    tool: 'computer.run',
+    actionHash: 'sha256:run-1',
+    arguments: { command: 'ls' },
+    decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
+  });
+
+  const held = await claimAction(ctx.context, {
+    holder: 'runner-a',
+    leaseMs: 60_000,
+    readHeldToolPrefixes: () => ['computer.'],
+  });
+
+  const free = await claimAction(ctx.context, {
+    holder: 'runner-a',
+    leaseMs: 60_000,
+    readHeldToolPrefixes: () => [],
+  });
+
+  expect([held, free?.holder]).toStrictEqual([null, 'runner-a']);
+});
+
+test('it claims an action of another tool while a prefix is held', async () => {
+  const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
+
+  await queueTestAction(ctx.context, {
+    step,
+    tool: 'test.send',
+    actionHash: 'sha256:send-1',
+    arguments: { to: 'team' },
+    decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
+  });
+
+  const lease = await claimAction(ctx.context, {
+    holder: 'runner-a',
+    leaseMs: 60_000,
+    readHeldToolPrefixes: () => ['computer.'],
+  });
+
+  expect(lease?.holder).toBe('runner-a');
+});
+
+test('it reads the held prefixes at the moment of the claim, after the transaction opens', async () => {
+  const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
+
+  await queueTestAction(ctx.context, {
+    step,
+    tool: 'computer.run',
+    actionHash: 'sha256:run-1',
+    arguments: { command: 'ls' },
+    decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
+  });
+
+  const reads = { count: 0 };
+
+  const lease = await claimAction(ctx.context, {
+    holder: 'runner-a',
+    leaseMs: 60_000,
+    readHeldToolPrefixes: () => {
+      reads.count += 1;
+
+      return [];
+    },
+  });
+
+  expect([lease?.holder, reads.count]).toStrictEqual(['runner-a', 1]);
+});

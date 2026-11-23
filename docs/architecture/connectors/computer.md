@@ -24,9 +24,12 @@ The kind `computer` has public egress, no grant and no tool route. A deployment 
 and disk. The image `nixie-computer` comes from `guests/computer`.
 
 The desktop runs Xvfb as the display, openbox as the window manager, xterm as the terminal and
-x11vnc as a VNC server. The display is 1280 by 800. The VNC server listens only on the sandbox's
-loopback, in view-only mode with selection and clipboard exchange off, so it ignores every key and
-pointer event. Read [Watching](#watching) for how the user's client reaches it.
+x11vnc as a VNC server. The display is 1280 by 800. The VNC server listens on a Unix socket in a
+directory that only the screen's account can open, and on no TCP port, so the browser and the
+terminal cannot reach it. Selection and clipboard exchange are off, and so are the remote control
+commands that an X client can send it through the display, which Chromium is. The VNC server accepts
+the keys and pointer of a viewer, and the relay passes them only while a device
+[holds the desktop](#taking-over). The user's client reaches it as [Watching](#watching) says.
 
 Chromium runs in the time zone of `time.default_zone` in the config, so a page that shows "today" or
 an opening hour shows the user's. Nixie hands the zone to the guest when it starts the guest, so a
@@ -117,8 +120,9 @@ server, so a restart never reuses one.
 `E12`. It moves the viewport by most of a screen, or scrolls the control into view, and returns
 `{ tab, isAtEnd }`. For `up`, `isAtEnd` means the top; otherwise it means the bottom. It stores no
 page, so it never counts toward a tab's 5 pages. `browser_screenshot` takes an optional `control`
-and then pictures that control's box. Both return `STALE_ELEMENT` for a control that no longer holds
-its number.
+and then pictures that control's box, cut to the viewport, without scrolling the page, so a person
+who holds the desktop keeps their view. A picture of a control wholly outside the viewport returns
+`STALE_ELEMENT`, and so does either tool for a control that no longer holds its number.
 
 **Old names.** Every browser tool carries the `browser_` prefix, and a call under a name from before
 it is an unknown tool. An action queued under `computer.fill` or `computer.click` before the rename
@@ -131,6 +135,13 @@ sees, which is smaller than the desktop when the image long edge is under 1280. 
 multiplies a point on the picture by 1280 divided by `width`. Each screenshot and each screen act
 result carries `focus`, which is `{ kind: 'browser', tab, url }`, `{ kind: 'terminal' }` or
 `{ kind: 'other' }`, and `isWatched`, which is `true` while a [watch](#watching) is open.
+
+While a device holds the desktop, the direct reads still run: `browser_read`, `browser_screenshot`,
+`screenshot` and `read_file`. A browser or screen scroll, a page open, a close, a download, a file
+write and a file export answer `TAKEN_OVER`, so the assistant never moves the person's view. A
+queued act stays pending, and the runner claims it after the hand-back, as
+[Taking over](#taking-over) says. A queued act that was prepared before a hold began, and runs after
+it ended, answers `SCREEN_CHANGED`, because the person may have moved the page or the focus.
 
 The result of a screen act carries the picture of the desktop after the act, as a screenshot does.
 The connector's response holds the picture beside the result. The action runner seals its bytes as
@@ -226,19 +237,20 @@ A `computer.run` is its own effect, `computer_run`, because the shell reaches th
   leave out `find` and `file`, because their options can run a program or write a file and a pattern
   cannot exclude an option.
 - Nixie counts each call that changes the shell's disk: `write_file`, `browser_download` and `run`.
-  A run that waits for a decision keeps the count from when it was proposed, and returns
-  `FILES_CHANGED` without running when the count moved. A queued run that finds no remembered count,
-  such as after a restart, returns `TAB_GONE` without running. An approved command therefore never
-  runs a script that changed after the user read the card.
+  A hold on the desktop counts as a change at its start and at its end. A run that waits for a
+  decision keeps the count from when it was proposed, and returns `FILES_CHANGED` without running
+  when the count moved. A queued run that finds no remembered count, such as after a restart,
+  returns `TAB_GONE` without running. An approved command therefore never runs a script that changed
+  after the user read the card.
 
 ## Watching
 
 The user watches the desktop live in the web client's
 [computer page](../channels/client.md#the-computer-page). The picture takes no port of the sandbox.
 The VNC stream rides the guest's existing wire session as `vnc-open`, `vnc-data` and `vnc-close`
-frames, each carrying a stream ID, and the guest pipes each stream to the VNC server on its
-loopback. A VNC frame never waits behind a request in the guest's queue, so a long call never stalls
-the picture. The guest holds at most 4 streams, and the server never writes a frame to disk.
+frames, each carrying a stream ID, and the guest pipes each stream to the VNC server's Unix socket.
+A VNC frame never waits behind a request in the guest's queue, so a long call never stalls the
+picture. The guest holds at most 4 streams, and the server never writes a frame to disk.
 
 [The API](../channels/api.md#watching-the-computer) mints the ticket and holds the socket. The
 connector side, `openComputerWatch`, does the rest for each socket:
@@ -248,14 +260,61 @@ connector side, `openComputerWatch`, does the rest for each socket:
 - The watch holds the sandbox awake until it closes. It wakes a sleeping sandbox and starts the
   guest, and a watch that closes during the wake opens no stream and releases its hold. A watch
   never takes the turn for longer than that start, so a call never answers `BUSY` because of one.
-- The relay lets through only the messages that a viewer needs: the handshake, `SetPixelFormat`,
-  `SetEncodings` and `FramebufferUpdateRequest`. It drops `KeyEvent`, `PointerEvent` and
+- The relay lets through the messages that a viewer needs: the handshake, `SetPixelFormat`,
+  `SetEncodings` and `FramebufferUpdateRequest`. It passes `KeyEvent` and `PointerEvent` only while
+  the viewer's device holds the desktop, and drops them silently otherwise. It always drops
   `ClientCutText` silently, and closes the socket and the stream on a message that is malformed,
   unknown or past a size cap, including a `SetPixelFormat` with an invalid pixel format. It reads
   the length of a `ClientCutText` as signed, because a viewer that speaks the extended clipboard
   format sends a negative one. While the sandbox wakes, it queues the viewer's bytes up to a cap far
-  above what a viewer sends before it hears from the desktop, and closes the socket past it. The
-  client sets the viewer to view-only, and neither the relay nor the VNC server accepts input.
+  above what a viewer sends before it hears from the desktop, and closes the socket past it.
+
+## Taking over
+
+A device session takes over the desktop through `computer.takeOver` and gives it back through
+`computer.handBack`. [The API](../channels/api.md#watching-the-computer) holds those two calls. One
+device holds the desktop at a time, and the hold lives in memory only.
+
+- From the moment `takeOver` is called, a queued action of a `computer.` tool stays pending, with no
+  attempt and no wake, until the hold ends. A direct call that would move the view answers
+  `TAKEN_OVER`, as [the tools](#tools) say. The runner reads the hold at its claim. As the
+  transaction that writes an attempt ends, the attempt asks the computer to admit its call, which
+  checks the hold and counts the call as running in one synchronous step. When a hold has begun, the
+  transaction rolls back, so the attempt leaves no record and makes no call. A take-over after the
+  admission waits for that call. The call runs to its end, because the hold refuses nothing that
+  runs inside an admission. An in-step action starts its attempt the same way. A direct call that
+  would move the view takes an admission of its own, so a take-over made after the direct call waits
+  for it.
+- The take-over waits for the calls running when it was made, each up to its own limit, and a call
+  that arrives later is not waited for. An admitted call's limit is the turn wait until its computer
+  call takes the turn, and then that call's limit. The admission runs its call in an async context
+  of its own, and only the computer calls inside that context move its limit. The take-over answers
+  `BUSY_TOO_LONG` when a call runs past its limit. A second device gets `HELD_ELSEWHERE`.
+- The relay passes the holder's keys and pointer to the VNC server. Each one holds off the idle
+  hand-back, which ends the hold with `idle` after `computer.idle_hand_back_minutes` of no input, 30
+  by default. When a hold ends, the relay drops the holder's queued key and pointer messages, and
+  the guest releases every key and button the VNC server still holds pressed. A flush keeps the
+  protocol messages that wait in the guest.
+- A hold ends when the holder hands back, when it idles out, or when the guest restarts or nixie
+  restarts. A restart writes the end record at the next start. The sandbox does not sleep during a
+  hold, and a guest that stops on its own ends the hold with `restart`. When a hold ends, whoever
+  ends it, the relay releases what the viewer pressed and closes every socket of the holder's
+  device.
+- At the start of a hold the guest starts to list the sites its browser shows: the tab in view at
+  the start, each page that navigates and each tab that the person opens. The guest reads each
+  address from the browser, never from a page. Playwright turns on focus emulation for each page, so
+  Chromium reports every tab as visible: a background tab's navigation is listed too, and a switch
+  to a tab that does not navigate is not. A tab that the person opens joins the tabs, so a hand-back
+  names it. At the end, nixie reads the sites, the window in focus and the terminal's text, if the
+  terminal is in focus. The text that the screen cleared is not in the terminal's text.
+
+A hold writes 2 records on the conversation's thread. `computer.takeover_started` names the device
+and wakes nothing. `computer.takeover_ended` names what ended the hold and for how long, and wakes
+the assistant. Both carry a short ID. The ended record keeps the sites and the window in focus as
+[erasable fields](../core/erasable-fields.md), so a forget of the record erases them. The assistant
+reads the window's text inside the untrusted-text markers of a page read. Each marker carries a
+random ID that the text never holds, so the text cannot close the block early. The assistant names
+the record by its short ID.
 
 ## The checking proxy
 

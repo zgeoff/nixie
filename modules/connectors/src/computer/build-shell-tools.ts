@@ -90,7 +90,7 @@ function buildRunTool(options: ComputerToolOptions, state: ComputerState): ToolD
     prepare: (input) => {
       const key = buildActionKey('computer.run', input);
 
-      state.epochs.set(key, state.files.count);
+      state.epochs.set(key, readFilesEpoch(options, state));
       state.holds.get(key)?.();
       state.holds.set(key, options.computer.hold(actionProposalLapseMs));
 
@@ -98,6 +98,12 @@ function buildRunTool(options: ComputerToolOptions, state: ComputerState): ToolD
     },
     run: () => Promise.resolve({ status: 'error', message: 'computer.run runs only queued' }),
   };
+}
+
+// A hold on the desktop counts as a change to the disk at its start and its end, because a person
+// who holds it can change any file.
+function readFilesEpoch(options: ComputerToolOptions, state: ComputerState): number {
+  return state.files.count + options.computer.takeover.epoch();
 }
 
 const pathArguments = z.object({ path: z.string().min(1) });
@@ -385,7 +391,7 @@ export async function runShellCommand(
     );
   }
 
-  if (epoch !== state.files.count) {
+  if (epoch !== readFilesEpoch(options, state)) {
     return refuseComputer(
       'FILES_CHANGED',
       'the files changed after this command was asked for, so it did not run; ask again',

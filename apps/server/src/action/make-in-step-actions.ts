@@ -17,11 +17,18 @@ export function makeInStepActions(parts: ServerParts): InStepActions {
 
   return {
     replies: new Map(),
-    probePending: (taskID) => probeInStepActionPending(parts.context, taskID),
+    probePending: (taskID) =>
+      probeInStepActionPending(parts.context, taskID, parts.tools.actions.readHeldToolPrefixes),
     run: async (request) => {
       const settled = await runInStepActions(parts.context, request.lease, {
         checkAttempt,
         runCall: request.runCall,
+        ...(parts.tools.actions.readHeldToolPrefixes === undefined
+          ? {}
+          : { readHeldToolPrefixes: parts.tools.actions.readHeldToolPrefixes }),
+        ...(parts.tools.actions.admitTool === undefined
+          ? {}
+          : { admitTool: parts.tools.actions.admitTool }),
       });
 
       return settled.map((entry) => ({

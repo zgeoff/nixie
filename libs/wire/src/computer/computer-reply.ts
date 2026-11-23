@@ -98,6 +98,23 @@ const screenTargetReplySchema = z.strictObject({
   base64: textSchema.optional(),
 });
 
+const takeoverBegunReplySchema = z.strictObject({ kind: z.literal('takeover-begun'), ok: isOk });
+
+// The sites are scheme and host alone, in the order the browser showed them. The window's text is
+// what computer.browser_read returns for a tab, or the terminal's visible lines.
+const takeoverNowSchema = z.discriminatedUnion('kind', [
+  z.strictObject({ kind: z.literal('browser'), tab: textSchema, text: textSchema }),
+  z.strictObject({ kind: z.literal('terminal'), text: textSchema }),
+  z.strictObject({ kind: z.literal('other') }),
+]);
+
+const takeoverEndedReplySchema = z.strictObject({
+  kind: z.literal('takeover-ended'),
+  ok: isOk,
+  origins: z.array(textSchema),
+  now: takeoverNowSchema,
+});
+
 const runBodySchema = z.strictObject({
   exitCode: numberSchema.nullable(),
   stdout: outputSchema,
@@ -140,6 +157,8 @@ export const computerReplySchema = z.discriminatedUnion('kind', [
   desktopReplySchema,
   screenReplySchema,
   screenTargetReplySchema,
+  takeoverBegunReplySchema,
+  takeoverEndedReplySchema,
   runReplySchema,
   fileReplySchema,
   writtenReplySchema,
@@ -150,5 +169,7 @@ export const computerReplySchema = z.discriminatedUnion('kind', [
 export type ComputerReply = z.infer<typeof computerReplySchema>;
 
 export type ComputerFailureReason = (typeof computerFailureReasons)[number];
+
+export type TakeoverNow = z.infer<typeof takeoverNowSchema>;
 
 export type ComputerFocus = z.infer<typeof focusSchema>;

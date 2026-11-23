@@ -156,26 +156,34 @@ async function runAttempt(
     return;
   }
 
-  const start = await writeAttemptStarted(context, attempt, { resetWhenBarred: true });
+  const start = await writeAttemptStarted(context, attempt, {
+    resetWhenBarred: true,
+    readHeldToolPrefixes: options.readHeldToolPrefixes,
+    admitTool: options.admitTool,
+  });
 
-  if (start === 'past_deadline') {
+  if (start.kind === 'past_deadline') {
     await writeFailure(context, attempt, 'deadline_passed', 'the action passed its deadline');
 
     return;
   }
 
-  if (start === 'barred') {
+  if (start.kind === 'barred') {
     return;
   }
 
   const startedAt = context.clock.now();
 
-  const response = await runConnector(context, attempt, {
-    connector,
-    args,
-    destinations: step.destinations,
-    options,
-  });
+  const response = await start.admission
+    .run(() =>
+      runConnector(context, attempt, {
+        connector,
+        args,
+        destinations: step.destinations,
+        options,
+      }),
+    )
+    .finally(start.admission.release);
 
   await writeAttemptResult(context, attempt, {
     response,

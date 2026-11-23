@@ -2,6 +2,7 @@ import type { ActionConnector } from '@heynixie/connectors';
 import { subscribeToRecordCommits } from '@heynixie/log';
 import type { ClaimPool, TasksContext } from '@heynixie/tasks';
 import { startClaimPool } from '@heynixie/tasks';
+import type { AdmitTool } from '../types';
 import type { AttemptCheck } from './attempt-check';
 import { claimAction } from './claim-action';
 import { runActionAttempt } from './run-action-attempt';
@@ -12,6 +13,12 @@ export interface ActionRunnersOptions {
 
   // decides an action again before each attempt
   readonly checkAttempt?: AttemptCheck;
+
+  // see ClaimActionOptions
+  readonly readHeldToolPrefixes?: () => readonly string[];
+
+  // see ActionAttemptOptions
+  readonly admitTool?: AdmitTool;
 
   readonly size?: number;
   readonly holder?: string;
@@ -33,12 +40,23 @@ export function startActionRunners(
   const pool = startClaimPool(context.clock, {
     size: options.size ?? DEFAULT_SIZE,
     pollMs: options.pollMs ?? DEFAULT_POLL_MS,
-    claim: () => claimAction(context, { holder, leaseMs }),
+    claim: () =>
+      claimAction(context, {
+        holder,
+        leaseMs,
+        ...(options.readHeldToolPrefixes === undefined
+          ? {}
+          : { readHeldToolPrefixes: options.readHeldToolPrefixes }),
+      }),
     run: (lease) =>
       runActionAttempt(context, lease, {
         connectors: options.connectors,
         leaseMs,
         ...(options.checkAttempt === undefined ? {} : { checkAttempt: options.checkAttempt }),
+        ...(options.readHeldToolPrefixes === undefined
+          ? {}
+          : { readHeldToolPrefixes: options.readHeldToolPrefixes }),
+        ...(options.admitTool === undefined ? {} : { admitTool: options.admitTool }),
       }),
     onError: options.onError,
   });

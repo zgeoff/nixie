@@ -6,6 +6,7 @@ export const forgettableKinds = [
   'action.queued',
   'action.reconcile_checked',
   'action.retry_scheduled',
+  'computer.takeover_ended',
   'device.idle_set',
   'device.shown',
   'image.named',

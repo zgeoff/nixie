@@ -13,6 +13,8 @@ declare module '@novnc/novnc' {
     background: string;
 
     disconnect: () => void;
+    focus: () => void;
+    blur: () => void;
   }
 
   const RFB: new (target: HTMLElement, channel: WebSocket, options?: RFBOptions) => Viewer;

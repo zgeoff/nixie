@@ -1,4 +1,5 @@
 import type { ComputerReply, ComputerRequest } from '@heynixie/wire';
+import type { Page } from 'playwright-core';
 import { readTabPage } from './read-tab-page';
 import type { BrowserState } from './types';
 
@@ -14,7 +15,7 @@ export async function openTab(
     return { kind: 'failed', ok: false, reason: 'tab_limit' };
   }
 
-  const page = await state.context.newPage();
+  const page = await createPage(state);
 
   state.counter += 1;
 
@@ -52,4 +53,14 @@ export async function openTab(
     textBytes: request.limits.textBytes * 3,
     isDiskNew,
   });
+}
+
+async function createPage(state: BrowserState): Promise<Page> {
+  state.isOpening = true;
+
+  try {
+    return await state.context.newPage();
+  } finally {
+    state.isOpening = false;
+  }
 }

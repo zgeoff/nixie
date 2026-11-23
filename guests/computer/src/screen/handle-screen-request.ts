@@ -51,7 +51,7 @@ export async function handleScreenRequest(
 }
 
 async function shootDesktop(context: ScreenContext): Promise<ComputerReply> {
-  const focus = await readFocus(context);
+  const focus = await readScreenFocus(context);
   const bytes = await context.driver.capture();
 
   return {
@@ -64,7 +64,8 @@ async function shootDesktop(context: ScreenContext): Promise<ComputerReply> {
   };
 }
 
-async function readFocus(context: ScreenContext): Promise<ComputerFocus> {
+// the window that has focus, as a screenshot names it
+export async function readScreenFocus(context: ScreenContext): Promise<ComputerFocus> {
   const target = await resolveScreenTarget(context.driver, context.tabs, { kind: 'focus' });
 
   const binding = target.binding;
@@ -103,7 +104,7 @@ async function scrollScreen(
 async function pictureAfterInput(context: ScreenContext): Promise<ComputerReply> {
   await Bun.sleep(context.settleMs);
 
-  const focus = await readFocus(context).catch((): ComputerFocus => ({ kind: 'other' }));
+  const focus = await readScreenFocus(context).catch((): ComputerFocus => ({ kind: 'other' }));
   const bytes = await context.driver.capture().catch(() => null);
 
   return {

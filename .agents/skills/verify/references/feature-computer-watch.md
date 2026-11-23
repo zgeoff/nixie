@@ -2,13 +2,15 @@
 
 Contents: [Journey](#journey), [End state](#end-state).
 
-The computer page at `/computer` shows the assistant's desktop live, view only. The page asks nixie
-for a one-use watch address, opens a socket to it and draws the desktop. While the computer sleeps,
-the page says "The computer is waking", and nixie wakes it. Once the viewer has drawn a picture, the
-page says "Watching the computer". A connection that finishes the handshake and sends no picture
-stays on "The computer is waking". The user can look but cannot touch: nixie drops every key,
-pointer and clipboard message. `local`'s test build serves a fixed gradient picture in place of a
-real desktop.
+The computer page at `/computer` shows the assistant's desktop live. The page asks nixie for a
+one-use watch address, opens a socket to it and draws the desktop. While the computer sleeps, the
+page says "The computer is waking.", and nixie wakes it. Once the viewer has drawn a picture, the
+page says "Your input won't reach the computer until you take over." A connection that finishes the
+handshake and sends no picture stays on "The computer is waking.". The page is view only until the
+user takes over: "Take over" gives the user's device the keys and pointer of the desktop, and the
+assistant's calls that change the desktop wait. "Hand back" gives the desktop back. Each take-over
+and hand-back writes a record that the assistant reads. nixie drops clipboard messages always.
+`local`'s test build serves a fixed gradient picture in place of a real desktop.
 
 Follow the steps in [Check a change](../SKILL.md#check-a-change) for this journey. Read that section
 for the commands `up` and `done`, and for the `data` field of each command's JSON output.
@@ -19,6 +21,10 @@ because it needs `local`.
 
 Before you start, run [sign-in-enrol](feature-sign-in-enrol.md) in the same `up`, when you have not
 run it since `up`.
+
+After this journey, run `bun verify up --restart`, `bun verify doctor` and sign-in-enrol before any
+journey that sends a message. The hand-back record starts a conversation turn, and the journey gives
+that turn no reply, so the turn fails.
 
 ## Journey
 
@@ -32,12 +38,13 @@ run it since `up`.
 
    ```bash
    bun verify browser goto /computer
-   bun verify browser snapshot --until-text 'Watching the computer'
+   bun verify browser snapshot --until-text 'reach the computer until you take over'
    ```
 
    Expect: both commands exit 0. The status text appears once the viewer has drawn the picture, so
    the wait times out on a blank desktop. The snapshot shows the heading "Computer", the status
-   "Watching the computer. You can look but not touch." and an image named "The computer's desktop".
+   "Your input won't reach the computer until you take over.", a button "Take over" and an image
+   named "The computer's desktop".
 
 3. Check that nixie stored no watch address:
 
@@ -53,15 +60,40 @@ run it since `up`.
    ```bash
    bun verify browser goto /images
    bun verify browser goto /computer
-   bun verify browser snapshot --until-text 'Watching the computer'
+   bun verify browser snapshot --until-text 'reach the computer until you take over'
    ```
 
    Expect: all three commands exit 0. The second visit watches again with a new address.
 
+5. Take over the desktop, and check the record:
+
+   ```bash
+   bun verify browser click --role button --name 'Take over'
+   bun verify browser snapshot --until-text 'You have taken over the computer'
+   bun verify db query "select kind from records where kind like 'computer.takeover_%' order by sequence"
+   ```
+
+   Expect: all three commands exit 0. The snapshot shows a button "Hand back". The query returns one
+   row, `computer.takeover_started`.
+
+6. Hand the desktop back, and check the records:
+
+   ```bash
+   bun verify browser click --role button --name 'Hand back'
+   bun verify browser snapshot --until-text 'Take over'
+   bun verify db query "select kind from records where kind like 'computer.takeover_%' order by sequence"
+   ```
+
+   Expect: all three commands exit 0. The query returns 2 rows, `computer.takeover_started` then
+   `computer.takeover_ended`.
+
 ## End state
 
-- In step 2, the computer page showed "Watching the computer" and the desktop image.
+- In step 2, the computer page showed "Your input won't reach the computer until you take over." and
+  the desktop image.
 - In step 3, no stored result held a watch address.
 - In step 4, a second visit watched again.
+- In step 5, the page offered "Hand back" and nixie held one start record.
+- In step 6, the page offered "Take over" again and nixie held the start record and the end record.
 
 Once the end state matches, run `bun verify done`.

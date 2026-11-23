@@ -3,8 +3,9 @@ import { makeAddressCheck, startCheckingProxy } from '@heynixie/egress';
 import type { ComputerHandler, ComputerReply } from '@heynixie/wire';
 import { match } from 'ts-pattern';
 import { evaluateIsolated } from '../screen/evaluate-isolated';
-import { handleScreenRequest } from '../screen/handle-screen-request';
-import type { DesktopDriver } from '../screen/types';
+import { handleScreenRequest, readScreenFocus } from '../screen/handle-screen-request';
+import type { DesktopDriver, ScreenTabs } from '../screen/types';
+import { makeOriginLog } from '../takeover/make-origin-log';
 import { actOnTab } from './act-on-tab';
 import { downloadTabFile } from './download-tab-file';
 import { launchBrowser } from './launch-browser';
@@ -12,6 +13,7 @@ import { openTab } from './open-tab';
 import { readTabPage } from './read-tab-page';
 import { scrollTab } from './scroll-tab';
 import { shootTab } from './shoot-tab';
+import { trackHoldPages } from './track-hold-pages';
 import type { BrowserState, ScanGate } from './types';
 
 export interface BrowserHandlerOptions {
@@ -41,6 +43,10 @@ export interface BrowserHandlerOptions {
     // how long the display takes to show the result of an input
     readonly settleMs: number;
   };
+
+  // the terminal's visible lines, for the window a hand-back finds in focus; without it the terminal
+  // shows no text
+  readonly readTerminalText?: () => Promise<string>;
 }
 
 const noDisplay: ComputerReply = {
@@ -61,6 +67,8 @@ export function makeBrowserHandler(options: BrowserHandlerOptions): ComputerHand
   let isProxyUp: Promise<number> | null = null;
 
   const drivers = new WeakMap<BrowserState, DesktopDriver>();
+
+  const originLog = makeOriginLog();
 
   const checkAddress: AddressCheck =
     options.checkAddress ?? ((address) => makeAddressCheck(ranges.current)(address));
@@ -103,6 +111,8 @@ export function makeBrowserHandler(options: BrowserHandlerOptions): ComputerHand
       isClosed = true;
     });
 
+    trackHoldPages(state, originLog);
+
     return state;
   };
 
@@ -115,9 +125,9 @@ export function makeBrowserHandler(options: BrowserHandlerOptions): ComputerHand
 
     const screen = options.screen;
 
-    if (isScreenRequest(request)) {
+    const readScreen = (): { driver: DesktopDriver; tabs: ScreenTabs } | null => {
       if (screen === undefined) {
-        return noDisplay;
+        return null;
       }
 
       const driver = drivers.get(browser) ?? screen.makeDriver(browser);
@@ -136,11 +146,99 @@ export function makeBrowserHandler(options: BrowserHandlerOptions): ComputerHand
         ]),
       );
 
-      return handleScreenRequest({ driver, tabs, settleMs: screen.settleMs }, request);
+      return { driver, tabs };
+    };
+
+    if (request.op === 'takeoverBegin') {
+      const shownURL = await readShownURL(readScreen(), options);
+
+      originLog.begin(shownURL);
+
+      return { kind: 'takeover-begun', ok: true };
+    }
+
+    if (request.op === 'takeoverEnd') {
+      const origins = originLog.end();
+
+      const now = await readNow(browser, options, readScreen());
+
+      return { kind: 'takeover-ended', ok: true, origins, now };
+    }
+
+    if (isScreenRequest(request)) {
+      const desktop = readScreen();
+
+      if (desktop === null || screen === undefined) {
+        return noDisplay;
+      }
+
+      return handleScreenRequest({ ...desktop, settleMs: screen.settleMs }, request);
     }
 
     return handleRequest(browser, request);
   };
+}
+
+// The address of the tab in view, or null when none shows or the desktop cannot be read.
+async function readShownURL(
+  desktop: { driver: DesktopDriver; tabs: ScreenTabs } | null,
+  options: BrowserHandlerOptions,
+): Promise<string | null> {
+  if (desktop === null || options.screen === undefined) {
+    return null;
+  }
+
+  try {
+    const focus = await readScreenFocus({ ...desktop, settleMs: options.screen.settleMs });
+
+    return focus.kind === 'browser' ? focus.url : null;
+  } catch {
+    return null;
+  }
+}
+
+type NowReply = Extract<ComputerReply, { kind: 'takeover-ended' }>['now'];
+
+// how much of the page in focus a hand-back reads, as the first part of a page read does
+const nowTextBytes = 4000;
+
+// The window that has focus as a hand-back reports it: a browser tab with its text as a page read
+// gives it, the terminal with its visible lines, or another window with nothing. A desktop that
+// cannot be read, or has no display, reports another window.
+async function readNow(
+  browser: BrowserState,
+  options: BrowserHandlerOptions,
+  desktop: { driver: DesktopDriver; tabs: ScreenTabs } | null,
+): Promise<NowReply> {
+  if (desktop === null || options.screen === undefined) {
+    return { kind: 'other' };
+  }
+
+  try {
+    const focus = await readScreenFocus({ ...desktop, settleMs: options.screen.settleMs });
+
+    if (focus.kind === 'terminal') {
+      const text = await options.readTerminalText?.();
+
+      return { kind: 'terminal', text: text ?? '' };
+    }
+
+    const tab = focus.kind === 'browser' ? browser.tabs.get(focus.tab) : undefined;
+
+    if (focus.kind !== 'browser' || tab === undefined) {
+      return { kind: 'other' };
+    }
+
+    const read = await readTabPage(focus.tab, tab, {
+      mode: 'text',
+      textBytes: nowTextBytes,
+      isDiskNew: false,
+    });
+
+    return { kind: 'browser', tab: focus.tab, text: read.page.text };
+  } catch {
+    return { kind: 'other' };
+  }
 }
 
 type ScreenOp = Extract<
@@ -242,6 +340,8 @@ function handleRequest(
       { op: 'screenScroll' },
       { op: 'screenBind' },
       { op: 'screenAct' },
+      { op: 'takeoverBegin' },
+      { op: 'takeoverEnd' },
       () => Promise.resolve(fileOnlyReply),
     )
     .exhaustive();

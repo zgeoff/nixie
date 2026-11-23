@@ -34,6 +34,8 @@ async function setupTest() {
     watches.push(watch);
 
     return {
+      releaseInput: () => {},
+      closeAfterRelease: () => {},
       receive: (bytes) => {
         watch.received.push(bytes);
       },

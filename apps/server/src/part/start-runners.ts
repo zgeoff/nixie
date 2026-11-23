@@ -43,6 +43,10 @@ export async function startRunners(parts: ServerParts, runStep: RunStep): Promis
 
   const actions = startActionRunners(parts.context, {
     connectors: parts.tools.actions.connectors,
+    ...pickHeld(parts.tools.actions.readHeldToolPrefixes),
+    ...(parts.tools.actions.admitTool === undefined
+      ? {}
+      : { admitTool: parts.tools.actions.admitTool }),
     checkAttempt: makeAttemptCheck({
       log: parts.apiContext.log,
       clock: parts.context.clock,
@@ -63,4 +67,10 @@ async function probeSpendStopped(spend: SpendContext): Promise<boolean> {
   const stop = await readSpendStop(spend);
 
   return stop.state !== 'clear';
+}
+
+function pickHeld(readHeldToolPrefixes: (() => readonly string[]) | undefined): {
+  readonly readHeldToolPrefixes?: () => readonly string[];
+} {
+  return readHeldToolPrefixes === undefined ? {} : { readHeldToolPrefixes };
 }

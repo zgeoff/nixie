@@ -2,6 +2,7 @@ import { actionsConfigSchema } from '@heynixie/actions';
 import { apiConfigSchema } from '@heynixie/api';
 import { backupConfigSchema } from '@heynixie/backup';
 import {
+  computerConfigSchema,
   imagesConfigSchema,
   searchConfigSchema,
   timeConfigSchema,
@@ -33,6 +34,7 @@ export const deploymentConfigSchema = z
     ...sandboxSections,
     definitions: definitionsConfigSchema,
     web_fetch: webFetchConfigSchema.default(webFetchConfigSchema.parse({})),
+    computer: computerConfigSchema.default(computerConfigSchema.parse({})),
     search: searchConfigSchema.default(searchConfigSchema.parse({})),
     images: imagesConfigSchema.nullable().default(null),
     time: timeConfigSchema.default(timeConfigSchema.parse({})),

@@ -702,7 +702,7 @@ test('it says in a desktop screenshot that the user is watching while a watch is
       Promise.resolve({ ...replies.desktop, base64: Buffer.from(picture).toString('base64') }),
   });
 
-  const connection = ctx.computer.watch({ send: () => {}, close: () => {} });
+  const connection = ctx.computer.watch({ send: () => {}, close: () => {} }, 'laptop');
 
   const watched = await ctx.call('computer.screenshot', {});
 
@@ -1074,5 +1074,139 @@ test('it reports a queued click done with no picture when the desktop could not 
       isWatched: false,
       isShown: false,
     },
+  });
+});
+
+test('it refuses a direct change of the desktop while a device holds it, and opens no page', async () => {
+  const ctx = await setupTest({});
+
+  await ctx.computer.takeover.start('laptop');
+
+  const outcome = await ctx.call('computer.browser_open', { url: 'https://site.test/form' });
+
+  expect([outcome, ctx.requests]).toMatchObject([
+    { refusalCode: 'TAKEN_OVER' },
+    [{ op: 'takeoverBegin' }],
+  ]);
+});
+
+test('it refuses a direct change of the desktop while a take-over waits for an admitted call', async () => {
+  const ctx = await setupTest({});
+
+  const admission = ctx.computer.takeover.admit();
+
+  onTestFinished(() => {
+    admission?.release();
+  });
+
+  void ctx.computer.takeover.start('laptop');
+
+  const outcome = await ctx.call('computer.browser_open', { url: 'https://site.test/form' });
+
+  expect([outcome, ctx.requests]).toMatchObject([{ refusalCode: 'TAKEN_OVER' }, []]);
+});
+
+test('it runs a direct change inside an admitted call while a take-over waits for it', async () => {
+  const ctx = await setupTest({ answer: (replies) => () => Promise.resolve(replies.page) });
+
+  const admission = ctx.computer.takeover.admit();
+
+  invariant(admission, 'no hold is open');
+
+  onTestFinished(() => {
+    admission.release();
+  });
+
+  void ctx.computer.takeover.start('laptop');
+
+  const outcome = await admission.run(() =>
+    ctx.call('computer.browser_open', { url: 'https://site.test/form' }),
+  );
+
+  expect(outcome).toMatchObject({ status: 'ok', result: { tab: 't1' } });
+});
+
+test('it runs a queued command inside an admitted call while a take-over waits for it', async () => {
+  const ctx = await setupTest({ answer: (replies) => () => Promise.resolve(replies.run) });
+
+  await ctx.prepare('computer.run', { command: 'ls' });
+
+  const admission = ctx.computer.takeover.admit();
+
+  invariant(admission, 'no hold is open');
+
+  onTestFinished(() => {
+    admission.release();
+  });
+
+  void ctx.computer.takeover.start('laptop');
+
+  const outcome = await admission.run(() => ctx.attempt('computer.run', { command: 'ls' }));
+
+  expect(outcome).toMatchObject({ kind: 'success', result: { exitCode: 0 } });
+});
+
+test('it reads the desktop while a device holds it', async () => {
+  const ctx = await setupTest({});
+
+  await ctx.computer.takeover.start('laptop');
+
+  const outcome = await ctx.call('computer.screenshot', {});
+
+  expect(outcome).toMatchObject({ status: 'ok', images: [expect.anything()] });
+});
+
+test('it opens a page again once the device hands the desktop back', async () => {
+  const ctx = await setupTest({ answer: (replies) => () => Promise.resolve(replies.page) });
+
+  await ctx.computer.takeover.start('laptop');
+  await ctx.computer.takeover.end('user', 'laptop');
+
+  const outcome = await ctx.call('computer.browser_open', { url: 'https://site.test/form' });
+
+  expect(outcome).toMatchObject({ status: 'ok', result: { tab: 't1' } });
+});
+
+test('it settles a queued command as retryable while a device holds the desktop', async () => {
+  const ctx = await setupTest({ answer: (replies) => () => Promise.resolve(replies.run) });
+
+  await ctx.prepare('computer.run', { command: 'ls' });
+  await ctx.computer.takeover.start('laptop');
+
+  const outcome = await ctx.attempt('computer.run', { command: 'ls' });
+
+  expect(outcome).toMatchObject({ kind: 'refused_retryable' });
+});
+
+test('it refuses a waiting command after a hold on the desktop came and went', async () => {
+  const ctx = await setupTest({ answer: (replies) => () => Promise.resolve(replies.run) });
+
+  await ctx.prepare('computer.run', { command: 'ls' });
+  await ctx.computer.takeover.start('laptop');
+  await ctx.computer.takeover.end('user', 'laptop');
+
+  const outcome = await ctx.attempt('computer.run', { command: 'ls' });
+
+  expect(outcome).toMatchObject({
+    kind: 'refused',
+    reason: expect.stringContaining('files changed'),
+  });
+});
+
+test('it refuses a waiting click after a hold on the desktop came and went', async () => {
+  const ctx = await setupTest({});
+
+  const input = { x: 412, y: 233, button: 'left' };
+
+  const prepared = await ctx.prepare('computer.screen_click', input);
+
+  await ctx.computer.takeover.start('laptop');
+  await ctx.computer.takeover.end('user', 'laptop');
+
+  const outcome = await ctx.attempt('computer.screen_click', input, ['site.test'], prepared);
+
+  expect(outcome).toMatchObject({
+    kind: 'refused',
+    reason: expect.stringContaining('screen may have changed'),
   });
 });

@@ -328,22 +328,31 @@ a blob and never navigates to them.
 
 ## The computer page
 
-`/computer` shows the assistant's desktop live, view only. In the browser, it calls `computer.watch`
-with a new client action ID, loads the viewer library, opens the socket at the address in the answer
-and hands the socket to the viewer. The route's loader never calls the API for the watch, so a
-server render opens no socket. The viewer is noVNC, loaded with a dynamic import in the browser
-only, because the library reads the window when it loads.
+`/computer` shows the assistant's desktop live, and lets the user take it over. In the browser, it
+calls `computer.watch` with a new client action ID, loads the viewer library, opens the socket at
+the address in the answer and hands the socket to the viewer. The route's loader never calls the API
+for the watch, so a server render opens no socket. The viewer is noVNC, loaded with a dynamic import
+in the browser only, because the library reads the window when it loads.
 
-- The viewer runs with `viewOnly` on, `scaleViewport` on and `resizeSession` off, so the picture
-  scales to fit and a viewer never resizes the desktop or sends a key, a pointer move or a clipboard
-  change.
+- The viewer starts with `viewOnly` on, so it sends no keys or pointer, with `scaleViewport` on so
+  the picture scales to fit, and with `resizeSession` off so it never resizes the desktop. The
+  server gives no viewer more than that: it passes a viewer's keys and pointer only while the
+  viewer's device holds the desktop, and drops every clipboard change.
+- Take over calls `computer.takeOver` and, once it answers, turns `viewOnly` off and focuses the
+  viewer, so the user's keys and pointer reach the desktop. The status line then says that the user
+  has taken over, and Take over becomes Hand back, which calls `computer.handBack` and turns
+  `viewOnly` on, and then the page opens a new stream. A refused take-over shows its reason next to
+  the button. The server closes every stream of the holder's device when a hold ends, by a hand-back
+  from any tab, the idle time or a restart, and a page whose stream ended while it held shows "Your
+  hold on the computer ended." and returns to view only. A hand-back that finds the hold gone shows
+  the same line.
 - The status line reads "Connecting to the computer." until the ticket comes, then "The computer is
-  waking" while the socket is open and no picture has come, and "Watching the computer. You can look
-  but not touch." once the viewer has drawn the desktop. The viewer's connect event comes before any
-  picture, so the page polls the viewer's canvas for a drawn pixel.
-- A stream that ends after a picture shows that it ended, and one that ends before a picture or
-  fails to start says "The computer can’t be watched right now." Both show Watch again, which asks
-  for a new ticket. A server with no computer shows no button and says it has none.
+  waking." while the socket is open and no picture has come, and "Your input won't reach the
+  computer until you take over." once the viewer has drawn the desktop. The viewer's connect event
+  comes before any picture, so the page polls the viewer's canvas for a drawn pixel.
+- When a stream ends after a picture, the page shows that it ended. When one ends before a picture
+  or fails to start, the page says "The computer can’t be watched right now." Both show Watch again,
+  which asks for a new ticket. A server with no computer shows no button and says it has none.
 - Leaving the page closes the socket and stops the viewer.
 
 ## The notebook pages

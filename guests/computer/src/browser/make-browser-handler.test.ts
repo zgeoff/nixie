@@ -42,6 +42,10 @@ async function setupTest() {
         </script>page</body></html>`,
         { headers: { 'Content-Type': 'text/html' } },
       ),
+      '/opener': new Response(
+        `<html><title>Opener</title><body><button onclick="window.open('http://other.test:' + location.port + '/terms')">New tab</button></body></html>`,
+        { headers: { 'Content-Type': 'text/html' } },
+      ),
       '/terms': new Response('<html><title>Terms</title><body>the terms</body></html>', {
         headers: { 'Content-Type': 'text/html' },
       }),
@@ -106,13 +110,13 @@ async function setupTest() {
     url: `http://pages.test:${String(site.port)}/`,
     scanned,
     send,
-    waitUntilTitle: async (title: string): Promise<void> => {
+    waitUntilTitle: async (title: string, tab = 't1'): Promise<void> => {
       let current = '';
 
       while (current !== title) {
         await Bun.sleep(20);
 
-        const read = await send({ op: 'read', tab: 't1', mode: 'text' });
+        const read = await send({ op: 'read', tab, mode: 'text' });
 
         current = read.kind === 'page' ? read.page.title : '';
       }
@@ -365,6 +369,54 @@ test.skipIf(!hasChromium)(
     });
 
     expect(viewport).toMatchObject({ kind: 'screenshot', width: 1280, height: 800 });
+  },
+);
+
+test.skipIf(!hasChromium)(
+  'it takes the picture of a control below the viewport without scrolling the page',
+  async () => {
+    const ctx = await setupTest();
+
+    await ctx.send(ctx.open(ctx.url));
+    await ctx.send({ op: 'read', tab: 't1', mode: 'snapshot' });
+
+    const before = await ctx.send({ op: 'screenshot', tab: 't1' });
+    const control = await ctx.send({ op: 'screenshot', tab: 't1', control: 'E5' });
+    const after = await ctx.send({ op: 'screenshot', tab: 't1' });
+
+    expect([control, after]).toStrictEqual([
+      { kind: 'failed', ok: false, reason: 'stale_element' },
+      before,
+    ]);
+  },
+);
+
+test.skipIf(!hasChromium)(
+  'it reports the tab a person opened in a hold as the window in focus, with its site listed',
+  async () => {
+    const ctx = await setupTest();
+
+    await ctx.send(ctx.open(`${ctx.url}opener`));
+    await ctx.send({ op: 'takeoverBegin' });
+    await ctx.send({ op: 'read', tab: 't1', mode: 'snapshot' });
+
+    await ctx.send({
+      op: 'act',
+      tab: 't1',
+      expectURL: `${ctx.url}opener`,
+      acts: [{ kind: 'click', element: 'E1' }],
+      submit: false,
+    });
+
+    await ctx.waitUntilTitle('Terms', 't2');
+
+    const ended = await ctx.send({ op: 'takeoverEnd' });
+
+    expect(ended).toMatchObject({
+      kind: 'takeover-ended',
+      origins: ['http://pages.test', 'http://other.test'],
+      now: { kind: 'browser', tab: 't2', text: expect.stringContaining('the terms') },
+    });
   },
 );
 

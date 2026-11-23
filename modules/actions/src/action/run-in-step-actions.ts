@@ -2,7 +2,7 @@ import type { JSONObject } from '@heynixie/log';
 import type { Lease, TasksContext } from '@heynixie/tasks';
 import { waitAtFaultPoint } from '@heynixie/tasks';
 import type { ApprovedCallRequest, ApprovedReply, ApprovedRun } from '@heynixie/tools';
-import type { ActionRow, ActionsTables, OutcomeReason } from '../types';
+import type { ActionRow, ActionsTables, AdmitTool, OutcomeReason } from '../types';
 import type { AttemptCheck } from './attempt-check';
 import { buildCancelledCheck } from './build-cancelled-check';
 import { buildHeldCheck } from './build-held-check';
@@ -20,6 +20,12 @@ export interface InStepActionsOptions {
 
   // Runs the approved call with the tool run of the step that calls this.
   readonly runCall: (request: ApprovedCallRequest) => Promise<ApprovedRun>;
+
+  // The tool name prefixes whose actions wait, as a claim reads them: a held action stays pending.
+  readonly readHeldToolPrefixes?: () => readonly string[];
+
+  // admits each call past a hold, as its attempt's start ends
+  readonly admitTool?: AdmitTool;
 }
 
 // An action the step settled: the outcome record it wrote, and what its call returned, which no
@@ -38,7 +44,11 @@ export async function runInStepActions(
   lease: Lease,
   options: InStepActionsOptions,
 ): Promise<readonly InStepSettled[]> {
-  const rows = await readInStepActions(context, lease.workID);
+  const rows = await readInStepActions(
+    context,
+    lease.workID,
+    options.readHeldToolPrefixes?.() ?? [],
+  );
 
   const settled: InStepSettled[] = [];
 
@@ -58,8 +68,9 @@ export async function runInStepActions(
 export async function probeInStepActionPending(
   context: Pick<TasksContext, 'log'>,
   taskID: string,
+  readHeldToolPrefixes?: () => readonly string[],
 ): Promise<boolean> {
-  const rows = await readInStepActions(context, taskID);
+  const rows = await readInStepActions(context, taskID, readHeldToolPrefixes?.() ?? []);
 
   return rows.length > 0;
 }
@@ -67,6 +78,7 @@ export async function probeInStepActionPending(
 function readInStepActions(
   context: Pick<TasksContext, 'log'>,
   taskID: string,
+  heldPrefixes: readonly string[],
 ): Promise<readonly ActionRow[]> {
   return context.log.writer.db
     .$extendTables<ActionsTables>()
@@ -77,6 +89,9 @@ function readInStepActions(
     .where('actions.runs_in_step', '=', 1)
     .where('actions.status', '=', 'pending')
     .where('actions.held_by_proposal_id', 'is', null)
+    .where((eb) =>
+      eb.and(heldPrefixes.map((prefix) => eb('actions.tool', 'not like', `${prefix}%`))),
+    )
     .where((eb) => eb.not(buildCancelledCheck(eb)))
     .where((eb) => eb.not(buildHeldCheck(eb)))
     .orderBy('actions.queued_sequence')
@@ -123,25 +138,33 @@ async function runInStepAction(
       : null;
   }
 
-  const start = await writeAttemptStarted(context, attempt, { resetWhenBarred: false });
+  const start = await writeAttemptStarted(context, attempt, {
+    resetWhenBarred: false,
+    readHeldToolPrefixes: options.readHeldToolPrefixes,
+    admitTool: options.admitTool,
+  });
 
-  if (start === 'past_deadline') {
+  if (start.kind === 'past_deadline') {
     return writeFailure(context, attempt, 'deadline_passed', {
       message: 'the action passed its deadline',
     });
   }
 
-  if (start === 'barred') {
+  if (start.kind === 'barred') {
     return null;
   }
 
-  const run = await options.runCall({
+  const request = {
     actionID: action.action_id,
     tool: action.tool,
     input: args,
     callSequence: action.call_sequence,
     actionHash: action.action_hash,
-  });
+  };
+
+  const run = await start.admission
+    .run(() => options.runCall(request))
+    .finally(start.admission.release);
 
   if (NIXIE_TEST_BUILD) {
     await waitAtFaultPoint('attempt.result.before', { kind: 'action', id: action.action_id });

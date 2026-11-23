@@ -24,6 +24,8 @@ export function makeComputerHandler(handlers: ComputerHandlers): ComputerHandler
         'screenScroll',
         'screenBind',
         'screenAct',
+        'takeoverBegin',
+        'takeoverEnd',
         () => handlers.browser,
       )
       .exhaustive();

@@ -358,6 +358,7 @@
       "name": "@heynixie/integration",
       "version": "0.0.0",
       "dependencies": {
+        "@heynixie/actions": "workspace:*",
         "@heynixie/api": "workspace:*",
         "@heynixie/backup": "workspace:*",
         "@heynixie/connectors": "workspace:*",

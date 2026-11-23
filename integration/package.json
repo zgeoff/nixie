@@ -7,6 +7,7 @@
     "typecheck": "tsrs --fast --noEmit"
   },
   "dependencies": {
+    "@heynixie/actions": "workspace:*",
     "@heynixie/api": "workspace:*",
     "@heynixie/backup": "workspace:*",
     "@heynixie/connectors": "workspace:*",

@@ -14,6 +14,15 @@ export interface WatchHost {
   readonly readGuest: (isEnded: () => boolean) => Promise<GuestSession | null>;
 }
 
+// What a watch asks of the hold on the desktop.
+export interface WatchInput {
+  // whether this viewer's device holds the desktop now
+  readonly canInput: () => boolean;
+
+  // called when a key or pointer message from the viewer passes on to the VNC server
+  readonly onInput: () => void;
+}
+
 interface WatchState {
   stream: VNCStream | null;
   isEnded: boolean;
@@ -21,6 +30,9 @@ interface WatchState {
   // the viewer's bytes that came before the stream opened
   readonly pending: Uint8Array[];
   pendingBytes: number;
+
+  // the release of the viewer's input that went out last
+  release: Promise<void>;
 }
 
 // A viewer sends a few hundred bytes before it hears from the desktop, so a wake that holds more
@@ -29,12 +41,23 @@ const maxPendingBytes = 64 * 1024;
 
 // A watch counts as open from the moment its socket opens, so the assistant sees that someone is
 // there while the sandbox still wakes.
-export function openComputerWatch(host: WatchHost, socket: WatchSocket): WatchConnection {
+export function openComputerWatch(
+  host: WatchHost,
+  socket: WatchSocket,
+  input: WatchInput,
+): WatchConnection {
   host.watches.count += 1;
 
   const releaseHold = host.hold();
-  const filter = makeClientMessageFilter();
-  const state: WatchState = { stream: null, isEnded: false, pending: [], pendingBytes: 0 };
+  const filter = makeClientMessageFilter({ canInput: input.canInput });
+
+  const state: WatchState = {
+    stream: null,
+    isEnded: false,
+    pending: [],
+    pendingBytes: 0,
+    release: Promise.resolve(),
+  };
 
   const end = (): void => {
     if (state.isEnded) {
@@ -57,6 +80,12 @@ export function openComputerWatch(host: WatchHost, socket: WatchSocket): WatchCo
 
   return {
     end,
+    releaseInput: () => {
+      releaseInput(host, state, filter, endAndClose);
+    },
+    closeAfterRelease: () => {
+      void closeAfter(state.release, endAndClose);
+    },
     receive: (bytes) => {
       if (state.isEnded) {
         return;
@@ -75,6 +104,10 @@ export function openComputerWatch(host: WatchHost, socket: WatchSocket): WatchCo
       }
 
       const result = filter.push(bytes);
+
+      if (result.isInput) {
+        input.onInput();
+      }
 
       for (const message of result.forward) {
         if (state.stream === null) {
@@ -150,4 +183,52 @@ async function sendToStream(
 
     end();
   }
+}
+
+// the viewer's whole-screen update request, which stands in for one that a flush may have dropped
+const fullUpdateRequest = new Uint8Array([3, 0, 0, 0, 0, 0, 0x05, 0x00, 0x03, 0x20]);
+
+function releaseInput(
+  host: WatchHost,
+  state: WatchState,
+  filter: ReturnType<typeof makeClientMessageFilter>,
+  end: () => void,
+): void {
+  const releases = filter.collectReleases();
+  const kept = state.pending.filter((message) => !filter.isInputMessage(message));
+
+  state.pending.splice(0, state.pending.length, ...kept);
+
+  const stream = state.stream;
+
+  if (stream === null || state.isEnded) {
+    return;
+  }
+
+  state.release = sendRelease(host, stream, [...releases, fullUpdateRequest], end);
+}
+
+async function sendRelease(
+  host: WatchHost,
+  stream: VNCStream,
+  messages: readonly Uint8Array[],
+  end: () => void,
+): Promise<void> {
+  try {
+    await stream.flush();
+
+    for (const message of messages) {
+      await stream.send(message);
+    }
+  } catch (error) {
+    host.logger('computer.watch_send_failed', { reason: String(error) }, 'warn');
+
+    end();
+  }
+}
+
+async function closeAfter(release: Promise<void>, close: () => void): Promise<void> {
+  await release;
+
+  close();
 }

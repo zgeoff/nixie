@@ -284,6 +284,7 @@ export type FaultPointID =
   | 'queue.commit.before'
   | 'queue.commit.after'
   | 'attempt.record.after'
+  | 'attempt.admit.before'
   | 'attempt.result.before'
   | 'attempt.result.after'
   | 'timer.fire.before'

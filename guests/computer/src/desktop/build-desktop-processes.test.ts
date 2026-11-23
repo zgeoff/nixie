@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test';
 import { ownAccount } from '../shell/terminal-account';
 import { buildDesktopProcesses } from './build-desktop-processes';
+import { terminalLogPath, vncSocketPath } from './constants';
 
 function setupTest() {
   const processes = buildDesktopProcesses({
@@ -44,13 +45,11 @@ test('it starts the display first, at 1280 by 800 on an abstract socket alone', 
   ]);
 });
 
-test('it listens for VNC on the loopback of the sandbox, view-only, with the clipboard off', () => {
+test('it listens for VNC on a Unix socket alone, with the clipboard off', () => {
   const ctx = setupTest();
   const vnc = ctx.readArgv('vnc');
 
   expect(vnc).toIncludeAllMembers([
-    '-localhost',
-    '-viewonly',
     '-nosel',
     '-noprimary',
     '-nosetprimary',
@@ -59,7 +58,21 @@ test('it listens for VNC on the loopback of the sandbox, view-only, with the cli
     '-nopw',
   ]);
 
-  expect(vnc[vnc.indexOf('-rfbport') + 1]).toBe('5900');
+  expect(vnc[vnc.indexOf('-unixsock') + 1]).toBe(vncSocketPath);
+  expect(vnc[vnc.indexOf('-rfbport') + 1]).toBe('0');
+  expect(vnc[vnc.indexOf('-rfbportv6') + 1]).toBe('-1');
+});
+
+test('it lets a client of the Unix socket through, which x11vnc turns away under -localhost', () => {
+  const ctx = setupTest();
+
+  expect(ctx.readArgv('vnc')).not.toContain('-localhost');
+});
+
+test('it refuses remote control commands that an X client sends through the display', () => {
+  const ctx = setupTest();
+
+  expect(ctx.readArgv('vnc')).toIncludeAllMembers(['-noremote', '-novncconnect']);
 });
 
 test('it runs the terminal as its own account, with the namespaced shell, in the files folder', () => {
@@ -68,6 +81,9 @@ test('it runs the terminal as its own account, with the namespaced shell, in the
   expect(ctx.readArgv('terminal')).toStrictEqual([
     'as-terminal',
     'xterm',
+    '-l',
+    '-lf',
+    terminalLogPath,
     '-geometry',
     '100x32+24+24',
     '-e',
@@ -101,6 +117,9 @@ test('it leaves a terminal of the test build as the guest’s own user', () => {
 
   expect(processes.find((process) => process.name === 'terminal')?.argv).toStrictEqual([
     'xterm',
+    '-l',
+    '-lf',
+    terminalLogPath,
     '-geometry',
     '100x32+24+24',
     '-e',

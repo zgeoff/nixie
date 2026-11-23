@@ -3,6 +3,7 @@ import {
   createFirstEnrolmentCode,
   defaultPolicySettings,
 } from '@heynixie/api';
+import { endTakeoverCutByRestart, makeTakeoverRecords } from '@heynixie/connectors';
 import {
   makeRetireOneShot,
   runGapChecks,
@@ -60,6 +61,27 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
 
       await warnWithoutOwnerRules(parts);
     }),
+  },
+  {
+    // A hold lives in memory, so one that was open when nixie stopped ends now. Its record needs the
+    // definitions that the seed puts in place, which the computer part starts before.
+    name: 'takeover_restart',
+    needs: ['server_parts', 'definitions_seed', 'computer'],
+    start: async (reader) => {
+      const parts = reader.get('server_parts');
+
+      if (reader.get('computer').takeover.isHeld()) {
+        return;
+      }
+
+      await endTakeoverCutByRestart(
+        parts.context.log,
+        makeTakeoverRecords({
+          log: parts.context.log,
+          definitions: parts.context.definitions,
+        }),
+      );
+    },
   },
   {
     name: 'reminder_moves',
@@ -255,7 +277,7 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
   },
   {
     name: 'ready',
-    needs: ['inputs', 'server_parts', 'seed_poll', 'notebook'],
+    needs: ['inputs', 'server_parts', 'seed_poll', 'notebook', 'takeover_restart'],
     start: async (reader) => {
       const parts = reader.get('server_parts');
 

@@ -124,11 +124,14 @@ function toDeviceResponse(response: Response): Response {
 
 // A rendered page holds the conversation of the session that asked for it, so no cache between the
 // browser and the web server may keep it or serve it to another browser.
+// The computer page passes a person's keys to a real desktop, so no page may be framed.
 function toPrivateResponse(response: Response): Response {
   const headers = new Headers(response.headers);
 
   headers.set('cache-control', 'private, no-store');
   headers.append('vary', 'cookie');
+  headers.set('content-security-policy', "frame-ancestors 'none'");
+  headers.set('x-frame-options', 'DENY');
 
   return new Response(response.body, {
     headers,

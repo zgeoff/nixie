@@ -85,6 +85,7 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
             tickets: createWatchTickets(context.apiContext.clock),
             logger: options.log,
             readWatch: () => parts.find('computer')?.watch ?? null,
+            readTakeover: () => parts.find('computer')?.takeover ?? null,
           },
         },
       };

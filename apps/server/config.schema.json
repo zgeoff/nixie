@@ -833,6 +833,21 @@
       },
       "additionalProperties": false
     },
+    "computer": {
+      "default": {
+        "idle_hand_back_minutes": 30
+      },
+      "type": "object",
+      "properties": {
+        "idle_hand_back_minutes": {
+          "default": 30,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "additionalProperties": false
+    },
     "search": {
       "default": {
         "daily_call_cap": 200,

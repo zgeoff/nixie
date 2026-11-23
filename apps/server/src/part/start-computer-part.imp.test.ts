@@ -8,6 +8,10 @@ import { waitFor } from '@zgeoff/testing';
 import invariant from 'tiny-invariant';
 import { buildButtonPageURL } from '../test-utils/build-button-page-url';
 import { buildPopupPageURL } from '../test-utils/build-popup-page-url';
+import { buildSocketDumpArgv } from '../test-utils/build-socket-dump-argv';
+import { buildSocketProbeArgv } from '../test-utils/build-socket-probe-argv';
+import { buildWorkerSocketPageURL } from '../test-utils/build-worker-socket-page-url';
+import { parseSocketDump } from '../test-utils/parse-socket-dump';
 
 // These tests need a real impd on a host with /dev/kvm and the computer image built into it.
 // docs/runbooks/imp-isolation-tests.md names the variables that turn them on. CI skips them, so a
@@ -142,9 +146,51 @@ async function setupTest() {
     return reply.target;
   };
 
+  // Runs a command as root in the computer sandbox, and returns its output.
+  const execAsRoot = async (argv: readonly string[]) => {
+    await callComputer({ op: 'desktopShot' });
+
+    const [sandbox] = await adapter.list('computer-desktop');
+
+    invariant(sandbox !== undefined, 'the computer sandbox exists');
+
+    const result = await sandbox.exec({ argv });
+
+    return new TextDecoder().decode(result.stdout.bytes);
+  };
+
+  // A WebSocket server on a loopback port of the sandbox, run as root.
+  const startSocketServer = async (port: number) => {
+    await callComputer({ op: 'desktopShot' });
+
+    const [sandbox] = await adapter.list('computer-desktop');
+
+    invariant(sandbox !== undefined, 'the computer sandbox exists');
+
+    const script = `Bun.serve({ hostname: '127.0.0.1', port: ${String(port)}, fetch: (request, server) => { server.upgrade(request); }, websocket: { message: () => {} } }); await new Promise(() => {});`;
+
+    const stream = await sandbox.spawn({
+      argv: ['/usr/local/bin/bun', '-e', script],
+      maxMessageBytes: 1024,
+    });
+
+    await waitFor(async () => {
+      const lines = await execAsRoot(
+        buildSocketProbeArgv([{ kind: 'tcp', host: '127.0.0.1', port }]),
+      );
+
+      expect(lines).toBe('open\n');
+    });
+
+    // imp ends a stopped process's stream before its exit arrives, and rejects both promises then.
+    return { stop: () => Promise.allSettled([stream.stop(), stream.exit]) };
+  };
+
   return {
     adapter,
     computer,
+    execAsRoot,
+    startSocketServer,
     runCommand,
     callComputer,
     createOldSandbox,
@@ -409,14 +455,17 @@ test.skipIf(!hasImpHost)(
     const received: Uint8Array[] = [];
     const closed = { isClosed: false };
 
-    const watch = ctx.computer.watch({
-      send: (bytes) => {
-        received.push(bytes);
+    const watch = ctx.computer.watch(
+      {
+        send: (bytes) => {
+          received.push(bytes);
+        },
+        close: () => {
+          closed.isClosed = true;
+        },
       },
-      close: () => {
-        closed.isClosed = true;
-      },
-    });
+      'laptop',
+    );
 
     onTestFinished(() => {
       watch.end();
@@ -427,5 +476,171 @@ test.skipIf(!hasImpHost)(
     });
 
     expect(new TextDecoder().decode(received[0]).startsWith('RFB 00')).toBe(true);
+  },
+);
+
+test.skipIf(!hasImpHost)(
+  'it moves the real pointer for the device that holds the desktop, and not before',
+  async () => {
+    const ctx = await setupTest();
+
+    const received: Uint8Array[] = [];
+
+    const watch = ctx.computer.watch(
+      {
+        send: (bytes) => {
+          received.push(bytes);
+        },
+        close: () => {},
+      },
+      'laptop',
+    );
+
+    onTestFinished(() => {
+      watch.end();
+    });
+
+    await waitFor(() => {
+      expect(received.length).toBeGreaterThan(0);
+    });
+
+    watch.receive(new TextEncoder().encode('RFB 003.008\n'));
+    watch.receive(new Uint8Array([1]));
+    watch.receive(new Uint8Array([1]));
+
+    // PointerEvent: type 5, no buttons, x 321, y 123
+    const pointer = new Uint8Array([5, 0, 1, 65, 0, 123]);
+
+    watch.receive(pointer);
+
+    const before = await ctx.execAsRoot(['env', 'DISPLAY=:99', 'xdotool', 'getmouselocation']);
+
+    await ctx.computer.takeover.start('laptop');
+
+    watch.receive(pointer);
+
+    await waitFor(async () => {
+      const after = await ctx.execAsRoot(['env', 'DISPLAY=:99', 'xdotool', 'getmouselocation']);
+
+      expect(after).toStartWith('x:321 y:123');
+    });
+
+    expect(before).not.toStartWith('x:321 y:123');
+  },
+);
+
+test.skipIf(!hasImpHost)(
+  'it serves VNC on its Unix socket alone, which the guest reaches and the account that Chromium runs as does not',
+  async () => {
+    const ctx = await setupTest();
+
+    const asRoot = await ctx.execAsRoot(
+      buildSocketProbeArgv([{ kind: 'unix', path: '/run/nixie-vnc/vnc.sock' }]),
+    );
+
+    const dumped = await ctx.execAsRoot(buildSocketDumpArgv('x11vnc'));
+
+    const dump = parseSocketDump(dumped);
+
+    const asChrome = await ctx.execAsRoot([
+      'setpriv',
+      '--reuid=1001',
+      '--regid=1001',
+      '--clear-groups',
+      ...buildSocketProbeArgv([
+        { kind: 'tcp', host: '127.0.0.1', port: 5900 },
+        { kind: 'tcp', host: '::1', port: 5900 },
+        { kind: 'unix', path: '/run/nixie-vnc/vnc.sock' },
+      ]),
+    ]);
+
+    expect([
+      asRoot,
+      asChrome,
+      dump.processes.map((process) => ({ inet: process.inet, unixPaths: process.unixPaths })),
+      dump.control.inet.map((socket) => `${socket.table} ${socket.state}`),
+    ]).toStrictEqual([
+      'open\n',
+      'closed\nclosed\nclosed\n',
+      [{ inet: [], unixPaths: expect.arrayContaining(['/run/nixie-vnc/vnc.sock']) }],
+      ['tcp 0A', 'udp 07'],
+    ]);
+  },
+);
+
+test.skipIf(!hasImpHost)(
+  'it gives a client on the X display no way to command the VNC server',
+  async () => {
+    const ctx = await setupTest();
+
+    const answer = await ctx.execAsRoot([
+      'setpriv',
+      '--reuid=1001',
+      '--regid=1001',
+      '--clear-groups',
+      'env',
+      'DISPLAY=:99',
+      'timeout',
+      '15',
+      'x11vnc',
+      '-R',
+      'ping',
+    ]);
+
+    expect(answer).not.toInclude('ans=');
+  },
+);
+
+test.skipIf(!hasImpHost)(
+  'it gives a command in the terminal no route to the display or the VNC server',
+  async () => {
+    const ctx = await setupTest();
+
+    const result = await ctx.runCommand(
+      buildSocketProbeArgv([
+        { kind: 'tcp', host: '127.0.0.1', port: 5900 },
+        { kind: 'tcp', host: '::1', port: 5900 },
+        { kind: 'unix', path: '/run/nixie-vnc/vnc.sock' },
+        { kind: 'abstract', name: '/tmp/.X11-unix/X99' },
+      ])
+        .map((word) => `'${word.replaceAll("'", String.raw`'\''`)}'`)
+        .join(' '),
+    );
+
+    expect(result).toMatchObject({
+      status: 'reply',
+      reply: { kind: 'run', run: { stdout: { text: 'closed\nclosed\nclosed\nclosed\n' } } },
+    });
+  },
+);
+
+test.skipIf(!hasImpHost)(
+  'it gives a Worker of a page in Chromium no WebSocket to the VNC port, or to a loopback port that a server listens on',
+  async () => {
+    const ctx = await setupTest();
+
+    // The server on 5901 shows that the browser refuses the Worker's WebSocket, and that a closed
+    // port alone does not.
+    const server = await ctx.startSocketServer(5901);
+
+    onTestFinished(() => server.stop());
+
+    await ctx.openURL(
+      buildWorkerSocketPageURL([
+        'ws://127.0.0.1:5900/',
+        'ws://[::1]:5900/',
+        'ws://127.0.0.1:5901/',
+      ]),
+    );
+
+    await waitFor(async () => {
+      const title = await ctx.readTitle();
+
+      expect(title).not.toBe('waiting');
+    });
+
+    const title = await ctx.readTitle();
+
+    expect(title).toBe('failed,failed,failed');
   },
 );

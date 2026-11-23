@@ -2,12 +2,14 @@ import { expect, test } from 'bun:test';
 import { makeClientMessageFilter } from './make-client-message-filter';
 
 function setupTest() {
-  const filter = makeClientMessageFilter();
+  const holder = { isHolding: false };
+  const filter = makeClientMessageFilter({ canInput: () => holder.isHolding });
 
   const version = new TextEncoder().encode('RFB 003.008\n');
 
   return {
     filter,
+    holder,
     version,
     shakeHands: () => {
       filter.push(new Uint8Array([...version, 1, 1]));
@@ -25,9 +27,9 @@ test('it passes the client handshake on as it arrives', () => {
   ];
 
   expect(results).toStrictEqual([
-    { forward: [ctx.version], isMalformed: false },
-    { forward: [new Uint8Array([1])], isMalformed: false },
-    { forward: [new Uint8Array([1])], isMalformed: false },
+    { forward: [ctx.version], isMalformed: false, isInput: false },
+    { forward: [new Uint8Array([1])], isMalformed: false, isInput: false },
+    { forward: [new Uint8Array([1])], isMalformed: false, isInput: false },
   ]);
 });
 
@@ -46,6 +48,7 @@ test.each([
   expect(ctx.filter.push(row.bytes)).toStrictEqual({
     forward: [],
     isMalformed: true,
+    isInput: false,
   });
 });
 
@@ -57,6 +60,7 @@ test('it closes when the client picks a security type other than none', () => {
   expect(ctx.filter.push(new Uint8Array([2]))).toStrictEqual({
     forward: [],
     isMalformed: true,
+    isInput: false,
   });
 });
 
@@ -78,19 +82,14 @@ test.each([
   expect(ctx.filter.push(new Uint8Array(row.message))).toStrictEqual({
     forward: [new Uint8Array(row.message)],
     isMalformed: false,
+    isInput: false,
   });
 });
 
 test.each([
   { name: 'KeyEvent', message: [4, 1, 0, 0, 0, 0, 0, 97] },
   { name: 'PointerEvent', message: [5, 1, 0, 10, 0, 20] },
-  { name: 'ClientCutText', message: [6, 0, 0, 0, 0, 0, 0, 3, 97, 98, 99] },
-  { name: 'empty ClientCutText', message: [6, 0, 0, 0, 0, 0, 0, 0] },
-  {
-    name: 'extended clipboard reply, whose length is negative',
-    message: [6, 0, 0, 0, 255, 255, 255, 248, 0, 0, 0, 6, 0, 0, 0, 1],
-  },
-])('it drops a $name message', (row) => {
+])('it drops a $name message from a viewer that does not hold the desktop', (row) => {
   const ctx = setupTest();
 
   ctx.shakeHands();
@@ -98,6 +97,96 @@ test.each([
   expect(ctx.filter.push(new Uint8Array(row.message))).toStrictEqual({
     forward: [],
     isMalformed: false,
+    isInput: false,
+  });
+});
+
+test.each([
+  { name: 'KeyEvent', message: [4, 1, 0, 0, 0, 0, 0, 97] },
+  { name: 'PointerEvent', message: [5, 1, 0, 10, 0, 20] },
+])('it passes a $name message on whole for the viewer that holds the desktop', (row) => {
+  const ctx = setupTest();
+
+  ctx.shakeHands();
+
+  ctx.holder.isHolding = true;
+
+  expect(ctx.filter.push(new Uint8Array(row.message))).toStrictEqual({
+    forward: [new Uint8Array(row.message)],
+    isMalformed: false,
+    isInput: true,
+  });
+});
+
+test('it drops a pointer message sent after the viewer stopped holding the desktop', () => {
+  const ctx = setupTest();
+
+  ctx.shakeHands();
+
+  ctx.holder.isHolding = true;
+
+  ctx.filter.push(new Uint8Array([5, 0, 0, 1, 0, 1]));
+
+  ctx.holder.isHolding = false;
+
+  expect(ctx.filter.push(new Uint8Array([5, 1, 0, 10, 0, 20]))).toStrictEqual({
+    forward: [],
+    isMalformed: false,
+    isInput: false,
+  });
+});
+
+test('it releases the keys and the button still pressed, the pointer at its last place', () => {
+  const ctx = setupTest();
+
+  ctx.shakeHands();
+
+  ctx.holder.isHolding = true;
+
+  ctx.filter.push(
+    new Uint8Array([
+      4, 1, 0, 0, 0, 0, 0, 97, 4, 1, 0, 0, 0, 0, 0, 98, 4, 0, 0, 0, 0, 0, 0, 97, 5, 1, 0, 10, 0, 20,
+    ]),
+  );
+
+  expect(ctx.filter.collectReleases()).toStrictEqual([
+    new Uint8Array([4, 0, 0, 0, 0, 0, 0, 98]),
+    new Uint8Array([5, 0, 0, 10, 0, 20]),
+  ]);
+});
+
+test('it releases nothing when every key and button is up, and nothing the second time', () => {
+  const ctx = setupTest();
+
+  ctx.shakeHands();
+
+  ctx.holder.isHolding = true;
+
+  ctx.filter.push(new Uint8Array([4, 1, 0, 0, 0, 0, 0, 97, 5, 1, 0, 1, 0, 1]));
+
+  const first = ctx.filter.collectReleases().length;
+
+  expect([first, ctx.filter.collectReleases()]).toStrictEqual([2, []]);
+});
+
+test.each([
+  { name: 'ClientCutText', message: [6, 0, 0, 0, 0, 0, 0, 3, 97, 98, 99] },
+  { name: 'empty ClientCutText', message: [6, 0, 0, 0, 0, 0, 0, 0] },
+  {
+    name: 'extended clipboard reply, whose length is negative',
+    message: [6, 0, 0, 0, 255, 255, 255, 248, 0, 0, 0, 6, 0, 0, 0, 1],
+  },
+])('it drops a $name message even from the viewer that holds the desktop', (row) => {
+  const ctx = setupTest();
+
+  ctx.shakeHands();
+
+  ctx.holder.isHolding = true;
+
+  expect(ctx.filter.push(new Uint8Array(row.message))).toStrictEqual({
+    forward: [],
+    isMalformed: false,
+    isInput: false,
   });
 });
 
@@ -112,7 +201,7 @@ test('it passes a viewing message that follows dropped input', () => {
     new Uint8Array([4, 1, 0, 0, 0, 0, 0, 97, 6, 0, 0, 0, 0, 0, 0, 2, 120, 121, ...request]),
   );
 
-  expect(result).toStrictEqual({ forward: [request], isMalformed: false });
+  expect(result).toStrictEqual({ forward: [request], isMalformed: false, isInput: false });
 });
 
 test('it passes a viewing message that follows an extended clipboard reply', () => {
@@ -126,7 +215,7 @@ test('it passes a viewing message that follows an extended clipboard reply', () 
     new Uint8Array([6, 0, 0, 0, 255, 255, 255, 248, 0, 0, 0, 6, 0, 0, 0, 1, ...request]),
   );
 
-  expect(result).toStrictEqual({ forward: [request], isMalformed: false });
+  expect(result).toStrictEqual({ forward: [request], isMalformed: false, isInput: false });
 });
 
 test('it reads a message that arrives in pieces', () => {
@@ -139,8 +228,8 @@ test('it reads a message that arrives in pieces', () => {
   const results = [ctx.filter.push(request.subarray(0, 3)), ctx.filter.push(request.subarray(3))];
 
   expect(results).toStrictEqual([
-    { forward: [], isMalformed: false },
-    { forward: [request], isMalformed: false },
+    { forward: [], isMalformed: false, isInput: false },
+    { forward: [request], isMalformed: false, isInput: false },
   ]);
 });
 
@@ -155,8 +244,8 @@ test('it drops the text of a clipboard message that arrives in pieces', () => {
   ];
 
   expect(results).toStrictEqual([
-    { forward: [], isMalformed: false },
-    { forward: [], isMalformed: false },
+    { forward: [], isMalformed: false, isInput: false },
+    { forward: [], isMalformed: false, isInput: false },
   ]);
 });
 
@@ -210,6 +299,7 @@ test.each([
   expect(ctx.filter.push(new Uint8Array(row.message))).toStrictEqual({
     forward: [],
     isMalformed: true,
+    isInput: false,
   });
 });
 
@@ -222,5 +312,6 @@ test('it passes nothing after a malformed message, even a viewing one', () => {
   expect(ctx.filter.push(new Uint8Array([3, 1, 0, 0, 0, 0, 5, 0, 3, 32]))).toStrictEqual({
     forward: [],
     isMalformed: true,
+    isInput: false,
   });
 });

@@ -51,7 +51,33 @@ async function takePicture(tab: Tab, control: string | undefined): Promise<Pictu
     return null;
   }
 
-  const bytes = await locator.screenshot({ type: 'png', timeout: 10_000 });
+  // A box off the viewport is cut to what shows, and one wholly off it is stale. The picture never
+  // scrolls the page, so a person at the desktop keeps the view they have.
+  const clip = clipToViewport(box);
 
-  return { bytes, width: Math.round(box.width), height: Math.round(box.height) };
+  if (clip === null) {
+    return null;
+  }
+
+  const bytes = await tab.page.screenshot({ type: 'png', clip, timeout: 10_000 });
+
+  return { bytes, width: Math.round(clip.width), height: Math.round(clip.height) };
+}
+
+interface Box {
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+}
+
+function clipToViewport(box: Box): Box | null {
+  const left = Math.max(0, box.x);
+  const top = Math.max(0, box.y);
+  const right = Math.min(viewport.width, box.x + box.width);
+  const bottom = Math.min(viewport.height, box.y + box.height);
+
+  return right - left < 1 || bottom - top < 1
+    ? null
+    : { x: left, y: top, width: right - left, height: bottom - top };
 }

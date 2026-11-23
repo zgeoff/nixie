@@ -1,5 +1,6 @@
-import { expect, test } from 'bun:test';
+import { expect, onTestFinished, test } from 'bun:test';
 import { readRecords, withWriteTransaction } from '@heynixie/log';
+import { setFaultPointHandler } from '@heynixie/tasks';
 import type { ApprovedCallRequest, ApprovedRun } from '@heynixie/tools';
 import { buildActionSeeder } from '../test-utils/build-action-seeder';
 import { createTestStep } from '../test-utils/create-test-step';
@@ -374,4 +375,90 @@ test('it runs the call once more after the owner answers retry to the unknown ou
   expect(ctx.calls).toHaveLength(1);
   expect(settled).toMatchObject({ status: 'done', attempt_open: 0 });
   expect(kinds.map((entry) => entry.record.kind)).toContain('task.wake');
+});
+
+test('it runs nothing for an action of a held tool prefix, and shows none pending', async () => {
+  const ctx = await setupTest();
+
+  await ctx.seed.inStepAction({ step: ctx.step });
+
+  const settled = await ctx.runStep({
+    runCall: ctx.runCall({ status: 'done', resultSequence: 7, result: {}, images: [] }),
+    readHeldToolPrefixes: () => ['test.'],
+  });
+
+  const isPending = await probeInStepActionPending(ctx.context, ctx.step.lease.workID, () => [
+    'test.',
+  ]);
+
+  expect([settled, ctx.calls, isPending]).toStrictEqual([[], [], false]);
+});
+
+test('it shows the action pending again once its prefix is free', async () => {
+  const ctx = await setupTest();
+
+  await ctx.seed.inStepAction({ step: ctx.step });
+
+  const isPending = await probeInStepActionPending(ctx.context, ctx.step.lease.workID, () => []);
+
+  expect(isPending).toBe(true);
+});
+
+test('it runs no call for an action when a hold begins after the batch was read', async () => {
+  const ctx = await setupTest();
+  const queued = await ctx.seed.inStepAction({ step: ctx.step });
+
+  const hold: { prefixes: string[] } = { prefixes: [] };
+
+  const settled = await ctx.runStep({
+    runCall: ctx.runCall({ status: 'done', resultSequence: 7, result: {}, images: [] }),
+    readHeldToolPrefixes: () => hold.prefixes,
+    checkAttempt: () => {
+      hold.prefixes = ['test.'];
+
+      return Promise.resolve({ kind: 'go', destinations: [] });
+    },
+  });
+
+  const action = await readTestAction(ctx.writer, queued.action_id);
+
+  expect([settled, ctx.calls, action.status, action.attempt_count]).toStrictEqual([
+    [],
+    [],
+    'pending',
+    0,
+  ]);
+});
+
+test('it runs no call and records no attempt when a hold begins between the last check and the commit', async () => {
+  const ctx = await setupTest();
+  const queued = await ctx.seed.inStepAction({ step: ctx.step });
+
+  const hold: { isHeld: boolean } = { isHeld: false };
+
+  setFaultPointHandler((id) => {
+    if (id === 'attempt.admit.before') {
+      hold.isHeld = true;
+    }
+  });
+
+  onTestFinished(() => {
+    setFaultPointHandler(null);
+  });
+
+  const settled = await ctx.runStep({
+    runCall: ctx.runCall({ status: 'done', resultSequence: 7, result: {}, images: [] }),
+    readHeldToolPrefixes: () => (hold.isHeld ? ['test.'] : []),
+    admitTool: () => (hold.isHeld ? null : { run: (work) => work(), release: () => {} }),
+    checkAttempt: () => Promise.resolve({ kind: 'go', destinations: [] }),
+  });
+
+  const action = await readTestAction(ctx.writer, queued.action_id);
+
+  expect([settled, ctx.calls, action.status, action.attempt_count]).toStrictEqual([
+    [],
+    [],
+    'pending',
+    0,
+  ]);
 });

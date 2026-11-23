@@ -8,6 +8,11 @@ import { buildHeldCheck } from './build-held-check';
 export interface ClaimActionOptions {
   readonly holder: string;
   readonly leaseMs: number;
+
+  // The tool name prefixes whose actions wait, read at each claim: with a person holding the
+  // computer, no action of a `computer.` tool starts. A held action stays pending, with no attempt
+  // and no wake.
+  readonly readHeldToolPrefixes?: () => readonly string[];
 }
 
 export function claimAction(
@@ -19,6 +24,8 @@ export function claimAction(
     holder: options.holder,
     durationMs: options.leaseMs,
     readCandidate: async (tx, now) => {
+      const held = options.readHeldToolPrefixes?.() ?? [];
+
       const row = await tx
         .$extendTables<ActionsTables>()
         .selectFrom('actions')
@@ -44,6 +51,7 @@ export function claimAction(
 
         // a task's step runs an action of a tool that runs inside the turn
         .where('actions.runs_in_step', '=', 0)
+        .where((eb) => eb.and(held.map((prefix) => eb('actions.tool', 'not like', `${prefix}%`))))
         .where((eb) => eb.not(buildCancelledCheck(eb)))
         .where((eb) => buildPauseCheck(eb, 'actions.task_id'))
         .where((eb) => eb.not(buildHeldCheck(eb)))

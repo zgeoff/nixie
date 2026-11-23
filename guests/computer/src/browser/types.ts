@@ -12,6 +12,9 @@ export interface BrowserState {
   readonly tabs: Map<string, Tab>;
   counter: number;
 
+  // true while a tool opens a tab, so the tab is not taken for one that a person opened
+  isOpening: boolean;
+
   // true until the first reply tells the server that the disk started empty
   isDiskNew: boolean;
 }

@@ -94,5 +94,26 @@ export type { ComputerToolOptions } from './computer/computer-tool-options';
 export type { Computer, ComputerOptions } from './computer/start-computer';
 export { startComputer } from './computer/start-computer';
 export type { WatchConnection, WatchSocket } from './computer/watch/types';
+export { computerConfigSchema } from './computer/computer-config-schema';
+export type { ComputerTakeover } from './computer/takeover/types';
+
+export type {
+  HandBackResult,
+  TakeOverResult,
+  TakeoverEnd,
+  TakeoverRecords,
+} from './computer/takeover/types';
+
+export type { ComputerTakeoverRecordKind } from './computer/takeover/computer-takeover-record-kind';
+export { makeTakeoverRecords } from './computer/takeover/make-takeover-records';
+export { endTakeoverCutByRestart } from './computer/takeover/end-takeover-cut-by-restart';
+
+export {
+  takeoverEndedCodec,
+  takeoverEndedFieldsSchema,
+  takeoverEnds,
+} from './computer/takeover/takeover-ended-codec';
+
+export { takeoverStartedCodec } from './computer/takeover/takeover-started-codec';
 export { computerOwner, legacyComputerOwners } from './computer/computer-owner';
 export { makeUnexemptScans } from './computer/run-computer-call';

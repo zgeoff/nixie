@@ -1,7 +1,12 @@
 import { join } from 'node:path';
 import type { ComputerTools } from '@heynixie/connectors';
-import { buildComputerTools, makeUnexemptScans, startComputer } from '@heynixie/connectors';
-import type { Log } from '@heynixie/log';
+import {
+  buildComputerTools,
+  makeTakeoverRecords,
+  makeUnexemptScans,
+  startComputer,
+} from '@heynixie/connectors';
+import type { Definitions, Log } from '@heynixie/log';
 import { makeOwnerTypedCheck } from '@heynixie/memory';
 import type { SandboxAdapter } from '@heynixie/sandbox';
 import { isTestSandbox } from '@heynixie/sandbox';
@@ -18,7 +23,8 @@ export interface ComputerPartInputs {
     readonly secrets: Pick<Secrets, 'collectOwnValues'>;
   };
   readonly adapter: SandboxAdapter;
-  readonly log: Pick<Log, 'deploymentKey' | 'writer'>;
+  readonly log: Log;
+  readonly definitions: () => Definitions;
 }
 
 const imageArgv = ['/usr/local/bin/bun', '/app/computer.js'] as const;
@@ -52,6 +58,7 @@ export async function startComputerPart(inputs: ComputerPartInputs): Promise<Com
   );
 
   const isTest = isTestSandbox(inputs.adapter);
+  const records = makeTakeoverRecords({ log: inputs.log, definitions: inputs.definitions });
 
   const computer = startComputer({
     adapter: inputs.adapter,
@@ -62,6 +69,7 @@ export async function startComputerPart(inputs: ComputerPartInputs): Promise<Com
     timeZone: options.config.time.default_zone,
     scans: makeUnexemptScans({ findSecret, logger: options.log }),
     logger: options.log,
+    takeover: { idleMs: options.config.computer.idle_hand_back_minutes * 60_000, records },
   });
 
   await options.cleanup.defer(() => computer.stop());

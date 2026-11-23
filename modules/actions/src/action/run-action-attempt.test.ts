@@ -489,6 +489,7 @@ test('it reaches each attempt fault point in order', async () => {
   });
 
   expect(reached).toStrictEqual([
+    'attempt.admit.before',
     'attempt.record.after',
     'attempt.result.before',
     'attempt.result.after',
@@ -809,4 +810,138 @@ test('it holds an action that a rule allowed and now asks about, and runs none o
   });
 
   expect(claimed).toBeNull();
+});
+
+test('it starts no attempt and calls nothing when a hold begins after the policy check', async () => {
+  const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
+
+  const queued = await queueTestAction(ctx.context, {
+    step,
+    tool: 'test.send',
+    actionHash: 'sha256:send-1',
+    arguments: { to: 'team' },
+    decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
+  });
+
+  const stub = buildStubConnector(() => ({ kind: 'success', result: {} }));
+
+  const lease = await claimTestAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  const hold: { prefixes: string[] } = { prefixes: [] };
+
+  await runActionAttempt(ctx.context, lease, {
+    connectors: new Map([['test.send', stub.connector]]),
+    leaseMs: 60_000,
+    readHeldToolPrefixes: () => hold.prefixes,
+    checkAttempt: () => {
+      hold.prefixes = ['test.'];
+
+      return Promise.resolve({ kind: 'go', destinations: [] });
+    },
+  });
+
+  const action = await readTestAction(ctx.writer, queued.actionID);
+  const leases = await readTestLeases(ctx.writer);
+
+  const actionLease = leases.find((entry) => entry.kind === 'action');
+
+  expect([stub.calls, action.status, action.attempt_count, actionLease?.holder]).toStrictEqual([
+    [],
+    'pending',
+    0,
+    null,
+  ]);
+});
+
+test('it keeps the admission of an attempt through its call, and ends it once the call settles', async () => {
+  const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
+
+  await queueTestAction(ctx.context, {
+    step,
+    tool: 'test.send',
+    actionHash: 'sha256:send-1',
+    arguments: { to: 'team' },
+    decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
+  });
+
+  const lease = await claimTestAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  const admissions: { open: number; openDuringCall: number | null } = {
+    open: 0,
+    openDuringCall: null,
+  };
+
+  const stub = buildStubConnector(() => {
+    admissions.openDuringCall = admissions.open;
+
+    return { kind: 'success', result: {} };
+  });
+
+  await runActionAttempt(ctx.context, lease, {
+    connectors: new Map([['test.send', stub.connector]]),
+    leaseMs: 60_000,
+    admitTool: () => {
+      admissions.open += 1;
+
+      return {
+        run: (work) => work(),
+        release: () => {
+          admissions.open -= 1;
+        },
+      };
+    },
+  });
+
+  expect(admissions).toStrictEqual({ open: 0, openDuringCall: 1 });
+});
+
+test('it starts no attempt and calls nothing when a hold begins between the last check and the commit', async () => {
+  const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
+
+  const queued = await queueTestAction(ctx.context, {
+    step,
+    tool: 'test.send',
+    actionHash: 'sha256:send-1',
+    arguments: { to: 'team' },
+    decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
+  });
+
+  const stub = buildStubConnector(() => ({ kind: 'success', result: {} }));
+
+  const lease = await claimTestAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  const hold: { isHeld: boolean } = { isHeld: false };
+
+  setFaultPointHandler((id) => {
+    if (id === 'attempt.admit.before') {
+      hold.isHeld = true;
+    }
+  });
+
+  onTestFinished(() => {
+    setFaultPointHandler(null);
+  });
+
+  await runActionAttempt(ctx.context, lease, {
+    connectors: new Map([['test.send', stub.connector]]),
+    leaseMs: 60_000,
+    readHeldToolPrefixes: () => (hold.isHeld ? ['test.'] : []),
+    admitTool: () => (hold.isHeld ? null : { run: (work) => work(), release: () => {} }),
+    checkAttempt: () => Promise.resolve({ kind: 'go', destinations: [] }),
+  });
+
+  const action = await readTestAction(ctx.writer, queued.actionID);
+  const leases = await readTestLeases(ctx.writer);
+
+  const actionLease = leases.find((entry) => entry.kind === 'action');
+
+  expect([stub.calls, action.status, action.attempt_count, actionLease?.holder]).toStrictEqual([
+    [],
+    'pending',
+    0,
+    null,
+  ]);
 });

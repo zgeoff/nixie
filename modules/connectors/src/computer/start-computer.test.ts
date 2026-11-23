@@ -18,6 +18,7 @@ import { buildStubSandboxAdapter } from '../test-utils/build-stub-sandbox-adapte
 import { makeFolderExec, readDiskFiles, writeDiskFiles } from '../test-utils/make-folder-exec';
 import type { OutOfCallScans } from './make-guest-session';
 import { startComputer } from './start-computer';
+import type { TakeoverEndedRecord } from './takeover/types';
 
 interface SetupOptions {
   readonly answer?: ComputerHandler;
@@ -48,6 +49,8 @@ async function setupTest(options: SetupOptions = {}) {
   const state = { kills: 0, sleeps: 0, wakes: 0, guests: 0 };
   const asks: { current: ComputerScanAsks | null } = { current: null };
   const vnc: { frames: VNCFrame[] } = { frames: [] };
+  const takeoverEnded: TakeoverEndedRecord[] = [];
+  const guestExit = Promise.withResolvers<void>();
 
   const answerRequest: ComputerHandler =
     options.answer ??
@@ -68,7 +71,7 @@ async function setupTest(options: SetupOptions = {}) {
     async (stdin, stdout) => {
       state.guests += 1;
 
-      await runComputerGuest(
+      const running = runComputerGuest(
         { input: stdin, write: (bytes) => stdout.write(bytes) },
         answerRequest,
         1_000_000,
@@ -89,6 +92,8 @@ async function setupTest(options: SetupOptions = {}) {
           },
         },
       );
+
+      await Promise.race([running, guestExit.promise]);
 
       return 0;
     },
@@ -144,6 +149,17 @@ async function setupTest(options: SetupOptions = {}) {
     logger: () => {},
     clock,
     turnWaitMs: 100,
+    takeover: {
+      idleMs: 2 * 60 * 60 * 1000,
+      records: {
+        writeStarted: () => Promise.resolve(),
+        writeEnded: (record) => {
+          takeoverEnded.push(record);
+
+          return Promise.resolve();
+        },
+      },
+    },
   });
 
   onTestFinished(async () => {
@@ -151,6 +167,10 @@ async function setupTest(options: SetupOptions = {}) {
   });
 
   return {
+    takeoverEnded,
+    crashGuest: () => {
+      guestExit.resolve();
+    },
     stub,
     readDisk: (sandboxID: string) => readDiskFiles(disks, sandboxID),
     asks,
@@ -159,14 +179,17 @@ async function setupTest(options: SetupOptions = {}) {
       const received: Uint8Array[] = [];
       const closed = { isClosed: false };
 
-      const connection = computer.watch({
-        send: (bytes) => {
-          received.push(bytes);
+      const connection = computer.watch(
+        {
+          send: (bytes) => {
+            received.push(bytes);
+          },
+          close: () => {
+            closed.isClosed = true;
+          },
         },
-        close: () => {
-          closed.isClosed = true;
-        },
-      });
+        'laptop',
+      );
 
       return { connection, received, closed };
     },
@@ -1018,4 +1041,85 @@ test('it relays the desktop to a second watch after the first one ended', async 
   await waitForCondition(() => second.received.length === 1);
 
   expect(new TextDecoder().decode(second.received[0])).toBe('RFB 003.008\n');
+});
+
+test('it ends a hold with a restart record when the guest stops on its own', async () => {
+  const ctx = await setupTest();
+
+  await ctx.computer.takeover.start('laptop');
+
+  ctx.crashGuest();
+
+  await waitForCondition(() => ctx.takeoverEnded.length === 1);
+
+  expect([
+    ctx.takeoverEnded.map((record) => record.by),
+    ctx.computer.takeover.isHeld(),
+  ]).toStrictEqual([['restart'], false]);
+});
+
+test('it keeps the sandbox and the hold through the idle time of a longer hold, with no watch', async () => {
+  const ctx = await setupTest();
+
+  await ctx.computer.takeover.start('laptop');
+
+  ctx.clock.advance(60 * 60 * 1000);
+
+  // runs every task the advance queued, so a sleep that a regression allows has happened by now
+  await new Promise<void>((resolve) => {
+    setImmediate(resolve);
+  });
+
+  expect([ctx.state.sleeps, ctx.takeoverEnded, ctx.computer.takeover.isHeld()]).toStrictEqual([
+    0,
+    [],
+    true,
+  ]);
+});
+
+test('it sleeps the sandbox after the hold ends and the idle time passes', async () => {
+  const ctx = await setupTest();
+
+  await ctx.computer.takeover.start('laptop');
+  await ctx.computer.takeover.end('user', 'laptop');
+
+  ctx.clock.advance(30 * 60 * 1000);
+
+  await waitForCondition(() => ctx.state.sleeps === 1);
+});
+
+test('it gives up a take-over at an admitted call’s own limit, however long another call runs', async () => {
+  const requests: ComputerRequest[] = [];
+  const hung = Promise.withResolvers<ComputerReply>();
+
+  onTestFinished(() => {
+    hung.resolve({ kind: 'closed', ok: true });
+  });
+
+  const ctx = await setupTest({
+    answer: (request) => {
+      requests.push(request);
+
+      return hung.promise;
+    },
+  });
+
+  ctx.computer.takeover.admit();
+
+  void ctx.computer.call({
+    request: ctx.run('sleep 600'),
+    scan: ctx.pass,
+    scanText: ctx.pass,
+    timeoutMs: 10_000,
+  });
+
+  await waitForCondition(() => requests.length === 1);
+
+  const takeOver = ctx.computer.takeover.start('laptop');
+
+  ctx.clock.advance(100);
+
+  const result = await takeOver;
+
+  expect(result).toStrictEqual({ kind: 'busy_too_long' });
 });

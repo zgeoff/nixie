@@ -109,10 +109,15 @@ async function openWatch(
     return;
   }
 
-  const stopWatching = await watchSessionEnd(context, socket.data.identityID, () => {
-    closeWatch(socket.data);
+  const stopWatching = await watchSessionEnd(context, socket.data.identityID, {
+    onEnd: () => {
+      closeWatch(socket.data);
 
-    socket.close(1008, 'session ended');
+      socket.close(1008, 'session ended');
+    },
+    onRevokedUnheard: () => {
+      void context.computerWatch?.readTakeover()?.end('idle', socket.data.identityID);
+    },
   });
 
   if (socket.data.isClosed) {
@@ -123,14 +128,17 @@ async function openWatch(
 
   socket.data.stopWatching = stopWatching;
 
-  socket.data.connection = openWatchOnComputer({
-    send: (bytes) => {
-      socket.sendBinary(bytes);
+  socket.data.connection = openWatchOnComputer(
+    {
+      send: (bytes) => {
+        socket.sendBinary(bytes);
+      },
+      close: () => {
+        socket.close(1000, 'the desktop stream ended');
+      },
     },
-    close: () => {
-      socket.close(1000, 'the desktop stream ended');
-    },
-  });
+    socket.data.identityID,
+  );
 }
 
 function closeWatch(data: WatchSocketData): void {

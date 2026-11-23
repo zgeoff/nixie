@@ -1,6 +1,13 @@
 import type { TerminalAccount } from '../shell/terminal-account';
 import type { DesktopAccount } from './constants';
-import { display, displayHeight, displayWidth, screenAccount, vncPort } from './constants';
+import {
+  display,
+  displayHeight,
+  displayWidth,
+  screenAccount,
+  terminalLogPath,
+  vncSocketPath,
+} from './constants';
 
 export interface DesktopProcess {
   readonly name: string;
@@ -22,8 +29,8 @@ export interface DesktopProcessOptions {
 }
 
 // The processes of the virtual desktop: the display, a window manager, the terminal and a VNC server.
-// The display listens on an abstract socket alone, and the VNC server on the loopback of the
-// sandbox, view-only, with its clipboard off.
+// The display listens on an abstract socket alone, and the VNC server on a Unix socket alone, with
+// its clipboard off.
 export function buildDesktopProcesses(options: DesktopProcessOptions): readonly DesktopProcess[] {
   const screenEnv = { DISPLAY: display, HOME: screenAccount.home };
 
@@ -58,13 +65,23 @@ export function buildDesktopProcesses(options: DesktopProcessOptions): readonly 
         'x11vnc',
         '-display',
         display,
-        '-localhost',
+
+        // -localhost would allow only 127.0.0.1, and x11vnc names a client of its Unix socket localhost
+        '-unixsock',
+        vncSocketPath,
+
+        // x11vnc takes port 0 as the default, 5900, unless the IPv6 port is off as well
         '-rfbport',
-        String(vncPort),
+        '0',
+        '-rfbportv6',
+        '-1',
         '-nopw',
+
+        // x11vnc takes remote control commands from X properties, and Chromium is an X client
+        '-noremote',
+        '-novncconnect',
         '-forever',
         '-shared',
-        '-viewonly',
         '-nosel',
         '-noprimary',
         '-nosetprimary',
@@ -79,6 +96,9 @@ export function buildDesktopProcesses(options: DesktopProcessOptions): readonly 
       name: 'terminal',
       argv: options.terminal.wrap([
         'xterm',
+        '-l',
+        '-lf',
+        terminalLogPath,
         '-geometry',
         '100x32+24+24',
         '-e',
