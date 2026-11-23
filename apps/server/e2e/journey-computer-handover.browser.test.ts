@@ -166,6 +166,17 @@ test('it shows the banner for an ask after a CAPTCHA, then takes over from it an
   const diag = await ctx.nixie.readRecords();
 
   console.log(
+    'DIAGLOG',
+    ctx.server
+      .readOutput()
+      .split('\n')
+      .filter((line) => /computer|guest|watch|sandbox|warn|error/iu.test(line))
+      .slice(-14)
+      .join('\n')
+      .slice(-3500),
+  );
+
+  console.log(
     'DIAG',
     JSON.stringify(
       diag
