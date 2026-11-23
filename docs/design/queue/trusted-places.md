@@ -4,7 +4,8 @@
 - **Work items:** [the vault](https://linear.app/zgeoff/issue/GEO-2731),
   [locked entries](https://linear.app/zgeoff/issue/GEO-2814),
   [the wallet](https://linear.app/zgeoff/issue/GEO-2757),
-  [devices](https://linear.app/zgeoff/issue/GEO-2758). Each builds on the directory here.
+  [devices](https://linear.app/zgeoff/issue/GEO-2758). Each uses the directory; its own work items
+  follow the opening.
 
 nixie keeps one directory of the places it deals with: websites, email addresses, mail domains,
 phone numbers and chat handles. Each entry carries one trust level, and the decision point reads the
@@ -18,9 +19,10 @@ Once the owner approves this design, build each work item above from it and the
 items, filed at approval, are:
 
 1. the matcher with the public-suffix list, the directory, its records and the decision point's
-   changes, with the contacts folded in, `web_fetch` declaring its host and the computer tools'
-   destinations and effects;
-2. the card's answers, `places.propose`, `places.narrow` and `places.list`;
+   changes, with the contacts folded in, nixie's own places seeded, `places.yaml`, the hop gate's
+   refusal of a `blocked` site, `web_fetch` declaring its host and the computer tools' destinations
+   and effects;
+2. the card's answers, `places.propose`, `places.narrow`, `places.list` and the notice of an act;
 3. the places page and `nixie places`, which retire the contacts code;
 4. the one evidence window, and the skill guard's move to first use.
 
@@ -95,10 +97,15 @@ type PlaceKey =
   | { kind: 'raw'; value: string }; // a migrated contact that parsePlace can't read; exact match
 ```
 
+- `parsePlace` tries each form in this order: a URL with a scheme, an address, a phone number, a
+  handle, then a host with an optional port.
 - A phone number parses only from `+` and its digits, with spaces and dashes dropped. nixie guesses
   no country code.
-- A handle parses only as `<channel>:<id>`.
+- A handle parses only as `<channel>:<id>`, where the channel is the name of a chat connector, such
+  as `telegram`. Any other `<name>:<digits>`, such as `example.org:8443`, is a host and a port.
 - An IP address or a host with one label, such as `localhost`, parses as a `site`.
+- Tools keep declaring the destination strings they declare today. The decision point runs
+  `parsePlace` for places only, and a rule's `destinations` match the declared string.
 - A site's normal form drops one leading `www.` label, unless what remains is a public suffix. So an
   entry for `example.org` covers `www.example.org`, and an entry typed as `www.example.org` is the
   entry for `example.org`. Every other subdomain needs its own entry or `subdomains: true`. A mail
@@ -134,10 +141,10 @@ const place = await places.add({
   trust: 'read',
   name: 'The library',
 });
-// → { placeID: '6b0e…', shortID: 'P4', trust: 'read' }
+// → { placeID: '6b0e…', shortID: 'k3p9m2x7qa', trust: 'read' }
 
 const verdict = places.find(snapshot, parsePlace('https://catalog.library.example.org/x'));
-// → { placeID: '6b0e…', shortID: 'P4', trust: 'read' }, or null for a place with no entry
+// → { placeID: '6b0e…', shortID: 'k3p9m2x7qa', trust: 'read' }, or null for a place with no entry
 ```
 
 ```ts
@@ -147,7 +154,8 @@ type Trust =
   | 'known' // the place passes stage 5; the rules decide the call, as for a known contact today
   | 'read' // a call with only reading effects is allowed; an acting call is decided as at 'known'
   | 'act' // a call with reading or acting effects is allowed, and each act leaves a notice
-  | 'self'; // one of your own addresses, numbers or handles; as 'act', with no notice
+  | 'self'; // one of your own addresses, numbers or handles, never a site or mail domain; as
+// 'act', with no notice
 
 interface Place {
   placeID: string; // crypto.randomUUID()
@@ -174,16 +182,19 @@ places.removed  { placeID }
 places.acted    { placeID, shortID, callID, tool }  // a call that an 'act' place allowed
 ```
 
-- The `places` projection holds each entry's IDs, kind, level, sequences and the time a call last
-  used it. For an `address`, `phone` or `handle` place, the key and the name are erasable fields of
-  `places.added`, and the projection reads them back from the record, as it reads a contact's today.
-  `places.added` joins the forgettable kinds.
-- The projection keeps a keyed hash of each key, under the deployment's key, for the
-  one-entry-per-key check. A forget clears the hash.
-- You can forget an `address`, `phone` or `handle` place. A forget removes it whatever its level, so
-  forgetting a `blocked` address unblocks it. A forget is yours alone; nixie's `places.narrow` never
-  removes a `blocked` entry. A `site` or `mail_domain` place holds nothing personal: you remove it,
-  and its records stay.
+- The `places` projection holds each entry's IDs, kind, level and sequences, and the key and name of
+  a `site` or `mail_domain` place. It sets the time a call last used a place from each `tool_called`
+  whose decision carries that place's permission.
+- For an `address`, `phone` or `handle` place, the key and the name are erasable fields of
+  `places.added` and `places.changed`, and nixie reads them back from the record at each call, as it
+  reads a contact's today. Both kinds join the forgettable kinds in the contract.
+- `places.add` and `places.changed` check the one entry per key inside their write transaction,
+  against the keys read back. The projection stores no copy or hash of a personal key.
+- You can forget an `address`, `phone` or `handle` place. Its key then reads back empty, so it
+  covers nothing whatever its level, and the page and `places.list` leave it out. Forgetting a
+  `blocked` address unblocks it. A forget is yours alone; nixie's `places.narrow` never removes a
+  `blocked` entry. A `site` or `mail_domain` place holds nothing personal: you remove it, and its
+  records stay.
 
 ### The decision point
 
@@ -208,22 +219,22 @@ type DestinationPermission =
   | { by: 'task' }
   | { by: 'rule'; ruleID: string };
 
-// …existing DecisionDetail fields
-type DecisionDetail = { place: { placeID: string; shortID: string } | null }; // set for a deny at a
-// blocked place, or an allow at stage 7 through places; rule is null then
+// …existing DecisionDetail fields; rule is null when places is set
+type DecisionDetail = { places: { placeID: string; shortID: string }[] | null }; // a deny: the first
+// blocked place in destination order; an allow at stage 7: every place that allowed it
 ```
 
 - Stage 3 checks places before the deny rules. The model reads the place's short ID only: "you
-  blocked P4".
+  blocked k3p9m2x7qa".
 - Stage 7 checks places first: the call is allowed when every destination's place allows it. A call
   with no destination never passes this check. An ask rule at stage 6 still asks at a trusted place.
-- The stage numbers stay 1 to 9. A place allow records stage 7 with `place` set and `rule` null.
+- The stage numbers stay 1 to 9. A place allow records stage 7 with `places` set and `rule` null.
 - `ownerDestinations` leaves the decision point's inputs, and `self` places take the owner tier's
   place. A decision recorded before this design keeps its old strings, and the decision schema reads
   both forms. No published contract type carries decision permissions.
-- The tool runner writes `places.acted` on the call's thread, beside `tool_called`, when the
-  decision allowed the call through an `act` place. The decision point stays a pure function, so a
-  replay writes nothing.
+- The tool runner writes one `places.acted` for each `act` place, on the call's thread beside
+  `tool_called`, when a call with an acting effect was allowed through places. A call with only
+  reading effects writes none. The decision point stays a pure function, so a replay writes nothing.
 - When several entries cover a destination, a `blocked` entry wins. Otherwise the most specific
   entry wins: an exact key, then the longer domain.
 - A rule's `destinations` keep their patterns and the `*` match. Both the pattern and the
@@ -237,9 +248,10 @@ type DecisionDetail = { place: { placeID: string; shortID: string } | null }; //
   host too, in their own work items.
 - `computer.screen_click` and `computer.screen_type` declare the host of the browser tab in front
   when the browser window has focus. With any other window in front they declare no destination, and
-  the call asks: stage 7 lets no place and no allow rule pass a screen act call with no destination.
-- `computer.screenshot` and `computer.screen_scroll` declare no destination, as the
-  [open question](#open-questions) says.
+  the call asks: their declarations carry a flag that stops stage 7 allowing them with no
+  destination, through a place or a rule.
+- `computer.screenshot`, `computer.screen_scroll` and the browser read tools, such as
+  `computer.browser_read`, declare no destination, as the [open question](#open-questions) says.
 - `computer.browser_fill` declares `send`, with the tab's host.
 - `computer.browser_click` declares `send` with the tab's host, unless its element is a plain link.
   On a plain link it declares `fetch`, with the tab's host and the link's host.
@@ -260,12 +272,13 @@ interface ClickedElement {
 
 - A click on a plain link runs without asking at a `read` place, and at an unlisted one through the
   starter rule `allow-reads`. A click on a button asks unless the place is at `act` or `self`.
+- The queued attempt of a click reads the element again, and refuses when its effects or
+  destinations differ from the ones decided.
 - A click handler that a script adds is invisible to `prepare`, so a plain-link click can start a
   script's action without asking. The design accepts this risk; a click inside a form still asks.
-- The server's hop gate refuses a redirect hop to a `blocked` site. The browser tools read the tab's
-  host at each call, so the next call on a tab that a redirect or a click took to a `blocked` site
-  is denied. Navigation inside the browser between calls, and a script listener behind a plain link,
-  aren't checked.
+- The server's hop gate refuses a redirect hop to a `blocked` site. The browser act tools read the
+  tab's host at each call, so the next act on a tab that a redirect or a click took to a `blocked`
+  site is denied. Navigation inside the browser between calls isn't checked.
 
 ### The notice of an act
 
@@ -291,7 +304,7 @@ const proposal = await tools.call('places.propose', {
     { place: '*.library.example.org', trust: 'read', why: 'Your library splits its catalog.' },
   ],
 });
-// → { proposal: 'Q7' }, one card for you that lists every place
+// → { proposal: 'r8t2w5n1ze' }, one card for you that lists every place
 ```
 
 - When every destination of a held call is one place, the card offers "Trust this place to read" and
@@ -307,8 +320,8 @@ const proposal = await tools.call('places.propose', {
   notice.
 
 ```ts
-await tools.call('places.narrow', { place: 'P4', trust: 'known' }); // or { place: 'P4', remove: true }
-// → { place: 'P4', trust: 'known' }; refuses a level that isn't lower than the current one, and
+await tools.call('places.narrow', { place: 'k3p9m2x7qa', trust: 'known' }); // or { place: 'k3p9m2x7qa', remove: true }
+// → { place: 'k3p9m2x7qa', trust: 'known' }; refuses a level that isn't lower than the current one, and
 // refuses remove on a blocked entry, which would make the place free to read
 ```
 
@@ -316,10 +329,10 @@ await tools.call('places.narrow', { place: 'P4', trust: 'known' }); // or { plac
 
 ```ts
 await tools.call('places.list', { trust: 'read', kind: 'site', query: 'library', limit: 20 });
-// → { total: 3, places: [{ place: 'P4', key: '*.library.example.org', trust: 'read', name: 'The library' }, …] }
+// → { total: 3, places: [{ place: 'k3p9m2x7qa', key: '*.library.example.org', trust: 'read', name: 'The library' }, …] }
 
 await tools.call('places.list', { place: 'catalog.library.example.org' });
-// → { total: 1, places: [{ place: 'P4', … }] }, the entry the decision point picks; total 0 for none
+// → { total: 1, places: [{ place: 'k3p9m2x7qa', … }] }, the entry the decision point picks; total 0 for none
 ```
 
 ```ts
@@ -365,17 +378,18 @@ and when a call last used it. You add, change and remove entries there. The host
 ## Constraints
 
 - The directory holds at most one entry per place key.
-- `parsePlace` returns `null` for a string it can't read as a place. A `null` destination has no
-  place tier. On a call with only reading effects it gets the `reading` permission, as an unlisted
-  destination does; otherwise it falls through to the other tiers.
+- `parsePlace` returns `null` for a string it can't read as a place, such as a skill repository's
+  name. A `null` destination matches only a `raw` key, never gets the `reading` permission, and
+  otherwise falls through to the other tiers as today.
 - An entry covers a place by key alone. A site entry never covers an address at that domain.
 - A `blocked` entry beats every rule, mandate and lift.
 - No level allows a `spend` call: it asks at `known`, `read`, `act` and `self`, and `blocked` denies
   it. A lift covers a spend as it does today.
 - Each call reads the directory of its own definitions snapshot. `places.added`, `places.changed`
   and `places.removed` each make a new snapshot, as a contact record does today. The snapshot holds
-  `policy.places`, the place IDs and levels, where it held `policy.contacts`, and never holds an
-  address.
+  `policy.places`, a list of `{ placeID, trust }` sorted by place ID, where it held
+  `policy.contacts`, and never holds an address. The first snapshot after the upgrade has a new
+  hash.
 - The vault keeps each entry's exact origins as a fill constraint. A password fills only on an exact
   origin of its entry, even on a site at `act`, and the `www.` rule never widens it. The vault entry
   links its site's place ID.
@@ -392,21 +406,27 @@ and when a call last used it. You add, change and remove entries there. The host
   `policy.contact_marked_known` and `policy.contact_unmarked`. A migrated place's ID is its contact
   ID, and its short ID comes from `buildShortIDFromUUID`, so a rebuild gives the same short ID. Old
   snapshots' contact IDs read as places at `known`.
-- A contact's destination goes through `parsePlace`, and one it can't read becomes a `raw` key.
-  `isPlaceCovered` also takes the destination's original string, and a `raw` key covers the exact
-  NFC string. No call a contact covers gains an allow or loses one, except that an address now
-  matches in any case.
+- A contact's destination becomes an `address`, `phone` or `handle` key through `parsePlace`. Any
+  other contact, such as a site, becomes a `raw` key, and so does a later contact whose key an
+  earlier contact already holds. A `raw` key covers the exact NFC string. No call a contact covers
+  gains an allow or loses one, except that an address now matches in any case.
+- A migrated place's kind comes from its erasable destination, so the projection sets it in
+  `afterRebuild`.
 - A forget of the old contact record erases the place.
 - The consent check's typed-name match, `nixie contacts`, `contacts.mark_known` and the contract's
   known-contact schema keep working over the `places` projection until the page's work item moves
-  them. The `known_contacts` table goes when they do.
-- The definitions repo may hold `places.yaml` with `site` and `mail_domain` entries, seeded like
-  rules. Each entry's key goes through `parsePlacePattern`. An `address`, `phone` or `handle` place
-  never leaves the database.
+  them. Until then they write contact records and read only places at `known`. The `known_contacts`
+  table goes when they move.
+- The definitions repo may hold `places.yaml`, a list of `{ place, trust, name? }` with `site` and
+  `mail_domain` entries, seeded like rules with `addedBy: 'seed'`. Each `place` goes through
+  `parsePlacePattern`. A key already in the directory keeps its level, and a line dropped from the
+  file removes only the place that the seed added. An `address`, `phone` or `handle` place never
+  leaves the database.
 
 ## Builder decides
 
-- The module's name and where the matcher lives, if not in `modules/places`.
+- Where the matcher and the directory live: in `modules/policy`, a lib or a new module that forms no
+  cycle with `policy`.
 - The page's layout and its sort order.
 - Whether `places.narrow` is one tool or two.
 - How the guest reads the clicked element: a new read mode, or a field on the snapshot read.
@@ -415,10 +435,10 @@ and when a call last used it. You add, change and remove entries there. The host
 
 ## Open questions
 
-- **Do the screen read tools respect a blocked site?** The owner settles it in
-  [GEO-2828](https://linear.app/zgeoff/issue/GEO-2828). Until then, `computer.screenshot` and
-  `computer.screen_scroll` declare no destination, and a `blocked` site on screen stays readable
-  through them.
+- **Do the screen and browser read tools respect a blocked site?** The owner settles it in
+  [GEO-2828](https://linear.app/zgeoff/issue/GEO-2828). Until then, `computer.screenshot`,
+  `computer.screen_scroll` and the browser read tools declare `note` and no destination, and a
+  `blocked` site that a tab reached between calls stays readable through them.
 
 ## Out of scope
 
