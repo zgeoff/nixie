@@ -9,6 +9,9 @@ when one of the assistant's wake rules matches. The assistant sets a rule on you
 `gmail.wake_set`, a tool call under your policy that asks you by default. Every other Gmail tool,
 `gmail.search` among them, is in the [Gmail tools design](../gmail-calendar-drive-tools.md).
 
+Read this part to build the Gmail half of the mail polls item, after [wake rules](wake-rules.md),
+the Google connection and the Gmail tools are built.
+
 ## Shape
 
 ```mermaid
@@ -115,8 +118,9 @@ gmail.wake_cancel({ rule: 'wz7p2k9q4m' }); // → { rule: 'wz7p2k9q4m', ended: t
   no longer returns.
 - The source makes read calls only, through the connection's fetcher, and never reaches the decision
   point.
-- A match wakes its task within `gmail.poll_interval` plus 1 minute of the mail's arrival, while the
-  source reports `running` and the rule's window and throttle are open.
+- While every poll of the connection succeeds, a match on a ready rule and task wakes its task
+  within `gmail.poll_interval` plus 1 minute of the mail's arrival. A failed poll delays it by the
+  retry wait.
 - Forgetting a Google connection ends its rules and erases its mail text, by the steps in
   [wake rules](wake-rules.md#erasure).
 

@@ -6,8 +6,9 @@
 The triggers module holds the wake rules and the one arrival path that both mail products share.
 Each mail source hands its new mail to the [trigger core](../../../architecture/core/triggers.md) as
 arrivals. The core matches each arrival against the live rules of its mailbox, and either wakes the
-rule's task at once or holds the match until the window ends. See the [README](README.md) for the
-terms. Build and test this part against a fake mail source, so it waits on neither mailbox.
+rule's task at once or holds the match for one later wake. See the [README](README.md) for the
+terms. Read this part to build the triggers module's half of the mail polls item. Build and test it
+against a fake mail source, so it waits on neither mailbox.
 
 ## Shape
 
@@ -16,8 +17,8 @@ flowchart LR
   src[a mail source] -->|"deliver"| match{a live rule matches?}
   match -->|"no"| none[nothing written]
   match -->|"yes"| arrived[trigger.mail_arrived]
-  arrived -->|"window and throttle open"| woke[trigger.mail_woke]
-  arrived -->|"either shut"| held[(wake_held)]
+  arrived -->|"rule and task ready"| woke[trigger.mail_woke]
+  arrived -->|"not ready"| held[(wake_held)]
   held -->|"flush every 20 s"| woke
   woke --> inbox[the task's inbox]
 ```
@@ -73,7 +74,8 @@ type WakeRuleEndReason = 'cancelled' | 'task_ended' | 'connection_forgotten';
 
 ```text
 trigger.wake_rule_set     -- the whole rule; a replace writes it again under the same ruleID
-trigger.wake_rule_ended   -- ruleID, reason, released: the held arrivals it drops, by sequence
+trigger.wake_rule_ended   -- ruleID, reason, released: the held arrivals it drops, by sequence;
+                             empty for 'cancelled', whose held matches still flush
 wake_rules                -- projection: one row per rule, with ended_at and reason
 ```
 
@@ -121,36 +123,34 @@ takes these, in the same write transaction:
 2. The core finds each live rule of the event's mailbox that matches, with `createdAt` at or before
    `receivedAt`, and `receivedAt` before `expiresAt`.
 3. For each matching rule whose task has ended, the core ends the rule as `task_ended` and drops it.
-   When no rule is left, the core writes nothing and claims no key.
+   When no rule is left, the core writes no arrival record and claims no key.
 4. The core writes one `trigger.mail_arrived`. Its fold adds the key to `trigger_keys`, as the folds
    of `trigger.fired` and `trigger.skipped` do. The record lists each matching rule, and whether its
    task woke now or the match was held.
-5. For each task with a matching rule whose window and throttle are open, the core writes one
-   `trigger.mail_woke` through the [inbox](../../../architecture/core/tasks.md#the-inbox) writer,
-   naming every matching rule of that task. It wakes the task with the cause `event`, at
+5. For each ready task with a ready matching rule, the core writes one `trigger.mail_woke` through
+   the [inbox](../../../architecture/core/tasks.md#the-inbox) writer, naming every matching rule of
+   that task. It wakes the task with the cause `event`, at
    [hop](../../../architecture/core/task-messages.md#the-hop-limit) 0.
 6. It holds the match of each other task in `wake_held`.
 
 ### Windows, the throttle and the flush
 
-A task wakes at once only when one of its matching rules has an open window, and the throttle of the
-task and the mailbox is open:
+A wake starts a window for each rule it names and a throttle for its task and mailbox. While either
+runs, a match waits:
 
-- a rule's window is open when the rule's last wake was `windowMs` or more ago, or never;
-- the throttle is open when the task had no wake from this mailbox in the last
-  `wake_rules.throttle`.
+- a rule is ready when its last wake was `windowMs` or more ago, or it never woke;
+- a task is ready for a mailbox when its last wake from that mailbox was `wake_rules.throttle` or
+  more ago, or it never had one.
 
-The flush runs every 20 seconds, in one write transaction per tick:
+A task wakes at once when it is ready and one of its matching rules is ready. The flush runs every
+20 seconds, in one write transaction per tick:
 
-1. It finds each held match whose throttle has closed and that has at least one rule whose window
-   has closed.
+1. It finds each held match whose task is ready for the mailbox and that has at least one ready
+   rule.
 2. When the match's task has ended, it ends each of the task's rules as `task_ended`, with the
    dropped matches in `released`.
 3. Otherwise it writes one `trigger.mail_woke` per task, naming every such match of that task,
    oldest first.
-
-A wake, from step 5 or from the flush, opens a new window for each rule it names, and a new throttle
-for the task and the mailbox.
 
 ```text
 wake_rule_windows   -- rule_id, last_wake_at: the recorded time of the rule's last wake
@@ -225,15 +225,16 @@ wake_rules:
 - A rule that expires or is cancelled matches nothing more. Its held matches still flush.
 - A rule matches only mail received between its `createdAt` and its `expiresAt`, both by the host's
   receive time.
-- A task whose window and throttle are open wakes in the transaction that delivers the match. A held
-  match wakes its task within 20 seconds of its window and throttle closing.
+- A ready task with a ready rule wakes in the transaction that delivers the match. A held match
+  wakes its task within 20 seconds of both becoming ready.
 - A rule wakes its task at most once per window, and a mailbox wakes a task at most once per
   throttle, however much mail arrives.
 - One arrival gives each task at most one wake, however many of its rules match.
 - The core never reads the [task gate](../task-gate.md) for an arrival or a flush. While a task is
   held, its wakes land in its inbox and wait there, as the gate design says for poll sources.
 - The inbox writer is called only for a task that has not ended. The core and the flush check first.
-- The sources match on values they just read from the host, never on erasable fields read back.
+- The core matches on the values the source just read from the host, never on erasable fields read
+  back.
 - The From header proves nothing about the sender. A `from` match is a filter, never a trust check.
 - The mail module and the connectors module reach wake rules only through the triggers module, and
   never import each other.

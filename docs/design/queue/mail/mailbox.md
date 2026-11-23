@@ -9,6 +9,9 @@ hands each new mail to the [arrival path](wake-rules.md). Sign-up codes and rese
 assistant here, and [accounts and sign-in](../accounts.md) uses the mailbox as each account's
 username.
 
+Read this part to build the assistant's mailbox item, after [wake rules](wake-rules.md) is built.
+Build against an in-memory host until the owner picks the mail host.
+
 ## Shape
 
 ```mermaid
@@ -71,7 +74,8 @@ mail.read({ message: 'mz4k8q2w7p' }); // marks the mail read
 mail.save_attachment({ message: 'mz4k8q2w7p', attachment: 1 }); // → { file: 'f7m3q8k2wz', name }
 mail.send({ to: ['hello@library.example.org'], subject, text, files: [], replyWake: '7d' });
 mail.reply({ message: 'mz4k8q2w7p', text, files: [], replyWake: 'off' });
-// → { message: 'mr8w2k4q9z', thread: 'th6p2k9w4x', replyRule: 'wq4k8m2x7p' | null }
+// queued: the call returns the action's short ID, and the outcome, once the send runs, holds
+// { message: 'mr8w2k4q9z', thread: 'th6p2k9w4x', replyRule: 'wm3k7q2x9p' | null }
 mail.wake_set({ from: ['@library.example.org'], subject: 'code', expires: '30m', window: '1m' });
 // → { rule: 'wq4k8m2x7p', expiresAt: '2026-11-24T10:45:00Z', window: '1m', replaced: false,
 //     recent: [] }   recent: stored mail of the last 10 minutes that the match takes, as mail.list

@@ -9,8 +9,12 @@ The assistant has 2 mail products that share nothing but one arrival path. Its o
 stores no copy, `gmail.search` asks Gmail live, and an arrival leaves at most a small erasable
 record. Both hand each new mail to the [trigger core](../../../architecture/core/triggers.md), which
 wakes a task only when a wake rule matches. The assistant registers each rule with a mailbox, a
-match, the task to wake and an expiry. A match wakes the task at once, and later matches inside a
-window arrive together in one wake, so a burst of mail costs one turn.
+match, the task to wake and an expiry. The first match wakes the task at once. Later matches of the
+same rule inside its window, and matches of any rule soon after the task's last wake from that
+mailbox, wait and arrive together in one wake, so a burst of mail costs one turn.
+
+The owner reads this page to approve the design and settle its open questions. A builder reads it,
+then the part their work item builds.
 
 This design replaces the mailbox half of [mail and phone](../mail-and-phone.md) and the Gmail half
 of [mail and calendar polls](../mail-and-calendar-polls.md). The phone, the calendar poll and the
@@ -32,11 +36,11 @@ flowchart LR
 
 ## The parts
 
-| Part                                     | What it holds                                                                   | Built by                                             |
-| ---------------------------------------- | ------------------------------------------------------------------------------- | ---------------------------------------------------- |
-| [Wake rules and arrivals](wake-rules.md) | rules, the arrival path, windows and the throttle, the flush, the wake, erasure | [GEO-1827](https://linear.app/zgeoff/issue/GEO-1827) |
-| [The assistant's mailbox](mailbox.md)    | the mail host interface, the store, the `mail.*` tools, reply rules on sends    | [GEO-2816](https://linear.app/zgeoff/issue/GEO-2816) |
-| [Gmail arrivals](gmail.md)               | the Gmail source, the `gmail.wake_*` tools, reply rules on Gmail sends          | [GEO-1827](https://linear.app/zgeoff/issue/GEO-1827) |
+| Part                                     | What it holds                                                                                   | Built by                                             |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| [Wake rules and arrivals](wake-rules.md) | rules, the arrival path, windows and the throttle, the flush, the wake, erasure                 | [GEO-1827](https://linear.app/zgeoff/issue/GEO-1827) |
+| [The assistant's mailbox](mailbox.md)    | the mail host interface, the store, the `mail.*` tools with `mail.wake_*`, reply rules on sends | [GEO-2816](https://linear.app/zgeoff/issue/GEO-2816) |
+| [Gmail arrivals](gmail.md)               | the Gmail source, the `gmail.wake_*` tools, reply rules on Gmail sends                          | [GEO-1827](https://linear.app/zgeoff/issue/GEO-1827) |
 
 Build wake rules and arrivals first, against a fake source. The other parts wait on these:
 
@@ -71,9 +75,9 @@ design once the owner agrees it, and the calendar poll moves to an item of its o
 - **A wake rule is not a task definition.** A rule arms nothing in `trigger_definitions`, and its
   wakes never pass `readDefinitionTask`. A busy or held task gets its mail in its inbox, never as a
   `still_running` or `task_held` skip.
-- **No `mail.wait` and no `mail.mute`.** A short wake rule replaces the wait: the assistant
-  registers one, ends its turn, and the code wakes it. Nothing wakes the assistant by default, so
-  nothing needs muting.
+- **No `mail.wait` and no `mail.mute`.** A short wake rule replaces the wait: a task registers one,
+  ends its turn, and the code wakes it. Nothing wakes the assistant by default, so nothing needs
+  muting.
 - **Only a matched Gmail arrival is recorded.** Gmail stays the one copy of your mail, and an
   arrival that matched nothing leaves nothing to forget.
 - **Durations are text.** `expires` and `window` take the form `parseDuration` reads, such as `30m`,
