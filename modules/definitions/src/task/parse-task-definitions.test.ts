@@ -255,13 +255,6 @@ test.each<[SeedFaultCode, Record<string, string>, string]>([
     'tasks/rain-gauge/task.yaml',
   ],
   [
-    'start_refused',
-    {
-      'tasks/rain-gauge/task.yaml': `name: Check the rain gauge\nbrief: Read the gauge and note the total.\nmemory: self_notes\n`,
-    },
-    'tasks/rain-gauge/task.yaml',
-  ],
-  [
     'bad_max_calls',
     {
       'tasks/rain-gauge/task.yaml': `name: Check the rain gauge\nbrief: Read the gauge and note the total.\ntools:\n  - web.fetch\nmaxCalls:\n  web.fetch: 0\n`,
@@ -719,7 +712,7 @@ test('it seeds the note-taking example with its daily schedule, conversation log
   });
 });
 
-test('it refuses a repo definition that sets self notes, with not available yet as the reason', () => {
+test('it accepts a repo definition that sets self notes', () => {
   const ctx = setupTest();
 
   const parsed = ctx.parse({
@@ -727,11 +720,5 @@ test('it refuses a repo definition that sets self notes, with not available yet 
       'name: Check the rain gauge\nbrief: Read the gauge.\nmemory: self_notes\n',
   });
 
-  expect(parsed.faults).toStrictEqual([
-    {
-      path: 'tasks/rain-gauge/task.yaml',
-      fault: 'start_refused',
-      reasons: ['memory self_notes is not available yet'],
-    },
-  ]);
+  expect([parsed.faults, parsed.definitions[0]?.form['memory']]).toStrictEqual([[], 'self_notes']);
 });

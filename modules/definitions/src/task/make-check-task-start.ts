@@ -13,8 +13,6 @@ export interface CheckTaskStartOptions {
   readonly conversationTools: readonly string[];
 }
 
-const selfNotesNotWritableSentence = 'memory self_notes is not available yet';
-
 // The one check of a start: the sandbox runner plans the input for the starter, with the bounds
 // that the conversation's task.start passes.
 export function makeCheckTaskStart(options: CheckTaskStartOptions): CheckTaskStart {
@@ -23,14 +21,14 @@ export function makeCheckTaskStart(options: CheckTaskStartOptions): CheckTaskSta
   invariant(start, 'the sandbox runner has a start');
 
   return (input: SandboxStartInput, starter) => {
-    if (input.memory === 'self_notes') {
-      return { status: 'refused', reasons: [selfNotesNotWritableSentence] };
-    }
-
     const tools = starter === 'file' ? options.toolNames : options.conversationTools;
 
+    // The sandbox runner refuses the grant from a start, because only a definition holds it. A
+    // definition may hold it, and it holds every tool that `read` does, so the plan checks it as read.
+    const planned = input.memory === 'self_notes' ? { ...input, memory: 'read' as const } : input;
+
     const plan = start.plan(
-      input,
+      planned,
       { tools, memory: 'read', persona: 'default', log: 'conversation' },
       options.bounds,
     );

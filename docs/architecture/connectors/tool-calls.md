@@ -67,8 +67,9 @@ declaration. The rules are:
   that returns a refusal before anything is charged. A result with a `refusalCode` credits the
   charge unless it sets `billed`. [Paid tools](../policy/budgets.md#paid-tools) covers the charge.
 - A tool can set `prepare`, which the endpoint calls with the input before the decision. It returns
-  the destinations and effects of this call, which replace the declared ones, or a result that ends
-  the call. An approved call runs it again and returns `changed` when the destinations differ.
+  the destinations of this call, which replace the declared ones, and effects, which join the
+  declared ones, or a result that ends the call. An approved call runs it again and returns
+  `changed` when the destinations differ.
 - A tool whose effects reach outside nixie, such as a write, a send or a spend, runs queued as an
   action, and every other tool runs direct. A read retried after a crash repeats nothing, so it can
   run inside the turn.

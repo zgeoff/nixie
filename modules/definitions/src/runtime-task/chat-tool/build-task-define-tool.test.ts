@@ -2,7 +2,9 @@ import { expect, test } from 'bun:test';
 import { parseJSONObject } from '@heynixie/log';
 import { buildMockToolCall, buildMockToolContext } from '@heynixie/tools/test-utils';
 import { sql } from 'kysely';
+import invariant from 'tiny-invariant';
 import { z } from 'zod';
+import { readDefinitionVersion } from '../../task/read-definition-version';
 import { buildTestDefineInput } from '../../test-utils/build-test-define-input';
 import { buildTestTaskYaml } from '../../test-utils/build-test-task-yaml';
 import { readTestRuntimeTasks } from '../../test-utils/read-test-runtime-tasks';
@@ -181,26 +183,40 @@ test('it returns INVALID with the reasons for a version that a start refuses', a
   });
 });
 
-test('it refuses a definition that sets self notes for now, and writes none', async () => {
+test('it defines a task that sets self notes and reads the grant back', async () => {
   const ctx = await setupTest();
 
   await ctx.seed();
 
   const outcome = await ctx.define(buildTestDefineInput({ memory: 'self_notes' }));
   const hashes = await ctx.readHashes();
+  const version = await readDefinitionVersion(ctx.writer.db, hashes[0] ?? '');
 
-  expect(outcome).toStrictEqual({
-    status: 'ok',
-    result: {
-      refused: {
-        code: 'INVALID',
-        reasons: ['memory self_notes is not available yet'],
-      },
-    },
-    refusalCode: 'INVALID',
-  });
+  expect([outcome.status, version?.memory]).toStrictEqual(['ok', 'self_notes']);
+});
 
-  expect(hashes).toStrictEqual([]);
+test('it declares policy_widen for a call that sets self notes, so the call asks', async () => {
+  const ctx = await setupTest();
+
+  const prepare = ctx.tool.prepare;
+
+  invariant(prepare);
+
+  const context = buildMockToolContext();
+
+  const inputs = ['self_notes', 'read', 'none'].map((memory) =>
+    buildTestDefineInput({ memory: z.enum(['none', 'read', 'self_notes']).parse(memory) }),
+  );
+
+  const prepared = await Promise.all(
+    inputs.map((input) => prepare(parseJSONObject(JSON.stringify(input)), context)),
+  );
+
+  expect(prepared).toStrictEqual([
+    { destinations: [], effects: ['policy_widen'] },
+    { destinations: [] },
+    { destinations: [] },
+  ]);
 });
 
 test('it refuses a schedule that mixes fields with the field and a fix', async () => {

@@ -132,7 +132,7 @@ export interface ToolDefinition {
   readonly recordInput?: (input: JSONObject) => JSONObject;
 
   // Reads what only the host can read about a call before the decision, such as a stored photo. It
-  // returns the destinations and effects the decision point checks in place of the declared ones,
+  // returns the destinations the decision point checks in place of the declared ones, and effects it checks beside the declared ones,
   // or a result that ends the call. The action hash covers what it returns.
   readonly prepare?: (
     input: JSONObject,
@@ -171,7 +171,7 @@ export interface ToolDefinition {
 export interface Prepared {
   readonly destinations: readonly string[];
 
-  // replaces the declared effects for this call
+  // joins the effects in force for the tool for this call
   readonly effects?: readonly Effect[];
 
   // what the call costs in dollars, which stands in for the argument the declaration names as its
