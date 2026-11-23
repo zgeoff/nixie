@@ -70,7 +70,8 @@ Each start variant has a `plan` function, which checks the input and returns wha
 A plan returns actions beside its envelope:
 
 ```ts
-// tasks module: the port change
+// tasks module: the port change. `plan` on RunnerStart and RunnerStartPort becomes async and
+// returns Promise<RunnerStartPlan<…>>, because a join's plan reads atc.
 type RunnerStartPlan<Options> =
   | {
       status: 'planned';
@@ -92,9 +93,10 @@ interface RunnerAction {
 ```
 
 A join's plan reads the session through the adapter's `join` before it returns. It refuses a session
-that is out of reach, has ended, or is bound to an open coding task. The coding variant's plan sets
-the envelope's report mode to `next_turn`, because the step wakes the report target itself when the
-wake set lists `ended`.
+that is out of reach, has ended, or is bound to an open coding task. The join's transaction checks
+the binding again, so of two joins of one session, the second gets the same refusal. The coding
+variant's plan sets the envelope's report mode to `next_turn`, because the step wakes the report
+target itself when the wake set lists `ended`.
 
 ### The runner definition
 
@@ -109,11 +111,27 @@ export interface TaskRunnerDefinition {
   readonly meters: readonly ('turns' | 'dollars')[]; // the meters that limit this runner's task runs
   readonly ended:
     | ((
-        context: RunnerContext,
+        context: RunnerEndContext,
         taskID: string,
         cause: 'stopped' | 'closed' | 'failed',
       ) => Promise<void>)
     | null; // called after a stop, a close or a failure commits
+  // the fields that tasks.list adds to each listed task of this runner; null: none
+  readonly listFields:
+    | ((
+        context: Pick<TasksContext, 'log'>,
+        taskIDs: readonly string[],
+      ) => Promise<ReadonlyMap<string, JSONObject>>)
+    | null;
+}
+
+// tasks module: what `ended` gets. It runs outside any step, as the task no longer steps.
+interface RunnerEndContext extends Pick<TasksContext, 'log' | 'clock'> {
+  // writes the records and queues the actions on the task's thread, in one transaction
+  commit(input: {
+    records: readonly RecordInput[];
+    actions: readonly RunnerAction[];
+  }): Promise<void>;
 }
 
 // coding module: one definition per adapter
@@ -124,7 +142,8 @@ const codingDefinition = {
   fixedTasks: [],
   keepsSandboxes: false,
   meters: [],
-  ended: releaseBoundSession, // a stop queues `coding.stop`; a close or a failure releases
+  ended: releaseBoundSession, // see Ends, stops and the sweep
+  listFields: readSessionFields, // `session`, from coding_sessions
 } satisfies TaskRunnerDefinition;
 
 // `task.start/atc`, for a start and a join alike
@@ -139,11 +158,12 @@ const codingStartDeclaration: EffectDeclaration = {
 // `coding.stop`: the action a stop of the task queues, for a started and a joined session alike
 const codingStopDeclaration: EffectDeclaration = {
   effects: ['coding_start'],
-  destinations: [], // '<adapter ID>:<session ID>', such as 'atc:cloud.3f9a1c2e.5d0c…'
+  destinations: ['session'], // the action's arg: '<adapter ID>:<session ID>', 'atc:cloud.3f9a1c2e…'
   amount: null,
   content: ['origin'], // 'started' | 'joined', which the starter rules match on
   results: {},
 };
+// coding.stop reconciles by `check`: the adapter's read finds the session `ended` or `gone`.
 ```
 
 [The tools](tools.md#steering-and-notes) hold the declarations of `coding.steer` and
@@ -176,12 +196,17 @@ interface CodingDelivered {
   messageRef: string; // atc's ID of the message
   hop: number;
 }
+// coding.answer_held: written by the step for an answer that arrives before its note's outcome
+interface CodingAnswerHeld {
+  taskID: string;
+  event: SessionEvent; // the `answered` or `unanswered` event, in the record's erasable fields
+}
 // coding.wake_set: written by coding.watch
 interface CodingWakeSet {
   taskID: string;
   wake: WakeEvent[];
 }
-// coding.session_unbound: written by `ended` for a joined session
+// coding.session_unbound: written by `ended` and by the sweep, once the task lets go of the session
 interface CodingSessionUnbound {
   taskID: string;
   adapter: string;
@@ -191,7 +216,8 @@ interface CodingSessionUnbound {
 ```
 
 ```text
-coding_sessions, one appended migration. Key session_key = '<adapter>\n<sessionID>'.
+coding_sessions, one appended migration. Key task_id: a coding task binds one session, once.
+An index on (adapter, session_id) finds the open binding of a session.
   task_id          text
   adapter          text
   session_id       text
@@ -203,8 +229,9 @@ coding_sessions, one appended migration. Key session_key = '<adapter>\n<sessionI
   last_event_at    integer -- epoch ms; null before the first event
   unbound_at       integer -- epoch ms when the task let go of the session; null while bound
   updated_sequence integer
-Folded from coding.session_bound, coding.steered, coding.delivered, coding.wake_set,
-coding.session_unbound and trigger.task_input.
+  held_answers     text    -- JSON: the events of coding.answer_held not yet forwarded
+Folded from coding.session_bound, coding.steered, coding.delivered, coding.answer_held,
+coding.wake_set, coding.session_unbound and trigger.task_input.
 ```
 
 ### What one step does
@@ -217,21 +244,21 @@ record oldest first, and commits once. `state`, `answered`, `unanswered` and `no
 `done` finishes the task, and `wait` leaves it waiting for its next inbox record. A row that names
 no state returns `wait`.
 
-| Inbox record                                            | The step                                                                                                                                                                                               |
-| ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| the brief of a start or a join                          | nothing: the start queued the spawn, and a join sends nothing                                                                                                                                          |
-| `coding.start` done, with a result                      | writes `coding.session_bound`                                                                                                                                                                          |
-| `coding.start` done, with no result                     | resends the spawn under the action's last key while atc keeps it; past that, ends the task run with a report that says nixie cannot find the session and you can join it by its ID, and returns `done` |
-| `coding.start` failed                                   | ends the task run with a report that says atc refused the start, and returns `done`                                                                                                                    |
-| `coding.start` unknown, sent to you                     | sends the report target a waking `task_message` that says nixie asked you whether the session started; your answer lands as the action's next outcome                                                  |
-| `coding.steer` done                                     | writes `coding.steered`                                                                                                                                                                                |
-| `coding.steer` failed, or unknown sent to you           | sends the report target a waking `task_message` that says the session did not get the steer, or may have, with the reason                                                                              |
-| a `task_message` or `owner_message` to the task         | queues a `coding.message` action, caused by that record                                                                                                                                                |
-| `coding.message` done                                   | writes `coding.delivered`                                                                                                                                                                              |
-| `coding.message` failed, or unknown sent to you         | replies to the message's sender that the session did not get it, or may not have                                                                                                                       |
-| `trigger.task_input`, `answered` or `unanswered`        | replies to the sender of the note that `coding.delivered` matches by `messageRef`, with `replyTo` set to it                                                                                            |
-| `trigger.task_input`, `state` or `note` in the wake set | sends the report target a `task_message` of kind `progress` that wakes it, with the state and the question, or the note's label and text                                                               |
-| `trigger.task_input`, `state` `ended`                   | ends the task run with a report, and returns `done`; when the wake set lists `ended`, also sends the report target a waking `progress` message                                                         |
+| Inbox record                                            | The step                                                                                                                                                                      |
+| ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| the brief of a start or a join                          | nothing: the start queued the spawn, and a join sends nothing                                                                                                                 |
+| `coding.start` done, with a result                      | writes `coding.session_bound`                                                                                                                                                 |
+| `coding.start` done, with no result                     | ends the task run with a report that says nixie cannot find the session and you can join it by its ID, and returns `done`; this is your answer that an unknown spawn happened |
+| `coding.start` failed                                   | ends the task run with a report that says atc refused the start, and returns `done`                                                                                           |
+| `coding.start` unknown, sent to you                     | sends the report target a waking `task_message` that says nixie asked you whether the session started; your answer lands as the action's next outcome                         |
+| `coding.steer` done                                     | writes `coding.steered`                                                                                                                                                       |
+| `coding.steer` failed, or unknown sent to you           | sends the report target a waking `task_message` that says the session did not get the steer, or may have, with the reason                                                     |
+| a `task_message` or `owner_message` to the task         | queues a `coding.message` action, caused by that record                                                                                                                       |
+| `coding.message` done                                   | writes `coding.delivered`, and replies with each held answer whose `messageRef` it matches                                                                                    |
+| `coding.message` failed, or unknown sent to you         | replies to the message's sender that the session did not get it, or may not have                                                                                              |
+| `trigger.task_input`, `answered` or `unanswered`        | replies to the sender of the note that `coding.delivered` matches by `messageRef`, with `replyTo` set to it                                                                   |
+| `trigger.task_input`, `state` or `note` in the wake set | sends the report target a `task_message` of kind `progress` that wakes it, with the state and the question, or the note's label and text                                      |
+| `trigger.task_input`, `state` `ended`                   | ends the task run with a report, and returns `done`; when the wake set lists `ended`, also sends the report target a waking `progress` message                                |
 
 - nixie writes no record of an unknown outcome while it reconciles one, so the step sees only the
   unknown outcomes sent to you.
@@ -239,27 +266,35 @@ no state returns `wait`.
   session with `coding.read`, and judges whether the work is done, waits on you, or needs a steer.
 - An answer can reach the inbox before the outcome of its note's action. When no `coding.delivered`
   matches an answer and a `coding.message` action of the task is not yet done or failed (queued,
-  held by a pause, in an attempt, or unknown), the step stops at the answer. It marks read every
-  record before the answer, leaves the answer and every later record unread, and sets a timer 5 s
-  out. The timer wakes the next step, which handles the answer the same way, until the outcome
-  lands. When none is pending and none matches, the step drops the answer: it answers a note that
-  nixie never sent.
+  held by a pause, in an attempt, or unknown), the step writes `coding.answer_held` and marks the
+  answer read. The note's done outcome wakes a later step, which replies with the held answer. When
+  no such action is pending and none matches, the step drops the answer: it answers a note that
+  nixie never sent. A held answer whose note fails, and every held answer when the task ends, is
+  dropped.
 - The report's summary is the session's last reply from the adapter's
   [`read`](atc.md#the-coding-adapter), cut to 8,000 characters. When the read fails or the reply is
   null, the summary is "The session ended, and nixie could not read its final reply."
-- Each text the step forwards from the session is outside content: each `task_message` carries
-  `source: 'untrusted'`, and the model that reads it sees its text marked as outside content.
+- Each text the step forwards from the session is outside content, and the model that reads such a
+  message sees its body marked as outside content.
 - Each message the step sends has the hop in `coding_sessions.hop`, plus 1. A loop of messages
   between the conversation and a session therefore stops at the hop limit.
 
 A runner with no model already returns its report in `StepResult.run.report`. The step result gains
-one field:
+two fields, and a task message gains one:
 
 ```ts
 // tasks module: the port change
 interface StepResult {
   // …existing fields
   actions?: readonly RunnerAction[]; // queued in the commit's transaction, after its lease check
+  // written in the commit's transaction through writeTaskMessage, with the hop-limit hold, the
+  // waits and the wake that every task message gets; `from` is the stepping task
+  messages?: readonly Omit<TaskMessageRequest, 'from'>[];
+}
+
+interface TaskMessageRequest {
+  // …existing fields
+  outside?: boolean; // true: the body is outside content, and the reader's view marks it so
 }
 ```
 
@@ -272,9 +307,14 @@ tasks.list({ runner: 'atc', state: 'waiting', limit: 20 });
 
 // tasks module: `runner` filters on the key that each listed task already shows.
 // A listed task gains `limits: null` for a runner with no meters.
-// coding module: `session` comes from coding_sessions. The API stream sends each change of a row,
-// so the live view shows each coding task's session state as it moves.
+// coding module: `session` comes from coding_sessions, through the definition's `listFields`.
 ```
+
+- The API contract's listed task gains an optional `session` field, in a minor release of
+  `libs/contract`. The API stream sends each change of a `coding_sessions` row as a change of that
+  field.
+- The client's view of a coding task is the work of
+  [supervised sessions in the live view](https://linear.app/zgeoff/issue/GEO-311).
 
 ## Constraints
 
@@ -305,6 +345,9 @@ tasks.list({ runner: 'atc', state: 'waiting', limit: 20 });
   `started`. `ask-stop-joined-sessions` asks on one whose `origin` is `joined`, so nixie asks you
   before it stops a session of yours.
 - [The tools](tools.md#policy) hold the policy of a steer and a note.
+- This work builds on the [decision point cutover](../decision-point-cutover.md), whose stages these
+  rules need, and adds `coding_start` to the policy module's effect names.
+- Only a task's turn calls `task.start`, so every coding task has a report target.
 
 ### Task runs
 
@@ -318,18 +361,19 @@ tasks.list({ runner: 'atc', state: 'waiting', limit: 20 });
 - A coding task ends as `done` when its session ends, started or joined alike. It waits only on
   `gone`, because a session out of sight can come back: a daemon back up, or a host that wakes.
 - A stop, a close or a failure calls the definition's `ended` after its transaction commits.
-- After a stop, `ended` queues a `coding.stop` action for the bound session, started or joined. When
-  it is done, the step writes `coding.session_unbound`. When you deny a joined session's stop, the
-  step writes `coding.session_unbound` and the session runs on in atc.
-- After a close or a failure, `ended` calls `stop` on a started session and logs a failure, and for
-  a joined session writes `coding.session_unbound` and calls no adapter.
+- After a stop, `ended` queues a `coding.stop` action for the bound session, started or joined, and
+  writes `coding.session_unbound` in the same commit. The queue runs the action although the task is
+  stopped, and no step reads its outcome. When you deny a joined session's stop, the session runs on
+  in atc. A failed `coding.stop` leaves the session running, and nixie logs it.
+- After a close or a failure, `ended` calls `stop` on a started session, and writes
+  `coding.session_unbound` once the call answers `ok` or `no_such_session`. For a joined session it
+  writes `coding.session_unbound` at once and calls no adapter.
 - The coding module sweeps when the server starts and every 10 min after, to catch an `ended` call
-  that a crash cut short. For each coding task that is stopped, closed or failed, with a started
-  session whose state is not `ended`, the sweep calls `stop`. A spawn can also finish after a stop.
-  No step then runs to write `coding.session_bound`, so the sweep reads the session's ID from the
-  spawn's outcome, which is a record on the task's thread. For a joined session still bound to such
-  a task, the sweep queues the `coding.stop` that a stop's `ended` never queued, or writes
-  `coding.session_unbound` for a closed or failed task.
+  that a crash or a failed `stop` cut short. For each coding task that is stopped, closed or failed
+  and whose `coding_sessions` row has no `unbound_at`, the sweep does what `ended` does.
+- A spawn can finish after a stop, and no step then writes `coding.session_bound`. The sweep reads
+  the session's ID from the spawn's outcome, a record on the task's thread, calls `stop`, and writes
+  `coding.session_bound` and `coding.session_unbound` once the call answers `ok`.
 - A coding runner lacks `restart` and `interrupt`, so both controls get `runner_lacks_control`. A
   stopped coding task can only be closed.
 - A pause holds the task's queued steers and notes. The session runs on in atc, and its events land

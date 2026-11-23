@@ -53,6 +53,10 @@ interface CodingAdapter {
 // idempotencyKey: '<action ID>', and '<action ID>.<n>' after n refused attempts of the action.
 // An attempt after an unknown outcome keeps the key of the attempt before it.
 
+// actions module: the port change. The queue counts each action's refused attempts on its row, and
+// passes the key above as the `idempotencyKey` of each attempt and each check, in place of the
+// bare action ID. A connector that keeps no key per attempt sees no change until a refusal.
+
 interface SessionBrief {
   name: string;
   prompt: string; // the task's brief
@@ -151,24 +155,31 @@ declare function buildCodingSource(adapter: CodingAdapter, context: CodingContex
 ```
 
 For each `TaskInputEvent`, the core's `deliverTriggerBatch` writes one `trigger.task_input` record
-on the task's thread, in the batch's transaction, with its dedupe key in `trigger_keys`. The record
-is an inbox record when `wake` is true. `buildStepWake` reads the `hop` of a `trigger.task_input`,
-and gives hop 0 to every other waking record that is not a task message.
+on the task's thread, in the batch's transaction, with its dedupe key in `trigger_keys`. It reads no
+definition for such an event, and drops one whose task is missing, done, failed or closed. The
+record is an inbox record when `wake` is true. `buildStepWake` reads the `hop` of a
+`trigger.task_input`, and gives hop 0 to every other waking record that is not a task message.
+
+- The tasks module owns the codec of `trigger.task_input`, because `buildStepWake` reads it and the
+  triggers module already depends on tasks. The triggers core writes the record, and the coding
+  module folds it.
+- The coding module is a new package, `modules/coding`. It depends on tasks, triggers, actions and
+  policy, and `coding-atc` depends only on it.
 
 ### The atc adapter
 
 Each adapter call maps to atc-gateway's tools:
 
-| Adapter call | atc-gateway tools                                                                                      |
-| ------------ | ------------------------------------------------------------------------------------------------------ |
-| `start`      | `atc_events_read` with `limit` 1 and no cursor, then `atc_session_spawn` with `idempotencyKey`         |
-| `join`       | `atc_session_get`, then `atc_events_read` with `limit` 1 and no cursor                                 |
-| `list`       | `atc_sessions_list`, kept to the sessions whose `locator.daemon` and `locator.targetID` are configured |
-| `read`       | `atc_session_get` for the state, `pending`, `result` and `prompt`; `atc_transcript_read` for the tail  |
-| `steer`      | `atc_session_get` for the state, then `atc_terminal_type`                                              |
-| `message`    | `atc_message_send`, with `idempotencyKey`                                                              |
-| `stop`       | `atc_session_stop`                                                                                     |
-| `events`     | `atc_events_read` with a cursor, `waitMs` 25,000 and `limit` 200; `atc_session_get` for each state     |
+| Adapter call | atc-gateway tools                                                                                       |
+| ------------ | ------------------------------------------------------------------------------------------------------- |
+| `start`      | `atc_events_read` with `limit` 1 and no cursor, then `atc_session_spawn` with `idempotencyKey`          |
+| `join`       | `atc_session_get`, then `atc_events_read` with `limit` 1 and no cursor                                  |
+| `list`       | `atc_sessions_list`, kept to the sessions whose `locator.daemon` and `locator.targetID` are configured  |
+| `read`       | `atc_session_get` for the state, `pending`, `result` and `prompt`; `atc_transcript_read` for the tail   |
+| `steer`      | `atc_session_get` for the state, then `atc_terminal_type`                                               |
+| `message`    | `atc_message_send`, with `idempotencyKey`                                                               |
+| `stop`       | `atc_session_stop`                                                                                      |
+| `events`     | `atc_events_read` with a cursor, `waitMs` 25,000 and `limit` 200; `atc_session_get` for a bound session |
 
 - `start`'s first read gives `fromCursor`. The spawn takes a git workspace from `repo`, and the
   `daemon` and `target` from the brief.
@@ -241,12 +252,16 @@ HTTP refusal carries none:
 | `no_such_session`, to a resent spawn                                                                        | `unknown`                                                                |
 | `daemon_unavailable` on a call with no key, `target_unavailable`, `host_unavailable`, `timeout`, `too_slow` | `refused`, `canClear: true`                                              |
 | `permission_pending`, to a steer                                                                            | `refused`, `canClear: true`                                              |
+| `unsupported`, to a note in the session's first minute; `host_leased`, to a stop                            | `refused`, `canClear: true`                                              |
 | HTTP 401, or a connection refused before the request left                                                   | `refused`, `canClear: true`                                              |
 | `idempotency_conflict`                                                                                      | `refused`, `canClear: false`; a bug, since an action's args never change |
 | HTTP 403 `insufficient_scope`, `bad_args`, `target_forbidden`, `session_dead`, `unsupported`                | `refused`, `canClear: false`                                             |
 | `menu_open`, the adapter's own refusal of a steer to a session in `waiting`                                 | `refused`, `canClear: false`                                             |
 | any other code                                                                                              | `refused`, `canClear: false`                                             |
 
+- atc refuses a note with `unsupported` while the session's message bridge has not attached, up to
+  15 s after the session started, and for an agent that takes no notes. The adapter reads the
+  session's start time to tell the two apart.
 - atc's MCP answer carries only the error's code and `problem`, so the adapter cannot tell a daemon
   whose identity changed under a key from a daemon that is down. A keyed call takes either as
   `unknown`, and the queue resends it under the same key.
@@ -387,3 +402,4 @@ service tokens and every tool this adapter calls.
 
 - Internal names, file layout and test layout.
 - The MCP client's name in its initialize, and how the connection reconnects.
+- `CodingContext`, and how the coding source learns that a `coding_sessions` row appeared.

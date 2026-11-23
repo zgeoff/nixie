@@ -113,9 +113,10 @@ a report when the session ends. nixie reads the session's state, last reply and 
   adapter, such as a built-in one that runs a session in an [imp](../../../glossary.md), gets its
   own key and its own `task.start` variant. The wake set, the tools and the `coding.wake` config are
   the same for every adapter, and only `coding.<key>` holds what the adapter needs.
-- **The spawn, each steer, each note and each stop are actions on the action queue.** The spawn and
-  each note declare `idempotency_key` reconciliation, so a crash never spawns a second session. A
-  steer declares `none`, because atc's typing call takes no key and a retry types the line again.
+- **The spawn, each steer, each note and the stop that a stop of the task makes are actions on the
+  action queue.** The spawn and each note declare `idempotency_key` reconciliation, so a crash never
+  spawns a second session. A steer declares `none`, because atc's typing call takes no key and a
+  retry types the line again.
 - **A stop of a coding task stops its session, joined or started, through a `coding.stop` action.**
   The starter rules ask you before nixie stops a session it joined. A close or a failure of the task
   only unbinds a joined session, which runs on in atc as yours.
@@ -147,8 +148,9 @@ a report when the session ends. nixie reads the session's state, last reply and 
   `task.start` tool already sends that root once a second runner can start tasks. Settle it with one
   probe per harness, for `agent-sdk` and `codex`: have the conversation's model call `task.start`
   with both variants in the tool's input schema, and check that the API takes the schema and the
-  call parses. Until the probe passes on a harness, the server leaves the coding variant out of
-  `task.start` on that harness.
+  call parses. This work runs both probes. Until the probe passes on a harness, the server leaves
+  the coding variant out of `task.start` on that harness, through a list in the tasks module's code
+  of the harnesses that passed.
 - **How does a steer avoid a menu that atc cannot see?** atc refuses a typed line while a Claude
   Code permission prompt is open, and the adapter refuses a steer to a session in `waiting`. A menu
   that opens between that check and the keystrokes, or a menu of an agent whose prompts atc never

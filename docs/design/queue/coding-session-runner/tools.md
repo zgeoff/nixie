@@ -50,7 +50,8 @@ coding.message({ task: 't7k2', text: 'FYI: the CI fix for the cache landed on ma
 // coding module: the declarations of the two actions
 const codingSteerDeclaration: EffectDeclaration = {
   effects: ['send'],
-  destinations: [], // filled with '<adapter ID>:<session ID>', such as 'atc:cloud.3f9a1c2e.5d0c…'
+  destinations: ['session'], // the action's arg, which the tool fills from the bound session:
+  // '<adapter ID>:<session ID>', such as 'atc:cloud.3f9a1c2e.5d0c…'
   amount: null,
   content: ['text'],
   results: {},
