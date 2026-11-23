@@ -3,14 +3,14 @@
 - **Status:** draft
 
 Every family of proposal goes through one lifecycle: one row, one lapse sweep, one set of records
-for its outcome, and one message to the proposer about how it ended. Today memory keeps its own
-table and sweep, prompt overrides live outside the shared table, each family names its outcomes
-differently, and a task that proposed something hears only some outcomes. After this design, a
-memory write, a skill write, a rule change, a held action and a prompt override all show in your
-approvals list, can all be deferred, lapse on the same schedule rules, and all report back the same
-way. A held action's task hears the action's own outcome in place of the message. The proposer can
-list its open proposals and those of the tasks it started, withdraw its own, and replace one by
-proposing the same thing again.
+for its outcome, and one way to tell the proposer how it ended. Today memory keeps its own table and
+sweep, prompt overrides live outside the shared table, each family names its outcomes differently,
+and a task that proposed something hears only some outcomes. After this design, a memory write, a
+skill write, a rule change, a held action and a prompt override all show in your approvals list, can
+all be deferred, lapse on the same schedule rules, and all report back the same way. A held action's
+task hears the action's own outcome in place of the message. The proposer can list its open
+proposals and those of the tasks it started, withdraw its own, and replace one by proposing the same
+thing again.
 
 Once the owner approves this design, build each of its work items from it and the built
 [approvals](../../architecture/policy/approvals.md) it extends.
@@ -142,15 +142,16 @@ proposals.withdrawn …existing; written beside proposals.settled until release 
   writes its body record in the same transaction, such as `skills.write_proposed` with the files.
   Handlers find a body by proposal ID.
 - A body record creates a row only when no `proposals.proposed` for that proposal came before it,
-  which holds only for records written before this design. A rebuild over a log that mixes old and
-  new records creates exactly one row per proposal, and a test checks it.
+  which holds only for records written before this design and for prompt records before release N+2.
+  A rebuild over a log that mixes old and new records creates exactly one row per proposal, and a
+  test checks it.
 - When a family's approval record carries data the apply needs, such as `skills.write_approved` with
   edited files, an approval still writes it, beside `proposals.settled`, in every release.
 - The family records for a decline and a lapse stop at release N+2 of the
   [release order](#release-order). Until then `discard` writes them as well, with the answer's
   identity and note. Their codecs and mappers stay, so a rebuild still folds every old record. No
-  family gains a withdrawal record: a withdrawal writes `proposals.withdrawn` and
-  `proposals.settled`.
+  family gains a withdrawal record: a withdrawal writes `proposals.settled`, and
+  `proposals.withdrawn` until N+2.
 - Folding a close onto a row that is already closed changes nothing, so the old and new records can
   land together.
 - A rebuild keeps each row's `lapsesAt`: an old record's mapper keeps its constant, and only
@@ -249,8 +250,8 @@ A prompt override's export after approval stays a note of its own: it isn't a se
   conversation, where the batched note carries it. It writes every other outcome with no thread, and
   sends no message.
 - An action proposal's settlement is never an inbox record. The task hears `action.outcome`, which
-  the action module already writes when an approval queues the action, or when a decline or a lapse
-  fails the held action.
+  the action module writes when an approval queues the action, or when a decline, a lapse or a
+  withdrawal fails the held action.
 - The inbox predicate, the inbox renderer and the turn-note kinds read `proposals.settled` from
   release N+1 of the [release order](#release-order). The same change drops the old decline kinds
   from them, so a proposer never hears one outcome twice.
