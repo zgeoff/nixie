@@ -259,9 +259,6 @@ interface Presence {
 - **One stream per tab.** One stream keeps one keepalive, one reconnect loop and one place that
   registers a client. A browser opens at most 6 HTTP/1.1 connections to one origin across its tabs,
   and one page can hold 3 record streams.
-- **A topic names the data that changed, and the client reads it again.** The reads exist and are
-  tested, and a backup notice or a gateway stop changes with no record to send.
-  [Open question](https://linear.app/zgeoff/issue/GEO-2823).
 - **A record kind marks its topics, and a write with no record marks its own.** The module that owns
   a kind knows what it changes, and the test over every kind catches a new kind with no entry.
   Writes with no record are few, such as a backup notice.
@@ -272,8 +269,6 @@ interface Presence {
 - **The API module owns the client registry.** It serves `sessions.shown` and every stream, and
   hands each reader the narrow view it reads. This moves the registry out of the channels module
   that [the push notice](push-notice.md#presence) named.
-- **`records.follow`, `log.follow` and `devices.follow` stay, deprecated, and serve their events as
-  before.** [Open question](https://linear.app/zgeoff/issue/GEO-2825).
 - **The web client keeps its own reconnect loop.** It resumes by `afterSequence`, so it needs no
   `ClientRetryPlugin` and sends no `Last-Event-ID`. The server's `lastEventId` path serves other
   clients.
@@ -298,12 +293,14 @@ interface Presence {
 - **Does the stream send changed rows or only name what changed?** The owner settles it in
   [GEO-2823](https://linear.app/zgeoff/issue/GEO-2823).
   [The live view](../platform/channels/live-view.md#how-the-client-stays-current) sends each record
-  with its changed projection rows, for every thread. Until then, the stream sends topics and the
-  records of the thread on screen.
+  with its changed projection rows, for every thread. The recommendation is topics: the reads exist
+  and are tested, and a backup notice or a gateway stop changes with no record to send. Until then,
+  the stream sends topics and the records of the thread on screen.
 - **Does a signed-in browser in device mode count as present?** The owner settles it in
   [GEO-2824](https://linear.app/zgeoff/issue/GEO-2824). Until then, device mode never calls
   `sessions.shown`.
 - **When do the old stream procedures leave the published contract?** The owner settles it in
-  [GEO-2825](https://linear.app/zgeoff/issue/GEO-2825). Until then, they stay, deprecated.
+  [GEO-2825](https://linear.app/zgeoff/issue/GEO-2825). Until then, `records.follow`, `log.follow`
+  and `devices.follow` stay, deprecated, and serve their events as before.
 - **Are `live.follow`, its event kinds and the topic names right?** The owner settles it in
   [GEO-2826](https://linear.app/zgeoff/issue/GEO-2826). Until then, the build uses them.
