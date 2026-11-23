@@ -14,7 +14,7 @@ effect declaration you approved. Each call passes the decision point like any of
 result reaches the model inside untrusted markers, and the server's credential never leaves the
 credential store. The first build serves 2 HTTP servers of your own: a work tracker and a
 delivery-metrics server. [The MCP proxy design](../platform/connectors/mcp-proxy.md) sets the rules
-for pins, failed listings and declarations, and this design adds the contracts that build them.
+for pins, failed listings and declarations, and this design adds the contracts the build follows.
 
 ## Shape
 
@@ -42,7 +42,7 @@ flowchart LR
 Both servers serve Streamable HTTP at `/mcp` behind an OAuth server that takes service clients. A
 service client sends its ID, `service:<name>`, and its secret to the token endpoint with the
 `client_credentials` grant, and gets a short-lived access token with no refresh token. Both servers
-refuse a static bearer token. The deployment's private config names their hosts. This doc calls them
+refuse a static bearer token. The deployment's private config holds their hosts. This doc calls them
 `tracker` and `metrics`. The metrics server has only read tools. The tracker's service client holds
 `read`, and `write` waits on [an open question](#open-questions), so the first build tests its write
 path against the stand-in server alone.
@@ -68,7 +68,7 @@ mcp:
       privateRange: null # a CIDR range when the host resolves to a non-public address
 ```
 
-- A server ID matches `^[a-z][a-z0-9]{1,15}$`, and [Names](#names) lists the IDs the load refuses.
+- A server ID matches `^[a-z][a-z0-9]{1,15}$`, and the load refuses the IDs in [Names](#names).
 - `privateRange` is one CIDR range. The load refuses a range that holds a loopback, link-local or
   unspecified address, except in a test build (`NIXIE_TEST_BUILD`).
 
@@ -110,7 +110,7 @@ const fetch = store.fetcher(binding, ['https://tracker.example.internal'], {
 - The fetcher sends the token as `Authorization: Bearer` on every request except the one to
   `tokenURL`. Once the token's `expires_in` has passed, the store exchanges again first.
 - When the server answers 401, the store exchanges once more and resends the request once. A second
-  401 fails the request as `unauthorised`. The server refuses a 401 at its bearer check, before it
+  401 fails the request as `unauthorised`. The server sends a 401 from its bearer check, before it
   runs a tool, so the resend never repeats a write.
 - A token endpoint that answers 400 or 401 fails the request as `unauthorised`, and any other
   failure as `error`.
@@ -214,7 +214,7 @@ mcp_tool_forms, a projection, one row per tool form a server listing has held
   one. A `declare` pins the latest form, so it also clears `stopped_changed` and `stopped_unfit`.
 - A trusted server's change moves the pin to the new hash, description changes included, unless the
   new input schema adds a property at any depth. That change stops the tool as `stopped_changed`,
-  because a new argument may carry a destination or free text that the declaration never names.
+  because a new argument may carry a destination or free text that the declaration leaves out.
 - After a pin move, the fit check runs on the new form. A tool both changed and unfit shows
   `stopped_changed` until the change is allowed, then `stopped_unfit` until a new declaration.
 - A stopped tool, and every tool of a `held` server, stays on each tool list in its pinned form. A
@@ -284,9 +284,9 @@ interface ToolDeclared {
   [snapshot](../platform/policy/rules.md#the-snapshot-hash) holds no proxied tool, so the decision
   point reads a proxied declaration from the registry.
 - A queued proxied tool reaches the action runners through a `findConnector(tool)` lookup, which
-  replaces their fixed map, and the mcp module answers it for proxied tools. `idempotencyKey` has
-  the proxy fill that argument with the action ID. `check` calls the named read tool with the call's
-  input: a result counts as done, and an empty one as not done.
+  replaces their fixed map, and the mcp module answers it for proxied tools. With `idempotencyKey`,
+  the proxy fills that argument with the action ID. With `check`, it calls the named read tool with
+  the call's input, and counts a result as done and an empty one as not done.
 
 ### The registry
 
@@ -457,7 +457,7 @@ const answer: CallToolResult = {
   Until then the service client asks for `read`, and no write tool has a declaration.
 - **Which listener of the work tracker does the proxy call?** The owner settles it in
   [the tracker's listener](https://linear.app/zgeoff/issue/GEO-2833). The recommendation is the
-  public door, as a service client, because the private listener runs every call as you with no
+  public listener, as a service client, because the private listener runs every call as you with no
   token. Until then the config accepts only `service_client` auth.
 - **Is either server trusted?** The owner settles it in
   [trust for the two servers](https://linear.app/zgeoff/issue/GEO-2834). The recommendation is the
