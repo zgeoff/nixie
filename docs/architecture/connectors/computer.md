@@ -281,11 +281,14 @@ device holds the desktop at a time, and the hold lives in memory only.
   transaction that writes an attempt ends, the attempt asks the computer to admit its call, which
   checks the hold and counts the call as running in one synchronous step. When a hold has begun, the
   transaction rolls back, so the attempt leaves no record and makes no call. A take-over after the
-  admission waits for that call. An in-step action starts its attempt the same way.
+  admission waits for that call, and the call runs to its end, because the hold refuses nothing that
+  runs inside an admission. An in-step action starts its attempt the same way. A direct call that
+  would move the view takes an admission of its own, so a take-over called after it waits for it.
 - The take-over waits for the calls running when it was made, each up to its own limit, and a call
   that arrives later is not waited for. An admitted call's limit is the turn wait until its computer
-  call takes the turn, and then that call's limit. The take-over answers `BUSY_TOO_LONG` when a call
-  runs past its limit. A second device gets `HELD_ELSEWHERE`.
+  call takes the turn, and then that call's limit. The admission runs its call in an async context
+  of its own, so only the computer calls inside that context move its limit. The take-over answers
+  `BUSY_TOO_LONG` when a call runs past its limit. A second device gets `HELD_ELSEWHERE`.
 - The relay passes the holder's keys and pointer to the VNC server. Each one holds off the idle
   hand-back, which ends the hold with `idle` after `computer.idle_hand_back_minutes` of no input, 30
   by default. When a hold ends, the relay drops the holder's queued key and pointer messages, and
