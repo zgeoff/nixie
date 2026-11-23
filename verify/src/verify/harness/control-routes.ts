@@ -63,6 +63,10 @@ export const controlRoutes = {
       // to that picture, and a list of its pictures
       draw: drawnPictureSchema.optional(),
 
+      // an ask the model makes with the computer.handover tool before its reply, for the user to
+      // take over the computer
+      handover: z.strictObject({ reason: z.string().min(1) }).optional(),
+
       // 2 notes the model writes with the notebook tool before its reply, the second private, and
       // a link from the second to the first
       notebook: writtenNotesSchema.optional(),

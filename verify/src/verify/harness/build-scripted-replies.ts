@@ -38,6 +38,18 @@ export function buildScriptedReplies(
       ? []
       : [{ toolUse: { name: 'mcp__nixie__notebook_forget', input: { id: reply.forgetNote } } }];
 
+  const handover =
+    reply.handover === undefined
+      ? []
+      : [
+          {
+            toolUse: {
+              name: 'mcp__nixie__computer_handover',
+              input: { reason: reply.handover.reason },
+            },
+          },
+        ];
+
   if (reply.task === undefined) {
     return [
       ...memory,
@@ -45,6 +57,7 @@ export function buildScriptedReplies(
       ...drawing,
       ...notebook,
       ...forgetNote,
+      ...handover,
       { text: reply.text },
     ];
   }

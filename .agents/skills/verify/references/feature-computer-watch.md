@@ -65,7 +65,23 @@ that turn no reply, so the turn fails.
 
    Expect: all three commands exit 0. The second visit watches again with a new address.
 
-5. Take over the desktop, and check the record:
+5. Script the assistant's ask for a take-over, send a message, and wait for the banner. The scripted
+   turn calls `computer.handover` with the reason, then replies:
+
+   ```bash
+   bun verify action script-reply --handover '{"reason":"itch.io asks for a CAPTCHA"}' --text 'I asked you to take over.'
+   bun verify browser goto /
+   bun verify browser type --role textbox --name Message --value 'Please sign in on itch.io.'
+   bun verify browser click --role button --name Send
+   bun verify conversation turn --message 'Please sign in on itch.io.' --reply 'I asked you to take over.'
+   bun verify browser snapshot --until-text 'asks you to take over the computer: itch.io asks for a CAPTCHA'
+   bun verify db query "select kind from records where kind like 'computer.handover_%' order by sequence"
+   ```
+
+   Expect: each command exits 0, and `data.replies` of the first is 2. The snapshot shows a banner
+   with the reason and a button "Take over". The query returns one row, `computer.handover_asked`.
+
+6. Answer the ask with the banner's Take over button, and check the records:
 
    ```bash
    bun verify browser click --role button --name 'Take over'
@@ -73,10 +89,11 @@ that turn no reply, so the turn fails.
    bun verify db query "select kind from records where kind like 'computer.takeover_%' order by sequence"
    ```
 
-   Expect: all three commands exit 0. The snapshot shows a button "Hand back". The query returns one
-   row, `computer.takeover_started`.
+   Expect: all three commands exit 0. The page is `/computer`. It shows a button "Hand back" and no
+   banner. The query returns one row, `computer.takeover_started`. A take-over answers the ask, so
+   no `computer.handover_closed` record follows it.
 
-6. Hand the desktop back, and check the records:
+7. Hand the desktop back, and check the records:
 
    ```bash
    bun verify browser click --role button --name 'Hand back'
@@ -93,7 +110,10 @@ that turn no reply, so the turn fails.
   the desktop image.
 - In step 3, no stored result held a watch address.
 - In step 4, a second visit watched again.
-- In step 5, the page offered "Hand back" and nixie held one start record.
-- In step 6, the page offered "Take over" again and nixie held the start record and the end record.
+- In step 5, the page showed the banner with the assistant's reason, and nixie held one
+  `computer.handover_asked` record.
+- In step 6, the banner's Take over opened the computer page, which offered "Hand back" with no
+  banner, and nixie held one start record.
+- In step 7, the page offered "Take over" again and nixie held the start record and the end record.
 
 Once the end state matches, run `bun verify done`.

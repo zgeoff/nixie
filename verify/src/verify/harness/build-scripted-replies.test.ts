@@ -88,6 +88,23 @@ test('it queues a draw, an edit of the drawn picture, and a list before the repl
   ]);
 });
 
+test('it queues a handover ask with its reason before the reply', () => {
+  const replies = buildScriptedReplies({
+    text: 'I asked you to take over.',
+    handover: { reason: 'itch.io asks for a CAPTCHA' },
+  });
+
+  expect(replies).toStrictEqual([
+    {
+      toolUse: {
+        name: 'mcp__nixie__computer_handover',
+        input: { reason: 'itch.io asks for a CAPTCHA' },
+      },
+    },
+    { text: 'I asked you to take over.' },
+  ]);
+});
+
 test('it queues a send of a picture after the list when the draw asks for it', () => {
   const replies = buildScriptedReplies({
     text: 'Here is the picture.',

@@ -157,7 +157,7 @@ export function createVerifyRegistry(): Wringer {
     .action({
       name: 'script-reply',
       summary:
-        "Queue the scripted model's next reply. With --memory it first proposes that memory, with --export it first asks to export memory, with --task it first starts that task, and with --notebook it first writes 2 notes, one private, and links them, and with --forget-note it first forgets the note with that short ID",
+        "Queue the scripted model's next reply. With --memory it first proposes that memory, with --export it first asks to export memory, with --task it first starts that task, with --handover it first asks the user to take over the computer, for that reason, with --notebook it first writes 2 notes, one private, and links them, and with --forget-note it first forgets the note with that short ID",
       effect: 'write',
       targets: ['local'],
       input: controlRoutes.addReply.input,
