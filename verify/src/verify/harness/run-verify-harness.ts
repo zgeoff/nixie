@@ -4,6 +4,7 @@ import { createSpawnedNixie, createTestClient, readTestBundle } from '@heynixie/
 import { createBuiltWeb, createFrontProxy, readWebBuild } from '@heynixie/web/test-utils';
 import { buildScriptedReplies } from './build-scripted-replies';
 import { runComputerSession } from './run-computer-session';
+import { runDeviceLayout } from './run-device-layout';
 import { runDeviceShow } from './run-device-show';
 import { serveControl } from './serve-control';
 
@@ -82,6 +83,12 @@ export async function runVerifyHarness(): Promise<void> {
         siteURL: `http://pages.test:${String(site.port)}/`,
       }),
     showOnDevice: (show) => runDeviceShow(api.client, nixie.model, show),
+    layoutOnDevice: (layout) => runDeviceLayout(api.client, nixie.model, layout),
+    advanceClock: async (minutes) => {
+      await nixie.harness.advance(minutes * 60_000);
+
+      return minutes;
+    },
     readTasks: async () => {
       const listed = await api.client.tasks.list();
       const records = await nixie.readRecords();

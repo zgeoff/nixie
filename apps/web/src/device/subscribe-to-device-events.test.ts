@@ -29,7 +29,7 @@ function setupTest() {
     subscribe: (handlers: Handlers) =>
       subscribeToDeviceEvents({
         client: buildBrowserClient(),
-        readPixels: () => ({ width: 1920, height: 480 }),
+        readPixels: () => ({ width: 1920, height: 480, pixelRatio: 1 }),
         onConnection: handlers.onConnection,
         onEvent: handlers.onEvent,
         signal: following.signal,

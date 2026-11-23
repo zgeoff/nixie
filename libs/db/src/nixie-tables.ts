@@ -114,6 +114,16 @@ export interface NixieTables {
     readonly label: string;
     readonly created_at: number;
   };
+  readonly device_layouts: {
+    readonly device_id: string;
+    readonly layout_sequence: number;
+    readonly updated_at: number;
+  };
+  readonly device_regions: {
+    readonly device_id: string;
+    readonly region: string;
+    readonly shown_sequence: number;
+  };
   readonly devices: {
     readonly device_id: string;
     readonly identity_id: string;

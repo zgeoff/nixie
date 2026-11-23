@@ -23,7 +23,7 @@ test('#readDeviceImage reads an image that the device shows', async () => {
 
   await ctx.seed.image('k3x9m2p7qa');
 
-  ctx.streams.open(device.deviceID, { width: 1920, height: 480 });
+  ctx.streams.open(device.deviceID, { width: 1920, height: 480, pixelRatio: 1 });
 
   await ctx.call('device.show', {
     device: device.deviceID,
@@ -77,7 +77,7 @@ test('#readDeviceImage refuses an image that a later show replaced', async () =>
 
   await ctx.seed.image('k3x9m2p7qa');
 
-  ctx.streams.open(device.deviceID, { width: 1920, height: 480 });
+  ctx.streams.open(device.deviceID, { width: 1920, height: 480, pixelRatio: 1 });
 
   await ctx.call('device.show', {
     device: device.deviceID,
@@ -88,6 +88,77 @@ test('#readDeviceImage refuses an image that a later show replaced', async () =>
     device: device.deviceID,
     content: { kind: 'markdown', text: '# Saturday' },
   });
+
+  const image = await ctx.readImage(device.identityID, 'k3x9m2p7qa');
+
+  expect(image).toBeNull();
+});
+
+test('#readDeviceImage reads an image that a region of the layout shows', async () => {
+  const ctx = await setupTest();
+  const device = await ctx.seed.screenOnDevice();
+
+  await ctx.seed.image('k3x9m2p7qa');
+
+  ctx.streams.open(device.deviceID, { width: 1920, height: 480, pixelRatio: 1 });
+
+  await ctx.seed.layout(device.deviceID);
+
+  await ctx.call('device.region', {
+    device: device.deviceID,
+    region: 'pond',
+    content: { kind: 'image', image: 'k3x9m2p7qa', fit: 'fill' },
+  });
+
+  const image = await ctx.readImage(device.identityID, 'k3x9m2p7qa');
+
+  expect(image).toStrictEqual({ mediaType: 'image/png', bytes: new Uint8Array([1, 2, 3]) });
+});
+
+test('#readDeviceImage reads an image of a region while a show covers the layout', async () => {
+  const ctx = await setupTest();
+  const device = await ctx.seed.screenOnDevice();
+
+  await ctx.seed.image('k3x9m2p7qa');
+
+  ctx.streams.open(device.deviceID, { width: 1920, height: 480, pixelRatio: 1 });
+
+  await ctx.seed.layout(device.deviceID);
+
+  await ctx.call('device.region', {
+    device: device.deviceID,
+    region: 'pond',
+    content: { kind: 'image', image: 'k3x9m2p7qa', fit: 'fill' },
+  });
+
+  await ctx.call('device.show', {
+    device: device.deviceID,
+    content: { kind: 'markdown', text: '# Saturday' },
+  });
+
+  const image = await ctx.readImage(device.identityID, 'k3x9m2p7qa');
+
+  expect(image).toStrictEqual({ mediaType: 'image/png', bytes: new Uint8Array([1, 2, 3]) });
+});
+
+test('#readDeviceImage refuses an image that a region showed before its minutes passed', async () => {
+  const ctx = await setupTest();
+  const device = await ctx.seed.screenOnDevice();
+
+  await ctx.seed.image('k3x9m2p7qa');
+
+  ctx.streams.open(device.deviceID, { width: 1920, height: 480, pixelRatio: 1 });
+
+  await ctx.seed.layout(device.deviceID);
+
+  await ctx.call('device.region', {
+    device: device.deviceID,
+    region: 'pond',
+    content: { kind: 'image', image: 'k3x9m2p7qa', fit: 'fill' },
+    minutes: 5,
+  });
+
+  ctx.clock.advance(6 * 60_000);
 
   const image = await ctx.readImage(device.identityID, 'k3x9m2p7qa');
 

@@ -2,8 +2,10 @@ import type { Clock } from '@heynixie/clock';
 import type { Log } from '@heynixie/log';
 import { startRecordWake, subscribeToCommits } from '@heynixie/log';
 import { readDeviceByShortID } from '../device/read-device-by-short-id';
+import { readLayout } from '../layout/read-layout';
+import { toLayoutState } from '../layout/to-layout-state';
 import { readScreenState } from '../screen/read-screen-state';
-import type { ScreenPixels, ScreenState } from '../types';
+import type { LayoutState, ScreenPixels, ScreenState } from '../types';
 import type { DeviceStreams } from './create-device-streams';
 import { pickWakeDelayMs } from './pick-wake-delay-ms';
 
@@ -16,11 +18,12 @@ export interface FollowDeviceOptions {
   readonly signal?: AbortSignal | undefined;
 }
 
-// The events of one open stream: what the screen shows now, then each change. Every commit makes
-// the stream read the screen again, and a state that did not change sends nothing.
+// The events of one open stream: what the screen shows now, then each change. The layout comes in
+// events of its own, so a show that covers it does not drop it. A state that did not change sends
+// nothing, and a device with no layout gets no layout event.
 export async function* followDevice(
   options: FollowDeviceOptions,
-): AsyncGenerator<ScreenState, void, undefined> {
+): AsyncGenerator<ScreenState | LayoutState, void, undefined> {
   const stream = options.streams.open(options.deviceID, options.pixels);
 
   const wake = startRecordWake({
@@ -28,7 +31,7 @@ export async function* followDevice(
     ...(options.signal === undefined ? {} : { signal: options.signal }),
   });
 
-  const sent = { last: '' };
+  const sent = { screen: '', layout: JSON.stringify(toLayoutState(null)) };
 
   try {
     while (options.signal?.aborted !== true) {
@@ -43,15 +46,24 @@ export async function* followDevice(
       const nowMs = options.clock.now();
 
       const state = await readScreenState(options.log, device, nowMs);
+      const layout = await readLayout(options.log, device.deviceID, nowMs);
 
-      const key = JSON.stringify(state);
+      const screenKey = JSON.stringify(state);
 
-      if (key !== sent.last) {
-        sent.last = key;
+      if (screenKey !== sent.screen) {
+        sent.screen = screenKey;
         yield state;
       }
 
-      await waitForChange(wake.wait(), pickWakeDelayMs(state, nowMs));
+      const layoutState = toLayoutState(layout);
+      const layoutKey = JSON.stringify(layoutState);
+
+      if (layoutKey !== sent.layout) {
+        sent.layout = layoutKey;
+        yield layoutState;
+      }
+
+      await waitForChange(wake.wait(), options.clock, pickWakeDelayMs(state, layout, nowMs));
     }
   } finally {
     wake.stop();
@@ -59,23 +71,22 @@ export async function* followDevice(
   }
 }
 
-async function waitForChange(woken: Promise<void>, delayMs: number | null): Promise<void> {
+// Waits for a commit, or for the delay on the stream's own clock, so a clock that a test or a
+// verify run moves forward wakes the stream as a real minute would.
+async function waitForChange(
+  woken: Promise<void>,
+  clock: Clock,
+  delayMs: number | null,
+): Promise<void> {
   if (delayMs === null) {
     await woken;
 
     return;
   }
 
-  const timer: { id: ReturnType<typeof setTimeout> | null } = { id: null };
+  const sleeping = new AbortController();
 
-  await Promise.race([
-    woken,
-    new Promise<void>((resolve) => {
-      timer.id = setTimeout(resolve, delayMs);
-    }),
-  ]);
+  await Promise.race([woken, clock.sleep(delayMs, sleeping.signal)]);
 
-  if (timer.id !== null) {
-    clearTimeout(timer.id);
-  }
+  sleeping.abort();
 }

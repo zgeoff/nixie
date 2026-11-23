@@ -11,6 +11,12 @@ export interface ControlHandlers {
     show: z.output<typeof controlRoutes.showOnDevice.input>,
   ) => Promise<number>;
 
+  readonly layoutOnDevice: (
+    layout: z.output<typeof controlRoutes.layoutOnDevice.input>,
+  ) => Promise<number>;
+
+  readonly advanceClock: (minutes: number) => Promise<number>;
+
   readonly useComputer: (use: z.output<typeof controlRoutes.useComputer.input>) => Promise<number>;
 
   readonly readTasks: () => Promise<z.input<typeof controlRoutes.tasks.output>>;
@@ -37,6 +43,16 @@ export function serveControl(handlers: ControlHandlers): Bun.Server<undefined> {
       [controlRoutes.showOnDevice.path]: {
         POST: makeRouteHandler(controlRoutes.showOnDevice, async (show) => ({
           replies: await handlers.showOnDevice(show),
+        })),
+      },
+      [controlRoutes.layoutOnDevice.path]: {
+        POST: makeRouteHandler(controlRoutes.layoutOnDevice, async (layout) => ({
+          replies: await handlers.layoutOnDevice(layout),
+        })),
+      },
+      [controlRoutes.advanceClock.path]: {
+        POST: makeRouteHandler(controlRoutes.advanceClock, async (advance) => ({
+          minutes: await handlers.advanceClock(advance.minutes),
         })),
       },
       [controlRoutes.useComputer.path]: {

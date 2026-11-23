@@ -2,7 +2,7 @@ import { expect, test } from 'bun:test';
 import { seedImage } from '@heynixie/connectors/test-utils';
 import { clientHeaderName, contract, sessionCookieName } from '@heynixie/contract';
 import { readDeviceByIdentity } from '@heynixie/devices';
-import { buildDeviceToolCaller } from '@heynixie/devices/test-utils';
+import { makeDeviceToolCaller } from '@heynixie/devices/test-utils';
 import { createConversationTask } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
 import { buildTestClient } from '../test-utils/build-test-client';
@@ -42,7 +42,7 @@ async function setupTest() {
     ...api,
     ownerClient,
     enrol,
-    call: buildDeviceToolCaller({
+    call: makeDeviceToolCaller({
       log: api.context.log,
       definitions: api.context.definitions,
       clock: api.context.clock,
@@ -242,7 +242,7 @@ test('it updates the size that devices.list reads when a full session resizes', 
   );
 
   await events.next();
-  await session.client.devices.resize({ width: 1024, height: 768 });
+  await session.client.devices.resize({ width: 1024, height: 768, pixelRatio: 2 });
 
   const listed = await ctx.call('devices.list', {});
 
@@ -251,7 +251,12 @@ test('it updates the size that devices.list reads when a full session resizes', 
   expect(listed).toStrictEqual({
     status: 'ok',
     result: {
-      devices: [expect.objectContaining({ online: true, pixels: { width: 1024, height: 768 } })],
+      devices: [
+        expect.objectContaining({
+          online: true,
+          pixels: { width: 1024, height: 768, pixelRatio: 2 },
+        }),
+      ],
     },
   });
 });
@@ -290,8 +295,14 @@ test('it resizes only the open streams of the session that resizes when 2 device
     status: 'ok',
     result: {
       devices: expect.toIncludeSameMembers([
-        expect.objectContaining({ name: 'desk panel', pixels: { width: 640, height: 480 } }),
-        expect.objectContaining({ name: 'kitchen tab', pixels: { width: 1024, height: 768 } }),
+        expect.objectContaining({
+          name: 'desk panel',
+          pixels: { width: 640, height: 480, pixelRatio: 1 },
+        }),
+        expect.objectContaining({
+          name: 'kitchen tab',
+          pixels: { width: 1024, height: 768, pixelRatio: 1 },
+        }),
       ]),
     },
   });
@@ -426,7 +437,12 @@ test('it updates the size that devices.list reads when a session resizes', async
   expect(listed).toStrictEqual({
     status: 'ok',
     result: {
-      devices: [expect.objectContaining({ online: true, pixels: { width: 1024, height: 768 } })],
+      devices: [
+        expect.objectContaining({
+          online: true,
+          pixels: { width: 1024, height: 768, pixelRatio: 1 },
+        }),
+      ],
     },
   });
 });

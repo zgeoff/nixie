@@ -17,6 +17,7 @@ export type {
   ApprovedRun,
 } from './approved-call/run-approved-call';
 
+export { runApprovedCall } from './approved-call/run-approved-call';
 export type { ToolCallOptions, ToolCallRequest } from './run-tool-call';
 export { runToolCall } from './run-tool-call';
 export type { ToolEndpointOptions } from './start-tool-endpoint';

@@ -4,6 +4,7 @@ export type {
   DeviceCapabilities,
   DeviceCapability,
   Device,
+  LayoutState,
   ScreenPixels,
   ScreenState,
 } from './types';

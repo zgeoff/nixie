@@ -21,14 +21,16 @@ function setupTest() {
 
   return {
     buildServerPixels: (pixels: ScreenPixels): RefObject<ScreenPixels> => ({ current: pixels }),
-    resizeTo: (next: ScreenPixels) => {
+    resizeTo: (next: Pick<ScreenPixels, 'width' | 'height'>) => {
       globalThis.innerWidth = next.width;
       globalThis.innerHeight = next.height;
 
       globalThis.dispatchEvent(new Event('resize'));
     },
     readResizes: () =>
-      deviceStore.resizes.findMany().map((row) => ({ width: row.width, height: row.height })),
+      deviceStore.resizes
+        .findMany()
+        .map((row) => ({ width: row.width, height: row.height, pixelRatio: row.pixelRatio })),
   };
 }
 
@@ -37,7 +39,7 @@ test('it sends one resize with the latest size after a burst of resize events', 
 
   await createDeviceSession();
 
-  const serverPixels = ctx.buildServerPixels({ width: 1, height: 1 });
+  const serverPixels = ctx.buildServerPixels({ width: 1, height: 1, pixelRatio: 1 });
 
   renderHook(() => {
     useScreenResize(true, serverPixels);
@@ -54,6 +56,7 @@ test('it sends one resize with the latest size after a burst of resize events', 
     {
       width: Math.round(710 * globalThis.devicePixelRatio),
       height: Math.round(510 * globalThis.devicePixelRatio),
+      pixelRatio: globalThis.devicePixelRatio,
     },
   ]);
 });
@@ -69,7 +72,7 @@ test('it sends the size again when a reconnect left the server with another size
     useScreenResize(true, serverPixels);
   });
 
-  serverPixels.current = { width: 640, height: 480 };
+  serverPixels.current = { width: 640, height: 480, pixelRatio: 1 };
 
   ctx.resizeTo({ width: globalThis.innerWidth, height: globalThis.innerHeight });
 
@@ -99,7 +102,7 @@ test('it sends the size again on the next resize event after a failed resize', a
     ),
   );
 
-  const serverPixels = ctx.buildServerPixels({ width: 1, height: 1 });
+  const serverPixels = ctx.buildServerPixels({ width: 1, height: 1, pixelRatio: 1 });
 
   renderHook(() => {
     useScreenResize(true, serverPixels);
@@ -140,7 +143,7 @@ test('it sends the size again when a reconnect changed the size of the server wh
     ),
   );
 
-  const serverPixels = ctx.buildServerPixels({ width: 1, height: 1 });
+  const serverPixels = ctx.buildServerPixels({ width: 1, height: 1, pixelRatio: 1 });
 
   renderHook(() => {
     useScreenResize(true, serverPixels);
@@ -152,7 +155,7 @@ test('it sends the size again when a reconnect changed the size of the server wh
     expect(received).toHaveLength(1);
   });
 
-  serverPixels.current = { width: 1024, height: 768 };
+  serverPixels.current = { width: 1024, height: 768, pixelRatio: 1 };
 
   ctx.resizeTo({ width: 700, height: 500 });
 
@@ -193,7 +196,7 @@ test('it sends the size again when a resize event arrived while a failing resize
     ),
   );
 
-  const serverPixels = ctx.buildServerPixels({ width: 1, height: 1 });
+  const serverPixels = ctx.buildServerPixels({ width: 1, height: 1, pixelRatio: 1 });
 
   renderHook(() => {
     useScreenResize(true, serverPixels);

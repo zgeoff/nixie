@@ -7,9 +7,16 @@ import type { ScreenPixels } from './read-screen-pixels';
 import { readScreenPixels } from './read-screen-pixels';
 import { subscribeToDeviceEvents } from './subscribe-to-device-events';
 
+export type ScreenEvent = Exclude<DeviceEvent, { kind: 'layout' }>;
+
+export type DeviceLayout = Extract<DeviceEvent, { kind: 'layout' }>['layout'];
+
 export interface DeviceEvents {
   // what the screen shows now, or null before the stream's first event
-  readonly event: DeviceEvent | null;
+  readonly event: ScreenEvent | null;
+
+  // the layout the device holds, which a show covers and the screen event leaves alone
+  readonly layout: DeviceLayout;
   readonly connection: 'connecting' | 'open' | 'lost' | 'refused';
 }
 
@@ -20,7 +27,12 @@ export function useDeviceEvents(
   serverPixels: RefObject<ScreenPixels>,
 ): DeviceEvents {
   const nixie = useNixieClient();
-  const [events, setEvents] = useState<DeviceEvents>({ event: null, connection: 'connecting' });
+
+  const [events, setEvents] = useState<DeviceEvents>({
+    event: null,
+    layout: null,
+    connection: 'connecting',
+  });
 
   useEffect(() => {
     if (!isScreenOn) {
@@ -29,7 +41,7 @@ export function useDeviceEvents(
 
     const controller = new AbortController();
 
-    setEvents({ event: null, connection: 'connecting' });
+    setEvents({ event: null, layout: null, connection: 'connecting' });
 
     void subscribeToDeviceEvents({
       client: nixie.client,
@@ -44,7 +56,9 @@ export function useDeviceEvents(
         setEvents((current) => ({ ...current, connection }));
       },
       onEvent: (event) => {
-        setEvents((current) => ({ ...current, event }));
+        setEvents((current) =>
+          event.kind === 'layout' ? { ...current, layout: event.layout } : { ...current, event },
+        );
       },
       signal: controller.signal,
       startTimer: startPlatformTimer,

@@ -78,3 +78,5 @@ GEO-2727: POST /definitions/listTasks removed the required property `definitions
 GEO-2727: POST /reminders/list added `subschema #1, subschema #2` to the `reminders/items/trigger/anyOf[subschema #1]/schedule` response property `anyOf` list for the response status `200`
 GEO-2727: POST /reminders/list the `reminders/items/trigger/anyOf[subschema #1]/schedule` response's property `type` changed from `object` to `any` for status `200`
 GEO-2727: POST /reminders/list removed the required property `reminders/items/trigger/anyOf[subschema #1]/schedule/every` from the response with the `200` status
+# GEO-2805: a client of the last release still works until the assistant saves a layout, because the stream sends a layout event only for a device that holds a layout, and no device holds one before the assistant first saves one. The new layout event only adds to the union.
+GEO-2805: POST /devices/follow added `subschema #3` to the `oneOf[subschema #1]/data` response property `anyOf` list for the response status `200`

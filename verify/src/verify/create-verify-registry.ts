@@ -12,12 +12,13 @@ import { match } from 'ts-pattern';
 import { z } from 'zod';
 import { buildHostCLIArgv } from './build-host-cli-argv';
 import { conversationRecordSchema } from './collect-conversation-records';
+import { deviceFeatures } from './device-features';
 import { featurePaths, ignoredPaths, sharedPaths } from './feature-paths';
 import { controlRoutes } from './harness/control-routes';
-import type { ControlRoute } from './harness/control-routes';
 import { parseEnrolmentCode } from './parse-enrolment-code';
 import { pickProposalRefusal } from './pick-proposal-refusal';
 import { pickTaskRefusal } from './pick-task-refusal';
+import { postControl } from './post-control';
 import { buildServedBlobsArgv, servedSourceFolders } from './preview/build-served-blobs-argv';
 import type { ServedContainer } from './preview/build-served-blobs-argv';
 import { createPreviewHost } from './preview/create-preview-host';
@@ -173,6 +174,26 @@ export function createVerifyRegistry(): Wringer {
       input: controlRoutes.showOnDevice.input,
       data: controlRoutes.showOnDevice.output,
       run: (input, ctx) => postControl(ctx.drivers.http, controlRoutes.showOnDevice, input),
+    })
+    .action({
+      name: 'layout-on-device',
+      summary:
+        'Send an owner message, and queue the scripted model turn that works on the first device it lists: --step set lays its screen out in 3 regions and fills them, the first for 1 minute, and --step update replaces the text of the second region. --text is the closing reply',
+      effect: 'write',
+      targets: ['local'],
+      input: controlRoutes.layoutOnDevice.input,
+      data: controlRoutes.layoutOnDevice.output,
+      run: (input, ctx) => postControl(ctx.drivers.http, controlRoutes.layoutOnDevice, input),
+    })
+    .action({
+      name: 'advance-clock',
+      summary:
+        "Move nixie's clock forward by --minutes, so content that lasts minutes ends with no wait",
+      effect: 'write',
+      targets: ['local'],
+      input: controlRoutes.advanceClock.input,
+      data: controlRoutes.advanceClock.output,
+      run: (input, ctx) => postControl(ctx.drivers.http, controlRoutes.advanceClock, input),
     })
     .action({
       name: 'use-computer',
@@ -418,35 +439,11 @@ export function createVerifyRegistry(): Wringer {
         summary: "Watch the assistant's desktop",
         paths: featurePaths['computer-watch'],
       },
-      {
-        name: 'device-in-browser',
-        summary: 'Make a signed-in browser a device',
-        paths: featurePaths['device-in-browser'],
-      },
-      {
-        name: 'device-screen',
-        summary: 'Enrol a device and see a picture on it',
-        paths: featurePaths['device-screen'],
-      },
+      ...deviceFeatures,
     )
     .shared(...sharedPaths)
     .ignore(...ignoredPaths)
     .build();
-}
-
-async function postControl<Input extends z.ZodType, Output extends z.ZodType>(
-  client: HttpClient,
-  route: ControlRoute<Input, Output>,
-  input: z.input<Input>,
-): Promise<z.output<Output>> {
-  const request =
-    route.method === 'GET'
-      ? ({ method: 'GET', path: route.path } as const)
-      : ({ method: 'POST', path: route.path, json: input } as const);
-
-  const response = await client.request(request);
-
-  return route.output.parse(response.json);
 }
 
 // The harness's control routes read these checks' state, and only `local` runs the harness.
