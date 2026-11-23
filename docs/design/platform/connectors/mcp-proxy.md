@@ -5,17 +5,18 @@
 Every external server, your own included, reaches the model only through nixie's proxy. nixie is the
 MCP client, and each of the server's tools becomes one of nixie's tools, with a pinned hash, an
 effect declaration you make, and a name prefixed with the server's ID. The proxy uses the v2
-TypeScript MCP client and arrives with the first external server, a hosted MCP server of your own
-reached over HTTPS. The [MCP proxy build](../../queue/mcp-proxy-build.md) holds the contracts.
+TypeScript MCP client and arrives with its first 2 servers, a work tracker and a delivery-metrics
+server of your own, reached over HTTPS. The [MCP proxy build](../../queue/mcp-proxy-build.md) holds
+the contracts.
 
 ## Adding a server
 
-| Field     | Holds                                                            |
-| --------- | ---------------------------------------------------------------- |
-| ID        | A short slug, such as `notes`, which prefixes every tool name    |
-| Transport | A Streamable HTTP URL, or a command that runs over stdio         |
-| Trusted   | Whether a changed tool applies with a notice instead of stopping |
-| Auth      | None, a static token in the credential store, or OAuth           |
+| Field     | Holds                                                                               |
+| --------- | ----------------------------------------------------------------------------------- |
+| ID        | A short slug, such as `notes`, which prefixes every tool name                       |
+| Transport | A Streamable HTTP URL, or a command that runs over stdio                            |
+| Trusted   | Whether a changed tool applies with a notice instead of stopping                    |
+| Auth      | None, a static token or a service client's secret in the credential store, or OAuth |
 
 Adding a server and marking it trusted are widenings, so each asks once. Removing a server or
 clearing its trusted mark narrows and applies at once.
