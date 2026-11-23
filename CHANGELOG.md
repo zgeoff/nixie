@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.105.1](https://github.com/zgeoff/nixie/compare/v0.105.0...v0.105.1) (2026-11-23)
+
+
+### Bug Fixes
+
+* **deps:** update patch updates ([#1120](https://github.com/zgeoff/nixie/issues/1120)) ([57751f6](https://github.com/zgeoff/nixie/commit/57751f6f79ea1be5b66f836caa593a18a10fb7cb))
+* **model-gateway:** stop charging a stream that only carried an error ([#1409](https://github.com/zgeoff/nixie/issues/1409)) ([66696f7](https://github.com/zgeoff/nixie/commit/66696f7a51916aa9b05ad94ca5fdd236261d7c05))
+
 ## [0.105.0](https://github.com/zgeoff/nixie/compare/v0.104.0...v0.105.0) (2026-11-23)
 
 
