@@ -7,8 +7,8 @@ for its outcome, and one way to tell the proposer how it ended. Today memory kee
 sweep, prompt overrides live outside the shared table, each family names its outcomes differently,
 and a task that proposed something hears only some outcomes. After this design, a memory write, a
 skill write, a rule change, a held action and a prompt override all show in your approvals list, can
-all be deferred, lapse on the same schedule rules, and all report back the same way. A held action's
-task hears the action's own outcome in place of the message. The proposer can list its open
+all be deferred, lapse by the same rules, and all report back the same way. A held action's task
+hears the action's own outcome in place of a settlement note. The proposer can list its open
 proposals and those of the tasks it started, withdraw its own, and replace one by proposing the same
 thing again.
 
@@ -332,9 +332,9 @@ type PendingRow = {
   approve, decline and defer, and always allow where the family supports it. Prompt overrides gain
   defer.
 - A deferred proposal's lapse uses its family's `lapse_days`, the same value as a fresh one.
-- A new short ID is never reused: it differs from the short ID of every proposal ever made, open or
-  settled. `proposeInTransaction` draws again on a clash. Before release N+2, a clash of a derived
-  memory short ID fails the write.
+- A new short ID differs from the short ID of every proposal ever made, open or settled.
+  `proposeInTransaction` draws again on a clash. Before release N+2, a clash of a derived memory
+  short ID fails the write.
 - The core calls `approve` or `discard` first, and writes `proposals.settled` only when it succeeds,
   in the same transaction. For a family that owns its transaction, such as memory, the core writes
   it in a hook the family calls after its apply, inside that transaction. A refusal, or a memory
@@ -347,8 +347,8 @@ type PendingRow = {
 - Delete the separate skill, rule and action lapse writers and the test-only action answer writer;
   until release N+2, `discard` writes those families' lapse records. Delete the prompt lapse sweep
   at N+2. Move the action answer types to the module that uses them.
-- The code, tables and records that carry the name "gap check" take the name "suggested rules". The
-  old record codecs stay, so a rebuild still reads every old record.
+- Rename "gap check" to "suggested rules" in the code, tables and records. Keep the old record
+  codecs, so a rebuild still reads every old record.
 
 ## Release order
 
@@ -370,8 +370,9 @@ fails to load it, so that rollback needs a restore from a backup taken before N+
   `memory_proposals.status` and `lapse_at` stop. The prompt family joins the shared table, and
   memory draws its short IDs.
 
-The `[#n]` fix for take-over notices and the suggested rules rename ship in any release, each in a
-release of its own. A rollback across the rename still reads every renamed row and record.
+The `[#n]` fix for take-over notices and the suggested rules rename each ship in a release of their
+own, at any point in the order. A rollback across the rename still reads every renamed row and
+record.
 
 ## Builder decides
 
