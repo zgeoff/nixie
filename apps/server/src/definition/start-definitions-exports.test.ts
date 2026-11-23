@@ -53,9 +53,10 @@ async function setupTest() {
   stack.defer(() => cleanup.stop());
 
   const exportWithApp = async (registerHandlers: () => void) => {
-    const privateKey = generateKeyPairSync('rsa', { modulusLength: 2048 })
-      .privateKey.export({ type: 'pkcs8', format: 'pem' })
-      .toString();
+    const privateKey = generateKeyPairSync('rsa', { modulusLength: 2048 }).privateKey.export({
+      type: 'pkcs8',
+      format: 'pem',
+    });
 
     const files = await writeBootFiles(directory, 'http://127.0.0.1:4010', {
       config: ['agent:', '  names: [Wren]'],

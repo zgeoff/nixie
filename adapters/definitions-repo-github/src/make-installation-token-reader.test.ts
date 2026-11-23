@@ -12,7 +12,7 @@ function setupTest() {
   const mintURL = `${githubAPIURL}/app/installations/4242/access_tokens`;
   const startMs = Date.parse('2030-01-01T00:00:00Z');
   const keys = generateKeyPairSync('rsa', { modulusLength: 2048 });
-  const privateKeyPEM = keys.privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
+  const privateKeyPEM = keys.privateKey.export({ type: 'pkcs8', format: 'pem' });
   const clock = { nowMs: startMs, advance: (deltaMs: number) => void (clock.nowMs += deltaMs) };
   const mints: string[] = [];
 
@@ -226,9 +226,10 @@ test('it redacts a JWT and a key that GitHub echoes in its message', async () =>
 });
 
 test('it refuses a private key that is not RSA', async () => {
-  const ecKey = generateKeyPairSync('ec', { namedCurve: 'prime256v1' })
-    .privateKey.export({ type: 'pkcs8', format: 'pem' })
-    .toString();
+  const ecKey = generateKeyPairSync('ec', { namedCurve: 'prime256v1' }).privateKey.export({
+    type: 'pkcs8',
+    format: 'pem',
+  });
 
   const reader = makeInstallationTokenReader({
     apiURL: githubAPIURL,
