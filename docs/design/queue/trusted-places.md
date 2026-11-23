@@ -464,11 +464,11 @@ and when a call last used it. You add, change and remove entries there. The host
   `blocked` site that a tab reached between calls stays readable through them.
 
 - **Does a change to trust on the page, or a raise to `act` on a card, take the passkey check?** The
-  page is a browser surface, and a seeded `act` entry for nixie's own website would let a browser
-  act by nixie reach it. Recommendation: a raise to `act`, an unblock, or a `subdomains: true` key
-  takes the passkey check as a wider rule does, wherever it is made, and the page refuses a change
-  that comes from a browser act tool. Trade-off: one more prompt on the main route to trust. Until
-  the owner settles it, the card's answer binds the key and the level, and the page has no further
+  page is a web page, and a seeded `act` entry for nixie's own website would let a browser act by
+  nixie reach it. Recommendation: a raise to `act`, an unblock, or a `subdomains: true` key takes
+  the passkey check as a wider rule does, wherever it is made, and the page refuses a change that
+  comes from a browser act tool. Trade-off: one more prompt on the main route to trust. Until the
+  owner settles it, the card's answer binds the key and the level, and the page has no further
   check.
 - **Does a frame inside a trusted tab take the tab's host?** A screen act has no view of a frame's
   origin, so a click into a frame from a `blocked` site inside an `act` tab counts as the tab's
