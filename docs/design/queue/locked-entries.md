@@ -1,12 +1,13 @@
 # Locked entries
 
 - **Status:** draft
-- **Work items:** [locked vault entries](https://linear.app/zgeoff/issue/GEO-2731). It builds on
+- **Work items:** [locked vault entries](https://linear.app/zgeoff/issue/GEO-2814). It builds on
   [accounts and sign-in](accounts.md), which lands first.
 
-You can lock a [vault](accounts.md#the-vault) entry. nixie then holds its secret sealed under a key
-that only your passkey opens, so each use waits for your tap, whatever the rules say. The label,
-group, username and origins stay readable, so lists and approval cards still show the entry.
+The owner can lock a [vault](accounts.md#the-vault) entry. nixie then holds its secret sealed under
+a key that only the owner's passkey opens, so each use waits for the owner's tap, whatever the rules
+say. The label, group, username and origins stay readable, so lists and approval cards still show
+the entry.
 
 ## Contracts
 
@@ -52,9 +53,9 @@ vault.reveal({ account, prf }); // prf only for a locked entry
 - The unwrapped key and the PRF output live in memory for one attempt of one action. The server
   drops both when the attempt ends, on success, refusal, timeout or cancel, and when the action ends
   before its attempt starts. A retry, an answer to an unknown outcome, a restart and a task that
-  pauses before its attempt each ask for the passkey again, and the queue holds the retry until you
-  answer from a device. The web client drops the PRF output once the request returns. Nothing writes
-  either to disk or to a log.
+  pauses before its attempt each ask for the passkey again, and the queue holds the retry until the
+  owner answers from a device. The web client drops the PRF output once the request returns. Nothing
+  writes either to disk or to a log.
 - `vault.lock` makes a new secret key, seals the secret again under it, wraps it, and destroys the
   old key, so a backup of the key store from before the lock can't open the secret sealed after it.
   `vault.unlock` makes a new secret key the same way.
@@ -80,9 +81,10 @@ vault.reveal({ account, prf }); // prf only for a locked entry
 
 ## Decisions
 
-- **A locked entry stays sealed until you open it.** A rule decides whether nixie may use an entry
-  it can read. Only your passkey opens a locked entry, so a wrong rule, a bug in the decision point
-  or a tricked assistant still gets nothing. It costs a tap per use, so lock only what deserves it.
+- **A locked entry stays sealed until the owner opens it.** A rule decides whether nixie may use an
+  entry it can read. Only the owner's passkey opens a locked entry, so a wrong rule, a bug in the
+  decision point or a tricked assistant still gets nothing. It costs a tap per use, so the owner
+  locks only what deserves it.
 
 ## Builder decides
 
@@ -91,6 +93,6 @@ vault.reveal({ account, prf }); // prf only for a locked entry
 
 ## Open questions
 
-- **Does your passkey return a PRF output?** Locked entries need the WebAuthn PRF extension in the
-  passkey provider and the browser. Your first lock of a throwaway entry settles it. Until then,
-  `vault.lock` refuses with `NO_PRF`, and every other part of the vault works.
+- **Does the owner's passkey return a PRF output?** Locked entries need the WebAuthn PRF extension
+  in the passkey provider and the browser. The owner's first lock of a throwaway entry settles it.
+  Until then, `vault.lock` refuses with `NO_PRF`, and every other part of the vault works.
