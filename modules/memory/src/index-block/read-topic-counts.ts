@@ -10,7 +10,7 @@ export function readTopicCounts(
   request: TopicRequest,
 ): Promise<EntryPage<TopicCount>> {
   return parts.lock(async () => {
-    const rows = await readIndexRows(parts);
+    const rows = await readIndexRows(parts, { isPinnedIncluded: false });
 
     return cutEntryPage(parts, collectTopicCounts(rows, request.subjects), request.offset);
   });

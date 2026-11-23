@@ -12,9 +12,17 @@ export interface IndexRow {
   readonly createdSequence: number;
 }
 
-// Every active item that is not pinned and has not lapsed, with its labels from the in-memory
-// entries. It decrypts nothing, and the caller holds the store lock.
-export async function readIndexRows(parts: StoreParts): Promise<readonly IndexRow[]> {
+export interface IndexRowOptions {
+  readonly isPinnedIncluded: boolean;
+}
+
+// Every active item that has not lapsed, and is not pinned unless the options include pinned items,
+// with its labels from the in-memory entries. It decrypts nothing, and the caller holds the store
+// lock.
+export async function readIndexRows(
+  parts: StoreParts,
+  options: IndexRowOptions,
+): Promise<readonly IndexRow[]> {
   const now = parts.context.gate.clock.now();
 
   const rows = await parts.context.log.writer.db
@@ -22,7 +30,7 @@ export async function readIndexRows(parts: StoreParts): Promise<readonly IndexRo
     .selectFrom('memory_items')
     .select(['item_id', 'short_id', 'kind', 'subject', 'created_sequence'])
     .where('state', '=', 'active')
-    .where('is_pinned', '=', 0)
+    .$if(!options.isPinnedIncluded, (query) => query.where('is_pinned', '=', 0))
     .where((row) => row.or([row('until', 'is', null), row('until', '>', now)]))
     .execute();
 

@@ -12,6 +12,9 @@ import { readPinnedCoreUse } from '../pinned/read-pinned-core-use';
 import { buildRecallStore } from '../recall/build-recall-store';
 import { writeRetirement } from '../retirement/write-retirement';
 import type { MemoryStore, StoreParts } from '../types';
+import { readMemoryUsage } from '../usage/read-memory-usage';
+import { readSavedTimes } from '../usage/read-saved-times';
+import { readUsageList } from '../usage/read-usage-list';
 import { writeKeep } from './write-keep';
 import { writeRestoration } from './write-restoration';
 import { writeUndo } from './write-undo';
@@ -34,5 +37,8 @@ export function buildMemoryStore(parts: StoreParts): MemoryStore {
     readTopicCounts: (request) => readTopicCounts(parts, request),
     readHistory: (itemID) => readItemHistory(parts, itemID),
     readSubjectCounts: () => readMemorySubjectCounts(parts.context.log.writer.db),
+    readUsage: (beforeSequence) => readMemoryUsage(parts, beforeSequence),
+    readSavedTimes: (itemIDs) => readSavedTimes(parts, itemIDs),
+    readUsageList: (request) => readUsageList(parts, request),
   };
 }

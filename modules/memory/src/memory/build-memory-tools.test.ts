@@ -1026,6 +1026,7 @@ test('it recalls a version with its quote, its model and the line that says wher
     items: [
       {
         itemID: shortID,
+        usage: 'never surfaced',
         isPinned: false,
         subject: 'owner',
         gist: 'a gist',
@@ -1081,6 +1082,7 @@ test('it recalls a version made from a photo with the event and number of its im
     items: [
       {
         itemID: shortID,
+        usage: 'never surfaced',
         isPinned: false,
         subject: 'owner',
         gist: 'a gist',
@@ -1133,6 +1135,7 @@ test('it recalls a version with no quote or model without them', async () => {
     items: [
       {
         itemID: shortID,
+        usage: 'never surfaced',
         isPinned: false,
         subject: 'owner',
         gist: 'a gist',
