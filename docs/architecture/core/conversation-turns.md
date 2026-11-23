@@ -321,8 +321,8 @@ and `<model-text>`. The sealed elements are:
 - `<task-message>`, for another task's message;
 - `<model-text>`, for a reminder's note and name;
 - `<pasted>` and `<dropped>`, for the spans of the user's message that the client labelled so;
-- `<memory-text>`, for the text of a memory item, as
-  [How an item reads](../memory/context.md#how-an-item-reads) says.
+- `<memory-text>`, for the text of a memory item, and `<memory-quote>`, for the quote that backs it,
+  as [How an item reads](../memory/context.md#how-an-item-reads) says.
 
 The random ID stops the text from closing its element early. It does not prove who wrote the
 element.

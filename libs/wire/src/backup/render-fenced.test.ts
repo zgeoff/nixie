@@ -67,3 +67,26 @@ test('it accepts text that closes the tag with another fence', () => {
     }),
   ).toContain('000000000000');
 });
+
+test('it throws when the attributes already hold the default marker', () => {
+  expect(() =>
+    renderFenced({
+      tag: 'tool-result',
+      attributes: { fence: 'abc123abc123' },
+      text: 'x',
+      fence: 'abc123abc123',
+    }),
+  ).toThrow();
+});
+
+test('it throws when the attributes already hold a named marker', () => {
+  expect(() =>
+    renderFenced({
+      tag: 'pasted',
+      attributes: { id: 'abc123abc123' },
+      text: 'x',
+      fence: 'abc123abc123',
+      marker: 'id',
+    }),
+  ).toThrow();
+});

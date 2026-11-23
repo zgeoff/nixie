@@ -62,7 +62,9 @@ test('it renders each subject under its own heading, shared after the owner and 
     Robin and the assistant call the kettle Captain Steam
     </memory-text fence="f00000000001">
       b7kq2m9xza v1 · 12 Oct · you noted it · Robin said this
-      How it came up: "ask Captain Steam"
+      How it came up: <memory-quote fence="f00000000001">
+    ask Captain Steam
+    </memory-quote fence="f00000000001">
     About yourself, in your own words:
     - <memory-text fence="f00000000001">
     I like a story that ends on a small joke

@@ -25,6 +25,6 @@ export function renderMemoryItem(
   return [
     renderMemoryText(item, mint),
     `  ${renderMemoryLine({ ...item, shownVersion: item.revision }, options)}`,
-    ...renderItemQuote(item),
+    ...renderItemQuote(item, mint),
   ];
 }

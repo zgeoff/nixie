@@ -194,6 +194,6 @@ test('it keeps where a changed item came from, so an unconfirmed edit still read
   );
 
   expect(note).toInclude(
-    '\n- Changed [h4ns8w1cpe]:\n  - <memory-text fence="f00000000001">\nThe clinic is on Elm Street\n</memory-text fence="f00000000001">\n    h4ns8w1cpe v2 · 13 Oct · you noted it · unconfirmed\n    How it came up: "the clinic moved to Elm Street"',
+    '\n- Changed [h4ns8w1cpe]:\n  - <memory-text fence="f00000000001">\nThe clinic is on Elm Street\n</memory-text fence="f00000000001">\n    h4ns8w1cpe v2 · 13 Oct · you noted it · unconfirmed\n    How it came up: <memory-quote fence="f00000000001">\nthe clinic moved to Elm Street\n</memory-quote fence="f00000000001">',
   );
 });

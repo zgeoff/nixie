@@ -107,16 +107,16 @@ The pinned core and the retrieved block both speak to the model as its own memor
 that calls the items memories and not instructions, so item text never reads as a command. Each item
 shows its text inside a `<memory-text>` element with a random ID of its own, which
 [sealed outside text](../core/conversation-turns.md#sealed-outside-text) describes, so a stored
-memory cannot close its element and pass as an instruction. The seal covers the text and nothing
-else: the line below it stays outside. The pinned core, the pinned-core change note, the retrieved
-items and the retrieved self-notes all seal each item. Under the text sits one line that says where
-it came from in plain words, such as
+memory cannot close its element and pass as an instruction. The seal covers the text and the quote,
+each in an element with its own random ID. The line below the text is nixie's own words. The pinned
+core, the pinned-core change note, the retrieved items and the retrieved self-notes all seal each
+item. Under the text sits one line that says where it came from in plain words, such as
 `b7kq2m9xza v3 · 13 Oct 2025 · you noted it · from a pasted page · Sam approved`. The line gives the
 item's short ID and version, the day it was saved, who noted it, what backs it and who confirmed it,
 and leaves out a part that does not apply. The day shows in the deployment's default time zone, and
 shows its year only when the year is not the current one. An item with a quote the gate checked
-shows the quote under the line, as how the item came up, so the model can weigh a summary against
-the user's own words.
+shows the quote, in a `<memory-quote>` element, under the line, as how the item came up, so the
+model can weigh a summary against the user's own words.
 
 The line takes its words from the version's stored origin, source and approval, and never changes
 them, so an approved item keeps outside content as its source and still reads as approved:

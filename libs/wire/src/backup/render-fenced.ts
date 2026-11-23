@@ -21,6 +21,9 @@ export interface FencedText {
 // early, so it cannot pass as nixie's own words. It does not authenticate the element.
 export function renderFenced(fenced: FencedText): string {
   const marker = fenced.marker ?? 'fence';
+
+  invariant(!(marker in fenced.attributes), 'fenced attributes already hold the marker');
+
   const attributes = Object.entries({ ...fenced.attributes, [marker]: fenced.fence });
   const open = `<${[fenced.tag, ...attributes.map(([name, value]) => `${name}="${escapeAttribute(value)}"`)].join(' ')}>`;
   const close = `</${fenced.tag} ${marker}="${escapeAttribute(fenced.fence)}">`;

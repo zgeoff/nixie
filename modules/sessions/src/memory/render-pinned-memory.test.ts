@@ -44,7 +44,9 @@ test('it renders each pinned item with the line that says where it came from, in
     Uses they/them
     </memory-text fence="f00000000001">
       b7kq2m9xza v1 · 2 Mar · you noted it · Robin said this
-      How it came up: "they/them for me, please"
+      How it came up: <memory-quote fence="f00000000001">
+    they/them for me, please
+    </memory-quote fence="f00000000001">
     - <memory-text fence="f00000000001">
     Goes by Sam
     </memory-text fence="f00000000001">
