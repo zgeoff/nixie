@@ -79,9 +79,9 @@ trigger.wake_rule_ended   -- ruleID, reason, released: the held arrivals it drop
 wake_rules                -- projection: one row per rule, with ended_at and reason
 ```
 
-- A set with the same mailbox, match and task as a live rule replaces that rule in place. The rule
-  keeps its ID, short ID, `createdAt` and the time of its last wake, and takes the new expiry and
-  window length. The result holds `replaced: true`.
+- Setting a rule with the same mailbox, match and task as a live rule replaces that rule in place.
+  The rule keeps its ID, short ID, `createdAt` and the time of its last wake, and takes the new
+  expiry and window length. The result holds `replaced: true`.
 - An expired rule writes no record. It matches no mail received at or after `expiresAt`.
 - `readWakeRules`, which the list tools call, leaves out a rule that expired, ended, or belongs to a
   task that ended.
@@ -126,17 +126,17 @@ takes these, in the same write transaction:
 3. For each matching rule whose task has ended, the core ends the rule as `task_ended` and drops it.
    When no rule is left, the core writes no arrival record and claims no key.
 4. The core writes one `trigger.mail_arrived`. Its fold adds the key to `trigger_keys`, as the folds
-   of `trigger.fired` and `trigger.skipped` do. The record lists each matching rule, and whether its
+   of `trigger.fired` and `trigger.skipped` do. The record holds each matching rule, and whether its
    task woke now or the match was held.
 5. For each ready task with a ready matching rule, the core writes one `trigger.mail_woke` through
-   the [inbox](../../../architecture/core/tasks.md#the-inbox) writer, naming every matching rule of
+   the [inbox](../../../architecture/core/tasks.md#the-inbox) writer, with every matching rule of
    that task. It wakes the task with the cause `event`, at
    [hop](../../../architecture/core/task-messages.md#the-hop-limit) 0.
-6. It holds the match of each other task in `wake_held`.
+6. The core holds the match of each other task in `wake_held`.
 
 ### Windows, the throttle and the flush
 
-A wake starts a window for each rule it names and a throttle for its task and mailbox. While either
+A wake starts a window for each rule in it and a throttle for its task and mailbox. While either
 runs, a match waits:
 
 - a rule is ready when its last wake was `windowMs` or more ago, or it never woke;
@@ -150,8 +150,8 @@ A task wakes at once when it is ready and one of its matching rules is ready. Th
    rule.
 2. When the match's task has ended, it ends each of the task's rules as `task_ended`, with the
    task's held matches in `released`.
-3. Otherwise it writes one `trigger.mail_woke` per task, naming every such match of that task,
-   oldest first.
+3. Otherwise it writes one `trigger.mail_woke` per task, with every such match of that task, oldest
+   first.
 
 ```text
 wake_rule_windows   -- rule_id, last_wake_at: the recorded time of the rule's last wake
@@ -225,13 +225,13 @@ wake_rules:
   mail itself stays in its mailbox.
 - A rule that has not ended matches mail received from its `createdAt` up to its `expiresAt`, both
   by the host's receive time, even when that mail is delivered after `expiresAt`.
-- A rule that is cancelled matches nothing more. Its held matches still flush, because each matched
-  while the rule stood.
+- A cancelled rule matches nothing more. Its held matches still flush, because each matched while
+  the rule stood.
 - A ready task with a ready rule wakes in the transaction that delivers the match. A held match
   wakes its task within 20 seconds of both becoming ready.
 - A mailbox wakes a task at most once per throttle, however much mail arrives. A wake happens only
-  when at least one of its rules is ready, and a rule that is not ready joins that wake without
-  causing it.
+  when at least one of the wake's rules is ready, and a rule that is not ready joins that wake
+  without causing it.
 - One arrival gives each task at most one wake, however many of its rules match.
 - The core never reads the [task gate](../task-gate.md) for an arrival or a flush. While a task is
   held, its wakes land in its inbox and wait there, as the gate design says for poll sources.

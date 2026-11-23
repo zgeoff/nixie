@@ -10,8 +10,8 @@ stores no copy, `gmail.search` asks Gmail live, and an arrival leaves at most a 
 record. Both hand each new mail to the [trigger core](../../../architecture/core/triggers.md), which
 wakes a task only when a wake rule matches. A task registers each rule for itself, with a mailbox, a
 match and an expiry. A match wakes the task at once, unless the same rule woke it within the rule's
-window, or any rule on that mailbox woke it within the throttle. Then the match waits, and every
-match that waits arrives in one later wake, so a burst of mail costs one turn.
+window, or any rule on that mailbox woke it within the throttle. In that case the match waits, and
+every waiting match arrives in one later wake, so a burst of mail costs one turn.
 
 The owner reads this page to approve the design and settle its open questions. A builder reads it,
 then the part their work item builds.
@@ -59,7 +59,7 @@ design once the owner agrees it, and the calendar poll moves to an item of its o
 - **Arrival:** one new mail in one mailbox, which its source hands to the arrival path.
 - **Wake rule:** a request to wake the task that registered it when an arrival in one mailbox
   matches, until the rule expires.
-- **Wake:** one `trigger.mail_woke` record in a task's inbox, which shows one or more mails.
+- **Wake:** one `trigger.mail_woke` record in a task's inbox, with one or more mails.
 - **Window:** the time after a rule's wake during which its later matches wait, to arrive together.
 - **Throttle:** the time after any wake of a task from one mailbox during which every rule of that
   task on that mailbox waits, so several rules can't wake one task in quick turns.

@@ -118,9 +118,9 @@ gmail.wake_cancel({ rule: 'wz7p2k9q4m' }); // → { rule: 'wz7p2k9q4m', ended: t
   no longer returns.
 - The source makes read calls only, through the connection's fetcher, and never reaches the decision
   point.
-- While every poll of the connection succeeds, a match on a ready rule and task wakes its task
-  within `gmail.poll_interval` plus 1 minute of the mail's arrival. A failed poll delays it by the
-  retry wait.
+- While every poll of the connection succeeds, a match whose rule and task are ready wakes the task
+  within `gmail.poll_interval` plus 1 minute of the mail's arrival. A failed poll delays the wake by
+  the retry wait.
 - Forgetting a Google connection ends its rules and erases its mail text, by the steps in
   [wake rules](wake-rules.md#erasure).
 

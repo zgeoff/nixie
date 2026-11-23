@@ -74,7 +74,7 @@ mail.read({ message: 'mz4k8q2w7p' }); // marks the mail read
 mail.save_attachment({ message: 'mz4k8q2w7p', attachment: 1 }); // → { file: 'f7m3q8k2wz', name }
 mail.send({ to: ['hello@library.example.org'], subject, text, files: [], replyWake: '7d' });
 mail.reply({ message: 'mz4k8q2w7p', text, files: [], replyWake: 'off' });
-// queued: the call returns the action's short ID, and the outcome, once the send runs, holds
+// queued: the call returns the action's short ID. Once the send runs, its outcome holds
 // { message: 'mr8w2k4q9z', thread: 'th6p2k9w4x', replyRule: 'wm3k7q2x9p' | null }
 mail.wake_set({ from: ['@library.example.org'], subject: 'code', expires: '30m', window: '1m' });
 // → { rule: 'wq4k8m2x7p', expiresAt: '2026-11-24T10:45:00Z', window: '1m', replaced: false,
@@ -90,21 +90,21 @@ mail.wake_cancel({ rule: 'wq4k8m2x7p' }); // → { rule: 'wq4k8m2x7p', ended: tr
 | `mail.send`, `mail.reply`                                          | `send` | queued | each recipient |
 
 - Effects are those of [the decision point](../../../architecture/policy/decision-point.md). The
-  starter rules `allow-reads` and `allow-notes` let the first 2 rows through, so a rule on the
-  assistant's own mailbox never asks, as [`reminder.set`](../../../architecture/core/reminders.md)
-  never does.
+  starter rules `allow-reads` and `allow-notes` let the first 2 rows through, so setting a rule on
+  the assistant's own mailbox never asks you, as
+  [`reminder.set`](../../../architecture/core/reminders.md) never does.
 - `mail.wake_set` calls `setWakeRuleInTransaction` with the mailbox `{ kind: 'mail' }` and the
   calling task. `expires` runs from `1m` to `wake_rules.max_expiry`. `window` runs from `1m` to
   `expires`, and defaults to `wake_rules.window`. In the conversation, the tool refuses
   `CONVERSATION`.
-- `recent` shows a code that arrived while the assistant set the rule, which the rule itself never
-  matches. In the tool's description, ask the assistant to set the rule before it asks a site for a
-  code, and to give a short window when it waits on one.
+- `recent` shows a code that arrived while the assistant set the rule. The rule itself never matches
+  that code. In the tool's description, ask the assistant to set the rule before it asks a site for
+  a code, and to give a short window when it waits on one.
 - `mail.wake_cancel` refuses `UNKNOWN_RULE` for a rule of another task or another mailbox.
 - `files` takes up to 10 file IDs, 25 MiB in all. A file resolves only on the conversation or task
   run that made it.
-- Refusals: `UNKNOWN_MESSAGE`, `UNKNOWN_ATTACHMENT`, `UNKNOWN_FILE`, `UNKNOWN_RULE`, `TOO_BIG`,
-  `BAD_ADDRESS`, `BAD_DURATION`, `CONVERSATION` and `SEND_FAILED`.
+- The tools can refuse `UNKNOWN_MESSAGE`, `UNKNOWN_ATTACHMENT`, `UNKNOWN_FILE`, `UNKNOWN_RULE`,
+  `TOO_BIG`, `BAD_ADDRESS`, `BAD_DURATION`, `CONVERSATION` or `SEND_FAILED`.
 
 ### The store
 
