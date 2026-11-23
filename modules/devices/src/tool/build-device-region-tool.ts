@@ -115,11 +115,10 @@ export function buildDeviceRegionTool(options: DeviceToolOptions): ToolDefinitio
         return refuseDevice(found.refusal);
       }
 
-      // a layout set after the call was queued is refused when the call runs, by its sequence
-      return {
-        destinations:
-          found.status === 'ready' ? [`${found.device.deviceID}/${found.region.name}`] : [],
-      };
+      // The call names no destination, so the rules decide it as a note: a rule that allows notes
+      // runs it at once. A layout set after the call was queued is refused when the call runs, by
+      // its sequence.
+      return { destinations: [] };
     },
     run: async (call, context) => {
       const found = await readRegionCall(options, call.input);
