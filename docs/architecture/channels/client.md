@@ -359,8 +359,9 @@ in the browser only, because the library reads the window when it loads.
 
 While the assistant asks the user to take over the computer, every signed-in page shows a banner
 with the assistant's reason and a Take over button. The client reads `computer.readHandover` once,
-which gives the standing ask and a log sequence, and then follows the live stream from that sequence
-for every thread. A `computer.handover_asked` record opens the banner on every open client, and a
+which gives the standing ask and a log sequence, and then follows the conversation's thread from
+that sequence. The stream opens a second after the page loads, so the page's own streams get their
+connections first. A `computer.handover_asked` record opens the banner on every open client, and a
 `computer.takeover_started` or `computer.handover_closed` record clears it, so a take-over from one
 device clears the banner on the others. When the ask's record is forgotten, the open banner drops
 the reason and shows the ask without it. The client reads the ask again every minute and when the

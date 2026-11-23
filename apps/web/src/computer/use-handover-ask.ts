@@ -10,6 +10,11 @@ import { pickHandoverAsk } from './pick-handover-ask';
 // clears it.
 const handoverRefetchMs = 60_000;
 
+// The stream opens after the page's own streams. A browser holds 6 connections to one host over
+// HTTP/1.1, and a page that follows the log twice already holds 2 of them while the page it leaves
+// closes its own.
+const streamOpenDelayMs = 1000;
+
 // The assistant's standing ask for a take-over. One read gives the ask and the log sequence it saw,
 // and the live stream from that sequence opens and clears it, so a client that opens late shows an
 // ask that stands, and every client clears it when a take-over starts or the ask closes.
@@ -34,26 +39,32 @@ export function useHandoverAsk(): HandoverAsk | null {
 
     const current = { ask: readAsk ?? null };
 
-    if (afterSequence !== undefined) {
-      void subscribeToLiveRecords({
-        afterSequence,
-        client,
-        onAvailability: () => {},
-        onRecord: (record) => {
-          const next = pickHandoverAsk(current.ask, record);
+    const opening =
+      afterSequence === undefined
+        ? undefined
+        : setTimeout(() => {
+            void subscribeToLiveRecords({
+              afterSequence,
+              client,
+              onAvailability: () => {},
+              onRecord: (record) => {
+                const next = pickHandoverAsk(current.ask, record);
 
-          if (next !== current.ask) {
-            current.ask = next;
+                if (next !== current.ask) {
+                  current.ask = next;
 
-            setStreamed({ ask: next });
-          }
-        },
-        signal: following.signal,
-        startTimer: startPlatformTimer,
-      });
-    }
+                  setStreamed({ ask: next });
+                }
+              },
+              signal: following.signal,
+              startTimer: startPlatformTimer,
+              thread: 'conversation',
+            });
+          }, streamOpenDelayMs);
 
     return () => {
+      clearTimeout(opening);
+
       following.abort();
     };
   }, [afterSequence, readAsk, client]);
