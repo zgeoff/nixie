@@ -22,6 +22,7 @@ test('it lists an enrolled device with its screen off and nothing it shows', asy
           online: false,
           pixels: null,
           showing: null,
+          layout: null,
         },
       ],
     },
@@ -32,7 +33,7 @@ test('it gives an online device its size and what it shows', async () => {
   const ctx = await setupTest();
   const device = await ctx.seed.screenOnDevice({ name: 'desk panel' });
 
-  ctx.streams.open(device.deviceID, { width: 1920, height: 480 });
+  ctx.streams.open(device.deviceID, { width: 1920, height: 480, pixelRatio: 2 });
 
   await ctx.call('device.show', {
     device: device.deviceID,
@@ -52,8 +53,9 @@ test('it gives an online device its size and what it shows', async () => {
           screen: 'on',
           camera: 'off',
           online: true,
-          pixels: { width: 1920, height: 480 },
+          pixels: { width: 1920, height: 480, pixelRatio: 2 },
           showing: { kind: 'markdown', until: '2026-11-21T08:10:00.000Z' },
+          layout: null,
         },
       ],
     },
@@ -66,7 +68,7 @@ test('it names the image an online device shows', async () => {
 
   await ctx.seed.image('k3x9m2p7qa');
 
-  ctx.streams.open(device.deviceID, { width: 800, height: 600 });
+  ctx.streams.open(device.deviceID, { width: 800, height: 600, pixelRatio: 1 });
 
   await ctx.call('device.show', {
     device: device.deviceID,

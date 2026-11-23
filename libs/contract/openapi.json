@@ -23738,6 +23738,12 @@
                         "type": "integer",
                         "minimum": 1,
                         "maximum": 20000
+                      },
+                      "pixelRatio": {
+                        "type": "number",
+                        "maximum": 16,
+                        "exclusiveMinimum": 0,
+                        "default": 1
                       }
                     },
                     "required": [
@@ -23897,6 +23903,200 @@
                               "required": [
                                 "kind",
                                 "scene"
+                              ]
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "const": "layout"
+                                },
+                                "layout": {
+                                  "anyOf": [
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "columns": {
+                                          "type": "array",
+                                          "items": {
+                                            "type": "string"
+                                          }
+                                        },
+                                        "rows": {
+                                          "type": "array",
+                                          "items": {
+                                            "type": "string"
+                                          }
+                                        },
+                                        "regions": {
+                                          "type": "array",
+                                          "items": {
+                                            "type": "object",
+                                            "properties": {
+                                              "name": {
+                                                "type": "string"
+                                              },
+                                              "column": {
+                                                "type": "integer",
+                                                "minimum": -9007199254740991,
+                                                "maximum": 9007199254740991
+                                              },
+                                              "row": {
+                                                "type": "integer",
+                                                "minimum": -9007199254740991,
+                                                "maximum": 9007199254740991
+                                              },
+                                              "columnSpan": {
+                                                "type": "integer",
+                                                "minimum": -9007199254740991,
+                                                "maximum": 9007199254740991
+                                              },
+                                              "rowSpan": {
+                                                "type": "integer",
+                                                "minimum": -9007199254740991,
+                                                "maximum": 9007199254740991
+                                              },
+                                              "content": {
+                                                "anyOf": [
+                                                  {
+                                                    "anyOf": [
+                                                      {
+                                                        "type": "object",
+                                                        "properties": {
+                                                          "kind": {
+                                                            "const": "markdown"
+                                                          },
+                                                          "markdown": {
+                                                            "type": "string",
+                                                            "minLength": 1,
+                                                            "maxLength": 20000
+                                                          }
+                                                        },
+                                                        "required": [
+                                                          "kind",
+                                                          "markdown"
+                                                        ]
+                                                      },
+                                                      {
+                                                        "type": "object",
+                                                        "properties": {
+                                                          "kind": {
+                                                            "const": "image"
+                                                          },
+                                                          "image": {
+                                                            "type": "string",
+                                                            "minLength": 1,
+                                                            "maxLength": 100
+                                                          },
+                                                          "fit": {
+                                                            "enum": [
+                                                              "whole",
+                                                              "fill"
+                                                            ],
+                                                            "type": "string",
+                                                            "default": "whole"
+                                                          }
+                                                        },
+                                                        "required": [
+                                                          "kind",
+                                                          "image"
+                                                        ]
+                                                      },
+                                                      {
+                                                        "type": "object",
+                                                        "properties": {
+                                                          "kind": {
+                                                            "const": "live"
+                                                          },
+                                                          "live": {
+                                                            "const": "clock"
+                                                          },
+                                                          "format": {
+                                                            "enum": [
+                                                              "HH:mm",
+                                                              "HH:mm:ss",
+                                                              "EEE d MMM"
+                                                            ],
+                                                            "type": "string"
+                                                          }
+                                                        },
+                                                        "required": [
+                                                          "kind",
+                                                          "live",
+                                                          "format"
+                                                        ]
+                                                      },
+                                                      {
+                                                        "type": "object",
+                                                        "properties": {
+                                                          "kind": {
+                                                            "const": "live"
+                                                          },
+                                                          "live": {
+                                                            "const": "countdown"
+                                                          },
+                                                          "to": {
+                                                            "type": "string",
+                                                            "format": "date-time"
+                                                          },
+                                                          "label": {
+                                                            "type": "string",
+                                                            "minLength": 1,
+                                                            "maxLength": 100
+                                                          }
+                                                        },
+                                                        "required": [
+                                                          "kind",
+                                                          "live",
+                                                          "to"
+                                                        ]
+                                                      }
+                                                    ]
+                                                  },
+                                                  {
+                                                    "type": "null"
+                                                  }
+                                                ]
+                                              },
+                                              "until": {
+                                                "anyOf": [
+                                                  {
+                                                    "type": "string",
+                                                    "format": "date-time"
+                                                  },
+                                                  {
+                                                    "type": "null"
+                                                  }
+                                                ]
+                                              }
+                                            },
+                                            "required": [
+                                              "name",
+                                              "column",
+                                              "row",
+                                              "columnSpan",
+                                              "rowSpan",
+                                              "content",
+                                              "until"
+                                            ]
+                                          }
+                                        }
+                                      },
+                                      "required": [
+                                        "columns",
+                                        "rows",
+                                        "regions"
+                                      ]
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "kind",
+                                "layout"
                               ]
                             }
                           ]
@@ -24096,6 +24296,12 @@
                     "type": "integer",
                     "minimum": 1,
                     "maximum": 20000
+                  },
+                  "pixelRatio": {
+                    "type": "number",
+                    "maximum": 16,
+                    "exclusiveMinimum": 0,
+                    "default": 1
                   }
                 },
                 "required": [

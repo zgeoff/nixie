@@ -13,16 +13,20 @@ test('#createDeviceStreams reports a device with no stream as offline with no si
 test('#createDeviceStreams reports the size of the newest open stream', () => {
   const streams = createDeviceStreams();
 
-  streams.open('dk4m7q2w9x', { width: 1920, height: 480 });
-  streams.open('dk4m7q2w9x', { width: 800, height: 600 });
+  streams.open('dk4m7q2w9x', { width: 1920, height: 480, pixelRatio: 1 });
+  streams.open('dk4m7q2w9x', { width: 800, height: 600, pixelRatio: 2 });
 
-  expect(streams.readPixels('dk4m7q2w9x')).toStrictEqual({ width: 800, height: 600 });
+  expect(streams.readPixels('dk4m7q2w9x')).toStrictEqual({
+    width: 800,
+    height: 600,
+    pixelRatio: 2,
+  });
 });
 
 test('#createDeviceStreams keeps a device online until its last stream closes', () => {
   const streams = createDeviceStreams();
-  const first = streams.open('dk4m7q2w9x', { width: 1920, height: 480 });
-  const second = streams.open('dk4m7q2w9x', { width: 800, height: 600 });
+  const first = streams.open('dk4m7q2w9x', { width: 1920, height: 480, pixelRatio: 1 });
+  const second = streams.open('dk4m7q2w9x', { width: 800, height: 600, pixelRatio: 1 });
 
   first.close();
 
@@ -35,19 +39,23 @@ test('#createDeviceStreams keeps a device online until its last stream closes', 
 
 test('#createDeviceStreams gives every open stream of a device the new size on a resize', () => {
   const streams = createDeviceStreams();
-  const first = streams.open('dk4m7q2w9x', { width: 1920, height: 480 });
+  const first = streams.open('dk4m7q2w9x', { width: 1920, height: 480, pixelRatio: 1 });
 
-  streams.open('dk4m7q2w9x', { width: 800, height: 600 });
-  streams.resize('dk4m7q2w9x', { width: 1024, height: 768 });
+  streams.open('dk4m7q2w9x', { width: 800, height: 600, pixelRatio: 1 });
+  streams.resize('dk4m7q2w9x', { width: 1024, height: 768, pixelRatio: 1.5 });
   first.close();
 
-  expect(streams.readPixels('dk4m7q2w9x')).toStrictEqual({ width: 1024, height: 768 });
+  expect(streams.readPixels('dk4m7q2w9x')).toStrictEqual({
+    width: 1024,
+    height: 768,
+    pixelRatio: 1.5,
+  });
 });
 
 test('#createDeviceStreams keeps no size for a resize of a device with no open stream', () => {
   const streams = createDeviceStreams();
 
-  streams.resize('dk4m7q2w9x', { width: 1024, height: 768 });
+  streams.resize('dk4m7q2w9x', { width: 1024, height: 768, pixelRatio: 1 });
 
   expect(streams.readPixels('dk4m7q2w9x')).toBeNull();
 });

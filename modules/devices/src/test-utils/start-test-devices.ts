@@ -1,11 +1,13 @@
 import { seedImage } from '@heynixie/connectors/test-utils';
 import { createFakeClock } from '@zgeoff/testing/clock';
 import { readDeviceByIdentity } from '../device/read-device-by-identity';
+import { readLayout } from '../layout/read-layout';
 import { createDeviceStreams } from '../stream/create-device-streams';
 import { buildDeviceToolCaller } from './build-device-tool-caller';
 import { removeTestRecordKey } from './remove-test-record-key';
 import { seedDevice } from './seed-device';
 import type { DeviceSeed } from './seed-device';
+import { seedLayout } from './seed-layout';
 import { seedScreenOnDevice } from './seed-screen-on-device';
 import { startTestLog } from './start-test-log';
 
@@ -27,10 +29,20 @@ export async function startTestDevices() {
     seed: {
       device: (input?: Partial<DeviceSeed>) => seedDevice(deps, input),
       screenOnDevice: (input?: Partial<DeviceSeed>) => seedScreenOnDevice(deps, input),
+      layout: (deviceID: string) => seedLayout({ log, definitions, clock, streams }, deviceID),
       image: (image: string) =>
         seedImage(log, { image, source: 'file', bytes: new Uint8Array([1, 2, 3]) }),
     },
     removeKey: (sequence: number) => removeTestRecordKey(log, sequence),
+    readLayout: (deviceID: string) => readLayout(log, deviceID, clock.now()),
+
+    // the tools of a server that just started: no stream is open yet, and the log is the same
+    callAfterRestart: buildDeviceToolCaller({
+      log,
+      definitions,
+      clock,
+      streams: createDeviceStreams(),
+    }),
     readDevice: (identityID: string) => readDeviceByIdentity(log.writer.db, identityID),
     call: buildDeviceToolCaller({ log, definitions, clock, streams }),
   };

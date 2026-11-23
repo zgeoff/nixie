@@ -54,5 +54,13 @@ export type {
 
 export type { DeviceEvent } from './contract/devices-contract';
 export { deviceEventSchema } from './contract/devices-contract';
+export type { RegionContent } from './contract/region-content-schema';
+
+export {
+  clockFormats,
+  regionContentSchema,
+  regionMarkdownLimit,
+} from './contract/region-content-schema';
+
 export type { ScreenContent } from './contract/screen-content-schema';
 export { screenContentSchema, screenMarkdownLimit } from './contract/screen-content-schema';

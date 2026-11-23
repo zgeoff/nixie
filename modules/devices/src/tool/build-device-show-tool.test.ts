@@ -20,7 +20,7 @@ test('it refuses a screen that is off', async () => {
   const ctx = await setupTest();
   const device = await ctx.seed.device();
 
-  ctx.streams.open(device.deviceID, { width: 1920, height: 480 });
+  ctx.streams.open(device.deviceID, { width: 1920, height: 480, pixelRatio: 1 });
 
   const outcome = await ctx.call('device.show', {
     device: device.deviceID,
@@ -50,7 +50,7 @@ test('it refuses an image that is not in the store', async () => {
   const ctx = await setupTest();
   const device = await ctx.seed.screenOnDevice();
 
-  ctx.streams.open(device.deviceID, { width: 1920, height: 480 });
+  ctx.streams.open(device.deviceID, { width: 1920, height: 480, pixelRatio: 1 });
 
   const outcome = await ctx.call('device.show', {
     device: device.deviceID,
@@ -65,7 +65,7 @@ test('it refuses an image that a forget made unreadable', async () => {
   const device = await ctx.seed.screenOnDevice();
   const image = await ctx.seed.image('k3x9m2p7qa');
 
-  ctx.streams.open(device.deviceID, { width: 1920, height: 480 });
+  ctx.streams.open(device.deviceID, { width: 1920, height: 480, pixelRatio: 1 });
 
   await ctx.removeKey(image.sequence);
 
@@ -83,7 +83,7 @@ test.each(['whole', 'fill'])('it shows an image with the fit %s', async (fit) =>
 
   await ctx.seed.image('k3x9m2p7qa');
 
-  ctx.streams.open(device.deviceID, { width: 1920, height: 480 });
+  ctx.streams.open(device.deviceID, { width: 1920, height: 480, pixelRatio: 1 });
 
   const outcome = await ctx.call('device.show', {
     device: device.deviceID,
@@ -97,7 +97,7 @@ test('it answers the time a show ends when it lasts minutes', async () => {
   const ctx = await setupTest();
   const device = await ctx.seed.screenOnDevice();
 
-  ctx.streams.open(device.deviceID, { width: 1920, height: 480 });
+  ctx.streams.open(device.deviceID, { width: 1920, height: 480, pixelRatio: 1 });
 
   const outcome = await ctx.call('device.show', {
     device: device.deviceID,

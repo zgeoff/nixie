@@ -370,7 +370,7 @@ test('it keeps an enrolled device through a reset and clears what it showed', as
 
   const device = await seedScreenOnDevice({ log: ctx.context.log, clock: ctx.context.clock });
 
-  ctx.context.devices.open(device.deviceID, { width: 1920, height: 480 });
+  ctx.context.devices.open(device.deviceID, { width: 1920, height: 480, pixelRatio: 1 });
 
   const call = buildDeviceToolCaller({
     log: ctx.context.log,

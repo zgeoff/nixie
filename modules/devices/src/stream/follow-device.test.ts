@@ -2,6 +2,7 @@ import { expect, test } from 'bun:test';
 import { withWriteTransaction } from '@heynixie/log';
 import { removeDevice } from '../device/remove-device';
 import { startTestDevices } from '../test-utils';
+import { writeRegion } from '../tool/write-region';
 import { writeShow } from '../tool/write-show';
 import { followDevice } from './follow-device';
 
@@ -21,7 +22,7 @@ async function setupTest() {
         clock: ctx.clock,
         streams: ctx.streams,
         deviceID,
-        pixels: { width: 1920, height: 480 },
+        pixels: { width: 1920, height: 480, pixelRatio: 1 },
         signal: stopped.signal,
       }),
   };
@@ -44,7 +45,7 @@ test('#followDevice starts a reconnecting device on the show it had', async () =
   const ctx = await setupTest();
   const device = await ctx.seed.screenOnDevice();
 
-  ctx.streams.open(device.deviceID, { width: 1920, height: 480 });
+  ctx.streams.open(device.deviceID, { width: 1920, height: 480, pixelRatio: 1 });
 
   await ctx.call('device.show', {
     device: device.deviceID,
@@ -303,4 +304,241 @@ test('#followDevice ends when the row of the device goes', async () => {
   const ended = await events.next();
 
   expect(ended).toStrictEqual({ done: true, value: undefined });
+});
+
+test('#followDevice sends a layout that the assistant sets while the stream is open', async () => {
+  const ctx = await setupTest();
+  const device = await ctx.seed.screenOnDevice();
+
+  const events = ctx.follow(device.deviceID);
+
+  await events.next();
+  await ctx.seed.layout(device.deviceID);
+
+  const second = await events.next();
+
+  ctx.stop();
+
+  expect(second.value).toStrictEqual({
+    kind: 'layout',
+    layout: {
+      columns: ['1fr', '2fr', '1fr'],
+      rows: ['1fr'],
+      regions: [
+        { name: 'pond', column: 1, row: 1, columnSpan: 1, rowSpan: 1, content: null, until: null },
+        { name: 'note', column: 2, row: 1, columnSpan: 1, rowSpan: 1, content: null, until: null },
+        { name: 'clock', column: 3, row: 1, columnSpan: 1, rowSpan: 1, content: null, until: null },
+      ],
+    },
+  });
+});
+
+test('#followDevice sends the idle screen and then the layout to a device that reconnects', async () => {
+  const ctx = await setupTest();
+  const device = await ctx.seed.screenOnDevice();
+
+  ctx.streams.open(device.deviceID, { width: 1920, height: 480, pixelRatio: 1 });
+
+  await ctx.seed.layout(device.deviceID);
+
+  await ctx.call('device.region', {
+    device: device.deviceID,
+    region: 'note',
+    content: { kind: 'markdown', markdown: 'Bins go out tonight' },
+  });
+
+  const events = ctx.follow(device.deviceID);
+
+  const first = await events.next();
+  const second = await events.next();
+
+  ctx.stop();
+
+  expect([first.value, second.value]).toMatchObject([
+    { kind: 'idle', scene: [] },
+    {
+      kind: 'layout',
+      layout: {
+        regions: [
+          { name: 'pond', content: null, until: null },
+          { name: 'note', content: { kind: 'markdown', markdown: 'Bins go out tonight' } },
+          { name: 'clock', content: null, until: null },
+        ],
+      },
+    },
+  ]);
+});
+
+test('#followDevice sends a region update as a layout event and no screen event', async () => {
+  const ctx = await setupTest();
+  const device = await ctx.seed.screenOnDevice();
+
+  const events = ctx.follow(device.deviceID);
+
+  await events.next();
+  await ctx.seed.layout(device.deviceID);
+  await events.next();
+
+  await ctx.call('device.region', {
+    device: device.deviceID,
+    region: 'pond',
+    content: { kind: 'live', live: 'clock', format: 'HH:mm' },
+  });
+
+  const third = await events.next();
+
+  ctx.stop();
+
+  expect(third.value).toMatchObject({
+    kind: 'layout',
+    layout: {
+      regions: [
+        { name: 'pond', content: { kind: 'live', live: 'clock', format: 'HH:mm' } },
+        { name: 'note', content: null },
+        { name: 'clock', content: null },
+      ],
+    },
+  });
+});
+
+test('#followDevice keeps carrying the layout while a show covers it', async () => {
+  const ctx = await setupTest();
+  const device = await ctx.seed.screenOnDevice();
+
+  const events = ctx.follow(device.deviceID);
+
+  await events.next();
+  await ctx.seed.layout(device.deviceID);
+  await events.next();
+
+  await ctx.call('device.show', {
+    device: device.deviceID,
+    content: { kind: 'markdown', text: '# Saturday' },
+  });
+
+  const show = await events.next();
+
+  await ctx.call('device.region', {
+    device: device.deviceID,
+    region: 'note',
+    content: { kind: 'markdown', markdown: 'Bins go out tonight' },
+  });
+
+  const layout = await events.next();
+
+  ctx.stop();
+
+  expect([show.value, layout.value]).toMatchObject([
+    { kind: 'show' },
+    {
+      kind: 'layout',
+      layout: { regions: [{}, { name: 'note', content: { kind: 'markdown' } }, {}] },
+    },
+  ]);
+});
+
+test('#followDevice sends the layout again with the region blank when its minutes pass', async () => {
+  const ctx = await setupTest();
+  const device = await ctx.seed.screenOnDevice();
+
+  const events = ctx.follow(device.deviceID);
+
+  await events.next();
+  await ctx.seed.layout(device.deviceID);
+  await events.next();
+
+  await writeRegion(
+    { log: ctx.log, definitions: ctx.definitions, clock: ctx.clock, streams: ctx.streams },
+    {
+      deviceID: device.deviceID,
+      thread: 'conversation',
+      region: 'note',
+      content: { kind: 'markdown', markdown: 'Bins go out tonight' },
+      untilMs: ctx.clock.now() + 50,
+      onEnd: 'blank',
+      previous: null,
+    },
+  );
+
+  const shown = await events.next();
+
+  ctx.clock.advance(100);
+
+  const blanked = await events.next();
+
+  ctx.stop();
+
+  expect([shown.value, blanked.value]).toMatchObject([
+    {
+      kind: 'layout',
+      layout: {
+        regions: [
+          { name: 'pond', content: null },
+          { name: 'note', content: { kind: 'markdown' }, until: '2026-11-21T08:00:00.050Z' },
+          { name: 'clock', content: null },
+        ],
+      },
+    },
+    {
+      kind: 'layout',
+      layout: {
+        regions: [
+          { name: 'pond', content: null },
+          { name: 'note', content: null, until: null },
+          { name: 'clock', content: null },
+        ],
+      },
+    },
+  ]);
+});
+
+test('#followDevice sends the layout again with the region blank when its content is forgotten', async () => {
+  const ctx = await setupTest();
+  const device = await ctx.seed.screenOnDevice();
+
+  const events = ctx.follow(device.deviceID);
+
+  await events.next();
+  await ctx.seed.layout(device.deviceID);
+  await events.next();
+
+  await ctx.call('device.region', {
+    device: device.deviceID,
+    region: 'note',
+    content: { kind: 'markdown', markdown: 'Bins go out tonight' },
+  });
+
+  await events.next();
+
+  const layout = await ctx.readLayout(device.deviceID);
+
+  await ctx.removeKey(layout?.regions[1]?.shown?.sequence ?? 0);
+  await ctx.call('devices.list', {});
+
+  const fourth = await events.next();
+
+  ctx.stop();
+
+  expect(fourth.value).toMatchObject({
+    kind: 'layout',
+    layout: { regions: [{}, { name: 'note', content: null }, {}] },
+  });
+});
+
+test('#followDevice sends a null layout when the assistant clears it', async () => {
+  const ctx = await setupTest();
+  const device = await ctx.seed.screenOnDevice();
+
+  const events = ctx.follow(device.deviceID);
+
+  await events.next();
+  await ctx.seed.layout(device.deviceID);
+  await events.next();
+  await ctx.call('device.layout', { device: device.deviceID, clear: true });
+
+  const third = await events.next();
+
+  ctx.stop();
+
+  expect(third).toStrictEqual({ done: false, value: { kind: 'layout', layout: null } });
 });

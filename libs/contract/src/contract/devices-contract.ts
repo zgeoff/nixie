@@ -1,5 +1,6 @@
 import { eventIterator } from '@orpc/contract';
 import { z } from 'zod';
+import { regionContentSchema } from './region-content-schema';
 import { reusedIDErrors } from './reused-id-errors';
 import { screenContentSchema } from './screen-content-schema';
 import { signedIn } from './signed-in';
@@ -7,9 +8,32 @@ import { signedIn } from './signed-in';
 const pixelsSchema = z.object({
   width: z.int().min(1).max(20_000),
   height: z.int().min(1).max(20_000),
+
+  // device pixels per CSS pixel, so a CSS size is the width divided by it
+  pixelRatio: z.number().positive().max(16).default(1),
 });
 
-// The first event is what the screen shows now. A later event replaces it.
+const layoutRegionSchema = z.object({
+  name: z.string(),
+  column: z.int(),
+  row: z.int(),
+  columnSpan: z.int(),
+  rowSpan: z.int(),
+
+  // null while the region is blank
+  content: regionContentSchema.nullable(),
+  until: z.iso.datetime().nullable(),
+});
+
+const layoutSchema = z.object({
+  columns: z.array(z.string()),
+  rows: z.array(z.string()),
+  regions: z.array(layoutRegionSchema),
+});
+
+// The first screen event is what the screen shows now. A later screen event replaces it. A layout
+// event comes apart from them, so a show that covers the layout does not drop it, and a null layout
+// is none.
 export const deviceEventSchema = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('show'),
@@ -17,6 +41,7 @@ export const deviceEventSchema = z.discriminatedUnion('kind', [
     until: z.iso.datetime().nullable(),
   }),
   z.object({ kind: z.literal('idle'), scene: z.array(screenContentSchema) }),
+  z.object({ kind: z.literal('layout'), layout: layoutSchema.nullable() }),
 ]);
 
 export type DeviceEvent = z.output<typeof deviceEventSchema>;
