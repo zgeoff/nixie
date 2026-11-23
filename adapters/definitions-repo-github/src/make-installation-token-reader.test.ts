@@ -192,3 +192,77 @@ test('it fails with no key text when the key is not a PEM', async () => {
     'definitions_export_app_key is not a usable RSA private key in PEM form',
   );
 });
+
+test('it redacts a JWT and a key that GitHub echoes in its message', async () => {
+  const ctx = setupTest();
+  const sent: string[] = [];
+
+  network.use(
+    http.post(ctx.mintURL, (info) => {
+      const authorization = info.request.headers.get('authorization') ?? '';
+
+      sent.push(authorization);
+
+      return HttpResponse.json(
+        { message: `Bad credentials for ${authorization} with ${ctx.privateKeyPEM}` },
+        { status: 401 },
+      );
+    }),
+  );
+
+  const failure = await ctx.readToken().then(
+    () => null,
+    (error: unknown) => error,
+  );
+
+  invariant(failure instanceof Error);
+
+  const jwt = sent[0]?.replace('Bearer ', '') ?? '';
+
+  expect(jwt).toMatch(/^[\w-]+\.[\w-]+\.[\w-]+$/u);
+  expect(failure.message).not.toInclude(jwt);
+  expect(failure.message).not.toInclude('PRIVATE KEY');
+  expect(failure.message).toStartWith('GitHub refused to mint an installation token');
+});
+
+test('it refuses a private key that is not RSA', async () => {
+  const ecKey = generateKeyPairSync('ec', { namedCurve: 'prime256v1' })
+    .privateKey.export({ type: 'pkcs8', format: 'pem' })
+    .toString();
+
+  const reader = makeInstallationTokenReader({
+    apiURL: githubAPIURL,
+    clientID: 'Iv1.harbour',
+    installationID: 4242,
+    privateKey: ecKey,
+    readNowMs: () => 0,
+  });
+
+  const failure = await reader().then(
+    () => null,
+    (error: unknown) => error,
+  );
+
+  invariant(failure instanceof Error);
+
+  expect(failure.message).toBe(
+    'definitions_export_app_key is not a usable RSA private key in PEM form',
+  );
+});
+
+test('it fails when GitHub answers a mint with an unreadable body', async () => {
+  const ctx = setupTest();
+
+  network.use(http.post(ctx.mintURL, () => HttpResponse.json({ token: 'installation-token-1' })));
+
+  const failure = await ctx.readToken().then(
+    () => null,
+    (error: unknown) => error,
+  );
+
+  invariant(failure instanceof Error);
+
+  expect(failure.message).toBe(
+    'GitHub answered the installation token request with an unreadable body',
+  );
+});

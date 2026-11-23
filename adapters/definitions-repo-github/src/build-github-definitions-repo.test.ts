@@ -501,3 +501,35 @@ test('it refuses a request GitHub refuses, with its status and never the token',
   expect(refusal).toMatchObject({ name: 'GitHubRequestError', status: 401 });
   expect(refusal.message).not.toInclude('token-b');
 });
+
+test('it redacts the token that GitHub echoes in a refusal, and drops the rest of the body', async () => {
+  network.use(
+    http.get(`${githubAPIURL}/*`, (info) =>
+      HttpResponse.json(
+        {
+          message: `Bad credentials: ${info.request.headers.get('authorization') ?? ''}`,
+          documentation_url: 'https://docs.example.test/rest',
+        },
+        { status: 401 },
+      ),
+    ),
+  );
+
+  const repo = buildGitHubDefinitionsRepo({
+    repository: 'harbour/definitions',
+    base: 'main',
+    readToken: () => Promise.resolve('opaque-installation-secret'),
+    apiURL: githubAPIURL,
+  });
+
+  const refusal = await repo.readBaseRevision().then(
+    () => null,
+    (error: unknown) => error,
+  );
+
+  invariant(refusal instanceof Error);
+
+  expect(refusal.message).not.toInclude('opaque-installation-secret');
+  expect(refusal.message).not.toInclude('docs.example.test');
+  expect(refusal).toMatchObject({ name: 'GitHubRequestError', status: 401 });
+});

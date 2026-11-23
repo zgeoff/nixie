@@ -1,5 +1,6 @@
 import type { DefinitionsChange, DefinitionsRepo, PullRequestRef } from '@heynixie/definitions';
 import { z } from 'zod';
+import { formatGitHubMessage } from './format-github-message';
 import type { GitHubOperation, GitHubPathParams } from './github-contract';
 import { githubContract } from './github-contract';
 import { GitHubRequestError } from './github-request-error';
@@ -107,11 +108,13 @@ function makeGitHubSender(options: GitHubDefinitionsOptions): GitHubSender {
 
     const path = `${toGitHubPath(operation.path, { ...input.params, owner, name })}${query}`;
 
+    const token = await options.readToken();
+
     const response = await fetch(`${options.apiURL}${path}`, {
       method: operation.method,
       headers: {
         accept: 'application/vnd.github+json',
-        authorization: `Bearer ${await options.readToken()}`,
+        authorization: `Bearer ${token}`,
         'content-type': 'application/json',
         'user-agent': 'nixie',
         'x-github-api-version': '2022-11-28',
@@ -122,7 +125,12 @@ function makeGitHubSender(options: GitHubDefinitionsOptions): GitHubSender {
     const text = await response.text();
 
     if (!response.ok) {
-      throw new GitHubRequestError(operation.method, path, response.status, text);
+      throw new GitHubRequestError(
+        operation.method,
+        path,
+        response.status,
+        formatGitHubMessage(parseJSON(text), [token]),
+      );
     }
 
     const parsed = z.safeParse<Operation['response']>(operation.response, parseJSON(text));

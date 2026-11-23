@@ -1,5 +1,6 @@
-import { sign } from 'node:crypto';
+import { createPrivateKey, sign } from 'node:crypto';
 import { z } from 'zod';
+import { formatGitHubMessage } from './format-github-message';
 
 export interface InstallationTokenOptions {
   readonly apiURL: string;
@@ -43,16 +44,17 @@ export function makeInstallationTokenReader(
 
 const renewMarginMs = 5 * 60_000;
 const mintResponseSchema = z.object({ token: z.string().min(1), expires_at: z.iso.datetime() });
-const errorResponseSchema = z.object({ message: z.string() });
 
 async function mintInstallationToken(options: InstallationTokenOptions): Promise<CachedToken> {
+  const jwt = signAppJWT(options);
+
   const response = await fetch(
     `${options.apiURL}/app/installations/${options.installationID}/access_tokens`,
     {
       method: 'POST',
       headers: {
         accept: 'application/vnd.github+json',
-        authorization: `Bearer ${signAppJWT(options)}`,
+        authorization: `Bearer ${jwt}`,
         'user-agent': 'nixie',
         'x-github-api-version': '2022-11-28',
       },
@@ -62,12 +64,10 @@ async function mintInstallationToken(options: InstallationTokenOptions): Promise
   const body: unknown = await response.json().catch(() => null);
 
   if (!response.ok) {
-    const detail = errorResponseSchema.safeParse(body);
+    const detail = formatGitHubMessage(body, [jwt, options.privateKey]);
 
     throw new Error(
-      `GitHub refused to mint an installation token for the export with ${response.status}: ${
-        detail.success ? detail.data.message : 'no message'
-      }`,
+      `GitHub refused to mint an installation token for the export with ${response.status}: ${detail}`,
     );
   }
 
@@ -97,16 +97,25 @@ function signAppJWT(options: InstallationTokenOptions): string {
   });
 
   const signingInput = `${header}.${claims}`;
+  const signature = signWithRSAKey(signingInput, options.privateKey);
 
-  try {
-    const signature = sign('RSA-SHA256', Buffer.from(signingInput), options.privateKey);
-
-    return `${signingInput}.${signature.toString('base64url')}`;
-  } catch {
-    throw new Error('definitions_export_app_key is not a usable RSA private key in PEM form');
-  }
+  return `${signingInput}.${signature.toString('base64url')}`;
 }
 
 function toBase64URL(value: object): string {
   return Buffer.from(JSON.stringify(value)).toString('base64url');
+}
+
+function signWithRSAKey(signingInput: string, privateKey: string): Buffer {
+  try {
+    const key = createPrivateKey(privateKey);
+
+    if (key.asymmetricKeyType === 'rsa') {
+      return sign('RSA-SHA256', Buffer.from(signingInput), key);
+    }
+  } catch {
+    // falls through to the one error below, which must not carry the parser's text
+  }
+
+  throw new Error('definitions_export_app_key is not a usable RSA private key in PEM form');
 }
