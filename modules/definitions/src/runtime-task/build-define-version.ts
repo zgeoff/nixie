@@ -17,7 +17,7 @@ export interface TaskDefineInput {
   readonly trigger: Trigger;
   readonly model?: string | undefined;
   readonly persona?: 'default' | 'none' | undefined;
-  readonly memory?: 'none' | 'read' | undefined;
+  readonly memory?: 'none' | 'read' | 'self_notes' | undefined;
   readonly tools?: readonly string[] | undefined;
   readonly report?: 'wake' | 'next_turn' | 'none' | undefined;
 }

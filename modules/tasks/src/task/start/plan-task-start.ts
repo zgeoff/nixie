@@ -1,5 +1,6 @@
 import { findHeldToolName } from '@heynixie/tools';
 import type { HarnessCapability } from '@heynixie/wire';
+import { match } from 'ts-pattern';
 import { checkReportShape } from '../../report/check-report-shape';
 import { taskReportToolName } from '../../report/task-report-tool-name';
 import type { ShapeFault } from '../../report/types';
@@ -14,6 +15,7 @@ import type {
   TaskStartBounds,
 } from '../../types';
 import { startedTaskBaseTools, startedTaskDefaultTools } from '../started-task-default-tools';
+import { selfNoteToolNames } from './self-note-tool-names';
 
 export interface TaskStartChoice {
   readonly model?: string | undefined;
@@ -48,6 +50,7 @@ export type TaskStartChoiceRefusal =
     }
   | { readonly reason: 'stranger_with_memory' }
   | { readonly reason: 'wider_memory' }
+  | { readonly reason: 'self_notes_start' }
   | { readonly reason: 'wider_log' }
   | { readonly reason: 'wider_persona' }
   | {
@@ -101,14 +104,20 @@ export function planTaskStart(
     return refuse({ reason: 'wider_persona' });
   }
 
+  // Only a task definition grants the self-note writes, so a start from the conversation or from a
+  // task never does, and a task never starts one with a grant wider than its own.
+  if (memory === 'self_notes' && starter.memory !== 'self_notes') {
+    return refuse({ reason: 'self_notes_start' });
+  }
+
   // The starter rule that asks before this combination needs a decision point that can ask, so
   // until then code refuses it.
-  if (persona === 'none' && memory === 'read') {
+  if (persona === 'none' && memory !== 'none') {
     return refuse({ reason: 'stranger_with_memory' });
   }
 
   // Memory reaches a task's turn through its options and no tool, so the tool check misses it.
-  if (memory === 'read' && starter.memory === 'none') {
+  if (memory !== 'none' && starter.memory === 'none') {
     return refuse({ reason: 'wider_memory' });
   }
 
@@ -145,11 +154,21 @@ export function planTaskStart(
     startedTaskDefaultTools.filter((tool) => starterTools.includes(tool));
 
   // With memory read, a task may get each memory tool its starter holds; a write tool joins only
-  // when the start names it, while the read tools join by default.
-  const defaultMemoryTools = memory === 'read' ? bounds.memoryTools.read : [];
+  // when the start names it, while the read tools join by default. With self_notes, a task gets the
+  // read tools and the 4 self-note write tools by default, and no other write tool.
+  const selfNoteTools = bounds.memoryTools.write.filter((tool) => selfNoteToolNames.includes(tool));
 
-  const allowedMemoryTools =
-    memory === 'read' ? [...bounds.memoryTools.read, ...bounds.memoryTools.write] : [];
+  const defaultMemoryTools = match(memory)
+    .with('none', () => [])
+    .with('read', () => bounds.memoryTools.read)
+    .with('self_notes', () => [...bounds.memoryTools.read, ...selfNoteTools])
+    .exhaustive();
+
+  const allowedMemoryTools = match(memory)
+    .with('none', () => [])
+    .with('read', () => [...bounds.memoryTools.read, ...bounds.memoryTools.write])
+    .with('self_notes', () => defaultMemoryTools)
+    .exhaustive();
 
   const allMemoryTools = new Set([...bounds.memoryTools.read, ...bounds.memoryTools.write]);
 

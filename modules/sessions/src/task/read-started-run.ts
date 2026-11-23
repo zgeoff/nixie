@@ -1,10 +1,21 @@
 import type { Harness, ResolvedProfile } from '@heynixie/models';
 import { bindHarness } from '@heynixie/models';
 import type { GuestCommand } from '@heynixie/sandbox';
-import type { DefinitionRunContext, StartedTaskSetup, TaskRunOptions } from '@heynixie/tasks';
-import { readDefinitionRunContext, readTaskSetup, startedTaskDefaultTools } from '@heynixie/tasks';
+import type {
+  DefinitionRunContext,
+  DefinitionVersion,
+  StartedTaskSetup,
+  TaskRunOptions,
+} from '@heynixie/tasks';
+import {
+  readDefinitionRunContext,
+  readTaskSetup,
+  selfNoteToolNames,
+  startedTaskDefaultTools,
+} from '@heynixie/tasks';
 import type { ToolRunModel } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
+import { match } from 'ts-pattern';
 import { buildGuestCommand } from './build-guest-command';
 import type { SystemTaskSession } from './make-system-task-runner';
 import type { SandboxRunnerOptions } from './sandbox-runner-options';
@@ -71,10 +82,7 @@ async function readDefinitionRun(runner: RunReader, taskID: string): Promise<Sta
       persona: version.persona,
       memory: version.memory,
       log: version.log,
-      tools:
-        version.memory === 'read'
-          ? [...new Set([...version.tools, ...runner.options.memoryReadTools])]
-          : version.tools,
+      tools: pickRunTools(version, runner.options.memoryReadTools),
       report: found.report.mode,
       limits: runner.options.models.limits.taskRun.default,
     },
@@ -102,6 +110,19 @@ function buildRunParts(runner: RunReader, parts: RunParts): StartedRun {
     command: buildGuestCommand(runner.options.sandboxes, harness.guest),
     model: { model: profile.profile.model, profile: profile.profile.id },
   };
+}
+
+function pickRunTools(
+  version: Pick<DefinitionVersion, 'memory' | 'tools'>,
+  memoryReadTools: readonly string[],
+): readonly string[] {
+  return match(version.memory)
+    .with('none', () => version.tools)
+    .with('read', () => [...new Set([...version.tools, ...memoryReadTools])])
+    .with('self_notes', () => [
+      ...new Set([...version.tools, ...memoryReadTools, ...selfNoteToolNames]),
+    ])
+    .exhaustive();
 }
 
 // A fresh context opens a session at each piece of work, and a continuing one keeps the last.

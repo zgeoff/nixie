@@ -149,7 +149,9 @@ export type TaskSpeaker = 'conversation' | 'persona_task' | 'plain_task';
 
 export type TaskPersona = 'default' | 'none';
 
-export type TaskMemory = 'none' | 'read';
+// `read` gives the task the memory read tools. `self_notes` gives it those and the self-note writes
+// of the assistant. Only a task definition grants it.
+export type TaskMemory = 'none' | 'read' | 'self_notes';
 
 export type TaskReport = 'wake' | 'next_turn' | 'none';
 

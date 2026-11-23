@@ -285,6 +285,10 @@ export interface ToolRun {
 
   readonly model: ToolRunModel;
 
+  // set by nixie from the task's definition, never from a tool's input: the run may write the
+  // assistant's self-notes
+  readonly hasSelfNoteGrant?: boolean;
+
   readonly stepRunID?: string;
 
   // the open task run, with the caps of its limits; a started task passes none

@@ -10,7 +10,7 @@ const formSchema = z.looseObject({
   brief: z.string(),
   model: z.string().optional(),
   persona: z.enum(['default', 'none']).optional(),
-  memory: z.enum(['none', 'read']).optional(),
+  memory: z.enum(['none', 'read', 'self_notes']).optional(),
   log: z.enum(['own', 'conversation']).optional(),
   tools: z.string().array().optional(),
   context: z.enum(['fresh', 'continuing']),

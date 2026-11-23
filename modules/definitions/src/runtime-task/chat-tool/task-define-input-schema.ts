@@ -14,7 +14,7 @@ export const taskDefineInputSchema = z.strictObject({
   trigger: toolTriggerSchema,
   model: z.string().optional(),
   persona: z.enum(['default', 'none']).optional(),
-  memory: z.enum(['none', 'read']).optional(),
+  memory: z.enum(['none', 'read', 'self_notes']).optional(),
   tools: z
     .array(z.string())
     .optional()

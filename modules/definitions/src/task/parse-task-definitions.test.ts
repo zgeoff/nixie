@@ -255,6 +255,13 @@ test.each<[SeedFaultCode, Record<string, string>, string]>([
     'tasks/rain-gauge/task.yaml',
   ],
   [
+    'start_refused',
+    {
+      'tasks/rain-gauge/task.yaml': `name: Check the rain gauge\nbrief: Read the gauge and note the total.\nmemory: self_notes\n`,
+    },
+    'tasks/rain-gauge/task.yaml',
+  ],
+  [
     'bad_max_calls',
     {
       'tasks/rain-gauge/task.yaml': `name: Check the rain gauge\nbrief: Read the gauge and note the total.\ntools:\n  - web.fetch\nmaxCalls:\n  web.fetch: 0\n`,
@@ -710,4 +717,21 @@ test('it seeds the note-taking example with its daily schedule, conversation log
       'memory.edit',
     ],
   });
+});
+
+test('it refuses a repo definition that sets self notes, with the next release as the reason', () => {
+  const ctx = setupTest();
+
+  const parsed = ctx.parse({
+    'tasks/rain-gauge/task.yaml':
+      'name: Check the rain gauge\nbrief: Read the gauge.\nmemory: self_notes\n',
+  });
+
+  expect(parsed.faults).toStrictEqual([
+    {
+      path: 'tasks/rain-gauge/task.yaml',
+      fault: 'start_refused',
+      reasons: ['memory self_notes is available in the next release'],
+    },
+  ]);
 });

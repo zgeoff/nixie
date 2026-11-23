@@ -178,7 +178,7 @@ async function readStarterAccess(
   const options = setup?.kind === 'started' ? setup.options : null;
 
   return {
-    memory: options?.memory ?? 'none',
+    memory: options?.memory === 'self_notes' ? 'read' : (options?.memory ?? 'none'),
     persona: options?.persona ?? 'none',
     log: options?.log ?? 'own',
   };
