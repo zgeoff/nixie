@@ -68,9 +68,10 @@ test('it holds a define that sets self notes for approval, then runs the approve
   await sendClientMessage(ctx.api.client, { text: 'Hello there.' }, 'I asked you first.');
 
   const listed = await ctx.api.client.approvals.listItems();
+  const inForceBeforeApproval = await ctx.api.client.definitions.listTasks();
 
-  const definedBeforeApproval = ctx.nixie.guest.received.some(
-    (received) => received.owner !== 'conversation',
+  const definedBeforeApproval = inForceBeforeApproval.definitions.some(
+    (definition) => definition.name === 'Tidy the notes',
   );
 
   await ctx.api.client.approvals.answerProposals({
@@ -80,6 +81,12 @@ test('it holds a define that sets self notes for approval, then runs the approve
       choice: 'approve' as const,
       clientActionID: crypto.randomUUID(),
     })),
+  });
+
+  await waitForCondition(async () => {
+    const inForce = await ctx.api.client.definitions.listTasks();
+
+    return inForce.definitions.some((definition) => definition.name === 'Tidy the notes');
   });
 
   await waitForCondition(() => Date.now() > atMs + 1000);
