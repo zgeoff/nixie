@@ -148,8 +148,9 @@ places.acted    { placeID, shortID, callID }  // a call that an 'act' place allo
   from the record as a contact's are today, and `places.added` joins the forgettable kinds.
 - The projection keeps a keyed hash of each key, under the deployment's key, for the
   one-entry-per-key check. A forget clears the hash.
-- A forget of a place removes it, whatever its level: forgetting a `blocked` address unblocks it.
-  You forget a place to remove every trace of it.
+- You can forget an `address`, `phone` or `handle` place. A forget removes it whatever its level, so
+  forgetting a `blocked` address unblocks it. A `site` or `mail_domain` place holds nothing
+  personal: you remove it, and its records stay.
 
 ### The decision point
 
@@ -270,8 +271,9 @@ and when a call last used it. You add, change and remove entries there. The host
 - A wallet lift names places, never origins. Its merchants are site places.
 - A mail trigger's or wake rule's `from` names `address` or `mail_domain` keys, matched by
   `isPlaceCovered`. A place's level never wakes a task by itself.
-- Typing a domain covers its subdomains: typing `example.org` names `api.example.org`. A domain is
-  how you name a site, and the matcher already covers subdomains for an entry.
+- Typing a domain counts as naming its subdomains: typing `example.org` names `api.example.org`. You
+  name a site by its domain, and rarely type the host a tool reaches. This rule covers typed
+  evidence only; an entry covers subdomains only when its key says so.
 - The skill guard checks a place when a skill's call reaches it, never when the skill is written. A
   write can't reach anyone; a call can, and every call meets the decision point.
 - Known contacts become places at `known` with no new records: the `places` projection also folds
