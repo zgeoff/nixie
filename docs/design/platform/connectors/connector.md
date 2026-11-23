@@ -174,8 +174,10 @@ production client kept a working refresh token past that limit.
 - `gmail.modify` reads, labels, archives, trashes and sends mail, and cannot delete a message for
   good. The connector offers no mail delete action. **Why:** a purge needs the full mail scope,
   which also grants IMAP access, and the trash keeps a message restorable for 30 days.
-- The Gmail poll uses the history ID as its cursor. Each sent message carries the action ID in a
-  header, so a check after an unknown outcome searches the Sent folder for it.
+
+The [Google connections](../../queue/google-connections.md) design holds the consent, the refresh
+and Forget, and the [Google tools](../../queue/gmail-calendar-drive-tools.md) design holds the
+tools, the Sent-folder check and the read path.
 
 ## Search
 
