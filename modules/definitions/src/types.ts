@@ -383,7 +383,11 @@ export interface DueDefinitionsExport {
 }
 
 export interface DefinitionsExportSource {
-  readonly readChange: (repo: DefinitionsRepo, revision: string) => Promise<DefinitionsChange>;
+  // null when the repo already holds the change, so the export opens no pull request
+  readonly readChange: (
+    repo: DefinitionsRepo,
+    revision: string,
+  ) => Promise<DefinitionsChange | null>;
 }
 
 export interface ClosingDefinitionsExport {

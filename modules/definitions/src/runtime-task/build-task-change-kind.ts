@@ -37,6 +37,9 @@ export interface TaskChangeKindInput {
 
   // the context the seed parses task folders with
   readonly tasks: TaskSeedContext;
+
+  // called when the repo already holds the changes, which the next seed adopts
+  readonly onHeld: () => void;
 }
 
 // Every runtime change of a task definition in force, but a one-shot, goes into one pull request
@@ -44,7 +47,7 @@ export interface TaskChangeKindInput {
 // which rewrites the same pull request.
 export function buildTaskChangeKind(input: TaskChangeKindInput): DefinitionsChangeKind {
   return {
-    readDue: (db) => readDueTasks(db, input.tasks),
+    readDue: (db) => readDueTasks(db, input.tasks, input.onHeld),
     readClosing: readClosingTasks,
     probeInForce: probeTaskExportInForce,
     probePullRequestHeld: probeTaskPullRequestHeld,
@@ -55,6 +58,7 @@ export function buildTaskChangeKind(input: TaskChangeKindInput): DefinitionsChan
 async function readDueTasks(
   db: Kysely<unknown>,
   tasks: TaskSeedContext,
+  onHeld: () => void,
 ): Promise<readonly DueDefinitionsExport[]> {
   const current = await readTaskExport(db);
 
@@ -80,7 +84,8 @@ async function readDueTasks(
       baseHash: null,
       readSource: () =>
         Promise.resolve({
-          readChange: (repo, revision) => readTaskChange(repo, revision, current.changes, tasks),
+          readChange: (repo, revision) =>
+            readTaskChange(repo, revision, current.changes, { tasks, onHeld }),
         }),
     },
   ];
@@ -198,8 +203,8 @@ async function readTaskChange(
   repo: DefinitionsRepo,
   revision: string,
   changes: readonly TaskExportChange[],
-  tasks: TaskSeedContext,
-): Promise<DefinitionsChange> {
+  hooks: Pick<TaskChangeKindInput, 'tasks' | 'onHeld'>,
+): Promise<DefinitionsChange | null> {
   const folderEntries = await Promise.all(
     changes.map(async (change): Promise<[string, readonly string[]]> => {
       const paths = await repo.readFolder(`tasks/${change.definitionID}`, revision);
@@ -237,9 +242,9 @@ async function readTaskChange(
   const isChanged = [...change.files].some(([path, text]) => (texts.get(path) ?? null) !== text);
 
   if (!isChanged) {
-    throw new Error(
-      'the definitions repo already holds these task changes, and the next seed adopts them',
-    );
+    hooks.onHeld();
+
+    return null;
   }
 
   const raise =
@@ -251,7 +256,7 @@ async function readTaskChange(
       : null;
 
   if (raise !== null) {
-    requireRaiseApplied({ texts, raise, changes, revision, tasks });
+    requireRaiseApplied({ texts, raise, changes, revision, tasks: hooks.tasks });
   }
 
   const raised = raise === null ? change : buildRaisedChange(change, raise);
@@ -270,7 +275,7 @@ async function readTaskChange(
 
   const changed = buildSnapshot(snapshot, revision);
 
-  parseDefinitions(changed, tasks);
+  parseDefinitions(changed, hooks.tasks);
 
   return raised;
 }

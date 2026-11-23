@@ -18,16 +18,18 @@ async function setupTest() {
 
   const repo = buildStubDefinitionsRepo(defs.root);
   const onError = mock<(error: unknown) => void>();
+  const onHeld = mock<() => void>();
 
   return {
     ...defs,
     repo,
     onError,
+    onHeld,
     runExports: () =>
       runDefinitionsExports({
         log: defs.log,
         repo,
-        kinds: [buildTaskChangeKind({ log: defs.log, tasks: buildTestTaskSeed() })],
+        kinds: [buildTaskChangeKind({ log: defs.log, tasks: buildTestTaskSeed(), onHeld })],
         onError,
       }),
     readOpenFiles: () => {
@@ -261,7 +263,7 @@ test('it refuses a format 3 repo that holds files format 4 would apply, and keep
   ]);
 });
 
-test('it fails the export and opens no pull request when the repo at format 3 already holds the files', async () => {
+test('it skips the export without an error and opens no pull request when the repo at format 3 already holds the files', async () => {
   const ctx = await setupTest();
 
   await ctx.seed();
@@ -273,11 +275,12 @@ test('it fails the export and opens no pull request when the repo at format 3 al
   await ctx.writeRepoFiles({ ...stored, 'nixie.yaml': 'format: 3\n' });
   await ctx.runExports();
 
-  expect(ctx.onError).toHaveBeenCalledTimes(1);
+  expect(ctx.onError).not.toHaveBeenCalled();
+  expect(ctx.onHeld).toHaveBeenCalledTimes(1);
   expect(ctx.repo.readPullRequests()).toStrictEqual([]);
 });
 
-test('it fails the export and opens no pull request when the repo already holds the files', async () => {
+test('it skips the export without an error and opens no pull request when the repo already holds the files', async () => {
   const ctx = await setupTest();
 
   await ctx.seed();
@@ -289,7 +292,8 @@ test('it fails the export and opens no pull request when the repo already holds 
   await ctx.writeRepoFiles(stored);
   await ctx.runExports();
 
-  expect(ctx.onError).toHaveBeenCalledTimes(1);
+  expect(ctx.onError).not.toHaveBeenCalled();
+  expect(ctx.onHeld).toHaveBeenCalledTimes(1);
   expect(ctx.repo.readPullRequests()).toStrictEqual([]);
 });
 
