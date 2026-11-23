@@ -276,15 +276,18 @@ ChatGPT's Codex backend sends its stream with no content type. The gateway reads
 pass on to the caller. The streamed reply ends for the caller only after the count is written, so a
 caller that reads a whole reply and sends again never gets ahead of its own count. A caller that
 stops reading early, and an upstream that breaks mid-stream, still leave the count of the events
-that arrived. A reply with no usage that spent nothing, such as an error, adds nothing. A stream
-that never began a reply also adds nothing, whether it ended with no event, held only an `error`
-event such as `overloaded_error`, or broke before any event: the model began no reply, so it spent
-nothing. A stream has begun once any event other than an `error` or a `ping` has arrived. The
+that arrived. A reply with no usage that spent nothing, such as an error, adds nothing.
+
+A stream that never began a reply also adds nothing, whether it ended with no event, held only an
+`error` event such as `overloaded_error`, or broke before any event: the model began no reply, so it
+spent nothing. A stream has begun once any event other than an `error` or a `ping` has arrived. The
 gateway logs each such stream as `count.skipped`, at the warn level, with the route, the sandbox,
 the reason, the upstream status, and the type and message of the error event (each `null` when it
 held none, the message cut to 200 characters). A non-2xx reply with a JSON body adds nothing either,
-and the gateway logs it as `upstream.refused` with the same status, type and message. A reply that
-spent, or may have, with no whole usage the gateway can read adds [an estimate](#the-estimate).
+and the gateway logs it as `upstream.refused` with the same status, type and message.
+
+A reply that spent, or may have, with no whole usage the gateway can read adds
+[an estimate](#the-estimate).
 
 The gateway logs each reply it counts from its whole usage as `count.charged`, at the info level,
 with the route, the sandbox, the usage's 5 token counts (uncached input, cache reads, the 2 cache
