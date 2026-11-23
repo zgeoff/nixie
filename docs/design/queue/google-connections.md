@@ -26,14 +26,23 @@ a tool returned lives only in that call's record. The Google design has these pa
 | [Gmail arrivals](https://github.com/zgeoff/nixie/pull/1420) | the Gmail source that wakes a task, and the `gmail.wake_*` tools, in the mail design |
 | [the calendar poll](mail-and-calendar-polls.md)             | calendar changes that wake a task                                                    |
 
-The connection builds on 2 designs that are not built yet, and needs the parts of each that Google
-uses first: the [credential store](https://github.com/zgeoff/nixie/pull/1414), for the fetcher, the
-keyed fingerprint, the binding with its removal counter, `exchange` and `refresh`; and the
-[erasure runner](https://github.com/zgeoff/nixie/pull/1413), for Forget. It adds the store's
-database backend, for Google alone, and the Google parts of the
-[connector interface](../platform/connectors/connector.md). The connection argument, job pins and
-the model's status line come with the first Google tools, in
-[Gmail](https://linear.app/zgeoff/issue/GEO-1825).
+The connection work item:
+
+- **Needs first** the parts of 2 unbuilt designs that Google uses, each built by its own work items
+  once the owner approves it: from the
+  [credential store](https://github.com/zgeoff/nixie/pull/1414), at that pull request's version, the
+  fetcher, the keyed fingerprint, the own-value set, the binding with its removal counter,
+  `exchange` and `refresh`; from the [erasure runner](https://github.com/zgeoff/nixie/pull/1413),
+  the runner with the `credential` kind.
+- **Adds** the store's database backend, for Google alone; the Google parts of the
+  [connector interface](../platform/connectors/connector.md), with the existing connectors moved
+  onto the new `Connector` shape; the picker settings, which the Calendar and Drive work reads; and
+  the filter that leaves out a tool whose scope is missing, tested against a fixture action.
+- **Leaves** the connection argument, job pins and the model's status line to the first Google
+  tools, in [Gmail](https://linear.app/zgeoff/issue/GEO-1825).
+
+The connections module depends on the credentials module and never the other way. The connections
+module writes every `connection.*` and `credential.*` record.
 
 ## Shape
 
@@ -70,7 +79,10 @@ interface OAuthSpec {
   tokenURL: string; // 'https://oauth2.googleapis.com/token'
   revokeURL: string; // 'https://oauth2.googleapis.com/revoke'
   identityScopes: string[]; // ['openid', 'email']: the account, whatever else you untick
-  scopes: string[]; // ['gmail.modify', 'calendar.events', 'calendar.calendarlist.readonly', 'drive.file']: every consent asks for all 4
+  // ['gmail.modify', 'calendar.events', 'calendar.calendarlist.readonly', 'drive.file']: every
+  // consent asks for all 4. nixie stores, records and shows the short name; it adds
+  // 'https://www.googleapis.com/auth/' at Google and strips it from Google's answers.
+  scopes: string[];
   authorizeParams: Record<string, string>; // { access_type: 'offline', prompt: 'consent', include_granted_scopes: 'true' }
   origins: string[]; // ['https://gmail.googleapis.com', 'https://www.googleapis.com']: the fetcher's origins
   returnPath: string; // '/connections/google/return'
@@ -85,32 +97,52 @@ interface SetupStep {
 }
 
 interface HealthReport {
-  // …existing fields
+  // …existing fields; Google's check reports accountName null
   missing: MissingScope[]; // each scope in OAuthSpec.scopes that check found missing
 }
 
-// connections module: what a Google tool, attempt or check gets for one connection
-connections.readContext('k3x9m2p7qa'); // the connection's short ID
-// → { connection: 'k3x9m2p7qa', account: 'you@example.com', fetch }, or null when not live
+// connections module: what a Google tool, attempt or check gets for one connection. The tool
+// endpoint maps a short ID to the connection ID before it calls.
+connections.readContext('6f1c2a9e-…'); // the connection ID, a UUID, as the Gmail source passes it
+// → { connectionID: '6f1c2a9e-…', connection: 'k3x9m2p7qa', account: 'you@example.com', fetch }
+//   or null when the connection is not live
 interface ConnectorContext {
+  connectionID: string;
   connection: string; // the short ID
   account: string; // the ID token's email, decrypted at each call
-  fetch: Fetcher; // the store's fetcher for this connection, limited to OAuthSpec.origins
+  fetch: typeof fetch; // the credential store's fetcher for this connection, limited to OAuthSpec.origins
 }
 
 // credentials module: the database backend's methods (credential store design), plus revoke.
+// A connection's binding ID is its connection ID, and an OAuth client's is its client ID; the
+// store registers both from their rows at start.
 interface HeldCredentials {
   // …existing methods: exchange, refresh
-  revoke(binding: BindingRef): Promise<'confirmed' | 'refused' | 'unknown'>; // sends the refresh token once
+  // revoke sits beside them because it sends the refresh token, which only the store reads
+  revoke(binding: BindingRef): Promise<RevokeResult>; // sends the refresh token once
 }
+type TokenResult = {
+  idToken: { sub: string; email: string } | null; // checked as below; null on a refresh
+  grantedScopes: string[]; // short names
+  refreshExpiresAt: number | null; // from refresh_token_expires_in
+  accessExpiresAt: number; // the access token stays in the store's memory
+};
+type RevokeResult = {
+  outcome: 'confirmed' | 'refused' | 'unknown' | 'not_attempted';
+  status: number | null;
+  googleError: string | null;
+};
 ```
 
 `Connector.auth` gains `OAuthSpec`, and `check` takes `(connection, context)` as the connector
 design sets. The existing connectors keep `{ kind: 'none' }`, an empty `setup`, and their behaviour.
+`StaticSpec` comes with the first connector that needs it. The default label of a Google connection
+is the ID token's `email`.
 
 nixie reads the account from the ID token in the token response, never from `check`. Google sends
-the ID token straight to nixie over TLS, so nixie checks no signature. It checks the issuer, the
-audience and the expiry, then reads `sub` as the account's identity and `email` as its account name.
+that ID token straight to nixie over TLS, so nixie checks no signature. An ID token from any other
+path would need its signature checked, and nixie reads none. It checks the issuer, the audience and
+the expiry, then reads `sub` as the account's identity and `email` as its account name.
 
 ### The setup steps
 
@@ -135,8 +167,9 @@ Account's third-party access page. The guide and the step data ship in one PR.
 ```ts
 // libs/contract, under `connections`. Each procedure that takes a clientActionID is a checked action.
 // readSetup, list and readForgetStatus are reads, and finishConsent is keyed by state.
-connections.readSetup({ connector: 'google' });
-// → { steps: [{ id: 'project', title, body, links }, …],   placeholders filled once a client exists
+connections.readSetup({ connector: 'google', origin: 'https://nixie.example.org' });
+// → { steps: [{ id: 'project', title, body, links }, …],   placeholders filled from the registered
+//     client's origin, or from the page's origin before you register one
 //     client: null | { client: 'q7m2x9k4ta', origin, redirectURI, fingerprint, pickerKey, projectNumber } }
 
 connections.registerClient({
@@ -161,7 +194,8 @@ connections.setPicker({
 // → ok; both values, or null for both to remove them
 
 connections.removeClient({ clientActionID, client: 'q7m2x9k4ta' });
-// → ok, or CLIENT_IN_USE while a connection that is not forgotten, or a consent request, uses it
+// → ok, or CLIENT_IN_USE while a connection that is not forgotten, or a consent request that has
+//   not lapsed, uses it
 
 connections.startConsent({ clientActionID, connector: 'google', connection: null });
 // → { consentURL: 'https://accounts.google.com/o/oauth2/v2/auth?…&state=…', expiresAt }
@@ -182,8 +216,10 @@ connections.setLabel({ clientActionID, connection: 'k3x9m2p7qa', label: 'Work' }
 
 connections.forget({ clientActionID, connection: 'k3x9m2p7qa' });
 // → { erasure: 'done', revocation: 'confirmed', backup: { state: 'pending' } }
-//   it runs the Forget to its end before it answers, as every forget route does; erasure is
-//   'pending' only when a step failed, and the runner's catch-up finishes it
+//   it runs the Forget to its end before it answers, as every forget route does; the backup stays
+//   pending until a published backup set covers the Forget
+//   after a failed step: { erasure: 'pending', revocation: 'unknown', … }, which the runner's
+//   catch-up finishes
 
 connections.readForgetStatus({ connections: ['k3x9m2p7qa'] });
 // → [{ connection: 'k3x9m2p7qa', erasure: 'done', revocation: 'confirmed', backup: { state: 'complete' } }]
@@ -199,7 +235,7 @@ connections.list();
 // libs/contract
 type Erasure = 'pending' | 'done';
 type Revocation = 'pending' | 'confirmed' | 'refused' | 'unknown' | 'not_attempted';
-type ConnectionStatus = 'active' | 'failing' | 'needs_consent' | 'expiring' | 'forgotten';
+type ConnectionStatus = 'active' | 'failing' | 'needs_consent' | 'expiring' | 'forgotten'; // expiring: a time-limited grant ends within 3 days
 type ForgetStatus = { erasure: Erasure; revocation: Revocation; backup: ForgetBackup };
 type ForgetBackup = z.infer<typeof forgetBackupSchema>; // libs/contract: off, pending, failed, complete, unknown
 type MissingScope = { scope: string; reason: 'not_granted' | 'api_disabled' };
@@ -208,10 +244,12 @@ type MissingScope = { scope: string; reason: 'not_granted' | 'api_disabled' };
 [Checked actions](../../architecture/channels/api.md#checked-actions) keep each action's first
 result beside a hash of its input, so a retry with the same `clientActionID` gets that result.
 
-- The hash leaves out `clientSecret` and `label`. A hash of a secret is a copy of it, and a hash of
-  a label outlives a Forget and confirms a guess at the label.
-- A retry of `startConsent` gets a fresh `state` and consent URL, which replace the first ones and
-  keep the first `expiresAt`.
+- The hash leaves out `clientSecret` and `label`, through a list of left-out fields that the shared
+  input hash gains. A hash of a secret is a copy of it, and a hash of a label outlives a Forget and
+  confirms a guess at the label. A retry with another secret gets the first result.
+- `startConsent` stores its consent ID and `expiresAt` as its result, never the URL. A retry gets a
+  fresh `state` and consent URL, which replace the first ones and keep the first `expiresAt`.
+- The API passes the request's `Origin` header to `registerClient`, which compares it with `origin`.
 - `finishConsent` takes no `clientActionID`, because each `state` works once.
 
 ### The return route
@@ -258,8 +296,9 @@ stays a `POST` with nixie's custom client header
   then makes a new connection. When the Forget is still running, it answers `FORGET_IN_PROGRESS`.
 - To match a `sub` or check `LABEL_TAKEN`, nixie decrypts the account or label of each live
   connection, because it keeps no hash of either.
-- `removeClient` answers `CLIENT_IN_USE` while a consent request names the client, so no token
-  exchange runs on a removed client.
+- `removeClient` answers `CLIENT_IN_USE` while a consent request that has not lapsed names the
+  client, so no token exchange runs on a removed client. `finishConsent` refuses a lapsed request
+  before it exchanges.
 - After `ACCOUNT_MISMATCH` or `FORGET_IN_PROGRESS`, or when its connection was forgotten during the
   consent, `finishConsent` keeps no token. After its transaction commits, it makes one revocation
   attempt and records `connection.consent_discarded` with the outcome. It skips that attempt when a
@@ -268,14 +307,22 @@ stays a `POST` with nixie's custom client header
 
 ### Fewer scopes
 
-- `check` makes one read call per scope in `scopes`. For `calendar.calendarlist.readonly` it reads
-  the calendar list. A scope Google did not grant is `not_granted`. A scope whose call Google
-  refuses because the project has not enabled its API is `api_disabled`.
+| Scope                            | The tools it holds                                       |
+| -------------------------------- | -------------------------------------------------------- |
+| `gmail.modify`                   | every `gmail.*` tool                                     |
+| `calendar.events`                | every `calendar.*` tool except `calendar.list_calendars` |
+| `calendar.calendarlist.readonly` | `calendar.list_calendars`                                |
+| `drive.file`                     | every `drive.*` tool, and the Drive picker               |
+
+- `check` makes one read call per scope in `scopes`, after each consent and once a day. For
+  `calendar.calendarlist.readonly` it reads the calendar list. A scope Google did not grant is
+  `not_granted`. A scope whose call Google refuses because the project has not enabled its API is
+  `api_disabled`, and the daily `check` clears it once you enable the API.
 - The tool endpoint of each task run and worker run leaves out each tool whose scope is in
   `missing`.
 - The connection's page shows each missing scope with its reason and the tools it holds back, and
   one button that runs `startConsent` for the connection. The connections list marks the connection
-  the same way. The conversation never shows the notice. The notice stays until a consent clears
+  the same way. The conversation never shows the notice. The notice stays until a `check` clears
   `missing`.
 - A connection with only the identity scopes still connects, and lists no tools.
 
@@ -312,7 +359,10 @@ stays a `POST` with nixie's custom client header
 - Internal names and file layout.
 - The wording of each error, of the setup steps' bodies and of the guide.
 - The read call that `check` makes per scope.
-- Where Settings → Connections sits in the web client's navigation.
+- Where Settings → Connections sits in the web client's navigation, and the layout of its pages,
+  which the owner reviews on the build's pull request.
+- Whether the return route is built before the OAuth return spike reports, against a fake Google,
+  with PKCE behind a switch.
 
 ## Out of scope
 

@@ -133,9 +133,12 @@ with these mappings of Google's answers:
 - A connection whose `refresh_expires_at` falls within 3 days is `expiring`. Past it, the connection
   is `needs_consent`. The refresh schedule checks the time on each pass and at start.
 - When 2 statuses hold, the first of `needs_consent`, `failing` and `expiring` wins.
-- The fetcher holds a shared lock on the connection for each request it sends. Forget takes the lock
-  exclusive, after it aborts every request in flight on the connection. A request Google already
-  received stays with Google.
+- After a restart, the store refreshes a connection's access token at its first use.
+- The refresh token and each access token join the credential store's own-value set while the
+  connection lives.
+- The fetcher holds a shared lock on the connection for each request it sends. Forget's `hide` takes
+  the lock exclusive, after it aborts every request in flight on the connection. A request Google
+  already received stays with Google.
 - The fetcher refuses the hosts of `authorizeURL`, `tokenURL` and `revokeURL`, and every path under
   `/oauth2/` on any host, because `www.googleapis.com` also serves an older token endpoint. No tool
   then reaches a token or revocation endpoint.
@@ -152,17 +155,23 @@ which the connections module registers with the
   reads as `unknown`, whether or not the request went out.
 - Its capture holds `key_id` and `token_key_id`, and the session cause `{ connectionID }`, a new
   cause for the conversation's
-  [session cleanup](../../architecture/memory/context.md#forgetting-and-the-live-session).
+  [session cleanup](../../architecture/memory/context.md#forgetting-and-the-live-session). Its
+  cleanup keys, sandbox call IDs and purges are empty, and its turn inputs are
+  `{ threads: [], cleaned: false, floor: null }`.
+- `hide` aborts the requests in flight and takes the fetcher's lock exclusive, as
+  [refresh and use](#refresh-and-use) sets.
 - `readChildren` returns the connection's Gmail wake rules and held arrivals, which the
   [mail design](https://github.com/zgeoff/nixie/pull/1420) erases as children. Until that design is
   built, it returns none.
 - `revoke` calls the store's `revoke`, which sends the refresh token to `revokeURL` once, with a 10
-  s timeout, and writes `connection.revocation_recorded`: 200 is `confirmed`, 400 is `refused` with
-  Google's error code, and anything else is `unknown`. It returns that outcome to the runner.
-- When the key store lacks the token's key, such as after a restore, `revoke` sends nothing, records
-  `not_attempted` and returns `unknown`.
-- The runner's catch-up, which finds an attempt with no outcome, writes
-  `connection.revocation_recorded` with `unknown` and never sends again.
+  s timeout: 200 is `confirmed`, 400 is `refused` with Google's error code, and anything else is
+  `unknown`. The connections module writes `connection.revocation_recorded` from the `RevokeResult`,
+  and returns the outcome to the runner, `not_attempted` as `unknown`.
+- When the key store lacks the token's key, such as after a restore, the store's `revoke` sends
+  nothing and answers `not_attempted`.
+- At start, before the runner's catch-up, the connections module writes
+  `connection.revocation_recorded` with `unknown` for each `erasure.started` of kind `credential`
+  that has none, so the catch-up never sends again.
 - `cleanIndexes` clears the sealed columns and sets the binding to `removed`. The session cleanup
   deletes every session summary of the conversation and opens a new session, as a memory forget
   does, because a summary can hold the status line or the connection argument that named the
@@ -177,15 +186,16 @@ which the connections module registers with the
   the account elsewhere, such as a message, a summary or a tool result, keeps its own key, and you
   remove it with the forget of that record.
 - `removeClient` deletes the client's key and checkpoints the key store, and needs no revocation:
-  Google keeps the client until you delete it in the console.
+  Google keeps the client until you delete it in the console. `connection.client_removed` makes a
+  backup due, as `erasure.finished` does.
 
 ### Backups, resets and rollbacks
 
 - A full [reset](../../architecture/core/event-log.md#the-reset) makes one revocation attempt per
   live connection before it deletes the keys, 10 s each. Its answer gains
   `revocations: { connection: string; outcome: Revocation }[]`. A failed attempt never stops the
-  reset. A reset of the conversation leaves connections alone. This work adds the revocations to the
-  reset.
+  reset. A reset of the conversation leaves connections alone. This work adds the revocations to
+  today's reset, as an additive field of its answer.
 - A restore of a data copy from before a Forget meets a connection whose keys are gone. At start,
   the server begins a Forget of each connection whose binding is `enabled` and whose `token_key_id`
   the key store lacks, and that Forget records `not_attempted`.

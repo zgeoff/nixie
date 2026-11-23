@@ -41,21 +41,49 @@ flowchart LR
 
 ### Every Google tool
 
-The Google connector builds each tool as a `ToolDefinition` (tools module), and each queued tool's
-attempt and check as an `ActionConnector` (connectors module), the shapes the tool endpoint and the
-action queue run today. A read's `run` returns a `ToolOutcome`, so it can carry an image or write
-link IDs as `web_fetch` does. Each of them reaches its connection through `connections.readContext`
-from the [Google connection](google-connections.md#the-connector).
+```ts
+// connectors module. Each Google tool is one entry of the Google connector's `actions`. The tool
+// endpoint reads `scopes` to leave out a tool whose scope is missing; the action queue runs
+// `queued` for a queued tool. `run`, with its ActionResponse, leaves ConnectorAction.
+interface ConnectorAction {
+  tool: ToolDefinition; // was Omit<ToolDefinition, 'run'>; a read's run returns a ToolOutcome, so it can carry an image or link IDs as web_fetch does
+  scopes: string[];
+  reconcile: Reconcile;
+  queued?: ActionConnector; // its attempt answers a ProviderResponse; its check, a CheckResponse
+}
+
+// connectors module: …existing fields of ActionAttempt
+interface ActionAttempt {
+  destinations: readonly CallDestination[]; // was string[]: the attempt compares reply targets too
+  attemptStartedAt: number; // epoch ms when the attempt began
+}
+
+// tools module: …existing fields of Prepared
+interface Prepared {
+  destinations: readonly CallDestination[]; // was string[], so prepare can return reply targets
+  card?: Record<string, string>; // the card's fields that come from the provider
+}
+```
+
+Each tool, attempt and check reaches its connection through `connections.readContext` from the
+[Google connection](google-connections.md#the-connector).
 
 - Every item ID a Google tool returns starts with its connection's short ID and a dot, such as
   `k3x9m2p7qa.18c2f0a9b4d1e7c3`, and the model passes it back whole. A tool that takes an item ID
-  takes its connection from that prefix. Every other tool takes the
-  [connection argument](../platform/connectors/connector.md#the-connection-argument) when its caller
-  can reach 2 or more Google connections.
-- The `ActionAttempt` that the queue hands an attempt and a check gains `attemptStartedAt`, the
-  epoch ms when the attempt began.
-- A queued tool's attempt answers a `ProviderResponse` (connectors module), whose kinds include
-  `refused_retryable` and `destinations_changed`.
+  takes its connection from that prefix. The endpoint checks the prefix against the caller's
+  connections and the job's pins, as it checks a
+  [connection argument](../platform/connectors/connector.md#the-connection-argument), with the same
+  errors.
+- Every other tool takes the connection argument when its caller can reach 2 or more Google
+  connections.
+- Either way, the endpoint adds `connection` to the call's arguments before the decision point, so a
+  queued action's arguments always name its connection. An attempt or a check whose connection is
+  forgotten answers `refused` with `connection_forgotten`.
+- The Gmail work item builds the connection argument, job pins and the model's status line, as the
+  connector design and
+  [serving nixie's tools](../platform/connectors/tools.md#what-the-model-learns-about-a-connection)
+  set them out. The Google connection builds the filter that leaves out a tool whose scope is
+  missing.
 - Each tool that reads text returns at most one part of it per call: `part` names the part, counted
   from 1, and `parts` gives how many there are.
 
@@ -84,16 +112,18 @@ const gmailReplyDeclaration: EffectDeclaration = {
 ```
 
 ```ts
-// tools module: …existing fields of Prepared
-interface Prepared {
-  card?: Record<string, string>; // the card's fields that come from the provider; nixie seals them
-  //                                as erasable fields of the call's tool_called record
-}
-// policy module: …existing fields of BodyFields
+// policy module: …existing fields of BodyFields. The action kind's proposal handler uses it in
+// place of the label buildActionApproveLabel builds.
 interface BodyFields {
   approveLabel?: string; // the approve button, such as 'Send reply'
 }
 ```
+
+- `prepare` returns `card` fields, and nixie seals them as new erasable fields of the call's
+  `tool_called` record, so a card renders while the connection is down and a forget of the record
+  takes them. The Gmail work item adds these fields.
+- `gmail.send` has a `prepare` that fills only `card.from` from the context. Its destinations stay
+  its `to`, `cc` and `bcc` arguments.
 
 - Each destination is a bare address, with no display name, in lowercase NFC. The decision point
   gives each one a permission at stage 5, as
@@ -109,9 +139,9 @@ interface BodyFields {
   reply targets. In its attempt, the connector reads the item again. When the recipients, the guests
   or a reply target differ, such as a message moved to Spam since, it answers
   `destinations_changed`, and the action fails and sends to none of them.
-- `policy.action_proposed` gains each destination's permission from the decision, and
-  `libs/contract` passes it to the card. The card lists each destination beside its permission, and
-  marks one that no permission covered with "no permission".
+- `policy.action_proposed` gains an optional field with each destination's permission from the
+  decision, and `libs/contract` passes it to the card. The card lists each destination beside its
+  permission, and marks one that no permission covered with "no permission".
 - nixie fills each card's sentence from the call's structured fields and its `card` fields, as
   [proposals and approvals](../platform/policy/approvals.md#the-proposal) sets, and the model writes
   none of it. [Approvals in the client](../platform/channels/approvals.md#cards) holds the card's
@@ -146,7 +176,7 @@ gmail.search({ query: 'from:sam@example.org newer_than:7d', limit: 20 });
 
 gmail.read({ message: 'k3x9m2p7qa.18c2f0a9b4d1e7c3', part: 1 });
 // → { message, thread, from, replyTo: null, to, cc, subject, date, labels,
-//     text: 'Hi, the numbers are in the sheet [L3]…', part: 1, parts: 2,
+//     text: 'Hi, the numbers are in the sheet [L3]…', part: 1, parts: 2, unsupported: false,
 //     attachments: [{ attachment: '1.2', name: 'q3.csv', type: 'text/csv', bytes: 18233 }] }
 
 gmail.read_attachment({ message: 'k3x9m2p7qa.18c2f0a9b4d1e7c3', attachment: '1.2', part: 1 });
@@ -199,7 +229,8 @@ gmail.reply({ message: 'k3x9m2p7qa.18c2f0a9b4d1e7c3', text: 'Thanks, got it.', r
 
 A mail card shows From (the connection's account), To, Cc, Bcc, Subject, In reply to (`gmail.reply`
 only: the original's sender, date and subject) and the whole body as plain text, never HTML. It
-leaves out an empty Cc or Bcc.
+leaves out an empty Cc or Bcc. In the sentence, `{to}` lists every destination, Bcc included,
+separated by commas.
 
 ### The Sent-folder check
 
@@ -260,21 +291,28 @@ The check runs at least 5 minutes after the attempt started, and asks Gmail 2 wa
 
 - Every read calls Google at the time of the call. nixie keeps no index, cache or copy of mail,
   events or files.
+- Each tool that reads text returns at most one part of it per call: `part` names the part, counted
+  from 1, and `parts` gives how many there are.
 - Each text part is at most the `text_bytes` of the `web_fetch` config section, cut as
   [pages and parts](../../architecture/connectors/web-fetch.md#pages-and-parts) sets. The tool reads
-  the item from Google again for each part.
+  the item from Google again for each part, and runs the fetch sandbox again for an HTML body. The
+  same item cuts into the same parts on every read.
+- Link IDs follow the rules of [link IDs](../../architecture/connectors/web-fetch.md#link-ids) in
+  every kind of task run, as `web_fetch`'s do.
 - The text the model read sits in the call's `tool_result` record under that record's own key, so a
   forget of the record removes it.
 - A mail whose body has only an HTML part goes to a
   [fetch sandbox](../../architecture/connectors/web-fetch.md#the-fetch-sandbox) for its text, so
   nixie never parses mail HTML on the host. Each link in a body reads as a
   [link ID](../../architecture/connectors/web-fetch.md#link-ids), such as `[L3]`.
-- The fetch guest gains a request kind that carries HTML bytes and opens no connection, so no
-  tracking pixel loads. A server whose fetch image lacks that kind answers an HTML-only mail with
-  `text: null` and `unsupported: true`, so the image and the server still roll out in either order.
+- The fetch guest gains a request `{ kind: 'html', html, limits }` that opens no connection, so no
+  tracking pixel loads. A fetch image that lacks the kind answers an unknown-request error, and the
+  server answers that HTML-only mail with `text: null` and `unsupported: true`, so the image and the
+  server still roll out in either order.
 - `gmail.read_attachment` reads `text/*` and `application/json` as UTF-8 text, and decodes images as
   [web fetch images](../../architecture/connectors/web-fetch-images.md) does. Every other type
-  answers `unsupported`. An item over 25 MB answers `too_large`.
+  answers `unsupported`. An item over 25 MB answers `too_large`. The Gmail work item builds this
+  reader as a shared function, and `drive.read` reuses it.
 
 ### Sends and errors
 
