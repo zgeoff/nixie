@@ -10,7 +10,6 @@ import { readItemText } from '../item/read-item-text';
 import { writeMemoryProposal } from '../memory/write-memory-proposal';
 import { readNewestMessage } from '../message/read-newest-message';
 import { writeRetirement } from '../retirement/write-retirement';
-import { requireGrantedSelfSubject } from '../subject/require-granted-self-subject';
 import type { StoreParts, VersionRef } from '../types';
 import { requireCheckerSnapshot } from '../utils/checker/require-checker-snapshot';
 import { ForgottenEvidenceError } from '../utils/error/forgotten-evidence-error';
@@ -22,8 +21,6 @@ export async function writeGatedRetirement(
   request: GatedRetireRequest,
 ): Promise<WriteOutcome> {
   const item = await readItemText(parts, request.target, 'retire');
-
-  requireGrantedSelfSubject(request.caller, [item.subject]);
 
   const itemText = item.text;
   const textTarget = { itemID: request.target.itemID, version: item.version };

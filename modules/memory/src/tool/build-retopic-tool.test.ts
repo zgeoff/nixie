@@ -643,28 +643,6 @@ test('it removes the stored card of a held move when an item it names is forgott
   expect(attachments.get(kept)).toMatchObject({ status: 'readable' });
 });
 
-test.each([
-  { from: 'owner', to: 'self' },
-  { from: 'self', to: 'owner' },
-  { from: 'self', to: 'shared' },
-] as const)(
-  'it refuses a granted task a move from $from to $to before the decision point, so no approval card is made',
-  async (move) => {
-    const ctx = await setupTest();
-    const item = await ctx.createItem({ gist: 'tent poles', topic: 'lines' }, move.from);
-
-    const facts = await ctx.tool.resolvePolicyFacts?.(
-      { items: [item.shortID], to: { topic: 'lines', subject: move.to } },
-      buildMockToolContext({ thread: 'task-1', hasSelfNoteGrant: true }),
-    );
-
-    expect(facts).toMatchObject({
-      status: 'error',
-      message: expect.toInclude('grants it self-note writes only'),
-    });
-  },
-);
-
 test('it lets the facts of a granted task move of self-notes to another self topic through', async () => {
   const ctx = await setupTest();
   const item = await ctx.createItem({ gist: 'tent poles', topic: 'lines' }, 'self');

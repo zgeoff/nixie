@@ -477,37 +477,6 @@ test('it edits the labels of a self-note for a granted task', async () => {
   expect(outcome).toMatchObject({ status: 'applied', itemID: note.itemID });
 });
 
-test.each(['owner', 'shared'] as const)(
-  'it refuses a granted task a label edit of a %s item',
-  async (subject) => {
-    const memory = await startTestMemory();
-
-    const item = await memory.store.remember({
-      text: 'Keeps a kettlebell by the door',
-      subject,
-      labels: { gist: 'kettlebell', topic: 'home', triggers: [] },
-      provenance: buildMockProvenance(),
-    });
-
-    const write = memory.store.writes.editLabels({
-      target: item,
-      labels: { gist: 'kettlebell by the door', topic: 'home', triggers: [] },
-      caller: buildMockWriteCaller({
-        origin: 'task',
-        thread: 'task-1',
-        taskID: 'task-1',
-        hasSelfNoteGrant: true,
-      }),
-      verdict: buildAllowVerdict(),
-    });
-
-    expect(write).rejects.toThrowWithMessage(
-      SelfNoteError,
-      new RegExp(`subject is ${subject}`, 'u'),
-    );
-  },
-);
-
 test('it refuses a task with no grant a self-note label edit', async () => {
   const memory = await startTestMemory();
 

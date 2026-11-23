@@ -55,14 +55,15 @@ gives a write tool by default. A start with `memory: none` may name no memory to
 
 The value `self_notes` is the memory grant of a task definition, and a start never sets it. It gives
 a task everything that `read` gives, and the self-note writes of the assistant: `memory.remember`,
-`memory.edit`, `memory.retopic` and `memory.retire`, by default. It gives no pin tool, and the
-task's writes reach only items whose subject is self, as
-[self-notes](../memory/writes.md#self-notes) says. A `task.start` with `memory: self_notes` is
-refused with a sentence that says to define the task, whoever starts it, so a task never starts a
-task with the grant. The input schema of `task.start` lists the value, so the refusal reaches the
-planner and the model reads that sentence. The run of a started task never holds the grant, even
-when its stored options name the value. A worker holds no memory tool. The definitions repo and
-`task.define` refuse `self_notes`, and the run of a stored version that holds it gets the grant.
+`memory.edit`, `memory.retopic` and `memory.retire`, by default. The grant lifts only the self-note
+caller check, as [self-notes](../memory/writes.md#self-notes) says, and every other memory write of
+a task stays as it is without the grant. A `task.start` with `memory: self_notes` is refused with a
+sentence that says to define the task, whoever starts it, so a task never starts a task with the
+grant. The input schema of `task.start` lists the value, so the refusal reaches the planner and the
+model reads that sentence. The task run of a started task never holds the grant, even when its
+stored options name the value. A worker holds no memory tool. The definitions repo and `task.define`
+refuse `self_notes` with a sentence that says it is not available yet, and the task run of a stored
+version that holds it gets the grant.
 
 The `log` option is the log grant. With `log: conversation`, the task's `log.read` and
 `log.read_image` read the conversation's thread of the [event log](../core/event-log.md), and with

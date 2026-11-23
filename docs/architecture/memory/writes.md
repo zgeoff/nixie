@@ -249,16 +249,12 @@ out of self fails and writes nothing, unless an allow rule covers it. A covering
 consent to nixie's own notes, so a task may then write them. Under an ask rule, or with no rule,
 such a task's self-note write still fails.
 
-A task with the grant meets every rule that the conversation meets, and one more: it writes only
-items whose subject is self. A remember, an edit, a label edit, a retirement or a topic move that
-touches an item of another subject, or that moves an item to another subject, fails with a
-`SelfNoteError` that names the grant, and writes nothing. The tool makes that refusal before the
-decision point, so the user never sees an approval card for such a write. The grant covers no pin
-and no unpin, so the pin and unpin writes fail for such a task. A proposal merges only with a
-pending proposal of the same subject, so a granted task's remember never merges into an item or
-proposal of the user or of shared. When the user approves a proposal for a new item, the search for
-a [close match](#memory-proposals) looks only at items of the proposal's subject, so a fact about
-the user never becomes a revision of a self-note.
+The grant lifts only that caller check. A task with the grant writes a self-note under the same
+gates and approvals as the conversation. Its writes that touch an item of the user or of shared
+follow the rules of every other task, with or without the grant, and so do its pins and unpins. A
+proposal merges only with a pending proposal of the same subject. When the user approves a proposal
+for a new item, the search for a [close match](#memory-proposals) looks only at items of the
+proposal's subject, so a fact about the user never becomes a revision of a self-note.
 
 Unless an ask rule matches, the conversation's retire of a self-note skips the intent gate and
 applies at once, with a notice entry whose undo brings the note back, because the note was nixie's

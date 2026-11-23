@@ -14,7 +14,6 @@ import {
   startedTaskDefaultTools,
 } from '@heynixie/tasks';
 import type { ToolRunModel } from '@heynixie/tools';
-import { findHeldToolName } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
 import { match } from 'ts-pattern';
 import { buildGuestCommand } from './build-guest-command';
@@ -121,24 +120,18 @@ function buildRunParts(runner: RunReader, parts: RunParts): StartedRun {
   };
 }
 
-// A version with the self-note grant gets the memory read tools and the 4 self-note write tools,
-// and no other memory write tool, whatever its list names.
+// A version with memory read or the self-note grant gets the memory read tools, and the grant adds
+// the 4 self-note write tools. Each tool its list names stays, as it does at memory read.
 function pickRunTools(
   version: Pick<DefinitionVersion, 'memory' | 'tools'>,
-  options: Pick<SandboxRunnerOptions, 'memoryReadTools' | 'memoryWriteTools'>,
+  options: Pick<SandboxRunnerOptions, 'memoryReadTools'>,
 ): readonly string[] {
   return match(version.memory)
     .with('none', () => version.tools)
     .with('read', () => [...new Set([...version.tools, ...options.memoryReadTools])])
-    .with('self_notes', () => {
-      const listed = version.tools.filter(
-        (tool) =>
-          findHeldToolName(tool, options.memoryWriteTools) === null ||
-          findHeldToolName(tool, selfNoteToolNames) !== null,
-      );
-
-      return [...new Set([...listed, ...options.memoryReadTools, ...selfNoteToolNames])];
-    })
+    .with('self_notes', () => [
+      ...new Set([...version.tools, ...options.memoryReadTools, ...selfNoteToolNames]),
+    ])
     .exhaustive();
 }
 

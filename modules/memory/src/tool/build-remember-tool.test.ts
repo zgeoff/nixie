@@ -356,24 +356,3 @@ test("it reads the source outside and the gate finds no quote when a granted tas
     reason: expect.toStartWith('no_quote:'),
   });
 });
-
-test.each(['owner', 'shared'] as const)(
-  'it refuses a granted task a remember about the %s before the decision point, and leaves a self-note alone',
-  async (subject) => {
-    const memory = await startTestMemory();
-
-    const tool = buildRememberTool(memory.store);
-    const context = buildMockToolContext({ thread: 'task-1', hasSelfNoteGrant: true });
-    const input = { gist: 'a gist', topic: 'a topic', text: 'Lives on Elm Street' };
-
-    const refused = await tool.resolvePolicyFacts?.({ ...input, subject }, context);
-    const allowed = await tool.resolvePolicyFacts?.({ ...input, subject: 'self' }, context);
-
-    expect(refused).toMatchObject({
-      status: 'error',
-      message: expect.toInclude('grants it self-note writes only'),
-    });
-
-    expect(allowed).toMatchObject({ status: 'ok', args: { subject: 'self' } });
-  },
-);

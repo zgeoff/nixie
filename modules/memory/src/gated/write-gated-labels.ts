@@ -9,7 +9,6 @@ import { collectLabelTexts } from '../label/collect-label-texts';
 import { writeLabelEdit } from '../label/write-label-edit';
 import { writeMemoryProposal } from '../memory/write-memory-proposal';
 import { readNewestMessage } from '../message/read-newest-message';
-import { requireGrantedSelfSubject } from '../subject/require-granted-self-subject';
 import { requireSelfNoteCaller } from '../subject/require-self-note-caller';
 import type { MemoryTables, StoreParts } from '../types';
 import { getRowSubject } from '../utils/get-row-subject';
@@ -33,9 +32,6 @@ export async function writeGatedLabels(
   });
 
   const subject = getRowSubject(item);
-
-  requireGrantedSelfSubject(request.caller, [subject]);
-
   const need: RuleNeed = subject === 'self' ? 'self_note' : 'none';
   const covering = pickCoveringRule(request.verdict, need);
 

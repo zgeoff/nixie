@@ -181,7 +181,7 @@ test('it returns INVALID with the reasons for a version that a start refuses', a
   });
 });
 
-test('it refuses a definition that sets self notes until the next release, and writes none', async () => {
+test('it refuses a definition that sets self notes for now, and writes none', async () => {
   const ctx = await setupTest();
 
   await ctx.seed();
@@ -194,7 +194,7 @@ test('it refuses a definition that sets self notes until the next release, and w
     result: {
       refused: {
         code: 'INVALID',
-        reasons: ['memory self_notes is available in the next release'],
+        reasons: ['memory self_notes is not available yet'],
       },
     },
     refusalCode: 'INVALID',

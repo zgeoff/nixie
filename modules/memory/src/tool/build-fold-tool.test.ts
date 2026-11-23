@@ -160,27 +160,3 @@ test('it removes the fold order of a topic with the forget of its last item, and
 
   expect(removed.map((entry) => entry.record.erasable)).toStrictEqual([{ status: 'shredded' }]);
 });
-
-test.each(['owner', 'shared'] as const)(
-  'it refuses a granted task a fold of a %s topic',
-  async (subject) => {
-    const ctx = await setupTest();
-
-    await ctx.createItems('garden', 3);
-
-    const outcome = await buildFoldTool(ctx.memory.store).run(
-      {
-        callID: 'call-1',
-        tool: 'memory.fold',
-        input: { topic: 'garden', subject, order: 'oldest' },
-        toolUseID: null,
-      },
-      buildMockToolContext({ thread: 'task-1', hasSelfNoteGrant: true }),
-    );
-
-    expect(outcome).toMatchObject({
-      status: 'error',
-      message: expect.toInclude('grants it self-note writes only'),
-    });
-  },
-);

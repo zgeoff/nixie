@@ -4,7 +4,6 @@ import { pickCoveringRule } from '../gate/pick-covering-rule';
 import { readItemText } from '../item/read-item-text';
 import { writeMemoryProposal } from '../memory/write-memory-proposal';
 import { readNewestMessage } from '../message/read-newest-message';
-import { requirePinCaller } from '../pin/require-pin-caller';
 import { writePin } from '../pin/write-pin';
 import type { StoreParts } from '../types';
 import { MemoryStateError } from '../utils/error/memory-state-error';
@@ -18,8 +17,6 @@ export async function writeGatedPin(
   parts: StoreParts,
   request: GatedPinRequest,
 ): Promise<WriteOutcome> {
-  requirePinCaller(request.caller);
-
   const item = await readItemText(parts, request.target, 'pin');
 
   if (isItemLapsed({ state: 'active', until: item.until }, parts.context.gate.clock.now())) {

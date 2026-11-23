@@ -14,7 +14,6 @@ import type { ModelWriteStore } from '../gate/gate-context';
 import { labelInputSchema } from '../label/label-input-schema';
 import { buildRetopicCard } from '../retopic/build-retopic-card';
 import type { RetopicSource } from '../retopic/types';
-import { requireGrantedSelfSubject } from '../subject/require-granted-self-subject';
 import { isWriteRefusal } from '../utils/error/is-write-refusal';
 import { TopicMoveError } from '../utils/error/topic-move-error';
 import { makeInputRecorder } from '../utils/make-input-recorder';
@@ -146,21 +145,9 @@ async function resolveRetopicFacts(
     ]),
   ];
 
-  const caller = buildWriteCaller(context);
-
-  try {
-    requireGrantedSelfSubject(caller, subjects);
-  } catch (error) {
-    if (isWriteRefusal(error)) {
-      return { status: 'error', message: error.message };
-    }
-
-    throw error;
-  }
-
   return {
     status: 'ok',
-    sources: pickWriteSources(false, caller),
+    sources: pickWriteSources(false, buildWriteCaller(context)),
     args: {
       ...rawInput,
       subject: subjects.length === 1 ? input.data.to.subject : subjects,

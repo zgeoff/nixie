@@ -2,7 +2,6 @@ import type { ToolCall, ToolContext, ToolDefinition, ToolOutcome } from '@heynix
 import { z } from 'zod';
 import type { ModelWriteStore } from '../gate/gate-context';
 import { labelInputSchema } from '../label/label-input-schema';
-import { requireGrantedSelfSubject } from '../subject/require-granted-self-subject';
 import { isWriteRefusal } from '../utils/error/is-write-refusal';
 import { buildWriteCaller } from '../write/build-write-caller';
 
@@ -81,15 +80,11 @@ async function runFoldCall(
   }
 
   try {
-    const caller = buildWriteCaller(context);
-
-    requireGrantedSelfSubject(caller, [input.subject]);
-
     const topic = await memory.writes.writeFoldOrder({
       subject: input.subject,
       topic: input.topic,
       order: input.order,
-      caller,
+      caller: buildWriteCaller(context),
     });
 
     return { status: 'ok', result: { status: 'applied', topic, order: input.order } };

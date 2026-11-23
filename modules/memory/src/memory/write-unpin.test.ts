@@ -1,8 +1,8 @@
 import { expect, test } from 'bun:test';
+import { buildAllowVerdict } from '../test-utils/build-allow-verdict';
 import { buildMockProvenance } from '../test-utils/build-mock-provenance';
 import { buildMockWriteCaller } from '../test-utils/build-mock-write-caller';
 import { startTestMemory } from '../test-utils/start-test-memory';
-import { SelfNoteError } from '../utils/error/self-note-error';
 
 test.each([
   { from: 'conversation', caller: buildMockWriteCaller(), thread: 'conversation' },
@@ -36,17 +36,22 @@ test.each([
   ]);
 });
 
-test('it refuses a granted task an unpin, and keeps the item pinned', async () => {
+test('it unpins a pinned self-note for a granted task, as it does for a task with no grant', async () => {
   const memory = await startTestMemory();
 
   const note = await memory.store.remember({
     text: 'I like tidy lists',
     subject: 'self',
-    isPinned: true,
     provenance: buildMockProvenance(),
   });
 
-  const write = memory.store.writes.unpin({
+  await memory.store.writes.pin({
+    target: note,
+    caller: buildMockWriteCaller(),
+    verdict: buildAllowVerdict([{ arg: 'subject', op: 'eq', value: 'self' }]),
+  });
+
+  const outcome = await memory.store.writes.unpin({
     itemID: note.itemID,
     caller: buildMockWriteCaller({
       origin: 'task',
@@ -56,10 +61,8 @@ test('it refuses a granted task an unpin, and keeps the item pinned', async () =
     }),
   });
 
-  await Promise.allSettled([write]);
-
   const core = await memory.store.readPinnedCore();
 
-  expect(write).rejects.toThrowWithMessage(SelfNoteError, /a pin or an unpin is not one/u);
-  expect(core).toMatchObject([{ itemID: note.itemID }]);
+  expect(outcome).toMatchObject({ status: 'applied', itemID: note.itemID });
+  expect(core).toStrictEqual([]);
 });

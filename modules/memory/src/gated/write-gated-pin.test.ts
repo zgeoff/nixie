@@ -6,7 +6,6 @@ import { buildAllowVerdict } from '../test-utils/build-allow-verdict';
 import { buildMockProvenance } from '../test-utils/build-mock-provenance';
 import { buildMockWriteCaller } from '../test-utils/build-mock-write-caller';
 import { startTestMemory } from '../test-utils/start-test-memory';
-import { SelfNoteError } from '../utils/error/self-note-error';
 
 test('it proposes a pin of an active fact for review, and leaves the pinned core as it was', async () => {
   const memory = await startTestMemory();
@@ -251,31 +250,4 @@ test('it fails a pin that a rule applies when the pinned core has no room, and p
   });
 
   expect(pin).rejects.toMatchObject({ code: 'PINNED_CORE_FULL' });
-});
-
-test('it refuses a granted task a pin, and writes no proposal', async () => {
-  const memory = await startTestMemory();
-
-  const note = await memory.store.remember({
-    text: 'I like tidy lists',
-    subject: 'self',
-    provenance: buildMockProvenance(),
-  });
-
-  const write = memory.store.writes.pin({
-    target: note,
-    caller: buildMockWriteCaller({
-      origin: 'task',
-      thread: 'task-1',
-      taskID: 'task-1',
-      hasSelfNoteGrant: true,
-    }),
-  });
-
-  await Promise.allSettled([write]);
-
-  const pending = await memory.store.proposals.listPending();
-
-  expect(write).rejects.toThrowWithMessage(SelfNoteError, /a pin or an unpin is not one/u);
-  expect(pending).toStrictEqual([]);
 });

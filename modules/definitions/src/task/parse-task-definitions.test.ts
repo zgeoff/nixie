@@ -719,7 +719,7 @@ test('it seeds the note-taking example with its daily schedule, conversation log
   });
 });
 
-test('it refuses a repo definition that sets self notes, with the next release as the reason', () => {
+test('it refuses a repo definition that sets self notes, with not available yet as the reason', () => {
   const ctx = setupTest();
 
   const parsed = ctx.parse({
@@ -731,7 +731,7 @@ test('it refuses a repo definition that sets self notes, with the next release a
     {
       path: 'tasks/rain-gauge/task.yaml',
       fault: 'start_refused',
-      reasons: ['memory self_notes is available in the next release'],
+      reasons: ['memory self_notes is not available yet'],
     },
   ]);
 });

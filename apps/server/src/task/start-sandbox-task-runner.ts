@@ -26,7 +26,6 @@ export async function startSandboxTaskRunner(
       agentNames: parts.config.agent.names,
     },
     memoryReadTools: parts.tools.taskBounds.memoryTools.read,
-    memoryWriteTools: parts.tools.taskBounds.memoryTools.write,
     compaction: parts.config.compaction,
     defaultZone: parts.config.time.default_zone,
     messaging: buildTaskMessaging(parts.config),

@@ -2440,110 +2440,6 @@ test('it edits the text of a self-note for a granted task', async () => {
   expect(outcome).toMatchObject({ status: 'applied', itemID: note.itemID, version: 2 });
 });
 
-test.each(['owner', 'shared'] as const)(
-  'it refuses a granted task a remember with the subject %s, and writes nothing',
-  async (subject) => {
-    const memory = await startTestMemory();
-
-    const write = memory.store.writes.remember({
-      text: 'Lives on Elm Street',
-      subject,
-      caller: buildMockWriteCaller({
-        origin: 'task',
-        thread: 'task-1',
-        taskID: 'task-1',
-        hasSelfNoteGrant: true,
-      }),
-      verdict: buildAllowVerdict(),
-    });
-
-    await Promise.allSettled([write]);
-
-    const pending = await memory.store.proposals.listPending();
-
-    expect(write).rejects.toThrowWithMessage(SelfNoteError, /whose subject is self/u);
-    expect(pending).toStrictEqual([]);
-  },
-);
-
-test('it refuses a granted task a remember that leaves the subject out', async () => {
-  const memory = await startTestMemory();
-
-  const write = memory.store.writes.remember({
-    text: 'Lives on Elm Street',
-    caller: buildMockWriteCaller({
-      origin: 'task',
-      thread: 'task-1',
-      taskID: 'task-1',
-      hasSelfNoteGrant: true,
-    }),
-    verdict: buildAllowVerdict(),
-  });
-
-  expect(write).rejects.toThrowWithMessage(SelfNoteError, /whose subject is owner/u);
-});
-
-test.each(['owner', 'shared'] as const)(
-  'it refuses a granted task an edit of a %s item, and keeps its text',
-  async (subject) => {
-    const memory = await startTestMemory();
-
-    const item = await memory.store.remember({
-      text: 'Lives on Elm Street',
-      subject,
-      provenance: buildMockProvenance(),
-    });
-
-    const write = memory.store.writes.remember({
-      text: 'Lives on Oak Street',
-      target: item,
-      caller: buildMockWriteCaller({
-        origin: 'task',
-        thread: 'task-1',
-        taskID: 'task-1',
-        hasSelfNoteGrant: true,
-      }),
-      verdict: buildAllowVerdict(),
-    });
-
-    expect(write).rejects.toThrowWithMessage(
-      SelfNoteError,
-      new RegExp(`subject is ${subject}`, 'u'),
-    );
-  },
-);
-
-test.each(['owner', 'shared'] as const)(
-  'it refuses a granted task a subject change of a self-note to %s',
-  async (subject) => {
-    const memory = await startTestMemory();
-
-    const note = await memory.store.remember({
-      text: 'I like quiet mornings',
-      subject: 'self',
-      provenance: buildMockProvenance(),
-    });
-
-    const write = memory.store.writes.remember({
-      text: 'I like quiet mornings',
-      target: note,
-      subject,
-      caller: buildMockWriteCaller({
-        origin: 'task',
-        thread: 'task-1',
-        taskID: 'task-1',
-        hasSelfNoteGrant: true,
-      }),
-      verdict: buildAllowVerdict(),
-    });
-
-    expect(write).rejects.toThrowWithMessage(
-      SelfNoteError,
-      new RegExp(`subject is ${subject}`, 'u'),
-    );
-  },
-);
-
 test('it refuses a task with no grant a self-note text write', async () => {
   const memory = await startTestMemory();
 
@@ -2622,3 +2518,27 @@ test('it approves a granted task self-note as a new item beside an owner item an
     [approved.itemID, 'self', 1],
   ]);
 });
+
+test.each([
+  { name: 'a granted task', hasSelfNoteGrant: true },
+  { name: 'a task with no grant', hasSelfNoteGrant: false },
+])(
+  'it holds an owner remember of $name for review, under the rules of a task',
+  async (testCase) => {
+    const memory = await startTestMemory();
+
+    const outcome = await memory.store.writes.remember({
+      text: 'Lives on Elm Street',
+      subject: 'owner',
+      caller: buildMockWriteCaller({
+        origin: 'task',
+        thread: 'task-1',
+        taskID: 'task-1',
+        hasSelfNoteGrant: testCase.hasSelfNoteGrant,
+      }),
+      verdict: { kind: 'gate' },
+    });
+
+    expect(outcome).toMatchObject({ status: 'proposed' });
+  },
+);
