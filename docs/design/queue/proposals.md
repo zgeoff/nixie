@@ -68,8 +68,8 @@ const proposal = await proposals.proposeInTransaction(tx, {
   thread: taskThread, // null for a proposal with no proposer
   taskID,
   deadlineAt: null,
-  sameThing: 'trip-planning', // the key from the "same thing" table; null for memory and action
-  shortID: undefined, // memory passes its UUID-derived ID until release N+2; the parameter then goes
+  sameThing: 'trip-planning', // the "same thing" key; null for memory, action and no proposer
+  shortID: undefined, // memory's UUID-derived ID until release N+2, which removes the parameter
 });
 // → { proposalID: '0c1d…', shortID: 'K9', lapsesAt: 1796548800000, replaced: 'K7' }
 // replaced is the short ID of the open proposal this one withdrew, or null
@@ -99,13 +99,21 @@ interface ProposalKindHandler {
   ): Promise<ApplyOutcome>;
 }
 
+interface ApplyRun {
+  // …existing tx and guard
+  // Writes proposals.settled from a done outcome. A family that owns its transaction calls it
+  // inside that transaction, after its apply; for any other family the core calls it.
+  settle(outcome: ApplyOutcome): Promise<void>;
+}
+
 type ApplyOutcome =
   | {
       status: 'done';
       result: AnswerResult; // …existing
       afterCommit?: () => Promise<void>; // …existing, such as suggested rules after an action decline
       usedBy: string | null; // the ID the apply made, such as memory's approval; goes into the settlement
-      detail: string | null; // the family's own line for the proposer, such as a skill's PR link
+      detail: string | null; // the family's own line for the proposer, such as "call skill_reload"
+      otherThreads: string[]; // memory's merged proposers' threads, which also get the settlement
     }
   | { status: 'refused'; refusal: ProposalRefusal }; // …existing
 
@@ -145,6 +153,8 @@ proposals.withdrawn …existing; written beside proposals.settled until release 
   `proposals.settled`.
 - Folding a close onto a row that is already closed changes nothing, so the old and new records can
   land together.
+- A rebuild keeps each row's `lapsesAt`: an old record's mapper keeps its constant, and only
+  `proposals.proposed` carries a lapse from the config.
 
 ### Withdrawing and replacing
 
@@ -162,7 +172,7 @@ const result = await tools.call('proposals.withdraw', { shortID: 'K7' });
 - Withdrawing an action proposal fails its held action, and the task hears `action.outcome`.
 - When `proposeInTransaction` finds an open proposal with the same `sameThing` key, family and
   proposer, it withdraws that proposal in the same transaction, then writes the new one with
-  `replaces` set. Both commit or neither does.
+  `replaces` set. Both commit or neither does. A proposal with no proposer never replaces one.
 - A withdrawal that nixie makes itself, such as closing a suggested rule after an action decline,
   also goes through `withdrawInTransaction`, and its proposer hears it like any other settlement.
 - When the new proposal settles, its line in the settlement note gives the short ID of the proposal
@@ -177,7 +187,7 @@ const result = await tools.call('proposals.withdraw', { shortID: 'K7' });
 approvals:
   lapse_days:
     action: 3
-    memory: 14 # replaces memory.proposal_lapse_days; when both are set, this one wins
+    memory: 14 # no default: memory uses this, else memory.proposal_lapse_days, else 14
     skill: 14
     rule_change: 14 # rule widenings and suggested rules; a mandate lapses at its deadline only
     prompt: 14
@@ -189,9 +199,10 @@ approvals:
 - A memory merge extends the shared row's lapse by `lapse_days.memory`, recorded in the merge record
   as today.
 - One sweep in the core lapses every family's open proposals once their lapse passes, through each
-  family's `discard`. A row whose family has no handler stays open, as today. Memory's own sweep
-  keeps only its item lapses and the key-store cleanup of closed proposals, after the commit. Delete
-  the prompt sweep.
+  family's `discard`. A row whose family has no handler stays open, as today. The sweep lapses a
+  memory proposal in memory's own transaction, one row at a time, and a row whose lapse fails stays
+  open for the next sweep. Memory's own sweep keeps only its item lapses and the key-store cleanup
+  of closed proposals, after the commit. The prompt sweep runs until prompt joins the shared table.
 
 ### Telling the proposer
 
@@ -203,7 +214,7 @@ type ProposalSettledNote = {
   outcome: ProposalOutcome;
   reason: string | null; // the answer's note, when you wrote one
   sentence: string; // the card's one-line sentence, or a plain family line when a forget took it
-  detail: string | null; // the family's own line, such as "call skill_reload" with the PR link
+  detail: string | null; // the family's own line, such as "call skill_reload"
   task: string | null; // the proposing task's name, when it had closed and this went to its report target
   replaced: string | null; // the short ID of the proposal this one replaced
 };
@@ -214,7 +225,7 @@ reads every settlement that lands before its next wake as one inbox record:
 
 ```text
 Proposals that settled since your last turn:
-- Your skill write K9 was approved. It replaced K7. Call skill_reload: <pull request link>
+- Your skill write K9 was approved. It replaced K7. Call skill_reload.
 - Your memory proposal M3 was declined: not this week.
 - The task Weekly digest proposed rule change R2. It lapsed.
 - nixie suggested a rule, R5. It lapsed.
@@ -231,8 +242,8 @@ A prompt override's export after approval stays a note of its own: it isn't a se
 - The turn-note builder folds every `proposals.settled` since the conversation's last turn into one
   note, in log order. The inbox renderer does the same for every one since the task's last wake, and
   they wake the task once.
-- A proposal with no proposer writes its lapse on the conversation's thread, where the batched note
-  carries it, and every other outcome with no thread and no message.
+- A proposal with no proposer writes its lapse on the thread of nixie's one conversation, where the
+  batched note carries it, and every other outcome with no thread and no message.
 - An action proposal's settlement is never an inbox record. The task hears `action.outcome`, which
   the action module already writes when an approval queues the action, or when a decline or a lapse
   fails the held action.
@@ -339,9 +350,12 @@ exception is a rollback from N+2 to N+1: release N+1 reads a `prompt` row as an 
 fails to load it, so that rollback needs a restore from a backup taken before N+2.
 
 - **N:** the core writes `proposals.proposed` and `proposals.settled` for every family but prompt,
-  beside the old records. Every new proposal stores its short ID, and a new skill proposal takes a
-  UUID. Memory reads its proposals' state from the shared row. The one core sweep and
-  `approvals.lapse_days` replace the family sweeps and lapse constants.
+  beside the old records, each on the thread where release N+1 reads it. `replaces` is always null.
+  Every new proposal stores its short ID, and a new skill or rule change proposal takes a UUID, so
+  `skill_pending` and the skill answer notes read the short ID from the shared row. Memory reads its
+  proposals' state from the shared row. The new `ProposalOutcome`, `discard`, the one core sweep and
+  `approvals.lapse_days` replace the old outcomes, the family sweeps but prompt's and the lapse
+  constants.
 - **N+1:** the inbox, the turn notes and every short ID reader switch to the new records, so the
   batched note ships. `proposals.withdraw`, replacing and `proposals.pending` ship, and
   `memory.pending` and `skill_pending` go. `memory.proposal_lapse_days` is read with a warning.
