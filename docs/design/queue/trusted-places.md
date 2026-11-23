@@ -71,8 +71,9 @@ parsePlace('0420 000 000'); // a phone number with no country code
 parsePlace('not a place');
 // → null
 
-isPlaceCovered(entry.key, parsePlace(destination));
-// → true when the entry covers the destination; false for a null destination
+isPlaceCovered(entry.key, { parsed: parsePlace(destination), raw: destination });
+// → true when the entry covers the destination. A null parsed destination matches only a raw key
+// whose value is the NFC form of raw.
 ```
 
 ```ts
@@ -108,10 +109,22 @@ type PlaceKey =
   `tldts` goes in the root catalog at an exact version. It takes `tldts-core` through a `^` range,
   which the lockfile pins and Bun's minimum release age holds back like any other package.
 
-`parsePlacePattern('@shop.example')` reads a place key from what you or a rule write: a domain gives
-a `site` key with `subdomains: true`, `@domain` gives a `mail_domain` key, and `=example.org` gives
-a `site` key with `subdomains: false`. A public suffix, such as `github.io`, gives
-`subdomains: false`.
+`parsePlacePattern` reads a place key from text that you or nixie write. `places.propose`,
+`places.narrow`, `places.list`, `places.yaml`, the page and a mail trigger's `from` all use this one
+syntax, and `places.list` shows each key in it:
+
+```ts
+parsePlacePattern('library.example.org');
+// → { kind: 'site', domain: 'library.example.org', subdomains: false }
+parsePlacePattern('*.library.example.org');
+// → { kind: 'site', domain: 'library.example.org', subdomains: true }
+parsePlacePattern('@example.org'); // '@*.example.org' adds subdomains: true
+// → { kind: 'mail_domain', domain: 'example.org', subdomains: false }
+parsePlacePattern('*.github.io');
+// → null: the key would cover a whole public suffix
+parsePlacePattern('sam@example.org');
+// → { kind: 'address', address: 'sam@example.org' }, as parsePlace reads it
+```
 
 ### The directory
 
@@ -168,8 +181,9 @@ places.acted    { placeID, shortID, callID, tool }  // a call that an 'act' plac
 - The projection keeps a keyed hash of each key, under the deployment's key, for the
   one-entry-per-key check. A forget clears the hash.
 - You can forget an `address`, `phone` or `handle` place. A forget removes it whatever its level, so
-  forgetting a `blocked` address unblocks it. A `site` or `mail_domain` place holds nothing
-  personal: you remove it, and its records stay.
+  forgetting a `blocked` address unblocks it. A forget is yours alone; nixie's `places.narrow` never
+  removes a `blocked` entry. A `site` or `mail_domain` place holds nothing personal: you remove it,
+  and its records stay.
 
 ### The decision point
 
@@ -244,8 +258,10 @@ interface ClickedElement {
 // A plain link: role 'link', isInForm and hasClickHandler false. Any other element is a button.
 ```
 
-- A click on a plain link runs without asking at a `read` place or an unlisted one. A click on a
-  button asks unless the place is at `act` or `self`.
+- A click on a plain link runs without asking at a `read` place, and at an unlisted one through the
+  starter rule `allow-reads`. A click on a button asks unless the place is at `act` or `self`.
+- A click handler that a script adds is invisible to `prepare`, so a plain-link click can start a
+  script's action without asking. The design accepts this risk; a click inside a form still asks.
 - The server's hop gate refuses a redirect hop to a `blocked` site. The browser tools read the tab's
   host at each call, so the next call on a tab that a redirect or a click took to a `blocked` site
   is denied. Navigation inside the browser between calls, and a script listener behind a plain link,
@@ -280,9 +296,9 @@ const proposal = await tools.call('places.propose', {
 
 - When every destination of a held call is one place, the card offers "Trust this place to read" and
   "Trust this place to act". Either answer adds the entry or raises its level, and writes no rule.
-- `places.propose` reads each `place` as an exact host, and `*.<domain>` as the domain and every
-  subdomain. The card shows each in words, such as "library.example.org and every subdomain", with
-  its level and its reason. The card has no subdomain checkbox.
+- `places.propose` reads each `place` through `parsePlacePattern`. The card shows each in words,
+  such as "library.example.org and every subdomain", with its level and its reason. The card has no
+  subdomain checkbox.
 - `places.propose` declares `policy_widen`, so it always asks. It refuses a list with a key on a
   whole public suffix, such as `*.github.io`.
 - You approve the whole card, or untick some places first. Approval adds or raises each ticked place
@@ -330,8 +346,9 @@ within `policy.consent.link_max_age` hours. The memory gate and the skill guard 
 20 messages. This design drops the skill guard's check, as
 [the next section](#the-skill-guard-moves-to-first-use) says. The consent check and the memory gate
 share one window, the consent check's, and one comparison: `isPlaceCovered` over `parsePlacePattern`
-of each place you typed. The secret scan's exemption for a URL you typed keeps its own rule, the
-whole URL, because it guards a secret, not a place.
+of each place you typed, with `subdomains: true` on each typed domain that isn't a public suffix.
+The secret scan's exemption for a URL you typed keeps its own rule, the whole URL, because it guards
+a secret, not a place.
 
 ### The skill guard moves to first use
 
@@ -384,8 +401,8 @@ and when a call last used it. You add, change and remove entries there. The host
   known-contact schema keep working over the `places` projection until the page's work item moves
   them. The `known_contacts` table goes when they do.
 - The definitions repo may hold `places.yaml` with `site` and `mail_domain` entries, seeded like
-  rules. Each entry's key goes through `parsePlacePattern`, as a rule's pattern does. An `address`,
-  `phone` or `handle` place never leaves the database.
+  rules. Each entry's key goes through `parsePlacePattern`. An `address`, `phone` or `handle` place
+  never leaves the database.
 
 ## Builder decides
 
