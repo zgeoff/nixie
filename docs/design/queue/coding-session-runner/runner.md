@@ -129,7 +129,7 @@ const codingDefinition = {
 
 // `task.start/atc`, for a start and a join alike
 const codingStartDeclaration: EffectDeclaration = {
-  effects: ['code_run'],
+  effects: ['coding_start'],
   destinations: [],
   amount: null,
   content: ['brief', 'name'],
@@ -138,7 +138,7 @@ const codingStartDeclaration: EffectDeclaration = {
 
 // `coding.stop`: the action a stop of the task queues, for a started and a joined session alike
 const codingStopDeclaration: EffectDeclaration = {
-  effects: ['code_run'],
+  effects: ['coding_start'],
   destinations: [], // the adapter ID and the session ID, such as 'atc:cloud.a1.s7-m4x2p'
   amount: null,
   content: ['origin'], // 'started' | 'joined', which the starter rules match on
@@ -301,9 +301,9 @@ tasks.list({ runner: 'atc', state: 'waiting', limit: 20 });
   `ask-coding-sessions`, which asks on it, so nixie asks you before every start and every join, even
   one you asked for.
 - Each `coding.stop` attempt meets the decision point under the tool name `coding.stop`. This work
-  adds the starter rule `ask-stop-joined-sessions`, which asks on a `coding.stop` whose `origin` is
-  `joined`, so nixie asks you before it stops a session of yours. A stop of a started session runs
-  under the starter rules that allow `code_run`.
+  adds 2 starter rules on it. `allow-stop-started-sessions` allows a `coding.stop` whose `origin` is
+  `started`. `ask-stop-joined-sessions` asks on one whose `origin` is `joined`, so nixie asks you
+  before it stops a session of yours.
 - [The tools](tools.md#policy) hold the policy of a steer and a note.
 
 ### Task runs
@@ -355,8 +355,9 @@ tasks.list({ runner: 'atc', state: 'waiting', limit: 20 });
   decide each one, so a joined session stops only when they allow it.
 - **Every stop keeps atc's record of the session.** atc's record is outside data, and nixie deletes
   outside data only through a tool that declares `delete`.
-- **A start declares `code_run`.** It runs a coding agent on a repo, which is code running outside
-  nixie's view, one call at a time.
+- **A start, a join and a stop declare `coding_start`.** Each acts on a coding session outside
+  nixie, which nixie does not see call by call. `code_run` covers only code in nixie's own sandbox
+  with no network.
 
 ## Builder decides
 

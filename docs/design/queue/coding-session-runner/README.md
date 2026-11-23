@@ -156,3 +156,12 @@ a report when the session ends. nixie reads the session's state, last reply and 
   [typing into a coding session](https://linear.app/zgeoff/issue/GEO-945), whether a steer needs a
   check from atc that is atomic with the keystrokes. Until then, the adapter checks the state first,
   as [the tools](tools.md#steering) describe.
+- **Should a message to a coding task steer its session?** A message from you to the task, or a
+  `task_message` from the conversation, goes to the session as a `coding.message` note, which the
+  agent can answer and which never steers it. Only `coding.steer` steers. The owner settles whether
+  such a message becomes a steer instead. Until then, the step queues a note, as
+  [what one step does](runner.md#what-one-step-does) describes.
+- **Are the default wake sets right?** A started session wakes nixie on `waiting`, `idle`,
+  `blocked`, `decision`, `ended` and `gone`. A joined session wakes it on `waiting`, `ended` and
+  `gone`. The owner settles both lists. Until then, `coding.wake` holds these defaults, as
+  [the wake set](tools.md#picking-the-wake-set) shows.
