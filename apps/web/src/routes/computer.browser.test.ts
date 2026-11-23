@@ -79,3 +79,71 @@ test('it takes the computer over and hands it back with the buttons of the page'
 
   expect([whileHolding, afterHandBack]).toStrictEqual([['Hand back'], ['Take over']]);
 });
+
+test('it shows the handover banner for an ask, and clears it when the ask closes', async () => {
+  const ctx = await setupTest();
+  const session = await store.sessions.create({});
+
+  await setupSignedInBrowser(ctx.view, { appURL: ctx.appURL, token: session.token });
+
+  await ctx.view.navigate(`${ctx.appURL}/tasks`);
+
+  await store.records.create({
+    kind: 'computer.handover_asked',
+    message: { text: 'itch.io asks for a CAPTCHA' },
+  });
+
+  await waitForPage(
+    ctx.view,
+    "document.body.innerText.includes('asks you to take over the computer: itch.io asks for a CAPTCHA')",
+  );
+
+  const shown: unknown = await ctx.view.evaluate(
+    "[...document.querySelectorAll('section button')].some((button) => button.innerText === 'Take over')",
+  );
+
+  await store.records.create({ kind: 'computer.handover_closed' });
+
+  await waitForPage(
+    ctx.view,
+    "!document.body.innerText.includes('asks you to take over the computer')",
+  );
+
+  expect(shown).toBeTrue();
+});
+
+test('it takes over from the handover banner and clears the banner once the take-over starts', async () => {
+  const ctx = await setupTest();
+  const session = await store.sessions.create({});
+
+  await setupSignedInBrowser(ctx.view, { appURL: ctx.appURL, token: session.token });
+
+  await store.records.create({
+    kind: 'computer.handover_asked',
+    message: { text: 'itch.io asks for a CAPTCHA' },
+  });
+
+  await ctx.view.navigate(`${ctx.appURL}/tasks`);
+
+  await waitForPage(ctx.view, "document.body.innerText.includes('asks you to take over')");
+
+  await ctx.view.evaluate(
+    "[...document.querySelectorAll('section button')].find((button) => button.innerText === 'Take over').click()",
+  );
+
+  await waitForPage(
+    ctx.view,
+    "document.body.innerText.includes('You have taken over the computer')",
+  );
+
+  await store.records.create({ kind: 'computer.takeover_started' });
+
+  await waitForPage(
+    ctx.view,
+    "!document.body.innerText.includes('asks you to take over the computer')",
+  );
+
+  const text: unknown = await ctx.view.evaluate('document.body.innerText');
+
+  expect(text).toInclude('You have taken over the computer');
+});

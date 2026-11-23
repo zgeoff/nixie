@@ -1,9 +1,11 @@
 // oxlint-disable new-cap -- oRPC names a procedure's typed errors by their upper-case codes
+import { readOpenHandover } from '@heynixie/connectors';
 import { match } from 'ts-pattern';
 import { z } from 'zod';
 import { requireCaller } from '../memory/require-caller';
 import type { APIContext } from '../types';
 import { apiImplementer } from '../utils/api-implementer';
+import { readHeadSequence } from '../utils/read-head-sequence';
 import { buildWatchStreamURL } from './build-watch-stream-url';
 import { runComputerAction } from './run-computer-action';
 import { writeCheckedComputerWatch } from './write-checked-computer-watch';
@@ -46,6 +48,28 @@ export function createComputerProcedures(context: APIContext) {
           throw options.errors.UNAUTHORIZED();
         })
         .exhaustive();
+    }),
+
+    readHandover: apiImplementer.computer.readHandover.handler(async (options) => {
+      const caller = await requireCaller(
+        context,
+        options.context.sessionToken,
+        options.errors.UNAUTHORIZED,
+      );
+
+      const readAtSequence = await readHeadSequence(context);
+
+      // only a session of the full scope can take over, so only it is asked to
+      if (caller.scope !== 'full' || context.computerWatch === undefined) {
+        return { ask: null, readAtSequence };
+      }
+
+      const open = await readOpenHandover(context.log);
+
+      return {
+        ask: open === null ? null : { sequence: open.sequence, reason: open.reason },
+        readAtSequence,
+      };
     }),
 
     takeOver: apiImplementer.computer.takeOver.handler(async (options) => {

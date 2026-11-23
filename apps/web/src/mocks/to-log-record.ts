@@ -18,7 +18,7 @@ export function toLogRecord(record: StoredRecord): LogRecord {
     ...(record.forget === undefined ? {} : { forget: { ...record.forget } }),
     ...(record.isRemoved === undefined ? {} : { isRemoved: record.isRemoved }),
     kind: record.kind,
-    ...(record.message === undefined ? {} : { message: toLogMessage(record.message) }),
+    ...toLogMessageFields(record),
     ...(record.proposal === undefined ? {} : { proposal: { ...record.proposal } }),
     ...(record.recall === undefined ? {} : { recall: toLogRecall(record.recall) }),
     recordedAt: record.recordedAt,
@@ -48,6 +48,18 @@ function toLogCompaction(compaction: NonNullable<StoredRecord['compaction']>): L
     preTokens: compaction.preTokens,
     trigger: compaction.trigger,
   };
+}
+
+// A mock ask for a take-over keeps its reason as its message text, which a client shows as the
+// ask's handover.
+function toLogMessageFields(record: StoredRecord): Pick<LogRecord, 'handover' | 'message'> {
+  if (record.message === undefined) {
+    return {};
+  }
+
+  return record.kind === 'computer.handover_asked'
+    ? { handover: { reason: record.message.text } }
+    : { message: toLogMessage(record.message) };
 }
 
 type LogMessage = NonNullable<LogRecord['message']>;

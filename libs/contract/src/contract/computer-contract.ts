@@ -1,8 +1,12 @@
 import { z } from 'zod';
 import { reusedIDErrors } from './reused-id-errors';
+import { sequenceSchema } from './sequence-schema';
 import { signedIn } from './signed-in';
 
 const checkedAction = signedIn.errors(reusedIDErrors);
+
+// null when the reason was forgotten
+const openAskSchema = z.object({ sequence: sequenceSchema, reason: z.string().nullable() });
 
 const unavailable = {
   COMPUTER_UNAVAILABLE: { message: 'This nixie has no computer to watch', status: 503 },
@@ -31,6 +35,13 @@ export const computerContract = {
     })
     .input(z.object({ clientActionID: z.uuid() }))
     .output(z.object({ takenOverAt: z.number().int().nonnegative() })),
+
+  // The assistant's ask for a take-over, if one stands, with the log sequence the read saw. A client
+  // follows the live stream from that sequence: an ask opens with a computer.handover_asked record
+  // and ends with a computer.takeover_started or computer.handover_closed record.
+  readHandover: signedIn.output(
+    z.object({ ask: openAskSchema.nullable(), readAtSequence: sequenceSchema }),
+  ),
 
   // Gives the desktop back, from the device session that holds it. Another device's call gets
   // NOT_TAKEN_OVER.

@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import type { SessionState } from '../conversation/read-session-state';
 import { BackupNotice } from './backup-notice';
 import { EnrolForm } from './enrol-form';
+import { HandoverBanner } from './handover-banner';
 import { PauseBanner } from './pause-banner';
 import { SpendStopNotice } from './spend-stop-notice';
 
@@ -34,6 +35,11 @@ export function SignedInPage(props: SignedInPageProps): ReactNode {
     <>
       <BackupNotice />
       <PauseBanner />
+      <HandoverBanner
+        onTakeOver={() => {
+          globalThis.location.assign('/computer?takeOver=true');
+        }}
+      />
       <SpendStopNotice />
       {props.children}
     </>

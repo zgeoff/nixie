@@ -46,6 +46,38 @@ test('it carries your message with its text and spans', () => {
   });
 });
 
+test('it carries the reason of a handover ask while it is readable', () => {
+  const record = buildMockLogRecord({
+    sequence: 9,
+    recordedAt: new Date('2026-10-10T12:00:00Z'),
+    kind: 'computer.handover_asked',
+    thread: 'conversation',
+    payload: { shortID: 'k3vq8m2xpa' },
+    erasable: { status: 'readable', fields: { reason: 'itch.io asks for a CAPTCHA' } },
+  });
+
+  expect(toContractRecord(record)).toStrictEqual({
+    kind: 'computer.handover_asked',
+    handover: { reason: 'itch.io asks for a CAPTCHA' },
+    recordedAt: new Date('2026-10-10T12:00:00Z'),
+    sequence: 9,
+    thread: 'conversation',
+  });
+});
+
+test('it carries a handover ask with no reason once the reason is forgotten', () => {
+  const record = buildMockLogRecord({
+    sequence: 9,
+    recordedAt: new Date('2026-10-10T12:00:00Z'),
+    kind: 'computer.handover_asked',
+    thread: 'conversation',
+    payload: { shortID: 'k3vq8m2xpa' },
+    erasable: { status: 'shredded' },
+  });
+
+  expect(toContractRecord(record)).toMatchObject({ handover: {} });
+});
+
 test('it carries the model reply with its text', () => {
   const record = buildMockLogRecord({
     sequence: 9,

@@ -127,6 +127,9 @@ const recordSchema = z.object({
 
   definitionNotice: definitionNoticeSchema.optional(),
 
+  // set on an assistant's ask for a take-over, with the reason while it is readable
+  handover: z.object({ reason: z.string().optional() }).optional(),
+
   isRemoved: z.literal(true).optional(),
 
   isSilentTurn: z.literal(true).optional(),

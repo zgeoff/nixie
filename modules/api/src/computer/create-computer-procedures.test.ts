@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { makeHandoverRecords, makeTakeoverRecords } from '@heynixie/connectors';
 import { clientHeaderName } from '@heynixie/contract';
 import { waitForCondition } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
@@ -50,6 +51,14 @@ async function setupTest() {
     readOnlyToken,
     enrolScreen,
     client: buildTestClient(api.url, owner.token, 'https://nixie.test'),
+    handoverRecords: makeHandoverRecords({
+      log: api.context.log,
+      definitions: () => api.context.definitions(),
+    }),
+    takeoverRecords: makeTakeoverRecords({
+      log: api.context.log,
+      definitions: () => api.context.definitions(),
+    }),
     readStoredActions: () =>
       api.writer.db.$extendTables<APITables>().selectFrom('client_actions').selectAll().execute(),
   };
@@ -507,6 +516,58 @@ test('#computer.handBack answers a retry of a refused action with the same refus
 
   expect(retry).rejects.toMatchObject({ code: 'NOT_TAKEN_OVER' });
   expect(calls.count).toBe(1);
+});
+
+test('#computer.readHandover gives no ask while none stands', async () => {
+  const ctx = await setupTest();
+  const read = await ctx.client.computer.readHandover({});
+
+  expect(read).toStrictEqual({ ask: null, readAtSequence: expect.any(Number) });
+});
+
+test('#computer.readHandover gives the standing ask with its reason and the sequence it read at', async () => {
+  const ctx = await setupTest();
+
+  await ctx.handoverRecords.writeAsked({ reason: 'itch.io asks for a CAPTCHA' });
+
+  const read = await ctx.client.computer.readHandover({});
+
+  expect(read).toStrictEqual({
+    ask: { sequence: expect.any(Number), reason: 'itch.io asks for a CAPTCHA' },
+    readAtSequence: expect.any(Number),
+  });
+});
+
+test('#computer.readHandover gives no ask once the assistant closed it', async () => {
+  const ctx = await setupTest();
+
+  await ctx.handoverRecords.writeAsked({ reason: 'a bank check' });
+  await ctx.handoverRecords.writeClosed({ by: 'assistant', waitedSeconds: 4 });
+
+  const read = await ctx.client.computer.readHandover({});
+
+  expect(read.ask).toBeNull();
+});
+
+test('#computer.readHandover gives no ask once a take-over started', async () => {
+  const ctx = await setupTest();
+
+  await ctx.handoverRecords.writeAsked({ reason: 'a bank check' });
+  await ctx.takeoverRecords.writeStarted({ device: 'laptop' });
+
+  const read = await ctx.client.computer.readHandover({});
+
+  expect(read.ask).toBeNull();
+});
+
+test('#computer.readHandover refuses a caller with no session', async () => {
+  const ctx = await setupTest();
+
+  const refused = buildTestClient(ctx.url).computer.readHandover({});
+
+  await Promise.allSettled([refused]);
+
+  expect(refused).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
 });
 
 test('#computer.handBack says the computer is unavailable before it starts', async () => {

@@ -1,4 +1,5 @@
 import type { ActionCall, ListedAction } from '@heynixie/actions';
+import { handoverAskedFieldsSchema } from '@heynixie/connectors';
 import type { LogRecord as ContractRecord, DefinitionNotice } from '@heynixie/contract';
 import { spanSchema } from '@heynixie/contract';
 import type { JSONObject, JSONValue, LogRecord, RecordKind } from '@heynixie/log';
@@ -96,6 +97,7 @@ export function toContractRecord(
   const definitionNotice = lookups.definitionNotices.get(record.sequence);
   const skillNotice = record.kind === 'skills.write_applied' ? toSkillNotice(record) : undefined;
   const worker = toWorkerView(record);
+  const handover = record.kind === 'computer.handover_asked' ? toHandover(record) : undefined;
 
   return {
     ...toSessionFields(record),
@@ -104,6 +106,7 @@ export function toContractRecord(
     ...toGap(record, lookups),
     ...(definitionNotice === undefined ? {} : { definitionNotice }),
     ...(exchangeNotice === undefined ? {} : { exchangeNotice }),
+    ...(handover === undefined ? {} : { handover }),
     kind: record.kind,
     ...(message === undefined ? {} : { message }),
     ...(moment === undefined ? {} : { moment }),
@@ -443,6 +446,18 @@ function toSkillNotice(record: LogRecord): SkillNotice | undefined {
     isNew: applied.baseHash === null,
     ruleID: applied.rule.id,
   };
+}
+
+type Handover = NonNullable<ContractRecord['handover']>;
+
+// the reason of an ask, while it is readable
+function toHandover(record: LogRecord): Handover {
+  const fields =
+    record.erasable.status === 'readable'
+      ? handoverAskedFieldsSchema.safeParse(record.erasable.fields)
+      : null;
+
+  return fields?.success === true ? { reason: fields.data.reason } : {};
 }
 
 type SessionFields = Pick<

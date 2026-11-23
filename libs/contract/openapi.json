@@ -324,6 +324,14 @@
                               "isUnreadable"
                             ]
                           },
+                          "handover": {
+                            "type": "object",
+                            "properties": {
+                              "reason": {
+                                "type": "string"
+                              }
+                            }
+                          },
                           "isRemoved": {
                             "const": true
                           },
@@ -1170,6 +1178,14 @@
                                 "state",
                                 "isUnreadable"
                               ]
+                            },
+                            "handover": {
+                              "type": "object",
+                              "properties": {
+                                "reason": {
+                                  "type": "string"
+                                }
+                              }
                             },
                             "isRemoved": {
                               "const": true
@@ -19826,6 +19842,125 @@
         }
       }
     },
+    "/computer/readHandover": {
+      "post": {
+        "operationId": "computer.readHandover",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ask": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "sequence": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "reason": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          },
+                          "required": [
+                            "sequence",
+                            "reason"
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "readAtSequence": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "required": [
+                    "ask",
+                    "readAtSequence"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "401",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": true
+                        },
+                        "code": {
+                          "const": "UNAUTHORIZED"
+                        },
+                        "status": {
+                          "const": 401
+                        },
+                        "message": {
+                          "type": "string",
+                          "default": "The device session is missing, lapsed or revoked"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": false
+                        },
+                        "code": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "number"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/computer/handBack": {
       "post": {
         "operationId": "computer.handBack",
@@ -31873,6 +32008,14 @@
                                     "isUnreadable"
                                   ]
                                 },
+                                "handover": {
+                                  "type": "object",
+                                  "properties": {
+                                    "reason": {
+                                      "type": "string"
+                                    }
+                                  }
+                                },
                                 "isRemoved": {
                                   "const": true
                                 },
@@ -32884,6 +33027,14 @@
                                     "state",
                                     "isUnreadable"
                                   ]
+                                },
+                                "handover": {
+                                  "type": "object",
+                                  "properties": {
+                                    "reason": {
+                                      "type": "string"
+                                    }
+                                  }
                                 },
                                 "isRemoved": {
                                   "const": true
