@@ -13,9 +13,9 @@ for `computer.browser_open`, and asks again for each click, because each tool an
 answer keeps its own list. With the directory, you trust a site once, on one page, and every tool
 sees the same answer.
 
-The owner approves this design. The builder of each work item above starts from it, together with
-the [decision point](../../architecture/policy/decision-point.md) it extends. The directory's own
-work items, filed when the owner approves, are:
+The owner approves this design. Build each work item above from it and the
+[decision point](../../architecture/policy/decision-point.md) it extends. The directory's own work
+items, filed when the owner approves, are:
 
 1. the matcher, the directory, its records and the decision point's changes, with the contacts
    folded in and `web_fetch` declaring its host;
@@ -49,8 +49,8 @@ flowchart LR
 
 ### The matcher
 
-Every module that compares a destination with a place calls one function. No module compares raw
-destination strings.
+Compare a destination with a place only through `parsePlace` and `isPlaceCovered`, never as raw
+strings.
 
 ```ts
 parsePlace('https://Docs.Example.org:8443/a?b=1');
@@ -133,8 +133,8 @@ interface Place {
 }
 ```
 
-Records. The first three carry no thread, as contact records don't today, and each makes a new
-definitions snapshot. `places.acted` goes on the call's thread and makes none.
+The directory writes these records. The first three carry no thread, as contact records don't today,
+and each makes a new definitions snapshot. `places.acted` goes on the call's thread and makes none.
 
 ```text
 places.added    { placeID, shortID, key, trust, name, addedBy }
@@ -153,8 +153,8 @@ places.acted    { placeID, shortID, callID }  // a call that an 'act' place allo
 
 ### The decision point
 
-The directory changes three of the [stages](../../architecture/policy/decision-point.md#the-stages).
-A call's destinations come from its tool as today, and each goes through `parsePlace` first.
+The directory changes [stages](../../architecture/policy/decision-point.md#the-stages) 3, 5 and 7. A
+call's destinations come from its tool as today, and each goes through `parsePlace` first.
 
 | Level     | Stage 3, deny   | Stage 5, destinations                                                   | Stage 7, before the allow rules          |
 | --------- | --------------- | ----------------------------------------------------------------------- | ---------------------------------------- |
@@ -193,7 +193,7 @@ type DecisionDetail = { place: { placeID: string; shortID: string } | null }; //
 - When several entries cover a destination, a `blocked` entry wins. Otherwise the most specific
   entry wins: an exact key, then the longer domain.
 - A rule's `destinations` keep their patterns and the `*` match. Both the pattern and the
-  destination are put in lower case before the match, so case no longer splits a match.
+  destination are put in lower case before the match.
 - `web_fetch` declares the host of its `url`, or of the link a `link` call names, through
   `resolveDestinations`. A call that reads a stored page fetches nothing and declares none.
 - `search` with `sites`, `computer.browser_download` and a device page's fetches declare their URL's
@@ -312,6 +312,6 @@ and when a call last used it. You add, change and remove entries there. The host
   owner may prefer that a fetch from an unlisted site asks once. Until then, reads stay free.
 - **Whole-domain entries for shared suffixes.** A two-label minimum still allows an entry for
   `co.uk` with subdomains. A public-suffix list would refuse it, at the cost of a library. Until the
-  owner decides, only you can make a subdomain entry, on the page, so a broad one needs your hand.
+  owner decides, only you can make a subdomain entry, on the page.
 - **Who sees the notice of an act.** The design shows it in the conversation. The owner may want a
   digest instead.
