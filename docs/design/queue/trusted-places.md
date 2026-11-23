@@ -151,7 +151,7 @@ const verdict = places.find(snapshot, { parsed: parsePlace(destination), raw: de
 ```ts
 // places module.
 type Trust =
-  | 'blocked' // every call that reaches the place is denied
+  | 'blocked' // every call that declares the place as a destination is denied
   | 'known' // the place passes stage 5; the rules decide the call, as for a known contact today
   | 'read' // a call with only reading effects is allowed; an acting call is decided as at 'known'
   | 'act' // a call with reading or acting effects is allowed, and each act leaves a notice
@@ -278,7 +278,8 @@ interface ClickedElement {
 ```
 
 - A click on a plain link runs without asking at a `read` place, and at an unlisted one through the
-  starter rule `allow-reads`. A click on a button asks unless the place is at `act` or `self`.
+  starter rule `allow-reads`. Only a place at `act` or `self` allows a click on a button; at any
+  other level the rules decide it, and with no allow rule it asks.
 - The queued attempt of a click reads the element again, and refuses when its effects or
   destinations differ from the ones decided.
 - A click handler that a script adds is invisible to `prepare`, so a plain-link click can start a
@@ -392,8 +393,8 @@ and when a call last used it. You add, change and remove entries there. The host
   otherwise falls through to the other tiers as today.
 - An entry covers a place by key alone. A site entry never covers an address at that domain.
 - A `blocked` entry beats every rule, mandate and lift.
-- No level allows a `spend` call: it asks at `known`, `read`, `act` and `self`, and `blocked` denies
-  it. A lift covers a spend as it does today.
+- No level allows a `spend` call. `blocked` denies it; at every other level stage 4 asks, unless a
+  lift covers it, as today.
 - Each call reads the directory of its own definitions snapshot. `places.added`, `places.changed`
   and `places.removed` each make a new snapshot, as a contact record does today. The snapshot holds
   `policy.places`, a list of `{ placeID, trust }` sorted by place ID, where it held
