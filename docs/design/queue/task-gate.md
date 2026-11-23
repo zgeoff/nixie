@@ -8,7 +8,7 @@ state and the nixie pause, the attempt check reads another list of states, the s
 check of its own before each turn, and a schedule reads only the task's own pause and limit. So a
 schedule fires into a task's inbox while all of nixie is paused, which the [pause design](pause.md)
 says never happens. After this design, one function answers whether a task may go on and why not,
-and every claim, action attempt, step and trigger fire asks it. A small rename at the end gives
+and every claim, action attempt, step and schedule fire asks it. A small rename at the end gives
 "recovery" one meaning.
 
 Once the owner approves this design, build its work items from it and the built
@@ -128,13 +128,14 @@ The rename shares no code with the gate and ships as its own work item.
 | stored or public | –                 | –                           | `recoveries` table, `recovery.started`, `recovery.notice`, `recovery.read` |
 | fault points     | `recovery.step.*` | `restart_sweep.*`           | `recovery.pause.*`                                                         |
 
-The restore side keeps the word, because its names are stored and published. The crash side holds
-only code names and fault point IDs.
+The table shows the open question's default: the restore side keeps the word, because its names are
+stored and published, and the crash side holds only code names and fault point IDs.
 
 ## Constraints
 
-- Every claim, attempt start and trigger fire reads `readTaskGate` in the same transaction as the
-  write it guards. A step start writes nothing and reads it in a read transaction of its own.
+- Every attempt start and schedule fire reads `readTaskGate` in the same transaction as the write it
+  guards. Every claim applies the filter built from the gate's predicate, in its claim transaction.
+  A step start writes nothing and reads the gate in a read transaction of its own.
 - A hold never drops a fire. A fire lands, waits for the next delivery, or is skipped with a record
   that gives the reason.
 - The gate reads only the database.
