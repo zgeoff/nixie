@@ -1,16 +1,17 @@
 import type { NotebookCheck } from '../check/build-check';
+import type { BegunNoteForget, NoteForgetTarget } from '../forget/run-note-forget';
 import type { EditInput } from '../note/plan-edit';
 import type { FindRequest, FoundNotes } from '../read/read-found-notes';
 import type { NoteReadOutcome, NoteReadRequest } from '../read/read-note';
 import type { NoteHistory } from '../read/read-note-history';
-import type { NoteWriter } from '../types';
+import type { NoteForgetCaller, NoteWriter } from '../types';
 import type { NoteWalk, WalkAccess, WalkRequest } from '../walk/read-walk';
 import type { NoteWrite, WriteNoteInput } from '../write/write-note';
 import type { NoteEdit } from '../write/write-note-edit';
 import type { LinkRequest, NoteLink } from '../write/write-note-link';
 import type { NoteUnlink } from '../write/write-note-unlink';
 
-// What the 9 tools reach: the notebook store, minus the client's calls and the forget.
+// What the 10 tools reach: the notebook store, minus the client's calls.
 export interface NotebookToolStore {
   readonly write: (caller: NoteWriter, input: WriteNoteInput) => Promise<NoteWrite>;
   readonly edit: (caller: NoteWriter, note: string, input: EditInput) => Promise<NoteEdit>;
@@ -21,4 +22,10 @@ export interface NotebookToolStore {
   readonly link: (request: LinkRequest) => Promise<NoteLink>;
   readonly unlink: (request: Omit<LinkRequest, 'reason'>) => Promise<NoteUnlink>;
   readonly walk: (access: WalkAccess, request: WalkRequest) => Promise<NoteWalk>;
+
+  // runs the cleanup beside the call, once the calling step ends, which a turn's tool needs
+  readonly forgetBeside: (
+    target: NoteForgetTarget,
+    caller: NoteForgetCaller,
+  ) => Promise<BegunNoteForget>;
 }

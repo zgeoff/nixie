@@ -7,15 +7,16 @@ import { findConversationGap } from './find-conversation-gap';
 
 // The scripted reply can reach the stream a moment after the page shows it, so the read waits this
 // long for it.
-const settleMs = 10_000;
+const defaultSettleMs = 10_000;
 
 // Reads the records the harness printed since `use` last marked the stream, until they hold the
-// owner's message and then the reply, and fails with `check-failed` when they do not in time.
+// owner's message and then the reply, and fails with `check-failed` when they do not in time. A
+// turn that the task pool retries needs a longer wait, which `waitMs` sets.
 export async function readConversationTurn(
-  client: StreamClient,
-  turn: ConversationTurn,
+  client: Pick<StreamClient, 'read'>,
+  turn: ConversationTurn & { readonly waitMs?: number | undefined },
 ): Promise<{ records: ConversationRecord[] }> {
-  const deadline = Date.now() + settleMs;
+  const deadline = Date.now() + (turn.waitMs ?? defaultSettleMs);
 
   for (;;) {
     const lines = await readStreamLines(client);
@@ -37,7 +38,7 @@ export async function readConversationTurn(
   }
 }
 
-async function readStreamLines(client: StreamClient): Promise<string[]> {
+async function readStreamLines(client: Pick<StreamClient, 'read'>): Promise<string[]> {
   const lines: string[] = [];
   const cursor: { from: number | undefined } = { from: undefined };
 

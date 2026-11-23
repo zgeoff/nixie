@@ -17,15 +17,15 @@ import type { NoteForgetPreviewRead } from './forget/read-note-forget-preview';
 import { readNoteForgetPreview } from './forget/read-note-forget-preview';
 import { readNoteForgottenSequence } from './forget/read-note-forgotten-sequence';
 import { runBegunNoteForgets } from './forget/run-begun-note-forgets';
-import type { NoteForget, NoteForgetTarget } from './forget/run-note-forget';
-import { runNoteForget } from './forget/run-note-forget';
+import type { BegunNoteForget, NoteForget, NoteForgetTarget } from './forget/run-note-forget';
+import { beginNoteForget, runNoteForget } from './forget/run-note-forget';
 import { startNoteIndex } from './index/start-note-index';
 import { readNoteRow } from './note/read-note-row';
 import { readFoundNotes } from './read/read-found-notes';
 import { readNote } from './read/read-note';
 import { readNoteHistory } from './read/read-note-history';
 import type { NotebookToolStore } from './tool/notebook-tool-store';
-import type { NotebookContext } from './types';
+import type { NoteForgetCaller, NotebookContext, RunningStepClaim } from './types';
 import { readWalk } from './walk/read-walk';
 import { writeNote } from './write/write-note';
 import { writeNoteEdit } from './write/write-note-edit';
@@ -33,7 +33,7 @@ import { writeNoteLink } from './write/write-note-link';
 import { writeNoteUnlink } from './write/write-note-unlink';
 
 // The notebook's own calls beside the tools': the client's reads, the owner's open of a private
-// note, and the forget.
+// note, and the forget with a client action's hook.
 export interface NotebookStore extends NotebookToolStore {
   readonly listNotes: (request: ClientListRequest) => Promise<ClientNoteList>;
   readonly readClientNote: (request: ClientNoteRequest) => Promise<ClientNoteRead>;
@@ -58,6 +58,9 @@ export interface NotebookStore extends NotebookToolStore {
   readonly readForgetFloor: (noteID: string) => Promise<number | null>;
   readonly readLinkingNotes: (sequence: number) => Promise<readonly LinkingNote[]>;
 
+  // resolves once the cleanups that a tool's forget left running have ended
+  readonly waitForForgets: () => Promise<void>;
+
   // resolves once the vectors of the notes read at start are encoded; true when they all were
   readonly waitForSemanticIndex: () => Promise<boolean>;
   readonly stop: () => Promise<void>;
@@ -66,6 +69,19 @@ export interface NotebookStore extends NotebookToolStore {
 export interface StartNotebookOptions extends NotebookContext {
   // without it, meaning search is never ready and a search reports a partial meaning
   readonly semanticSearch?: SemanticSearch;
+
+  // the step that the task of a thread runs, or null when none runs or its lease has expired
+  readonly readRunningStep: (thread: string) => Promise<RunningStepClaim | null>;
+
+  // the wait before a tool forget's cleanup checks the calling step again, or runs again after it
+  // failed
+  readonly cleanupRetryMs?: number;
+}
+
+const defaultCleanupRetryMs = 1000;
+
+interface CallingStep extends RunningStepClaim {
+  readonly thread: string;
 }
 
 // Starts the in-process indexes from every active note, and finishes each forget that a crash cut
@@ -79,6 +95,73 @@ export async function startNotebook(options: StartNotebookOptions): Promise<Note
 
   await runBegunNoteForgets(context, index);
 
+  // A tool's forget runs inside a step, and the session cleanup aborts every turn in flight, so it
+  // starts only once the calling step has committed what it wrote. The cleanup runs again until it
+  // ends or the notebook stops, and the next start finishes one that a stop cut short.
+  const cleanups = new Map<string, Promise<void>>();
+
+  const retryMs = options.cleanupRetryMs ?? defaultCleanupRetryMs;
+  const state = { isStopping: false };
+
+  const waitForStepEnd = async (step: CallingStep | null): Promise<void> => {
+    if (step === null) {
+      return;
+    }
+
+    let current = await options.readRunningStep(step.thread);
+
+    while (isSameStep(current, step)) {
+      if (state.isStopping) {
+        throw new Error('the notebook stopped before the calling step ended');
+      }
+
+      await Bun.sleep(retryMs);
+
+      current = await options.readRunningStep(step.thread);
+    }
+  };
+
+  const runFinishOnce = async (noteID: string, step: CallingStep | null): Promise<boolean> => {
+    try {
+      await runBegunNoteForgets(context, index, noteID, () => waitForStepEnd(step));
+
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const runFinishBeside = async (noteID: string, step: CallingStep | null): Promise<void> => {
+    while (!state.isStopping && !(await runFinishOnce(noteID, step))) {
+      await Bun.sleep(retryMs);
+    }
+  };
+
+  const runTrackedFinish = async (noteID: string, step: CallingStep | null): Promise<void> => {
+    try {
+      await runFinishBeside(noteID, step);
+    } finally {
+      cleanups.delete(noteID);
+    }
+  };
+
+  const forgetBeside = async (
+    target: NoteForgetTarget,
+    caller: NoteForgetCaller,
+  ): Promise<BegunNoteForget> => {
+    const begun = await beginNoteForget(context, target);
+
+    if (begun.status === 'begun') {
+      const running = await options.readRunningStep(caller.thread);
+
+      const step = running === null ? null : { ...running, thread: caller.thread };
+
+      cleanups.set(begun.noteID, runTrackedFinish(begun.noteID, step));
+    }
+
+    return begun;
+  };
+
   return {
     write: (caller, input) => writeNote(context, index, caller, input),
     edit: (caller, note, input) => writeNoteEdit(context, index, caller, { note, input }),
@@ -89,6 +172,7 @@ export async function startNotebook(options: StartNotebookOptions): Promise<Note
     link: (request) => writeNoteLink(context, request),
     unlink: (request) => writeNoteUnlink(context, request),
     walk: (access, request) => readWalk(context, index, access, request),
+    forgetBeside,
 
     listNotes: (request) => listClientNotes(context, index, request),
     readClientNote: (request) => readClientNote(context, index, request),
@@ -114,7 +198,19 @@ export async function startNotebook(options: StartNotebookOptions): Promise<Note
     readForgetFloor: (noteID) => readNoteForgetFloor(context.log, noteID),
     readLinkingNotes: (sequence) => readNotesLinkingEvent(context.log, sequence),
 
+    waitForForgets: async () => {
+      await Promise.all(cleanups.values());
+    },
     waitForSemanticIndex: () => index.waitForLoadedVectors(),
-    stop: () => index.stop(),
+    stop: async () => {
+      state.isStopping = true;
+
+      await Promise.all(cleanups.values());
+      await index.stop();
+    },
   };
+}
+
+function isSameStep(running: RunningStepClaim | null, step: RunningStepClaim): boolean {
+  return running?.stepKey === step.stepKey && running.generation === step.generation;
 }

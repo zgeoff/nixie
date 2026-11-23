@@ -50,6 +50,7 @@ async function setupTest() {
     settings: defaultNotebookSettings,
     memory: buildNotebookMemory(() => memory),
     cleanupSessions,
+    readRunningStep: () => Promise.resolve(null),
   });
 
   onTestFinished(() => notebook.stop());

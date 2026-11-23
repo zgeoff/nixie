@@ -5,11 +5,15 @@ import {
   buildItemLinkCounts,
   buildNotebookMemory,
   defaultNotebookSettings,
-  noteForgottenCodec,
   startNotebook,
 } from '@heynixie/notebook';
 import { recordSkillPin, skillsReloadedCodec } from '@heynixie/skills';
-import { conversationTaskID, createConversationTask, getTaskName } from '@heynixie/tasks';
+import {
+  conversationTaskID,
+  createConversationTask,
+  getTaskName,
+  readRunningStep,
+} from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
 import { startConversation } from '../conversation/start-conversation';
 import { buildConversationDriver } from '../test-utils/build-conversation-driver';
@@ -37,6 +41,7 @@ async function setupTest() {
     settings: defaultNotebookSettings,
     memory: buildNotebookMemory(() => memory),
     cleanupSessions: () => Promise.resolve(),
+    readRunningStep: (thread) => readRunningStep(server.context, thread),
   });
 
   onTestFinished(() => notebook.stop());
@@ -472,7 +477,7 @@ test('it keeps each failed turn in the event log, the recovered ones included', 
   ]);
 });
 
-test("it lists a finished note forget in the next turn's events, with the owner's name", async () => {
+test("it lists a finished note forget in the next turn's events as by the owner when no name is set", async () => {
   const ctx = await setupTest();
 
   const [runner] = await Promise.all([
@@ -490,17 +495,55 @@ test("it lists a finished note forget in the next turn's events, with the owner'
 
   await conversation.send('When is high tide?');
 
-  await writeRecords(ctx.context.log, [
-    {
-      kind: 'notebook.note_forgotten',
-      definitions: { snapshotHash: 'snapshot-a', personaVersion: 'persona-a' },
-      payload: noteForgottenCodec.encode({ note: 'note-uuid-a', shortID: 'n4w8k2c6rd' }),
-    },
-  ]);
+  const written = await ctx.notebook.write(
+    { writer: 'conversation', model: 'model-a' },
+    { title: 'Boiler', body: 'Body of the boiler note.' },
+  );
+
+  invariant(written.status === 'written');
+
+  await ctx.notebook.forget({ note: written.shortID });
 
   const turn = await conversation.send('And tomorrow?');
 
-  expect(turn.input[0]?.text).toInclude('the owner forgot note n4w8k2c6rd');
+  expect(turn.input[0]?.text).toInclude(`the owner forgot note ${written.shortID}`);
+});
+
+test("it adds no line to the next turn's events for a note forget by the assistant", async () => {
+  const ctx = await setupTest();
+
+  const [runner] = await Promise.all([
+    ctx.startRunner('nixie-conversation-0123456789ab'),
+    createConversationTask(ctx.context),
+  ]);
+
+  const conversation = buildConversationDriver({
+    context: ctx.context,
+    guest: ctx.guest,
+    getRunStep: () => runner.runStep,
+  });
+
+  ctx.guest.addReplies({ text: 'High tide is at noon.' }, { text: 'Noted.' });
+
+  await conversation.send('When is high tide?');
+
+  const written = await ctx.notebook.write(
+    { writer: 'conversation', model: 'model-a' },
+    { title: 'Boiler', body: 'Body of the boiler note.' },
+  );
+
+  invariant(written.status === 'written');
+
+  await ctx.notebook.forgetBeside(
+    { note: written.shortID, by: 'assistant' },
+    { thread: conversationTaskID },
+  );
+
+  await ctx.notebook.waitForForgets();
+
+  const turn = await conversation.send('And tomorrow?');
+
+  expect(turn.input[0]?.text).not.toInclude(written.shortID);
 });
 
 test("it leaves a finished note forget out of the next turn's events when the note notice is off", async () => {
@@ -521,17 +564,18 @@ test("it leaves a finished note forget out of the next turn's events when the no
 
   await conversation.send('When is high tide?');
 
-  await writeRecords(ctx.context.log, [
-    {
-      kind: 'notebook.note_forgotten',
-      definitions: { snapshotHash: 'snapshot-a', personaVersion: 'persona-a' },
-      payload: noteForgottenCodec.encode({ note: 'note-uuid-a', shortID: 'n4w8k2c6rd' }),
-    },
-  ]);
+  const written = await ctx.notebook.write(
+    { writer: 'conversation', model: 'model-a' },
+    { title: 'Boiler', body: 'Body of the boiler note.' },
+  );
+
+  invariant(written.status === 'written');
+
+  await ctx.notebook.forget({ note: written.shortID });
 
   const turn = await conversation.send('And tomorrow?');
 
-  expect(turn.input[0]?.text).not.toInclude('n4w8k2c6rd');
+  expect(turn.input[0]?.text).not.toInclude(written.shortID);
 });
 
 test("it adds no note text, title or ID to a turn's context, even when the message is a note's title word for word", async () => {

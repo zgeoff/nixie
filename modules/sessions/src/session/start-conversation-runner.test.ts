@@ -10,8 +10,9 @@ import {
   buildStubSandboxAdapter,
   makeStubFetcher,
 } from '@heynixie/connectors/test-utils';
+import type { RecordInput } from '@heynixie/log';
 import { withWriteTransaction } from '@heynixie/log';
-import { resolveRoleProfile } from '@heynixie/models';
+import { modelSessionSummarizedCodec, resolveRoleProfile } from '@heynixie/models';
 import { buildMockModelsConfig } from '@heynixie/models/test-utils';
 import { buildStubSandboxes } from '@heynixie/sandbox/test-utils';
 import { buildStubSpendGateway } from '@heynixie/spend/test-utils';
@@ -654,6 +655,116 @@ test("it gives each turn of a session the key the session's opening keeps, and a
   expect(keys).toStrictEqual([expect.toBeString(), expect.toBeString()]);
   expect(keys[1]).not.toBe(keys[0]);
   expect(stepKeys).toStrictEqual([keys[0], keys[0], keys[1]]);
+});
+
+test('it erases a session summary that a step whose turn had ended commits after a forget began', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: 'not-a-real-key',
+    toolNames: ['notes_read'],
+  });
+
+  const turnEnded = Promise.withResolvers<void>();
+  const commitHeld = Promise.withResolvers<void>();
+
+  onTestFinished(() => {
+    commitHeld.resolve();
+  });
+
+  await ctx.writeMessage('Hi.');
+
+  const step = runNextStep(ctx.context, async (input) => {
+    const result = await runner.runStep(input);
+
+    turnEnded.resolve();
+
+    await commitHeld.promise;
+
+    const summary: RecordInput = {
+      kind: 'model.session_summarized',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: modelSessionSummarizedCodec.encode({
+        model: 'claude-test-1',
+        profile: 'chat-direct',
+        throughSequence: 1,
+        boundary: { sessionID: 'session-1', messageID: 'message-1' },
+        trigger: 'threshold',
+        summaryTokens: 12,
+        isCut: false,
+      }),
+      erasable: { text: 'The orchard gate is green.' },
+    };
+
+    return { ...result, records: [...result.records, summary] };
+  });
+
+  await turnEnded.promise;
+
+  const cleanupState = { isDone: false };
+
+  const cleanup = (async () => {
+    await runner.cleanupSessions({ itemID: '0b4f4c8e-3d0a-4c39-9a51-6f1f1f2b8c01' });
+
+    cleanupState.isDone = true;
+  })();
+
+  const [waited] = await Promise.allSettled([
+    waitForCondition(() => cleanupState.isDone, { timeoutMs: 200 }),
+  ]);
+
+  commitHeld.resolve();
+
+  await Promise.all([step, cleanup]);
+
+  const [summary] = await ctx.readKinds('model.session_summarized');
+
+  expect([waited?.status, summary?.erasable.status]).toStrictEqual(['rejected', 'shredded']);
+});
+
+test('it runs a forget while a claimed step has not started its turn, and then runs that turn', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: 'not-a-real-key',
+    toolNames: ['notes_read'],
+  });
+
+  const claimed = Promise.withResolvers<void>();
+  const turnHeld = Promise.withResolvers<void>();
+
+  onTestFinished(() => {
+    turnHeld.resolve();
+  });
+
+  await ctx.writeMessage('Hi.');
+
+  const step = runNextStep(ctx.context, async (input) => {
+    claimed.resolve();
+
+    await turnHeld.promise;
+
+    return runner.runStep(input);
+  });
+
+  await claimed.promise;
+
+  const cleanup = runner.cleanupSessions({ itemID: '0b4f4c8e-3d0a-4c39-9a51-6f1f1f2b8c01' });
+
+  turnHeld.resolve();
+
+  await Promise.all([step, cleanup]);
+
+  const kinds = await ctx.readKinds('task.step_committed');
+
+  expect(kinds).toHaveLength(1);
 });
 
 test("it removes the thread's web fetch links on a forget", async () => {

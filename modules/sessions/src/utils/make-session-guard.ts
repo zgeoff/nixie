@@ -1,7 +1,16 @@
-export interface SessionGuard {
-  readonly withTurn: <T>(run: (signal: AbortSignal) => Promise<T>) => Promise<T>;
+import type { RunningStep } from '@heynixie/tasks';
 
-  readonly withInvalidation: (cleanup: () => Promise<void>) => Promise<void>;
+export interface SessionGuard {
+  // step: the step whose turn this is, which a later cleanup waits for until it commits
+  readonly withTurn: <T>(
+    run: (signal: AbortSignal) => Promise<T>,
+    step?: RunningStep,
+  ) => Promise<T>;
+
+  // lastStep: the step of the last turn that started, whose commit can still be on its way
+  readonly withInvalidation: (
+    cleanup: (lastStep: RunningStep | undefined) => Promise<void>,
+  ) => Promise<void>;
 }
 
 interface CleanupGate {
@@ -14,10 +23,18 @@ export function makeSessionGuard(): SessionGuard {
 
   const active = new Map<AbortController, Promise<void>>();
 
+  const turns: { last?: RunningStep } = {};
+
   return {
-    withTurn: async (run) => {
+    withTurn: async (run, step) => {
       while (gate.pending > 0) {
         await gate.current;
+      }
+
+      // Lease generations only grow, so a turn of an older claim that starts late must not hide
+      // the newer claim, which can still commit a summary.
+      if (step !== undefined && step.generation >= (turns.last?.generation ?? 0)) {
+        turns.last = step;
       }
 
       const controller = new AbortController();
@@ -34,7 +51,7 @@ export function makeSessionGuard(): SessionGuard {
       }
     },
     withInvalidation: (cleanup) => {
-      const ran = runAfter([gate.current, ...active.values()], cleanup);
+      const ran = runAfter([gate.current, ...active.values()], () => cleanup(turns.last));
 
       for (const controller of active.keys()) {
         controller.abort(new Error('a forget invalidated the session'));
