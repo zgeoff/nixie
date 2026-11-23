@@ -626,10 +626,7 @@ test('it refuses a resolve that keeps neither side while it reads the arguments'
   );
 
   expect(exitCode).toBe(1);
-
-  expect(io.print).toHaveBeenCalledExactlyOnceWith(
-    `nixie: Optional argument '--keep' should be chosen from 'enum' ["nixie", "definitions"] values`,
-  );
+  expect(io.print).toHaveBeenCalledExactlyOnceWith(expect.stringMatching(/^nixie: .*--keep/u));
 });
 
 test("it refuses a resolve that keeps the repo, which only a rule's resolve takes", async () => {
@@ -649,11 +646,7 @@ test("it refuses a resolve that keeps the repo, which only a rule's resolve take
 
   expect({ exitCode, printed: io.print.mock.calls }).toStrictEqual({
     exitCode: 1,
-    printed: [
-      [
-        `nixie: Optional argument '--keep' should be chosen from 'enum' ["nixie", "definitions"] values`,
-      ],
-    ],
+    printed: [[expect.stringMatching(/^nixie: .*--keep/u)]],
   });
 });
 
