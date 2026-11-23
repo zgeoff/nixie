@@ -94,6 +94,15 @@ a report when the session ends. nixie reads the session's state, last reply and 
 | [the tools](tools.md)     | `coding.sessions`, `coding.steer`, `coding.message`, `coding.read`, `coding.watch`, and their policy   |
 | [the atc adapter](atc.md) | `CodingAdapter`, the coding source, the map onto atc-gateway's tools, the config, the release pairs    |
 
+This work changes these modules that every runner or connector uses:
+
+- tasks: an async `plan` that returns actions,
+  [`StepResult.actions` and `messages`](runner.md#what-one-step-does), `TaskMessageRequest.outside`,
+  and the definition's [`meters`, `ended` and `listFields`](runner.md#the-runner-definition)
+- actions: [a key per refused attempt](atc.md#the-coding-adapter)
+- triggers: [the `stream` kind and `TaskInputEvent`](atc.md#the-coding-source)
+- policy: the `coding_start` effect name
+
 ## Decisions
 
 - **A coding runner runs no model, and judges nothing.** Its step only moves text and events between

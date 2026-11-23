@@ -53,9 +53,10 @@ interface CodingAdapter {
 // idempotencyKey: '<action ID>', and '<action ID>.<n>' after n refused attempts of the action.
 // An attempt after an unknown outcome keeps the key of the attempt before it.
 
-// actions module: the port change. The queue counts each action's refused attempts on its row, and
-// passes the key above as the `idempotencyKey` of each attempt and each check, in place of the
-// bare action ID. A connector that keeps no key per attempt sees no change until a refusal.
+// actions module: the port change. The queue counts each action's refused attempts in a new
+// column of the actions table, from an appended migration, and passes the key above as the
+// `idempotencyKey` of each attempt and each check, in place of the bare action ID. `keptForMs`
+// counts from the first attempt under the current key.
 
 interface SessionBrief {
   name: string;
@@ -163,8 +164,8 @@ record is an inbox record when `wake` is true. `buildStepWake` reads the `hop` o
 - The tasks module owns the codec of `trigger.task_input`, because `buildStepWake` reads it and the
   triggers module already depends on tasks. The triggers core writes the record, and the coding
   module folds it.
-- The coding module is a new package, `modules/coding`. It depends on tasks, triggers, actions and
-  policy, and `coding-atc` depends only on it.
+- The coding module is a new package, `modules/coding`. It depends on tasks, triggers, actions,
+  connectors and policy, and `coding-atc` depends only on it.
 
 ### The atc adapter
 

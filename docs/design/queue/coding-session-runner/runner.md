@@ -82,8 +82,8 @@ type RunnerStartPlan<Options> =
   | { status: 'refused'; sentence: string };
 
 // actions module. An action that a runner or a tool queues on a task's thread. Each attempt meets
-// the decision point, as every action's attempt does; the start call's approval, bound to the
-// action hash, answers an ask rule.
+// the decision point, as every action's attempt does, with the task that owns the thread as its
+// caller.
 interface RunnerAction {
   tool: string; // a connector tool that no tool list holds, such as 'coding.start'
   args: JSONObject; // erasable, as every action's arguments are
@@ -155,6 +155,15 @@ const codingStartDeclaration: EffectDeclaration = {
   results: {},
 };
 
+// `coding.start`: the spawn action that a start queues
+const codingSpawnDeclaration: EffectDeclaration = {
+  effects: ['coding_start'],
+  destinations: [],
+  amount: null,
+  content: ['prompt', 'name'],
+  results: {},
+};
+
 // `coding.stop`: the action a stop of the task queues, for a started and a joined session alike
 const codingStopDeclaration: EffectDeclaration = {
   effects: ['coding_start'],
@@ -163,7 +172,8 @@ const codingStopDeclaration: EffectDeclaration = {
   content: ['origin'], // 'started' | 'joined', which the starter rules match on
   results: {},
 };
-// coding.stop reconciles by `check`: the adapter's read finds the session `ended` or `gone`.
+// coding.stop reconciles by `check` with the tool `coding.stop`: the connector's own check calls the
+// adapter's `read`, and finds the stop done when the session is `ended` or `gone`.
 ```
 
 [The tools](tools.md#steering-and-notes) hold the declarations of `coding.steer` and
@@ -310,11 +320,9 @@ tasks.list({ runner: 'atc', state: 'waiting', limit: 20 });
 // coding module: `session` comes from coding_sessions, through the definition's `listFields`.
 ```
 
-- The API contract's listed task gains an optional `session` field, in a minor release of
-  `libs/contract`. The API stream sends each change of a `coding_sessions` row as a change of that
-  field.
-- The client's view of a coding task is the work of
-  [supervised sessions in the live view](https://linear.app/zgeoff/issue/GEO-311).
+- [Supervised sessions in the live view](https://linear.app/zgeoff/issue/GEO-311) adds `session` to
+  the API contract's listed task, streams each change of a `coding_sessions` row, and builds the
+  client's view. This work builds only `tasks.list`.
 
 ## Constraints
 
@@ -323,12 +331,15 @@ tasks.list({ runner: 'atc', state: 'waiting', limit: 20 });
 - The composition root builds a coding runner only when the `coding.atc` config section is set, so
   `task.start/atc` is on the tool list only then.
 - The `task.start` tool runs inside the model's turn, unqueued. In one transaction, a start writes
-  `task.created` with `runner: 'atc'`, then queues the spawn as a `RunnerAction` caused by the
-  start's tool call. The action hash binds the call's approval, so nixie asks you at most once per
-  start.
+  `task.created` with `runner: 'atc'`, then queues the spawn as a `RunnerAction` on the new task's
+  thread, caused by the start's tool call. The commit checks the lease of the step that called
+  `task.start`; the new task holds no lease yet.
 - The coding module registers `coding.start`, `coding.steer`, `coding.message` and `coding.stop`
-  with the action queue as connector actions that no tool list holds, each with its declaration, its
-  reconciliation and the adapter call its attempt makes.
+  with the action queue as connector actions that no model's tool list holds, each with its
+  declaration, its reconciliation and the adapter call its attempt makes. Each coding task's tool
+  list holds these 4, so stage 2 of the decision point passes their attempts.
+- This work adds the starter rule `allow-coding-spawns`, which allows `coding.start`, because the
+  start call already met your rules. nixie therefore asks you at most once per start.
 - The queue writes the outcome of every attempt that started, as it does for every action, so a
   spawn that finishes after its task stopped still leaves its outcome on the task's thread.
 - A join reads the session in its plan, then writes `task.created` and `coding.session_bound` with
