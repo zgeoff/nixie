@@ -6,7 +6,8 @@ The notebook pages show what the assistant wrote with the notebook tools, read-o
 lists the notes, newest edit first. A note's page at `/notebook/<note ID>` shows its body, links and
 backlinks. A private note is absent until the user ticks "Show private", which sets `?private=1` and
 writes nothing. Its body stays folded until the user presses Open, which appends one
-`notebook.private_opened` record. Forget on a note's page removes the whole note.
+`notebook.private_opened` record. Forget on a note's page removes the whole note, and so does the
+assistant's `notebook.forget`.
 
 Follow the steps in [Check a change](../SKILL.md#check-a-change) for this journey. Read that section
 for the commands `up` and `done`, and for the `data` field of each command's JSON output.
@@ -18,7 +19,7 @@ feature as not verified on `preview`.
 Before you start:
 
 - When you have not run [sign-in-enrol](feature-sign-in-enrol.md) since `up`, run it first.
-- Run this journey once per `up`. It leaves one note forgotten.
+- Run this journey once per `up`. It leaves both notes forgotten.
 - Before you run the journey again, even after a failed pass, run `bun verify up --restart` and
   `bun verify doctor`. Then run sign-in-enrol. `up --restart` starts nixie on a new, empty database.
 
@@ -110,6 +111,23 @@ Before you start:
    Expect: the list shows the link "Winter diary" and no link "Boiler notes". The note's page shows
    "Gone (note)" in place of the link.
 
+7. Script a turn in which the assistant forgets the private note. Read the note's short ID first:
+
+   ```bash
+   bun verify db query "select json_extract(payload, '$.shortID') as id from records where kind = 'notebook.note_written' and json_extract(payload, '$.shortID') not in (select json_extract(payload, '$.shortID') from records where kind = 'notebook.note_forgotten')"
+   bun verify action script-reply --forget-note '<the id>' --text 'The diary note is forgotten.'
+   bun verify browser goto /
+   bun verify browser type --role textbox --name Message --value 'Forget the diary note.'
+   bun verify browser click --role button --name Send
+   bun verify conversation turn --message 'Forget the diary note.' --reply 'The diary note is forgotten.'
+   bun verify browser goto '/notebook?private=1'
+   bun verify browser snapshot --until-text 'Notebook'
+   bun verify db query "select json_extract(payload, '$.by') as by, count(*) as n from records where kind = 'notebook.note_forgotten' group by by order by by"
+   ```
+
+   Expect: the query lists 1 note, the private one. The list shows no link "Winter diary". The last
+   query lists `assistant` with `n` 1 and `user` with `n` 1.
+
 ## End state
 
 - Step 2: the log holds 2 `notebook.note_written` records and 1 `notebook.linked` record, and no
@@ -123,3 +141,5 @@ Before you start:
   record.
 - Step 6: the list holds only the private note, and its link to the forgotten note reads "Gone
   (note)".
+- Step 7: the list holds no note. The log holds 2 `notebook.note_forgotten` records, one with `by`
+  `user` and one with `by` `assistant`.

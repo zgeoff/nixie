@@ -48,11 +48,11 @@ with more cores or shorter notes can raise the limit.
 
 ## The tools
 
-The 9 tools are `notebook.write`, `edit`, `read`, `history`, `find`, `check`, `link`, `unlink` and
-`walk`. The 4 that change a note declare the `note` effect, so the starter rule `allow-notes` allows
-them with no approval, and the other 5 declare `read`. Notes skip the memory gate, which checks
-claims about the user, because a note is the assistant's own writing. The conversation holds all 9,
-and a task holds one only when its tool list names it.
+The 10 tools are `notebook.write`, `edit`, `read`, `history`, `find`, `check`, `link`, `unlink`,
+`walk` and `forget`. The 5 that change a note declare the `note` effect, so the starter rule
+`allow-notes` allows them with no approval, and the other 5 declare `read`. Notes skip the memory
+gate, which checks claims about the user, because a note is the assistant's own writing. The
+conversation holds all 10, and a task holds one only when its tool list names it.
 
 - An edit binds to the version it read, and the check and the record commit in one write
   transaction. An edit that sets only `append` binds to the current version at commit, so 2 tasks
@@ -74,6 +74,10 @@ and a task holds one only when its tool list names it.
   notes a call: its words search matches any query word, its meaning search ranks a note by its best
   chunk above the floor of `memory.recall`, and reciprocal rank fusion merges the two. A walk stops
   at 200 nodes, or sooner when its result would pass the tool output limit, and sets `isCut`.
+- `notebook.forget` takes a note's short ID and forgets the note for good, with no approval, because
+  the notebook is the assistant's. It answers the short ID and the title, or `UNKNOWN_NOTE` for an
+  ID that is unknown or was forgotten. It never takes a version, so it forgets the note as it
+  stands. [Forgetting a note](#forgetting-a-note) covers what it erases.
 - A note holds at most one link of each type to each target, and a second `notebook.link` with the
   same source, target and type replaces the reason. `PART_OF_CYCLE` checks the part-of links that
   exist when the link commits. A note ID written in a body is text: only `notebook.link` makes a
@@ -125,21 +129,30 @@ every note before the private entries go, so a note that only a private note lin
 orphan. The body stays out of `notebook.readNote`. Only the checked action `notebook.openPrivate`
 returns it, with the version before it, and appends `notebook.private_opened`, so a refetch or a
 retry never moves the mark. Opening a note that is not private writes nothing.
-`notebook.previewForget` and `notebook.forget` work on a private note without opening it.
+`notebook.previewForget` and the client's `notebook.forget` work on a private note without opening
+it, and the `notebook.forget` tool forgets one as it forgets any other.
 
 ## Forgetting a note
 
-Only the user forgets a note, through the checked action `notebook.forget` in the web client, and no
-tool reaches it. The [API](../channels/api.md#forgetting-a-note) owns the call. The forget runs in 2
-parts, as a [moment destroy](./moments.md#destroying-a-moment) does:
+The user forgets a note through the checked action `notebook.forget` in the web client, and the
+assistant forgets one of her own with the `notebook.forget` tool. Both take the same path and leave
+the same trace. The [API](../channels/api.md#forgetting-a-note) owns the client's call. The forget
+runs in 2 parts, as a [moment destroy](./moments.md#destroying-a-moment) does:
 
 1. One write transaction commits the client action, checks the version and appends
-   `notebook.note_forgetting`. From then on no tool or read reaches the note.
+   `notebook.note_forgetting`, which records who forgot, `user` or `assistant`. From then on no tool
+   or read reaches the note. The tool has no client action and binds to no version.
 2. The cleanup deletes the key of every version record and every link record of the note, drops the
    note from the indexes, runs the [session cleanup](./context.md#forgetting-and-the-live-session)
    with the note's ID as its cause, and deletes the logged model requests from the note's first
    record on, because their tool results can hold its text. It then appends
-   `notebook.note_forgotten`.
+   `notebook.note_forgotten`, with the same `by`. A record that has no `by` reads as a forget by the
+   user.
+
+The cleanup aborts every turn in flight and waits for it, so a forget that the assistant makes
+inside a turn runs part 1 and returns, and the cleanup runs beside the turn. The turn's step fails
+and runs again after its retry delay, on a rebuilt session, as
+[the live session](./context.md#forgetting-and-the-live-session) describes.
 
 Every step is safe to run twice, so the server's start finishes a forget that a crash cut short. The
 session cleanup runs for the conversation and for each open task whose tool list holds a notebook
@@ -154,5 +167,6 @@ record forget lists the active notes that link to the record, with a private not
 ## The forget line
 
 The notebook adds one entry to the [events block](../core/conversation-turns.md#the-events-block): a
-line for each finished note forget, such as "Sam forgot note n4w8k2c6rd". The server registers it
-only when the `forget_notices.note` setting is on, which is the default.
+line for each finished note forget by the user, such as "Sam forgot note n4w8k2c6rd". A forget by
+the assistant adds no line, because she made it herself. The server registers the entry only when
+the `forget_notices.note` setting is on, which is the default.

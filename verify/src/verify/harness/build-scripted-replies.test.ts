@@ -108,6 +108,15 @@ test('it queues a send of a picture after the list when the draw asks for it', (
   expect(calls.at(-2)).toStrictEqual({ name: 'mcp__nixie__file_send', input: { file: 'cm1abc' } });
 });
 
+test('it queues a forget of the note with the given short ID before the reply', () => {
+  const replies = buildScriptedReplies({ text: 'Forgotten.', forgetNote: 'n4w8k2c6rd' });
+
+  expect(replies).toStrictEqual([
+    { toolUse: { name: 'mcp__nixie__notebook_forget', input: { id: 'n4w8k2c6rd' } } },
+    { text: 'Forgotten.' },
+  ]);
+});
+
 test('it queues 2 note writes and a link from the private note to the first', () => {
   const replies = buildScriptedReplies({
     text: 'Both notes are written.',

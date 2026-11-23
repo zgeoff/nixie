@@ -66,6 +66,9 @@ export const controlRoutes = {
       // 2 notes the model writes with the notebook tool before its reply, the second private, and
       // a link from the second to the first
       notebook: writtenNotesSchema.optional(),
+
+      // the short ID of a note the model forgets with the notebook tool before its reply
+      forgetNote: z.string().min(1).optional(),
     }),
     output: z.strictObject({ replies: z.int().positive() }),
   },

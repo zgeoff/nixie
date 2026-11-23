@@ -38,7 +38,8 @@ Each part's doc owns the meaning of its own settings, and the file only carries 
 - the limits of the [notebook](../memory/notebook.md#the-indexes): the characters of a body, the
   active notes, and how many links must repeat a reason before the check reports it
 - `forget_notices`, which turns the line that the events block shows for each kind of forget on or
-  off: `forget_notices: false` turns every kind off, and the `note` key turns the note line off
+  off: `forget_notices: false` turns every kind off, and the `note` key turns the line for a note
+  that the user forgot off
 
 The model profiles and the definitions source have no defaults, so the file always sets them. The
 imp section is required when the sandbox adapter is imp, which a release build always runs. Every
