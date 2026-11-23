@@ -190,13 +190,13 @@ Folded from coding.session_bound, coding.delivered, coding.session_unbound and t
 
 ### What one step does
 
-A coding task's inbox holds 4 kinds of record: the brief, which the start writes as the task's first
-waking input; the outcomes of its actions; messages to the task; and `trigger.task_input` records,
-which the coding source writes for each event of the session. The step handles every action outcome
-in the inbox first, then every other record oldest first, and commits once. `state`, `answered`,
-`unanswered` and `note` are the kinds of [`SessionEvent`](atc.md#the-coding-adapter). Each row ends
-in the next state the step returns, as every runner does: `done` finishes the task, and `wait`
-leaves it waiting for its next inbox record.
+A coding task's inbox holds the brief, which the start writes as the task's first waking input; the
+outcomes of its actions; messages to the task; and `trigger.task_input` records, which the coding
+source writes for each event of the session. The step handles every action outcome in the inbox
+first, then every other record oldest first, and commits once. `state`, `answered`, `unanswered` and
+`note` are the kinds of [`SessionEvent`](atc.md#the-coding-adapter). Each row ends in the next state
+the step returns, as every runner does: `done` finishes the task, and `wait` leaves it waiting for
+its next inbox record.
 
 | Inbox record                                     | The step                                                                                                                                                                                                                              |
 | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -212,7 +212,7 @@ leaves it waiting for its next inbox record.
 | `trigger.task_input`, `answered` or `unanswered` | replies to the sender of the message that `coding.delivered` matches by `messageRef`, with `replyTo` set to it                                                                                                                        |
 | `trigger.task_input`, `note`                     | sends a `progress` message to the report target, which wakes it for `blocked` and `decision` only                                                                                                                                     |
 | `trigger.task_input`, `state` `waiting`          | sends a `progress` message with the session's question to the report target, which wakes it                                                                                                                                           |
-| `trigger.task_input`, `state` `idle`             | ends the open task run with a report, unless a delivery is queued or waits on an answer                                                                                                                                               |
+| `trigger.task_input`, `state` `idle`             | for a started session, ends the open task run with a report, unless a delivery is queued or waits on an answer; for a joined session, nothing                                                                                         |
 | `trigger.task_input`, `state` `ended`            | ends the task run with a report when one is open, and returns `done`                                                                                                                                                                  |
 | `trigger.task_input`, `state` `gone`             | for a joined session, ends the open task run with a report that nixie lost sight of the session, and returns `wait`; for a started one, as `ended`                                                                                    |
 
@@ -227,11 +227,13 @@ interface StepResult {
 }
 ```
 
-- An unknown outcome writes no record while nixie reconciles it, so the step sees only the ones that
-  go to you.
-- A joined session runs turns you start yourself. Its `idle` and `note` events wake the step only
-  while a task run is open, and the step drops an answer that matches none of nixie's messages. Your
-  own turns therefore never end a task run or reach the conversation.
+- nixie writes no record of an unknown outcome while it reconciles one, so the step sees only the
+  unknown outcomes sent to you.
+- A joined session runs turns you start yourself, and only an answer to nixie's own message ends its
+  task run: the `answered` or `unanswered` row ends the open task run with a report once no other
+  delivery is queued or waits on an answer. Its `idle` events change nothing, its `note` events wake
+  the step only while a task run is open, and the step drops an answer that matches none of nixie's
+  messages. Your own turns never end a task run or reach the conversation.
 - An answer can reach the inbox before the outcome of its message's action. When no
   `coding.delivered` matches an answer and a `coding.message` action of the task is not yet done or
   failed (queued, held by a pause, in an attempt, or unknown), the step stops at the answer. It
@@ -301,9 +303,9 @@ tasks.list({ runner: 'atc', state: 'waiting', limit: 20 });
 - A message longer than the hello's `maxLine` allows gets the reply `refused` with `canClear: false`
   and the reason `too_long`. The queue fails the action at once, and the sender gets the step's
   reply that the session did not get the message.
-- The adapter sends only the spawn fields that [its sketch](atc.md#the-atc-adapter) lists. It never
-  sends `atcAccess`, `scope`, `parent`, `resume`, `pluginDirs`, `cwd` or `credentialRef`, so a
-  coding session never holds atc access of its own.
+- The adapter sends only the spawn fields in [its sketch](atc.md#the-atc-adapter). It never sends
+  `atcAccess`, `scope`, `parent`, `resume`, `pluginDirs`, `cwd` or `credentialRef`, so a coding
+  session never holds atc access of its own.
 
 ### Ends, stops and the sweep
 
@@ -328,13 +330,13 @@ tasks.list({ runner: 'atc', state: 'waiting', limit: 20 });
 
 ### Limits
 
-- Before each step, the task's claim reads only the meters that the task's runner definition lists.
-  A coding runner lists none, so its task runs never end with `limit`.
+- Before each step, the task's claim reads only the meters in the task's runner definition. A coding
+  runner lists none, so its task runs never end with `limit`.
 - The coding variant's plan still fills the envelope's limits with the `models.limits.taskRun`
   defaults, because the envelope's type needs them. The claim never reads them for a coding task.
-- nixie limits a coding task in 3 ways: your rule on each start, join and message, the hop limit on
-  a loop of messages, and your stop. The coding agent's spend and wall time sit in atc, outside
-  nixie's [budgets](../../platform/policy/budgets.md) and its model gateway.
+- The only limits nixie puts on a coding task are your rule on each start, join and message, the hop
+  limit on a loop of messages, and your stop. The coding agent's spend and wall time sit in atc,
+  outside nixie's [budgets](../../platform/policy/budgets.md) and its model gateway.
 
 ## Decisions
 

@@ -18,7 +18,7 @@ task run. The runner plugs into the [task runner port](../../../architecture/cor
 this design adds members to the port's types. It also rewrites the coding adapter section of the
 [coding design](../../platform/connectors/coding.md).
 
-Three sibling designs touch this one:
+These sibling designs touch this one:
 
 - The [code tool](../../../architecture/connectors/code-tool.md) owns the code tool section of the
   coding design.
@@ -85,17 +85,17 @@ as `task_message` records.
 
 - **A coding runner runs no model.** Its step only moves records between the task and the session,
   so it spends no model money and needs no sandbox.
-- **This runner's key is `atc`.** The key names the config section `coding.atc` and the variant
-  `task.start/atc`.
+- **This runner's key is `atc`.** The config section `coding.atc` and the variant `task.start/atc`
+  take their names from the key.
 - **The coding runner is generic over `CodingAdapter`, and its key is the adapter's ID.** A later
   adapter, such as a built-in one that runs a session in an [imp](../../../glossary.md), gets its
   own key and its own `task.start` variant.
 - **The spawn (`coding.start`) and each message delivery (`coding.message`) are actions on the
   action queue, keyed by the action ID.** They declare `idempotency_key` reconciliation, so an
-  attempt with no result is retried under the same key while atc keeps it, and a crash never spawns
-  a second session.
-- **Each message to a session is decided as its own action, `coding.message`.** Your rules name that
-  action, so a rule on it covers every message to every coding session, whoever sent it.
+  attempt with no result is retried under the same key while atc keeps the key, and a crash never
+  spawns a second session.
+- **Each message to a session is decided as its own action, `coding.message`.** A rule on
+  `coding.message` covers every message to every coding session, whoever sent it.
 - **A task that joins a session never stops it.** A stop, a close or a failure of the task only
   unbinds the session, which runs on in atc as yours.
 - **One task run is one stretch of the session's work, from a message nixie delivers to the turn
@@ -106,7 +106,7 @@ as `task_message` records.
 
 ## Builder decides
 
-- The choices that each part lists under its own Builder decides.
+- Each part has its own Builder decides list.
 
 ## Out of scope
 
@@ -123,14 +123,14 @@ as `task_message` records.
 ## Open questions
 
 - **Does each model API accept a `oneOf` under an object root for the `task.start` input?** The
-  `task.start` tool already sends that root once a second runner can start tasks. One probe per
-  harness settles it, for `agent-sdk` and `codex`: the conversation's model calls `task.start` with
-  both variants in the tool's input schema, and the probe checks that the API takes the schema and
-  the call parses. Until the probe passes on a harness, the server leaves the coding variant out of
+  `task.start` tool already sends that root once a second runner can start tasks. Settle it with one
+  probe per harness, for `agent-sdk` and `codex`: have the conversation's model call `task.start`
+  with both variants in the tool's input schema, and check that the API takes the schema and the
+  call parses. Until the probe passes on a harness, the server leaves the coding variant out of
   `task.start` on that harness.
 - **Does atc limit nixie's principal so it cannot stop your sessions?** The owner decides. nixie
   never stops a joined session, but atc lets a principal stop every session in its reach, so nixie's
-  token could stop yours. Per-principal scopes in atc would let it read and message your sessions
+  token could stop yours. Per-principal scopes in atc would let nixie read and message your sessions
   and never stop them. Until the owner decides, nixie's own rule is the only guard.
 - **When does a line that nixie types into a session carry your authority?** A design session with
   the owner, held after the approval forwarding design, settles it, with the questions of

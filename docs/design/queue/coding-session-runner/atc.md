@@ -264,8 +264,8 @@ version and major version in the hello:
   never replays the trail.
 - atc prunes old events from the trail, and a cursor still reads every event after the pruned ones.
   An outage longer than atc's retention therefore loses only the pruned events.
-- The source writes a `state` event of `running` with `wake: false`, so the core's write updates the
-  session's state in `coding_sessions` and wakes no step.
+- The source writes a `state` event of `running` with `wake: false`. The core's write then updates
+  the session's state in `coding_sessions` and wakes no step.
 - For a joined session, the source writes `idle` and `note` events with `wake: true` only while the
   task has a delivery that waits on an answer or a task run open; otherwise with `wake: false`.
 - The source drops an event of a task that is done, failed or closed, and of a session whose row has
@@ -303,8 +303,8 @@ version and major version in the hello:
 - `CodingAdapter` has the calls above, and no call types into a session's terminal. The adapter maps
   none of atc's terminal procedures: `session.input`, `session.submit`, `session.choose`,
   `session.screen`, `session.menu`, `session.eject` and `permission.respond`.
-- A typing tool, once [its design session](https://linear.app/zgeoff/issue/GEO-945) agrees it, is a
-  nixie tool on this runner with an effect it declares, which that session names.
+- A typing tool waits on [its design session](https://linear.app/zgeoff/issue/GEO-945). Once agreed,
+  it is a nixie tool on this runner, and declares the effect that the design session sets.
 
 ### Rollback
 
@@ -313,9 +313,9 @@ version and major version in the hello:
 
 ## Decisions
 
-- **This doc holds the coding adapter's signatures, and the coding design links to it.** The Events
-  section needs `start` and `join` to return `fromCursor`, and one copy of the interface keeps the
-  two docs from drifting.
+- **This doc holds the coding adapter's signatures, and the coding design links to it.** The
+  catch-up in [Events](#events) reads from the `fromCursor` that `start` and `join` return, and one
+  copy of the interface keeps the two docs from drifting.
 - **The adapter package is `coding-atc`, and only it imports `@atcx/contract` and `@atcx/client`.**
   `@atcx/client` makes the connection, the hello and the version check, and raises atc's typed
   errors, so nixie writes none of atc's wire protocol. The `zgeoff/import-zones` lint rule names
