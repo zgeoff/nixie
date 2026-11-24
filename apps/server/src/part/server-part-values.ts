@@ -1,6 +1,7 @@
 import type { CleanupRecordSessions, HostBackups } from '@heynixie/api';
 import type { ComputerTools } from '@heynixie/connectors';
 import type { DefinitionsExportSweep, SeedResult } from '@heynixie/definitions';
+import type { ErasureRunnerControl } from '@heynixie/log';
 import type { StartedMemoryStore } from '@heynixie/memory';
 import type { NotebookStore } from '@heynixie/notebook';
 import type { CheckerTask, SandboxRunner, WorkerTool } from '@heynixie/sessions';
@@ -39,6 +40,8 @@ export interface ServerPartValues {
   readonly add_images: void;
   readonly conversation_imp: ConversationImp;
   readonly checker: CheckerTask;
+  readonly erasure: ErasureRunnerControl;
+  readonly erasure_catch_up: void;
   readonly memory: StartedMemoryStore;
   readonly notebook: NotebookStore;
 

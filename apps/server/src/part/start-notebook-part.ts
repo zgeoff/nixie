@@ -1,16 +1,17 @@
+import type { ErasureRegistry } from '@heynixie/log';
 import { toErrorFields } from '@heynixie/logger';
-import type { CleanupSessions, StartedMemoryStore } from '@heynixie/memory';
+import type { StartedMemoryStore } from '@heynixie/memory';
 import type { NotebookStore } from '@heynixie/notebook';
 import { buildNotebookMemory, startNotebook } from '@heynixie/notebook';
 import { readRunningStep } from '@heynixie/tasks';
 import type { ServerParts } from '../types';
 
-// Starts the notebook after memory: it reads item IDs and gists from memory, and its forget runs
-// the session cleanup that memory's own forgets run.
+// Starts the notebook after memory: it reads item IDs and gists from memory, and its forget runs on
+// the erasure runner.
 export async function startNotebookPart(
   parts: ServerParts,
   memory: StartedMemoryStore,
-  cleanupSessions: CleanupSessions,
+  erasure: ErasureRegistry,
 ): Promise<NotebookStore> {
   const store = await startNotebook({
     log: parts.context.log,
@@ -18,7 +19,7 @@ export async function startNotebookPart(
     clock: parts.context.clock,
     settings: parts.config.notebook,
     memory: buildNotebookMemory(() => memory),
-    cleanupSessions,
+    erasure,
     readRunningStep: (thread) => readRunningStep(parts.context, thread),
     ...(parts.encoder === null
       ? {}

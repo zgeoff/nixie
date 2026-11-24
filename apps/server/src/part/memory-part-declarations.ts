@@ -1,5 +1,6 @@
 import { runPendingRecordForgets } from '@heynixie/api';
 import { startMemory } from '../cli/start-memory';
+import { startErasureRunner } from '../erasure/start-erasure-runner';
 import { runTurnInputForget } from '../turn/run-turn-input-forget';
 import type { AnyPartDeclaration } from '../types';
 import { makeRetriedStart } from './make-retried-start';
@@ -14,8 +15,14 @@ export const memoryPartDeclarations: readonly AnyPartDeclaration<ServerPartValue
     start: makeRetriedStart('checker', (parts) => startChecker(parts)),
   },
   {
+    name: 'erasure',
+    needs: ['server_parts', 'conversation_imp', 'sandbox_runner'],
+    uses: ['memory', 'code_run'],
+    start: (reader) => Promise.resolve(startErasureRunner(reader.get('server_parts'), reader)),
+  },
+  {
     name: 'memory',
-    needs: ['server_parts', 'conversation_imp', 'sandbox_runner', 'checker'],
+    needs: ['server_parts', 'conversation_imp', 'sandbox_runner', 'checker', 'erasure'],
     start: makeRetriedStart('memory', (parts, reader) => {
       const conversation = reader.get('conversation_imp');
       const tasks = reader.get('sandbox_runner');
@@ -29,23 +36,16 @@ export const memoryPartDeclarations: readonly AnyPartDeclaration<ServerPartValue
           await runTurnInputForget(parts, cause);
         },
         reader.get('checker').check,
+        reader.get('erasure'),
       );
     }),
   },
   {
     name: 'notebook',
-    needs: ['server_parts', 'conversation_imp', 'sandbox_runner', 'memory'],
-    start: makeRetriedStart('notebook', (parts, reader) => {
-      const conversation = reader.get('conversation_imp');
-      const tasks = reader.get('sandbox_runner');
-
-      return startNotebookPart(parts, reader.get('memory'), async (cause) => {
-        await conversation.cleanupSessions(cause);
-        await tasks.cleanupSessions(cause);
-
-        await runTurnInputForget(parts, cause);
-      });
-    }),
+    needs: ['server_parts', 'memory', 'erasure'],
+    start: makeRetriedStart('notebook', (parts, reader) =>
+      startNotebookPart(parts, reader.get('memory'), reader.get('erasure')),
+    ),
   },
   {
     name: 'session_cleanup',
@@ -66,6 +66,15 @@ export const memoryPartDeclarations: readonly AnyPartDeclaration<ServerPartValue
         await memory.finishEvidencePurges({ recordSequence: cause.recordSequence });
       });
     },
+  },
+  {
+    // A forget that a crash cut short finishes before any claim pool or turn-input work can reach
+    // what it deletes.
+    name: 'erasure_catch_up',
+    needs: ['server_parts', 'session_cleanup', 'memory', 'notebook', 'erasure'],
+    start: makeRetriedStart('erasure_catch_up', (_parts, reader) =>
+      reader.get('erasure').finishOpen(),
+    ),
   },
   {
     name: 'record_forgets',

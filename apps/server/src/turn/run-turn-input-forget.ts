@@ -1,10 +1,12 @@
 import { readForgetFloor } from '@heynixie/memory';
-import { readNoteForgetFloor } from '@heynixie/notebook';
 import type { SessionCleanupCause } from '@heynixie/sessions';
 import { readCleanedTaskIDs } from '@heynixie/sessions';
 import type { TasksContext } from '@heynixie/tasks';
 import { conversationTaskID } from '@heynixie/tasks';
 import type { ForgetScope, TurnInputs } from '@heynixie/turn-inputs';
+
+// A note and a moment forget on the erasure runner, which removes their turn inputs itself.
+type TurnInputForgetCause = Exclude<SessionCleanupCause, { readonly noteID: string }>;
 
 export interface TurnInputForgetOptions {
   readonly context: TasksContext;
@@ -16,7 +18,7 @@ export interface TurnInputForgetOptions {
 // forget fails with it and the start sequence runs it again.
 export async function runTurnInputForget(
   options: TurnInputForgetOptions,
-  cause: SessionCleanupCause,
+  cause: TurnInputForgetCause,
 ): Promise<void> {
   const cleaned = await readCleanedTaskIDs(options.context, cause);
 
@@ -29,16 +31,12 @@ export async function runTurnInputForget(
   await options.turnInputs.removeForgotten(scope);
 }
 
-// A note sits on no thread, so its forget names none and starts at the note's first record. A record
-// forget covers the threads of the sessions it cleaned, and any other forget the conversation too.
+// A record forget covers the threads of the sessions it cleaned, and any other forget the
+// conversation too.
 function pickForgetThreads(
-  cause: SessionCleanupCause,
+  cause: TurnInputForgetCause,
   cleaned: readonly string[],
 ): readonly string[] {
-  if ('noteID' in cause) {
-    return [];
-  }
-
   return 'recordSequence' in cause ? cleaned : [conversationTaskID, ...cleaned];
 }
 
@@ -46,15 +44,11 @@ function pickForgetThreads(
 // that names no floor covers every request.
 async function readForgetScope(
   context: TasksContext,
-  cause: SessionCleanupCause,
+  cause: TurnInputForgetCause,
   threads: readonly string[],
 ): Promise<ForgetScope> {
   if ('recordSequence' in cause) {
     return { threads, fromSequence: cause.recordSequence };
-  }
-
-  if ('noteID' in cause) {
-    return { threads, fromSequence: await readNoteForgetFloor(context.log, cause.noteID) };
   }
 
   const floor = await readForgetFloor(context.log, cause);

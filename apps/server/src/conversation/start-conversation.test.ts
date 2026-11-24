@@ -13,6 +13,7 @@ import { sandboxCreatedCodec } from '@heynixie/sandbox';
 import { conversationTaskID, createConversationTask, readRunningStep } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
 import { buildConversationDriver } from '../test-utils/build-conversation-driver';
+import { buildTestErasureRunner } from '../test-utils/build-test-erasure-runner';
 import { buildTestModelsConfig } from '../test-utils/build-test-models-config';
 import { buildTestNotesTools } from '../test-utils/build-test-notes-tools';
 import { startTestServer } from '../test-utils/start-test-server';
@@ -40,17 +41,26 @@ async function setupTest(options: TestOptions = {}) {
   const context = server.context;
   const runners: { last: Awaited<ReturnType<typeof startConversation>> | null } = { last: null };
 
+  const erasure = buildTestErasureRunner(
+    context.log,
+    (cause) => runners.last?.cleanupSessions(cause) ?? Promise.resolve(),
+  );
+
   const memory = await startTestMemoryStore(
     context,
     (cause) => runners.last?.cleanupSessions(cause) ?? Promise.resolve(),
     options.encoderTopics,
-    { turn: { trigger: { items: 5, minScore: 0, minSimilarity: 1, ...options.trigger } } },
+    {
+      erasure,
+      turn: { trigger: { items: 5, minScore: 0, minSimilarity: 1, ...options.trigger } },
+    },
   );
 
   return {
     ...server,
     context,
     memory,
+    erasure,
     log,
     startRunner: async (config: RunnerConfig) => {
       await runners.last?.stop();
@@ -1270,7 +1280,11 @@ test('it erases the summary when you destroy a moment, and leaves no readable re
     change: { kind: 'note', note: 'Juniper-note-3VK' },
   });
 
-  await ctx.memory.moments.destroy({ momentID: kept.momentID, version: 3 });
+  const begun = await ctx.memory.moments.beginDestroy({ momentID: kept.momentID, version: 3 });
+
+  invariant(begun.status === 'begun');
+
+  await ctx.memory.moments.finishDestroy(begun.momentID);
 
   const turn = await ctx.conversation.send('What was I asking about?');
   const records = await ctx.readRecords();
@@ -1371,7 +1385,7 @@ test('it delivers a message once when the turn that answers it forgets a note', 
     },
   });
 
-  const [runner] = await Promise.all([
+  await Promise.all([
     ctx.startRunner({ image: 'nixie-conversation-0123456789ab', toolNames: ['notebook.forget'] }),
     createConversationTask(ctx.context),
   ]);
@@ -1382,7 +1396,7 @@ test('it delivers a message once when the turn that answers it forgets a note', 
     clock: ctx.context.clock,
     settings: defaultNotebookSettings,
     memory: buildNotebookMemory(() => ctx.memory),
-    cleanupSessions: (cause) => runner.cleanupSessions(cause),
+    erasure: ctx.erasure,
     readRunningStep: (thread) => readRunningStep(ctx.context, thread),
     cleanupRetryMs: 1,
   });

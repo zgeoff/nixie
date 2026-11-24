@@ -1,6 +1,6 @@
 import { expect, mock, test } from 'bun:test';
 import { createMemoryItem } from '@heynixie/memory/test-utils';
-import { pickText, startTestNotebook } from '@heynixie/notebook/test-utils';
+import { startTestNotebook } from '@heynixie/notebook/test-utils';
 import { conversationTaskID } from '@heynixie/tasks';
 import {
   buildTestDefinitionReaders,
@@ -109,45 +109,4 @@ test('it fails the forget when a capture key could not be shredded', async () =>
 
   expect(forgetting).rejects.toThrow('key store busy');
   expect(ctx.removeForgotten).not.toHaveBeenCalled();
-});
-
-test('it removes the requests from the first record of a forgotten note on, and names no thread', async () => {
-  const ctx = await setupTest();
-
-  await ctx.seed.ownerMessages(['an earlier message']);
-
-  const written = await ctx.call('notebook.write', { title: 'Boiler', body: 'Body.' });
-
-  expect(written.status).toBe('ok');
-
-  const [first] = await ctx.readRecords(['notebook.note_written']);
-
-  await ctx.call('notebook.edit', {
-    note: pickText(first?.record.payload['shortID']),
-    append: 'x',
-  });
-
-  await ctx.forget({ noteID: pickText(first?.record.payload['note']) });
-
-  expect(ctx.removeForgotten).toHaveBeenCalledWith({
-    threads: [],
-    fromSequence: first?.record.sequence,
-  });
-});
-
-test('it ends every open capture of a note forget before it removes any request', async () => {
-  const ctx = await setupTest();
-
-  await ctx.forget({ noteID: crypto.randomUUID() });
-
-  expect(ctx.closeCaptures).toHaveBeenCalledBefore(ctx.removeForgotten);
-  expect(ctx.closeCaptures).toHaveBeenCalledWith({ cause: 'forget' });
-});
-
-test('it removes every request when no record names the forgotten note', async () => {
-  const ctx = await setupTest();
-
-  await ctx.forget({ noteID: crypto.randomUUID() });
-
-  expect(ctx.removeForgotten).toHaveBeenCalledWith({ threads: [], fromSequence: null });
 });
