@@ -220,8 +220,9 @@ await client.sessions.shown({});
 - Only a client that shows nixie on screen calls `sessions.shown`: a web page whose visibility state
   is `visible`, or the app in the foreground. A background tab with an open live stream never calls
   it.
-- The channels module keeps, in memory, the newest `shown` time of each device session. It writes
-  nothing to the database, so a restart forgets it.
+- The API keeps, in memory, the newest `shown` time of each device session, in the client registry
+  of [live updates](live-updates.md#the-client-registry). It writes nothing to the database, so a
+  restart forgets it. The notifier reads that registry.
 - A client is present while its newest `shown` lies within `presence_seconds`.
 
 ### Settings
