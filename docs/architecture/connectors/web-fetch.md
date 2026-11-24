@@ -332,9 +332,9 @@ and never blocks the fetches after it.
 Every fetch sandbox has the same owner. The first fetch after nixie starts removes every fetch
 sandbox of that owner, which clears what an earlier process left. The next fetch after a failed
 create or a destroy that fails or passes its time limit does the same, because a create can fail
-after the runtime made the sandbox and then fail to remove it. A create that passes its time limit
-makes no further adapter call, and nixie destroys a sandbox that the create still returns as soon as
-it arrives.
+after the runtime made the sandbox and then fail to remove it. After a create passes its time limit,
+the fetch uses no sandbox from it; when the create still returns one, nixie's only call on it is the
+destroy, as soon as it arrives.
 
 ## The secret scan
 
