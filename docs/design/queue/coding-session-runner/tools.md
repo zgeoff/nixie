@@ -28,11 +28,12 @@ flowchart LR
 
 ```ts
 coding.sessions({ adapter: 'atc' });
-// → { sessions: [{ id: 'cloud.3f9a1c2e.5d0c7a14-2b6e-4f1a-9c3d-7e8f90a1b2c3',
-//      name: 'billing refactor', state: 'idle', target: 'cloud/cloud', cwd: '…/billing',
-//      boundTo: null }] }
+// → { sessions: [{ id: 'cs4k', name: 'billing refactor', state: 'idle', target: 'cloud/cloud',
+//      cwd: '…/billing', boundTo: null }] }
 // coding module. Effects: read. Lists every session on a configured target that has not ended,
-// with the task that binds it, if any. Names and paths are untrusted text.
+// with the task that binds it, if any. Names and paths are untrusted text. `id` is a short ID from
+// createShortID, kept against the adapter's session ID, so a session keeps its short ID across
+// listings. A join and every tool take the short ID, and the model never sees atc's session ID.
 ```
 
 ### Steering and notes

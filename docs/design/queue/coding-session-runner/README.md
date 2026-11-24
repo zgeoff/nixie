@@ -130,6 +130,18 @@ This work changes these modules that every runner or connector uses:
 - **A stop of a coding task stops its session, joined or started, through a `coding.stop` action.**
   Under the starter rules, nixie asks you before it stops a session it joined. A close or a failure
   of the task only unbinds a joined session, which runs on in atc as yours.
+- **A steer checks the session's state first, and accepts the race that remains.** The adapter
+  refuses a steer to a session in `waiting` with `menu_open`. A menu that opens between that check
+  and the keystrokes takes the line's Enter as a pick of its highlighted option. atc has no call
+  that types only when no menu is open; nixie uses one when atc adds it.
+- **A message to a coding task is a note, and only `coding.steer` types a user turn.** A message
+  from you to the task, or a `task_message` from the conversation, goes to the session as a
+  `coding.message` note, as [what one step does](runner.md#what-one-step-does) describes.
+- **nixie names each session by a short ID.** `coding.sessions` gives each session it lists a short
+  ID, and every tool takes that ID. atc's session IDs stay inside the runner.
+- **The default wake sets are fixed.** A started session wakes nixie on `waiting`, `idle`,
+  `blocked`, `decision`, `ended` and `gone`. A joined session wakes it on `waiting`, `ended` and
+  `gone`. `coding.wake` holds both, as [the wake set](tools.md#picking-the-wake-set) shows.
 - **nixie reaches atc only through atc-gateway, as a service client.** The gateway reaches every
   daemon in its registry, so one connection sees the sessions on your desktop and on a cloud VM
   alike.
@@ -161,19 +173,3 @@ This work changes these modules that every runner or connector uses:
   call parses. This work runs both probes. Until the probe passes on a harness, the server leaves
   the coding variant out of `task.start` on that harness. The tasks module's code keeps the list of
   harnesses that passed.
-- **How does a steer avoid a menu that atc cannot see?** atc refuses a typed line while a Claude
-  Code permission prompt is open, and the adapter refuses a steer to a session in `waiting`. A menu
-  that opens between that check and the keystrokes, or a menu of an agent whose prompts atc never
-  sees, takes the line's Enter as a pick of its highlighted option. The owner settles, with
-  [typing into a coding session](https://linear.app/zgeoff/issue/GEO-945), whether a steer needs a
-  check from atc that is atomic with the keystrokes. Until then, the adapter checks the state first,
-  as [the tools](tools.md#steering) describe.
-- **Should a message to a coding task steer its session?** A message from you to the task, or a
-  `task_message` from the conversation, goes to the session as a `coding.message` note, which the
-  agent can answer and which never steers it. Only `coding.steer` steers. The owner settles whether
-  such a message becomes a steer instead. Until then, the step queues a note, as
-  [what one step does](runner.md#what-one-step-does) describes.
-- **Are the default wake sets right?** A started session wakes nixie on `waiting`, `idle`,
-  `blocked`, `decision`, `ended` and `gone`. A joined session wakes it on `waiting`, `ended` and
-  `gone`. The owner settles both lists. Until then, `coding.wake` holds these defaults, as
-  [the wake set](tools.md#picking-the-wake-set) shows.

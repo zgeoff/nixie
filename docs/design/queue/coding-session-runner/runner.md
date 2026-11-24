@@ -44,7 +44,7 @@ task.start({
   runner: 'atc',
   name: 'Your billing refactor',
   brief: 'Watch for a question, and check the migration once the work is done.',
-  session: 'cloud.3f9a1c2e.5d0c7a14-2b6e-4f1a-9c3d-7e8f90a1b2c3', // join: from coding.sessions
+  session: 'cs4k', // join: the session's short ID from coding.sessions
   wake: ['waiting', 'idle', 'ended'], // optional: omitted: coding.wake.joined
 });
 // → { taskID: 't7k3' }
