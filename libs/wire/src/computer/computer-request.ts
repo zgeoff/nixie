@@ -27,7 +27,6 @@ const openSchema = z.strictObject({
   deniedRanges: stringListSchema,
 });
 
-// Loads a new address in a tab the browser holds. The ranges are the deployment's, as an open carries.
 const navigateSchema = z.strictObject({
   op: z.literal('navigate'),
   tab: z.string(),

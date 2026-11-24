@@ -7,9 +7,7 @@ export interface IPv4OnlyCheck {
   readonly checkAddress: AddressCheck;
 }
 
-// The refusal for an address whose host has only public IPv6 addresses, or null for any other
-// address, including a host that does not resolve: the navigation then fails as it does. The
-// proxy refuses such a host too, but a browser shows the model only that its tunnel failed.
+// The proxy refuses such a host too, but a browser shows the model only that its tunnel failed.
 export async function readIPv4OnlyRefusal(
   address: string,
   check: IPv4OnlyCheck,

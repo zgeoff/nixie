@@ -23,7 +23,9 @@ export async function planHop(text: string, options: HopOptions): Promise<Planne
   const addresses = isIP(host) === 0 ? await resolveOrAbort(host, options) : [host];
   const picked = pickConnectAddress(host, addresses, options.checkAddress);
 
-  return picked.kind === 'connect' ? { kind: 'connect', url, address: picked.address } : picked;
+  return picked.kind === 'connect'
+    ? { kind: 'connect', url, address: picked.address }
+    : { kind: 'refused', reason: picked.reason };
 }
 
 const webProtocols: ReadonlySet<string> = new Set(['http:', 'https:']);

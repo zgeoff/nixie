@@ -3,8 +3,6 @@ import type { ComputerToolOptions } from './computer-tool-options';
 import { formatIdleTime } from './format-idle-time';
 import { refuseComputer } from './run-computer-call';
 
-// The refusal for a tab the browser does not hold. A tab that closed because the browser slept
-// after sitting idle says so, which tells it from a tab that never existed.
 export function refuseTabGone(
   options: Pick<ComputerToolOptions, 'computer'>,
   tab: string,

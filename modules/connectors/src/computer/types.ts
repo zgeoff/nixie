@@ -23,7 +23,6 @@ export interface DesktopState {
   readonly tabs: Map<string, string>;
   tabCount: number;
 
-  // the tabs that closed when the sandbox slept after sitting idle
   readonly idleClosed: Set<string>;
 
   // the watches open now, which hold no turn

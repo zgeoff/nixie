@@ -20,6 +20,10 @@ export interface CheckingProxyOptions {
   // whether a CONNECT tunnel may open. The proxy cannot read what a tunnel carries, so only a client
   // that scans each request itself, before it enters the tunnel, may tunnel.
   readonly canTunnel: boolean;
+
+  // told the host of each request that the proxy refuses because the host has no IPv4 address, so a
+  // client that sees only a failed tunnel can still name the reason
+  readonly onIPv4OnlyHost?: (host: string) => void;
 }
 
 export interface CheckingProxy {
@@ -160,7 +164,11 @@ async function serveClient(client: Socket, options: CheckingProxyOptions): Promi
 
   const picked = await readAddress(destination.host, options);
 
-  if (picked.kind === 'refused') {
+  if (picked.kind !== 'connect') {
+    if (picked.kind === 'ipv4-only') {
+      options.onIPv4OnlyHost?.(destination.host);
+    }
+
     refuse(client, '403 Forbidden', picked.reason);
 
     return;

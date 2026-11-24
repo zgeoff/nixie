@@ -36,7 +36,7 @@ test.each([
     label: 'only public IPv6 addresses',
     addresses: ['2606:4700::1111', '2606:4700::1001'],
     expected: {
-      kind: 'refused',
+      kind: 'ipv4-only',
       reason: 'maps.test has no IPv4 address, and nixie reaches IPv4 hosts only',
     },
   },

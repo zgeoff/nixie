@@ -16,7 +16,6 @@ export interface ReadOptions {
   readonly textBytes: number;
   readonly isDiskNew: boolean;
 
-  // why the navigation that loaded the page was a bot protection's answer, or null
   readonly blocked: string | null;
 }
 

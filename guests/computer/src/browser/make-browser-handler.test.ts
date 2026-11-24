@@ -25,6 +25,7 @@ async function setupTest() {
   const home = await mkdtemp(join(tmpdir(), 'browser-'));
 
   const scanned: string[] = [];
+  const resolved: string[] = [];
   const refusal: { reason: string | null } = { reason: null };
   const loads = { count: 0 };
   const driven: { state: BrowserState | null } = { state: null };
@@ -77,6 +78,18 @@ async function setupTest() {
         '<html><title>Just a moment</title><body>checking your browser</body></html>',
         { status: 403, headers: { 'Content-Type': 'text/html', 'cf-mitigated': 'challenge' } },
       ),
+      '/denied-marked': new Response(
+        `<html><title>Denied</title><body>${'x'.repeat(200)}<script src="/cdn-cgi/challenge-platform/h/b"></script></body></html>`,
+        { status: 403, headers: { 'Content-Type': 'text/html' } },
+      ),
+      '/challenge-moves-on': new Response(
+        `<html><title>Just a moment</title><body>checking your browser<script>
+        setTimeout(() => { location.href = '/terms'; }, 200);
+        </script></body></html>`,
+        { status: 403, headers: { 'Content-Type': 'text/html', 'cf-mitigated': 'challenge' } },
+      ),
+      '/to-v6only': () =>
+        new Response(null, { status: 302, headers: { Location: 'https://v6only.test/' } }),
       '/done': new Response('<html><title>Done</title><body>welcome aboard</body></html>', {
         headers: { 'Content-Type': 'text/html' },
       }),
@@ -104,7 +117,11 @@ async function setupTest() {
       scanText: () => Promise.resolve(),
     },
     checkAddress: () => true,
-    resolveHost: (host) => Promise.resolve(answers[host] ?? ['127.0.0.1']),
+    resolveHost: (host) => {
+      resolved.push(host);
+
+      return Promise.resolve(answers[host] ?? ['127.0.0.1']);
+    },
     screen: {
       makeDriver: (state) => {
         driven.state = state;
@@ -116,6 +133,7 @@ async function setupTest() {
   });
 
   onTestFinished(async () => {
+    await handle.stop();
     await site.stop(true);
 
     await rm(home, { recursive: true, force: true });
@@ -132,11 +150,11 @@ async function setupTest() {
   };
 
   return {
-    open: (url: string): ComputerRequest => ({
+    open: (url: string, bodyBytes = 1_000_000): ComputerRequest => ({
       op: 'open',
       url,
       limits: {
-        bodyBytes: 1_000_000,
+        bodyBytes,
         timeoutMs: 20_000,
         redirects: 5,
         textBytes: 20_000,
@@ -154,14 +172,12 @@ async function setupTest() {
       imageBytes: 0,
     },
 
-    // closes the page of the tab the way a person closing its window would, behind the tools
     closeTabBehindTheTools: async (tab: string): Promise<void> => {
       await send({ op: 'takeoverBegin' });
 
       await driven.state?.tabs.get(tab)?.page.close();
     },
 
-    // makes the page of a tab fail every script it is asked to run, as a page that closes mid-call does
     breakEvaluate: async (tab: string): Promise<void> => {
       await send({ op: 'takeoverBegin' });
 
@@ -172,6 +188,7 @@ async function setupTest() {
       }
     },
     scanned,
+    resolved,
     send,
     waitUntilTitle: async (title: string, tab = 't1'): Promise<void> => {
       let current = '';
@@ -212,6 +229,14 @@ test.skipIf(!hasChromium)('it fails an open whose URL the scan refuses', async (
   const reply = await ctx.send(ctx.open(ctx.url), 'holds a secret');
 
   expect(reply).toMatchObject({ kind: 'failed', ok: false, reason: 'failed' });
+});
+
+test.skipIf(!hasChromium)('it resolves no host for an address whose scan is refused', async () => {
+  const ctx = await setupTest();
+
+  await ctx.send(ctx.open('http://secret-in-host.test/'), 'holds a secret');
+
+  expect(ctx.resolved).toStrictEqual([]);
 });
 
 test.skipIf(!hasChromium)('it fills a field and submits the form of the page', async () => {
@@ -801,6 +826,55 @@ test.skipIf(!hasChromium)('it says the same for a navigation, and keeps the tab'
     },
     { kind: 'page', page: { title: 'Sign up' } },
   ]);
+});
+
+test.skipIf(!hasChromium)(
+  'it says nixie reaches IPv4 hosts only when a redirect leads to an IPv6-only host',
+  async () => {
+    const ctx = await setupTest();
+    const reply = await ctx.send(ctx.open(`${ctx.url}to-v6only`));
+
+    expect(reply).toStrictEqual({
+      kind: 'failed',
+      ok: false,
+      reason: 'failed',
+      message: 'v6only.test has no IPv4 address, and nixie reaches IPv4 hosts only',
+    });
+  },
+);
+
+test.skipIf(!hasChromium)(
+  'it reports the status and blocked reason of the page a challenge sends the tab on to',
+  async () => {
+    const ctx = await setupTest();
+    const reply = await ctx.send(ctx.open(`${ctx.url}challenge-moves-on`));
+
+    expect(reply).toMatchObject({
+      kind: 'page',
+      blocked: null,
+      page: { url: `${ctx.url}terms`, status: 200, title: 'Terms' },
+    });
+  },
+);
+
+test.skipIf(!hasChromium)(
+  'it finds a challenge in the body of a refusal within the limit',
+  async () => {
+    const ctx = await setupTest();
+    const reply = await ctx.send(ctx.open(`${ctx.url}denied-marked`));
+
+    expect(reply).toMatchObject({
+      kind: 'page',
+      blocked: "blocked by the site's bot protection (Cloudflare challenge)",
+    });
+  },
+);
+
+test.skipIf(!hasChromium)('it reads no body past the limit to look for a challenge', async () => {
+  const ctx = await setupTest();
+  const reply = await ctx.send(ctx.open(`${ctx.url}denied-marked`, 100));
+
+  expect(reply).toMatchObject({ kind: 'page', blocked: null });
 });
 
 test.skipIf(!hasChromium)('it reads what a page fetches right after it loads', async () => {

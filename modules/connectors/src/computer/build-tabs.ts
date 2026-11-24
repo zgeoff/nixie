@@ -8,7 +8,6 @@ export interface ComputerTabs {
   readonly remove: (tab: string) => void;
   readonly isEmpty: () => boolean;
 
-  // true for a tab that closed because the browser slept after sitting idle
   readonly isIdleClosed: (tab: string) => boolean;
 }
 

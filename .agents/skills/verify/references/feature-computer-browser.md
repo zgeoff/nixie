@@ -141,6 +141,15 @@ Before you start:
 
     Expect: both exit 0.
 
+    Check that the reload loaded the page again. The harness's page counts its loads and shows the
+    count, and nixie stores the page that each load returned:
+
+    ```bash
+    bun verify db query "select count(*) as reloaded from web_fetch_pages where url like '%/' and parts like '%Load 2%'"
+    ```
+
+    Expect: `reloaded` is 1. A reload that failed or never ran leaves 0.
+
 12. Script the model's text for the turn that the approval starts, as in step 5:
 
     ```bash
@@ -188,7 +197,7 @@ Before you start:
 - In step 8, nixie holds no call, and the call's outcome is `done`: nixie opened the page after the
   approval.
 - In step 11, nixie held one call of `computer.browser_navigate` and none of
-  `computer.browser_reload`: a reload never asks.
+  `computer.browser_reload`: a reload never asks. The reload loaded the page a second time.
 - In step 13, the approvals page showed the site's host, `pages.test`, and its port, for the
   navigation.
 - In step 15, nixie holds no call, and the navigation's outcome is `done`: nixie loaded the next

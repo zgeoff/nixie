@@ -1,4 +1,3 @@
-// The idle time as the assistant reads it: whole minutes, or seconds below a minute.
 export function formatIdleTime(idleMs: number): string {
   const minutes = Math.round(idleMs / 60_000);
 

@@ -42,12 +42,12 @@ in `modules/connectors` owns the sandbox:
 - A call waits a set time for its turn, and returns `BUSY` after that. The calls into the sandbox
   therefore never overlap, whether they come from the conversation or a task. A browser call and a
   shell call share one turn.
-- The sandbox sleeps after its idle time, 30 minutes unless the deployment sets another. Nixie
-  treats every wake as a restart: it starts the guest again, so every tab ID from before the sleep
-  returns `TAB_GONE`. The profile keeps the sign-ins. The description of each browser tool that
-  loads or reads a page states the idle time, so the assistant knows how long a tab lives. A tab
-  that closed in a sleep answers `TAB_GONE` with a message that names the idle time it closed after,
-  which tells it from a tab that never existed, or that a restart or a crash took.
+- The sandbox sleeps after its idle time, which the deployment sets. Nixie treats every wake as a
+  restart: it starts the guest again, so every tab ID from before the sleep returns `TAB_GONE`. The
+  profile keeps the sign-ins. The description of every browser tool states the idle time, so the
+  assistant knows how long a tab lives. A tab that closed in a sleep answers `TAB_GONE` with a
+  message that names the idle time it closed after, which tells it from a tab that never existed, or
+  that a restart or a crash took.
 - A queued click, fill, screen act or command holds the sandbox awake until its action runs or its
   approval lapses, so a card the user answers late still finds its tab.
 - When the sandbox's image or spec differs from the release, nixie creates a new one at its next
@@ -130,24 +130,27 @@ that tab, which keeps its name and its place among the 5 tabs. It declares the n
 its destination, as `browser_open` does, so the decision point asks about an untrusted site the same
 way. `browser_reload` takes a `tab`, loads the address the tab shows, and is a `note` with no
 destination, so it never asks. Both return the page as `browser_open` does. A tab that nixie does
-not hold returns `TAB_GONE`, and an address that is not http or https returns `BAD_URL`. A load that
-fails leaves the tab open. A hold on the desktop refuses both with `TAKEN_OVER`, as it does
-`browser_open`.
+not hold returns `TAB_GONE` before the decision point runs, so a navigation of a missing tab never
+asks, and an address that is not http or https returns `BAD_URL`. A load that fails leaves the tab
+open. A hold on the desktop refuses both with `TAKEN_OVER`, as it does `browser_open`.
 
 **Blocked pages.** When `browser_open` or `browser_navigate` loads a page that a bot protection
 answered in place of the site, the result carries a `blocked` reason. The guest finds it from the
-status, headers and body of the load, with the check that `web_fetch` uses
-([`findBotChallenge`](../../../libs/wire/src/fetch/find-bot-challenge.ts)), so both tools name the
-same pages. Only the load that brought the page sets it, so a later read of a tab that a person has
-since got past reports none.
+status, headers and body of the navigation that made the page the tab shows, with the check that
+`web_fetch` uses ([`findBotChallenge`](../../../libs/wire/src/fetch/find-bot-challenge.ts)), so both
+tools name the same pages. The guest skips the body when the headers already name a challenge, and
+reads no more of it than `web_fetch` does. A challenge that sends the tab on to another page reports
+that page's status and no reason. Only the load that brought the page sets it, so a later read of a
+tab that a person has since got past reports none.
 
 **IPv4 hosts only.** Nixie's egress reaches IPv4 hosts only. A host that resolves to no IPv4
 address, and to no address that the deployment lists as internal, is refused with the message
 "`<host>` has no IPv4 address, and nixie reaches IPv4 hosts only". `browser_open` and
 `browser_navigate` return it before the browser starts the load, because a browser shows the
-assistant only that its tunnel failed. [`web_fetch`](web-fetch.md) and the shell's proxy refuse the
-same host with the same message. A host with both kinds of address connects to its first IPv4
-address.
+assistant only that its tunnel failed. A redirect to such a host fails in the tunnel, so the guest
+replaces the tunnel error with the same message when the proxy refused a host for it during the
+load. [`web_fetch`](web-fetch.md) and the shell's proxy refuse the same host with the same message.
+A host with both kinds of address connects to its first IPv4 address.
 
 **Scrolling and pictures.** `browser_scroll` takes `to` as `up`, `down` or a control ID such as
 `E12`. It moves the viewport by most of a screen, or scrolls the control into view, and returns

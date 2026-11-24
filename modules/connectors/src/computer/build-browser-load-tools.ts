@@ -10,7 +10,6 @@ import { refuseWrongReply } from './refuse-wrong-reply';
 import { runComputerCall } from './run-computer-call';
 import { writeComputerPage } from './write-computer-page';
 
-// The browser tools that load an address in a tab that is already open: navigate and reload.
 export function buildBrowserLoadTools(options: ComputerToolOptions): readonly ToolDefinition[] {
   return [buildNavigateTool(options), buildReloadTool(options)];
 }
@@ -48,7 +47,13 @@ function buildNavigateTool(options: ComputerToolOptions): ToolDefinition {
     },
     execution: 'direct',
     prepare: (input) => {
-      const target = readWebAddress(navigateArguments.parse(input).url);
+      const named = navigateArguments.parse(input);
+
+      if (options.computer.tabs.find(named.tab) === null) {
+        return Promise.resolve(refuseTabGone(options, named.tab));
+      }
+
+      const target = readWebAddress(named.url);
       const prepared = typeof target === 'string' ? { destinations: [hostOf(target)] } : target;
 
       return Promise.resolve(prepared);

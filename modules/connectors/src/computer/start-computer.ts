@@ -106,7 +106,6 @@ export interface Computer {
 
   readonly tabs: ComputerTabs;
 
-  // how long the browser idles before it sleeps and closes every tab
   readonly idleMs: number;
   readonly stop: () => Promise<void>;
 }

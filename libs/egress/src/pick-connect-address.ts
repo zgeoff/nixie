@@ -5,11 +5,9 @@ import { parseIPAddress } from './parse-ip-address';
 
 export type ConnectAddress =
   | { readonly kind: 'connect'; readonly address: string }
-  | { readonly kind: 'refused'; readonly reason: string };
+  | { readonly kind: 'refused'; readonly reason: string }
+  | { readonly kind: 'ipv4-only'; readonly reason: string };
 
-// Picks the address a connection to a host goes to, from every address the host resolved to. Every
-// address must pass the check, so one non-public address among public ones refuses the host. A host
-// with an IPv4 address connects to the first one, because nixie reaches IPv4 hosts only.
 export function pickConnectAddress(
   host: string,
   addresses: readonly string[],
@@ -30,7 +28,7 @@ export function pickConnectAddress(
   }
 
   if (isIPv6Only(addresses)) {
-    return { kind: 'refused', reason: formatIPv4OnlyReason(host) };
+    return { kind: 'ipv4-only', reason: formatIPv4OnlyReason(host) };
   }
 
   const ipv4 = addresses.find((address) => parseIPAddress(address)?.family === 4);

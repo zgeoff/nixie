@@ -49,6 +49,7 @@ async function setupTest() {
   });
 
   onTestFinished(async () => {
+    await handle.stop();
     await site.stop(true);
 
     await rm(home, { recursive: true, force: true });

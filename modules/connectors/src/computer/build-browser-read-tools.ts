@@ -195,6 +195,7 @@ function buildScreenshotTool(options: ComputerToolOptions): ToolDefinition {
       'is that control’s box, cut to the viewport, and it never scrolls the page; without it, the ',
       'viewport. A control that has moved or lies outside the viewport is refused with ',
       'STALE_ELEMENT, so scroll to it or read the page again.',
+      buildIdleNote(options.computer.idleMs),
     ].join(''),
     input: {
       type: 'object',
@@ -276,6 +277,7 @@ function buildScrollTool(options: ComputerToolOptions): ToolDefinition {
       'a screen at a time, or a control such as E4, which scrolls into view. isAtEnd is true ',
       'when the page cannot scroll further that way: for up the top, otherwise the bottom. It ',
       'stores no page text. A control that has moved is refused with STALE_ELEMENT.',
+      buildIdleNote(options.computer.idleMs),
     ].join(''),
     input: {
       type: 'object',
@@ -344,7 +346,7 @@ const tabArguments = z.object({ tab: z.string().min(1) });
 function buildCloseTool(options: ComputerToolOptions): ToolDefinition {
   return {
     name: 'computer.browser_close',
-    description: 'Closes an open tab.',
+    description: ['Closes an open tab.', buildIdleNote(options.computer.idleMs)].join(''),
     input: {
       type: 'object',
       properties: { tab: { type: 'string', minLength: 1 } },
@@ -398,6 +400,7 @@ function buildDownloadTool(options: ComputerToolOptions, state: ComputerState): 
       'Clicks a download link or button of an open tab and saves the file to the shell’s disk ',
       'under downloads/. A file past 25 MiB is refused. Read it with computer.read_file or run ',
       'a command on it.',
+      buildIdleNote(options.computer.idleMs),
     ].join(''),
     input: {
       type: 'object',

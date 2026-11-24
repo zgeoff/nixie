@@ -1,7 +1,10 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { buildActionHash } from '@heynixie/policy';
+import { buildAllowingDecisionPoint } from '@heynixie/policy/test-utils';
 import { buildSandboxSpec } from '@heynixie/sandbox';
 import type { DirectResult, Prepared, ToolDefinition } from '@heynixie/tools';
+import { buildToolRegistry, runToolCall } from '@heynixie/tools';
+import { buildStubActionQueue } from '@heynixie/tools/test-utils';
 import type { ComputerHandler, ComputerReply, ComputerRequest } from '@heynixie/wire';
 import { runComputerGuest } from '@heynixie/wire';
 import { waitFor } from '@zgeoff/testing';
@@ -31,7 +34,6 @@ interface SetupOptions {
   readonly imageLongEdge?: number;
   readonly turnWaitMs?: number;
 
-  // a suspendable sandbox that sleeps after this long idle, on a clock the test moves
   readonly idleMs?: number;
 }
 
@@ -167,9 +169,13 @@ async function setupTest(options: SetupOptions) {
     await computer.stop();
   });
 
+  const log = await startTestLog();
+
+  const decisions: string[] = [];
+
   const built = buildComputerTools({
     computer,
-    log: await startTestLog(),
+    log,
     findSecret: (text) =>
       options.secret !== undefined && text.includes(options.secret) ? { rule: 'test-rule' } : null,
     isOwnerTyped: () => Promise.resolve(false),
@@ -228,6 +234,26 @@ async function setupTest(options: SetupOptions) {
     },
     toolNames: built.tools.map((tool) => tool.name),
     requests,
+    decisions,
+
+    // a call that goes through the real tool call path, so a decision point sees it as it would
+    callThroughDecisionPoint: (name: string, input: Record<string, string>) =>
+      runToolCall(
+        { tool: name, input, toolUseID: null },
+        { ...context.run, tools: built.tools.map((tool) => tool.name) },
+        {
+          registry: buildToolRegistry(built.tools),
+          decide: (policyCall) => {
+            decisions.push(policyCall.tool);
+
+            return buildAllowingDecisionPoint()(policyCall);
+          },
+          log,
+          definitions: () => ({ snapshotHash: 'sha256:test' }),
+          queue: buildStubActionQueue().queue,
+          queuedWaitMs: 1000,
+        },
+      ),
     context,
     call: (name: string, input: Record<string, string | number | boolean>) =>
       findTool(name).run({ callID: 'call-1', tool: name, input, toolUseID: null }, context),
@@ -1421,6 +1447,8 @@ test('it navigates an open tab to a new address and keeps the tab name', async (
 test('it prepares a navigation with the host of the new address as its destination', async () => {
   const ctx = await setupTest({ answer: (replies) => () => Promise.resolve(replies.page) });
 
+  await ctx.call('computer.browser_open', { url: 'https://site.test/form' });
+
   const prepared = await ctx.prepare('computer.browser_navigate', {
     tab: 't1',
     url: 'https://other.test/page',
@@ -1448,6 +1476,30 @@ test('it refuses a navigation of a tab the browser does not hold', async () => {
   });
 
   expect(outcome).toMatchObject({ status: 'ok', refusalCode: 'TAB_GONE' });
+});
+
+test('it refuses a navigation of a tab the browser does not hold before any decision', async () => {
+  const ctx = await setupTest({ answer: (replies) => () => Promise.resolve(replies.page) });
+
+  await ctx.callThroughDecisionPoint('computer.browser_navigate', {
+    tab: 't9',
+    url: 'https://untrusted.test/next',
+  });
+
+  expect(ctx.decisions).toStrictEqual([]);
+});
+
+test('it asks the decision point about a navigation of a tab that exists', async () => {
+  const ctx = await setupTest({ answer: (replies) => () => Promise.resolve(replies.page) });
+
+  await ctx.call('computer.browser_open', { url: 'https://site.test/form' });
+
+  await ctx.callThroughDecisionPoint('computer.browser_navigate', {
+    tab: 't1',
+    url: 'https://untrusted.test/next',
+  });
+
+  expect(ctx.decisions).toStrictEqual(['computer.browser_navigate']);
 });
 
 test('it reloads an open tab and stores the page it shows', async () => {
@@ -1511,15 +1563,18 @@ test('it returns no blocked reason for an ordinary page', async () => {
   expect(outcome).not.toHaveProperty('result.blocked');
 });
 
-test.each([
-  'computer.browser_open',
-  'computer.browser_navigate',
-  'computer.browser_reload',
-  'computer.browser_read',
-])('it states in the description of %s how long an idle tab lives', async (name) => {
+test('it states in the description of every browser tool how long an idle tab lives', async () => {
   const ctx = await setupTest({ answer: (replies) => () => Promise.resolve(replies.page) });
 
-  expect(ctx.toolDescription(name)).toContain('idle for 30 minutes');
+  const browserTools = ctx.toolNames.filter((name) => name.startsWith('computer.browser_'));
+
+  expect([
+    browserTools.length,
+    browserTools.map((name) => ctx.toolDescription(name)),
+  ]).toStrictEqual([
+    10,
+    expect.toSatisfyAll((description: string) => description.includes('idle for 30 minutes')),
+  ]);
 });
 
 test('it states a configured idle time in the tool descriptions', async () => {

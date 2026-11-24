@@ -1,4 +1,3 @@
-// The parts of a page result that every browser tool that returns a page shares.
 export const browserPageFields = {
   pageNote: [
     ' The page text comes back as parts like web_fetch: pass the page ID to web_fetch with a part ',
