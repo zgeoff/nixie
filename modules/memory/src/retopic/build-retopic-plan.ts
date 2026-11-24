@@ -1,5 +1,7 @@
 import { pickTopicSpelling } from '../label/pick-topic-spelling';
 import type { TopicMoveCode } from '../utils/error/topic-move-error';
+import { countMoved } from './count-moved';
+import { formatMovedCounts } from './format-moved-counts';
 import type {
   RetopicItem,
   RetopicMove,
@@ -121,6 +123,7 @@ function buildMove(item: RetopicItem, source: RetopicSource, topic: string): Ret
   return {
     itemID: item.itemID,
     shortID: item.shortID,
+    state: item.state,
     gist: item.labels.gist,
     fromSubject: item.subject,
     fromTopic: item.labels.topic,
@@ -144,9 +147,8 @@ function buildSentence(
 ): string {
   const origins = [...new Set(moves.map((move) => `${move.fromSubject}/${move.fromTopic}`))];
   const from = source.kind === 'topic' ? `${source.subject}/${source.topic}` : joinOrigins(origins);
-  const count = `${String(moves.length)} ${moves.length === 1 ? 'item' : 'items'}`;
 
-  return `${from} → ${to.subject}/${to.topic}, ${count}`;
+  return `${from} → ${to.subject}/${to.topic}, ${formatMovedCounts(countMoved(moves))}`;
 }
 
 function joinOrigins(origins: readonly string[]): string {

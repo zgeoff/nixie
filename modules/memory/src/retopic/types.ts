@@ -9,7 +9,10 @@ export interface RetopicTarget {
 interface RetopicItemRef {
   readonly itemID: string;
   readonly shortID: string;
+  readonly state: RetopicItemState;
 }
+
+export type RetopicItemState = 'active' | 'retired';
 
 // A move names a whole topic with the sub-topics under it, or items one by one.
 export type RetopicSource =
@@ -41,3 +44,8 @@ export interface RetopicPlan {
 export type RetopicPlanResult =
   | { readonly status: 'planned'; readonly plan: RetopicPlan }
   | { readonly status: 'refused'; readonly code: TopicMoveCode; readonly message: string };
+
+export interface MovedCounts {
+  readonly active: number;
+  readonly retired: number;
+}

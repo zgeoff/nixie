@@ -11,7 +11,7 @@ export async function readRetopicItems(
   const rows = await parts.context.log.writer.db
     .$extendTables<MemoryTables>()
     .selectFrom('memory_items')
-    .select(['item_id', 'short_id', 'kind', 'subject', 'is_pinned'])
+    .select(['item_id', 'short_id', 'kind', 'subject', 'is_pinned', 'state'])
     .where('state', 'in', ['active', 'retired'])
     .execute();
 
@@ -24,6 +24,7 @@ export async function readRetopicItems(
           {
             itemID: row.item_id,
             shortID: getItemShortID(row),
+            state: row.state === 'retired' ? 'retired' : 'active',
             subject: getRowSubject(row),
             isPinned: row.is_pinned === 1,
             labels,

@@ -13,6 +13,7 @@ import { z } from 'zod';
 import type { ModelWriteStore } from '../gate/gate-context';
 import { labelInputSchema } from '../label/label-input-schema';
 import { buildRetopicCard } from '../retopic/build-retopic-card';
+import { countMoved } from '../retopic/count-moved';
 import type { RetopicSource } from '../retopic/types';
 import { isWriteRefusal } from '../utils/error/is-write-refusal';
 import { TopicMoveError } from '../utils/error/topic-move-error';
@@ -66,7 +67,13 @@ const retopicOutput = {
   type: 'object',
   properties: {
     status: { type: 'string', enum: ['applied', 'refused'] },
-    moved: { type: 'integer' },
+    moved: {
+      type: 'object',
+      properties: { active: { type: 'integer' }, retired: { type: 'integer' } },
+      required: ['active', 'retired'],
+      additionalProperties: false,
+      description: 'the items moved, by state',
+    },
     move: { type: 'string' },
     code: { type: 'string' },
     message: { type: 'string' },
@@ -238,9 +245,15 @@ async function runRetopic(
       ...(shown === undefined ? {} : { shown }),
     });
 
+    const moved = countMoved(plan.moves);
+
     return {
       status: 'ok',
-      result: { status: 'applied', moved: plan.moves.length, move: plan.sentence },
+      result: {
+        status: 'applied',
+        moved: { active: moved.active, retired: moved.retired },
+        move: plan.sentence,
+      },
     };
   } catch (error) {
     if (error instanceof TopicMoveError) {
