@@ -82,8 +82,8 @@ logins through it.
 ## Resume and raise
 
 While the stop stands, the API refuses `nixie.resume` and a task's resume, whatever the pause's
-cause, with the way the stop clears. A pause and a stop of a task work as usual. When you pause
-nixie while the stop stands, the cause becomes `owner`, and the clear leaves nixie paused.
+cause, with the way the stop clears. A pause and a stop of a task work as usual. When the user
+pauses nixie while the stop stands, the cause becomes `owner`, and the clear leaves nixie paused.
 
 `spend.read` gives the notice. `spend.raise` takes the period's start and the totals for dollars,
 tokens and turns, and works for a day trip only. It calls the gateway's `POST /raise`, then writes

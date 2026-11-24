@@ -8,7 +8,8 @@ carries only its screen.
 
 A change that writes no record, or that no write makes, still reaches the tab. A backup notice marks
 its topic in the transaction that writes it, and the spend watcher publishes `spend` when the
-gateway's stop differs from its last read. The tab never polls a read that a topic covers.
+gateway's stop differs from its last read. The tab never polls a read that a topic covers. The task
+list reads again once at the time its own answer gives, as [Topics](#topics) explains.
 
 ```mermaid
 flowchart LR

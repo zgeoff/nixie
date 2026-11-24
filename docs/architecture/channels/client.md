@@ -520,13 +520,10 @@ so a server that gives no `definitionID` shows no definition filter. The filters
 only the groups that hold a match, and a Clear filters button. With no match, it shows the
 empty-group text.
 
-The dashboard reads the task list and follows the live stream of every thread from the log sequence
-the list was read at. Each record that moves a task's state or last activity, such as a pause, a
-message of the user's or a `trigger.fired`, makes the dashboard read the list again. The live stream
-carries no pause or resume of nixie, and a task that wakes on a schedule changes with no record of
-its own, so the dashboard also reads the list on a timer, `taskListRefetchMs`, while the page is
-visible, and at once when the page becomes visible. A dropped stream reconnects from the last
-sequence it delivered, as the conversation view's stream does, so the dashboard misses no change.
+The dashboard reads the task list again on each `changed` event of the `tasks` topic, and when the
+page comes to the front. A task that wakes on a schedule changes with no write, so no topic
+announces it. The list's answer gives that time in `changesAt`, and the dashboard reads the list
+again then. This is the one timed read of a read that a topic covers.
 
 Each task shows the controls that its runner offers and its state allows, as
 [controlling a task](./api.md#controlling-a-task) describes. Each control is a checked action, so a

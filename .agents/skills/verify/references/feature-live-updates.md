@@ -21,8 +21,8 @@ shows only that the tab heard of each change, and your reply lists the feature a
 `preview` without the count.
 
 Keep one tab in front for the whole journey, and never switch tabs. A tab that comes to the front
-opens its stream again, which moves the count. `nixie pause` on the host is a second client of the
-same nixie, so the one tab waits in front.
+opens its stream again, which moves the count. `bun verify action pause-from-host` runs
+`nixie pause` on the host, a second client of the same nixie, so the one tab waits in front.
 
 Before you start:
 

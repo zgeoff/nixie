@@ -137,12 +137,13 @@ The keys go first, so a crash after stage 3 leaves every record in place with it
 a second reset finishes the work. A turn still running at the end of the grace loses its lease row,
 so its commit fails the lease check and writes nothing.
 
-The new log continues the old sequence: SQLite gives a new row the highest sequence plus 1, so the
-reset keeps the old last record until the first new record has taken the number after it. A device
-that resumes its live stream after the last sequence it saw therefore reads the `log_reset` record
-next. The `log_reset` record holds the reset time, the old last sequence, the mode and the number of
-kept sessions, and no free text, so it gets no key. Because the conversation's thread ID never
-changes, the record folds on that thread before the start creates the conversation task again.
+The new log continues the old sequence. SQLite gives a new row the highest sequence plus 1, so the
+reset's transaction deletes the old last record only after the `log_reset` record has taken the
+number after it. When the transaction commits, no old record is left. A device that resumes its live
+stream after the last sequence it saw therefore reads the `log_reset` record next. The `log_reset`
+record holds the reset time, the old last sequence, the mode and the number of kept sessions, and no
+free text, so it gets no key. Because the conversation's thread ID never changes, the record folds
+on that thread before the start creates the conversation task again.
 
 ### Resetting the conversation
 
