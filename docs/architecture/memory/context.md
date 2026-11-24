@@ -132,8 +132,9 @@ them, so an approved item keeps outside content as its source and still reads as
   name. The approval belongs to the version, so a restore or an undo, which the user runs without a
   proposal, reads as unapproved even when it brings back approved text.
 
-The model ID that wrote an item stays in `memory.recall`, because it serves checking an item and not
-answering with it.
+The model ID that wrote an item stays out of this line and in `memory.recall`, because it serves
+checking an item and not answering with it. A self-note is the exception: its line names the model
+that wrote it, as [per-turn retrieval](#per-turn-retrieval) says.
 
 ## Item usage
 
