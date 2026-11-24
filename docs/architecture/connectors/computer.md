@@ -140,8 +140,9 @@ status, headers and body of the navigation that made the page the tab shows, wit
 `web_fetch` uses ([`findBotChallenge`](../../../libs/wire/src/fetch/find-bot-challenge.ts)), so both
 tools name the same pages. The guest skips the body when the headers already name a challenge, and
 reads no more of it than `web_fetch` does. A challenge that sends the tab on to another page reports
-that page's status and no reason. Only the load that brought the page sets it, so a later read of a
-tab that a person has since got past reports none.
+that page's status and no reason. When the tab's address changes after the check and before the page
+is read, the result carries status 0 and no reason in place of the challenge's. Only the load that
+brought the page sets it, so a later read of a tab that a person has since got past reports none.
 
 **IPv4 hosts only.** Nixie's egress reaches IPv4 hosts only. A host that resolves to no IPv4
 address, and to no address that the deployment lists as internal, is refused with the message

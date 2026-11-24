@@ -47,7 +47,7 @@ export async function openTab(
     mode: 'snapshot',
     textBytes: request.limits.textBytes * 3,
     isDiskNew,
-    blocked: went.blocked,
+    landing: went.landing,
   });
 }
 

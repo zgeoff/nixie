@@ -16,6 +16,6 @@ export async function reloadTab(
         mode: 'snapshot',
         textBytes: request.limits.textBytes * 3,
         isDiskNew: false,
-        blocked: went.blocked,
+        landing: went.landing,
       });
 }

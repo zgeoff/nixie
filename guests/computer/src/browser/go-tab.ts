@@ -2,6 +2,7 @@ import type { ComputerReply, ComputerRequest } from '@heynixie/wire';
 import { canBeBotChallenge, findBotChallenge } from '@heynixie/wire';
 import type { Response } from 'playwright-core';
 import { z } from 'zod';
+import type { Landing } from './pick-landed-status';
 import type { Tab } from './types';
 
 export type PageLimits = Extract<ComputerRequest, { op: 'open' }>['limits'];
@@ -12,7 +13,7 @@ interface NavigationOptions {
 }
 
 export type TabGo =
-  | { readonly kind: 'went'; readonly blocked: string | null }
+  | { readonly kind: 'went'; readonly landing: Landing | null }
   | { readonly kind: 'failed'; readonly reply: ComputerReply };
 
 const settleNetworkMs = 3000;
@@ -40,7 +41,7 @@ export async function goTab(
 
     return {
       kind: 'went',
-      blocked: await settleResponse(tab, () => latest.response ?? first, limits),
+      landing: await settleResponse(tab, () => latest.response ?? first, limits),
     };
   } catch (error) {
     await settleErrorPage(tab, error);
@@ -68,7 +69,7 @@ async function settleResponse(
   tab: Tab,
   readResponse: () => Response | null,
   limits: PageLimits,
-): Promise<string | null> {
+): Promise<Landing | null> {
   for (let attempt = 0; attempt < scanAttempts; attempt += 1) {
     const response = readResponse();
 
@@ -81,7 +82,7 @@ async function settleResponse(
     const scan = await scanBlocked(tab, response, limits.bodyBytes);
 
     if (readResponse() === response && scan.isCurrent) {
-      return scan.blocked;
+      return { url: response.url(), status: tab.status, blocked: scan.blocked };
     }
   }
 

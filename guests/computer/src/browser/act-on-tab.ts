@@ -50,7 +50,7 @@ export async function actOnTab(
     mode: 'snapshot',
     textBytes: textLimitBytes,
     isDiskNew: false,
-    blocked: null,
+    landing: null,
   });
 }
 

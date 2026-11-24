@@ -1,6 +1,8 @@
 import type { ComputerReply } from '@heynixie/wire';
 import { z } from 'zod';
 import { buildSnapshotScript } from './build-snapshot-script';
+import type { Landing } from './pick-landed-status';
+import { pickLandedStatus } from './pick-landed-status';
 import { probeChallenge } from './probe-challenge';
 import type { Tab } from './types';
 
@@ -16,7 +18,7 @@ export interface ReadOptions {
   readonly textBytes: number;
   readonly isDiskNew: boolean;
 
-  readonly blocked: string | null;
+  readonly landing: Landing | null;
 }
 
 type PageReply = Extract<ComputerReply, { kind: 'page' }>;
@@ -24,18 +26,27 @@ type PageReply = Extract<ComputerReply, { kind: 'page' }>;
 // The tab's page as text, with link marks, and in snapshot mode with its controls numbered. The
 // text stops at `textBytes`, and a link mark that the cut leaves open is the reader's to drop.
 export async function readTabPage(id: string, tab: Tab, options: ReadOptions): Promise<PageReply> {
+  const urlBefore = tab.page.url();
+
   const json: unknown = await tab.page.evaluate(buildSnapshotScript(options.mode));
 
   const page = pageSchema.parse(JSON.parse(String(json)));
   const text = Buffer.from(page.text).subarray(0, options.textBytes).toString('utf8');
 
+  const landed =
+    options.landing === null
+      ? { status: tab.status, blocked: null }
+      : pickLandedStatus(options.landing, [urlBefore, page.url, tab.page.url()]);
+
+  tab.status = landed.status;
+
   return {
     kind: 'page',
     ok: true,
     tab: id,
-    page: { url: page.url, status: tab.status, title: page.title, text, links: page.links },
+    page: { url: page.url, status: landed.status, title: page.title, text, links: page.links },
     isDiskNew: options.isDiskNew,
     hasChallenge: await probeChallenge(tab.page),
-    blocked: options.blocked,
+    blocked: landed.blocked,
   };
 }

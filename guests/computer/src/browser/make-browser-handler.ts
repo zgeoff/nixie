@@ -273,7 +273,7 @@ async function readNow(
       mode: 'text',
       textBytes: nowTextBytes,
       isDiskNew: false,
-      blocked: null,
+      landing: null,
     });
 
     return { kind: 'browser', tab: focus.tab, text: read.page.text };
@@ -340,7 +340,7 @@ function handleRequest(
         mode: read.mode,
         textBytes: 3 * 65_536,
         isDiskNew: false,
-        blocked: null,
+        landing: null,
       });
     })
     .with({ op: 'navigate' }, (navigate) => {

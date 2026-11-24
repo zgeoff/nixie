@@ -100,7 +100,11 @@ async function setupTest() {
       ),
       '/marked-moves-on': new Response(
         `<html><title>Denied</title><body>${'x'.repeat(200)}<script src="/cdn-cgi/challenge-platform/h/b"></script><script>
-        setTimeout(() => { location.href = '/terms'; }, 50);
+        const createTreeWalker = Document.prototype.createTreeWalker;
+        Document.prototype.createTreeWalker = function (...args) {
+          history.replaceState(null, '', '/terms');
+          return createTreeWalker.apply(this, args);
+        };
         </script></body></html>`,
         { status: 403, headers: { 'Content-Type': 'text/html' } },
       ),
@@ -876,7 +880,7 @@ test.skipIf(!hasChromium)(
 );
 
 test.skipIf(!hasChromium)(
-  'it pairs a marked refusal with the page it sends the tab on to',
+  'it drops the challenge status and reason when the tab moves after the scan',
   async () => {
     const ctx = await setupTest();
     const reply = await ctx.send(ctx.open(`${ctx.url}marked-moves-on`));
@@ -884,7 +888,7 @@ test.skipIf(!hasChromium)(
     expect(reply).toMatchObject({
       kind: 'page',
       blocked: null,
-      page: { url: `${ctx.url}terms`, status: 200, title: 'Terms' },
+      page: { url: `${ctx.url}terms`, status: 0, title: 'Denied' },
     });
   },
 );
