@@ -113,6 +113,8 @@ type PlaceKey =
   when it is read again. A destination `www.www.example.org` parses to `www.example.org`, which only
   a `subdomains: true` entry covers. Every other subdomain needs its own entry or
   `subdomains: true`. A mail domain keeps its `www.`.
+- A `mail_domain` entry holds `blocked`, `known` or `read`, never `act`. Only an `address` entry
+  holds `act`, so nixie acts with trust only toward addresses you named one by one.
 - A `site` or `mail_domain` key with `subdomains: true` never names a public suffix. The matcher
   reads the list through `tldts` with `allowPrivateDomains: true`, and every writer of an entry
   refuses such a key. An exact key on a public suffix, such as `github.io` alone, stays allowed. Add
@@ -198,9 +200,10 @@ places.acted    { placeID, shortID, callID, tool }  // a call that an 'act' plac
   against the keys read back. The projection stores no copy or hash of a personal key.
 - You can forget an `address`, `phone` or `handle` place. The forget takes its `places.added` and
   every `places.changed` of it. Its key then reads back empty, so it covers nothing whatever its
-  level, and the page and `places.list` leave it out. Forgetting a `blocked` address unblocks it. A
-  forget is yours alone; nixie's `places.narrow` never removes a `blocked` entry. A `site` or
-  `mail_domain` place holds nothing personal: you remove it, and its records stay.
+  level, and the page and `places.list` leave it out. The history shows its records as "a forgotten
+  place". Forgetting a `blocked` address unblocks it. A forget is yours alone; nixie's
+  `places.narrow` never removes a `blocked` entry. A `site` or `mail_domain` place holds nothing
+  personal: you remove it, and its records stay.
 
 ### The decision point
 
@@ -264,8 +267,14 @@ type DecisionDetail = { places: { placeID: string; shortID: string }[] | null };
   destination, and the call asks: their declarations carry a flag that stops stages 7 and 8 allowing
   them with no destination. The flag is part of the declaration that the snapshot hash covers, and
   an `effects/` override can't change it.
-- `computer.screenshot`, `computer.screen_scroll` and the browser read tools, such as
-  `computer.browser_read`, declare no destination, as the [open question](#open-questions) says.
+- `computer.screenshot` and `computer.screen_scroll` declare `fetch` with the host of the browser
+  tab in front when a browser window is in front, because the result shows that page. With no
+  browser window in front they declare `note` and no destination. The browser read tools, such as
+  `computer.browser_read`, declare `fetch` with the tab's host.
+- A `blocked` host denies these reads whoever opened the page, you or nixie, and the refusal tells
+  the model that a blocked site is on screen.
+- A screen act counts as the tab's host even when it lands inside a frame from another origin,
+  because the page the tab shows chose to embed the frame.
 - `computer.browser_fill` declares `send`, with the tab's host.
 - `computer.browser_click` declares `send` with the tab's host, unless its element is a plain link.
   On a plain link it declares `fetch`, with the tab's host and the link's host.
@@ -448,6 +457,11 @@ and when a call last used it. You add, change and remove entries there. The host
   a bad `effects/` file does. The seed sets and removes only the entries it added and nobody has
   changed since; an entry you added or changed keeps its level. An `address`, `phone` or `handle`
   place never leaves the database.
+- A raise to `act`, from the page or from a card, takes the passkey check, as a wider rule does. So
+  do an unblock and a `subdomains: true` key. A one-off approval, a lower level and a block never
+  take it. The page refuses a change that comes from a browser act tool.
+- Reading a site with no entry stays allowed with no ask: `allow-reads` covers `web_fetch` of any
+  site, and the credential scan still checks each request.
 
 ## Builder decides
 
@@ -458,31 +472,6 @@ and when a call last used it. You add, change and remove entries there. The host
 - How the guest reads the clicked element: a new read mode, or a field on the snapshot read.
 - What happens to the Always allow rules that pin only a host: they keep working, and the builder
   may offer a one-time conversion to places on the page.
-
-## Open questions
-
-- **Do the screen and browser read tools respect a blocked site?** The owner settles it in
-  [GEO-2828](https://linear.app/zgeoff/issue/GEO-2828). Until then, `computer.screenshot`,
-  `computer.screen_scroll` and the browser read tools declare `note` and no destination, and a
-  `blocked` site that a tab reached between calls stays readable through them.
-
-- **Does a change to trust on the page, or a raise to `act` on a card, take the passkey check?** The
-  page is a web page, and a seeded `act` entry for nixie's own website would let a browser act by
-  nixie reach it. Recommendation: a raise to `act`, an unblock, or a `subdomains: true` key takes
-  the passkey check as a wider rule does, wherever it is made, and the page refuses a change that
-  comes from a browser act tool. Trade-off: one more prompt on the main route to trust. Until the
-  owner settles it, the card's answer binds the key and the level, and the page has no further
-  check.
-- **Does a frame inside a trusted tab take the tab's host?** A screen act has no view of a frame's
-  origin, so a click into a frame from a `blocked` site inside an `act` tab counts as the tab's
-  host. Recommendation: accept it, as for a script's click handler, because the page you trusted
-  chose to embed the frame. Alternative: a screen act at `act` asks when the guest reports a
-  cross-origin frame, at the cost of a guest read on every act.
-- **Do unlisted sites stay readable with no ask, when a URL can carry private text?** Today
-  `web_fetch` reads any site, and `allow-reads` allows it, so a request's query can send a private
-  value that the credential scan, which finds keys only, does not flag. The directory keeps that.
-  Recommendation: keep it, since asking before every new host removes the main use of `web_fetch`.
-  Alternative: ask when a URL's query or path holds text from a private memory item.
 
 ## Out of scope
 
