@@ -1140,6 +1140,15 @@
     "research/google-oauth": {
       "name": "@heynixie/spike-google-oauth",
     },
+    "research/gpt-live-sideband": {
+      "name": "@heynixie/spike-gpt-live-sideband",
+      "version": "0.0.0",
+      "dependencies": {
+        "playwright-core": "1.65.1",
+        "ts-pattern": "5.9.2",
+        "zod": "4.6.7",
+      },
+    },
     "research/imp-worker-start": {
       "name": "@heynixie/spike-imp-worker-start",
       "version": "0.0.0",
@@ -1649,6 +1658,8 @@
     "@heynixie/spike-forget-backups": ["@heynixie/spike-forget-backups@workspace:research/forget-backups"],
 
     "@heynixie/spike-google-oauth": ["@heynixie/spike-google-oauth@workspace:research/google-oauth"],
+
+    "@heynixie/spike-gpt-live-sideband": ["@heynixie/spike-gpt-live-sideband@workspace:research/gpt-live-sideband"],
 
     "@heynixie/spike-imp-worker-start": ["@heynixie/spike-imp-worker-start@workspace:research/imp-worker-start"],
 
