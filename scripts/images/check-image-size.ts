@@ -1,5 +1,4 @@
 import { $ } from 'bun';
-import invariant from 'tiny-invariant';
 import { getStepEnv } from '../lib/get-step-env.ts';
 import { parseStepCommand } from '../lib/parse-step-command.ts';
 import { imageNames, isImageName } from './image-names.ts';
@@ -24,7 +23,13 @@ async function runCLI(): Promise<void> {
 
   const [image] = command.values;
 
-  invariant(image !== undefined && isImageName(image), 'the command accepts only an image name');
+  if (image === undefined || !isImageName(image)) {
+    console.error('usage: check-image-size.ts <image>');
+
+    process.exitCode = 2;
+
+    return;
+  }
 
   const reference = getStepEnv(process.env, 'IMAGE');
 
