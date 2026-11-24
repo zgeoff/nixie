@@ -8,12 +8,16 @@ import { launchBrowser } from './launch-browser';
 
 const hasChromium = await chromium
   .launch({ headless: true })
+  .catch(() => null)
   .then(async (browser) => {
+    if (browser === null) {
+      return false;
+    }
+
     await browser.close();
 
     return true;
-  })
-  .catch(() => false);
+  });
 
 async function setupTest() {
   const folder = await mkdtemp(join(tmpdir(), 'launch-browser-'));

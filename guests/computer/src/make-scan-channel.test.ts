@@ -17,12 +17,16 @@ import { makeScanChannel } from './make-scan-channel';
 
 const hasChromium = await chromium
   .launch({ headless: true })
+  .catch(() => null)
   .then(async (browser) => {
+    if (browser === null) {
+      return false;
+    }
+
     await browser.close();
 
     return true;
-  })
-  .catch(() => false);
+  });
 
 async function setupTest() {
   const home = await mkdtemp(join(tmpdir(), 'computer-'));
@@ -36,7 +40,10 @@ async function setupTest() {
       '/': new Response(
         `<html><title>waiting</title><body>page<script>
           setTimeout(() => {
-            fetch('/beacon', { method: 'POST', body: 'synthetic-secret' }).then(() => { document.title = 'sent'; }).catch(() => { document.title = 'blocked'; });
+            fetch('/beacon', { method: 'POST', body: 'synthetic-secret' }).then(
+              () => { document.title = 'sent'; },
+              () => { document.title = 'blocked'; },
+            );
           }, 1500);
         </script></body></html>`,
         { headers: { 'Content-Type': 'text/html' } },

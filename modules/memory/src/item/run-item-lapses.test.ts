@@ -159,11 +159,20 @@ test('it retires the other lapsed items when one has no readable key, and report
 
   const refused = memory.store.lapse();
 
-  expect(refused).rejects.toBeInstanceOf(AggregateError);
+  const settled = await Promise.allSettled([refused]);
 
-  expect(refused).rejects.toMatchObject({
-    errors: [{ message: expect.toInclude(keyless.itemID) }],
-  });
+  expect(settled).toMatchObject([{ status: 'rejected', reason: expect.any(AggregateError) }]);
+
+  const settledAgain = await Promise.allSettled([refused]);
+
+  expect(settledAgain).toMatchObject([
+    {
+      status: 'rejected',
+      reason: {
+        errors: [{ message: expect.toInclude(keyless.itemID) }],
+      },
+    },
+  ]);
 
   const recalled = await memory.store.recall({ itemIDs: [healthy.itemID], includeRetired: true });
 

@@ -419,9 +419,16 @@ test('it leaves a key snapshot with no data snapshot, and publishes the set agai
     },
   };
 
-  expect(ctx.runPass(stopping)).rejects.toMatchObject({
-    message: 'EIO: the data write stopped',
-  });
+  const settled = await Promise.allSettled([ctx.runPass(stopping)]);
+
+  expect(settled).toMatchObject([
+    {
+      status: 'rejected',
+      reason: {
+        message: 'EIO: the data write stopped',
+      },
+    },
+  ]);
 
   const keysAfterStop = await ctx.repos.keys.readSnapshots();
   const dataAfterStop = await ctx.repos.data.readSnapshots();
@@ -453,7 +460,11 @@ test('it picks the higher publish number when it stops before it removes the rep
     },
   };
 
-  expect(ctx.runPass(stopping)).rejects.toStrictEqual(new Error('EIO: the removal stopped'));
+  const settled = await Promise.allSettled([ctx.runPass(stopping)]);
+
+  expect(settled).toStrictEqual([
+    { status: 'rejected', reason: new Error('EIO: the removal stopped') },
+  ]);
 
   const keys = await ctx.repos.keys.readSnapshots();
 
@@ -475,7 +486,11 @@ test('it drops the replaced key snapshot by legacy-set when the first numbered p
     },
   };
 
-  expect(ctx.runPass(stopping)).rejects.toStrictEqual(new Error('EIO: the removal stopped'));
+  const settled = await Promise.allSettled([ctx.runPass(stopping)]);
+
+  expect(settled).toStrictEqual([
+    { status: 'rejected', reason: new Error('EIO: the removal stopped') },
+  ]);
 
   const keys = await ctx.repos.keys.readSnapshots();
 
@@ -500,9 +515,11 @@ test('it keeps the note and raises proven-from again when it stops before it rem
         : localJobFiles.removeFile(path),
   };
 
-  expect(ctx.runPass(ctx.repos, stopping)).rejects.toStrictEqual(
-    new Error('EIO: the note removal stopped'),
-  );
+  const settled = await Promise.allSettled([ctx.runPass(ctx.repos, stopping)]);
+
+  expect(settled).toStrictEqual([
+    { status: 'rejected', reason: new Error('EIO: the note removal stopped') },
+  ]);
 
   const hasNote = await ctx.probeNote();
 

@@ -32,7 +32,7 @@ test("it records the turn's spend and rethrows the error of a write that fails",
   const ctx = await setupTest();
   const step = await seedConversationStep(ctx.context);
 
-  expect(
+  const settled = await Promise.allSettled([
     withTurnSpendOnFailure(
       ctx.context,
       { spend: { taskID: 'conversation', dollars: 0.03 }, logger: ctx.logger },
@@ -44,7 +44,11 @@ test("it records the turn's spend and rethrows the error of a write that fails",
           timers: [{ dueAt: Number.NaN }],
         }),
     ),
-  ).rejects.toStrictEqual(new Error("a step's timer is due at NaN, which is no time"));
+  ]);
+
+  expect(settled).toStrictEqual([
+    { status: 'rejected', reason: new Error("a step's timer is due at NaN, which is no time") },
+  ]);
 
   const spends = await ctx.readSpends();
 
@@ -77,7 +81,7 @@ test("it logs a spend write that fails, and rethrows the write's own error", asy
 
   await ctx.writer.stop();
 
-  expect(
+  const settled = await Promise.allSettled([
     withTurnSpendOnFailure(
       ctx.context,
       { spend: { taskID: 'conversation', dollars: 0.03 }, logger: ctx.logger },
@@ -89,7 +93,11 @@ test("it logs a spend write that fails, and rethrows the write's own error", asy
           timers: [{ dueAt: Number.NaN }],
         }),
     ),
-  ).rejects.toStrictEqual(new Error("a step's timer is due at NaN, which is no time"));
+  ]);
+
+  expect(settled).toStrictEqual([
+    { status: 'rejected', reason: new Error("a step's timer is due at NaN, which is no time") },
+  ]);
 
   expect(ctx.events).toStrictEqual([
     {

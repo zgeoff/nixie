@@ -293,13 +293,15 @@ test('it refuses a new item whose end time has passed, and writes nothing', asyn
 
   const memory = await startTestMemory({ gate: { clock } });
 
-  expect(
+  const settled = await Promise.allSettled([
     memory.store.remember({
       text: 'Is in Lisbon this week',
       until: Date.parse('2026-10-19T08:59:59Z'),
       provenance: buildMockProvenance(),
     }),
-  ).rejects.toBeInstanceOf(UntilPassedError);
+  ]);
+
+  expect(settled).toMatchObject([{ status: 'rejected', reason: expect.any(UntilPassedError) }]);
 
   const rows = await memory.writer.db
     .$extendTables<MemoryTables>()
@@ -320,14 +322,16 @@ test('it refuses an edit to an end time that is now', async () => {
     provenance: buildMockProvenance(),
   });
 
-  expect(
+  const settled = await Promise.allSettled([
     memory.store.remember({
       target: item,
       text: 'Is in Lisbon this week',
       until: Date.parse('2026-10-19T09:00:00Z'),
       provenance: buildMockProvenance(),
     }),
-  ).rejects.toMatchObject({ code: 'UNTIL_PASSED' });
+  ]);
+
+  expect(settled).toMatchObject([{ status: 'rejected', reason: { code: 'UNTIL_PASSED' } }]);
 });
 
 test('it stores the end time of a new item on its version and its row', async () => {

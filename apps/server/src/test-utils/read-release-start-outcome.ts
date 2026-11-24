@@ -89,11 +89,11 @@ async function readListeningEvent(
   nixie: ReleaseProcess,
   exitSettles: Promise<FirstEvent>,
 ): Promise<FirstEvent> {
-  try {
-    const line = await nixie.waitForLogEvent('http.listening');
+  const line = await nixie.waitForLogEvent('http.listening').catch(() => null);
 
-    return { kind: 'listening', port: line['port'] };
-  } catch {
+  if (line === null) {
     return exitSettles;
   }
+
+  return { kind: 'listening', port: line['port'] };
 }

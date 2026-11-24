@@ -167,9 +167,11 @@ test.each([
 
     await seed(laptopClient, laptop.sessionID);
 
-    expect(
+    const settled = await Promise.allSettled([
       laptopClient.conversation.retry({ clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85' }),
-    ).rejects.toMatchObject({ code });
+    ]);
+
+    expect(settled).toMatchObject([{ status: 'rejected', reason: { code } }]);
 
     const revivals = await readRecords(ctx.context.log, {
       afterSequence: 0,

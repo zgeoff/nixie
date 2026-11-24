@@ -41,13 +41,15 @@ test('it refuses a second current approval of one prompt', async () => {
     ctx.db,
   );
 
-  expect(
+  const settled = await Promise.allSettled([
     sql`insert into prompt_approvals (approval_id, proposal_id, prompt_id,
     thread, entry, files, state, approved_at, updated_at)
     values ('approval-b', 'w7tn4c9rhz', 'compaction', 'conversation', '{}', '[]', 'current', 2, 2)`.execute(
       ctx.db,
     ),
-  ).rejects.toBeInstanceOf(Error);
+  ]);
+
+  expect(settled).toMatchObject([{ status: 'rejected', reason: expect.any(Error) }]);
 });
 
 test('it keeps a current approval of one prompt beside a superseded one', async () => {
@@ -70,12 +72,14 @@ test('it keeps a current approval of one prompt beside a superseded one', async 
 test('it refuses an export of no approved prompt override', async () => {
   const ctx = await setupTest();
 
-  expect(
+  const settled = await Promise.allSettled([
     sql`insert into prompt_exports (approval_id, state, pull_request_number,
     pull_request_url, updated_at) values ('approval-a', 'opened', 7, 'https://github.test/pull/7', 2)`.execute(
       ctx.db,
     ),
-  ).rejects.toBeInstanceOf(Error);
+  ]);
+
+  expect(settled).toMatchObject([{ status: 'rejected', reason: expect.any(Error) }]);
 });
 
 test('it keeps each row when it runs again', async () => {

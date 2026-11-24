@@ -263,13 +263,15 @@ test('it refuses a second approval over the same base as stale before the first 
     skillHash: first.skillHash,
   });
 
-  expect(
+  const settled = await Promise.allSettled([
     writeSkillProposalAnswer(unseeded, {
       answer: 'approve',
       proposalID: 'w7tn4c9rhz',
       skillHash: second.skillHash,
     }),
-  ).rejects.toMatchObject({ code: 'STALE_BASE' });
+  ]);
+
+  expect(settled).toMatchObject([{ status: 'rejected', reason: { code: 'STALE_BASE' } }]);
 });
 
 test("it refuses an approval over a retired version as stale before the retirement's seed runs", async () => {
@@ -333,13 +335,15 @@ test("it refuses an approval over a retired version as stale before the retireme
     },
   ]);
 
-  expect(
+  const settled = await Promise.allSettled([
     writeSkillProposalAnswer(ctx.context, {
       answer: 'approve',
       proposalID: 'w7tn4c9rhz',
       skillHash: proposed.skillHash,
     }),
-  ).rejects.toMatchObject({ code: 'STALE_BASE' });
+  ]);
+
+  expect(settled).toMatchObject([{ status: 'rejected', reason: { code: 'STALE_BASE' } }]);
 });
 
 test('it applies your edited files and marks the approval edited', async () => {
@@ -428,14 +432,18 @@ test('it refuses edited files that fail the seed checks, and records nothing', a
     },
   ]);
 
-  expect(
+  const settled = await Promise.allSettled([
     writeSkillProposalAnswer(ctx.context, {
       answer: 'approve',
       proposalID: 'k3x9m2p7qa',
       skillHash: skill.skillHash,
       files: [{ path: 'SKILL.md', text: '# Tides, with no frontmatter\n' }],
     }),
-  ).rejects.toMatchObject({ name: 'SkillProposalCheckError', code: 'SKILL_CHECK' });
+  ]);
+
+  expect(settled).toMatchObject([
+    { status: 'rejected', reason: { name: 'SkillProposalCheckError', code: 'SKILL_CHECK' } },
+  ]);
 
   const records = await readRecords(ctx.log, {
     afterSequence: 0,
@@ -552,14 +560,18 @@ test('it closes a proposal once when an approval and a rejection arrive together
 test('it refuses an answer to a proposal no record holds', async () => {
   const ctx = await setupTest();
 
-  expect(
+  const settled = await Promise.allSettled([
     writeSkillProposalAnswer(ctx.context, {
       answer: 'reject',
       proposalID: 'k3x9m2p7qa',
       skillHash: 'hash-b',
       reason: 'not now',
     }),
-  ).rejects.toBeInstanceOf(SkillProposalNotFoundError);
+  ]);
+
+  expect(settled).toMatchObject([
+    { status: 'rejected', reason: expect.any(SkillProposalNotFoundError) },
+  ]);
 });
 
 test('it refuses a second answer to a proposal an answer closed', async () => {
@@ -594,8 +606,17 @@ test('it refuses a second answer to a proposal an answer closed', async () => {
     skillHash: 'hash-b',
   });
 
-  expect(refusal).rejects.toBeInstanceOf(SkillProposalClosedError);
-  expect(refusal).rejects.toMatchObject({ code: 'PROPOSAL_CLOSED', outcome: 'rejected' });
+  const settled = await Promise.allSettled([refusal]);
+
+  expect(settled).toMatchObject([
+    { status: 'rejected', reason: expect.any(SkillProposalClosedError) },
+  ]);
+
+  const settledAgain = await Promise.allSettled([refusal]);
+
+  expect(settledAgain).toMatchObject([
+    { status: 'rejected', reason: { code: 'PROPOSAL_CLOSED', outcome: 'rejected' } },
+  ]);
 });
 
 test('it refuses an answer to a proposal whose lapse time has come', async () => {
@@ -633,8 +654,17 @@ test('it refuses an answer to a proposal whose lapse time has come', async () =>
     },
   );
 
-  expect(refusal).rejects.toBeInstanceOf(SkillProposalClosedError);
-  expect(refusal).rejects.toMatchObject({ code: 'PROPOSAL_CLOSED', outcome: 'lapsed' });
+  const settled = await Promise.allSettled([refusal]);
+
+  expect(settled).toMatchObject([
+    { status: 'rejected', reason: expect.any(SkillProposalClosedError) },
+  ]);
+
+  const settledAgain = await Promise.allSettled([refusal]);
+
+  expect(settledAgain).toMatchObject([
+    { status: 'rejected', reason: { code: 'PROPOSAL_CLOSED', outcome: 'lapsed' } },
+  ]);
 });
 
 test('it refuses an answer that names another skill hash, and records nothing', async () => {
@@ -657,13 +687,17 @@ test('it refuses an answer that names another skill hash, and records nothing', 
     },
   ]);
 
-  expect(
+  const settled = await Promise.allSettled([
     writeSkillProposalAnswer(ctx.context, {
       answer: 'approve',
       proposalID: 'k3x9m2p7qa',
       skillHash: 'hash-a',
     }),
-  ).rejects.toBeInstanceOf(SkillProposalHashError);
+  ]);
+
+  expect(settled).toMatchObject([
+    { status: 'rejected', reason: expect.any(SkillProposalHashError) },
+  ]);
 
   const records = await readRecords(ctx.log, {
     afterSequence: 0,
@@ -730,13 +764,17 @@ test.each([
       buildPolicy: () => ctx.policy,
     });
 
-    expect(
+    const settled = await Promise.allSettled([
       writeSkillProposalAnswer(ctx.context, {
         ...answer,
         proposalID: 'k3x9m2p7qa',
         skillHash: 'hash-b',
       }),
-    ).rejects.toMatchObject({ name: 'SkillProposalStaleError', code: 'STALE_BASE' });
+    ]);
+
+    expect(settled).toMatchObject([
+      { status: 'rejected', reason: { name: 'SkillProposalStaleError', code: 'STALE_BASE' } },
+    ]);
 
     const records = await readRecords(ctx.log, {
       afterSequence: 0,

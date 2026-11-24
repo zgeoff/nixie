@@ -207,7 +207,7 @@ test('it resumes a run that a crash stopped between two key deletions, and forge
 
   startFaultPointFailure('memory.forget.key_removed');
 
-  expect(
+  const settled = await Promise.allSettled([
     ctx.memory.store.forgetRetired({
       targets: retired,
       provenance: {
@@ -218,7 +218,11 @@ test('it resumes a run that a crash stopped between two key deletions, and forge
         checks: null,
       },
     }),
-  ).rejects.toMatchObject({ message: 'crashed at memory.forget.key_removed' });
+  ]);
+
+  expect(settled).toMatchObject([
+    { status: 'rejected', reason: { message: 'crashed at memory.forget.key_removed' } },
+  ]);
 
   const keysAtCrash = await readRecordKeys(ctx.memory.log, [first.itemID, second.itemID]);
   const statusAtCrash = await ctx.memory.store.view.readForgetStatus([first.itemID, second.itemID]);
@@ -319,7 +323,7 @@ test('it finishes the pending forgets of a run and reports every item deleted', 
 
   startFaultPointFailure('memory.forget.key_removed', second.itemID);
 
-  expect(
+  const settled = await Promise.allSettled([
     ctx.memory.store.forgetRetired({
       targets: retired,
       provenance: {
@@ -330,7 +334,11 @@ test('it finishes the pending forgets of a run and reports every item deleted', 
         checks: null,
       },
     }),
-  ).rejects.toMatchObject({ message: 'crashed at memory.forget.key_removed' });
+  ]);
+
+  expect(settled).toMatchObject([
+    { status: 'rejected', reason: { message: 'crashed at memory.forget.key_removed' } },
+  ]);
 
   const before = await ctx.memory.store.view.readForgetStatus([first.itemID, second.itemID]);
   const status = await ctx.memory.store.finishForgets([first.itemID, second.itemID]);

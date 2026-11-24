@@ -91,8 +91,10 @@ test('it refuses a second number for one URL in a session', async () => {
   await sql`insert into web_fetch_links (session_key, number, url, thread)
     values ('session-a', 1, 'https://harbour.test/ferries', 'conversation')`.execute(ctx.db);
 
-  expect(
+  const settled = await Promise.allSettled([
     sql`insert into web_fetch_links (session_key, number, url, thread)
     values ('session-a', 2, 'https://harbour.test/ferries', 'conversation')`.execute(ctx.db),
-  ).rejects.toBeInstanceOf(Error);
+  ]);
+
+  expect(settled).toMatchObject([{ status: 'rejected', reason: expect.any(Error) }]);
 });

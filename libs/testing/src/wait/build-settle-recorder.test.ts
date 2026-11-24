@@ -17,12 +17,14 @@ test('it records one settle before it returns the answer of a call that resolves
   expect(recorder.settled).toHaveBeenCalledOnce();
 });
 
-test('it records one settle before it passes on the error of a call that rejects', () => {
+test('it records one settle before it passes on the error of a call that rejects', async () => {
   const recorder = buildSettleRecorder(() =>
     Promise.reject(new TypeError('impd refused the call')),
   );
 
-  expect(recorder.check('impd')).rejects.toBeInstanceOf(TypeError);
+  const settled = await Promise.allSettled([recorder.check('impd')]);
+
+  expect(settled).toMatchObject([{ status: 'rejected', reason: expect.any(TypeError) }]);
   expect(recorder.settled).toHaveBeenCalledOnce();
 });
 

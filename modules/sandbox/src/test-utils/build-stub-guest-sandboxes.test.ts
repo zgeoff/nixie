@@ -813,11 +813,18 @@ test('it refuses to move a file onto a directory, and keeps the file', async () 
     { path: '/home/nixie/dir/b.txt', content: new TextEncoder().encode('b') },
   ]);
 
-  expect(sandbox.applyMove('/home/nixie/a.txt', '/home/nixie/dir')).rejects.toStrictEqual(
-    new Error(
-      "EISDIR: illegal operation on a directory, rename '/home/nixie/a.txt' -> '/home/nixie/dir'",
-    ),
-  );
+  const settled = await Promise.allSettled([
+    sandbox.applyMove('/home/nixie/a.txt', '/home/nixie/dir'),
+  ]);
+
+  expect(settled).toStrictEqual([
+    {
+      status: 'rejected',
+      reason: new Error(
+        "EISDIR: illegal operation on a directory, rename '/home/nixie/a.txt' -> '/home/nixie/dir'",
+      ),
+    },
+  ]);
 
   const listed = await sandbox.readFilePaths('/home/nixie');
 

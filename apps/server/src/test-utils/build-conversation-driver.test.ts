@@ -84,12 +84,21 @@ test('it fails a send whose step errored after it sent a turn, with the step err
 
   const failure = conversation.send('What does the tide gauge read?');
 
-  expect(failure).rejects.toBeInstanceOf(Error);
+  const settled = await Promise.allSettled([failure]);
+
+  expect(settled).toMatchObject([{ status: 'rejected', reason: expect.any(Error) }]);
   expect(ctx.server.guest.turns).toHaveLength(1);
 
-  expect(failure).rejects.toMatchObject({
-    cause: { message: 'the conversation turn passed the context window' },
-  });
+  const settledAgain = await Promise.allSettled([failure]);
+
+  expect(settledAgain).toMatchObject([
+    {
+      status: 'rejected',
+      reason: {
+        cause: { message: 'the conversation turn passed the context window' },
+      },
+    },
+  ]);
 });
 
 test('it retries a failed step once its backoff passed, and returns the turn the retry sent', async () => {
@@ -147,7 +156,14 @@ test('it fails a send whose step sent no turn to the guest', async () => {
 
   await conversation.send('What does the tide gauge read?');
 
-  expect(conversation.send('And tomorrow?')).rejects.toMatchObject({
-    message: expect.toInclude('the step sent no turn'),
-  });
+  const settled = await Promise.allSettled([conversation.send('And tomorrow?')]);
+
+  expect(settled).toMatchObject([
+    {
+      status: 'rejected',
+      reason: {
+        message: expect.toInclude('the step sent no turn'),
+      },
+    },
+  ]);
 });

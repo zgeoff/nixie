@@ -808,13 +808,20 @@ test('it refuses to move a file onto a directory, and keeps the file', async () 
     { path: join(ctx.directory, 'work/dir/b.txt'), content: new TextEncoder().encode('b') },
   ]);
 
-  expect(
+  const settled = await Promise.allSettled([
     sandbox.applyMove(join(ctx.directory, 'work/a.txt'), join(ctx.directory, 'work/dir')),
-  ).rejects.toMatchObject({
-    message: expect.toStartWith(
-      `move of ${join(ctx.directory, 'work/a.txt')} to ${join(ctx.directory, 'work/dir')} failed with 1`,
-    ),
-  });
+  ]);
+
+  expect(settled).toMatchObject([
+    {
+      status: 'rejected',
+      reason: {
+        message: expect.toStartWith(
+          `move of ${join(ctx.directory, 'work/a.txt')} to ${join(ctx.directory, 'work/dir')} failed with 1`,
+        ),
+      },
+    },
+  ]);
 
   const listed = await sandbox.readFilePaths(join(ctx.directory, 'work'));
 

@@ -826,7 +826,7 @@ test('it refuses an approved call under the token of a step that stopped', async
 
   await step.stop();
 
-  expect(
+  const settled = await Promise.allSettled([
     run.runApproved(step.token, {
       actionID: 'proposal-1',
       tool: 'notes_wipe',
@@ -834,5 +834,7 @@ test('it refuses an approved call under the token of a step that stopped', async
       callSequence: 1,
       actionHash: 'sha256:any',
     }),
-  ).rejects.toBeInstanceOf(Error);
+  ]);
+
+  expect(settled).toMatchObject([{ status: 'rejected', reason: expect.any(Error) }]);
 });

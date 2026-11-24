@@ -132,11 +132,22 @@ test('it leaves the images unadded, naming the image, when impd refuses the add 
     },
   });
 
-  expect(refusal).rejects.toBeInstanceOf(Error);
+  const settled = await Promise.allSettled([refusal]);
 
-  expect(refusal).rejects.toMatchObject({
-    message: expect.stringMatching(/^impd did not add the image nixie-fetch-cccccccccccc from /u),
-  });
+  expect(settled).toMatchObject([{ status: 'rejected', reason: expect.any(Error) }]);
+
+  const settledAgain = await Promise.allSettled([refusal]);
+
+  expect(settledAgain).toMatchObject([
+    {
+      status: 'rejected',
+      reason: {
+        message: expect.stringMatching(
+          /^impd did not add the image nixie-fetch-cccccccccccc from /u,
+        ),
+      },
+    },
+  ]);
 
   expect(ctx.state.read().images).toStrictEqual({
     isReady: false,

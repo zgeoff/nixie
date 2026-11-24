@@ -11,12 +11,16 @@ import type { BrowserState } from './types';
 
 const hasChromium = await chromium
   .launch({ headless: true })
+  .catch(() => null)
   .then(async (browser) => {
+    if (browser === null) {
+      return false;
+    }
+
     await browser.close();
 
     return true;
-  })
-  .catch(() => false);
+  });
 
 async function setupTest() {
   const home = await mkdtemp(join(tmpdir(), 'challenge-'));

@@ -463,7 +463,7 @@ test('it reads no open pull request for a branch whose pull request closed', asy
 test.each([
   ['an answer of the wrong shape', '{}'],
   ['an answer that is not JSON', 'not json'],
-])('it refuses %s with no status', (_, answer) => {
+])('it refuses %s with no status', async (_, answer) => {
   network.use(http.get(`${githubAPIURL}/*`, () => new HttpResponse(answer)));
 
   const repo = buildGitHubDefinitionsRepo({
@@ -473,10 +473,17 @@ test.each([
     apiURL: githubAPIURL,
   });
 
-  expect(repo.readFile('nixie.yaml', 'main')).rejects.toMatchObject({
-    name: 'GitHubRequestError',
-    status: null,
-  });
+  const settled = await Promise.allSettled([repo.readFile('nixie.yaml', 'main')]);
+
+  expect(settled).toMatchObject([
+    {
+      status: 'rejected',
+      reason: {
+        name: 'GitHubRequestError',
+        status: null,
+      },
+    },
+  ]);
 });
 
 test('it refuses a request GitHub refuses, with its status and never the token', async () => {
@@ -491,14 +498,18 @@ test('it refuses a request GitHub refuses, with its status and never the token',
 
   const refusal = repo.readBaseRevision();
 
-  expect(refusal).rejects.toMatchObject({ name: 'GitHubRequestError', status: 401 });
+  const settled = await Promise.allSettled([refusal]);
+
+  expect(settled).toMatchObject([
+    { status: 'rejected', reason: { name: 'GitHubRequestError', status: 401 } },
+  ]);
 
   expect(refusal).rejects.toSatisfy(
     (raised: unknown) => raised instanceof Error && !raised.message.includes('token-b'),
   );
 });
 
-test('it redacts the token that GitHub echoes in a refusal, and drops the rest of the body', () => {
+test('it redacts the token that GitHub echoes in a refusal, and drops the rest of the body', async () => {
   network.use(
     http.get(`${githubAPIURL}/*`, (info) =>
       HttpResponse.json(
@@ -520,7 +531,11 @@ test('it redacts the token that GitHub echoes in a refusal, and drops the rest o
 
   const refusal = repo.readBaseRevision();
 
-  expect(refusal).rejects.toMatchObject({ name: 'GitHubRequestError', status: 401 });
+  const settled = await Promise.allSettled([refusal]);
+
+  expect(settled).toMatchObject([
+    { status: 'rejected', reason: { name: 'GitHubRequestError', status: 401 } },
+  ]);
 
   expect(refusal).rejects.toSatisfy(
     (raised: unknown) =>

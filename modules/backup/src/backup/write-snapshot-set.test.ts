@@ -125,9 +125,18 @@ test.each(['writeSnapshotSet', 'the stage pass'] as const)(
 
     startFaultPointFailure('backup.set.copied');
 
-    expect(stageBackupSet(entryPoint, ctx.context, 'scheduled')).rejects.toMatchObject({
-      message: 'crashed at backup.set.copied',
-    });
+    const settled = await Promise.allSettled([
+      stageBackupSet(entryPoint, ctx.context, 'scheduled'),
+    ]);
+
+    expect(settled).toMatchObject([
+      {
+        status: 'rejected',
+        reason: {
+          message: 'crashed at backup.set.copied',
+        },
+      },
+    ]);
 
     const staging = await readdir(join(ctx.dataDir, 'backup'));
     const rows = await sql`select state from backup_sets`.execute(ctx.writer.db);
@@ -147,9 +156,16 @@ test.each(['writeSnapshotSet', 'the stage pass'] as const)(
       storage: buildStubFailingStorage(localDataStorage, 'complete', 'write'),
     };
 
-    expect(stageBackupSet(entryPoint, context, 'scheduled')).rejects.toMatchObject({
-      message: 'the stub fails the write of complete',
-    });
+    const settled = await Promise.allSettled([stageBackupSet(entryPoint, context, 'scheduled')]);
+
+    expect(settled).toMatchObject([
+      {
+        status: 'rejected',
+        reason: {
+          message: 'the stub fails the write of complete',
+        },
+      },
+    ]);
 
     const staging = await readdir(join(ctx.dataDir, 'backup'));
     const rows = await sql`select state from backup_sets`.execute(ctx.writer.db);
@@ -169,9 +185,16 @@ test.each(['writeSnapshotSet', 'the stage pass'] as const)(
       storage: buildStubFailingStorage(localDataStorage, 'complete', 'fsync'),
     };
 
-    expect(stageBackupSet(entryPoint, context, 'scheduled')).rejects.toMatchObject({
-      message: 'the stub fails the fsync of complete',
-    });
+    const settled = await Promise.allSettled([stageBackupSet(entryPoint, context, 'scheduled')]);
+
+    expect(settled).toMatchObject([
+      {
+        status: 'rejected',
+        reason: {
+          message: 'the stub fails the fsync of complete',
+        },
+      },
+    ]);
 
     const files = await readdir(join(ctx.dataDir, 'backup', '000000000001'));
     const rows = await sql`select state from backup_sets`.execute(ctx.writer.db);

@@ -40,9 +40,18 @@ test('it fails the write of a file with the given name and leaves no file', asyn
 
   const storage = buildStubFailingStorage(localDataStorage, 'complete', 'write');
 
-  expect(storage.files.writeFile(join(ctx.directory, 'complete'), '')).rejects.toMatchObject({
-    message: 'the stub fails the write of complete',
-  });
+  const settled = await Promise.allSettled([
+    storage.files.writeFile(join(ctx.directory, 'complete'), ''),
+  ]);
+
+  expect(settled).toMatchObject([
+    {
+      status: 'rejected',
+      reason: {
+        message: 'the stub fails the write of complete',
+      },
+    },
+  ]);
 
   const names = await readdir(ctx.directory);
 

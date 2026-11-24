@@ -145,9 +145,11 @@ test('it refuses a second answer to the approval, and runs nothing more', async 
   await ctx.approve(item.proposal.proposalID, item.proposal.actionHash);
   await ctx.waitForOutcome();
 
-  expect(ctx.approve(item.proposal.proposalID, item.proposal.actionHash)).rejects.toBeInstanceOf(
-    Error,
-  );
+  const settled = await Promise.allSettled([
+    ctx.approve(item.proposal.proposalID, item.proposal.actionHash),
+  ]);
+
+  expect(settled).toMatchObject([{ status: 'rejected', reason: expect.any(Error) }]);
 
   const records = await ctx.readThread();
 

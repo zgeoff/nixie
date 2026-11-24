@@ -58,10 +58,17 @@ test('it refuses a second notice of the same cause for a set', async () => {
   await sql`insert into backup_notices (sequence, cause, raised_at)
     values (4, 'failed', 1798765200000)`.execute(ctx.db);
 
-  expect(
+  const settled = await Promise.allSettled([
     sql`insert into backup_notices (sequence, cause, raised_at)
     values (4, 'failed', 1798768800000)`.execute(ctx.db),
-  ).rejects.toMatchObject({ message: expect.stringContaining('UNIQUE constraint failed') });
+  ]);
+
+  expect(settled).toMatchObject([
+    {
+      status: 'rejected',
+      reason: { message: expect.stringContaining('UNIQUE constraint failed') },
+    },
+  ]);
 });
 
 test.each([
@@ -75,9 +82,13 @@ test.each([
     await sql`insert into backup_sets (sequence, kind, state, log_head, staged_at)
     values (4, 'scheduled', 'failed', 30, 1798761600000)`.execute(ctx.db);
 
-    expect(
+    const settled = await Promise.allSettled([
       sql`insert into backup_notices (sequence, cause, raised_at)
     values (${sequence}, ${cause}, 1798765200000)`.execute(ctx.db),
-    ).rejects.toMatchObject({ message: expect.stringContaining('constraint failed') });
+    ]);
+
+    expect(settled).toMatchObject([
+      { status: 'rejected', reason: { message: expect.stringContaining('constraint failed') } },
+    ]);
   },
 );

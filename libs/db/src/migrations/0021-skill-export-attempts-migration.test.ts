@@ -107,8 +107,10 @@ test('it refuses a mark of no skill that nixie wrote', async () => {
 
   await runMigrations(ctx.db, { schema: nixieSchema, copyDir: ctx.directory });
 
-  expect(
+  const settled = await Promise.allSettled([
     sql`insert into skill_export_attempts (approval_id, started_at)
     values ('approval-a', 2)`.execute(ctx.db),
-  ).rejects.toBeInstanceOf(Error);
+  ]);
+
+  expect(settled).toMatchObject([{ status: 'rejected', reason: expect.any(Error) }]);
 });

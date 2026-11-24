@@ -129,7 +129,7 @@ test('it refuses to open a closed export', async () => {
     ctx.writer.db,
   );
 
-  expect(
+  const settled = await Promise.allSettled([
     withWriteTransaction(ctx.writer, (tx) =>
       writePromptExportState(tx, {
         approvalID: approval.approvalID,
@@ -139,9 +139,14 @@ test('it refuses to open a closed export', async () => {
         at: 3,
       }),
     ),
-  ).rejects.toStrictEqual(
-    new Error(
-      `the export of prompt approval ${approval.approvalID} is closed, so it cannot become opened`,
-    ),
-  );
+  ]);
+
+  expect(settled).toStrictEqual([
+    {
+      status: 'rejected',
+      reason: new Error(
+        `the export of prompt approval ${approval.approvalID} is closed, so it cannot become opened`,
+      ),
+    },
+  ]);
 });

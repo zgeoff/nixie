@@ -104,7 +104,7 @@ test('it refuses to move a written skill that left force, and writes nothing', a
 test('it refuses an approval that applied no skill', async () => {
   const ctx = await setupTest();
 
-  expect(
+  const settled = await Promise.allSettled([
     withWriteTransaction(ctx.writer, (tx) =>
       writeWrittenSkillState(tx, {
         approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
@@ -112,5 +112,9 @@ test('it refuses an approval that applied no skill', async () => {
         at: 1,
       }),
     ),
-  ).rejects.toMatchObject({ name: 'WrittenSkillStateError', state: null });
+  ]);
+
+  expect(settled).toMatchObject([
+    { status: 'rejected', reason: { name: 'WrittenSkillStateError', state: null } },
+  ]);
 });

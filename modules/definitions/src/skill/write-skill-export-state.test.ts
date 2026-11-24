@@ -282,7 +282,7 @@ test('it refuses to open again an export that closed', async () => {
     });
   });
 
-  expect(
+  const settled = await Promise.allSettled([
     withWriteTransaction(ctx.writer, (tx) =>
       writeSkillExportState(tx, {
         approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
@@ -292,9 +292,14 @@ test('it refuses to open again an export that closed', async () => {
         at: 4,
       }),
     ),
-  ).rejects.toStrictEqual(
-    new Error(
-      'the export of approval 5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31 is closed, so it cannot become opened',
-    ),
-  );
+  ]);
+
+  expect(settled).toStrictEqual([
+    {
+      status: 'rejected',
+      reason: new Error(
+        'the export of approval 5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31 is closed, so it cannot become opened',
+      ),
+    },
+  ]);
 });

@@ -195,13 +195,15 @@ test('it frees the lease of the step a stop ends, so the step commits nothing', 
 
   await writeTaskControl(ctx.context, { taskID: task.taskID, control: 'stop' });
 
-  expect(
+  const settled = await Promise.allSettled([
     writeStepCommit(ctx.context, task.claim, {
       next: 'wait',
       records: [],
       acknowledged: [],
     }),
-  ).rejects.toBeInstanceOf(LeaseLostError);
+  ]);
+
+  expect(settled).toMatchObject([{ status: 'rejected', reason: expect.any(LeaseLostError) }]);
 
   const row = await ctx.db
     .selectFrom('tasks')

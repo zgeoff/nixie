@@ -289,9 +289,11 @@ test('it settles an attempt that a crash left open as unknown and never reruns t
   const ctx = await setupTest();
   const queued = await ctx.seed.inStepAction({ step: ctx.step });
 
-  expect(
+  const attempted = await Promise.allSettled([
     ctx.runStep({ runCall: () => Promise.reject(new Error('the process died')) }),
-  ).rejects.toBeInstanceOf(Error);
+  ]);
+
+  expect(attempted).toMatchObject([{ status: 'rejected', reason: expect.any(Error) }]);
 
   const open = await readTestAction(ctx.writer, queued.action_id);
 
