@@ -1,5 +1,6 @@
 import { withWriteTransaction } from '@heynixie/log';
-import type { ToolDefinition } from '@heynixie/tools';
+import type { ToolDefinition, ToolOutcome } from '@heynixie/tools';
+import { addRelatedMemory, relatedMemoryOutput } from '@heynixie/tools';
 import { z } from 'zod';
 import { checkReminderTrigger } from '../reminder/check-reminder-trigger';
 import { writeReminderSet } from '../reminder/write-reminder-set';
@@ -24,7 +25,9 @@ export function buildReminderSetTool(context: RemindersContext): ToolDefinition 
       '"hours":{"from":"09:00","until":"17:00"}}. ' +
       `A recurring reminder fires at most every ${context.minGapMinutes} minutes. Returns the ` +
       "reminder's ID, the schedule in words with its zone, and the next 3 fires in local time. A " +
-      'refusal comes back as `refused` with a code, the field and a sentence that says what to change.',
+      'refusal comes back as `refused` with a code, the field and a sentence that says what to change. ' +
+      'When memory holds active items close to the reminder, `related` lists them with their IDs ' +
+      'and text: the reminder is set either way, so check them against it.',
     input: buildReminderInputSchema(reminderSetInputSchema),
     output: {
       type: 'object',
@@ -33,6 +36,7 @@ export function buildReminderSetTool(context: RemindersContext): ToolDefinition 
         rendered: { type: 'string', description: reminderToolParts.triggerWords },
         next: reminderToolParts.nextFires,
         refused: reminderToolParts.refusedOutput,
+        related: relatedMemoryOutput,
       },
       additionalProperties: false,
     },
@@ -43,6 +47,7 @@ export function buildReminderSetTool(context: RemindersContext): ToolDefinition 
         rendered: 'owner_data',
         next: 'owner_data',
         refused: 'owner_data',
+        related: 'untrusted',
       },
     },
     execution: 'direct',
@@ -76,7 +81,12 @@ export function buildReminderSetTool(context: RemindersContext): ToolDefinition 
 
       const described = await readReminderDescription(context, written, checked.trigger);
 
-      return { status: 'ok', result: buildReminderResult(described) };
+      const outcome: ToolOutcome = { status: 'ok', result: buildReminderResult(described) };
+
+      return addRelatedMemory(outcome, context.relatedMemory, {
+        callID: call.callID,
+        text: `${parsed.data.name}\n${parsed.data.note}`,
+      });
     },
   };
 }

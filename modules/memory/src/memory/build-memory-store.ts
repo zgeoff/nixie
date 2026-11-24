@@ -10,6 +10,7 @@ import { writePin } from '../pin/write-pin';
 import { readPinnedCore } from '../pinned/read-pinned-core';
 import { readPinnedCoreUse } from '../pinned/read-pinned-core-use';
 import { buildRecallStore } from '../recall/build-recall-store';
+import { readRelatedItems } from '../related/read-related-items';
 import { writeRetirement } from '../retirement/write-retirement';
 import type { MemoryStore, StoreParts } from '../types';
 import { readMemoryUsage } from '../usage/read-memory-usage';
@@ -40,5 +41,6 @@ export function buildMemoryStore(parts: StoreParts): MemoryStore {
     readUsage: (beforeSequence) => readMemoryUsage(parts, beforeSequence),
     readSavedTimes: (itemIDs) => readSavedTimes(parts, itemIDs),
     readUsageList: (request) => readUsageList(parts, request),
+    readRelated: (text) => readRelatedItems(parts, text),
   };
 }

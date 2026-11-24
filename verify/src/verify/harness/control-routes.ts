@@ -52,6 +52,11 @@ export const controlRoutes = {
       // a memory the model proposes with the memory tool before its reply
       memory: z.string().min(1).optional(),
 
+      // a reminder the model sets with the reminder tool before its reply, and the note it then
+      // writes from the memory that the tool's result names as related: the model's request fails
+      // when the result names none
+      reminder: z.strictObject({ name: z.string().min(1), note: z.string().min(1) }).optional(),
+
       // an export of the memory the model asks for before its reply, which the starter rules hold
       // for your approval
       export: z.boolean().optional(),

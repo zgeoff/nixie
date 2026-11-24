@@ -1,6 +1,7 @@
 import type { JSONObject } from '@heynixie/log';
 import { parseJSONObject } from '@heynixie/log';
 import type { ToolDefinition } from '@heynixie/tools';
+import { addRelatedMemory, relatedMemoryOutput } from '@heynixie/tools';
 import { buildOffsetAt, checkSchedule } from '@heynixie/triggers';
 import type { ScheduleFacts } from '@heynixie/triggers';
 import invariant from 'tiny-invariant';
@@ -29,7 +30,8 @@ export function buildTaskDefineTool(options: ChatToolOptions): ToolDefinition {
       '{"frequency":"weekly","byDay":["mon"],"at":["09:00"]}, and optional `hours` that limit ' +
       "when it fires, such as hourly from 09:00 to 17:00. When the call needs the owner's approval, it waits as a " +
       'card, and you hear the result in your inbox; otherwise it takes effect at once, and the ' +
-      'owner sees a notice with an undo. Pass definitionID to replace a definition, with every field you want kept: ' +
+      'owner sees a notice with an undo. When memory holds active items close to the definition, ' +
+      '`related` lists them with their IDs and text: the call applies either way. Pass definitionID to replace a definition, with every field you want kept: ' +
       'a field you leave out goes back to its default. An `at` without an offset is read in the ' +
       "owner's zone. A refusal comes back as `refused` with a code and what you need to retry.",
     input: inputSchema,
@@ -41,6 +43,7 @@ export function buildTaskDefineTool(options: ChatToolOptions): ToolDefinition {
         next: { type: ['string', 'null'], description: 'the date of the next fire' },
         changeID: { type: 'string', description: 'the ID of the change' },
         refused: { type: 'object', description: 'the code of the refusal and its payload' },
+        related: relatedMemoryOutput,
       },
       additionalProperties: false,
     },
@@ -55,6 +58,7 @@ export function buildTaskDefineTool(options: ChatToolOptions): ToolDefinition {
         next: 'owner_data',
         changeID: 'owner_data',
         refused: 'owner_data',
+        related: 'untrusted',
       },
     },
     execution: 'direct',
@@ -119,15 +123,19 @@ export function buildTaskDefineTool(options: ChatToolOptions): ToolDefinition {
 
       invariant(rendered !== null, 'a define writes a change that holds a trigger');
 
-      return {
-        status: 'ok',
-        result: {
-          definitionID: result.definitionID,
-          rendered,
-          next: notice.next,
-          changeID: result.shortID,
+      return addRelatedMemory(
+        {
+          status: 'ok',
+          result: {
+            definitionID: result.definitionID,
+            rendered,
+            next: notice.next,
+            changeID: result.shortID,
+          },
         },
-      };
+        options.relatedMemory,
+        { callID: call.callID, text: `${given.name}\n${given.brief}` },
+      );
     },
   };
 }

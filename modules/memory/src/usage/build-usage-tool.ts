@@ -1,3 +1,4 @@
+import { formatMemoryDay } from '@heynixie/sessions';
 import type { ToolDefinition } from '@heynixie/tools';
 import { z } from 'zod';
 import type { StartedMemoryStore } from '../memory/start-memory-store';
@@ -38,7 +39,7 @@ const usageOutput = {
     items: {
       type: 'array',
       description:
-        'the active items that no search or push surfaced in the period, the ' +
+        'the active, unpinned items that no search or push surfaced in the period, the ' +
         'never-surfaced first and then the longest unsurfaced',
       items: {
         type: 'object',
@@ -46,6 +47,7 @@ const usageOutput = {
           itemID: { type: 'string' },
           topic: { type: 'string' },
           gist: { type: 'string' },
+          created: { type: ['string', 'null'], description: 'the day the item was first saved' },
           usage: { type: 'string' },
           neverFiredTriggers: {
             type: 'array',
@@ -88,9 +90,10 @@ export function buildUsageTool(
   return {
     name: 'memory.usage',
     description:
-      'Lists the active items that no search or push surfaced in the last days days, with the ' +
-      'never-surfaced first and then the longest unsurfaced. Each item shows its ID, topic, gist ' +
-      'and usage, and the trigger phrases that never fired. Use it to find items to retire or ' +
+      'Lists the active items that no search or push surfaced in the last days days, leaving out ' +
+      'pinned items, with the ' +
+      'never-surfaced first and then the longest unsurfaced. Each item shows its ID, topic, gist, ' +
+      'created day and usage, and the trigger phrases that never fired. Use it to find items to retire or ' +
       'reword. A page is capped in size: next continues after the last entry shown, and passes ' +
       'back as cursor.',
     input: usageInput,
@@ -125,6 +128,13 @@ export function buildUsageTool(
           itemID: entry.itemID,
           topic: entry.topic,
           gist: entry.gist,
+          created:
+            entry.createdAtMs === null
+              ? null
+              : formatMemoryDay(entry.createdAtMs, {
+                  defaultZone: options.defaultZone,
+                  now: new Date(nowMs),
+                }),
           usage: formatUsageLine(entry.report, { nowMs, defaultZone: options.defaultZone }),
           neverFiredTriggers: [...entry.neverFiredTriggers],
         }),

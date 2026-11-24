@@ -25,6 +25,8 @@ export function buildScriptedReplies(
           },
         ];
 
+  const reminder = reply.reminder === undefined ? [] : buildReminderReplies(reply.reminder);
+
   const memoryExport =
     reply.export === true ? [{ toolUse: { name: 'mcp__nixie__memory_export', input: {} } }] : [];
 
@@ -60,6 +62,7 @@ export function buildScriptedReplies(
   if (reply.task === undefined) {
     return [
       ...memory,
+      ...reminder,
       ...memoryExport,
       ...drawing,
       ...notebook,
@@ -74,6 +77,7 @@ export function buildScriptedReplies(
 
   return [
     ...memory,
+    ...reminder,
     ...memoryExport,
     ...notebook,
     ...forgetNote,
@@ -87,6 +91,48 @@ export function buildScriptedReplies(
 
 function isConversationTurn(body: ScriptedBody): boolean {
   return body.tools?.some((tool) => tool.name === 'mcp__nixie__task_start') === true;
+}
+
+// A reminder far in the future, and a note that holds the short ID of the memory that the
+// reminder's result named as related. The note's input reads the ID from the result in the request,
+// so a result with no related memory fails the request instead.
+function buildReminderReplies(
+  reminder: NonNullable<z.output<typeof controlRoutes.addReply.input>['reminder']>,
+) {
+  return [
+    {
+      toolUse: {
+        name: 'mcp__nixie__reminder_set',
+        input: {
+          name: reminder.name,
+          note: reminder.note,
+          trigger: { at: '2099-01-01T09:00:00' },
+        },
+      },
+    },
+    {
+      toolUse: {
+        name: 'mcp__nixie__notebook_write',
+        input: (body: ScriptedBody) => ({
+          title: 'Related memory',
+          body: readRelatedShortID(body),
+          tags: ['verify'],
+        }),
+      },
+    },
+  ];
+}
+
+function readRelatedShortID(body: ScriptedBody): string {
+  const seen = JSON.stringify(body.messages);
+
+  const shortID = /related\\*":\[\{\\*"shortID\\*":\\*"(?<id>[a-z0-9]+)/u.exec(seen)?.groups?.[
+    'id'
+  ];
+
+  invariant(shortID !== undefined, 'the result of the reminder names no related memory');
+
+  return shortID;
 }
 
 // A draw, an edit of the picture it made, and a list of the pictures. The edit names the picture

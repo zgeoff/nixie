@@ -1,6 +1,7 @@
-import { expect, test } from 'bun:test';
+import { expect, mock, test } from 'bun:test';
 import { readRecords } from '@heynixie/log';
 import { buildAllowingDecisionPoint } from '@heynixie/policy/test-utils';
+import type { RelatedMemoryLookup } from '@heynixie/tools';
 import { buildToolRegistry, runToolCall } from '@heynixie/tools';
 import {
   buildMockToolCall,
@@ -96,6 +97,39 @@ test('it starts a task with its name and brief, and tells the model how its repo
       },
     },
   ]);
+});
+
+test('it adds the matching memory to the result of a start as related, from the name and the brief', async () => {
+  const ctx = await setupTest();
+  const claim = await createTestConversationClaim(ctx.context, 'Plan the beds.');
+
+  const log = mock<RelatedMemoryLookup['log']>();
+
+  const read = mock<(text: string) => Promise<{ shortID: string; text: string }[]>>(() =>
+    Promise.resolve([{ shortID: 'k3m9q2xzab', text: 'The beds are raised' }]),
+  );
+
+  const tool = buildTaskStartTool(
+    ctx.context,
+    { hopLimit: 20, ownerName: null },
+    buildMockTaskStartBounds(),
+    { read, timeoutMs: 1000, log },
+  );
+
+  const outcome = await tool.run(
+    buildMockToolCall({
+      tool: 'task.start',
+      input: { name: 'Garden plan', brief: 'Plan four beds.' },
+    }),
+    buildMockToolContext({ run: { thread: 'conversation', stepRunID: buildStepRunID(claim) } }),
+  );
+
+  expect(outcome).toMatchObject({
+    status: 'ok',
+    result: { related: [{ shortID: 'k3m9q2xzab', text: 'The beds are raised' }] },
+  });
+
+  expect(read.mock.calls).toStrictEqual([['Garden plan\nPlan four beds.']]);
 });
 
 test("it writes only the task's creation record and its brief for a start from the conversation with an unread message", async () => {

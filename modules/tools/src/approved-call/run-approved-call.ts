@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { makeCallRecorder } from '../call-record/make-call-recorder';
 import { runPaidCall } from '../paid/run-paid-call';
 import { pickVariant } from '../policy-call/pick-variant';
+import { omitRelatedMemory } from '../related/omit-related-memory';
 import type { ToolCallOptions } from '../run-tool-call';
 import { buildMessage } from '../settle/build-message';
 import { buildTypedResult } from '../settle/build-typed-result';
@@ -28,7 +29,8 @@ export interface ApprovedCallRequest {
   readonly actionHash: string;
 }
 
-// What an approved call returned, which its turn reads in place of what the result record keeps.
+// What an approved call returned, which its turn reads in place of what the result record keeps. It
+// holds no `related`: a turn can read it after a forget of a related item.
 export interface ApprovedReply {
   readonly result: JSONObject;
   readonly images: readonly ToolImage[];
@@ -194,7 +196,11 @@ async function tryRunApproved(
           hidden: outcome.hidden,
           actionID: facts.actionID,
         })
-      : buildTypedResult(registered, outcome, facts.actionID);
+      : buildTypedResult(
+          registered,
+          { ...outcome, result: omitRelatedMemory(outcome.result) },
+          facts.actionID,
+        );
   } catch (error) {
     return buildMessage(
       'error',

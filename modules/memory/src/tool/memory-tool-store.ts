@@ -19,3 +19,6 @@ export type MemoryToolStore = Pick<
 } & PendingToolStore &
   ModelWriteStore &
   ItemIDStore;
+
+// The store the conversation holds: the model's tools, and the lookup that other modules' tools use.
+export type ConversationMemoryStore = MemoryToolStore & Pick<StartedMemoryStore, 'readRelated'>;

@@ -151,6 +151,9 @@ export interface SpawnedNixieOptions {
 
   readonly extraConfig?: readonly string[];
 
+  // settings of the config's `memory` section beside the checker timeout, by their config names
+  readonly memoryConfig?: Readonly<Record<string, number>>;
+
   // lines for the secrets file, such as a connector credential
   readonly extraSecrets?: readonly string[];
 
@@ -295,6 +298,9 @@ function buildBootExtras(options: SpawnedNixieOptions, doubles: TestDoubles) {
       // timeout mid-check, and the write became a proposal instead of the active item.
       'memory:',
       `  checker_timeout_ms: ${String(checkerTimeoutMs)}`,
+      ...Object.entries(options.memoryConfig ?? {}).map(
+        ([name, value]) => `  ${name}: ${String(value)}`,
+      ),
       ...(options.extraConfig ?? []),
     ],
     secrets: options.extraSecrets ?? [],

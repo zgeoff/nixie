@@ -2,6 +2,7 @@ import { expect, test } from 'bun:test';
 import type { JSONObject } from '@heynixie/log';
 import { readRecordAttachments, readRecords, removeRecordKey, writeRecords } from '@heynixie/log';
 import type { MemoryWriteVerdict, ToolDefinition } from '@heynixie/tools';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import invariant from 'tiny-invariant';
 import {
   buildAllowVerdict,
@@ -9,12 +10,15 @@ import {
   readItemShortID,
   startTestMemory,
 } from '../test-utils';
+import { buildMockProvenance } from '../test-utils/build-mock-provenance';
 import { buildMockToolContext } from '../test-utils/build-mock-tool-context';
 import type { Labels, MemorySubject } from '../types';
 import { buildRetopicTool } from './build-retopic-tool';
 
 async function setupTest() {
-  const memory = await startTestMemory();
+  const clock = createFakeClock({ startMs: Date.parse('2026-10-19T09:00:00Z') });
+
+  const memory = await startTestMemory({ gate: { clock } });
 
   const tool = buildRetopicTool(memory.store);
 
@@ -47,6 +51,7 @@ async function setupTest() {
 
   return {
     memory,
+    clock,
     tool,
     createItem,
     run: (input: JSONObject, verdict: MemoryWriteVerdict = buildAllowVerdict()) =>
@@ -94,7 +99,11 @@ test('it moves a whole topic and the sub-topics under it in one call, and reads 
 
   expect(outcome).toStrictEqual({
     status: 'ok',
-    result: { status: 'applied', moved: 2, move: 'owner/home → owner/house, 2 items' },
+    result: {
+      status: 'applied',
+      moved: { active: 2, retired: 0 },
+      move: 'owner/home → owner/house, 2 active',
+    },
   });
 
   expect(labels.map((entry) => entry.topic)).toStrictEqual(['house', 'house/garden', 'trips']);
@@ -104,6 +113,67 @@ test('it moves a whole topic and the sub-topics under it in one call, and reads 
     'piano tuned',
     'tent poles',
   ]);
+});
+
+test('it reports the active and the retired items it moved as separate counts', async () => {
+  const ctx = await setupTest();
+
+  await ctx.createItem({ gist: 'spare pump', topic: 'home' });
+
+  const retiredItems = await Promise.all(
+    ['old boiler', 'old fridge', 'old stove'].map((gist) =>
+      ctx.createItem({ gist, topic: 'home/old' }),
+    ),
+  );
+
+  await Promise.all(
+    retiredItems.map((item) =>
+      ctx.memory.store.retire({ target: item, provenance: buildMockProvenance() }),
+    ),
+  );
+
+  const outcome = await ctx.run({
+    from: { topic: 'home', subject: 'owner' },
+    to: { topic: 'house', subject: 'owner' },
+  });
+
+  expect(outcome).toStrictEqual({
+    status: 'ok',
+    result: {
+      status: 'applied',
+      moved: { active: 1, retired: 3 },
+      move: 'owner/home → owner/house, 1 active, 3 retired',
+    },
+  });
+});
+
+test('it counts an item whose end time passed before the lapse sweep as retired', async () => {
+  const ctx = await setupTest();
+
+  await ctx.createItem({ gist: 'spare pump', topic: 'home' });
+
+  await ctx.memory.store.remember({
+    text: 'Fact: guests stay',
+    until: Date.parse('2026-10-19T22:59:59Z'),
+    labels: { gist: 'guests stay', topic: 'home/guests', triggers: [] },
+    provenance: buildMockProvenance(),
+  });
+
+  ctx.clock.advance(24 * 60 * 60 * 1000);
+
+  const outcome = await ctx.run({
+    from: { topic: 'home', subject: 'owner' },
+    to: { topic: 'house', subject: 'owner' },
+  });
+
+  expect(outcome).toStrictEqual({
+    status: 'ok',
+    result: {
+      status: 'applied',
+      moved: { active: 1, retired: 1 },
+      move: 'owner/home → owner/house, 1 active, 1 retired',
+    },
+  });
 });
 
 test('it writes one label record per moved item and no version, so the text never changes', async () => {
@@ -160,7 +230,11 @@ test('it moves the items a list of short IDs names to the topic and subject in t
 
   expect(outcome).toStrictEqual({
     status: 'ok',
-    result: { status: 'applied', moved: 2, move: '2 topics → shared/garage, 2 items' },
+    result: {
+      status: 'applied',
+      moved: { active: 2, retired: 0 },
+      move: '2 topics → shared/garage, 2 active',
+    },
   });
 
   expect(subjects).toStrictEqual(['shared', 'shared', 'owner']);
@@ -186,7 +260,7 @@ test('it names the move and each item with its gist in what it stores for the ap
   invariant(bytes, 'the call stores one attachment');
 
   expect(JSON.parse(new TextDecoder().decode(bytes))).toStrictEqual({
-    sentence: 'self/lines → self/diary, 1 item',
+    sentence: 'self/lines → self/diary, 1 active',
     items: [{ itemID: item.itemID, id: item.shortID, gist: 'tent poles', from: 'self/lines' }],
   });
 });
@@ -335,7 +409,11 @@ test('it leaves an item that is already under the target out of the move and cou
 
   expect(outcome).toStrictEqual({
     status: 'ok',
-    result: { status: 'applied', moved: 1, move: 'owner/home → owner/house, 1 item' },
+    result: {
+      status: 'applied',
+      moved: { active: 1, retired: 0 },
+      move: 'owner/home → owner/house, 1 active',
+    },
   });
 });
 
@@ -459,7 +537,11 @@ test('it moves what the card showed when the user approves the call', async () =
 
   expect(outcome).toStrictEqual({
     status: 'ok',
-    result: { status: 'applied', moved: 1, move: 'owner/home → owner/house, 1 item' },
+    result: {
+      status: 'applied',
+      moved: { active: 1, retired: 0 },
+      move: 'owner/home → owner/house, 1 active',
+    },
   });
 
   expect(labels.topic).toBe('house');
@@ -569,7 +651,11 @@ test('it applies a user-approved move of a self-note by a task with the self-not
 
   expect(outcome).toStrictEqual({
     status: 'ok',
-    result: { status: 'applied', moved: 1, move: 'self/lines → self/diary, 1 item' },
+    result: {
+      status: 'applied',
+      moved: { active: 1, retired: 0 },
+      move: 'self/lines → self/diary, 1 active',
+    },
   });
 
   expect(labels.topic).toBe('diary');

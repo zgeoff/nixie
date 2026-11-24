@@ -16,8 +16,12 @@ import {
 } from '@heynixie/definitions';
 import type { DeviceStreams } from '@heynixie/devices';
 import { buildDeviceTools } from '@heynixie/devices';
-import type { MemoryToolStore } from '@heynixie/memory';
-import { buildLogReadImageTool, buildLogReadTool } from '@heynixie/memory';
+import type { ConversationMemoryStore } from '@heynixie/memory';
+import {
+  buildLogReadImageTool,
+  buildLogReadTool,
+  buildRelatedMemoryLookup,
+} from '@heynixie/memory';
 import type { NotebookToolStore } from '@heynixie/notebook';
 import { buildNotebookTools } from '@heynixie/notebook';
 import { buildPromptReadTool, buildPromptWriteTool } from '@heynixie/prompts';
@@ -87,7 +91,7 @@ export interface ConversationEndpointTools {
 
   readonly queue: ActionQueue;
   readonly makeDecide: DecisionPointFactory;
-  readonly readStore: () => MemoryToolStore | null;
+  readonly readStore: () => ConversationMemoryStore | null;
   readonly readNotebook: () => NotebookToolStore | null;
 
   readonly readInForce: () => DefinitionsInForce | null;
@@ -123,8 +127,11 @@ export async function startConversationEndpoint(
     buildLogReadImageTool(options.context.log),
   ];
 
+  const relatedMemory = buildRelatedMemoryLookup(tools.readStore, options.log);
+
   const skills = buildConversationSkillTools(
     {
+      relatedMemory,
       log: options.context.log,
       clock: options.context.clock,
       readInForce: tools.readInForce,
@@ -166,6 +173,7 @@ export async function startConversationEndpoint(
   });
 
   const definitionToolOptions = {
+    relatedMemory,
     readDefinitions: tools.readDefinitions,
     readZone: makeReadZone(
       options.context.log.writer,
@@ -179,6 +187,7 @@ export async function startConversationEndpoint(
     definitions: options.context.definitions,
     readZone: definitionToolOptions.readZone,
     minGapMinutes: options.config.reminders.min_gap_minutes,
+    relatedMemory,
   };
 
   const definitionTools = [
@@ -212,7 +221,7 @@ export async function startConversationEndpoint(
   const tasks = [
     buildTasksListTool(options.context, messaging),
     buildTaskMessageTool(options.context, messaging),
-    buildTaskStartTool(options.context, messaging, bounds),
+    buildTaskStartTool(options.context, messaging, bounds, relatedMemory),
     buildTaskCloseTool(options.context, messaging),
   ];
 

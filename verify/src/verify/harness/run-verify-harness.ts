@@ -3,6 +3,7 @@ import { getDataFilePath } from '@heynixie/log';
 import { createSpawnedNixie, createTestClient, readTestBundle } from '@heynixie/server/test-utils';
 import { createBuiltWeb, createFrontProxy, readWebBuild } from '@heynixie/web/test-utils';
 import { buildScriptedReplies } from './build-scripted-replies';
+import { localMemoryConfig } from './local-memory-config';
 import { runComputerSession } from './run-computer-session';
 import { runDeviceLayout } from './run-device-layout';
 import { runDeviceShow } from './run-device-show';
@@ -27,6 +28,7 @@ export async function runVerifyHarness(): Promise<void> {
 
   // the test build answers each image call with a stub, so the key is a placeholder
   const nixie = await createSpawnedNixie(stack, {
+    memoryConfig: localMemoryConfig,
     extraConfig: [
       'images:',
       '  default: openai',

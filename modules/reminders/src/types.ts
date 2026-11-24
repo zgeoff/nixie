@@ -1,5 +1,6 @@
 import type { CheckedTables } from '@heynixie/db';
 import type { Definitions, Log } from '@heynixie/log';
+import type { RelatedMemoryLookup } from '@heynixie/tools';
 import type { ReadZone } from '@heynixie/triggers';
 
 export type ReminderState = 'active' | 'fired' | 'cancelled';
@@ -58,4 +59,8 @@ export interface RemindersContext {
 
   // the shortest gap between 2 fires of a recurring reminder, from reminders.min_gap_minutes
   readonly minGapMinutes: number;
+
+  // what reminder.set looks up in memory after it applies; without it, the result carries no
+  // `related`
+  readonly relatedMemory?: RelatedMemoryLookup;
 }

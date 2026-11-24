@@ -121,8 +121,8 @@ model can weigh a summary against the user's own words.
 The line takes its words from the version's stored origin, source and approval, and never changes
 them, so an approved item keeps outside content as its source and still reads as approved:
 
-- Who noted it: the conversation reads as the model itself, and a task as a task. A version the user
-  saved names no one here, because what backs it names them.
+- Who noted it: the conversation reads as `you noted it`, because the model reads the line, and a
+  task as a task. A version the user saved names no one here, because what backs it names them.
 - What backs it: the user's typed words read as the user by name, said this. Outside content always
   says so. A remember proposal held because its quote sat in a quoted block of the user's message,
   such as a forwarded email, reads as from a pasted page. Any other outside content reads as
@@ -132,8 +132,9 @@ them, so an approved item keeps outside content as its source and still reads as
   name. The approval belongs to the version, so a restore or an undo, which the user runs without a
   proposal, reads as unapproved even when it brings back approved text.
 
-The model ID that wrote an item stays in `memory.recall`, because it serves checking an item and not
-answering with it.
+The model ID that wrote an item stays out of this line and in `memory.recall`, because it serves
+checking an item and not answering with it. A self-note is the exception: its line names the model
+that wrote it, as [per-turn retrieval](#per-turn-retrieval) says.
 
 ## Item usage
 
@@ -149,12 +150,13 @@ the `memory.recalled` records written before the call, so a recall never counts 
 - The date after the counts shows only for an item saved before the log's first usage record, so the
   reader knows the counts miss part of its life.
 
-`memory.usage({ days })` lists the active items, pinned ones too, that no search or push surfaced in
-the last `days` days, with the never-surfaced items first and then the longest unsurfaced. Each
-entry holds the item's short ID, topic, gist and usage line, and `neverFiredTriggers`: the trigger
-phrases of an item that no push ever placed, which are the ones to reword. A page that outgrows the
-recall page limit ends with a `next` cursor that the model passes back as `cursor`. The tool writes
-no `memory.recalled` record, so listing usage never changes it.
+`memory.usage({ days })` lists the active items that no search or push surfaced in the last `days`
+days, with the never-surfaced items first and then the longest unsurfaced. It leaves out pinned
+items, because the session's opening holds them and no push places them. Each entry holds the item's
+short ID, topic, gist, the day the item was first saved as `created`, its usage line, and
+`neverFiredTriggers`: the trigger phrases of an item that no push ever placed, which are the ones to
+reword. A page that outgrows the recall page limit ends with a `next` cursor that the model passes
+back as `cursor`. The tool writes no `memory.recalled` record, so listing usage never changes it.
 
 ## Per-turn retrieval
 
@@ -248,6 +250,34 @@ The blocks before the first message keep one order: a new session's opening, the
 note, the retrieved items, the retrieved self-notes, then
 [the events block](../core/conversation-turns.md#the-events-block). The user's own words come last,
 so the model reads each block as context for them.
+
+## Related memory on a call
+
+`reminder.set`, `task.start`, `task.define` and `skill_write` each look memory up after the call
+applies. The lookup searches memory with the call's text arguments: the name and the note of a
+reminder, the name and the brief of a task, the name and the files of a skill. It uses the same
+encoder and the same floors as [per-turn retrieval](#per-turn-retrieval), `trigger_min_score` and
+`trigger_min_similarity`, and takes at most 3 active items. A retired, forgotten or lapsed item
+never shows. The result gains a `related` field that lists each match as its short ID and its text,
+and a call with no match has no `related` field. The text is untrusted content, because an item can
+hold outside text.
+
+The call has applied before the lookup runs, and the lookup never holds, refuses or asks. A lookup
+that fails, or that runs past its deadline, leaves the result without `related` and logs the failure
+with the call's ID. The lookup writes no `memory.recalled` record, so it counts for no item's usage.
+A call that a refusal or an error ends looks nothing up. Neither does a `task.start` whose started
+task holds no memory, nor a `skill_write` that waits as a proposal for review.
+
+The model reads `related`, but the log record of the tool result never holds it. A forget of an item
+erases the item's keys, and a copy of its text in a result would outlive it. A call that runs after
+the user approves it returns no `related` at all: the step keeps that call's result in memory until
+a later turn reads it, and a forget can land in between.
+
+The lookup ranks a page of matches at a time and drops each retired, lapsed or forgotten item before
+it counts toward the 3, so inactive items that rank higher never hide an active match.
+
+The memory module owns the lookup, and the server passes it to each tool as a dependency, so no
+module imports another module's internals.
 
 ## Reading the log
 

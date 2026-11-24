@@ -13,42 +13,31 @@ export interface UsageListRequest {
   readonly beforeSequence: number;
 }
 
-// The active items that no search or push surfaced in the last `days` days, pinned items too. The
-// history is read outside the lock, so the rows are read again under it: an item forgotten
-// meanwhile is gone, and no row carries its old gist.
+// The active, unpinned items that no search or push surfaced in the last `days` days. The history
+// is read outside the lock. The rows, their triggers and their times are read after it under one
+// lock, so a forgotten item is gone and every listed item has its created day.
 export async function readUsageList(
   parts: StoreParts,
   request: UsageListRequest,
 ): Promise<readonly UsageListEntry[]> {
   const nowMs = parts.context.gate.clock.now();
 
-  const listed = await parts.lock(() => readIndexRows(parts, { isPinnedIncluded: true }));
   const usage = await readMemoryUsage(parts, request.beforeSequence);
 
-  const savedTimes = await readSavedTimes(
-    parts,
-    listed.map((row) => row.itemID),
-  );
-
-  const phraseAddedTimes = await readPhraseAddedTimes(
-    parts,
-    listed.map((row) => row.itemID),
-  );
-
   const current = await parts.lock(async () => {
-    const found = await readIndexRows(parts, { isPinnedIncluded: true });
+    const rows = await readIndexRows(parts, { isPinnedIncluded: false });
+
+    const itemIDs = rows.map((row) => row.itemID);
 
     return {
-      rows: found,
+      rows,
       triggers: new Map(
-        found.map((row) => [row.itemID, parts.labels.find(row.itemID)?.triggers ?? []] as const),
+        rows.map((row) => [row.itemID, parts.labels.find(row.itemID)?.triggers ?? []] as const),
       ),
+      savedTimes: await readSavedTimes(parts, itemIDs),
+      phraseAddedTimes: await readPhraseAddedTimes(parts, itemIDs),
     };
   });
 
-  return collectUsageList(
-    { rows: current.rows, triggers: current.triggers, usage, savedTimes, phraseAddedTimes },
-    request.days,
-    nowMs,
-  );
+  return collectUsageList({ ...current, usage }, request.days, nowMs);
 }
