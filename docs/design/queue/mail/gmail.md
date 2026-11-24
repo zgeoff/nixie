@@ -1,6 +1,6 @@
 # Gmail arrivals
 
-- **Status:** draft
+- **Status:** agreed
 - **Work items:** [the mail polls](https://linear.app/zgeoff/issue/GEO-1827)
 
 Your Gmail stays at Google. The connectors module polls each Google connection for new mail and

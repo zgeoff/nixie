@@ -1,6 +1,6 @@
 # Wake rules and arrivals
 
-- **Status:** draft
+- **Status:** agreed
 - **Work items:** [the mail polls](https://linear.app/zgeoff/issue/GEO-1827)
 
 The triggers module holds the wake rules and the one arrival path that both mail products share.

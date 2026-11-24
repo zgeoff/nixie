@@ -1,6 +1,6 @@
 # Google connection store
 
-- **Status:** draft
+- **Status:** agreed
 - **Work items:** [the connections](https://linear.app/zgeoff/issue/GEO-1824)
 - **Decision records:** [0007](../../decisions/0007-crypto-shredding.md)
 

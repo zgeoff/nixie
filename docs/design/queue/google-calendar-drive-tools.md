@@ -1,6 +1,6 @@
 # Calendar and Drive tools
 
-- **Status:** draft
+- **Status:** agreed
 - **Work items:** [Calendar and Drive](https://linear.app/zgeoff/issue/GEO-1826). It builds on the
   [Google connection](google-connections.md) and the [Google tools](gmail-calendar-drive-tools.md),
   which hold the rules every Google tool keeps.

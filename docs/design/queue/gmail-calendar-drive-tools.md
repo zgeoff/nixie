@@ -1,6 +1,6 @@
 # Google tools
 
-- **Status:** draft
+- **Status:** agreed
 - **Work items:** [Gmail](https://linear.app/zgeoff/issue/GEO-1825), and
   [Calendar and Drive](https://linear.app/zgeoff/issue/GEO-1826). Both build on the
   [Google connection](google-connections.md).

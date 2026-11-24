@@ -54,6 +54,20 @@ reached it with no extra setup.
 - The warning page did not appear, most likely because the consenting account owns the project. This
   is observed, not confirmed by a Google page.
 
+## The Web application client
+
+A second run, on 25 Nov 2026, answered
+[the OAuth return spike](https://linear.app/zgeoff/issue/GEO-267) with a Web application client in
+the same kind of project, published to production.
+
+- Google accepted a redirect URI and a JavaScript origin on an https name that resolves only inside
+  the deployment's private network, with no warning. Consent completed, and the browser followed the
+  redirect there with `state`, `iss` (`https://accounts.google.com`), `code` and `scope`.
+- Google accepted PKCE S256 beside the client secret. The token request carried both, and Google
+  answered 200 with an access token, an ID token and a refresh token, which the run then revoked.
+- The run sent the right verifier only, so it does not show that Google refuses a wrong one. The
+  client secret guards the exchange either way.
+
 ## Untested
 
 - Consent from an account that does not own the project, which would see the warning page.

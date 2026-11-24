@@ -1,6 +1,6 @@
 # The credential store
 
-- **Status:** draft
+- **Status:** agreed
 - Decisions: [0003](../../../decisions/0003-sdk-placement.md), which puts the model loop in a
   sandbox, so its model credential reaches it through a grant
 

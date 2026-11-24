@@ -1,6 +1,6 @@
 # The assistant's mailbox
 
-- **Status:** draft
+- **Status:** agreed
 - **Work items:** [the assistant's own mailbox](https://linear.app/zgeoff/issue/GEO-2816)
 
 The assistant has one mailbox of its own, at a mail host that nixie reaches through one interface. A

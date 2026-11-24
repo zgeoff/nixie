@@ -1,6 +1,6 @@
 # One proposal lifecycle
 
-- **Status:** draft
+- **Status:** agreed
 
 Every family of proposal goes through one lifecycle: one row, one lapse sweep, one set of records
 for its outcome, and one way to tell the proposer how it ended. Today memory keeps its own table and
