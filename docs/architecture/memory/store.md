@@ -539,6 +539,14 @@ durable operation in 2 parts:
    runs the session cleanup for every live session, and appends the record that marks the item
    forgotten.
 
+A note and a moment forget through the erasure runner in `modules/log` and write `erasure.started`
+and `erasure.finished` in place of their own forget records, as
+[the notebook](./notebook.md#forgetting-a-note) and [moments](./moments.md#destroying-a-moment)
+describe. The runner owns the steps after the start: it captures every key and session target in
+`erasure.started`, deletes the keys of the target and of each child, runs the session cleanup,
+removes the turn inputs, and writes `erasure.finished`, which makes a backup due. An item's forget
+keeps its own pipeline.
+
 Every step of the cleanup is safe to run twice. A crash between the 2 parts, or anywhere inside the
 cleanup, leaves the item forgetting, and the store's start runs the cleanup for every forgetting
 item before it builds the index and before any runner claims work. A deleted key never returns while

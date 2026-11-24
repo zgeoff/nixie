@@ -143,14 +143,15 @@ which differ only in who forgot. The client's call is in the
 [moment destroy](./moments.md#destroying-a-moment) does:
 
 1. One write transaction commits the client action, checks the version and appends
-   `notebook.note_forgetting`, which records who forgot, `user` or `assistant`. From then on no tool
-   or read reaches the note. The tool has no client action and binds to no version.
+   `erasure.started`, which records who forgot, `user` or `assistant`, and every key and session
+   target of the forget. From then on no tool or read reaches the note. The tool has no client
+   action and binds to no version.
 2. The cleanup deletes the key of every version record and every link record of the note, drops the
    note from the indexes, runs the [session cleanup](./context.md#forgetting-and-the-live-session)
    with the note's ID as its cause, and deletes the logged model requests from the note's first
-   record on, because their tool results can hold its text. It then appends
-   `notebook.note_forgotten`, with the same `by`. A record that has no `by` reads as a forget by the
-   user.
+   record on, because their tool results can hold its text. It then appends `erasure.finished`. The
+   erasure runner in `modules/log` runs the cleanup, and a forget that an earlier release began with
+   `notebook.note_forgetting` finishes on the runner at the next start.
 
 The session cleanup aborts every turn in flight and waits for each to end, as
 [the live session](./context.md#forgetting-and-the-live-session) describes. The tool therefore never
@@ -166,7 +167,8 @@ Every step is safe to run twice, so the server's start finishes a forget that a 
 session cleanup runs for the conversation and for each open task whose tool list holds a notebook
 tool. A link from another note to the forgotten one stays, and reads as gone in a walk and as
 dangling in the check. A forget never reaches a `code.run` result or a file its program wrote. The
-backup schedule counts `notebook.note_forgotten` as a forget record.
+backup schedule counts `erasure.finished` as a forget record, and `notebook.note_forgotten` for a
+forget that an earlier release ended.
 
 When the user forgets an item, a moment or a record that a note links to, the link stays and the
 note's own text keeps whatever it quoted until the user or the assistant forgets the note. The

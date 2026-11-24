@@ -41,6 +41,15 @@ a kind in that interface, so a write of erasable fields under any other kind fai
 kind that gains erasable fields also joins the forgettable kinds, or one of the 2 groups that a
 record forget leaves out, as [forgetting a record](../channels/api.md#forgetting-a-record) says.
 
+Each module that owns an erasable kind also exports a static descriptor: the kind, its erasable
+record kinds, the record kinds a record forget may take or never takes, and the old end records of
+its forget. The server registers the descriptors at start, and
+`bun run --cwd apps/server forgettable-kinds` generates the contract's forgettable kinds list from
+them. A CI check fails on a hand edit of that list, and a test puts each record kind in exactly one
+descriptor list. The forget of a note or a moment writes `erasure.started` and `erasure.finished`,
+which carry hold IDs and the keys to delete in clear, because a forget must not need the text it
+deletes.
+
 ## The key store
 
 The key store is `keys.db`, beside `nixie.db` in the data directory. A database backup then holds

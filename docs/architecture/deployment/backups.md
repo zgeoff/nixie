@@ -30,10 +30,12 @@ nixie's backup schedule runs a pass on a poll, and early when a record commits. 
 every receipt that the job wrote, then stages a set when one is due:
 
 1. A forget set is due once a forget record is newer than the log position of every set that staged,
-   published or failed. A forget record closes a memory forget, a message forget, a note forget, a
-   moment destroy or a reset of the conversations, each of which deletes its keys before it writes
-   that record. The backup module names a note forget's record kind as a string, and imports nothing
-   from the notebook.
+   published or failed. A forget record is `erasure.finished`, which ends a note forget or a moment
+   destroy, or the end record of a memory forget, a message forget or a reset of the conversations,
+   each of which deletes its keys before it writes that record. The server passes the backup module
+   the old end records from each descriptor, so the module imports no store. A set that staged
+   before `erasure.finished` never publishes: the pass withdraws it, and stages a new set, because a
+   stale set holds the deleted keys.
 2. A scheduled set is due once the newest staged set is a backup interval old, and never while a set
    waits for its receipt.
 
@@ -187,8 +189,9 @@ stop left.
 
 ## A forget's backup state
 
-nixie reads a forget's backup state from the sets whose log position is at or after the forget
-record, because only a copy that started after that record lacks the deleted keys:
+A forget that ended with `erasure.finished` is complete once a set at or after that record is
+published. nixie reads a forget's backup state from the sets whose log position is at or after the
+forget record, because only a copy that started after that record lacks the deleted keys:
 
 | Sets at or after the forget record                                                                   | Backup state                                                               |
 | ---------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
