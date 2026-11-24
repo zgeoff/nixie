@@ -1,4 +1,5 @@
 import { onTestFinished } from 'bun:test';
+import { buildKeysymText } from './build-keysym-text';
 
 type Phase = 'version' | 'security' | 'init' | 'messages';
 
@@ -9,6 +10,9 @@ interface KeyEvent {
 
 interface Received {
   readonly keys: KeyEvent[];
+
+  // the text a focused field gets from the key presses so far
+  typed: string;
 }
 
 interface DesktopSocketData {
@@ -22,7 +26,7 @@ export interface StubDesktop {
   // the WebSocket URL that a viewer connects to
   readonly url: string;
 
-  // each key event the viewer sent, in order
+  // each key event the viewer sent, in order, and the text they type into the focused field
   readonly received: Received;
 
   // sends a ServerCutText message with the text to every viewer
@@ -30,10 +34,10 @@ export interface StubDesktop {
 }
 
 // A VNC server in the test process, for a browser suite: it speaks the 3.8 handshake with no
-// security, then answers the first whole-screen request with one raw frame of a flat colour, which
-// is enough for the viewer to show the desktop. It records the keys it receives.
+// security, then answers the first whole-screen request with one raw frame of a flat colour. It
+// records the keys it receives and the text they type into a focused field.
 export function startStubDesktop(): StubDesktop {
-  const received: Received = { keys: [] };
+  const received: Received = { keys: [], typed: '' };
 
   const sockets = new Set<Bun.ServerWebSocket<DesktopSocketData>>();
 
@@ -135,10 +139,15 @@ function answerNext(socket: Bun.ServerWebSocket<DesktopSocketData>): boolean {
 
     socket.sendBinary(buildFrame());
   } else if (message[0] === 4) {
-    data.received.keys.push({
-      keysym: new DataView(message.buffer, message.byteOffset).getUint32(4),
-      isDown: message[1] !== 0,
-    });
+    const keysym = new DataView(message.buffer, message.byteOffset).getUint32(4);
+
+    const isDown = message[1] !== 0;
+
+    data.received.keys.push({ keysym, isDown });
+
+    if (isDown) {
+      data.received.typed += buildKeysymText(keysym);
+    }
   }
 
   return true;

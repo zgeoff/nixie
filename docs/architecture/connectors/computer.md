@@ -405,12 +405,14 @@ text in its event, and never on its own.
 - A paste types the text as key events, one press and release for each character, so the text
   reaches the field in focus whether it is in the browser or the terminal. A character in Latin-1
   has the keysym of its code point, any other character has a Unicode keysym, a line break is
-  Return, a tab is Tab, and any other control character is left out. The VNC clipboard message
-  carries Latin-1 text alone, and the VNC server has no extended clipboard format, so it would turn
-  a character such as a snowman into a question mark. The page holds back the user's own paste
-  chord, which would reach the desktop before the text does, and pastes at most 2000 characters at a
-  time, because each one is 2 messages on the wire. The relay passes each key only while the device
-  holds the desktop, so a hold that ends part way through a paste sends no more of it.
+  Return, a tab is Tab, and any other control character is left out. A multi-line paste therefore
+  submits each line at a shell prompt, as typing it would, and the browser suite checks the text
+  that a focused field receives for such a paste. The VNC clipboard message carries Latin-1 text
+  alone, and the VNC server has no extended clipboard format, so it would turn a character such as a
+  snowman into a question mark. The page holds back the user's own paste chord, which would reach
+  the desktop before the text does, and pastes at most 2000 characters at a time, because each one
+  is 2 messages on the wire. The relay passes each key only while the device holds the desktop, so a
+  hold that ends part way through a paste sends no more of it.
 - Text that a program on the desktop copies reaches the relay as a `ServerCutText`. The relay passes
   it only to the viewer whose device holds the desktop, as [Watching](#watching) says, and the page
   writes it to the user's clipboard. A browser may refuse a write that no gesture asked for, and

@@ -2,6 +2,7 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { waitFor } from '@zgeoff/testing';
 import { mockComputerStream } from '../mocks/mock-computer-stream';
 import { store } from '../mocks/store';
+import { pasteIntoScreen } from '../test-utils/paste-into-screen';
 import { setupSignedInBrowser } from '../test-utils/setup-signed-in-browser';
 import { startBuiltWeb } from '../test-utils/start-built-web';
 import { startFrontProxy } from '../test-utils/start-front-proxy';
@@ -242,13 +243,7 @@ test('it types text that the user pastes as keys, with a character outside Latin
 
   await ctx.takeOver();
 
-  await ctx.view.evaluate(`(() => {
-    const data = new DataTransfer();
-    data.setData('text/plain', 'né☃\\n');
-    document.querySelector('main [role="img"] canvas').dispatchEvent(
-      new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }),
-    );
-  })()`);
+  await pasteIntoScreen(ctx.view, 'né☃\n');
 
   await waitFor(() => {
     expect(ctx.desktop.received.keys).toHaveLength(8);
@@ -264,6 +259,20 @@ test('it types text that the user pastes as keys, with a character outside Latin
     { keysym: 0xff_0d, isDown: true },
     { keysym: 0xff_0d, isDown: false },
   ]);
+
+  expect(ctx.desktop.received.typed).toBe('né☃\n');
+});
+
+test('it types each line break of a multi-line paste as Return, so a terminal runs the lines as typed', async () => {
+  const ctx = await setupTest();
+
+  await ctx.takeOver();
+
+  await pasteIntoScreen(ctx.view, 'echo né☃\r\npwd');
+
+  await waitFor(() => {
+    expect(ctx.desktop.received.typed).toBe('echo né☃\npwd');
+  });
 });
 
 test('it offers a button for copied text that the browser refuses to write', async () => {
