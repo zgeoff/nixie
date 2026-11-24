@@ -75,10 +75,11 @@ these rules that holds:
 4. **The key snapshot it replaces is numbered.** The new key snapshot copies that snapshot's
    `legacy-set-` and `proven-from-`.
 
-The first key snapshot of an empty key repository takes neither tag, unless the data repository
-holds a publish number. Then it takes `proven-from-` with its own number, because the job cannot
-tell which of those data snapshots its keys cover. The next publish after a restore reads the
-restore note and removes it.
+The first key snapshot of an empty key repository takes neither tag, even when the data repository
+holds a publish number. The live key store still holds the keys of the data snapshots that the
+retention keeps, so a `proven-from-` tag would mark them unrestorable for no reason. The job never
+empties the key repository itself, because a withdrawn set removes only its own key snapshot. The
+next publish after a restore reads the restore note and removes it.
 
 ## The newest key snapshot
 
