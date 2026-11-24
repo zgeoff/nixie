@@ -1,11 +1,15 @@
 # The credential store
 
-Every credential nixie uses on the user's behalf comes from one place, the credential store, and no
-tool, connector or adapter holds a value. A part of nixie names a credential by a reference, a
-resolver turns the reference into an entry, and the part uses the entry through the store: a fetcher
-makes a request to an outside service with the value added on the host, and a grant gives a
-sandbox's broker the value for one host. A value never enters a tool result, a prompt, a log line, a
-record or an error message.
+Every credential that a tool, a connector or a model uses on the user's behalf comes from one place,
+the credential store. Read this before you add a connector that calls an outside service, or a
+config key that names a credential.
+
+A part of nixie names a credential by a reference, a resolver turns the reference into an entry, and
+the part uses the entry through the store: a fetcher makes a request to an outside service with the
+value added on the host, and a grant passes the value through the sandbox adapter to a sandbox's
+broker for one host. No tool or connector ever holds a value. A value never enters a tool result, a
+prompt, a log line, a record or an error message. Two secrets stay outside the store, as
+[References and the resolver](#references-and-the-resolver) says.
 
 The store has one backend, the secrets file. The file holds the search, image and model credentials,
 the spend gateway's token, and the user's name and pronouns. The
@@ -33,8 +37,8 @@ reads `settings`.
   needs no entry.
 - The user's name and pronouns are settings that the prompt needs. `readSetting` returns them, and
   they never reach a fetcher.
-- `impd_token` and the definitions export secrets stay top-level fields that the server reads at
-  start, because no tool uses them.
+- `impd_token` and the definitions export secrets are the exceptions: they stay top-level fields
+  that the server reads at start, outside the store, because no tool uses them.
 - A lint rule refuses a read of the secrets file's groups outside the credentials module, so a value
   cannot reach a part that bypasses the store. It also refuses a destructured group and a read
   through a variable that a secrets object was copied to.
@@ -86,13 +90,14 @@ sandbox adapter, limited to the model host, and the adapter returns the broker's
   `sandbox.granted` when the sandbox is created. Both records keep the broker's name and host, and
   for a credential nixie holds, its reference and fingerprint.
 - Cleanup removes a broker secret that nixie added once no live sandbox holds a grant of it. It runs
-  at start and after each sandbox destroy. Only a `sandbox.grant_started` record, or a
-  `sandbox.granted` record with a reference, proves that nixie added a name. A name that only other
-  `sandbox.granted` records give stays, because a credential the sandbox host holds has no reference
-  and its secret belongs to that host, even after its profile leaves the config.
-- A runner caches its grant and makes sandboxes from it later, so cleanup never removes a name the
-  running server added. Such a name stays in the broker until the next start, when the sweep removes
-  it if no live sandbox holds it. Adds and removals run one at a time.
+  at start, and after each sandbox destroy for the names that earlier servers added. Only a
+  `sandbox.grant_started` record, or a `sandbox.granted` record with a reference, proves that nixie
+  added a name. A name that only other `sandbox.granted` records give stays, because a credential
+  the sandbox host holds has no reference and its secret belongs to that host, even after its
+  profile leaves the config.
+- A runner caches its grant and makes sandboxes from it later, so the cleanup after a destroy never
+  removes a name the running server added. Such a name stays in the broker until the next start,
+  when cleanup removes it if no live sandbox holds it. Adds and removals run one at a time.
 
 ## Fingerprints and own values
 
@@ -106,12 +111,12 @@ holds as its own. Each scan reads the set when it runs and keeps its own filter:
 
 - The turn-input search, the web fetch scan and the computer scan read the set with
   `web_fetch.secret_own_values` and its minimum length.
-- Every tool result passes a scan of the whole set, whatever a value's length, before it reaches the
-  model or the log. The scan covers the result's fields and its attachments, such as the files of a
-  code run. A value found is cut and replaced with `[secret removed]`, so the model sees that
-  something was cut.
-- The scan of a tool result leaves out the user's name and pronouns, which the prompt shows the
-  model by design. The spend gateway's token and every other registered setting stay in.
+- Every tool result passes a scan of the whole set but the user's name and pronouns, whatever a
+  value's length, before it reaches the model or the log. The scan covers the result's fields and
+  its attachments, such as the files of a code run. A value found is cut and replaced with
+  `[secret removed]`, so the model sees that something was cut.
+- The tool-result scan leaves out the user's name and pronouns because the prompt shows them to the
+  model by design. It still covers the spend gateway's token and every other registered setting.
 
 ## Tests
 
