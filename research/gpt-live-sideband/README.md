@@ -17,17 +17,18 @@ open a new session for the same call without a new offer from the device?
 
 - `session.delegation.created` holds only an ID, a target and `offset_ms`. The request comes from
   the input transcript up to `offset_ms`.
-- Several `session.commentary.append` parts on one delegation ID are each spoken, and nothing closes
-  a delegation. A lead-in part and an empty part each made GPT-Live invent facts, in 3 of 3
-  sessions.
+- GPT-Live takes several `session.commentary.append` parts on one delegation ID, and nothing closes
+  a delegation. A lead-in part and an empty part each made GPT-Live invent facts in 3 of 3 sessions,
+  and an acknowledged part can go unspoken.
 - No event reports a cut. In 6 of 6 trials, output stopped where your speech started on the session
   timeline, and word alignment maps the paraphrase onto the sent text.
 - `delegation: { type: 'client' }` and `store: false` apply, and `client.data_channel` keeps the
   device from sending commands.
 - Every new session needs a new offer. An ICE-restart offer from the device's open peer connection
-  moved the call to a new session, and the old one closed itself.
+  moved the call's audio to a new session, and the old one closed itself, but the data channel went
+  quiet.
 
-The speech layer contract needs 12 changes, listed in
+The speech layer contract needs 13 changes, listed in
 [the results](results.md#contract-lines-that-must-change).
 
 ## Run it
@@ -40,7 +41,7 @@ bun print-timeline.ts results/<label>.jsonl
 bun report-cuts.ts results/cut-<label>.jsonl
 ```
 
-The [setup](results.md#setup) gives the versions, the 3 probes and the cost.
+The [setup](results.md#setup) gives the versions, the 4 probes and the cost.
 
 ## Results
 
@@ -49,5 +50,5 @@ that must change.
 
 ## Untested
 
-Real microphones and phone networks, the audio gap while a call moves to a new session, and the
-automatic acknowledgement's suppression. The [untested list](results.md#untested) gives the rest.
+Real microphones and phone networks, the audio gap while a call moves to a new session, and captions
+after the move. The [untested list](results.md#untested) gives the rest.

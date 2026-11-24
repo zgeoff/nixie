@@ -1,5 +1,5 @@
 // Runs one probe of GPT-Live over WebRTC with a server sideband, and logs every event to results/.
-// Usage: OPENAI_API_KEY=… bun run-probe.ts <delegation|cut|reconnect> [--model gpt-live-1]
+// Usage: OPENAI_API_KEY=… bun run-probe.ts <delegation|cut|reconnect|quiet> [--model gpt-live-1]
 import { parseArgs } from 'node:util';
 import { match } from 'ts-pattern';
 import { z } from 'zod';
@@ -25,7 +25,7 @@ const { positionals, values } = parseArgs({
   allowPositionals: true,
   options: { model: { default: 'gpt-live-1', type: 'string' } },
 });
-const scenario = z.enum(['delegation', 'cut', 'reconnect']).parse(positionals[0]);
+const scenario = z.enum(['delegation', 'cut', 'reconnect', 'quiet']).parse(positionals[0]);
 const key = z.string().min(1).parse(process.env.OPENAI_API_KEY);
 const label = `${scenario}-${values.model}-${new Date().toISOString().replaceAll(':', '-').slice(0, 19)}`;
 const session = { delegation: { type: 'client' }, instructions: voicePrompt, model: values.model, store: false };
@@ -227,11 +227,36 @@ async function probeReusedOffer(offer: string): Promise<Record<string, unknown>>
   return { closed: await orphan.close(), kind: 'created', sessionID: reused.sessionID };
 }
 
+// The automatic acknowledgement held back by an empty thinking part sent at once, twice, then a
+// line said through a commentary part with no delegation, as the contract's `say` would send it.
+async function runQuietProbe(call: Call): Promise<void> {
+  await Bun.sleep(1500);
+  for (const [index, request] of ["What's on my calendar tomorrow morning?", 'Read me my new messages.'].entries()) {
+    const delegationID = await waitForDelegation(call, await say(call, request));
+    if (!delegationID) {
+      call.mark('no_delegation');
+      continue;
+    }
+    call.sideband.send({ content: '', delegation_id: delegationID, event_id: `quiet_${index}`, type: 'session.thinking.append' });
+    await Bun.sleep(8000);
+    appendCommentary(call, delegationID, `answer_${index}`, 'At nine tomorrow, a dentist check-up on Elm Street.');
+    await waitForQuiet(call.sideband, 3000, 15_000);
+  }
+  appendCommentary(call, null, 'say_line', 'I dropped out for a second.');
+  await waitForQuiet(call.sideband, 3000, 10_000);
+}
+
 // Runs last, so every constant above is initialised before a probe reads it.
 await match(scenario)
   .with('delegation', () => withCall({ key, label, session }, runDelegationProbe))
   .with('cut', () => withCall({ key, label, session }, runCutProbe))
   .with('reconnect', () => runReconnectProbe())
+  .with('quiet', () =>
+    withCall(
+      { key, label, session: { ...session, delegation: { acknowledgement_delay_ms: 800, type: 'client' } } },
+      runQuietProbe,
+    ),
+  )
   .exhaustive();
 console.log(`logged results/${label}.jsonl`);
 process.exit(0);

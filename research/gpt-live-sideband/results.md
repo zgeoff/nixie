@@ -26,6 +26,9 @@ The probes:
 - `reconnect` restricts the device's data channel and has the device send a command, sends the first
   offer again, moves the call to a new session with an ICE-restart offer from the same peer
   connection, and asks to fork the first session.
+- `quiet` sets `acknowledgement_delay_ms: 800`, answers each of 2 delegations at once with an empty
+  `session.thinking.append`, sends the answer 8 s later, and then sends a line as a commentary part
+  with a null delegation ID.
 
 Sessions and their billed seconds, from `session.closed`:
 
@@ -39,11 +42,10 @@ Sessions and their billed seconds, from `session.closed`:
 | `delegation`                                             | `gpt-live-1`   | 73             |
 | `delegation`                                             | `gpt-live-1.1` | 69             |
 | `cut`                                                    | `gpt-live-1.1` | 58             |
+| `quiet`                                                  | `gpt-live-1`   | 41             |
 
-The total is about 412 s, 6.9 minutes, or $0.34 at $0.05 a minute. Two more probe starts crashed
-before they wrote a log, and the spike could not confirm whether they created sessions. At the 15 s
-that an unconnected WebRTC session bills, they add at most 30 s, for 7.4 minutes and $0.37. The
-synthetic speech cost under $0.01.
+The total is about 453 s, 7.6 minutes, or $0.38 at $0.05 a minute. The synthetic speech cost under
+$0.01.
 
 ## Question 1: the request's text
 
@@ -78,9 +80,10 @@ microphone carried silence then.
 
 ## Question 2: an answer in parts
 
-GPT-Live speaks every part sent with one delegation ID, each after its `session.commentary.appended`
-acknowledgement. Nothing in the API closes a delegation: a part sent 6 s after GPT-Live had finished
-the answer was spoken in full in 3 of 3 sessions.
+GPT-Live took several parts on one delegation ID and spoke each after its
+`session.commentary.appended` acknowledgement, with one exception below. Nothing in the API closes a
+delegation: a part sent 6 s after GPT-Live had finished the answer was spoken in full in 3 of 3
+sessions.
 
 ```text
 session.commentary.append  late_part  "One more thing: the dentist asked you to arrive ten minutes early."
@@ -103,8 +106,22 @@ answered, an empty part drew "Done. You'll get a reminder tonight to water the p
 remind you tonight at seven to water the plants." and "All set. I'll remind you tonight to water the
 plants." The real answer said eight.
 
+An acknowledgement is not delivery. In the `gpt-live-1.1` session, the real reminder answer got its
+`session.commentary.appended`, and GPT-Live said nothing in the 6 s before the session closed: it
+had already claimed the result after the empty part. So "at eight" never reached you, and only the
+output transcript shows what was said.
+
 While the reminder waited 15 s with no answer, GPT-Live's automatic acknowledgement said "Sure, I'll
 set that up." in 2 of 3 sessions, and "Sure!" in the third.
+
+OpenAI's documented way to stop that acknowledgement works. With `acknowledgement_delay_ms: 800` and
+an empty `session.thinking.append` sent as soon as the delegation arrived, GPT-Live stayed silent
+for the 8 s until the answer, on 2 of 2 delegations. Unlike an empty commentary part, the empty
+thinking part drew no invented result.
+
+A commentary part with `delegation_id: null`, as `say` would send, is spoken, with GPT-Live's own
+words around it. "I dropped out for a second." came out as "Sorry, I dropped out for a second—want
+me to check for any new messages again?"
 
 A part for an unknown delegation ID is refused:
 
@@ -121,14 +138,15 @@ A part for an unknown delegation ID is refused:
 ```
 
 So nixie can send one answer in several parts, but the last part closes nothing at GPT-Live. Each
-part must be a complete statement of facts, and an empty part must never go out.
+part must be a complete statement of facts, an empty commentary part must never go out, and the
+adapter learns what was spoken only from the output transcript.
 
 ## Question 3: a cut
 
 No event reports a cut. In each of the 6 trials, no event of a type other than transcript, audio,
 usage and the probe's own marks arrived within 5 s of the cut, and the reference lists no truncation
 event. GPT-Live stops its output where your speech starts on the session timeline, says a short line
-such as "Sure, pausing.", and never resumes the answer.
+such as "Sure, pausing.", and did not resume the answer in the 6 s before the next question.
 
 The adapter can still find the cut and the heard text from the sideband:
 
@@ -176,8 +194,10 @@ The session that turns client delegation on, as the server created it:
   [data controls page](https://developers.openai.com/api/docs/guides/your-data) lists
   `/v1/live/sessions` with 30 days of abuse-monitoring retention whatever `store` says, and no
   application state unless stored.
-- Without restrictions, the device's data channel receives every event, including `session.started`
-  with the full instructions and each `session.delegation.created`, and it can send any command.
+- Without restrictions, the device's data channel received every event, including `session.started`
+  with the full instructions and each `session.delegation.created`. The reference says an omitted
+  `allowed_client_events` keeps "the existing allow-all behavior", so the device could also send any
+  command; the spike did not try one on an open channel.
 - `client.data_channel` closes that. With `allowed_client_events: []` and only the two transcript
   events allowed out, the device got `{"type":"info","code":"data_channel_permissions"}` at start,
   and its own `session.commentary.append` was refused with `event_not_allowed`. The sideband was
@@ -198,29 +218,43 @@ device:
   audio and billed 15 s.
 - A fork of the first session was refused, because `store: false` keeps nothing to fork from:
   `400 The stored session was not found.`
-- An ICE-restart offer from the device's open peer connection worked. The new session's answer
-  applied, the peer was `connected` 410 ms later, and the first session closed itself 110 ms after
-  that with reason `remote_hangup`. The new session, seeded through `input`, heard the next question
-  and delegated it.
+- An ICE-restart offer from the device's open peer connection carried audio both ways. The new
+  session's answer applied, the peer was `connected` 410 ms later, and the first session closed
+  itself 110 ms after that with reason `remote_hangup`. The new session, seeded through `input`,
+  heard the next question and delegated it, and its spoken "Checking that." reached the device's
+  speaker 9.0 to 9.6 s after the swap.
+- The device's data channel received no event from the new session, though that session allowed the
+  transcript events out. The channel stayed bound to the first session.
 
 ```text
 restart_offer_result   created, a new session ID
 peer connecting → connected (410 ms)
 first session: session.closed reason "remote_hangup"
 new session: heard [400-1400] "What's my favourite colour" → session.delegation.created offset_ms 2000
+new session: said [2400-2800] "Checking that."   device speaker loud 9.0–9.6 s after the swap
+device data channel: no events after the swap
 ```
 
-So a reconnect needs a round trip to the device, but not a new peer connection or a new microphone
-grant.
+So a reconnect needs a round trip to the device. The same peer connection and microphone grant carry
+the audio of the new session, but the device's captions need another route, such as a new data
+channel or nixie's own live stream; the spike tried neither.
 
 ## Contract lines that must change
 
 Each line below is quoted from [Voice calls](../../docs/design/platform/channels/voice.md), with the
 reason it no longer holds.
 
-1. `// Sends one part of nixie's answer for a hand-off; the speech layer speaks it. The last part sets // `final`, which closes the hand-off.`
-   GPT-Live has no close for a delegation and speaks any later part. `final` can only mark the end
-   inside nixie.
+1. The comment on `answer` in the `SpeechLayer` interface:
+
+   ```ts
+   // Sends one part of nixie's answer for a hand-off; the speech layer speaks it. The last part sets
+   // `final`, which closes the hand-off.
+   ```
+
+   GPT-Live has no close for a delegation and accepts any later part, and an acknowledged part can
+   go unspoken. `final` can only mark the end inside nixie, and the adapter must read what was
+   spoken from the output transcript.
+
 2. "The calls module sends a turn's reply text to the speech layer in parts as the turn writes it,
    and sends `final: true` with the last part." A part that leads in to more text makes GPT-Live
    invent the rest. Each part must be a complete statement, such as a whole sentence of facts.
@@ -232,9 +266,16 @@ reason it no longer holds.
    request text. The adapter always takes the input transcript up to `offset_ms`.
 5. "`call.handed_off` keeps the speech layer's wording of the request, for timing and fidelity
    checks." GPT-Live never words the request. The record can keep only your transcribed speech.
-6. `// You talked over a reply and it stopped. The adapter counts heardChars from the timing of the speech layer's output transcript.`
+6. The comment on the `cut` event in `SpeechEvent`:
+
+   ```ts
+   // You talked over a reply and it stopped. The adapter counts heardChars from the timing of the
+   // speech layer's output transcript.
+   ```
+
    No event reports the cut. The adapter detects it from the first input transcript delta during a
    commentary, and aligns the output transcript's words to the sent text.
+
 7. "When you talk over a reply, `call.heard_cut` marks how much of it you heard, counted in
    characters of the reply text the calls module sent the speech layer." GPT-Live paraphrases, so
    the count is an estimate from word alignment, and the device plays 1.3 to 2.3 s past the start of
@@ -244,18 +285,25 @@ reason it no longer holds.
    start.
 9. "When the provider's session limit is near, the calls module opens the next session inside the
    same call, and you hear no gap beyond the reconnect line." The move needs the device to send an
-   ICE-restart offer, and the spike did not measure the audio gap.
+   ICE-restart offer, the device's data channel goes quiet after it, and the spike did not measure
+   the audio gap.
 10. "Every speech-layer session sets `store: false`, so OpenAI keeps no copy of the call for later
     use." `store: false` keeps no stored session for forking or download, but abuse monitoring keeps
     the call for 30 days.
 11. "The speech layer's filler never says yes, never claims a result and never makes a promise."
     GPT-Live's automatic acknowledgement said "Sure, I'll set that up." in 2 of 3 sessions. The
-    adapter must suppress it through `acknowledgement_delay_ms` and an empty
-    `session.thinking.append`, as OpenAI documents, or the line must go.
+    constraint holds only when the adapter sets `acknowledgement_delay_ms` and sends an empty
+    `session.thinking.append` on each delegation, which kept GPT-Live silent on 2 of 2 delegations,
+    and nixie sends its own holding line.
 12. "The deployment's speech credential never reaches a device. The server creates every session."
-    The key stays on the server, but the device's data channel receives every event and can send any
-    command. The server must set `client.data_channel` to allow the device only the transcript
-    events it shows.
+    The key stays on the server, but the device's data channel receives every event, and the
+    reference lets it send any command. The server must set `client.data_channel` to allow the
+    device only the transcript events it shows.
+13. "Each `heard` event becomes one `owner_message` record on the call thread, with a short ID and
+    one span of source `dictated` over its text." GPT-Live sends your speech as 200 ms transcript
+    slices with no event that ends a turn. The adapter must group them into one `heard` event, such
+    as all slices up to a delegation's `offset_ms` or up to a quiet gap, and the contract must say
+    which.
 
 "Every new speech-layer session needs a fresh offer from the device." holds, as Question 5 shows.
 
@@ -263,10 +311,9 @@ reason it no longer holds.
 
 - Real microphones, echo, noise and a phone's network.
 - The audio gap while the device moves to a new session, and a reconnect at the real 2-hour limit.
-- Suppressing the automatic acknowledgement with `acknowledgement_delay_ms` and an empty thinking
-  append.
-- `say` as a commentary with a null delegation ID from the sideband, and
-  `session.instructions.append` as a stop.
+- `session.instructions.append` as a way to stop GPT-Live mid-sentence.
+- A new data channel, or another route for captions, after the device moves to a new session.
+- Sending a command from a device whose data channel is not restricted.
 - A second request while a hand-off is running.
 - A session that omits `delegation`, and a session seeded with a long call through `input`.
 - How the device's playback delay varies, beyond the 6 trials here.
