@@ -53,7 +53,9 @@ function setupTest() {
 test('it runs the media probe as the terminal inside the computer sandbox limits', async () => {
   const ctx = setupTest();
 
-  createStubBin(ctx.binPath, 'docker', { answers: [{ args: ctx.runArgs, stdout: '' }] });
+  createStubBin(ctx.binPath, 'docker', {
+    answers: [{ args: ctx.runArgs, stdout: '' }],
+  });
 
   const result = await $`${process.execPath} ${ctx.scriptPath}`
     .cwd(ctx.repoPath)
@@ -61,9 +63,24 @@ test('it runs the media probe as the terminal inside the computer sandbox limits
     .nothrow()
     .quiet();
 
-  expect({ exitCode: result.exitCode, calls: readStubCalls(ctx.binPath) }).toStrictEqual({
+  expect({
+    exitCode: result.exitCode,
+    stdout: result.stdout.toString(),
+    stderr: result.stderr.toString(),
+    calls: readStubCalls(ctx.binPath),
+  }).toStrictEqual({
     exitCode: 0,
-    calls: [{ name: 'docker', argv: ctx.runArgs, cwd: ctx.repoPath, env: {}, stdin: '' }],
+    stdout: '',
+    stderr: '',
+    calls: [
+      {
+        name: 'docker',
+        argv: ctx.runArgs,
+        cwd: ctx.repoPath,
+        env: {},
+        stdin: '',
+      },
+    ],
   });
 });
 
@@ -80,9 +97,14 @@ test('it fails when a media tool fails in the image', async () => {
     .nothrow()
     .quiet();
 
-  expect({ exitCode: result.exitCode, stdout: result.stdout.toString() }).toStrictEqual({
+  expect({
+    exitCode: result.exitCode,
+    stdout: result.stdout.toString(),
+    stderr: result.stderr.toString(),
+  }).toStrictEqual({
     exitCode: 1,
     stdout:
       "::error::the terminal's account cannot run the computer image's media tools: ffmpeg: not found\n",
+    stderr: '',
   });
 });
