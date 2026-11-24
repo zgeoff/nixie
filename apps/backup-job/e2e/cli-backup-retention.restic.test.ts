@@ -1,5 +1,5 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { chmod, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createStagedSet } from '@heynixie/backup-job/test-utils';
@@ -100,5 +100,59 @@ test.skipIf(isResticMissing)(
     expect(published.exitCode).toBe(0);
     expect(receipt.value.status).toBe('published');
     expect(snapshotIDs).toStrictEqual([receipt.value.dataSnapshotID ?? '']);
+  },
+);
+
+test.skipIf(isResticMissing)(
+  'it keeps the published data snapshot when a finished erasure withdraws a set while its data snapshot writes',
+  async () => {
+    const ctx = await setupTest();
+
+    const stagingDir = ctx.jobEnv.NIXIE_BACKUP_STAGING_DIR;
+
+    await createStagedSet({ stagingDir, sequence: 1, kind: 'scheduled', isComplete: true });
+    await run(ctx.job.command, { args: ['run'], cwd: ctx.job.cwd, env: ctx.jobEnv });
+    await createStagedSet({ stagingDir, sequence: 2, kind: 'forget', isComplete: true });
+
+    const erasing = join(ctx.directory, 'erasing-restic');
+    const floor = join(stagingDir, backupSetLayout.floor);
+
+    await writeFile(
+      erasing,
+      [
+        '#!/bin/sh',
+        `if [ "$RESTIC_REPOSITORY" = '${ctx.dataEnv.RESTIC_REPOSITORY}' ]; then`,
+        '  for arg in "$@"; do',
+        `    [ "$arg" = backup ] && printf '{"format":1,"sequence":2}' > '${floor}'`,
+        '  done',
+        'fi',
+        `exec '${ctx.restic}' "$@"`,
+        '',
+      ].join('\n'),
+    );
+
+    await chmod(erasing, 0o755);
+
+    const withdrawn = await run(ctx.job.command, {
+      args: ['run'],
+      cwd: ctx.job.cwd,
+      env: { ...ctx.jobEnv, NIXIE_BACKUP_RESTIC: erasing },
+    });
+
+    const hasReceipt = await Bun.file(
+      join(getBackupSetDir(stagingDir, 2), backupSetLayout.receipt),
+    ).exists();
+
+    const listed: unknown = await $`${ctx.restic} --no-cache snapshots --json`
+      .env(ctx.dataEnv)
+      .json();
+
+    const snapshotSchema = z.object({ tags: z.array(z.string()) });
+    const snapshots = z.array(snapshotSchema).parse(listed);
+    const tags = snapshots.map((snapshot) => snapshot.tags);
+
+    expect(withdrawn.exitCode).toBe(0);
+    expect(hasReceipt).toBeFalse();
+    expect(tags).toStrictEqual([expect.arrayContaining(['set-1'])]);
   },
 );

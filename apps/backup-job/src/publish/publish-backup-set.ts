@@ -7,7 +7,7 @@ import {
   restoreNoteSchema,
 } from '@heynixie/wire';
 import type { JobFiles } from '../local-job-files';
-import type { DataRetention, JobConfig } from '../parse-job-config';
+import type { JobConfig } from '../parse-job-config';
 import type { SnapshotTagValues } from '../restic/format-snapshot-tags';
 import { formatSnapshotTags } from '../restic/format-snapshot-tags';
 import { ResticError } from '../restic/restic-error';
@@ -39,8 +39,8 @@ export interface PublishTarget {
 }
 
 // A failure that restic reports becomes a failed receipt, which nixie records and reports; any
-// other failure leaves the set without a receipt. An erasure can finish at any step, so the floor
-// is read again after each slow step, and a withdrawn set writes no receipt and removes its key snapshot.
+// other failure leaves the set without a receipt. Nothing that removes an older snapshot runs until
+// the last floor read passes, so a withdrawn set removes only its own snapshots.
 export async function publishBackupSet(
   repos: BackupRepos,
   config: PublishConfig,
@@ -100,30 +100,39 @@ export async function publishBackupSet(
     provenFrom: null,
   });
 
-  const dataSnapshotID = await writeDataSnapshot(repos.data, config.retention, set, dataTags).catch(
-    (error: unknown) => {
+  const writtenDataSnapshotID = await repos.data
+    .writeSnapshot(join(set.directory, 'nixie.db'), 'nixie.db', dataTags)
+    .catch((error: unknown) => {
       failures.push(requireResticFailure(error));
 
       return null;
-    },
-  );
+    });
 
   const isWithdrawnAfterData = await target.probeIsWithdrawn();
 
   if (isWithdrawnAfterData) {
     await removeKeySnapshot(repos.keys, keySnapshotID);
 
+    if (writtenDataSnapshotID !== null) {
+      await repos.data.removeSnapshots([writtenDataSnapshotID]);
+    }
+
     return null;
   }
+
+  const dataSnapshotID =
+    writtenDataSnapshotID === null
+      ? null
+      : await repos.data
+          .runRetention(config.retention)
+          .then(() => writtenDataSnapshotID)
+          .catch((error: unknown) => {
+            failures.push(requireResticFailure(error));
+
+            return null;
+          });
 
   const keys = await removeOtherKeySnapshots(repos.keys, keySnapshotID, failures);
-  const isWithdrawnAfterPublish = await target.probeIsWithdrawn();
-
-  if (isWithdrawnAfterPublish) {
-    await removeKeySnapshot(repos.keys, keySnapshotID);
-
-    return null;
-  }
 
   if (note !== null) {
     await files.removeFile(notePath).catch((error: unknown) => {
@@ -299,9 +308,7 @@ function pickKeyTagValues(count: PublishCount, note: RestoreNoteRead | null): Ke
   }
 
   if (previous === null) {
-    return count.hasPublishNumber
-      ? { legacySet: null, provenFrom: count.publish }
-      : { legacySet: null, provenFrom: null };
+    return { legacySet: null, provenFrom: null };
   }
 
   if (previous.publish === null) {
@@ -316,19 +323,6 @@ function pickKeyTagValues(count: PublishCount, note: RestoreNoteRead | null): Ke
 async function removeKeySnapshot(keys: BackupRepository, keySnapshotID: string): Promise<void> {
   await keys.removeSnapshots([keySnapshotID]);
   await keys.runPrune();
-}
-
-async function writeDataSnapshot(
-  data: BackupRepository,
-  retention: DataRetention,
-  set: BackupSetEntry,
-  tags: readonly string[],
-): Promise<string> {
-  const snapshotID = await data.writeSnapshot(join(set.directory, 'nixie.db'), 'nixie.db', tags);
-
-  await data.runRetention(retention);
-
-  return snapshotID;
 }
 
 // The key repo keeps the new snapshot alone, whatever host or path an older one names, and prunes
