@@ -2,6 +2,7 @@ import { ORPCError } from '@orpc/client';
 import type { ReactNode } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { bindClipboard } from '../computer/bind-clipboard';
+import { buildPasteKeys } from '../computer/build-paste-keys';
 import { runComputerWatch } from '../computer/run-computer-watch';
 import type { LoadViewer, Viewer, WatchState } from '../computer/types';
 import { css } from '../styled-system/css';
@@ -115,12 +116,12 @@ export function ComputerView(props: ComputerViewProps): ReactNode {
     const element = target.current;
 
     if (viewer === null || element === null || !isHolding) {
-      return;
+      return () => {};
     }
 
     return bindClipboard(element, {
       onPaste: (text) => {
-        if ([...text].length > maxPasteCharacters) {
+        if (buildPasteKeys(text).length > maxPasteCharacters) {
           setPasteNotice(tooLongToPaste);
 
           return;

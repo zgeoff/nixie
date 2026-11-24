@@ -31,8 +31,15 @@ export async function loadNoVNCViewer(): Promise<StartViewer> {
     viewer.addEventListener('disconnect', events.onDisconnect);
 
     const onClipboard = (event: Event): void => {
-      if (event instanceof CustomEvent && typeof event.detail?.text === 'string') {
-        events.onCopy(event.detail.text);
+      const detail: unknown = event instanceof CustomEvent ? event.detail : null;
+
+      if (
+        typeof detail === 'object' &&
+        detail !== null &&
+        'text' in detail &&
+        typeof detail.text === 'string'
+      ) {
+        events.onCopy(detail.text);
       }
     };
 
