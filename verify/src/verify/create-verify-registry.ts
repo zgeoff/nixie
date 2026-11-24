@@ -15,7 +15,6 @@ import { conversationRecordSchema } from './collect-conversation-records';
 import { featurePaths, ignoredPaths, sharedPaths } from './feature-paths';
 import { controlRoutes } from './harness/control-routes';
 import { lastFeatures } from './last-features';
-import { pickModelRefusal } from './pick-model-refusal';
 import { pickTaskRefusal } from './pick-task-refusal';
 import { postControl } from './post-control';
 import { buildServedBlobsArgv, servedSourceFolders } from './preview/build-served-blobs-argv';
@@ -34,6 +33,7 @@ import { readProdHealth } from './prod/read-prod-health';
 import { readProdVersion } from './prod/read-prod-version';
 import { readConversationTurn } from './read-conversation-turn';
 import { readLiveOpens } from './read-live-opens';
+import { readModelReceived } from './read-model-received';
 import { readSessionCheck } from './read-session-check';
 import { refuseHarnessless } from './refuse-harnessless';
 import { refuseOffProd } from './refuse-off-prod';
@@ -267,20 +267,11 @@ export function createVerifyRegistry(): Wringer {
     })
     .command({
       path: ['model', 'received'],
-      summary:
-        'Check that a request that the scripted model received holds the text --text, waiting up to 10 seconds for one',
+      summary: 'Check that a request of the scripted model holds --text, waiting up to 10 seconds',
       effect: 'read',
       args: z.strictObject({ text: z.string().min(1) }),
       data: controlRoutes.modelReceived.output,
-      run: async (args, ctx) => {
-        refuseHarnessless(ctx.target, 'model received');
-
-        const counted = await postControl(ctx.drivers.http, controlRoutes.modelReceived, args);
-
-        throwRefusal(pickModelRefusal(counted.requests, args.text), counted);
-
-        return counted;
-      },
+      run: (args, ctx) => readModelReceived(ctx, args.text),
     })
     .command({
       path: ['proposals'],

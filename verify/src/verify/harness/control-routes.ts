@@ -106,8 +106,14 @@ export const controlRoutes = {
     method: 'POST',
     path: '/control/use-computer',
     input: z.strictObject({
-      kind: z.enum(['browser', 'browser-navigate',
-        'browser-two-tabs', 'shell', 'shell-processes', 'screen']),
+      kind: z.enum([
+        'browser',
+        'browser-navigate',
+        'browser-two-tabs',
+        'shell',
+        'shell-processes',
+        'screen',
+      ]),
       text: z.string().min(1),
     }),
     output: z.strictObject({ replies: z.int().positive() }),

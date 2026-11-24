@@ -2,7 +2,13 @@ import type { ScriptedReply } from '@heynixie/testing';
 import { match } from 'ts-pattern';
 
 export interface ComputerSessionInput {
-  readonly kind: 'browser' | 'browser-navigate' | 'browser-two-tabs' | 'shell' | 'shell-processes' | 'screen';
+  readonly kind:
+    | 'browser'
+    | 'browser-navigate'
+    | 'browser-two-tabs'
+    | 'shell'
+    | 'shell-processes'
+    | 'screen';
   readonly text: string;
 }
 
