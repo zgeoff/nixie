@@ -105,6 +105,9 @@ export interface Computer {
   readonly reset: () => Promise<void>;
 
   readonly tabs: ComputerTabs;
+
+  // how long the browser idles before it sleeps and closes every tab
+  readonly idleMs: number;
   readonly stop: () => Promise<void>;
 }
 
@@ -123,6 +126,7 @@ const noHandoverRecords: HandoverRecords = {
 };
 
 const defaultTurnWaitMs = 60_000;
+const defaultIdleMs = 30 * 60 * 1000;
 
 export function startComputer(options: ComputerOptions): Computer {
   const state: DesktopState = {
@@ -135,6 +139,7 @@ export function startComputer(options: ComputerOptions): Computer {
     idle: null,
     tabs: new Map(),
     tabCount: 0,
+    idleClosed: new Set(),
     watches: { count: 0 },
     running: new Set(),
     admitted: new Set(),
@@ -208,6 +213,7 @@ export function startComputer(options: ComputerOptions): Computer {
     isWatched: () => state.watches.count > 0,
     reset: () => resetComputer(context),
     tabs: buildTabs(state),
+    idleMs: options.idleMs ?? defaultIdleMs,
 
     // The hold of a server that stops ends at the next start, which writes its record.
     stop: () => {
@@ -249,8 +255,6 @@ function holdAwake(context: ComputerContext, forMs: number | null): () => void {
   return release;
 }
 
-const defaultIdleMs = 30 * 60 * 1000;
-
 // Puts the sandbox to sleep once it has idled for its time, unless a call or a hold wants it.
 function scheduleSleep(context: ComputerContext): void {
   const state = context.state;
@@ -289,6 +293,10 @@ async function sleepAfterIdle(
   try {
     if (idle.signal.aborted || state.sandbox.suspension.kind !== 'memory') {
       return;
+    }
+
+    for (const tab of state.tabs.keys()) {
+      state.idleClosed.add(tab);
     }
 
     await stopGuest(state);

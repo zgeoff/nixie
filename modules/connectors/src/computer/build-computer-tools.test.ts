@@ -5,6 +5,7 @@ import type { DirectResult, Prepared, ToolDefinition } from '@heynixie/tools';
 import type { ComputerHandler, ComputerReply, ComputerRequest } from '@heynixie/wire';
 import { runComputerGuest } from '@heynixie/wire';
 import { waitFor } from '@zgeoff/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import invariant from 'tiny-invariant';
 import { match } from 'ts-pattern';
 import { buildStubSandboxAdapter } from '../test-utils/build-stub-sandbox-adapter';
@@ -29,10 +30,14 @@ interface SetupOptions {
   readonly secret?: string;
   readonly imageLongEdge?: number;
   readonly turnWaitMs?: number;
+
+  // a suspendable sandbox that sleeps after this long idle, on a clock the test moves
+  readonly idleMs?: number;
 }
 
 async function setupTest(options: SetupOptions) {
   const requests: ComputerRequest[] = [];
+  const clock = createFakeClock({ startMs: 1_000_000 });
 
   const replies: Replies = {
     page: {
@@ -140,7 +145,7 @@ async function setupTest(options: SetupOptions) {
 
       return 0;
     },
-    { skipCopyIn: () => copy.isBlocked },
+    { skipCopyIn: () => copy.isBlocked, isSuspendable: options.idleMs !== undefined },
   );
 
   const computer = startComputer({
@@ -155,6 +160,7 @@ async function setupTest(options: SetupOptions) {
     timeZone: 'UTC',
     logger: () => {},
     ...(options.turnWaitMs === undefined ? {} : { turnWaitMs: options.turnWaitMs }),
+    ...(options.idleMs === undefined ? {} : { clock, idleMs: options.idleMs }),
   });
 
   onTestFinished(async () => {
@@ -201,6 +207,11 @@ async function setupTest(options: SetupOptions) {
   return {
     copy,
     computer,
+    advanceClock: (durationMs: number) => {
+      clock.advance(durationMs);
+    },
+    tool: findTool,
+    toolDescription: (name: string) => findTool(name).description,
 
     // a sandbox of the earlier release whose disk the new one cannot copy while `copy` blocks it
     createOldBrowserSandbox: async () => {
@@ -472,6 +483,8 @@ test('it offers the renamed browser tools and none under an old name', async () 
     'computer.browser_scroll',
     'computer.browser_close',
     'computer.browser_download',
+    'computer.browser_navigate',
+    'computer.browser_reload',
     'computer.browser_fill',
     'computer.browser_click',
     'computer.screenshot',
@@ -1369,4 +1382,201 @@ test('it tells the tab with a challenge from the tab without when the model read
 
   expect(first).not.toHaveProperty('result.challenge');
   expect(second).toHaveProperty('result.challenge');
+});
+
+test('it navigates an open tab to a new address and keeps the tab name', async () => {
+  const ctx = await setupTest({
+    answer: (replies) => (request) => {
+      const reply =
+        request.op === 'navigate'
+          ? { ...replies.page, page: { ...replies.page.page, url: request.url, title: 'Next' } }
+          : replies.page;
+
+      return Promise.resolve(reply);
+    },
+  });
+
+  await ctx.call('computer.browser_open', { url: 'https://site.test/form' });
+
+  const outcome = await ctx.call('computer.browser_navigate', {
+    tab: 't1',
+    url: 'https://site.test/next',
+  });
+
+  expect([outcome, ctx.requests.at(-1)]).toMatchObject([
+    {
+      status: 'ok',
+      result: {
+        tab: 't1',
+        url: 'https://site.test/next',
+        title: 'Next',
+        page: expect.stringMatching(/^[a-z][\da-z]{9}$/u),
+        part: 1,
+      },
+    },
+    { op: 'navigate', tab: 'g1', url: 'https://site.test/next' },
+  ]);
+});
+
+test('it prepares a navigation with the host of the new address as its destination', async () => {
+  const ctx = await setupTest({ answer: (replies) => () => Promise.resolve(replies.page) });
+
+  const prepared = await ctx.prepare('computer.browser_navigate', {
+    tab: 't1',
+    url: 'https://other.test/page',
+  });
+
+  expect(prepared).toStrictEqual({ destinations: ['other.test'] });
+});
+
+test('it refuses a navigation to an address that is not http or https', async () => {
+  const ctx = await setupTest({ answer: (replies) => () => Promise.resolve(replies.page) });
+
+  await ctx.call('computer.browser_open', { url: 'https://site.test/form' });
+
+  const outcome = await ctx.call('computer.browser_navigate', { tab: 't1', url: 'file:///etc' });
+
+  expect(outcome).toMatchObject({ status: 'ok', refusalCode: 'BAD_URL' });
+});
+
+test('it refuses a navigation of a tab the browser does not hold', async () => {
+  const ctx = await setupTest({ answer: (replies) => () => Promise.resolve(replies.page) });
+
+  const outcome = await ctx.call('computer.browser_navigate', {
+    tab: 't9',
+    url: 'https://site.test/next',
+  });
+
+  expect(outcome).toMatchObject({ status: 'ok', refusalCode: 'TAB_GONE' });
+});
+
+test('it reloads an open tab and stores the page it shows', async () => {
+  const ctx = await setupTest({ answer: (replies) => () => Promise.resolve(replies.page) });
+
+  await ctx.call('computer.browser_open', { url: 'https://site.test/form' });
+
+  const outcome = await ctx.call('computer.browser_reload', { tab: 't1' });
+
+  expect([outcome, ctx.requests.at(-1)]).toMatchObject([
+    { status: 'ok', result: { tab: 't1', url: 'https://site.test/form', title: 'A form' } },
+    { op: 'reload', tab: 'g1' },
+  ]);
+});
+
+test('it prepares no destination for a reload, so it never asks', async () => {
+  const ctx = await setupTest({ answer: (replies) => () => Promise.resolve(replies.page) });
+
+  const tool = ctx.tool('computer.browser_reload');
+
+  expect([tool.prepare, tool.declaration.effects, tool.declaration.destinations]).toStrictEqual([
+    undefined,
+    ['note'],
+    [],
+  ]);
+});
+
+test('it refuses a reload of a tab the browser does not hold', async () => {
+  const ctx = await setupTest({ answer: (replies) => () => Promise.resolve(replies.page) });
+  const outcome = await ctx.call('computer.browser_reload', { tab: 't9' });
+
+  expect(outcome).toMatchObject({ status: 'ok', refusalCode: 'TAB_GONE' });
+});
+
+test.each(['computer.browser_open', 'computer.browser_navigate'])(
+  'it returns the blocked reason when %s lands on a challenge page',
+  async (tool) => {
+    const ctx = await setupTest({
+      answer: (replies) => () =>
+        Promise.resolve({
+          ...replies.page,
+          blocked: "blocked by the site's bot protection (Cloudflare challenge)",
+        }),
+    });
+
+    await ctx.call('computer.browser_open', { url: 'https://site.test/form' });
+
+    const outcome = await ctx.call(tool, { tab: 't1', url: 'https://site.test/form' });
+
+    expect(outcome).toMatchObject({
+      status: 'ok',
+      result: { blocked: "blocked by the site's bot protection (Cloudflare challenge)" },
+    });
+  },
+);
+
+test('it returns no blocked reason for an ordinary page', async () => {
+  const ctx = await setupTest({ answer: (replies) => () => Promise.resolve(replies.page) });
+  const outcome = await ctx.call('computer.browser_open', { url: 'https://site.test/form' });
+
+  expect(outcome).not.toHaveProperty('result.blocked');
+});
+
+test.each([
+  'computer.browser_open',
+  'computer.browser_navigate',
+  'computer.browser_reload',
+  'computer.browser_read',
+])('it states in the description of %s how long an idle tab lives', async (name) => {
+  const ctx = await setupTest({ answer: (replies) => () => Promise.resolve(replies.page) });
+
+  expect(ctx.toolDescription(name)).toContain('idle for 30 minutes');
+});
+
+test('it states a configured idle time in the tool descriptions', async () => {
+  const ctx = await setupTest({
+    idleMs: 5 * 60_000,
+    answer: (replies) => () => Promise.resolve(replies.page),
+  });
+
+  expect(ctx.toolDescription('computer.browser_open')).toContain('idle for 5 minutes');
+});
+
+test('it says a tab closed after the idle time when the browser slept with the tab open', async () => {
+  const ctx = await setupTest({
+    idleMs: 30 * 60_000,
+    answer: (replies) => () => Promise.resolve(replies.page),
+  });
+
+  await ctx.call('computer.browser_open', { url: 'https://site.test/form' });
+
+  ctx.advanceClock(30 * 60_000 + 1000);
+
+  await waitFor(() => ctx.computer.tabs.find('t1') === null);
+
+  const outcome = await ctx.call('computer.browser_read', { tab: 't1', mode: 'text' });
+
+  expect(outcome).toMatchObject({
+    status: 'ok',
+    refusalCode: 'TAB_GONE',
+    result: { refused: { message: expect.stringContaining('closed after 30 minutes idle') } },
+  });
+});
+
+test('it says a click was prepared for a tab that closed after the idle time', async () => {
+  const ctx = await setupTest({
+    idleMs: 30 * 60_000,
+    answer: (replies) => () => Promise.resolve(replies.page),
+  });
+
+  await ctx.call('computer.browser_open', { url: 'https://site.test/form' });
+
+  ctx.advanceClock(30 * 60_000 + 1000);
+
+  await waitFor(() => ctx.computer.tabs.find('t1') === null);
+
+  const prepared = await ctx.prepare('computer.browser_click', { tab: 't1', element: 'E1' });
+
+  expect(prepared).toMatchObject({
+    refusalCode: 'TAB_GONE',
+    result: { refused: { message: expect.stringContaining('closed after 30 minutes idle') } },
+  });
+});
+
+test('it gives no idle reason for a tab that never existed', async () => {
+  const ctx = await setupTest({ answer: (replies) => () => Promise.resolve(replies.page) });
+  const outcome = await ctx.call('computer.browser_read', { tab: 't9', mode: 'text' });
+
+  expect(outcome).toMatchObject({
+    result: { refused: { message: expect.not.stringContaining('idle') } },
+  });
 });

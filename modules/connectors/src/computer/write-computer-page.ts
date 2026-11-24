@@ -53,6 +53,7 @@ export async function writeComputerPage(
     text: stored.parts[0] ?? '',
     isDiskNew: reply.isDiskNew,
     ...buildChallengeField(reply.hasChallenge),
+    ...(reply.blocked === null ? {} : { blocked: reply.blocked }),
   };
 
   return { result };

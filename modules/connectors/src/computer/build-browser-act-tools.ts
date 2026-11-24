@@ -5,6 +5,7 @@ import { z } from 'zod';
 import type { ComputerState } from './computer-state';
 import { buildActionKey } from './computer-state';
 import type { ComputerToolOptions } from './computer-tool-options';
+import { refuseTabGone } from './refuse-tab-gone';
 import {
   makeActionScans,
   refuseComputer,
@@ -134,7 +135,7 @@ async function prepareAct(
   const guestTab = options.computer.tabs.find(tab);
 
   if (guestTab === null) {
-    return refuseComputer('TAB_GONE', `there is no tab ${tab}; open the page again`);
+    return refuseTabGone(options, tab);
   }
 
   const outcome = await runComputerCall(options, {
@@ -187,7 +188,7 @@ export async function runBrowserAct(
   const guestTab = options.computer.tabs.find(tab);
 
   if (guestTab === null) {
-    return refuseComputer('TAB_GONE', `there is no tab ${tab}; open the page again`);
+    return refuseTabGone(options, tab);
   }
 
   if (expectURL === undefined) {

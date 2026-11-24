@@ -2,6 +2,7 @@ import type { DirectResult, ToolDefinition, ToolOutcome } from '@heynixie/tools'
 import { z } from 'zod';
 import type { ActionConnector, ProviderResponse } from '../types';
 import { buildBrowserActTools, runBrowserAct } from './build-browser-act-tools';
+import { buildBrowserLoadTools } from './build-browser-load-tools';
 import { buildBrowserReadTools } from './build-browser-read-tools';
 import { buildScreenTools, runScreenAct } from './build-screen-tools';
 import { buildShellTools, runShellCommand } from './build-shell-tools';
@@ -44,6 +45,7 @@ export function buildComputerTools(options: ComputerToolOptions): ComputerTools 
     handover: options.computer.handover,
     tools: [
       ...buildBrowserReadTools(options, state),
+      ...buildBrowserLoadTools(options),
       ...buildBrowserActTools(options, state),
       ...buildScreenTools(options, state),
       ...buildShellTools(options, state),
@@ -80,6 +82,8 @@ export function buildComputerTools(options: ComputerToolOptions): ComputerTools 
 // would move the screen under the person's hands.
 const takenOverTools: ReadonlySet<string> = new Set([
   'computer.browser_open',
+  'computer.browser_navigate',
+  'computer.browser_reload',
   'computer.browser_close',
   'computer.browser_download',
   'computer.browser_scroll',
@@ -189,6 +193,8 @@ function toRefusal(refused: z.infer<typeof refusedSchema>): ProviderResponse {
 
 export const computerToolNames = [
   'computer.browser_open',
+  'computer.browser_navigate',
+  'computer.browser_reload',
   'computer.browser_read',
   'computer.browser_screenshot',
   'computer.browser_scroll',
