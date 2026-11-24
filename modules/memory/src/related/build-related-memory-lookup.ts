@@ -1,6 +1,8 @@
 import type { RelatedMemoryLookup } from '@heynixie/tools';
 import type { ConversationMemoryStore } from '../tool/memory-tool-store';
 
+const relatedLookupTimeoutMs = 3000;
+
 // The lookup that the tools of other modules take. The store starts after the tools are built, so
 // the lookup reads it at each call, and a call that runs before it starts fails, which the tool
 // logs and answers without `related`.
@@ -18,6 +20,7 @@ export function buildRelatedMemoryLookup(
 
       return store.readRelated(text);
     },
+    timeoutMs: relatedLookupTimeoutMs,
     log,
   };
 }

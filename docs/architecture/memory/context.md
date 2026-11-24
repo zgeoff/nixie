@@ -262,9 +262,16 @@ and a call with no match has no `related` field. The text is untrusted content, 
 hold outside text.
 
 The call has applied before the lookup runs, and the lookup never holds, refuses or asks. A lookup
-that fails leaves the result without `related` and logs the failure with the call's ID. The lookup
-writes no `memory.recalled` record, so it counts for no item's usage. A call that a refusal or an
-error ends looks nothing up, and neither does a `task.start` whose started task holds no memory.
+that fails, or that runs past its 3-second deadline, leaves the result without `related` and logs
+the failure with the call's ID. The lookup writes no `memory.recalled` record, so it counts for no
+item's usage. A call that a refusal or an error ends looks nothing up. Neither does a `task.start`
+whose started task holds no memory, nor a `skill_write` that waits as a proposal for review.
+
+The model reads `related`, but the log record of the tool result never holds it. A forget of an item
+erases the item's keys, and a copy of its text in a result would outlive it.
+
+The lookup ranks a page of matches at a time and drops each retired, lapsed or forgotten item before
+it counts toward the 3, so inactive items that rank higher never hide an active match.
 
 The memory module owns the lookup, and the server passes it to each tool as a dependency, so no
 module imports another module's internals.

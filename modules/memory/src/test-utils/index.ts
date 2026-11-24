@@ -1,6 +1,7 @@
 export { buildMemorySeeder } from './build-memory-seeder';
 export type { MemorySeederDeps } from './memory-seeder-deps';
 export { buildMockCheckerAnswer } from './build-mock-checker-answer';
+export { buildMockProvenance } from './build-mock-provenance';
 export { buildMockWriteCaller } from './build-mock-write-caller';
 export { buildStubEncoder } from './build-stub-encoder';
 export { buildAllowVerdict } from './build-allow-verdict';

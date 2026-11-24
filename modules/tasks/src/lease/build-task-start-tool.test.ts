@@ -112,7 +112,7 @@ test('it adds the matching memory to the result of a start as related, from the 
     ctx.context,
     { hopLimit: 20, ownerName: null },
     buildMockTaskStartBounds(),
-    { read, log },
+    { read, timeoutMs: 1000, log },
   );
 
   const outcome = await tool.run(

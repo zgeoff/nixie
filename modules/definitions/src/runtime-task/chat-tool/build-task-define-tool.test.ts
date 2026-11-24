@@ -76,7 +76,7 @@ test('it adds the matching memory to the result of a define as related, from the
   const tool = buildTaskDefineTool({
     readDefinitions: () => ctx.context,
     readZone: () => Promise.resolve('Europe/Paris'),
-    relatedMemory: { read, log: mock() },
+    relatedMemory: { read, timeoutMs: 1000, log: mock() },
   });
 
   await ctx.seed();
