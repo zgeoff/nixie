@@ -121,8 +121,8 @@ model can weigh a summary against the user's own words.
 The line takes its words from the version's stored origin, source and approval, and never changes
 them, so an approved item keeps outside content as its source and still reads as approved:
 
-- Who noted it: the conversation reads as the model itself, and a task as a task. A version the user
-  saved names no one here, because what backs it names them.
+- Who noted it: the conversation reads as `you noted it`, because the model reads the line, and a
+  task as a task. A version the user saved names no one here, because what backs it names them.
 - What backs it: the user's typed words read as the user by name, said this. Outside content always
   says so. A remember proposal held because its quote sat in a quoted block of the user's message,
   such as a forwarded email, reads as from a pasted page. Any other outside content reads as
