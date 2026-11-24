@@ -5,7 +5,7 @@ import type { StartTimer } from '../utils/start-platform-timer';
 import { runLiveConnection } from './run-live-connection';
 
 // The records of one thread on screen, from the sequence its page read at.
-export interface LiveView {
+interface LiveView {
   readonly thread: string;
   readonly afterSequence: number;
   readonly onRecord: (record: ReadonlyDeep<LogRecord>) => void;

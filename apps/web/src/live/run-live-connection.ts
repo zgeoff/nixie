@@ -4,7 +4,7 @@ import { pickReconnectDelay } from '../conversation/pick-reconnect-delay';
 import type { ReadonlyDeep } from '../types';
 import type { StartTimer } from '../utils/start-platform-timer';
 
-export interface LiveOpening {
+interface LiveOpening {
   // true on the connection's first open, and false on each reconnect
   readonly isFirst: boolean;
 }
