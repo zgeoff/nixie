@@ -11,12 +11,12 @@ the contracts.
 
 ## Adding a server
 
-| Field     | Holds                                                                               |
-| --------- | ----------------------------------------------------------------------------------- |
-| ID        | A short slug, such as `notes`, which prefixes every tool name                       |
-| Transport | A Streamable HTTP URL, or a command that runs over stdio                            |
-| Trusted   | Whether a changed tool applies with a notice instead of stopping                    |
-| Auth      | None, a static token or a service client's secret in the credential store, or OAuth |
+| Field     | Holds                                                                    |
+| --------- | ------------------------------------------------------------------------ |
+| ID        | A short slug, such as `notes`, which prefixes every tool name            |
+| Transport | A Streamable HTTP URL, or a command that runs over stdio                 |
+| Trusted   | Whether a changed tool applies with a notice instead of stopping         |
+| Auth      | The MCP standard's OAuth sign-in, with the grant in the credential store |
 
 Adding a server and marking it trusted are widenings, so each asks once. Removing a server or
 clearing its trusted mark narrows and applies at once.
@@ -42,20 +42,22 @@ JSON form of each tool's name, title, description, input schema, output schema a
 leaving out `_meta`. **Why:** the description and schemas are what the model reads and what you
 reviewed.
 
-| Change                     | Untrusted server        | Trusted server         |
-| -------------------------- | ----------------------- | ---------------------- |
-| Same hash                  | Exposed                 | Exposed                |
-| Changed hash               | Stopped until you allow | Applied, with a notice |
-| New tool                   | Hidden until declared   | Hidden until declared  |
-| Removed tool               | Dropped, with a notice  | Dropped, with a notice |
-| Declaration no longer fits | Stopped                 | Stopped                |
+| Change                  | Untrusted server        | Trusted server          |
+| ----------------------- | ----------------------- | ----------------------- |
+| Same hash               | Exposed                 | Exposed                 |
+| Changed hash            | Stopped until you allow | Applied, with a notice  |
+| New tool                | Hidden until you allow  | Exposed, with a notice  |
+| New input argument      | Stopped until you allow | Stopped until you allow |
+| Removed tool            | Dropped, with a notice  | Dropped, with a notice  |
+| Override no longer fits | Stopped                 | Stopped                 |
 
-A declaration no longer fits when an argument it names, such as a destination, is missing from the
-current input schema, so the proxy checks every declaration on every listing. The client shows a
-changed tool's old and new form side by side, and allowing it pins the new hash. A server can still
-change what a tool does without changing its listing, so the effect declaration assumes the worst
-for an external tool. The [MCP proxy spike](../../../../research/mcp-proxy-pin/README.md) ran these
-rules.
+A tool's declaration comes from its MCP annotations, and an override file in the definitions repo
+replaces it. An override no longer fits when an argument it names, such as a destination, is missing
+from the current input schema, so the proxy checks every override on every listing. The client shows
+a changed tool's old and new form side by side, and allowing it pins the new hash. A server can
+still change what a tool does without changing its listing, so the effect declaration assumes the
+worst for an external tool. The [MCP proxy spike](../../../../research/mcp-proxy-pin/README.md) ran
+these rules.
 
 ### A changed tool in a running task
 
