@@ -3,16 +3,17 @@ import { makeHandoverRecords } from '@heynixie/connectors';
 import { buildStubImageProvider, startTestImages } from '@heynixie/connectors/test-utils';
 import { buildTaskChangeKind } from '@heynixie/definitions';
 import { buildTestTaskSeed } from '@heynixie/definitions/test-utils';
-import { withWriteTransaction } from '@heynixie/log';
+import { readRecords, withWriteTransaction } from '@heynixie/log';
 import { defaultGateLimits, defaultOwnerPronouns, startMemoryStore } from '@heynixie/memory';
 import { buildAllowVerdict, buildMockWriteCaller } from '@heynixie/memory/test-utils';
 import { buildNotebookMemory, defaultNotebookSettings, startNotebook } from '@heynixie/notebook';
 import { buildNotebookToolCaller } from '@heynixie/notebook/test-utils';
-import { buildPromptSeeder } from '@heynixie/prompts/test-utils';
+import { buildPromptWriteTool } from '@heynixie/prompts';
 import { startSpendWatcher } from '@heynixie/spend';
 import { buildMockGatewayStatus } from '@heynixie/spend/test-utils';
 import { createConversationTask, createTask } from '@heynixie/tasks';
 import { waitForCondition } from '@heynixie/testing';
+import { buildMockToolCall, buildMockToolContext } from '@heynixie/tools/test-utils';
 import {
   deliverTriggerBatch,
   writeArmedDefinitions,
@@ -30,6 +31,8 @@ import { createDeviceSession } from '../test-utils/create-device-session';
 import { startTestAPI } from '../test-utils/start-test-api';
 import { startTestAPIDefinitions } from '../test-utils/start-test-api-definitions';
 import { defaultAPISettings } from '../utils/default-api-settings';
+import { readHeadSequence } from '../utils/read-head-sequence';
+import { collectModuleRecordTopicMaps } from './collect-module-record-topic-maps';
 
 // The tests below make each change that a topic names, through the code that makes it in nixie,
 // and read the changed event of a stream that opened after the test's own setup.
@@ -79,6 +82,10 @@ async function setupTest() {
 
   const client = buildTestClient(api.url, laptop.token);
 
+  const topicsByKind = new Map<string, readonly string[]>(
+    collectModuleRecordTopicMaps().flatMap((topics) => Object.entries(topics)),
+  );
+
   return {
     ...api,
     memory,
@@ -91,6 +98,26 @@ async function setupTest() {
         providers: { main: buildStubImageProvider(), second: buildStubImageProvider() },
         log: api.context.log,
       }),
+    readHeadSequence: () => readHeadSequence(api.context),
+
+    // the topics the registered maps give each record written after the sequence
+    readWrittenTopics: async (afterSequence: number) => {
+      const written = await readRecords(api.context.log, { afterSequence });
+
+      return written.map((entry) => ({
+        kind: entry.record.kind,
+        topics: topicsByKind.get(entry.record.kind),
+      }));
+    },
+    promptWriteTool: buildPromptWriteTool({
+      log: api.context.log,
+      readInForce: () => ({
+        snapshotHash: 'sha256:test',
+        personaVersion: 'persona-a',
+        prompts: {},
+      }),
+      checkProposal: () => [],
+    }),
     writeHandoverClosed: () =>
       makeHandoverRecords({ log: api.context.log, definitions }).writeClosed({
         by: 'assistant',
@@ -203,6 +230,7 @@ test('it sends a changed event with the memory topic when a covered pin leaves i
   });
 
   const changes = await ctx.follow();
+  const headSequence = await ctx.readHeadSequence();
 
   await ctx.memory.writes.pin({
     target: item,
@@ -211,8 +239,14 @@ test('it sends a changed event with the memory topic when a covered pin leaves i
   });
 
   const changed = await changes.readChanged();
+  const written = await ctx.readWrittenTopics(headSequence);
 
   expect(changed).toStrictEqual({ kind: 'changed', topics: ['memory'] });
+
+  expect(written).toStrictEqual([
+    { kind: 'memory.pinned', topics: ['memory'] },
+    { kind: 'memory.pin_noticed', topics: ['memory'] },
+  ]);
 });
 
 test('it sends a changed event with the notebook topic when a note is read', async () => {
@@ -316,11 +350,19 @@ test('it sends a changed event with the approvals topic when a prompt override i
   const ctx = await setupTest();
   const changes = await ctx.follow();
 
-  await buildPromptSeeder({
-    log: ctx.context.log,
-    clock: ctx.clock,
-    definitions: ctx.context.definitions,
-  }).promptApproval();
+  await ctx.promptWriteTool.run(
+    buildMockToolCall({
+      callID: 'call-1',
+      tool: 'prompt_write',
+      input: {
+        id: 'compaction',
+        entry: { safety: 'prompts/compaction-safety.md' },
+        files: [{ path: 'prompts/compaction-safety.md', text: 'Answer with the summary alone.\n' }],
+        reason: 'The summaries ramble past the word target.',
+      },
+    }),
+    buildMockToolContext({ run: { runID: 'run-1' } }),
+  );
 
   const changed = await changes.readChanged();
 
