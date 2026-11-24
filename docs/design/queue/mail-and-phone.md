@@ -2,6 +2,8 @@
 
 - **Status:** draft
 - **Work items:** [the assistant's own email and accounts](https://linear.app/zgeoff/issue/GEO-2731)
+- **Replaced in part:** the [mail design](mail/README.md) replaces every part of this design about
+  the mailbox. The phone parts stand.
 
 The assistant gets a mailbox and a mobile number of its own. It reads, waits for, sends and mutes
 mail, and reads, waits for and sends texts. Sign-up codes reach it this way, and
