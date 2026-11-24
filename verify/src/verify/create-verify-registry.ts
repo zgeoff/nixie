@@ -15,7 +15,6 @@ import { conversationRecordSchema } from './collect-conversation-records';
 import { featurePaths, ignoredPaths, sharedPaths } from './feature-paths';
 import { controlRoutes } from './harness/control-routes';
 import { lastFeatures } from './last-features';
-import { pickLiveOpensRefusal } from './pick-live-opens-refusal';
 import { pickTaskRefusal } from './pick-task-refusal';
 import { postControl } from './post-control';
 import { buildServedBlobsArgv, servedSourceFolders } from './preview/build-served-blobs-argv';
@@ -33,6 +32,7 @@ import { readProdErrors } from './prod/read-prod-errors';
 import { readProdHealth } from './prod/read-prod-health';
 import { readProdVersion } from './prod/read-prod-version';
 import { readConversationTurn } from './read-conversation-turn';
+import { readLiveOpens } from './read-live-opens';
 import { readSessionCheck } from './read-session-check';
 import { refuseHarnessless } from './refuse-harnessless';
 import { refuseOffProd } from './refuse-off-prod';
@@ -302,20 +302,11 @@ export function createVerifyRegistry(): Wringer {
     })
     .command({
       path: ['live', 'opens'],
-      summary:
-        'Count the live streams the browser opened since `up`, and with --opened check that the count is that number',
+      summary: 'Count the live streams the browser opened since `up`; --opened checks the count',
       effect: 'read',
       args: z.strictObject({ opened: z.int().nonnegative().optional() }),
       data: controlRoutes.liveOpens.output,
-      run: async (args, ctx) => {
-        refuseHarnessless(ctx.target, 'live opens');
-
-        const counted = await postControl(ctx.drivers.http, controlRoutes.liveOpens, {});
-
-        throwRefusal(pickLiveOpensRefusal(counted.opened, args.opened), counted);
-
-        return counted;
-      },
+      run: (args, ctx) => readLiveOpens(ctx, args.opened),
     })
     .command({
       path: ['prod', 'conversation'],
