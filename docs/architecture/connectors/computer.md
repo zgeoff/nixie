@@ -347,8 +347,8 @@ task never holds them.
 - `computer.handover_cancel` closes the standing ask, writes `computer.handover_closed` with
   `by: 'assistant'`, and answers `NOT_ASKED` when none stands.
 - `computer.take_back` ends the hold at once with `by: 'assistant'`, and the relay then drops the
-  user's input. It answers `NOT_TAKEN_OVER` when no hold is open. No starter rule allows its effect,
-  `computer_take_back`, so a call asks first until the user adds a rule.
+  user's input. It answers `NOT_TAKEN_OVER` when no hold is open. The `allow-take-back` starter rule
+  allows its effect, `computer_take_back`, and without the rule a call asks first.
 
 One ask stands at a time, in memory. It ends when a take-over starts, which writes no record of its
 own, when the assistant cancels it, or when it expires. An ask that no take-over answers within
