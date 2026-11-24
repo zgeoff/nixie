@@ -69,7 +69,6 @@ const proposal = await proposals.proposeInTransaction(tx, {
   taskID,
   deadlineAt: null,
   sameThing: 'trip-planning', // the "same thing" key; null for memory, action and no proposer
-  shortID: undefined, // memory's UUID-derived ID until release N+2, which removes the parameter
 });
 // → { proposalID: '0c1d…', shortID: 'K9', lapsesAt: 1796548800000, replaced: 'K7' }
 // replaced is the short ID of the open proposal this one withdrew, or null
@@ -135,23 +134,19 @@ proposals.settled   { proposalID, shortID, family, outcome, answeredBy, usedBy, 
                     // task: the proposing task's name when the record goes to its report target
 proposals.deferred  …existing
 proposals.returned  …existing
-proposals.withdrawn …existing; written beside proposals.settled until release N+2, then stops
 ```
 
 - `proposals.proposed` creates the row, and its sequence is the row's `created_sequence`. A family
   writes its body record in the same transaction, such as `skills.write_proposed` with the files.
   Handlers find a body by proposal ID.
 - A body record creates a row only when no `proposals.proposed` for that proposal came before it,
-  which holds only for records written before this design and for prompt records before release N+2.
-  A rebuild over a log that mixes old and new records creates exactly one row per proposal, and a
-  test checks it.
+  which holds only for records written before this design. A rebuild over a log that mixes old and
+  new records creates exactly one row per proposal, and a test checks it.
 - When a family's approval record carries data the apply needs, such as `skills.write_approved` with
-  edited files, an approval still writes it, beside `proposals.settled`, in every release.
-- The family records for a decline and a lapse stop at release N+2 of the
-  [release order](#release-order). Until then `discard` writes them as well, with the answer's
-  identity and note. Their codecs and mappers stay, so a rebuild still folds every old record. No
-  family gains a withdrawal record: a withdrawal writes `proposals.settled`, and
-  `proposals.withdrawn` until N+2.
+  edited files, an approval still writes it, beside `proposals.settled`.
+- nixie stops writing the family records for a decline and a lapse, and `proposals.withdrawn`.
+  `proposals.settled` replaces them. Their codecs and mappers stay, so a rebuild still folds every
+  old record.
 - Folding a close onto a row that is already closed changes nothing, so the old and new records can
   land together.
 - A rebuild keeps each row's `lapsesAt`: an old record's mapper keeps its constant, and only
@@ -168,12 +163,14 @@ const result = await tools.call('proposals.withdraw', { shortID: 'K7' });
   withdrawn, through `withdrawInTransaction`. The tool refuses a short ID of a settled proposal or
   of a proposal the caller isn't a proposer of, and nothing changes.
 - A memory proposal's proposers are the row's thread and the thread of each write that merged into
-  it. Withdrawing a memory proposal withdraws it for all of them, and each of the others hears the
-  withdrawal in its settlement note. A merge stays in memory's own write path.
+  it. A proposer that withdraws a merged memory proposal removes only itself: the card stays open
+  while another proposer remains, and the proposal settles as withdrawn when the last one withdraws.
+  A merge stays in memory's own write path.
 - Withdrawing an action proposal fails its held action, and the task hears `action.outcome`.
 - When `proposeInTransaction` finds an open proposal with the same `sameThing` key, family and
   proposer, it withdraws that proposal in the same transaction, then writes the new one with
-  `replaces` set. Both commit or neither does. A proposal with no proposer never replaces one.
+  `replaces` set. Both commit or neither does. A proposal with no proposer never replaces one, and
+  two proposers of the same thing get two cards.
 - A withdrawal that nixie makes itself, such as closing a suggested rule after an action decline,
   also goes through `withdrawInTransaction`. When the proposal has a proposer, the proposer hears it
   like any other settlement.
@@ -252,9 +249,8 @@ A prompt override's export after approval stays a note of its own: it isn't a se
 - An action proposal's settlement is never an inbox record. The task hears `action.outcome`, which
   the action module writes when an approval queues the action, or when a decline, a lapse or a
   withdrawal fails the held action.
-- The inbox predicate, the inbox renderer and the turn-note kinds read `proposals.settled` from
-  release N+1 of the [release order](#release-order). The same change drops the old decline kinds
-  from them, so a proposer never hears one outcome twice.
+- The inbox predicate, the inbox renderer and the turn-note kinds read `proposals.settled`, and drop
+  the old decline kinds.
 - The inbox predicate and the turn-note builder read `family` from the payload to leave out action
   settlements.
 
@@ -304,11 +300,9 @@ type PendingRow = {
 
 - `proposeInTransaction` stores every new proposal's short ID in `proposals.proposed`, so a rebuild
   keeps it. It creates the short ID with `createShortID`.
-- From release N+2, memory draws its short ID like every other family. Before then it passes one
-  derived from the UUID, because a release before N+1 derives it again at read time and must show
-  the same ID. From N+1, every reader of a memory proposal takes its short ID from the shared row.
-- Every proposal's ID is a UUID, skills and prompts included. A release before this design shows the
-  UUID of a new skill or prompt proposal in place of its short ID.
+- Memory draws its short ID like every other family, and every reader of a memory proposal takes its
+  short ID from the shared row.
+- Every proposal's ID is a UUID, skills and prompts included.
 - A proposal's UUID never reaches the model. The answer path, `proposals.withdraw` and
   `approvals.readProposals` find a proposal by its short ID, and return the newest row that holds
   it. The approval card sends the UUID, so an older row that shares a short ID stays answerable.
@@ -333,46 +327,23 @@ type PendingRow = {
   defer.
 - A deferred proposal's lapse uses its family's `lapse_days`, the same value as a fresh one.
 - A new short ID differs from the short ID of every proposal ever made, open or settled.
-  `proposeInTransaction` draws again on a clash. Before release N+2, a clash of a derived memory
-  short ID fails the write.
+  `proposeInTransaction` draws again on a clash.
 - The core calls `approve` or `discard` first, and writes `proposals.settled` only when it succeeds,
   in the same transaction. For a family that owns its transaction, such as memory, the core writes
   it in a hook the family calls after its apply, inside that transaction. A refusal, or a memory
   close match that sends the card back, writes no settlement, and the row stays open.
 - `memory_proposals` keeps each memory proposal's sealed body and its merges. Memory reads a
-  proposal's state from the shared row. The `status` and `lapse_at` columns stay, and their writes
-  stop at release N+2.
+  proposal's state from the shared row. A migration drops the `status` and `lapse_at` columns.
 - `proposals.settled.reason` is an erasable field, and the forgettable kinds list in the published
   contract gains `proposals.settled`. The change is additive, so it ships in a minor release.
-- Delete the separate skill, rule and action lapse writers and the test-only action answer writer;
-  until release N+2, `discard` writes those families' lapse records. Delete the prompt lapse sweep
-  at N+2. Move the action answer types to the module that uses them.
+- Delete the separate skill, rule and action lapse writers, the prompt lapse sweep and the test-only
+  action answer writer. Move the action answer types to the module that uses them.
 - Rename "gap check" to "suggested rules" in the code, tables and records. Keep the old record
   codecs, so a rebuild still reads every old record.
-
-## Release order
-
-Each step ships in its own release, so a rollback by one release still reads every row. The one
-exception is a rollback from N+2 to N+1: release N+1 reads a `prompt` row as an unknown family and
-fails to load it, so that rollback needs a restore from a backup taken before N+2.
-
-- **N:** the core writes `proposals.proposed` and `proposals.settled` for every family but prompt,
-  beside the old records, each on the thread where release N+1 reads it. `replaces` is always null.
-  Every new proposal stores its short ID, and a new skill or rule change proposal takes a UUID, so
-  `skill_pending` and the skill answer notes read the short ID from the shared row. Memory reads its
-  proposals' state from the shared row. The new `ProposalOutcome`, `discard`, the one core sweep and
-  `approvals.lapse_days` replace the old outcomes, the family sweeps but prompt's and the lapse
-  constants.
-- **N+1:** the inbox, the turn notes and every short ID reader switch to the new records, so the
-  batched note ships. `proposals.withdraw`, replacing and `proposals.pending` ship, and
-  `memory.pending` and `skill_pending` go. `memory.proposal_lapse_days` is read with a warning.
-- **N+2:** the old outcome records, `proposals.withdrawn`, the memory key and the writes to
-  `memory_proposals.status` and `lapse_at` stop. The prompt family joins the shared table, and
-  memory draws its short IDs.
-
-The `[#n]` fix for take-over notices and the suggested rules rename each ship in a release of their
-own, at any point in the order. A rollback across the rename still reads every renamed row and
-record.
+- `approvals.lapse_days` replaces `memory.proposal_lapse_days`. A config file that still sets the
+  old key fails to load, with an error that names the new key.
+- The whole design ships in one release. A rollback past it needs a restore from a backup taken
+  before the upgrade, because an older release can't read a `prompt` row.
 
 ## Builder decides
 
