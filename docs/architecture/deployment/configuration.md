@@ -1,8 +1,9 @@
 # Deployment configuration
 
 nixie reads its deployment configuration from one YAML file when a process starts. A zod schema
-validates the file, and nixie refuses to start on a file that fails it. The file holds settings,
-never secrets: every secret stays in nixie's encrypted secrets file, which
+validates the file, and nixie refuses to start on a file that still fails it once the loader has
+removed its unknown keys, as [the schema](#the-schema) says. The file holds settings, never secrets:
+every secret stays in nixie's encrypted secrets file, which
 [the server](server.md#configuration-and-secrets) decrypts at start. A deployment repo keeps the
 file beside its manifests or its Compose file, and changes it by pull request like the pinned image
 digests.
