@@ -4,6 +4,7 @@ import { createSpawnedNixie, createTestClient, readTestBundle } from '@heynixie/
 import { createBuiltWeb, createFrontProxy, readWebBuild } from '@heynixie/web/test-utils';
 import { buildScriptedReplies } from './build-scripted-replies';
 import { localMemoryConfig } from './local-memory-config';
+import { readLastModelInput } from './read-last-model-input';
 import { runComputerSession } from './run-computer-session';
 import { runDeviceLayout } from './run-device-layout';
 import { runDeviceShow } from './run-device-show';
@@ -116,6 +117,7 @@ export async function runVerifyHarness(): Promise<void> {
         })),
       };
     },
+    readModelInput: () => ({ text: readLastModelInput(nixie.model.requests) }),
     readActionProposals: async () => {
       const listed = await api.client.approvals.listItems();
 

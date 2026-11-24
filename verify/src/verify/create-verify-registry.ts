@@ -16,7 +16,6 @@ import { deviceFeatures } from './device-features';
 import { featurePaths, ignoredPaths, sharedPaths } from './feature-paths';
 import { controlRoutes } from './harness/control-routes';
 import { parseEnrolmentCode } from './parse-enrolment-code';
-import { pickProposalRefusal } from './pick-proposal-refusal';
 import { pickTaskRefusal } from './pick-task-refusal';
 import { postControl } from './post-control';
 import { buildServedBlobsArgv, servedSourceFolders } from './preview/build-served-blobs-argv';
@@ -34,8 +33,13 @@ import { readProdErrors } from './prod/read-prod-errors';
 import { readProdHealth } from './prod/read-prod-health';
 import { readProdVersion } from './prod/read-prod-version';
 import { readConversationTurn } from './read-conversation-turn';
+import { readSessionCheck } from './read-session-check';
+import { refuseHarnessless } from './refuse-harnessless';
 import { runHostCLI } from './run-host-cli';
 import { sessionsSchema } from './sessions-schema';
+import { throwRefusal } from './throw-refusal';
+import { waitForModelInput } from './wait-for-model-input';
+import { waitForProposals } from './wait-for-proposals';
 
 const conversationTurnSchema = z.strictObject({ records: z.array(conversationRecordSchema) });
 const harnessPath = join(import.meta.dir, 'harness', 'run-verify-harness.ts');
@@ -198,7 +202,7 @@ export function createVerifyRegistry(): Wringer {
     .action({
       name: 'use-computer',
       summary:
-        "Send the owner message and queue the scripted model turn that uses the assistant's browser (--kind browser: opens the harness page; --kind browser-navigate: sends the open tab to the harness's next page and reloads it), shell (--kind shell: writes a file and reads it back) or screen (--kind screen: takes a screenshot of the desktop and clicks its middle), with the closing reply --text",
+        "Send the owner message and queue the scripted model turn that uses the assistant's browser (--kind browser: opens the harness page; --kind browser-navigate: sends the open tab to the harness's next page and reloads it), shell (--kind shell: writes a file and reads it back), shell-processes (--kind shell-processes: runs ps -e in the shell, which waits for approval) or screen (--kind screen: takes a screenshot of the desktop and clicks its middle), with the closing reply --text",
       effect: 'write',
       targets: ['local'],
       input: controlRoutes.useComputer.input,
@@ -226,20 +230,7 @@ export function createVerifyRegistry(): Wringer {
       effect: 'read',
       args: z.strictObject({ device: z.string().min(1) }),
       data: z.strictObject({ sessions: sessionsSchema }),
-      run: async (args, ctx) => {
-        const printed = await runHostCLI(ctx, ['sessions']);
-
-        const sessions = sessionsSchema.parse(JSON.parse(printed));
-
-        if (!sessions.some((session) => session.deviceName === args.device)) {
-          throw new WringerError('check-failed', {
-            message: `no session has the device name ${args.device}`,
-            data: { sessions },
-          });
-        }
-
-        return { sessions };
-      },
+      run: (args, ctx) => readSessionCheck(ctx, args.device),
     })
     .command({
       path: ['conversation', 'turn'],
@@ -278,18 +269,37 @@ export function createVerifyRegistry(): Wringer {
     .command({
       path: ['proposals'],
       summary:
-        'Check that one call of the tool --tool waits for your answer (--waiting pending), or none does (--waiting none)',
+        'Check that one call of the tool --tool waits for your answer (--waiting pending), or none does (--waiting none), waiting up to --wait-ms (no wait by default)',
       effect: 'read',
-      args: z.strictObject({ tool: z.string().min(1), waiting: z.enum(['pending', 'none']) }),
+      args: z.strictObject({
+        tool: z.string().min(1),
+        waiting: z.enum(['pending', 'none']),
+        waitMs: z.int().positive().optional(),
+      }),
       data: controlRoutes.actionProposals.output,
-      run: async (args, ctx) => {
+      run: (args, ctx) => {
         refuseHarnessless(ctx.target, 'proposals');
 
-        const listed = await postControl(ctx.drivers.http, controlRoutes.actionProposals, {});
+        return waitForProposals(
+          () => postControl(ctx.drivers.http, controlRoutes.actionProposals, {}),
+          args,
+        );
+      },
+    })
+    .command({
+      path: ['model', 'input'],
+      summary:
+        "Check that the model's last input holds the text --contains, waiting up to --wait-ms (10000 by default), and return that input; the outcome of an approved call reaches the model in it",
+      effect: 'read',
+      args: z.strictObject({ contains: z.string().min(1), waitMs: z.int().positive().optional() }),
+      data: controlRoutes.modelInput.output,
+      run: (args, ctx) => {
+        refuseHarnessless(ctx.target, 'model input');
 
-        throwRefusal(pickProposalRefusal(listed.proposals, args), listed);
-
-        return listed;
+        return waitForModelInput(
+          () => postControl(ctx.drivers.http, controlRoutes.modelInput, {}),
+          args,
+        );
       },
     })
     .command({
@@ -444,22 +454,6 @@ export function createVerifyRegistry(): Wringer {
     .shared(...sharedPaths)
     .ignore(...ignoredPaths)
     .build();
-}
-
-// The harness's control routes read these checks' state, and only `local` runs the harness.
-function refuseHarnessless(target: string, command: string): void {
-  if (target !== 'local') {
-    throw new WringerError('usage', {
-      message: `\`${command}\` reads the harness, which only the local target runs`,
-      hint: 'Run the journey with `--target local`.',
-    });
-  }
-}
-
-function throwRefusal(refusal: string | null, data: unknown): void {
-  if (refusal !== null) {
-    throw new WringerError('check-failed', { message: refusal, data });
-  }
 }
 
 // The prod reads go through the read-only token and the prod cluster's kubeconfig, which only the

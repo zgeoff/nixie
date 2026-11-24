@@ -77,6 +77,61 @@ Before you start:
 
    Expect: every command exits 0. The last snapshot is the evidence for the end state.
 
+5. Check that the shell shows only its own processes. `use-computer --kind shell-processes` sends
+   the message "List the processes that your shell shows.", and queues 2 replies: a `computer.run`
+   call of `ps -e -o args=` and the text in `--text`. nixie holds the command until the user
+   approves it.
+
+   `proposals` checks once by default, and fails with `check-failed` when the turn has not held the
+   call yet. `--wait-ms` makes it check again until the call is held, for up to that many
+   milliseconds.
+
+   ```bash
+   bun verify action use-computer --kind shell-processes --text 'The assistant listed the processes.'
+   bun verify proposals --tool computer.run --waiting pending --wait-ms 10000
+   bun verify action script-reply --text 'Thanks, I have the list.'
+   ```
+
+   Expect: `data.replies` is 2, and `proposals` exits 0.
+
+6. Open the approvals page, and take a snapshot:
+
+   ```bash
+   bun verify browser goto /proposals
+   bun verify browser snapshot
+   ```
+
+   Expect: one item that reads "Run computer.run (computer_run).". Pass the `ref` of the line that
+   holds that text and `[cursor=pointer]` as `<item_ref>`.
+
+7. Click the item to expand it, then click its button named "Run computer.run". Take the button's
+   `ref` from the snapshot after the first click.
+
+   ```bash
+   bun verify browser click --ref '<item_ref>'
+   bun verify browser snapshot
+   bun verify browser click --ref '<button_ref>'
+   ```
+
+   Expect: both clicks exit 0.
+
+8. Read the command's result. The result sits sealed on the call's `action.outcome` record, which no
+   page shows. nixie hands it to the model in the turn that the outcome starts, which uses the reply
+   that step 5 queued. `model input` waits up to 10 s for that turn's input to hold the text of
+   `--contains`, and returns the input in `data.text`. It has no flag that matches absence, so
+   `--contains` requires the zero exit code and you read `data.text` for the rest.
+
+   ```bash
+   bun verify model input --contains '\"exitCode\":0'
+   ```
+
+   Expect: the command exits 0, which means the input holds `\"exitCode\":0`, and `data.text` shows
+   a `stdout` of 2 lines: the bridge (`bridge-main.ts`, whose arguments end in
+   `bash -lc ps -e -o args=`) and `ps -e -o args=`. `bash -lc` runs its last command in its own
+   process, so no separate shell line shows. Fail the journey on a nonzero exit code, on an empty
+   list, and on any other line, such as a display server, a remote-screen socket path or a browser
+   flag. The shell's own `/proc` is what keeps those lines out.
+
 ## End state
 
 The last snapshot of step 4 lists 2 tool calls under "Tools 2", each with its input and its result:
@@ -86,5 +141,8 @@ The last snapshot of step 4 lists 2 tool calls under "Tools 2", each with its in
   `"isDiskNew": true`.
 - `computer.read_file`, with the input `{ "path": "notes/hello.txt" }`. Its result has
   `"text": "hello from the shell"` and `"isDiskNew": false`.
+
+The input that step 8 returns holds the `computer.run` result with `"exitCode":0` and only 2 lines
+in its stdout: the bridge and `ps -e -o args=`.
 
 Once the end state matches, run `bun verify done`.

@@ -22,6 +22,8 @@ export interface ControlHandlers {
   readonly readTasks: () => Promise<z.input<typeof controlRoutes.tasks.output>>;
 
   readonly readActionProposals: () => Promise<z.input<typeof controlRoutes.actionProposals.output>>;
+
+  readonly readModelInput: () => z.input<typeof controlRoutes.modelInput.output>;
 }
 
 export function serveControl(handlers: ControlHandlers): Bun.Server<undefined> {
@@ -39,6 +41,9 @@ export function serveControl(handlers: ControlHandlers): Bun.Server<undefined> {
       },
       [controlRoutes.actionProposals.path]: {
         GET: makeRouteHandler(controlRoutes.actionProposals, handlers.readActionProposals),
+      },
+      [controlRoutes.modelInput.path]: {
+        GET: makeRouteHandler(controlRoutes.modelInput, handlers.readModelInput),
       },
       [controlRoutes.showOnDevice.path]: {
         POST: makeRouteHandler(controlRoutes.showOnDevice, async (show) => ({

@@ -36,3 +36,15 @@ test('it queues the navigate, the reload and the reply for the browser-navigate 
     { text: 'I went to the next page and reloaded it.' },
   ]);
 });
+
+test('it queues a ps run and the reply for the shell-processes kind', () => {
+  const replies = buildComputerReplies(
+    { kind: 'shell-processes', text: 'I listed them.' },
+    'http://pages.test:4000/',
+  );
+
+  expect(replies).toStrictEqual([
+    { toolUse: { name: 'mcp__nixie__computer_run', input: { command: 'ps -e -o args=' } } },
+    { text: 'I listed them.' },
+  ]);
+});

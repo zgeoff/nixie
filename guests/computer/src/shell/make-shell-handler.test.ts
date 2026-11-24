@@ -5,7 +5,7 @@ function setupTest() {
   return { bridgeScript: '/app/bridge.js', proxySocketPath: '/run/nixie-computer/proxy.sock' };
 }
 
-test('it puts a command in new user, network and process namespaces behind the bridge to the proxy', () => {
+test('it puts a command in new user, network, process and mount namespaces, with its own /proc, behind the bridge to the proxy', () => {
   const ctx = setupTest();
 
   expect(buildUnshareArgv(ctx, ['bash', '-lc', 'ls'], 'closed')).toStrictEqual([
@@ -14,6 +14,8 @@ test('it puts a command in new user, network and process namespaces behind the b
     '--map-root-user',
     '--net',
     '--pid',
+    '--mount',
+    '--mount-proc',
     '--fork',
     '--kill-child',
     process.execPath,

@@ -103,7 +103,7 @@ export const controlRoutes = {
     method: 'POST',
     path: '/control/use-computer',
     input: z.strictObject({
-      kind: z.enum(['browser', 'browser-navigate', 'shell', 'screen']),
+      kind: z.enum(['browser', 'browser-navigate', 'shell', 'shell-processes', 'screen']),
       text: z.string().min(1),
     }),
     output: z.strictObject({ replies: z.int().positive() }),
@@ -123,6 +123,12 @@ export const controlRoutes = {
     output: z.strictObject({
       proposals: z.array(actionProposalSchema),
     }),
+  },
+  modelInput: {
+    method: 'GET',
+    path: '/control/model-input',
+    input: z.strictObject({}),
+    output: z.strictObject({ text: z.string() }),
   },
 } as const;
 
