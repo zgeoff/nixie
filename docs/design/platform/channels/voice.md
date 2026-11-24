@@ -252,7 +252,8 @@ budgets/call-day.yaml, budgets/call-month.yaml   counts: tool:call, limit in dol
 - `calls.start` makes the caller's session the carrying session. A refused start writes nothing.
 - The adapter takes a hand-off's request from GPT-Live's delegation event. When the event holds no
   request text, the adapter uses your speech since the last hand-off.
-- One call runs at a time. A second start or ring gets `CALL_RUNNING`.
+- One call runs at a time, because nixie works for one person. A second start or ring gets
+  `CALL_RUNNING`.
 - The speech layer answers small talk only, and hands every request to nixie's turn.
 - The speech layer never sees memory: its instructions hold the voice-call prompt and the call so
   far. Small talk saves nothing to memory, and `dictated` text never counts as memory evidence.
@@ -265,10 +266,11 @@ budgets/call-day.yaml, budgets/call-month.yaml   counts: tool:call, limit in dol
   turn, and `call.heard_cut` records the point. You can always cut nixie off.
 - A proposal made during a call shows its card on the carrying device's call screen, as
   [approvals in the client](approvals.md#during-a-voice-call) describes.
-- A crash or a dropped provider session never replays speech you heard. The calls module opens a new
-  speech-layer session with the call so far, the speech layer says "I dropped out for a second", and
-  a hand-off that was running reruns as its step does. You hear the rerun's answer in full, and the
-  record keeps only the answer its step committed.
+- A crash or a dropped provider session never replays a hand-off that committed. The calls module
+  opens a new speech-layer session with the call so far, the speech layer says "I dropped out for a
+  second", and a hand-off that was running reruns as its step does. You hear the rerun's answer in
+  full, even a part you heard before the drop, and the record keeps only the answer its step
+  committed.
 - When the provider's session limit is near, the calls module opens the next session inside the same
   call, and you hear no gap beyond the reconnect line.
 - When 3 attempts to open the next session fail, or the device and the speech session are both gone
@@ -284,7 +286,7 @@ budgets/call-day.yaml, budgets/call-month.yaml   counts: tool:call, limit in dol
 - A config without the `voice` key turns calls off: `calls.start` answers `VOICE_OFF`, and nixie
   holds no `call.ring` tool.
 - A call that stays `connecting` for 30 s with no `calls.connect` ends with `endedBy: 'dropped'`.
-- Every speech-layer session sets `store: false`.
+- Every speech-layer session sets `store: false`, so OpenAI keeps no copy of the call for later use.
 - A changed voice, prompt or call setting applies from the next call.
 - The turn-input log can cover the `call` role. The speech layer's own traffic never passes the
   model gateway and stays outside the log.
@@ -297,8 +299,8 @@ budgets/call-day.yaml, budgets/call-month.yaml   counts: tool:call, limit in dol
 - **A call is its own thread, on a `call` runner that runs the conversation's turn code.** The
   conversation stays free during a call, the call's record stays readable as a task's, and the call
   keeps the conversation's mid-turn messages and a sandbox held for its whole length.
-- **Each hand-off is one turn.** A turn commits at its end, so a crash reruns one hand-off and never
-  the speech you heard.
+- **Each hand-off is one turn.** A turn commits at its end, so a crash reruns only the hand-off that
+  was running, and never one that committed.
 - **The device carries the audio, the server holds the key.** Audio takes the shortest path, and the
   key stays on the host.
 - **The call model is its own role, `call`.** It defaults to the conversation's profile.
