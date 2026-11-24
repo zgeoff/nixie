@@ -883,6 +883,24 @@ test('it turns a device offline once its connection closed and 60 s passed', asy
   expect(ctx.context.clients.devices.isOnline(row?.deviceID ?? '')).toBeFalse();
 });
 
+test('it leaves the last seen time of a full session alone while its page stream is open', async () => {
+  const ctx = await setupTest();
+  const laptop = await ctx.enrol('full', 'laptop');
+  const stream = await laptop.client.live.follow({});
+
+  await stream.next();
+
+  const before = await ctx.readLastSeen(laptop.sessionID);
+
+  ctx.clock.advance(10 * 60_000);
+
+  await stream.return(undefined);
+
+  const after = await ctx.readLastSeen(laptop.sessionID);
+
+  expect(after).toBe(before);
+});
+
 test('it keeps the last seen time of a session fresh while its device stream is open', async () => {
   const ctx = await setupTest();
   const device = await ctx.enrol('device', 'desk panel');
