@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.111.0](https://github.com/zgeoff/nixie/compare/v0.110.0...v0.111.0) (2026-11-24)
+
+
+### Features
+
+* **tasks:** add one gate for every hold on a task ([#1432](https://github.com/zgeoff/nixie/issues/1432)) ([8a5ec07](https://github.com/zgeoff/nixie/commit/8a5ec07d08cb7eef70cf9ea4420e00de974e979b))
+
 ## [0.110.0](https://github.com/zgeoff/nixie/compare/v0.109.0...v0.110.0) (2026-11-23)
 
 
