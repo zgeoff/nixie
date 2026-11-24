@@ -4,7 +4,7 @@ Contents: [Journey](#journey), [End state](#end-state).
 
 The user asks the assistant to look at its screen and click the middle of it. On `local`, a scripted
 model answers in place of the real one. It calls `computer.screenshot`, then `computer.screen_click`
-at the point 640, 400, on the tab that computer-browser left open on the harness page. The
+at the point 640, 400, on the tab that computer-browser left open on the harness site. The
 screenshot runs at once. nixie holds the click until the user approves it, because a screen act on a
 browser window is a `send` to the host of the tab it lands on. In a deployment, the screen is the
 desktop of the computer sandbox. `local`'s test build has no desktop, so a stand-in drives the
@@ -23,7 +23,7 @@ stand-in has neither, and the guest's tests cover both refusals.
 Before you start:
 
 - Run [computer-browser](feature-computer-browser.md) first, in the same `up`. It leaves a tab open
-  on the harness page, which the click lands on. Without that tab, the click lands on no browser
+  on the harness site, which the click lands on. Without that tab, the click lands on no browser
   window, and nixie asks for approval without naming a host.
 - Run this journey once per `up`. Before you run it again, even after a failed journey, run
   `bun verify up --restart` and `bun verify doctor`. Then run sign-in-enrol, computer-browser and

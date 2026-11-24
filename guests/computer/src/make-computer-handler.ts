@@ -14,6 +14,8 @@ export function makeComputerHandler(handlers: ComputerHandlers): ComputerHandler
       .with('run', 'readFile', 'writeFile', () => handlers.shell)
       .with(
         'open',
+        'navigate',
+        'reload',
         'read',
         'screenshot',
         'scroll',

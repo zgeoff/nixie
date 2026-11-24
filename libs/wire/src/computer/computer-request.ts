@@ -27,6 +27,20 @@ const openSchema = z.strictObject({
   deniedRanges: stringListSchema,
 });
 
+const navigateSchema = z.strictObject({
+  op: z.literal('navigate'),
+  tab: z.string(),
+  url: z.string(),
+  limits: limitsSchema,
+  deniedRanges: stringListSchema,
+});
+
+const reloadSchema = z.strictObject({
+  op: z.literal('reload'),
+  tab: z.string(),
+  limits: limitsSchema,
+});
+
 const readSchema = z.strictObject({
   op: z.literal('read'),
   tab: z.string(),
@@ -123,6 +137,8 @@ const writeFileSchema = z.strictObject({
 
 export const computerRequestSchema = z.discriminatedUnion('op', [
   openSchema,
+  navigateSchema,
+  reloadSchema,
   readSchema,
   screenshotSchema,
   scrollSchema,

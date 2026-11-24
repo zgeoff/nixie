@@ -7,11 +7,16 @@ export interface ComputerTabs {
   readonly findGuest: (guestTab: string) => string | null;
   readonly remove: (tab: string) => void;
   readonly isEmpty: () => boolean;
+
+  readonly isIdleClosed: (tab: string) => boolean;
 }
 
 export interface TabState {
   readonly tabs: Map<string, string>;
   tabCount: number;
+
+  // the tabs that closed when the browser slept, which no later tab reuses
+  readonly idleClosed: Set<string>;
 }
 
 export function buildTabs(state: TabState): ComputerTabs {
@@ -35,5 +40,6 @@ export function buildTabs(state: TabState): ComputerTabs {
       state.tabs.delete(tab);
     },
     isEmpty: () => state.tabs.size === 0,
+    isIdleClosed: (tab) => state.idleClosed.has(tab),
   };
 }

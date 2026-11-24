@@ -1,4 +1,4 @@
-import type { AddressCheck } from '@heynixie/egress';
+import type { AddressCheck, CheckingProxy } from '@heynixie/egress';
 import { makeAddressCheck, startCheckingProxy } from '@heynixie/egress';
 import type { ComputerHandler, ComputerReply } from '@heynixie/wire';
 import { match } from 'ts-pattern';
@@ -9,8 +9,13 @@ import { makeOriginLog } from '../takeover/make-origin-log';
 import { actOnTab } from './act-on-tab';
 import { downloadTabFile } from './download-tab-file';
 import { launchBrowser } from './launch-browser';
+import { navigateTab } from './navigate-tab';
 import { openTab } from './open-tab';
+import { pickIPv4OnlyReply } from './pick-ipv4-only-reply';
+import { readIPv4OnlyRefusal } from './read-ipv4-only-refusal';
+import { readScanRefusal } from './read-scan-refusal';
 import { readTabPage } from './read-tab-page';
+import { reloadTab } from './reload-tab';
 import { scrollTab } from './scroll-tab';
 import { shootTab } from './shoot-tab';
 import { trackHoldPages } from './track-hold-pages';
@@ -59,31 +64,36 @@ const noDisplay: ComputerReply = {
 // One browser per guest process, started at its first request and again after it dies. The browser
 // reaches the network only through a checking proxy, and every request it makes is scanned by the
 // server through the guest's scan channel, whether or not a tool call runs.
-export function makeBrowserHandler(options: BrowserHandlerOptions): ComputerHandler {
+export function makeBrowserHandler(
+  options: BrowserHandlerOptions,
+): ComputerHandler & { readonly stop: () => Promise<void> } {
   const gate = options.gate;
   const ranges = { current: options.deniedRanges };
   let state: BrowserState | null = null;
   let isClosed = false;
-  let isProxyUp: Promise<number> | null = null;
+  let isProxyUp: Promise<CheckingProxy> | null = null;
 
   const drivers = new WeakMap<BrowserState, DesktopDriver>();
 
   const originLog = makeOriginLog();
 
+  // the hosts with no IPv4 address that the proxy refused since the last load began
+  const ipv4OnlyHosts: string[] = [];
+
   const checkAddress: AddressCheck =
     options.checkAddress ?? ((address) => makeAddressCheck(ranges.current)(address));
 
-  const startProxy = async (): Promise<number> => {
-    const proxy = await startCheckingProxy({
+  const startProxy = (): Promise<CheckingProxy> =>
+    startCheckingProxy({
       checkAddress,
       resolveHost: options.resolveHost,
       scanURL: gate.scan,
       scanText: gate.scanText,
       canTunnel: true,
+      onIPv4OnlyHost: (host) => {
+        ipv4OnlyHosts.push(host);
+      },
     });
-
-    return proxy.port;
-  };
 
   const ensure = async (): Promise<BrowserState> => {
     if (state !== null && !isClosed) {
@@ -92,11 +102,11 @@ export function makeBrowserHandler(options: BrowserHandlerOptions): ComputerHand
 
     isProxyUp ??= startProxy();
 
-    const proxyPort = await isProxyUp;
+    const proxy = await isProxyUp;
 
     state = await launchBrowser({
       home: options.home,
-      proxyPort,
+      proxyPort: proxy.port,
       gate,
       timeZone: options.timeZone,
       isHeadless: options.isHeadless,
@@ -116,9 +126,25 @@ export function makeBrowserHandler(options: BrowserHandlerOptions): ComputerHand
     return state;
   };
 
-  return async (request) => {
-    if (request.op === 'open') {
+  const answerRequest: ComputerHandler = async (request) => {
+    if (request.op === 'open' || request.op === 'navigate') {
       ranges.current = request.deniedRanges;
+      ipv4OnlyHosts.length = 0;
+
+      const scanRefusal = await readScanRefusal(request.url, gate);
+
+      if (scanRefusal !== null) {
+        return scanRefusal;
+      }
+
+      const ipv4Refusal = await readIPv4OnlyRefusal(request.url, {
+        resolveHost: options.resolveHost,
+        checkAddress,
+      });
+
+      if (ipv4Refusal !== null) {
+        return ipv4Refusal;
+      }
     }
 
     const browser = await ensure();
@@ -175,8 +201,22 @@ export function makeBrowserHandler(options: BrowserHandlerOptions): ComputerHand
       return handleScreenRequest({ ...desktop, settleMs: screen.settleMs }, request);
     }
 
-    return handleRequest(browser, request);
+    const reply = await answerTabRequest(browser, request);
+
+    return request.op === 'open' || request.op === 'navigate'
+      ? pickIPv4OnlyReply(reply, ipv4OnlyHosts)
+      : reply;
   };
+
+  const stop = async (): Promise<void> => {
+    await state?.context.close();
+
+    const proxy = await isProxyUp;
+
+    await proxy?.stop();
+  };
+
+  return Object.assign(answerRequest, { stop });
 }
 
 // The address of the tab in view, or null when none shows or the desktop cannot be read.
@@ -233,6 +273,7 @@ async function readNow(
       mode: 'text',
       textBytes: nowTextBytes,
       isDiskNew: false,
+      landing: null,
     });
 
     return { kind: 'browser', tab: focus.tab, text: read.page.text };
@@ -253,6 +294,24 @@ function isScreenRequest(request: Parameters<ComputerHandler>[0]): request is Sc
     request.op === 'screenBind' ||
     request.op === 'screenAct'
   );
+}
+
+// A page that closes or moves under a call fails the call. A throw would end the guest, and the
+// server would see its output close with no reply.
+async function answerTabRequest(
+  state: BrowserState,
+  request: Parameters<ComputerHandler>[0],
+): Promise<ComputerReply> {
+  try {
+    return await handleRequest(state, request);
+  } catch (error) {
+    return {
+      kind: 'failed',
+      ok: false,
+      reason: 'failed',
+      message: error instanceof Error ? error.message : String(error),
+    };
+  }
 }
 
 const tabGone: ComputerReply = { kind: 'failed', ok: false, reason: 'tab_gone' };
@@ -281,7 +340,20 @@ function handleRequest(
         mode: read.mode,
         textBytes: 3 * 65_536,
         isDiskNew: false,
+        landing: null,
       });
+    })
+    .with({ op: 'navigate' }, (navigate) => {
+      const tab = state.tabs.get(navigate.tab);
+
+      return tab === undefined
+        ? Promise.resolve(tabGone)
+        : navigateTab(navigate.tab, tab, navigate);
+    })
+    .with({ op: 'reload' }, (reload) => {
+      const tab = state.tabs.get(reload.tab);
+
+      return tab === undefined ? Promise.resolve(tabGone) : reloadTab(reload.tab, tab, reload);
     })
     .with({ op: 'screenshot' }, (shot) => {
       const tab = state.tabs.get(shot.tab);

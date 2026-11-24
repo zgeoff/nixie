@@ -1,9 +1,15 @@
-import type { DirectResult, ToolDefinition } from '@heynixie/tools';
+import type { ToolDefinition } from '@heynixie/tools';
 import { z } from 'zod';
+import { browserPageFields } from './browser-page-fields';
+import { buildIdleNote } from './build-idle-note';
 import type { ComputerState } from './computer-state';
 import type { ComputerToolOptions } from './computer-tool-options';
 import { buildChallengeField } from './handover/build-challenge-field';
-import { refuseComputer, runComputerCall } from './run-computer-call';
+import { hostOf } from './host-of';
+import { readWebAddress } from './read-web-address';
+import { refuseTabGone } from './refuse-tab-gone';
+import { refuseWrongReply } from './refuse-wrong-reply';
+import { runComputerCall } from './run-computer-call';
 import { showPicture } from './show-picture';
 import { writeComputerPage } from './write-computer-page';
 
@@ -28,44 +34,6 @@ const diskNote = [
   'it held before is gone.',
 ].join('');
 
-const pageNote = [
-  ' The page text comes back as parts like web_fetch: pass the page ID to web_fetch with a part ',
-  'to read another. Text marked [E4 textbox "Name"] is a control: pass E4 as element to ',
-  'computer.browser_fill or computer.browser_click.',
-].join('');
-
-const pageOutput = {
-  type: 'object',
-  properties: {
-    tab: { type: 'string' },
-    url: { type: 'string' },
-    status: { type: 'number' },
-    title: { type: 'string' },
-    page: { type: 'string' },
-    part: { type: 'number' },
-    parts: { type: 'number' },
-    text: { type: 'string' },
-    isDiskNew: { type: 'boolean' },
-    challenge: { type: 'string' },
-    refused: { type: 'object' },
-  },
-  additionalProperties: false,
-};
-
-const pageResults = {
-  tab: 'owner_data',
-  url: 'untrusted',
-  status: 'untrusted',
-  title: 'untrusted',
-  page: 'untrusted',
-  part: 'untrusted',
-  parts: 'untrusted',
-  text: 'untrusted',
-  isDiskNew: 'owner_data',
-  challenge: 'owner_data',
-  refused: 'untrusted',
-} as const;
-
 const openArguments = z.object({ url: z.string().min(1) });
 const openTimeoutMs = 60_000;
 
@@ -75,13 +43,15 @@ function buildOpenTool(options: ComputerToolOptions): ToolDefinition {
     description: [
       'Opens a web page in your own browser, in a new tab, and returns its text. The browser ',
       'runs scripts and keeps its sign-ins, so use it for a page web_fetch cannot read. A tab ',
-      'stays open until you close it or the browser sleeps; at most 5 tabs. Reach for the ',
+      'stays open until you close it; at most 5 tabs. Reach for the ',
       'computer when the result must still be there tomorrow, or when a site needs you signed in. ',
       'The page tools stay your main way in, because page text costs far fewer tokens than a ',
       'screenshot; computer.screenshot and the computer.screen_* tools are for what they cannot ',
       'reach. ',
       diskNote,
-      pageNote,
+      browserPageFields.pageNote,
+      browserPageFields.blockedNote,
+      buildIdleNote(options.computer.idleMs),
     ].join(''),
     input: {
       type: 'object',
@@ -91,23 +61,23 @@ function buildOpenTool(options: ComputerToolOptions): ToolDefinition {
       required: ['url'],
       additionalProperties: false,
     },
-    output: pageOutput,
+    output: browserPageFields.pageOutput,
     declaration: {
       effects: ['fetch'],
       destinations: [],
       amount: null,
       content: [],
-      results: pageResults,
+      results: browserPageFields.pageResults,
     },
     execution: 'direct',
     prepare: (input) => {
-      const target = readOpenTarget(openArguments.parse(input));
+      const target = readWebAddress(openArguments.parse(input).url);
       const prepared = typeof target === 'string' ? { destinations: [hostOf(target)] } : target;
 
       return Promise.resolve(prepared);
     },
     run: async (call, context) => {
-      const target = readOpenTarget(openArguments.parse(call.input));
+      const target = readWebAddress(openArguments.parse(call.input).url);
 
       if (typeof target !== 'string') {
         return { status: 'ok', ...target };
@@ -126,7 +96,10 @@ function buildOpenTool(options: ComputerToolOptions): ToolDefinition {
       });
 
       if (outcome.kind === 'refused' || outcome.reply.kind !== 'page') {
-        return { status: 'ok', ...(outcome.kind === 'refused' ? outcome.result : unexpected()) };
+        return {
+          status: 'ok',
+          ...(outcome.kind === 'refused' ? outcome.result : refuseWrongReply()),
+        };
       }
 
       const tab = options.computer.tabs.add(outcome.reply.tab);
@@ -139,20 +112,6 @@ function buildOpenTool(options: ComputerToolOptions): ToolDefinition {
   };
 }
 
-function readOpenTarget(input: z.infer<typeof openArguments>): string | DirectResult {
-  return URL.canParse(input.url) && /^https?:$/u.test(new URL(input.url).protocol)
-    ? input.url
-    : refuseComputer('BAD_URL', 'the browser opens only http and https addresses');
-}
-
-function hostOf(url: string): string {
-  return URL.canParse(url) ? new URL(url).host : url;
-}
-
-function unexpected(): DirectResult {
-  return refuseComputer('COMPUTER_FAILED', 'the browser answered with the wrong kind of reply');
-}
-
 const readArguments = z.object({ tab: z.string().min(1), mode: z.enum(['text', 'snapshot']) });
 const readTimeoutMs = 30_000;
 
@@ -162,7 +121,8 @@ function buildReadTool(options: ComputerToolOptions): ToolDefinition {
     description: [
       'Reads an open tab again. mode text gives the readable text; mode snapshot also marks each ',
       'control, such as [E4 textbox "Name"], so you can fill or click it.',
-      pageNote,
+      browserPageFields.pageNote,
+      buildIdleNote(options.computer.idleMs),
     ].join(''),
     input: {
       type: 'object',
@@ -173,13 +133,13 @@ function buildReadTool(options: ComputerToolOptions): ToolDefinition {
       required: ['tab', 'mode'],
       additionalProperties: false,
     },
-    output: pageOutput,
+    output: browserPageFields.pageOutput,
     declaration: {
       effects: ['note'],
       destinations: [],
       amount: null,
       content: [],
-      results: pageResults,
+      results: browserPageFields.pageResults,
     },
     execution: 'direct',
     run: async (call, context) => {
@@ -187,7 +147,7 @@ function buildReadTool(options: ComputerToolOptions): ToolDefinition {
       const guestTab = options.computer.tabs.find(input.tab);
 
       if (guestTab === null) {
-        return { status: 'ok', ...tabGone(input.tab) };
+        return { status: 'ok', ...refuseTabGone(options, input.tab) };
       }
 
       const outcome = await runComputerCall(options, {
@@ -198,7 +158,10 @@ function buildReadTool(options: ComputerToolOptions): ToolDefinition {
       });
 
       if (outcome.kind === 'refused' || outcome.reply.kind !== 'page') {
-        return { status: 'ok', ...(outcome.kind === 'refused' ? outcome.result : unexpected()) };
+        return {
+          status: 'ok',
+          ...(outcome.kind === 'refused' ? outcome.result : refuseWrongReply()),
+        };
       }
 
       return {
@@ -207,13 +170,6 @@ function buildReadTool(options: ComputerToolOptions): ToolDefinition {
       };
     },
   };
-}
-
-function tabGone(tab: string): DirectResult {
-  return refuseComputer(
-    'TAB_GONE',
-    `there is no tab ${tab}; the browser may have slept or restarted, so open the page again`,
-  );
 }
 
 const screenshotArguments = z.object({
@@ -239,6 +195,7 @@ function buildScreenshotTool(options: ComputerToolOptions): ToolDefinition {
       'is that control’s box, cut to the viewport, and it never scrolls the page; without it, the ',
       'viewport. A control that has moved or lies outside the viewport is refused with ',
       'STALE_ELEMENT, so scroll to it or read the page again.',
+      buildIdleNote(options.computer.idleMs),
     ].join(''),
     input: {
       type: 'object',
@@ -275,7 +232,7 @@ function buildScreenshotTool(options: ComputerToolOptions): ToolDefinition {
       const guestTab = options.computer.tabs.find(input.tab);
 
       if (guestTab === null) {
-        return { status: 'ok', ...tabGone(input.tab) };
+        return { status: 'ok', ...refuseTabGone(options, input.tab) };
       }
 
       const outcome = await runComputerCall(options, {
@@ -290,7 +247,10 @@ function buildScreenshotTool(options: ComputerToolOptions): ToolDefinition {
       });
 
       if (outcome.kind === 'refused' || outcome.reply.kind !== 'screenshot') {
-        return { status: 'ok', ...(outcome.kind === 'refused' ? outcome.result : unexpected()) };
+        return {
+          status: 'ok',
+          ...(outcome.kind === 'refused' ? outcome.result : refuseWrongReply()),
+        };
       }
 
       return showPicture(options, context.run, {
@@ -317,6 +277,7 @@ function buildScrollTool(options: ComputerToolOptions): ToolDefinition {
       'a screen at a time, or a control such as E4, which scrolls into view. isAtEnd is true ',
       'when the page cannot scroll further that way: for up the top, otherwise the bottom. It ',
       'stores no page text. A control that has moved is refused with STALE_ELEMENT.',
+      buildIdleNote(options.computer.idleMs),
     ].join(''),
     input: {
       type: 'object',
@@ -355,7 +316,7 @@ function buildScrollTool(options: ComputerToolOptions): ToolDefinition {
       const guestTab = options.computer.tabs.find(input.tab);
 
       if (guestTab === null) {
-        return { status: 'ok', ...tabGone(input.tab) };
+        return { status: 'ok', ...refuseTabGone(options, input.tab) };
       }
 
       const outcome = await runComputerCall(options, {
@@ -366,7 +327,10 @@ function buildScrollTool(options: ComputerToolOptions): ToolDefinition {
       });
 
       if (outcome.kind === 'refused' || outcome.reply.kind !== 'scroll') {
-        return { status: 'ok', ...(outcome.kind === 'refused' ? outcome.result : unexpected()) };
+        return {
+          status: 'ok',
+          ...(outcome.kind === 'refused' ? outcome.result : refuseWrongReply()),
+        };
       }
 
       return showPicture(options, context.run, {
@@ -382,7 +346,7 @@ const tabArguments = z.object({ tab: z.string().min(1) });
 function buildCloseTool(options: ComputerToolOptions): ToolDefinition {
   return {
     name: 'computer.browser_close',
-    description: 'Closes an open tab.',
+    description: ['Closes an open tab.', buildIdleNote(options.computer.idleMs)].join(''),
     input: {
       type: 'object',
       properties: { tab: { type: 'string', minLength: 1 } },
@@ -407,7 +371,7 @@ function buildCloseTool(options: ComputerToolOptions): ToolDefinition {
       const guestTab = options.computer.tabs.find(input.tab);
 
       if (guestTab === null) {
-        return { status: 'ok', ...tabGone(input.tab) };
+        return { status: 'ok', ...refuseTabGone(options, input.tab) };
       }
 
       const outcome = await runComputerCall(options, {
@@ -436,6 +400,7 @@ function buildDownloadTool(options: ComputerToolOptions, state: ComputerState): 
       'Clicks a download link or button of an open tab and saves the file to the shell’s disk ',
       'under downloads/. A file past 25 MiB is refused. Read it with computer.read_file or run ',
       'a command on it.',
+      buildIdleNote(options.computer.idleMs),
     ].join(''),
     input: {
       type: 'object',
@@ -474,7 +439,7 @@ function buildDownloadTool(options: ComputerToolOptions, state: ComputerState): 
       const guestTab = options.computer.tabs.find(input.tab);
 
       if (guestTab === null) {
-        return { status: 'ok', ...tabGone(input.tab) };
+        return { status: 'ok', ...refuseTabGone(options, input.tab) };
       }
 
       const outcome = await runComputerCall(options, {
@@ -485,7 +450,10 @@ function buildDownloadTool(options: ComputerToolOptions, state: ComputerState): 
       });
 
       if (outcome.kind === 'refused' || outcome.reply.kind !== 'file') {
-        return { status: 'ok', ...(outcome.kind === 'refused' ? outcome.result : unexpected()) };
+        return {
+          status: 'ok',
+          ...(outcome.kind === 'refused' ? outcome.result : refuseWrongReply()),
+        };
       }
 
       const name = outcome.reply.name.replaceAll(/[^\w.-]/gu, '_');
@@ -501,7 +469,10 @@ function buildDownloadTool(options: ComputerToolOptions, state: ComputerState): 
       state.files.count += 1;
 
       if (written.kind === 'refused' || written.reply.kind !== 'written') {
-        return { status: 'ok', ...(written.kind === 'refused' ? written.result : unexpected()) };
+        return {
+          status: 'ok',
+          ...(written.kind === 'refused' ? written.result : refuseWrongReply()),
+        };
       }
 
       return {

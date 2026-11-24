@@ -60,6 +60,9 @@ export interface StubSandboxAdapterOptions {
 
   // a file that copyIn silently drops, so a copy of it comes back missing
   readonly skipCopyIn?: (path: string) => boolean;
+
+  // true when a sandbox can sleep in memory, as an imp can; its sleep and wake do nothing
+  readonly isSuspendable?: boolean;
 }
 
 export function buildStubSandboxAdapter(
@@ -115,6 +118,7 @@ export function buildStubSandboxAdapter(
         files: sandboxFiles,
         exec: options.exec ?? null,
         skipCopyIn: options.skipCopyIn ?? (() => false),
+        isSuspendable: options.isSuspendable ?? false,
         readMemoryKills:
           options.readMemoryKills ?? (() => Promise.resolve({ kind: 'unsupported' })),
       });
@@ -167,6 +171,7 @@ interface StubState {
   readonly files: Map<string, Uint8Array<ArrayBuffer>>;
   readonly exec: StubExec | null;
   readonly skipCopyIn: (path: string) => boolean;
+  readonly isSuspendable: boolean;
   readonly readMemoryKills: () => Promise<MemoryKillRead>;
 }
 
@@ -235,7 +240,9 @@ function buildStubSandbox(id: string, spec: SandboxSpec, state: StubState): Sand
       ),
     applyMove: () => Promise.reject(new Error('the stub runs no exec')),
     toolRoute: () => Promise.resolve(null),
-    suspension: { kind: 'none' },
+    suspension: state.isSuspendable
+      ? { kind: 'memory', sleep: () => Promise.resolve(), wake: () => Promise.resolve() }
+      : { kind: 'none' },
     readMemoryKills: state.readMemoryKills,
     isRetired: false,
     destroy: async () => {

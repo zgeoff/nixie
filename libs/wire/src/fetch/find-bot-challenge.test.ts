@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { findBotChallenge } from './find-bot-challenge';
+import { canBeBotChallenge, findBotChallenge } from './find-bot-challenge';
 
 test.each([
   {
@@ -72,4 +72,13 @@ test.each([
   { label: 'a 403 with no challenge', status: 403, headers: {}, body: '<p>Forbidden</p>' },
 ])('it finds no challenge in $label', (row) => {
   expect(findBotChallenge(row.status, row.headers, row.body)).toBeNull();
+});
+
+test.each([
+  { status: 403, expected: true },
+  { status: 503, expected: true },
+  { status: 200, expected: false },
+  { status: 404, expected: false },
+])('it says status $status can be a challenge: $expected', (row) => {
+  expect(canBeBotChallenge(row.status)).toBe(row.expected);
 });

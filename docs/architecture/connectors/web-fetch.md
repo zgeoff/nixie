@@ -26,13 +26,14 @@ ID, the part number and the count of parts, the text of one part, the truncated 
 reason, and `isCached`, which is true when the result is a stored copy. A fetched image reaches the
 model as image content beside the result, as [web fetch images](./web-fetch-images.md) describes.
 
-Every field of the result and every image is outside content, because the page and every redirect
-along the way came from someone other than the user. The result schema marks the status code, the
-part number, the count of parts, the truncated mark and `isCached` as endorsed types, because a
-number and a boolean cannot carry the page's words, while a URL can carry text in its path. A
-refused or failed fetch returns an error with its reason, which the model reads. When a site's bot
-protection answers in place of the page, the result is a page with its status and a blocked reason,
-so the model can tell the user why the fetch has no content instead of retrying.
+Every field of the result and every image is outside content, except the endorsed types below,
+because the page and every redirect along the way came from someone other than the user. The result
+schema marks the status code, the part number, the count of parts, the truncated mark and `isCached`
+as endorsed types, because a number and a boolean cannot carry the page's words, while a URL can
+carry text in its path. A refused or failed fetch returns an error with its reason, which the model
+reads. When a site's bot protection answers in place of the page, the result is a page with its
+status and a blocked reason, so the model can tell the user why the fetch has no content instead of
+retrying.
 
 A call names a page in one of these ways, and the tool refuses any other mix of keys:
 
@@ -96,9 +97,9 @@ A URL matches a rule only when all of these hold:
   one trailing slash.
 
 The rewrite drops the fragment and any user name or password, and copies each path segment as the
-URL holds it, with no decoding or encoding. A scoped npm name keeps its slash as `%2F`. A URL that
-matches no rule, or that is no URL, is fetched as named. The tool never rewrites a root page of a
-repository, an issue or a pull request.
+URL holds it, with no decoding or encoding, so a scoped npm name whose URL holds its slash as `%2F`
+keeps it. A URL that matches no rule, or that is no URL, is fetched as named. The tool never
+rewrites a root page of a repository, an issue or a pull request.
 
 The fallback fetches the named URL when the rewritten URL fails. It runs only when a rule rewrote
 the URL and the first fetch returned a 404, or a rate limit: a 429, a 503, or a 403 whose headers
@@ -331,9 +332,9 @@ and never blocks the fetches after it.
 Every fetch sandbox has the same owner. The first fetch after nixie starts removes every fetch
 sandbox of that owner, which clears what an earlier process left. The next fetch after a failed
 create or a destroy that fails or passes its time limit does the same, because a create can fail
-after the runtime made the sandbox and then fail to remove it. A create that passes its time limit
-makes no further adapter call, and nixie destroys a sandbox that the create still returns as soon as
-it arrives.
+after the runtime made the sandbox and then fail to remove it. After a create passes its time limit,
+the fetch uses no sandbox from it; when the create still returns one, nixie's only call on it is the
+destroy, as soon as it arrives.
 
 ## The secret scan
 
@@ -414,7 +415,11 @@ The fetcher's checks run on every hop, the first request and each redirect alike
 1. It accepts `http` and `https`, and refuses every other scheme. It drops any user name, password
    and fragment from the URL.
 2. It resolves the host through the system resolver and checks every A and AAAA address returned.
-   One address that is not public refuses the URL.
+   One address that is not public refuses the URL. A host with only IPv6 addresses is refused with
+   the message "`<host>` has no IPv4 address, and nixie reaches IPv4 hosts only", because nixie's
+   egress reaches IPv4 hosts only. A host with both kinds connects to its first IPv4 address. When
+   the system lookup finds no address, the fetcher asks for the host's AAAA records, so a host with
+   only IPv6 records gets that message in place of a resolve failure.
 3. It connects to the address it checked, and sends the host name in the `Host` header, and over
    `https` for TLS too. The connection never asks DNS again, so a second answer cannot move the
    request, and an `https` certificate must still match the host name.
@@ -448,8 +453,9 @@ sends each fetch these limits:
 The fetcher asks for markdown first, with the header
 `text/markdown, text/html;q=0.9, application/xhtml+xml;q=0.9, text/plain;q=0.8, */*;q=0.7`. A site
 that answers `text/markdown` returns its text as sent, like any other text type, and the reply has
-no link marks, so the page has no link IDs. A server of this release that runs an older fetch image
-only lacks the header, so the server and the image roll out in either order.
+no link marks, so the page has no link IDs. An older fetch image only lacks this header, which on
+its own needs no matching image; the redirect gate above is what ties the image to the server's
+release.
 
 The web fetch tool asks for text up to 3 times its body limit, because one body byte decodes to at
 most 3 bytes of UTF-8 text, so its text stops only where the body does.

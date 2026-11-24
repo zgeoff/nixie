@@ -1,6 +1,8 @@
 import type { Server, Socket } from 'node:net';
 import { connect, createServer } from 'node:net';
 import type { AddressCheck } from './make-address-check';
+import type { ConnectAddress } from './pick-connect-address';
+import { pickConnectAddress } from './pick-connect-address';
 import { toBareHost } from './to-bare-host';
 
 export interface CheckingProxyOptions {
@@ -18,6 +20,10 @@ export interface CheckingProxyOptions {
   // whether a CONNECT tunnel may open. The proxy cannot read what a tunnel carries, so only a client
   // that scans each request itself, before it enters the tunnel, may tunnel.
   readonly canTunnel: boolean;
+
+  // told the host of each request that the proxy refuses because the host has no IPv4 address, so a
+  // client that sees only a failed tunnel can still name the reason
+  readonly onIPv4OnlyHost?: (host: string) => void;
 }
 
 export interface CheckingProxy {
@@ -156,15 +162,19 @@ async function serveClient(client: Socket, options: CheckingProxyOptions): Promi
     }
   }
 
-  const address = await readAddress(destination.host, options);
+  const picked = await readAddress(destination.host, options);
 
-  if (address === null) {
-    refuse(client, '403 Forbidden', 'the host is not a public address');
+  if (picked.kind !== 'connect') {
+    if (picked.kind === 'ipv4-only') {
+      options.onIPv4OnlyHost?.(destination.host);
+    }
+
+    refuse(client, '403 Forbidden', picked.reason);
 
     return;
   }
 
-  const upstream = connect({ host: address, port: destination.port });
+  const upstream = connect({ host: picked.address, port: destination.port });
 
   upstream.on('error', () => {
     refuse(client, '502 Bad Gateway', 'the connection failed');
@@ -381,17 +391,13 @@ function readBytes(client: Socket, rest: Buffer, length: number): Promise<Buffer
   });
 }
 
-async function readAddress(host: string, options: CheckingProxyOptions): Promise<string | null> {
+async function readAddress(host: string, options: CheckingProxyOptions): Promise<ConnectAddress> {
   try {
     const addresses = await options.resolveHost(host);
 
-    const [first] = addresses;
-
-    return first !== undefined && addresses.every((address) => options.checkAddress(address))
-      ? first
-      : null;
+    return pickConnectAddress(host, addresses, options.checkAddress);
   } catch {
-    return null;
+    return { kind: 'refused', reason: `${host} did not resolve` };
   }
 }
 

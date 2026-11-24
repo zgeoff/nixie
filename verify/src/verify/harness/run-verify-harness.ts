@@ -55,12 +55,22 @@ export async function runVerifyHarness(): Promise<void> {
 
   stack.defer(() => front.stop(true));
 
+  const loads = { count: 0 };
+
   // the page the assistant's browser opens; its .test host resolves to this loopback server only in
   // the test build's browser, so no journey reaches the internet
   const site = Bun.serve({
     port: 0,
     routes: {
-      '/': new Response('<h1>Hello from the page</h1><p>Plain page for the browser.</p>', {
+      '/': () => {
+        loads.count += 1;
+
+        return new Response(
+          `<h1>Hello from the page</h1><p>Plain page for the browser. Load ${String(loads.count)}</p>`,
+          { headers: { 'content-type': 'text/html' } },
+        );
+      },
+      '/next': new Response('<h1>The next page</h1><p>Second page for the browser.</p>', {
         headers: { 'content-type': 'text/html' },
       }),
     },

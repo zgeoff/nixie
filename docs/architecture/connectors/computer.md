@@ -42,8 +42,12 @@ in `modules/connectors` owns the sandbox:
 - A call waits a set time for its turn, and returns `BUSY` after that. The calls into the sandbox
   therefore never overlap, whether they come from the conversation or a task. A browser call and a
   shell call share one turn.
-- The sandbox sleeps after its idle time. Nixie treats every wake as a restart: it starts the guest
-  again, so every tab ID from before the sleep returns `TAB_GONE`. The profile keeps the sign-ins.
+- The sandbox sleeps after its idle time, which the deployment sets. Nixie treats every wake as a
+  restart: it starts the guest again, so every tab ID from before the sleep returns `TAB_GONE`. The
+  profile keeps the sign-ins. The description of every browser tool states the idle time, so the
+  assistant knows how long a tab lives. A tab that closed in a sleep answers `TAB_GONE` with a
+  message that names the idle time it closed after, which tells it from a tab that never existed, or
+  that a restart or a crash took.
 - A queued click, fill, screen act or command holds the sandbox awake until its action runs or its
   approval lapses, so a card the user answers late still finds its tab.
 - When the sandbox's image or spec differs from the release, nixie creates a new one at its next
@@ -90,6 +94,8 @@ it may retry. A reset destroys the old sandboxes too.
 | Tool                          | Effect               | Runs   | Result                                                              |
 | ----------------------------- | -------------------- | ------ | ------------------------------------------------------------------- |
 | `computer.browser_open`       | `fetch`              | direct | a new tab and its page text                                         |
+| `computer.browser_navigate`   | `fetch`              | direct | a new address loaded in an open tab, and its page text              |
+| `computer.browser_reload`     | `note`               | direct | the open tab loaded again, and its page text                        |
 | `computer.browser_read`       | `note`               | direct | the page again, as `text` or as a `snapshot` that marks controls    |
 | `computer.browser_screenshot` | `note`               | direct | the viewport's picture, or one control's box, beside the result     |
 | `computer.browser_scroll`     | `note`               | direct | `isAtEnd` and the viewport's picture beside it, with no page stored |
@@ -115,27 +121,56 @@ as a result with `refused: { code, message }`, never as an error.
 **Pages.** The guest writes link marks and tags each control in a snapshot as `[E4 textbox "Name"]`.
 The tool stores the page like a fetched page and returns its first part, and `web_fetch` with the
 page ID reads the other parts. The stored page carries a fetch URL that no URL parser accepts, so
-`web_fetch` never serves it from its cache: a tab shows the live page with its cookies. A tab holds
-at most 5 pages (`TAB_LIMIT`). The model's tab IDs (`t1`, `t2` and on) count up for the life of the
-server, so a restart never reuses one.
+`web_fetch` never serves it from its cache: a tab shows the live page with its cookies. The browser
+holds at most 5 tabs (`TAB_LIMIT`). The model's tab IDs (`t1`, `t2` and on) count up for the life of
+the server, so a restart never reuses one.
+
+**Navigating and reloading.** `browser_navigate` takes a `tab` and a `url`, and loads the address in
+that tab, which keeps its name and its place among the 5 tabs. It declares the new address's host as
+its destination, as `browser_open` does, so the decision point asks about an untrusted site the same
+way. `browser_reload` takes a `tab`, loads the address the tab shows, and is a `note` with no
+destination, so it never asks. Both return the page as `browser_open` does. A tab that nixie does
+not hold returns `TAB_GONE` before the decision point runs, so a navigation of a missing tab never
+asks, and an address that is not http or https returns `BAD_URL`. A load that fails leaves the tab
+open. A hold on the desktop refuses both with `TAKEN_OVER`, as it does `browser_open`.
+
+**Blocked pages.** When `browser_open` or `browser_navigate` loads a page that a bot protection
+answered in place of the site, the result carries a `blocked` reason. The guest finds it from the
+status, headers and body of the navigation that made the page the tab shows, with the check that
+`web_fetch` uses ([`findBotChallenge`](../../../libs/wire/src/fetch/find-bot-challenge.ts)), so both
+tools name the same pages. The guest skips the body when the headers already name a challenge, and
+reads no more of it than `web_fetch` does. A challenge that sends the tab on to another page reports
+that page's status and no reason. When the tab's address changes after the check and before the page
+is read, the result carries status 0 and no reason in place of the challenge's. Only the load that
+brought the page sets it, so a later read of a tab that a person has since got past reports none.
+
+**IPv4 hosts only.** Nixie's egress reaches IPv4 hosts only. A host that resolves to no IPv4
+address, and to no address that the deployment lists as internal, is refused with the message
+"`<host>` has no IPv4 address, and nixie reaches IPv4 hosts only". `browser_open` and
+`browser_navigate` return it before the browser starts the load, because a browser shows the
+assistant only that its tunnel failed. A redirect to such a host fails in the tunnel, so the guest
+replaces the tunnel error with the same message when the proxy refused a host for it during the
+load. [`web_fetch`](web-fetch.md) and the shell's proxy refuse the same host with the same message.
+A host with both kinds of address connects to its first IPv4 address.
 
 **Scrolling and pictures.** `browser_scroll` takes `to` as `up`, `down` or a control ID such as
 `E12`. It moves the viewport by most of a screen, or scrolls the control into view, and returns
 `{ tab, isAtEnd }`. For `up`, `isAtEnd` means the top; otherwise it means the bottom. It stores no
-page, so it never counts toward a tab's 5 pages. `browser_screenshot` takes an optional `control`
-and then pictures that control's box, cut to the viewport, without scrolling the page, so a person
-who holds the desktop keeps their view. A picture of a control wholly outside the viewport returns
-`STALE_ELEMENT`, and so does either tool for a control that no longer holds its number.
+page. `browser_screenshot` takes an optional `control` and then pictures that control's box, cut to
+the viewport, without scrolling the page, so a person who holds the desktop keeps their view. A
+picture of a control wholly outside the viewport returns `STALE_ELEMENT`, and so does either tool
+for a control that no longer holds its number.
 
-**Challenges.** `browser_open`, `browser_read` and `browser_screenshot` each look once at the tab
-they name for a CAPTCHA or human check, however the assistant came to the tab. The guest reads the
-address of each frame in the tab, and it counts the elements of the page and of each frame for known
-markers. The frames and markers are those of reCAPTCHA, hCaptcha, Cloudflare Turnstile and its
-interstitial, and Arkose. The interstitial's form counts only with the Cloudflare token in its
-action, so an ordinary form with the same ID does not. The check never reads page text, so a site
-cannot write words that pass for a challenge or hide one. When it finds one, the result carries a
-`challenge` line that nixie writes, beside the page's text and never inside it. The line says that a
-person must solve the check and to call `computer.handover` with a reason.
+**Challenges.** `browser_open`, `browser_navigate`, `browser_reload`, `browser_read` and
+`browser_screenshot` each look once at the tab they name for a CAPTCHA or human check, however the
+assistant came to the tab. The guest reads the address of each frame in the tab, and it counts the
+elements of the page and of each frame for known markers. The frames and markers are those of
+reCAPTCHA, hCaptcha, Cloudflare Turnstile and its interstitial, and Arkose. The interstitial's form
+counts only with the Cloudflare token in its action, so an ordinary form with the same ID does not.
+The check never reads page text, so a site cannot write words that pass for a challenge or hide one.
+When it finds one, the result carries a `challenge` line that nixie writes, beside the page's text
+and never inside it. The line says that a person must solve the check and to call
+`computer.handover` with a reason.
 
 **Old names.** Every browser tool carries the `browser_` prefix, and a call under a name from before
 it is an unknown tool. An action queued under `computer.fill` or `computer.click` before the rename
@@ -177,9 +212,10 @@ as an attachment of the result record, so a forget of that record erases them.
 
 ## Reads and acts
 
-A read changes nothing outside nixie, so `browser_open` and `browser_download` are `fetch` effects,
-and the decision point asks about each site on its first visit, with the site's host and port as the
-destination.
+A read changes nothing outside nixie, so `browser_open`, `browser_navigate` and `browser_download`
+are `fetch` effects, and the decision point asks about each site on its first visit, with the site's
+host and port as the destination. `browser_reload` is a `note`, because it loads an address the tab
+already shows.
 
 A click or a fill can post a form, so each is a queued `send`. The tool's `prepare` hook reads the
 tab's URL before the decision. The host becomes the call's destination, and the URL becomes
@@ -214,15 +250,17 @@ screen nobody looked at.
 
 The guest also refuses a screen act that belongs to another tool, both when it prepares the act and
 when it runs it. The rules read a command from `computer.run` and a site from
-`computer.browser_open`, and from a screen act they would see only keystrokes in a window:
+`computer.browser_open` and `computer.browser_navigate`, and from a screen act they would see only
+keystrokes in a window:
 
 - An act on the terminal window returns `USE_RUN`, with the message "Use the computer.run tool
   instead". A scroll over the terminal returns it too.
-- A click on the browser's tab strip or address bar returns `USE_BROWSER_OPEN`, with the message
-  "Use the computer.browser_open tool instead". The chrome is the part of the browser window above
-  the page's viewport, which the page reports. A chord that focuses the address bar or opens a tab
-  or a window (`ctrl+l`, `alt+d`, `f6`, `ctrl+k`, `ctrl+e`, `ctrl+t`, `ctrl+n`, `ctrl+shift+n`)
-  returns it too, in any case and any order of its modifiers.
+- A click on the browser's tab strip, address bar or window controls returns `USE_BROWSER_OPEN`,
+  with the message "The tab strip and window controls are off limits; use the browser tools
+  (computer.browser_open, computer.browser_navigate, computer.browser_reload) instead". The chrome
+  is the part of the browser window above the page's viewport, which the page reports. A chord that
+  focuses the address bar or opens a tab or a window (`ctrl+l`, `alt+d`, `f6`, `ctrl+k`, `ctrl+e`,
+  `ctrl+t`, `ctrl+n`, `ctrl+shift+n`) returns it too, in any case and any order of its modifiers.
 - A browser window that shows no tab the guest tracks, such as a popup the page opened, returns
   `USE_BROWSER_OPEN` for any act, because its page top is unknown. With several browser windows, the
   guest gives a window the visible tab whose rectangle is nearest its own, and none when 2 windows

@@ -113,6 +113,112 @@ test('it refuses a host that resolves to a non-public address', async () => {
   expect(reply).toContain('403 Forbidden');
 });
 
+test('it refuses a host that has only IPv6 addresses and says nixie reaches IPv4 hosts only', async () => {
+  const proxy = await startCheckingProxy({
+    checkAddress: makeAddressCheck([]),
+    resolveHost: () => Promise.resolve(['2606:4700::1111']),
+    scanURL: () => Promise.resolve(),
+    scanText: () => Promise.resolve(),
+    canTunnel: true,
+  });
+
+  onTestFinished(async () => {
+    await proxy.stop();
+  });
+
+  const reply = await askProxy(proxy.port, 'CONNECT maps.test:443 HTTP/1.1\r\n\r\n');
+
+  expect(reply).toContain('403 Forbidden');
+  expect(reply).toContain('maps.test has no IPv4 address, and nixie reaches IPv4 hosts only');
+});
+
+test('it names the host of a refusal for having only IPv6 addresses to its caller', async () => {
+  const hosts: string[] = [];
+
+  const proxy = await startCheckingProxy({
+    checkAddress: makeAddressCheck([]),
+    resolveHost: () => Promise.resolve(['2606:4700::1111']),
+    scanURL: () => Promise.resolve(),
+    scanText: () => Promise.resolve(),
+    canTunnel: true,
+    onIPv4OnlyHost: (host) => {
+      hosts.push(host);
+    },
+  });
+
+  onTestFinished(async () => {
+    await proxy.stop();
+  });
+
+  await askProxy(proxy.port, 'CONNECT maps.test:443 HTTP/1.1\r\n\r\n');
+
+  expect(hosts).toStrictEqual(['maps.test']);
+});
+
+test('it names no host to its caller for a host with a non-public address', async () => {
+  const hosts: string[] = [];
+
+  const proxy = await startCheckingProxy({
+    checkAddress: makeAddressCheck([]),
+    resolveHost: () => Promise.resolve(['::1']),
+    scanURL: () => Promise.resolve(),
+    scanText: () => Promise.resolve(),
+    canTunnel: true,
+    onIPv4OnlyHost: (host) => {
+      hosts.push(host);
+    },
+  });
+
+  onTestFinished(async () => {
+    await proxy.stop();
+  });
+
+  await askProxy(proxy.port, 'CONNECT maps.test:443 HTTP/1.1\r\n\r\n');
+
+  expect(hosts).toStrictEqual([]);
+});
+
+test('it says a host with a non-public address is not public, whatever else it has', async () => {
+  const proxy = await startCheckingProxy({
+    checkAddress: makeAddressCheck([]),
+    resolveHost: () => Promise.resolve(['::1']),
+    scanURL: () => Promise.resolve(),
+    scanText: () => Promise.resolve(),
+    canTunnel: true,
+  });
+
+  onTestFinished(async () => {
+    await proxy.stop();
+  });
+
+  const reply = await askProxy(proxy.port, 'CONNECT maps.test:443 HTTP/1.1\r\n\r\n');
+
+  expect(reply).toContain('is not a public address');
+});
+
+test('it connects to the IPv4 address of a host that lists an IPv6 address first', async () => {
+  const ctx = await setupTest();
+
+  const proxy = await startCheckingProxy({
+    checkAddress: () => true,
+    resolveHost: () => Promise.resolve(['2606:4700::1111', '127.0.0.1']),
+    scanURL: () => Promise.resolve(),
+    scanText: () => Promise.resolve(),
+    canTunnel: true,
+  });
+
+  onTestFinished(async () => {
+    await proxy.stop();
+  });
+
+  const reply = await askProxy(
+    proxy.port,
+    `GET http://pages.test:${String(ctx.site.port)}/x HTTP/1.1\r\nHost: pages.test\r\n\r\n`,
+  );
+
+  expect(reply).toContain('hello /x');
+});
+
 test('it refuses a host with one non-public address among public ones', async () => {
   const proxy = await startCheckingProxy({
     checkAddress: makeAddressCheck([]),

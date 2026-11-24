@@ -235,8 +235,8 @@ function refuseWheelSteps(by: number): DirectResult | null {
 const queuedNote = [
   ' The call waits for the owner to allow it, per site, and then runs against the window it was ',
   'asked about: if another window is there by then, it is refused with SCREEN_CHANGED. A click ',
-  'or a key on the terminal is refused with USE_RUN, and one on the browser’s address bar or ',
-  'tab strip with USE_BROWSER_OPEN. Once it runs, the result names the window that has focus ',
+  'or a key on the terminal is refused with USE_RUN, and one on the browser’s address bar, tab ',
+  'strip or window controls with USE_BROWSER_OPEN: use the browser tools there. Once it runs, the result names the window that has focus ',
   'and shows the desktop after the act beside it.',
 ].join('');
 

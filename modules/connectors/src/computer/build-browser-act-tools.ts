@@ -2,9 +2,11 @@ import type { JSONObject } from '@heynixie/log';
 import { actionProposalLapseMs } from '@heynixie/policy';
 import type { DirectResult, ToolDefinition, ToolResolveContext } from '@heynixie/tools';
 import { z } from 'zod';
+import { buildIdleNote } from './build-idle-note';
 import type { ComputerState } from './computer-state';
 import { buildActionKey } from './computer-state';
 import type { ComputerToolOptions } from './computer-tool-options';
+import { refuseTabGone } from './refuse-tab-gone';
 import {
   makeActionScans,
   refuseComputer,
@@ -55,6 +57,7 @@ export function buildBrowserActTools(
         'Types a value into one control of an open tab, and with submit true presses Enter in it ',
         'to submit its form. A form that posts to another site is never submitted.',
         queuedNote,
+        buildIdleNote(options.computer.idleMs),
       ].join(''),
       input: {
         type: 'object',
@@ -86,6 +89,7 @@ export function buildBrowserActTools(
       description: [
         'Clicks one control of an open tab, such as a link, a button or a checkbox.',
         queuedNote,
+        buildIdleNote(options.computer.idleMs),
       ].join(''),
       input: {
         type: 'object',
@@ -134,7 +138,7 @@ async function prepareAct(
   const guestTab = options.computer.tabs.find(tab);
 
   if (guestTab === null) {
-    return refuseComputer('TAB_GONE', `there is no tab ${tab}; open the page again`);
+    return refuseTabGone(options, tab);
   }
 
   const outcome = await runComputerCall(options, {
@@ -187,7 +191,7 @@ export async function runBrowserAct(
   const guestTab = options.computer.tabs.find(tab);
 
   if (guestTab === null) {
-    return refuseComputer('TAB_GONE', `there is no tab ${tab}; open the page again`);
+    return refuseTabGone(options, tab);
   }
 
   if (expectURL === undefined) {

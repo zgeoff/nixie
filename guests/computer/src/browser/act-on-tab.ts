@@ -46,7 +46,12 @@ export async function actOnTab(
     // a page that is still loading is read as it stands
   }
 
-  return readTabPage(id, tab, { mode: 'snapshot', textBytes: textLimitBytes, isDiskNew: false });
+  return readTabPage(id, tab, {
+    mode: 'snapshot',
+    textBytes: textLimitBytes,
+    isDiskNew: false,
+    landing: null,
+  });
 }
 
 type ActRefusal = 'stale_element' | 'cross_origin_submit' | 'failed';

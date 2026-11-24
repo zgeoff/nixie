@@ -23,6 +23,8 @@ export interface DesktopState {
   readonly tabs: Map<string, string>;
   tabCount: number;
 
+  readonly idleClosed: Set<string>;
+
   // the watches open now, which hold no turn
   readonly watches: { count: number };
 

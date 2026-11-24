@@ -48,7 +48,7 @@ test.each(['enter', 'shift+tab', 'ctrl+a', 'f5'])(
   },
 );
 
-test('it refuses a click on the address bar with the browser_open message', () => {
+test('it refuses a click on the address bar with a message that names the browser tools', () => {
   const ctx = setupTest();
 
   expect(pickScreenRefusal(ctx.browserTarget, { kind: 'click', y: 40 }, ctx.browser)).toStrictEqual(
@@ -56,7 +56,8 @@ test('it refuses a click on the address bar with the browser_open message', () =
       kind: 'failed',
       ok: false,
       reason: 'use_browser_open',
-      message: 'Use the computer.browser_open tool instead',
+      message:
+        'The tab strip and window controls are off limits; use the browser tools (computer.browser_open, computer.browser_navigate, computer.browser_reload) instead',
     },
   );
 });
