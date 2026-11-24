@@ -1,8 +1,9 @@
 # Deployment configuration
 
 nixie reads its deployment configuration from one YAML file when a process starts. A zod schema
-validates the file, and nixie refuses to start on a file that fails it. The file holds settings,
-never secrets: every secret stays in nixie's encrypted secrets file, which
+validates the file, and nixie refuses to start on a file that still fails it once the loader has
+removed its unknown keys, as [the schema](#the-schema) says. The file holds settings, never secrets:
+every secret stays in nixie's encrypted secrets file, which
 [the server](server.md#configuration-and-secrets) decrypts at start. A deployment repo keeps the
 file beside its manifests or its Compose file, and changes it by pull request like the pinned image
 digests.
@@ -14,6 +15,9 @@ Each part's doc owns the meaning of its own settings, and the file only carries 
 
 - where the server keeps its data, listens and finds the secrets file, and the lowest level of event
   it logs
+- how long nixie must be down before the conversation's next turn says so, as
+  `server.outage_notice_minutes`, which has a default: a shorter stop, such as a deploy, adds no
+  line to the [events block](../core/conversation-turns.md#the-events-block)
 - the user's name and pronouns, and the names the user calls the agent by
 - the hashes of the API's [read-only tokens](../channels/api.md#read-only-tokens)
 - the [model profiles and the role map](../core/model-profiles.md#the-role-map), with each profile's

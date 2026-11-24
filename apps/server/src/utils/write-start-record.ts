@@ -1,8 +1,9 @@
-import type { RecordKind } from '@heynixie/log';
+import type { RecordKind, WriteTransaction } from '@heynixie/log';
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import type { TasksContext } from '@heynixie/tasks';
 import { z } from 'zod';
 import { nixieVersion } from '../nixie-version';
+import type { StartOutage } from '../types';
 
 export interface StartGiven {
   readonly tools: readonly string[];
@@ -11,7 +12,12 @@ export interface StartGiven {
 
 // A type alias, because Kysely's table map needs the index signature that an interface lacks.
 type RecordTables = Readonly<{
-  records: { readonly sequence: number; readonly kind: RecordKind; readonly payload: string };
+  records: {
+    readonly sequence: number;
+    readonly recorded_at: number;
+    readonly kind: RecordKind;
+    readonly payload: string;
+  };
 }>;
 
 const givenPayload = z.object({
@@ -21,10 +27,17 @@ const givenPayload = z.object({
 
 const startPayload = z.object({ version: z.string(), given: givenPayload.optional() });
 
+export interface StartOutageSettings {
+  readonly processStartedAtMs: number;
+  readonly lastAliveAtMs: number | null;
+  readonly thresholdMs: number;
+}
+
 export function writeStartRecord(
   context: Pick<TasksContext, 'definitions' | 'log'>,
   given: StartGiven,
   version: string = nixieVersion,
+  outageSettings: StartOutageSettings | null = null,
 ): Promise<void> {
   const log = context.log;
 
@@ -37,6 +50,11 @@ export function writeStartRecord(
       .orderBy('sequence', 'desc')
       .limit(1)
       .executeTakeFirst();
+
+    const span = outageSettings === null ? null : pickStartOutage(outageSettings);
+
+    const outage =
+      span === null ? null : { ...span, downSequence: await readDownSequence(tx, span.downAtMs) };
 
     const payload: unknown = previous === undefined ? null : JSON.parse(previous.payload);
     const parsed = startPayload.safeParse(payload);
@@ -55,10 +73,37 @@ export function writeStartRecord(
             previousGiven === undefined
               ? null
               : buildStartChanges(previousGiven, { tools, personaVersion: given.personaVersion }),
+          ...(outage === null ? {} : { outage }),
         },
       },
     ]);
   });
+}
+
+function pickStartOutage(
+  settings: StartOutageSettings,
+): Pick<StartOutage, 'downAtMs' | 'upAtMs'> | null {
+  if (
+    settings.lastAliveAtMs === null ||
+    settings.processStartedAtMs - settings.lastAliveAtMs <= settings.thresholdMs
+  ) {
+    return null;
+  }
+
+  return { downAtMs: settings.lastAliveAtMs, upAtMs: settings.processStartedAtMs };
+}
+
+async function readDownSequence(tx: WriteTransaction, downAtMs: number): Promise<number> {
+  const last = await tx
+    .$extendTables<RecordTables>()
+    .selectFrom('records')
+    .select('sequence')
+    .where('recorded_at', '<=', downAtMs)
+    .orderBy('sequence', 'desc')
+    .limit(1)
+    .executeTakeFirst();
+
+  return last?.sequence ?? 0;
 }
 
 // A type alias, because a record's payload needs the index signature that an interface lacks.

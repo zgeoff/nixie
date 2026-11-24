@@ -171,3 +171,10 @@ export interface PartGraph<Values> {
 
   readonly done: Promise<void>;
 }
+
+// A type alias, because a record's payload needs the index signature that an interface lacks.
+export type StartOutage = Readonly<{
+  downAtMs: number;
+  upAtMs: number;
+  downSequence: number;
+}>;

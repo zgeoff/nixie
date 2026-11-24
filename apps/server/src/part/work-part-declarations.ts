@@ -33,8 +33,11 @@ import { startQueueCheckTask } from '../queue/start-queue-check-task';
 import { runServerReminderMoves } from '../reminder/run-server-reminder-moves';
 import { runInForceSeedAndWake } from '../seed/run-in-force-seed-and-wake';
 import { startSeedPoll } from '../seed/start-seed-poll';
+import { getHeartbeatPath } from '../server/get-heartbeat-path';
 import { makeReadLastMessageAt } from '../server/make-read-last-message-at';
 import { makeReadZone } from '../server/make-read-zone';
+import { readHeartbeat } from '../server/read-heartbeat';
+import { startHeartbeat } from '../server/start-heartbeat';
 import { startServerBackups } from '../server/start-server-backups';
 import { runUnknownTaskStep } from '../task/run-unknown-task-step';
 import { startSandboxTaskRunner } from '../task/start-sandbox-task-runner';
@@ -58,13 +61,42 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
     name: 'start_record',
     needs: ['server_parts', 'definitions_seed'],
     start: makeRetriedStart('start_record', async (parts) => {
-      await writeStartRecord(parts.context, {
-        tools: parts.tools.definitions.map((definition) => definition.name),
-        personaVersion: parts.inForce.read()?.personaVersion ?? null,
-      });
+      const lastAliveAtMs = await readHeartbeat(getHeartbeatPath(parts.config.server.dataDir));
+
+      await writeStartRecord(
+        parts.context,
+        {
+          tools: parts.tools.definitions.map((definition) => definition.name),
+          personaVersion: parts.inForce.read()?.personaVersion ?? null,
+        },
+        undefined,
+        {
+          processStartedAtMs: Math.round(parts.context.clock.now() - process.uptime() * 1000),
+          lastAliveAtMs,
+          thresholdMs: parts.config.server.outageNoticeMinutes * 60_000,
+        },
+      );
 
       await warnWithoutOwnerRules(parts);
     }),
+  },
+  {
+    name: 'heartbeat',
+    needs: ['server_parts', 'start_record'],
+    start: async (reader) => {
+      const parts = reader.get('server_parts');
+
+      const heartbeat = startHeartbeat({
+        path: getHeartbeatPath(parts.config.server.dataDir),
+        clock: parts.context.clock,
+        intervalMs: 30_000,
+        onError: (error) => {
+          parts.log('server.heartbeat_failed', toErrorFields(error));
+        },
+      });
+
+      await parts.cleanup.defer(() => heartbeat.stop());
+    },
   },
   {
     // A hold lives in memory, so one that was open when nixie stopped ends now, and an ask that was

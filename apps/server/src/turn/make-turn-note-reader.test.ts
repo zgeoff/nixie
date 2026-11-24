@@ -1,5 +1,5 @@
 import { expect, mock, onTestFinished, setSystemTime, test } from 'bun:test';
-import { writeRecords } from '@heynixie/log';
+import { readRecords, writeRecords } from '@heynixie/log';
 import { createMemoryItem, startTestMemoryStore } from '@heynixie/memory/test-utils';
 import {
   buildItemLinkCounts,
@@ -7,7 +7,8 @@ import {
   defaultNotebookSettings,
   startNotebook,
 } from '@heynixie/notebook';
-import { recordSkillPin, skillsReloadedCodec } from '@heynixie/skills';
+import { readTurnNoteRange } from '@heynixie/sessions';
+import { recordSkillPin, recordSkillReload } from '@heynixie/skills';
 import {
   conversationTaskID,
   createConversationTask,
@@ -19,6 +20,7 @@ import { startConversation } from '../conversation/start-conversation';
 import { buildConversationDriver } from '../test-utils/build-conversation-driver';
 import { buildTestModelsConfig } from '../test-utils/build-test-models-config';
 import { startTestServer } from '../test-utils/start-test-server';
+import { writeStartRecord } from '../utils/write-start-record';
 import { makeTurnNoteReader } from './make-turn-note-reader';
 
 async function setupTest() {
@@ -209,21 +211,187 @@ test("it names a skill that a reload on the conversation's thread changed in the
     list: ['tide-tables'],
   });
 
-  await writeRecords(ctx.context.log, [
-    {
-      kind: 'skills.reloaded',
-      thread: 'conversation',
-      definitions: { snapshotHash: 'snapshot-b', personaVersion: 'persona-a' },
-      payload: skillsReloadedCodec.encode({
-        skills: [{ name: 'tide-tables', skillHash: 'hash-new', origin: 'definitions' }],
-        changes: [{ name: 'tide-tables', oldHash: 'hash-old', newHash: 'hash-new' }],
-      }),
+  await recordSkillReload(ctx.context.log, {
+    thread: 'conversation',
+    inForce: { snapshotHash: 'snapshot-b', personaVersion: 'persona-a' },
+    plan: {
+      skills: [{ name: 'tide-tables', skillHash: 'hash-new', origin: 'definitions' }],
+      changes: [{ name: 'tide-tables', oldHash: 'hash-old', newHash: 'hash-new' }],
     },
-  ]);
+  });
 
   const turn = await conversation.send('And tomorrow?');
 
   expect(turn.input[0]?.text).toInclude('Your skills changed: tide-tables has a new version.');
+});
+
+test('it lists the outage before an event queued during it in the next turn', async () => {
+  const ctx = await setupTest();
+
+  onTestFinished(() => setSystemTime());
+
+  const [runner] = await Promise.all([
+    ctx.startRunner('nixie-conversation-0123456789ab'),
+    createConversationTask(ctx.context),
+  ]);
+
+  const conversation = buildConversationDriver({
+    context: ctx.context,
+    guest: ctx.guest,
+    getRunStep: () => runner.runStep,
+  });
+
+  setSystemTime(new Date(Date.UTC(2025, 9, 13, 21, 0)));
+
+  await conversation.send('When is high tide?');
+
+  setSystemTime(new Date(Date.UTC(2025, 9, 13, 21, 5)));
+
+  await recordSkillPin(ctx.context.log, {
+    thread: 'conversation',
+    inForce: {
+      snapshotHash: 'snapshot-a',
+      personaVersion: 'persona-a',
+      skills: [{ name: 'tide-tables', skillHash: 'hash-old', origin: 'definitions' }],
+    },
+    list: ['tide-tables'],
+  });
+
+  await recordSkillReload(ctx.context.log, {
+    thread: 'conversation',
+    inForce: { snapshotHash: 'snapshot-b', personaVersion: 'persona-a' },
+    plan: {
+      skills: [{ name: 'tide-tables', skillHash: 'hash-new', origin: 'definitions' }],
+      changes: [{ name: 'tide-tables', oldHash: 'hash-old', newHash: 'hash-new' }],
+    },
+  });
+
+  const upAtMs = Date.UTC(2025, 9, 13, 22, 40);
+
+  setSystemTime(new Date(upAtMs));
+
+  await writeStartRecord(ctx.context, { tools: [], personaVersion: null }, '0.12.0', {
+    processStartedAtMs: upAtMs,
+    lastAliveAtMs: Date.UTC(2025, 9, 13, 21, 2),
+    thresholdMs: 600_000,
+  });
+
+  const turn = await conversation.send('And tomorrow?');
+
+  expect(turn.input[0]?.text).toMatch(
+    /nixie was down from [^\n]+ to [^\n]+\.\n[^]*Your skills changed: tide-tables has a new version\./u,
+  );
+});
+
+test('it lists the outage in one turn only, and not again in the turn after', async () => {
+  const ctx = await setupTest();
+
+  onTestFinished(() => setSystemTime());
+
+  const [runner] = await Promise.all([
+    ctx.startRunner('nixie-conversation-0123456789ab'),
+    createConversationTask(ctx.context),
+  ]);
+
+  const conversation = buildConversationDriver({
+    context: ctx.context,
+    guest: ctx.guest,
+    getRunStep: () => runner.runStep,
+  });
+
+  setSystemTime(new Date(Date.UTC(2025, 9, 13, 21, 0)));
+
+  await conversation.send('When is high tide?');
+
+  setSystemTime(new Date(Date.UTC(2025, 9, 13, 21, 5)));
+
+  await recordSkillPin(ctx.context.log, {
+    thread: 'conversation',
+    inForce: {
+      snapshotHash: 'snapshot-a',
+      personaVersion: 'persona-a',
+      skills: [{ name: 'tide-tables', skillHash: 'hash-old', origin: 'definitions' }],
+    },
+    list: ['tide-tables'],
+  });
+
+  await recordSkillReload(ctx.context.log, {
+    thread: 'conversation',
+    inForce: { snapshotHash: 'snapshot-b', personaVersion: 'persona-a' },
+    plan: {
+      skills: [{ name: 'tide-tables', skillHash: 'hash-new', origin: 'definitions' }],
+      changes: [{ name: 'tide-tables', oldHash: 'hash-old', newHash: 'hash-new' }],
+    },
+  });
+
+  const upAtMs = Date.UTC(2025, 9, 13, 22, 40);
+
+  setSystemTime(new Date(upAtMs));
+
+  await writeStartRecord(ctx.context, { tools: [], personaVersion: null }, '0.12.0', {
+    processStartedAtMs: upAtMs,
+    lastAliveAtMs: Date.UTC(2025, 9, 13, 21, 2),
+    thresholdMs: 600_000,
+  });
+
+  await conversation.send('And tomorrow?');
+
+  const turn = await conversation.send('And the day after?');
+
+  expect(turn.input[0]?.text).not.toInclude('nixie was down');
+});
+
+test('it starts the range of the turn after an outage from the position the outage turn saved', async () => {
+  const ctx = await setupTest();
+
+  onTestFinished(() => setSystemTime());
+
+  const [runner] = await Promise.all([
+    ctx.startRunner('nixie-conversation-0123456789ab'),
+    createConversationTask(ctx.context),
+  ]);
+
+  const conversation = buildConversationDriver({
+    context: ctx.context,
+    guest: ctx.guest,
+    getRunStep: () => runner.runStep,
+  });
+
+  setSystemTime(new Date(Date.UTC(2025, 9, 13, 21, 0)));
+
+  await conversation.send('When is high tide?');
+
+  const upAtMs = Date.UTC(2025, 9, 13, 22, 40);
+
+  setSystemTime(new Date(upAtMs));
+
+  await writeStartRecord(ctx.context, { tools: [], personaVersion: null }, '0.12.0', {
+    processStartedAtMs: upAtMs,
+    lastAliveAtMs: Date.UTC(2025, 9, 13, 21, 2),
+    thresholdMs: 600_000,
+  });
+
+  await conversation.send('And tomorrow?');
+
+  const [started] = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['server.started'],
+    order: 'newest',
+    limit: 1,
+  });
+
+  const [ended] = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['model.turn_ended'],
+    order: 'newest',
+    limit: 1,
+  });
+
+  invariant(started && ended);
+
+  const range = await readTurnNoteRange(ctx.context.log);
+
+  expect(range.after).toBeWithin(started.record.sequence, ended.record.sequence);
 });
 
 test('it gives no compaction warning to a rebuilt session after a turn of the old one ends at 142,000 of 200,000 tokens', async () => {

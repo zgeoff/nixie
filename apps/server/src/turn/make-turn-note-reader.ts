@@ -20,6 +20,7 @@ import { conversationTaskID } from '@heynixie/tasks';
 import { buildPromptProposalAnswerKind } from '../prompt/build-prompt-proposal-answer-kind';
 import { buildMandateEndedKind } from './build-mandate-ended-kind';
 import { buildMandateStartedKind } from './build-mandate-started-kind';
+import { buildOutageKind } from './build-outage-kind';
 import { buildRestartKind } from './build-restart-kind';
 import { readTurnNotes } from './read-turn-notes';
 
@@ -55,6 +56,7 @@ export function makeTurnNoteReader(
     buildProposalMergeKind(options.log),
     buildProposalAnswerKind(options.log, store),
     buildMomentKeptKind(options.log, options.getTaskName),
+    buildOutageKind(options.log),
     buildRestartKind(options.log),
     buildRetriedTurnKind(options.log),
     buildCompactionHeadsUpKind(options.log, options.compaction),

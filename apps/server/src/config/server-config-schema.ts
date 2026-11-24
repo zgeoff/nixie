@@ -8,6 +8,7 @@ export interface ServerConfig {
   readonly port: number;
   readonly secretsFile: string;
   readonly logLevel: LogLevel;
+  readonly outageNoticeMinutes: number;
 }
 
 export const serverConfigSchema = z
@@ -17,6 +18,7 @@ export const serverConfigSchema = z
     port: z.number().int().min(0).max(65_535).default(8080),
     secrets_file: z.string().min(1).default('/etc/nixie/secrets.yaml'),
     log_level: z.enum(logLevels).default('info'),
+    outage_notice_minutes: z.int().min(1).default(10),
   })
   .transform((config): ServerConfig => ({
     dataDir: config.data_dir,
@@ -24,4 +26,5 @@ export const serverConfigSchema = z
     port: config.port,
     secretsFile: config.secrets_file,
     logLevel: config.log_level,
+    outageNoticeMinutes: config.outage_notice_minutes,
   }));

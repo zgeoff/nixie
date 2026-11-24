@@ -45,6 +45,7 @@ test('it reads every section, with the default of each setting the file leaves o
       port: 8080,
       secretsFile: '/etc/nixie/secrets.yaml',
       logLevel: 'info',
+      outageNoticeMinutes: 10,
     },
     owner: { name: null, pronouns: { they: 'they', their: 'their' } },
     api: { readOnlyTokenHashes: [] },

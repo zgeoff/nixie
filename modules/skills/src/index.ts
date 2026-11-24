@@ -11,6 +11,7 @@ export { loadSkillPin } from './skill/load-skill-pin';
 export { readPendingSkillProposals } from './skill/read-pending-skill-proposals';
 export type { SkillPinInput } from './skill/record-skill-pin';
 export { recordSkillPin } from './skill/record-skill-pin';
+export { recordSkillReload } from './skill/record-skill-reload';
 export type { SkillCatalog } from './skill/render-skill-catalog';
 export { renderSkillCatalog } from './skill/render-skill-catalog';
 export type { SkillsConfig } from './skill/skills-config-schema';
