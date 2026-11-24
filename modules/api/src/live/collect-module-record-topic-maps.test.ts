@@ -1,125 +1,304 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import type { LiveTopic } from '@heynixie/contract';
-import type { JSONObject, RecordKind } from '@heynixie/log';
-import { withWriteTransaction, writeRecords } from '@heynixie/log';
+import { makeHandoverRecords } from '@heynixie/connectors';
+import { buildStubImageProvider, startTestImages } from '@heynixie/connectors/test-utils';
+import { buildTaskChangeKind } from '@heynixie/definitions';
+import { buildTestTaskSeed } from '@heynixie/definitions/test-utils';
+import { withWriteTransaction } from '@heynixie/log';
+import { defaultGateLimits, defaultOwnerPronouns, startMemoryStore } from '@heynixie/memory';
+import { buildAllowVerdict, buildMockWriteCaller } from '@heynixie/memory/test-utils';
+import { buildNotebookMemory, defaultNotebookSettings, startNotebook } from '@heynixie/notebook';
+import { buildNotebookToolCaller } from '@heynixie/notebook/test-utils';
 import { buildPromptSeeder } from '@heynixie/prompts/test-utils';
 import { startSpendWatcher } from '@heynixie/spend';
 import { buildMockGatewayStatus } from '@heynixie/spend/test-utils';
 import { createConversationTask, createTask } from '@heynixie/tasks';
 import { waitForCondition } from '@heynixie/testing';
-import { writeArmedDefinitions } from '@heynixie/triggers';
-import { buildTestArmedDefinition } from '@heynixie/triggers/test-utils';
+import {
+  deliverTriggerBatch,
+  writeArmedDefinitions,
+  writeTriggerDeferral,
+} from '@heynixie/triggers';
+import {
+  buildTestArmedDefinition,
+  buildTestTriggerCore,
+  buildTestTriggerEvent,
+} from '@heynixie/triggers/test-utils';
 import invariant from 'tiny-invariant';
 import { buildSeeder } from '../test-utils/build-seeder';
 import { buildTestClient } from '../test-utils/build-test-client';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { startTestAPI } from '../test-utils/start-test-api';
+import { startTestAPIDefinitions } from '../test-utils/start-test-api-definitions';
 import { defaultAPISettings } from '../utils/default-api-settings';
 
-// The tests below make each change that a topic names, and read the changed event of a stream that
-// was open before it.
+// The tests below make each change that a topic names, through the code that makes it in nixie,
+// and read the changed event of a stream that opened after the test's own setup.
 async function setupTest() {
   const api = await startTestAPI(defaultAPISettings, { isSpendOn: true });
 
   await createConversationTask(api.context);
 
+  const definitions = api.context.definitions;
+
+  const memory = await startMemoryStore({
+    log: api.context.log,
+    definitions,
+    cleanupSessions: () => Promise.resolve(),
+    gate: {
+      check: () =>
+        Promise.resolve({
+          verdict: 'unsure',
+          reason: 'no checker is wired',
+          model: 'no-checker',
+          failure: 'error',
+        }),
+      clock: api.clock,
+      defaultZone: 'UTC',
+      limits: defaultGateLimits,
+      ownerName: null,
+      ownerPronouns: defaultOwnerPronouns,
+      getPromptsInForce: () => ({ snapshotHash: 'sha256:test', prompts: {} }),
+    },
+  });
+
+  onTestFinished(() => memory.stop());
+
+  const notebook = await startNotebook({
+    log: api.context.log,
+    definitions,
+    clock: api.clock,
+    settings: defaultNotebookSettings,
+    memory: buildNotebookMemory(() => memory),
+    cleanupSessions: () => Promise.resolve(),
+    readRunningStep: () => Promise.resolve(null),
+  });
+
+  onTestFinished(() => notebook.stop());
+
   const laptop = await createDeviceSession(api.context, 'laptop');
 
   const client = buildTestClient(api.url, laptop.token);
 
-  const stream = await client.live.follow({});
-
-  await stream.next();
-
   return {
     ...api,
+    memory,
+    notebook,
     seed: buildSeeder(api),
     client,
-    readChanged: async () => {
-      const next = await stream.next();
+    callNotebookTool: buildNotebookToolCaller(() => notebook),
+    startImages: () =>
+      startTestImages({
+        providers: { main: buildStubImageProvider(), second: buildStubImageProvider() },
+        log: api.context.log,
+      }),
+    writeHandoverClosed: () =>
+      makeHandoverRecords({ log: api.context.log, definitions }).writeClosed({
+        by: 'assistant',
+        waitedSeconds: 3,
+      }),
+    writeExportMoved: () =>
+      withWriteTransaction(api.writer, (tx) =>
+        buildTaskChangeKind({
+          log: api.context.log,
+          tasks: buildTestTaskSeed(),
+          onHeld: () => {},
+        }).writeState(tx, {
+          approvalID: 'export-1',
+          to: 'exporting',
+          at: api.clock.now(),
+        }),
+      ),
+    armConversationDefinition: () =>
+      withWriteTransaction(api.writer, (tx) =>
+        writeArmedDefinitions(tx, { log: api.context.log, definitions }, [
+          buildTestArmedDefinition({ target: 'conversation' }),
+        ]),
+      ),
+    deliverTrigger: (event: Parameters<typeof buildTestTriggerEvent>[0]) =>
+      deliverTriggerBatch(buildTestTriggerCore(api.context), 'schedule', {
+        cursor: null,
+        events: [buildTestTriggerEvent(event)],
+      }),
+    deferTrigger: () =>
+      withWriteTransaction(api.writer, (tx) =>
+        writeTriggerDeferral(
+          tx,
+          { log: api.context.log, definitions },
+          { definitionID: 'water-the-tomatoes', slotMs: 1_000_000, untilMs: null },
+        ),
+      ),
 
-      await stream.return(undefined);
+    // opens a page stream, and reads the changed event that the next write sends it
+    follow: async () => {
+      const stream = await client.live.follow({});
 
-      return next.value;
+      await stream.next();
+
+      return {
+        readChanged: async () => {
+          const next = await stream.next();
+
+          await stream.return(undefined);
+
+          return next.value;
+        },
+      };
     },
   };
 }
 
-test.each([
-  [
-    ['computer', 'tasks'],
-    'computer.handover_closed',
-    { shortID: 'h1', by: 'assistant', waitedSeconds: 3 },
-  ],
-  [
-    ['definitions'],
-    'definition.export_moved',
-    { exportID: 'e1', branch: 'edits', to: 'opened', pullRequest: null },
-  ],
-  [['images'], 'image.pinned', {}],
-  [['memory'], 'memory.pin_noticed', { itemID: 'i1', isPinned: true, noticeKey: 'k1' }],
-  [['notebook'], 'notebook.note_read', { note: 'n1' }],
-  [
-    ['tasks', 'triggers', 'definitions'],
-    'trigger.fired',
-    {
-      definitionID: 'water-the-tomatoes',
-      definitionHash: 'hash-1',
-      source: 'schedule',
-      dedupeKey: 'slot-1',
-      kind: 'schedule',
-      scheduledFor: '2026-11-25T08:00:00.000Z',
-      firedAt: '2026-11-25T08:00:01.000Z',
-      isCatchUp: false,
-      skipped: [],
-      skippedCount: 0,
+test('it sends a changed event with the computer and tasks topics when a handover closes', async () => {
+  const ctx = await setupTest();
+  const changes = await ctx.follow();
+
+  await ctx.writeHandoverClosed();
+
+  const changed = await changes.readChanged();
+
+  expect(changed).toStrictEqual({
+    kind: 'changed',
+    topics: ['computer', 'tasks'],
+  });
+});
+
+test('it sends a changed event with the definitions topic when a task export moves', async () => {
+  const ctx = await setupTest();
+
+  await startTestAPIDefinitions(ctx);
+
+  const changes = await ctx.follow();
+
+  await ctx.writeExportMoved();
+
+  const changed = await changes.readChanged();
+
+  expect(changed).toStrictEqual({ kind: 'changed', topics: ['definitions'] });
+});
+
+test('it sends a changed event with the images topic when an image is pinned', async () => {
+  const ctx = await setupTest();
+  const images = await ctx.startImages();
+  const drawn = await images.read('image.draw', { prompt: 'a cove' });
+  const changes = await ctx.follow();
+
+  await images.call('image.pin', { image: String(drawn['image']) });
+
+  const changed = await changes.readChanged();
+
+  expect(changed).toStrictEqual({ kind: 'changed', topics: ['images'] });
+});
+
+test('it sends a changed event with the memory topic when a covered pin leaves its notice', async () => {
+  const ctx = await setupTest();
+
+  const item = await ctx.memory.remember({
+    text: 'Takes the early ferry on Mondays',
+    provenance: {
+      origin: 'conversation',
+      source: 'owner',
+      taskID: 'conversation',
+      proposalID: null,
+      checks: null,
     },
-  ],
-  [
-    ['tasks', 'triggers', 'definitions'],
-    'trigger.skipped',
-    {
-      definitionID: 'water-the-tomatoes',
-      source: 'schedule',
-      dedupeKey: 'slot-1',
-      scheduledFor: ['2026-11-25T08:00:00.000Z'],
-      count: 1,
-      reason: 'too_late',
-      recordedAt: '2026-11-25T08:05:00.000Z',
-    },
-  ],
-  [
-    ['triggers', 'definitions'],
-    'trigger.deferred',
-    { definitionID: 'water-the-tomatoes', slot: '2026-11-25T08:00:00.000Z', until: null },
-  ],
-] as const satisfies readonly (readonly [readonly LiveTopic[], RecordKind, JSONObject])[])(
-  'it sends a changed event with the topics %j when a %s record commits',
-  async (topics, kind, payload) => {
-    const ctx = await setupTest();
+  });
 
-    await writeRecords(ctx.context.log, [
-      { kind, definitions: { snapshotHash: 'sha256:test' }, payload },
-    ]);
+  const changes = await ctx.follow();
 
-    const changed = await ctx.readChanged();
+  await ctx.memory.writes.pin({
+    target: item,
+    caller: buildMockWriteCaller(),
+    verdict: buildAllowVerdict(),
+  });
 
-    expect(changed).toStrictEqual({ kind: 'changed', topics });
-  },
-);
+  const changed = await changes.readChanged();
+
+  expect(changed).toStrictEqual({ kind: 'changed', topics: ['memory'] });
+});
+
+test('it sends a changed event with the notebook topic when a note is read', async () => {
+  const ctx = await setupTest();
+
+  const written = await ctx.notebook.write(
+    { writer: 'conversation', model: 'model-a' },
+    { title: 'Why the boiler trips', body: 'After cold nights.' },
+  );
+
+  invariant(written.status === 'written');
+
+  const changes = await ctx.follow();
+
+  await ctx.callNotebookTool('notebook.read', { note: written.shortID });
+
+  const changed = await changes.readChanged();
+
+  expect(changed).toStrictEqual({ kind: 'changed', topics: ['notebook'] });
+});
+
+test('it sends a changed event with the tasks, triggers and definitions topics when a trigger fires', async () => {
+  const ctx = await setupTest();
+
+  await ctx.armConversationDefinition();
+
+  const changes = await ctx.follow();
+
+  await ctx.deliverTrigger({});
+
+  const changed = await changes.readChanged();
+
+  expect(changed).toStrictEqual({
+    kind: 'changed',
+    topics: ['tasks', 'triggers', 'definitions'],
+  });
+});
+
+test('it sends a changed event with the tasks, triggers and definitions topics when a trigger skips', async () => {
+  const ctx = await setupTest();
+
+  await ctx.armConversationDefinition();
+
+  const changes = await ctx.follow();
+
+  await ctx.deliverTrigger({ skip: 'catch_up_off' });
+
+  const changed = await changes.readChanged();
+
+  expect(changed).toStrictEqual({
+    kind: 'changed',
+    topics: ['tasks', 'triggers', 'definitions'],
+  });
+});
+
+test('it sends a changed event with the triggers and definitions topics when a trigger defers', async () => {
+  const ctx = await setupTest();
+  const changes = await ctx.follow();
+
+  await ctx.deferTrigger();
+
+  const changed = await changes.readChanged();
+
+  expect(changed).toStrictEqual({
+    kind: 'changed',
+    topics: ['triggers', 'definitions'],
+  });
+});
 
 test('it sends a changed event with the nixie and tasks topics when the owner pauses nixie', async () => {
   const ctx = await setupTest();
+  const changes = await ctx.follow();
 
   await ctx.client.nixie.pause({ clientActionID: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60' });
 
-  const changed = await ctx.readChanged();
+  const changed = await changes.readChanged();
 
-  expect(changed).toStrictEqual({ kind: 'changed', topics: ['nixie', 'tasks'] });
+  expect(changed).toStrictEqual({
+    kind: 'changed',
+    topics: ['nixie', 'tasks'],
+  });
 });
 
 test('it sends a changed event with the tasks topic when the owner sends a message', async () => {
   const ctx = await setupTest();
+  const changes = await ctx.follow();
 
   await ctx.client.conversation.send({
     clientMessageId: '00000000-0000-4000-8000-000000000001',
@@ -128,13 +307,14 @@ test('it sends a changed event with the tasks topic when the owner sends a messa
     spans: [{ start: 0, end: 3, source: 'typed' }],
   });
 
-  const changed = await ctx.readChanged();
+  const changed = await changes.readChanged();
 
   expect(changed).toStrictEqual({ kind: 'changed', topics: ['tasks'] });
 });
 
 test('it sends a changed event with the approvals topic when a prompt override is proposed', async () => {
   const ctx = await setupTest();
+  const changes = await ctx.follow();
 
   await buildPromptSeeder({
     log: ctx.context.log,
@@ -142,37 +322,39 @@ test('it sends a changed event with the approvals topic when a prompt override i
     definitions: ctx.context.definitions,
   }).promptApproval();
 
-  const changed = await ctx.readChanged();
+  const changed = await changes.readChanged();
 
   expect(changed).toStrictEqual({ kind: 'changed', topics: ['approvals'] });
 });
 
 test('it sends a changed event with the triggers and definitions topics when a definition is armed', async () => {
   const ctx = await setupTest();
+  const changes = await ctx.follow();
 
-  await withWriteTransaction(ctx.writer, (tx) =>
-    writeArmedDefinitions(tx, { log: ctx.context.log, definitions: ctx.context.definitions }, [
-      buildTestArmedDefinition(),
-    ]),
-  );
+  await ctx.armConversationDefinition();
 
-  const changed = await ctx.readChanged();
+  const changed = await changes.readChanged();
 
-  expect(changed).toStrictEqual({ kind: 'changed', topics: ['triggers', 'definitions'] });
+  expect(changed).toStrictEqual({
+    kind: 'changed',
+    topics: ['triggers', 'definitions'],
+  });
 });
 
 test('it sends a changed event with the backups topic when a backup fails', async () => {
   const ctx = await setupTest();
+  const changes = await ctx.follow();
 
   await ctx.seed.failedBackupNotice({ failure: 'data: backup exited 1' });
 
-  const changed = await ctx.readChanged();
+  const changed = await changes.readChanged();
 
   expect(changed).toStrictEqual({ kind: 'changed', topics: ['backups'] });
 });
 
 test('it sends a changed event with the spend topic when the gateway stops answering', async () => {
   const ctx = await setupTest();
+  const changes = await ctx.follow();
 
   const stopping = new AbortController();
 
@@ -205,17 +387,18 @@ test('it sends a changed event with the spend topic when the gateway stops answe
   // no stop is written for 30 s of no answer, so only the watcher's own notice tells the stream
   ctx.spendGateway.readStatus.mockResolvedValue({ kind: 'unreachable', reason: 'no answer' });
 
-  const changed = await ctx.readChanged();
+  const changed = await changes.readChanged();
 
   expect(changed).toStrictEqual({ kind: 'changed', topics: ['spend'] });
 });
 
 test('it sends a changed event with the tasks and definitions topics when a task is created', async () => {
   const ctx = await setupTest();
+  const changes = await ctx.follow();
 
   await createTask(ctx.context, 'Plan the beds.', 'k3x9m2p7qa');
 
-  const changed = await ctx.readChanged();
+  const changed = await changes.readChanged();
 
   expect(changed).toStrictEqual({
     kind: 'changed',

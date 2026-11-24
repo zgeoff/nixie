@@ -151,6 +151,10 @@ attempt that did not crash.
 that is executing. A journey arms it to land an owner message, and to reload the page, while a call
 is open, and then releases it.
 
+`live.follow.checked` sits behind the same flag, in the page form of `live.follow`, after the
+session check passes and before the stream starts. A unit test sets a handler that revokes the
+session there, and checks that the stream still ends with `UNAUTHORIZED`.
+
 ## Coverage
 
 The [crash tests design](../../design/platform/core/crash-tests.md#slice-1-tests) lists the slice 1

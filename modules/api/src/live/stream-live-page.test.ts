@@ -2,7 +2,6 @@ import { expect, test } from 'bun:test';
 import { publishChanged, writeRecords } from '@heynixie/log';
 import invariant from 'tiny-invariant';
 import { verifySessionToken } from '../session/verify-session-token';
-import { buildTestClient } from '../test-utils/build-test-client';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { startTestAPI } from '../test-utils/start-test-api';
 import { readHeadSequence } from '../utils/read-head-sequence';
@@ -18,7 +17,6 @@ async function setupTest() {
   return {
     ...api,
     laptop,
-    client: buildTestClient(api.url, laptop.token),
     follow: (head: number, thread: string | undefined) =>
       streamLivePage(api.context, caller, {
         head,
@@ -31,28 +29,6 @@ async function setupTest() {
       }),
   };
 }
-
-test('it ends with the refusal when the session was revoked after the head it starts from', async () => {
-  const ctx = await setupTest();
-
-  // the revoke commits after the head read and before the stream starts, as one that follows a
-  // session check does
-  const head = await readHeadSequence(ctx.context);
-
-  await ctx.client.sessions.revoke({
-    clientActionID: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
-    sessionID: ctx.laptop.sessionID,
-  });
-
-  const events = ctx.follow(head, undefined);
-
-  const [settled] = await Promise.allSettled([Array.fromAsync(events)]);
-
-  expect(settled).toMatchObject({
-    status: 'rejected',
-    reason: { message: 'the session is revoked' },
-  });
-});
 
 test('it sends a topic between the records of a replay that fills its batches', async () => {
   const ctx = await setupTest();

@@ -1,3 +1,4 @@
+import { waitAtFaultPoint } from '@heynixie/tasks';
 import { requireDevice } from '../device/require-device';
 // oxlint-disable new-cap -- oRPC names a procedure's typed errors by their upper-case codes
 import { requireCaller } from '../memory/require-caller';
@@ -40,6 +41,10 @@ export function createLiveProcedures(context: APIContext) {
 
       if (caller.scope === 'device') {
         throw options.errors.FORBIDDEN();
+      }
+
+      if (NIXIE_TEST_BUILD) {
+        await waitAtFaultPoint('live.follow.checked', { kind: 'live', id: null });
       }
 
       return streamLivePage(context, caller, {

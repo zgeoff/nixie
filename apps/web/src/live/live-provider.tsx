@@ -1,3 +1,4 @@
+import type { QueryClient, QueryKey } from '@tanstack/react-query';
 import { useQueryClient } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
@@ -25,12 +26,18 @@ export function LiveProvider(props: LiveProviderProps): ReactNode {
       startTimer,
       invalidate: (topics) => {
         for (const topic of topics) {
-          // A read in flight may hold the state from before the change, so the new read replaces it.
-          void queryClient.invalidateQueries({ queryKey: nixie.queryUtils[topic].key() });
+          void readTopicAgain(queryClient, nixie.queryUtils[topic].key());
         }
       },
     }),
   );
 
   return <LiveFeedContext value={feed}>{props.children}</LiveFeedContext>;
+}
+
+// A read in flight may hold the state from before the change. A read that already has data is
+// replaced by the new one, but a first read with no data yet is reused, so it is cancelled first.
+async function readTopicAgain(queryClient: QueryClient, queryKey: QueryKey): Promise<void> {
+  await queryClient.cancelQueries({ queryKey });
+  await queryClient.invalidateQueries({ queryKey });
 }
