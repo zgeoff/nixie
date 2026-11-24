@@ -246,11 +246,13 @@ test('it redacts a JWT and a key that GitHub echoes in its message', () => {
   const jwt = sent[0]?.replace('Bearer ', '') ?? '';
 
   expect(jwt).toMatch(/^[\w-]+\.[\w-]+\.[\w-]+$/u);
-  expect(failure).rejects.toMatchObject({ message: expect.not.stringContaining(jwt) });
 
-  expect(failure).rejects.toMatchObject({
-    message: expect.not.stringContaining('PRIVATE KEY'),
-  });
+  expect(failure).rejects.toSatisfy(
+    (raised: unknown) =>
+      raised instanceof Error &&
+      !raised.message.includes(jwt) &&
+      !raised.message.includes('PRIVATE KEY'),
+  );
 });
 
 test('it refuses a private key that is not RSA', () => {

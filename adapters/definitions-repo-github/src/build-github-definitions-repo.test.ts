@@ -489,11 +489,13 @@ test('it refuses a request GitHub refuses, with its status and never the token',
     apiURL: githubAPIURL,
   });
 
-  expect(repo.readBaseRevision()).rejects.toMatchObject({
-    name: 'GitHubRequestError',
-    status: 401,
-    message: expect.not.stringContaining('token-b'),
-  });
+  const refusal = repo.readBaseRevision();
+
+  expect(refusal).rejects.toMatchObject({ name: 'GitHubRequestError', status: 401 });
+
+  expect(refusal).rejects.toSatisfy(
+    (raised: unknown) => raised instanceof Error && !raised.message.includes('token-b'),
+  );
 });
 
 test('it redacts the token that GitHub echoes in a refusal, and drops the rest of the body', () => {
@@ -516,9 +518,14 @@ test('it redacts the token that GitHub echoes in a refusal, and drops the rest o
     apiURL: githubAPIURL,
   });
 
-  expect(repo.readBaseRevision()).rejects.toMatchObject({
-    name: 'GitHubRequestError',
-    status: 401,
-    message: expect.not.stringMatching(/opaque-installation-secret|docs\.example\.test/u),
-  });
+  const refusal = repo.readBaseRevision();
+
+  expect(refusal).rejects.toMatchObject({ name: 'GitHubRequestError', status: 401 });
+
+  expect(refusal).rejects.toSatisfy(
+    (raised: unknown) =>
+      raised instanceof Error &&
+      !raised.message.includes('opaque-installation-secret') &&
+      !raised.message.includes('docs.example.test'),
+  );
 });
