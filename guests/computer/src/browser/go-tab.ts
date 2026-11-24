@@ -14,6 +14,8 @@ export type TabGo =
   | { readonly kind: 'went'; readonly blocked: string | null }
   | { readonly kind: 'failed'; readonly reply: ComputerReply };
 
+const settleNetworkMs = 3000;
+
 // Runs one navigation of a tab, such as a load of an address or a reload, and records its status.
 // The blocked reason comes from the navigation's own response, so a page that a person has since
 // solved never reads as blocked again.
@@ -26,6 +28,9 @@ export async function goTab(
     const response = await start({ timeout: limits.timeoutMs, waitUntil: 'load' });
 
     tab.status = response?.status() ?? 0;
+
+    // A page that fetches its content after the load event, as a search page does, has none yet.
+    await tab.page.waitForLoadState('networkidle', { timeout: settleNetworkMs }).catch(() => null);
 
     return { kind: 'went', blocked: response === null ? null : await readBlocked(response) };
   } catch (error) {

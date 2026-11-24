@@ -66,6 +66,13 @@ async function setupTest() {
           },
         );
       },
+      '/late': new Response(
+        `<html><title>Late</title><body><div id="out">searching</div><script>
+        setTimeout(() => fetch('/late-data').then((r) => r.text()).then((t) => { document.getElementById('out').textContent = t; }), 100);
+        </script></body></html>`,
+        { headers: { 'Content-Type': 'text/html' } },
+      ),
+      '/late-data': new Response('late result for the search'),
       '/challenge': new Response(
         '<html><title>Just a moment</title><body>checking your browser</body></html>',
         { status: 403, headers: { 'Content-Type': 'text/html', 'cf-mitigated': 'challenge' } },
@@ -794,4 +801,14 @@ test.skipIf(!hasChromium)('it says the same for a navigation, and keeps the tab'
     },
     { kind: 'page', page: { title: 'Sign up' } },
   ]);
+});
+
+test.skipIf(!hasChromium)('it reads what a page fetches right after it loads', async () => {
+  const ctx = await setupTest();
+  const reply = await ctx.send(ctx.open(`${ctx.url}late`));
+
+  expect(reply).toMatchObject({
+    kind: 'page',
+    page: { text: expect.stringContaining('late result for the search') },
+  });
 });
