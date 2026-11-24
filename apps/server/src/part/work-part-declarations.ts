@@ -178,7 +178,15 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
   },
   {
     name: 'runners',
-    needs: ['inputs', 'server_parts', 'conversation_task', 'conversation_imp', 'sandbox_runner'],
+    needs: [
+      'inputs',
+      'server_parts',
+      'conversation_task',
+      'conversation_imp',
+      'sandbox_runner',
+      'erasure_catch_up',
+      'turn_input_work',
+    ],
     start: async (reader) => {
       const parts = reader.get('server_parts');
       const harness = reader.get('inputs').options.harness;

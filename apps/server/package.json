@@ -10,7 +10,8 @@
   "scripts": {
     "test:imp": "bun run --cwd ../.. test:imp apps/server/",
     "typecheck": "tsrs --fast --noEmit",
-    "config-schema": "bun --define NIXIE_TEST_BUILD=false src/run-config-json-schema.ts"
+    "config-schema": "bun --define NIXIE_TEST_BUILD=false src/run-config-json-schema.ts",
+    "forgettable-kinds": "bun --define NIXIE_TEST_BUILD=false src/erasure/run-forgettable-kinds.ts"
   },
   "dependencies": {
     "@heynixie/actions": "workspace:*",

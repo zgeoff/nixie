@@ -23,7 +23,7 @@ function Moment(): ReactNode {
     >
       <MomentView
         momentID={params.momentID}
-        onDestroyed={() => {
+        onForgotten={() => {
           void router.navigate({ to: '/moments' });
         }}
       />

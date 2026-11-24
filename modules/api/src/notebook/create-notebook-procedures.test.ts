@@ -1,11 +1,13 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
-import { readRecords, writeRecords } from '@heynixie/log';
-import type { CleanupSessions } from '@heynixie/memory';
+import { buildBackupSeeder } from '@heynixie/backup/test-utils';
+import type { ErasureSessionCause } from '@heynixie/log';
+import { localDataStorage, readRecords, writeRecords } from '@heynixie/log';
 import { defaultGateLimits, defaultOwnerPronouns, startMemoryStore } from '@heynixie/memory';
 import { buildNotebookMemory, defaultNotebookSettings, startNotebook } from '@heynixie/notebook';
 import { buildNotebookToolCaller } from '@heynixie/notebook/test-utils';
 import invariant from 'tiny-invariant';
 import { buildTestClient } from '../test-utils/build-test-client';
+import { buildTestErasureRunner } from '../test-utils/build-test-erasure-runner';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { startTestAPI } from '../test-utils/start-test-api';
 
@@ -17,6 +19,12 @@ interface NoteInput {
 
 async function setupTest() {
   const api = await startTestAPI();
+
+  const cleanupSessions = mock<(cause: ErasureSessionCause) => Promise<void>>(() =>
+    Promise.resolve(),
+  );
+
+  const runner = buildTestErasureRunner(api.context.log, cleanupSessions);
 
   const memory = await startMemoryStore({
     log: api.context.log,
@@ -41,15 +49,13 @@ async function setupTest() {
 
   onTestFinished(() => memory.stop());
 
-  const cleanupSessions = mock<CleanupSessions>(() => Promise.resolve());
-
   const notebook = await startNotebook({
     log: api.context.log,
     definitions: () => ({ snapshotHash: 'sha256:test' }),
     clock: api.clock,
     settings: defaultNotebookSettings,
     memory: buildNotebookMemory(() => memory),
-    cleanupSessions,
+    erasure: runner,
     readRunningStep: () => Promise.resolve(null),
   });
 
@@ -391,7 +397,7 @@ test('#notebook.forget answers a retry with the first forget, and forgets once',
 
   const records = await readRecords(ctx.context.log, {
     afterSequence: 0,
-    kinds: ['notebook.note_forgotten'],
+    kinds: ['erasure.finished'],
   });
 
   expect(retried).toStrictEqual(first);
@@ -484,5 +490,39 @@ test('#conversation.previewForget lists the active notes that link to the record
   expect(preview.notes).toStrictEqual([
     { note: open.shortID, title: 'Why the boiler trips' },
     { note: secret.shortID },
+  ]);
+});
+
+test('#notebook.forget reports pending for a set published before the erasure finished, and complete for a set after it', async () => {
+  const ctx = await setupTest();
+
+  const backup = buildBackupSeeder({
+    context: { writer: ctx.context.log.writer, storage: localDataStorage },
+  });
+
+  const written = await ctx.writeNote({
+    title: 'Why the boiler trips',
+    body: 'After cold nights.',
+  });
+
+  await backup.publishedBackupSet();
+
+  const input = {
+    clientActionID: '3b9e2f61-4c7a-4d8e-9f10-5a6b7c8d9e0f',
+    note: written.shortID,
+    version: 1,
+  };
+
+  const beforeSet = await ctx.client.notebook.forget(input);
+  const retriedBeforeSet = await ctx.client.notebook.forget(input);
+
+  await backup.publishedBackupSet();
+
+  const afterSet = await ctx.client.notebook.forget(input);
+
+  expect([beforeSet.backup, retriedBeforeSet.backup, afterSet.backup]).toStrictEqual([
+    { state: 'pending' },
+    { state: 'pending' },
+    { state: 'complete' },
   ]);
 });

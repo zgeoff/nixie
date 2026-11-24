@@ -18,6 +18,7 @@ import {
 import invariant from 'tiny-invariant';
 import { startConversation } from '../conversation/start-conversation';
 import { buildConversationDriver } from '../test-utils/build-conversation-driver';
+import { buildTestErasureRunner } from '../test-utils/build-test-erasure-runner';
 import { buildTestModelsConfig } from '../test-utils/build-test-models-config';
 import { startTestServer } from '../test-utils/start-test-server';
 import { writeStartRecord } from '../utils/write-start-record';
@@ -26,11 +27,14 @@ import { makeTurnNoteReader } from './make-turn-note-reader';
 async function setupTest() {
   const server = await startTestServer(undefined, { fakeGuest: true });
 
+  const erasure = buildTestErasureRunner(server.context.log, () => Promise.resolve());
+
   const memory = await startTestMemoryStore(
     server.context,
     mock(() => Promise.resolve()),
     undefined,
     {
+      erasure,
       turn: { trigger: { items: 5, minScore: 0, minSimilarity: 1 } },
       linkCounts: buildItemLinkCounts(server.context.log),
     },
@@ -42,7 +46,7 @@ async function setupTest() {
     clock: server.context.clock,
     settings: defaultNotebookSettings,
     memory: buildNotebookMemory(() => memory),
-    cleanupSessions: () => Promise.resolve(),
+    erasure,
     readRunningStep: (thread) => readRunningStep(server.context, thread),
   });
 
@@ -670,7 +674,11 @@ test("it lists a finished note forget in the next turn's events as by the owner 
 
   invariant(written.status === 'written');
 
-  await ctx.notebook.forget({ note: written.shortID });
+  const begun = await ctx.notebook.beginForget({ note: written.shortID });
+
+  invariant(begun.status === 'begun');
+
+  await ctx.notebook.finishForget(begun.noteID);
 
   const turn = await conversation.send('And tomorrow?');
 
@@ -739,7 +747,11 @@ test("it leaves a finished note forget out of the next turn's events when the no
 
   invariant(written.status === 'written');
 
-  await ctx.notebook.forget({ note: written.shortID });
+  const begun = await ctx.notebook.beginForget({ note: written.shortID });
+
+  invariant(begun.status === 'begun');
+
+  await ctx.notebook.finishForget(begun.noteID);
 
   const turn = await conversation.send('And tomorrow?');
 

@@ -130,7 +130,7 @@ export const mockMomentProcedures = {
       throw pickRefusalError(refusals, result.status);
     }
 
-    return { momentID: input.momentID };
+    return { momentID: input.momentID, backup: { state: 'pending' as const } };
   }),
 };
 

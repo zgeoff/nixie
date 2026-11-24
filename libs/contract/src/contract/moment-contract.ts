@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { forgetBackupSchema } from './forget-backup-schema';
 import { reusedIDErrors } from './reused-id-errors';
 import { signedIn } from './signed-in';
 
@@ -162,5 +163,5 @@ export const momentContract = {
   destroyMoment: momentView
     .errors(reusedIDErrors)
     .input(momentTargetSchema.extend({ clientActionID: z.uuid() }))
-    .output(z.object({ momentID: z.string() })),
+    .output(z.object({ momentID: z.string(), backup: forgetBackupSchema.optional() })),
 };

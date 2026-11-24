@@ -1,4 +1,5 @@
 import type { Projection } from '@heynixie/log';
+import { erasureFinishedCodec, erasureStartedCodec } from '@heynixie/log';
 import { noteEditedCodec } from '../record/note-edited-codec';
 import { noteForgettingCodec } from '../record/note-forgetting-codec';
 import { noteForgottenCodec } from '../record/note-forgotten-codec';
@@ -99,6 +100,38 @@ export const notebookNotesProjection: Projection = {
         .execute();
 
       return [forgotten.note];
+    }
+
+    if (record.kind === erasureStartedCodec.kind) {
+      const started = erasureStartedCodec.decode(record.payload);
+
+      if (started.kind !== 'note') {
+        return [];
+      }
+
+      await db
+        .updateTable('notebook_notes')
+        .set({ state: 'forgetting' })
+        .where('note_id', '=', started.targetID)
+        .execute();
+
+      return [started.targetID];
+    }
+
+    if (record.kind === erasureFinishedCodec.kind) {
+      const finished = erasureFinishedCodec.decode(record.payload);
+
+      if (finished.kind !== 'note') {
+        return [];
+      }
+
+      await db
+        .updateTable('notebook_notes')
+        .set({ state: 'forgotten' })
+        .where('note_id', '=', finished.targetID)
+        .execute();
+
+      return [finished.targetID];
     }
 
     return [];

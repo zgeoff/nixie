@@ -18,6 +18,7 @@ import { skillsConfigSchema } from '@heynixie/skills';
 import { tasksConfigSchema } from '@heynixie/tasks';
 import { turnInputLogConfigSchema } from '@heynixie/turn-inputs';
 import { z } from 'zod';
+import { erasureConfigSchema } from '../config/erasure-config-schema';
 import { forgetNoticesConfigSchema } from '../config/forget-notices-config-schema';
 import { serverConfigSchema } from '../config/server-config-schema';
 import { sandboxSections } from '../sandbox/sandbox-sections';
@@ -44,6 +45,7 @@ export const deploymentConfigSchema = z
     memory: memoryConfigSchema.default(memoryConfigSchema.parse({})),
     notebook: notebookConfigSchema.default(notebookConfigSchema.parse({})),
     forget_notices: forgetNoticesConfigSchema.default(forgetNoticesConfigSchema.parse({})),
+    erasure: erasureConfigSchema.default(erasureConfigSchema.parse({})),
     policy: policyConfigSchema.default(policyConfigSchema.parse({})),
     approvals: approvalsConfigSchema.default(approvalsConfigSchema.parse({})),
     quiet_hours: quietHoursSchema.optional(),

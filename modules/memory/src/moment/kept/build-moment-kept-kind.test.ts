@@ -140,7 +140,7 @@ test('it leaves out a moment whose destroy shredded its title', async () => {
 
   invariant(kept.status === 'written');
 
-  await ctx.memory.store.moments.destroy({ momentID: kept.momentID, version: 1 });
+  await ctx.memory.destroyMoment({ momentID: kept.momentID, version: 1 });
 
   const kind = buildMomentKeptKind(ctx.memory.log, (taskID) => taskID);
 

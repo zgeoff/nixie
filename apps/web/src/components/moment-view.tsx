@@ -8,8 +8,8 @@ import { useMomentEdit } from '../memory/use-moment-edit';
 import { css } from '../styled-system/css';
 import type { MomentDetail } from '../types';
 import { useNixieClient } from '../utils/use-nixie-client';
-import { MomentDestroyControl } from './moment-destroy-control';
 import { MomentDraftConflict } from './moment-draft-conflict';
+import { MomentForgetControl } from './moment-forget-control';
 import { MomentLinks } from './moment-links';
 import { MomentNoteForm } from './moment-note-form';
 import { MomentReflections } from './moment-reflections';
@@ -18,7 +18,7 @@ import { MomentSpan } from './moment-span';
 export interface MomentViewProps {
   readonly momentID: string;
 
-  readonly onDestroyed: () => void;
+  readonly onForgotten: () => void;
 }
 
 const layout = css({
@@ -45,13 +45,13 @@ export function MomentView(props: MomentViewProps): ReactNode {
       {moment.isPending ? <p>Loading the moment…</p> : null}
       {moment.isError ? <p role="alert">This moment did not load. It may be gone.</p> : null}
       {moment.data === undefined || isMomentGone(moment.error) ? null : (
-        <MomentDetails moment={moment.data} onDestroyed={props.onDestroyed} />
+        <MomentDetails moment={moment.data} onForgotten={props.onForgotten} />
       )}
     </main>
   );
 }
 
-// A refetch that fails keeps the last data, so a moment destroyed elsewhere would still show.
+// A refetch that fails keeps the last data, so a moment forgotten elsewhere would still show.
 function isMomentGone(error: unknown): boolean {
   return error instanceof ORPCError && error.code === 'MOMENT_NOT_FOUND';
 }
@@ -59,7 +59,7 @@ function isMomentGone(error: unknown): boolean {
 interface MomentDetailsProps {
   readonly moment: MomentDetail;
 
-  readonly onDestroyed: () => void;
+  readonly onForgotten: () => void;
 }
 
 const quiet = css({ color: 'textMuted', fontSize: 'sm' });
@@ -80,9 +80,9 @@ function MomentDetails(props: MomentDetailsProps): ReactNode {
       <MomentLinks moment={moment} />
       <MomentSpan momentID={moment.momentID} thread={moment.thread} />
       <MomentEdges moment={moment} />
-      <MomentDestroyControl
+      <MomentForgetControl
         momentID={moment.momentID}
-        onDestroyed={props.onDestroyed}
+        onForgotten={props.onForgotten}
         version={moment.version}
       />
     </>

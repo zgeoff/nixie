@@ -91,13 +91,16 @@ Before you start:
    bun verify browser snapshot --until-text 'Winter diary'
    bun verify browser click --role button --name Forget
    bun verify browser click --role button --name 'Forget for good'
-   bun verify browser snapshot --until-text 'Key backups'
-   bun verify db query "select count(*) as forgotten from records where kind = 'notebook.note_forgotten'"
+   bun verify browser snapshot --until-text 'Key backups: off'
+   bun verify db query "select kind, json_extract(payload, '$.kind') as target, json_extract(payload, '$.by') as by, json_extract(payload, '$.removedKeys') as removed from records where kind like 'erasure.%' order by sequence"
    ```
 
    Expect: the first snapshot shows "Winter diary" under Backlinks, and the page kept the private
-   toggle. The last shows "The note is forgotten." and a line that starts with "Key backups". The
-   query's `forgotten` is 1.
+   toggle. The last shows "The note is forgotten." and the line "Key backups: off", because the
+   local test build keeps backups disabled and stages no set. A deployment with backups on reads
+   "Key backups: pending" there, until a backup set at or after the forget publishes. The query
+   lists `erasure.started` and then `erasure.finished`, both with `target` `note` and `by` `user`,
+   and `removed` above 0 on the finish record.
 
 6. Open the notebook again, and the private note that linked to the forgotten one:
 
@@ -114,7 +117,7 @@ Before you start:
 7. Script a turn in which the assistant forgets the private note. Read the note's short ID first:
 
    ```bash
-   bun verify db query "select json_extract(payload, '$.shortID') as id from records where kind = 'notebook.note_written' and json_extract(payload, '$.shortID') not in (select json_extract(payload, '$.shortID') from records where kind = 'notebook.note_forgotten')"
+   bun verify db query "select json_extract(payload, '$.shortID') as id from records where kind = 'notebook.note_written' and json_extract(payload, '$.shortID') not in (select json_extract(payload, '$.shortID') from records where kind = 'erasure.started' and json_extract(payload, '$.kind') = 'note')"
    bun verify action script-reply --forget-note '<the id>' --text 'The diary note is forgotten.'
    bun verify browser goto /
    bun verify browser type --role textbox --name Message --value 'Forget the diary note.'
@@ -122,7 +125,7 @@ Before you start:
    bun verify conversation turn --message 'Forget the diary note.' --reply 'The diary note is forgotten.' --wait-ms 60000
    bun verify browser goto '/notebook?private=1'
    bun verify browser snapshot --until-text 'No notes yet'
-   bun verify db query "select json_extract(payload, '$.by') as by, count(*) as n from records where kind = 'notebook.note_forgotten' group by by order by by"
+   bun verify db query "select json_extract(payload, '$.by') as by, count(*) as n from records where kind = 'erasure.finished' and json_extract(payload, '$.kind') = 'note' group by by order by by"
    ```
 
    Expect: the first query lists 1 note, the private one. The `conversation turn` exits 0, and the
@@ -139,9 +142,9 @@ Before you start:
 - Step 4: the private note's page folds its body until Open. After Open, the body shows, and the log
   holds exactly 1 `notebook.private_opened` record.
 - Step 5: the first note's page lists the private note under Backlinks, and after the forget it
-  shows the forgotten line with the key backup state. The log holds 1 `notebook.note_forgotten`
-  record.
+  shows the forgotten line with the key backup state, off on `local`. The log holds an
+  `erasure.started` and then an `erasure.finished` record for the note.
 - Step 6: the list holds only the private note, and its link to the forgotten note reads "Gone
   (note)".
-- Step 7: the list shows "No notes yet". The log holds 2 `notebook.note_forgotten` records, one with
-  `by` `user` and one with `by` `assistant`.
+- Step 7: the list shows "No notes yet". The log holds 2 `erasure.finished` records of kind `note`,
+  one with `by` `user` and one with `by` `assistant`.

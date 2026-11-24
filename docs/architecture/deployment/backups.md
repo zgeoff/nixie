@@ -30,10 +30,24 @@ nixie's backup schedule runs a pass on a poll, and early when a record commits. 
 every receipt that the job wrote, then stages a set when one is due:
 
 1. A forget set is due once a forget record is newer than the log position of every set that staged,
-   published or failed. A forget record closes a memory forget, a message forget, a note forget, a
-   moment destroy or a reset of the conversations, each of which deletes its keys before it writes
-   that record. The backup module names a note forget's record kind as a string, and imports nothing
-   from the notebook.
+   published or failed. A forget record is `erasure.finished`, which ends a note forget or a moment
+   destroy, or the end record of a memory forget, a message forget or a reset of the conversations,
+   each of which deletes its keys before it writes that record. The server passes the backup module
+   the old end records from each descriptor, so the module imports no store. nixie's pass withdraws
+   a set that staged before `erasure.finished` and stages a new one, because a stale set holds the
+   deleted keys. The same transaction that writes `erasure.finished` writes `floor.json` into the
+   staging folder, naming the highest set that exists then, and the job ships no set at or below it.
+   The job reads `floor.json` again once a set's key snapshot is in the key repo, and again once its
+   data snapshot is in the data repo. The data retention, the removal of the other key snapshots and
+   the key prune run only after that last read passes. When an erasure finished before one of those
+   reads, the job removes the set's own key and data snapshots, prunes the key repo, keeps the
+   restore note and writes no receipt, so the previous published pair stays whole. A failure of that
+   removal fails the job, and the next publish removes the stale snapshot with the other old ones.
+   An erasure that finishes after the last read lets the set publish, because nothing in the job is
+   atomic with the receipt's rename. Its receipt never covers the erasure, which waits for a set
+   that started after it. The withdrawal waits for the job's staging lock, so it never removes a set
+   that the job is shipping, and a pass that finds the lock held withdraws the set on the next pass.
+   A withdrawal that a failure stopped after the rename finishes on the next pass.
 2. A scheduled set is due once the newest staged set is a backup interval old, and never while a set
    waits for its receipt.
 
@@ -80,13 +94,13 @@ receipt. For each set it ships, the job:
    either, or 1 when neither holds one;
 3. backs up the key store copy to the key repository first, with the tags `set-`, `kind-` and
    `publish-`, and the tags `legacy-set-` and `proven-from-` where the
-   [tag rules](backup-pair.md#the-key-only-tags-of-a-new-key-snapshot) give them: the key snapshot
-   copies both from the one it replaces, and takes `legacy-set-` when it is the first numbered one.
-   It takes `proven-from-` with its own number, and no other tag, when a restore note shows the
-   restored keys are not the newest's, or when the replaced snapshot has no number while a
-   repository holds one;
+   [tag rules](backup-pair.md#the-key-only-tags-of-a-new-key-snapshot) give them. When a restore
+   note shows the restored keys are not the newest's, or the replaced snapshot has no number while a
+   repository holds one, the key snapshot takes `proven-from-` with its own number and no
+   `legacy-set-`. Otherwise it copies both from the one it replaces, and takes `legacy-set-` when it
+   is the first numbered one;
 4. backs up the log copy to the data repository with the same `set-`, `kind-` and `publish-` tags,
-   then applies the data retention;
+   reads `floor.json` again, and applies the data retention once that read passes;
 5. forgets every other key snapshot by its ID, prunes every unused byte, and checks the repository's
    data once the prune passes, whether the data snapshot passed or failed;
 6. removes the restore note from the staging folder, when one was there;
@@ -100,13 +114,15 @@ never repeats. A failed key snapshot also gives a failed receipt with no data sn
 key snapshot and the restore note kept.
 
 A restic failure in either repository gives the set a failed receipt that lists each failed step,
-and the job moves on to the next set. A failed manifest check gives the set a failed receipt too.
-Any other error before the receipt is in place stops the job run with a non-zero exit and leaves the
-set with no receipt, so the next job run ships it again. An error after the receipt is in place,
-such as a failed removal of the copies, stops the job run too, but the next job run skips the set
-because it holds its receipt, and nixie removes the copies with the set's folder once it records the
-receipt. The key repository forgets by ID, because restic's keep-last rule keeps one snapshot in
-each host and path group, and an older group would keep a forgotten key.
+and the job moves on to the next set. The one exception is the removal of a withdrawn set's own
+snapshots: a failure there stops the job run, as the next paragraph says of any other error. A
+failed manifest check gives the set a failed receipt too. Any other error before the receipt is in
+place stops the job run with a non-zero exit and leaves the set with no receipt, so the next job run
+ships it again. An error after the receipt is in place, such as a failed removal of the copies,
+stops the job run too, but the next job run skips the set because it holds its receipt, and nixie
+removes the copies with the set's folder once it records the receipt. The key repository forgets by
+ID, because restic's keep-last rule keeps one snapshot in each host and path group, and an older
+group would keep a forgotten key.
 
 The job passes each repository's password to restic in the child's environment, never in its
 arguments, and gives restic only the backend variables that the job's own variables leave. It
@@ -187,8 +203,9 @@ stop left.
 
 ## A forget's backup state
 
-nixie reads a forget's backup state from the sets whose log position is at or after the forget
-record, because only a copy that started after that record lacks the deleted keys:
+A forget that ended with `erasure.finished` is complete once a set at or after that record is
+published. nixie reads a forget's backup state from the sets whose log position is at or after the
+forget record, because only a copy that started after that record lacks the deleted keys:
 
 | Sets at or after the forget record                                                                   | Backup state                                                               |
 | ---------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |

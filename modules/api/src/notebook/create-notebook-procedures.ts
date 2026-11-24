@@ -188,7 +188,7 @@ export function createNotebookProcedures(context: APIContext) {
         input: target,
         result: { note: target.note, forgottenAt },
         apply: async (writeInTransaction) => {
-          const forgotten = await store.forget(target, writeInTransaction);
+          const forgotten = await store.beginForget(target, writeInTransaction);
 
           if (forgotten.status === 'refused') {
             throw new NoteRefusedError(forgotten.reason);

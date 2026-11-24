@@ -1,10 +1,13 @@
+import type { ErasureHandle } from '@heynixie/log';
+import { readErasureFinishedSequence } from '@heynixie/log';
+import invariant from 'tiny-invariant';
 import type { WriteInTransaction } from '../../types';
 import type {
   EditMomentRequest,
   KeepMomentRequest,
   LinkMomentRequest,
+  MomentContext,
   MomentDestroy,
-  MomentDestroyContext,
   MomentTables,
   MomentTarget,
   MomentWrite,
@@ -12,8 +15,7 @@ import type {
 } from '../../utils/moment-context';
 import type { MomentDestroyPreviewRead } from '../destroy/read-moment-destroy-preview';
 import { readMomentDestroyPreview } from '../destroy/read-moment-destroy-preview';
-import { runBegunDestroy } from '../destroy/run-begun-destroy';
-import { runMomentDestroy } from '../destroy/run-moment-destroy';
+import type { MomentErasureRequest } from '../erasure/build-moment-erasable';
 import { writeKeptMoment } from '../kept/write-kept-moment';
 import type { MomentRead, MomentReadRequest } from '../read-moment';
 import { readMoment } from '../read-moment';
@@ -21,6 +23,7 @@ import type { MomentLink } from '../read-moment-links';
 import { readMomentLinks } from '../read-moment-links';
 import type { MomentFindQuery, MomentMatchPage } from '../read-moment-matches';
 import { readMomentMatches } from '../read-moment-matches';
+import { readMomentRow } from '../read-moment-row';
 import type { MomentView } from '../read-moment-view';
 import { readMomentView } from '../read-moment-view';
 import type { MomentWeekCount } from '../read-week-count';
@@ -58,16 +61,23 @@ export interface MomentStore {
 
   // the client's checked destroy, bound to the version its preview showed
   readonly readDestroyPreview: (target: MomentTarget) => Promise<MomentDestroyPreviewRead>;
-  readonly destroy: (
+  readonly beginDestroy: (
     target: MomentTarget,
     writeInTransaction?: WriteInTransaction,
   ) => Promise<MomentDestroy>;
-  readonly finishDestroy: (momentID: string) => Promise<void>;
+
+  // finishes a destroy whose first part committed; the moment is a short ID or a UUID
+  readonly finishDestroy: (moment: string) => Promise<void>;
+
+  // the sequence of the record that ended the moment's destroy, or null while the cleanup still
+  // runs; the moment is a short ID or a UUID
+  readonly readDestroyedSequence: (moment: string) => Promise<number | null>;
 }
 
 export function buildMomentStore(
-  context: MomentDestroyContext,
+  context: MomentContext,
   indexes: MomentIndexes,
+  erasure: ErasureHandle<MomentErasureRequest> | null,
 ): MomentStore {
   const log = context.log;
   const search = { log, moments: indexes };
@@ -83,16 +93,33 @@ export function buildMomentStore(
     readLinks: (itemIDs) => readMomentLinks(log, itemIDs),
     readView: (momentID) => readMomentView(log, momentID),
     readDestroyPreview: (target) => readMomentDestroyPreview(log, target),
-    destroy: async (target, writeInTransaction) => {
-      const destroyed = await runMomentDestroy(context, target, writeInTransaction);
+    beginDestroy: async (target, writeInTransaction) => {
+      invariant(erasure, 'the memory store holds an erasure registry');
 
-      await updateMomentIndex(log, indexes);
+      const begun = await erasure.begin(target, {
+        by: 'user',
+        ...(writeInTransaction === undefined ? {} : { writeInTransaction }),
+      });
 
-      return destroyed;
+      return begun.status === 'refused'
+        ? begun
+        : { status: 'begun', momentID: begun.target.targetID };
     },
-    finishDestroy: async (momentID) => {
-      await runBegunDestroy(context, momentID);
+    finishDestroy: async (moment) => {
+      invariant(erasure, 'the memory store holds an erasure registry');
+
+      const row = await readMomentRow(log.writer.db.$extendTables<MomentTables>(), moment);
+
+      if (row !== null) {
+        await erasure.finish(row.moment_id);
+      }
+
       await updateMomentIndex(log, indexes);
+    },
+    readDestroyedSequence: async (moment) => {
+      const row = await readMomentRow(log.writer.db.$extendTables<MomentTables>(), moment);
+
+      return row === null ? null : readErasureFinishedSequence(log, 'moment', row.moment_id);
     },
   };
 }

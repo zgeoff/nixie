@@ -1,10 +1,11 @@
 # The API
 
 nixie's API serves the [client](./client.md) contract over HTTP: Elysia hands every path under
-`/rpc` to oRPC, which validates each input and output against the contract. The API resolves each
-call to a row of the identity record, writes the user's messages into task inboxes once each, and
-follows the [event log](../core/event-log.md) for the live stream. The package `modules/api` builds
-the app, and the server mounts it and listens.
+`/rpc` to oRPC, except the watch socket that [watching the computer](#watching-the-computer)
+describes, which validates each input and output against the contract. The API resolves each call to
+a row of the identity record, writes the user's messages into task inboxes once each, and follows
+the [event log](../core/event-log.md) for the live stream. The package `modules/api` builds the app,
+and the server mounts it and listens.
 
 ## A call's way in
 
@@ -24,7 +25,7 @@ the user names each device as they think of it, such as phone or PC. The row hol
 hash of its token, because a random token cannot be guessed back from its hash, so a copy of the
 database grants no session.
 
-An enrolment code turns into a session once. nixie keeps only the code's hash, and a code lapses
+An enrolment code turns into a session once. nixie stores only the code's hash, and a code lapses
 unused after the enrolment code lifetime. The host's code comes from a function the server calls at
 start: it issues a fresh code on each call while no device holds a live session, so the first device
 can sign in, and issues nothing once one does. A host command issues a code at any time. A signed-in
@@ -88,8 +89,9 @@ options and the host's code in memory, so a restart drops them.
 Enrolment, code issue, revoke, message send, record forget, the changes of the
 [memory view](../memory/view.md#changes), a moment's keep, edit, link and destroy, the undo of a
 task definition change, and each task control share one table of client action IDs, which holds the
-first result of each action and a hash of its input. A retry with the same ID and input gets the
-first result, and the same ID with another procedure, input or caller gets
+first result of each action and a hash of its input. A message send is the exception: it keeps no
+hash of its input, as [sending a message](#sending-a-message) says. A retry with the same ID and
+input gets the first result, and the same ID with another procedure, input or caller gets
 `CLIENT_ACTION_ID_REUSED`. These results hold secrets that nixie keeps only as hashes, or not at
 all, so a retry gets a fresh value that replaces the first:
 
@@ -314,7 +316,19 @@ hangs.
 The action's `action.outcome` record holds the removed record's event ID and kind, never its text.
 The API reads them into the `removal` field of the contract record, with the sequence of the call
 that asked for the removal, and the web client shows one muted line under the last reply of the turn
-that made the call, even when the owner approved the call after later turns.
+that made the call, even when the user approved the call after later turns.
+
+## Stuck forgets
+
+`erasure.readStuck` lists each forget that has stayed open for `erasure.stuck_after_minutes`, with
+its kind, its short ID (null for a kind that has none) and the milliseconds it has been open.
+`erasure.retryStuck` runs each of them again and lists the ones still open. Neither answers the
+erasure's own ID. Both answer `ERASURE_NOT_STARTED` (503) until the erasure runner starts, and a
+read-only token may call neither retry.
+
+The conversation's tool list holds the same 2 calls as `forget.stuck`, which declares `read`, and
+`forget.retry`, which declares `note` like `notebook.forget`, so a retry needs no approval. A tool
+result gives the kind, the short ID as `id`, and whole minutes as `openMinutes`.
 
 ## Undoing a task definition change
 
@@ -355,16 +369,17 @@ the task's state allows. A started task whose name the user forgot shows under i
 returns one task with the same fields, whatever its place in the list, so a task's page shows a task
 past the cap.
 
-Each listed task also gives `listedState`, the state that the model tool `tasks.list` reads: the
-stored state, or `idle`, `finished` or `asleep` for a task whose stored state is `waiting` with no
-open wait. While nixie's pause holds a task whose stored state is `ready`, `running`, `waiting` or
-`paused`, it lists as `paused`, and its stored state does not change. An exempt task, and a task
-that has stopped, failed, finished or closed, keeps its own listed state. The model tool does not
-apply the pause. A task of a definition also gives its `definitionID` and a `fire`: the scheduled
-time, the fire time and whether it was a catch-up, taken from the open task run, or from the newest
-one when none is open. The `fire` is null when that task run has no fire, which holds for a poll
-fire, a message and a fire that a reset of the log removed. A carrying task run gives the fire of
-the task run that it carries on from. A started task has no `fire` field.
+Each listed task also gives `listedState`, built from the state that the model tool `tasks.list`
+reads: the stored state, or `idle`, `finished` or `asleep` for a task whose stored state is
+`waiting` with no open wait. While nixie's pause holds a task whose stored state is `ready`,
+`running`, `waiting` or `paused`, it lists as `paused`, and its stored state does not change. An
+exempt task, and a task that has stopped, failed, finished or closed, keeps its own listed state.
+The pause applies to `listedState` only, and the model tool reads the state without it. A task of a
+definition also gives its `definitionID` and a `fire`: the scheduled time, the fire time and whether
+it was a catch-up, taken from the open task run, or from the newest one when none is open. The
+`fire` is null when that task run has no fire, which holds for a poll fire, a message and a fire
+that a reset of the log removed. A carrying task run gives the fire of the task run that it carries
+on from. A started task has no `fire` field.
 
 `tasks.list` takes an optional input with a `definitionID` and a `states` array of 1 to 11 distinct
 listed states. The server applies both before the cap of 100 tasks, so a filter finds a task that

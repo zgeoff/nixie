@@ -1,4 +1,5 @@
 import { mock, onTestFinished } from 'bun:test';
+import type { ErasureRegistry } from '@heynixie/log';
 import type { TasksContext } from '@heynixie/tasks';
 import { defaultGateLimits } from '../gate/default-gate-limits';
 import type { StartedMemoryStore } from '../memory/start-memory-store';
@@ -9,6 +10,7 @@ import type { CleanupSessions, ItemLinkCounts } from '../types';
 import { buildStubEncoder } from './build-stub-encoder';
 
 interface StoreSettings {
+  readonly erasure?: ErasureRegistry;
   readonly turn?: TurnMemorySettings;
   readonly linkCounts?: ItemLinkCounts;
 }
@@ -23,6 +25,7 @@ export async function startTestMemoryStore(
     log: context.log,
     definitions: context.definitions,
     cleanupSessions,
+    ...(settings.erasure === undefined ? {} : { erasure: settings.erasure }),
     ...(settings.turn === undefined ? {} : { turn: settings.turn }),
     ...(settings.linkCounts === undefined ? {} : { linkCounts: settings.linkCounts }),
     ...(encoderTopics === undefined

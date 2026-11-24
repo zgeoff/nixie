@@ -1,15 +1,18 @@
 import { expect, mock, test } from 'bun:test';
 import { readFile } from 'node:fs/promises';
 import { getDataFilePath, getWALPath, readRecordKeys, readRecords } from '@heynixie/log';
+import type { ErasureSessionCause } from '@heynixie/log';
 import { readTestRecordKeyRows } from '@heynixie/log/test-utils';
 import invariant from 'tiny-invariant';
 import { buildStubEncoder } from '../test-utils/build-stub-encoder';
 import { createMemoryItem } from '../test-utils/create-memory-item';
 import { startTestMemory } from '../test-utils/start-test-memory';
-import type { CleanupSessions, MemoryTables } from '../types';
+import type { MemoryTables } from '../types';
 
 async function setupTest() {
-  const cleanupSessions = mock<CleanupSessions>(() => Promise.resolve());
+  const cleanupSessions = mock<(cause: ErasureSessionCause) => Promise<void>>(() =>
+    Promise.resolve(),
+  );
 
   return { memory: await startTestMemory({ cleanupSessions }), cleanupSessions };
 }

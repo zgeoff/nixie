@@ -30,14 +30,19 @@ export type {
   APISettings,
   CleanupRecordSessions,
   ComputerWatchPort,
+  ErasureStuckPort,
   ForgetBackupState,
   HostBackups,
   HostRouterOptions,
   Identity,
   ReadViewMemory,
+  StuckForget,
 } from './types';
 
 export type { APIRecordKind } from './api/api-record-kind';
 export type { ProposalParts } from './proposal/build-proposal-core-deps';
 export { buildProposalCoreDeps } from './proposal/build-proposal-core-deps';
 export { proposalsProjection } from './proposal/proposals-projection';
+export { conversationErasableDescriptor } from './erasable/conversation-erasable-descriptor';
+export { imageErasableDescriptor } from './erasable/image-erasable-descriptor';
+export { recordErasableDescriptor } from './erasable/record-erasable-descriptor';

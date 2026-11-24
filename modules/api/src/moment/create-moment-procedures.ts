@@ -2,8 +2,9 @@
 import { createShortID } from '@heynixie/db';
 import { match } from 'ts-pattern';
 import { z } from 'zod';
+import { readForgetBackupState } from '../forget/read-forget-backup-state';
 import { requireCaller } from '../memory/require-caller';
-import type { APIContext, ReadViewMemory } from '../types';
+import type { APIContext, ForgetProgress, ReadViewMemory } from '../types';
 import { apiImplementer } from '../utils/api-implementer';
 import { readClientAction } from '../utils/read-client-action';
 import { requireViewMemory } from '../utils/require-view-memory';
@@ -111,7 +112,7 @@ export function createMomentProcedures(context: APIContext, readMemory: ReadView
         input: target,
         result,
         apply: async (writeInTransaction) => {
-          const destroyed = await store.moments.destroy(target, writeInTransaction);
+          const destroyed = await store.moments.beginDestroy(target, writeInTransaction);
 
           if (destroyed.status === 'refused') {
             throw new MomentRefusedError(destroyed.reason);
@@ -131,7 +132,12 @@ export function createMomentProcedures(context: APIContext, readMemory: ReadView
         .with('applied', () => store.moments.finishDestroy(target.momentID))
         .exhaustive();
 
-      return result;
+      const sequence = await store.moments.readDestroyedSequence(target.momentID);
+
+      const progress: ForgetProgress =
+        sequence === null ? { stage: 'deleting' } : { stage: 'forgotten', sequence };
+
+      return { ...result, backup: await readForgetBackupState(context, progress) };
     }),
   };
 }

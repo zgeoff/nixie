@@ -52,7 +52,7 @@ test('it counts the moments that hold the record, leaving out a destroyed one an
     isRetired: true,
   });
 
-  await ctx.memory.store.moments.destroy({ momentID: destroyed.momentID, version: 1 });
+  await ctx.memory.destroyMoment({ momentID: destroyed.momentID, version: 1 });
 
   const preview = await readRecordForgetPreview(ctx.memory.log, {
     thread: 'conversation',

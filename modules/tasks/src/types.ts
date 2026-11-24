@@ -335,6 +335,11 @@ export type FaultPointID =
   | 'memory.purge.keys_removed'
   | 'record.forget.started'
   | 'record.forget.purged'
+  | 'erasure.begun'
+  | 'erasure.sandboxes_destroyed'
+  | 'erasure.keys_removed'
+  | 'erasure.cleaned'
+  | 'erasure.turn_inputs_removed'
   | 'backup.set.copied';
 
 export interface FaultPointContext {
@@ -344,6 +349,7 @@ export interface FaultPointContext {
     | 'restart_sweep'
     | 'pool'
     | 'memory'
+    | 'erasure'
     | 'backup'
     | 'trigger';
   readonly id: string | null;

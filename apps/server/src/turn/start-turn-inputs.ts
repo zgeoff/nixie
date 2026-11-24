@@ -4,26 +4,20 @@ import type { ServerPartValues } from '../part/server-part-values';
 import type { PartReader } from '../types';
 import { buildOwnValueSearch } from './build-own-value-search';
 
-// Opens no capture while the deployment has no turn_input_log section. The start repairs what a
-// stop left behind, and the intake and sweep run until the work stops.
-export async function startTurnInputs(reader: PartReader<ServerPartValues>): Promise<TurnInputs> {
+// Opens no capture while the deployment has no turn_input_log section. The repair and the work
+// start later, in the part that follows the erasure catch-up.
+export function startTurnInputs(reader: PartReader<ServerPartValues>): Promise<TurnInputs> {
   const options = reader.get('inputs').options;
   const context = reader.get('context').apiContext;
 
-  const turnInputs = createTurnInputs({
-    log: context.log,
-    clock: context.clock,
-    definitions: context.definitions,
-    logger: options.log,
-    config: options.config.turn_input_log ?? null,
-    holdsOwnValue: buildOwnValueSearch(options.secrets.ownValues),
-  });
-
-  await turnInputs.runStart();
-
-  const work = turnInputs.startWork();
-
-  await options.cleanup.defer(() => work.stop());
-
-  return turnInputs;
+  return Promise.resolve(
+    createTurnInputs({
+      log: context.log,
+      clock: context.clock,
+      definitions: context.definitions,
+      logger: options.log,
+      config: options.config.turn_input_log ?? null,
+      holdsOwnValue: buildOwnValueSearch(options.secrets.ownValues),
+    }),
+  );
 }

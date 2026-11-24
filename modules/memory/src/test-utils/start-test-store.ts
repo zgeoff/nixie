@@ -1,10 +1,12 @@
 import type { Log } from '@heynixie/log';
-import { logProjections, startWriter } from '@heynixie/log';
+import { logProjections, makeErasureRunner, startWriter } from '@heynixie/log';
+import { buildTestErasureEffects } from '@heynixie/log/test-utils';
 import { defaultGateLimits } from '../gate/default-gate-limits';
 import { defaultIndexSettings } from '../index-block/default-index-settings';
 import { startMemoryStore } from '../memory/start-memory-store';
 import { memoryProjections } from '../moment/projection/memory-projections';
 import { defaultOwnerPronouns } from '../owner/default-owner-pronouns';
+import type { MomentTarget } from '../utils/moment-context';
 import type { TestMemory, TestMemoryOptions } from './start-test-memory';
 
 type StoreWiring = Pick<TestMemory, 'dataDir' | 'deploymentKey' | 'defer'>;
@@ -12,7 +14,7 @@ type StoreWiring = Pick<TestMemory, 'dataDir' | 'deploymentKey' | 'defer'>;
 export async function startTestStore(
   wiring: StoreWiring,
   options: TestMemoryOptions,
-): Promise<Pick<TestMemory, 'writer' | 'log' | 'store'>> {
+): Promise<Pick<TestMemory, 'writer' | 'log' | 'store' | 'runner' | 'destroyMoment'>> {
   const writer = await startWriter({
     dataDir: wiring.dataDir,
     keyStoreBusyTimeoutMs: options.keyStoreBusyTimeoutMs,
@@ -30,9 +32,22 @@ export async function startTestStore(
     projections: [...logProjections, ...memoryProjections],
   };
 
+  const definitions = options.definitions ?? (() => ({ snapshotHash: 'sha256:test' }));
+  const fake = buildTestErasureEffects();
+
+  const runner = makeErasureRunner({
+    log,
+    definitions,
+    effects: {
+      ...fake.effects,
+      cleanupSessions: (cause) => options.cleanupSessions?.(cause) ?? Promise.resolve(),
+    },
+  });
+
   const store = await startMemoryStore({
     log,
-    definitions: options.definitions ?? (() => ({ snapshotHash: 'sha256:test' })),
+    definitions,
+    erasure: runner,
     cleanupSessions: options.cleanupSessions ?? (() => Promise.resolve()),
     ...(options.semanticSearch === undefined ? {} : { semanticSearch: options.semanticSearch }),
     ...(options.turn === undefined ? {} : { turn: options.turn }),
@@ -61,5 +76,17 @@ export async function startTestStore(
 
   wiring.defer(() => store.stop());
 
-  return { writer, log, store };
+  await runner.finishOpen();
+
+  const destroyMoment = async (target: MomentTarget) => {
+    const begun = await store.moments.beginDestroy(target);
+
+    if (begun.status === 'begun') {
+      await store.moments.finishDestroy(begun.momentID);
+    }
+
+    return begun;
+  };
+
+  return { writer, log, store, runner, destroyMoment };
 }

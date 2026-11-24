@@ -4,6 +4,7 @@ import { writeTakeOverRequest } from '../computer/write-take-over-request';
 import type { SessionState } from '../conversation/read-session-state';
 import { BackupNotice } from './backup-notice';
 import { EnrolForm } from './enrol-form';
+import { ForgetStuckNotice } from './forget-stuck-notice';
 import { HandoverBanner } from './handover-banner';
 import { PauseBanner } from './pause-banner';
 import { SpendStopNotice } from './spend-stop-notice';
@@ -35,6 +36,7 @@ export function SignedInPage(props: SignedInPageProps): ReactNode {
   return (
     <>
       <BackupNotice />
+      <ForgetStuckNotice />
       <PauseBanner />
       <HandoverBanner
         onTakeOver={() => {

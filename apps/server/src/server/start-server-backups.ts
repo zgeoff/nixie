@@ -3,6 +3,7 @@ import type { BackupContext } from '@heynixie/backup';
 import { startBackupSchedule } from '@heynixie/backup';
 import { localDataStorage } from '@heynixie/log';
 import { toErrorFields } from '@heynixie/logger';
+import { erasableDescriptors } from '../erasure/erasable-descriptors';
 import type { Cleanup, ServerParts } from '../types';
 
 export interface ServerBackupParts extends Pick<ServerParts, 'log' | 'state'> {
@@ -25,7 +26,11 @@ export async function startServerBackups(parts: ServerBackupParts): Promise<Host
   parts.state.update({ backups: { state: 'on', intervalMs, startedAt, health: null } });
 
   const schedule = startBackupSchedule({
-    context: { writer: parts.context.log.writer, storage: localDataStorage },
+    context: {
+      writer: parts.context.log.writer,
+      storage: localDataStorage,
+      legacyEnds: erasableDescriptors.flatMap((descriptor) => descriptor.legacyEnds),
+    },
     intervalMs,
     onAbandoned: (sequences) => {
       parts.log('backup.sets_abandoned', { sequences: sequences.join(',') });

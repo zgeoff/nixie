@@ -26,7 +26,7 @@ export async function runBackupStagePass(
   const result: { outcome: BackupStageOutcome } = { outcome: { status: 'restore_pause' } };
 
   const pass = await runBackupPassWith(context, intervalMs, async () => {
-    const due = await readBackupDue(context.writer);
+    const due = await readBackupDue(context.writer, context.legacyEnds ?? []);
     const held = await readHeldBackupSet(context.writer);
 
     const pick = pickBackupStage(due, held);

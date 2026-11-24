@@ -34,7 +34,7 @@ test('it shows the note with its own date, each reflection with its model and da
     ],
   });
 
-  const rendered = render(<MomentView momentID={moment.momentID} onDestroyed={() => {}} />);
+  const rendered = render(<MomentView momentID={moment.momentID} onForgotten={() => {}} />);
 
   const heading = await rendered.findByRole('heading', { name: 'The ladder on the stairs' });
 
@@ -79,7 +79,7 @@ test("it shows the span's messages and replies, a gap where a record has no text
 
   const moment = await store.moments.create({ firstSequence: 4, lastSequence: 7 });
 
-  const rendered = render(<MomentView momentID={moment.momentID} onDestroyed={() => {}} />);
+  const rendered = render(<MomentView momentID={moment.momentID} onForgotten={() => {}} />);
 
   const records = await rendered.findByRole('list', { name: 'Records' });
 
@@ -112,7 +112,7 @@ test('it shows more of a long span when the user asks for the next page', async 
 
   const moment = await store.moments.create({ firstSequence: 1, lastSequence: 101 });
 
-  const rendered = render(<MomentView momentID={moment.momentID} onDestroyed={() => {}} />);
+  const rendered = render(<MomentView momentID={moment.momentID} onForgotten={() => {}} />);
 
   const more = await rendered.findByRole('button', { name: 'Show more of the conversation' });
 
@@ -136,7 +136,7 @@ test('it renames the moment, which then shows the title as yours', async () => {
 
   const moment = await store.moments.create({ title: 'The ladder', titleBy: 'model' });
 
-  const rendered = render(<MomentView momentID={moment.momentID} onDestroyed={() => {}} />);
+  const rendered = render(<MomentView momentID={moment.momentID} onForgotten={() => {}} />);
 
   const rename = await rendered.findByRole('button', { name: 'Rename' });
 
@@ -157,7 +157,7 @@ test('it adds a note to a moment that had none, dated the day it was written', a
 
   const moment = await store.moments.create({ note: null });
 
-  const rendered = render(<MomentView momentID={moment.momentID} onDestroyed={() => {}} />);
+  const rendered = render(<MomentView momentID={moment.momentID} onForgotten={() => {}} />);
 
   const add = await rendered.findByRole('button', { name: 'Add a note' });
 
@@ -190,7 +190,7 @@ test('it removes a reflection', async () => {
     reflections: [{ model: 'claude-test-4', text: 'The fall was about haste.' }],
   });
 
-  const rendered = render(<MomentView momentID={moment.momentID} onDestroyed={() => {}} />);
+  const rendered = render(<MomentView momentID={moment.momentID} onForgotten={() => {}} />);
 
   const remove = await rendered.findByRole('button', { name: 'Remove this reflection' });
 
@@ -213,7 +213,7 @@ test('it links a memory item that the user names by its short ID', async () => {
 
   const moment = await store.moments.create({});
 
-  const rendered = render(<MomentView momentID={moment.momentID} onDestroyed={() => {}} />);
+  const rendered = render(<MomentView momentID={moment.momentID} onForgotten={() => {}} />);
 
   const itemID = await rendered.findByRole('textbox', { name: 'Memory item ID' });
 
@@ -242,7 +242,7 @@ test('it removes a link', async () => {
 
   const moment = await store.moments.create({ linkedItemIDs: [item.itemID] });
 
-  const rendered = render(<MomentView momentID={moment.momentID} onDestroyed={() => {}} />);
+  const rendered = render(<MomentView momentID={moment.momentID} onForgotten={() => {}} />);
 
   const linked = await rendered.findByRole('listitem', { name: 'k3m9qa' });
 
@@ -263,7 +263,7 @@ test("it moves the span's edges, and the span then shows the record it took in",
 
   const moment = await store.moments.create({ firstSequence: 4, lastSequence: 4 });
 
-  const rendered = render(<MomentView momentID={moment.momentID} onDestroyed={() => {}} />);
+  const rendered = render(<MomentView momentID={moment.momentID} onForgotten={() => {}} />);
 
   const last = await rendered.findByRole('textbox', { name: 'Last record' });
 
@@ -285,7 +285,7 @@ test('it refuses edges that leave the thread, and says why', async () => {
 
   const moment = await store.moments.create({ firstSequence: 4, lastSequence: 4 });
 
-  const rendered = render(<MomentView momentID={moment.momentID} onDestroyed={() => {}} />);
+  const rendered = render(<MomentView momentID={moment.momentID} onForgotten={() => {}} />);
 
   const last = await rendered.findByRole('textbox', { name: 'Last record' });
 
@@ -307,7 +307,7 @@ test('it says the moment changed when an edit meets a newer version', async () =
 
   const moment = await store.moments.create({ title: 'The ladder' });
 
-  const rendered = render(<MomentView momentID={moment.momentID} onDestroyed={() => {}} />);
+  const rendered = render(<MomentView momentID={moment.momentID} onForgotten={() => {}} />);
 
   const rename = await rendered.findByRole('button', { name: 'Rename' });
 
@@ -339,7 +339,7 @@ test('it holds a note draft when another device changes the note, until the user
     note: { text: 'Never leave it on the landing.', writtenAt: new Date() },
   });
 
-  const rendered = render(<MomentView momentID={moment.momentID} onDestroyed={() => {}} />);
+  const rendered = render(<MomentView momentID={moment.momentID} onForgotten={() => {}} />);
 
   const edit = await rendered.findByRole('button', { name: 'Edit the note' });
 
@@ -385,7 +385,7 @@ test('it replaces a note draft with the note another device wrote when the user 
     note: { text: 'Never leave it on the landing.', writtenAt: new Date() },
   });
 
-  const rendered = render(<MomentView momentID={moment.momentID} onDestroyed={() => {}} />);
+  const rendered = render(<MomentView momentID={moment.momentID} onForgotten={() => {}} />);
 
   const edit = await rendered.findByRole('button', { name: 'Edit the note' });
 
@@ -419,7 +419,7 @@ test('it holds a title draft when another device renames the moment', async () =
 
   const moment = await store.moments.create({ title: 'The ladder' });
 
-  const rendered = render(<MomentView momentID={moment.momentID} onDestroyed={() => {}} />);
+  const rendered = render(<MomentView momentID={moment.momentID} onForgotten={() => {}} />);
 
   const rename = await rendered.findByRole('button', { name: 'Rename' });
 
@@ -453,7 +453,7 @@ test('it holds an edges draft when another device moves the edges', async () => 
     lastSequence: 4,
   });
 
-  const rendered = render(<MomentView momentID={moment.momentID} onDestroyed={() => {}} />);
+  const rendered = render(<MomentView momentID={moment.momentID} onForgotten={() => {}} />);
 
   const first = await rendered.findByRole('textbox', { name: 'First record' });
 
@@ -485,7 +485,7 @@ test('it shows the edges another device moved when the user has not changed them
     lastSequence: 4,
   });
 
-  const rendered = render(<MomentView momentID={moment.momentID} onDestroyed={() => {}} />);
+  const rendered = render(<MomentView momentID={moment.momentID} onForgotten={() => {}} />);
 
   await rendered.findByRole('textbox', { name: 'Last record' });
 
@@ -540,7 +540,7 @@ test('it sends an edit that got no answer again with its first action ID and ver
     ),
   );
 
-  const rendered = render(<MomentView momentID={moment.momentID} onDestroyed={() => {}} />);
+  const rendered = render(<MomentView momentID={moment.momentID} onForgotten={() => {}} />);
 
   const rename = await rendered.findByRole('button', { name: 'Rename' });
 
@@ -595,7 +595,7 @@ test('it resends an edit that committed but lost its answer with its first actio
     ),
   );
 
-  const rendered = render(<MomentView momentID={moment.momentID} onDestroyed={() => {}} />);
+  const rendered = render(<MomentView momentID={moment.momentID} onForgotten={() => {}} />);
 
   const rename = await rendered.findByRole('button', { name: 'Rename' });
 
@@ -622,14 +622,14 @@ test('it resends an edit that committed but lost its answer with its first actio
   expect(edited?.version).toBe(2);
 });
 
-test('it hides the moment once a read finds it destroyed elsewhere', async () => {
+test('it hides the moment once a read finds it forgotten elsewhere', async () => {
   const ctx = setupTest();
 
   await createDeviceSession();
 
   const moment = await store.moments.create({ title: 'The ladder', note: null });
 
-  const rendered = render(<MomentView momentID={moment.momentID} onDestroyed={() => {}} />);
+  const rendered = render(<MomentView momentID={moment.momentID} onForgotten={() => {}} />);
 
   const add = await rendered.findByRole('button', { name: 'Add a note' });
 
@@ -669,7 +669,7 @@ test('it offers the removal on a message and a reply, and on no tool record or g
 
   const moment = await store.moments.create({ firstSequence: 4, lastSequence: 7 });
 
-  const rendered = render(<MomentView momentID={moment.momentID} onDestroyed={() => {}} />);
+  const rendered = render(<MomentView momentID={moment.momentID} onForgotten={() => {}} />);
 
   const records = await rendered.findByRole('list', { name: 'Records' });
 
@@ -697,7 +697,7 @@ test('it reads the preview on a click, forgets only after the confirm, and then 
 
   const moment = await store.moments.create({ firstSequence: 4, lastSequence: 5 });
 
-  const rendered = render(<MomentView momentID={moment.momentID} onDestroyed={() => {}} />);
+  const rendered = render(<MomentView momentID={moment.momentID} onForgotten={() => {}} />);
 
   const target = await rendered.findByRole('button', { name: 'Remove this record' });
 
@@ -735,7 +735,7 @@ test('it words the memory sentence only when a memory item quotes the record', a
 
   const moment = await store.moments.create({ firstSequence: 4, lastSequence: 4 });
 
-  const rendered = render(<MomentView momentID={moment.momentID} onDestroyed={() => {}} />);
+  const rendered = render(<MomentView momentID={moment.momentID} onForgotten={() => {}} />);
 
   const target = await rendered.findByRole('button', { name: 'Remove this record' });
 
@@ -765,7 +765,7 @@ test('it shows an error in place of the confirm when the preview fails, and hide
     ),
   );
 
-  const rendered = render(<MomentView momentID={moment.momentID} onDestroyed={() => {}} />);
+  const rendered = render(<MomentView momentID={moment.momentID} onForgotten={() => {}} />);
 
   const target = await rendered.findByRole('button', { name: 'Remove this record' });
 

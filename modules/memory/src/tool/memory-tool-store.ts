@@ -8,7 +8,7 @@ import type { ItemIDStore } from '../types';
 // and the client's whole view, which the model reads a page at a time instead.
 export type MomentToolStore = Omit<
   MomentStore,
-  'readView' | 'readDestroyPreview' | 'destroy' | 'finishDestroy'
+  'readView' | 'readDestroyPreview' | 'beginDestroy' | 'finishDestroy' | 'readDestroyedSequence'
 >;
 
 export type MemoryToolStore = Pick<

@@ -177,7 +177,7 @@ test('it reads no view of a destroyed moment', async () => {
 
   invariant(kept.status === 'written');
 
-  await ctx.memory.store.moments.destroy({ momentID: kept.momentID, version: 1 });
+  await ctx.memory.destroyMoment({ momentID: kept.momentID, version: 1 });
 
   const view = await ctx.memory.store.moments.readView(kept.momentID);
 

@@ -124,6 +124,21 @@ the purge too, so a rollback by one release in the middle of a forget loses noth
 release's test build, which the e2e lane builds from the release's tag, because the release build
 stops at the parts of a start that need a real sandbox.
 
+## Fault points of the erasure runner
+
+The [erasure runner](../memory/store.md#forgetting) holds at 5 fault points behind the test-build
+flag, in the order of its steps. A test arms a point, makes a note forget or a moment destroy reach
+it, stops nixie there and starts it again, and checks that the erasure finishes, no key of the
+target remains and `erasure.finished` follows `erasure.started`.
+
+| Fault point                   | Reached                                                                                                    |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `erasure.begun`               | after `erasure.started` commits, and when a run of the open erasure begins, before any sandbox or key goes |
+| `erasure.sandboxes_destroyed` | after the code sandboxes, before the keys                                                                  |
+| `erasure.keys_removed`        | after the key deletes, before the session cleanup                                                          |
+| `erasure.cleaned`             | after the session cleanup, before the turn inputs                                                          |
+| `erasure.turn_inputs_removed` | after the turn inputs, before `erasure.finished`                                                           |
+
 ## Fault point of a live reply
 
 `turn.reply.after` sits behind the test-build flag, after the transaction that writes a live

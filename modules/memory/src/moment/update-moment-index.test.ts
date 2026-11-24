@@ -130,7 +130,7 @@ test('it drops the vector of a moment whose destroy started since the last updat
   invariant(kept.status === 'written');
 
   await ctx.updateIndex();
-  await ctx.memory.store.moments.destroy({ momentID: kept.momentID, version: 1 });
+  await ctx.memory.destroyMoment({ momentID: kept.momentID, version: 1 });
   await ctx.updateIndex();
 
   expect(

@@ -1,4 +1,5 @@
-import type { Projection } from '@heynixie/log';
+import type { EnvelopeRecord, Projection } from '@heynixie/log';
+import { erasureStartedCodec } from '@heynixie/log';
 import { noteForgettingCodec } from '../record/note-forgetting-codec';
 import { noteLinkedCodec } from '../record/note-linked-codec';
 import { noteUnlinkedCodec } from '../record/note-unlinked-codec';
@@ -44,12 +45,12 @@ export const notebookLinksProjection: Projection = {
     }
 
     // A forgotten note takes its own links with it; a link to it stays and reads as gone.
-    if (record.kind === noteForgettingCodec.kind) {
-      const forgetting = noteForgettingCodec.decode(record.payload);
+    const forgotten = pickForgottenNote(record);
 
+    if (forgotten !== null) {
       const removed = await db
         .deleteFrom('notebook_links')
-        .where('from_note_id', '=', forgetting.note)
+        .where('from_note_id', '=', forgotten)
         .returning('link_key')
         .execute();
 
@@ -59,3 +60,17 @@ export const notebookLinksProjection: Projection = {
     return [];
   },
 };
+
+function pickForgottenNote(record: EnvelopeRecord): string | null {
+  if (record.kind === noteForgettingCodec.kind) {
+    return noteForgettingCodec.decode(record.payload).note;
+  }
+
+  if (record.kind === erasureStartedCodec.kind) {
+    const started = erasureStartedCodec.decode(record.payload);
+
+    return started.kind === 'note' ? started.targetID : null;
+  }
+
+  return null;
+}

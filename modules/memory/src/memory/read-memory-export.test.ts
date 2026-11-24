@@ -388,7 +388,7 @@ test('it exports a destroyed moment as its ID and the time its destroy completed
 
   invariant(kept.status === 'written');
 
-  await ctx.memory.store.moments.destroy({ momentID: kept.momentID, version: 1 });
+  await ctx.memory.destroyMoment({ momentID: kept.momentID, version: 1 });
 
   const text = await ctx.readExportText(Date.parse('2026-10-14T08:00:00.000Z'));
 

@@ -4,6 +4,7 @@ import { createComputerProcedures } from '../computer/create-computer-procedures
 import { createDefinitionProcedures } from '../definition/create-definition-procedures';
 import { createDeviceProcedures } from '../device/create-device-procedures';
 import { createSignOutProcedure } from '../device/create-sign-out-procedure';
+import { createErasureProcedures } from '../erasure/create-erasure-procedures';
 import { createFilesProcedures } from '../file/create-files-procedures';
 import { createImagesProcedures } from '../image/create-images-procedures';
 import { createMemoryProcedures } from '../memory/create-memory-procedures';
@@ -42,6 +43,7 @@ export function createAPIRouter(
     conversation: createConversationProcedures(context),
     definitions: { ...createDefinitionProcedures(context, readDefinitions), ...views.definitions },
     devices: createDeviceProcedures(context),
+    erasure: createErasureProcedures(context),
     files: createFilesProcedures(context),
     images: createImagesProcedures(context),
     memory: {

@@ -106,7 +106,7 @@ An item is in one of 4 states:
 
 | State      | Recall returns it                 | Changes it accepts                                  |
 | ---------- | --------------------------------- | --------------------------------------------------- |
-| active     | Always                            | edit, edit labels, retire, undo, pin, unpin, forget |
+| active     | Until its end time passes         | edit, edit labels, retire, undo, pin, unpin, forget |
 | retired    | Only when asked for retired items | edit, edit labels, restore, undo, forget            |
 | forgetting | Never                             | none; the forget completes it                       |
 | forgotten  | Never                             | none; the keys are gone and nothing reads           |
@@ -539,6 +539,38 @@ durable operation in 2 parts:
    runs the session cleanup for every live session, and appends the record that marks the item
    forgotten.
 
+A note and a moment forget through the erasure runner in `modules/log` and write `erasure.started`
+and `erasure.finished` in place of their own forget records, as
+[the notebook](./notebook.md#forgetting-a-note) and [moments](./moments.md#destroying-a-moment)
+describe. The runner owns the steps after the start: it captures every key and session target in
+`erasure.started`, deletes the keys of the target and of each child, runs the session cleanup,
+removes the turn inputs, and writes `erasure.finished`, which makes a backup due. An item's forget
+keeps its own pipeline.
+
+The runner holds these rules, which the code enforces:
+
+- One tree of erasures runs at a time. A retry of a forget, the catch-up at start and the watch
+  below queue behind each other, so no cleanup runs twice and no run releases the capture hold that
+  another still needs.
+- A parent finishes after every child it reached, whichever erasure started that child. A child that
+  changed after the runner read it is read again, so its keys go before the parent finishes.
+- `erasure.started` holds a count of the keys the capture names, taken in the start transaction.
+  `erasure.finished` reports that count as `removedKeys`, so a recovery after the keys went still
+  reports them.
+- At start, the catch-up finishes every open erasure after the session cleanup and before the
+  turn-input repair, the turn-input intake and the runners start.
+- A forget open for the `erasure.stuck_after_minutes` of the config (5 by default) is stuck. On a
+  fixed interval the watch retries such a forget, and logs `erasure.stuck` at the error level for
+  each one that stays open. A younger forget is left alone, because it may wait on the step that
+  called it.
+- A stuck forget shows in 3 places, each read from the open erasures in the log, so they need no
+  record of their own. The web client shows a "forget stuck" notice with a retry button, through
+  `erasure.readStuck` and `erasure.retryStuck`. The conversation's model lists stuck forgets with
+  the `forget.stuck` tool and runs them again with `forget.retry`. A retry only finishes a forget
+  that a checked action or the host already started, so the model still never starts one. Each shows
+  the kind, the short ID and the minutes open, never the erasure's own ID. A retry goes through the
+  runner's queue, so it never runs beside the watch's retry.
+
 Every step of the cleanup is safe to run twice. A crash between the 2 parts, or anywhere inside the
 cleanup, leaves the item forgetting, and the store's start runs the cleanup for every forgetting
 item before it builds the index and before any runner claims work. A deleted key never returns while
@@ -557,17 +589,18 @@ let nixie delete every past copy, so a store with versioning that nixie does not
 immutable retention, cannot hold them. Staging files, restore samples and backup caches count as
 copies too. A forget also reports the state of the backups of its keys: off, pending, failed with a
 reason, or complete. A forget or a bulk forget answers with this state, and
-`memory.readForgetStatus` reads it again.
+`memory.readForgetStatus` reads it again. nixie applies these rules in order, and the first that
+holds gives the state:
 
-- The state reads off when the deployment turned the backup schedule off.
-- It reads pending until a forget has deleted every item asked about. An item that no forget took,
-  or an unknown item ID, keeps it pending.
-- Otherwise nixie reads it from the backup sets at or after the newest forgotten record among the
-  items, as [a forget's backup state](../deployment/backups.md#a-forgets-backup-state) describes.
-- A bulk forget that found no item to delete reads complete, because it removed no key.
+1. Off, when the deployment turned the backup schedule off.
+2. Pending, until a forget has deleted every item asked about. An item that no forget took, or an
+   unknown item ID, keeps it pending.
+3. Complete, for a bulk forget that found no item to delete, because it removed no key.
+4. Otherwise, the state of the backup sets at or after the newest forgotten record among the items,
+   as [a forget's backup state](../deployment/backups.md#a-forgets-backup-state) describes.
 
-With the schedule on, a forget's own answer reads pending: no backup set taken after the forget
-exists until the backup job's next job run.
+With the schedule on, the answer of a forget that deleted a key reads pending: no backup set taken
+after the forget exists until the backup job's next job run.
 
 ### Forgetting retired items in bulk
 

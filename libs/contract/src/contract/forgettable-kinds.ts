@@ -1,6 +1,5 @@
-// Every kind of record that carries its own text, except a moment's records, a memory item's
-// records and a note's records, which their own removals take. A kind that gains erasable fields
-// joins this list, or one of the exceptions, and a test holds each one to exactly one.
+// Generated from the erasable descriptors: write it again with
+// `bun run --cwd apps/server forgettable-kinds`, never by hand.
 export const forgettableKinds = [
   'action.outcome',
   'action.queued',
@@ -22,10 +21,10 @@ export const forgettableKinds = [
   'policy.contact_marked_known',
   'prompts.override_rejected',
   'proposals.deferred',
-  'session.enrolled',
-  'session.labelled',
   'rules.mandate_proposed',
   'rules.rule_proposed',
+  'session.enrolled',
+  'session.labelled',
   'session_kept',
   'skills.write_rejected',
   'task.created',

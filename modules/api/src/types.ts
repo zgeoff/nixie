@@ -86,6 +86,20 @@ export interface ComputerWatchPort {
   readonly readTakeover: () => Pick<ComputerTakeover, 'start' | 'end'> | null;
 }
 
+// A forget open past the stuck threshold, as the owner and the model read it
+export interface StuckForget {
+  readonly kind: string;
+  readonly shortID: string | null;
+  readonly openForMs: number;
+}
+
+export interface ErasureStuckPort {
+  readonly readStuck: () => Promise<readonly StuckForget[]>;
+
+  // runs each stuck forget again, and returns the ones still open afterwards
+  readonly retryStuck: () => Promise<readonly StuckForget[]>;
+}
+
 export interface APIContext extends TasksContext {
   readonly settings: APISettings;
 
@@ -105,6 +119,10 @@ export interface APIContext extends TasksContext {
 
   // absent, the server holds no computer to watch
   readonly computerWatch?: ComputerWatchPort;
+
+  // The erasure runner's stuck forgets, which start after the API context. Null before they start,
+  // and absent where the server holds none.
+  readonly readErasure?: () => ErasureStuckPort | null;
 
   // The notebook, which starts after the API context. Null before it starts, and absent where the
   // server holds none.
@@ -183,8 +201,9 @@ export type ViewMemoryStore = Pick<
     | 'readMatches'
     | 'readView'
     | 'readDestroyPreview'
-    | 'destroy'
+    | 'beginDestroy'
     | 'finishDestroy'
+    | 'readDestroyedSequence'
   >;
 } & Pick<ItemIDStore, 'readItemIDMap'>;
 
@@ -199,7 +218,7 @@ export type ViewNotebookStore = Pick<
   | 'readPrivateBodies'
   | 'writeOpened'
   | 'readForgetPreview'
-  | 'forget'
+  | 'beginForget'
   | 'finishForget'
   | 'readForgottenSequence'
   | 'readLinkingNotes'

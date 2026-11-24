@@ -1,13 +1,14 @@
 import { buildItemIDStore } from '../item/build-item-id-store';
 import { readLabelEntries } from '../label/read-label-entries';
 import { runLabelBackfill } from '../label/run-label-backfill';
+import { buildMomentErasable } from '../moment/erasure/build-moment-erasable';
 import type { MomentStore } from '../moment/store/build-moment-store';
 import { buildMomentStore } from '../moment/store/build-moment-store';
 import { startStoreIndexes } from '../moment/store/start-store-indexes';
 import type { UpdatedIndexes } from '../moment/store/update-store-indexes';
 import { updateStoreIndexes } from '../moment/store/update-store-indexes';
-import { runPendingDestroys } from '../pending/run-pending-destroys';
 import { runPendingForgets } from '../pending/run-pending-forgets';
+import { momentErasableDescriptor } from '../record/moment-erasable-descriptor';
 import type { ItemIDStore, MemoryContext, MemoryStore, StoreParts } from '../types';
 import { makeDeliveryLock } from '../utils/make-delivery-lock';
 import type { MemoryGate } from './build-memory-gate';
@@ -33,7 +34,14 @@ export async function startMemoryStore(context: MemoryContext): Promise<StartedM
     ...buildMemoryStore(parts),
     ...buildItemIDStore(parts),
     ...buildMemoryGate(parts),
-    moments: buildMomentStore(context, parts.moments),
+    moments: buildMomentStore(
+      context,
+      parts.moments,
+      context.erasure?.register({
+        ...momentErasableDescriptor,
+        ...buildMomentErasable(context, parts.moments),
+      }) ?? null,
+    ),
     waitForSemanticIndex: async () => {
       const isReady = await updated.rebuilt;
 
@@ -52,7 +60,6 @@ export async function startMemoryStore(context: MemoryContext): Promise<StartedM
 async function runStartSteps(parts: StoreParts): Promise<UpdatedIndexes> {
   try {
     await runPendingForgets(parts);
-    await runPendingDestroys(parts.context);
     await removeLeftKeys(parts);
 
     const entries = await readLabelEntries(parts);

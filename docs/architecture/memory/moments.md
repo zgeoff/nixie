@@ -20,7 +20,8 @@ Moments are event-sourced, and every change to a moment is a record of its own:
 | `moment_edited`    | The edges, the title, the note or a reflection changes | The new text, if any |
 | `moment_linked`    | A memory item is linked to the moment, or unlinked     | None                 |
 | `moment_retired`   | The moment is retired or restored                      | None                 |
-| `moment_destroyed` | A destroy starts, and again when its cleanup completes | None                 |
+| `erasure.started`  | A destroy starts, with every key the destroy deletes   | None                 |
+| `erasure.finished` | The destroy's cleanup completes                        | None                 |
 
 Each record's free text sits in its erasable fields under the record's own key, so the title, the
 note and each reflection version have one key each. The projection holds the thread, the span's
@@ -206,23 +207,29 @@ keeps the user's answer, a saved note or a skip, on the device, so the offer nev
 
 ## Destroying a moment
 
+The client's destroy answers the [backup state](../deployment/backups.md#a-forgets-backup-state) of
+the destroy beside the moment's ID, and reads it again from the log position of `erasure.finished`.
+
 Only a checked action in the client destroys a moment, and no tool reaches it. The client first
 reads a preview at the moment's version, which shows the title, the note and the reflections, counts
 the texts and links the destroy removes, and counts the span's records that stay. The destroy binds
 to the version the preview showed, so an edit after the preview makes it stale, and it runs as a
 durable operation in 2 parts:
 
-1. One write transaction commits the client action, checks the state and the version, and appends
-   the record that marks the moment destroying. A refusal rolls the client action back with it. From
-   then on, no read, find, link or edit reaches the moment.
+1. The erasure runner's start transaction commits the client action, checks the state and the
+   version, and appends `erasure.started`, which marks the moment destroying. A refusal rolls the
+   client action back with it. From then on, no read, find, link or edit reaches the moment.
 2. The cleanup deletes the key of every record that holds the moment's text, runs the
    [session cleanup](./context.md#forgetting-and-the-live-session) with the moment as its cause, and
-   appends the record that marks the destroy complete.
+   removes the turn inputs, and appends `erasure.finished`, which makes a backup due. The runner
+   writes both erasure records, and the moment's own records never mark a destroy.
 
 Every step of the cleanup is safe to run twice. A retry of the action with the same client action ID
 runs the cleanup of a destroy that a failed cleanup left, and the store's start runs it for every
-moment still destroying. The session cleanup erases every compaction summary and purges the session,
-because a summary or a transcript can hold the moment's text. The span's records keep their own
-keys, so the user's messages and the replies that quote the moment stay readable.
+moment whose `erasure.started` has no `erasure.finished`. A destroy that an earlier release began
+with `moment_destroyed` and did not finish starts again on the runner, and the fold accepts both
+record kinds. The session cleanup erases every compaction summary and purges the session, because a
+summary or a transcript can hold the moment's text. The span's records keep their own keys, so the
+user's messages and the replies that quote the moment stay readable.
 
 The [memory export](./export.md) holds every moment with its span's text.

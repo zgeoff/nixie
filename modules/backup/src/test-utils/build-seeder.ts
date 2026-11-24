@@ -6,5 +6,22 @@ import { buildBackupSeeder } from './build-backup-seeder';
 export type TestDeps = BackupSeederDeps & LogSeederDeps;
 
 export function buildSeeder(deps: TestDeps) {
-  return { ...buildLogSeeder(deps), ...buildBackupSeeder(deps) };
+  const logSeeder = buildLogSeeder(deps);
+
+  return {
+    ...logSeeder,
+    ...buildBackupSeeder(deps),
+    finishedErasure: () =>
+      logSeeder.record({
+        kind: 'erasure.finished',
+        payload: {
+          erasureID: 'erasure-a',
+          kind: 'note',
+          targetID: 'note-a',
+          shortID: 'n4w8k2c6rd',
+          by: 'user',
+          removedKeys: 1,
+        },
+      }),
+  };
 }

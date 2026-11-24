@@ -32,7 +32,8 @@ async function setupTest() {
   const writeRecord = (tx: Transaction<unknown>) =>
     writeRecordsInTransaction(tx, log.log, [{ kind: 'task.created', definitions, payload: {} }]);
 
-  const context = { writer: log.writer, storage: localDataStorage };
+  const legacyEnds = [{ kind: 'memory.forgotten' }];
+  const context = { writer: log.writer, storage: localDataStorage, legacyEnds };
 
   const startSchedule = () => {
     const schedule = startBackupSchedule({
@@ -54,6 +55,7 @@ async function setupTest() {
     onPass,
     onError,
     onAbandoned,
+    legacyEnds,
     writeForgottenRecord,
     writeRecord,
     startSchedule,
@@ -65,7 +67,7 @@ test('it stages a scheduled set at start when nixie holds none', async () => {
   const ctx = await setupTest();
 
   const schedule = startBackupSchedule({
-    context: { writer: ctx.writer, storage: localDataStorage },
+    context: { writer: ctx.writer, storage: localDataStorage, legacyEnds: ctx.legacyEnds },
     intervalMs: 3_600_000,
     onAbandoned: ctx.onAbandoned,
     onPass: ctx.onPass,
@@ -85,7 +87,7 @@ test('it stages a forget set as soon as a forgotten record commits, beside a set
   const ctx = await setupTest();
 
   const schedule = startBackupSchedule({
-    context: { writer: ctx.writer, storage: localDataStorage },
+    context: { writer: ctx.writer, storage: localDataStorage, legacyEnds: ctx.legacyEnds },
     intervalMs: 3_600_000,
     onAbandoned: ctx.onAbandoned,
     onPass: ctx.onPass,
@@ -113,7 +115,7 @@ test('it records a receipt at the next poll, and stages the next set an interval
   const ctx = await setupTest();
 
   const schedule = startBackupSchedule({
-    context: { writer: ctx.writer, storage: localDataStorage },
+    context: { writer: ctx.writer, storage: localDataStorage, legacyEnds: ctx.legacyEnds },
     intervalMs: 3_600_000,
     onAbandoned: ctx.onAbandoned,
     onPass: ctx.onPass,
@@ -163,7 +165,7 @@ test('it abandons the set an earlier start stopped copying before it stages a ne
   await mkdir(join(ctx.dataDir, 'backup', '000000000001'), { recursive: true });
 
   const schedule = startBackupSchedule({
-    context: { writer: ctx.writer, storage: localDataStorage },
+    context: { writer: ctx.writer, storage: localDataStorage, legacyEnds: ctx.legacyEnds },
     intervalMs: 3_600_000,
     onAbandoned: ctx.onAbandoned,
     onPass: ctx.onPass,
@@ -190,7 +192,7 @@ test('it passes a failed pass to onError, and tries again at the next poll', asy
   await writeFile(join(ctx.dataDir, 'backup'), 'a file where staging belongs');
 
   const schedule = startBackupSchedule({
-    context: { writer: ctx.writer, storage: localDataStorage },
+    context: { writer: ctx.writer, storage: localDataStorage, legacyEnds: ctx.legacyEnds },
     intervalMs: 3_600_000,
     onAbandoned: ctx.onAbandoned,
     onPass: ctx.onPass,
@@ -245,7 +247,7 @@ test('it passes the receipts of a pass that fails after it records them to onPas
   const ctx = await setupTest();
 
   const schedule = startBackupSchedule({
-    context: { writer: ctx.writer, storage: localDataStorage },
+    context: { writer: ctx.writer, storage: localDataStorage, legacyEnds: ctx.legacyEnds },
     intervalMs: 3_600_000,
     onAbandoned: ctx.onAbandoned,
     onPass: ctx.onPass,
@@ -283,7 +285,7 @@ test('it passes one failure to onError for a pass whose only failure is its heal
   const ctx = await setupTest();
 
   const schedule = startBackupSchedule({
-    context: { writer: ctx.writer, storage: localDataStorage },
+    context: { writer: ctx.writer, storage: localDataStorage, legacyEnds: ctx.legacyEnds },
     intervalMs: 3_600_000,
     onAbandoned: ctx.onAbandoned,
     onPass: ctx.onPass,
@@ -355,7 +357,7 @@ test('it raises one notice for a failed receipt, however many passes follow it',
   const startedAt = ctx.clock.now();
 
   const schedule = startBackupSchedule({
-    context: { writer: ctx.writer, storage: localDataStorage },
+    context: { writer: ctx.writer, storage: localDataStorage, legacyEnds: ctx.legacyEnds },
     intervalMs: 3_600_000,
     onAbandoned: ctx.onAbandoned,
     onPass: ctx.onPass,
@@ -395,7 +397,7 @@ test('it raises one notice for a set with no receipt an interval after it staged
   const startedAt = ctx.clock.now();
 
   const schedule = startBackupSchedule({
-    context: { writer: ctx.writer, storage: localDataStorage },
+    context: { writer: ctx.writer, storage: localDataStorage, legacyEnds: ctx.legacyEnds },
     intervalMs: 3_600_000,
     onAbandoned: ctx.onAbandoned,
     onPass: ctx.onPass,
@@ -429,7 +431,7 @@ test('it passes the time of the last upload once a published receipt is recorded
   const startedAt = ctx.clock.now();
 
   const schedule = startBackupSchedule({
-    context: { writer: ctx.writer, storage: localDataStorage },
+    context: { writer: ctx.writer, storage: localDataStorage, legacyEnds: ctx.legacyEnds },
     intervalMs: 3_600_000,
     onAbandoned: ctx.onAbandoned,
     onPass: ctx.onPass,
@@ -468,7 +470,7 @@ test('it stages no set while a restore pause holds, and stages one after the res
   );
 
   const schedule = startBackupSchedule({
-    context: { writer: ctx.writer, storage: localDataStorage },
+    context: { writer: ctx.writer, storage: localDataStorage, legacyEnds: ctx.legacyEnds },
     intervalMs: 3_600_000,
     onAbandoned: ctx.onAbandoned,
     onPass: ctx.onPass,
@@ -519,7 +521,7 @@ test.each(['owner', 'spending'] as const)(
     );
 
     const schedule = startBackupSchedule({
-      context: { writer: ctx.writer, storage: localDataStorage },
+      context: { writer: ctx.writer, storage: localDataStorage, legacyEnds: ctx.legacyEnds },
       intervalMs: 3_600_000,
       onAbandoned: ctx.onAbandoned,
       onPass: ctx.onPass,
@@ -540,7 +542,7 @@ test('it stages no forget set while a restore pause holds, and stages one after 
   const ctx = await setupTest();
 
   const schedule = startBackupSchedule({
-    context: { writer: ctx.writer, storage: localDataStorage },
+    context: { writer: ctx.writer, storage: localDataStorage, legacyEnds: ctx.legacyEnds },
     intervalMs: 3_600_000,
     onAbandoned: ctx.onAbandoned,
     onPass: ctx.onPass,
@@ -597,7 +599,7 @@ test('it stages no set at start when a forget is due under a restore pause', asy
   });
 
   const schedule = startBackupSchedule({
-    context: { writer: ctx.writer, storage: localDataStorage },
+    context: { writer: ctx.writer, storage: localDataStorage, legacyEnds: ctx.legacyEnds },
     intervalMs: 3_600_000,
     onAbandoned: ctx.onAbandoned,
     onPass: ctx.onPass,

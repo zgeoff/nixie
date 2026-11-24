@@ -34,6 +34,10 @@ async function openInLane(
   input: OpenCaptureInput,
   own: Capture,
 ): Promise<Capture> {
+  if (ctx.holds.size > 0) {
+    return own;
+  }
+
   const state = await readInputLogState(ctx);
 
   const plan = pickCapturePlan({

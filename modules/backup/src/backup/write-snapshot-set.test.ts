@@ -55,7 +55,7 @@ test.each(['writeSnapshotSet', 'the stage pass'] as const)(
   'it records the staged set with the log head its copy holds, through %s',
   async (entryPoint) => {
     const ctx = await setupTest();
-    const forgotten = await ctx.seed.record({ kind: 'memory.forgotten', payload: {} });
+    const forgotten = await ctx.seed.finishedErasure();
 
     await stageBackupSet(entryPoint, ctx.context, 'forget');
 

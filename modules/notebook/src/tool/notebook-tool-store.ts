@@ -1,5 +1,5 @@
 import type { NotebookCheck } from '../check/build-check';
-import type { BegunNoteForget, NoteForgetTarget } from '../forget/run-note-forget';
+import type { BegunNoteForget, NoteForgetTarget } from '../erasure/begin-note-forget';
 import type { EditInput } from '../note/plan-edit';
 import type { FindRequest, FoundNotes } from '../read/read-found-notes';
 import type { NoteReadOutcome, NoteReadRequest } from '../read/read-note';

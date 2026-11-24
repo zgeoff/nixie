@@ -8,6 +8,7 @@ import { computerContract } from './computer-contract';
 import { definitionNoticeSchema } from './definition-notice-schema';
 import { definitionsContract } from './definitions-contract';
 import { devicesContract } from './devices-contract';
+import { erasureContract } from './erasure-contract';
 import { forgetBackupSchema } from './forget-backup-schema';
 import { imageLimits } from './image-limits';
 import { imageNotFoundError } from './image-not-found-error';
@@ -487,6 +488,7 @@ export const contract = {
   reminders: remindersContract,
   definitions: { ...viewContract.definitions, ...definitionsContract },
   devices: devicesContract,
+  erasure: erasureContract,
   rules: ruleContract,
   approvals: approvalContract,
   passkeys: passkeyContract,

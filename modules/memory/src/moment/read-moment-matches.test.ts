@@ -406,7 +406,7 @@ test('it no longer finds a destroyed moment by meaning', async () => {
     limit: 10,
   });
 
-  await ctx.memory.store.moments.destroy({ momentID: kept.momentID, version: 1 });
+  await ctx.memory.destroyMoment({ momentID: kept.momentID, version: 1 });
 
   const page = await ctx.memory.store.moments.readMatches({
     query: 'heating engineer visit',

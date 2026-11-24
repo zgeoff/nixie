@@ -1,3 +1,4 @@
+import type { LegacyEnd } from '@heynixie/log';
 import { sql } from 'kysely';
 import type { BackupTables, BackupWriter } from '../types';
 
@@ -7,10 +8,13 @@ export interface BackupDue {
   readonly newestStagedAt: number | null;
 }
 
-// A forget, a note forget, a moment destroy or a reset of the conversations deletes its keys before it writes its
-// closing record, so a set whose copy started after that record lacks the key. A failed set counts
-// too, so a backend that stays down fails one set per interval rather than one per pass.
-export async function readBackupDue(writer: BackupWriter): Promise<BackupDue> {
+// An erasure and each forget of an older pipeline delete their keys before they write their closing
+// record, so a set whose copy started after that record lacks the key. A failed set counts too, so
+// a backend that stays down fails one set per interval rather than one per pass.
+export async function readBackupDue(
+  writer: BackupWriter,
+  legacyEnds: readonly LegacyEnd[],
+): Promise<BackupDue> {
   const db = writer.db.$extendTables<BackupTables>();
 
   const newest = await db
@@ -30,15 +34,15 @@ export async function readBackupDue(writer: BackupWriter): Promise<BackupDue> {
     .select('sequence')
     .where((eb) =>
       eb.or([
-        eb('kind', 'in', ['memory.forgotten', 'notebook.note_forgotten', 'record.forgotten']),
-        eb.and([
-          eb('kind', '=', 'moment_destroyed'),
-          eb(sql`json_extract(payload, '$.stage')`, '=', 'done'),
-        ]),
-        eb.and([
-          eb('kind', '=', 'log_reset'),
-          eb(sql`json_extract(payload, '$.mode')`, '=', 'conversations'),
-        ]),
+        eb('kind', '=', 'erasure.finished'),
+        ...legacyEnds.map((end) =>
+          eb.and([
+            eb('kind', '=', end.kind),
+            ...Object.entries(end.where ?? {}).map(([field, value]) =>
+              eb(sql`json_extract(payload, ${`$.${field}`})`, '=', value),
+            ),
+          ]),
+        ),
       ]),
     )
     .where('sequence', '>', newest?.log_head ?? 0)

@@ -18,7 +18,10 @@ export const momentLinksProjection: Projection = {
 
     const parsed = parseMomentRecord(record);
 
-    if (parsed?.kind === 'moment_destroyed' && parsed.stage === 'started') {
+    if (
+      (parsed?.kind === 'moment_destroyed' || parsed?.kind === 'moment_erasure') &&
+      parsed.stage === 'started'
+    ) {
       return removeLinks(db, 'moment_id', parsed.momentID);
     }
 

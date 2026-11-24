@@ -1,6 +1,7 @@
 import { createWatchTickets, defaultAPISettings } from '@heynixie/api';
 import { buildRunSettings } from '@heynixie/sessions';
 import { readDefinitionsContext } from '../definition/read-definitions-context';
+import { makeReadErasureStuckPort } from '../erasure/make-read-erasure-stuck-port';
 import { buildSeedInputs } from '../seed/build-seed-inputs';
 import { runInForceSeedAndWake } from '../seed/run-in-force-seed-and-wake';
 import { buildServerReset } from '../server/build-server-reset';
@@ -25,7 +26,7 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
   {
     name: 'context',
     needs: ['inputs'],
-    uses: ['session_cleanup', 'code_run', 'notebook', 'computer'],
+    uses: ['session_cleanup', 'code_run', 'notebook', 'computer', 'erasure'],
     start: async (parts) => {
       const options = parts.get('inputs').options;
 
@@ -81,6 +82,10 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
           ...context.apiContext,
           readCodeCleanup: () => parts.find('code_run')?.cleanup.destroyForRecords ?? null,
           readNotebook: () => parts.find('notebook') ?? null,
+          readErasure: makeReadErasureStuckPort(() => parts.find('erasure'), {
+            nowMs: () => context.apiContext.clock.now(),
+            stuckAfterMs: options.config.erasure.stuckAfterMs,
+          }),
           computerWatch: {
             tickets: createWatchTickets(context.apiContext.clock),
             logger: options.log,

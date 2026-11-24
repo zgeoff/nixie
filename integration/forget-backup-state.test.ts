@@ -23,7 +23,7 @@ import {
   memoryProjections,
   startMemoryStore,
 } from '@heynixie/memory';
-import { runConversationReset } from '@heynixie/server';
+import { erasableDescriptors, runConversationReset } from '@heynixie/server';
 import { tasksProjections } from '@heynixie/tasks';
 import {
   buildTestDefinitionReaders,
@@ -194,7 +194,11 @@ async function setupTest() {
     ),
     startSchedule: () => {
       const schedule = startBackupSchedule({
-        context: { writer, storage: localDataStorage },
+        context: {
+          writer,
+          storage: localDataStorage,
+          legacyEnds: erasableDescriptors.flatMap((descriptor) => descriptor.legacyEnds),
+        },
         intervalMs: 3_600_000,
         onAbandoned: () => {},
         onPass,

@@ -30,6 +30,11 @@ export interface TurnInputs {
   readonly openCapture: (input: OpenCaptureInput) => Promise<Capture>;
   readonly closeCaptures: (options: CloseCapturesOptions) => Promise<void>;
 
+  // No capture opens while any erasure holds capture closed. A hold and its release are keyed by the
+  // erasure's ID, so each is safe to repeat.
+  readonly holdCaptures: (erasureID: string) => void;
+  readonly releaseCaptures: (erasureID: string) => void;
+
   // removes the requests a forget covers, and throws when one could not be removed
   readonly removeForgotten: (scope: ForgetScope) => Promise<void>;
 
@@ -54,6 +59,7 @@ export function createTurnInputs(options: TurnInputsOptions): TurnInputs {
     ...options,
     lane: createLane(),
     open: new Map(),
+    holds: new Set(),
     answers: new Map(),
     failures: new Map(),
     storeDir: join(options.log.writer.dataDir, 'turn-inputs'),
@@ -62,6 +68,12 @@ export function createTurnInputs(options: TurnInputsOptions): TurnInputs {
   return {
     openCapture: (input) => openCapture(ctx, input),
     closeCaptures: (closeOptions) => closeCaptures(ctx, closeOptions),
+    holdCaptures: (erasureID) => {
+      ctx.holds.add(erasureID);
+    },
+    releaseCaptures: (erasureID) => {
+      ctx.holds.delete(erasureID);
+    },
     removeForgotten: (scope) => removeForgottenInputs(ctx, scope),
     removeThreads: (threads) => removeThreadInputs(ctx, threads),
     list: (limit) => listTurnInputs(ctx, limit),

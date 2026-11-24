@@ -1,4 +1,5 @@
 import { join } from 'node:path';
+import type { ErasureStuckPort } from '@heynixie/api';
 import type { ImageProvider, ImagesConfig, SearchProvider } from '@heynixie/connectors';
 import {
   buildImageTools,
@@ -49,6 +50,8 @@ import {
 import type { ActionQueue, ToolDefinition, ToolEndpoint } from '@heynixie/tools';
 import { buildToolRegistry, findToolDeclaration, startToolEndpoint } from '@heynixie/tools';
 import { buildContactTool } from '../cli/build-contact-tool';
+import { buildForgetRetryTool } from '../forget/build-forget-retry-tool';
+import { buildForgetStuckTool } from '../forget/build-forget-stuck-tool';
 import { buildMandateTool } from '../rule/build-mandate-tool';
 import { buildRulesListTool } from '../rule/build-rules-list-tool';
 import { makeReadZone } from '../server/make-read-zone';
@@ -76,6 +79,7 @@ export interface ConversationEndpointTools {
   readonly codeRun: ToolDefinition;
   readonly fileSend: ToolDefinition;
   readonly forget: ToolDefinition;
+  readonly readErasure: () => ErasureStuckPort | null;
   readonly search: ConversationSearch | null;
 
   // absent when the deployment sets no images block
@@ -288,6 +292,8 @@ export async function startConversationEndpoint(
       defaultZone: options.config.time.default_zone,
     }),
     buildRulesListTool(options.context),
+    buildForgetStuckTool(tools.readErasure),
+    buildForgetRetryTool(tools.readErasure),
     buildSilentEndTool(messaging),
     buildTaskReportTool(options.context),
   ];

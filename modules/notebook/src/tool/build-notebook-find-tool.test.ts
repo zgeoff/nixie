@@ -208,7 +208,7 @@ test('it never lists a note that was forgotten', async () => {
   const ctx = await setupTest();
   const note = await ctx.write({ title: 'Gone', body: 'unique words here' });
 
-  await ctx.notebook.forget({ note, version: 1 });
+  await ctx.forget({ note, version: 1 });
 
   const awaited4 = await ctx.readTitles({ query: 'unique', by: 'words' });
 

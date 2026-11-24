@@ -1,11 +1,10 @@
 export type { NotebookRecordKind } from './record/notebook-record-kind';
-export { notebookErasableKinds } from './record/notebook-erasable-kinds';
+export { noteErasableDescriptor } from './record/note-erasable-descriptor';
 export { notebookProjections } from './projection/notebook-projections';
 export { buildItemLinkCounts } from './count/build-item-link-counts';
 export { buildNoteBodies } from './count/build-note-bodies';
 export type { LinkingNote } from './count/read-notes-linking-event';
 export { readNotesLinkingEvent } from './count/read-notes-linking-event';
-export { readNoteForgetFloor } from './forget/read-note-forget-floor';
 export { buildNotebookTools } from './tool/build-notebook-tools';
 export type { NotebookToolStore } from './tool/notebook-tool-store';
 export { buildNoteForgottenKind } from './event/build-note-forgotten-kind';
@@ -29,7 +28,7 @@ export type { PrivateBodies } from './client/read-private-bodies';
 export type { NoteOpened } from './client/write-note-opened';
 export type { NotebookCheck } from './check/build-check';
 export type { NoteForgetPreview, NoteForgetPreviewRead } from './forget/read-note-forget-preview';
-export type { NoteForget, NoteForgetTarget } from './forget/run-note-forget';
+export type { BegunNoteForget, NoteForgetTarget } from './erasure/begin-note-forget';
 export type { HistoryEntry } from './read/read-note-history';
 
 export type {

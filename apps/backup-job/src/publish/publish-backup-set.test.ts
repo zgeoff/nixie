@@ -3,7 +3,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { BackupReceipt } from '@heynixie/wire';
-import { formatBackupFile } from '@heynixie/wire';
+import { formatBackupFile, getBackupSetDir } from '@heynixie/wire';
 import invariant from 'tiny-invariant';
 import { localJobFiles } from '../local-job-files';
 import { buildResticClient } from '../restic/build-restic-client';
@@ -529,4 +529,117 @@ test('it keeps the note and raises proven-from again when it stops before it rem
 
   expect(hasNote).toBeTrue();
   expect(keys).toStrictEqual([expect.objectContaining({ publish: 2, provenFrom: 2 })]);
+});
+
+test('it throws and writes no receipt when the key snapshot of a withdrawn set cannot be removed', async () => {
+  const ctx = await setupTest();
+
+  await ctx.stageSet(1);
+
+  const failing = ctx.buildClients('forget', '');
+
+  const files = {
+    ...localJobFiles,
+    readFileSHA256: async (path: string) => {
+      await writeFile(
+        join(ctx.config.stagingDir, 'floor.json'),
+        formatBackupFile({ format: 1, sequence: 1 }),
+      );
+
+      return localJobFiles.readFileSHA256(path);
+    },
+  };
+
+  const pass = runJobPass(ctx.config, { data: ctx.repos.data, keys: failing.keys }, files);
+
+  await pass.catch(() => {});
+
+  const hasReceipt = await Bun.file(
+    join(getBackupSetDir(ctx.config.stagingDir, 1), 'receipt.json'),
+  ).exists();
+
+  expect(pass).rejects.toThrow();
+  expect(hasReceipt).toBeFalse();
+});
+
+test('it removes only its own snapshots when a finished erasure withdraws the set while its data snapshot writes', async () => {
+  const ctx = await setupTest();
+
+  await ctx.stageSet(1);
+  await ctx.runPass(ctx.repos);
+  await ctx.stageSet(2);
+
+  const erasing = {
+    keys: ctx.repos.keys,
+    data: {
+      ...ctx.repos.data,
+      writeSnapshot: async (path: string, name: string, tags: readonly string[]) => {
+        await writeFile(
+          join(ctx.config.stagingDir, 'floor.json'),
+          formatBackupFile({ format: 1, sequence: 2 }),
+        );
+
+        return ctx.repos.data.writeSnapshot(path, name, tags);
+      },
+    },
+  };
+
+  const receipts = await ctx.runPass(erasing);
+  const repos = await ctx.readBothRepos();
+
+  const hasReceipt = await Bun.file(
+    join(getBackupSetDir(ctx.config.stagingDir, 2), 'receipt.json'),
+  ).exists();
+
+  expect(receipts).toStrictEqual([]);
+
+  expect(repos).toStrictEqual({
+    keys: [expect.objectContaining({ set: 1, publish: 1 })],
+    data: [expect.objectContaining({ set: 1, publish: 1 })],
+  });
+
+  expect(hasReceipt).toBeFalse();
+});
+
+test('it publishes the set, with its key snapshot alone, when an erasure finishes after the last floor read', async () => {
+  const ctx = await setupTest();
+
+  await ctx.stageSet(1);
+  await ctx.runPass(ctx.repos);
+  await ctx.stageSet(2);
+
+  const erasing = {
+    data: ctx.repos.data,
+    keys: {
+      ...ctx.repos.keys,
+      runCheck: async () => {
+        await writeFile(
+          join(ctx.config.stagingDir, 'floor.json'),
+          formatBackupFile({ format: 1, sequence: 2 }),
+        );
+
+        await ctx.repos.keys.runCheck();
+      },
+    },
+  };
+
+  const receipts = await ctx.runPass(erasing);
+  const keys = await ctx.repos.keys.readSnapshots();
+
+  expect(receipts).toStrictEqual([expect.objectContaining({ sequence: 2, status: 'published' })]);
+  expect(keys).toStrictEqual([expect.objectContaining({ set: 2, publish: 2 })]);
+});
+
+test('it gives the first key snapshot of an empty key repo no proven-from while the data repo holds a publish number', async () => {
+  const ctx = await setupTest();
+
+  await ctx.writeTaggedSnapshot(ctx.repos.data, ['set-3', 'kind-scheduled', 'publish-3']);
+  await ctx.stageSet(4);
+  await ctx.runPass(ctx.repos);
+
+  const keys = await ctx.repos.keys.readSnapshots();
+
+  expect(keys).toStrictEqual([
+    expect.objectContaining({ set: 4, publish: 4, legacySet: null, provenFrom: null }),
+  ]);
 });

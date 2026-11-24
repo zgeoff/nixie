@@ -11,12 +11,20 @@ async function setupTest() {
 
   const deps = { log: log.log, context: { writer: log.writer, storage: localDataStorage } };
 
-  return { ...log, seed: buildSeeder(deps) };
+  const legacyEnds = [
+    { kind: 'memory.forgotten' },
+    { kind: 'notebook.note_forgotten' },
+    { kind: 'record.forgotten' },
+    { kind: 'moment_destroyed', where: { stage: 'done' } },
+    { kind: 'log_reset', where: { mode: 'conversations' } },
+  ];
+
+  return { ...log, legacyEnds, seed: buildSeeder(deps) };
 }
 
 test('it reads no set and no forget in a new log', async () => {
   const ctx = await setupTest();
-  const due = await readBackupDue(ctx.writer);
+  const due = await readBackupDue(ctx.writer, ctx.legacyEnds);
 
   expect(due).toStrictEqual({
     isForgetDue: false,
@@ -34,13 +42,56 @@ test('it reads a forget as due once its record is newer than every set copy', as
       values (1, 'scheduled', 'published', ${forgotten.sequence - 1}, 1798761500000)`.execute(tx);
   });
 
-  const due = await readBackupDue(ctx.writer);
+  const due = await readBackupDue(ctx.writer, ctx.legacyEnds);
 
   expect(due).toStrictEqual({
     isForgetDue: true,
     isSetWaiting: false,
     newestStagedAt: 1_798_761_500_000,
   });
+});
+
+test('it reads a finished erasure as due, and a started one as not due', async () => {
+  const ctx = await setupTest();
+
+  await ctx.seed.record({
+    kind: 'erasure.started',
+    payload: {
+      erasureID: 'erasure-a',
+      kind: 'note',
+      targetID: 'note-a',
+      shortID: 'n4w8k2c6rd',
+      version: 1,
+      parentID: null,
+      by: 'user',
+      capture: {
+        keys: { ids: [] },
+        cleanupKeys: [],
+        sandboxCallIDs: [],
+        purges: [],
+        sessionCause: { noteID: 'note-a' },
+        turnInputs: { threads: [], cleaned: false, floor: null },
+      },
+    },
+  });
+
+  const started = await readBackupDue(ctx.writer, ctx.legacyEnds);
+
+  await ctx.seed.record({
+    kind: 'erasure.finished',
+    payload: {
+      erasureID: 'erasure-a',
+      kind: 'note',
+      targetID: 'note-a',
+      shortID: 'n4w8k2c6rd',
+      by: 'user',
+      removedKeys: 2,
+    },
+  });
+
+  const finished = await readBackupDue(ctx.writer, []);
+
+  expect([started.isForgetDue, finished.isForgetDue]).toStrictEqual([false, true]);
 });
 
 test.each<[string, boolean, Exclude<RecordKind, ErasableRecordKind>, JSONObject]>([
@@ -77,7 +128,7 @@ test.each<[string, boolean, Exclude<RecordKind, ErasableRecordKind>, JSONObject]
 
     await ctx.seed.record({ kind, payload });
 
-    const due = await readBackupDue(ctx.writer);
+    const due = await readBackupDue(ctx.writer, ctx.legacyEnds);
 
     expect(due.isForgetDue).toBe(isForgetDue);
   },
@@ -92,7 +143,7 @@ test('it reads a forget as covered by a set whose copy started after it', async 
       values (1, 'forget', 'staged', ${forgotten.sequence}, 1_798_761_600_000)`.execute(tx);
   });
 
-  const due = await readBackupDue(ctx.writer);
+  const due = await readBackupDue(ctx.writer, ctx.legacyEnds);
 
   expect(due).toStrictEqual({
     isForgetDue: false,
@@ -110,7 +161,7 @@ test('it leaves an abandoned set out, so its forget stays due', async () => {
       values (1, 'forget', 'abandoned', ${forgotten.sequence}, 1_798_761_600_000)`.execute(tx);
   });
 
-  const due = await readBackupDue(ctx.writer);
+  const due = await readBackupDue(ctx.writer, ctx.legacyEnds);
 
   expect(due).toStrictEqual({
     isForgetDue: true,

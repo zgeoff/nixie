@@ -29,7 +29,12 @@ import { createWatchRoute } from '../computer/create-watch-route';
 import { createWatchTickets } from '../computer/create-watch-tickets';
 import { createPasskeyState } from '../passkey/passkey-state';
 import { proposalsProjection } from '../proposal/proposals-projection';
-import type { CleanupRecordSessions, ComputerWatchPort, ViewNotebookStore } from '../types';
+import type {
+  CleanupRecordSessions,
+  ComputerWatchPort,
+  ErasureStuckPort,
+  ViewNotebookStore,
+} from '../types';
 import { defaultAPISettings } from '../utils/default-api-settings';
 
 type APIContext = Parameters<typeof createAPIApp>[0];
@@ -42,6 +47,9 @@ interface TestAPI {
   readonly setMemory: (store: ViewMemoryStore) => void;
 
   readonly setNotebook: (store: ViewNotebookStore) => void;
+
+  // the stuck forgets that a running nixie reads once its erasure runner starts
+  readonly setErasure: (port: ErasureStuckPort) => void;
 
   // the session cleanup that a running nixie gives a record forget once memory starts
   readonly setSessionCleanup: (cleanup: CleanupRecordSessions) => void;
@@ -93,6 +101,7 @@ export async function startTestAPI(
   const definitionStore = buildTestDefinitionStore();
   const sessions: { cleanup: CleanupRecordSessions | null } = { cleanup: null };
   const notebook: { store: ViewNotebookStore | null } = { store: null };
+  const erasure: { port: ErasureStuckPort | null } = { port: null };
   const spendGateway = buildStubSpendGateway();
 
   const watching: {
@@ -106,6 +115,7 @@ export async function startTestAPI(
   const context = await createTestContext(writer, settings, definitionStore, {
     readSessionCleanup: () => sessions.cleanup,
     readNotebook: () => notebook.store,
+    readErasure: () => erasure.port,
     readWatch: () => watching.open,
     readTakeover: () => {
       watching.takeoverReads += 1;
@@ -134,6 +144,9 @@ export async function startTestAPI(
     setNotebook: (store) => {
       notebook.store = store;
     },
+    setErasure: (port) => {
+      erasure.port = port;
+    },
     setSessionCleanup: (cleanup) => {
       sessions.cleanup = cleanup;
     },
@@ -151,6 +164,7 @@ export async function startTestAPI(
 interface TestContextDeps {
   readonly readSessionCleanup: APIContext['readSessionCleanup'];
   readonly readNotebook: NonNullable<APIContext['readNotebook']>;
+  readonly readErasure: NonNullable<APIContext['readErasure']>;
   readonly readWatch: ComputerWatchPort['readWatch'];
   readonly readTakeover: ComputerWatchPort['readTakeover'];
   readonly logger: ComputerWatchPort['logger'];
@@ -232,6 +246,7 @@ async function createTestContext(
     readZone: () => Promise.resolve('UTC'),
     readSessionCleanup: deps.readSessionCleanup,
     readNotebook: deps.readNotebook,
+    readErasure: deps.readErasure,
   };
 
   return context;

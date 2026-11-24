@@ -55,3 +55,15 @@ test('it leaves no set name behind when the removal stops part way', async () =>
 
   expect(names).toStrictEqual(['000000000003.removed']);
 });
+
+test('it finishes the removal that an earlier failure stopped after the rename', async () => {
+  const ctx = await setupTest();
+
+  await mkdir(join(ctx.stagingDir, '000000000003.removed'));
+  await writeFile(join(ctx.stagingDir, '000000000003.removed', 'complete'), '');
+  await removeRecordedSet(localDataStorage.files, join(ctx.stagingDir, '000000000003'));
+
+  const names = await readdir(ctx.stagingDir);
+
+  expect(names).toStrictEqual([]);
+});

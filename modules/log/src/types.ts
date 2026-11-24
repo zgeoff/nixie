@@ -127,6 +127,8 @@ export interface Approval {
 }
 
 export interface RecordKinds {
+  'erasure.finished': true;
+  'erasure.started': true;
   log_reset: true;
   'nixie.paused': true;
   'nixie.resumed': true;

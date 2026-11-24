@@ -2,9 +2,10 @@ import { onTestFinished } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { Log } from '@heynixie/log';
-import { logProjections, readRecords, startWriter } from '@heynixie/log';
-import type { CleanupCause, CleanupSessions } from '@heynixie/memory';
+import type { ErasureSessionCause, Log } from '@heynixie/log';
+import { logProjections, makeErasureRunner, readRecords, startWriter } from '@heynixie/log';
+import { buildTestErasureEffects } from '@heynixie/log/test-utils';
+import type { MomentTarget } from '@heynixie/memory';
 import {
   defaultGateLimits,
   defaultOwnerPronouns,
@@ -18,6 +19,7 @@ import {
 } from '@heynixie/memory/test-utils';
 import { createFakeClock } from '@zgeoff/testing/clock';
 import { buildItemLinkCounts } from '../count/build-item-link-counts';
+import type { NoteForgetTarget } from '../erasure/begin-note-forget';
 import { buildNotebookMemory } from '../memory/build-notebook-memory';
 import { notebookProjections } from '../projection/notebook-projections';
 import { startNotebook } from '../start-notebook';
@@ -33,7 +35,7 @@ export interface TestNotebookOptions {
   readonly topics?: readonly (readonly string[])[];
 
   // runs after the cleanup is recorded, so a test can fail a forget's session cleanup
-  readonly cleanupSessions?: CleanupSessions;
+  readonly cleanupSessions?: (cause: ErasureSessionCause) => Promise<void>;
 
   // the wait before a tool forget's cleanup runs again; a test sets it short
   readonly cleanupRetryMs?: number;
@@ -70,7 +72,21 @@ export async function startTestNotebook(options: TestNotebookOptions = {}) {
     projections: [...logProjections, ...memoryProjections, ...notebookProjections],
   };
 
-  const cleanups: CleanupCause[] = [];
+  const cleanups: ErasureSessionCause[] = [];
+  const fake = buildTestErasureEffects();
+
+  const runner = makeErasureRunner({
+    log,
+    definitions,
+    effects: {
+      ...fake.effects,
+      cleanupSessions: (cause) => {
+        cleanups.push(cause);
+
+        return options.cleanupSessions?.(cause) ?? Promise.resolve();
+      },
+    },
+  });
 
   const semanticSearch =
     options.topics === undefined
@@ -80,6 +96,7 @@ export async function startTestNotebook(options: TestNotebookOptions = {}) {
   const memory = await startMemoryStore({
     log,
     definitions,
+    erasure: runner,
     cleanupSessions: () => Promise.resolve(),
     linkCounts: buildItemLinkCounts(log),
     ...(semanticSearch === undefined ? {} : { semanticSearch }),
@@ -102,8 +119,8 @@ export async function startTestNotebook(options: TestNotebookOptions = {}) {
 
   stack.defer(() => memory.stop());
 
-  const start = () =>
-    startNotebook({
+  const start = async () => {
+    const started = await startNotebook({
       log,
       definitions,
       clock,
@@ -111,13 +128,14 @@ export async function startTestNotebook(options: TestNotebookOptions = {}) {
       cleanupRetryMs: options.cleanupRetryMs ?? 1,
       readRunningStep: options.readRunningStep ?? (() => Promise.resolve(null)),
       memory: buildNotebookMemory(() => memory),
-      cleanupSessions: (cause) => {
-        cleanups.push(cause);
-
-        return options.cleanupSessions?.(cause) ?? Promise.resolve();
-      },
+      erasure: runner,
       ...(semanticSearch === undefined ? {} : { semanticSearch }),
     });
+
+    await runner.finishOpen();
+
+    return started;
+  };
 
   const notebook = await start();
 
@@ -135,7 +153,28 @@ export async function startTestNotebook(options: TestNotebookOptions = {}) {
     memory,
     notebook,
     cleanups,
+    runner,
     call: buildNotebookToolCaller(() => notebook),
+
+    // a destroy that runs to its end, as a route's does
+    destroyMoment: async (target: MomentTarget) => {
+      const begun = await memory.moments.beginDestroy(target);
+
+      if (begun.status === 'begun') {
+        await memory.moments.finishDestroy(begun.momentID);
+      }
+    },
+
+    // a forget that runs to its end, as a route's does
+    forget: async (target: NoteForgetTarget) => {
+      const begun = await notebook.beginForget(target);
+
+      if (begun.status === 'begun') {
+        await notebook.finishForget(begun.noteID);
+      }
+
+      return begun;
+    },
     start: async (): Promise<NotebookStore> => {
       const restarted = await start();
 

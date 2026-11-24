@@ -114,7 +114,9 @@ belong to the notebook, so a note never enters the item index, the trigger index
 vector index, and a note has no trigger phrases. `memory.recall` and `moment.read` never list the
 notes that link to an item or a moment. The notebook adds no entry to the session status. A
 retrieval test holds that nixie adds no note text and no note ID to the blocks it builds, even when
-a message matches a note's title word for word. When `memory.remember` or `memory.edit` refuses with
+a message matches a note's title word for word. The one exception is the events block's line for a
+note the user forgot, which names that note's short ID and nothing else, as
+[the forget line](#the-forget-line) says. When `memory.remember` or `memory.edit` refuses with
 `TEXT_TOO_LONG`, its message points the assistant at a note. The descriptions of `memory.edit` and
 `memory.retire` say to keep an argument with an item in the notebook, linked with `supersedes` or
 `disputes`.
@@ -143,14 +145,15 @@ which differ only in who forgot. The client's call is in the
 [moment destroy](./moments.md#destroying-a-moment) does:
 
 1. One write transaction commits the client action, checks the version and appends
-   `notebook.note_forgetting`, which records who forgot, `user` or `assistant`. From then on no tool
-   or read reaches the note. The tool has no client action and binds to no version.
+   `erasure.started`, which records who forgot, `user` or `assistant`, and every key and session
+   target of the forget. From then on no tool or read reaches the note. The tool has no client
+   action and binds to no version.
 2. The cleanup deletes the key of every version record and every link record of the note, drops the
    note from the indexes, runs the [session cleanup](./context.md#forgetting-and-the-live-session)
    with the note's ID as its cause, and deletes the logged model requests from the note's first
-   record on, because their tool results can hold its text. It then appends
-   `notebook.note_forgotten`, with the same `by`. A record that has no `by` reads as a forget by the
-   user.
+   record on, because their tool results can hold its text. It then appends `erasure.finished`. The
+   erasure runner in `modules/log` runs the cleanup, and a forget that an earlier release began with
+   `notebook.note_forgetting` finishes on the runner at the next start.
 
 The session cleanup aborts every turn in flight and waits for each to end, as
 [the live session](./context.md#forgetting-and-the-live-session) describes. The tool therefore never
@@ -166,7 +169,8 @@ Every step is safe to run twice, so the server's start finishes a forget that a 
 session cleanup runs for the conversation and for each open task whose tool list holds a notebook
 tool. A link from another note to the forgotten one stays, and reads as gone in a walk and as
 dangling in the check. A forget never reaches a `code.run` result or a file its program wrote. The
-backup schedule counts `notebook.note_forgotten` as a forget record.
+backup schedule counts `erasure.finished` as a forget record, and `notebook.note_forgotten` for a
+forget that an earlier release ended.
 
 When the user forgets an item, a moment or a record that a note links to, the link stays and the
 note's own text keeps whatever it quoted until the user or the assistant forgets the note. The

@@ -104,3 +104,46 @@ export { resumeNixieInTransaction } from './pause/resume-nixie-in-transaction';
 export { readSpendStopSince } from './pause/read-spend-stop-since';
 export { spendStopClearedCodec } from './pause/spend-stop-cleared-codec';
 export { spendStopTrippedCodec } from './pause/spend-stop-tripped-codec';
+export type { ErasableKind } from './erasure/erasable-kind';
+export { erasableKindSchema } from './erasure/erasable-kind';
+export type { ErasureCapture } from './erasure/erasure-capture-schema';
+export { erasureCaptureSchema } from './erasure/erasure-capture-schema';
+export { erasureFinishedCodec } from './erasure/erasure-finished-codec';
+export type { ErasureRefusal } from './erasure/erasure-refused-error';
+export { ErasureRefusedError } from './erasure/erasure-refused-error';
+export { erasureStartedCodec } from './erasure/erasure-started-codec';
+export type { OpenErasure } from './erasure/read-open-erasures';
+export { readOpenErasures } from './erasure/read-open-erasures';
+export { readErasureFinishedSequence } from './erasure/read-erasure-finished-sequence';
+export { removeErasureKeys } from './erasure/remove-erasure-keys';
+
+export type {
+  Erasable,
+  ErasableDescriptor,
+  ErasureBegin,
+  ErasureBy,
+  ErasureHandle,
+  ErasureRegistry,
+  ErasureStart,
+  ErasureStartOptions,
+  ErasureTarget,
+  LegacyEnd,
+  RegisteredErasable,
+} from './erasure/types';
+
+export type {
+  ErasureEffects,
+  ErasureFaultPoint,
+  ErasureSessionCause,
+  ErasureTurnInputScope,
+} from './erasure/erasure-effects';
+
+export type {
+  ErasureRunnerControl,
+  ErasureRunnerOptions,
+  StuckErasure,
+  StuckQuery,
+  StuckRetry,
+} from './erasure/make-erasure-runner';
+
+export { makeErasureRunner } from './erasure/make-erasure-runner';
