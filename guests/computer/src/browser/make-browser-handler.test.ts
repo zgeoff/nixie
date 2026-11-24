@@ -82,6 +82,16 @@ async function setupTest() {
         `<html><title>Denied</title><body>${'x'.repeat(200)}<script src="/cdn-cgi/challenge-platform/h/b"></script></body></html>`,
         { status: 403, headers: { 'Content-Type': 'text/html' } },
       ),
+      '/denied-unserializable': new Response(
+        `<html><title>Denied</title><body><script src="/cdn-cgi/challenge-platform/h/b"></script><script>
+        for (const name of ['outerHTML', 'innerHTML']) {
+          Object.defineProperty(Element.prototype, name, {
+            get() { throw new Error('serialized the whole document'); },
+          });
+        }
+        </script>${'x'.repeat(5000)}</body></html>`,
+        { status: 403, headers: { 'Content-Type': 'text/html' } },
+      ),
       '/challenge-moves-on': new Response(
         `<html><title>Just a moment</title><body>checking your browser<script>
         setTimeout(() => { location.href = '/terms'; }, 200);
@@ -884,6 +894,19 @@ test.skipIf(!hasChromium)(
   async () => {
     const ctx = await setupTest();
     const reply = await ctx.send(ctx.open(`${ctx.url}denied-marked`));
+
+    expect(reply).toMatchObject({
+      kind: 'page',
+      blocked: "blocked by the site's bot protection (Cloudflare challenge)",
+    });
+  },
+);
+
+test.skipIf(!hasChromium)(
+  'it finds a challenge in a refusal without serializing the whole document',
+  async () => {
+    const ctx = await setupTest();
+    const reply = await ctx.send(ctx.open(`${ctx.url}denied-unserializable`, 200));
 
     expect(reply).toMatchObject({
       kind: 'page',

@@ -91,7 +91,8 @@ async function settleResponse(
 const heldSchema = z.object({ url: z.string(), markup: z.string() });
 
 // The headers decide first. A refusal that names no challenge there is searched in the markup of
-// the page the browser holds, up to the bytes a fetch reads, so the guest never buffers a body.
+// the page the browser holds, up to the bytes a fetch reads, so neither the guest nor the page
+// holds more of it.
 async function scanBlocked(
   tab: Tab,
   response: Response,
@@ -104,12 +105,7 @@ async function scanBlocked(
     return { blocked: named, isCurrent: true };
   }
 
-  // A script string, because the guest's types hold no DOM.
-  const held: unknown = await tab.page
-    .evaluate(
-      `({ url: location.href.split('#')[0], markup: document.documentElement.outerHTML.slice(0, ${String(bodyBytes)}) })`,
-    )
-    .catch(() => null);
+  const held: unknown = await tab.page.evaluate(buildMarkupScanScript(bodyBytes)).catch(() => null);
 
   const parsed = heldSchema.safeParse(held);
 
@@ -117,10 +113,38 @@ async function scanBlocked(
     return { blocked: null, isCurrent: false };
   }
 
+  const markup = Buffer.from(parsed.data.markup).subarray(0, bodyBytes).toString('utf8');
+
   return {
-    blocked: findBotChallenge(status, response.headers(), parsed.data.markup),
+    blocked: findBotChallenge(status, response.headers(), markup),
     isCurrent: parsed.data.url === response.url().split('#')[0],
   };
+}
+
+// Serializing the whole document first would hold all of a huge error page in memory, so the script
+// walks the nodes and stops at the cap. It reads the address before the walk. A script string,
+// because the guest's types hold no DOM.
+function buildMarkupScanScript(bodyBytes: number): string {
+  return `(() => {
+  const url = location.href.split('#')[0];
+  const cap = ${String(bodyBytes)};
+  let markup = '';
+  const walker = document.createTreeWalker(document.documentElement,
+    NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT | NodeFilter.SHOW_COMMENT);
+  for (let node = walker.currentNode; node !== null && markup.length < cap; node = walker.nextNode()) {
+    if (node.nodeType === Node.ELEMENT_NODE) {
+      markup += '<' + node.localName;
+      for (const attribute of node.attributes) {
+        if (markup.length >= cap) break;
+        markup += ' ' + attribute.name + '="' + attribute.value.slice(0, cap - markup.length) + '"';
+      }
+      markup += '>';
+    } else {
+      markup += node.substringData(0, cap - markup.length);
+    }
+  }
+  return { url, markup: markup.slice(0, cap) };
+})()`;
 }
 
 const settleErrorPageMs = 5000;
