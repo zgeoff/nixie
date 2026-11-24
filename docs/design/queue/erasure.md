@@ -9,8 +9,8 @@ catch-up after a crash and its own reply, and two lists that must name every pip
 hand. So a moment's destroy reports no backup state, a conversation reset can't finish after a
 crash, and the vault and locked entries would each add another pipeline. After this design, each
 store registers what it can forget, one runner takes every forget through the same steps, the same
-two records mark each forget, and both lists come from the registry. Stores move onto the runner one
-at a time, and for one release each keeps writing its old records beside the new ones.
+two records mark each forget, and both lists come from the registry. Each store switches to the
+runner and its records directly, and writes no old record after it moves.
 
 Once the owner approves this design, build its work items from it and the built
 [forgetting in the memory store](../../architecture/memory/store.md#forgetting) it generalises.
@@ -115,11 +115,8 @@ erasure.finished  { erasureID, kind, targetID, shortID, by, removedKeys }
   forgotten-evidence block, the removed-record readers, a note's forget notice. When both an old
   record and its new one exist, the two folds set the same state.
 - `erasureID` is a UUID and never reaches the model.
-- For one release, the runner also writes each store's old start and end records, so the release
-  before can finish a forget the new release began. The release after stops them. A reset has no old
-  start record, so the third open question covers its rollback.
-- The release before skips a record kind it doesn't know. Check this in the first work item, and
-  when the skip is missing, ship it a release ahead of the rest.
+- The runner writes only the new records. Each store's old record codecs and folds stay, so a
+  rebuild still reads every old record.
 - The evidence purge keeps its own three records.
 
 ### The runner
@@ -147,8 +144,11 @@ erasure.finished  { erasureID, kind, targetID, shortID, by, removedKeys }
   starts, the runner finishes every `erasure.started` with no `erasure.finished`, children before
   parents, and every evidence purge with no erasure. A crash in step 3 leaves the parent open, and
   the catch-up runs step 3 again.
-- For one release, each store also keeps its old catch-up, for a forget an older release began with
-  its old records.
+- The work item that moves a store finishes, at the first start, any forget that the store's old
+  pipeline left open, then deletes the old catch-up.
+- A forget still open 5 minutes after it started is stuck. nixie shows a "forget stuck" flag to you
+  and to the model with a retry, and raises an alert. Turn-input capture stays closed until the
+  forget finishes. The 5 minutes is a config value.
 - Each step runs again after a crash with the same result.
 - A note forget from a tool runs step 1 at once, and steps 2 to 9 after the calling step ends,
   retried until they succeed.
@@ -161,11 +161,15 @@ erasure.finished  { erasureID, kind, targetID, shortID, by, removedKeys }
 - It writes the `log_reset` boundary in the transaction of `erasure.finished`, after the keys are
   gone, so the inbox moves and a backup falls due only once the reset is done.
 - It cleans the fetch pages and the fetch pauses it stored, and purges memory quotes of the thread's
-  records, as a record forget does.
+  records, as a record forget does. A memory item whose evidence a forget purged reads "backed by
+  your words, since forgotten", never as unconfirmed.
 - `erasure.finished.removedKeys` holds the count of keys it deleted, which the reply reports.
 
 ### The reply
 
+- Every screen, route and tool calls each removal that can't be undone "Forget": a memory item, a
+  moment, a note, a record, an image and the conversation alike. "Retire" stays for a memory item,
+  because a retire can be undone.
 - Each route keeps its output. Every backup state uses `forgetBackupSchema` as it is. A route with
   no backup state today, such as the moment destroy, gains one as an optional field, in the work
   item that moves its store.
@@ -205,16 +209,3 @@ erasure.finished  { erasureID, kind, targetID, shortID, by, removedKeys }
 
 - The wording of each forget's confirmation and its button.
 - What each store keeps after a forget, such as a note's links from other notes.
-
-## Open questions
-
-- **One verb.** You forget items, records and notes, destroy moments, delete retired items, and
-  shred a conversation. The owner may want one word everywhere, such as "Forget". Until the owner
-  decides, each screen keeps its word.
-- **Purging quotes on a reset.** A reset today leaves memory items that quote the conversation
-  readable. This design purges those quotes. The owner may keep today's reset. Until the owner
-  decides, the reset purges.
-- **Rolling back during a reset.** The release before reads no `erasure.started`. So when the new
-  release begins a reset and a crash interrupts it, a rollback by one release leaves the reset half
-  done until the new release runs again. The owner may accept that, or move the reset a release
-  after the rest. Until the owner decides, the reset moves with the rest.
