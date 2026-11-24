@@ -4,8 +4,8 @@ nixie's API serves the [client](./client.md) contract over HTTP: Elysia hands ev
 `/rpc` to oRPC, except the watch socket that [watching the computer](#watching-the-computer)
 describes, which validates each input and output against the contract. The API resolves each call to
 a row of the identity record, writes the user's messages into task inboxes once each, and follows
-the [event log](../core/event-log.md) for the live stream. The package `modules/api` builds the app,
-and the server mounts it and listens.
+the [event log](../core/event-log.md) for the [live stream](./live-updates.md). The package
+`modules/api` builds the app, and the server mounts it and listens.
 
 ## A call's way in
 
@@ -43,7 +43,7 @@ output.
 A session lapses after the idle limit passes with no call, and a call moves the session's last seen
 time at most once per short interval, so a busy client does not write on every call. A revoke keeps
 the token hash on the row, so a later call with the revoked token resolves to its row and is refused
-under the session's ID. A revoke also ends the revoked device's live stream when the revocation
+under the session's ID. A revoke also ends the revoked session's live stream when the revocation
 record reaches it.
 
 The identity record, the enrolment codes and the checked-action results are plain tables, not
@@ -145,10 +145,11 @@ limits, or `HELD_ELSEWHERE` when another device holds the desktop. `handBack` an
 `computer.readHandover` reads the assistant's
 [standing ask](../connectors/computer.md#asking-for-a-take-over) for a take-over. It answers the
 ask, with its sequence and its reason, or `null`, and the log sequence it read at, so a client
-follows the live stream from there. The ask is the newest of the records `computer.handover_asked`,
-`computer.handover_closed` and `computer.takeover_started` on the conversation's thread, when that
-record is an ask. A caller of a scope below full, and a server with no computer, get `null`. A
-`computer.handover_asked` record on the stream carries its reason while the reason is readable.
+follows the live stream from there, and reads the ask again when the `computer` topic changes. The
+ask is the newest of the records `computer.handover_asked`, `computer.handover_closed` and
+`computer.takeover_started` on the conversation's thread, when that record is an ask. A caller of a
+scope below full, and a server with no computer, get `null`. A `computer.handover_asked` record on
+the stream carries its reason while the reason is readable.
 
 ## Refusals
 
@@ -199,7 +200,8 @@ nothing pauses nixie answers null and writes nothing. Replay and reuse of a clie
 they do for a task control.
 
 `nixie/read` answers the same pause state to any signed-in caller. The pause records sit on no
-thread, so the record stream never carries them, and a client polls this read instead.
+thread, so the record stream never carries them. The `nixie` topic of the live stream tells a client
+to read it again.
 
 `recovery/read` answers the last restore: when it ran, when its backup was taken, and each task it
 left to check, with the task's name, its state at the backup, whether a step was running, and how
@@ -363,11 +365,13 @@ A task list read returns the most recently active tasks up to a cap, each with i
 state, last activity, whether it takes a message of the user's, the task it waits on, the controls
 its runner offers and its [action counts](../core/actions.md#cancelled-actions). It also gives the
 log sequence it read at, which it reads before the tasks, so a client that follows the log from that
-sequence sees every change the list leaves out. Each listed task also names its `runner`. A client
-shows only the controls that the task's [runner](../core/started-tasks.md#task-runners) offers and
-the task's state allows. A started task whose name the user forgot shows under its ID. A task read
-returns one task with the same fields, whatever its place in the list, so a task's page shows a task
-past the cap.
+sequence sees every change the list leaves out. It also gives `changesAt`, the earliest time that a
+listed task changes with no write, which is the next run of a task that wakes on a schedule, or
+null, and a client reads the list again at that time. Each listed task also names its `runner`. A
+client shows only the controls that the task's [runner](../core/started-tasks.md#task-runners)
+offers and the task's state allows. A started task whose name the user forgot shows under its ID. A
+task read returns one task with the same fields, whatever its place in the list, so a task's page
+shows a task past the cap.
 
 Each listed task also gives `listedState`, built from the state that the model tool `tasks.list`
 reads: the stored state, or `idle`, `finished` or `asleep` for a task whose stored state is
@@ -521,23 +525,23 @@ made unreadable, and every stored image, although `files.read` serves an image b
 
 ## Reading and the live stream
 
+`sessions.shown` takes no input and answers an empty object. A client that shows nixie on screen
+calls it, and the API keeps the newest call time of each session in the
+[client registry](./live-updates.md#the-client-registry). It writes nothing to the database.
+
 A conversation read returns the newest page of a thread before a sequence, and the log sequence it
 read at. The page holds no record past that sequence, so a client that follows the log from it
 misses no record and repeats none. A page that holds a tool result also holds the call it answers,
 even past the page's size, because the client reads what a call did, such as the receiver and text
 of a task message, from the call and its result together.
 
-The live stream follows the event log by sequence through a log subscription, and each event's ID is
-its record's sequence. A client that reconnects sends the last event ID it received, and the stream
-resumes after that record, whatever start the input holds. The stream shows only records that belong
-to a thread, because session and refusal records belong to none and no client view shows them. A
+A `record` event of the [live stream](./live-updates.md) carries a record as a page read does. A
 message record carries its text and spans while its key exists, and keeps its place with no text
 once the message is forgotten. Each forget record carries the sequence it forgets, so a client drops
 that message's text as the record arrives. A task message carries its sender's name, kind, hop and
 body, an exchange notice carries its text with a link to the receiver's thread, and a stop carries
-the actions it cancelled. A record whose key a forget deleted carries `isRemoved`, which the server
-reads from the `record.forget_started` record that names it, so a record whose key fails to decrypt
-carries no mark. A page and the stream read these records the same way.
+the actions it cancelled. The stream shows only records that belong to a thread, because session and
+refusal records belong to none and no client view shows them.
 
 A `model.reply_voided` record names a reply it voids, with the reason, in `voidedReply`. A page read
 sets `isVoided` and `voidReason` on the `message` of each reply on the page that a void record
@@ -550,15 +554,6 @@ A step commit carries the step's read cursor: the sequence of the newest record 
 [inbox](../core/tasks.md#the-inbox) that the step read. The step read a message when its cursor is
 at or after the message's sequence. A client checks the cursor, because a step that started before
 the message can end after the message.
-
-The API checks the caller's session before it opens the live stream and refuses a missing or revoked
-session with a plain 401, so a stream that opens is one the API accepted. A session revoked while
-its stream is open ends that stream with the same error.
-
-The live stream answers at a path with no `log` segment, because EasyPrivacy, a filter list that
-content blockers enable by default, blocks `/rpc/log/` on every domain. The stream's first path
-stays in the contract as a deprecated alias for the clients of earlier releases, which a later
-release may remove.
 
 `memory.writerStatus` stays in the contract, deprecated, for the same reason: a tab loaded from an
 earlier web client probes its session with it. nixie has no built-in memory task, so the call always

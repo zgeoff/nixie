@@ -123,6 +123,8 @@ holds the design for a piece of work that is not built yet, with its spikes in
   conversation view, the outbox and paste spans
 - [The API](architecture/channels/api.md) — device sessions and the identity record, checked
   actions, refusals, message sends and the live stream
+- [Live updates](architecture/channels/live-updates.md) — the one stream of each tab, its topics and
+  the client registry
 - [Devices](architecture/channels/devices.md) — enrolling a device, its scoped session, the screen
   and the tools that put pictures on it
 

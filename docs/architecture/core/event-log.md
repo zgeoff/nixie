@@ -90,7 +90,8 @@ neither stops a reader at its sequence.
 A subscription yields the same entries, then waits for the next commit. The writer holds a commit
 bus, an event target in its own process that fires after each write transaction commits, so a reader
 in that process wakes on the commit itself and never polls. The abort signal ends the subscription
-and detaches it from the bus at once.
+and detaches it from the bus at once. The bus carries a second event, `changed`, that holds the
+topics a commit marked, which only the [live streams](../channels/live-updates.md#topics) hear.
 
 A reader in another process never sees that bus, so it subscribes through the database's write-ahead
 log (WAL) instead. SQLite writes a commit's frames before it publishes the commit, so that reader

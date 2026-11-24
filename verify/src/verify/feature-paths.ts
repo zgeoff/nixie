@@ -29,6 +29,7 @@ export const featurePaths = {
   'device-in-browser': [...everyJourney],
   'device-screen': [...everyJourney],
   'device-layout': [...everyJourney],
+  'live-updates': [...everyJourney],
   'computer-browser': [...everyJourney],
   'computer-shell': [...everyJourney],
   'computer-screen': [...everyJourney],

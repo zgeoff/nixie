@@ -12,9 +12,9 @@ import { match } from 'ts-pattern';
 import { z } from 'zod';
 import { buildHostCLIArgv } from './build-host-cli-argv';
 import { conversationRecordSchema } from './collect-conversation-records';
-import { deviceFeatures } from './device-features';
 import { featurePaths, ignoredPaths, sharedPaths } from './feature-paths';
 import { controlRoutes } from './harness/control-routes';
+import { lastFeatures } from './last-features';
 import { parseEnrolmentCode } from './parse-enrolment-code';
 import { pickTaskRefusal } from './pick-task-refusal';
 import { postControl } from './post-control';
@@ -391,12 +391,12 @@ export function createVerifyRegistry(): Wringer {
     .feature(
       {
         name: 'sign-in-enrol',
-        summary: 'Sign a browser in with a code from `nixie enrol-code`, and see its session',
+        summary: 'Sign a browser in with an enrol code',
         paths: featurePaths['sign-in-enrol'],
       },
       {
         name: 'chat-turn',
-        summary: 'Send a message from the page, and see the reply after it, in order',
+        summary: 'Send a message, and see the reply after it',
         paths: featurePaths['chat-turn'],
       },
       {
@@ -449,7 +449,7 @@ export function createVerifyRegistry(): Wringer {
         summary: "Watch the assistant's desktop",
         paths: featurePaths['computer-watch'],
       },
-      ...deviceFeatures,
+      ...lastFeatures,
     )
     .shared(...sharedPaths)
     .ignore(...ignoredPaths)
