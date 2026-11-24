@@ -41,7 +41,7 @@ function buildPercentPattern(value: string): RegExp {
 }
 
 function buildHexClasses(hex: string): string {
-  return [...hex].map((digit) => `[${digit.toLowerCase()}${digit.toUpperCase()}]`).join('');
+  return hex.replaceAll(/[\da-f]/giu, (digit) => `[${digit.toLowerCase()}${digit.toUpperCase()}]`);
 }
 
 function escapePattern(text: string): string {
@@ -78,9 +78,8 @@ function buildBase64Class(bits: string, start: number, index: number): string {
   const chars = new Set<string>();
 
   for (let candidate = 0; candidate < 64; candidate += 1) {
-    const pattern = candidate.toString(2).padStart(6, '0');
-
-    const isMatch = [...pattern].every((bit, position) => {
+    const isMatch = [0, 1, 2, 3, 4, 5].every((position) => {
+      const bit = String((candidate >> (5 - position)) & 1);
       const bitIndex = index * 6 + position;
 
       return (

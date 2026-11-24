@@ -184,7 +184,7 @@ test('it returns unreachable with the status for a wrong token', async () => {
 
   const spend = createSpendGateway({
     url: ctx.control.url,
-    fetch: makeKeyedFetch('authorization', `Bearer ${'wrong'}`),
+    fetch: makeKeyedFetch('authorization', 'Bearer wrong'),
   });
 
   const answer = await spend.readStatus();
@@ -200,7 +200,7 @@ test('it returns unreachable for a sandbox call with a wrong token', async () =>
 
   const spend = createSpendGateway({
     url: ctx.control.url,
-    fetch: makeKeyedFetch('authorization', `Bearer ${'wrong'}`),
+    fetch: makeKeyedFetch('authorization', 'Bearer wrong'),
   });
 
   const answer = await spend.putSandbox('nixie-abc', null);
@@ -220,7 +220,7 @@ test('it returns unreachable when nothing listens at the address', async () => {
 
   const spend = createSpendGateway({
     url,
-    fetch: makeKeyedFetch('authorization', `Bearer ${'any'}`),
+    fetch: makeKeyedFetch('authorization', 'Bearer any'),
     timeoutMs: 1000,
   });
 
@@ -240,7 +240,7 @@ test('it returns unreachable when the listener sends a reply that is not the gat
 
   const spend = createSpendGateway({
     url: `http://127.0.0.1:${String(other.port)}`,
-    fetch: makeKeyedFetch('authorization', `Bearer ${'any'}`),
+    fetch: makeKeyedFetch('authorization', 'Bearer any'),
   });
 
   const answer = await spend.readStatus();
@@ -266,7 +266,7 @@ test('it reads the plan logins as unreachable when the token is wrong', async ()
 
   const spend = createSpendGateway({
     url: ctx.control.url,
-    fetch: makeKeyedFetch('authorization', `Bearer ${'wrong'}`),
+    fetch: makeKeyedFetch('authorization', 'Bearer wrong'),
   });
 
   const logins = await spend.readChatGPTLogins();

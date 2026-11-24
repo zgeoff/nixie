@@ -2,6 +2,7 @@ import type { IncomingMessage } from 'node:http';
 import type { ZlibOptions } from 'node:zlib';
 import { brotliDecompressSync, gunzipSync, inflateSync } from 'node:zlib';
 import { CredentialRefusalError } from '@heynixie/egress';
+import invariant from 'tiny-invariant';
 
 // The fetcher buffers a body to remove a value from it, so a larger body is refused.
 export const bodyBufferCapBytes = 32 * 1024 * 1024;
@@ -12,7 +13,9 @@ export async function readCappedBody(response: IncomingMessage): Promise<Uint8Ar
   let total = 0;
 
   for await (const chunk of response) {
-    const piece = Buffer.from(chunk);
+    const piece: unknown = chunk;
+
+    invariant(Buffer.isBuffer(piece), 'a response with no encoding set yields buffers');
 
     total += piece.byteLength;
 

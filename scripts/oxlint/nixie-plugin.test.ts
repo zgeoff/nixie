@@ -33,11 +33,9 @@ async function setupTest() {
 
     const output = await new Response(process.stdout).text();
 
-    const report: { diagnostics: { code: string; message: string }[] } = JSON.parse(output);
-
-    return report.diagnostics
-      .map((diagnostic) => diagnostic.code)
-      .filter((code) => code.startsWith('nixie('));
+    return [...output.matchAll(/"code":\s*"(?<code>nixie\([^"]+\))"/gu)].map(
+      (found) => found.groups?.['code'] ?? '',
+    );
   };
 
   return { lint };
