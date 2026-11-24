@@ -34,13 +34,13 @@ reached it with no extra setup.
 
 ## Answer
 
-| Check                                  | Result                                       |
-| -------------------------------------- | -------------------------------------------- |
-| Consent to `gmail.modify`, unverified  | Granted, with all 3 scopes                   |
-| "Google hasn't verified this app" page | Not shown to the owner, who owns the project |
-| Refresh on day 0                       | HTTP 200                                     |
-| Gmail, Calendar and Drive calls        | HTTP 200 each, once each API was enabled     |
-| Refresh on day 8                       | HTTP 200, and HTTP 200 from each API         |
+| Check                                  | Result                                   |
+| -------------------------------------- | ---------------------------------------- |
+| Consent to `gmail.modify`, unverified  | Granted, with all 3 scopes               |
+| "Google hasn't verified this app" page | Not shown to the consenting account      |
+| Refresh on day 0                       | HTTP 200                                 |
+| Gmail, Calendar and Drive calls        | HTTP 200 each, once each API was enabled |
+| Refresh on day 8                       | HTTP 200, and HTTP 200 from each API     |
 
 - A production app with no test users keeps a working refresh token past testing mode's 7-day limit,
   and needs no Google Cloud setup beyond the 4 steps in [Setup the owner did](#setup-the-owner-did).
