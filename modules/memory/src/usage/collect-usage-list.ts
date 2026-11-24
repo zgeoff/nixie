@@ -18,6 +18,9 @@ export interface UsageListEntry {
   readonly topic: string;
   readonly gist: string;
 
+  // when the item was first saved; null when no record of it is left
+  readonly createdAtMs: number | null;
+
   // the trigger phrases that no push ever placed the item by
   readonly neverFiredTriggers: readonly string[];
   readonly report: ItemUsageReport;
@@ -68,6 +71,7 @@ export function collectUsageList(
       subject: stale.row.subject,
       topic: stale.row.topic,
       gist: stale.row.gist,
+      createdAtMs: input.savedTimes.get(stale.row.itemID) ?? null,
       neverFiredTriggers: collectNeverFired(
         input.triggers.get(stale.row.itemID) ?? [],
         stale.report,

@@ -13,7 +13,7 @@ export interface UsageListRequest {
   readonly beforeSequence: number;
 }
 
-// The active items that no search or push surfaced in the last `days` days, pinned items too. The
+// The active items that no search or push surfaced in the last `days` days, pinned items left out, because the session's opening holds them. The
 // history is read outside the lock, so the rows are read again under it: an item forgotten
 // meanwhile is gone, and no row carries its old gist.
 export async function readUsageList(
@@ -22,7 +22,7 @@ export async function readUsageList(
 ): Promise<readonly UsageListEntry[]> {
   const nowMs = parts.context.gate.clock.now();
 
-  const listed = await parts.lock(() => readIndexRows(parts, { isPinnedIncluded: true }));
+  const listed = await parts.lock(() => readIndexRows(parts, { isPinnedIncluded: false }));
   const usage = await readMemoryUsage(parts, request.beforeSequence);
 
   const savedTimes = await readSavedTimes(
@@ -36,7 +36,7 @@ export async function readUsageList(
   );
 
   const current = await parts.lock(async () => {
-    const found = await readIndexRows(parts, { isPinnedIncluded: true });
+    const found = await readIndexRows(parts, { isPinnedIncluded: false });
 
     return {
       rows: found,

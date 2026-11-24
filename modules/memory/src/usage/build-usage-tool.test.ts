@@ -108,6 +108,7 @@ async function setupTest() {
     itemID: z.string(),
     topic: z.string(),
     gist: z.string(),
+    created: z.string(),
     usage: z.string(),
     neverFiredTriggers: z.array(z.string()),
   });
@@ -325,9 +326,11 @@ test('it counts a search as a surface, and its trigger phrases as unfired', asyn
   ]);
 });
 
-test('it lists a pinned item with the rest', async () => {
+test('it leaves a pinned item out of the list', async () => {
   const ctx = await setupTest();
   const piano = await ctx.remember('piano tuning', []);
+
+  await ctx.remember('bin day', []);
 
   await ctx.memory.store.pin({
     itemID: piano.itemID,
@@ -337,7 +340,26 @@ test('it lists a pinned item with the rest', async () => {
 
   const listed = await ctx.readUsage({ days: 1 });
 
-  expect(listed.items.map((item) => item.gist)).toStrictEqual(['piano tuning']);
+  expect(listed.items.map((item) => item.gist)).toStrictEqual(['bin day']);
+});
+
+test('it shows the day each listed item was created', async () => {
+  const ctx = await setupTest();
+
+  await ctx.remember('boiler service', []);
+
+  ctx.clock.advance(3 * ctx.dayMs);
+
+  await ctx.remember('piano tuning', []);
+
+  ctx.clock.advance(10 * ctx.dayMs);
+
+  const listed = await ctx.readUsage({ days: 1 });
+
+  expect(listed.items.map((item) => [item.gist, item.created])).toStrictEqual([
+    ['boiler service', '1 Sep'],
+    ['piano tuning', '4 Sep'],
+  ]);
 });
 
 test('it lists a trigger phrase that no push named when another phrase of the item fired', async () => {
