@@ -59,13 +59,13 @@ async function sendWithinIdlePeriod(
   const callerSignal = init?.signal ?? request.signal;
 
   const forwardAbort = (): void => {
-    link.abort(callerSignal?.reason);
+    link.abort(callerSignal.reason);
   };
 
-  if (callerSignal?.aborted === true) {
+  if (callerSignal.aborted) {
     forwardAbort();
   } else {
-    callerSignal?.addEventListener('abort', forwardAbort, { once: true });
+    callerSignal.addEventListener('abort', forwardAbort, { once: true });
   }
 
   const stalled = Promise.withResolvers<never>();

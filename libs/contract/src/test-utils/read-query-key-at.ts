@@ -10,7 +10,13 @@ export function readQueryKeyAt(utils: object, path: readonly string[]): unknown[
     throw new TypeError(`the utils hold no node at ${path.join('.')}`);
   }
 
-  const key: unknown = Reflect.apply(Reflect.get(node, 'key'), node, []);
+  const readKey: unknown = Reflect.get(node, 'key');
+
+  if (typeof readKey !== 'function') {
+    throw new TypeError(`the node at ${path.join('.')} has no key function`);
+  }
+
+  const key: unknown = Reflect.apply(readKey, node, []);
 
   if (!Array.isArray(key)) {
     throw new TypeError(`the node at ${path.join('.')} gives no key`);

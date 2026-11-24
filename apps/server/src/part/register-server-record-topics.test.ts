@@ -8,7 +8,7 @@ import { serverRecordTopics } from './server-record-topics';
 
 async function setupTest() {
   // the spend module names two kinds that the models and sessions modules own
-  const registered = new Map(
+  const registered = new Map<string, readonly string[]>(
     [...collectModuleRecordTopicMaps(), sandboxRecordTopics, serverRecordTopics].flatMap((map) =>
       Object.entries(map),
     ),
@@ -49,7 +49,9 @@ test('it marks the tasks topic for every kind that the task list reads', async (
     'trigger.skipped',
   ];
 
-  expect(listed.filter((kind) => !ctx.registered.get(kind)?.includes('tasks'))).toStrictEqual([]);
+  expect(
+    listed.filter((kind) => ctx.registered.get(kind)?.includes('tasks') !== true),
+  ).toStrictEqual([]);
 });
 
 test('it marks the tasks topic for every inbox kind', async () => {
@@ -68,7 +70,9 @@ test('it marks the tasks topic for every inbox kind', async () => {
     'computer.handover_closed',
   ];
 
-  expect(inbox.filter((kind) => !ctx.registered.get(kind)?.includes('tasks'))).toStrictEqual([]);
+  expect(
+    inbox.filter((kind) => ctx.registered.get(kind)?.includes('tasks') !== true),
+  ).toStrictEqual([]);
 });
 
 test('it marks the approvals topic for each proposal kind and each action kind that ends a waiting call', async () => {
@@ -93,7 +97,7 @@ test('it marks the approvals topic for each proposal kind and each action kind t
   ];
 
   expect(
-    approvals.filter((kind) => !ctx.registered.get(kind)?.includes('approvals')),
+    approvals.filter((kind) => ctx.registered.get(kind)?.includes('approvals') !== true),
   ).toStrictEqual([]);
 });
 
@@ -104,9 +108,9 @@ test('it marks the computer topic for each handover kind', async () => {
     kind.startsWith('computer.handover_'),
   );
 
-  expect(handovers.filter((kind) => !ctx.registered.get(kind)?.includes('computer'))).toStrictEqual(
-    [],
-  );
+  expect(
+    handovers.filter((kind) => ctx.registered.get(kind)?.includes('computer') !== true),
+  ).toStrictEqual([]);
 });
 
 test('it registers every module on one writer without two owners for a kind', async () => {

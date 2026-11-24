@@ -208,7 +208,11 @@ test('it sends a changed event with the images topic when an image is pinned', a
   const drawn = await images.read('image.draw', { prompt: 'a cove' });
   const changes = await ctx.follow();
 
-  await images.call('image.pin', { image: String(drawn['image']) });
+  const imageID = drawn['image'];
+
+  invariant(typeof imageID === 'string');
+
+  await images.call('image.pin', { image: imageID });
 
   const changed = await changes.readChanged();
 

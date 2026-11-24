@@ -1,4 +1,5 @@
 import type { LiveTopic } from '@heynixie/contract';
+import { liveTopicSchema } from '@heynixie/contract';
 
 const bus = new EventTarget();
 
@@ -57,7 +58,7 @@ export function subscribeToMockChanged(
 ): void {
   const listener = (event: Event): void => {
     if (event instanceof CustomEvent) {
-      onChanged(event.detail);
+      onChanged(liveTopicSchema.array().parse(event.detail));
     }
   };
 
