@@ -12,9 +12,8 @@ condition may use only a subset of CEL, which nixie checks when the rule is writ
 its own conformance suite. Every rule with a condition carries a note, a sentence that says what the
 condition means. Its card shows the condition in plain words, with the raw CEL behind a control.
 
-Once the owner approves this design and answers its [open questions](#open-questions), build the CEL
-part of [the rules work item](https://linear.app/zgeoff/issue/GEO-2785) from it and from the built
-[rules](../../architecture/policy/rules.md) it extends.
+Build the CEL part of [the rules work item](https://linear.app/zgeoff/issue/GEO-2785) from it and
+from the built [rules](../../architecture/policy/rules.md) it extends.
 
 ## Shape
 
@@ -85,9 +84,12 @@ The environment declares each name with its CEL type: `args` is `map<string, dyn
 - A condition never reads a place or its trust level, and sees only the declared destination
   strings. For a rule about a place, use `destinations` or
   [the trusted places](https://github.com/zgeoff/nixie/pull/1410) directory.
-- A content argument, such as a mail body or a memory item's text, is left out of `args`, so a
-  condition that reads one errors with `no_such_key` and fails closed. Whether any rule may read
-  content is [open](#open-questions).
+- A content argument, such as a mail body or a memory item's text, is left out of `args` for every
+  rule, so a condition that reads one errors with `no_such_key` and fails closed. Outside text in a
+  content argument therefore never steers a rule.
+- A condition reads only values that nixie works out itself or that the call sends. A tool never
+  passes a field whose only use is to describe the call, such as a purpose or a summary the model
+  writes, into `args`; its declaration lists such a field in `content`.
 - A timestamp method takes a zone name as a string literal. nixie's walk refuses a method with no
   zone, or with a zone that the runtime's zone data doesn't hold, with `condition_not_allowed`. As
   in CEL, `getMonth` counts from 0 for January and `getDayOfWeek` from 0 for Sunday; `getDate`
@@ -195,6 +197,11 @@ type Decision = {
 - The approval card for a call that asks with `condition_error`, or through an ask rule whose
   condition errored, shows each rule in `conditionErrors` with its code.
 - The record holds the error code and never the library's message, which can quote argument text.
+- When a condition errors, the call's result tells the model the rule's short ID and the error code,
+  whatever the call's outcome, so the model can propose a fix.
+- When an allow rule's fixed fields matched a call and its condition failed with `no_such_key`, the
+  call's result tells the model the rule's short ID and the missing argument, so the model can call
+  again with it.
 - The lift check and the destination permissions read allow rules through `isRuleMatch`, so they
   evaluate a condition the same way. A caller that matches rules against a call it built itself,
   such as the memory gate's `listUncoveredMemoryWrites`, counts every condition as an error.
@@ -234,8 +241,7 @@ type Literal = string | number | boolean | Literal[];
 type RuleCondition = {
   note: string;
   // 'you' for a rule from the definitions repo or from your edit through rules.editProposedRule;
-  // 'nixie' for a runtime change whose changed_by is nixie, which only a mandate would make if
-  // its open question allows conditions
+  // 'nixie' for a rule nixie proposed through rules.propose_mandate
   noteBy: 'you' | 'nixie';
   words: string; // the view as one sentence: "the hour in Europe/London is before 17, and …"
   source: string; // the raw CEL
@@ -262,7 +268,7 @@ sentence.
 | a seed from the definitions repo               | applies at once; a fault refuses the seed, as any rule fault does |
 | `buildProposedRule` and `buildAlwaysAllowRule` | never write one                                                   |
 | `rules.editProposedRule`                       | accepted when `checkCondition` passes; the new card shows it      |
-| `rules.propose_mandate`                        | refused until the [open question](#open-questions) is settled     |
+| `rules.propose_mandate`                        | accepted when `checkCondition` passes; the card shows every part  |
 | `rules.editRule` from the client               | keeps the condition as it is                                      |
 | `rules.removeRule` from the client             | removes the rule with its condition                               |
 
@@ -360,12 +366,3 @@ changes it.
   new or changed condition comes from the definitions repo or from `rules.editProposedRule`.
 - A widening check that reads CEL. Any change to a condition widens.
 - Custom functions, such as a lookup of a contact or a place.
-
-## Open questions
-
-- **May a condition read a tool call's content arguments?** The owner settles it in
-  [the content question](https://linear.app/zgeoff/issue/GEO-2840). The recommendation is no, for
-  every rule, so outside text never steers a rule. Until then, `args` leaves content out.
-- **May a mandate that nixie proposes carry a condition?** The owner settles it in
-  [the mandate question](https://linear.app/zgeoff/issue/GEO-2841). The recommendation is yes, when
-  the card phrases every part in words. Until then, `rules.propose_mandate` refuses `cel`.
