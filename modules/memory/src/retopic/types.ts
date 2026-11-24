@@ -37,7 +37,7 @@ export interface RetopicPlan {
   readonly to: RetopicTarget;
   readonly moves: readonly RetopicMove[];
 
-  // the move in words, such as `self/lines → self/diary, 20 items`
+  // the move in words, such as `self/lines → self/diary, 18 active, 2 retired`
   readonly sentence: string;
 }
 

@@ -131,7 +131,7 @@ test('it holds a re-file as one card with the gists folded, and the approval mov
     { timeoutMs: 5000 },
   );
 
-  const line = 'li[aria-label="owner/allotment → owner/garden, 2 items"]';
+  const line = 'li[aria-label="owner/allotment → owner/garden, 2 active"]';
 
   await ctx.view.navigate(`${ctx.appURL}/proposals`);
 
