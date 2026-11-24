@@ -1,12 +1,12 @@
 # The memory store
 
 A memory item is one stored fact, such as "the spare key sits under the blue flowerpot", and every
-change to its text or state adds a version that nixie never rewrites. Every value of an item, its
-text included, is encrypted under keys that belong to that item, so a forget deletes those keys and
-every version becomes unreadable at once, in the database and in every backup of it, under
-[0007](../../decisions/0007-crypto-shredding.md). The model and the client reach memory through one
-interface whose verbs are recall, remember, edit, edit labels, retire, restore, undo, pin, unpin and
-forget. The `modules/memory` package holds the store.
+change to its text or state adds a version that nixie never rewrites. Every value of an item that
+holds words, its text, labels and quotes included, is encrypted under keys that belong to that item,
+so a forget deletes those keys and every version becomes unreadable at once, in the database and in
+every backup of it, under [0007](../../decisions/0007-crypto-shredding.md). The model and the client
+reach memory through one interface whose verbs are recall, remember, edit, edit labels, retire,
+restore, undo, pin, unpin and forget. The `modules/memory` package holds the store.
 
 [The event log](../core/event-log.md) covers the records memory appends, and
 [erasable fields](../core/erasable-fields.md) covers the key store that holds each item's keys.
@@ -142,7 +142,7 @@ the writer's epoch that stops an older nixie process from writing
   the model or the client carries the revision its caller read, and fails as stale once the item
   moved past it. Only an active item can be pinned, whatever its subject. A pin, or an edit of a
   pinned item, fails when it would take [the pinned core](./context.md#the-pinned-core) past its
-  budget. An unpin fails only when the item is not pinned.
+  budget. An unpin also fails when the item is not pinned.
 
 ## End times
 
