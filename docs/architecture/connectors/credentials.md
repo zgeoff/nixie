@@ -38,7 +38,8 @@ reads `settings`.
 - The user's name and pronouns are settings that the prompt needs. `readSetting` returns them, and
   they never reach a fetcher.
 - `impd_token` and the definitions export secrets are the exceptions: they stay top-level fields
-  that the server reads at start, outside the store, because no tool uses them.
+  that the server reads at start, outside the store's resolver, because no tool uses them. Their
+  values still join the own-value set.
 - A lint rule refuses a read of the secrets file's groups outside the credentials module, so a value
   cannot reach a part that bypasses the store. It also refuses a destructured group and a read
   through a variable that a secrets object was copied to.
@@ -113,8 +114,8 @@ holds as its own. Each scan reads the set when it runs and keeps its own filter:
   `web_fetch.secret_own_values` and its minimum length.
 - Every tool result passes a scan of the whole set but the user's name and pronouns, whatever a
   value's length, before it reaches the model or the log. The scan covers the result's fields and
-  its attachments, such as the files of a code run. A value found is cut and replaced with
-  `[secret removed]`, so the model sees that something was cut.
+  its attachments, such as the files a code tool call returns. A value found is cut and replaced
+  with `[secret removed]`, so the model sees that something was cut.
 - The tool-result scan leaves out the user's name and pronouns because the prompt shows them to the
   model by design. It still covers the spend gateway's token and every other registered setting.
 
