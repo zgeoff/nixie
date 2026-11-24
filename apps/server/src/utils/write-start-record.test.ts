@@ -1,4 +1,4 @@
-import { expect, onTestFinished, test } from 'bun:test';
+import { expect, onTestFinished, setSystemTime, test } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -131,6 +131,119 @@ test('it records the tools added and removed by name and a changed persona', asy
       previousVersion: '0.12.0',
       given: { tools: ['event_log_read', 'web_fetch'], personaVersion: 'sha256:persona-2' },
       changes: { addedTools: [], removedTools: ['memory_search'], isPersonaUpdated: true },
+    },
+  ]);
+});
+
+test('it records the outage when the gap before the process started passes the threshold', async () => {
+  const given = { tools: ['memory_search'], personaVersion: 'sha256:persona' };
+
+  const ctx = await setupTest();
+
+  setSystemTime(new Date(Date.UTC(2025, 9, 13, 21, 0)));
+  onTestFinished(() => setSystemTime());
+
+  await writeStartRecord(ctx.context, given, '0.11.0');
+
+  const startedAtMs = Date.UTC(2025, 9, 13, 21, 45);
+
+  setSystemTime(new Date(startedAtMs));
+
+  await writeStartRecord(ctx.context, given, '0.12.0', {
+    processStartedAtMs: startedAtMs,
+    thresholdMs: 600_000,
+  });
+
+  const records = await readRecords(ctx.log, { afterSequence: 1, kinds: ['server.started'] });
+
+  expect(records.map((entry) => entry.record.payload)).toStrictEqual([
+    {
+      version: '0.12.0',
+      previousVersion: '0.11.0',
+      given: { tools: ['memory_search'], personaVersion: 'sha256:persona' },
+      changes: { addedTools: [], removedTools: [], isPersonaUpdated: false },
+      outage: { downAtMs: Date.UTC(2025, 9, 13, 21, 0), upAtMs: startedAtMs },
+    },
+  ]);
+});
+
+test('it records no outage when the gap before the process started is under the threshold', async () => {
+  const given = { tools: ['memory_search'], personaVersion: 'sha256:persona' };
+
+  const ctx = await setupTest();
+
+  setSystemTime(new Date(Date.UTC(2025, 9, 13, 21, 0)));
+  onTestFinished(() => setSystemTime());
+
+  await writeStartRecord(ctx.context, given, '0.11.0');
+
+  const startedAtMs = Date.UTC(2025, 9, 13, 21, 5);
+
+  setSystemTime(new Date(startedAtMs));
+
+  await writeStartRecord(ctx.context, given, '0.12.0', {
+    processStartedAtMs: startedAtMs,
+    thresholdMs: 600_000,
+  });
+
+  const records = await readRecords(ctx.log, { afterSequence: 1, kinds: ['server.started'] });
+
+  expect(records.map((entry) => entry.record.payload)).toStrictEqual([
+    {
+      version: '0.12.0',
+      previousVersion: '0.11.0',
+      given: { tools: ['memory_search'], personaVersion: 'sha256:persona' },
+      changes: { addedTools: [], removedTools: [], isPersonaUpdated: false },
+    },
+  ]);
+});
+
+test('it takes the down time from the last record before the process started', async () => {
+  const given = { tools: ['memory_search'], personaVersion: 'sha256:persona' };
+
+  const ctx = await setupTest();
+
+  setSystemTime(new Date(Date.UTC(2025, 9, 13, 21, 0)));
+  onTestFinished(() => setSystemTime());
+
+  await writeStartRecord(ctx.context, given, '0.11.0');
+
+  const startedAtMs = Date.UTC(2025, 9, 13, 21, 45);
+
+  setSystemTime(new Date(startedAtMs + 1000));
+
+  await writeStartRecord(ctx.context, given, '0.11.1');
+
+  await writeStartRecord(ctx.context, given, '0.12.0', {
+    processStartedAtMs: startedAtMs,
+    thresholdMs: 600_000,
+  });
+
+  const records = await readRecords(ctx.log, { afterSequence: 2, kinds: ['server.started'] });
+
+  expect(records.map((entry) => entry.record.payload)).toMatchObject([
+    { outage: { downAtMs: Date.UTC(2025, 9, 13, 21, 0), upAtMs: startedAtMs } },
+  ]);
+});
+
+test('it records no outage on the first start', async () => {
+  const given = { tools: ['memory_search'], personaVersion: 'sha256:persona' };
+
+  const ctx = await setupTest();
+
+  await writeStartRecord(ctx.context, given, '0.12.0', {
+    processStartedAtMs: Date.now(),
+    thresholdMs: 600_000,
+  });
+
+  const records = await readRecords(ctx.log, { afterSequence: 0, kinds: ['server.started'] });
+
+  expect(records.map((entry) => entry.record.payload)).toStrictEqual([
+    {
+      version: '0.12.0',
+      previousVersion: null,
+      given: { tools: ['memory_search'], personaVersion: 'sha256:persona' },
+      changes: null,
     },
   ]);
 });

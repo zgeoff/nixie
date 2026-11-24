@@ -14,6 +14,9 @@ Each part's doc owns the meaning of its own settings, and the file only carries 
 
 - where the server keeps its data, listens and finds the secrets file, and the lowest level of event
   it logs
+- how long nixie must be down before the conversation's next turn says so, as
+  `server.outage_notice_minutes`, which has a default: a shorter stop, such as a deploy, adds no
+  line to the [events block](../core/conversation-turns.md#the-events-block)
 - the user's name and pronouns, and the names the user calls the agent by
 - the hashes of the API's [read-only tokens](../channels/api.md#read-only-tokens)
 - the [model profiles and the role map](../core/model-profiles.md#the-role-map), with each profile's

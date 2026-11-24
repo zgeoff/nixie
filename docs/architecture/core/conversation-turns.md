@@ -505,12 +505,13 @@ step commit instead of writing it as a live reply.
 
 The conversation hears of what happened outside it through the events block, which goes before the
 user's message on the next turn. The block lists memory that changed outside the conversation, the
-user's answers to memory proposals, nixie's restarts, the conversation's own turns that failed and
-were retried, and the warning that compaction is near, each after its time, oldest first, up to a
-cap and then a count of the rest. One exception: a kind whose notice no later note gives again, such
-as the compaction warning, lists every event outside the cap. A turn after which nothing happened
-gets no block. The block reads a range of the log, from the sequence the last turn's note covered to
-the log's head, so the next turn's note starts where this one ends and no event appears twice.
+user's answers to memory proposals, nixie's outages and restarts, the conversation's own turns that
+failed and were retried, and the warning that compaction is near, each after its time, oldest first,
+up to a cap and then a count of the rest. One exception: a kind whose notice no later note gives
+again, such as the compaction warning, lists every event outside the cap. A turn after which nothing
+happened gets no block. The block reads a range of the log, from the sequence the last turn's note
+covered to the log's head, so the next turn's note starts where this one ends and no event appears
+twice.
 
 Each kind of event is one entry in a registry: its name, how it reads its events in a range of the
 log, and how one event's line renders. The block merges every entry's events by sequence, so a new
@@ -547,6 +548,14 @@ reads.
   after any proposed text, so the conversation learns what to stop proposing. The block reads the
   reason from the rejection record's own erasable fields, and a record whose key is gone gives no
   reason.
+- **An outage** reads each `server.started` record whose gap before the process started passed the
+  `server.outage_notice_minutes` setting, so a normal restart or deploy adds no line. The line reads
+  "nixie was down from {time} to {time}.", and lists before the restart line of the same start and
+  before every event that queued during the outage. The server records the gap when it starts: the
+  down time is the time of the last log record from before the process started, which survives a
+  crash, and the up time is the process's start. Each start is read once, because the block's range
+  begins where the last turn's note ended, so a later turn never repeats the line. Telling the owner
+  about the outage is not part of this entry.
 - **A restart** reads the record the server writes at each start, with nixie's version and the
   version of the start before it. When the conversation's tools or persona changed since the start
   before, a second line names each tool added or removed and says when the persona was updated,

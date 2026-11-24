@@ -31,6 +31,7 @@ test('it writes a configuration that loads, with the scripted model as the conve
     port: 0,
     secretsFile: join(ctx.directory, 'secrets.yaml'),
     logLevel: 'info',
+    outageNoticeMinutes: 10,
   });
 
   expect(config.models.profiles['scripted']?.baseURL).toBe('http://127.0.0.1:4010');

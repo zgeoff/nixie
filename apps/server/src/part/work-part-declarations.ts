@@ -58,10 +58,18 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
     name: 'start_record',
     needs: ['server_parts', 'definitions_seed'],
     start: makeRetriedStart('start_record', async (parts) => {
-      await writeStartRecord(parts.context, {
-        tools: parts.tools.definitions.map((definition) => definition.name),
-        personaVersion: parts.inForce.read()?.personaVersion ?? null,
-      });
+      await writeStartRecord(
+        parts.context,
+        {
+          tools: parts.tools.definitions.map((definition) => definition.name),
+          personaVersion: parts.inForce.read()?.personaVersion ?? null,
+        },
+        undefined,
+        {
+          processStartedAtMs: Math.round(parts.context.clock.now() - process.uptime() * 1000),
+          thresholdMs: parts.config.server.outageNoticeMinutes * 60_000,
+        },
+      );
 
       await warnWithoutOwnerRules(parts);
     }),
