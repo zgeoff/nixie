@@ -18,7 +18,7 @@ is deleted.
 | Web             | [the hop gate](hop-gate.md)                                                                       |
 | Approvals       | [the approval record](../../architecture/policy/approvals.md)                                     |
 | Model harnesses | [the turn-input log](turn-input-log.md)                                                           |
-| Policy          | [the decision point cutover](decision-point-cutover.md)                                           |
+| Policy          | [the decision point cutover](decision-point-cutover.md), [CEL conditions on rules](cel-rules.md)  |
 | Mail            | [mail and wake rules](mail/README.md)                                                             |
 | Connections     | [Google connections](google-connections.md), [the connection store](google-connection-store.md)   |
 | Google tools    | [Gmail](gmail-calendar-drive-tools.md), [Calendar and Drive](google-calendar-drive-tools.md)      |
