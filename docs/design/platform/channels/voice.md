@@ -179,8 +179,8 @@ call.turn_timed  callID, handOffID, firstAudioMs, handOffWaitMs, cutOffByLayer, 
 - Before each hand-off, the calls module writes the speech layer's small talk since the last
   hand-off as `call.spoke` records, so the turn reads the call so far.
 - nixie's answer is the turn's reply record, which carries its model and profile as every reply
-  record does. `call.spoke` carries the speech layer's model, so every line of a call names who
-  spoke it.
+  record does. `call.spoke` carries the speech layer's model, so you can tell who spoke each line of
+  a call.
 - When you talk over a reply, `call.heard_cut` marks how much of it you heard, counted in characters
   of the reply text the calls module sent the speech layer. A reader that feeds the model shows the
   reply up to that point and marks the rest unheard. A cut that arrives after the turn committed
@@ -289,8 +289,8 @@ budgets/call-day.yaml, budgets/call-month.yaml   counts: tool:call, limit in dol
 - The turn-input log can cover the `call` role. The speech layer's own traffic never passes the
   model gateway and stays outside the log.
 - `call.turn_timed` holds timings and flags only, never audio or text.
-- `models.roles` is a strict object, so a release without the `call` role refuses a config that sets
-  it. The build issue that adds the role says a rollback removes the key first.
+- `models.roles` is a strict object, so an older release without the `call` role refuses a config
+  that sets it. Remove the key before a rollback.
 
 ## Decisions
 
@@ -304,7 +304,8 @@ budgets/call-day.yaml, budgets/call-month.yaml   counts: tool:call, limit in dol
 - **The call model is its own role, `call`.** It defaults to the conversation's profile.
 - **The speech layer keeps its own turn-taking and echo handling.** The device's browser cancels
   echo. Tuning on real calls follows the build.
-- **Ringing goes through the decision point.** A ring interrupts you, so a rule can hold it.
+- **Ringing goes through the decision point.** A ring interrupts you, and a rule at the decision
+  point can hold it.
 
 ## Builder decides
 
