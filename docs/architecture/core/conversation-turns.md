@@ -550,12 +550,15 @@ reads.
   reason.
 - **An outage** reads each `server.started` record whose gap before the process started passed the
   `server.outage_notice_minutes` setting, so a normal restart or deploy adds no line. The line reads
-  "nixie was down from {time} to {time}.", and lists before the restart line of the same start and
-  before every event that queued during the outage. The server records the gap when it starts: the
-  down time is the time of the last log record from before the process started, which survives a
-  crash, and the up time is the process's start. Each start is read once, because the block's range
-  begins where the last turn's note ended, so a later turn never repeats the line. Telling the owner
-  about the outage is not part of this entry.
+  "nixie was down from {time} to {time}." The server writes a heartbeat file with the time every 30
+  seconds, which survives a crash. At the next start it reads the file for the down time and takes
+  the process's start for the up time, and a data directory with no heartbeat gives no outage. The
+  event sits at the log position of the last record from before the down time, so the line lists
+  before every event that queued during the outage, and it is uncapped, so ten earlier events never
+  hide it. The kind is session-bound: a rebuilt or compacted session's replay of recent turns leaves
+  it out. Each start is read once, because the block's range begins where the last turn's note
+  ended, so a later turn never repeats the line. Telling the user about the outage is not part of
+  this entry.
 - **A restart** reads the record the server writes at each start, with nixie's version and the
   version of the start before it. When the conversation's tools or persona changed since the start
   before, a second line names each tool added or removed and says when the persona was updated,

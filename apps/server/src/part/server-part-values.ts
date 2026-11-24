@@ -46,6 +46,7 @@ export interface ServerPartValues {
   readonly record_forgets: void;
   readonly definitions_seed: SeedResult;
   readonly start_record: void;
+  readonly heartbeat: void;
   readonly takeover_restart: void;
   readonly conversation_task: void;
   readonly reminder_moves: void;

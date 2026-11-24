@@ -3,12 +3,14 @@ import { readRecords } from '@heynixie/log';
 import type { EventKind } from '@heynixie/sessions';
 import { formatEventTime } from '@heynixie/sessions';
 import { z } from 'zod';
-import type { StartOutage } from '../utils/write-start-record';
+import type { StartOutage } from '../types';
 
 const readLimit = 1000;
 
 const startPayload = z.object({
-  outage: z.object({ downAtMs: z.number(), upAtMs: z.number() }).optional(),
+  outage: z
+    .object({ downAtMs: z.number(), upAtMs: z.number(), downSequence: z.number() })
+    .optional(),
 });
 
 export function buildOutageKind(
@@ -16,6 +18,8 @@ export function buildOutageKind(
 ): EventKind<StartOutage> {
   return {
     name: 'outage',
+    isUncapped: true,
+    isSessionBound: true,
     read: async (range) => {
       const records = await readRecords(log, {
         afterSequence: range.after,
@@ -31,7 +35,7 @@ export function buildOutageKind(
         return payload.success && payload.data.outage !== undefined
           ? [
               {
-                sequence: record.sequence,
+                sequence: payload.data.outage.downSequence,
                 at: payload.data.outage.upAtMs,
                 detail: payload.data.outage,
               },
