@@ -34,7 +34,7 @@ test.each([
   },
 ])('#collectFinishOrder puts every child before its parent for $title', (row) => {
   const reached = new Map<string, ReadonlySet<string>>(
-    Object.entries(row.reached).map(([id, ids]) => [id, new Set(ids)]),
+    Object.entries<readonly string[]>(row.reached).map(([id, ids]) => [id, new Set(ids)]),
   );
 
   expect(collectFinishOrder(row.erasureIDs, reached)).toStrictEqual(row.order);
