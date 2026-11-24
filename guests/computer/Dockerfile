@@ -10,7 +10,7 @@
 # `screen` account, Chromium as `chrome`, and the terminal and every command as `terminal`. The ids
 # below must match desktop-layout.ts, and a test checks that they do.
 
-FROM oven/bun:1.4.4 AS build
+FROM oven/bun:1.4.4@sha256:1d22548f177f4ff38e0c15baa3c2c46c6c2060ba2d1bc573bb4720b407548f1d AS build
 WORKDIR /src
 COPY . .
 RUN bun install --frozen-lockfile --ignore-scripts \
@@ -18,7 +18,7 @@ RUN bun install --frozen-lockfile --ignore-scripts \
   && bun build guests/computer/src/shell/bridge-main.ts --target bun --outfile /out/bridge.js \
   && cp -rL guests/computer/node_modules/playwright-core /out/playwright-core
 
-FROM oven/bun:1.4.4
+FROM oven/bun:1.4.4@sha256:1d22548f177f4ff38e0c15baa3c2c46c6c2060ba2d1bc573bb4720b407548f1d
 ENV PLAYWRIGHT_BROWSERS_PATH=/opt/browsers
 RUN apt-get update \
   && apt-get install -y --no-install-recommends git curl ca-certificates python3 jq unzip iproute2 util-linux procps xvfb openbox xterm x11vnc xdotool x11-utils scrot \

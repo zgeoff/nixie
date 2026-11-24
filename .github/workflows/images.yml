@@ -187,6 +187,47 @@ jobs:
           NIXIE: ${{ env.REGISTRY }}/nixie@${{ steps.nixie.outputs.digest }}
         run: docker run --rm --network none --read-only "$NIXIE" check-encoder
 
+      # each image stays within its budget in scripts/images/image-size-budgets.ts
+      - name: Check the conversation image size
+        env:
+          IMAGE: ${{ env.REGISTRY }}/nixie-conversation@${{ steps.conversation.outputs.digest }}
+        run: bun run --silent ci:images:check-image-size conversation
+
+      - name: Check the fetch image size
+        env:
+          IMAGE: ${{ env.REGISTRY }}/nixie-fetch@${{ steps.fetch.outputs.digest }}
+        run: bun run --silent ci:images:check-image-size fetch
+
+      - name: Check the code image size
+        env:
+          IMAGE: ${{ env.REGISTRY }}/nixie-code@${{ steps.code.outputs.digest }}
+        run: bun run --silent ci:images:check-image-size code
+
+      - name: Check the computer image size
+        env:
+          IMAGE: ${{ env.REGISTRY }}/nixie-computer@${{ steps.computer.outputs.digest }}
+        run: bun run --silent ci:images:check-image-size computer
+
+      - name: Check the codex image size
+        env:
+          IMAGE: ${{ env.REGISTRY }}/nixie-codex@${{ steps.codex.outputs.digest }}
+        run: bun run --silent ci:images:check-image-size codex
+
+      - name: Check the backup image size
+        env:
+          IMAGE: ${{ env.REGISTRY }}/nixie-backup@${{ steps.backup.outputs.digest }}
+        run: bun run --silent ci:images:check-image-size backup
+
+      - name: Check the web image size
+        env:
+          IMAGE: ${{ env.REGISTRY }}/nixie-web@${{ steps.web.outputs.digest }}
+        run: bun run --silent ci:images:check-image-size web
+
+      - name: Check the nixie image size
+        env:
+          IMAGE: ${{ env.REGISTRY }}/nixie@${{ steps.nixie.outputs.digest }}
+        run: bun run --silent ci:images:check-image-size nixie
+
       - name: Pull each sandbox image with no credentials
         run: bun run --silent ci:images:check-public-pulls
 
