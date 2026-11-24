@@ -126,3 +126,55 @@ test('it shows a plain address with its scheme and a window of another kind with
     'Sites: http://shop.example\nNow: another window\n',
   );
 });
+
+test('it lists every open tab with its tab ID and site, in the order given', () => {
+  const ctx = setupTest();
+
+  const record = ctx.buildEnded(
+    { by: 'user', durationSeconds: 120 },
+    {
+      origins: ['https://itch.io'],
+      tabs: [
+        { tab: 't1', origin: 'https://itch.io' },
+        { tab: 't4', origin: 'http://shop.example' },
+        { tab: 't5', origin: null },
+      ],
+      now: { kind: 'other' },
+    },
+  );
+
+  expect(renderTakeoverEnded(record, ctx.times, 'Sam', ctx.mint)).toInclude(
+    'Sites: itch.io\nTabs: t1 itch.io, t4 http://shop.example, t5 a blank page\n',
+  );
+});
+
+test('it gives the title of the window in focus inside the page markers in place of another window', () => {
+  const ctx = setupTest();
+
+  const record = ctx.buildEnded(
+    { by: 'user', durationSeconds: 120 },
+    { origins: [], now: { kind: 'other', title: 'Save File' } },
+  );
+
+  expect(renderTakeoverEnded(record, ctx.times, 'Sam', ctx.mint)).toInclude(
+    'Now: window titled\n<tool-result source="untrusted" fence="fence-1">\n"Save File"\n</tool-result fence="fence-1">\n',
+  );
+});
+
+test('it says that the browser restarted during the hold', () => {
+  const ctx = setupTest();
+
+  const record = ctx.buildEnded(
+    { by: 'user', durationSeconds: 120 },
+    {
+      origins: [],
+      isRestarted: true,
+      tabs: [{ tab: 't7', origin: 'https://itch.io' }],
+      now: null,
+    },
+  );
+
+  expect(renderTakeoverEnded(record, ctx.times, 'Sam', ctx.mint)).toInclude(
+    'The browser was closed and restarted during the take-over, so its earlier tabs are gone.\nTabs: t7 itch.io\n',
+  );
+});

@@ -210,6 +210,10 @@ async function setupTest() {
       await driven.state?.tabs.get(tab)?.page.close();
     },
 
+    closeBrowserBehindTheTools: async (): Promise<void> => {
+      await driven.state?.context.close();
+    },
+
     scanned,
     resolved,
     send,
@@ -528,6 +532,53 @@ test.skipIf(!hasChromium)(
       origins: ['http://pages.test', 'http://other.test'],
       now: { kind: 'browser', tab: 't2', text: expect.stringContaining('the terms') },
     });
+  },
+);
+
+test.skipIf(!hasChromium)(
+  'it lists every open tab at a hand-back, with the tab a person opened in the hold',
+  async () => {
+    const ctx = await setupTest();
+
+    await ctx.send(ctx.open(`${ctx.url}opener`));
+    await ctx.send({ op: 'takeoverBegin' });
+    await ctx.send({ op: 'read', tab: 't1', mode: 'snapshot' });
+
+    await ctx.send({
+      op: 'act',
+      tab: 't1',
+      expectURL: `${ctx.url}opener`,
+      acts: [{ kind: 'click', element: 'E1' }],
+      submit: false,
+    });
+
+    await ctx.waitUntilTitle('Terms', 't2');
+
+    const ended = await ctx.send({ op: 'takeoverEnd' });
+
+    expect(ended).toMatchObject({
+      kind: 'takeover-ended',
+      isRestarted: false,
+      tabs: [
+        { tab: 't1', origin: 'http://pages.test' },
+        { tab: 't2', origin: 'http://other.test' },
+      ],
+    });
+  },
+);
+
+test.skipIf(!hasChromium)(
+  'it says at a hand-back that the browser restarted during the hold',
+  async () => {
+    const ctx = await setupTest();
+
+    await ctx.send(ctx.open(`${ctx.url}opener`));
+    await ctx.send({ op: 'takeoverBegin' });
+    await ctx.closeBrowserBehindTheTools();
+
+    const ended = await ctx.send({ op: 'takeoverEnd' });
+
+    expect(ended).toMatchObject({ kind: 'takeover-ended', isRestarted: true, tabs: [] });
   },
 );
 

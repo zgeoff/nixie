@@ -29,6 +29,9 @@ export type Chord = readonly string[];
 // image, and a stand-in over the headless browser implements it in the test build.
 export interface DesktopDriver {
   readonly readWindows: () => Promise<DesktopWindows>;
+
+  // the title of a window, empty when it has none or has closed
+  readonly readTitle: (id: string) => Promise<string>;
   readonly capture: () => Promise<Uint8Array>;
   readonly click: (x: number, y: number, button: 'left' | 'right') => Promise<void>;
 

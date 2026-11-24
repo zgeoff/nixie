@@ -109,17 +109,27 @@ const screenTargetReplySchema = z.strictObject({
 const takeoverBegunReplySchema = z.strictObject({ kind: z.literal('takeover-begun'), ok: isOk });
 
 // The sites are scheme and host alone, in the order the browser showed them. The window's text is
-// what computer.browser_read returns for a tab, or the terminal's visible lines.
+// what computer.browser_read returns for a tab, or the terminal's visible lines. Another window
+// gives its title, empty when no window has focus.
 const takeoverNowSchema = z.discriminatedUnion('kind', [
   z.strictObject({ kind: z.literal('browser'), tab: textSchema, text: textSchema }),
   z.strictObject({ kind: z.literal('terminal'), text: textSchema }),
-  z.strictObject({ kind: z.literal('other') }),
+  z.strictObject({ kind: z.literal('other'), title: textSchema }),
 ]);
+
+// An open tab by the guest's own ID, with its site, which is null for a page that is no web page
+const takeoverTabSchema = z.strictObject({ tab: textSchema, origin: textSchema.nullable() });
 
 const takeoverEndedReplySchema = z.strictObject({
   kind: z.literal('takeover-ended'),
   ok: isOk,
   origins: z.array(textSchema),
+
+  // every tab open at the end, the ones a person opened in the hold included
+  tabs: z.array(takeoverTabSchema),
+
+  // true when the browser was closed and started again since the hold began
+  isRestarted: z.boolean(),
   now: takeoverNowSchema,
 });
 
@@ -179,5 +189,7 @@ export type ComputerReply = z.infer<typeof computerReplySchema>;
 export type ComputerFailureReason = (typeof computerFailureReasons)[number];
 
 export type TakeoverNow = z.infer<typeof takeoverNowSchema>;
+
+export type TakeoverTab = z.infer<typeof takeoverTabSchema>;
 
 export type ComputerFocus = z.infer<typeof focusSchema>;

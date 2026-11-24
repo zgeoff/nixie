@@ -4,9 +4,18 @@ import type { WatchConnection } from '../watch/types';
 // What ended a hold. A hold the assistant ends, which a later change builds, is `assistant`.
 export type TakeoverEnd = 'user' | 'assistant' | 'idle' | 'restart';
 
-// What the guest saw during a hold: the sites the browser showed, and the window in focus at its end
+// An open tab at a hand-back, by the ID the assistant names it with, and its site
+export interface HandBackTab {
+  readonly tab: string;
+  readonly origin: string | null;
+}
+
+// What the guest saw during a hold: the sites the browser showed, every tab open at its end, whether
+// the browser restarted, and the window in focus at its end
 export interface HandBackRead {
   readonly origins: readonly string[];
+  readonly tabs: readonly HandBackTab[];
+  readonly isRestarted: boolean;
   readonly now: TakeoverNow;
 }
 
