@@ -6,7 +6,6 @@ import type { DeferSettings } from './build-defer-times';
 import { collectProposalIDBatches } from './collect-proposal-id-batches';
 import type { SeenApproval } from './merge-seen-approvals';
 import { applyApprovalReads, mergeSeenApprovals } from './merge-seen-approvals';
-import { pickReadRefetchInterval } from './pick-read-refetch-interval';
 
 export interface ApprovalDigestState {
   readonly status: 'pending' | 'failed' | 'ready';
@@ -16,17 +15,14 @@ export interface ApprovalDigestState {
   readonly refresh: () => void;
 }
 
-const refreshIntervalMs = 15_000;
-
 // Everything that waits for an answer. The list reads again on focus, when the page shows again and
-// every 15 seconds. A row that leaves the list stays, read again for its outcome and the device
+// when the live stream's `approvals` topic changes. A row that leaves the list stays, read again for its outcome and the device
 // that answered it, so its line collapses to that state.
 export function useApprovalDigest(): ApprovalDigestState {
   const nixie = useNixieClient();
 
   const listed = useQuery({
     ...nixie.queryUtils.approvals.listItems.queryOptions(),
-    refetchInterval: refreshIntervalMs,
     refetchOnWindowFocus: false,
   });
 
@@ -57,10 +53,7 @@ export function useApprovalDigest(): ApprovalDigestState {
       },
     }),
     queries: collectProposalIDBatches(departedIDs).map((proposalIDs) =>
-      nixie.queryUtils.approvals.readProposals.queryOptions({
-        input: { proposalIDs },
-        refetchInterval: (query) => pickReadRefetchInterval(query.state.data, refreshIntervalMs),
-      }),
+      nixie.queryUtils.approvals.readProposals.queryOptions({ input: { proposalIDs } }),
     ),
   });
 

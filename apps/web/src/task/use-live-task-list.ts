@@ -1,12 +1,11 @@
 import type { ContractOutputs } from '@heynixie/contract';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { routeDataStaleTimeMs } from '../conversation/read-route-session';
-import { subscribeToLiveRecords } from '../conversation/subscribe-to-live-records';
+import { useLiveUnavailable } from '../live/use-live-unavailable';
 import type { StartTimer } from '../utils/start-platform-timer';
 import { startPlatformTimer } from '../utils/start-platform-timer';
 import { useNixieClient } from '../utils/use-nixie-client';
-import { isTaskListRecord } from './is-task-list-record';
 import type { ListedState } from './listed-state';
 
 export type ListedTask = ContractOutputs['tasks']['list']['tasks'][number];
@@ -20,6 +19,7 @@ export interface LiveTaskList {
 }
 
 export interface LiveTaskListOptions {
+  // starts the timer for the read at the list's `changesAt`
   readonly startTimer?: StartTimer;
 
   // lists only the tasks of this definition
@@ -29,12 +29,15 @@ export interface LiveTaskListOptions {
   readonly state?: ListedState;
 }
 
-// The dashboard reads the list again on this period while the page is visible, because a task
-// that wakes on a schedule changes with no record of its own.
-export const taskListRefetchMs = 60_000;
+// A timer holds a delay of 2^31 ms at most, and the read at a later time starts a new timer.
+const longestDelayMs = 2_147_483_647;
 
+// The list follows the live stream's `tasks` topic, and reads again at the time its own answer
+// names, because a task that wakes on a schedule changes with no write.
 export function useLiveTaskList(options: LiveTaskListOptions = {}): LiveTaskList {
   const nixie = useNixieClient();
+  const unavailable = useLiveUnavailable();
+  const startTimer = options.startTimer ?? startPlatformTimer;
 
   const listed = useQuery({
     ...nixie.queryUtils.tasks.list.queryOptions({
@@ -43,56 +46,24 @@ export function useLiveTaskList(options: LiveTaskListOptions = {}): LiveTaskList
         ...(options.state === undefined ? {} : { states: [options.state] }),
       },
     }),
-    refetchInterval: taskListRefetchMs,
     refetchOnWindowFocus: 'always',
     staleTime: routeDataStaleTimeMs,
   });
 
-  const [unavailable, setUnavailable] = useState(false);
-  const startTimer = options.startTimer ?? startPlatformTimer;
-  const afterSequence = listed.data?.readAtSequence;
   const refetch = listed.refetch;
-  const client = nixie.client;
-  const queryClient = useQueryClient();
-  const queryUtils = nixie.queryUtils;
+  const changesAtMs = listed.data?.changesAt?.getTime();
 
-  // Each read of the list restarts the stream at the sequence that read saw, so a change between
-  // two reads reaches the list once.
   useEffect(() => {
-    const following = new AbortController();
-
-    if (afterSequence !== undefined) {
-      void subscribeToLiveRecords({
-        afterSequence,
-        client,
-        onAvailability: (isAvailable) => {
-          setUnavailable(!isAvailable);
-        },
-        onRecord: (record) => {
-          if (isTaskListRecord(record.kind)) {
-            void queryClient.invalidateQueries(
-              { queryKey: queryUtils.tasks.key() },
-              { cancelRefetch: false },
-            );
-          }
-
-          // A new task can be a definition's task, which the definition filter then offers.
-          if (record.kind === 'task.created') {
-            void queryClient.invalidateQueries(
-              { queryKey: queryUtils.definitions.listTasks.key() },
-              { cancelRefetch: false },
-            );
-          }
-        },
-        signal: following.signal,
-        startTimer,
-      });
+    if (changesAtMs === undefined) {
+      return () => {};
     }
 
-    return () => {
-      following.abort();
-    };
-  }, [afterSequence, client, queryClient, queryUtils, startTimer]);
+    const delayMs = Math.min(Math.max(changesAtMs - Date.now(), 0), longestDelayMs);
+
+    return startTimer(() => {
+      void refetch();
+    }, delayMs);
+  }, [changesAtMs, refetch, startTimer]);
 
   return {
     status: pickListStatus(listed.isSuccess, listed.isError),

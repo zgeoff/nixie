@@ -282,9 +282,11 @@ test('it says live updates are unavailable while the live stream keeps failing',
 
   await createDeviceSession();
 
-  server.use(http.post('*/rpc/records/follow', () => HttpResponse.error()));
+  server.use(http.post('*/rpc/live/follow', () => HttpResponse.error()));
 
-  const rendered = render(<Conversation thread="conversation" startTimer={ctx.timer.startTimer} />);
+  const rendered = render(<Conversation thread="conversation" />, {
+    startTimer: ctx.timer.startTimer,
+  });
 
   await ctx.timer.advanceToNext();
   await ctx.timer.advanceToNext();

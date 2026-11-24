@@ -5,6 +5,7 @@ import { IDBFactory } from 'fake-indexeddb';
 import { createRoot } from 'react-dom/client';
 import { browserCookies } from './browser-cookies';
 import { handlers } from './handlers';
+import { mockLive } from './mock-live';
 import { store } from './store';
 import { webOrigin } from './web-origin';
 
@@ -24,6 +25,7 @@ addMockHandlers(...handlers);
 
 afterEach(() => {
   store.reset();
+  mockLive.reset();
   browserCookies.clear();
   globalThis.localStorage.clear();
 

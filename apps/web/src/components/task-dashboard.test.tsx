@@ -1,6 +1,7 @@
 import { expect, mock, test } from 'bun:test';
 import { waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { LiveConnection } from '../live/live-connection';
 import { pauseStore } from '../mocks/pause-store';
 import { store } from '../mocks/store';
 import { buildStubTimer } from '../test-utils/build-stub-timer';
@@ -233,7 +234,10 @@ test('it reads the list again when a task record arrives on the live stream', as
   });
 
   const rendered = render(
-    <TaskDashboard filters={{}} onFiltersChange={() => {}} startTimer={ctx.timer.startTimer} />,
+    <>
+      <LiveConnection />
+      <TaskDashboard filters={{}} onFiltersChange={() => {}} startTimer={ctx.timer.startTimer} />
+    </>,
   );
 
   await rendered.findByRole('listitem', { name: 'Garden plan' });
@@ -265,7 +269,10 @@ test('it reads the list again when a message of yours arrives on the live stream
   });
 
   const rendered = render(
-    <TaskDashboard filters={{}} onFiltersChange={() => {}} startTimer={ctx.timer.startTimer} />,
+    <>
+      <LiveConnection />
+      <TaskDashboard filters={{}} onFiltersChange={() => {}} startTimer={ctx.timer.startTimer} />
+    </>,
   );
 
   const row = await rendered.findByRole('listitem', { name: 'Garden plan' });

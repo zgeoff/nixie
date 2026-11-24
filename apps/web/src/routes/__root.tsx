@@ -9,6 +9,7 @@ import {
 } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { AppShell } from '../components/app-shell';
+import { LiveProvider } from '../live/live-provider';
 import { css } from '../styled-system/css';
 import styles from '../styles.css?url';
 import { buildThemeScript } from '../theme/build-theme-script';
@@ -45,13 +46,15 @@ function RootDocument(): ReactNode {
       </head>
       <body className={css({ fontFamily: 'sans', lineHeight: 'relaxed' })}>
         <NixieClientContext value={{ client: context.client, queryUtils: context.queryUtils }}>
-          {pathname === '/device' ? (
-            <Outlet />
-          ) : (
-            <AppShell>
+          <LiveProvider>
+            {pathname === '/device' ? (
               <Outlet />
-            </AppShell>
-          )}
+            ) : (
+              <AppShell>
+                <Outlet />
+              </AppShell>
+            )}
+          </LiveProvider>
         </NixieClientContext>
         <Scripts />
       </body>

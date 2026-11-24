@@ -1,13 +1,9 @@
 import type { LogRecord } from '@heynixie/contract';
 import { useQueryClient } from '@tanstack/react-query';
-import type { Dispatch, SetStateAction } from 'react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useLiveFeed } from '../live/use-live-feed';
+import { useLiveUnavailable } from '../live/use-live-unavailable';
 import type { ReadonlyDeep } from '../types';
-import type { StartTimer } from '../utils/start-platform-timer';
-import { startPlatformTimer } from '../utils/start-platform-timer';
-import { useNixieClient } from '../utils/use-nixie-client';
-import type { SubscribeOptions } from './subscribe-to-live-records';
-import { subscribeToLiveRecords } from './subscribe-to-live-records';
 
 export type LiveRecord = ReadonlyDeep<LogRecord>;
 
@@ -17,78 +13,58 @@ export interface LiveRecords {
   readonly unavailable: boolean;
 }
 
-export interface LiveRecordsOptions {
-  readonly startTimer?: StartTimer;
-}
-
-export function useLiveRecords(
-  thread: string,
-  afterSequence: number | undefined,
-  options: LiveRecordsOptions = {},
-): LiveRecords {
-  const client = useNixieClient().client;
+// The records of the thread on screen, from the sequence its page read at. A later read of the page
+// keeps the stream, which already holds everything after the first read.
+export function useLiveRecords(thread: string, afterSequence: number | undefined): LiveRecords {
+  const feed = useLiveFeed();
   const queryClient = useQueryClient();
-  const startTimer = options.startTimer ?? startPlatformTimer;
+  const unavailable = useLiveUnavailable();
   const [records, setRecords] = useState<readonly LiveRecord[]>([]);
-  const [unavailable, setUnavailable] = useState(false);
+  const start = useRef({ thread, after: afterSequence });
+  const isRead = afterSequence !== undefined;
+  const reset = useRef({ isPending: false });
 
   useEffect(() => {
-    const following = new AbortController();
-
-    if (afterSequence !== undefined) {
-      void subscribeToLiveRecords({
-        afterSequence,
-        client,
-        ...buildStreamCallbacks({
-          invalidateQueries: () => queryClient.invalidateQueries(),
-          setRecords,
-          setUnavailable,
-        }),
-        signal: following.signal,
-        startTimer,
-        thread,
-      });
+    if (start.current.thread !== thread) {
+      start.current = { thread, after: afterSequence };
     }
 
-    return () => {
-      following.abort();
-    };
-  }, [afterSequence, client, queryClient, startTimer, thread]);
+    start.current.after ??= afterSequence;
+  }, [afterSequence, thread]);
+
+  useEffect(() => {
+    const first = start.current.after;
+
+    if (!isRead || first === undefined) {
+      return () => {};
+    }
+
+    setRecords([]);
+
+    return feed.follow({
+      thread,
+      afterSequence: first,
+      onOpened: () => {
+        // a read after a reset can fail, so the stream's next open reads again
+        if (reset.current.isPending) {
+          reset.current.isPending = false;
+          void queryClient.invalidateQueries();
+        }
+      },
+      onRecord: (record) => {
+        if (record.kind === 'log_reset') {
+          reset.current.isPending = true;
+
+          setRecords([record]);
+          void queryClient.invalidateQueries();
+
+          return;
+        }
+
+        setRecords((current) => [...current, record]);
+      },
+    });
+  }, [feed, isRead, queryClient, thread]);
 
   return { records, unavailable };
-}
-
-interface StreamState {
-  readonly invalidateQueries: () => Promise<void>;
-  readonly setRecords: Dispatch<SetStateAction<readonly LiveRecord[]>>;
-  readonly setUnavailable: (unavailable: boolean) => void;
-}
-
-type StreamCallbacks = Pick<SubscribeOptions, 'onAvailability' | 'onRecord'>;
-
-function buildStreamCallbacks(state: StreamState): StreamCallbacks {
-  const reset = { isPending: false };
-
-  return {
-    onAvailability: (isAvailable) => {
-      state.setUnavailable(!isAvailable);
-
-      if (isAvailable && reset.isPending) {
-        reset.isPending = false;
-        void state.invalidateQueries();
-      }
-    },
-    onRecord: (record) => {
-      if (record.kind === 'log_reset') {
-        reset.isPending = true;
-
-        state.setRecords([record]);
-        void state.invalidateQueries();
-
-        return;
-      }
-
-      state.setRecords((current) => [...current, record]);
-    },
-  };
 }

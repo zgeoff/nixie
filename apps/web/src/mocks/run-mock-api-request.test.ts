@@ -204,15 +204,27 @@ test('it streams the records written after the sequence a client follows from', 
 
   await store.records.create({ message: { text: 'already read' } });
 
-  const events = await client.records.follow({ afterSequence: 1, thread: 'conversation' });
+  const events = await client.live.follow({ afterSequence: 1, thread: 'conversation' });
 
+  await events.next();
   await store.records.create({ kind: 'assistant_message', message: { text: 'new' } });
 
-  const first = await events.next();
+  const kinds: string[] = [];
+  const received: unknown[] = [];
 
-  await events.return();
+  for await (const event of events) {
+    kinds.push(event.kind);
+    received.push(event);
 
-  expect(first.value).toMatchObject({ record: { message: { text: 'new' }, sequence: 2 } });
+    if (event.kind === 'record') {
+      break;
+    }
+  }
+
+  expect(received.at(-1)).toMatchObject({
+    kind: 'record',
+    record: { message: { text: 'new' }, sequence: 2 },
+  });
 });
 
 test('it carries the versions a recall delivered on its record', async () => {

@@ -68,7 +68,7 @@ test('it renders a task page around a record of a kind the page does not know, w
   expect(message).toBeTruthy();
 });
 
-test('it keeps the task that the route read, with no second read when the page mounts', async () => {
+test('it reads the task once for the route and the page, and once more when the live stream opens', async () => {
   const queryUtils = buildQueryUtils(buildBrowserClient());
 
   await createDeviceSession();
@@ -79,12 +79,11 @@ test('it keeps the task that the route read, with no second read when the page m
 
   await rendered.findByText('Seed order', {}, { timeout: 4000 });
 
-  const state = rendered.queryClient.getQueryState(
-    queryUtils.tasks.read.queryKey({ input: { taskID: 'p7hd2wq9zn' } }),
-  );
+  const key = queryUtils.tasks.read.queryKey({ input: { taskID: 'p7hd2wq9zn' } });
 
-  expect({
-    dataUpdateCount: state?.dataUpdateCount,
-    fetchStatus: state?.fetchStatus,
-  }).toStrictEqual({ dataUpdateCount: 1, fetchStatus: 'idle' });
+  await waitFor(() => {
+    expect(rendered.queryClient.getQueryState(key)?.dataUpdateCount).toBe(2);
+  });
+
+  expect(rendered.queryClient.getQueryState(key)?.fetchStatus).toBe('idle');
 });

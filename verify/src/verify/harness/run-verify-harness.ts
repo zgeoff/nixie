@@ -168,12 +168,16 @@ function writeLine(line: Readonly<Record<string, unknown>>): void {
 
 // Each record on the conversation thread, in the order nixie wrote them.
 async function writeRecordLines(client: ContractClient, signal: AbortSignal): Promise<void> {
-  const records = await client.records.follow(
+  const records = await client.live.follow(
     { afterSequence: 0, thread: 'conversation' },
     { signal },
   );
 
   for await (const event of records) {
+    if (event.kind !== 'record') {
+      continue;
+    }
+
     writeLine({
       event: 'record',
       sequence: event.record.sequence,

@@ -64,13 +64,20 @@ test('it says the task did not load, offers no composer, and loads it again on r
 
   await store.tasks.create({ name: 'Garden plan', state: 'waiting', taskID: 'k3vq8m2xpa' });
 
-  server.use(http.post('*/rpc/tasks/read', () => HttpResponse.error(), { once: true }));
+  const read = { isRefused: true };
+
+  // the live stream's first open reads the task again, so the read keeps failing until the click
+  server.use(
+    http.post('*/rpc/tasks/read', () => (read.isRefused ? HttpResponse.error() : undefined)),
+  );
 
   const rendered = render(<TaskPage startTimer={ctx.timer.startTimer} taskID="k3vq8m2xpa" />);
 
   const alert = await rendered.findByRole('alert');
 
   const composer = rendered.queryByRole('textbox');
+
+  read.isRefused = false;
 
   await ctx.user.click(rendered.getByRole('button', { name: 'Load it again' }));
 

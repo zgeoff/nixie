@@ -46,21 +46,23 @@ async function readDeviceStream(options: DeviceSubscription): Promise<StreamOutc
   const state = { isConnected: false };
 
   try {
-    const events = await options.client.devices.follow(
-      { pixels: options.readPixels() },
+    const events = await options.client.live.follow(
+      { device: { pixels: options.readPixels() } },
       { signal: options.signal },
     );
 
     for await (const event of events) {
-      // a stream sends a layout only when the device holds one, so each stream starts with none
-      if (!state.isConnected) {
-        options.onEvent({ kind: 'layout', layout: null });
+      if (event.kind === 'device') {
+        // a stream sends a layout only when the device holds one, so each stream starts with none
+        if (!state.isConnected) {
+          options.onEvent({ kind: 'layout', layout: null });
+        }
+
+        state.isConnected = true;
+
+        options.onConnection('open');
+        options.onEvent(event.event);
       }
-
-      state.isConnected = true;
-
-      options.onConnection('open');
-      options.onEvent(event);
     }
 
     return 'connected';

@@ -1,7 +1,7 @@
 import { mergeRecords } from './merge-records';
 import { useConversationPage } from './use-conversation-page';
 import { useEarlierRecords } from './use-earlier-records';
-import type { LiveRecord, LiveRecordsOptions } from './use-live-records';
+import type { LiveRecord } from './use-live-records';
 import { useLiveRecords } from './use-live-records';
 
 export interface ConversationRecords {
@@ -25,7 +25,7 @@ export interface ConversationRecords {
   readonly isEarlierFailed: boolean;
 }
 
-export interface ConversationRecordsOptions extends LiveRecordsOptions {
+export interface ConversationRecordsOptions {
   readonly messageID?: string;
 
   readonly isEarlierWanted?: boolean;
@@ -36,7 +36,7 @@ export function useConversationRecords(
   options: ConversationRecordsOptions = {},
 ): ConversationRecords {
   const page = useConversationPage(thread);
-  const live = useLiveRecords(thread, page.data?.readAtSequence, options);
+  const live = useLiveRecords(thread, page.data?.readAtSequence);
 
   const earlier = useEarlierRecords({
     isWanted: options.isEarlierWanted,

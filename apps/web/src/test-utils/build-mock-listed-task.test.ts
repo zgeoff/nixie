@@ -8,9 +8,12 @@ test('it builds a waiting task with no actions that the task list output accepts
   const parsed = contract.tasks.list['~orpc'].outputSchema?.['~standard'].validate({
     readAtSequence: 0,
     tasks: [task],
+    changesAt: null,
   });
 
-  expect(parsed).toStrictEqual({ value: { readAtSequence: 0, tasks: [task] } });
+  expect(parsed).toStrictEqual({
+    value: { readAtSequence: 0, tasks: [task], changesAt: null },
+  });
 });
 
 test('it keeps the fields a test gives', () => {
