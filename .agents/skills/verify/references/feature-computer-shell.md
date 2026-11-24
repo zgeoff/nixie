@@ -82,15 +82,13 @@ Before you start:
    call of `ps -e -o args=` and the text in `--text`. nixie holds the command until the user
    approves it.
 
-   Wait for the turn before you check for the held call. `proposals` checks once, with no wait, and
-   fails with `check-failed` when the turn has not held the call yet. `conversation turn` waits up
-   to 10 s for the message and the reply. The reply arrives before the approval: nixie gives the
-   model a tool result of `queued` at once, and holds the call itself as a proposal.
+   `proposals` checks once by default, and fails with `check-failed` when the turn has not held the
+   call yet. `--wait-ms` makes it check again until the call is held, for up to that many
+   milliseconds.
 
    ```bash
    bun verify action use-computer --kind shell-processes --text 'The assistant listed the processes.'
-   bun verify conversation turn --message 'List the processes that your shell shows.' --reply 'The assistant listed the processes.'
-   bun verify proposals --tool computer.run --waiting pending
+   bun verify proposals --tool computer.run --waiting pending --wait-ms 10000
    bun verify action script-reply --text 'Thanks, I have the list.'
    ```
 

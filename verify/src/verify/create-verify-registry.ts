@@ -16,7 +16,6 @@ import { deviceFeatures } from './device-features';
 import { featurePaths, ignoredPaths, sharedPaths } from './feature-paths';
 import { controlRoutes } from './harness/control-routes';
 import { parseEnrolmentCode } from './parse-enrolment-code';
-import { pickProposalRefusal } from './pick-proposal-refusal';
 import { pickTaskRefusal } from './pick-task-refusal';
 import { postControl } from './post-control';
 import { buildServedBlobsArgv, servedSourceFolders } from './preview/build-served-blobs-argv';
@@ -40,6 +39,7 @@ import { runHostCLI } from './run-host-cli';
 import { sessionsSchema } from './sessions-schema';
 import { throwRefusal } from './throw-refusal';
 import { waitForModelInput } from './wait-for-model-input';
+import { waitForProposals } from './wait-for-proposals';
 
 const conversationTurnSchema = z.strictObject({ records: z.array(conversationRecordSchema) });
 const harnessPath = join(import.meta.dir, 'harness', 'run-verify-harness.ts');
@@ -269,18 +269,21 @@ export function createVerifyRegistry(): Wringer {
     .command({
       path: ['proposals'],
       summary:
-        'Check that one call of the tool --tool waits for your answer (--waiting pending), or none does (--waiting none)',
+        'Check that one call of the tool --tool waits for your answer (--waiting pending), or none does (--waiting none), waiting up to --wait-ms (no wait by default)',
       effect: 'read',
-      args: z.strictObject({ tool: z.string().min(1), waiting: z.enum(['pending', 'none']) }),
+      args: z.strictObject({
+        tool: z.string().min(1),
+        waiting: z.enum(['pending', 'none']),
+        waitMs: z.int().positive().optional(),
+      }),
       data: controlRoutes.actionProposals.output,
-      run: async (args, ctx) => {
+      run: (args, ctx) => {
         refuseHarnessless(ctx.target, 'proposals');
 
-        const listed = await postControl(ctx.drivers.http, controlRoutes.actionProposals, {});
-
-        throwRefusal(pickProposalRefusal(listed.proposals, args), listed);
-
-        return listed;
+        return waitForProposals(
+          () => postControl(ctx.drivers.http, controlRoutes.actionProposals, {}),
+          args,
+        );
       },
     })
     .command({
