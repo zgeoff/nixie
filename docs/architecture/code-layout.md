@@ -153,7 +153,7 @@ Each module package covers one area of the architecture, and its doc covers the 
 | Package       | Area                                                                                                                                            |
 | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
 | `log`         | [The event log](core/event-log.md), keys, projections and the [single writer](core/database.md)                                                 |
-| `tasks`       | [Tasks](core/tasks.md), [leases](core/leases-and-recovery.md), the inbox, waits and timers                                                      |
+| `tasks`       | [Tasks](core/tasks.md), [leases](core/leases-and-restart-sweep.md), the inbox, waits and timers                                                 |
 | `actions`     | [The action queue](core/actions.md), attempts, outcomes and retries                                                                             |
 | `models`      | [Model profiles](core/model-profiles.md), roles and cost                                                                                        |
 | `sessions`    | The [conversation's turns](core/conversation-turns.md), [session opening](core/session-opening.md) and each system task's own session           |

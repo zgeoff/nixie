@@ -34,31 +34,31 @@ These sibling designs touch this one:
 
 ## Terms
 
-| Term           | Meaning                                                                                                                                             |
-| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| atc            | a separate program that runs coding sessions on targets, such as a cloud VM, under its own rules; each machine runs one atc daemon                  |
-| atc-gateway    | atc's MCP server for several daemons at once, which routes each tool call to one daemon; nixie calls atc only through it                            |
-| service client | a caller of atc-gateway with a static token and no browser sign-in; nixie is the service client `service:nixie`                                     |
-| principal      | a named caller that a daemon's config lists, with the targets it may use; a service client is the principal `service:<name>`                        |
-| target         | one place that a daemon runs sessions, named by the daemon and the daemon's target ID, such as `cloud` on the daemon `cloud`                        |
-| reach          | the sessions a principal can see: every session on its targets, those nixie never started included                                                  |
-| event trail    | atc's stored list of what each session did, which a caller reads from a cursor                                                                      |
-| coding task    | a task whose runner is a coding runner                                                                                                              |
-| adapter        | a package that reaches one outside system for an interface that nixie owns; the coding runner calls its adapter for every atc call                  |
-| turn           | one reply cycle of the coding agent inside the session, from a user input to the agent's reply                                                      |
-| steer          | a line nixie types into the session's input, which the agent takes as a user turn                                                                   |
-| note           | a message that atc's bridge hands the agent beside its conversation; the agent can answer it, and a note never steers                               |
-| wake set       | the session events that wake nixie's conversation; every other event lands on the coding task only                                                  |
-| bound session  | the session a coding task works with, once the task has recorded its ID                                                                             |
-| started        | a bound session that the task's start created in atc                                                                                                |
-| joined         | a bound session that already ran in atc before the task, such as one you started yourself                                                           |
-| coding source  | the [trigger source](../../../architecture/core/triggers.md) that reads atc's event trail into each coding task's thread                            |
-| report target  | the task that started a coding task, usually the conversation; it receives each forwarded event and the report                                      |
-| variant        | one form of a tool's input, picked by a field such as `runner`, with its own policy rule name, such as `task.start/atc`                             |
-| hop            | the count of task messages in one exchange; past the [hop limit](../../../architecture/core/task-messages.md#the-hop-limit) a message wakes nobody  |
-| claim          | the step of the task runner that takes a task's lease before a step runs ([leases and recovery](../../../architecture/core/leases-and-recovery.md)) |
-| decision point | the code that decides allow, ask or deny for each tool call and each attempt of an action ([actions](../../../architecture/core/actions.md))        |
-| harness        | the model client a profile runs on, such as `agent-sdk` or `codex` ([model profiles](../../../architecture/core/model-profiles.md#harnesses))       |
+| Term           | Meaning                                                                                                                                                           |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| atc            | a separate program that runs coding sessions on targets, such as a cloud VM, under its own rules; each machine runs one atc daemon                                |
+| atc-gateway    | atc's MCP server for several daemons at once, which routes each tool call to one daemon; nixie calls atc only through it                                          |
+| service client | a caller of atc-gateway with a static token and no browser sign-in; nixie is the service client `service:nixie`                                                   |
+| principal      | a named caller that a daemon's config lists, with the targets it may use; a service client is the principal `service:<name>`                                      |
+| target         | one place that a daemon runs sessions, named by the daemon and the daemon's target ID, such as `cloud` on the daemon `cloud`                                      |
+| reach          | the sessions a principal can see: every session on its targets, those nixie never started included                                                                |
+| event trail    | atc's stored list of what each session did, which a caller reads from a cursor                                                                                    |
+| coding task    | a task whose runner is a coding runner                                                                                                                            |
+| adapter        | a package that reaches one outside system for an interface that nixie owns; the coding runner calls its adapter for every atc call                                |
+| turn           | one reply cycle of the coding agent inside the session, from a user input to the agent's reply                                                                    |
+| steer          | a line nixie types into the session's input, which the agent takes as a user turn                                                                                 |
+| note           | a message that atc's bridge hands the agent beside its conversation; the agent can answer it, and a note never steers                                             |
+| wake set       | the session events that wake nixie's conversation; every other event lands on the coding task only                                                                |
+| bound session  | the session a coding task works with, once the task has recorded its ID                                                                                           |
+| started        | a bound session that the task's start created in atc                                                                                                              |
+| joined         | a bound session that already ran in atc before the task, such as one you started yourself                                                                         |
+| coding source  | the [trigger source](../../../architecture/core/triggers.md) that reads atc's event trail into each coding task's thread                                          |
+| report target  | the task that started a coding task, usually the conversation; it receives each forwarded event and the report                                                    |
+| variant        | one form of a tool's input, picked by a field such as `runner`, with its own policy rule name, such as `task.start/atc`                                           |
+| hop            | the count of task messages in one exchange; past the [hop limit](../../../architecture/core/task-messages.md#the-hop-limit) a message wakes nobody                |
+| claim          | the step of the task runner that takes a task's lease before a step runs ([leases and the restart sweep](../../../architecture/core/leases-and-restart-sweep.md)) |
+| decision point | the code that decides allow, ask or deny for each tool call and each attempt of an action ([actions](../../../architecture/core/actions.md))                      |
+| harness        | the model client a profile runs on, such as `agent-sdk` or `codex` ([model profiles](../../../architecture/core/model-profiles.md#harnesses))                     |
 
 These terms hold in [the runner](runner.md), [the tools](tools.md) and [the atc adapter](atc.md)
 too. Look up other terms, such as an inbox, a task run, a projection and an imp, in the

@@ -20,8 +20,8 @@ flowchart LR
 ## The sandbox
 
 The kind `computer` has public egress, no grant and no tool route. A deployment holds one, owned by
-`computer-desktop`, and recovery keeps it. The [sandbox sizes](sandboxes.md#sizes) hold its memory
-and disk. The image `nixie-computer` comes from `guests/computer`.
+`computer-desktop`, and the restart sweep keeps it. The [sandbox sizes](sandboxes.md#sizes) hold its
+memory and disk. The image `nixie-computer` comes from `guests/computer`.
 
 The desktop runs Xvfb as the display, openbox as the window manager, xterm as the terminal and
 x11vnc as a VNC server. The display is 1280 by 800. The VNC server listens on a Unix socket in a
@@ -74,8 +74,8 @@ files.
 ### Moving from the earlier sandboxes
 
 An earlier release kept a browser sandbox, owned by `computer-browser`, and a shell sandbox, owned
-by `computer-shell`. Their kinds, `browser` and `shell`, stay readable in stored records. Recovery
-keeps both sandboxes, whatever their image, until their disks are copied.
+by `computer-shell`. Their kinds, `browser` and `shell`, stay readable in stored records. The
+restart sweep keeps both sandboxes, whatever their image, until their disks are copied.
 
 Before the computer's first call runs, nixie copies the old browser's profile into `profile` and the
 old shell's files into `files`. The copy runs commands in both sandboxes, so it keeps symlinks and

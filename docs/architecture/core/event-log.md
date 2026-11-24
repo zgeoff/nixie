@@ -113,8 +113,9 @@ stages:
    for every call in flight and would otherwise wait for itself. It then stops the parts the start
    sequence started: the claim pools stop claiming and give the work in flight the normal stop
    grace.
-2. It destroys every sandbox in the sandboxes projection through its adapter, by the path recovery
-   uses. A failed destroy stops the reset before it removes anything, and the server exits 1.
+2. It destroys every sandbox in the sandboxes projection through its adapter, by the path the
+   restart sweep uses. A failed destroy stops the reset before it removes anything, and the server
+   exits 1.
 3. It deletes every key from the key store and checkpoints it, so neither the file nor its WAL holds
    a key.
 4. One write transaction, behind the writer epoch check, defers its foreign key checks to the

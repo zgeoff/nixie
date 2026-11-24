@@ -59,7 +59,7 @@ resume, or until the user resumes that task, which then takes its inbox as it st
 
 - `claimLease` refuses a candidate whose task nixie's pause holds, in the transaction that would
   write the lease. The refusal covers every claim: by any runner, for a retry, by the start part
-  `recovery`, and for an action that started an attempt before a backup. A refused claim writes
+  `restart_sweep`, and for an action that started an attempt before a backup. A refused claim writes
   nothing.
 - Each candidate query filters with the predicate of the [task gate](#the-task-gate), so a paused
   task at the head of the order never hides an exempt task's work behind it. Under
@@ -141,14 +141,14 @@ migrations run only at a start. So the next start pauses nixie:
    the rest. `installRestorePause` writes `recovery.started`, then `nixie.paused` with the cause
    `restore`, then a `recovery.notice` on the conversation's thread, in one transaction. It then
    removes the marker.
-3. The start part `recovery` runs, then the runners.
+3. The start part `restart_sweep` runs, then the runners.
 
 The tasks to check, `toCheck` in `recovery.started`, are every task that was running at the backup,
 and every task that owns an action with no outcome, the conversation included. A done, stopped or
 closed task can own one, because a started attempt runs on to its outcome. The install reads each
-task's row before the start part `recovery` moves a running task, so the list shows each task as the
-backup held it. When a `recoveries` row exists for the recovery ID, the install writes nothing, so a
-repeated install never pauses nixie again after the user resumed.
+task's row before the start part `restart_sweep` moves a running task, so the list shows each task
+as the backup held it. When a `recoveries` row exists for the recovery ID, the install writes
+nothing, so a repeated install never pauses nixie again after the user resumed.
 
 | A kill lands                              | The next start                                                          |
 | ----------------------------------------- | ----------------------------------------------------------------------- |

@@ -9,9 +9,9 @@ user might want to talk to, or that waits for something, is a task, and any othe
 [worker](../../glossary.md) behind one tool call. The tasks module owns tasks, their inbox and their
 timers.
 
-[Leases and recovery](./leases-and-recovery.md) covers how a claim takes a step and what a restart
-does, and the [tasks design](../../design/platform/core/tasks.md) covers the states and waits that
-are not built. The [glossary](../../glossary.md) defines a task run and a lease.
+[Leases and the restart sweep](./leases-and-restart-sweep.md) covers how a claim takes a step and
+what a restart does, and the [tasks design](../../design/platform/core/tasks.md) covers the states
+and waits that are not built. The [glossary](../../glossary.md) defines a task run and a lease.
 
 ## States
 
@@ -44,7 +44,8 @@ A task's row in the tasks [projection](../../glossary.md) holds its state, and e
 is a record on the task's thread, so a rebuild of the projection gives the live rows. Every state
 but closed can move to closed, which the diagram leaves out, as
 [pause, stop and close](#pause-stop-and-close) describes. A running task whose runner died stays
-running until a claim or recovery takes it back ([leases and recovery](./leases-and-recovery.md)).
+running until a claim or the restart sweep takes it back
+([leases and the restart sweep](./leases-and-restart-sweep.md)).
 
 ## The inbox
 
@@ -141,11 +142,11 @@ While a step runs, its runner watches the task's thread for controls, so a stop 
 reaches the step at once.
 
 - **Pause** of a ready or waiting task pauses it at once. A pause of a running task records a pause
-  request, and the step runs on: its commit, its error or the recovery of its lease then pauses the
-  task in the same transaction. A paused task keeps the state it left, ready or waiting, and no
-  runner claims it. A step that commits as done finishes the task, because a pause keeps only work
-  that remains. A step error that uses up the task's tries fails the task, and the pause request
-  ends with the step, so only a restart runs the task again.
+  request, and the step runs on: its commit, its error or the restart sweep's reset of its lease
+  then pauses the task in the same transaction. A paused task keeps the state it left, ready or
+  waiting, and no runner claims it. A step that commits as done finishes the task, because a pause
+  keeps only work that remains. A step error that uses up the task's tries fails the task, and the
+  pause request ends with the step, so only a restart runs the task again.
 - **Resume** of a paused task returns it to the state it left, or to ready when waking input arrived
   while it was paused. A resume of a running task withdraws its pause request. A resume refuses a
   started task that its [limit](./started-tasks.md#limits) holds. While nixie is paused, a resume
@@ -267,8 +268,8 @@ before the next worker creates its sandbox. A rebuilt session leaves the worker 
 A worker's model calls count in the dollars of the caller's task run, and in no turn. Each call
 lowers the calling turn's budget at once, so a worker can end the turn at its dollar limit. A later
 step of the same task run reads the calls and the gateway excess of a worker that another step
-started as late spend. [Sandboxes](../connectors/sandboxes.md#records-and-recovery) covers how
-recovery removes the sandbox of a worker that a crash cut off.
+started as late spend. [Sandboxes](../connectors/sandboxes.md#records-and-the-restart-sweep) covers
+how the restart sweep removes the sandbox of a worker that a crash cut off.
 
 ## Timers
 

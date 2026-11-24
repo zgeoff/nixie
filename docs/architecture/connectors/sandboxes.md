@@ -31,11 +31,11 @@ route from the kind:
 | computer     | Public    | No               | No           | No         |
 | coding       | Allowlist | Yes              | Yes          | Yes        |
 
-The owner is the ID that crash recovery checks to decide whether the sandbox still has work. For a
-model loop, the owner is the ID that the loop's tool calls run under, such as the conversation's ID
-or a started task's ID. A worker's owner is `worker_run:` and the worker run's ID, which no runner
-keeps, so recovery destroys a worker's sandbox and spares its caller's. For other work, the owner is
-the task step or the tool call that the sandbox belongs to.
+The owner is the ID that the restart sweep checks to decide whether the sandbox still has work. For
+a model loop, the owner is the ID that the loop's tool calls run under, such as the conversation's
+ID or a started task's ID. A worker's owner is `worker_run:` and the worker run's ID, which no
+runner keeps, so the restart sweep destroys a worker's sandbox and spares its caller's. For other
+work, the owner is the task step or the tool call that the sandbox belongs to.
 
 Every grant is an exit for whatever the sandbox holds: a guest that can make an authenticated
 request can carry its data out in it. Every adapter therefore checks a spec before it writes a
@@ -84,19 +84,19 @@ the sandbox once. The comparison is by equality, so a rollback replaces it as an
 conversation's new sandbox copies the session from the one it replaces, then removes it. A task's or
 the checker's new sandbox starts empty.
 
-## Records and recovery
+## Records and the restart sweep
 
 Every create, grant, sleep, wake and destroy writes a sandbox record. The sandboxes
 [projection](../../glossary.md) holds one row per sandbox that is not yet destroyed, with the
 adapter that made it, its owner, its state and its spec.
 
 An adapter records a create before it makes anything. A crash between the record and the sandbox
-then leaves a row that recovery finds, and no sandbox exists without a row. A create that fails
-removes what it made and records the sandbox destroyed. From a row's stored spec, an adapter builds
-the in-process handle that reaches the sandbox, so an adapter in a later process can destroy what
-the last process made. Crash recovery destroys every sandbox whose owner no longer runs, each
-through the adapter that made it, and leaves another adapter's sandboxes alone
-([leases and recovery](../core/leases-and-recovery.md#crash-recovery)). Recovery also destroys the
+then leaves a row that the restart sweep finds, and no sandbox exists without a row. A create that
+fails removes what it made and records the sandbox destroyed. From a row's stored spec, an adapter
+builds the in-process handle that reaches the sandbox, so an adapter in a later process can destroy
+what the last process made. The restart sweep destroys every sandbox whose owner no longer runs,
+each through the adapter that made it, and leaves another adapter's sandboxes alone
+([the restart sweep](../core/leases-and-restart-sweep.md#the-restart-sweep)). It also destroys the
 sandbox of a kept owner when its image is not one the release's manifest holds, except the
 conversation's, which its own setup replaces after it copies the session out. A destroy that fails
 is logged and tried again at the next start. A replace of a kept owner's sandbox, such as after an
@@ -116,7 +116,7 @@ system task's row; each harness record names its rows in `sizeRows`. Its life fo
    its adapter can. A task that waits for days then holds no host memory. A sleep that fails leaves
    the sandbox awake, and the step's result still commits.
 2. The next step of the task wakes the sandbox.
-3. Crash recovery keeps the sandbox while the task is not done or closed, so the task's session
+3. The restart sweep keeps the sandbox while the task is not done or closed, so the task's session
    survives a restart of nixie. This covers a stopped or failed task too, because a restart of the
    task carries on in the same session. A sandbox on an image that the release no longer holds goes
    at the start, and the task's next step creates a new one.
@@ -126,8 +126,8 @@ system task's row; each harness record names its rows in `sizeRows`. Its life fo
 A close of an idle task runs no step, so no step can tell the runner that the task ended. The runner
 looks for done and closed tasks among the sandbox owners once when it starts, and again after each
 record commit. A destroy that fails is logged as `sandbox.remove_failed`, and the close stays
-committed. The task stays for the next look and for the next start's recovery, and the other ended
-tasks' sandboxes go at once.
+committed. The task stays for the next look and for the next start's restart sweep, and the other
+ended tasks' sandboxes go at once.
 
 A sandbox can still go missing, such as when the host loses the imp. The next step of the task then
 creates a new sandbox, and the guest opens a new session from the log.

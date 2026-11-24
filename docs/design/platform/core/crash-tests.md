@@ -98,7 +98,7 @@ each slice.
 | `consume.commit.before`  | An approval consumed and its action queued             |
 | `policy.recheck.after`   | A queued action failed or returned to a proposal       |
 | `defer.commit.after`     | A defer with its new return time and defer generation  |
-| `recovery.step.<n>`      | Each of the 5 recovery steps in [tasks](tasks.md)      |
+| `restart_sweep.step.<n>` | Each of the 5 restart sweep steps in [tasks](tasks.md) |
 | `sigterm.grace`          | A step in flight during the graceful stop              |
 
 ## Slice 1 tests

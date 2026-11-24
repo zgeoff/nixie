@@ -124,7 +124,8 @@ its summary. nixie checks that the fields match the shape and never that they ar
 A task runner is one definition in the server's list of task runners. The tasks module holds the
 list in a registry on its context, and each definition gives the registry its key, the
 [controls](./tasks.md#pause-stop-and-close) it offers, the variant of the start tool that picks it
-(or none), the fixed tasks it owns, and whether recovery keeps the sandboxes of its open tasks.
+(or none), the fixed tasks it owns, and whether the restart sweep keeps the sandboxes of its open
+tasks.
 
 | Key            | Controls | Start variant        | Fixed task   | Keeps sandboxes |
 | -------------- | -------- | -------------------- | ------------ | --------------- |
@@ -158,7 +159,7 @@ beside `runnerOptions` of its own.
 The server gives the steps of every started task to the sandbox runner, the step function in
 `modules/sessions` that runs a started task. The steps claim through a claim pool of their own, so
 the conversation never waits behind them
-([leases and recovery](./leases-and-recovery.md#claim-pools)). Each step runs in a
+([leases and the restart sweep](./leases-and-restart-sweep.md#claim-pools)). Each step runs in a
 [sandbox of the task's own](../connectors/sandboxes.md#a-started-tasks-sandbox), on the profile of
 the task's model, or of the `task` role when the start chose none. The sandbox's one grant is that
 profile's credential, and the turn goes to that profile's base URL, so a profile that points at a
@@ -337,8 +338,8 @@ A commit that finds more queued work, including a turn that an interrupt cut, an
 reply or an event, or a quiet turn on a wakeable task, leaves the task run open. The user's stop
 ends the task run with `stopped` and the close with `closed`, each in the transaction that writes
 the control, and a step error that fails the task ends it with `failed` in the error's transaction.
-Recovery ends no task run: the rerun of a step joins the open one. When the transaction that ends a
-task run throws, the task run stays open and the caller's retry ends it.
+The restart sweep ends no task run: the rerun of a step joins the open one. When the transaction
+that ends a task run throws, the task run stays open and the caller's retry ends it.
 
 A kept started task that reported is wakeable and waits with its sandbox asleep until the user
 closes it. A disposable one closes itself, as [the mark](#the-mark-and-closing) says. A kept or a

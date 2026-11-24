@@ -49,8 +49,8 @@ as it treats any other: nothing checks it against the task's report mode.
 A message write checks the sender's lease in its own transaction, as a step commit does. The tool
 call carries the ID of the step that made it, and the write refuses the call when the task has
 started another step, its lease has moved to another
-[generation](./leases-and-recovery.md#the-claim-path), or the lease has expired. A step that lost
-its task therefore wakes nobody and changes no message wait.
+[generation](./leases-and-restart-sweep.md#the-claim-path), or the lease has expired. A step that
+lost its task therefore wakes nobody and changes no message wait.
 
 ## The hop limit
 

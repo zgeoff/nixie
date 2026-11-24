@@ -54,8 +54,8 @@ holds the design for a piece of work that is not built yet, with its spikes in
   runner, limits and their raise
 - [Task messages](architecture/core/task-messages.md) — messages between tasks, the hop limit and
   message waits
-- [Leases and recovery](architecture/core/leases-and-recovery.md) — the one claim path, lease
-  generations, claim pools, crash recovery and fault points
+- [Leases and the restart sweep](architecture/core/leases-and-restart-sweep.md) — the one claim
+  path, lease generations, claim pools, the restart sweep and fault points
 - [Pausing nixie](architecture/core/pause.md) — the pause and its records, what it stops, the reader
   gate and the pause after a restore
 - [Actions](architecture/core/actions.md) — the action queue, outcomes, attempts, retries and what
@@ -98,8 +98,8 @@ holds the design for a piece of work that is not built yet, with its spikes in
 
 - [Tool calls](architecture/connectors/tool-calls.md) — one endpoint per run, tool definitions, the
   call steps, and the records of each call
-- [Sandboxes](architecture/connectors/sandboxes.md) — kinds of work, records and recovery, the tool
-  route, the imp adapter and the test sandbox
+- [Sandboxes](architecture/connectors/sandboxes.md) — kinds of work, records and the restart sweep,
+  the tool route, the imp adapter and the test sandbox
 - [Memory kills](architecture/connectors/memory-kills.md) — the read of a guest's count of memory
   kills, and the log line for each kill
 - [Web fetch](architecture/connectors/web-fetch.md) — the fetch sandbox, the fetcher's address

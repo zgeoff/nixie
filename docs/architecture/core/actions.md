@@ -8,7 +8,8 @@ step runs ([below](#approved-actions)). The queue exists so that a crash at any 
 make an action happen twice: an action that may have reached its provider is marked unknown, and
 nixie settles it only by a retry under the same key, a check with the provider, or the user's
 answer, never by a blind second attempt. `modules/actions` owns the queue. An action is claimed
-through the same leases as a task step ([leases and recovery](./leases-and-recovery.md)), and
+through the same leases as a task step
+([leases and the restart sweep](./leases-and-restart-sweep.md)), and
 [tool calls](../connectors/tool-calls.md) covers how a call reaches the queue.
 
 ## Outcomes
@@ -161,12 +162,12 @@ An attempt runs in three stages, each committed under the action's lease:
 
 A claim that finds an attempt started with no result recorded marks the action unknown and calls no
 provider, and [reconciliation](#reconciling-an-unknown-outcome) takes it from there. The call may
-have reached the provider before the crash, so a second attempt could repeat it. Recovery does the
-same for every such action before any runner starts. A runner claims no action of a paused or closed
-[task](./tasks.md#pause-stop-and-close) before its first attempt, so a pause holds the task's queued
-actions, and an action with a started attempt runs on to its outcome. A claimed action whose tool
-has no connector (a tool that runs inside the turn has none, and its action is not claimed), or
-whose arguments are gone because their key was forgotten, fails without an attempt.
+have reached the provider before the crash, so a second attempt could repeat it. The restart sweep
+does the same for every such action before any runner starts. A runner claims no action of a paused
+or closed [task](./tasks.md#pause-stop-and-close) before its first attempt, so a pause holds the
+task's queued actions, and an action with a started attempt runs on to its outcome. A claimed action
+whose tool has no connector (a tool that runs inside the turn has none, and its action is not
+claimed), or whose arguments are gone because their key was forgotten, fails without an attempt.
 
 Pausing nixie as a whole bars attempts too. The attempt start checks, in the transaction that would
 record it, whether nixie is paused and the action's task is not on the exemption list. If so, it

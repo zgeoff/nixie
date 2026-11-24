@@ -138,7 +138,7 @@ sets every compaction control in the query's settings rather than leaving it at 
 so an SDK upgrade cannot change it. Auto-compaction, precomputed compaction and idle compaction stay
 off, and the guest's environment turns off the manual compaction command too, because each would
 change the session outside a step, with a summary that the event log never holds. A step's commit
-records the session's last message as the point that [crash recovery](./leases-and-recovery.md)
+records the session's last message as the point that [restart sweep](./leases-and-restart-sweep.md)
 resumes at, so the session changes only inside a step that holds the task's lease.
 
 A turn reports its context against the window nixie compacts within, which comes from the profile's

@@ -24,13 +24,13 @@ endpoint, as [the task of a definition](../core/definitions.md#the-task-of-a-def
 
 Each turn of the conversation is a task step, and a runner works on a step only while it holds the
 step's lease, as [steps](../core/tasks.md#steps) and
-[the claim path](../core/leases-and-recovery.md#the-claim-path) describe. The conversation's guest
-therefore reaches its endpoint with a step token in place of the tool run's token. The endpoint
-issues a step token for each turn and revokes it once the turn ends, and every call that arrives
-with it carries the identity of the turn's step: the step key, which identifies the step in the log,
-and the generation of the step's lease. Each call carries the key of the conversation session the
-turn runs on too, which a tool that keeps something for one session, such as the web fetch tool's
-links, keys its rows by.
+[the claim path](../core/leases-and-restart-sweep.md#the-claim-path) describe. The conversation's
+guest therefore reaches its endpoint with a step token in place of the tool run's token. The
+endpoint issues a step token for each turn and revokes it once the turn ends, and every call that
+arrives with it carries the identity of the turn's step: the step key, which identifies the step in
+the log, and the generation of the step's lease. Each call carries the key of the conversation
+session the turn runs on too, which a tool that keeps something for one session, such as the web
+fetch tool's links, keys its rows by.
 
 A runner that takes over an expired lease runs the same step at the next generation, so the guest of
 the step it replaced keeps a generation that no longer matches the lease the task holds now. The
