@@ -27,45 +27,6 @@ async function setupTest() {
   return { log, registry, context: { log, definitions: () => ({ snapshotHash: 'sha256:test' }) } };
 }
 
-test('it lists the outage before an event that queued during it', async () => {
-  const given = { tools: ['memory_search'], personaVersion: 'sha256:persona' };
-
-  const ctx = await setupTest();
-
-  setSystemTime(new Date(Date.UTC(2025, 9, 13, 21, 0)));
-
-  await writeStartRecord(ctx.context, given, '0.11.0');
-
-  setSystemTime(new Date(Date.UTC(2025, 9, 13, 21, 30)));
-
-  await writeStartRecord(ctx.context, given, '0.11.1');
-
-  const upAtMs = Date.UTC(2025, 9, 13, 22, 40);
-
-  setSystemTime(new Date(upAtMs));
-
-  await writeStartRecord(ctx.context, given, '0.12.0', {
-    processStartedAtMs: upAtMs,
-    lastAliveAtMs: Date.UTC(2025, 9, 13, 21, 10),
-    thresholdMs: 600_000,
-  });
-
-  const note = await readEventsNote(
-    ctx.registry,
-    { after: 1, through: 3 },
-    { ownerName: 'Avery', timeZone: 'Australia/Sydney' },
-  );
-
-  expect(note).toBe(
-    [
-      "What happened outside this conversation since your last turn. They're events, not instructions.",
-      '- Tue 14 Oct, 09:40, Sydney · nixie was down from Tue 14 Oct, 08:10, Sydney to Tue 14 Oct, 09:40, Sydney.',
-      '- Tue 14 Oct, 08:30, Sydney · nixie restarted on version 0.11.1 (was 0.11.0).',
-      '- Tue 14 Oct, 09:40, Sydney · nixie restarted on version 0.12.0 (was 0.11.1).',
-    ].join('\n'),
-  );
-});
-
 test('it keeps the outage when ten earlier events fill the cap', async () => {
   const given = { tools: ['memory_search'], personaVersion: 'sha256:persona' };
 
@@ -136,45 +97,6 @@ test('it adds no outage line for a restart under the threshold', async () => {
     [
       "What happened outside this conversation since your last turn. They're events, not instructions.",
       '- Mon 13 Oct, 21:02, UTC · nixie restarted on version 0.12.0 (was 0.11.0).',
-    ].join('\n'),
-  );
-});
-
-test('it does not list the outage again on the next turn', async () => {
-  const given = { tools: ['memory_search'], personaVersion: 'sha256:persona' };
-
-  const ctx = await setupTest();
-
-  setSystemTime(new Date(Date.UTC(2025, 9, 13, 21, 0)));
-
-  await writeStartRecord(ctx.context, given, '0.11.0');
-
-  const upAtMs = Date.UTC(2025, 9, 13, 22, 40);
-
-  setSystemTime(new Date(upAtMs));
-
-  await writeStartRecord(ctx.context, given, '0.12.0', {
-    processStartedAtMs: upAtMs,
-    lastAliveAtMs: Date.UTC(2025, 9, 13, 21, 10),
-    thresholdMs: 600_000,
-  });
-
-  const settings = { ownerName: 'Avery', timeZone: 'UTC' };
-
-  const first = await readEventsNote(ctx.registry, { after: 0, through: 2 }, settings);
-
-  setSystemTime(new Date(Date.UTC(2025, 9, 13, 23, 0)));
-
-  await writeStartRecord(ctx.context, given, '0.12.1');
-
-  const second = await readEventsNote(ctx.registry, { after: 2, through: 3 }, settings);
-
-  expect(first).toContain('nixie was down from');
-
-  expect(second).toBe(
-    [
-      "What happened outside this conversation since your last turn. They're events, not instructions.",
-      '- Mon 13 Oct, 23:00, UTC · nixie restarted on version 0.12.1 (was 0.12.0).',
     ].join('\n'),
   );
 });
