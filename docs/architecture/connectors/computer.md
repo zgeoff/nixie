@@ -121,9 +121,9 @@ as a result with `refused: { code, message }`, never as an error.
 **Pages.** The guest writes link marks and tags each control in a snapshot as `[E4 textbox "Name"]`.
 The tool stores the page like a fetched page and returns its first part, and `web_fetch` with the
 page ID reads the other parts. The stored page carries a fetch URL that no URL parser accepts, so
-`web_fetch` never serves it from its cache: a tab shows the live page with its cookies. A tab holds
-at most 5 pages (`TAB_LIMIT`). The model's tab IDs (`t1`, `t2` and on) count up for the life of the
-server, so a restart never reuses one.
+`web_fetch` never serves it from its cache: a tab shows the live page with its cookies. The browser
+holds at most 5 tabs (`TAB_LIMIT`). The model's tab IDs (`t1`, `t2` and on) count up for the life of
+the server, so a restart never reuses one.
 
 **Navigating and reloading.** `browser_navigate` takes a `tab` and a `url`, and loads the address in
 that tab, which keeps its name and its place among the 5 tabs. It declares the new address's host as
@@ -156,10 +156,10 @@ A host with both kinds of address connects to its first IPv4 address.
 **Scrolling and pictures.** `browser_scroll` takes `to` as `up`, `down` or a control ID such as
 `E12`. It moves the viewport by most of a screen, or scrolls the control into view, and returns
 `{ tab, isAtEnd }`. For `up`, `isAtEnd` means the top; otherwise it means the bottom. It stores no
-page, so it never counts toward a tab's 5 pages. `browser_screenshot` takes an optional `control`
-and then pictures that control's box, cut to the viewport, without scrolling the page, so a person
-who holds the desktop keeps their view. A picture of a control wholly outside the viewport returns
-`STALE_ELEMENT`, and so does either tool for a control that no longer holds its number.
+page. `browser_screenshot` takes an optional `control` and then pictures that control's box, cut to
+the viewport, without scrolling the page, so a person who holds the desktop keeps their view. A
+picture of a control wholly outside the viewport returns `STALE_ELEMENT`, and so does either tool
+for a control that no longer holds its number.
 
 **Challenges.** `browser_open`, `browser_navigate`, `browser_reload`, `browser_read` and
 `browser_screenshot` each look once at the tab they name for a CAPTCHA or human check, however the
