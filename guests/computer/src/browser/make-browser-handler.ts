@@ -11,6 +11,7 @@ import { downloadTabFile } from './download-tab-file';
 import { launchBrowser } from './launch-browser';
 import { navigateTab, reloadTab } from './navigate-tab';
 import { openTab } from './open-tab';
+import { readIPv4OnlyRefusal } from './read-ipv4-only-refusal';
 import { readTabPage } from './read-tab-page';
 import { scrollTab } from './scroll-tab';
 import { shootTab } from './shoot-tab';
@@ -120,6 +121,17 @@ export function makeBrowserHandler(options: BrowserHandlerOptions): ComputerHand
   return async (request) => {
     if (request.op === 'open' || request.op === 'navigate') {
       ranges.current = request.deniedRanges;
+    }
+
+    if (request.op === 'open' || request.op === 'navigate') {
+      const refusal = await readIPv4OnlyRefusal(request.url, {
+        resolveHost: options.resolveHost,
+        checkAddress,
+      });
+
+      if (refusal !== null) {
+        return refusal;
+      }
     }
 
     const browser = await ensure();

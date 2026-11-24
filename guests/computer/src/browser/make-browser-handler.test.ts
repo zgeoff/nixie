@@ -79,6 +79,8 @@ async function setupTest() {
     },
   });
 
+  const answers: Record<string, string[]> = { 'v6only.test': ['2606:4700::1111'] };
+
   const handle = makeBrowserHandler({
     home,
     deniedRanges: [],
@@ -95,7 +97,7 @@ async function setupTest() {
       scanText: () => Promise.resolve(),
     },
     checkAddress: () => true,
-    resolveHost: () => Promise.resolve(['127.0.0.1']),
+    resolveHost: (host) => Promise.resolve(answers[host] ?? ['127.0.0.1']),
     screen: {
       makeDriver: (state) => {
         driven.state = state;
@@ -754,3 +756,42 @@ test.skipIf(!hasChromium)(
     ]);
   },
 );
+
+test.skipIf(!hasChromium)(
+  'it says nixie reaches IPv4 hosts only for an open of an IPv6-only host',
+  async () => {
+    const ctx = await setupTest();
+    const reply = await ctx.send(ctx.open('http://v6only.test/'));
+
+    expect(reply).toStrictEqual({
+      kind: 'failed',
+      ok: false,
+      reason: 'failed',
+      message: 'v6only.test has no IPv4 address, and nixie reaches IPv4 hosts only',
+    });
+  },
+);
+
+test.skipIf(!hasChromium)('it says the same for a navigation, and keeps the tab', async () => {
+  const ctx = await setupTest();
+
+  await ctx.send(ctx.open(ctx.url));
+
+  const reply = await ctx.send({
+    op: 'navigate',
+    tab: 't1',
+    url: 'http://v6only.test/',
+    limits: ctx.limits,
+    deniedRanges: [],
+  });
+
+  const read = await ctx.send({ op: 'read', tab: 't1', mode: 'text' });
+
+  expect([reply, read]).toMatchObject([
+    {
+      kind: 'failed',
+      message: 'v6only.test has no IPv4 address, and nixie reaches IPv4 hosts only',
+    },
+    { kind: 'page', page: { title: 'Sign up' } },
+  ]);
+});

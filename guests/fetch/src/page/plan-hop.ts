@@ -1,6 +1,6 @@
 import { isIP } from 'node:net';
 import type { AddressCheck } from '@heynixie/egress';
-import { toBareHost } from '@heynixie/egress';
+import { pickConnectAddress, toBareHost } from '@heynixie/egress';
 
 export interface HopOptions {
   readonly checkAddress: AddressCheck;
@@ -21,8 +21,9 @@ export async function planHop(text: string, options: HopOptions): Promise<Planne
 
   const host = toBareHost(url.hostname);
   const addresses = isIP(host) === 0 ? await resolveOrAbort(host, options) : [host];
+  const picked = pickConnectAddress(host, addresses, options.checkAddress);
 
-  return pickCheckedAddress(url, addresses, options.checkAddress);
+  return picked.kind === 'connect' ? { kind: 'connect', url, address: picked.address } : picked;
 }
 
 const webProtocols: ReadonlySet<string> = new Set(['http:', 'https:']);
@@ -61,26 +62,4 @@ async function resolveOrAbort(host: string, options: HopOptions): Promise<readon
   } finally {
     options.signal.removeEventListener('abort', onAbort);
   }
-}
-
-function pickCheckedAddress(
-  url: URL,
-  addresses: readonly string[],
-  checkAddress: AddressCheck,
-): PlannedHop {
-  const host = toBareHost(url.hostname);
-  const refused = addresses.find((address) => !checkAddress(address));
-
-  if (addresses[0] === undefined) {
-    return { kind: 'refused', reason: `${host} resolves to no address` };
-  }
-
-  if (refused !== undefined) {
-    return {
-      kind: 'refused',
-      reason: `${host} resolves to ${refused}, which is not a public address`,
-    };
-  }
-
-  return { kind: 'connect', url, address: addresses[0] };
 }

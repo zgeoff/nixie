@@ -1,6 +1,8 @@
 import type { Server, Socket } from 'node:net';
 import { connect, createServer } from 'node:net';
 import type { AddressCheck } from './make-address-check';
+import type { ConnectAddress } from './pick-connect-address';
+import { pickConnectAddress } from './pick-connect-address';
 import { toBareHost } from './to-bare-host';
 
 export interface CheckingProxyOptions {
@@ -156,15 +158,15 @@ async function serveClient(client: Socket, options: CheckingProxyOptions): Promi
     }
   }
 
-  const address = await readAddress(destination.host, options);
+  const picked = await readAddress(destination.host, options);
 
-  if (address === null) {
-    refuse(client, '403 Forbidden', 'the host is not a public address');
+  if (picked.kind === 'refused') {
+    refuse(client, '403 Forbidden', picked.reason);
 
     return;
   }
 
-  const upstream = connect({ host: address, port: destination.port });
+  const upstream = connect({ host: picked.address, port: destination.port });
 
   upstream.on('error', () => {
     refuse(client, '502 Bad Gateway', 'the connection failed');
@@ -381,17 +383,13 @@ function readBytes(client: Socket, rest: Buffer, length: number): Promise<Buffer
   });
 }
 
-async function readAddress(host: string, options: CheckingProxyOptions): Promise<string | null> {
+async function readAddress(host: string, options: CheckingProxyOptions): Promise<ConnectAddress> {
   try {
     const addresses = await options.resolveHost(host);
 
-    const [first] = addresses;
-
-    return first !== undefined && addresses.every((address) => options.checkAddress(address))
-      ? first
-      : null;
+    return pickConnectAddress(host, addresses, options.checkAddress);
   } catch {
-    return null;
+    return { kind: 'refused', reason: `${host} did not resolve` };
   }
 }
 
