@@ -60,10 +60,11 @@ Defer authorizes nothing, so it needs no passkey, and policy runs again on the l
 ## During a voice call
 
 During a voice call, a proposal's card appears in the call screen of the device that carries the
-call. The turn announces it with a fixed template line, such as "It's on your screen", so the model
-never describes the card. A spoken "yes" gets the fixed reply "Tap the card to approve" and approves
-nothing. A card that needs the passkey shows the passkey prompt over the call screen. No push goes
-to your other devices during the call, and a card you leave stays on the approval digest.
+call. nixie tells you about the card in its own words and never asks for a spoken yes: the card is
+what you approve, and a spoken "yes" approves nothing. The card never holds the call, as a card
+never holds a text conversation. A card that needs the passkey shows the passkey prompt over the
+call screen. No push goes to your other devices during the call, and a card you leave stays on the
+approval digest.
 
 ## How the server checks an answer
 
