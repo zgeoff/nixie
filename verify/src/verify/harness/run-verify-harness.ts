@@ -63,6 +63,9 @@ export async function runVerifyHarness(): Promise<void> {
       '/': new Response('<h1>Hello from the page</h1><p>Plain page for the browser.</p>', {
         headers: { 'content-type': 'text/html' },
       }),
+      '/next': new Response('<h1>The next page</h1><p>Second page for the browser.</p>', {
+        headers: { 'content-type': 'text/html' },
+      }),
     },
   });
 
