@@ -1440,7 +1440,7 @@ test('it delivers a message once when the turn that answers it forgets a note', 
         'task.step_errored',
         'model.session_invalidated',
         'model.session_cleanup_completed',
-        'notebook.note_forgotten',
+        'erasure.finished',
       ].includes(kind),
     );
 
@@ -1450,7 +1450,7 @@ test('it delivers a message once when the turn that answers it forgets a note', 
       'task.step_committed',
       'model.session_invalidated',
       'model.session_cleanup_completed',
-      'notebook.note_forgotten',
+      'erasure.finished',
       'task.step_committed',
     ],
   ]);
