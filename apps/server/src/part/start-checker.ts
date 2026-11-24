@@ -6,7 +6,7 @@ import type { ServerParts } from '../types';
 export async function startChecker(parts: ServerParts): Promise<CheckerTask> {
   const checker = await startCheckerTask({
     models: parts.config.models,
-    secrets: parts.modelSecrets,
+    credentials: parts.credentials,
     sandboxes: parts.tools.adapter,
     images: toImageNames(parts.images),
     timeoutMs: parts.config.memory.checkerTimeoutMs,

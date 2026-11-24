@@ -1,3 +1,4 @@
+import { deploymentReference } from '@heynixie/credentials';
 import { z } from 'zod';
 
 const priceSchema = z.number().int().positive();
@@ -5,7 +6,7 @@ const priceSchema = z.number().int().positive();
 const imageProfileSchema = z.strictObject({
   provider: z.enum(['openai', 'gemini']),
   model: z.string().min(1),
-  credential: z.string().regex(/^deployment:.+$/u, 'use deployment:<name>'),
+  credential: deploymentReference,
 
   // micros per image, one for each size the tools draw
   prices: z.strictObject({

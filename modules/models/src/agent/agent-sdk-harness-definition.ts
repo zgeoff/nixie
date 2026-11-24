@@ -31,6 +31,9 @@ export const agentSDKHarnessDefinition: HarnessDefinition<'agent-sdk', AgentSDKP
       secret: secret.name,
       host: secret.host,
       route: profile.id,
+      ...(secret.reference === undefined
+        ? {}
+        : { reference: secret.reference, fingerprint: secret.fingerprint }),
       env:
         secret.header === 'bearer'
           ? { ANTHROPIC_AUTH_TOKEN: nixieBrokerPlaceholder }

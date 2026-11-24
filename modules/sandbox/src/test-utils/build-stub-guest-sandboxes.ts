@@ -137,6 +137,7 @@ export function buildStubGuestSandboxes(options: StubGuestSandboxesOptions): Stu
         );
       },
       addSecret: () => Promise.resolve(),
+      removeSecret: () => Promise.resolve(),
       addImage: () => Promise.resolve(),
       checkRuntime: () => Promise.resolve({ isReady: true, reason: null }),
     },

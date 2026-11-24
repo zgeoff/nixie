@@ -190,7 +190,6 @@ async function setupTest() {
         },
         modelGrant: harness.buildGrant({
           name: secretName,
-          value: null,
           host: modelHost,
           header: 'bearer',
         }),

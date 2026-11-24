@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { createTestCredentials } from '@heynixie/credentials/test-utils';
 import { modelsConfigSchema } from '@heynixie/models';
 import { buildStubSandboxes } from '@heynixie/sandbox/test-utils';
 import type { SystemTaskSession } from './make-system-task-runner';
@@ -41,7 +42,9 @@ test('it starts the task on its role profile, in a sandbox with the shared limit
       },
       roles: { conversation: 'chat-direct', worker: 'worker-direct' },
     }),
-    secrets: { model_credentials: { anthropic: 'not-a-real-key' } },
+    credentials: await createTestCredentials({
+      model_credentials: { anthropic: 'not-a-real-key' },
+    }),
     sandboxes: buildStubSandboxes().adapter,
     images: { conversation: 'nixie-conversation-0123456789ab' },
   });
@@ -86,7 +89,9 @@ test('it runs the check guest for a task whose entry is the check', async () => 
       },
       roles: { conversation: 'chat-direct' },
     }),
-    secrets: { model_credentials: { anthropic: 'not-a-real-key' } },
+    credentials: await createTestCredentials({
+      model_credentials: { anthropic: 'not-a-real-key' },
+    }),
     sandboxes: buildStubSandboxes().adapter,
     images: { conversation: 'nixie-conversation-0123456789ab' },
   });
@@ -137,7 +142,9 @@ test('it stops the parts the start registered, the last registered first, when t
       },
       roles: { conversation: 'chat-direct' },
     }),
-    secrets: { model_credentials: { anthropic: 'not-a-real-key' } },
+    credentials: await createTestCredentials({
+      model_credentials: { anthropic: 'not-a-real-key' },
+    }),
     sandboxes: buildStubSandboxes().adapter,
     images: { conversation: 'nixie-conversation-0123456789ab' },
   });
@@ -179,7 +186,9 @@ test('it stops the parts a failed start registered, then rethrows its error', as
       },
       roles: { conversation: 'chat-direct' },
     }),
-    secrets: { model_credentials: { anthropic: 'not-a-real-key' } },
+    credentials: await createTestCredentials({
+      model_credentials: { anthropic: 'not-a-real-key' },
+    }),
     sandboxes: buildStubSandboxes().adapter,
     images: { conversation: 'nixie-conversation-0123456789ab' },
   });

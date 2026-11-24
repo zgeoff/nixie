@@ -55,6 +55,10 @@ export interface ToolCallOptions {
 
   // what a paid tool charges; a deployment with a paid tool sets it
   readonly budgets?: BudgetsContext;
+
+  // the values nixie holds as its own, read when each result settles, so no result reaches the
+  // model or the log with one of them in it
+  readonly readOwnValues?: () => readonly string[];
 }
 
 export interface ToolCallRequest {

@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { createTestCredentials } from '@heynixie/credentials/test-utils';
 import { modelsConfigSchema } from '@heynixie/models';
 import { createFakeClock } from '@zgeoff/testing/clock';
 import { startTestSessionHost } from '../test-utils/start-test-session-host';
@@ -29,7 +30,9 @@ async function setupTest() {
 
   const worker = await startWorkerTool({
     models,
-    secrets: { model_credentials: { anthropic: 'not-a-real-key' } },
+    credentials: await createTestCredentials({
+      model_credentials: { anthropic: 'not-a-real-key' },
+    }),
     sandboxes: host.sandboxes,
     images: { conversation: 'nixie-conversation-0123456789ab' },
     log: host.context.log,

@@ -1,5 +1,6 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { join } from 'node:path';
+import { createTestCredentials } from '@heynixie/credentials/test-utils';
 import { modelsConfigSchema } from '@heynixie/models';
 import { sandboxCreatedCodec } from '@heynixie/sandbox';
 import { setupTestRecorder } from '@heynixie/sandbox/test-utils';
@@ -423,7 +424,9 @@ test('it gives a worker the page that its web fetch call reads in the fetch sand
 
   const worker = await startWorkerTool({
     models,
-    secrets: { model_credentials: { anthropic: 'not-a-real-key' } },
+    credentials: await createTestCredentials({
+      model_credentials: { anthropic: 'not-a-real-key' },
+    }),
     sandboxes: host.sandboxes,
     images: { conversation: 'nixie-conversation-0123456789ab' },
     log: host.context.log,

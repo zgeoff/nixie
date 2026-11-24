@@ -31,6 +31,8 @@ interface SetupConfig {
 
   // the declarations of a snapshot, which the decision point reads before the ones in code
   readonly snapshotTools?: ReadonlyMap<string, EffectDeclaration>;
+
+  readonly ownValues?: () => readonly string[];
 }
 
 async function setupTest(config: SetupConfig) {
@@ -71,6 +73,7 @@ async function setupTest(config: SetupConfig) {
     queue: queue.queue,
     queuedWaitMs: 10_000,
     budgets,
+    ...(config.ownValues === undefined ? {} : { readOwnValues: config.ownValues }),
   };
 
   return { log: testLog.log, queue, options, budgets };
@@ -1165,7 +1168,7 @@ test('it denies a tool the registry does not hold at the registry stage', async 
   const ctx = await setupTest({ tools: [buildMockToolDefinition({ name: 'notes_read' })] });
 
   const result = await runToolCall(
-    { tool: 'shell', input: {}, toolUseID: null },
+    { tool: 'shell', input: { query: 'milk' }, toolUseID: null },
     {
       runID: 'run-1',
       thread: 'task-1',
@@ -1323,7 +1326,7 @@ test('it denies an unlisted tool at the scope stage without checking its input',
   const ctx = await setupTest({ tools: [buildMockToolDefinition({ name: 'notes_read' })] });
 
   const result = await runToolCall(
-    { tool: 'notes_read', input: {}, toolUseID: null },
+    { tool: 'notes_read', input: { query: 'milk' }, toolUseID: null },
     {
       runID: 'run-1',
       thread: 'task-1',
@@ -1987,7 +1990,11 @@ test('it counts no call that came back invalid toward the cap', async () => {
     taskRun: { runID: 'a3f9c2d4', calls: { 'moment.edit': 1 } },
   };
 
-  await runToolCall({ tool: 'moment.edit', input: {}, toolUseID: 'toolu_1' }, run, ctx.options);
+  await runToolCall(
+    { tool: 'moment.edit', input: { query: 'milk' }, toolUseID: 'toolu_1' },
+    run,
+    ctx.options,
+  );
 
   const second = await runToolCall(
     { tool: 'moment.edit', input: { query: 'a' }, toolUseID: 'toolu_2' },
@@ -3769,4 +3776,84 @@ test('it records an ask for a prepared call under a hash that covers the expecte
       expectWindow: { windowID: '0x1', kind: 'browser', picture: 'aa' },
     }),
   );
+});
+
+test('it cuts a value nixie holds from the reply and the record of a result, whichever field carries it', async () => {
+  const planted = 'fake-planted-value-7731';
+
+  const ctx = await setupTest({
+    ownValues: () => [planted],
+    tools: [
+      buildMockToolDefinition({
+        name: 'notes_read',
+        output: { properties: { nested: { type: 'object' } } },
+        declaration: { effects: ['fetch'], results: { text: 'untrusted', nested: 'untrusted' } },
+        run: () =>
+          Promise.resolve({
+            status: 'ok',
+            result: { text: `the key is ${planted}`, nested: { list: [`x ${planted}`] } },
+          }),
+      }),
+    ],
+  });
+
+  const result = await runToolCall(
+    { tool: 'notes_read', input: { query: 'milk' }, toolUseID: 'toolu_planted' },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      logThread: 'task-1',
+      tools: ['notes_read'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  const entries = await readRecords(ctx.log, { afterSequence: 0 });
+
+  const written = JSON.stringify([result, entries.map((entry) => entry.record.erasable)]);
+
+  expect(written).not.toContain(planted);
+  expect(written).toContain('[secret removed]');
+});
+
+test('it reads the own values when each result settles, so a value added later is cut', async () => {
+  const values: string[] = [];
+
+  const ctx = await setupTest({
+    ownValues: () => values,
+    tools: [
+      buildMockToolDefinition({
+        name: 'notes_read',
+        run: () => Promise.resolve({ status: 'ok', result: { text: 'late-value-5512' } }),
+      }),
+    ],
+  });
+
+  const run = {
+    runID: 'run-1',
+    thread: 'task-1',
+    logThread: 'task-1',
+    tools: ['notes_read'],
+    model: { model: 'model-a', profile: 'chat-direct' },
+  };
+
+  const before = await runToolCall(
+    { tool: 'notes_read', input: { query: 'milk' }, toolUseID: 'toolu_a' },
+    run,
+    ctx.options,
+  );
+
+  values.push('late-value-5512');
+
+  const after = await runToolCall(
+    { tool: 'notes_read', input: { query: 'milk' }, toolUseID: 'toolu_b' },
+    run,
+    ctx.options,
+  );
+
+  expect([before, after]).toStrictEqual([
+    { content: [], structuredContent: { text: 'late-value-5512' } },
+    { content: [], structuredContent: { text: '[secret removed]' } },
+  ]);
 });

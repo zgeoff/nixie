@@ -1,5 +1,6 @@
 export type SandboxRecordKind =
   | 'sandbox.created'
+  | 'sandbox.grant_started'
   | 'sandbox.granted'
   | 'sandbox.slept'
   | 'sandbox.woken'

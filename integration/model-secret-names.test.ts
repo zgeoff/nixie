@@ -1,5 +1,6 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { bindHarness, deriveModelSecret, resolveModelCredentials } from '@heynixie/models';
+import { createTestCredentials } from '@heynixie/credentials/test-utils';
+import { bindHarness, grantModelSecret, resolveModelCredentials } from '@heynixie/models';
 import { buildImpPort, buildImpSandboxAdapter } from '@heynixie/sandbox-imp';
 import { setupTestRecorder } from '@heynixie/sandbox/test-utils';
 import { TEST_TOKEN, startTestImpd } from '@impz/testing';
@@ -25,6 +26,7 @@ async function setupTest() {
 
 test('it uses the secret impd holds under the fixed name of a profile with no credential in the secrets file', async () => {
   const ctx = await setupTest();
+  const credentials = await createTestCredentials();
 
   await ctx.impd.client.secrets.add({
     name: 'nixie-model-528d8dae09a6d4f1e0e',
@@ -60,14 +62,17 @@ test('it uses the secret impd holds under the fixed name of a profile with no cr
         month: { dollars: 600, tokens: 600_000_000, turns: 20_000 },
       },
     },
-    {},
+    credentials.resolveCredential,
   );
 
   const opus = resolved['opus'];
 
   invariant(opus);
 
-  await ctx.adapter.addSecret(deriveModelSecret(opus, bindHarness(opus.profile)));
+  await grantModelSecret(opus, bindHarness(opus.profile), {
+    store: credentials.store,
+    sandboxes: ctx.adapter,
+  });
 
   const secrets = await ctx.impd.client.secrets.list();
 
@@ -76,6 +81,7 @@ test('it uses the secret impd holds under the fixed name of a profile with no cr
 
 test('it refuses the fixed-name secret of a profile with no credential in the secrets file when impd lacks it', async () => {
   const ctx = await setupTest();
+  const credentials = await createTestCredentials();
 
   const resolved = resolveModelCredentials(
     {
@@ -104,16 +110,19 @@ test('it refuses the fixed-name secret of a profile with no credential in the se
         month: { dollars: 600, tokens: 600_000_000, turns: 20_000 },
       },
     },
-    {},
+    credentials.resolveCredential,
   );
 
   const opus = resolved['opus'];
 
   invariant(opus);
 
-  const secret = deriveModelSecret(opus, bindHarness(opus.profile));
+  const granted = grantModelSecret(opus, bindHarness(opus.profile), {
+    store: credentials.store,
+    sandboxes: ctx.adapter,
+  });
 
-  expect(ctx.adapter.addSecret(secret)).rejects.toThrow(
+  expect(granted).rejects.toThrow(
     'impd holds no secret nixie-model-528d8dae09a6d4f1e0e, and nixie holds no credential to add it under that name',
   );
 });

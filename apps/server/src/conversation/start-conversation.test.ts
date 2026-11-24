@@ -1,4 +1,5 @@
 import { expect, mock, onTestFinished, setSystemTime, test } from 'bun:test';
+import { createTestCredentials } from '@heynixie/credentials/test-utils';
 import type { TurnMemorySettings } from '@heynixie/memory';
 import { startTestMemoryStore } from '@heynixie/memory/test-utils';
 import type { NotebookStore } from '@heynixie/notebook';
@@ -69,7 +70,9 @@ async function setupTest(options: TestOptions = {}) {
         context,
         models: buildTestModelsConfig({ modelURL: 'http://127.0.0.1:1', ...config }),
         ...(config.memorySettings === undefined ? {} : { memorySettings: config.memorySettings }),
-        secrets: { model_credentials: { anthropic: 'not-a-real-key' } },
+        credentials: await createTestCredentials({
+          model_credentials: { anthropic: 'not-a-real-key' },
+        }),
         sandboxes: server.sandboxes,
         tools: server.endpoint,
         toolNames: config.toolNames ?? [],

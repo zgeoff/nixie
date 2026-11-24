@@ -9,7 +9,6 @@ test('#buildGrant puts a placeholder where the CLI reads the credential', () => 
   expect(
     harness.buildGrant({
       name: 'model-work-1',
-      value: 'not-a-real-key',
       host: 'api.openai.example.test',
       header: 'bearer',
     }),
@@ -61,3 +60,24 @@ test.each(['kept', 'one-off'] as const)(
     });
   },
 );
+
+test('#buildGrant keeps the reference and fingerprint of a credential nixie holds', () => {
+  const harness = bindHarness(buildMockCodexProfile({ id: 'codex-main' }));
+
+  expect(
+    harness.buildGrant({
+      name: 'model-work-1',
+      host: 'api.openai.example.test',
+      header: 'bearer',
+      reference: 'deployment:openai',
+      fingerprint: 'a3f09c1e',
+    }),
+  ).toStrictEqual({
+    secret: 'model-work-1',
+    host: 'api.openai.example.test',
+    route: 'codex-main',
+    env: { OPENAI_API_KEY: 'nixie-broker-placeholder' },
+    reference: 'deployment:openai',
+    fingerprint: 'a3f09c1e',
+  });
+});

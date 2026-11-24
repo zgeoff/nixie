@@ -26,6 +26,9 @@ export const codexHarnessDefinition: HarnessDefinition<'codex', CodexProfile> = 
       secret: secret.name,
       host: secret.host,
       route: profile.id,
+      ...(secret.reference === undefined
+        ? {}
+        : { reference: secret.reference, fingerprint: secret.fingerprint }),
       env: { OPENAI_API_KEY: nixieBrokerPlaceholder },
     }),
     guest: { package: 'codex', entries: { turn: 'main', check: null } },

@@ -93,6 +93,9 @@ export interface ConversationEndpointTools {
 
   readonly testTools: readonly ToolDefinition[];
 
+  // the values nixie holds as its own, which every tool result is scanned for
+  readonly readOwnValues: () => readonly string[];
+
   readonly queue: ActionQueue;
   readonly makeDecide: DecisionPointFactory;
   readonly readStore: () => ConversationMemoryStore | null;
@@ -308,6 +311,7 @@ export async function startConversationEndpoint(
     logger: options.log,
     definitions: options.context.definitions,
     queue: tools.queue,
+    readOwnValues: tools.readOwnValues,
     ...(options.context.budgets === undefined ? {} : { budgets: options.context.budgets }),
   });
 

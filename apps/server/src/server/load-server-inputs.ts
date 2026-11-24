@@ -1,7 +1,10 @@
+import { createCredentialStore, loadSecrets } from '@heynixie/credentials';
+import { resolveHostAddresses } from '@heynixie/egress';
 import type { ONNXEncoder } from '@heynixie/encoder-onnx';
 import { startONNXEncoder } from '@heynixie/encoder-onnx';
 import { makeThresholdLogger } from '@heynixie/logger';
-import { resolveOwnerConfig } from '../config/resolve-owner-config';
+import type { ModelCredentials } from '@heynixie/models';
+import { readOwnerConfig } from '../config/read-owner-config';
 import { resolveDefinitionsExport } from '../definition/resolve-definitions-export';
 import { readDeploymentConfig } from '../deployment/read-deployment-config';
 import { listImageNeeds } from '../part/list-image-needs';
@@ -10,15 +13,15 @@ import { loadSandboxManifest } from '../sandbox/load-sandbox-manifest';
 import { pickNeededImages } from '../sandbox/pick-needed-images';
 import { resolveSandboxSettings } from '../sandbox/resolve-sandbox-settings';
 import { createSpendInputs } from '../spend/create-spend-inputs';
-import { loadSecrets } from './load-secrets';
-import { resolveImageSettings } from './resolve-image-settings';
-import { resolveSearchSettings } from './resolve-search-settings';
+import { createImageSettings } from './create-image-settings';
+import { createSearchSettings } from './create-search-settings';
 import type { ServerOptions, ServerPartsOptions } from './start-server';
 
 export type ServerInputs = Pick<
   ServerPartsOptions,
   | 'config'
   | 'secrets'
+  | 'credentials'
   | 'images'
   | 'sandbox'
   | 'definitionsExport'
@@ -45,17 +48,29 @@ export async function loadServerInputs(options: ServerOptions): Promise<ServerIn
     sopsArgv: options.sopsArgv,
   });
 
-  const config = { ...loaded, owner: resolveOwnerConfig(loaded.owner, secrets.settings) };
+  const config = { ...loaded, owner: readOwnerConfig(loaded.owner, secrets.readSetting) };
   const sandbox = resolveSandboxSettings(loaded, secrets.impdToken);
+  const publicEgress = sandbox.adapter === 'imp' ? sandbox.imp.publicEgress : null;
+
+  const store = createCredentialStore({
+    secrets,
+    resolveHost: resolveHostAddresses,
+    denied: [...(publicEgress?.hostAddresses ?? []), ...(publicEgress?.egressDeny ?? [])],
+    ...(NIXIE_TEST_BUILD
+      ? { test: { transport: (url: string, init: RequestInit) => fetch(url, init) } }
+      : {}),
+  });
+
+  const credentials: ModelCredentials = { resolveCredential: secrets.resolveCredential, store };
 
   const definitionsExport = resolveDefinitionsExport(config, {
     token: secrets.definitionsExportToken,
     appKey: secrets.definitionsExportAppKey,
   });
 
-  const search = resolveSearchSettings(loaded.search, secrets.connectorCredentials);
-  const imageSettings = resolveImageSettings(loaded.images, secrets.connectorCredentials);
-  const spend = createSpendInputs(loaded.spendStop, secrets.settings);
+  const search = createSearchSettings(loaded.search, credentials);
+  const imageSettings = createImageSettings(loaded.images, credentials);
+  const spend = createSpendInputs(loaded.spendStop, credentials);
 
   const manifest = await loadSandboxManifest(options.manifestPath);
 
@@ -67,6 +82,7 @@ export async function loadServerInputs(options: ServerOptions): Promise<ServerIn
   return {
     config,
     secrets,
+    credentials,
     images,
     sandbox,
     definitionsExport,

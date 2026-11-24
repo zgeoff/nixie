@@ -137,6 +137,7 @@ export function buildStubSandboxAdapter(
       return [...live.values()].filter((sandbox) => sandbox.spec.owner === owner);
     },
     addSecret: () => Promise.resolve(),
+    removeSecret: () => Promise.resolve(),
     addImage: () => Promise.resolve(),
     checkRuntime: () => Promise.resolve({ isReady: true, reason: null }),
     countMostLive: () => mostLive.count,

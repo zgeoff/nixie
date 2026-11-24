@@ -12,7 +12,7 @@ test('it calls no gateway when the config sets no spendStop', async () => {
   const result = await startSpendChecks({
     spend: null,
     config: { models: buildMockModelsConfig(), time: { default_zone: 'UTC' } },
-    secrets: { models: { model_credentials: { anthropic: 'not-a-real-key' } } },
+    secrets: { modelCredentialCount: 1 },
     log,
   });
 
@@ -25,13 +25,12 @@ test('it sends the day and month limits of the models config to the gateway', as
   await startSpendChecks({
     spend: {
       control: 'http://127.0.0.1:8790',
-      token: 'a-token',
       modelURL: 'http://127.0.0.1:8789',
       gateway,
       planLogins: createPlanLoginsHolder(),
     },
     config: { models: buildMockModelsConfig(), time: { default_zone: 'UTC' } },
-    secrets: { models: {} },
+    secrets: { modelCredentialCount: 0 },
     log: () => {},
   });
 
@@ -51,13 +50,12 @@ test('it refuses to start with a model credential in the secrets file', () => {
   const started = startSpendChecks({
     spend: {
       control: 'http://127.0.0.1:8790',
-      token: 'a-token',
       modelURL: 'http://127.0.0.1:8789',
       gateway,
       planLogins: createPlanLoginsHolder(),
     },
     config: { models: buildMockModelsConfig(), time: { default_zone: 'UTC' } },
-    secrets: { models: { model_credentials: { anthropic: 'not-a-real-key' } } },
+    secrets: { modelCredentialCount: 1 },
     log: () => {},
   });
 
@@ -74,7 +72,6 @@ test('it refuses to start when a profile base URL has a path', () => {
   const started = startSpendChecks({
     spend: {
       control: 'http://127.0.0.1:8790',
-      token: 'a-token',
       modelURL: 'http://127.0.0.1:8789',
       gateway,
       planLogins: createPlanLoginsHolder(),
@@ -89,7 +86,7 @@ test('it refuses to start when a profile base URL has a path', () => {
       },
       time: { default_zone: 'UTC' },
     },
-    secrets: { models: {} },
+    secrets: { modelCredentialCount: 0 },
     log: () => {},
   });
 
@@ -102,13 +99,12 @@ test('it says the limits are sent when the gateway takes them', async () => {
   const result = await startSpendChecks({
     spend: {
       control: 'http://127.0.0.1:8790',
-      token: 'a-token',
       modelURL: 'http://127.0.0.1:8789',
       gateway,
       planLogins: createPlanLoginsHolder(),
     },
     config: { models: buildMockModelsConfig(), time: { default_zone: 'UTC' } },
-    secrets: { models: {} },
+    secrets: { modelCredentialCount: 0 },
     log: () => {},
   });
 
@@ -123,13 +119,12 @@ test('it says the limits are unsent when the gateway does not answer', async () 
   const result = await startSpendChecks({
     spend: {
       control: 'http://127.0.0.1:8790',
-      token: 'a-token',
       modelURL: 'http://127.0.0.1:8789',
       gateway,
       planLogins: createPlanLoginsHolder(),
     },
     config: { models: buildMockModelsConfig(), time: { default_zone: 'UTC' } },
-    secrets: { models: {} },
+    secrets: { modelCredentialCount: 0 },
     log: () => {},
   });
 

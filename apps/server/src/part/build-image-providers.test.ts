@@ -13,7 +13,7 @@ test('it builds one provider for each profile of the images block', () => {
     },
   });
 
-  const providers = buildImageProviders({ config, apiKeys: { main: 'key-a', second: 'key-b' } });
+  const providers = buildImageProviders({ config, fetches: { main: fetch, second: fetch } });
 
   expect(Object.keys(providers)).toStrictEqual(['main', 'second']);
 });

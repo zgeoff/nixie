@@ -62,7 +62,7 @@ a lib.
   `@heynixie/mock-server` resets the handlers to those that `addMockHandlers` added.
 - When the code under test takes a resolver for host names, as the code in `guests/fetch/` does, use
   a `.test` host. Map it to a loopback address with
-  [`buildStubResolver`](../../../guests/fetch/src/test-utils/build-stub-resolver.ts), and serve the
+  [`buildStubResolver`](../../../libs/egress/src/test-utils/build-stub-resolver.ts), and serve the
   request from a loopback server.
 - Open a `WebSocket` in a test only to a loopback host. `@heynixie/mock-server` passes those sockets
   through.

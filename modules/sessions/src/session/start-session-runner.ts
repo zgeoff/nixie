@@ -1,5 +1,6 @@
+import type { CredentialStore } from '@heynixie/credentials';
 import type { Logger } from '@heynixie/logger';
-import { bindHarness, deriveModelSecret } from '@heynixie/models';
+import { bindHarness, grantModelSecret } from '@heynixie/models';
 import type { Harness, ModelRole, ResolvedProfile } from '@heynixie/models';
 import type { GuestCommand, Sandbox, SandboxAdapter, SandboxLimits } from '@heynixie/sandbox';
 import type { TasksContext } from '@heynixie/tasks';
@@ -15,6 +16,7 @@ export interface SessionRunnerOptions {
   readonly context: TasksContext;
 
   readonly profile: ResolvedProfile;
+  readonly store: CredentialStore;
   readonly sandboxes: SandboxAdapter;
   readonly tools: Pick<ToolEndpoint, 'startRun'>;
   readonly toolNames: readonly string[];
@@ -55,9 +57,8 @@ export interface SessionRunner {
 
 export async function startSessionRunner(options: SessionRunnerOptions): Promise<SessionRunner> {
   const harness = bindHarness(options.profile.profile);
-  const secret = deriveModelSecret(options.profile, harness);
 
-  await options.sandboxes.addSecret(secret);
+  const secret = await grantModelSecret(options.profile, harness, options);
 
   const worker = await createWorkerSandbox({
     sandboxes: options.sandboxes,

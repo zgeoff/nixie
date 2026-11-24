@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
-import { startTestImages } from '@heynixie/connectors/test-utils';
-import { readRecords } from '@heynixie/log';
+import { CredentialRefusalError } from '@heynixie/egress';
+import { makeKeyedFetch } from '@heynixie/egress/test-utils';
 import { network } from '@heynixie/mock-server';
 import { HttpResponse, http } from 'msw';
 import { z } from 'zod';
@@ -13,7 +13,10 @@ function setupTest() {
 
   return {
     pixel,
-    provider: buildGeminiImages({ apiKey: 'gem-test-key-a', apiURL: geminiImagesAPIURL }),
+    provider: buildGeminiImages({
+      fetch: makeKeyedFetch('x-goog-api-key', 'gem-test-key-a'),
+      apiURL: geminiImagesAPIURL,
+    }),
     signal: new AbortController().signal,
   };
 }
@@ -186,25 +189,23 @@ test('it throws when the time limit aborts the call, so the tool can tell a time
   expect(drawn).rejects.toThrow('time limit');
 });
 
-test('it never lets the key reach a result or the log when the API echoes it', async () => {
-  const ctx = setupTest();
+test('it throws a refusal of the fetcher, so the call fails with an error and no reply', () => {
+  const refusal = new CredentialRefusalError('the request sets the cookie header');
 
-  network.use(
-    http.post(`${geminiImagesAPIURL}/interactions`, (info) =>
-      HttpResponse.json(
-        {
-          error: {
-            message: `Bad key ${info.request.headers.get('x-goog-api-key') ?? ''} was refused.`,
-          },
-        },
-        { status: 403 },
-      ),
-    ),
-  );
+  const refuse = () => Promise.reject(refusal);
 
-  const images = await startTestImages({ providers: { main: ctx.provider, second: ctx.provider } });
-  const reply = await images.call('image.draw', { prompt: 'a scene' });
-  const records = await readRecords(images.log, { afterSequence: 0, limit: 1000 });
+  const provider = buildGeminiImages({
+    fetch: refuse,
+    apiURL: geminiImagesAPIURL,
+  });
 
-  expect(JSON.stringify([reply, records])).not.toContain('gem-test-key-a');
+  expect(
+    provider.draw({
+      model: 'model-b',
+      prompt: 'a scene',
+      size: '1024x1024',
+      references: [],
+      signal: new AbortController().signal,
+    }),
+  ).rejects.toBe(refusal);
 });

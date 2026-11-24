@@ -13,6 +13,7 @@ import { isMemoryRuleAsk } from '../policy-call/build-memory-verdict';
 import { toStepKey } from '../policy-call/to-step-key';
 import type { ToolCallOptions } from '../run-tool-call';
 import { buildMessage } from '../settle/build-message';
+import { removeOwnValues } from '../settle/remove-own-values';
 import type { Settled } from '../settle/types';
 import { toolCalledCodec } from '../tool-called-codec';
 import { toolResultCodec } from '../tool-result-codec';
@@ -242,7 +243,9 @@ export function makeCallRecorder(
           repeatOf: null,
         };
       }),
-    writeSettled: async (callSequence, settled) => {
+    writeSettled: async (callSequence, raw) => {
+      const settled = removeOwnValues(raw, options.readOwnValues?.() ?? []);
+
       const writeSettled = (toWrite: Settled): Promise<number> => {
         const contentSource = pickLeastTrusted(Object.values(toWrite.sources));
         const writeBeside = toWrite.writeBeside;

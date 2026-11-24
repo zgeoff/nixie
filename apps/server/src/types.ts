@@ -3,7 +3,7 @@ import type { HostContractClient } from '@heynixie/contract';
 import type { DefinitionsInForce, DefinitionsSource } from '@heynixie/definitions';
 import type { Logger } from '@heynixie/logger';
 import type { Encoder } from '@heynixie/memory';
-import type { ModelSecrets } from '@heynixie/models';
+import type { ModelCredentials } from '@heynixie/models';
 import type { SandboxAdapter, SandboxImageKey } from '@heynixie/sandbox';
 import type { TasksContext } from '@heynixie/tasks';
 import type { TurnInputs } from '@heynixie/turn-inputs';
@@ -46,7 +46,7 @@ export interface ServerParts {
   readonly buildPolicy: SeedInputs['buildPolicy'];
   readonly tasks: SeedInputs['tasks'];
   readonly inForce: InForce;
-  readonly modelSecrets: ModelSecrets;
+  readonly credentials: ModelCredentials;
 
   // the gateway that counts every model request, or null when the config sets no spendStop
   readonly spend: SpendInputs | null;

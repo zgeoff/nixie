@@ -1,11 +1,18 @@
-import type { SearchProvider, SearchReply, SearchRequest } from '@heynixie/connectors';
+import type {
+  ProviderFetch,
+  SearchProvider,
+  SearchReply,
+  SearchRequest,
+} from '@heynixie/connectors';
+import { CredentialRefusalError } from '@heynixie/egress';
 import { parseJSONOrNull } from '@heynixie/wire';
 import type { KagiSearchRequest } from './kagi-search-request-schema';
 import { kagiErrorSchema, kagiSearchResponseSchema } from './kagi-search-request-schema';
 import { toPlainText } from './to-plain-text';
 
 export interface KagiSearchOptions {
-  readonly apiKey: string;
+  // adds the API key on the host, so the adapter holds none
+  readonly fetch: ProviderFetch;
 
   // the API's base URL, such as https://kagi.com/api/v1
   readonly apiURL: string;
@@ -17,13 +24,7 @@ const kagiSearchPriceMicros = 12_000;
 export function buildKagiSearch(options: KagiSearchOptions): SearchProvider {
   return {
     priceMicros: kagiSearchPriceMicros,
-    readHits: async (request) => {
-      const reply = await readKagiReply(options, request);
-
-      return reply.kind === 'failed'
-        ? { kind: 'failed', reason: reply.reason.replaceAll(options.apiKey, '<the API key>') }
-        : reply;
-    },
+    readHits: (request) => readKagiReply(options, request),
   };
 }
 
@@ -34,15 +35,18 @@ async function readKagiReply(
   options: KagiSearchOptions,
   request: SearchRequest,
 ): Promise<SearchReply> {
-  const response = await fetch(`${options.apiURL}/search`, {
-    method: 'POST',
-    headers: {
-      authorization: `Bearer ${options.apiKey}`,
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify(buildKagiRequest(request)),
-    signal: AbortSignal.timeout(requestTimeoutMs),
-  }).catch((error: unknown) => error);
+  const response = await options
+    .fetch(`${options.apiURL}/search`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(buildKagiRequest(request)),
+      signal: AbortSignal.timeout(requestTimeoutMs),
+    })
+    .catch((error: unknown) => error);
+
+  if (response instanceof CredentialRefusalError) {
+    throw response;
+  }
 
   if (!(response instanceof Response)) {
     return { kind: 'failed', reason: `Kagi could not be reached: ${String(response)}` };

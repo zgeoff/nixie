@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@heynixie/connectors": "workspace:*",
+    "@heynixie/egress": "workspace:*",
     "@heynixie/wire": "workspace:*",
     "entities": "catalog:",
     "zod": "catalog:"

@@ -5,7 +5,7 @@ import { toErrorFields } from '@heynixie/logger';
 import type { ResolvedProfile } from '@heynixie/models';
 import {
   bindHarness,
-  deriveModelSecret,
+  grantModelSecret,
   modelSessionCleanupCompletedCodec,
   modelSessionInvalidatedCodec,
   resolveModelCredentials,
@@ -83,7 +83,7 @@ export const startSandboxRunner = makeSystemTaskRunner<SandboxRunnerOptions, San
     const runner: TaskRunner = {
       options,
       session,
-      profiles: resolveModelCredentials(options.models, options.secrets),
+      profiles: resolveModelCredentials(options.models, options.credentials.resolveCredential),
       grants: new Map(),
       imps: new Map(),
       endpointHashes: new Map(),
@@ -123,16 +123,19 @@ function resolveModelGrant(runner: TaskRunner, profile: ResolvedProfile): Promis
 
 // A failed add leaves no grant behind, so the next step that needs the profile tries again.
 async function createModelGrant(runner: TaskRunner, profile: ResolvedProfile): Promise<GrantSpec> {
-  const secret = deriveModelSecret(profile, bindHarness(profile.profile));
+  const harness = bindHarness(profile.profile);
 
   try {
-    await runner.options.sandboxes.addSecret(secret);
+    const secret = await grantModelSecret(profile, harness, {
+      store: runner.options.credentials.store,
+      sandboxes: runner.options.sandboxes,
+    });
+
+    return harness.buildGrant(secret);
   } catch (error) {
     runner.grants.delete(profile.profile.id);
     throw error;
   }
-
-  return bindHarness(profile.profile).buildGrant(secret);
 }
 
 async function stopTaskImps(runner: TaskRunner): Promise<void> {

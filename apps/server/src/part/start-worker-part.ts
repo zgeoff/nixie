@@ -10,7 +10,7 @@ import type { ServerPartsOptions } from '../server/start-server';
 export interface WorkerPartInputs {
   readonly options: Pick<
     ServerPartsOptions,
-    'cleanup' | 'config' | 'harness' | 'images' | 'log' | 'secrets' | 'spend'
+    'cleanup' | 'config' | 'harness' | 'images' | 'log' | 'credentials' | 'spend'
   >;
   readonly adapter: SandboxAdapter;
   readonly log: Log;
@@ -35,7 +35,7 @@ export async function startWorkerPart(inputs: WorkerPartInputs): Promise<WorkerT
 
   const worker = await startWorkerTool({
     models: config.models,
-    secrets: inputs.options.secrets.models,
+    credentials: inputs.options.credentials,
     sandboxes: inputs.adapter,
     images: toImageNames(inputs.options.images),
     log: inputs.log,

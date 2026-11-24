@@ -1,7 +1,9 @@
 import type { Clock } from '@heynixie/clock';
+import type { Secrets } from '@heynixie/credentials';
 import type { Writer } from '@heynixie/log';
 import { startWriter } from '@heynixie/log';
 import type { Logger } from '@heynixie/logger';
+import type { ModelCredentials } from '@heynixie/models';
 import type { SandboxAdapter } from '@heynixie/sandbox';
 import { writeMissedTurns } from '@heynixie/spend';
 import type { DefinitionsExportSettings } from '../definition/resolve-definitions-export';
@@ -14,11 +16,10 @@ import type { SpendInputs } from '../spend/create-spend-inputs';
 import { startSpendChecks } from '../spend/start-spend-checks';
 import type { Cleanup, ServerParts } from '../types';
 import { buildCleanup } from './build-cleanup';
+import type { ImageSettings } from './create-image-settings';
+import type { SearchSettings } from './create-search-settings';
 import type { CrashHarness } from './join-crash-harness';
-import type { Secrets } from './load-secrets';
 import { loadServerInputs } from './load-server-inputs';
-import type { ImageSettings } from './resolve-image-settings';
-import type { SearchSettings } from './resolve-search-settings';
 import { startServerWork } from './start-server-work';
 
 export interface ServerOptions {
@@ -53,6 +54,7 @@ export interface Server {
 export interface ServerPartsOptions extends ServerOptions {
   readonly config: DeploymentConfig;
   readonly secrets: Secrets;
+  readonly credentials: ModelCredentials;
   readonly images: SandboxImages;
 
   readonly sandbox: SandboxSettings;

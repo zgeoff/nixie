@@ -60,6 +60,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@heynixie/connectors": "workspace:*",
+        "@heynixie/egress": "workspace:*",
         "@heynixie/wire": "workspace:*",
         "zod": "catalog:",
       },
@@ -74,6 +75,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@heynixie/connectors": "workspace:*",
+        "@heynixie/egress": "workspace:*",
         "@heynixie/wire": "workspace:*",
         "zod": "catalog:",
       },
@@ -103,6 +105,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@heynixie/connectors": "workspace:*",
+        "@heynixie/egress": "workspace:*",
         "@heynixie/wire": "workspace:*",
         "entities": "catalog:",
         "zod": "catalog:",
@@ -173,10 +176,12 @@
         "@heynixie/compaction": "workspace:*",
         "@heynixie/connectors": "workspace:*",
         "@heynixie/contract": "workspace:*",
+        "@heynixie/credentials": "workspace:*",
         "@heynixie/db": "workspace:*",
         "@heynixie/definitions": "workspace:*",
         "@heynixie/definitions-repo-github": "workspace:*",
         "@heynixie/devices": "workspace:*",
+        "@heynixie/egress": "workspace:*",
         "@heynixie/encoder-onnx": "workspace:*",
         "@heynixie/image-gemini": "workspace:*",
         "@heynixie/image-openai": "workspace:*",
@@ -365,8 +370,10 @@
         "@heynixie/backup": "workspace:*",
         "@heynixie/connectors": "workspace:*",
         "@heynixie/contract": "workspace:*",
+        "@heynixie/credentials": "workspace:*",
         "@heynixie/db": "workspace:*",
         "@heynixie/definitions": "workspace:*",
+        "@heynixie/egress": "workspace:*",
         "@heynixie/log": "workspace:*",
         "@heynixie/logger": "workspace:*",
         "@heynixie/memory": "workspace:*",
@@ -377,6 +384,7 @@
         "@heynixie/reminders": "workspace:*",
         "@heynixie/sandbox": "workspace:*",
         "@heynixie/sandbox-imp": "workspace:*",
+        "@heynixie/search-kagi": "workspace:*",
         "@heynixie/secret-scan": "workspace:*",
         "@heynixie/server": "workspace:*",
         "@heynixie/sessions": "workspace:*",
@@ -628,6 +636,7 @@
       "dependencies": {
         "@heynixie/clock": "workspace:*",
         "@heynixie/contract": "workspace:*",
+        "@heynixie/credentials": "workspace:*",
         "@heynixie/db": "workspace:*",
         "@heynixie/log": "workspace:*",
         "@heynixie/logger": "workspace:*",
@@ -647,6 +656,19 @@
         "@heynixie/policy": "workspace:*",
         "@heynixie/testing": "workspace:*",
         "@modelcontextprotocol/server": "catalog:",
+        "@zgeoff/testing": "catalog:",
+      },
+    },
+    "modules/credentials": {
+      "name": "@heynixie/credentials",
+      "version": "0.0.0",
+      "dependencies": {
+        "@heynixie/egress": "workspace:*",
+        "@heynixie/sandbox": "workspace:*",
+        "tiny-invariant": "catalog:",
+        "zod": "catalog:",
+      },
+      "devDependencies": {
         "@zgeoff/testing": "catalog:",
       },
     },
@@ -751,6 +773,7 @@
       "name": "@heynixie/models",
       "version": "0.0.0",
       "dependencies": {
+        "@heynixie/credentials": "workspace:*",
         "@heynixie/log": "workspace:*",
         "@heynixie/sandbox": "workspace:*",
         "@heynixie/tools": "workspace:*",
@@ -897,6 +920,7 @@
         "@heynixie/compaction": "workspace:*",
         "@heynixie/connectors": "workspace:*",
         "@heynixie/contract": "workspace:*",
+        "@heynixie/credentials": "workspace:*",
         "@heynixie/db": "workspace:*",
         "@heynixie/log": "workspace:*",
         "@heynixie/logger": "workspace:*",
@@ -996,6 +1020,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@heynixie/budgets": "workspace:*",
+        "@heynixie/egress": "workspace:*",
         "@heynixie/log": "workspace:*",
         "@heynixie/logger": "workspace:*",
         "@heynixie/policy": "workspace:*",
@@ -1570,6 +1595,8 @@
     "@heynixie/contract": ["@heynixie/contract@workspace:libs/contract"],
 
     "@heynixie/conversation": ["@heynixie/conversation@workspace:guests/conversation"],
+
+    "@heynixie/credentials": ["@heynixie/credentials@workspace:modules/credentials"],
 
     "@heynixie/db": ["@heynixie/db@workspace:libs/db"],
 

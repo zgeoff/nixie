@@ -20,3 +20,21 @@ test('it refuses a grant that names no host', () => {
     /"host"/u,
   );
 });
+
+test('it decodes a grant that holds a reference and a fingerprint, and one that holds neither', () => {
+  const held = sandboxGrantedCodec.encode({
+    sandboxID: 'sandbox-1',
+    secret: 'model-key',
+    host: 'api.example.test',
+    reference: 'deployment:anthropic',
+    fingerprint: 'a3f09c1e',
+  });
+
+  expect(sandboxGrantedCodec.decode(held)).toStrictEqual({
+    sandboxID: 'sandbox-1',
+    secret: 'model-key',
+    host: 'api.example.test',
+    reference: 'deployment:anthropic',
+    fingerprint: 'a3f09c1e',
+  });
+});

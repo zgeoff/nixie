@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
-import { startTestImages } from '@heynixie/connectors/test-utils';
-import { readRecords } from '@heynixie/log';
+import { CredentialRefusalError } from '@heynixie/egress';
+import { makeKeyedFetch } from '@heynixie/egress/test-utils';
 import { network } from '@heynixie/mock-server';
 import { HttpResponse, http } from 'msw';
 import { buildOpenAIImages } from './build-openai-images';
@@ -10,7 +10,10 @@ function setupTest() {
   const pixel =
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==';
 
-  const provider = buildOpenAIImages({ apiKey: 'sk-test-key-a', apiURL: openAIImagesAPIURL });
+  const provider = buildOpenAIImages({
+    fetch: makeKeyedFetch('authorization', 'Bearer sk-test-key-a'),
+    apiURL: openAIImagesAPIURL,
+  });
 
   return {
     pixel,
@@ -246,25 +249,23 @@ test('it throws when the time limit aborts the call, so the tool can tell a time
   expect(drawn).rejects.toThrow('time limit');
 });
 
-test('it never lets the key reach a reply, a result or the log when the API echoes it', async () => {
-  const ctx = setupTest();
+test('it throws a refusal of the fetcher, so the call fails with an error and no reply', () => {
+  const refusal = new CredentialRefusalError('the request sets the cookie header');
 
-  network.use(
-    http.post(`${openAIImagesAPIURL}/images/generations`, (info) =>
-      HttpResponse.json(
-        {
-          error: {
-            message: `Incorrect API key provided: ${info.request.headers.get('authorization') ?? ''}`,
-          },
-        },
-        { status: 401 },
-      ),
-    ),
-  );
+  const refuse = () => Promise.reject(refusal);
 
-  const images = await startTestImages({ providers: { main: ctx.provider, second: ctx.provider } });
-  const reply = await images.call('image.draw', { prompt: 'a scene' });
-  const records = await readRecords(images.log, { afterSequence: 0, limit: 1000 });
+  const provider = buildOpenAIImages({
+    fetch: refuse,
+    apiURL: openAIImagesAPIURL,
+  });
 
-  expect(JSON.stringify([reply, records])).not.toContain('sk-test-key-a');
+  expect(
+    provider.draw({
+      model: 'model-a',
+      prompt: 'a scene',
+      size: '1024x1024',
+      references: [],
+      signal: new AbortController().signal,
+    }),
+  ).rejects.toBe(refusal);
 });

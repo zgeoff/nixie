@@ -12,7 +12,6 @@ test.each([
   expect(
     harness.buildGrant({
       name: 'model-chat-1',
-      value: 'not-a-real-key',
       host: 'api.anthropic.com',
       header,
     }),

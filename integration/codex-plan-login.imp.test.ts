@@ -2,6 +2,7 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { makeKeyedFetch } from '@heynixie/egress/test-utils';
 import { bindHarness } from '@heynixie/models';
 import { buildMockCodexProfile } from '@heynixie/models/test-utils';
 import { buildSandboxSpec, sandboxSizes } from '@heynixie/sandbox';
@@ -72,7 +73,10 @@ async function setupTest() {
 
   const spend = createSpendGateway({
     url: process.env['NIXIE_IMP_TEST_CODEX_PLAN_CONTROL'] ?? '',
-    token: process.env['NIXIE_IMP_TEST_CODEX_PLAN_CONTROL_TOKEN'] ?? '',
+    fetch: makeKeyedFetch(
+      'authorization',
+      `Bearer ${process.env['NIXIE_IMP_TEST_CODEX_PLAN_CONTROL_TOKEN'] ?? ''}`,
+    ),
   });
 
   const secretName = `nixie-test-${crypto.randomUUID().slice(0, 8)}`;
@@ -162,7 +166,6 @@ async function setupTest() {
         limits: sandboxSizes.codexTask,
         modelGrant: harness.buildGrant({
           name: secretName,
-          value: null,
           host: 'chatgpt.com',
           header: 'bearer',
         }),

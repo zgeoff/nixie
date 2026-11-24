@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { buildMockCredentialRef, createTestCredentials } from '@heynixie/credentials/test-utils';
 import {
   pauseNixieInTransaction,
   readRecords,
@@ -61,6 +62,11 @@ async function setupTest() {
 
   const context = { ...tasks.context, log };
   const sandboxes = buildStubSandboxes();
+
+  const credentials = await createTestCredentials({
+    model_credentials: { anthropic: 'not-a-real-key' },
+  });
+
   const pending: PendingCall[] = [];
   const state = { pending, probes: 0 };
 
@@ -169,7 +175,8 @@ async function setupTest() {
   const startRunner = (spend?: SpendContext) =>
     startConversationRunner({
       context,
-      profile: { profile: buildMockModelProfile(), credential: 'not-a-real-key' },
+      profile: { profile: buildMockModelProfile(), credential: buildMockCredentialRef() },
+      store: credentials.store,
       sandboxes: sandboxes.adapter,
       tools: tools.endpoint,
       toolNames: ['memory.export'],

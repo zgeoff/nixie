@@ -1,10 +1,10 @@
 import type { IncomingMessage } from 'node:http';
 import type { AddressCheck } from '@heynixie/egress';
+import { planHop } from '@heynixie/egress';
 import type { AskHop, FetchLimits, FetchReply } from '@heynixie/wire';
 import { readResponsePage } from '../response/read-response-page';
 import { ConnectionNotOpenError } from './connection-not-open-error';
 import type { WebTransports } from './create-web-transports';
-import { planHop } from './plan-hop';
 import type { DefaultPorts, PinnedRequestOptions } from './send-pinned-request';
 import { sendPinnedRequest } from './send-pinned-request';
 

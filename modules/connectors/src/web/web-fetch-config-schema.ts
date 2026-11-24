@@ -1,5 +1,5 @@
+import { secretsEntryNames } from '@heynixie/credentials';
 import { z } from 'zod';
-import { secretsEntryNames } from './secrets-entry-names';
 import type { WebFetchConfig } from './web-fetch-defaults';
 import { webFetchDefaults } from './web-fetch-defaults';
 

@@ -3,6 +3,7 @@ import { writeRecords } from '@heynixie/log';
 import type { SandboxEvent, SandboxRecorder, SandboxRow, SandboxTables } from '../types';
 import { sandboxCreatedCodec } from './sandbox-created-codec';
 import { sandboxDestroyedCodec } from './sandbox-destroyed-codec';
+import { sandboxGrantStartedCodec } from './sandbox-grant-started-codec';
 import { sandboxGrantedCodec } from './sandbox-granted-codec';
 import type { SandboxRecordKind } from './sandbox-record-kind';
 import { sandboxSleptCodec } from './sandbox-slept-codec';
@@ -69,6 +70,18 @@ function toRecordInput(event: SandboxEvent): EventRecord {
     };
   }
 
+  if (event.event === 'grant_started') {
+    return {
+      kind: sandboxGrantStartedCodec.kind,
+      payload: sandboxGrantStartedCodec.encode({
+        secret: event.secret,
+        host: event.host,
+        ...(event.reference === undefined ? {} : { reference: event.reference }),
+        ...(event.fingerprint === undefined ? {} : { fingerprint: event.fingerprint }),
+      }),
+    };
+  }
+
   if (event.event === 'granted') {
     return {
       kind: sandboxGrantedCodec.kind,
@@ -76,6 +89,8 @@ function toRecordInput(event: SandboxEvent): EventRecord {
         sandboxID: event.sandboxID,
         secret: event.secret,
         host: event.host,
+        ...(event.reference === undefined ? {} : { reference: event.reference }),
+        ...(event.fingerprint === undefined ? {} : { fingerprint: event.fingerprint }),
       }),
     };
   }

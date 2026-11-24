@@ -10,6 +10,8 @@ import {
   buildStubSandboxAdapter,
   makeStubFetcher,
 } from '@heynixie/connectors/test-utils';
+import type { FileCredentialRef } from '@heynixie/credentials';
+import { buildMockCredentialRef, createTestCredentials } from '@heynixie/credentials/test-utils';
 import type { RecordInput } from '@heynixie/log';
 import { withWriteTransaction } from '@heynixie/log';
 import { modelSessionSummarizedCodec, resolveRoleProfile } from '@heynixie/models';
@@ -43,7 +45,7 @@ import { startConversationRunner } from './start-conversation-runner';
 
 interface RunnerConfig {
   readonly models: ReturnType<typeof buildMockModelsConfig>;
-  readonly credential: string | null;
+  readonly credential: FileCredentialRef | null;
   readonly toolNames: readonly string[];
   readonly memory?: Pick<ConversationRunnerOptions, 'readTurnNote' | 'loadOrPinSkillCatalog'>;
 
@@ -71,6 +73,11 @@ async function setupTest() {
   };
 
   const sandboxes = buildStubSandboxes();
+
+  const credentials = await createTestCredentials({
+    model_credentials: { anthropic: 'not-a-real-key', other: 'another-not-real-key' },
+  });
+
   const tools = buildStubToolEndpoint();
 
   const readTurnMemory = mock<ConversationMemory['readTurnMemory']>(() =>
@@ -101,6 +108,7 @@ async function setupTest() {
           profile: resolveRoleProfile(config.models, 'conversation'),
           credential: config.credential,
         },
+        store: credentials.store,
         sandboxes: sandboxes.adapter,
         tools: tools.endpoint,
         toolNames: config.toolNames,
@@ -140,7 +148,7 @@ test('it asks memory once for what the turn brings, with the message text and no
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
   });
 
@@ -163,7 +171,7 @@ test("it sends the conversation's turn to the base URL with the sandbox name and
     models: buildMockModelsConfig({
       profiles: { 'chat-direct': { baseURL: 'https://api.anthropic.com' } },
     }),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
     gateway: buildStubSpendGateway(),
   });
@@ -186,7 +194,7 @@ test("it sends the conversation's turn to the profile's own base URL when no gat
     models: buildMockModelsConfig({
       profiles: { 'chat-direct': { baseURL: 'https://api.anthropic.com' } },
     }),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
   });
 
@@ -204,7 +212,7 @@ test('it opens a conversation with the memory index right after the pinned memor
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
     index: {
       text: 'Your memory index.\nAbout the owner:\n  home (1)  [b7kq2m9xza] spare pump',
@@ -241,7 +249,7 @@ test('it opens a conversation with no index block and no index status line at a 
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
     index: { text: '', items: 4, tokens: 0, budget: 0 },
   });
@@ -266,7 +274,7 @@ test('it records each reply with the model and the profile in force, never what 
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig({ profiles: { 'chat-direct': { model: 'claude-test-1' } } }),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
   });
 
@@ -316,7 +324,7 @@ test('it records the reply with the turn summary in its erasable fields and the 
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig({ profiles: { 'chat-direct': { model: 'claude-test-1' } } }),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
   });
 
@@ -384,7 +392,7 @@ test('it gives each reply the summaries sent since the reply before and records 
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig({ profiles: { 'chat-direct': { model: 'claude-test-1' } } }),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
   });
 
@@ -481,7 +489,7 @@ test('it records the new model on the next reply once the conversation role poin
         'chat-aggregator': { model: 'glm-5.3' },
       },
     }),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
   });
 
@@ -495,7 +503,7 @@ test('it records the new model on the next reply once the conversation role poin
       },
       roles: { conversation: 'chat-aggregator' },
     }),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
   });
 
@@ -523,7 +531,7 @@ test('it sends the guest the profile context tokens with every turn', async () =
     models: buildMockModelsConfig({
       profiles: { 'chat-direct': { model: 'claude-test-1', contextTokens: 400_000 } },
     }),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
   });
 
@@ -543,7 +551,7 @@ test('it sends the guest the profile cache lifetime with every turn', async () =
     models: buildMockModelsConfig({
       profiles: { 'chat-direct': { model: 'claude-test-1', cacheTTL: '1h' } },
     }),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
   });
 
@@ -561,7 +569,7 @@ test("it gives each turn a step token of the step's run identity, and stops it o
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
   });
 
@@ -638,7 +646,7 @@ test("it gives each turn of a session the key the session's opening keeps, and a
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
   });
 
@@ -664,7 +672,7 @@ test('it erases a session summary that a step whose turn had ended commits after
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
   });
 
@@ -733,7 +741,7 @@ test('it runs a forget while a claimed step has not started its turn, and then r
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
   });
 
@@ -774,7 +782,7 @@ test("it removes the thread's web fetch links on a forget", async () => {
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
   });
 
@@ -843,7 +851,7 @@ test('it clears every web fetch pause on a forget, so the next fetch of a paused
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['web_fetch'],
     clearFetchPauses: backoff.clear,
   });
@@ -885,7 +893,7 @@ test("it hands each turn's tool calls the newest invalidation the step saw", asy
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
   });
 
@@ -908,7 +916,7 @@ test('it records the model and the profile on the turn end and on every tool cal
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig({ profiles: { 'chat-direct': { model: 'claude-test-1' } } }),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
   });
 
@@ -965,7 +973,7 @@ test('it records the context of the last model call that reported one on the tur
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
   });
 
@@ -1022,7 +1030,7 @@ test('it records no context on a turn end whose model calls reported none', asyn
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
   });
 
@@ -1058,7 +1066,7 @@ test('it records the reason each turn ended on its turn end', async () => {
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
   });
 
@@ -1114,7 +1122,7 @@ test('it commits the session boundary and resumes the next turn at it', async ()
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
   });
 
@@ -1159,7 +1167,7 @@ test('it sends each inbox record with its sequence as the message uuid and at th
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
   });
 
@@ -1244,7 +1252,7 @@ test("it wakes the conversation for a system task's message and gives the turn t
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['task.message'],
     messaging,
   });
@@ -1302,7 +1310,7 @@ test("it passes a held task message that lands during a turn into that turn, fra
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['task.message'],
     messaging,
   });
@@ -1367,7 +1375,7 @@ test('it gives the next turn a message sent with no wake, before the message tha
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['task.message'],
     messaging,
   });
@@ -1427,7 +1435,7 @@ test('it tells the conversation which messages arrived past the hop limit when t
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['task.message'],
     messaging,
   });
@@ -1458,7 +1466,7 @@ test('it rebuilds the session with the recent turns when the guest has lost the 
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig({ profiles: { 'chat-direct': { model: 'claude-test-1' } } }),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
   });
 
@@ -1515,7 +1523,7 @@ test('it gives a resumed session your next message after its send time, with no 
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
   });
 
@@ -1554,7 +1562,7 @@ test('it records the opening and the session it replaced when the guest has lost
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig({ profiles: { 'chat-direct': { model: 'claude-test-1' } } }),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
   });
 
@@ -1607,7 +1615,7 @@ test('it rebuilds the session when your next images would pass the images the se
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
     imageBudget: { bytes: 1024, count: 100 },
   });
@@ -1664,7 +1672,7 @@ test('it rebuilds the session when your next images would pass the 100 it can ho
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
   });
 
@@ -1718,7 +1726,7 @@ test('it resumes the session for a photo while the images it holds leave room', 
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
     imageBudget: { bytes: 2048, count: 100 },
   });
@@ -1768,7 +1776,7 @@ test("it counts an image a tool returns in the turn's image tally, and refuses o
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
     imageBudget: { bytes: 100_000, count: 2 },
   });
@@ -1824,7 +1832,7 @@ test('it records the persona and policy hashes in force on the opening of a sess
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
     getDefinitions: () => ({
       persona: 'You are Wren, a calm helper.',
@@ -1860,7 +1868,7 @@ test('it puts the skill catalog of the conversation in the system prompt after t
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
     memory: { loadOrPinSkillCatalog },
   });
@@ -1894,7 +1902,7 @@ test('it opens a new session under the new persona on the turn after the persona
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
     getDefinitions: () => definitions.current,
   });
@@ -1947,7 +1955,7 @@ test('it resumes the same session on the turn after a change to the policy alone
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
     getDefinitions: () => definitions.current,
   });
@@ -1977,7 +1985,7 @@ test('it opens the first turn on a fresh session with the status and the pinned 
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
   });
 
@@ -2010,7 +2018,7 @@ test('it opens the first turn after a forget with a status that says so, and res
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
   });
 
@@ -2058,7 +2066,7 @@ test('it opens a session from before opening records again as a rebuild, because
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
   });
 
@@ -2101,7 +2109,7 @@ test('it invalidates the session, removes the guest session state and records th
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
   });
 
@@ -2130,7 +2138,7 @@ test('it names the forgotten record in the cleanup records of a record forget', 
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
   });
 
@@ -2151,7 +2159,7 @@ test('it rebuilds the session on the turn after a forget invalidated it, and rec
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
   });
 
@@ -2183,7 +2191,7 @@ test('it records the invalidation each turn saw, and resumes the rebuilt session
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
   });
 
@@ -2214,7 +2222,7 @@ test('it aborts a running turn on a forget, and fails the step so it retries on 
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
   });
 
@@ -2249,7 +2257,7 @@ test('it fails the step and voids the reply it wrote when nixie tool server is n
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
   });
 
@@ -2288,7 +2296,7 @@ test('it fails the step with a credential error and records no reply when the mo
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
   });
 
@@ -2325,7 +2333,7 @@ test('it fails the step, records no reply and leaves the message unread when the
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
   });
 
@@ -2389,7 +2397,7 @@ test.each([
 
     const runner = await ctx.startRunner({
       models: buildMockModelsConfig(),
-      credential: 'not-a-real-key',
+      credential: buildMockCredentialRef(),
       toolNames: ['notes_read'],
     });
 
@@ -2439,7 +2447,7 @@ test.each([
 
     const runner = await ctx.startRunner({
       models: buildMockModelsConfig(),
-      credential: 'not-a-real-key',
+      credential: buildMockCredentialRef(),
       toolNames: ['notes_read'],
     });
 
@@ -2470,7 +2478,7 @@ test('it answers the message that waited for the owner once the owner retries th
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
   });
 
@@ -2517,7 +2525,7 @@ test('it runs the turn after a refused call from the boundary before it, with no
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
   });
 
@@ -2563,7 +2571,7 @@ test('it keeps the replies the model gave before the model API refused the call,
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
   });
 
@@ -2623,7 +2631,7 @@ test('it answers your next message after 4 turns failed in a row, past the error
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
   });
 
@@ -2678,7 +2686,7 @@ test('it passes a message that lands during the turn into it and acknowledges it
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
   });
 
@@ -2726,7 +2734,7 @@ test('it stores the profile credential and grants it to the conversation sandbox
         'chat-direct': { baseURL: 'https://api.anthropic.com', authHeader: 'x-api-key' },
       },
     }),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
   });
 
@@ -2736,6 +2744,8 @@ test('it stores the profile credential and grants it to the conversation sandbox
       value: 'not-a-real-key',
       host: 'api.anthropic.com',
       header: 'x-api-key',
+      reference: 'deployment:anthropic',
+      fingerprint: expect.toSatisfy((print: string) => /^[\da-f]{8}$/u.test(print)),
     },
   ]);
 
@@ -2750,6 +2760,8 @@ test('it stores the profile credential and grants it to the conversation sandbox
           secret: ctx.sandboxes.secrets[0]?.name,
           host: 'api.anthropic.com',
           env: { ANTHROPIC_API_KEY: 'nixie-broker-placeholder' },
+          reference: 'deployment:anthropic',
+          fingerprint: ctx.sandboxes.secrets[0]?.fingerprint,
         },
       ],
     },
@@ -2797,7 +2809,7 @@ test('it opens a turn with at most the batch limit of inbox records and leaves t
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
   });
 
@@ -2818,7 +2830,7 @@ test('it keeps the session boundary and runs no turn for a step with nothing unr
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
   });
 
@@ -2863,19 +2875,19 @@ test('it keeps the conversation sandbox across restarts on one profile and repla
 
   await ctx.startRunner({
     models: buildMockModelsConfig({ profiles }),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
   });
 
   await ctx.startRunner({
     models: buildMockModelsConfig({ profiles }),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
   });
 
   await ctx.startRunner({
     models: buildMockModelsConfig({ profiles, roles: { conversation: 'chat-aggregator' } }),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
   });
 
@@ -2894,7 +2906,7 @@ test('it copies the session into the new conversation sandbox and then destroys 
 
   const before = await ctx.startRunner({
     models: buildMockModelsConfig(),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
     image: 'conversation-old',
   });
@@ -2931,7 +2943,7 @@ test('it copies the session into the new conversation sandbox and then destroys 
 
   await ctx.startRunner({
     models: buildMockModelsConfig(),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
     image: 'conversation-new',
     log,
@@ -2971,7 +2983,7 @@ test('it keeps the newer transcript of the kept conversation sandbox when an old
 
   const first = await ctx.startRunner({
     models,
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
     image: 'conversation-old',
   });
@@ -3008,7 +3020,7 @@ test('it keeps the newer transcript of the kept conversation sandbox when an old
 
   await ctx.startRunner({
     models,
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
     image: 'conversation-new',
   });
@@ -3028,7 +3040,7 @@ test('it keeps the newer transcript of the kept conversation sandbox when an old
 
   await ctx.startRunner({
     models,
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
     image: 'conversation-new',
   });
@@ -3057,7 +3069,7 @@ test('it copies the session into the kept conversation sandbox when it holds no 
 
   const first = await ctx.startRunner({
     models,
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
     image: 'conversation-old',
   });
@@ -3087,7 +3099,7 @@ test('it copies the session into the kept conversation sandbox when it holds no 
 
   await ctx.startRunner({
     models,
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
     image: 'conversation-new',
   });
@@ -3101,7 +3113,7 @@ test('it copies the session into the kept conversation sandbox when it holds no 
 
   await ctx.startRunner({
     models,
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
     image: 'conversation-new',
   });
@@ -3126,7 +3138,7 @@ test('it logs a failed destroy of the old conversation sandbox and still starts 
 
   await ctx.startRunner({
     models: buildMockModelsConfig(),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
     image: 'conversation-old',
   });
@@ -3137,7 +3149,7 @@ test('it logs a failed destroy of the old conversation sandbox and still starts 
 
   await ctx.startRunner({
     models: buildMockModelsConfig(),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
     image: 'conversation-new',
     log,
@@ -3162,7 +3174,7 @@ test('it tries every replaced sandbox for the session and logs one warning that 
 
   const before = await ctx.startRunner({
     models: buildMockModelsConfig(),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
   });
 
@@ -3182,7 +3194,7 @@ test('it tries every replaced sandbox for the session and logs one warning that 
 
   await ctx.startRunner({
     models: buildMockModelsConfig(),
-    credential: 'another-not-real-key',
+    credential: buildMockCredentialRef('other'),
     toolNames: ['notes_read'],
     log,
   });
@@ -3202,7 +3214,7 @@ test('it puts the memory note before the first message of the turn and leaves th
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
     memory: {
       readTurnNote: () =>
@@ -3245,7 +3257,7 @@ test('it records the sequence the memory note covers on the turn end', async () 
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
     memory: {
       readTurnNote: () =>
@@ -3272,7 +3284,7 @@ test('it records the sequence a turn with no memory changes covers and adds no m
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
     memory: {
       readTurnNote: () => Promise.resolve({ text: null, throughSequence: 4, eventCount: 0 }),
@@ -3330,7 +3342,7 @@ test('it ends a turn that a task report alone woke, keeps the text written befor
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['turn.end_silently'],
     messaging,
   });
@@ -3455,7 +3467,7 @@ test.each([
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['turn.end_silently'],
     messaging,
   });
@@ -3555,7 +3567,7 @@ test('it passes a message from you that lands after a silent end only to the nex
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['turn.end_silently'],
     log: (event) => {
       events.push(event);
@@ -3618,7 +3630,7 @@ test('it records no noted sequence on the turn end of a runner with no memory no
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
   });
 
@@ -3641,7 +3653,7 @@ test("it renders a restore notice in the turn that the owner's next message wake
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
   });
 
@@ -3673,7 +3685,7 @@ test('it writes each reply to the thread as the host reads it, before the turn e
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
   });
 
@@ -3727,7 +3739,7 @@ test('it writes no reply and ends the turn when the runner lost its lease', asyn
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
   });
 
@@ -3757,7 +3769,7 @@ test('it commits a turn whose owner message cut a reply, with no failed step, al
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
   });
 
@@ -3824,7 +3836,7 @@ test('it does not cut a reply for a task message', async () => {
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
     toolNames: ['task.message'],
     messaging,
   });

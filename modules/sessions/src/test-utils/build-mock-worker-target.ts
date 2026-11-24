@@ -1,3 +1,4 @@
+import { buildMockCredentialRef } from '@heynixie/credentials/test-utils';
 import { bindHarness, modelsConfigSchema } from '@heynixie/models';
 import invariant from 'tiny-invariant';
 import type { WorkerTarget } from '../worker/types';
@@ -24,7 +25,7 @@ export function buildMockWorkerTarget(id: string, model: string): WorkerTarget {
   invariant(profile, 'the profile is defined');
 
   return {
-    profile: { profile, credential: 'not-a-real-key' },
+    profile: { profile, credential: buildMockCredentialRef() },
     harness: bindHarness(profile),
     image: `image-${id}`,
     size: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },

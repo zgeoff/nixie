@@ -100,6 +100,7 @@ export function createProcessSandboxAdapter(input: ProcessSandboxOptions): Sandb
     },
 
     addSecret: () => Promise.resolve(),
+    removeSecret: () => Promise.resolve(),
 
     addImage: () => Promise.resolve(),
 
@@ -187,6 +188,8 @@ async function writeGrantRecords(
       sandboxID: id,
       secret: grant.secret,
       host: grant.host,
+      ...(grant.reference === undefined ? {} : { reference: grant.reference }),
+      ...(grant.fingerprint === undefined ? {} : { fingerprint: grant.fingerprint }),
     });
   }
 }

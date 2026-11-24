@@ -1,11 +1,8 @@
+import { deploymentReference } from '@heynixie/credentials';
 import { z } from 'zod';
 import type { AgentSDKProfile } from './agent-sdk-harness-definition';
 import { getCLIContextWindow } from './get-cli-context-window';
 import { modelPricesSchema } from './model-prices-schema';
-
-const credentialSchema = z
-  .string()
-  .regex(/^deployment:[\w-]+$/u, 'a credential reference reads deployment:<name>');
 
 // The CLI's auto-compact window takes an integer in this range and clamps any other value.
 const contextTokensSchema = z.int().min(100_000).max(1_000_000);
@@ -14,7 +11,7 @@ export const agentSDKProfileSchema = z
   .strictObject({
     harness: z.literal('agent-sdk'),
     base_url: z.url({ protocol: /^https?$/u }),
-    credential: credentialSchema,
+    credential: deploymentReference,
     auth_header: z.enum(['bearer', 'x-api-key']),
     model: z.string().min(1),
     effort: z.enum(['low', 'medium', 'high', 'xhigh', 'max']),

@@ -1,14 +1,17 @@
-import type { ModelSecrets, ModelsConfig, ResolvedProfile } from '../types';
+import type { ResolveCredential } from '@heynixie/credentials';
+import type { ModelsConfig, ResolvedProfile } from '../types';
 
 export function resolveModelCredentials(
   config: ModelsConfig,
-  secrets: ModelSecrets,
+  resolveCredential: ResolveCredential,
 ): Readonly<Record<string, ResolvedProfile>> {
   return Object.fromEntries(
-    Object.values(config.profiles).map((profile) => {
-      const name = profile.credential.slice('deployment:'.length);
-
-      return [profile.id, { profile, credential: secrets.model_credentials?.[name] ?? null }];
-    }),
+    Object.values(config.profiles).map((profile) => [
+      profile.id,
+      {
+        profile,
+        credential: resolveCredential({ class: 'model', reference: profile.credential }),
+      },
+    ]),
   );
 }

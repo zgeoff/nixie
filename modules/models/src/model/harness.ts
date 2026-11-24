@@ -9,6 +9,7 @@ import type {
 } from '@heynixie/wire';
 import type { ModelProfile } from '../types';
 import type { HarnessProfileSchema } from './build-models-config-schema';
+import type { ModelGrantSecret } from './grant-model-secret';
 
 export type HarnessEntry = 'turn' | 'check';
 
@@ -35,7 +36,7 @@ export interface HarnessSession {
 export interface Harness {
   readonly id: HarnessID;
   readonly api: ModelAPI;
-  readonly buildGrant: (secret: SecretSpec) => GrantSpec;
+  readonly buildGrant: (secret: ModelGrantSecret) => GrantSpec;
   readonly guest: HarnessGuest;
 
   // the key of the guest's image in the sandbox manifest

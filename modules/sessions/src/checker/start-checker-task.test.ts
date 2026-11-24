@@ -1,4 +1,5 @@
 import { expect, mock, test } from 'bun:test';
+import { createTestCredentials } from '@heynixie/credentials/test-utils';
 import { modelsConfigSchema } from '@heynixie/models';
 import { createFakeClock } from '@zgeoff/testing/clock';
 import { startTestSessionHost } from '../test-utils/start-test-session-host';
@@ -34,7 +35,9 @@ test('it runs each check in the check guest on the checker role profile', async 
       },
       roles: { conversation: 'chat-direct', checker: 'checker' },
     }),
-    secrets: { model_credentials: { anthropic: 'not-a-real-key' } },
+    credentials: await createTestCredentials({
+      model_credentials: { anthropic: 'not-a-real-key' },
+    }),
     sandboxes: ctx.host.sandboxes,
     images: { conversation: 'nixie-conversation-0123456789ab' },
     timeoutMs: 60_000,
@@ -102,7 +105,9 @@ test('it logs where each check spent its time', async () => {
       },
       roles: { conversation: 'chat-direct', checker: 'checker' },
     }),
-    secrets: { model_credentials: { anthropic: 'not-a-real-key' } },
+    credentials: await createTestCredentials({
+      model_credentials: { anthropic: 'not-a-real-key' },
+    }),
     sandboxes: ctx.host.sandboxes,
     images: { conversation: 'nixie-conversation-0123456789ab' },
     timeoutMs: 60_000,

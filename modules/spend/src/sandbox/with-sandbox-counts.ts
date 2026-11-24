@@ -89,6 +89,7 @@ export function withSandboxCounts(
       return sandboxes.map((sandbox) => wrap(sandbox));
     },
     addSecret: adapter.addSecret,
+    removeSecret: adapter.removeSecret,
     addImage: adapter.addImage,
     checkRuntime: adapter.checkRuntime,
   };

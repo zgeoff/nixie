@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@heynixie/budgets": "workspace:*",
+    "@heynixie/egress": "workspace:*",
     "@heynixie/log": "workspace:*",
     "@heynixie/logger": "workspace:*",
     "@heynixie/policy": "workspace:*",

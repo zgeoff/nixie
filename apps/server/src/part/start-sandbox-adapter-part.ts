@@ -1,6 +1,6 @@
 import type { Logger } from '@heynixie/logger';
 import type { SandboxAdapter, SandboxRecorderOptions, ToolTargetResolver } from '@heynixie/sandbox';
-import { buildSandboxRecorder, watchMemoryKills } from '@heynixie/sandbox';
+import { buildSandboxRecorder, watchMemoryKills, withSecretCleanup } from '@heynixie/sandbox';
 import { withSandboxCounts } from '@heynixie/spend';
 import type { SandboxAdapterOptions } from '../sandbox/create-sandbox-adapter';
 import { createSandboxAdapter } from '../sandbox/create-sandbox-adapter';
@@ -13,6 +13,9 @@ export interface SandboxAdapterPartInputs {
   readonly sandbox: SandboxSettings;
   readonly spend: SpendInputs | null;
   readonly dataDir: string;
+
+  // the broker names that the config's host-held profiles give, which cleanup never removes
+  readonly hostHeldNames: readonly string[];
   readonly log: Logger;
   readonly recorder: SandboxRecorderOptions;
   readonly toolTarget: ToolTargetResolver;
@@ -30,7 +33,11 @@ export function startSandboxAdapterPart(inputs: SandboxAdapterPartInputs): Sandb
     ...(inputs.spend === null ? {} : { modelGateway: { modelURL: inputs.spend.modelURL } }),
   });
 
-  const watched = watchMemoryKills(built, { log: inputs.log });
+  const watched = withSecretCleanup(watchMemoryKills(built, { log: inputs.log }), {
+    log: inputs.recorder.log,
+    logger: inputs.log,
+    hostHeldNames: inputs.hostHeldNames,
+  });
 
   return inputs.spend === null
     ? watched

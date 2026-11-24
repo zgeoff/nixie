@@ -14,7 +14,7 @@ export async function startSandboxTaskRunner(
   const runner = await startSandboxRunner({
     context: parts.context,
     models: parts.config.models,
-    secrets: parts.modelSecrets,
+    credentials: parts.credentials,
     sandboxes: parts.tools.adapter,
     images: toImageNames(parts.images),
     tools: parts.tools.endpoint,
