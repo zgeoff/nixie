@@ -46,7 +46,7 @@ reviewed.
 | ----------------------- | ----------------------- | ----------------------- |
 | Same hash               | Exposed                 | Exposed                 |
 | Changed hash            | Stopped until you allow | Applied, with a notice  |
-| New tool                | Hidden until you allow  | Exposed, with a notice  |
+| New tool                | Hidden until you allow  | Hidden until you allow  |
 | New input argument      | Stopped until you allow | Stopped until you allow |
 | Removed tool            | Dropped, with a notice  | Dropped, with a notice  |
 | Override no longer fits | Stopped                 | Stopped                 |
