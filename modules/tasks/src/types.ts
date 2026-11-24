@@ -341,12 +341,12 @@ export type FaultPointID =
   | 'erasure.cleaned'
   | 'erasure.turn_inputs_removed'
   | 'backup.set.copied'
-  | 'live.follow.checked';
+  | 'session.checked';
 
 export interface FaultPointContext {
   readonly kind:
     | LeaseKind
-    | 'live'
+    | 'session'
     | 'recovery'
     | 'restart_sweep'
     | 'pool'

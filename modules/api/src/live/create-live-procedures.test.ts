@@ -1,11 +1,7 @@
-import { expect, onTestFinished, test } from 'bun:test';
+import { expect, test } from 'bun:test';
 import { readRecords, writeRecords } from '@heynixie/log';
-import {
-  claimTask,
-  createConversationTask,
-  createTask,
-  setFaultPointHandler,
-} from '@heynixie/tasks';
+import { registerFaultPointAction } from '@heynixie/memory/test-utils';
+import { claimTask, createConversationTask, createTask } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
 import { buildSeeder } from '../test-utils/build-seeder';
 import { buildTestClient } from '../test-utils/build-test-client';
@@ -348,18 +344,12 @@ test('#live.follow ends with UNAUTHORIZED when the session is revoked right afte
 
   const laptopClient = buildTestClient(ctx.url, laptop.token);
 
-  setFaultPointHandler(async (id) => {
-    if (id === 'live.follow.checked') {
-      await laptopClient.sessions.revoke({
-        clientActionID: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
-        sessionID: laptop.sessionID,
-      });
-    }
-  });
-
-  onTestFinished(() => {
-    setFaultPointHandler(null);
-  });
+  registerFaultPointAction('session.checked', () =>
+    laptopClient.sessions.revoke({
+      clientActionID: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
+      sessionID: laptop.sessionID,
+    }),
+  );
 
   const stream = await laptopClient.live.follow({});
   const [settled] = await Promise.allSettled([readRecordEvents(stream, Number.POSITIVE_INFINITY)]);
