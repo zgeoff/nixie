@@ -63,10 +63,10 @@ sends the topics that wait between records, so a long replay never holds a topic
 
 ### Keepalive
 
-The API writes a keepalive into a quiet stream every 5 s. oRPC's event iterator swallows the
-keepalive comment, so the web client watches the bytes of the response and treats a stream with no
-byte for 15 s as dead. `liveStreamTiming` in the contract package holds both numbers, and a test
-asserts that 3 keepalive intervals fit in the client's idle limit.
+The API writes a keepalive into a quiet stream at a fixed interval. oRPC's event iterator swallows
+the keepalive comment, so the web client watches the bytes of the response and treats a stream that
+sends no byte within its idle limit as dead. `liveStreamTiming` in the contract package holds the
+interval and the idle limit, and a test asserts that 3 keepalive intervals fit in the idle limit.
 
 ## Topics
 
@@ -114,13 +114,13 @@ The API holds one registry in memory, and a restart forgets it. It keeps two fac
 
 - Presence comes only from `sessions.shown` beats. An open stream never counts as present, because a
   background tab holds a stream open. The push notifier reads `presence.isPresent(withinMs)`.
-- A device is online while one or more of its device-form streams are open, and for 60 s after its
-  last one closes, so a reconnect never reads as offline. The devices module reads the registry's
-  `DeviceStreams`. A device-form stream keeps its session's last seen time fresh, and a page stream
-  never does.
+- A device is online while one or more of its device-form streams are open, and for
+  `deviceOfflineGraceMs` after its last one closes, so a reconnect never reads as offline. The
+  devices module reads the registry's `DeviceStreams`. A device-form stream keeps its session's last
+  seen time fresh, and a page stream never does.
 
-When a client goes away, the server ends its stream within 10 s and drops a device-form stream from
-the registry in the same step.
+When a client goes away, the server ends its stream within 2 keepalive intervals and drops a
+device-form stream from the registry in the same step.
 
 ## The web client's side
 

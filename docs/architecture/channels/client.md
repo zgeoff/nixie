@@ -124,17 +124,18 @@ the thread on screen, from the sequence that page read at, and every topic's `ch
 
 A live stream can die without the browser seeing it close, as when a phone sleeps or a proxy loses
 its upstream, so the client watches for that. The API writes a keepalive into a quiet stream, and
-the client fails a stream that has sent no byte for 15 s, and a stream request that gets no response
-headers in 15 s, and follows again. A page that becomes visible again, or a browser that comes back
-online, ends the open connection or the pause before a reconnect and follows again at once, because
-those are the moments a connection most often died unseen or the network came back.
+the client fails a stream that has sent no byte, and a stream request that gets no response headers,
+within the idle limit in `liveStreamTiming`, and follows again. A page that becomes visible again,
+or a browser that comes back online, ends the open connection or the pause before a reconnect and
+follows again at once, because those are the moments a connection most often died unseen or the
+network came back.
 
 A stream that fails attempt after attempt backs off: the pause before each reconnect doubles up to a
 cap. The API checks the session before it opens the stream, so a stream that opens is one the API
 accepted, and only an `opened` event resets the backoff. After 3 failures in a row the page says
 live updates are unavailable, so a stream that a content blocker, a down server or a revoked session
-stops fails visibly, and each topic's reads run again every 60 s. The notice goes, and the 60 s
-reads stop, once a stream opens again.
+stops fails visibly, and each topic's reads run again every `liveFallbackMs`. The notice goes, and
+those reads stop, once a stream opens again.
 
 The page also says when nixie is failing to answer: the conversation's last step failed and its
 errors in a row reached the limit at which another task would fail. A turn that

@@ -112,13 +112,13 @@ The device form of [`live.follow`](./live-updates.md#the-stream) takes the scree
 and its `pixelRatio`, device pixels per CSS pixel, which the device sends again on each reconnect
 and in each `devices.resize`. The server keeps each open stream and its size in memory in
 `createDeviceStreams`, which the API's client registry holds. A device is online while it has one
-open, and for 60 s after its last one closes, so a reconnect never reads as offline. A device that
-has been offline reports the time its last stream closed, as long as the process has run since.
-`devices.resize({ width, height })` gives every open stream of the caller's device a new size, and
-`devices.list` reads the new size at once. One pixels schema bounds the size in both calls. The
-stream sends `opened` first, then what the screen shows now. A later event follows a commit that
-touches the device, and the stream sends an event only when the state changes. The event of a show
-carries the `fit` of an image, `whole` or `fill`.
+open, and for `deviceOfflineGraceMs` after its last one closes, so a reconnect never reads as
+offline. A device that has been offline reports the time its last stream closed, as long as the
+process has run since. `devices.resize({ width, height })` gives every open stream of the caller's
+device a new size, and `devices.list` reads the new size at once. One pixels schema bounds the size
+in both calls. The stream sends `opened` first, then what the screen shows now. A later event
+follows a commit that touches the device, and the stream sends an event only when the state changes.
+The event of a show carries the `fit` of an image, `whole` or `fill`.
 
 The layout travels in `layout` events, apart from the `show` and `idle` events. A stream sends one
 when the device holds a layout, and again when the grid or a region's content changes, a region's
@@ -136,8 +136,8 @@ replaces the list before it. The list is the newest `device.watch_set` record fo
 device that no call named has an empty list. When a device's change to online or offline is on its
 list, the server writes a `device.status_changed` record to the conversation's thread, which the
 conversation reads as an inbox record and which wakes a step. A change that the list leaves out
-writes nothing. A device counts as offline once it has had no open stream for 60 s, so a reconnect
-inside that time wakes nothing.
+writes nothing. A device counts as offline once it has had no open stream for
+`deviceOfflineGraceMs`, so a reconnect inside that time wakes nothing.
 
 ## The tools
 
