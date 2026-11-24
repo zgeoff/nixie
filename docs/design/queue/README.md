@@ -20,8 +20,8 @@ is deleted.
 | Model harnesses | [the turn-input log](turn-input-log.md)                                                           |
 | Policy          | [the decision point cutover](decision-point-cutover.md)                                           |
 | Mail            | [mail and wake rules](mail/README.md)                                                             |
-| Connections     | [Google connections](google-connections.md)                                                       |
-| Google tools    | [Gmail, Calendar and Drive](gmail-calendar-drive-tools.md)                                        |
+| Connections     | [Google connections](google-connections.md), [the connection store](google-connection-store.md)   |
+| Google tools    | [Gmail](gmail-calendar-drive-tools.md), [Calendar and Drive](google-calendar-drive-tools.md)      |
 | MCP servers     | [the MCP proxy build](mcp-proxy-build.md)                                                         |
 | Channels        | [the push notice](push-notice.md), [live updates and presence](live-updates.md)                   |
 | Devices         | [the camera, the speaker and the microphone](devices.md), [layouts](device-layout.md)             |

@@ -1,308 +1,273 @@
-# Gmail, Calendar and Drive tools
+# Google tools
 
 - **Status:** draft
 - **Work items:** [Gmail](https://linear.app/zgeoff/issue/GEO-1825), and
-  [Calendar and Drive](https://linear.app/zgeoff/issue/GEO-1826). Both build on the Google
-  connection ([google connections](google-connections.md)) and on
-  [actions under policy](https://linear.app/zgeoff/issue/GEO-1810).
+  [Calendar and Drive](https://linear.app/zgeoff/issue/GEO-1826). Both build on the
+  [Google connection](google-connections.md).
 
-nixie reads, searches and labels your mail, sends mail, and reads and changes your calendar and the
-Drive files you give it, through one Google connection. A read runs inside the model's turn and
-returns its result at once. A change or a send runs as an
-[action](../../architecture/core/actions.md) on the action queue, and the
-[decision point](../platform/policy/decision-point.md) decides it before every attempt. When an
-attempt's outcome is unknown, a read-only check at Google settles it, and nixie never repeats the
-action blind. A sent mail carries its action ID in its `Message-ID`, so a check of the Sent folder
-can find an unknown send. When it finds none, nixie asks you and never sends again on its own.
+nixie reads, searches and labels your Gmail, sends mail, and reads and changes your calendar and the
+Drive files you give it, through one Google connection. Every read asks Google live, inside the
+model's turn: nixie syncs nothing. The only copies of your mail, events or files it keeps are in a
+call's own records: the text the call returned, and the card fields its `prepare` read. A change or
+a send runs as an [action](../../architecture/core/actions.md), and the
+[decision point](../../architecture/policy/decision-point.md) decides it before every attempt from
+the effects the tool declares and the destinations nixie reads from Google. When an attempt's
+outcome is unknown, a read-only check at Google settles it, and nixie never repeats a send blind.
 
-The Google connection design owns the tokens, the consent, the scopes and the setup steps. The
-[connector interface](../platform/connectors/connector.md) owns the shape of a connector action, and
-[serving nixie's tools](../platform/connectors/tools.md) owns how a call and its errors reach the
-model. Other terms are in the [glossary](../../glossary.md).
+Below are the rules every Google tool keeps, and the Gmail tools. Find the rest in
+[Calendar and Drive tools](google-calendar-drive-tools.md). The Gmail tools are `gmail.*`. The
+`mail.*` tools belong to the assistant's own mailbox, in the
+[mail design](https://github.com/zgeoff/nixie/pull/1420). That design also holds `gmail.wake_set`,
+`gmail.wake_list` and `gmail.wake_cancel`, and the `replyWake` argument of `gmail.send` and
+`gmail.reply`, which the mail polls work item builds. The tokens, the consent and the scopes belong
+to the [Google connection](google-connections.md). How a call and its errors reach the model is in
+[tool calls](../../architecture/connectors/tool-calls.md).
+
+Read this page to build the [Gmail](https://linear.app/zgeoff/issue/GEO-1825) work item, after the
+Google connection. The owner settles its open questions.
 
 ## Shape
 
 ```mermaid
 flowchart LR
   model[model] -->|"gmail.reply"| endpoint[tool endpoint]
-  endpoint -->|"1. resolveDestinations: read the message"| gmail[Gmail API]
+  endpoint -->|"1. prepare: read the message"| gmail[Gmail API]
   endpoint -->|"2. decide"| dp[decision point]
   dp -->|ask| card[send card]
   card -->|approve| queue[action queue]
   dp -->|allow| queue
   queue -->|"3. send, Message-ID holds the action ID"| gmail
   queue -->|"4. unknown: check after 5 min"| sent[Sent-folder check]
-  sent -->|"found, inconclusive"| queue
 ```
-
-In this path, the tool endpoint first reads the message to learn whom the reply reaches, the
-decision point then allows the reply or asks on a card, and the action queue sends it.
-[Destinations](#destinations) and [the send card](#the-send-card) hold those 2 steps.
 
 ## Contracts
 
-### The tools
+### Every Google tool
 
-The Google connector's actions become these tools. The Effect column holds the
-[effect](../platform/policy/decision-point.md#effects) that rules match on. A `direct` tool runs in
-the turn, and a `queued` tool runs as an action, as
-[a tool definition](../platform/connectors/tools.md#a-tool-definition) sets.
+```ts
+// connectors module. Each Google tool is one entry of the Google connector's `actions`. The tool
+// endpoint reads `scopes` to leave out a tool whose scope is missing; the action queue runs
+// `queued` for a queued tool. `run`, with its ActionResponse, leaves ConnectorAction.
+interface ConnectorAction {
+  tool: ToolDefinition; // was Omit<ToolDefinition, 'run'>; a read's run returns a ToolOutcome, so it can carry an image or link IDs as web_fetch does
+  scopes: string[];
+  reconcile: Reconcile;
+  queued?: ActionConnector; // its attempt answers a ProviderResponse; its check, a CheckResponse
+}
 
-A tool that acts on an item a connection returned, such as `gmail.reply` on a message, takes its
-connection from the item. Every other tool takes the
-[connection argument](../platform/connectors/connector.md#the-connection-argument) when the tool
-list of its conversation, task or worker names 2 or more Google connections for it.
+// connectors module: …existing fields of ActionAttempt
+interface ActionAttempt {
+  destinations: readonly CallDestination[]; // was string[]: the attempt compares reply targets too
+  attemptStartedAt: number; // epoch ms when the attempt began
+}
 
-| Tool                                | Effect  | Runs   | Scope                            | Reconciliation                    |
-| ----------------------------------- | ------- | ------ | -------------------------------- | --------------------------------- |
-| `gmail.search`                      | `read`  | direct | `gmail.modify`                   | none                              |
-| `gmail.read`                        | `read`  | direct | `gmail.modify`                   | none                              |
-| `gmail.read_attachment`             | `read`  | direct | `gmail.modify`                   | none                              |
-| `gmail.label`                       | `write` | queued | `gmail.modify`                   | check: the threads' labels        |
-| `gmail.send`                        | `send`  | queued | `gmail.modify`                   | check: the Sent folder            |
-| `gmail.reply`                       | `send`  | queued | `gmail.modify`                   | check: the Sent folder            |
-| `calendar.list_calendars`           | `read`  | direct | `calendar.calendarlist.readonly` | none                              |
-| `calendar.list_events`              | `read`  | direct | `calendar.events`                | none                              |
-| `calendar.read_event`               | `read`  | direct | `calendar.events`                | none                              |
-| `calendar.create_event`             | `write` | queued | `calendar.events`                | check: the event ID and marker    |
-| `calendar.create_event_with_guests` | `send`  | queued | `calendar.events`                | check: the event ID and marker    |
-| `calendar.change_event`             | `write` | queued | `calendar.events`                | check: the event's marker         |
-| `calendar.change_event_with_guests` | `send`  | queued | `calendar.events`                | check: the event's marker         |
-| `calendar.cancel_event`             | `write` | queued | `calendar.events`                | check: the event is cancelled     |
-| `calendar.cancel_event_with_guests` | `send`  | queued | `calendar.events`                | check: the event is cancelled     |
-| `calendar.respond`                  | `send`  | queued | `calendar.events`                | check: your response on the event |
-| `drive.search`                      | `read`  | direct | `drive.file`                     | none                              |
-| `drive.read`                        | `read`  | direct | `drive.file`                     | none                              |
-| `drive.create`                      | `write` | queued | `drive.file`                     | check: the file's marker          |
-| `drive.change`                      | `write` | queued | `drive.file`                     | check: the file's marker          |
+// tools module: …existing fields of Prepared
+interface Prepared {
+  destinations: readonly CallDestination[]; // was string[], so prepare can return reply targets
+  card?: Record<string, string>; // the card's fields that come from the provider
+}
+```
 
-nixie counts every attendee of an event as a guest, except the connection's own account: the
-attendee whose `self` is true, or whose address is the account. A room or other resource counts as a
-guest, because Google emails its owner.
+Each tool, attempt and check reaches its connection through `connections.readContext` from the
+[Google connection](google-connections.md#the-connector).
 
-A marker is a private property that a change writes on the item it changes, so a later check can
-tell whether the change happened.
-[Reconciliation of the other changes](#reconciliation-of-the-other-changes) defines it.
+- Every message, thread, event and file ID a Google tool returns starts with its connection's short
+  ID and a dot, such as `k3x9m2p7qa.18c2f0a9b4d1e7c3`, and the model passes it back whole. A tool
+  that takes an item ID takes its connection from that prefix. The endpoint checks the prefix
+  against the caller's connections and the job's pins, as it checks a
+  [connection argument](../platform/connectors/connector.md#the-connection-argument), with the same
+  errors.
+- Every other tool takes the connection argument when its caller can reach 2 or more Google
+  connections.
+- Either way, the endpoint adds `connection` to the call's arguments before the decision point, so a
+  queued action's arguments always name its connection. An attempt or a check whose connection is
+  forgotten answers `refused` with `connection_forgotten`.
+- The Gmail work item builds the connection argument, job pins and the model's status line, as the
+  connector design and
+  [serving nixie's tools](../platform/connectors/tools.md#what-the-model-learns-about-a-connection)
+  set them out. The Google connection builds the filter that leaves out a tool whose scope is
+  missing.
+- Each tool that reads text returns at most one part of it per call: `part` names the part, counted
+  from 1, and `parts` gives how many there are.
 
-### Reads
+### The declarations
 
-Each tool that reads text returns at most one part of it per call: `part` names the part, counted
-from 1, and `parts` gives how many there are. [Every tool](#every-tool) sets the part size.
+Each tool declares an `EffectDeclaration` (policy module), and its effects never depend on its
+arguments or on the item it acts on. A tool whose destinations or card fields come from an item at
+Google reads them in `prepare` on its tool definition (tools module), before the decision point.
+
+```ts
+// gmail.reply's declaration
+const gmailReplyDeclaration: EffectDeclaration = {
+  effects: ['send'],
+  destinations: [], // prepare reads them from the message
+  amount: null,
+  content: ['text'],
+  results: { message: 'owner_data', thread: 'owner_data' },
+};
+
+// gmail.reply's prepare, for a message from sam@example.org with Cc kim@example.org and replyAll
+// → { destinations: [{ value: 'sam@example.org', replyTarget: true },
+//                    { value: 'kim@example.org', replyTarget: false }],
+//     effects: ['send'],
+//     card: { from: 'you@example.com', replyTo: 'sam@example.org', subject: 'Q3 numbers',
+//             inReplyTo: 'Sam Lee, 12 Nov 2026, "Q3 numbers"' } }
+```
+
+```ts
+// policy module: …existing fields of BodyFields. The action kind's proposal handler uses it in
+// place of the label buildActionApproveLabel builds.
+interface BodyFields {
+  approveLabel?: string; // the approve button, such as 'Send reply'
+}
+```
+
+- `prepare` returns `card` fields, and nixie seals them as new erasable fields of the call's
+  `tool_called` record, so a card renders while the connection is down and a forget of the record
+  takes them. The Gmail work item adds these fields.
+- `gmail.send` has a `prepare` that fills only `card.from` from the context. Its destinations stay
+  its `to`, `cc` and `bcc` arguments.
+
+- Each destination is a bare address, with no display name, in lowercase NFC. The decision point
+  gives each one a permission at stage 5, as
+  [destinations](../../architecture/policy/decision-point.md#destinations) sets, and the
+  [trusted-places design](https://github.com/zgeoff/nixie/pull/1410) reads each as an `address`
+  place.
+- A reply target covers only the reply or response whose `prepare` returned that address. An address
+  the model writes in an argument is never a reply target, even when it equals a sender or an
+  organizer.
+- `prepare` is a direct read, with the direct call's time budget. When it fails, the call fails as a
+  direct call does, and never reaches the decision point.
+- The [action hash](../platform/policy/approvals.md#the-proposal) covers the destinations and their
+  reply targets. In its attempt, the connector reads the item again. When the recipients, the guests
+  or a reply target differ, such as a message moved to Spam since, it answers
+  `destinations_changed`, and the action fails and sends to none of them.
+- `policy.action_proposed` gains an optional field with each destination's permission from the
+  decision, and `libs/contract` passes it to the card. The card lists each destination beside its
+  permission, and marks one that no permission covered with "no permission".
+- nixie fills each card's sentence from the call's structured fields and its `card` fields, as
+  [proposals and approvals](../platform/policy/approvals.md#the-proposal) sets, and the model writes
+  none of it. The card's layout is in
+  [approvals in the client](../platform/channels/approvals.md#cards).
+
+Each result field has a source: `untrusted` is outside content, and `owner_data` is your own data. A
+field that holds a list or an object takes the least trusted source of its members, so `messages`
+and `events` are `untrusted`. An endorsed field has a type that cannot carry words: a boolean, a
+number, a time or a value from a fixed list. Its output schema carries `x-endorsed`, and its source
+stays as its table gives it. No decision reads endorsement yet; a later taint stage will.
+
+### The Gmail tools
+
+| Tool                    | Effect  | Runs   | Destinations                          | Reconciliation            |
+| ----------------------- | ------- | ------ | ------------------------------------- | ------------------------- |
+| `gmail.search`          | `read`  | direct | none                                  | none                      |
+| `gmail.read`            | `read`  | direct | none                                  | none                      |
+| `gmail.read_attachment` | `read`  | direct | none                                  | none                      |
+| `gmail.label`           | `write` | queued | none                                  | check `gmail.find_labels` |
+| `gmail.draft`           | `write` | queued | none                                  | check `gmail.find_draft`  |
+| `gmail.send`            | `send`  | queued | each address in `to`, `cc` and `bcc`  | check `gmail.find_sent`   |
+| `gmail.reply`           | `send`  | queued | the recipients it reads, in `prepare` | check `gmail.find_sent`   |
+| `gmail.send_draft`      | `send`  | queued | the draft's recipients, in `prepare`  | check `gmail.find_sent`   |
+
+Every Gmail tool needs the scope `gmail.modify`.
 
 ```ts
 gmail.search({ query: 'from:sam@example.org newer_than:7d', limit: 20 });
-// → { messages: [{ message: '18c2f0a9b4d1e7c3', thread: '18c2f0a9b4d1e7c3',
+// → { messages: [{ message: 'k3x9m2p7qa.18c2f0a9b4d1e7c3', thread: 'k3x9m2p7qa.18c2f0a9b4d1e7c3',
 //       from: 'Sam Lee <sam@example.org>', to: ['you@example.com'], subject: 'Q3 numbers',
 //       date: '2026-11-12T23:04:00Z', snippet: 'Here are the…', labels: ['INBOX', 'Reports'],
 //       isUnread: true, hasAttachments: true }],
 //     next: 'eyJwIjoyfQ' }   // null on the last page; pass it back as `after`
 
-gmail.read({ message: '18c2f0a9b4d1e7c3', part: 1 });
+gmail.read({ message: 'k3x9m2p7qa.18c2f0a9b4d1e7c3', part: 1 });
 // → { message, thread, from, replyTo: null, to, cc, subject, date, labels,
-//     text: 'Hi, the numbers are in the sheet [L3]…', part: 1, parts: 2,
+//     text: 'Hi, the numbers are in the sheet [L3]…', part: 1, parts: 2, unsupported: false,
 //     attachments: [{ attachment: '1.2', name: 'q3.csv', type: 'text/csv', bytes: 18233 }] }
 
-gmail.read_attachment({ message: '18c2f0a9b4d1e7c3', attachment: '1.2', part: 1 });
+gmail.read_attachment({ message: 'k3x9m2p7qa.18c2f0a9b4d1e7c3', attachment: '1.2', part: 1 });
 // → { name: 'q3.csv', type: 'text/csv', bytes: 18233, text: 'region,total\n…', part: 1, parts: 1 }
-//   an image: text null, and the model gets the image beside the result, as for a fetched image
+//   an image: text null, and the model gets the image beside the result
 //   any other type: text null, parts 0, unsupported: true
 
-calendar.list_events({
-  calendar: 'primary',
-  from: '2026-11-14T00:00:00+11:00',
-  to: '2026-11-21T00:00:00+11:00',
+gmail.label({
+  threads: ['k3x9m2p7qa.18c2f0a9b4d1e7c3'],
+  add: ['Reports'],
+  remove: ['INBOX', 'UNREAD'],
 });
-// → { events: [{ event: 'a1b2c3d4e5', title: 'Dentist', start: '2026-11-15T09:30:00+11:00',
-//       end: '2026-11-15T10:15:00+11:00', isAllDay: false, location: '12 High St',
-//       organizer: 'you@example.com', guests: [], yourResponse: null, status: 'confirmed' }],
-//     next: null }
+// → done: { threads: ['k3x9m2p7qa.18c2f0a9b4d1e7c3'], created: [] }   created: user labels the call made
 
-drive.read({ file: '1Bx9QvR2…', part: 1 });
-// → { file, name: 'Trip plan', type: 'google_doc', modifiedAt: '2026-11-10T04:12:00Z',
-//     text: '# Trip plan\n…', part: 1, parts: 3 }
-```
+gmail.send({
+  to: ['sam@example.org'],
+  cc: [],
+  bcc: [],
+  subject: 'Q3 numbers',
+  text: 'Hi Sam, …',
+  html: null, // optional: an HTML body beside the text
+  files: ['f8k2m4'], // optional: file IDs of the assistant's own files, such as a drawing
+});
+// → done: { message: 'k3x9m2p7qa.18c2f1…', thread: 'k3x9m2p7qa.18c2f1…', edited: null }
+//   edited: { subject, text } when you changed them on the card; the mail went out as edited
 
-```ts
-// connectors module: the source of content of each result field, in the declaration's `results`.
-// 'untrusted' is outside content and 'owner_data' is your own data, as taint in the first build
-// (../platform/policy/decision-point.md#taint-in-the-first-build) sets. Endorsed marks a field
-// whose type cannot carry words (a boolean, a
-// number, a time, a value from a fixed list); it goes in the output schema as 'x-endorsed' and
-// leaves the field's source as it is.
-// In the first build, endorsement changes no decision; a later taint stage reads it.
-const mailResultSources = {
-  message: 'owner_data', // Gmail's own IDs; not endorsed, because a string can carry words
-  thread: 'owner_data',
-  labels: 'owner_data', // label names you or nixie made, and Gmail's system labels
-  from: 'untrusted', // every header the sender wrote
-  replyTo: 'untrusted',
-  to: 'untrusted',
-  cc: 'untrusted',
-  subject: 'untrusted',
-  snippet: 'untrusted',
-  text: 'untrusted', // the body, whoever sent it, your own sent mail included
-  attachments: 'untrusted', // names and types come from the sender
-  date: 'untrusted', // endorsed: a time
-  isUnread: 'untrusted', // endorsed: a boolean
-  hasAttachments: 'untrusted', // endorsed: a boolean
-  part: 'owner_data', // endorsed: a number
-  parts: 'owner_data', // endorsed: a number
-} as const;
-// Calendar: event, calendar and next are 'owner_data'; title, location, description,
-// organizer and guests are 'untrusted'; start, end, isAllDay, status and yourResponse are
-// 'untrusted' and endorsed. Drive: file and next are 'owner_data'; name and text are
-// 'untrusted'; type, bytes and modifiedAt are 'untrusted' and endorsed.
-```
+gmail.draft({ to: ['sam@example.org'], subject: 'Q3 numbers', text: 'Hi Sam, …', files: [] });
+// → done: { draft: 'k3x9m2p7qa.r-8812…' }   the draft stays in the account, and you can open it
 
-### The changes
+gmail.send_draft({ draft: 'k3x9m2p7qa.r-8812…' });
+// → done: { message, thread, edited: null }
 
-```ts
-gmail.label({ threads: ['18c2f0a9b4d1e7c3'], add: ['Reports'], remove: ['INBOX', 'UNREAD'] });
-// → done: { threads: ['18c2f0a9b4d1e7c3'], created: [] }   created: user labels the call made
-
-gmail.send({ to: ['sam@example.org'], cc: [], bcc: [], subject: 'Q3 numbers', text: 'Hi Sam, …' });
-// → done: { message: '18c2f1…', thread: '18c2f1…' }
-
-gmail.reply({ message: '18c2f0a9b4d1e7c3', text: 'Thanks, got it.', replyAll: false });
+gmail.reply({ message: 'k3x9m2p7qa.18c2f0a9b4d1e7c3', text: 'Thanks, got it.', replyAll: false });
 // → done: { message, thread }
-
-calendar.create_event_with_guests({
-  calendar: 'primary',
-  title: 'Q3 review',
-  start: '2026-11-18T14:00:00+11:00',
-  end: '2026-11-18T14:30:00+11:00',
-  guests: ['sam@example.org'],
-});
-// → done: { event: '0b9d3c4e7a214f0e8c551e6f2a9d4c03', link: 'https://www.google.com/calendar/event?eid=…' }
-
-calendar.change_event_with_guests({
-  event: 'a1b2c3d4e5',
-  start: '…',
-  end: '…',
-  addGuests: [],
-  removeGuests: [],
-});
-calendar.cancel_event({ event: 'a1b2c3d4e5' });
-calendar.respond({ event: 'k9x8w7v6u5', response: 'accepted' }); // accepted | declined | tentative
-
-drive.create({ name: 'Trip plan', text: '# Trip plan\n…', as: 'google_doc' }); // google_doc | text
-drive.change({ file: '1Bx9QvR2…', name: null, text: '# Trip plan\n…' }); // replaces the whole content
 ```
 
-- `gmail.label` takes up to 50 threads. `add` and `remove` take user label names and the system
-  labels `INBOX`, `UNREAD`, `STARRED` and `IMPORTANT`, and nothing else. When `add` names a user
-  label that does not exist, the tool creates it.
-- `gmail.send` takes up to 20 addresses across `to`, `cc` and `bcc`, and a plain-text body of up to
-  100 KB. It sends no attachment and no HTML.
-- `gmail.reply` takes its recipients from the message, never from the model: the message's
-  `Reply-To`, else its `From`, and with `replyAll` the message's `To` and `Cc` too, without your own
-  address. It threads the reply with `In-Reply-To`, `References`, the thread ID and the subject.
-- The create, change and cancel tools without guests have no guest argument.
-- A with-guests tool refuses with `no_guests` when the event has no guest before the change and none
-  after it, so the model uses the tool without guests.
-- In its attempt, `drive.change` reads the file first. It refuses with `shared_file` when the file
-  is shared with anyone or sits in a shared drive. **Why:** a change to a shared file reaches each
-  person who can read it, which is a `send`, and sharing is out of scope.
-- `drive.create` makes the file in your My Drive root, shared with no one.
-- `drive.create` with `google_doc` imports the text as Markdown into a Google Doc. With `text` it
-  makes a plain text file.
+| `owner_data`                                    | `untrusted`                                                            | `untrusted` and endorsed                           |
+| ----------------------------------------------- | ---------------------------------------------------------------------- | -------------------------------------------------- |
+| message, thread, labels, next, threads, created | from, replyTo, to, cc, subject, snippet, text, attachments, name, type | date, isUnread, hasAttachments, bytes, unsupported |
 
-### Destinations
+`part` and `parts` are `owner_data` and endorsed. An attachment ID, such as `1.2`, is a MIME part ID
+within its message, and carries no prefix.
 
-```ts
-// connectors module: an optional member of ConnectorAction (connector design). When it is set,
-// the tool endpoint calls it on the host before the first stage of the decision point's
-// pipeline (../platform/policy/decision-point.md#the-pipeline), in place of
-// reading destination arguments.
-interface ConnectorAction<Input, Output> {
-  // …existing fields
-  resolveDestinations?(
-    input: Input,
-    context: ConnectorContext,
-  ): Promise<ActionResponse<readonly CallDestination[]>>; // CallDestination: policy module, in the cutover design
-}
-```
+- `gmail.label` takes up to 50 threads of one connection, and refuses with `mixed_connections` when
+  they name 2. `add` and `remove` take user label names and the system labels `INBOX`, `UNREAD`,
+  `STARRED` and `IMPORTANT`. When `add` names a user label that does not exist, the tool creates it.
+- `gmail.send` and `gmail.draft` take up to 20 addresses across `to`, `cc` and `bcc`, a plain-text
+  body of up to 100 KB, an optional HTML body of up to 100 KB, and up to 10 files of 25 MB in all. A
+  file is one of the assistant's own files, such as a drawing or a file from its computer, and
+  resolves only on the conversation or task run that made it or saved it. `gmail.reply` takes the
+  same `html` and `files`.
+- `gmail.draft` writes a draft in the account and sends nothing. The starter rule
+  `allow-gmail-drafts` allows it, so a draft never shows a card.
+- `gmail.send_draft` reads the draft's recipients, subject, body and files in `prepare`, and is a
+  send like `gmail.send`: your own request covers it, and otherwise it takes a card or an allow
+  rule. Its attempt reads the draft again, and answers `changed` when the draft differs from what
+  `prepare` read.
+- `gmail.reply` takes its recipients from the message, never from the model: `Reply-To`, else
+  `From`, and with `replyAll` the message's `To` and `Cc` too, without your own address. A reply to
+  your own message goes to its `To`, and with `replyAll` its `Cc` too, as Gmail does. It threads the
+  reply with `In-Reply-To`, `References`, the thread ID and the subject.
+- `gmail.reply`'s reply target is the message's `From`. A `Reply-To` address that differs from
+  `From` is a destination with no reply target, so a sender cannot point a reply that runs without
+  asking at someone else.
+- `gmail.reply` marks no reply target when the message sits in Spam or Trash, or when the message's
+  `From` is the connection's own account.
 
-The decision point holds back a send to a destination that has no standing permission, as
-[destination limits](../platform/policy/decision-point.md#destination-limits) sets. A reply target
-is one of those permissions. `CallDestination` is defined in the decision point cutover design
-([decision point cutover](decision-point-cutover.md)).
+### The Gmail cards
 
-| Tool                                | Its destinations                                     | Reply target            |
-| ----------------------------------- | ---------------------------------------------------- | ----------------------- |
-| `gmail.send`                        | each address in `to`, `cc` and `bcc`                 | none                    |
-| `gmail.reply`                       | the recipients it reads from the message             | `Reply-To`, else `From` |
-| `calendar.create_event_with_guests` | each guest                                           | none                    |
-| `calendar.change_event_with_guests` | each guest before the change, and each guest it adds | none                    |
-| `calendar.cancel_event_with_guests` | each guest of the event                              | none                    |
-| `calendar.respond`                  | the event's organizer                                | the organizer           |
-| every other tool                    | none                                                 | none                    |
+| Tool               | Sentence                                          | Approve button |
+| ------------------ | ------------------------------------------------- | -------------- |
+| `gmail.send`       | Send an email from {from} to {to}: "{subject}"    | Send email     |
+| `gmail.reply`      | Reply to {replyTo} from {from}: "{subject}"       | Send reply     |
+| `gmail.send_draft` | Send a draft from {from} to {to}: "{subject}"     | Send email     |
+| `gmail.label`      | Label {count} threads: add {add}, remove {remove} | Label          |
 
-- The resolver writes each destination as its bare address, with no display name, in lowercase NFC.
-- A reply target covers only the reply or response whose resolver returned that address, and never
-  another send. An address the model writes in an argument is never a reply target, even when it
-  equals a sender or an organizer.
-- `gmail.reply` marks no recipient as a reply target when the message sits in Spam or Trash, or when
-  the message's `From` is the connection's own account. Each recipient of such a reply then needs
-  another permission or your consent. Without one, the reply waits on its card.
-- The resolution is a direct read, with the direct call's time budget. A failure returns the error
-  of [a failed direct call](../platform/connectors/tools.md#a-failed-direct-call), and the call
-  never reaches the decision point.
-- The [action hash](../platform/policy/approvals.md#the-proposal), the hash an approval binds to,
-  covers the resolved destinations. The action reaches only the destinations that the decision point
-  checked. In its attempt, the connector reads the message or event again. When the recipients or
-  guests differ, such as a new Cc on a reply to all, it answers `refused` with
-  `destinations_changed`. The action fails and sends to none of them, and the model can propose
-  again.
-- The change and cancel tools with guests send the `etag` of the attempt's read in an `If-Match`
-  header, so Google refuses the write with 412 when the event changed after that read. On a 412 the
-  connector reads the event again: when the guests differ, it answers `refused` with
-  `destinations_changed`; otherwise it answers `retry`, and the next attempt reads afresh. A create
-  needs no precondition, because its guests come from its input.
+A mail card shows From (the connection's account), To, Cc, Bcc, Subject, In reply to (`gmail.reply`
+only: the original's sender, date and subject), the whole text body, and each attachment by name and
+size. An HTML body shows rendered in a sandboxed frame that runs no script and loads nothing remote.
+The card leaves out an empty Cc or Bcc. In the sentence, `{to}` lists every destination, Bcc
+included, separated by commas.
 
-### The send card
-
-Each queued tool declares 2 things for its card: a sentence template, and the fields the card shows
-beside the sentence. nixie fills the template from the call's structured fields, as
-[proposals and approvals](../platform/policy/approvals.md#the-proposal) sets, and the model writes
-none of it. [Approvals in the client](../platform/channels/approvals.md#cards) holds the card's
-layout.
-
-| Tool                                | Sentence                                             | Approve button   |
-| ----------------------------------- | ---------------------------------------------------- | ---------------- |
-| `gmail.send`                        | Send an email from {from} to {to}: "{subject}"       | Send email       |
-| `gmail.reply`                       | Reply to {replyTo} from {from}: "{subject}"          | Send reply       |
-| `gmail.label`                       | Label {count} threads: add {add}, remove {remove}    | Label            |
-| `calendar.create_event_with_guests` | Invite {guests} to "{title}" on {start}              | Send invitations |
-| `calendar.change_event_with_guests` | Change "{title}" on {start} and email {guests}       | Send changes     |
-| `calendar.cancel_event_with_guests` | Cancel "{title}" on {start} and email {guests}       | Cancel and email |
-| `calendar.respond`                  | Tell {organizer} you {response} "{title}" on {start} | Send response    |
-| `calendar.create_event`             | Add "{title}" on {start} to {calendar}               | Add event        |
-| `calendar.change_event`             | Change "{title}" on {start}                          | Change event     |
-| `calendar.cancel_event`             | Cancel "{title}" on {start}                          | Cancel event     |
-| `drive.create`                      | Create "{name}" in Drive                             | Create file      |
-| `drive.change`                      | Replace the content of "{name}"                      | Replace content  |
-
-```ts
-// The fields of a mail card, in order. ProposalBody.fields of the approval record.
-type MailCardFields = {
-  From: string; // the connection's account
-  To: string;
-  Cc: string; // left out when empty, and so is Bcc
-  Bcc: string;
-  Subject: string;
-  'In reply to': string; // gmail.reply only: the original's sender, date and subject
-  Body: string; // the whole body, as plain text
-};
-```
-
-- The card lists each destination beside the permission that covered it. The card marks a
-  destination that no permission covered with "no permission", which is the reason the card asks.
-- The card shows the body as plain text, never as HTML, and shows all of it.
-- A calendar card shows the event's title, times with their zone, calendar, location, and each
-  guest. A change card shows each changed field before and after.
-- A time in a sentence shows the date, the time and the zone, in the zone that the
-  [time tool](../../architecture/connectors/time.md) answers in.
+- You can edit the subject and the text body on a mail card before you approve it. nixie sends
+  exactly what you approved, and the result's `edited` gives the model the final subject and text.
+- An edit of the text body of a mail with an HTML body drops the HTML body, so the mail goes out as
+  the text you approved.
 
 ### The Sent-folder check
 
@@ -311,12 +276,12 @@ Message-ID: <0b9d3c4e-7a21-4f0e-8c55-1e6f2a9d4c03@example.com>   the action ID @
 ```
 
 ```ts
-// connectors module: the declaration of gmail.send and gmail.reply. 'gmail.find_sent' is a read-only
-// connector action that only the action queue calls; no tool list holds it.
-const reconcile = {
+// connectors module: the Reconcile of gmail.send and gmail.reply. 'gmail.find_sent' is a read-only
+// check that only the action queue calls; no tool list holds it.
+const reconcile: Reconcile = {
   kind: 'check',
-  action: 'gmail.find_sent',
-  settleAfter: '5m',
+  tool: 'gmail.find_sent',
+  trustNegativeAfterMs: 300_000,
   onNotFound: 'ask',
 };
 ```
@@ -324,9 +289,10 @@ const reconcile = {
 The check runs at least 5 minutes after the attempt started, and asks Gmail 2 ways:
 
 1. A search with `rfc822msgid:<the Message-ID>` and `includeSpamTrash`.
-2. A list of the `SENT` label with `includeSpamTrash` and `after:` 10 minutes before the attempt
-   started, read to its last page, with the `Message-ID` and `X-Google-Original-Message-ID` headers
-   of each message. The check never relies on the order of the list, which Gmail does not promise.
+2. A list of the `SENT` label with `includeSpamTrash` and `after:` 10 minutes before
+   `attemptStartedAt`, read to its last page, with the `Message-ID` and
+   `X-Google-Original-Message-ID` headers of each message. The check never relies on the list's
+   order.
 
 | What the check sees                                             | It answers                           |
 | --------------------------------------------------------------- | ------------------------------------ |
@@ -336,207 +302,91 @@ The check runs at least 5 minutes after the attempt started, and asks Gmail 2 wa
 | Any call fails, or Gmail answers in a way the check cannot read | inconclusive                         |
 
 - Found makes the action done, with the found message's ID and thread as its result.
-- Not found keeps the action unknown and brings it to you on a card: "nixie can't tell whether this
-  mail went out". `onNotFound: 'ask'` sets this. **Why:** Gmail keeps no other trace of a sent mail,
-  so a Sent copy deleted for good looks the same as a mail that never went out.
-- Inconclusive brings the action to you too, as for every check.
-- nixie never sends a second copy on its own. Your answer on the card is the only thing that sends
-  the mail again, and that attempt sends the same message with the same Message-ID.
+- Not found brings the action to you: "nixie can't tell whether this mail went out". Gmail keeps no
+  other trace of a sent mail, so a Sent copy deleted for good looks the same as a mail that never
+  went out.
+- Only your answer sends the mail again, and that attempt sends the same message with the same
+  Message-ID.
 - The check reads both headers, because Gmail can replace a `Message-ID` that a client set and keep
-  the old one in `X-Google-Original-Message-ID`. Google does not document which header it keeps, so
-  the check finds the mail whichever header Gmail keeps.
+  the old one in `X-Google-Original-Message-ID`.
 - A sent mail carries no other header that names nixie or the action.
-
-### Reconciliation of the other changes
-
-```ts
-// Calendar create: the event ID is the action ID without its hyphens, which fits Google's
-// base32hex event IDs. Google does not promise to refuse a second insert of one ID, so the
-// create reconciles by a check, and a 409 on any insert answers done with the event read by its ID.
-// Each check is a read-only connector action that only the action queue calls.
-const calendarCheck = { kind: 'check', action: 'calendar.find_change', settleAfter: '5m' };
-
-// Drive create and change: the check finds a new file through a search, which can lag.
-const driveCheck = { kind: 'check', action: 'drive.find_change', settleAfter: '5m' };
-```
-
-```ts
-// The marker: one private property per action, which the action writes in the same request as
-// its change. Each calendar create and change (with or without guests), drive.create and
-// drive.change writes one; a calendar cancel or respond writes none. Calendar keeps it in
-// extendedProperties.private, and Drive in appProperties.
-// key: 'nixie' + the action ID without hyphens (37 characters; Calendar allows 44)
-// Only nixie's OAuth client reads the property: a Calendar private property belongs to your copy of
-// the event, which guests never see, and Drive app properties belong to the app.
-// value: the attempt's start time, as epoch seconds. A write reads these times to keep the
-// newest markers and delete the rest; a check reads only whether its own key is there.
-{ 'nixie0b9d3c4e7a214f0e8c551e6f2a9d4c03': '1794550000' }
-```
-
-- Each write keeps the 10 newest markers of nixie's on the item and deletes the older ones, in the
-  same request. When a check finds no marker of its own and 10 markers newer than its attempt's
-  start, it answers inconclusive. **Why:** a later action on the same item can run while this one is
-  unknown, and its marker must not hide this one.
-- The calendar create searches with `privateExtendedProperty` as well as reading by ID, because
-  Google does not promise that a read by a client-chosen ID finds the event at once.
-
-| Action             | Found when                                                  | Not found when                             |
-| ------------------ | ----------------------------------------------------------- | ------------------------------------------ |
-| a calendar create  | a read by the event ID, or a search by the marker, finds it | both answer with nothing                   |
-| a calendar change  | the event holds the action's marker                         | the event lacks it, with under 10 markers  |
-| a calendar cancel  | the event reads `cancelled`, or 404 or 410                  | the event reads `confirmed` or `tentative` |
-| `calendar.respond` | the account's attendee entry holds the response             | never                                      |
-| `drive.create`     | a file holds the marker, found by `appProperties` search    | the search finds none                      |
-| `drive.change`     | the file holds the action's marker                          | the file lacks it, with under 10 markers   |
-| `gmail.label`      | each thread holds every label in `add` and none in `remove` | never                                      |
-
-- Found wins over every other answer. A check never answers not found while any read it makes fails.
-- Every other answer, a failed call included, is inconclusive. A response or a label that differs is
-  inconclusive too: a later change, yours or nixie's, can have replaced it, and a retry would undo
-  that change.
-- A cancel's retry treats a 410 as done.
-
-### The Drive picker
-
-`drive.file` lets nixie see only the files it created and the files you pick for it. You pick files
-in the web client, on the connection's page, with Google Picker:
-
-1. You press "Choose Drive files". The page asks Google's sign-in library for an access token of its
-   own, with the scope `drive.file`, `include_granted_scopes: false`, the connection's OAuth client
-   ID, and the connection's account as `login_hint`. Google opens its sign-in in a popup, so the web
-   server sends `Cross-Origin-Opener-Policy: same-origin-allow-popups` on that page.
-2. The page opens Google Picker with that token, the client's Picker API key, and the client's Cloud
-   project number as the app ID. Google grants each file you pick to the app, for the account that
-   picked it.
-3. The page sends the picked file IDs to `connections.checkPicked`. The server reads each file with
-   the connection's own token, and the page shows the result.
-
-```ts
-// libs/contract, under `connections`: a read procedure
-connections.checkPicked({ connection: 'k3x9m2p7qa', files: ['1Bx9QvR2…', '1Zq7…'] });
-// → [{ file: '1Bx9QvR2…', name: 'Trip plan', isVisible: true },
-//    { file: '1Zq7…', name: null, isVisible: false }]   false: the server cannot read it
-
-// The OAuth client's picker settings, which the Google connection design stores with the client.
-// Neither is a secret: the page needs both, and Google limits the key as the setup bullet below lists.
-type PickerSettings = { pickerKey: string; projectNumber: string };
-```
-
-- The connection's tokens never reach the browser, because they carry `gmail.modify`. The browser's
-  own token lives only in the page's memory, and the server never receives it.
-- The page reads the token response's `scope` and drops a token that holds any scope besides
-  `drive.file`, with an error, before the picker sees it. Google's sign-in library defaults
-  `include_granted_scopes` to true, which would add every scope the client was granted before.
-- The page shows each file that `checkPicked` cannot read as one nixie cannot see, and names the
-  likely cause: a pick under another Google account.
-- Without picker settings, the page hides the button and links the setup step that adds them.
-- Picking a file sends nothing to the model. `drive.search` finds it from then on, and the
-  description of `drive.search` tells the model where you pick files.
-- The setup adds 3 things to the Google connection's steps: the Picker API enabled, nixie's origin
-  as an Authorized JavaScript origin on the Web client, and an API key restricted to the Picker API,
-  to that origin and to `https://docs.google.com/*`, where the picker runs.
+- `gmail.find_labels` answers found when each thread holds every label in `add` and none in
+  `remove`, and inconclusive otherwise. A `gmail.label` that it finds done answers `created: null`,
+  because the check cannot tell which labels the action made.
 
 ## Constraints
 
-### Every tool
+### Checks
 
-- A tool's declared effects never depend on its arguments or on the item it acts on. A change or
-  cancel tool without guests reads the event before the decision point and again in its attempt.
-  When the event has a guest, it refuses with `has_guests`, so the model uses the with-guests tool.
-- A calendar tool without guests calls Google with `sendUpdates: 'none'`, and a with-guests tool
-  with `'all'`, so a tool with the `write` effect never makes Google email anyone.
-- The change and cancel tools refuse with `not_organizer` when the connection's account does not
-  organize the event. `calendar.respond` answers such an event.
-- Each tool that reads text returns it in parts, each at most the `text_bytes` of the `web_fetch`
-  config section, cut as
-  [pages and parts](../../architecture/connectors/web-fetch.md#pages-and-parts) sets for a page. The
-  tool reads the item from Google again for each part. The text the model read sits in the call's
-  `tool_result` record, under that record's own encryption key, as every tool result does, so a
-  forget of the record removes the text. nixie keeps no other copy of mail, attachment or file text.
-- A mail whose body has only an HTML part goes to a
-  [fetch sandbox](../../architecture/connectors/web-fetch.md#the-fetch-sandbox) for its text, as a
-  web page does, so nixie never parses mail HTML on the host. Each link in a body reads as a
-  [link ID](../../architecture/connectors/web-fetch.md#link-ids), such as `[L3]`, as a fetched
-  page's links do.
-- `gmail.read_attachment` reads text types (`text/*` and `application/json`) as UTF-8 text, and
-  decodes images as [web fetch images](../../architecture/connectors/web-fetch-images.md) does,
-  under the same caps. Every other type answers `unsupported`. An item over 25 MB answers
-  `too_large`, whatever its type.
-- `drive.read` exports a Google Doc as Markdown, a Sheet's first sheet as CSV and a Slides file as
-  plain text, and reads other files as `gmail.read_attachment` does.
-- Each provider error maps to an action response as the
-  [connector design](../platform/connectors/connector.md#the-interface) sets, and a Gmail 403 with
-  `rateLimitExceeded` or `userRateLimitExceeded` is `retry`.
-
-### Sends
-
-- nixie has no draft tool. Every send passes the decision point. The starter rule
-  `allow-sends-within-limits` allows a send, and the destination limits then let it run at once only
-  when each destination has a standing permission or your consent, as
-  [destination limits](../platform/policy/decision-point.md#destination-limits) sets. Every other
-  send waits on its card.
-- A send never carries an attachment.
-- 3 unknown outcomes in a row bring the action to you, as
+- Found wins over every other answer. A check never answers not found while any read it makes fails.
+  An answer that no found or not-found row names is inconclusive, including a response or a label
+  that differs, because a later change can have replaced it.
+- An inconclusive answer brings the action to you, as
   [reconciliation](../../architecture/core/actions.md#reconciling-an-unknown-outcome) sets.
 
-### Scopes
+### The read path
 
-- The connector's health check after consent, its `check` function, which is apart from the
-  reconciliation checks, reads the calendar list with `calendarList.list`, so a connection without
-  `calendar.calendarlist.readonly` lists `calendar.list_calendars` as missing and keeps every other
-  Calendar tool. `calendar.events` alone never permits the calendar list.
-- With the calendar list missing, the Calendar tools take `primary` or a calendar ID you give.
+- Every read calls Google at the time of the call. nixie keeps no index or cache of mail, events or
+  files.
+- Each text part is at most the `text_bytes` of the `web_fetch` config section, cut as
+  [pages and parts](../../architecture/connectors/web-fetch.md#pages-and-parts) sets. The tool reads
+  the item from Google again for each part, and runs the fetch sandbox again for an HTML body. The
+  same item cuts into the same parts on every read.
+- Link IDs follow the rules of [link IDs](../../architecture/connectors/web-fetch.md#link-ids) in
+  every kind of task run, as `web_fetch`'s do.
+- The text the model read sits in the call's `tool_result` record under that record's own key, so a
+  forget of the record removes it.
+- A mail whose body has only an HTML part goes to a
+  [fetch sandbox](../../architecture/connectors/web-fetch.md#the-fetch-sandbox) for its text, so
+  nixie never parses mail HTML on the host. Each link in a body reads as a
+  [link ID](../../architecture/connectors/web-fetch.md#link-ids), such as `[L3]`.
+- The fetch guest gains a request `{ kind: 'html', html, limits }` that opens no connection, so no
+  tracking pixel loads. A fetch image that lacks the kind answers an unknown-request error. The
+  server then answers that HTML-only mail with `text: null` and `unsupported: true`, so the image
+  and the server can roll out in either order.
+- `gmail.read_attachment` reads `text/*` and `application/json` as UTF-8 text, and decodes images as
+  [web fetch images](../../architecture/connectors/web-fetch-images.md) does. Every other type
+  answers `unsupported`. An item over 25 MB answers `too_large`. The Gmail work item builds this
+  reader as a shared function, and `drive.read` reuses it.
 
-### A rollback
+### Sends and errors
 
-- The design adds no record kind, no migration and no config key.
+- Every send, a draft's send included, passes the decision point. The starter rule
+  `allow-sends-within-limits` ([rules](../platform/policy/rules.md)) allows a send, and the send
+  runs at once only when each destination has a permission at stage 5 or your consent. Every other
+  send waits on its card.
+- Connecting a Google account adds its address to your own places at `self`, so a mail or an
+  invitation to it runs without a card. Forgetting the connection removes that place.
+- `gmail.find_draft` answers found when the account holds a draft whose `Message-ID` header holds
+  the action ID, as the Sent-folder check reads it.
+- Each Google error maps to one `ProviderResponse` kind, and a Gmail 403 with `rateLimitExceeded` or
+  `userRateLimitExceeded` is `refused_retryable`.
 
 ## Decisions
 
-- **The tool names are `gmail.search`, `gmail.read`, `gmail.read_attachment`, `gmail.label`,
-  `gmail.send`, `gmail.reply`, and the `calendar.*` and `drive.*` names in
-  [the tools](#the-tools).** The owner chose them on 14 Nov 2026.
-- **Every event change that emails guests is its own `…_with_guests` tool, with the `send` effect.**
-  The owner chose this on 14 Nov 2026, so the send rules decide each one: a tool's effects are fixed
-  per tool, and the owner made an event with guests a `send`.
-- **The card sentences and approve buttons are those in [the send card](#the-send-card).** The owner
-  chose them on 14 Nov 2026.
-- **`calendar.respond` is a `send`, and the organizer is its reply target.** An agent's call on 13
-  Nov 2026: Google emails the organizer, and an invitation arrives in your calendar as a message
-  arrives in your mail, so an answer to it needs no more permission than a reply.
-- **The action ID rides in `Message-ID` alone.** An agent's call on 13 Nov 2026: the check needs one
-  header, and a header that names nixie would tell each recipient you use an assistant.
-- **A mail that the Sent-folder check does not find comes to you, and nixie never resends it.** An
-  agent's call on 13 Nov 2026: a duplicate mail to someone outside is worse than asking you once.
-- **Markers are one property per action, 10 kept.** An agent's call on 13 Nov 2026: a single marker
-  would let a later action hide an earlier one, and Drive allows 30 private properties.
-- **A with-guests change or cancel writes only the event version its attempt read.** An agent's call
-  on 13 Nov 2026: a guest added between the read and the write would otherwise get Google's email
-  unchecked, and Calendar refuses an update or delete whose `If-Match` etag is stale.
-- **Recipients and guests come from Google, never from the model's text.** The decision point's
-  reply target rule, extended to the event a with-guests tool acts on.
-- **The picker runs on a browser token of its own.** An agent's call on 13 Nov 2026: the
-  connection's token carries `gmail.modify`, which must never reach page code.
-- **Text is read again from Google for each part, never stored.** An agent's call on 13 Nov 2026: no
-  new store means no new forget path.
-- **`drive.change` refuses a shared file.** An agent's call on 13 Nov 2026: the smaller rule until
-  sharing has a design, so a Drive write never reaches another person.
-- **The Calendar tools ask for `calendar.calendarlist.readonly`.** An agent's call on 13 Nov 2026:
-  the narrowest scope that lists calendars, kept apart from event access.
+- **The Google tools are `gmail.*`, `calendar.*` and `drive.*`, with the names in
+  [the Gmail tools](#the-gmail-tools) and
+  [Calendar and Drive tools](google-calendar-drive-tools.md#the-tools).** `mail.*` names only the
+  assistant's own mailbox.
+- **The card sentences and approve buttons are those in the card tables.**
+- **Reads are live.** No store means no sync to keep and no new forget path.
+- **Each item ID carries its connection.** nixie keeps no copy of mail to map a Gmail ID back to an
+  account, and the reply leaves from the account that received the message.
+- **The action ID rides in `Message-ID` alone.** The check needs one header, and a header that names
+  nixie would tell each recipient you use an assistant.
+- **A mail the Sent-folder check does not find comes to you, and nixie never resends it on its
+  own.** A duplicate mail to someone outside is worse than asking you once.
+- **Recipients and guests come from Google, never from the model's text.**
 
 ## Builder decides
 
 - Internal names, file layout, and how the connector batches metadata reads for `gmail.search`.
-- The MIME encoding of a sent mail, within plain text and the headers above.
+- The MIME encoding of a sent mail, within the text and HTML bodies, the files and the headers
+  above.
 - The wording of each refusal, and of each tool's description.
-- How the card lays out the fields, within the rules above.
-- The layout of the tests, and the fake Gmail, Calendar and Drive the tests use.
+- The layout of the tests, and the fake Gmail they use.
 
 ## Out of scope
 
-- Drafts, attachments on a send, forwards, and sending HTML mail.
-- Trashing mail, and deleting a Drive file.
-- Sharing a Drive file, and changing a shared one:
-  [Drive sharing](https://linear.app/zgeoff/issue/GEO-2648).
-- The Gmail and Calendar polls: [polls](https://linear.app/zgeoff/issue/GEO-1827).
-- PDF and other document text: [document text](https://linear.app/zgeoff/issue/GEO-2649).
+- Forwards.
+- Trashing mail.

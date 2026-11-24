@@ -357,7 +357,7 @@ nixie proposals reject k3x9m2p7qa --reason "Not this week"
 - A reply target comes from a message or an event that a connector read, never from text the model
   wrote.
 - `replyTarget` is true only in the destinations that a resolver returns for a reply to that message
-  or a response to that event, such as `mail.reply` or `calendar.respond`. It covers that one call
+  or a response to that event, such as `gmail.reply` or `calendar.respond`. It covers that one call
   and no other send. An address the model puts in an argument is never a reply target, even when it
   equals a sender or an organizer.
 - The action reaches only the destinations that stage 5 checked. The executor takes them from the
