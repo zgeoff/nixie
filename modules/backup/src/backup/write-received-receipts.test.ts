@@ -275,7 +275,7 @@ test('it keeps the set and its staged row when its receipt cannot be read', asyn
     },
   };
 
-  await expect(writeReceivedReceipts({ writer: ctx.writer, storage })).rejects.toMatchObject({
+  expect(writeReceivedReceipts({ writer: ctx.writer, storage })).rejects.toMatchObject({
     message: 'EIO: i/o error, read',
   });
 

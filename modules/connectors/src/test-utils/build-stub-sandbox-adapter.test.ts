@@ -295,7 +295,7 @@ test('it keeps a sandbox whose destroy is refused, and records no destroy', asyn
     limits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
   });
 
-  await expect(sandbox.destroy()).rejects.toBeInstanceOf(Error);
+  expect(sandbox.destroy()).rejects.toBeInstanceOf(Error);
 
   const listed = await adapter.list('web_fetch');
 

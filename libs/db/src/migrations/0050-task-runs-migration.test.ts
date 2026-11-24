@@ -47,7 +47,7 @@ test('it refuses a second open task run of one task', async () => {
 
   await ctx.buildInsert('run-a', 't4m2').execute(ctx.db);
 
-  await expect(ctx.buildInsert('run-b', 't4m2').execute(ctx.db)).rejects.toBeInstanceOf(Error);
+  expect(ctx.buildInsert('run-b', 't4m2').execute(ctx.db)).rejects.toBeInstanceOf(Error);
 });
 
 test('it takes a second open task run of another task', async () => {
@@ -81,7 +81,7 @@ test('it refuses an ended task run that holds no end record', async () => {
 
   await ctx.buildInsert('run-a', 't4m2').execute(ctx.db);
 
-  await expect(
+  expect(
     sql`update task_runs set ended_sequence = 1 where run_id = 'run-a'`.execute(ctx.db),
   ).rejects.toBeInstanceOf(Error);
 });

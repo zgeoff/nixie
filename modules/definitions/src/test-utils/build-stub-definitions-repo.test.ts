@@ -240,7 +240,7 @@ test('it opens the pull request and rejects the write when its answer is lost, a
 
   ctx.repo.loseNextAnswer();
 
-  await expect(ctx.repo.writePullRequest(change, 'revision-a')).rejects.toStrictEqual(
+  expect(ctx.repo.writePullRequest(change, 'revision-a')).rejects.toStrictEqual(
     new Error('the answer to the pull request write was lost'),
   );
 

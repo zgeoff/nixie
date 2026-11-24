@@ -64,7 +64,7 @@ test('it refuses a stale writer and leaves every record on the thread readable',
 
   await sql`update writer_epoch set epoch = epoch + 1`.execute(ctx.writer.db);
 
-  await expect(removeThreadKeys(ctx.log, 'conversation')).rejects.toBeInstanceOf(StaleWriterError);
+  expect(removeThreadKeys(ctx.log, 'conversation')).rejects.toBeInstanceOf(StaleWriterError);
 
   const read = await readRecords(ctx.log, { afterSequence: 0 });
 

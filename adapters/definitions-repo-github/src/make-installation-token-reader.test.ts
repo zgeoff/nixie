@@ -185,7 +185,7 @@ test('it mints once for requests that arrive together', async () => {
   expect(ctx.mints).toHaveLength(1);
 });
 
-test('it fails with the status and message of GitHub and quotes no key or JWT', async () => {
+test('it fails with the status and message of GitHub and quotes no key or JWT', () => {
   const ctx = setupTest();
   const sent: string[] = [];
 
@@ -197,7 +197,7 @@ test('it fails with the status and message of GitHub and quotes no key or JWT', 
     }),
   );
 
-  await expect(ctx.readToken()).rejects.toThrowWithMessage(
+  expect(ctx.readToken()).rejects.toThrowWithMessage(
     Error,
     'GitHub refused to mint an installation token for the export with 404: Integration not found',
   );
@@ -222,7 +222,7 @@ test('it fails with no key text when the key is not a PEM', () => {
   );
 });
 
-test('it redacts a JWT and a key that GitHub echoes in its message', async () => {
+test('it redacts a JWT and a key that GitHub echoes in its message', () => {
   const ctx = setupTest();
   const sent: string[] = [];
 
@@ -241,15 +241,14 @@ test('it redacts a JWT and a key that GitHub echoes in its message', async () =>
 
   const failure = ctx.readToken();
 
-  await expect(failure).rejects.toThrow(/^GitHub refused to mint an installation token/u);
+  expect(failure).rejects.toThrow(/^GitHub refused to mint an installation token/u);
 
   const jwt = sent[0]?.replace('Bearer ', '') ?? '';
 
   expect(jwt).toMatch(/^[\w-]+\.[\w-]+\.[\w-]+$/u);
+  expect(failure).rejects.toMatchObject({ message: expect.not.stringContaining(jwt) });
 
-  await expect(failure).rejects.toMatchObject({ message: expect.not.stringContaining(jwt) });
-
-  await expect(failure).rejects.toMatchObject({
+  expect(failure).rejects.toMatchObject({
     message: expect.not.stringContaining('PRIVATE KEY'),
   });
 });

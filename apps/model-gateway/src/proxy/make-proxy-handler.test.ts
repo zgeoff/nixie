@@ -1023,7 +1023,7 @@ test('it counts the estimate, so the next request passes, when a streamed reply 
 
   const broken = await sendRequest();
 
-  await expect(broken.text()).rejects.toBeInstanceOf(Error);
+  expect(broken.text()).rejects.toBeInstanceOf(Error);
 
   // Read the counter before the next request: its own estimate lands in the background
   const counted = await store.read();

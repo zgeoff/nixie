@@ -207,7 +207,7 @@ test('it resumes a run that a crash stopped between two key deletions, and forge
 
   startFaultPointFailure('memory.forget.key_removed');
 
-  await expect(
+  expect(
     ctx.memory.store.forgetRetired({
       targets: retired,
       provenance: {
@@ -319,7 +319,7 @@ test('it finishes the pending forgets of a run and reports every item deleted', 
 
   startFaultPointFailure('memory.forget.key_removed', second.itemID);
 
-  await expect(
+  expect(
     ctx.memory.store.forgetRetired({
       targets: retired,
       provenance: {

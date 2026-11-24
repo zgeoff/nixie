@@ -195,7 +195,7 @@ test('it frees the lease of the step a stop ends, so the step commits nothing', 
 
   await writeTaskControl(ctx.context, { taskID: task.taskID, control: 'stop' });
 
-  await expect(
+  expect(
     writeStepCommit(ctx.context, task.claim, {
       next: 'wait',
       records: [],

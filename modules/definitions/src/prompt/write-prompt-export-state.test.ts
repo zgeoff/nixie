@@ -129,7 +129,7 @@ test('it refuses to open a closed export', async () => {
     ctx.writer.db,
   );
 
-  await expect(
+  expect(
     withWriteTransaction(ctx.writer, (tx) =>
       writePromptExportState(tx, {
         approvalID: approval.approvalID,

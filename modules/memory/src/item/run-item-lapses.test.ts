@@ -159,9 +159,9 @@ test('it retires the other lapsed items when one has no readable key, and report
 
   const refused = memory.store.lapse();
 
-  await expect(refused).rejects.toBeInstanceOf(AggregateError);
+  expect(refused).rejects.toBeInstanceOf(AggregateError);
 
-  await expect(refused).rejects.toMatchObject({
+  expect(refused).rejects.toMatchObject({
     errors: [{ message: expect.toInclude(keyless.itemID) }],
   });
 

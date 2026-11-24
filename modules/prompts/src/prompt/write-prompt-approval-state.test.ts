@@ -50,7 +50,7 @@ test('it refuses to make a superseded approval current again', async () => {
     ctx.writer.db,
   );
 
-  await expect(
+  expect(
     withWriteTransaction(ctx.writer, (tx) =>
       writePromptApprovalState(tx, { approvalID: 'approval-a', to: 'current', at: 2 }),
     ),
@@ -60,7 +60,7 @@ test('it refuses to make a superseded approval current again', async () => {
 test('it refuses to move an approval that does not exist', async () => {
   const ctx = await setupTest();
 
-  await expect(
+  expect(
     withWriteTransaction(ctx.writer, (tx) =>
       writePromptApprovalState(tx, { approvalID: 'approval-a', to: 'superseded', at: 2 }),
     ),

@@ -263,7 +263,7 @@ test('it refuses a second approval over the same base as stale before the first 
     skillHash: first.skillHash,
   });
 
-  await expect(
+  expect(
     writeSkillProposalAnswer(unseeded, {
       answer: 'approve',
       proposalID: 'w7tn4c9rhz',
@@ -333,7 +333,7 @@ test("it refuses an approval over a retired version as stale before the retireme
     },
   ]);
 
-  await expect(
+  expect(
     writeSkillProposalAnswer(ctx.context, {
       answer: 'approve',
       proposalID: 'w7tn4c9rhz',
@@ -428,7 +428,7 @@ test('it refuses edited files that fail the seed checks, and records nothing', a
     },
   ]);
 
-  await expect(
+  expect(
     writeSkillProposalAnswer(ctx.context, {
       answer: 'approve',
       proposalID: 'k3x9m2p7qa',
@@ -552,7 +552,7 @@ test('it closes a proposal once when an approval and a rejection arrive together
 test('it refuses an answer to a proposal no record holds', async () => {
   const ctx = await setupTest();
 
-  await expect(
+  expect(
     writeSkillProposalAnswer(ctx.context, {
       answer: 'reject',
       proposalID: 'k3x9m2p7qa',
@@ -594,8 +594,8 @@ test('it refuses a second answer to a proposal an answer closed', async () => {
     skillHash: 'hash-b',
   });
 
-  await expect(refusal).rejects.toBeInstanceOf(SkillProposalClosedError);
-  await expect(refusal).rejects.toMatchObject({ code: 'PROPOSAL_CLOSED', outcome: 'rejected' });
+  expect(refusal).rejects.toBeInstanceOf(SkillProposalClosedError);
+  expect(refusal).rejects.toMatchObject({ code: 'PROPOSAL_CLOSED', outcome: 'rejected' });
 });
 
 test('it refuses an answer to a proposal whose lapse time has come', async () => {
@@ -633,8 +633,8 @@ test('it refuses an answer to a proposal whose lapse time has come', async () =>
     },
   );
 
-  await expect(refusal).rejects.toBeInstanceOf(SkillProposalClosedError);
-  await expect(refusal).rejects.toMatchObject({ code: 'PROPOSAL_CLOSED', outcome: 'lapsed' });
+  expect(refusal).rejects.toBeInstanceOf(SkillProposalClosedError);
+  expect(refusal).rejects.toMatchObject({ code: 'PROPOSAL_CLOSED', outcome: 'lapsed' });
 });
 
 test('it refuses an answer that names another skill hash, and records nothing', async () => {
@@ -657,7 +657,7 @@ test('it refuses an answer that names another skill hash, and records nothing', 
     },
   ]);
 
-  await expect(
+  expect(
     writeSkillProposalAnswer(ctx.context, {
       answer: 'approve',
       proposalID: 'k3x9m2p7qa',
@@ -730,7 +730,7 @@ test.each([
       buildPolicy: () => ctx.policy,
     });
 
-    await expect(
+    expect(
       writeSkillProposalAnswer(ctx.context, {
         ...answer,
         proposalID: 'k3x9m2p7qa',

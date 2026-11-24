@@ -97,8 +97,8 @@ test('it fails an add when the counter directory is gone, and the next add still
 
   await rm(ctx.directory, { recursive: true });
 
-  await expect(store.add({ dollars: 1, tokens: 1 })).rejects.toBeInstanceOf(Error);
-  await expect(store.add({ dollars: 1, tokens: 1 })).rejects.toBeInstanceOf(Error);
+  expect(store.add({ dollars: 1, tokens: 1 })).rejects.toBeInstanceOf(Error);
+  expect(store.add({ dollars: 1, tokens: 1 })).rejects.toBeInstanceOf(Error);
 });
 
 test('it settles once every add made so far has written', async () => {

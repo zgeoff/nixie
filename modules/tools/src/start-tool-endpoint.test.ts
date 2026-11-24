@@ -826,7 +826,7 @@ test('it refuses an approved call under the token of a step that stopped', async
 
   await step.stop();
 
-  await expect(
+  expect(
     run.runApproved(step.token, {
       actionID: 'proposal-1',
       tool: 'notes_wipe',

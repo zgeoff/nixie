@@ -38,7 +38,7 @@ test('it refuses a moment in a state the store never writes', async () => {
   await sql`insert into records (sequence, recorded_at, kind, snapshot_hash, payload)
     values (1, 1767225600000, 'moment_kept', 'snapshot-a', '{}')`.execute(ctx.db);
 
-  await expect(
+  expect(
     sql`insert into moments (moment_id, short_id, thread, first_sequence,
     last_sequence, state, version, kept_by, kept_at, kept_sequence, title_sequence,
     updated_sequence)

@@ -48,7 +48,7 @@ test.each([
 ])('it refuses %s', async (_, day, count, check) => {
   const ctx = await setupTest();
 
-  await expect(
+  expect(
     sql`insert into search_calls (day, count) values (${day}, ${count})`.execute(ctx.db),
   ).rejects.toMatchObject({
     message: expect.stringContaining(`CHECK constraint failed: ${check}`),

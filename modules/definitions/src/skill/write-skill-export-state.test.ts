@@ -282,7 +282,7 @@ test('it refuses to open again an export that closed', async () => {
     });
   });
 
-  await expect(
+  expect(
     withWriteTransaction(ctx.writer, (tx) =>
       writeSkillExportState(tx, {
         approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',

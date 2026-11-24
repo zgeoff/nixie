@@ -132,9 +132,9 @@ test('it leaves the images unadded, naming the image, when impd refuses the add 
     },
   });
 
-  await expect(refusal).rejects.toBeInstanceOf(Error);
+  expect(refusal).rejects.toBeInstanceOf(Error);
 
-  await expect(refusal).rejects.toMatchObject({
+  expect(refusal).rejects.toMatchObject({
     message: expect.stringMatching(/^impd did not add the image nixie-fetch-cccccccccccc from /u),
   });
 

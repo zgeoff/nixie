@@ -167,7 +167,7 @@ test.each([
 
     await seed(laptopClient, laptop.sessionID);
 
-    await expect(
+    expect(
       laptopClient.conversation.retry({ clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85' }),
     ).rejects.toMatchObject({ code });
 

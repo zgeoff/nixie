@@ -813,7 +813,7 @@ test('it refuses to move a file onto a directory, and keeps the file', async () 
     { path: '/home/nixie/dir/b.txt', content: new TextEncoder().encode('b') },
   ]);
 
-  await expect(sandbox.applyMove('/home/nixie/a.txt', '/home/nixie/dir')).rejects.toStrictEqual(
+  expect(sandbox.applyMove('/home/nixie/a.txt', '/home/nixie/dir')).rejects.toStrictEqual(
     new Error(
       "EISDIR: illegal operation on a directory, rename '/home/nixie/a.txt' -> '/home/nixie/dir'",
     ),

@@ -125,7 +125,7 @@ test.each(['writeSnapshotSet', 'the stage pass'] as const)(
 
     startFaultPointFailure('backup.set.copied');
 
-    await expect(stageBackupSet(entryPoint, ctx.context, 'scheduled')).rejects.toMatchObject({
+    expect(stageBackupSet(entryPoint, ctx.context, 'scheduled')).rejects.toMatchObject({
       message: 'crashed at backup.set.copied',
     });
 
@@ -147,7 +147,7 @@ test.each(['writeSnapshotSet', 'the stage pass'] as const)(
       storage: buildStubFailingStorage(localDataStorage, 'complete', 'write'),
     };
 
-    await expect(stageBackupSet(entryPoint, context, 'scheduled')).rejects.toMatchObject({
+    expect(stageBackupSet(entryPoint, context, 'scheduled')).rejects.toMatchObject({
       message: 'the stub fails the write of complete',
     });
 
@@ -169,7 +169,7 @@ test.each(['writeSnapshotSet', 'the stage pass'] as const)(
       storage: buildStubFailingStorage(localDataStorage, 'complete', 'fsync'),
     };
 
-    await expect(stageBackupSet(entryPoint, context, 'scheduled')).rejects.toMatchObject({
+    expect(stageBackupSet(entryPoint, context, 'scheduled')).rejects.toMatchObject({
       message: 'the stub fails the fsync of complete',
     });
 

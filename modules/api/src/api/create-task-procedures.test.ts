@@ -354,7 +354,7 @@ test('#tasks.read refuses a task that does not exist', async () => {
 
   await createConversationTask(api.context);
 
-  await expect(client.tasks.read({ taskID: 'k3x9m2p7qa' })).rejects.toMatchObject({
+  expect(client.tasks.read({ taskID: 'k3x9m2p7qa' })).rejects.toMatchObject({
     code: 'TASK_NOT_FOUND',
   });
 });
@@ -366,7 +366,7 @@ test('#tasks.read refuses a caller with no session', async () => {
 
   await createConversationTask(api.context);
 
-  await expect(stranger.tasks.read({ taskID: 'conversation' })).rejects.toMatchObject({
+  expect(stranger.tasks.read({ taskID: 'conversation' })).rejects.toMatchObject({
     code: 'UNAUTHORIZED',
   });
 });
@@ -408,7 +408,7 @@ test('#tasks.readActions refuses a task that does not exist', async () => {
 
   const client = buildTestClient(api.url, laptop.token);
 
-  await expect(client.tasks.readActions({ taskID: 'k3x9m2p7qa' })).rejects.toMatchObject({
+  expect(client.tasks.readActions({ taskID: 'k3x9m2p7qa' })).rejects.toMatchObject({
     code: 'TASK_NOT_FOUND',
   });
 });
@@ -557,7 +557,7 @@ test('#tasks.stop refuses a client action ID that another control used', async (
     taskID: 'conversation',
   });
 
-  await expect(
+  expect(
     client.tasks.stop({
       clientActionID: '2c4e6a8b-1d3f-4b5c-8e7a-9f0b1c2d3e4f',
       taskID: 'conversation',
@@ -573,7 +573,7 @@ test('#tasks.restart refuses a task whose state takes no restart, with the state
 
   await createConversationTask(api.context);
 
-  await expect(
+  expect(
     client.tasks.restart({
       clientActionID: '4e6a8c0d-3f5b-4d7e-8a9c-1b2d3e4f5a6b',
       taskID: 'conversation',
@@ -590,7 +590,7 @@ test('#tasks.interrupt refuses a task that does not exist', async () => {
 
   const client = buildTestClient(api.url, laptop.token);
 
-  await expect(
+  expect(
     client.tasks.interrupt({
       clientActionID: '5f7b9d1e-4a6c-4e8f-9b0d-2c3e4f5a6b7c',
       taskID: 'k3x9m2p7qa',
@@ -630,7 +630,7 @@ test('#tasks.close refuses to close the conversation', async () => {
 
   await createConversationTask(api.context);
 
-  await expect(
+  expect(
     client.tasks.close({
       clientActionID: '7b9d1f3a-6c8e-4a0b-9d2f-4e5a6b7c8d9e',
       taskID: 'conversation',
@@ -663,7 +663,7 @@ test('#tasks.close refuses to close the task of a definition', async () => {
     },
   ]);
 
-  await expect(
+  expect(
     client.tasks.close({
       clientActionID: '7b9d1f3a-6c8e-4a0b-9d2f-4e5a6b7c8d9f',
       taskID: 'w4t7r2n9ka',
@@ -676,7 +676,7 @@ test('#tasks.pause refuses a caller with no session', async () => {
 
   const stranger = buildTestClient(api.url);
 
-  await expect(
+  expect(
     stranger.tasks.pause({
       clientActionID: '8c0e2a4b-7d9f-4b1c-8e3a-5f6b7c8d9e0f',
       taskID: 'conversation',
@@ -785,7 +785,7 @@ test('#tasks.setDisposable refuses a client action ID that another change used',
     disposable: false,
   });
 
-  await expect(
+  expect(
     client.tasks.setDisposable({
       clientActionID: '3c4d5e6f-7a8b-4c9d-8e1f-2a3b4c5d6e7f',
       taskID: 'k3x9m2p7qa',
@@ -800,7 +800,7 @@ test('#tasks.setDisposable refuses a task that does not exist', async () => {
 
   const client = buildTestClient(api.url, laptop.token);
 
-  await expect(
+  expect(
     client.tasks.setDisposable({
       clientActionID: '4d5e6f7a-8b9c-4d0e-9f2a-3b4c5d6e7f80',
       taskID: 'nosuchtask',
@@ -817,7 +817,7 @@ test('#tasks.setDisposable refuses the conversation, which has no mark', async (
 
   await createConversationTask(api.context);
 
-  await expect(
+  expect(
     client.tasks.setDisposable({
       clientActionID: '5e6f7a8b-9c0d-4e1f-8a3b-4c5d6e7f8091',
       taskID: 'conversation',
@@ -839,7 +839,7 @@ test('#tasks.setDisposable refuses a closed task, with its state, and writes not
     taskID: 'k3x9m2p7qa',
   });
 
-  await expect(
+  expect(
     client.tasks.setDisposable({
       clientActionID: '7a8b9c0d-1e2f-4a3b-8c5d-6e7f8091a2b3',
       taskID: 'k3x9m2p7qa',
@@ -860,7 +860,7 @@ test('#tasks.setDisposable refuses a caller with no session', async () => {
 
   const stranger = buildTestClient(api.url);
 
-  await expect(
+  expect(
     stranger.tasks.setDisposable({
       clientActionID: '8b9c0d1e-2f3a-4b4c-9d6e-7f8091a2b3c4',
       taskID: 'k3x9m2p7qa',

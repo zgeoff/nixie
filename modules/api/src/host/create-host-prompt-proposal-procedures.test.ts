@@ -206,7 +206,7 @@ test('#approve refuses an edited entry that fails the definitions checks with it
     },
   ]);
 
-  await expect(
+  expect(
     ctx.createClient(null).approve({
       proposalID: 'p8w2n4c6ld',
       proposalHash: 'hash-c',
@@ -244,7 +244,7 @@ test('#approve refuses a proposal whose base the override in force moved past wi
     prompts: { compaction: { parts: { safety: 'Quote every fact.' }, template: null } },
   });
 
-  await expect(
+  expect(
     client.approve({ proposalID: 'p8w2n4c6ld', proposalHash: 'hash-c' }),
   ).rejects.toMatchObject({ code: 'STALE_BASE', status: 409 });
 });
@@ -291,7 +291,7 @@ test('#reject records the rejection with your reason', async () => {
 test('#reject answers a proposal that does not exist with its typed code', async () => {
   const ctx = await setupTest();
 
-  await expect(
+  expect(
     ctx
       .createClient(null)
       .reject({ proposalID: 'p8w2n4c6ld', proposalHash: 'hash-c', reason: 'No.' }),
@@ -319,7 +319,7 @@ test('#reject refuses an answer under another proposal hash with its code', asyn
     },
   ]);
 
-  await expect(
+  expect(
     ctx
       .createClient(null)
       .reject({ proposalID: 'p8w2n4c6ld', proposalHash: 'hash-d', reason: 'No.' }),
@@ -357,7 +357,7 @@ test('#approve refuses a proposal that a rejection closed with its code', async 
     },
   ]);
 
-  await expect(
+  expect(
     ctx.createClient(null).approve({ proposalID: 'p8w2n4c6ld', proposalHash: 'hash-c' }),
   ).rejects.toMatchObject({
     code: 'PROPOSAL_CLOSED',

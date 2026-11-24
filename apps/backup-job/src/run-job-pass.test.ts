@@ -252,7 +252,7 @@ test('it stops the pass and leaves the set with no receipt when its manifest can
     readText: () => Promise.reject(new Error('EIO: i/o error, read')),
   };
 
-  await expect(runJobPass(ctx.config, ctx.repos, files)).rejects.toMatchObject({
+  expect(runJobPass(ctx.config, ctx.repos, files)).rejects.toMatchObject({
     message: 'EIO: i/o error, read',
   });
 

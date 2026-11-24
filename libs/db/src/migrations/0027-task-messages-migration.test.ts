@@ -82,7 +82,7 @@ test('it refuses a task message of a kind the tool does not send', async () => {
   await sql`insert into records (sequence, recorded_at, kind, snapshot_hash, payload)
     values (1, 1767225600000, 'task_message', 'snapshot-a', '{}')`.execute(ctx.db);
 
-  await expect(
+  expect(
     sql`insert into task_messages (message_id, from_task, to_task, kind,
     reply_to, wait_state, sent_sequence)
     values ('k3vq8m2xpa', 'notes-indexer', 'conversation', 'shout', null, 'none', 1)`.execute(

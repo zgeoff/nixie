@@ -58,7 +58,7 @@ test('it keeps each export row when it runs again', async () => {
 test('it refuses an export of no skill that nixie wrote', async () => {
   const ctx = await setupTest();
 
-  await expect(
+  expect(
     sql`insert into skill_exports (approval_id, state, base_hash,
     pull_request_number, pull_request_url, updated_at)
     values ('approval-a', 'opened', null, 7, 'https://github.test/pull/7', 2)`.execute(ctx.db),

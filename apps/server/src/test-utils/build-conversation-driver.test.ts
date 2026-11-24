@@ -84,11 +84,10 @@ test('it fails a send whose step errored after it sent a turn, with the step err
 
   const failure = conversation.send('What does the tide gauge read?');
 
-  await expect(failure).rejects.toBeInstanceOf(Error);
-
+  expect(failure).rejects.toBeInstanceOf(Error);
   expect(ctx.server.guest.turns).toHaveLength(1);
 
-  await expect(failure).rejects.toMatchObject({
+  expect(failure).rejects.toMatchObject({
     cause: { message: 'the conversation turn passed the context window' },
   });
 });

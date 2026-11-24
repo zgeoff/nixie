@@ -41,7 +41,7 @@ test('#pause refuses a stopped task, naming its state', async () => {
 
   await ctx.client.stop({ taskID });
 
-  await expect(ctx.client.pause({ taskID })).rejects.toMatchObject({
+  expect(ctx.client.pause({ taskID })).rejects.toMatchObject({
     code: 'TASK_STATE_REFUSED',
     message: `task ${taskID} is stopped, which does not take this control`,
   });
@@ -50,7 +50,7 @@ test('#pause refuses a stopped task, naming its state', async () => {
 test('#resume refuses a task that does not exist', async () => {
   const ctx = await setupTest();
 
-  await expect(ctx.client.resume({ taskID: 'k3x9m2p7qa' })).rejects.toMatchObject({
+  expect(ctx.client.resume({ taskID: 'k3x9m2p7qa' })).rejects.toMatchObject({
     code: 'TASK_NOT_FOUND',
   });
 });
@@ -60,7 +60,7 @@ test('#close refuses to close the conversation', async () => {
 
   await createConversationTask(ctx.context);
 
-  await expect(ctx.client.close({ taskID: 'conversation' })).rejects.toMatchObject({
+  expect(ctx.client.close({ taskID: 'conversation' })).rejects.toMatchObject({
     code: 'CONVERSATION_NEVER_CLOSES',
   });
 });
@@ -69,7 +69,7 @@ test('#interrupt refuses a task with no running step', async () => {
   const ctx = await setupTest();
   const taskID = await createTask(ctx.context, 'sort the receipts');
 
-  await expect(ctx.client.interrupt({ taskID })).rejects.toMatchObject({
+  expect(ctx.client.interrupt({ taskID })).rejects.toMatchObject({
     code: 'TASK_STATE_REFUSED',
     message: `task ${taskID} is ready, which does not take this control`,
   });
@@ -84,7 +84,7 @@ test('#resume refuses a task that its limit paused, naming the raise', async () 
     limits: { turns: 3, dollars: 1 },
   });
 
-  await expect(ctx.client.resume({ taskID })).rejects.toMatchObject({
+  expect(ctx.client.resume({ taskID })).rejects.toMatchObject({
     code: 'TASK_STATE_REFUSED',
     message: `task ${taskID} reached its limit, and only a raise of the limit resumes it`,
   });
@@ -114,7 +114,7 @@ test('#raise refuses a task that its limit does not hold', async () => {
   const ctx = await setupTest();
   const taskID = await createTask(ctx.context, 'sort the receipts');
 
-  await expect(ctx.client.raise({ taskID, turns: 9 })).rejects.toMatchObject({
+  expect(ctx.client.raise({ taskID, turns: 9 })).rejects.toMatchObject({
     code: 'TASK_NOT_AT_LIMIT',
     status: 409,
   });
@@ -129,7 +129,7 @@ test('#raise refuses limits that are not above the old ones', async () => {
     limits: { turns: 3, dollars: 1 },
   });
 
-  await expect(ctx.client.raise({ taskID, turns: 3 })).rejects.toMatchObject({
+  expect(ctx.client.raise({ taskID, turns: 3 })).rejects.toMatchObject({
     code: 'LIMIT_NOT_RAISED',
     status: 409,
   });
@@ -138,7 +138,7 @@ test('#raise refuses limits that are not above the old ones', async () => {
 test('#raise refuses a task that does not exist', async () => {
   const ctx = await setupTest();
 
-  await expect(ctx.client.raise({ taskID: 'k3vq8m2xpa', turns: 9 })).rejects.toMatchObject({
+  expect(ctx.client.raise({ taskID: 'k3vq8m2xpa', turns: 9 })).rejects.toMatchObject({
     code: 'TASK_NOT_FOUND',
     status: 404,
   });

@@ -200,7 +200,7 @@ test('it refuses to carry a session from a sandbox that holds no transcript of i
     },
   ]);
 
-  await expect(
+  expect(
     writeKeptSession({
       from,
       to,
@@ -233,7 +233,7 @@ test('it leaves no resumable transcript when the move of the staged copy fails',
     },
   ]);
 
-  await expect(
+  expect(
     writeKeptSession({
       from,
       to,

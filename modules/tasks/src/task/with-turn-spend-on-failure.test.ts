@@ -32,7 +32,7 @@ test("it records the turn's spend and rethrows the error of a write that fails",
   const ctx = await setupTest();
   const step = await seedConversationStep(ctx.context);
 
-  await expect(
+  expect(
     withTurnSpendOnFailure(
       ctx.context,
       { spend: { taskID: 'conversation', dollars: 0.03 }, logger: ctx.logger },
@@ -77,7 +77,7 @@ test("it logs a spend write that fails, and rethrows the write's own error", asy
 
   await ctx.writer.stop();
 
-  await expect(
+  expect(
     withTurnSpendOnFailure(
       ctx.context,
       { spend: { taskID: 'conversation', dollars: 0.03 }, logger: ctx.logger },

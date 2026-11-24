@@ -176,7 +176,7 @@ test('#approve refuses edited files that fail the seed checks with their code', 
     },
   ]);
 
-  await expect(
+  expect(
     ctx.client.approve({
       proposalID: 'p8w2n4c6ld',
       skillHash: skill.skillHash,
@@ -232,7 +232,7 @@ test('#approve refuses a proposal whose base the skill in force moved past with 
     },
   ]);
 
-  await expect(
+  expect(
     ctx.client.approve({ proposalID: 'p8w2n4c6ld', skillHash: skill.skillHash }),
   ).rejects.toMatchObject({ code: 'STALE_BASE', status: 409 });
 
@@ -301,7 +301,7 @@ test('#reject answers a closed proposal with its typed code', async () => {
     },
   ]);
 
-  await expect(
+  expect(
     ctx.client.reject({ proposalID: 'p8w2n4c6ld', skillHash: 'hash-c', reason: 'not now' }),
   ).rejects.toMatchObject({ code: 'PROPOSAL_CLOSED', status: 409 });
 });

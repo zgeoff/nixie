@@ -616,7 +616,7 @@ test('it refuses to move a file onto a directory, and keeps the file', async () 
     { path: '/work/dir/b.txt', content: new TextEncoder().encode('b') },
   ]);
 
-  await expect(sandbox.applyMove('/work/a.txt', '/work/dir')).rejects.toMatchObject({
+  expect(sandbox.applyMove('/work/a.txt', '/work/dir')).rejects.toMatchObject({
     code: 'EISDIR',
   });
 

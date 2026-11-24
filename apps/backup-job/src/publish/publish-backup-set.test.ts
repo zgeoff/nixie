@@ -419,7 +419,7 @@ test('it leaves a key snapshot with no data snapshot, and publishes the set agai
     },
   };
 
-  await expect(ctx.runPass(stopping)).rejects.toMatchObject({
+  expect(ctx.runPass(stopping)).rejects.toMatchObject({
     message: 'EIO: the data write stopped',
   });
 
@@ -453,7 +453,7 @@ test('it picks the higher publish number when it stops before it removes the rep
     },
   };
 
-  await expect(ctx.runPass(stopping)).rejects.toStrictEqual(new Error('EIO: the removal stopped'));
+  expect(ctx.runPass(stopping)).rejects.toStrictEqual(new Error('EIO: the removal stopped'));
 
   const keys = await ctx.repos.keys.readSnapshots();
 
@@ -475,7 +475,7 @@ test('it drops the replaced key snapshot by legacy-set when the first numbered p
     },
   };
 
-  await expect(ctx.runPass(stopping)).rejects.toStrictEqual(new Error('EIO: the removal stopped'));
+  expect(ctx.runPass(stopping)).rejects.toStrictEqual(new Error('EIO: the removal stopped'));
 
   const keys = await ctx.repos.keys.readSnapshots();
 
@@ -500,7 +500,7 @@ test('it keeps the note and raises proven-from again when it stops before it rem
         : localJobFiles.removeFile(path),
   };
 
-  await expect(ctx.runPass(ctx.repos, stopping)).rejects.toStrictEqual(
+  expect(ctx.runPass(ctx.repos, stopping)).rejects.toStrictEqual(
     new Error('EIO: the note removal stopped'),
   );
 

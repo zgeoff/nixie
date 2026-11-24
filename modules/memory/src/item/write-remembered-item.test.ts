@@ -293,7 +293,7 @@ test('it refuses a new item whose end time has passed, and writes nothing', asyn
 
   const memory = await startTestMemory({ gate: { clock } });
 
-  await expect(
+  expect(
     memory.store.remember({
       text: 'Is in Lisbon this week',
       until: Date.parse('2026-10-19T08:59:59Z'),

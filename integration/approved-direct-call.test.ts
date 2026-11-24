@@ -145,9 +145,9 @@ test('it refuses a second answer to the approval, and runs nothing more', async 
   await ctx.approve(item.proposal.proposalID, item.proposal.actionHash);
   await ctx.waitForOutcome();
 
-  await expect(
-    ctx.approve(item.proposal.proposalID, item.proposal.actionHash),
-  ).rejects.toBeInstanceOf(Error);
+  expect(ctx.approve(item.proposal.proposalID, item.proposal.actionHash)).rejects.toBeInstanceOf(
+    Error,
+  );
 
   const records = await ctx.readThread();
 

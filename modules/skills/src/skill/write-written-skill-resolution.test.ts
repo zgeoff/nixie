@@ -230,7 +230,7 @@ test("it keeps nixie's version in force over a definitions change and closes the
 test('it refuses a choice for a skill nixie wrote that left force', async () => {
   const ctx = await setupTest();
 
-  await expect(
+  expect(
     writeWrittenSkillResolution(ctx.context, {
       approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
       keep: 'definitions',
