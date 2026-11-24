@@ -127,7 +127,7 @@
     "test:backup-job-build": "bun apps/backup-job/src/test-utils/read-backup-job-bundle.ts",
     "test:backup-job-program": "bun run --cwd apps/backup-job build",
     "test:model-gateway-build": "bun apps/model-gateway/src/test-utils/read-model-gateway-binary.ts",
-    "build:browser": "bun apps/web/src/test-utils/write-browser-build.ts",
+    "build:browser": "bun scripts/test-utils/install-browser-in-ci.ts && bun apps/web/src/test-utils/write-browser-build.ts",
     "test:browser": "rig browser --path-ignore-patterns='apps/server/e2e/**' --path-ignore-patterns='apps/server/src/test-utils/start-web-journey.browser.test.ts'",
     "test:agent-sdk": "rig agent-sdk",
     "test:e2e": "bun run test:bundle && rig e2e",
