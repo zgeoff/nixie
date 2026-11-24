@@ -1,6 +1,7 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
   "extends": ["./node_modules/@zgeoff/oxlint-config/oxlintrc.json"],
+  "jsPlugins": ["./scripts/oxlint/nixie-plugin.js"],
   "env": {
     "node": true,
     "es2024": true
@@ -28,6 +29,8 @@
         "exemptNames": ["executeQuery"]
       }
     ],
+    // a read of the secrets file's groups goes through the credentials module
+    "nixie/no-credential-group-reads": "error",
     "zgeoff/seed-only": "error",
     "zgeoff/test-beside-seed": "error",
     // the import boundaries: each outside system has one package that may import it, and every
@@ -89,6 +92,13 @@
     ]
   },
   "overrides": [
+    {
+      "files": ["modules/credentials/**"],
+      // the credentials module is the one reader of the secrets file's groups
+      "rules": {
+        "nixie/no-credential-group-reads": "off"
+      }
+    },
     {
       "files": ["verify/src/verify/prod/prod-target.test.ts"],
       // the test runs the verify CLI as a process, so no single module sits beside it
