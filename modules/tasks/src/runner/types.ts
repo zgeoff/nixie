@@ -70,7 +70,7 @@ export interface TaskRunnerDefinition {
   readonly start: RunnerStartPort | null;
   readonly fixedTasks: readonly string[];
 
-  // recovery keeps the sandboxes that the runner's open tasks own
+  // the restart sweep keeps the sandboxes that the runner's open tasks own
   readonly keepsSandboxes: boolean;
 }
 
@@ -104,7 +104,7 @@ export interface TaskRunnerRegistry {
     taskID: string,
   ) => Promise<TaskRunnerResolution>;
 
-  // the tasks whose sandboxes recovery keeps: the fixed tasks of each runner that keeps sandboxes,
+  // the tasks whose sandboxes the restart sweep keeps: the fixed tasks of each runner that keeps sandboxes,
   // and each open started task that resolves to one
   readonly readKeptSandboxOwners: (
     context: Pick<TasksContext, 'log'>,

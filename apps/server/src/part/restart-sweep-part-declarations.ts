@@ -6,10 +6,10 @@ import { runDefinitionsSeed } from '../definition/run-definitions-seed';
 import { registerSandboxImages } from '../sandbox/register-sandbox-images';
 import type { AnyPartDeclaration, PartReader, ServerParts } from '../types';
 import { makeRetriedStart } from './make-retried-start';
-import { runRecoverySteps } from './run-recovery-steps';
+import { runRestartSweepSteps } from './run-restart-sweep-steps';
 import type { ServerPartValues } from './server-part-values';
 
-export const recoveryPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>[] = [
+export const restartSweepPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>[] = [
   {
     name: 'first_seed',
     needs: ['server_parts'],
@@ -21,21 +21,22 @@ export const recoveryPartDeclarations: readonly AnyPartDeclaration<ServerPartVal
     start: makeRetriedStart('restore_pause', installPauseAndClearMarker),
   },
   {
-    name: 'recovery',
+    name: 'restart_sweep',
     needs: ['inputs', 'server_parts', 'first_seed', 'restore_pause'],
-    start: makeRetriedStart('recovery', async (parts, reader) => {
-      await runRecoverySteps(parts);
+    start: makeRetriedStart('restart_sweep', async (parts, reader) => {
+      await runRestartSweepSteps(parts);
 
       if (NIXIE_TEST_BUILD) {
-        await reader
-          .get('inputs')
-          .options.harness?.link.waitAtFaultPoint('test.recovered', { kind: 'recovery', id: null });
+        await reader.get('inputs').options.harness?.link.waitAtFaultPoint('test.swept', {
+          kind: 'restart_sweep',
+          id: null,
+        });
       }
     }),
   },
   {
     name: 'add_images',
-    needs: ['server_parts', 'recovery'],
+    needs: ['server_parts', 'restart_sweep'],
     start: makeRetriedStart('add_images', registerSandboxImages),
   },
   {

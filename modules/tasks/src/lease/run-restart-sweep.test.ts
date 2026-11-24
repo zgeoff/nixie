@@ -6,14 +6,14 @@ import { createTestClaim } from '../test-utils/create-test-claim';
 import { startNextTestWriter } from '../test-utils/start-next-test-writer';
 import { startTestTasks } from '../test-utils/start-test-tasks';
 import type { TasksTables } from '../types';
-import { runRecovery } from './run-recovery';
+import { runRestartSweep } from './run-restart-sweep';
 import { setFaultPointHandler } from './set-fault-point-handler';
 
 function setupTest() {
   return startTestTasks();
 }
 
-test('it runs the 5 recovery steps in order, with steps 3 and 5 through the dependencies', async () => {
+test('it runs the 5 restart sweep steps in order, with steps 3 and 5 through the dependencies', async () => {
   const ctx = await setupTest();
 
   const calls: string[] = [];
@@ -26,7 +26,7 @@ test('it runs the 5 recovery steps in order, with steps 3 and 5 through the depe
     setFaultPointHandler(null);
   });
 
-  await runRecovery(ctx.context, {
+  await runRestartSweep(ctx.context, {
     writeUnknownOutcomes: () => {
       calls.push('unknown outcomes');
 
@@ -42,13 +42,13 @@ test('it runs the 5 recovery steps in order, with steps 3 and 5 through the depe
   });
 
   expect(calls).toStrictEqual([
-    'recovery.step.1',
-    'recovery.step.2',
+    'restart_sweep.step.1',
+    'restart_sweep.step.2',
     'unknown outcomes',
-    'recovery.step.3',
-    'recovery.step.4',
+    'restart_sweep.step.3',
+    'restart_sweep.step.4',
     'stale sandboxes',
-    'recovery.step.5',
+    'restart_sweep.step.5',
   ]);
 });
 
@@ -65,7 +65,7 @@ test('it frees a lease claimed under the older epoch', async () => {
 
   const next = await startNextTestWriter(ctx);
 
-  await runRecovery(next.context, {
+  await runRestartSweep(next.context, {
     writeUnknownOutcomes: mock(() => Promise.resolve()),
     sandboxes: { removeStaleSandboxes: mock(() => Promise.resolve()) },
   });
@@ -93,7 +93,7 @@ test('it returns a task running under the older epoch to ready', async () => {
 
   const next = await startNextTestWriter(ctx);
 
-  await runRecovery(next.context, {
+  await runRestartSweep(next.context, {
     writeUnknownOutcomes: mock(() => Promise.resolve()),
     sandboxes: { removeStaleSandboxes: mock(() => Promise.resolve()) },
   });
@@ -116,7 +116,7 @@ test('it pauses a task running under the older epoch whose pause waited on its s
 
   const next = await startNextTestWriter(ctx);
 
-  await runRecovery(next.context, {
+  await runRestartSweep(next.context, {
     writeUnknownOutcomes: mock(() => Promise.resolve()),
     sandboxes: { removeStaleSandboxes: mock(() => Promise.resolve()) },
   });
@@ -146,7 +146,7 @@ test('it records the step that started without a commit as interrupted', async (
 
   const next = await startNextTestWriter(ctx);
 
-  await runRecovery(next.context, {
+  await runRestartSweep(next.context, {
     writeUnknownOutcomes: mock(() => Promise.resolve()),
     sandboxes: { removeStaleSandboxes: mock(() => Promise.resolve()) },
   });
@@ -185,7 +185,7 @@ test('it fires the timers that fell due while nixie was down', async () => {
 
   next.clock.advance(120_000);
 
-  await runRecovery(next.context, {
+  await runRestartSweep(next.context, {
     writeUnknownOutcomes: mock(() => Promise.resolve()),
     sandboxes: { removeStaleSandboxes: mock(() => Promise.resolve()) },
   });
@@ -221,7 +221,7 @@ test('it wakes a task whose timer fell due while nixie was down', async () => {
 
   next.clock.advance(120_000);
 
-  await runRecovery(next.context, {
+  await runRestartSweep(next.context, {
     writeUnknownOutcomes: mock(() => Promise.resolve()),
     sandboxes: { removeStaleSandboxes: mock(() => Promise.resolve()) },
   });
@@ -248,11 +248,11 @@ test('it writes nothing more when it runs again', async () => {
     sandboxes: { removeStaleSandboxes: mock(() => Promise.resolve()) },
   };
 
-  await runRecovery(next.context, dependencies);
+  await runRestartSweep(next.context, dependencies);
 
   const before = await readRecords(next.context.log, { afterSequence: 0 });
 
-  await runRecovery(next.context, dependencies);
+  await runRestartSweep(next.context, dependencies);
 
   const after = await readRecords(next.context.log, { afterSequence: 0 });
 

@@ -107,7 +107,7 @@ test('it reports a provider call without an idempotency key', async () => {
   expect(oracle.strayCalls).toStrictEqual([null]);
 });
 
-test('it reports a lease that is still held once recovery ran', async () => {
+test('it reports a lease that is still held once the restart sweep ran', async () => {
   const ctx = await setupTest();
 
   const first = ctx.nixie.harness.start();

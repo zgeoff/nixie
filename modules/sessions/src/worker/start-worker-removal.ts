@@ -6,7 +6,7 @@ type RemovalDeps = Pick<WorkerDeps, 'failedDestroys' | 'cleanups' | 'logger'>;
 
 // Destroys a worker's sandbox after the call has its result, and frees the worker's slot when the
 // destroy ends, whether it worked or not. A sandbox that stays goes on the list that the next worker
-// run tries again before its create, and recovery removes whatever a restart leaves.
+// run tries again before its create, and the restart sweep removes whatever a restart leaves.
 export function startWorkerRemoval(deps: RemovalDeps, sandbox: Sandbox, release: () => void): void {
   const removed = Promise.withResolvers<void>();
 

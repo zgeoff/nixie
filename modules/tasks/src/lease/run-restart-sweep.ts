@@ -8,22 +8,22 @@ import { taskLeaseExpiredCodec } from '../utils/task-lease-expired-codec';
 import { taskStepInterruptedCodec } from '../utils/task-step-interrupted-codec';
 import { waitAtFaultPoint } from './wait-at-fault-point';
 
-export interface RecoveryDependencies {
+export interface RestartSweepDependencies {
   readonly writeUnknownOutcomes: () => Promise<void>;
 
   readonly sandboxes: SandboxCleanup;
 }
 
-interface RecoveryStep {
+interface RestartSweepStep {
   readonly number: 1 | 2 | 3 | 4 | 5;
   readonly run: () => Promise<unknown>;
 }
 
-export async function runRecovery(
+export async function runRestartSweep(
   context: TasksContext,
-  dependencies: RecoveryDependencies,
+  dependencies: RestartSweepDependencies,
 ): Promise<void> {
-  const steps: readonly RecoveryStep[] = [
+  const steps: readonly RestartSweepStep[] = [
     { number: 1, run: () => resetStaleLeases(context) },
     { number: 2, run: () => writeInterruptedSteps(context) },
     { number: 3, run: () => dependencies.writeUnknownOutcomes() },
@@ -35,7 +35,10 @@ export async function runRecovery(
     await step.run();
 
     if (NIXIE_TEST_BUILD) {
-      await waitAtFaultPoint(`recovery.step.${step.number}`, { kind: 'recovery', id: null });
+      await waitAtFaultPoint(`restart_sweep.step.${step.number}`, {
+        kind: 'restart_sweep',
+        id: null,
+      });
     }
   }
 }

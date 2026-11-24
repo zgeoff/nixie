@@ -317,11 +317,11 @@ export type FaultPointID =
   | 'task_list.read.after'
   | 'turn.reply.after'
   | 'time.now.running'
-  | 'recovery.step.1'
-  | 'recovery.step.2'
-  | 'recovery.step.3'
-  | 'recovery.step.4'
-  | 'recovery.step.5'
+  | 'restart_sweep.step.1'
+  | 'restart_sweep.step.2'
+  | 'restart_sweep.step.3'
+  | 'restart_sweep.step.4'
+  | 'restart_sweep.step.5'
   | 'recovery.pause.committed'
   | 'recovery.pause.marker_cleared'
   | 'sigterm.grace'
@@ -338,7 +338,14 @@ export type FaultPointID =
   | 'backup.set.copied';
 
 export interface FaultPointContext {
-  readonly kind: LeaseKind | 'recovery' | 'pool' | 'memory' | 'backup' | 'trigger';
+  readonly kind:
+    | LeaseKind
+    | 'recovery'
+    | 'restart_sweep'
+    | 'pool'
+    | 'memory'
+    | 'backup'
+    | 'trigger';
   readonly id: string | null;
 }
 

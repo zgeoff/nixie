@@ -15,7 +15,7 @@ export interface AdvanceSteps {
   readonly maxSteps: number;
 }
 
-export interface RecoveredState {
+export interface SweptState {
   readonly leases: readonly TestLease[];
   readonly tasks: readonly TestTask[];
 }

@@ -29,9 +29,9 @@ test('it refuses a second process while the first holds the writer lock, and let
   await ctx.nixie.waitForRecord((record) => record.stepKey === 'conversation:1');
   await processA.kill();
 
-  const processB = ctx.nixie.harness.start([{ point: 'recovery.step.5' }]);
+  const processB = ctx.nixie.harness.start([{ point: 'restart_sweep.step.5' }]);
 
-  const arrival = await processB.waitForArrival('recovery.step.5');
+  const arrival = await processB.waitForArrival('restart_sweep.step.5');
 
   processB.release(arrival);
 
