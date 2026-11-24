@@ -1,4 +1,5 @@
-import type { WriteTransaction } from '@heynixie/log';
+import type { ErasureRegistry, WriteTransaction } from '@heynixie/log';
+import { readErasureFinishedSequence } from '@heynixie/log';
 import type { SemanticSearch } from '@heynixie/memory';
 import type { NotebookCheck } from './check/build-check';
 import { readCheck } from './check/read-check';
@@ -12,18 +13,18 @@ import type { NoteOpened } from './client/write-note-opened';
 import { writeNoteOpened } from './client/write-note-opened';
 import type { LinkingNote } from './count/read-notes-linking-event';
 import { readNotesLinkingEvent } from './count/read-notes-linking-event';
-import { readNoteForgetFloor } from './forget/read-note-forget-floor';
+import type { BegunNoteForget, NoteForgetTarget } from './erasure/begin-note-forget';
+import { beginNoteForget } from './erasure/begin-note-forget';
+import { buildNoteErasable } from './erasure/build-note-erasable';
 import type { NoteForgetPreviewRead } from './forget/read-note-forget-preview';
 import { readNoteForgetPreview } from './forget/read-note-forget-preview';
 import { readNoteForgottenSequence } from './forget/read-note-forgotten-sequence';
-import { runBegunNoteForgets } from './forget/run-begun-note-forgets';
-import type { BegunNoteForget, NoteForget, NoteForgetTarget } from './forget/run-note-forget';
-import { beginNoteForget, runNoteForget } from './forget/run-note-forget';
 import { startNoteIndex } from './index/start-note-index';
 import { readNoteRow } from './note/read-note-row';
 import { readFoundNotes } from './read/read-found-notes';
 import { readNote } from './read/read-note';
 import { readNoteHistory } from './read/read-note-history';
+import { noteErasableDescriptor } from './record/note-erasable-descriptor';
 import type { NotebookToolStore } from './tool/notebook-tool-store';
 import type { NoteForgetCaller, NotebookContext, RunningStepClaim } from './types';
 import { readWalk } from './walk/read-walk';
@@ -45,17 +46,16 @@ export interface NotebookStore extends NotebookToolStore {
   ) => Promise<NoteOpened>;
 
   readonly readForgetPreview: (note: string) => Promise<NoteForgetPreviewRead>;
-  readonly forget: (
+  readonly beginForget: (
     target: NoteForgetTarget,
     writeInTransaction?: (tx: WriteTransaction) => Promise<void>,
-  ) => Promise<NoteForget>;
+  ) => Promise<BegunNoteForget>;
 
   // finishes a forget whose first part committed; the note is a short ID or a UUID
   readonly finishForget: (note: string) => Promise<void>;
 
   // the sequence of the record that ended the note's forget, or null while the cleanup still runs
   readonly readForgottenSequence: (note: string) => Promise<number | null>;
-  readonly readForgetFloor: (noteID: string) => Promise<number | null>;
   readonly readLinkingNotes: (sequence: number) => Promise<readonly LinkingNote[]>;
 
   // resolves once the cleanups that a tool's forget left running have ended
@@ -67,6 +67,9 @@ export interface NotebookStore extends NotebookToolStore {
 }
 
 export interface StartNotebookOptions extends NotebookContext {
+  // where the notebook registers its erasable, which the server's runner takes forgets through
+  readonly erasure: ErasureRegistry;
+
   // without it, meaning search is never ready and a search reports a partial meaning
   readonly semanticSearch?: SemanticSearch;
 
@@ -84,8 +87,8 @@ interface CallingStep extends RunningStepClaim {
   readonly thread: string;
 }
 
-// Starts the in-process indexes from every active note, and finishes each forget that a crash cut
-// short.
+// Starts the in-process indexes from every active note, and registers the note erasable. The
+// server's start finishes each forget that a crash cut short.
 export async function startNotebook(options: StartNotebookOptions): Promise<NotebookStore> {
   const context: NotebookContext = options;
 
@@ -93,11 +96,14 @@ export async function startNotebook(options: StartNotebookOptions): Promise<Note
 
   await index.load();
 
-  await runBegunNoteForgets(context, index);
+  const erasure = options.erasure.register({
+    ...noteErasableDescriptor,
+    ...buildNoteErasable(context, index),
+  });
 
-  // A tool's forget runs inside a step, and the session cleanup aborts every turn in flight, so it
-  // starts only once the calling step has committed what it wrote. The cleanup runs again until it
-  // ends or the notebook stops, and the next start finishes one that a stop cut short.
+  // A tool's forget runs inside a step, and the session cleanup aborts every turn in flight, so the
+  // rest of it starts only once the calling step has committed what it wrote. It runs again until
+  // it ends or the notebook stops, and the next start finishes one that a stop cut short.
   const cleanups = new Map<string, Promise<void>>();
 
   const retryMs = options.cleanupRetryMs ?? defaultCleanupRetryMs;
@@ -123,7 +129,9 @@ export async function startNotebook(options: StartNotebookOptions): Promise<Note
 
   const runFinishOnce = async (noteID: string, step: CallingStep | null): Promise<boolean> => {
     try {
-      await runBegunNoteForgets(context, index, noteID, () => waitForStepEnd(step));
+      await waitForStepEnd(step);
+
+      await erasure.finish(noteID);
 
       return true;
     } catch {
@@ -149,7 +157,7 @@ export async function startNotebook(options: StartNotebookOptions): Promise<Note
     target: NoteForgetTarget,
     caller: NoteForgetCaller,
   ): Promise<BegunNoteForget> => {
-    const begun = await beginNoteForget(context, target);
+    const begun = await beginNoteForget(context, erasure, target);
 
     if (begun.status === 'begun') {
       const running = await options.readRunningStep(caller.thread);
@@ -181,21 +189,26 @@ export async function startNotebook(options: StartNotebookOptions): Promise<Note
     writeOpened: (note, writeInTransaction) => writeNoteOpened(context, note, writeInTransaction),
 
     readForgetPreview: (note) => readNoteForgetPreview(context, note),
-    forget: (target, writeInTransaction) =>
-      runNoteForget(context, index, target, writeInTransaction),
+    beginForget: (target, writeInTransaction) =>
+      beginNoteForget(context, erasure, target, writeInTransaction),
     finishForget: async (note) => {
       const row = await readNoteRow(context.log.writer.db, note);
 
       if (row !== null) {
-        await runBegunNoteForgets(context, index, row.note_id);
+        await erasure.finish(row.note_id);
       }
     },
     readForgottenSequence: async (note) => {
       const row = await readNoteRow(context.log.writer.db, note);
 
-      return row === null ? null : readNoteForgottenSequence(context.log, row.note_id);
+      if (row === null) {
+        return null;
+      }
+
+      const finished = await readErasureFinishedSequence(context.log, 'note', row.note_id);
+
+      return finished ?? readNoteForgottenSequence(context.log, row.note_id);
     },
-    readForgetFloor: (noteID) => readNoteForgetFloor(context.log, noteID),
     readLinkingNotes: (sequence) => readNotesLinkingEvent(context.log, sequence),
 
     waitForForgets: async () => {

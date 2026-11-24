@@ -6,7 +6,9 @@ import { claimTask, createConversationTask, runTaskStep } from '@heynixie/tasks'
 import invariant from 'tiny-invariant';
 import { buildSeeder } from '../test-utils/build-seeder';
 import { buildTestClient } from '../test-utils/build-test-client';
+import { buildTestErasureRunner } from '../test-utils/build-test-erasure-runner';
 import { createDeviceSession } from '../test-utils/create-device-session';
+import { destroyTestMoment } from '../test-utils/destroy-test-moment';
 import { startTestAPI } from '../test-utils/start-test-api';
 import { defaultAPISettings } from '../utils/default-api-settings';
 
@@ -16,6 +18,7 @@ async function setupTest() {
   const memory = await startMemoryStore({
     log: api.context.log,
     definitions: () => ({ snapshotHash: 'sha256:test' }),
+    erasure: buildTestErasureRunner(api.context.log),
     cleanupSessions: mock<CleanupSessions>(() => Promise.resolve()),
     gate: {
       check: () =>
@@ -222,7 +225,7 @@ test('#conversation.previewForget counts the live moments that hold the record a
 
   invariant(destroyed.status === 'written');
 
-  await ctx.memory.moments.destroy({ momentID: destroyed.momentID, version: 1 });
+  await destroyTestMoment(ctx.memory.moments, { momentID: destroyed.momentID, version: 1 });
 
   const quoting = await ctx.memory.remember({
     text: 'The cat uses the flap',

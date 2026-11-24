@@ -102,7 +102,7 @@ test('it drops a count when the note is unlinked or forgotten', async () => {
 
   const afterUnlink = await ctx.recallItem('thermostat');
 
-  await ctx.notebook.forget({ note: second, version: 1 });
+  await ctx.forget({ note: second, version: 1 });
 
   const afterForget = await ctx.recallItem('thermostat');
 

@@ -1,7 +1,6 @@
 import type { Clock } from '@heynixie/clock';
 import type { CheckedTables } from '@heynixie/db';
 import type { Definitions, Log } from '@heynixie/log';
-import type { CleanupSessions } from '@heynixie/memory';
 import type { Selectable } from 'kysely';
 
 export const linkTypes = ['supersedes', 'disputes', 'part-of', 'cites', 'related'] as const;
@@ -117,10 +116,6 @@ export interface NotebookContext {
   readonly clock: Pick<Clock, 'now'>;
   readonly settings: NotebookSettings;
   readonly memory: NotebookMemory;
-
-  // Runs the session cleanup of a forget: it must be safe to run again, because a forget that a
-  // crash cut short runs it again.
-  readonly cleanupSessions: CleanupSessions;
 }
 
 // The thread whose step called the forget tool: the forget's cleanup waits for that step to end.

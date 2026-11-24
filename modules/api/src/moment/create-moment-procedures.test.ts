@@ -1,21 +1,27 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
+import type { ErasureSessionCause } from '@heynixie/log';
 import { readRecords, writeRecords } from '@heynixie/log';
-import type { CleanupSessions } from '@heynixie/memory';
 import { defaultGateLimits, defaultOwnerPronouns, startMemoryStore } from '@heynixie/memory';
 import invariant from 'tiny-invariant';
 import { buildTestClient } from '../test-utils/build-test-client';
+import { buildTestErasureRunner } from '../test-utils/build-test-erasure-runner';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { startTestAPI } from '../test-utils/start-test-api';
 
 async function setupTest() {
   const api = await startTestAPI();
 
-  const cleanupSessions = mock<CleanupSessions>(() => Promise.resolve());
+  const cleanupSessions = mock<(cause: ErasureSessionCause) => Promise<void>>(() =>
+    Promise.resolve(),
+  );
+
+  const runner = buildTestErasureRunner(api.context.log, cleanupSessions);
 
   const memory = await startMemoryStore({
     log: api.context.log,
     definitions: () => ({ snapshotHash: 'sha256:test' }),
-    cleanupSessions,
+    erasure: runner,
+    cleanupSessions: () => Promise.resolve(),
     gate: {
       check: () =>
         Promise.resolve({
@@ -531,17 +537,17 @@ test('#memory.destroyMoment shreds the title, cleans up the sessions and records
 
   const records = await readRecords(ctx.context.log, {
     afterSequence: 0,
-    kinds: ['owner_message', 'moment_kept', 'moment_destroyed'],
+    kinds: ['owner_message', 'moment_kept', 'erasure.started', 'erasure.finished'],
   });
 
-  expect(destroyed).toStrictEqual({ momentID: kept.momentID });
+  expect(destroyed).toStrictEqual({ momentID: kept.momentID, backup: { state: 'pending' } });
   expect(ctx.cleanupSessions).toHaveBeenCalledExactlyOnceWith({ momentID: kept.momentID });
 
   expect(records.map((entry) => [entry.record.kind, entry.record.erasable.status])).toStrictEqual([
     ['owner_message', 'readable'],
     ['moment_kept', 'shredded'],
-    ['moment_destroyed', 'none'],
-    ['moment_destroyed', 'none'],
+    ['erasure.started', 'none'],
+    ['erasure.finished', 'none'],
   ]);
 });
 
@@ -611,7 +617,7 @@ test("#memory.destroyMoment shreds the title, the note and each reflection, and 
   ]);
 });
 
-test('#memory.destroyMoment completes a destroy on the retry after its session cleanup failed', async () => {
+test('#memory.destroyMoment answers pending when its session cleanup failed, and completes the destroy on the retry', async () => {
   const ctx = await setupTest();
   const laptop = await createDeviceSession(ctx.context, 'laptop');
 
@@ -642,13 +648,11 @@ test('#memory.destroyMoment completes a destroy on the retry after its session c
     Promise.reject(new Error('the guest did not answer')),
   );
 
-  const failed = await client.memory
-    .destroyMoment({
-      clientActionID: '7a3e1c52-9d4b-4f0e-b8a6-2c5d9e1f3a74',
-      momentID: kept.momentID,
-      version: 1,
-    })
-    .catch((error: unknown) => error);
+  const failed = await client.memory.destroyMoment({
+    clientActionID: '7a3e1c52-9d4b-4f0e-b8a6-2c5d9e1f3a74',
+    momentID: kept.momentID,
+    version: 1,
+  });
 
   const retried = await client.memory.destroyMoment({
     clientActionID: '7a3e1c52-9d4b-4f0e-b8a6-2c5d9e1f3a74',
@@ -658,12 +662,16 @@ test('#memory.destroyMoment completes a destroy on the retry after its session c
 
   const records = await readRecords(ctx.context.log, {
     afterSequence: 0,
-    kinds: ['moment_destroyed'],
+    kinds: ['erasure.started', 'erasure.finished'],
   });
 
-  expect(failed).toMatchObject({ code: 'INTERNAL_SERVER_ERROR' });
-  expect(retried).toStrictEqual({ momentID: kept.momentID });
-  expect(records).toHaveLength(2);
+  expect(failed).toStrictEqual({ momentID: kept.momentID, backup: { state: 'pending' } });
+  expect(retried).toStrictEqual({ momentID: kept.momentID, backup: { state: 'pending' } });
+
+  expect(records.map((entry) => entry.record.kind)).toStrictEqual([
+    'erasure.started',
+    'erasure.finished',
+  ]);
 });
 
 test('#memory.destroyMoment refuses a destroy confirmed after the moment changed, and records no client action', async () => {
@@ -714,7 +722,7 @@ test('#memory.destroyMoment refuses a destroy confirmed after the moment changed
   });
 
   expect(stale).rejects.toMatchObject({ code: 'STALE_VERSION' });
-  expect(current).toStrictEqual({ momentID: kept.momentID });
+  expect(current).toStrictEqual({ momentID: kept.momentID, backup: { state: 'pending' } });
 });
 
 test('#memory.destroyMoment refuses a moment that does not exist', async () => {

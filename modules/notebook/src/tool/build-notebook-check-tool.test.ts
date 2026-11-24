@@ -49,7 +49,7 @@ test('it reports a link whose target is gone as dangling', async () => {
   const to = await ctx.write('To');
 
   await ctx.call('notebook.link', { from, to: { note: to }, type: 'cites' });
-  await ctx.notebook.forget({ note: to, version: 1 });
+  await ctx.forget({ note: to, version: 1 });
 
   const outcome = await ctx.call('notebook.check', {});
 

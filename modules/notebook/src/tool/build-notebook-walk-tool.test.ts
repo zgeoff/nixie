@@ -151,7 +151,7 @@ test('it lists a destroyed moment in gone', async () => {
   invariant(moment);
 
   await ctx.call('notebook.link', { from: first, to: { moment: moment.shortID }, type: 'cites' });
-  await ctx.memory.moments.destroy({ momentID: moment.momentID, version: 1 });
+  await ctx.destroyMoment({ momentID: moment.momentID, version: 1 });
 
   const outcome = await ctx.call('notebook.walk', { from: first });
 
@@ -164,7 +164,7 @@ test('it lists a note that was forgotten in gone, from a link another note holds
   const second = await ctx.write('Second');
 
   await ctx.call('notebook.link', { from: first, to: { note: second }, type: 'cites' });
-  await ctx.notebook.forget({ note: second, version: 1 });
+  await ctx.forget({ note: second, version: 1 });
 
   const outcome = await ctx.call('notebook.walk', { from: first });
 
@@ -240,7 +240,7 @@ test('it reads a note that is being forgotten as unknown', async () => {
   const ctx = await setupTest();
   const first = await ctx.write('First');
 
-  await ctx.notebook.forget({ note: first, version: 1 });
+  await ctx.forget({ note: first, version: 1 });
 
   const outcome = await ctx.call('notebook.walk', { from: first });
 

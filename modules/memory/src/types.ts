@@ -1,5 +1,5 @@
 import type { CheckedTables, MemorySubjectCounts } from '@heynixie/db';
-import type { ContentSource, Definitions, JSONObject, Log } from '@heynixie/log';
+import type { ContentSource, Definitions, ErasureRegistry, JSONObject, Log } from '@heynixie/log';
 import type {
   MemoryApproval,
   PinnedCoreUse,
@@ -343,10 +343,9 @@ export interface ItemIDStore {
   readonly readShortIDs: (itemIDs: readonly string[]) => Promise<ReadonlyMap<string, string>>;
 }
 
-export type CleanupCause =
-  | { readonly itemID: string }
-  | { readonly momentID: string }
-  | { readonly noteID: string };
+export interface CleanupCause {
+  readonly itemID: string;
+}
 
 // How many active notes dispute or supersede an item. The notebook module counts them, and memory
 // learns nothing else about a note.
@@ -360,8 +359,8 @@ export interface ItemLinkCounts {
   readonly readCounts: (itemIDs: readonly string[]) => Promise<ReadonlyMap<string, ItemLinkCount>>;
 }
 
-// The cleanup must be safe to run again, because a forget or a moment destroy that a crash cut
-// short runs it again on resume.
+// The cleanup must be safe to run again, because a forget that a crash cut short runs it again on
+// resume.
 export type CleanupSessions = (cause: CleanupCause) => Promise<void>;
 
 export type EncodeKind = 'query' | 'document';
@@ -384,6 +383,10 @@ export interface MemoryContext {
   readonly definitions: () => Definitions;
   readonly cleanupSessions: CleanupSessions;
   readonly gate: GateContext;
+
+  // where the moments register their erasable, which the server's runner takes forgets through;
+  // without it a moment can't be forgotten
+  readonly erasure?: ErasureRegistry;
 
   readonly pinnedCoreTokens?: number;
 

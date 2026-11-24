@@ -63,8 +63,11 @@ async function applyMomentRecord(
       .where('moment_id', '=', parsed.momentID)
       .executeTakeFirstOrThrow();
 
+    // an erasure of a destroy that an earlier release started finds the moment already destroying
+    const isRepeat = parsed.kind === 'moment_erasure' && row.state === update.state;
+
     invariant(
-      canMoveMoment(row.state, update.state),
+      isRepeat || canMoveMoment(row.state, update.state),
       `a ${parsed.kind} record moves a ${row.state} moment to ${update.state}`,
     );
   }
@@ -100,6 +103,9 @@ function buildMomentUpdate(parsed: MomentChangeRecord, record: EnvelopeRecord) {
     }))
     .with({ kind: 'moment_destroyed' }, (destroyed) => ({
       state: destroyed.stage === 'started' ? ('destroying' as const) : ('destroyed' as const),
+    }))
+    .with({ kind: 'moment_erasure' }, (erased) => ({
+      state: erased.stage === 'started' ? ('destroying' as const) : ('destroyed' as const),
     }))
     .exhaustive();
 }

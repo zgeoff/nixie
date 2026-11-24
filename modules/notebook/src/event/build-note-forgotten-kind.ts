@@ -1,5 +1,5 @@
-import type { Log } from '@heynixie/log';
-import { readRecords } from '@heynixie/log';
+import type { EnvelopeRecord, Log } from '@heynixie/log';
+import { erasureFinishedCodec, readRecords } from '@heynixie/log';
 import type { EventKind, NotedEvent } from '@heynixie/sessions';
 import { noteForgottenCodec } from '../record/note-forgotten-codec';
 
@@ -27,14 +27,14 @@ export function buildNoteForgottenKind(
         const records = await readRecords(log, {
           afterSequence: after,
           beforeSequence: range.through + 1,
-          kinds: [noteForgottenCodec.kind],
+          kinds: [noteForgottenCodec.kind, erasureFinishedCodec.kind],
           limit: readLimit,
         });
 
         for (const entry of records) {
-          const forgotten = noteForgottenCodec.decode(entry.record.payload);
+          const forgotten = pickForgottenNote(entry.record);
 
-          if (forgotten.by === 'user' && events.length < readLimit) {
+          if (forgotten?.by === 'user' && events.length < readLimit) {
             events.push({
               sequence: entry.record.sequence,
               at: entry.record.recordedAt.getTime(),
@@ -57,4 +57,19 @@ export function buildNoteForgottenKind(
     render: (detail, settings) =>
       `${settings.ownerName ?? 'the owner'} forgot note ${detail.shortID}`,
   };
+}
+
+// A finished erasure of a note, or the end record that an earlier release wrote for a forget.
+function pickForgottenNote(
+  record: EnvelopeRecord,
+): { readonly shortID: string; readonly by: 'user' | 'assistant' } | null {
+  if (record.kind === erasureFinishedCodec.kind) {
+    const finished = erasureFinishedCodec.decode(record.payload);
+
+    return finished.kind === 'note' && finished.shortID !== null
+      ? { shortID: finished.shortID, by: finished.by }
+      : null;
+  }
+
+  return noteForgottenCodec.decode(record.payload);
 }

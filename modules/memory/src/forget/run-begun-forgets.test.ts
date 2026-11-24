@@ -1,12 +1,14 @@
 import { expect, mock, test } from 'bun:test';
 import { readRecords } from '@heynixie/log';
+import type { ErasureSessionCause } from '@heynixie/log';
 import { startFaultPointFailure } from '@heynixie/tasks/test-utils';
 import { createMemoryItem } from '../test-utils/create-memory-item';
 import { startTestMemory } from '../test-utils/start-test-memory';
-import type { CleanupSessions } from '../types';
 
 async function setupTest() {
-  const cleanupSessions = mock<CleanupSessions>(() => Promise.resolve());
+  const cleanupSessions = mock<(cause: ErasureSessionCause) => Promise<void>>(() =>
+    Promise.resolve(),
+  );
 
   return { memory: await startTestMemory({ cleanupSessions }), cleanupSessions };
 }

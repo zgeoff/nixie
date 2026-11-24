@@ -3,13 +3,14 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Clock } from '@heynixie/clock';
-import type { Log, Writer } from '@heynixie/log';
+import type { ErasureRunnerControl, ErasureSessionCause, Log, Writer } from '@heynixie/log';
 import type { KyselyPlugin } from 'kysely';
 import type { GateContext } from '../gate/gate-context';
 import type { MemoryIndexConfig } from '../index-block/default-index-settings';
 import type { StartedMemoryStore } from '../memory/start-memory-store';
 import type { TurnMemorySettings } from '../turn/types';
-import type { CleanupSessions, MemoryContext, SemanticSearch } from '../types';
+import type { MemoryContext, SemanticSearch } from '../types';
+import type { MomentDestroy, MomentTarget } from '../utils/moment-context';
 import { startTestStore } from './start-test-store';
 
 export interface TestMemory {
@@ -18,11 +19,15 @@ export interface TestMemory {
   readonly writer: Writer;
   readonly log: Log;
   readonly store: StartedMemoryStore;
+  readonly runner: ErasureRunnerControl;
+
+  // a destroy that runs to its end, as a route's does
+  readonly destroyMoment: (target: MomentTarget) => Promise<MomentDestroy>;
   readonly defer: (cleanup: () => Promise<void>) => void;
 }
 
 export interface TestMemoryOptions {
-  readonly cleanupSessions?: CleanupSessions;
+  readonly cleanupSessions?: (cause: ErasureSessionCause) => Promise<void>;
 
   readonly definitions?: MemoryContext['definitions'];
 

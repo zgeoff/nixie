@@ -104,7 +104,7 @@ test('it records the assistant as who forgot', async () => {
   await ctx.call('notebook.forget', { id: note });
   await ctx.notebook.waitForForgets();
 
-  const records = await ctx.readRecords(['notebook.note_forgetting', 'notebook.note_forgotten']);
+  const records = await ctx.readRecords(['erasure.started', 'erasure.finished']);
 
   expect(records.map((entry) => entry.record.payload['by'])).toStrictEqual([
     'assistant',
@@ -171,19 +171,19 @@ test('it finishes a forget whose session cleanup failed once', async () => {
 
   await ctx.notebook.waitForForgets();
 
-  const records = await ctx.readRecords(['notebook.note_forgotten']);
+  const records = await ctx.readRecords(['erasure.finished']);
 
   expect([outcome.status, records.length]).toStrictEqual(['ok', 1]);
 });
 
-test('it answers forgetting, and records no forgotten note, while the session cleanup keeps failing', async () => {
+test('it answers forgetting, and records no finished erasure, while the session cleanup keeps failing', async () => {
   const ctx = await setupTest({
     cleanupSessions: () => Promise.reject(new Error('cleanup failed')),
   });
 
   const note = await ctx.write('Boiler');
   const outcome = await ctx.call('notebook.forget', { id: note });
-  const records = await ctx.readRecords(['notebook.note_forgotten']);
+  const records = await ctx.readRecords(['erasure.finished']);
 
   expect([outcome, records.length]).toMatchObject([
     {
@@ -216,7 +216,7 @@ test('it finishes at the next start a forget whose session cleanup kept failing'
 
   await ctx.start();
 
-  const records = await ctx.readRecords(['notebook.note_forgotten']);
+  const records = await ctx.readRecords(['erasure.finished']);
 
   expect(records.map((entry) => entry.record.payload['by'])).toStrictEqual(['assistant']);
 });
@@ -302,7 +302,7 @@ test('it finishes at the next start a forget whose calling step still ran at the
   await ctx.notebook.stop();
   await ctx.start();
 
-  const records = await ctx.readRecords(['notebook.note_forgotten']);
+  const records = await ctx.readRecords(['erasure.finished']);
 
   expect(records.map((entry) => entry.record.payload['by'])).toStrictEqual(['assistant']);
 });
@@ -323,7 +323,7 @@ test('it keeps running the cleanup of a confirmed forget until it ends', async (
   await ctx.call('notebook.forget', { id: note });
   await ctx.notebook.waitForForgets();
 
-  const records = await ctx.readRecords(['notebook.note_forgotten']);
+  const records = await ctx.readRecords(['erasure.finished']);
 
   expect([attempts, records.length]).toStrictEqual([13, 1]);
 });

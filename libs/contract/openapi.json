@@ -16138,6 +16138,69 @@
                   "properties": {
                     "momentID": {
                       "type": "string"
+                    },
+                    "backup": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "state": {
+                              "const": "off"
+                            }
+                          },
+                          "required": [
+                            "state"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "state": {
+                              "const": "pending"
+                            }
+                          },
+                          "required": [
+                            "state"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "state": {
+                              "const": "failed"
+                            },
+                            "failure": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "state",
+                            "failure"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "state": {
+                              "const": "complete"
+                            }
+                          },
+                          "required": [
+                            "state"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "state": {
+                              "const": "unknown"
+                            }
+                          },
+                          "required": [
+                            "state"
+                          ]
+                        }
+                      ]
                     }
                   },
                   "required": [

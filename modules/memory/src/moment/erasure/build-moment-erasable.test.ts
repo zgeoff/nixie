@@ -6,6 +6,7 @@ import {
   writeRecords,
   writeRecordsInTransaction,
 } from '@heynixie/log';
+import type { ErasureSessionCause } from '@heynixie/log';
 import { buildAllowingDecisionPoint } from '@heynixie/policy/test-utils';
 import { buildToolRegistry, runToolCall } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
@@ -14,11 +15,12 @@ import { buildMemoryTools } from '../../memory/build-memory-tools';
 import { readMomentRows } from '../../test-utils/read-moment-rows';
 import { startNextTestMemory } from '../../test-utils/start-next-test-memory';
 import { startTestMemory } from '../../test-utils/start-test-memory';
-import type { CleanupSessions } from '../../types';
 import type { MomentTables } from '../../utils/moment-context';
 
 async function setupTest() {
-  const cleanupSessions = mock<CleanupSessions>(() => Promise.resolve());
+  const cleanupSessions = mock<(cause: ErasureSessionCause) => Promise<void>>(() =>
+    Promise.resolve(),
+  );
 
   const memory = await startTestMemory({ cleanupSessions });
 
@@ -143,7 +145,7 @@ test('it destroys a moment and leaves no readable copy of its title, note or ref
     await runToolCall({ tool, input, toolUseID: `toolu_${tool}` }, run, ctx.toolCallOptions);
   }
 
-  const destroyed = await ctx.memory.store.moments.destroy({ momentID, version: 5 });
+  const destroyed = await ctx.memory.destroyMoment({ momentID, version: 5 });
   const records = await readRecords(ctx.memory.log, { afterSequence: 0, limit: 1000 });
 
   const readable = records.flatMap((entry) =>
@@ -163,7 +165,7 @@ test('it destroys a moment and leaves no readable copy of its title, note or ref
 
   const row = await ctx.db.selectFrom('moments').select('state').executeTakeFirstOrThrow();
 
-  expect(destroyed).toMatchObject({ status: 'destroyed' });
+  expect(destroyed).toMatchObject({ status: 'begun' });
   expect(row.state).toBe('destroyed');
   expect(JSON.stringify(readable)).not.toInclude('Juniper');
   expect(readable).toContainEqual({ text: 'only the quiet kettle from now on' });
@@ -202,7 +204,7 @@ test('it refuses a destroy bound to a version the moment moved past', async () =
     change: { kind: 'title', title: 'The kettle rule' },
   });
 
-  const destroyed = await ctx.memory.store.moments.destroy({
+  const destroyed = await ctx.memory.destroyMoment({
     momentID: kept.momentID,
     version: 1,
   });
@@ -260,12 +262,12 @@ test("it leaves another moment's title, note and reflections readable after a de
     change: { kind: 'note', note: 'Bought the quiet one in the end.' },
   });
 
-  const destroyed = await ctx.memory.store.moments.destroy({
+  const destroyed = await ctx.memory.destroyMoment({
     momentID: doomed.momentID,
     version: 2,
   });
 
-  invariant(destroyed.status === 'destroyed');
+  invariant(destroyed.status === 'begun');
 
   const read = await ctx.memory.store.moments.read({
     momentID: spared.momentID,
@@ -316,7 +318,7 @@ test("it rolls back the caller's write in the destroy's transaction when it refu
     ]);
   });
 
-  const destroyed = await ctx.memory.store.moments.destroy(
+  const destroyed = await ctx.memory.store.moments.beginDestroy(
     { momentID: kept.momentID, version: 2 },
     writeWake,
   );
@@ -373,8 +375,69 @@ test('it finishes a destroy that a crash cut short when the store starts again',
     .select('state')
     .executeTakeFirstOrThrow();
 
+  const ended = await readRecords(next.log, {
+    afterSequence: 0,
+    kinds: ['erasure.started', 'erasure.finished', 'moment_destroyed'],
+  });
+
   expect(record?.record.erasable).toStrictEqual({ status: 'shredded' });
   expect(row.state).toBe('destroyed');
+
+  expect(ended.map((entry) => entry.record.kind)).toStrictEqual([
+    'moment_destroyed',
+    'erasure.started',
+    'erasure.finished',
+  ]);
+});
+
+test('it writes erasure.started and then erasure.finished for a destroy, and no old record', async () => {
+  const ctx = await setupTest();
+
+  const [message] = await writeRecords(ctx.memory.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'only the quiet kettle from now on' },
+    },
+  ]);
+
+  invariant(message);
+
+  const kept = await ctx.memory.store.moments.keep({
+    caller: { kind: 'owner' },
+    thread: 'conversation',
+    firstSequence: message.sequence,
+    lastSequence: message.sequence,
+    title: 'The kettle argument',
+  });
+
+  invariant(kept.status === 'written');
+
+  await ctx.memory.destroyMoment({ momentID: kept.momentID, version: 1 });
+
+  const records = await readRecords(ctx.memory.log, {
+    afterSequence: 0,
+    kinds: ['erasure.started', 'erasure.finished', 'moment_destroyed'],
+  });
+
+  expect(records.map((entry) => [entry.record.kind, entry.record.payload])).toMatchObject([
+    [
+      'erasure.started',
+      {
+        kind: 'moment',
+        targetID: kept.momentID,
+        shortID: kept.shortID,
+        version: 1,
+        by: 'user',
+        capture: {
+          sessionCause: { momentID: kept.momentID },
+          turnInputs: { threads: ['conversation'], cleaned: true, floor: kept.sequence },
+        },
+      },
+    ],
+    ['erasure.finished', { kind: 'moment', targetID: kept.momentID, removedKeys: 1 }],
+  ]);
 });
 
 test('it rebuilds the rows of a destroyed moment equal to the live rows', async () => {
@@ -407,7 +470,7 @@ test('it rebuilds the rows of a destroyed moment equal to the live rows', async 
     change: { kind: 'reflection', text: 'The noise mattered more than the price.' },
   });
 
-  await ctx.memory.store.moments.destroy({ momentID: kept.momentID, version: 2 });
+  await ctx.memory.destroyMoment({ momentID: kept.momentID, version: 2 });
 
   const live = await readMomentRows(ctx.db);
 

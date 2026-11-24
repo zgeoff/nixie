@@ -940,7 +940,7 @@ test('it prints no momentID for a moment that was destroyed', async () => {
   const ctx = await setupTest();
   const kept = await ctx.keepMoment('The shed colour');
 
-  await ctx.memory.store.moments.destroy({ momentID: kept.momentID, version: 1 });
+  await ctx.memory.destroyMoment({ momentID: kept.momentID, version: 1 });
 
   const texts = await ctx.readToolEntries([
     { result: { momentID: kept.momentID, version: 1, eventIDs: [] } },

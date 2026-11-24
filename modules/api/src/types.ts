@@ -183,7 +183,7 @@ export type ViewMemoryStore = Pick<
     | 'readMatches'
     | 'readView'
     | 'readDestroyPreview'
-    | 'destroy'
+    | 'beginDestroy'
     | 'finishDestroy'
   >;
 } & Pick<ItemIDStore, 'readItemIDMap'>;
@@ -199,7 +199,7 @@ export type ViewNotebookStore = Pick<
   | 'readPrivateBodies'
   | 'writeOpened'
   | 'readForgetPreview'
-  | 'forget'
+  | 'beginForget'
   | 'finishForget'
   | 'readForgottenSequence'
   | 'readLinkingNotes'

@@ -1,9 +1,12 @@
 // oxlint-disable new-cap -- oRPC names a procedure's typed errors by their upper-case codes
 import { createShortID } from '@heynixie/db';
+import { readErasureFinishedSequence } from '@heynixie/log';
 import { match } from 'ts-pattern';
 import { z } from 'zod';
+import { probeErasureFinished } from '../forget/probe-erasure-finished';
+import { readForgetBackupState } from '../forget/read-forget-backup-state';
 import { requireCaller } from '../memory/require-caller';
-import type { APIContext, ReadViewMemory } from '../types';
+import type { APIContext, ForgetProgress, ReadViewMemory } from '../types';
 import { apiImplementer } from '../utils/api-implementer';
 import { readClientAction } from '../utils/read-client-action';
 import { requireViewMemory } from '../utils/require-view-memory';
@@ -111,7 +114,7 @@ export function createMomentProcedures(context: APIContext, readMemory: ReadView
         input: target,
         result,
         apply: async (writeInTransaction) => {
-          const destroyed = await store.moments.destroy(target, writeInTransaction);
+          const destroyed = await store.moments.beginDestroy(target, writeInTransaction);
 
           if (destroyed.status === 'refused') {
             throw new MomentRefusedError(destroyed.reason);
@@ -128,10 +131,17 @@ export function createMomentProcedures(context: APIContext, readMemory: ReadView
         .with('reused', () => {
           throw options.errors.CLIENT_ACTION_ID_REUSED();
         })
-        .with('applied', () => store.moments.finishDestroy(target.momentID))
+        .with('applied', () =>
+          probeErasureFinished(() => store.moments.finishDestroy(target.momentID)),
+        )
         .exhaustive();
 
-      return result;
+      const sequence = await readErasureFinishedSequence(context.log, 'moment', target.momentID);
+
+      const progress: ForgetProgress =
+        sequence === null ? { stage: 'deleting' } : { stage: 'forgotten', sequence };
+
+      return { ...result, backup: await readForgetBackupState(context, progress) };
     }),
   };
 }
