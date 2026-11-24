@@ -1,4 +1,5 @@
 import { $ } from 'bun';
+import { terminalMemoryLimitBytes } from '../../guests/computer/src/desktop/constants.ts';
 import { sandboxSizes } from '../../modules/sandbox/src/sandbox/sandbox-sizes.ts';
 import { getStepEnv } from '../lib/get-step-env.ts';
 import { parseStepCommand } from '../lib/parse-step-command.ts';
@@ -9,7 +10,8 @@ import { mediaProbe } from './media-probe.ts';
 const terminalID = '1002:1002';
 
 // The computer image carries ffmpeg and ImageMagick, and the terminal's account runs both inside the
-// limits of the computer's sandbox row: its memory, with no swap, and its vCPUs.
+// limits of the computer's terminal: the memory its cgroup gives the terminal's processes, with no
+// swap, and the sandbox row's vCPUs.
 async function runCLI(): Promise<void> {
   const command = parseStepCommand('check-computer-image.ts', [], process.argv.slice(2));
 
@@ -22,7 +24,7 @@ async function runCLI(): Promise<void> {
   }
 
   const computer = getStepEnv(process.env, 'COMPUTER');
-  const memory = `${String(sandboxSizes.computer.memoryMiB)}m`;
+  const memory = `${String(terminalMemoryLimitBytes / (1024 * 1024))}m`;
 
   const result =
     await $`docker run --rm --network none --user ${terminalID} --memory ${memory} --memory-swap ${memory} --cpus ${String(sandboxSizes.computer.vcpus)} --entrypoint sh ${computer} -c ${mediaProbe}`

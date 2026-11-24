@@ -70,7 +70,8 @@ its own, so one part cannot read, signal or trace another:
 The terminal has ffmpeg and ImageMagick (`ffmpeg`, `ffprobe` and `magick`) beside bash, git, curl,
 jq and unzip. A command that transcodes a clip or resizes an image runs in the terminal's memory
 limit. The [images workflow](../../../.github/workflows/images.yml) runs both tools as the
-terminal's account, inside the sandbox's memory and vCPUs, on every build of the image.
+terminal's account, inside the terminal's memory limit and the sandbox's vCPUs, on every build of
+the image.
 
 The display listens on an abstract socket only, and the sandbox's network namespace is where the
 guest runs, so a command in its own network namespace cannot reach it. The guest injects the screen

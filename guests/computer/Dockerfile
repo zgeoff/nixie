@@ -6,8 +6,9 @@
 # xdotool injects the screen tools' pointer and key events, x11-utils (xprop, xwininfo) reads the
 # windows, and scrot takes the desktop's picture. The guest runs each as the `screen` account.
 #
-# ffmpeg and imagemagick (its `magick` command) give the terminal a video and an image editor. They
-# come from the distro's packages, whose version the base image's digest fixes, as for every package.
+# ffmpeg and imagemagick (its `magick` command) give the terminal a video and an image editor. Like
+# every apt package here, they have no version pin: each build installs what the distro's mirror
+# holds then, and the image's size budget catches a build that grows.
 #
 # The guest runs as root. It starts the display, the window manager and the VNC server as the
 # `screen` account, Chromium as `chrome`, and the terminal and every command as `terminal`. The ids
