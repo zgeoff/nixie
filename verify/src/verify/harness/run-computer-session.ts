@@ -27,6 +27,7 @@ export async function runComputerSession(
       .with('browser', () => 'Open the page in your browser.')
       .with('browser-navigate', () => 'Go to the next page in the same tab, then reload it.')
       .with('shell', () => 'Write a note on your computer and read it back.')
+      .with('shell-processes', () => 'List the processes that your shell shows.')
       .with('screen', () => 'Look at your screen and click the middle of it.')
       .exhaustive(),
     thread: 'conversation',

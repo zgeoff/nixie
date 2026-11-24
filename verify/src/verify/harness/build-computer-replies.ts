@@ -1,13 +1,14 @@
 import type { ScriptedReply } from '@heynixie/testing';
 
 export interface ComputerSessionInput {
-  readonly kind: 'browser' | 'browser-navigate' | 'shell' | 'screen';
+  readonly kind: 'browser' | 'browser-navigate' | 'shell' | 'shell-processes' | 'screen';
   readonly text: string;
 }
 
 // The replies of a turn in which the model opens the harness's own page in its browser, sends the
 // tab to the harness's next page and reloads it, writes a file on its shell's disk and reads it back,
-// or takes a screenshot of the desktop and clicks a point of it.
+// lists the processes that its shell shows, or takes a screenshot of the desktop and clicks a point
+// of it.
 export function buildComputerReplies(
   input: ComputerSessionInput,
   siteURL: string,
@@ -28,6 +29,18 @@ export function buildComputerReplies(
         },
       },
       { toolUse: { name: 'mcp__nixie__computer_browser_reload', input: { tab: 't1' } } },
+      { text: input.text },
+    ];
+  }
+
+  if (input.kind === 'shell-processes') {
+    return [
+      {
+        toolUse: {
+          name: 'mcp__nixie__computer_run',
+          input: { command: 'ps -e -o args=' },
+        },
+      },
       { text: input.text },
     ];
   }

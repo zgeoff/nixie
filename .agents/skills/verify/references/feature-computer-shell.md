@@ -77,6 +77,52 @@ Before you start:
 
    Expect: every command exits 0. The last snapshot is the evidence for the end state.
 
+5. Check that the shell shows only its own processes. `use-computer --kind shell-processes` sends
+   the message "List the processes that your shell shows.", and queues 2 replies: a `computer.run`
+   call of `ps -e -o args=` and the text in `--text`. nixie holds the command until the user
+   approves it.
+
+   ```bash
+   bun verify action use-computer --kind shell-processes --text 'The assistant listed the processes.'
+   bun verify proposals --tool computer.run --waiting pending
+   bun verify action script-reply --text 'Thanks, I have the list.'
+   ```
+
+   Expect: `data.replies` is 2, and `proposals` exits 0.
+
+6. Open the approvals page, and take a snapshot:
+
+   ```bash
+   bun verify browser goto /proposals
+   bun verify browser snapshot
+   ```
+
+   Expect: one item that reads "Run computer.run (computer_run).". Pass the `ref` of the line that
+   holds that text and `[cursor=pointer]` as `<item_ref>`.
+
+7. Click the item to expand it, then click its button named "Run computer.run". Take the button's
+   `ref` from the snapshot after the first click.
+
+   ```bash
+   bun verify browser click --ref '<item_ref>'
+   bun verify browser snapshot
+   bun verify browser click --ref '<button_ref>'
+   ```
+
+   Expect: both clicks exit 0.
+
+8. Check the outcome of the command. The shell's own `/proc` leaves only the bridge, the command's
+   `ps` and its parent shell in `ps -e`: no display server, no remote-screen socket path and no
+   browser flag. The userns test of the shell guest asserts that list, because this CLI cannot read
+   the command's output.
+
+   ```bash
+   bun verify proposals --tool computer.run --waiting none
+   bun verify db query "select json_extract(payload, '$.status') as status from records where kind = 'action.outcome' and json_extract(payload, '$.tool') = 'computer.run'"
+   ```
+
+   Expect: `proposals` exits 0, and the query returns one row, with `status` `done`.
+
 ## End state
 
 The last snapshot of step 4 lists 2 tool calls under "Tools 2", each with its input and its result:
@@ -86,5 +132,7 @@ The last snapshot of step 4 lists 2 tool calls under "Tools 2", each with its in
   `"isDiskNew": true`.
 - `computer.read_file`, with the input `{ "path": "notes/hello.txt" }`. Its result has
   `"text": "hello from the shell"` and `"isDiskNew": false`.
+
+The query of step 8 returned one `computer.run` outcome with `status` `done`.
 
 Once the end state matches, run `bun verify done`.
