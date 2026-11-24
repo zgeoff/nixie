@@ -124,6 +124,12 @@ export const controlRoutes = {
       proposals: z.array(actionProposalSchema),
     }),
   },
+  modelInput: {
+    method: 'GET',
+    path: '/control/model-input',
+    input: z.strictObject({}),
+    output: z.strictObject({ text: z.string() }),
+  },
 } as const;
 
 export interface ControlRoute<Input extends z.ZodType, Output extends z.ZodType> {

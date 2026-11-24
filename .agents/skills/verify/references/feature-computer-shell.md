@@ -111,23 +111,20 @@ Before you start:
 
    Expect: both clicks exit 0.
 
-8. Read the command's result on the conversation page. Take each `ref` from the snapshot just before
-   its click, as in step 4: the collapsed line of the turn whose text holds "computer run:", then
-   the line that starts with `group "Tools 1"`.
+8. Read the command's result. The result sits sealed on the call's `action.outcome` record, which no
+   page shows. nixie hands it to the model in the turn that the outcome starts, which uses the reply
+   that step 5 queued. `model input` waits up to 10 s for that turn's input to hold `exitCode`, and
+   returns the input in `data.text`.
 
    ```bash
-   bun verify browser goto /
-   bun verify browser snapshot
-   bun verify browser click --ref '<turn_ref>'
-   bun verify browser snapshot
-   bun verify browser click --ref '<tools_ref>'
-   bun verify browser snapshot
+   bun verify model input --contains exitCode
    ```
 
-   Expect: the `computer.run` result has `"exitCode": 0`, and its stdout lists only the bridge
-   (`bridge-main.ts`), `ps -e -o args=` and the shell that runs it. Fail the journey on a nonzero
-   exit code, on an empty list, and on any other line, such as a display server, a remote-screen
-   socket path or a browser flag. The shell's own `/proc` is what keeps those lines out.
+   Expect: the command exits 0, and `data.text` shows `\"exitCode\":0` and a `stdout` that lists
+   only the bridge (`bridge-main.ts`), `ps -e -o args=` and the shell that runs it. Fail the journey
+   on a nonzero exit code, on an empty list, and on any other line, such as a display server, a
+   remote-screen socket path or a browser flag. The shell's own `/proc` is what keeps those lines
+   out.
 
 ## End state
 
@@ -139,7 +136,7 @@ The last snapshot of step 4 lists 2 tool calls under "Tools 2", each with its in
 - `computer.read_file`, with the input `{ "path": "notes/hello.txt" }`. Its result has
   `"text": "hello from the shell"` and `"isDiskNew": false`.
 
-The last snapshot of step 8 shows the `computer.run` result with `"exitCode": 0` and only the 3
+The input that step 8 returns holds the `computer.run` result with `"exitCode":0` and only the 3
 processes of the shell in its stdout.
 
 Once the end state matches, run `bun verify done`.

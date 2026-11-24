@@ -34,8 +34,12 @@ import { readProdErrors } from './prod/read-prod-errors';
 import { readProdHealth } from './prod/read-prod-health';
 import { readProdVersion } from './prod/read-prod-version';
 import { readConversationTurn } from './read-conversation-turn';
+import { readSessionCheck } from './read-session-check';
+import { refuseHarnessless } from './refuse-harnessless';
 import { runHostCLI } from './run-host-cli';
 import { sessionsSchema } from './sessions-schema';
+import { throwRefusal } from './throw-refusal';
+import { waitForModelInput } from './wait-for-model-input';
 
 const conversationTurnSchema = z.strictObject({ records: z.array(conversationRecordSchema) });
 const harnessPath = join(import.meta.dir, 'harness', 'run-verify-harness.ts');
@@ -226,20 +230,7 @@ export function createVerifyRegistry(): Wringer {
       effect: 'read',
       args: z.strictObject({ device: z.string().min(1) }),
       data: z.strictObject({ sessions: sessionsSchema }),
-      run: async (args, ctx) => {
-        const printed = await runHostCLI(ctx, ['sessions']);
-
-        const sessions = sessionsSchema.parse(JSON.parse(printed));
-
-        if (!sessions.some((session) => session.deviceName === args.device)) {
-          throw new WringerError('check-failed', {
-            message: `no session has the device name ${args.device}`,
-            data: { sessions },
-          });
-        }
-
-        return { sessions };
-      },
+      run: (args, ctx) => readSessionCheck(ctx, args.device),
     })
     .command({
       path: ['conversation', 'turn'],
@@ -290,6 +281,22 @@ export function createVerifyRegistry(): Wringer {
         throwRefusal(pickProposalRefusal(listed.proposals, args), listed);
 
         return listed;
+      },
+    })
+    .command({
+      path: ['model', 'input'],
+      summary:
+        "Check that the model's last input holds the text --contains, waiting up to --wait-ms (10000 by default), and return that input; the outcome of an approved call reaches the model in it",
+      effect: 'read',
+      args: z.strictObject({ contains: z.string().min(1), waitMs: z.int().positive().optional() }),
+      data: controlRoutes.modelInput.output,
+      run: (args, ctx) => {
+        refuseHarnessless(ctx.target, 'model input');
+
+        return waitForModelInput(
+          () => postControl(ctx.drivers.http, controlRoutes.modelInput, {}),
+          args,
+        );
       },
     })
     .command({
@@ -444,22 +451,6 @@ export function createVerifyRegistry(): Wringer {
     .shared(...sharedPaths)
     .ignore(...ignoredPaths)
     .build();
-}
-
-// The harness's control routes read these checks' state, and only `local` runs the harness.
-function refuseHarnessless(target: string, command: string): void {
-  if (target !== 'local') {
-    throw new WringerError('usage', {
-      message: `\`${command}\` reads the harness, which only the local target runs`,
-      hint: 'Run the journey with `--target local`.',
-    });
-  }
-}
-
-function throwRefusal(refusal: string | null, data: unknown): void {
-  if (refusal !== null) {
-    throw new WringerError('check-failed', { message: refusal, data });
-  }
 }
 
 // The prod reads go through the read-only token and the prod cluster's kubeconfig, which only the
