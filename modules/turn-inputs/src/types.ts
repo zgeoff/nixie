@@ -62,6 +62,9 @@ export interface TurnInputsContext extends TurnInputsOptions {
   readonly lane: Lane;
   readonly open: Map<string, OpenCapture>;
 
+  // the erasures that hold capture closed, by erasure ID
+  readonly holds: Set<string>;
+
   // source name to whether its gateway answered that it can capture
   readonly answers: Map<string, boolean>;
 

@@ -11,3 +11,7 @@ export { readTestRecordRows } from './read-test-record-rows';
 export { readTestWriterEpoch } from './read-test-writer-epoch';
 export { removeTestRecordKey } from './remove-test-record-key';
 export { startTestLog } from './start-test-log';
+export type { TestErasureEffects } from './build-test-erasure-effects';
+export { buildTestErasureEffects } from './build-test-erasure-effects';
+export type { TestErasureRequest, TestErasureTarget } from './build-test-erasable';
+export { buildTestErasable } from './build-test-erasable';

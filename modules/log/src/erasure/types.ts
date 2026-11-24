@@ -1,4 +1,5 @@
 import type { WriteTransaction } from '../record/with-write-transaction';
+import type { Definitions, Log } from '../types';
 import type { ErasableKind } from './erasable-kind';
 import type { ErasureCapture } from './erasure-capture-schema';
 
@@ -53,6 +54,9 @@ export interface Erasable<Request> {
   readonly hide: (target: ErasureTarget) => Promise<void>;
   readonly readChildren: (tx: WriteTransaction, target: ErasureTarget) => Promise<ErasureTarget[]>;
 
+  // The request that starts a child erasure from a target that readChildren found.
+  readonly toRequest: (target: ErasureTarget) => Request;
+
   // After the keys go; repeats hide's work safely.
   readonly cleanIndexes: (target: ErasureTarget) => Promise<void>;
 
@@ -83,15 +87,38 @@ export type ErasureBegin =
 // What a store or a route holds for its own kind. The server's runner hands one out when the store
 // registers its erasable.
 export interface ErasureHandle<Request> {
-  // step 1 alone: the start transaction and the hide
+  // step 1: the start transaction, then the hide. A refusal comes back as a value; any other error
+  // from the caller's hook rolls the transaction back and throws.
   readonly begin: (request: Request, options: ErasureStartOptions) => Promise<ErasureBegin>;
 
-  // begin, then steps 2 to 9; throws when a step fails, and the next start repeats the rest
-  readonly run: (request: Request, options: ErasureStartOptions) => Promise<ErasureBegin>;
+  // steps 2 to 9 for the open erasure of a target, or nothing when it has none; throws when a step
+  // fails
+  readonly finish: (targetID: string) => Promise<void>;
 }
 
-// The runner, as a store or a route sees it.
-export interface ErasureRunner {
-  // steps 2 to 9 for a begun erasure
-  readonly finish: (erasureID: string) => Promise<void>;
+// What a store receives to register its erasable at start.
+export interface ErasureRegistry {
+  readonly register: <Request>(erasable: RegisteredErasable<Request>) => ErasureHandle<Request>;
+}
+
+// A registered erasable with its request type closed over, so the runner starts any kind from a
+// target alone.
+export interface ErasureEntry {
+  readonly descriptor: ErasableDescriptor;
+  readonly hide: (target: ErasureTarget) => Promise<void>;
+  readonly readChildren: (tx: WriteTransaction, target: ErasureTarget) => Promise<ErasureTarget[]>;
+  readonly cleanIndexes: (target: ErasureTarget) => Promise<void>;
+  readonly beginChild: (target: ErasureTarget, parent: ErasureParent) => Promise<ErasureBegin>;
+  readonly beginLegacy: () => Promise<void>;
+}
+
+export interface ErasureParent {
+  readonly erasureID: string;
+  readonly by: ErasureBy;
+}
+
+// What the runner's writes need of the log.
+export interface ErasureLogContext {
+  readonly log: Log;
+  readonly definitions: () => Definitions;
 }

@@ -123,10 +123,20 @@ export type {
   ErasureBegin,
   ErasureBy,
   ErasureHandle,
-  ErasureRunner,
+  ErasureRegistry,
   ErasureStart,
   ErasureStartOptions,
   ErasureTarget,
   LegacyEnd,
   RegisteredErasable,
 } from './erasure/types';
+
+export type {
+  ErasureEffects,
+  ErasureFaultPoint,
+  ErasureSessionCause,
+  ErasureTurnInputScope,
+} from './erasure/erasure-effects';
+
+export type { ErasureRunnerControl, ErasureRunnerOptions } from './erasure/make-erasure-runner';
+export { makeErasureRunner } from './erasure/make-erasure-runner';

@@ -54,6 +54,35 @@ test('it opens a capture whose base URL carries a tag of the capture', async () 
   expect(received1).toHaveLength(1);
 });
 
+test('it opens no capture while an erasure holds capture closed, and opens one after the release', async () => {
+  const ctx = await setupTest();
+
+  await ctx.turnInputs.runStart();
+
+  ctx.turnInputs.holdCaptures('erasure-a');
+
+  const held = await ctx.turnInputs.openCapture({
+    step: ctx.step,
+    profile: ctx.profile,
+    role: 'task',
+    isRewritten: false,
+  });
+
+  ctx.turnInputs.releaseCaptures('erasure-a');
+
+  const released = await ctx.turnInputs.openCapture({
+    step: ctx.step,
+    profile: ctx.profile,
+    role: 'task',
+    isRewritten: false,
+  });
+
+  expect([held.baseURL, released.baseURL.startsWith(`${ctx.profile.baseURL}/~in.`)]).toStrictEqual([
+    ctx.profile.baseURL,
+    true,
+  ]);
+});
+
 test('it hands back the own base URL and writes nothing with the log off', async () => {
   const ctx = await setupTest({ config: { default: 'off' } });
 

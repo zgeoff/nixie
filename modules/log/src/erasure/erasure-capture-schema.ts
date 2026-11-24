@@ -1,3 +1,4 @@
+import type { ReadonlyDeep } from '@zgeoff/std';
 import { z } from 'zod';
 
 const idsSelection = z.strictObject({ ids: z.array(z.string()) });
@@ -29,4 +30,4 @@ export const erasureCaptureSchema = z.strictObject({
   turnInputs: turnInputsSchema,
 });
 
-export type ErasureCapture = z.infer<typeof erasureCaptureSchema>;
+export type ErasureCapture = ReadonlyDeep<z.infer<typeof erasureCaptureSchema>>;
