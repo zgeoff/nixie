@@ -153,6 +153,7 @@
     "ci:config-schema:run-config-schema-check": "bun scripts/config-schema/run-config-schema-check.ts",
     "ci:definitions:check-task-yaml-format": "bun scripts/definitions/check-task-yaml-format.ts",
     "ci:images:check-backup-image": "bun scripts/images/check-backup-image.ts",
+    "ci:images:check-computer-image": "bun scripts/images/check-computer-image.ts",
     "ci:images:check-codex-image": "bun scripts/images/check-codex-image.ts",
     "ci:images:check-conversation-image": "bun scripts/images/check-conversation-image.ts",
     "ci:images:check-carried-manifest": "bun scripts/images/check-carried-manifest.ts",

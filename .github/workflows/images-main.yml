@@ -116,6 +116,12 @@ jobs:
           dockerfile: guests/computer/Dockerfile
           cache-scope: computer
 
+      # the terminal's account runs ffmpeg and ImageMagick inside the computer sandbox's limits
+      - name: Check that the computer image runs its media tools
+        env:
+          COMPUTER: ${{ env.REGISTRY }}/nixie-computer@${{ steps.computer.outputs.digest }}
+        run: bun run --silent ci:images:check-computer-image
+
       - name: Build the codex image
         id: codex
         uses: ./.github/actions/build-image

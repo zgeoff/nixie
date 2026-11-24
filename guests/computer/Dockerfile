@@ -6,6 +6,10 @@
 # xdotool injects the screen tools' pointer and key events, x11-utils (xprop, xwininfo) reads the
 # windows, and scrot takes the desktop's picture. The guest runs each as the `screen` account.
 #
+# ffmpeg and imagemagick (its `magick` command) give the terminal a video and an image editor. Like
+# every apt package here, they have no version pin: each build installs what the distro's mirror
+# holds then, and the image's size budget catches a build that grows.
+#
 # The guest runs as root. It starts the display, the window manager and the VNC server as the
 # `screen` account, Chromium as `chrome`, and the terminal and every command as `terminal`. The ids
 # below must match desktop-layout.ts, and a test checks that they do.
@@ -21,7 +25,7 @@ RUN bun install --frozen-lockfile --ignore-scripts \
 FROM oven/bun:1.4.4@sha256:1d22548f177f4ff38e0c15baa3c2c46c6c2060ba2d1bc573bb4720b407548f1d
 ENV PLAYWRIGHT_BROWSERS_PATH=/opt/browsers
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends git curl ca-certificates python3 jq unzip iproute2 util-linux procps xvfb openbox xterm x11vnc xdotool x11-utils scrot \
+  && apt-get install -y --no-install-recommends git curl ca-certificates python3 jq unzip iproute2 util-linux procps xvfb openbox xterm x11vnc xdotool x11-utils scrot ffmpeg imagemagick \
   && rm -rf /var/lib/apt/lists/*
 COPY --from=build /out/playwright-core /app/node_modules/playwright-core
 RUN bun /app/node_modules/playwright-core/cli.js install --with-deps chromium \

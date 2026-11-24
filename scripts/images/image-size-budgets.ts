@@ -6,7 +6,7 @@ export const imageSizeBudgets: Record<ImageName, number> = {
   conversation: 270,
   fetch: 93,
   code: 335,
-  computer: 742,
+  computer: 830,
   codex: 229,
   backup: 105,
   web: 94,
