@@ -88,6 +88,24 @@ async function setupTest() {
         </script></body></html>`,
         { status: 403, headers: { 'Content-Type': 'text/html', 'cf-mitigated': 'challenge' } },
       ),
+      '/marked-moves-on': new Response(
+        `<html><title>Denied</title><body>${'x'.repeat(200)}<script src="/cdn-cgi/challenge-platform/h/b"></script><script>
+        setTimeout(() => { location.href = '/terms'; }, 50);
+        </script></body></html>`,
+        { status: 403, headers: { 'Content-Type': 'text/html' } },
+      ),
+      '/breaks-reads': new Response(
+        `<html><title>Breaks</title><body>page<script>
+        const stringify = JSON.stringify;
+        let calls = 0;
+        JSON.stringify = (...args) => {
+          calls += 1;
+          if (calls > 1) throw new Error('the page broke');
+          return stringify(...args);
+        };
+        </script></body></html>`,
+        { headers: { 'Content-Type': 'text/html' } },
+      ),
       '/to-v6only': () =>
         new Response(null, { status: 302, headers: { Location: 'https://v6only.test/' } }),
       '/done': new Response('<html><title>Done</title><body>welcome aboard</body></html>', {
@@ -178,15 +196,6 @@ async function setupTest() {
       await driven.state?.tabs.get(tab)?.page.close();
     },
 
-    breakEvaluate: async (tab: string): Promise<void> => {
-      await send({ op: 'takeoverBegin' });
-
-      const page = driven.state?.tabs.get(tab)?.page;
-
-      if (page !== undefined) {
-        page.evaluate = () => Promise.reject(new Error('the page broke'));
-      }
-    },
     scanned,
     resolved,
     send,
@@ -776,14 +785,13 @@ test.skipIf(!hasChromium)(
   async () => {
     const ctx = await setupTest();
 
-    await ctx.send(ctx.open(ctx.url));
-    await ctx.breakEvaluate('t1');
+    await ctx.send(ctx.open(`${ctx.url}breaks-reads`));
 
     const broken = await ctx.send({ op: 'read', tab: 't1', mode: 'text' });
     const next = await ctx.send({ op: 'read', tab: 't9', mode: 'text' });
 
     expect([broken, next]).toMatchObject([
-      { kind: 'failed', reason: 'failed', message: 'the page broke' },
+      { kind: 'failed', reason: 'failed', message: expect.stringContaining('the page broke') },
       { kind: 'failed', reason: 'tab_gone' },
     ]);
   },
@@ -848,6 +856,20 @@ test.skipIf(!hasChromium)(
   async () => {
     const ctx = await setupTest();
     const reply = await ctx.send(ctx.open(`${ctx.url}challenge-moves-on`));
+
+    expect(reply).toMatchObject({
+      kind: 'page',
+      blocked: null,
+      page: { url: `${ctx.url}terms`, status: 200, title: 'Terms' },
+    });
+  },
+);
+
+test.skipIf(!hasChromium)(
+  'it pairs a marked refusal with the page it sends the tab on to',
+  async () => {
+    const ctx = await setupTest();
+    const reply = await ctx.send(ctx.open(`${ctx.url}marked-moves-on`));
 
     expect(reply).toMatchObject({
       kind: 'page',
