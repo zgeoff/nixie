@@ -4,6 +4,7 @@ const resultParts = {
   image: { schema: { type: 'string' }, source: 'owner_data' },
   from: { schema: { type: ['string', 'null'] }, source: 'owner_data' },
   profile: { schema: { type: 'string' }, source: 'owner_data' },
+  model: { schema: { type: 'string' }, source: 'owner_data' },
   size: { schema: { type: 'string' }, source: 'owner_data' },
   isShown: { schema: { type: 'boolean' }, source: 'owner_data' },
   roomLeft: { schema: { type: 'integer' }, source: 'owner_data' },
@@ -14,7 +15,18 @@ const resultParts = {
     schema: { type: 'object', description: 'the code of the refusal and what to change' },
     source: 'untrusted',
   },
-  profiles: { schema: { type: 'array', items: { type: 'string' } }, source: 'owner_data' },
+  profiles: {
+    schema: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: { profile: { type: 'string' }, model: { type: 'string' } },
+        required: ['profile', 'model'],
+        additionalProperties: false,
+      },
+    },
+    source: 'owner_data',
+  },
   images: {
     schema: { type: 'array', items: { type: 'object' } },
     source: 'untrusted',

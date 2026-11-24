@@ -45,3 +45,19 @@ definitions:
   source:
     kind: path
     path: /etc/nixie/definitions
+images:
+  # a draw with no profile uses the one that default names; the prices are micros of a US dollar per
+  # image, from https://platform.openai.com/docs/pricing and
+  # https://ai.google.dev/gemini-api/docs/pricing
+  default: openai
+  profiles:
+    openai:
+      provider: openai
+      model: gpt-image-1
+      credential: deployment:openai-images
+      prices: { 1024x1024: 42000, 1536x1024: 63000, 1024x1536: 63000 }
+    google:
+      provider: gemini
+      model: gemini-2.5-flash-image
+      credential: deployment:gemini-images
+      prices: { 1024x1024: 39000, 1536x1024: 39000, 1024x1536: 39000 }

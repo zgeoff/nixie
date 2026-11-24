@@ -17,7 +17,7 @@ const imageProfileSchema = z.strictObject({
 
 export const imagesConfigSchema = z
   .strictObject({
-    default: z.string().min(1),
+    default: z.string().min(1).default('openai'),
     profiles: z.record(z.string().min(1), imageProfileSchema),
   })
   .refine((images) => Object.hasOwn(images.profiles, images.default), {

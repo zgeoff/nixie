@@ -34,11 +34,12 @@ A stored image whose size is not one of the 3 sizes, such as an import, is padde
 pixels to the size nearest its shape before it goes to the provider, and the edit comes back at that
 size. The price follows that size.
 
-A result names the image by its short ID, its `from`, its size, whether the picture is shown, and
-`roomLeft`, how many more images at the largest size the session's caps still take. The picture
-itself comes beside the result as [web fetch images](./web-fetch-images.md) do, and counts against
-the same session caps. `isShown` is false on `image.read` and `image.import` when the caps leave no
-room.
+The tool's description lists every configured profile with its model, one line each, and names the
+default. A result names the image by its short ID, its `from`, the `profile` and `model` that drew
+it, its size, whether the picture is shown, and `roomLeft`, how many more images at the largest size
+the session's caps still take. The picture itself comes beside the result as
+[web fetch images](./web-fetch-images.md) do, and counts against the same session caps. `isShown` is
+false on `image.read` and `image.import` when the caps leave no room.
 
 ## Refusals
 
@@ -50,9 +51,12 @@ A refusal is a result with a `refusalCode`, never a thrown error. The model read
 | `UNKNOWN_PROFILE`                  | `profile` names no key of `images.profiles`                                         |
 | `NO_EDIT`                          | The profile's provider takes no source or no references                             |
 | `IMAGE_CAPS_FULL`                  | The session has no room for another image; the result sets `roomLeft` to 0          |
-| `IMAGE_REFUSED`                    | The provider refused the prompt; `profiles` lists the other profiles                |
+| `IMAGE_REFUSED`                    | The provider refused the prompt                                                     |
 | `IMAGE_FAILED`                     | The provider failed, its reply is over `maxStoredBytes`, or the bytes do not decode |
 | `IMAGE_TIMEOUT`                    | The provider gave no reply within `drawTimeoutMs`                                   |
+
+Every refusal and failure of `image.draw` sets `profiles` to every configured profile, so the model
+can pick one to retry on. Each entry holds the profile's key and its `model`.
 
 `image.import` also returns `UNKNOWN_FILE`, `FILE_FORGOTTEN`, `UNKNOWN_PHOTO` and `NOT_IMAGE`.
 `image.name`, `image.pin`, `image.unpin` and `image.read` return `UNKNOWN_IMAGE` or
@@ -80,13 +84,13 @@ counts them. The cost sits under the result's `hidden.costUSD`, which the model 
 ## Photos of the user
 
 A draw whose `from` or `references` names an image imported from a photo sends that photo to the
-provider. The tool's `prepare` hook reports the provider as the call's destination, with the effects
-`fetch` and `send`, so the [decision point](../policy/decision-point.md) treats the draw as a send:
-a rule that allows sends to that provider runs it direct, and otherwise it queues as a proposal for
-the user. The proposal's input holds the image IDs and its destination is the provider. The
-proposal's card shows each photo among them, read from the stored image when the card is read. When
-the user approves, the call runs `prepare` again, and a destination that changed since the proposal
-makes the call return `changed` and run nothing.
+provider. For that call, the tool's `prepare` hook reports the provider as the destination and adds
+the effect `send` to the tool's `fetch`, so the [decision point](../policy/decision-point.md) treats
+the draw as a send: a rule that allows sends to that provider runs it direct, and otherwise it
+queues as a proposal for the user. The proposal's input holds the image IDs and its destination is
+the provider. The proposal's card shows each photo among them, read from the stored image when the
+card is read. When the user approves, the call runs `prepare` again, and a destination that changed
+since the proposal makes the call return `changed` and run nothing.
 
 ## The provider interface
 
@@ -121,18 +125,27 @@ readable image returns `failed` billed, because the provider answered.
 
 ```yaml
 images:
-  default: main
+  default: openai # optional; openai is the default
   profiles:
-    main:
+    openai:
       provider: openai # openai or gemini
-      model: <model id>
+      model: gpt-image-1
       credential: deployment:openai-images # a connector_credentials entry
-      prices: { '1024x1024': 40000, '1536x1024': 60000, '1024x1536': 60000 } # micros per image
+      prices: { '1024x1024': 42000, '1536x1024': 63000, '1024x1536': 63000 } # micros per image
+    google:
+      provider: gemini
+      model: gemini-2.5-flash-image
+      credential: deployment:gemini-images
+      prices: { '1024x1024': 39000, '1536x1024': 39000, '1024x1536': 39000 }
 ```
 
-nixie refuses to start when a profile names a credential that the secrets file lacks, when `prices`
-lacks a size, or when `default` names no profile. The adapters use each provider's public API
-address, and the model IDs come from the config alone.
+`default` names the profile that answers a draw with no `profile`, and is `openai` when the config
+leaves it out. The shipped configs of the Compose recipe, the Kubernetes manifests and the preview
+set an OpenAI profile there, and keep a Gemini profile beside it for the model to retry a refused
+prompt on, so their secrets file needs an `openai-images` and a `gemini-images` entry under
+`connector_credentials`. nixie refuses to start when a profile names a credential that the secrets
+file lacks, when `prices` lacks a size, or when `default` names no profile. The adapters use each
+provider's public API address, and the model IDs come from the config alone.
 
 ## Storage
 

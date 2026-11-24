@@ -1,7 +1,8 @@
 #!/bin/sh
 # Runs one nixie command in a test build of the source. The first start writes a secrets file with
 # a throwaway deployment key, which only this preview ever holds. Its one model credential is a
-# placeholder, because the host's credential broker adds the real one on the way out.
+# placeholder, because the host's credential broker adds the real one on the way out. The test build
+# answers each image call with a stub, so the image keys are placeholders too.
 set -eu
 
 # empty in the image; a test runs the script under a temporary root
@@ -14,7 +15,7 @@ secrets=$state/secrets.yaml
 if [ ! -f "$secrets" ]; then
   umask 077
   key=$(head -c 32 /dev/urandom | base64)
-  printf 'deployment_key: %s\nmodel_credentials:\n  broker: held-by-the-broker\n' "$key" > "$secrets"
+  printf 'deployment_key: %s\nmodel_credentials:\n  broker: held-by-the-broker\nconnector_credentials:\n  openai-images: invented-placeholder\n  gemini-images: invented-placeholder\n' "$key" > "$secrets"
 fi
 
 config=$app/preview/config.yaml

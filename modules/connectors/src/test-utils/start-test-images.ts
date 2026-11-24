@@ -145,6 +145,7 @@ export async function startTestImages(options: TestImagesOptions) {
   return {
     log,
     budgets,
+    tools,
     run,
     toolOptions,
     clock,

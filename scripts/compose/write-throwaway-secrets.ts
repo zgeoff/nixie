@@ -27,7 +27,7 @@ function runCLI(): void {
 
   writeFileSync(
     secretsPath,
-    `deployment_key: ${key}\nmodel_credentials:\n  anthropic: invented-placeholder\n`,
+    `deployment_key: ${key}\nmodel_credentials:\n  anthropic: invented-placeholder\nconnector_credentials:\n  openai-images: invented-placeholder\n  gemini-images: invented-placeholder\n`,
     { mode: 0o600 },
   );
 

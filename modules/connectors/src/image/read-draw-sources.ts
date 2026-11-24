@@ -56,7 +56,6 @@ export async function readDrawSources(
       refusal: refuseImage(
         'UNKNOWN_PROFILE',
         `No image profile ${args.profile ?? options.images.default} exists. Pick one of profiles.`,
-        { rest: { profiles: Object.keys(options.images.profiles) } },
       ),
     };
   }

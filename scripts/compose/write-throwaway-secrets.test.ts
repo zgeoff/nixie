@@ -33,7 +33,7 @@ test('it writes a secrets file with a random deployment key, readable by its own
   expect(result.exitCode).toBe(0);
 
   expect(readFileSync(join(ctx.runnerTemp, 'secrets.yaml'), 'utf8')).toMatch(
-    /^deployment_key: [A-Za-z0-9+/]{43}=\nmodel_credentials:\n {2}anthropic: invented-placeholder\n$/u,
+    /^deployment_key: [A-Za-z0-9+/]{43}=\nmodel_credentials:\n {2}anthropic: invented-placeholder\nconnector_credentials:\n {2}openai-images: invented-placeholder\n {2}gemini-images: invented-placeholder\n$/u,
   );
 
   expect(statSync(join(ctx.runnerTemp, 'secrets.yaml')).mode & 0o777).toBe(0o600);

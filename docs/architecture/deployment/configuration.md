@@ -28,7 +28,9 @@ Each part's doc owns the meaning of its own settings, and the file only carries 
 - the [search](../connectors/search.md) tool's daily call cap, its API URL and its key as a
   reference
 - the [images](../connectors/images.md) profiles: each provider, model, price for each size and key
-  as a reference
+  as a reference, and `images.default`, the profile a draw uses when it names none, which is
+  `openai`. Every `image.draw` result names the profile and its `model`, and every refusal lists the
+  profiles
 - the [model gateway](../policy/model-gateway.md#how-nixie-uses-the-gateway) that counts every model
   request, which `spendStop` names, and the model limits it sets: the day and the month
 - the shortest gap between two fires of a recurring [reminder](../core/reminders.md#tools)
@@ -54,9 +56,9 @@ validates the settings it reads, and one root schema still refuses the file as a
 part starts. Every object in the schema is strict, so an editor flags an unknown key. The loader
 removes each unknown key and parses again, and the server logs a `config.unknown_key` warning that
 names the key's path at start. A newer release's key therefore never stops an older release from
-starting. The cost: a mistyped key passes with the default of the setting it meant, and only the
-warning shows it. A key inside a union branch that the schema reports as one invalid union still
-refuses the file. The error lists the path of each other fault it refuses.
+starting, except a key inside a union branch: the schema reports that as one invalid union, which
+still refuses the file. The cost: a mistyped key passes with the default of the setting it meant,
+and only the warning shows it. The error lists the path of each other fault it refuses.
 
 A setting that names a secret holds a reference of the form `deployment:<name>`, which names an
 entry in the secrets file. A model profile's credential and the search key accept only that form.
