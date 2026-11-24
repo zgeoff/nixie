@@ -16,7 +16,6 @@ import {
   writeProposedRuleEdit,
 } from '@heynixie/definitions';
 import { buildTestTaskSeed } from '@heynixie/definitions/test-utils';
-import { createDeviceStreams } from '@heynixie/devices';
 import type { JSONObject, Log } from '@heynixie/log';
 import {
   logProjections,
@@ -46,6 +45,7 @@ import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
 import { apiProjections } from '../api/api-projections';
+import { createClientRegistry } from '../live/create-client-registry';
 import { createPasskeyState } from '../passkey/passkey-state';
 import { buildProposalCoreDeps } from '../proposal/build-proposal-core-deps';
 import { proposalsProjection } from '../proposal/proposals-projection';
@@ -109,7 +109,7 @@ export async function startTestRules(settings: APIContext['settings'] = defaultA
     runners: buildTestTaskRunners(),
     settings,
     passkeys: createPasskeyState(),
-    devices: createDeviceStreams(),
+    clients: createClientRegistry({ clock }),
     readZone: () => Promise.resolve('Australia/Sydney'),
     readSessionCleanup: () => null,
   };

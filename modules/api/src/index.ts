@@ -46,3 +46,7 @@ export { proposalsProjection } from './proposal/proposals-projection';
 export { conversationErasableDescriptor } from './erasable/conversation-erasable-descriptor';
 export { imageErasableDescriptor } from './erasable/image-erasable-descriptor';
 export { recordErasableDescriptor } from './erasable/record-erasable-descriptor';
+export { apiRecordTopics } from './api/api-record-topics';
+export { collectModuleRecordTopicMaps } from './live/collect-module-record-topic-maps';
+export type { ClientRegistry, Presence } from './live/create-client-registry';
+export { createClientRegistry } from './live/create-client-registry';

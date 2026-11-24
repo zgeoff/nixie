@@ -1,5 +1,10 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
-import { readPause, withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
+import {
+  readPause,
+  subscribeToChanged,
+  withWriteTransaction,
+  writeRecordsInTransaction,
+} from '@heynixie/log';
 import type { Logger } from '@heynixie/logger';
 import { waitForCondition } from '@heynixie/testing';
 import { spendLimitRaisedCodec } from '../record/spend-limit-raised-codec';
@@ -58,7 +63,7 @@ test('it trips and pauses when the status shows a trip', async () => {
 
   ctx.gateway.readStatus.mockResolvedValue({ kind: 'ok', value: buildTrippedGatewayStatus() });
 
-  await ctx.poll({ noAnswerSince: null, isLimitsPending: false });
+  await ctx.poll({ noAnswerSince: null, isLimitsPending: false, lastStopKey: null });
 
   const spendStopRow = await readSpendStopRow(ctx.writer.db);
 
@@ -80,7 +85,7 @@ test('it trips for the lost mark', async () => {
     value: buildMockGatewayStatus({ lost: true }),
   });
 
-  await ctx.poll({ noAnswerSince: null, isLimitsPending: false });
+  await ctx.poll({ noAnswerSince: null, isLimitsPending: false, lastStopKey: null });
 
   const spendStopRow = await readSpendStopRow(ctx.writer.db);
 
@@ -94,7 +99,7 @@ test('it trips by turns and sends nothing to the gateway', async () => {
     await ctx.writeTurn();
   }
 
-  await ctx.poll({ noAnswerSince: null, isLimitsPending: false });
+  await ctx.poll({ noAnswerSince: null, isLimitsPending: false, lastStopKey: null });
 
   const spendStopRow = await readSpendStopRow(ctx.writer.db);
 
@@ -109,7 +114,7 @@ test('it trips by turns and sends nothing to the gateway', async () => {
 test('it trips after 30 seconds with no answer, and not before', async () => {
   const ctx = await setupTest();
 
-  const state = { noAnswerSince: null, isLimitsPending: false };
+  const state = { noAnswerSince: null, isLimitsPending: false, lastStopKey: null };
 
   ctx.gateway.readStatus.mockResolvedValue({ kind: 'unreachable', reason: 'no answer' });
 
@@ -134,7 +139,7 @@ test('it trips after 30 seconds with no answer, and not before', async () => {
 test('it restarts the 30 seconds when the gateway answers in between', async () => {
   const ctx = await setupTest();
 
-  const state = { noAnswerSince: null, isLimitsPending: false };
+  const state = { noAnswerSince: null, isLimitsPending: false, lastStopKey: null };
 
   ctx.gateway.readStatus.mockResolvedValueOnce({ kind: 'unreachable', reason: 'no answer' });
 
@@ -157,7 +162,7 @@ test('it restarts the 30 seconds when the gateway answers in between', async () 
 test('it trips at the first poll of a start that found no answer, then sends the limits and clears when the gateway answers', async () => {
   const ctx = await setupTest();
 
-  const state = { noAnswerSince: 0, isLimitsPending: true };
+  const state = { noAnswerSince: 0, isLimitsPending: true, lastStopKey: null };
 
   ctx.gateway.readStatus.mockResolvedValue({ kind: 'unreachable', reason: 'no answer' });
 
@@ -194,7 +199,7 @@ test('it sends the limits again when the gateway holds none', async () => {
     }),
   });
 
-  await ctx.poll({ noAnswerSince: null, isLimitsPending: false });
+  await ctx.poll({ noAnswerSince: null, isLimitsPending: false, lastStopKey: null });
 
   expect(ctx.gateway.putLimits.mock.calls).toStrictEqual([[ctx.limits]]);
 });
@@ -202,7 +207,7 @@ test('it sends the limits again when the gateway holds none', async () => {
 test('it counts a failed limits send as no answer and trips after 30 seconds', async () => {
   const ctx = await setupTest();
 
-  const state = { noAnswerSince: null, isLimitsPending: true };
+  const state = { noAnswerSince: null, isLimitsPending: true, lastStopKey: null };
 
   ctx.gateway.readStatus.mockResolvedValue({ kind: 'ok', value: buildMockGatewayStatus() });
   ctx.gateway.putLimits.mockResolvedValue({ kind: 'unreachable', reason: 'no answer' });
@@ -222,7 +227,7 @@ test('it counts a failed limits send as no answer and trips after 30 seconds', a
 test('it sends no limits to a gateway that holds them', async () => {
   const ctx = await setupTest();
 
-  await ctx.poll({ noAnswerSince: null, isLimitsPending: false });
+  await ctx.poll({ noAnswerSince: null, isLimitsPending: false, lastStopKey: null });
 
   expect(ctx.gateway.putLimits.mock.calls).toStrictEqual([]);
 });
@@ -230,7 +235,7 @@ test('it sends no limits to a gateway that holds them', async () => {
 test('it treats a gateway in another zone as no answer and sends it nothing', async () => {
   const ctx = await setupTest();
 
-  const state = { noAnswerSince: 0, isLimitsPending: true };
+  const state = { noAnswerSince: 0, isLimitsPending: true, lastStopKey: null };
 
   ctx.gateway.readStatus.mockResolvedValue({
     kind: 'ok',
@@ -260,7 +265,7 @@ test('it sends a standing raise that the gateway has not applied, and clears the
   ctx.gateway.readStatus.mockResolvedValue({ kind: 'ok', value: buildTrippedGatewayStatus() });
   ctx.gateway.postRaise.mockResolvedValue({ kind: 'ok', value: buildMockGatewayStatus() });
 
-  await ctx.poll({ noAnswerSince: null, isLimitsPending: false });
+  await ctx.poll({ noAnswerSince: null, isLimitsPending: false, lastStopKey: null });
 
   expect(ctx.gateway.postRaise.mock.calls).toStrictEqual([
     [{ start: '2026-10-16', limit: { dollars: 90, tokens: 120_000_000 } }],
@@ -274,7 +279,7 @@ test('it sends a standing raise that the gateway has not applied, and clears the
 test('it keeps the stop and sends the raise again at the next poll when the gateway does not answer the raise', async () => {
   const ctx = await setupTest();
 
-  const state = { noAnswerSince: null, isLimitsPending: false };
+  const state = { noAnswerSince: null, isLimitsPending: false, lastStopKey: null };
 
   await ctx.writeRaise({ dollars: 90, tokens: 120_000_000, turns: 1500, by: 'host' });
 
@@ -295,7 +300,7 @@ test('it sends no raise that the gateway holds already', async () => {
   const ctx = await setupTest();
 
   await ctx.writeRaise({ dollars: 60, tokens: 80_000_000, turns: 3000, by: 'host' });
-  await ctx.poll({ noAnswerSince: null, isLimitsPending: false });
+  await ctx.poll({ noAnswerSince: null, isLimitsPending: false, lastStopKey: null });
 
   expect(ctx.gateway.postRaise.mock.calls).toStrictEqual([]);
 });
@@ -343,13 +348,13 @@ test('it holds the plan logins at each poll, and marks them unreachable when the
     value: { 'codex-plan': { status: 'active', accountID: 'acct-test-1', planType: 'plus' } },
   });
 
-  await ctx.poll({ noAnswerSince: null, isLimitsPending: false });
+  await ctx.poll({ noAnswerSince: null, isLimitsPending: false, lastStopKey: null });
 
   const first = ctx.context.planLogins.read();
 
   ctx.gateway.readChatGPTLogins.mockResolvedValue({ kind: 'unreachable', reason: 'down' });
 
-  await ctx.poll({ noAnswerSince: null, isLimitsPending: false });
+  await ctx.poll({ noAnswerSince: null, isLimitsPending: false, lastStopKey: null });
 
   expect([first, ctx.context.planLogins.read()]).toStrictEqual([
     {
@@ -358,4 +363,45 @@ test('it holds the plan logins at each poll, and marks them unreachable when the
     },
     { state: 'unreachable' },
   ]);
+});
+
+test('it names the spend topic when the stop differs from its last read', async () => {
+  const ctx = await setupTest();
+
+  const changes: (readonly string[])[] = [];
+
+  subscribeToChanged(ctx.writer, (topics) => {
+    changes.push(topics);
+  });
+
+  const state = { noAnswerSince: null, isLimitsPending: false, lastStopKey: null };
+
+  ctx.gateway.readStatus.mockResolvedValue({ kind: 'ok', value: buildMockGatewayStatus() });
+
+  await ctx.poll(state);
+
+  ctx.gateway.readStatus.mockResolvedValue({ kind: 'unreachable', reason: 'no answer' });
+
+  await ctx.poll(state);
+
+  expect(changes.filter((topics) => topics.length === 1 && topics[0] === 'spend')).toHaveLength(1);
+});
+
+test('it names no topic when the stop is what its last read found', async () => {
+  const ctx = await setupTest();
+
+  const changes: (readonly string[])[] = [];
+
+  subscribeToChanged(ctx.writer, (topics) => {
+    changes.push(topics);
+  });
+
+  const state = { noAnswerSince: null, isLimitsPending: false, lastStopKey: null };
+
+  ctx.gateway.readStatus.mockResolvedValue({ kind: 'ok', value: buildMockGatewayStatus() });
+
+  await ctx.poll(state);
+  await ctx.poll(state);
+
+  expect(changes).toStrictEqual([]);
 });

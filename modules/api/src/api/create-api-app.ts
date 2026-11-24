@@ -1,4 +1,4 @@
-import { clientHeaderName } from '@heynixie/contract';
+import { clientHeaderName, liveStreamTiming } from '@heynixie/contract';
 import type { DefinitionsContext } from '@heynixie/definitions';
 import { RPCHandler } from '@orpc/server/fetch';
 import { ResponseHeadersPlugin } from '@orpc/server/plugins';
@@ -24,8 +24,7 @@ export function createAPIApp(
   const handler = new RPCHandler(
     createAPIRouter(context, readMemory, runInForceSeed, readDefinitions),
     {
-      // The web client treats a live stream that misses three keepalives in a row as dead.
-      eventIteratorKeepAliveInterval: 5000,
+      eventIteratorKeepAliveInterval: liveStreamTiming.keepAliveMs,
       plugins: [new ResponseHeadersPlugin()],
     },
   );

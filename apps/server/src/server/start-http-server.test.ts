@@ -20,7 +20,7 @@ test('it streams a tool call and its result within a second of nixie recording t
   const api = await createTestClient(ctx);
   const page = await api.client.conversation.read({ thread: 'conversation', limit: 1 });
 
-  const stream = await api.client.records.follow(
+  const stream = await api.client.live.follow(
     { afterSequence: page.readAtSequence, thread: 'conversation' },
     { signal: ctx.signal },
   );

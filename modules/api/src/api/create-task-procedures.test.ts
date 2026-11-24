@@ -161,6 +161,17 @@ test('#tasks.list gives the log sequence it read at', async () => {
   expect(listed.readAtSequence).toBe(created.sequence);
 });
 
+test('#tasks.list gives no time of its own change when no listed task wakes on a schedule', async () => {
+  const api = await startTestAPI();
+  const laptop = await createDeviceSession(api.context, 'laptop');
+
+  const client = buildTestClient(api.url, laptop.token);
+
+  const listed = await client.tasks.list({});
+
+  expect(listed.changesAt).toBeNull();
+});
+
 test('#tasks.list gives a log sequence before a change that lands after its read of the tasks', async () => {
   const api = await startTestAPI();
   const laptop = await createDeviceSession(api.context, 'laptop');

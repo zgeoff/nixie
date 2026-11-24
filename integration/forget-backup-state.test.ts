@@ -6,6 +6,7 @@ import type { APIContext } from '@heynixie/api';
 import {
   apiProjections,
   createAPIApp,
+  createClientRegistry,
   createPasskeyState,
   defaultAPISettings,
   makeHostResponder,
@@ -15,7 +16,6 @@ import type { BackupPass } from '@heynixie/backup';
 import { getBackupStagingDir, startBackupSchedule } from '@heynixie/backup';
 import { writeTestBackupReceipt } from '@heynixie/backup/test-utils';
 import type { HostContractClient } from '@heynixie/contract';
-import { createDeviceStreams } from '@heynixie/devices';
 import { localDataStorage, logProjections, startWriter } from '@heynixie/log';
 import {
   defaultGateLimits,
@@ -77,7 +77,7 @@ async function setupTest() {
     readSessionCleanup: () => null,
     readZone: () => Promise.resolve('UTC'),
     passkeys: createPasskeyState(),
-    devices: createDeviceStreams(),
+    clients: createClientRegistry({ clock }),
   };
 
   const memory = await startMemoryStore({

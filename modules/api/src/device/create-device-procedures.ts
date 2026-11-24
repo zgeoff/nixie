@@ -5,7 +5,6 @@ import { requireCaller } from '../memory/require-caller';
 import type { APIContext } from '../types';
 import { apiImplementer } from '../utils/api-implementer';
 import { requireDevice } from './require-device';
-import { streamDeviceEvents } from './stream-device-events';
 import { writeDeviceRegistration } from './write-device-registration';
 
 export function createDeviceProcedures(context: APIContext) {
@@ -30,29 +29,13 @@ export function createDeviceProcedures(context: APIContext) {
       return { deviceID: result.deviceID };
     }),
 
-    // HTTP sends the status before the stream's first event, so the handler checks the session
-    // first to refuse a revoked device with a plain 401.
-    follow: apiImplementer.devices.follow.handler(async (options) => {
-      const caller = await requireDevice(context, options.context.sessionToken, {
-        buildUnauthorized: options.errors.UNAUTHORIZED,
-        buildNotADevice: options.errors.NOT_A_DEVICE,
-      });
-
-      return streamDeviceEvents(context, {
-        device: caller.device,
-        token: options.context.sessionToken,
-        pixels: options.input.pixels,
-        signal: options.signal,
-      });
-    }),
-
     resize: apiImplementer.devices.resize.handler(async (options) => {
       const caller = await requireDevice(context, options.context.sessionToken, {
         buildUnauthorized: options.errors.UNAUTHORIZED,
         buildNotADevice: options.errors.NOT_A_DEVICE,
       });
 
-      context.devices.resize(caller.device.deviceID, options.input);
+      context.clients.devices.resize(caller.device.deviceID, options.input);
 
       return {};
     }),

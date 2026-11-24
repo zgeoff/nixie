@@ -23,6 +23,7 @@
   },
   "devDependencies": {
     "@heynixie/policy": "workspace:*",
+    "@heynixie/testing": "workspace:*",
     "@zgeoff/testing": "catalog:"
   }
 }

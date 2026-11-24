@@ -3,7 +3,6 @@ import type { ComputerTakeover, WatchConnection, WatchSocket } from '@heynixie/c
 import type { DefinitionNotice, ImageMediaType } from '@heynixie/contract';
 import type { CheckedTables } from '@heynixie/db';
 import type { DefinitionsContext } from '@heynixie/definitions';
-import type { DeviceStreams } from '@heynixie/devices';
 import type { RecordKind } from '@heynixie/log';
 import type { Logger } from '@heynixie/logger';
 import type {
@@ -23,6 +22,7 @@ import type { TurnInputs } from '@heynixie/turn-inputs';
 import type { ResponseHeadersPluginContext } from '@orpc/server/plugins';
 import type { Kysely } from 'kysely';
 import type { WatchTickets } from './computer/create-watch-tickets';
+import type { ClientRegistry } from './live/create-client-registry';
 import type { PasskeyState } from './passkey/passkey-state';
 
 export interface APISettings {
@@ -106,8 +106,8 @@ export interface APIContext extends TasksContext {
   // the gateway's spending stop; absent when the deployment sets no spendStop
   readonly spend?: SpendContext;
 
-  // the open stream of each device, which a restart drops
-  readonly devices: DeviceStreams;
+  // presence and the open device streams, which a restart drops
+  readonly clients: ClientRegistry;
 
   // challenges, registration options and the host code, which a restart drops
   readonly passkeys: PasskeyState;

@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import { mkdir, readdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { localDataStorage, withWriteTransaction } from '@heynixie/log';
+import { localDataStorage, subscribeToChanged, withWriteTransaction } from '@heynixie/log';
 import { startTestLog } from '@heynixie/log/test-utils';
 import { sql } from 'kysely';
 import { writeReceivedReceipts } from './write-received-receipts';
@@ -293,4 +293,42 @@ test('it keeps the set and its staged row when its receipt cannot be read', asyn
 
   expect(names).toIncludeSameMembers(['complete', 'receipt.json']);
   expect(rows.rows).toStrictEqual([{ state: 'staged' }]);
+});
+
+test('it names the backups topic when a receipt publishes a set', async () => {
+  const ctx = await setupTest();
+
+  const changes: (readonly string[])[] = [];
+
+  await withWriteTransaction(ctx.writer, async (tx) => {
+    await sql`insert into backup_sets (sequence, kind, state, log_head, staged_at)
+      values (3, 'scheduled', 'staged', 0, 1798761600000)`.execute(tx);
+  });
+
+  await mkdir(join(ctx.dataDir, 'backup', '000000000003'));
+  await writeFile(join(ctx.dataDir, 'backup', '000000000003', 'complete'), '');
+
+  await writeFile(
+    join(ctx.dataDir, 'backup', '000000000003', 'receipt.json'),
+    JSON.stringify({
+      format: 1,
+      sequence: 3,
+      writtenAt: 1_798_761_660_000,
+      status: 'published',
+      dataSnapshotID: 'a'.repeat(64),
+      keySnapshotID: 'b'.repeat(64),
+      removedKeySnapshotIDs: [],
+      prune: 'passed',
+      check: 'passed',
+      failure: null,
+    }),
+  );
+
+  subscribeToChanged(ctx.writer, (topics) => {
+    changes.push(topics);
+  });
+
+  await writeReceivedReceipts(ctx.context);
+
+  expect(changes).toStrictEqual([['backups']]);
 });

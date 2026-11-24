@@ -1,5 +1,6 @@
 import type { JSONObject } from '@heynixie/log';
 import type { ToolDefinition } from '@heynixie/tools';
+import { readDeviceWake } from '../device/read-device-wake';
 import { readDevices } from '../device/read-devices';
 import { readLayout } from '../layout/read-layout';
 import { readScreenState } from '../screen/read-screen-state';
@@ -20,8 +21,11 @@ export function buildDevicesListTool(options: DeviceToolOptions): ToolDefinition
     name: 'devices.list',
     description:
       'Lists the devices the owner enrolled, each with its ID, name, whether its screen and camera ' +
-      'are on, whether it is online, its screen size in pixels and what it shows now. The size ' +
-      'and what it shows are null while the device is offline. What it shows is a show, the ' +
+      'are on, whether it is online, the time in milliseconds when it went offline (`offlineSinceMs`, ' +
+      'present only for an offline device that had a connection since nixie started), the changes ' +
+      'of it that wake you (`wake`, which devices.watch sets), its screen size in pixels and what ' +
+      'it shows now. The size and what it shows are null while the device is offline. What it ' +
+      'shows is a show, the ' +
       'layout while a region shows content, or the idle scene. `layout` is the layout the device ' +
       'holds, online or not, apart from what it shows: its grid and, for each region, its kind, ' +
       'the time it ends and the ID of its content. A region that is blank has no kind.',
@@ -45,6 +49,9 @@ async function readListedDevice(options: DeviceToolOptions, device: Device): Pro
   const state = isOnline ? await readScreenState(options.log, device, nowMs) : null;
 
   const layout = await readLayout(options.log, device.deviceID, nowMs);
+  const wake = await readDeviceWake(options.log, device.deviceID);
+
+  const offlineSinceMs = options.streams.readOfflineSinceMs(device.deviceID);
 
   return {
     device: device.deviceID,
@@ -52,6 +59,8 @@ async function readListedDevice(options: DeviceToolOptions, device: Device): Pro
     screen: device.capabilities.screen ? 'on' : 'off',
     camera: device.capabilities.camera ? 'on' : 'off',
     online: isOnline,
+    ...(offlineSinceMs === null ? {} : { offlineSinceMs }),
+    wake: [...wake],
     pixels:
       pixels === null
         ? null

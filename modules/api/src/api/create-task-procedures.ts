@@ -11,6 +11,7 @@ import { readResumeRefusal } from '../spend/read-resume-refusal';
 import type { APIContext } from '../types';
 import { apiImplementer } from '../utils/api-implementer';
 import { readHeadSequence } from '../utils/read-head-sequence';
+import { pickListChangesAt } from './pick-list-changes-at';
 import { readListedTasks } from './read-listed-tasks';
 
 const listLimit = 100;
@@ -37,7 +38,11 @@ export function createTaskProcedures(context: APIContext) {
         options.input ?? {},
       );
 
-      return { tasks: listed, readAtSequence };
+      return {
+        tasks: listed,
+        readAtSequence,
+        changesAt: pickListChangesAt(listed, context.clock.now()),
+      };
     }),
 
     read: tasks.read.handler(async (options) => {

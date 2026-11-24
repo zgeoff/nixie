@@ -3,7 +3,9 @@ export type DevicesRecordKind =
   | 'device.idle_set'
   | 'device.capability_changed'
   | 'device.layout_set'
-  | 'device.region_shown';
+  | 'device.region_shown'
+  | 'device.watch_set'
+  | 'device.status_changed';
 
 type DevicesErasableRecordKind = 'device.shown' | 'device.idle_set' | 'device.region_shown';
 

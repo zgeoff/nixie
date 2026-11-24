@@ -1,5 +1,4 @@
 import { expect, test } from 'bun:test';
-import { createDeviceStreams } from '@heynixie/devices';
 import { createMemoryItem, startTestMemory } from '@heynixie/memory/test-utils';
 import {
   buildTestDefinitionReaders,
@@ -8,6 +7,7 @@ import {
 } from '@heynixie/tasks/test-utils';
 import { createRouterClient } from '@orpc/server';
 import invariant from 'tiny-invariant';
+import { createClientRegistry } from '../live/create-client-registry';
 import { createPasskeyState } from '../passkey/passkey-state';
 import { defaultAPISettings } from '../utils/default-api-settings';
 import { createHostItemProcedures } from './create-host-item-procedures';
@@ -26,7 +26,7 @@ async function setupTest() {
     readSessionCleanup: () => null,
     readZone: () => Promise.resolve('UTC'),
     passkeys: createPasskeyState(),
-    devices: createDeviceStreams(),
+    clients: createClientRegistry({ clock: memory.writer.clock }),
   };
 
   return {

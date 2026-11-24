@@ -1,8 +1,10 @@
 import { seedImage } from '@heynixie/connectors/test-utils';
+import { waitForCondition } from '@heynixie/testing';
 import { createFakeClock } from '@zgeoff/testing/clock';
 import { readDeviceByIdentity } from '../device/read-device-by-identity';
 import { readLayout } from '../layout/read-layout';
-import { createDeviceStreams } from '../stream/create-device-streams';
+import type { OpenDeviceStream } from '../stream/create-device-streams';
+import { createDeviceStreams, deviceOfflineGraceMs } from '../stream/create-device-streams';
 import { makeDeviceToolCaller } from './make-device-tool-caller';
 import { makeDeviceToolPreparer } from './make-device-tool-preparer';
 import { removeTestRecordKey } from './remove-test-record-key';
@@ -20,7 +22,7 @@ export async function startTestDevices() {
 
   const log = await startTestLog(clock);
 
-  const streams = createDeviceStreams();
+  const streams = createDeviceStreams({ clock });
   const deps = { log, clock };
 
   return {
@@ -34,6 +36,14 @@ export async function startTestDevices() {
       layout: (deviceID: string) => seedLayout({ log, definitions, clock, streams }, deviceID),
       image: (image: string) =>
         seedImage(log, { image, source: 'file', bytes: new Uint8Array([1, 2, 3]) }),
+    },
+
+    // closes the device's stream and lets the grace run out, so the device reads as offline
+    closeStream: async (deviceID: string, stream: OpenDeviceStream) => {
+      stream.close();
+      clock.advance(deviceOfflineGraceMs);
+
+      await waitForCondition(() => !streams.isOnline(deviceID));
     },
     removeKey: (sequence: number) => removeTestRecordKey(log, sequence),
     readLayout: (deviceID: string) => readLayout(log, deviceID, clock.now()),
@@ -50,7 +60,7 @@ export async function startTestDevices() {
           log: restarted,
           definitions,
           clock,
-          streams: createDeviceStreams(),
+          streams: createDeviceStreams({ clock }),
         }),
       };
     },

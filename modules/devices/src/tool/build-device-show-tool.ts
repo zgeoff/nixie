@@ -38,11 +38,15 @@ const showOutput = {
   properties: {
     shown: { type: 'boolean' },
     until: { type: ['string', 'null'] },
+    waiting: { type: 'boolean', description: 'true when the device is offline and the show waits' },
     refused: { type: 'string', description: 'the code of the refusal' },
     message: { type: 'string' },
   },
   additionalProperties: false,
 };
+
+const offlineMessage =
+  'The device is offline. The show waits, and the device shows it when it comes back online.';
 
 export function buildDeviceShowTool(options: DeviceToolOptions): ToolDefinition {
   return {
@@ -51,8 +55,9 @@ export function buildDeviceShowTool(options: DeviceToolOptions): ToolDefinition 
       "Puts markdown or a stored image on a device's screen, in place of what it shows. The device " +
       'returns to its idle scene after `minutes`, or keeps the show until the next one when ' +
       "`minutes` is left out. An image takes `fit`: 'whole' (the default) fits it whole on black, " +
-      "'fill' covers the screen and crops the overflow. The screen must be on and the device " +
-      'online. Only the device itself switches its screen on.',
+      "'fill' covers the screen and crops the overflow. The screen must be on. A device that is " +
+      'offline shows it when it comes back online, and the result says that the show waits. Only ' +
+      'the device itself switches its screen on.',
     input: showInput,
     output: showOutput,
     declaration: {
@@ -61,6 +66,7 @@ export function buildDeviceShowTool(options: DeviceToolOptions): ToolDefinition 
       results: {
         shown: 'owner_data',
         until: 'owner_data',
+        waiting: 'owner_data',
         refused: 'owner_data',
         message: 'owner_data',
       },
@@ -78,12 +84,7 @@ export function buildDeviceShowTool(options: DeviceToolOptions): ToolDefinition 
       const device = await readDeviceByShortID(options.log.writer.db, input.device);
       const resolved = await resolveScreenImages(options.log, [input.content]);
 
-      const refusal = pickShowRefusal({
-        device,
-        images: resolved.states,
-        isOnline: options.streams.isOnline(input.device),
-      });
-
+      const refusal = pickShowRefusal({ device, images: resolved.states });
       const [content] = resolved.blocks;
 
       if (refusal !== null || device === null || content === undefined) {
@@ -100,13 +101,16 @@ export function buildDeviceShowTool(options: DeviceToolOptions): ToolDefinition 
         untilMs,
       });
 
-      return {
-        status: 'ok',
-        result: {
-          shown: true,
-          until: untilMs === null ? null : new Date(untilMs).toISOString(),
-        },
-      };
+      const until = untilMs === null ? null : new Date(untilMs).toISOString();
+
+      if (!options.streams.isOnline(device.deviceID)) {
+        return {
+          status: 'ok',
+          result: { shown: true, until, waiting: true, message: offlineMessage },
+        };
+      }
+
+      return { status: 'ok', result: { shown: true, until } };
     },
   };
 }

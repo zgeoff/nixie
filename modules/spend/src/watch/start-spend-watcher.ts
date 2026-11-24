@@ -5,6 +5,7 @@ import type { SpendFacts } from '../stop/pick-spend-stop';
 import { readSpendFacts } from '../stop/read-spend-facts';
 import { settleSpendStop } from '../stop/settle-spend-stop';
 import type { GatewayLimits, GatewayStatus, SpendContext } from '../types';
+import { publishSpendChange } from './publish-spend-change';
 
 export interface SpendWatcherOptions {
   readonly context: SpendContext;
@@ -32,6 +33,9 @@ interface WatchState {
   // when the gateway last stopped answering, or 0 for a gateway that never has
   noAnswerSince: number | null;
   isLimitsPending: boolean;
+
+  // the stop the last poll read, as text, or null before the first poll
+  lastStopKey: string | null;
 }
 
 // Reads the gateway's status and the turn count every 10 seconds, and trips or clears the stop.
@@ -39,6 +43,7 @@ export function startSpendWatcher(options: SpendWatcherOptions): SpendWatcher {
   const state: WatchState = {
     noAnswerSince: options.isStartUnreachable ? 0 : null,
     isLimitsPending: options.isStartUnreachable,
+    lastStopKey: null,
   };
 
   const loop = runWatchLoop(options, state);
@@ -69,6 +74,8 @@ export async function runSpendPoll(options: SpendWatcherOptions, state: WatchSta
     read.status === null
       ? read
       : await sendWhatIsMissing(options, state, { ...read, status: read.status });
+
+  publishSpendChange(context, state, facts);
 
   if (facts.status === null) {
     state.noAnswerSince ??= facts.now;

@@ -1,5 +1,5 @@
 import type { APIContext, APISettings, CleanupRecordSessions } from '@heynixie/api';
-import { createPasskeyState, defaultAPISettings } from '@heynixie/api';
+import { createClientRegistry, createPasskeyState, defaultAPISettings } from '@heynixie/api';
 import { buildBuiltInBudgets } from '@heynixie/budgets';
 import {
   makeReadDefinitionRunPolicy,
@@ -7,7 +7,6 @@ import {
   readDefinitionVersion,
   readDefinitionsInForce,
 } from '@heynixie/definitions';
-import { createDeviceStreams } from '@heynixie/devices';
 import type { Writer } from '@heynixie/log';
 import type { PlanLoginsHolder, SpendGateway, SpendTurnLimits } from '@heynixie/spend';
 import type { RunSettings, TaskLimits, TaskRunnerRegistry } from '@heynixie/tasks';
@@ -98,7 +97,7 @@ export async function createServerContext(
         }),
       settings: options.settings ?? defaultAPISettings,
       passkeys: createPasskeyState(),
-      devices: createDeviceStreams(),
+      clients: createClientRegistry({ clock: writer.clock }),
       readZone: makeReadZone(writer, writer.db, options.defaultZone),
       readSessionCleanup,
     },

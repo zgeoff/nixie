@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { readRecordEvents } from '@heynixie/api/test-utils';
 import { buildShortIDFromUUID } from '@heynixie/db';
 import { waitForCondition } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
@@ -1048,15 +1049,15 @@ test('it gives a live stream that resumes from the old last sequence the reset a
 
   const connection = await reset
     .connect(api.token)
-    .records.follow({ afterSequence: reset.lastSequence, thread: 'conversation' });
+    .live.follow({ afterSequence: reset.lastSequence, thread: 'conversation' });
 
-  const next = await connection.next();
+  const [next] = await readRecordEvents(connection, 1);
 
   await connection.return(undefined);
 
-  invariant(next.done !== true);
+  invariant(next !== undefined);
 
-  expect(next.value.record).toMatchObject({
+  expect(next.record).toMatchObject({
     kind: 'log_reset',
     sequence: reset.lastSequence + 2,
     thread: 'conversation',

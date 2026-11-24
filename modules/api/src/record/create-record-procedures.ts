@@ -1,43 +1,6 @@
-import type { LogRecord } from '@heynixie/contract';
-import { withEventMeta } from '@orpc/server';
-import { requireCaller } from '../memory/require-caller';
 import type { APIContext } from '../types';
-import { apiImplementer } from '../utils/api-implementer';
 import { createReadPayloadProcedure } from './create-read-payload-procedure';
-import { subscribeToThreadRecords } from './subscribe-to-thread-records';
 
 export function createRecordProcedures(context: APIContext) {
-  // HTTP sends the status before the stream's first event, so the handler checks the session first
-  // to refuse a revoked device with a plain 401.
-  const follow = apiImplementer.records.follow.handler(async (options) => {
-    const caller = await requireCaller(
-      context,
-      options.context.sessionToken,
-      options.errors.UNAUTHORIZED,
-    );
-
-    return streamRecordEvents(
-      subscribeToThreadRecords(context, caller, {
-        afterSequence: pickAfterSequence(options.input.afterSequence, options.lastEventId),
-        thread: options.input.thread,
-        clipPayloads: options.input.clipPayloads,
-        signal: options.signal,
-        buildUnauthorized: options.errors.UNAUTHORIZED,
-      }),
-    );
-  });
-
-  return { log: { follow }, records: { follow, readPayload: createReadPayloadProcedure(context) } };
-}
-
-async function* streamRecordEvents(records: AsyncIterable<LogRecord>) {
-  for await (const record of records) {
-    yield withEventMeta({ record }, { id: String(record.sequence) });
-  }
-}
-
-function pickAfterSequence(afterSequence: number, lastEventID: string | undefined): number {
-  return lastEventID !== undefined && /^\d{1,15}$/u.test(lastEventID)
-    ? Number(lastEventID)
-    : afterSequence;
+  return { readPayload: createReadPayloadProcedure(context) };
 }

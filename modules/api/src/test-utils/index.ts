@@ -13,3 +13,5 @@ export { seedRevokedPasskey } from './seed-revoked-passkey';
 export { startTestRules } from './start-test-rules';
 export { seedPublishedBackupSet } from './seed-published-backup-set';
 export { collectContractPaths } from './collect-contract-paths';
+export { followTestDevice } from './follow-test-device';
+export { readRecordEvents } from './read-record-events';

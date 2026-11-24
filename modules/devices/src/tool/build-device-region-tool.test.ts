@@ -228,8 +228,7 @@ test('it refuses an offline device', async () => {
   const stream = ctx.streams.open(device.deviceID, { width: 1920, height: 480, pixelRatio: 1 });
 
   await ctx.seed.layout(device.deviceID);
-
-  stream.close();
+  await ctx.closeStream(device.deviceID, stream);
 
   const outcome = await ctx.call('device.region', {
     device: device.deviceID,

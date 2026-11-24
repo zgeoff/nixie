@@ -1,5 +1,5 @@
 import { join } from 'node:path';
-import { withWriteTransaction } from '@heynixie/log';
+import { markChanged, withWriteTransaction } from '@heynixie/log';
 import {
   backupReceiptSchema,
   backupSetLayout,
@@ -134,6 +134,9 @@ async function writeWaitingSetState(
   }
 
   await writeBackupSetState(tx, sequence, state, fields);
+
+  // a published set ends the notice that an earlier set raised
+  markChanged(tx, ['backups']);
 
   return true;
 }
