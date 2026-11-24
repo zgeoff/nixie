@@ -12,7 +12,7 @@ interface RetopicItemRef {
   readonly state: RetopicItemState;
 }
 
-export type RetopicItemState = 'active' | 'retired';
+type RetopicItemState = 'active' | 'retired';
 
 // A move names a whole topic with the sub-topics under it, or items one by one.
 export type RetopicSource =
