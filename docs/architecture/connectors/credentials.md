@@ -120,4 +120,6 @@ result, no log line, no record and no error. `createTestCredentials` in the modu
 builds a resolver and a store over the groups a test names. A test build lets the store send each
 request through the global `fetch` after all its checks, so a mock network answers it, and a release
 build drops that path. The test build resolves each `.test` host to a public address, so the address
-checks and the body cap run as they do in a release build.
+checks and the body cap run as they do in a release build. A test that starts nixie with a loopback
+HTTPS site sends every request over the pinned connection a release build opens, and to that site
+alone. The planted-key test runs both ways, so a fault in either body reader fails it.

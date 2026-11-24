@@ -12,6 +12,7 @@ import type { Tools } from './part/tools';
 import type { SandboxAdapterOptions } from './sandbox/create-sandbox-adapter';
 import type { SandboxImages } from './sandbox/load-sandbox-manifest';
 import type { SeedInputs } from './seed/build-seed-inputs';
+import type { TestCredentialSite } from './server/build-test-credential-checks';
 import type { CrashHarness } from './server/join-crash-harness';
 import type { SpendInputs } from './spend/create-spend-inputs';
 import type { StartState } from './utils/build-start-state';
@@ -73,6 +74,8 @@ export interface CLIIO {
   readonly createSandboxAdapter?: (options: SandboxAdapterOptions) => SandboxAdapter;
 
   readonly harness?: CrashHarness;
+
+  readonly credentialSite?: TestCredentialSite;
 }
 
 export interface CLIFlags {

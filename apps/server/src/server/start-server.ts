@@ -16,6 +16,7 @@ import type { SpendInputs } from '../spend/create-spend-inputs';
 import { startSpendChecks } from '../spend/start-spend-checks';
 import type { Cleanup, ServerParts } from '../types';
 import { buildCleanup } from './build-cleanup';
+import type { TestCredentialSite } from './build-test-credential-checks';
 import type { ImageSettings } from './create-image-settings';
 import type { SearchSettings } from './create-search-settings';
 import type { CrashHarness } from './join-crash-harness';
@@ -35,6 +36,9 @@ export interface ServerOptions {
   readonly createSandboxAdapter?: (options: SandboxAdapterOptions) => SandboxAdapter;
 
   readonly harness?: CrashHarness;
+
+  // a test build's loopback site, which every credential request goes to
+  readonly credentialSite?: TestCredentialSite;
 }
 
 export interface Server {
