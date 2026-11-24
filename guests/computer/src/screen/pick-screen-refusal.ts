@@ -20,7 +20,8 @@ const useBrowserOpen: ComputerReply = {
   kind: 'failed',
   ok: false,
   reason: 'use_browser_open',
-  message: 'Use the computer.browser_open tool instead',
+  message:
+    'The tab strip and window controls are off limits; use the browser tools (computer.browser_open, computer.browser_navigate, computer.browser_reload) instead',
 };
 
 const screenChanged: ComputerReply = {
