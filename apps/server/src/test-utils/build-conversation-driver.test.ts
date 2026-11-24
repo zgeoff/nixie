@@ -1,5 +1,4 @@
 import { expect, onTestFinished, setSystemTime, test } from 'bun:test';
-import invariant from 'tiny-invariant';
 import { buildConversationDriver } from './build-conversation-driver';
 import { startTestConversation } from './start-test-conversation';
 import { startTestServer } from './start-test-server';
@@ -83,18 +82,23 @@ test('it fails a send whose step errored after it sent a turn, with the step err
 
   ctx.server.guest.addReplies({ overflow: 'prompt_too_long' });
 
-  const failure = await conversation.send('What does the tide gauge read?').then(
-    () => null,
-    (error: unknown) => error,
-  );
+  const failure = conversation.send('What does the tide gauge read?');
 
-  invariant(failure instanceof Error);
+  const settled = await Promise.allSettled([failure]);
 
+  expect(settled).toMatchObject([{ status: 'rejected', reason: expect.any(Error) }]);
   expect(ctx.server.guest.turns).toHaveLength(1);
 
-  expect(failure.cause).toMatchObject({
-    message: 'the conversation turn passed the context window',
-  });
+  const settledAgain = await Promise.allSettled([failure]);
+
+  expect(settledAgain).toMatchObject([
+    {
+      status: 'rejected',
+      reason: {
+        cause: { message: 'the conversation turn passed the context window' },
+      },
+    },
+  ]);
 });
 
 test('it retries a failed step once its backoff passed, and returns the turn the retry sent', async () => {
@@ -152,10 +156,14 @@ test('it fails a send whose step sent no turn to the guest', async () => {
 
   await conversation.send('What does the tide gauge read?');
 
-  const failure = await conversation.send('And tomorrow?').then(
-    () => null,
-    (error: unknown) => error,
-  );
+  const settled = await Promise.allSettled([conversation.send('And tomorrow?')]);
 
-  expect(failure).toMatchObject({ message: expect.toInclude('the step sent no turn') });
+  expect(settled).toMatchObject([
+    {
+      status: 'rejected',
+      reason: {
+        message: expect.toInclude('the step sent no turn'),
+      },
+    },
+  ]);
 });

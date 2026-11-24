@@ -118,7 +118,7 @@ test('it leaves the images unadded, naming the image, when impd refuses the add 
     ref: `ghcr.io/example/nixie-conversation@sha256:${'b'.repeat(64)}`,
   });
 
-  const refusal = await registerSandboxImages({
+  const refusal = registerSandboxImages({
     ...ctx,
     images: {
       conversation: {
@@ -130,16 +130,24 @@ test('it leaves the images unadded, naming the image, when impd refuses the add 
         ref: `ghcr.io/example/nixie-fetch@sha256:${'c'.repeat(64)}`,
       },
     },
-  }).then(
-    () => null,
-    (error: unknown) => error,
-  );
-
-  expect(refusal).toBeInstanceOf(Error);
-
-  expect(refusal).toMatchObject({
-    message: expect.stringMatching(/^impd did not add the image nixie-fetch-cccccccccccc from /u),
   });
+
+  const settled = await Promise.allSettled([refusal]);
+
+  expect(settled).toMatchObject([{ status: 'rejected', reason: expect.any(Error) }]);
+
+  const settledAgain = await Promise.allSettled([refusal]);
+
+  expect(settledAgain).toMatchObject([
+    {
+      status: 'rejected',
+      reason: {
+        message: expect.stringMatching(
+          /^impd did not add the image nixie-fetch-cccccccccccc from /u,
+        ),
+      },
+    },
+  ]);
 
   expect(ctx.state.read().images).toStrictEqual({
     isReady: false,

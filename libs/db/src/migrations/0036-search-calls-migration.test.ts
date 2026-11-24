@@ -48,14 +48,16 @@ test.each([
 ])('it refuses %s', async (_, day, count, check) => {
   const ctx = await setupTest();
 
-  const refused = await sql`insert into search_calls (day, count) values (${day}, ${count})`
-    .execute(ctx.db)
-    .then(
-      () => null,
-      (error: unknown) => error,
-    );
+  const settled = await Promise.allSettled([
+    sql`insert into search_calls (day, count) values (${day}, ${count})`.execute(ctx.db),
+  ]);
 
-  expect(refused).toMatchObject({
-    message: expect.stringContaining(`CHECK constraint failed: ${check}`),
-  });
+  expect(settled).toMatchObject([
+    {
+      status: 'rejected',
+      reason: {
+        message: expect.stringContaining(`CHECK constraint failed: ${check}`),
+      },
+    },
+  ]);
 });

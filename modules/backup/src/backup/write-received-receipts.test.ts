@@ -275,15 +275,22 @@ test('it keeps the set and its staged row when its receipt cannot be read', asyn
     },
   };
 
-  const refused = await writeReceivedReceipts({ writer: ctx.writer, storage }).then(
-    () => null,
-    (error: unknown) => error,
-  );
+  const settled = await Promise.allSettled([
+    writeReceivedReceipts({ writer: ctx.writer, storage }),
+  ]);
+
+  expect(settled).toMatchObject([
+    {
+      status: 'rejected',
+      reason: {
+        message: 'EIO: i/o error, read',
+      },
+    },
+  ]);
 
   const names = await readdir(join(ctx.dataDir, 'backup', '000000000003'));
   const rows = await sql`select state from backup_sets`.execute(ctx.writer.db);
 
-  expect(refused).toMatchObject({ message: 'EIO: i/o error, read' });
   expect(names).toIncludeSameMembers(['complete', 'receipt.json']);
   expect(rows.rows).toStrictEqual([{ state: 'staged' }]);
 });

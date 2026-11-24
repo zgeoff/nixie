@@ -32,24 +32,26 @@ test("it records the turn's spend and rethrows the error of a write that fails",
   const ctx = await setupTest();
   const step = await seedConversationStep(ctx.context);
 
-  const outcome = await withTurnSpendOnFailure(
-    ctx.context,
-    { spend: { taskID: 'conversation', dollars: 0.03 }, logger: ctx.logger },
-    () =>
-      writeStepCommit(ctx.context, step.claim, {
-        next: 'wait',
-        records: [],
-        acknowledged: [step.messageSequence],
-        timers: [{ dueAt: Number.NaN }],
-      }),
-  ).then(
-    () => null,
-    (error: unknown) => error,
-  );
+  const settled = await Promise.allSettled([
+    withTurnSpendOnFailure(
+      ctx.context,
+      { spend: { taskID: 'conversation', dollars: 0.03 }, logger: ctx.logger },
+      () =>
+        writeStepCommit(ctx.context, step.claim, {
+          next: 'wait',
+          records: [],
+          acknowledged: [step.messageSequence],
+          timers: [{ dueAt: Number.NaN }],
+        }),
+    ),
+  ]);
+
+  expect(settled).toStrictEqual([
+    { status: 'rejected', reason: new Error("a step's timer is due at NaN, which is no time") },
+  ]);
 
   const spends = await ctx.readSpends();
 
-  expect(outcome).toStrictEqual(new Error("a step's timer is due at NaN, which is no time"));
   expect(spends).toStrictEqual([{ taskID: 'conversation', dollars: 0.03 }]);
 });
 
@@ -79,22 +81,23 @@ test("it logs a spend write that fails, and rethrows the write's own error", asy
 
   await ctx.writer.stop();
 
-  const outcome = await withTurnSpendOnFailure(
-    ctx.context,
-    { spend: { taskID: 'conversation', dollars: 0.03 }, logger: ctx.logger },
-    () =>
-      writeStepCommit(ctx.context, step.claim, {
-        next: 'wait',
-        records: [],
-        acknowledged: [step.messageSequence],
-        timers: [{ dueAt: Number.NaN }],
-      }),
-  ).then(
-    () => null,
-    (error: unknown) => error,
-  );
+  const settled = await Promise.allSettled([
+    withTurnSpendOnFailure(
+      ctx.context,
+      { spend: { taskID: 'conversation', dollars: 0.03 }, logger: ctx.logger },
+      () =>
+        writeStepCommit(ctx.context, step.claim, {
+          next: 'wait',
+          records: [],
+          acknowledged: [step.messageSequence],
+          timers: [{ dueAt: Number.NaN }],
+        }),
+    ),
+  ]);
 
-  expect(outcome).toStrictEqual(new Error("a step's timer is due at NaN, which is no time"));
+  expect(settled).toStrictEqual([
+    { status: 'rejected', reason: new Error("a step's timer is due at NaN, which is no time") },
+  ]);
 
   expect(ctx.events).toStrictEqual([
     {

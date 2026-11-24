@@ -7,14 +7,18 @@ import { chromium } from 'playwright-core';
 import { makeStubDriver } from '../screen/make-stub-driver';
 import { makeBrowserHandler } from './make-browser-handler';
 
-const hasChromium = await chromium.launch({ headless: true }).then(
-  async (browser) => {
+const hasChromium = await chromium
+  .launch({ headless: true })
+  .catch(() => null)
+  .then(async (browser) => {
+    if (browser === null) {
+      return false;
+    }
+
     await browser.close();
 
     return true;
-  },
-  () => false,
-);
+  });
 
 async function setupTest() {
   const home = await mkdtemp(join(tmpdir(), 'browser-'));

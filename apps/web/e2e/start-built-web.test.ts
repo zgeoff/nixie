@@ -32,10 +32,9 @@ test('it stops the web server when the test finishes', async () => {
   const web = await startBuiltWeb(api.url, serverPath);
 
   onTestFinished(async () => {
-    const reached = await fetch(`${web.url}/health/live`).then(
-      () => true,
-      () => false,
-    );
+    const reached = await fetch(`${web.url}/health/live`)
+      .then(() => true)
+      .catch(() => false);
 
     expect(reached).toBeFalse();
   });

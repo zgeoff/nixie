@@ -23,10 +23,13 @@ function isCutDue(state: TurnState): boolean {
 const interruptReceiptSchema = z.looseObject({ still_queued: z.array(z.string()) });
 
 async function readCutReceipt(session: Query, state: TurnState): Promise<readonly string[] | null> {
-  const receipt = await session.interrupt().then(
-    (response) => interruptReceiptSchema.safeParse(response),
-    () => null,
-  );
+  const interrupted = await session
+    .interrupt()
+    .then((response) => ({ response }))
+    .catch(() => null);
+
+  const receipt =
+    interrupted === null ? null : interruptReceiptSchema.safeParse(interrupted.response);
 
   const stillQueued = receipt?.success === true ? receipt.data.still_queued : [];
 

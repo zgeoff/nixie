@@ -9,19 +9,15 @@ test('it throws on the first call', () => {
   }).toThrowWithMessage(Error, 'the logger refused definitions.seeded');
 });
 
-test('it records every event after the first call', async () => {
+test('it records every event after the first call', () => {
   const stub = buildStubFailingLogger();
 
-  const first = await Promise.try(() => {
+  expect(() => {
     stub.log('definitions.seeded');
-  }).then(
-    () => null,
-    (error: unknown) => error,
-  );
+  }).toThrow(Error);
 
   stub.log('definitions.seeded');
   stub.log('definitions.probed');
 
-  expect(first).toBeInstanceOf(Error);
   expect(stub.events).toStrictEqual(['definitions.seeded', 'definitions.probed']);
 });

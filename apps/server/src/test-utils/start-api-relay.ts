@@ -12,19 +12,23 @@ export interface APIRelay {
 export function startAPIRelay(): APIRelay {
   const target: { url: string | null } = { url: null };
 
-  const forwardRequest = (request: Request) => {
+  const forwardRequest = async (request: Request) => {
     if (target.url === null) {
       return new Response(null, { status: 502 });
     }
 
     const url = new URL(request.url);
+    const forwarded = new Request(`${target.url}${url.pathname}${url.search}`, request);
 
-    return fetch(new Request(`${target.url}${url.pathname}${url.search}`, request), {
-      redirect: 'manual',
-    }).then(
-      (response) => buildEndingResponse(response),
-      () => new Response(null, { status: 502 }),
-    );
+    let response: Response;
+
+    try {
+      response = await fetch(forwarded, { redirect: 'manual' });
+    } catch {
+      return new Response(null, { status: 502 });
+    }
+
+    return buildEndingResponse(response);
   };
 
   const server = Bun.serve({ fetch: forwardRequest, hostname: '127.0.0.1', port: 0 });

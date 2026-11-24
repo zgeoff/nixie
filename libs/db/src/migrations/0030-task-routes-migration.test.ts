@@ -86,13 +86,10 @@ test('it refuses a route for a message the log does not hold', async () => {
   await sql`insert into records (sequence, recorded_at, kind, snapshot_hash, payload)
     values (1, 1767225600000, 'task.routed', 'snapshot-a', '{}')`.execute(ctx.db);
 
-  const refused = await sql`insert into message_routes (message_sequence, task_id, routed_sequence)
-    values (7, 'k3x9m2p7qa', 1)`
-    .execute(ctx.db)
-    .then(
-      () => null,
-      (error: unknown) => error,
-    );
+  const settled = await Promise.allSettled([
+    sql`insert into message_routes (message_sequence, task_id, routed_sequence)
+    values (7, 'k3x9m2p7qa', 1)`.execute(ctx.db),
+  ]);
 
-  expect(refused).toBeInstanceOf(Error);
+  expect(settled).toMatchObject([{ status: 'rejected', reason: expect.any(Error) }]);
 });

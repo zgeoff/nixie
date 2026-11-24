@@ -15,14 +15,18 @@ import { makeBrowserHandler } from './browser/make-browser-handler';
 import { makeComputerHandler } from './make-computer-handler';
 import { makeScanChannel } from './make-scan-channel';
 
-const hasChromium = await chromium.launch({ headless: true }).then(
-  async (browser) => {
+const hasChromium = await chromium
+  .launch({ headless: true })
+  .catch(() => null)
+  .then(async (browser) => {
+    if (browser === null) {
+      return false;
+    }
+
     await browser.close();
 
     return true;
-  },
-  () => false,
-);
+  });
 
 async function setupTest() {
   const home = await mkdtemp(join(tmpdir(), 'computer-'));

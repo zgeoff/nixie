@@ -97,18 +97,13 @@ test('it fails an add when the counter directory is gone, and the next add still
 
   await rm(ctx.directory, { recursive: true });
 
-  const failed = await store.add({ dollars: 1, tokens: 1 }).then(
-    () => null,
-    (error: unknown) => error,
-  );
+  const settled = await Promise.allSettled([store.add({ dollars: 1, tokens: 1 })]);
 
-  const next = await store.add({ dollars: 1, tokens: 1 }).then(
-    () => null,
-    (error: unknown) => error,
-  );
+  expect(settled).toMatchObject([{ status: 'rejected', reason: expect.any(Error) }]);
 
-  expect(failed).toBeInstanceOf(Error);
-  expect(next).toBeInstanceOf(Error);
+  const settledAgain = await Promise.allSettled([store.add({ dollars: 1, tokens: 1 })]);
+
+  expect(settledAgain).toMatchObject([{ status: 'rejected', reason: expect.any(Error) }]);
 });
 
 test('it settles once every add made so far has written', async () => {

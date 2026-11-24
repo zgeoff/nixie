@@ -41,28 +41,31 @@ test('#pause refuses a stopped task, naming its state', async () => {
 
   await ctx.client.stop({ taskID });
 
-  const refused = await ctx.client.pause({ taskID }).then(
-    () => null,
-    (error: unknown) => error,
-  );
+  const settled = await Promise.allSettled([ctx.client.pause({ taskID })]);
 
-  expect(refused).toMatchObject({
-    code: 'TASK_STATE_REFUSED',
-    message: `task ${taskID} is stopped, which does not take this control`,
-  });
+  expect(settled).toMatchObject([
+    {
+      status: 'rejected',
+      reason: {
+        code: 'TASK_STATE_REFUSED',
+        message: `task ${taskID} is stopped, which does not take this control`,
+      },
+    },
+  ]);
 });
 
 test('#resume refuses a task that does not exist', async () => {
   const ctx = await setupTest();
+  const settled = await Promise.allSettled([ctx.client.resume({ taskID: 'k3x9m2p7qa' })]);
 
-  const refused = await ctx.client.resume({ taskID: 'k3x9m2p7qa' }).then(
-    () => null,
-    (error: unknown) => error,
-  );
-
-  expect(refused).toMatchObject({
-    code: 'TASK_NOT_FOUND',
-  });
+  expect(settled).toMatchObject([
+    {
+      status: 'rejected',
+      reason: {
+        code: 'TASK_NOT_FOUND',
+      },
+    },
+  ]);
 });
 
 test('#close refuses to close the conversation', async () => {
@@ -70,29 +73,32 @@ test('#close refuses to close the conversation', async () => {
 
   await createConversationTask(ctx.context);
 
-  const refused = await ctx.client.close({ taskID: 'conversation' }).then(
-    () => null,
-    (error: unknown) => error,
-  );
+  const settled = await Promise.allSettled([ctx.client.close({ taskID: 'conversation' })]);
 
-  expect(refused).toMatchObject({
-    code: 'CONVERSATION_NEVER_CLOSES',
-  });
+  expect(settled).toMatchObject([
+    {
+      status: 'rejected',
+      reason: {
+        code: 'CONVERSATION_NEVER_CLOSES',
+      },
+    },
+  ]);
 });
 
 test('#interrupt refuses a task with no running step', async () => {
   const ctx = await setupTest();
   const taskID = await createTask(ctx.context, 'sort the receipts');
+  const settled = await Promise.allSettled([ctx.client.interrupt({ taskID })]);
 
-  const refused = await ctx.client.interrupt({ taskID }).then(
-    () => null,
-    (error: unknown) => error,
-  );
-
-  expect(refused).toMatchObject({
-    code: 'TASK_STATE_REFUSED',
-    message: `task ${taskID} is ready, which does not take this control`,
-  });
+  expect(settled).toMatchObject([
+    {
+      status: 'rejected',
+      reason: {
+        code: 'TASK_STATE_REFUSED',
+        message: `task ${taskID} is ready, which does not take this control`,
+      },
+    },
+  ]);
 });
 
 test('#resume refuses a task that its limit paused, naming the raise', async () => {
@@ -104,15 +110,17 @@ test('#resume refuses a task that its limit paused, naming the raise', async () 
     limits: { turns: 3, dollars: 1 },
   });
 
-  const refused = await ctx.client.resume({ taskID }).then(
-    () => null,
-    (error: unknown) => error,
-  );
+  const settled = await Promise.allSettled([ctx.client.resume({ taskID })]);
 
-  expect(refused).toMatchObject({
-    code: 'TASK_STATE_REFUSED',
-    message: `task ${taskID} reached its limit, and only a raise of the limit resumes it`,
-  });
+  expect(settled).toMatchObject([
+    {
+      status: 'rejected',
+      reason: {
+        code: 'TASK_STATE_REFUSED',
+        message: `task ${taskID} reached its limit, and only a raise of the limit resumes it`,
+      },
+    },
+  ]);
 });
 
 test('#raise resumes a task that its limit paused, under the raised limits', async () => {
@@ -138,13 +146,17 @@ test('#raise resumes a task that its limit paused, under the raised limits', asy
 test('#raise refuses a task that its limit does not hold', async () => {
   const ctx = await setupTest();
   const taskID = await createTask(ctx.context, 'sort the receipts');
+  const settled = await Promise.allSettled([ctx.client.raise({ taskID, turns: 9 })]);
 
-  const refused = await ctx.client.raise({ taskID, turns: 9 }).then(
-    () => null,
-    (error: unknown) => error,
-  );
-
-  expect(refused).toMatchObject({ code: 'TASK_NOT_AT_LIMIT', status: 409 });
+  expect(settled).toMatchObject([
+    {
+      status: 'rejected',
+      reason: {
+        code: 'TASK_NOT_AT_LIMIT',
+        status: 409,
+      },
+    },
+  ]);
 });
 
 test('#raise refuses limits that are not above the old ones', async () => {
@@ -156,23 +168,32 @@ test('#raise refuses limits that are not above the old ones', async () => {
     limits: { turns: 3, dollars: 1 },
   });
 
-  const refused = await ctx.client.raise({ taskID, turns: 3 }).then(
-    () => null,
-    (error: unknown) => error,
-  );
+  const settled = await Promise.allSettled([ctx.client.raise({ taskID, turns: 3 })]);
 
-  expect(refused).toMatchObject({ code: 'LIMIT_NOT_RAISED', status: 409 });
+  expect(settled).toMatchObject([
+    {
+      status: 'rejected',
+      reason: {
+        code: 'LIMIT_NOT_RAISED',
+        status: 409,
+      },
+    },
+  ]);
 });
 
 test('#raise refuses a task that does not exist', async () => {
   const ctx = await setupTest();
+  const settled = await Promise.allSettled([ctx.client.raise({ taskID: 'k3vq8m2xpa', turns: 9 })]);
 
-  const refused = await ctx.client.raise({ taskID: 'k3vq8m2xpa', turns: 9 }).then(
-    () => null,
-    (error: unknown) => error,
-  );
-
-  expect(refused).toMatchObject({ code: 'TASK_NOT_FOUND', status: 404 });
+  expect(settled).toMatchObject([
+    {
+      status: 'rejected',
+      reason: {
+        code: 'TASK_NOT_FOUND',
+        status: 404,
+      },
+    },
+  ]);
 });
 
 test('#resume exempts a ready task while nixie is paused, by the host', async () => {

@@ -124,10 +124,7 @@ test('it stops reading earlier pages after one fails, and reads it again on a re
   const client = buildBrowserClient();
 
   // Each probe reaches the recorder after any read the hook started before it.
-  await client.conversation.read({ thread: 'p7hd2wq9zn' }).then(
-    () => null,
-    (error: unknown) => error,
-  );
+  await client.conversation.read({ thread: 'p7hd2wq9zn' }).catch(() => null);
 
   const readsAfterFocus = reads.mock.calls.length;
 
@@ -145,10 +142,7 @@ test('it stops reading earlier pages after one fails, and reads it again on a re
 
   hook.rerender();
 
-  await client.conversation.read({ thread: 'p7hd2wq9zn' }).then(
-    () => null,
-    (error: unknown) => error,
-  );
+  await client.conversation.read({ thread: 'p7hd2wq9zn' }).catch(() => null);
 
   expect(readsAfterFocus).toBe(2);
 

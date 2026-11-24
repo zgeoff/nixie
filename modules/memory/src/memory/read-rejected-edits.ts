@@ -44,12 +44,15 @@ export function readRejectedEdits(
     });
 
     const texts = await Promise.all(
-      readable.map((row) =>
-        decodeProposalText(row.key, row.proposal_id, row.sealed).then(
-          (proposed) => [row.proposal_id, proposed.text] as const,
-          () => null,
-        ),
-      ),
+      readable.map(async (row) => {
+        try {
+          const proposed = await decodeProposalText(row.key, row.proposal_id, row.sealed);
+
+          return [row.proposal_id, proposed.text] as const;
+        } catch {
+          return null;
+        }
+      }),
     );
 
     return new Map(texts.filter((entry) => entry !== null));

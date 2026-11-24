@@ -473,12 +473,17 @@ test.each([
     apiURL: githubAPIURL,
   });
 
-  const refusal = await repo.readFile('nixie.yaml', 'main').then(
-    () => null,
-    (error: unknown) => error,
-  );
+  const settled = await Promise.allSettled([repo.readFile('nixie.yaml', 'main')]);
 
-  expect(refusal).toMatchObject({ name: 'GitHubRequestError', status: null });
+  expect(settled).toMatchObject([
+    {
+      status: 'rejected',
+      reason: {
+        name: 'GitHubRequestError',
+        status: null,
+      },
+    },
+  ]);
 });
 
 test('it refuses a request GitHub refuses, with its status and never the token', async () => {
@@ -491,15 +496,17 @@ test('it refuses a request GitHub refuses, with its status and never the token',
     apiURL: githubAPIURL,
   });
 
-  const refusal = await repo.readBaseRevision().then(
-    () => null,
-    (error: unknown) => error,
+  const refusal = repo.readBaseRevision();
+
+  const settled = await Promise.allSettled([refusal]);
+
+  expect(settled).toMatchObject([
+    { status: 'rejected', reason: { name: 'GitHubRequestError', status: 401 } },
+  ]);
+
+  expect(refusal).rejects.toSatisfy(
+    (raised: unknown) => raised instanceof Error && !raised.message.includes('token-b'),
   );
-
-  invariant(refusal instanceof Error);
-
-  expect(refusal).toMatchObject({ name: 'GitHubRequestError', status: 401 });
-  expect(refusal.message).not.toInclude('token-b');
 });
 
 test('it redacts the token that GitHub echoes in a refusal, and drops the rest of the body', async () => {
@@ -522,14 +529,18 @@ test('it redacts the token that GitHub echoes in a refusal, and drops the rest o
     apiURL: githubAPIURL,
   });
 
-  const refusal = await repo.readBaseRevision().then(
-    () => null,
-    (error: unknown) => error,
+  const refusal = repo.readBaseRevision();
+
+  const settled = await Promise.allSettled([refusal]);
+
+  expect(settled).toMatchObject([
+    { status: 'rejected', reason: { name: 'GitHubRequestError', status: 401 } },
+  ]);
+
+  expect(refusal).rejects.toSatisfy(
+    (raised: unknown) =>
+      raised instanceof Error &&
+      !raised.message.includes('opaque-installation-secret') &&
+      !raised.message.includes('docs.example.test'),
   );
-
-  invariant(refusal instanceof Error);
-
-  expect(refusal.message).not.toInclude('opaque-installation-secret');
-  expect(refusal.message).not.toInclude('docs.example.test');
-  expect(refusal).toMatchObject({ name: 'GitHubRequestError', status: 401 });
 });

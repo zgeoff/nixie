@@ -240,14 +240,14 @@ test('it opens the pull request and rejects the write when its answer is lost, a
 
   ctx.repo.loseNextAnswer();
 
-  const lost = await ctx.repo.writePullRequest(change, 'revision-a').then(
-    () => null,
-    (error: unknown) => error,
-  );
+  const settled = await Promise.allSettled([ctx.repo.writePullRequest(change, 'revision-a')]);
+
+  expect(settled).toStrictEqual([
+    { status: 'rejected', reason: new Error('the answer to the pull request write was lost') },
+  ]);
 
   const next = await ctx.repo.writePullRequest(change, 'revision-b');
 
-  expect(lost).toStrictEqual(new Error('the answer to the pull request write was lost'));
   expect(next).toStrictEqual({ number: 1, url: 'https://definitions.test/pull/1' });
   expect(ctx.repo.readPullRequests().map((request) => request.number)).toStrictEqual([1]);
 });

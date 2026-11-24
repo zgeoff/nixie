@@ -4,14 +4,18 @@ import { makeOriginLog } from '../takeover/make-origin-log';
 import { trackHoldPages } from './track-hold-pages';
 import type { BrowserState } from './types';
 
-const hasChromium = await chromium.launch({ headless: true }).then(
-  async (browser) => {
+const hasChromium = await chromium
+  .launch({ headless: true })
+  .catch(() => null)
+  .then(async (browser) => {
+    if (browser === null) {
+      return false;
+    }
+
     await browser.close();
 
     return true;
-  },
-  () => false,
-);
+  });
 
 async function setupTest() {
   const browser = await chromium.launch({ headless: true });

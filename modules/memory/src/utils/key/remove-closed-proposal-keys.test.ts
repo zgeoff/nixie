@@ -105,10 +105,10 @@ test('it finishes on the next lapse sweep a key removal whose checkpoint a reade
 
   clock.advance(5000);
 
-  const blocked = await memory.store.proposals.lapse().then(
-    () => 'finished',
-    () => 'blocked',
-  );
+  const blocked = await memory.store.proposals
+    .lapse()
+    .then(() => 'finished')
+    .catch(() => 'blocked');
 
   await reader.release();
   await memory.store.proposals.lapse();

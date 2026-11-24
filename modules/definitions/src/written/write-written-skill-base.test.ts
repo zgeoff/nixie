@@ -122,12 +122,13 @@ test('it refuses a written skill that left force', async () => {
     });
   });
 
-  const refusal = await withWriteTransaction(ctx.writer, (tx) =>
-    writeWrittenSkillBase(tx, { approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31', at: 3 }),
-  ).then(
-    () => null,
-    (error: unknown) => error,
-  );
+  const settled = await Promise.allSettled([
+    withWriteTransaction(ctx.writer, (tx) =>
+      writeWrittenSkillBase(tx, { approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31', at: 3 }),
+    ),
+  ]);
 
-  expect(refusal).toMatchObject({ name: 'WrittenSkillStateError', state: 'retired' });
+  expect(settled).toMatchObject([
+    { status: 'rejected', reason: { name: 'WrittenSkillStateError', state: 'retired' } },
+  ]);
 });

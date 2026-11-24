@@ -23,13 +23,18 @@ export async function runItemLapses(parts: StoreParts): Promise<number> {
   const failures: unknown[] = [];
 
   for (const row of due) {
-    const outcome = await tryWriteLapse(parts, {
-      itemID: row.item_id,
-      version: row.version + row.label_edits,
-    }).then(
-      (isLapsed) => ({ isLapsed, error: null }),
-      (error: unknown) => ({ isLapsed: false, error }),
-    );
+    let outcome: { isLapsed: boolean; error: unknown };
+
+    try {
+      const isLapsed = await tryWriteLapse(parts, {
+        itemID: row.item_id,
+        version: row.version + row.label_edits,
+      });
+
+      outcome = { isLapsed, error: null };
+    } catch (error: unknown) {
+      outcome = { isLapsed: false, error };
+    }
 
     if (outcome.isLapsed) {
       lapsed += 1;

@@ -403,10 +403,9 @@ async function runTaskTurn(
       ...input,
       interrupt: AbortSignal.any([input.interrupt, budget.signal]),
     },
-  ).then(
-    (result) => ({ result, error: null }),
-    (error: unknown) => ({ result: null, error }),
-  );
+  )
+    .then((result) => ({ result, error: null }))
+    .catch((error: unknown) => ({ result: null, error }));
 
   const isPauseRequested = await probePauseRequested(context.log.writer.db, input.taskID);
 

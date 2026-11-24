@@ -151,20 +151,23 @@ test('it refuses a session, memory, skill or prompt procedure with 503 while the
     client.prompts.proposals.list(),
   ];
 
-  const refusals = await Promise.all(
-    calls.map((call) =>
-      call.then(
-        () => null,
-        (error: unknown) => error,
-      ),
-    ),
-  );
-
-  expect(refusals).toMatchObject([
-    { code: 'SERVICE_UNAVAILABLE', status: 503, message: 'nixie is resetting' },
-    { code: 'SERVICE_UNAVAILABLE', status: 503, message: 'nixie is resetting' },
-    { code: 'SERVICE_UNAVAILABLE', status: 503, message: 'nixie is resetting' },
-    { code: 'SERVICE_UNAVAILABLE', status: 503, message: 'nixie is resetting' },
+  expect(Promise.allSettled(calls)).resolves.toMatchObject([
+    {
+      status: 'rejected',
+      reason: { code: 'SERVICE_UNAVAILABLE', status: 503, message: 'nixie is resetting' },
+    },
+    {
+      status: 'rejected',
+      reason: { code: 'SERVICE_UNAVAILABLE', status: 503, message: 'nixie is resetting' },
+    },
+    {
+      status: 'rejected',
+      reason: { code: 'SERVICE_UNAVAILABLE', status: 503, message: 'nixie is resetting' },
+    },
+    {
+      status: 'rejected',
+      reason: { code: 'SERVICE_UNAVAILABLE', status: 503, message: 'nixie is resetting' },
+    },
   ]);
 });
 

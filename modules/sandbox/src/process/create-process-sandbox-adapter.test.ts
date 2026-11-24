@@ -616,14 +616,19 @@ test('it refuses to move a file onto a directory, and keeps the file', async () 
     { path: '/work/dir/b.txt', content: new TextEncoder().encode('b') },
   ]);
 
-  const failure = await sandbox.applyMove('/work/a.txt', '/work/dir').then(
-    () => null,
-    (error: unknown) => error,
-  );
+  const settled = await Promise.allSettled([sandbox.applyMove('/work/a.txt', '/work/dir')]);
+
+  expect(settled).toMatchObject([
+    {
+      status: 'rejected',
+      reason: {
+        code: 'EISDIR',
+      },
+    },
+  ]);
 
   const listed = await sandbox.readFilePaths('/work');
 
-  expect(failure).toMatchObject({ code: 'EISDIR' });
   expect(listed).toIncludeSameMembers(['a.txt', 'dir/b.txt']);
 });
 

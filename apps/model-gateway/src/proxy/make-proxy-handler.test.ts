@@ -1022,18 +1022,15 @@ test('it counts the estimate, so the next request passes, when a streamed reply 
     );
 
   const broken = await sendRequest();
+  const settled = await Promise.allSettled([broken.text()]);
 
-  const read = await broken.text().then(
-    () => null,
-    (error: unknown) => error,
-  );
+  expect(settled).toMatchObject([{ status: 'rejected', reason: expect.any(Error) }]);
 
   // Read the counter before the next request: its own estimate lands in the background
   const counted = await store.read();
   const later = await sendRequest();
 
   // 4,165 input tokens at the highest input rate, $2, and 1,000 output tokens at $5, per million
-  expect(read).toBeInstanceOf(Error);
   expect([later.status, counted.lost, counted.tokens]).toStrictEqual([200, false, 5165]);
   expect(sendUpstream).toHaveBeenCalledTimes(2);
 

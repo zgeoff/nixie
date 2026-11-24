@@ -47,15 +47,9 @@ test('it refuses a second open task run of one task', async () => {
 
   await ctx.buildInsert('run-a', 't4m2').execute(ctx.db);
 
-  const second = await ctx
-    .buildInsert('run-b', 't4m2')
-    .execute(ctx.db)
-    .then(
-      () => null,
-      (error: unknown) => error,
-    );
+  const settled = await Promise.allSettled([ctx.buildInsert('run-b', 't4m2').execute(ctx.db)]);
 
-  expect(second).toBeInstanceOf(Error);
+  expect(settled).toMatchObject([{ status: 'rejected', reason: expect.any(Error) }]);
 });
 
 test('it takes a second open task run of another task', async () => {
@@ -89,12 +83,9 @@ test('it refuses an ended task run that holds no end record', async () => {
 
   await ctx.buildInsert('run-a', 't4m2').execute(ctx.db);
 
-  const refused = await sql`update task_runs set ended_sequence = 1 where run_id = 'run-a'`
-    .execute(ctx.db)
-    .then(
-      () => null,
-      (error: unknown) => error,
-    );
+  const settled = await Promise.allSettled([
+    sql`update task_runs set ended_sequence = 1 where run_id = 'run-a'`.execute(ctx.db),
+  ]);
 
-  expect(refused).toBeInstanceOf(Error);
+  expect(settled).toMatchObject([{ status: 'rejected', reason: expect.any(Error) }]);
 });

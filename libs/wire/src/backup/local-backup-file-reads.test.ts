@@ -26,12 +26,18 @@ test('it lists the names in a directory', async () => {
 test('it fails the listing of a directory that does not exist with ENOENT', async () => {
   const ctx = await setupTest();
 
-  const refused = await localBackupFileReads.readDirectory(join(ctx.directory, 'missing')).then(
-    () => null,
-    (error: unknown) => error,
-  );
+  const settled = await Promise.allSettled([
+    localBackupFileReads.readDirectory(join(ctx.directory, 'missing')),
+  ]);
 
-  expect(refused).toMatchObject({ code: 'ENOENT' });
+  expect(settled).toMatchObject([
+    {
+      status: 'rejected',
+      reason: {
+        code: 'ENOENT',
+      },
+    },
+  ]);
 });
 
 test('it reads whether a file exists', async () => {

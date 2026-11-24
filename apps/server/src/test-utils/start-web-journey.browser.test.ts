@@ -37,16 +37,14 @@ test('it stops nixie and the origin, and closes the view, when the test finishes
   const journey = await startWebJourney();
 
   onTestFinished(async () => {
-    const reached = await fetch(`${journey.appURL}/`).then(
-      () => true,
-      () => false,
-    );
+    const reached = await fetch(`${journey.appURL}/`)
+      .then(() => true)
+      .catch(() => false);
 
     // a closed view throws from evaluate before it returns a promise
-    const viewUsed = await Promise.try(() => journey.view.evaluate('1')).then(
-      () => true,
-      () => false,
-    );
+    const viewUsed = await Promise.try(() => journey.view.evaluate('1'))
+      .then(() => true)
+      .catch(() => false);
 
     expect({
       isNixieGone: probeProcessGone(journey.server.pid),

@@ -46,28 +46,33 @@ interface StoredAttachment extends SealedAttachment {
   readonly key_id: string | null;
 }
 
-function decodeRecordAttachments(
+async function decodeRecordAttachments(
   sealed: readonly StoredAttachment[],
   keys: ReadonlyMap<string, CryptoKey | null>,
 ): Promise<RecordAttachments> {
   const keyID = sealed[0]?.key_id;
 
   if (keyID === undefined || keyID === null) {
-    return Promise.resolve({ status: 'none' });
+    return { status: 'none' };
   }
 
   const key = keys.get(keyID);
 
   if (key === undefined) {
-    return Promise.resolve({ status: 'shredded' });
+    return { status: 'shredded' };
   }
 
   if (key === null) {
-    return Promise.resolve({ status: 'unreadable' });
+    return { status: 'unreadable' };
   }
 
-  return Promise.all(sealed.map((attachment) => decodeAttachment(key, keyID, attachment))).then(
-    (attachments): RecordAttachments => ({ status: 'readable', attachments }),
-    (): RecordAttachments => ({ status: 'unreadable' }),
-  );
+  try {
+    const attachments = await Promise.all(
+      sealed.map((attachment) => decodeAttachment(key, keyID, attachment)),
+    );
+
+    return { status: 'readable', attachments };
+  } catch {
+    return { status: 'unreadable' };
+  }
 }

@@ -145,10 +145,9 @@ test('it stops the proxy when the test finishes', () => {
   const proxy = startFrontProxy({ apiURL: ctx.apiURL, webURL: ctx.webURL });
 
   onTestFinished(async () => {
-    const reached = await fetch(proxy.url).then(
-      () => true,
-      () => false,
-    );
+    const reached = await fetch(proxy.url)
+      .then(() => true)
+      .catch(() => false);
 
     expect(reached).toBeFalse();
   });

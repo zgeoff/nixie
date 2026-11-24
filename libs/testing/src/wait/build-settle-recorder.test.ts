@@ -22,12 +22,9 @@ test('it records one settle before it passes on the error of a call that rejects
     Promise.reject(new TypeError('impd refused the call')),
   );
 
-  const rejection = await recorder.check('impd').then(
-    () => null,
-    (error: unknown) => error,
-  );
+  const settled = await Promise.allSettled([recorder.check('impd')]);
 
-  expect(rejection).toBeInstanceOf(TypeError);
+  expect(settled).toMatchObject([{ status: 'rejected', reason: expect.any(TypeError) }]);
   expect(recorder.settled).toHaveBeenCalledOnce();
 });
 

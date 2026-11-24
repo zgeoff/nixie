@@ -176,18 +176,18 @@ test('#approve refuses edited files that fail the seed checks with their code', 
     },
   ]);
 
-  const refusal = await ctx.client
-    .approve({
+  const settled = await Promise.allSettled([
+    ctx.client.approve({
       proposalID: 'p8w2n4c6ld',
       skillHash: skill.skillHash,
       files: [{ path: 'SKILL.md', text: '# Stars, with no frontmatter\n' }],
-    })
-    .then(
-      () => null,
-      (error: unknown) => error,
-    );
+    }),
+  ]);
 
-  expect(refusal).toMatchObject({ code: 'SKILL_CHECK', status: 400 });
+  expect(settled).toMatchObject([
+    { status: 'rejected', reason: { code: 'SKILL_CHECK', status: 400 } },
+  ]);
+
   expect(ctx.runInForceSeed).not.toHaveBeenCalled();
 });
 
@@ -236,14 +236,14 @@ test('#approve refuses a proposal whose base the skill in force moved past with 
     },
   ]);
 
-  const refusal = await ctx.client
-    .approve({ proposalID: 'p8w2n4c6ld', skillHash: skill.skillHash })
-    .then(
-      () => null,
-      (error: unknown) => error,
-    );
+  const settled = await Promise.allSettled([
+    ctx.client.approve({ proposalID: 'p8w2n4c6ld', skillHash: skill.skillHash }),
+  ]);
 
-  expect(refusal).toMatchObject({ code: 'STALE_BASE', status: 409 });
+  expect(settled).toMatchObject([
+    { status: 'rejected', reason: { code: 'STALE_BASE', status: 409 } },
+  ]);
+
   expect(ctx.runInForceSeed).not.toHaveBeenCalled();
 });
 
@@ -309,12 +309,11 @@ test('#reject answers a closed proposal with its typed code', async () => {
     },
   ]);
 
-  const refusal = await ctx.client
-    .reject({ proposalID: 'p8w2n4c6ld', skillHash: 'hash-c', reason: 'not now' })
-    .then(
-      () => null,
-      (error: unknown) => error,
-    );
+  const settled = await Promise.allSettled([
+    ctx.client.reject({ proposalID: 'p8w2n4c6ld', skillHash: 'hash-c', reason: 'not now' }),
+  ]);
 
-  expect(refusal).toMatchObject({ code: 'PROPOSAL_CLOSED', status: 409 });
+  expect(settled).toMatchObject([
+    { status: 'rejected', reason: { code: 'PROPOSAL_CLOSED', status: 409 } },
+  ]);
 });

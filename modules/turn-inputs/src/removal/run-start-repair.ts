@@ -145,10 +145,9 @@ async function markMissingRows(ctx: TurnInputsContext): Promise<void> {
     .execute();
 
   for (const row of rows) {
-    const hasFile = await access(join(ctx.storeDir, `${row.input_id}.bin`)).then(
-      () => true,
-      () => false,
-    );
+    const hasFile = await access(join(ctx.storeDir, `${row.input_id}.bin`))
+      .then(() => true)
+      .catch(() => false);
 
     if (!hasFile) {
       await withWriteTransaction(ctx.log.writer, (tx) =>

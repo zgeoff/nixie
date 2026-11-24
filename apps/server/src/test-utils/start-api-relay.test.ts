@@ -111,10 +111,9 @@ test('it stops the relay when the test finishes', () => {
   const ctx = setupTest();
 
   onTestFinished(async () => {
-    const reached = await fetch(`${ctx.relay.url}/health/ready`).then(
-      () => true,
-      () => false,
-    );
+    const reached = await fetch(`${ctx.relay.url}/health/ready`)
+      .then(() => true)
+      .catch(() => false);
 
     expect(reached).toBeFalse();
   });
