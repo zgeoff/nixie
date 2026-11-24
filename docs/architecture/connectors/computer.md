@@ -26,9 +26,10 @@ memory and disk. The image `nixie-computer` comes from `guests/computer`.
 The desktop runs Xvfb as the display, openbox as the window manager, xterm as the terminal and
 x11vnc as a VNC server. The display is 1280 by 800. The VNC server listens on a Unix socket in a
 directory that only the screen's account can open, and on no TCP port, so the browser and the
-terminal cannot reach it. Selection and clipboard exchange are off, and so are the remote control
-commands that an X client can send it through the display, which Chromium is. The VNC server accepts
-the keys and pointer of a viewer, and the relay passes them only while a device
+terminal cannot reach it. The primary selection is off, and so are the remote control commands that
+an X client can send it through the display, which Chromium is. The clipboard is on, for the
+[copy and paste](#copy-and-paste) of a take-over. The VNC server accepts the keys, pointer and
+clipboard text of a viewer, and the relay passes them only while a device
 [holds the desktop](#taking-over). The user's client reaches it as [Watching](#watching) says.
 
 Chromium runs in the time zone of `time.default_zone` in the config, so a page that shows "today" or
@@ -324,12 +325,14 @@ connector side, `openComputerWatch`, does the rest for each socket:
   never takes the turn for longer than that start, so a call never answers `BUSY` because of one.
 - The relay lets through the messages that a viewer needs: the handshake, `SetPixelFormat`,
   `SetEncodings` and `FramebufferUpdateRequest`. It passes `KeyEvent` and `PointerEvent` only while
-  the viewer's device holds the desktop, and drops them silently otherwise. It always drops
-  `ClientCutText` silently, and closes the socket and the stream on a message that is malformed,
-  unknown or past a size cap, including a `SetPixelFormat` with an invalid pixel format. It reads
-  the length of a `ClientCutText` as signed, because a viewer that speaks the extended clipboard
-  format sends a negative one. While the sandbox wakes, it queues the viewer's bytes up to a cap far
-  above what a viewer sends before it hears from the desktop, and closes the socket past it.
+  the viewer's device holds the desktop, and drops them silently otherwise. It passes a
+  `ClientCutText` the same way, and always drops the extended clipboard format, and closes the
+  socket and the stream on a message that is malformed, unknown or past a size cap, including a
+  `SetPixelFormat` with an invalid pixel format. It reads the length of a `ClientCutText` as signed,
+  because a viewer that speaks the extended clipboard format sends a negative one. A passed
+  `ClientCutText` goes on as its bytes arrive, and counts as input that holds off the idle
+  hand-back. While the sandbox wakes, it queues the viewer's bytes up to a cap far above what a
+  viewer sends before it hears from the desktop, and closes the socket past it.
 
 ## Taking over
 
@@ -367,17 +370,40 @@ device holds the desktop at a time, and the hold lives in memory only.
   address from the browser, never from a page. Playwright turns on focus emulation for each page, so
   Chromium reports every tab as visible: a background tab's navigation is listed too, and a switch
   to a tab that does not navigate is not. A tab that the person opens joins the tabs, so a hand-back
-  names it. At the end, nixie reads the sites, the window in focus and the terminal's text, if the
-  terminal is in focus. The text that the screen cleared is not in the terminal's text.
+  names it. At the end, nixie reads the sites, every open tab, the window in focus and the
+  terminal's text, if the terminal is in focus. The text that the screen cleared is not in the
+  terminal's text.
+- The hand-back lists every open tab with the tab ID the assistant names it by and its site, the
+  scheme and host alone, or "a blank page" for a tab that shows no web page. A tab that the
+  assistant has no name for gets the next one, so the assistant can read and click it. A window in
+  focus that is neither a browser tab nor the terminal gives its title, read from the display, which
+  the assistant reads inside the untrusted-text markers because any program can set it. When the
+  browser closed and started again during the hold, the guest says so, nixie forgets the tab names
+  it held, and the hand-back says that the earlier tabs are gone.
 
 A hold writes 2 records on the conversation's thread. `computer.takeover_started` names the device
 and wakes nothing. `computer.takeover_ended` names what ended the hold, which is `user`,
 `assistant`, `idle` or `restart`, and for how long, and wakes the assistant. Both carry a short ID.
-The ended record keeps the sites and the window in focus as
+The ended record keeps the sites, the tabs and the window in focus as
 [erasable fields](../core/erasable-fields.md), so a forget of the record erases them. The assistant
 reads the window's text inside the untrusted-text markers of a page read. Each marker carries a
 random ID that the text never holds, so the text cannot close the block early. The assistant names
 the record by its short ID.
+
+### Copy and paste
+
+While a device holds the desktop, the user can paste text into the take-over screen and copy text
+out of it, through the VNC connection's own clipboard messages. The page reads the user's clipboard
+only for a paste the user makes, which carries the text in its event, and never on its own.
+
+- A paste sets the desktop's clipboard with a `ClientCutText` and then presses the paste chord, so
+  the text reaches the field in focus. The page holds back the user's own paste chord, which would
+  reach the desktop before the text does. The legacy message carries ISO 8859-1 text, so a character
+  outside it arrives as a question mark.
+- Text that a program on the desktop copies reaches every viewer as a `ServerCutText`, and the page
+  writes it to the user's clipboard only while this device holds the desktop. A browser that refuses
+  a write that no gesture asked for leaves the text on the desktop.
+- The primary selection stays off, so a selection never moves without a copy or a paste.
 
 ## Asking for a take-over
 
