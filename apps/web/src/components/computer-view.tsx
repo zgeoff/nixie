@@ -1,6 +1,7 @@
 import { ORPCError } from '@orpc/client';
 import type { ReactNode } from 'react';
 import { useEffect, useRef, useState } from 'react';
+import { bindClipboard } from '../computer/bind-clipboard';
 import { runComputerWatch } from '../computer/run-computer-watch';
 import type { LoadViewer, Viewer, WatchState } from '../computer/types';
 import { css } from '../styled-system/css';
@@ -60,6 +61,7 @@ export function ComputerView(props: ComputerViewProps): ReactNode {
   const [attempt, setAttempt] = useState(0);
   const [takeover, setTakeover] = useState<TakeoverState>({ kind: 'watching' });
   const [viewer, setViewer] = useState<Viewer | null>(null);
+  const isHoldingNow = useRef(false);
 
   // Each attempt asks for its own ticket, because a ticket opens one socket. A new attempt, and
   // leaving the page, end the run before it.
@@ -76,6 +78,11 @@ export function ComputerView(props: ComputerViewProps): ReactNode {
         signal: running.signal,
         onState: setState,
         onViewer: setViewer,
+        onCopy: (text) => {
+          if (isHoldingNow.current) {
+            void writeCopiedText(text);
+          }
+        },
       });
     }
 
@@ -86,10 +93,24 @@ export function ComputerView(props: ComputerViewProps): ReactNode {
 
   const isHolding = takeover.kind === 'holding';
 
+  isHoldingNow.current = isHolding;
+
   // The viewer sends the person's keys only while this device holds the desktop, and a new viewer
   // after a reconnect starts view only, so it takes the state again.
   useEffect(() => {
     viewer?.setInput(isHolding);
+  }, [viewer, isHolding]);
+
+  // A paste is the one time the page hands the user's clipboard to the desktop, and only while this
+  // device holds it.
+  useEffect(() => {
+    const element = target.current;
+
+    if (viewer === null || element === null || !isHolding) {
+      return;
+    }
+
+    return bindClipboard(element, { onPaste: viewer.paste });
   }, [viewer, isHolding]);
 
   const isOver = state.kind === 'ended' || state.kind === 'failed';
@@ -190,6 +211,16 @@ export function ComputerView(props: ComputerViewProps): ReactNode {
       <div aria-label="The computer's desktop" className={screen} ref={target} role="img" />
     </main>
   );
+}
+
+// The user's browser may refuse a write that no gesture asked for, and then the text stays on the
+// desktop.
+async function writeCopiedText(text: string): Promise<void> {
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch {
+    // nothing is left to tell the user: the copy simply did not reach their clipboard
+  }
 }
 
 const takeoverRefusals: Record<string, string> = {

@@ -30,7 +30,7 @@ export interface DesktopProcessOptions {
 
 // The processes of the virtual desktop: the display, a window manager, the terminal and a VNC server.
 // The display listens on an abstract socket alone, and the VNC server on a Unix socket alone, with
-// its clipboard off.
+// the primary selection off.
 export function buildDesktopProcesses(options: DesktopProcessOptions): readonly DesktopProcess[] {
   const screenEnv = { DISPLAY: display, HOME: screenAccount.home };
 
@@ -82,11 +82,8 @@ export function buildDesktopProcesses(options: DesktopProcessOptions): readonly 
         '-novncconnect',
         '-forever',
         '-shared',
-        '-nosel',
         '-noprimary',
         '-nosetprimary',
-        '-noclipboard',
-        '-nosetclipboard',
         '-quiet',
       ]),
       env: screenEnv,

@@ -10,6 +10,9 @@ export interface ComputerWatchRun {
   readonly signal: AbortSignal;
   readonly onState: (state: WatchState) => void;
 
+  // called with the text that the desktop copies
+  readonly onCopy: (text: string) => void;
+
   // called with the viewer once it starts, and with null when the run ends
   readonly onViewer: (viewer: Viewer | null) => void;
 }
@@ -113,6 +116,7 @@ function startViewerQuietly(start: ViewerStart): Viewer | null {
           run.onState({ kind: 'watching' });
         }
       },
+      onCopy: run.onCopy,
       onDisconnect: () => {
         if (!run.signal.aborted) {
           run.onState({ kind: start.connected.isConnected ? 'ended' : 'failed' });

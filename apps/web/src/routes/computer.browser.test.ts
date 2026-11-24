@@ -1,4 +1,5 @@
 import { expect, onTestFinished, test } from 'bun:test';
+import { waitFor } from '@zgeoff/testing';
 import { mockComputerStream } from '../mocks/mock-computer-stream';
 import { store } from '../mocks/store';
 import { setupSignedInBrowser } from '../test-utils/setup-signed-in-browser';
@@ -33,7 +34,24 @@ async function setupTest() {
   await view.navigate('about:blank');
   await view.cdp('Network.clearBrowserCookies');
 
-  return { api, appURL: app.url, view };
+  const takeOver = async (): Promise<void> => {
+    const session = await store.sessions.create({});
+
+    await setupSignedInBrowser(view, { appURL: app.url, token: session.token });
+
+    await view.navigate(`${app.url}/computer`);
+
+    await waitForPage(
+      view,
+      "[...document.querySelectorAll('button:enabled')].some((button) => button.innerText === 'Take over')",
+    );
+
+    await view.evaluate("document.querySelector('main button').click()");
+
+    await waitForPage(view, "document.body.innerText.includes('You have taken over the computer')");
+  };
+
+  return { api, appURL: app.url, desktop, takeOver, view };
 }
 
 test('it takes the computer over and hands it back with the buttons of the page', async () => {
@@ -217,4 +235,54 @@ test('it starts no take-over on a refresh of the computer page after a take-over
   const text: unknown = await ctx.view.evaluate('document.querySelector("main").innerText');
 
   expect(text).not.toInclude('You have taken over the computer');
+});
+
+test('it sends text that the user pastes to the desktop, then presses paste there', async () => {
+  const ctx = await setupTest();
+
+  await ctx.takeOver();
+
+  await ctx.view.evaluate(`(() => {
+    const data = new DataTransfer();
+    data.setData('text/plain', 'hunter2');
+    document.querySelector('main [role="img"] canvas').dispatchEvent(
+      new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }),
+    );
+  })()`);
+
+  await waitFor(() => {
+    expect(ctx.desktop.received.keys).toHaveLength(4);
+  });
+
+  expect([ctx.desktop.received.clipboard, ctx.desktop.received.keys]).toStrictEqual([
+    ['hunter2'],
+    [
+      { keysym: 0xff_e3, isDown: true },
+      { keysym: 0x76, isDown: true },
+      { keysym: 0x76, isDown: false },
+      { keysym: 0xff_e3, isDown: false },
+    ],
+  ]);
+});
+
+test('it copies text that the desktop copies to the clipboard of the user while the user holds it', async () => {
+  const ctx = await setupTest();
+
+  await ctx.takeOver();
+
+  await ctx.view.evaluate(`(() => {
+    globalThis.copied = [];
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: (text) => { globalThis.copied.push(text); return Promise.resolve(); } },
+    });
+  })()`);
+
+  ctx.desktop.sendCutText('order 4471');
+
+  await waitForPage(ctx.view, 'globalThis.copied.length === 1');
+
+  const copied: unknown = await ctx.view.evaluate('globalThis.copied');
+
+  expect(copied).toStrictEqual(['order 4471']);
 });

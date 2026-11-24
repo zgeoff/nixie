@@ -170,24 +170,68 @@ test('it releases nothing when every key and button is up, and nothing the secon
 });
 
 test.each([
-  { name: 'ClientCutText', message: [6, 0, 0, 0, 0, 0, 0, 3, 97, 98, 99] },
-  { name: 'empty ClientCutText', message: [6, 0, 0, 0, 0, 0, 0, 0] },
   {
-    name: 'extended clipboard reply, whose length is negative',
+    name: 'ClientCutText from a viewer that does not hold the desktop',
+    isHolding: false,
+    message: [6, 0, 0, 0, 0, 0, 0, 3, 97, 98, 99],
+  },
+  {
+    name: 'extended clipboard reply, whose length is negative, even from the holder',
+    isHolding: true,
     message: [6, 0, 0, 0, 255, 255, 255, 248, 0, 0, 0, 6, 0, 0, 0, 1],
   },
-])('it drops a $name message even from the viewer that holds the desktop', (row) => {
+])('it drops a $name', (row) => {
   const ctx = setupTest();
 
   ctx.shakeHands();
 
-  ctx.holder.isHolding = true;
+  ctx.holder.isHolding = row.isHolding;
 
   expect(ctx.filter.push(new Uint8Array(row.message))).toStrictEqual({
     forward: [],
     isMalformed: false,
     isInput: false,
   });
+});
+
+test('it passes the ClientCutText of the viewer that holds the desktop, and counts it as input', () => {
+  const ctx = setupTest();
+
+  ctx.shakeHands();
+
+  ctx.holder.isHolding = true;
+
+  const result = ctx.filter.push(new Uint8Array([6, 0, 0, 0, 0, 0, 0, 3, 97, 98, 99]));
+
+  expect(result).toStrictEqual({
+    forward: [new Uint8Array([6, 0, 0, 0, 0, 0, 0, 3]), new Uint8Array([97, 98, 99])],
+    isMalformed: false,
+    isInput: true,
+  });
+});
+
+test('it passes the text of a held ClientCutText that arrives in pieces, and then the next message', () => {
+  const ctx = setupTest();
+
+  const request = new Uint8Array([3, 1, 0, 0, 0, 0, 5, 0, 3, 32]);
+
+  ctx.shakeHands();
+
+  ctx.holder.isHolding = true;
+
+  const results = [
+    ctx.filter.push(new Uint8Array([6, 0, 0, 0, 0, 0, 0, 4, 1, 2])),
+    ctx.filter.push(new Uint8Array([3, 4, ...request])),
+  ];
+
+  expect(results).toStrictEqual([
+    {
+      forward: [new Uint8Array([6, 0, 0, 0, 0, 0, 0, 4]), new Uint8Array([1, 2])],
+      isMalformed: false,
+      isInput: true,
+    },
+    { forward: [new Uint8Array([3, 4]), request], isMalformed: false, isInput: false },
+  ]);
 });
 
 test('it passes a viewing message that follows dropped input', () => {

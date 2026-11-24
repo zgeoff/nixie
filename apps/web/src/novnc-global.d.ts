@@ -15,6 +15,8 @@ declare module '@novnc/novnc' {
     disconnect: () => void;
     focus: () => void;
     blur: () => void;
+    clipboardPasteFrom: (text: string) => void;
+    sendKey: (keysym: number, code: string, down?: boolean) => void;
   }
 
   const RFB: new (target: HTMLElement, channel: WebSocket, options?: RFBOptions) => Viewer;

@@ -1,6 +1,6 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { network } from '@heynixie/mock-server';
-import { waitFor } from '@testing-library/react';
+import { fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
 import type { LoadViewer, StartViewer, ViewerEvents } from '../computer/types';
@@ -19,6 +19,8 @@ function setupTest() {
   const started: StartedViewer[] = [];
   const tickets: string[] = [];
   const inputs: boolean[] = [];
+  const pastes: string[] = [];
+  const copied: string[] = [];
 
   const answerRequest = (request: Request, server: Bun.Server<undefined>) =>
     tickets.some((ticket) => request.url.endsWith(ticket)) && server.upgrade(request)
@@ -38,6 +40,9 @@ function setupTest() {
   });
 
   network.use(
+    http.post('https://nixie.test/rpc/computer/takeOver', () =>
+      HttpResponse.json({ json: { takenOverAt: 1_700_000_000_000 }, meta: [] }),
+    ),
     http.post('https://nixie.test/rpc/computer/watch', () => {
       const ticket = crypto.randomUUID();
 
@@ -62,12 +67,35 @@ function setupTest() {
       setInput: (isOn) => {
         inputs.push(isOn);
       },
+      paste: (text) => {
+        pastes.push(text);
+      },
     };
   };
 
   const loadViewer: LoadViewer = () => Promise.resolve(startViewer);
+  const earlier = Object.getOwnPropertyDescriptor(globalThis.navigator, 'clipboard');
 
-  return { started, tickets, inputs, loadViewer };
+  Object.defineProperty(globalThis.navigator, 'clipboard', {
+    configurable: true,
+    value: {
+      writeText: (text: string) => {
+        copied.push(text);
+
+        return Promise.resolve();
+      },
+    },
+  });
+
+  onTestFinished(() => {
+    if (earlier === undefined) {
+      Reflect.deleteProperty(globalThis.navigator, 'clipboard');
+    } else {
+      Object.defineProperty(globalThis.navigator, 'clipboard', earlier);
+    }
+  });
+
+  return { started, tickets, inputs, pastes, copied, loadViewer };
 }
 
 test('it asks for a ticket and gives the viewer the socket that the API names', async () => {
@@ -409,4 +437,86 @@ test('it shows the hold over when a hand-back finds that this device no longer h
     'Your hold on the computer ended.',
     false,
   ]);
+});
+
+test('it hands text that the user pastes to the viewer while the user holds the desktop', async () => {
+  const user = userEvent.setup();
+  const ctx = setupTest();
+
+  await createDeviceSession();
+
+  const rendered = render(<ComputerView loadViewer={ctx.loadViewer} />);
+
+  await rendered.findByText('The computer is waking.');
+
+  ctx.started[0]?.events.onConnect();
+
+  const takeOverButton = await rendered.findByRole('button', { name: 'Take over' });
+
+  await user.click(takeOverButton);
+  await rendered.findByRole('button', { name: 'Hand back' });
+
+  fireEvent.paste(rendered.getByRole('img', { name: "The computer's desktop" }), {
+    clipboardData: { getData: () => 'hunter2', types: ['text/plain'], files: [] },
+  });
+
+  expect(ctx.pastes).toStrictEqual(['hunter2']);
+});
+
+test('it hands no pasted text to the viewer while the user only watches', async () => {
+  const ctx = setupTest();
+
+  await createDeviceSession();
+
+  const rendered = render(<ComputerView loadViewer={ctx.loadViewer} />);
+
+  await rendered.findByText('The computer is waking.');
+
+  ctx.started[0]?.events.onConnect();
+
+  await rendered.findByRole('button', { name: 'Take over' });
+
+  fireEvent.paste(rendered.getByRole('img', { name: "The computer's desktop" }), {
+    clipboardData: { getData: () => 'hunter2', types: ['text/plain'], files: [] },
+  });
+
+  expect(ctx.pastes).toStrictEqual([]);
+});
+
+test('it writes text that the desktop copies to the clipboard of the user while the user holds the desktop', async () => {
+  const user = userEvent.setup();
+  const ctx = setupTest();
+
+  await createDeviceSession();
+
+  const rendered = render(<ComputerView loadViewer={ctx.loadViewer} />);
+
+  await rendered.findByText('The computer is waking.');
+
+  ctx.started[0]?.events.onConnect();
+
+  const takeOverButton = await rendered.findByRole('button', { name: 'Take over' });
+
+  await user.click(takeOverButton);
+  await rendered.findByRole('button', { name: 'Hand back' });
+
+  ctx.started[0]?.events.onCopy('order 4471');
+  expect(ctx.copied).toStrictEqual(['order 4471']);
+});
+
+test('it never writes to the clipboard of the user while the user only watches', async () => {
+  const ctx = setupTest();
+
+  await createDeviceSession();
+
+  const rendered = render(<ComputerView loadViewer={ctx.loadViewer} />);
+
+  await rendered.findByText('The computer is waking.');
+
+  ctx.started[0]?.events.onConnect();
+
+  await rendered.findByRole('button', { name: 'Take over' });
+
+  ctx.started[0]?.events.onCopy('order 4471');
+  expect(ctx.copied).toStrictEqual([]);
 });
