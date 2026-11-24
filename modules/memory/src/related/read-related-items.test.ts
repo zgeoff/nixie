@@ -1,4 +1,5 @@
 import { expect, mock, test } from 'bun:test';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import { buildMockProvenance } from '../test-utils/build-mock-provenance';
 import { buildStubEncoder } from '../test-utils/build-stub-encoder';
 import { createMemoryItem } from '../test-utils/create-memory-item';
@@ -6,7 +7,10 @@ import { readItemShortID } from '../test-utils/read-item-short-id';
 import { startTestMemory } from '../test-utils/start-test-memory';
 
 async function setupTest() {
+  const clock = createFakeClock({ startMs: Date.parse('2026-10-19T09:00:00Z') });
+
   const memory = await startTestMemory({
+    gate: { clock },
     semanticSearch: {
       encoder: buildStubEncoder([['boiler', 'heating'], ['piano'], ['passport']]),
       onError: mock<(error: unknown) => void>(),
@@ -15,6 +19,7 @@ async function setupTest() {
 
   return {
     memory,
+    clock,
     remember: async (text: string) => {
       const item = await createMemoryItem(memory.store, { text });
 
@@ -86,4 +91,28 @@ test('it returns at most 3 items', async () => {
   const related = await ctx.read('Book the heating engineer');
 
   expect(related).toHaveLength(3);
+});
+
+test('it finds an active match behind more lapsed matches than a page holds', async () => {
+  const ctx = await setupTest();
+
+  await Promise.all(
+    Array.from({ length: 13 }, (_, index) =>
+      ctx.memory.store.remember({
+        text: `Heating heating heating note ${String(index)}`,
+        until: Date.parse('2026-10-19T22:59:59Z'),
+        provenance: buildMockProvenance(),
+      }),
+    ),
+  );
+
+  const boiler = await ctx.remember('The boiler service is on the 14th');
+
+  ctx.clock.advance(24 * 60 * 60 * 1000);
+
+  const related = await ctx.read('Book the heating engineer');
+
+  expect(related).toStrictEqual([
+    { shortID: boiler.shortID, text: 'The boiler service is on the 14th' },
+  ]);
 });
