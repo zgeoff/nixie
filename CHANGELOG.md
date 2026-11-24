@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.113.0](https://github.com/zgeoff/nixie/compare/v0.112.0...v0.113.0) (2026-11-24)
+
+
+### Features
+
+* **computer:** navigate and reload a tab, with clearer browser refusals ([#1447](https://github.com/zgeoff/nixie/issues/1447)) ([8ac7bea](https://github.com/zgeoff/nixie/commit/8ac7bea4c791df4513d583783361e301c0c335d3))
+* **images:** list the image profiles and their models in image.draw ([#1445](https://github.com/zgeoff/nixie/issues/1445)) ([fb3c5c5](https://github.com/zgeoff/nixie/commit/fb3c5c5c6c60ad8464fffee52b2f6799086db7d9))
+* **policy:** allow computer.take_back in the starter rules ([#1441](https://github.com/zgeoff/nixie/issues/1441)) ([0d63555](https://github.com/zgeoff/nixie/commit/0d6355562e026f5309bc2bc3756291d6cf054dfa))
+
+
+### Bug Fixes
+
+* **deps:** update @anthropic-ai/claude-agent-sdk to v0.3.326 ([#1005](https://github.com/zgeoff/nixie/issues/1005)) ([c828a09](https://github.com/zgeoff/nixie/commit/c828a09b8ceacb493c87ef03c15bab0e80bb6154))
+* **deps:** update tanstack-query monorepo to v5.108.0 ([#1443](https://github.com/zgeoff/nixie/issues/1443)) ([d3c439c](https://github.com/zgeoff/nixie/commit/d3c439c4b4bc74ba3d5ae5a549adc661cb90ba53))
+
 ## [0.112.0](https://github.com/zgeoff/nixie/compare/v0.111.0...v0.112.0) (2026-11-24)
 
 
