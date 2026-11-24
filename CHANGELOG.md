@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.112.0](https://github.com/zgeoff/nixie/compare/v0.111.0...v0.112.0) (2026-11-24)
+
+
+### Features
+
+* **images:** pin every guest base by digest and budget image sizes ([#1434](https://github.com/zgeoff/nixie/issues/1434)) ([f88208e](https://github.com/zgeoff/nixie/commit/f88208e88ebb160ff935a4869218c515a869bfd5))
+
 ## [0.111.0](https://github.com/zgeoff/nixie/compare/v0.110.0...v0.111.0) (2026-11-24)
 
 
