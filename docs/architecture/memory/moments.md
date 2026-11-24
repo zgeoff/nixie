@@ -216,9 +216,9 @@ the texts and links the destroy removes, and counts the span's records that stay
 to the version the preview showed, so an edit after the preview makes it stale, and it runs as a
 durable operation in 2 parts:
 
-1. One write transaction commits the client action, checks the state and the version, and appends
-   the record that marks the moment destroying. A refusal rolls the client action back with it. From
-   then on, no read, find, link or edit reaches the moment.
+1. The erasure runner's start transaction commits the client action, checks the state and the
+   version, and appends `erasure.started`, which marks the moment destroying. A refusal rolls the
+   client action back with it. From then on, no read, find, link or edit reaches the moment.
 2. The cleanup deletes the key of every record that holds the moment's text, runs the
    [session cleanup](./context.md#forgetting-and-the-live-session) with the moment as its cause, and
    removes the turn inputs, and appends `erasure.finished`, which makes a backup due. The runner

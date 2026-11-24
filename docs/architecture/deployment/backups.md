@@ -33,22 +33,22 @@ every receipt that the job wrote, then stages a set when one is due:
    published or failed. A forget record is `erasure.finished`, which ends a note forget or a moment
    destroy, or the end record of a memory forget, a message forget or a reset of the conversations,
    each of which deletes its keys before it writes that record. The server passes the backup module
-   the old end records from each descriptor, so the module imports no store. A set that staged
-   before `erasure.finished` never publishes: the pass withdraws it, and stages a new set, because a
-   stale set holds the deleted keys. The same transaction that writes `erasure.finished` writes
-   `floor.json` into the staging folder, naming the highest set that exists then, and the job ships
-   no set at or below it. The job reads `floor.json` again once a set's key snapshot is in the key
-   repo, again once its data snapshot is in the data repo, and again after the key repo's prune and
-   check, just before the receipt. When an erasure finished before one of those reads, the job
-   removes the set's key snapshot, prunes the key repo, keeps the restore note and writes no
-   receipt. A failure of that removal fails the job, and the next publish removes the stale snapshot
-   with the other old ones. The data snapshot stays, because the erased text in it is unreadable
-   once its keys are gone. A withdrawal after the prune leaves the key repo empty until the next
-   publish. The receipt's rename still follows the last read, so a set can publish when an erasure
-   finishes in that gap. Its receipt never covers the erasure, which waits for a set that started
-   after it. The withdrawal waits for the job's staging lock, so it never removes a set that the job
-   is shipping, and a pass that finds the lock held withdraws the set on the next pass. A withdrawal
-   that a failure stopped after the rename finishes on the next pass.
+   the old end records from each descriptor, so the module imports no store. nixie's pass withdraws
+   a set that staged before `erasure.finished` and stages a new one, because a stale set holds the
+   deleted keys. The same transaction that writes `erasure.finished` writes `floor.json` into the
+   staging folder, naming the highest set that exists then, and the job ships no set at or below it.
+   The job reads `floor.json` again once a set's key snapshot is in the key repo, again once its
+   data snapshot is in the data repo, and again after the key repo's prune and check, just before
+   the receipt. When an erasure finished before one of those reads, the job removes the set's key
+   snapshot, prunes the key repo, keeps the restore note and writes no receipt. A failure of that
+   removal fails the job, and the next publish removes the stale snapshot with the other old ones.
+   The data snapshot stays, because the erased text in it is unreadable once its keys are gone. A
+   withdrawal after the prune leaves the key repo empty until the next publish. The receipt's rename
+   still follows the last read, so a set can publish when an erasure finishes in that gap. Its
+   receipt never covers the erasure, which waits for a set that started after it. The withdrawal
+   waits for the job's staging lock, so it never removes a set that the job is shipping, and a pass
+   that finds the lock held withdraws the set on the next pass. A withdrawal that a failure stopped
+   after the rename finishes on the next pass.
 2. A scheduled set is due once the newest staged set is a backup interval old, and never while a set
    waits for its receipt.
 
@@ -95,11 +95,11 @@ receipt. For each set it ships, the job:
    either, or 1 when neither holds one;
 3. backs up the key store copy to the key repository first, with the tags `set-`, `kind-` and
    `publish-`, and the tags `legacy-set-` and `proven-from-` where the
-   [tag rules](backup-pair.md#the-key-only-tags-of-a-new-key-snapshot) give them: the key snapshot
-   copies both from the one it replaces, and takes `legacy-set-` when it is the first numbered one.
-   It takes `proven-from-` with its own number, and no other tag, when a restore note shows the
-   restored keys are not the newest's, or when the replaced snapshot has no number while a
-   repository holds one;
+   [tag rules](backup-pair.md#the-key-only-tags-of-a-new-key-snapshot) give them. When a restore
+   note shows the restored keys are not the newest's, or the replaced snapshot has no number while a
+   repository holds one, the key snapshot takes `proven-from-` with its own number and no
+   `legacy-set-`. Otherwise it copies both from the one it replaces, and takes `legacy-set-` when it
+   is the first numbered one;
 4. backs up the log copy to the data repository with the same `set-`, `kind-` and `publish-` tags,
    then applies the data retention;
 5. forgets every other key snapshot by its ID, prunes every unused byte, and checks the repository's

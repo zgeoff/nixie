@@ -42,13 +42,15 @@ kind that gains erasable fields also joins the forgettable kinds, or one of the 
 record forget leaves out, as [forgetting a record](../channels/api.md#forgetting-a-record) says.
 
 Each module that owns an erasable kind also exports a static descriptor: the kind, its erasable
-record kinds, the record kinds a record forget may take or never takes, and the old end records of
-its forget. The server registers the descriptors at start, and
-`bun run --cwd apps/server forgettable-kinds` generates the contract's forgettable kinds list from
-them. A CI check fails on a hand edit of that list, and a test puts each record kind in exactly one
-descriptor list. The forget of a note or a moment writes `erasure.started` and `erasure.finished` in
-clear, because a forget must not need the text it deletes. Only `erasure.started` carries the
-selection of keys to delete; `erasure.finished` carries the count of keys removed.
+record kinds, the record kinds a record forget may take or never takes, and `legacyEnds`, the end
+records its forget wrote before it moved to the erasure runner, which still make a backup due.
+`ErasableDescriptor` in `modules/log` holds the shape. The server registers the descriptors at
+start, and `bun run --cwd apps/server forgettable-kinds` generates the contract's forgettable kinds
+list from them. A CI check fails on a hand edit of that list, and a test puts each record kind in
+exactly one descriptor list. The forget of a note or a moment writes `erasure.started` and
+`erasure.finished` in clear, because a forget must not need the text it deletes. Only
+`erasure.started` carries the selection of keys to delete; `erasure.finished` carries the count of
+keys removed.
 
 ## The key store
 

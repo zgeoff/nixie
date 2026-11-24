@@ -114,7 +114,9 @@ belong to the notebook, so a note never enters the item index, the trigger index
 vector index, and a note has no trigger phrases. `memory.recall` and `moment.read` never list the
 notes that link to an item or a moment. The notebook adds no entry to the session status. A
 retrieval test holds that nixie adds no note text and no note ID to the blocks it builds, even when
-a message matches a note's title word for word. When `memory.remember` or `memory.edit` refuses with
+a message matches a note's title word for word. The one exception is the events block's line for a
+note the user forgot, which names that note's short ID and nothing else, as
+[the forget line](#the-forget-line) says. When `memory.remember` or `memory.edit` refuses with
 `TEXT_TOO_LONG`, its message points the assistant at a note. The descriptions of `memory.edit` and
 `memory.retire` say to keep an argument with an item in the notebook, linked with `supersedes` or
 `disputes`.

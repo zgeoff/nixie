@@ -588,17 +588,18 @@ let nixie delete every past copy, so a store with versioning that nixie does not
 immutable retention, cannot hold them. Staging files, restore samples and backup caches count as
 copies too. A forget also reports the state of the backups of its keys: off, pending, failed with a
 reason, or complete. A forget or a bulk forget answers with this state, and
-`memory.readForgetStatus` reads it again.
+`memory.readForgetStatus` reads it again. nixie applies these rules in order, and the first that
+holds gives the state:
 
-- The state reads off when the deployment turned the backup schedule off.
-- It reads pending until a forget has deleted every item asked about. An item that no forget took,
-  or an unknown item ID, keeps it pending.
-- Otherwise nixie reads it from the backup sets at or after the newest forgotten record among the
-  items, as [a forget's backup state](../deployment/backups.md#a-forgets-backup-state) describes.
-- A bulk forget that found no item to delete reads complete, because it removed no key.
+1. Off, when the deployment turned the backup schedule off.
+2. Pending, until a forget has deleted every item asked about. An item that no forget took, or an
+   unknown item ID, keeps it pending.
+3. Complete, for a bulk forget that found no item to delete, because it removed no key.
+4. Otherwise, the state of the backup sets at or after the newest forgotten record among the items,
+   as [a forget's backup state](../deployment/backups.md#a-forgets-backup-state) describes.
 
-With the schedule on, a forget's own answer reads pending: no backup set taken after the forget
-exists until the backup job's next job run.
+With the schedule on, the answer of a forget that deleted a key reads pending: no backup set taken
+after the forget exists until the backup job's next job run.
 
 ### Forgetting retired items in bulk
 

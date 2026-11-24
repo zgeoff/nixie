@@ -1,10 +1,11 @@
 # The API
 
 nixie's API serves the [client](./client.md) contract over HTTP: Elysia hands every path under
-`/rpc` to oRPC, which validates each input and output against the contract. The API resolves each
-call to a row of the identity record, writes the user's messages into task inboxes once each, and
-follows the [event log](../core/event-log.md) for the live stream. The package `modules/api` builds
-the app, and the server mounts it and listens.
+`/rpc` to oRPC, except the watch socket that [watching the computer](#watching-the-computer)
+describes, which validates each input and output against the contract. The API resolves each call to
+a row of the identity record, writes the user's messages into task inboxes once each, and follows
+the [event log](../core/event-log.md) for the live stream. The package `modules/api` builds the app,
+and the server mounts it and listens.
 
 ## A call's way in
 
