@@ -62,6 +62,10 @@ test('it lets devices.list show the list that the newest call set', async () => 
 test('it leaves an empty list to a device that no call named', async () => {
   const ctx = await setupTest();
   const watched = await ctx.seed.device({ name: 'desk panel' });
+
+  // the list shows the newest device first, so the second device lists first
+  ctx.clock.advance(1000);
+
   const other = await ctx.seed.device({ name: 'bedroom speaker' });
 
   await ctx.call('devices.watch', { device: watched.deviceID, wake: ['online'] });
