@@ -264,24 +264,43 @@ test.skipIf(!hasImpHost)(
       deniedRanges: [],
     });
 
+    // A bare pattern matches the probe's own bash line, which the terminal account may trace, so
+    // the bracket keeps the match to Chromium's processes.
+    const findChromium = 'pids=$(pgrep -f "chrome-linux64/[c]hrome")';
+
     const result = await ctx.runCommand(
       [
         'stat -c %a /home/computer/profile',
         'ls /home/computer/profile > /dev/null 2>&1; echo "list=$?"',
+        findChromium,
+        '[ -z "$pids" ] && echo hidden',
+      ].join('; '),
+    );
 
-        // A bare pattern matches this command's own bash line, which the terminal may trace, so the
-        // bracket keeps the match to Chromium's processes.
-        'pids=$(pgrep -f "chrome-linux64/[c]hrome")',
+    // a command sees no process outside its own process namespace, so the signal and trace checks
+    // run as the terminal account in the guest's namespace, where the terminal app itself runs
+    const asTerminal = await ctx.execAsRoot([
+      'setpriv',
+      '--reuid=1002',
+      '--regid=1002',
+      '--clear-groups',
+      'bash',
+      '-c',
+      [
+        findChromium,
         '[ -n "$pids" ] && echo found',
         'for pid in $pids; do kill -0 "$pid" 2>/dev/null && echo signalled; done; echo done',
         'for pid in $pids; do cat /proc/$pid/environ > /dev/null 2>&1 && echo traced; done; echo done',
       ].join('; '),
-    );
+    ]);
 
-    expect(result).toMatchObject({
-      status: 'reply',
-      reply: { kind: 'run', run: { stdout: { text: '700\nlist=2\nfound\ndone\ndone\n' } } },
-    });
+    expect([result, asTerminal]).toMatchObject([
+      {
+        status: 'reply',
+        reply: { kind: 'run', run: { stdout: { text: '700\nlist=2\nhidden\n' } } },
+      },
+      'found\ndone\ndone\n',
+    ]);
   },
 );
 
