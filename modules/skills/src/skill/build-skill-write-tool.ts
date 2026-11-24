@@ -72,7 +72,6 @@ export function buildSkillWriteTool(context: SkillToolsContext): ToolDefinition 
     run: async (call, tool) => {
       const outcome = await runSkillWrite(context, call, tool);
 
-      // A proposal changes nothing yet, so it looks nothing up.
       if (outcome.status !== 'ok' || outcome.result['status'] !== 'applied') {
         return outcome;
       }

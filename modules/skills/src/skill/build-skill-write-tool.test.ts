@@ -187,6 +187,7 @@ test('it adds the matching memory to the result of an applied write as related, 
   expect(outcome).toMatchObject({
     status: 'ok',
     result: {
+      status: 'applied',
       related: [{ shortID: 'k3m9q2xzab', text: 'Tide tables come from the harbour office' }],
     },
   });
