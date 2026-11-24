@@ -2,6 +2,7 @@ import { expect, test } from 'bun:test';
 import type { JSONObject } from '@heynixie/log';
 import { readRecordAttachments, readRecords, removeRecordKey, writeRecords } from '@heynixie/log';
 import type { MemoryWriteVerdict, ToolDefinition } from '@heynixie/tools';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import invariant from 'tiny-invariant';
 import {
   buildAllowVerdict,
@@ -15,7 +16,9 @@ import type { Labels, MemorySubject } from '../types';
 import { buildRetopicTool } from './build-retopic-tool';
 
 async function setupTest() {
-  const memory = await startTestMemory();
+  const clock = createFakeClock({ startMs: Date.parse('2026-10-19T09:00:00Z') });
+
+  const memory = await startTestMemory({ gate: { clock } });
 
   const tool = buildRetopicTool(memory.store);
 
@@ -48,6 +51,7 @@ async function setupTest() {
 
   return {
     memory,
+    clock,
     tool,
     createItem,
     run: (input: JSONObject, verdict: MemoryWriteVerdict = buildAllowVerdict()) =>
@@ -139,6 +143,35 @@ test('it reports the active and the retired items it moved as separate counts', 
       status: 'applied',
       moved: { active: 1, retired: 3 },
       move: 'owner/home → owner/house, 1 active, 3 retired',
+    },
+  });
+});
+
+test('it counts an item whose end time passed before the lapse sweep as retired', async () => {
+  const ctx = await setupTest();
+
+  await ctx.createItem({ gist: 'spare pump', topic: 'home' });
+
+  await ctx.memory.store.remember({
+    text: 'Fact: guests stay',
+    until: Date.parse('2026-10-19T22:59:59Z'),
+    labels: { gist: 'guests stay', topic: 'home/guests', triggers: [] },
+    provenance: buildMockProvenance(),
+  });
+
+  ctx.clock.advance(24 * 60 * 60 * 1000);
+
+  const outcome = await ctx.run({
+    from: { topic: 'home', subject: 'owner' },
+    to: { topic: 'house', subject: 'owner' },
+  });
+
+  expect(outcome).toStrictEqual({
+    status: 'ok',
+    result: {
+      status: 'applied',
+      moved: { active: 1, retired: 1 },
+      move: 'owner/home → owner/house, 1 active, 1 retired',
     },
   });
 });

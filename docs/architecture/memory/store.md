@@ -429,7 +429,8 @@ A refusal returns to the model as a result with `status` `refused`, its `code` a
 the call records the code as its refusal code. An applied move returns `moved`, the count of items
 moved as `active` and `retired`, and `move`, the move in words with the same split, such as
 `owner/home → owner/house, 1 active, 32 retired`. A state with no item moved leaves its part out of
-the words.
+the words. An item whose end time passed before the lapse sweep counts as retired, as delivery reads
+it.
 
 The same rules cover `memory.retopic` as cover `memory.edit`: an allow, ask or deny rule that names
 `memory.edit` or the effect `memory_write` matches it. A rule can check `subject`, the subject of
