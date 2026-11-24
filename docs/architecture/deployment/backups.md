@@ -114,13 +114,15 @@ never repeats. A failed key snapshot also gives a failed receipt with no data sn
 key snapshot and the restore note kept.
 
 A restic failure in either repository gives the set a failed receipt that lists each failed step,
-and the job moves on to the next set. A failed manifest check gives the set a failed receipt too.
-Any other error before the receipt is in place stops the job run with a non-zero exit and leaves the
-set with no receipt, so the next job run ships it again. An error after the receipt is in place,
-such as a failed removal of the copies, stops the job run too, but the next job run skips the set
-because it holds its receipt, and nixie removes the copies with the set's folder once it records the
-receipt. The key repository forgets by ID, because restic's keep-last rule keeps one snapshot in
-each host and path group, and an older group would keep a forgotten key.
+and the job moves on to the next set. The one exception is the removal of a withdrawn set's own
+snapshots: a failure there stops the job run, as the next paragraph says of any other error. A
+failed manifest check gives the set a failed receipt too. Any other error before the receipt is in
+place stops the job run with a non-zero exit and leaves the set with no receipt, so the next job run
+ships it again. An error after the receipt is in place, such as a failed removal of the copies,
+stops the job run too, but the next job run skips the set because it holds its receipt, and nixie
+removes the copies with the set's folder once it records the receipt. The key repository forgets by
+ID, because restic's keep-last rule keeps one snapshot in each host and path group, and an older
+group would keep a forgotten key.
 
 The job passes each repository's password to restic in the child's environment, never in its
 arguments, and gives restic only the backend variables that the job's own variables leave. It

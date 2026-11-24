@@ -106,7 +106,7 @@ An item is in one of 4 states:
 
 | State      | Recall returns it                 | Changes it accepts                                  |
 | ---------- | --------------------------------- | --------------------------------------------------- |
-| active     | Always                            | edit, edit labels, retire, undo, pin, unpin, forget |
+| active     | Until its end time passes         | edit, edit labels, retire, undo, pin, unpin, forget |
 | retired    | Only when asked for retired items | edit, edit labels, restore, undo, forget            |
 | forgetting | Never                             | none; the forget completes it                       |
 | forgotten  | Never                             | none; the keys are gone and nothing reads           |
