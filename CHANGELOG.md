@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.114.0](https://github.com/zgeoff/nixie/compare/v0.113.0...v0.114.0) (2026-11-24)
+
+
+### Features
+
+* **computer:** add ffmpeg and imagemagick to the terminal ([#1452](https://github.com/zgeoff/nixie/issues/1452)) ([0c5e2a1](https://github.com/zgeoff/nixie/commit/0c5e2a1785929e94dabb99117f8a733d20f207f3))
+* **conversation:** tell the assistant when nixie was down ([#1449](https://github.com/zgeoff/nixie/issues/1449)) ([9d874fa](https://github.com/zgeoff/nixie/commit/9d874fa3615289d6a96caac592f46eb63bf4c40f))
+* **erasure:** run every note and moment forget through one runner ([#1451](https://github.com/zgeoff/nixie/issues/1451)) ([d84e837](https://github.com/zgeoff/nixie/commit/d84e83786442162c6367e853dcb0eb51ee1ab458))
+* **memory:** show related memory after a reminder, task or skill is set ([#1446](https://github.com/zgeoff/nixie/issues/1446)) ([efab547](https://github.com/zgeoff/nixie/commit/efab547fc62c859184c0f99c9a5442c459df931e))
+
+
+### Bug Fixes
+
+* **computer:** give the shell its own process list ([#1448](https://github.com/zgeoff/nixie/issues/1448)) ([0edf3d2](https://github.com/zgeoff/nixie/commit/0edf3d2310582dfa26399254371f1e542e9bbf56))
+
 ## [0.113.0](https://github.com/zgeoff/nixie/compare/v0.112.0...v0.113.0) (2026-11-24)
 
 
