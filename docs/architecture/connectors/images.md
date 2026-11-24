@@ -34,11 +34,12 @@ A stored image whose size is not one of the 3 sizes, such as an import, is padde
 pixels to the size nearest its shape before it goes to the provider, and the edit comes back at that
 size. The price follows that size.
 
-A result names the image by its short ID, its `from`, its size, whether the picture is shown, and
-`roomLeft`, how many more images at the largest size the session's caps still take. The picture
-itself comes beside the result as [web fetch images](./web-fetch-images.md) do, and counts against
-the same session caps. `isShown` is false on `image.read` and `image.import` when the caps leave no
-room.
+The tool's description lists every configured profile with its model, one line each, and names the
+default. A result names the image by its short ID, its `from`, the `profile` and `model` that drew
+it, its size, whether the picture is shown, and `roomLeft`, how many more images at the largest size
+the session's caps still take. The picture itself comes beside the result as
+[web fetch images](./web-fetch-images.md) do, and counts against the same session caps. `isShown` is
+false on `image.read` and `image.import` when the caps leave no room.
 
 ## Refusals
 
@@ -53,6 +54,9 @@ A refusal is a result with a `refusalCode`, never a thrown error. The model read
 | `IMAGE_REFUSED`                    | The provider refused the prompt; `profiles` lists the other profiles                |
 | `IMAGE_FAILED`                     | The provider failed, its reply is over `maxStoredBytes`, or the bytes do not decode |
 | `IMAGE_TIMEOUT`                    | The provider gave no reply within `drawTimeoutMs`                                   |
+
+`UNKNOWN_PROFILE`, `IMAGE_FAILED` and `IMAGE_TIMEOUT` set `profiles` to every configured profile,
+and `IMAGE_REFUSED` to the others. Each entry holds the profile's key and its `model`.
 
 `image.import` also returns `UNKNOWN_FILE`, `FILE_FORGOTTEN`, `UNKNOWN_PHOTO` and `NOT_IMAGE`.
 `image.name`, `image.pin`, `image.unpin` and `image.read` return `UNKNOWN_IMAGE` or
@@ -128,11 +132,18 @@ images:
       model: <model id>
       credential: deployment:openai-images # a connector_credentials entry
       prices: { '1024x1024': 40000, '1536x1024': 60000, '1024x1536': 60000 } # micros per image
+    google:
+      provider: gemini
+      model: <model id>
+      credential: deployment:gemini-images
+      prices: { '1024x1024': 40000, '1536x1024': 60000, '1024x1536': 60000 }
 ```
 
-nixie refuses to start when a profile names a credential that the secrets file lacks, when `prices`
-lacks a size, or when `default` names no profile. The adapters use each provider's public API
-address, and the model IDs come from the config alone.
+`default` names the profile that answers a draw with no `profile`. Name an OpenAI profile there, and
+keep a Gemini profile beside it for the model to retry a refused prompt on. nixie refuses to start
+when a profile names a credential that the secrets file lacks, when `prices` lacks a size, or when
+`default` names no profile. The adapters use each provider's public API address, and the model IDs
+come from the config alone.
 
 ## Storage
 

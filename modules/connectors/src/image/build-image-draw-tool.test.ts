@@ -37,12 +37,21 @@ test('it draws an image from a prompt, shows it, and tells how many more fit', a
     image: expect.stringMatching(/^[a-z0-9]{10}$/u),
     from: null,
     profile: 'main',
+    model: 'model-a',
     size: '100x50',
     isShown: true,
     roomLeft: 3,
   });
 
   expect(reply.content.map((block) => block.type)).toStrictEqual(['text', 'image']);
+});
+
+test('it lists every configured profile with its model in the tool description', async () => {
+  const ctx = await setupTest();
+
+  const tool = ctx.tools.find((candidate) => candidate.name === 'image.draw');
+
+  expect(tool?.description).toContain('main: model-a\nsecond: model-b');
 });
 
 test('it charges the price of the size the profile lists', async () => {
@@ -138,7 +147,7 @@ test('it returns a refusal with the other profiles, and credits the charge', asy
       profile: 'main',
       reason: 'safety',
     },
-    profiles: ['second'],
+    profiles: [{ profile: 'second', model: 'model-b' }],
   });
 
   const spentMicros = await ctx.readSpentMicros();
@@ -189,6 +198,10 @@ test('it credits a failure the provider did not bill', async () => {
 
   expect(readToolResult(reply)).toStrictEqual({
     refused: { code: 'IMAGE_FAILED', message: 'The provider failed: the provider answered 503' },
+    profiles: [
+      { profile: 'main', model: 'model-a' },
+      { profile: 'second', model: 'model-b' },
+    ],
   });
 
   const spentMicros = await ctx.readSpentMicros();
@@ -358,7 +371,10 @@ test('it refuses an unknown profile before any charge, listing the profiles', as
 
   expect(readToolResult(reply)).toMatchObject({
     refused: { code: 'UNKNOWN_PROFILE' },
-    profiles: ['main', 'second'],
+    profiles: [
+      { profile: 'main', model: 'model-a' },
+      { profile: 'second', model: 'model-b' },
+    ],
   });
 
   const spentMicros = await ctx.readSpentMicros();

@@ -5,11 +5,13 @@ import type { DrawReply, ImageProvider } from '../types';
 import { getPageSession } from '../utils/get-page-session';
 import { probeSessionEnded } from '../web/probe-session-ended';
 import { buildImageOutput } from './build-image-output';
+import { collectImageProfiles } from './collect-image-profiles';
 import { convertToPng } from './convert-to-png';
 import { drawArguments } from './draw-arguments';
 import { imageLimits } from './image-limits';
 import { formatImageSize, imageSizes } from './image-size';
 import type { ImageSize } from './image-size';
+import type { ImagesConfig } from './images-config-schema';
 import { noteDeclaration } from './note-declaration';
 import { padPng } from './pad-png';
 import { pickImageProfile } from './pick-image-profile';
@@ -64,6 +66,7 @@ const drawOutput = buildImageOutput([
   'image',
   'from',
   'profile',
+  'model',
   'size',
   'isShown',
   'roomLeft',
@@ -72,19 +75,10 @@ const drawOutput = buildImageOutput([
   'profiles',
 ]);
 
-const drawDescription =
-  'Draws a picture from a prompt, or with `from` edits an image you drew or imported, one change ' +
-  'at a time. nixie keeps every picture it gets back and sends the stored bytes with each edit, ' +
-  'so name the image to edit in `from`. `references` are up to 4 image IDs that the provider ' +
-  'sees beside the prompt, so a subject stays the same. The picture shows beside the result. A ' +
-  'call is paid. A provider can refuse a prompt: the refusal lists the other profiles, and you ' +
-  'choose whether to retry on one. A draw that names a photo of the owner is sent to the ' +
-  'provider only when the owner allows it.';
-
 export function buildImageDrawTool(options: ImageToolOptions): ToolDefinition {
   return {
     name: 'image.draw',
-    description: drawDescription,
+    description: formatDrawDescription(options.images),
     input: drawInput,
     output: drawOutput.output,
     declaration: { ...noteDeclaration, effects: ['fetch'], results: drawOutput.results },
@@ -119,6 +113,21 @@ export function buildImageDrawTool(options: ImageToolOptions): ToolDefinition {
       }
     },
   };
+}
+
+const drawDescription =
+  'Draws a picture from a prompt, or with `from` edits an image you drew or imported, one change ' +
+  'at a time. nixie keeps every picture it gets back and sends the stored bytes with each edit, ' +
+  'so name the image to edit in `from`. `references` are up to 4 image IDs that the provider ' +
+  'sees beside the prompt, so a subject stays the same. The picture shows beside the result. A ' +
+  'call is paid. A provider can refuse a prompt: the refusal lists the other profiles, and you ' +
+  'choose whether to retry on one. A failed draw lists the profiles too. A draw that names a ' +
+  'photo of the owner is sent to the provider only when the owner allows it.';
+
+function formatDrawDescription(images: ImagesConfig): string {
+  const lines = collectImageProfiles(images).map((entry) => `${entry.profile}: ${entry.model}`);
+
+  return `${drawDescription}\n\nProfiles, each with its model (${images.default} is the default):\n${lines.join('\n')}`;
 }
 
 // Takes the room for the picture now, so a draw beside this one cannot pass on the same room. The
@@ -240,13 +249,13 @@ function refuseReply(
   sources: Extract<DrawSources, { kind: 'ready' }>,
   reply: Exclude<CalledReply, { kind: 'image' }>,
 ) {
-  if (reply.kind === 'refused') {
-    const others = Object.keys(options.images.profiles).filter((key) => key !== sources.picked.key);
+  const listed = { profiles: collectImageProfiles(options.images) };
 
+  if (reply.kind === 'refused') {
     return {
       ...refuseImage('IMAGE_REFUSED', reply.message, {
         refused: { profile: sources.picked.key, reason: reply.reason },
-        rest: { profiles: others },
+        rest: { profiles: collectImageProfiles(options.images, sources.picked.key) },
       }),
       ...(reply.isBilled ? { billed: true as const } : {}),
     };
@@ -254,7 +263,7 @@ function refuseReply(
 
   if (reply.kind === 'failed') {
     return {
-      ...refuseImage('IMAGE_FAILED', `The provider failed: ${reply.reason}`),
+      ...refuseImage('IMAGE_FAILED', `The provider failed: ${reply.reason}`, { rest: listed }),
       ...(reply.isBilled ? { billed: true as const } : {}),
     };
   }
@@ -266,8 +275,11 @@ function refuseReply(
       ? refuseImage(
           'IMAGE_TIMEOUT',
           'The provider gave no reply in time. The image may exist at the provider, and the call was charged.',
+          { rest: listed },
         )
-      : refuseImage('IMAGE_FAILED', 'The provider call failed, and the call was charged.');
+      : refuseImage('IMAGE_FAILED', 'The provider call failed, and the call was charged.', {
+          rest: listed,
+        });
 
   return { ...refusal, billed: true as const };
 }
@@ -282,7 +294,7 @@ async function writeDraw(
   drawn: StoredDraw,
 ): Promise<ToolOutcome> {
   if (drawn.reply.bytes.byteLength > imageLimits.maxStoredBytes) {
-    return { status: 'ok', ...refuseOverSize(), billed: true };
+    return { status: 'ok', ...refuseOverSize(options), billed: true };
   }
 
   const png = await convertToPng(drawn.reply.bytes, { longEdge: null });
@@ -290,7 +302,9 @@ async function writeDraw(
   if (png.kind === 'unreadable') {
     return {
       status: 'ok',
-      ...refuseImage('IMAGE_FAILED', `The reply is no picture that decodes: ${png.reason}`),
+      ...refuseImage('IMAGE_FAILED', `The reply is no picture that decodes: ${png.reason}`, {
+        rest: { profiles: collectImageProfiles(options.images) },
+      }),
       billed: true,
     };
   }
@@ -309,6 +323,7 @@ async function writeDraw(
     image,
     from,
     profile: sources.picked.key,
+    model: sources.picked.profile.model,
     size,
     isShown: shown.image !== null,
     roomLeft,
@@ -358,6 +373,8 @@ async function writeDraw(
   };
 }
 
-function refuseOverSize() {
-  return refuseImage('IMAGE_FAILED', 'The reply is longer than the 8 MiB that nixie stores.');
+function refuseOverSize(options: ImageToolOptions) {
+  return refuseImage('IMAGE_FAILED', 'The reply is longer than the 8 MiB that nixie stores.', {
+    rest: { profiles: collectImageProfiles(options.images) },
+  });
 }
