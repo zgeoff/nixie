@@ -414,7 +414,11 @@ The fetcher's checks run on every hop, the first request and each redirect alike
 1. It accepts `http` and `https`, and refuses every other scheme. It drops any user name, password
    and fragment from the URL.
 2. It resolves the host through the system resolver and checks every A and AAAA address returned.
-   One address that is not public refuses the URL.
+   One address that is not public refuses the URL. A host with only IPv6 addresses is refused with
+   the message "`<host>` has no IPv4 address, and nixie reaches IPv4 hosts only", because nixie's
+   egress reaches IPv4 hosts only. A host with both kinds connects to its first IPv4 address. When
+   the system lookup finds no address, the fetcher asks for the host's AAAA records, so a host with
+   only IPv6 records gets that message in place of a resolve failure.
 3. It connects to the address it checked, and sends the host name in the `Host` header, and over
    `https` for TLS too. The connection never asks DNS again, so a second answer cannot move the
    request, and an `https` certificate must still match the host name.
