@@ -13,8 +13,8 @@ kind of state a commit changed, such as the pause or the task list. A device scr
 only its screen. One in-memory client registry in the API holds presence and the open device
 streams, and the push notifier and the devices module each read their part.
 
-The owner approves this design and settles its open questions. A builder starts from it to build the
-stream, the topic marks, the client registry and the web client's move onto the stream.
+A builder starts from this design to build the stream, the topic marks, the client registry, the web
+client's move onto the stream and the model's view of devices.
 
 ## Shape
 
@@ -41,7 +41,7 @@ const events = await client.live.follow({ afterSequence: 4812, thread: 't7k2' })
 for await (const event of events) {
   // → { kind: 'opened' }
   // → { kind: 'record', record: { sequence: 4813, thread: 't7k2', kind: 'model.reply', … } }
-  // → { kind: 'changed', topics: ['pause', 'tasks'] }
+  // → { kind: 'changed', topics: ['nixie', 'tasks'] }
 }
 
 // A device screen: its screen state, and nothing else.
@@ -50,16 +50,21 @@ await client.live.follow({ device: { pixels: { width: 1080, height: 1920, pixelR
 ```
 
 ```ts
-// contract: live. Replaces records.follow, its alias log.follow, and devices.follow for nixie's
-// own clients.
+// contract: live. Replaces records.follow, its alias log.follow, and devices.follow, which the same
+// release deletes from the contract and the API.
+// Each topic is the root of the web client's query keys that it covers, one to one.
 const liveTopicSchema = z.enum([
   'approvals',
   'backups',
   'computer',
   'definitions',
-  'pause',
+  'images',
+  'memory',
+  'nixie',
+  'notebook',
   'spend',
   'tasks',
+  'triggers',
 ]);
 
 const followLive = signedIn
@@ -94,21 +99,25 @@ const followLive = signedIn
 export type LiveTopic = z.output<typeof liveTopicSchema>;
 ```
 
-The web client maps each topic to the reads it invalidates, in place of the polls and streams in the
-last column:
+The web client invalidates every read under a topic's query-key root, in place of the polls and
+streams in the last column:
 
-| Topic         | Reads the client invalidates                                     | Replaces                                    |
-| ------------- | ---------------------------------------------------------------- | ------------------------------------------- |
-| `pause`       | `nixie.read`                                                     | a 15 s poll                                 |
-| `spend`       | `spend.read`                                                     | a 15 s poll                                 |
-| `backups`     | `backups.readNotice`                                             | a 60 s poll                                 |
-| `approvals`   | `approvals.listItems`, `approvals.readProposals`                 | 15 s polls                                  |
-| `computer`    | `computer.readHandover`                                          | a 60 s poll, and the banner's record stream |
-| `tasks`       | `tasks.list`, `tasks.read`, `tasks.listEnded`, `triggers.report` | a 60 s poll, and 2 pages' record streams    |
-| `definitions` | `definitions.listTasks`                                          | the definition list's record stream         |
+| Topic         | Reads under the root                             | Replaces                                    |
+| ------------- | ------------------------------------------------ | ------------------------------------------- |
+| `nixie`       | `nixie.read`, which holds the pause              | a 15 s poll                                 |
+| `spend`       | `spend.read`                                     | a 15 s poll                                 |
+| `backups`     | `backups.readNotice`                             | a 60 s poll                                 |
+| `approvals`   | `approvals.listItems`, `approvals.readProposals` | 15 s polls                                  |
+| `computer`    | `computer.readHandover`                          | a 60 s poll, and the banner's record stream |
+| `tasks`       | `tasks.list`, `tasks.read`, `tasks.listEnded`    | a 60 s poll, and 2 pages' record streams    |
+| `triggers`    | `triggers.report`                                | the same task pages' streams                |
+| `definitions` | `definitions.listTasks`                          | the definition list's record stream         |
+| `memory`      | the memory page's reads                          | a refresh by hand                           |
+| `notebook`    | the notebook's reads                             | a refresh by hand                           |
+| `images`      | `images.list`                                    | a refresh by hand                           |
 
 A new task can belong to a definition, so a write that creates a task marks both `tasks` and
-`definitions`.
+`definitions`. A trigger's fire or skip marks `tasks` and `triggers`.
 
 ### Marking a topic
 
@@ -224,7 +233,9 @@ interface Presence {
   last read.
 - A test for each topic makes the change and asserts that an open stream receives `changed` with
   that topic.
-- A design that adds a read the client keeps fresh adds its topic to `liveTopicSchema`.
+- A design that adds a read the client keeps fresh adds its query-key root to `liveTopicSchema`. A
+  test fails when a topic names no root of the client's query keys, or a root that a topic covers
+  has no topic.
 
 ### Device screens
 
@@ -233,7 +244,26 @@ interface Presence {
   `FORBIDDEN`.
 - A device-form stream keeps its session's last seen fresh, every `lastSeenIntervalMs`. A page
   stream never does.
-- A device is online while one or more of its device-form streams are open.
+- A device is online while one or more of its device-form streams are open. It counts as offline
+  once it has had no open stream for 60 s, so a reconnect never reads as offline.
+
+### Devices for the model
+
+```ts
+devices.list({});
+// → [{ shortID: 'D2', name: 'Kitchen tablet', online: true, wake: [] },
+//    { shortID: 'D5', name: 'Bedroom speaker', online: false, offlineSinceMs: 1796000000000,
+//      wake: ['online'] }]
+
+devices.watch({ device: 'D5', wake: ['online', 'offline'] });
+// → { wake: ['online', 'offline'] }
+// devices module. Effects: note. Sets which of the device's changes wake the model; [] wakes on none.
+```
+
+- A device's change to online or offline wakes the model only when that device's wake list names it.
+  Every device starts with an empty list.
+- A show to an offline device waits, and the device shows it when it comes back online. The show's
+  result says that the device is offline and the show waits.
 
 ### Presence
 
@@ -271,6 +301,10 @@ interface Presence {
 - **The API module owns the client registry.** It serves `sessions.shown` and every stream, and
   hands each reader the narrow view it reads. This moves the registry out of the channels module,
   where [the push notice](push-notice.md#presence) put it.
+- **The stream names what changed, and sends records only for the thread on screen.** The reads
+  exist and are tested, and a backup notice or a gateway stop changes with no record to send.
+- **The old streams go in the same release.** `records.follow`, `log.follow` and `devices.follow`
+  leave the contract and the API when `live.follow` ships, so nothing serves two stream shapes.
 - **The web client keeps its own reconnect loop.** It resumes by `afterSequence`, so it needs no
   `ClientRetryPlugin` and sends no `Last-Event-ID`. The server's `lastEventId` path serves other
   clients.
@@ -289,20 +323,3 @@ interface Presence {
 - The voice call's transport, which [the voice design](../platform/channels/voice.md) holds.
 - One stream shared by several tabs of the same browser.
 - The oRPC 2 upgrade. The keepalive constraint holds through it.
-
-## Open questions
-
-- **Does the stream send changed rows or only name what changed?** The owner settles it in
-  [GEO-2823](https://linear.app/zgeoff/issue/GEO-2823).
-  [The live view](../platform/channels/live-view.md#how-the-client-stays-current) sends each record
-  with its changed projection rows, for every thread. The recommendation is topics: the reads exist
-  and are tested, and a backup notice or a gateway stop changes with no record to send. Until then,
-  the stream sends topics and the records of the thread on screen.
-- **Does a signed-in browser in device mode count as present?** The owner settles it in
-  [GEO-2824](https://linear.app/zgeoff/issue/GEO-2824). Until then, device mode never calls
-  `sessions.shown`.
-- **When do the old stream procedures leave the published contract?** The owner settles it in
-  [GEO-2825](https://linear.app/zgeoff/issue/GEO-2825). Until then, `records.follow`, `log.follow`
-  and `devices.follow` stay, deprecated, and serve their events as before.
-- **Are `live.follow`, its event kinds and the topic names right?** The owner settles it in
-  [GEO-2826](https://linear.app/zgeoff/issue/GEO-2826). Until then, the build uses them.
