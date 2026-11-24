@@ -5,6 +5,7 @@ import { pickBackupSetKind } from './pick-backup-set-kind';
 import { readBackupDue } from './read-backup-due';
 import type { BackupHealth } from './read-backup-health';
 import { readBackupHealth } from './read-backup-health';
+import { removeStaleForgetSets } from './remove-stale-forget-sets';
 import { writeBackupNotices } from './write-backup-notices';
 import type { ReceivedReceipt } from './write-received-receipts';
 import { writeReceivedReceipts } from './write-received-receipts';
@@ -21,7 +22,7 @@ export interface BackupPass {
 // with it, or their refusals and failures would never reach the log.
 export function runBackupPass(context: BackupContext, intervalMs: number): Promise<BackupPass> {
   return runBackupPassWith(context, intervalMs, async () => {
-    const due = await readBackupDue(context.writer);
+    const due = await readBackupDue(context.writer, context.legacyEnds ?? []);
 
     const kind = pickBackupSetKind(due, context.writer.clock.now(), intervalMs);
 
@@ -42,6 +43,8 @@ export async function runBackupPassWith(
   };
 
   try {
+    await removeStaleForgetSets(context);
+
     outputs.noticed = await writeBackupNotices(context, intervalMs);
     outputs.staged = await writeSet();
   } catch (error) {

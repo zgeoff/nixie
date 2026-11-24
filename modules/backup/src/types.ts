@@ -1,5 +1,5 @@
 import type { CheckedTables } from '@heynixie/db';
-import type { DataStorage, Writer } from '@heynixie/log';
+import type { DataStorage, LegacyEnd, Writer } from '@heynixie/log';
 import type { BackupSetKind } from '@heynixie/wire';
 
 export type BackupSetState = 'staging' | 'staged' | 'published' | 'failed' | 'abandoned';
@@ -9,6 +9,10 @@ export type BackupWriter = Pick<Writer, 'clock' | 'commits' | 'dataDir' | 'db' |
 export interface BackupContext {
   readonly writer: BackupWriter;
   readonly storage: DataStorage;
+
+  // the end records of the forgets that predate the erasure records; the server passes the ones
+  // that its erasable descriptors name, because this module imports no store
+  readonly legacyEnds?: readonly LegacyEnd[];
 }
 
 export type BackupNoticeCause = 'failed' | 'missing';
