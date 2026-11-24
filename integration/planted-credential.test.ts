@@ -86,15 +86,27 @@ test.each<Connection>(['the mock network', 'a pinned connection'])(
 
     const read = await ctx.api.client.conversation.read({ thread: 'conversation' });
 
-    const seen = JSON.stringify({
-      results: ctx.nixie.toolResults,
-      logs: ctx.nixie.readLogEvents(),
-      records: read.records,
+    const texts = {
+      results: JSON.stringify(ctx.nixie.toolResults),
+      logs: JSON.stringify(ctx.nixie.readLogEvents()),
+      records: JSON.stringify(read.records),
+    };
+
+    // A failure prints only where each form of the key showed, never the key itself.
+    const found = Object.fromEntries(
+      Object.entries(texts).map(([source, text]) => [
+        source,
+        { key: text.includes(ctx.planted), base64: text.includes(ctx.encoded) },
+      ]),
+    );
+
+    expect(found).toStrictEqual({
+      results: { key: false, base64: false },
+      logs: { key: false, base64: false },
+      records: { key: false, base64: false },
     });
 
-    expect(seen).not.toContain(ctx.planted);
-    expect(seen).not.toContain(ctx.encoded);
-    expect(ctx.nixie.toolResults.at(-1)?.result).toInclude('Ferry times for');
+    expect(ctx.nixie.toolResults.at(-1)?.result.includes('Ferry times for')).toBe(true);
   },
 );
 
@@ -112,9 +124,14 @@ test.each<Connection>(['the mock network', 'a pinned connection'])(
 
     const files = await ctx.nixie.readDataFiles();
 
-    const leaked = files.filter(
-      (file) => file.text.includes(ctx.planted) || file.text.includes(ctx.encoded),
-    );
+    // A failure prints only the path of each file and which form of the key it holds.
+    const leaked = files
+      .map((file) => ({
+        name: file.name,
+        key: file.text.includes(ctx.planted),
+        base64: file.text.includes(ctx.encoded),
+      }))
+      .filter((file) => file.key || file.base64);
 
     expect(leaked).toStrictEqual([]);
   },
