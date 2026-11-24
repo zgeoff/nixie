@@ -175,6 +175,10 @@ on a page in Chromium changes the page's title. They also check that a click on 
 `USE_RUN`, that a click on the browser's address bar returns `USE_BROWSER_OPEN`, and that a click
 returns `SCREEN_CHANGED` once a new tab replaced the window it was bound to.
 
+One test sends the keys of a take-over's paste through a watch to the real VNC server. It checks
+that `né☃` and a line break reach the focused field of a page in Chromium. CI never runs it, so run
+it after each change to the VNC server's options or to the keys that the web client sends.
+
 1. Build the computer image into impd from `guests/computer/Dockerfile`, with the repo root as the
    build folder, as step 1 of [the fetch sandbox tests](#the-fetch-sandbox-tests) does. Rebuild it
    after each change under `guests/computer/` or a package the guest imports.

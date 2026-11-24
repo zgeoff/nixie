@@ -7,6 +7,8 @@ import type { ComputerReply, ComputerRequest, ScreenBinding } from '@heynixie/wi
 import { waitFor } from '@zgeoff/testing';
 import invariant from 'tiny-invariant';
 import { buildButtonPageURL } from '../test-utils/build-button-page-url';
+import { buildFieldPageURL } from '../test-utils/build-field-page-url';
+import { buildKeyEventBytes } from '../test-utils/build-key-event-bytes';
 import { buildPopupPageURL } from '../test-utils/build-popup-page-url';
 import { buildSocketDumpArgv } from '../test-utils/build-socket-dump-argv';
 import { buildSocketProbeArgv } from '../test-utils/build-socket-probe-argv';
@@ -526,6 +528,76 @@ test.skipIf(!hasImpHost)(
     });
 
     expect(before).not.toStartWith('x:321 y:123');
+  },
+);
+
+test.skipIf(!hasImpHost)(
+  'it types the keys of a paste into the focused field of a page, with a character outside Latin-1 and a line break',
+  async () => {
+    const ctx = await setupTest();
+
+    await ctx.openURL(buildFieldPageURL('empty'));
+
+    const received: Uint8Array[] = [];
+
+    const watch = ctx.computer.watch(
+      {
+        send: (bytes) => {
+          received.push(bytes);
+        },
+        close: () => {},
+      },
+      'laptop',
+    );
+
+    onTestFinished(() => {
+      watch.end();
+    });
+
+    await waitFor(() => {
+      expect(received.length).toBeGreaterThan(0);
+    });
+
+    watch.receive(new TextEncoder().encode('RFB 003.008\n'));
+    watch.receive(new Uint8Array([1]));
+    watch.receive(new Uint8Array([1]));
+
+    await ctx.computer.takeover.start('laptop');
+
+    // PointerEvent: type 5, the left button down then up, at x 640, y 400 on the field
+    watch.receive(new Uint8Array([5, 1, 2, 128, 1, 144]));
+    watch.receive(new Uint8Array([5, 0, 2, 128, 1, 144]));
+
+    // keys sent before the window manager moves the focus would reach the terminal
+    await waitFor(async () => {
+      const focused = await ctx.execAsRoot([
+        'env',
+        'DISPLAY=:99',
+        'xdotool',
+        'getactivewindow',
+        'getwindowname',
+      ]);
+
+      expect(focused).toStartWith('empty ');
+    });
+
+    // the keysyms that the web client sends for a paste of 'né☃\n'
+    for (const keysym of [0x6e, 0xe9, 0x01_00_26_03, 0xff_0d]) {
+      watch.receive(buildKeyEventBytes(keysym, true));
+      watch.receive(buildKeyEventBytes(keysym, false));
+    }
+
+    await waitFor(async () => {
+      const title = await ctx.execAsRoot([
+        'env',
+        'DISPLAY=:99',
+        'xdotool',
+        'getactivewindow',
+        'getwindowname',
+      ]);
+
+      expect(title).toStartWith(`${encodeURIComponent('né☃\n')} `);
+    });
   },
 );
 

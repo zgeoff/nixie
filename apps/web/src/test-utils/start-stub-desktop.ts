@@ -1,5 +1,4 @@
 import { onTestFinished } from 'bun:test';
-import { buildKeysymText } from './build-keysym-text';
 
 type Phase = 'version' | 'security' | 'init' | 'messages';
 
@@ -10,9 +9,6 @@ interface KeyEvent {
 
 interface Received {
   readonly keys: KeyEvent[];
-
-  // the text a focused field gets from the key presses so far
-  typed: string;
 }
 
 interface DesktopSocketData {
@@ -26,7 +22,7 @@ export interface StubDesktop {
   // the WebSocket URL that a viewer connects to
   readonly url: string;
 
-  // each key event the viewer sent, in order, and the text they type into the focused field
+  // each key event the viewer sent, in order
   readonly received: Received;
 
   // sends a ServerCutText message with the text to every viewer
@@ -35,9 +31,9 @@ export interface StubDesktop {
 
 // A VNC server in the test process, for a browser suite: it speaks the 3.8 handshake with no
 // security, then answers the first whole-screen request with one raw frame of a flat colour. It
-// records the keys it receives and the text they type into a focused field.
+// records the keys it receives.
 export function startStubDesktop(): StubDesktop {
-  const received: Received = { keys: [], typed: '' };
+  const received: Received = { keys: [] };
 
   const sockets = new Set<Bun.ServerWebSocket<DesktopSocketData>>();
 
@@ -144,10 +140,6 @@ function answerNext(socket: Bun.ServerWebSocket<DesktopSocketData>): boolean {
     const isDown = message[1] !== 0;
 
     data.received.keys.push({ keysym, isDown });
-
-    if (isDown) {
-      data.received.typed += buildKeysymText(keysym);
-    }
   }
 
   return true;

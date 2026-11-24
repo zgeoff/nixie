@@ -47,7 +47,7 @@ async function setupTest() {
       "[...document.querySelectorAll('button:enabled')].some((button) => button.innerText === 'Take over')",
     );
 
-    await view.evaluate("document.querySelector('main button').click()");
+    await view.click('main button');
 
     await waitForPage(view, "document.body.innerText.includes('You have taken over the computer')");
   };
@@ -238,7 +238,7 @@ test('it starts no take-over on a refresh of the computer page after a take-over
   expect(text).not.toInclude('You have taken over the computer');
 });
 
-test('it types text that the user pastes as keys, with a character outside Latin-1 and a line break', async () => {
+test('it sends text that the user pastes as key presses, with a Unicode keysym for a character outside Latin-1 and Return for a line break', async () => {
   const ctx = await setupTest();
 
   await ctx.takeOver();
@@ -259,24 +259,46 @@ test('it types text that the user pastes as keys, with a character outside Latin
     { keysym: 0xff_0d, isDown: true },
     { keysym: 0xff_0d, isDown: false },
   ]);
-
-  expect(ctx.desktop.received.typed).toBe('né☃\n');
 });
 
-test('it types each line break of a multi-line paste as Return, so a terminal runs the lines as typed', async () => {
+test('it sends each line break of a multi-line paste as one Return, so a terminal runs the lines as typed', async () => {
   const ctx = await setupTest();
 
   await ctx.takeOver();
 
-  await pasteIntoScreen(ctx.view, 'echo né☃\r\npwd');
+  await pasteIntoScreen(ctx.view, 'ls\r\npwd\n');
 
   await waitFor(() => {
-    expect(ctx.desktop.received.typed).toBe('echo né☃\npwd');
+    expect(ctx.desktop.received.keys).toHaveLength(14);
   });
+
+  expect(ctx.desktop.received.keys).toStrictEqual([
+    { keysym: 0x6c, isDown: true },
+    { keysym: 0x6c, isDown: false },
+    { keysym: 0x73, isDown: true },
+    { keysym: 0x73, isDown: false },
+    { keysym: 0xff_0d, isDown: true },
+    { keysym: 0xff_0d, isDown: false },
+    { keysym: 0x70, isDown: true },
+    { keysym: 0x70, isDown: false },
+    { keysym: 0x77, isDown: true },
+    { keysym: 0x77, isDown: false },
+    { keysym: 0x64, isDown: true },
+    { keysym: 0x64, isDown: false },
+    { keysym: 0xff_0d, isDown: true },
+    { keysym: 0xff_0d, isDown: false },
+  ]);
 });
 
 test('it offers a button for copied text that the browser refuses to write', async () => {
   const ctx = await setupTest();
+
+  // the app's origin has a port of its own in each test, so the refusal ends with the test
+  await ctx.view.cdp('Browser.setPermission', {
+    permission: { name: 'clipboard-write' },
+    setting: 'denied',
+    origin: ctx.appURL,
+  });
 
   await ctx.takeOver();
 
