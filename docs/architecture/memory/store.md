@@ -559,12 +559,12 @@ The runner holds these rules, which the code enforces:
   reports them.
 - At start, the catch-up finishes every open erasure after the session cleanup and before the
   turn-input repair, the turn-input intake and the runners start.
-- A forget open for the `erasure.stuck_after_minutes` of the config (5 by default) is stuck. Every
-  30 seconds the watch retries such a forget, and logs `erasure.stuck` at the error level for each
-  one that stays open. A younger forget is left alone, because it may wait on the step that called
-  it.
-- A stuck forget has 3 surfaces, all read from the open erasures in the log, so they need no record
-  of their own. The web client shows a "forget stuck" notice with a retry button, through
+- A forget open for the `erasure.stuck_after_minutes` of the config (5 by default) is stuck. On a
+  fixed interval the watch retries such a forget, and logs `erasure.stuck` at the error level for
+  each one that stays open. A younger forget is left alone, because it may wait on the step that
+  called it.
+- A stuck forget shows in 3 places, each read from the open erasures in the log, so they need no
+  record of their own. The web client shows a "forget stuck" notice with a retry button, through
   `erasure.readStuck` and `erasure.retryStuck`. The conversation's model lists stuck forgets with
   the `forget.stuck` tool and runs them again with `forget.retry`. Each shows the kind, the short ID
   and the minutes open, never the erasure's own ID. A retry goes through the runner's queue, so it

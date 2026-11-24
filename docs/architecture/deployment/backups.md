@@ -38,12 +38,17 @@ every receipt that the job wrote, then stages a set when one is due:
    stale set holds the deleted keys. The same transaction that writes `erasure.finished` writes
    `floor.json` into the staging folder, naming the highest set that exists then, and the job ships
    no set at or below it. The job reads `floor.json` again once a set's key snapshot is in the key
-   repo. When an erasure finished while the keys copied, the job removes that key snapshot, prunes
-   the key repo, publishes nothing and writes no receipt. A failure of that removal fails the job,
-   and the next publish removes the stale snapshot with the other old ones. The withdrawal waits for
-   the job's staging lock, so it never removes a set that the job is shipping, and a pass that finds
-   the lock held withdraws the set on the next pass. A withdrawal that a failure stopped after the
-   rename finishes on the next pass.
+   repo, again once its data snapshot is in the data repo, and again after the key repo's prune and
+   check, just before the receipt. When an erasure finished before one of those reads, the job
+   removes the set's key snapshot, prunes the key repo, keeps the restore note and writes no
+   receipt. A failure of that removal fails the job, and the next publish removes the stale snapshot
+   with the other old ones. The data snapshot stays, because the erased text in it is unreadable
+   once its keys are gone. A withdrawal after the prune leaves the key repo empty until the next
+   publish. The receipt's rename still follows the last read, so a set can publish when an erasure
+   finishes in that gap. Its receipt never covers the erasure, which waits for a set that started
+   after it. The withdrawal waits for the job's staging lock, so it never removes a set that the job
+   is shipping, and a pass that finds the lock held withdraws the set on the next pass. A withdrawal
+   that a failure stopped after the rename finishes on the next pass.
 2. A scheduled set is due once the newest staged set is a backup interval old, and never while a set
    waits for its receipt.
 

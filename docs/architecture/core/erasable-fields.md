@@ -46,9 +46,9 @@ record kinds, the record kinds a record forget may take or never takes, and the 
 its forget. The server registers the descriptors at start, and
 `bun run --cwd apps/server forgettable-kinds` generates the contract's forgettable kinds list from
 them. A CI check fails on a hand edit of that list, and a test puts each record kind in exactly one
-descriptor list. The forget of a note or a moment writes `erasure.started` and `erasure.finished`,
-which carry hold IDs and the keys to delete in clear, because a forget must not need the text it
-deletes.
+descriptor list. The forget of a note or a moment writes `erasure.started` and `erasure.finished` in
+clear, because a forget must not need the text it deletes. Only `erasure.started` carries the
+selection of keys to delete; `erasure.finished` carries the count of keys removed.
 
 ## The key store
 
