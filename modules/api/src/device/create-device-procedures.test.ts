@@ -889,11 +889,10 @@ test('it leaves the last seen time of a full session alone while its page stream
 
   const panelBefore = await ctx.readLastSeen(panel.sessionID);
 
-  // the call that opens the page stream moves the last seen time, as any call past the interval does
-  ctx.clock.advance(ctx.context.settings.lastSeenIntervalMs);
+  // inside the interval, the call that opens the stream moves nothing, so any write shows
+  ctx.clock.advance(ctx.context.settings.lastSeenIntervalMs / 2);
 
-  const openedAtMs = ctx.clock.now();
-
+  const laptopBefore = await ctx.readLastSeen(laptop.sessionID);
   const pageStream = await laptop.client.live.follow({});
 
   await pageStream.next();
@@ -908,7 +907,7 @@ test('it leaves the last seen time of a full session alone while its page stream
 
   const laptopAfter = await ctx.readLastSeen(laptop.sessionID);
 
-  expect(laptopAfter).toBe(openedAtMs);
+  expect(laptopAfter).toBe(laptopBefore);
 });
 
 test('it keeps the last seen time of a session fresh while its device stream is open', async () => {
