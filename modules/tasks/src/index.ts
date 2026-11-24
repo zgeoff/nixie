@@ -93,9 +93,12 @@ export { taskExchangeLimitedCodec } from './task/codec/task-exchange-limited-cod
 export { taskMessageCodec } from './utils/task-message-codec';
 export type { TaskMessageOutcome } from './task/projection/write-task-message';
 export { writeTaskMessage } from './task/projection/write-task-message';
-export { buildPauseCheck } from './pause/build-pause-check';
+export { buildGateFilter } from './gate/build-gate-filter';
+export { isGateBarring } from './gate/is-gate-barring';
+export { readTaskGate } from './gate/read-task-gate';
+export { readTaskGateSnapshot } from './gate/read-task-gate-snapshot';
+export { readTaskHolds } from './gate/read-task-holds';
 export type { ClaimRequest } from './lease/claim-lease';
-export { probeTaskPaused } from './utils/probe-task-paused';
 export { claimLease } from './lease/claim-lease';
 export type { ClaimTaskOptions } from './task/projection/claim-task';
 export { claimTask } from './task/projection/claim-task';
@@ -226,6 +229,9 @@ export type {
   TaskClaim,
   TaskControl,
   TaskControlRefusal,
+  TaskGate,
+  TaskHoldReason,
+  TaskHolds,
   TaskLimits,
   TaskLog,
   TaskMemory,

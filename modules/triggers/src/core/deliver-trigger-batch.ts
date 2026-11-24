@@ -2,6 +2,8 @@ import type { JSONValue, RecordInput } from '@heynixie/log';
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import type { DefinitionTaskAnswer } from '@heynixie/tasks';
 import {
+  conversationTaskID,
+  readTaskGate,
   triggerFiredCodec,
   triggerSkippedCodec,
   waitAtFaultPoint,
@@ -77,7 +79,12 @@ async function writeEvent(
   }
 
   const answer = row.target === 'task' ? await readTaskAnswer(tx, core, event.definitionID) : null;
-  const outcome = pickEventOutcome(event, answer);
+  const holdsConversation = answer === null ? await probeConversationWaiting(tx) : false;
+  const outcome = pickEventOutcome(event, answer, holdsConversation);
+
+  if (outcome.kind === 'wait') {
+    return false;
+  }
 
   if (outcome.kind === 'fire') {
     await writeInboxRecordsInTransaction(tx, core, [
@@ -108,6 +115,14 @@ async function readTaskAnswer(
   }
 
   return answer;
+}
+
+// A conversation target fires into a conversation that its owner paused, so a reminder still
+// lands. It waits for nixie's pause and the spending stop, which hold whatever the task's state.
+async function probeConversationWaiting(tx: Transaction<unknown>): Promise<boolean> {
+  const gate = await readTaskGate(tx, conversationTaskID, 'conversation_trigger');
+
+  return !gate.open;
 }
 
 function buildFired(

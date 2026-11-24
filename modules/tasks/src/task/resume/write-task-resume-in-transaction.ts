@@ -2,8 +2,8 @@ import { exemptTaskInTransaction } from '@heynixie/log';
 import type { Transaction } from 'kysely';
 import invariant from 'tiny-invariant';
 import { match } from 'ts-pattern';
+import { readTaskHolds } from '../../gate/read-task-holds';
 import type { TasksContext, TasksTables } from '../../types';
-import { probeTaskPaused } from '../../utils/probe-task-paused';
 import type { TaskControlOutcome } from '../write-task-control-in-transaction';
 import { writeTaskControlInTransaction } from '../write-task-control-in-transaction';
 import { pickTaskResumeAction } from './pick-task-resume-action';
@@ -30,14 +30,14 @@ export async function writeTaskResumeInTransaction(
 
   const control = { taskID: request.taskID, control: 'resume' } as const;
 
-  const isPausedByNixie = await probeTaskPaused(tx, request.taskID);
+  const holds = await readTaskHolds(tx, request.taskID);
 
   const action = pickTaskResumeAction({
     task:
       task === undefined
         ? null
         : { state: task.state, isPauseRequested: task.pause_requested === 1 },
-    isPausedByNixie,
+    isPausedByNixie: holds.nixie,
   });
 
   const exemption = {

@@ -1,5 +1,10 @@
 import { expect, test } from 'bun:test';
-import { writeRecords } from '@heynixie/log';
+import {
+  pauseNixieInTransaction,
+  readRecords,
+  withWriteTransaction,
+  writeRecords,
+} from '@heynixie/log';
 import { buildMockModelProfile } from '@heynixie/models/test-utils';
 import { buildStubSandboxes } from '@heynixie/sandbox/test-utils';
 import {
@@ -8,7 +13,6 @@ import {
   readSpendStopRow,
   spendLimitRaisedCodec,
   spendProjections,
-  stoppedStepDelayMs,
   writeSpendClear,
   writeSpendTrip,
 } from '@heynixie/spend';
@@ -16,7 +20,6 @@ import type { SpendContext, SpendTurnLimits } from '@heynixie/spend';
 import { buildStubSpendGateway } from '@heynixie/spend/test-utils';
 import { claimTask, createConversationTask, runTaskStep, writeInboxRecords } from '@heynixie/tasks';
 import { readTestTaskProgress } from '@heynixie/tasks/test-utils';
-import { waitForCondition } from '@heynixie/testing';
 import type { ApprovedRun, ToolImage } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
 import { startConversationRunner } from '../session/start-conversation-runner';
@@ -37,6 +40,9 @@ interface PendingCall {
 
   // runs while the call does
   readonly duringRun?: () => void;
+
+  // pauses all of nixie while the call runs
+  readonly isNixiePaused?: boolean;
 
   // makes the call fail the step
   readonly failure?: Error;
@@ -66,6 +72,16 @@ async function setupTest() {
     },
   });
 
+  const pauseNixie = () =>
+    withWriteTransaction(tasks.writer, (tx) =>
+      pauseNixieInTransaction(tx, log, {
+        cause: 'owner',
+        recoveryID: null,
+        by: 'session-a',
+        definitions,
+      }),
+    );
+
   const inStepActions: InStepActions = {
     replies: new Map(),
     probePending: () => {
@@ -86,6 +102,10 @@ async function setupTest() {
         });
 
         call.duringRun?.();
+
+        if (call.isNixiePaused === true) {
+          await pauseNixie();
+        }
 
         if (call.failure !== undefined) {
           throw call.failure;
@@ -175,53 +195,41 @@ async function setupTest() {
       ...(spend === undefined ? {} : { spend }),
     });
 
-  const stoppedSleeps = { count: 0 };
-
   const buildSpend = (limits: SpendTurnLimits): SpendContext => ({
     gateway: buildStubSpendGateway(),
     log,
 
-    // the records are stamped by the writer's clock, and the stop's delay runs on the test clock
-    clock: {
-      now: () => tasks.writer.clock.now(),
-      sleep: (durationMs, signal) => {
-        stoppedSleeps.count += 1;
-
-        return tasks.clock.sleep(durationMs, signal);
-      },
-    },
+    // the records are stamped by the writer's clock
+    clock: { now: () => tasks.writer.clock.now(), sleep: tasks.clock.sleep },
     zone: 'UTC',
     limits,
     definitions: () => definitions,
     planLogins: createPlanLoginsHolder(),
   });
 
-  const stoppedStep = async (runner: Awaited<ReturnType<typeof startRunner>>) => {
-    const step = runNextStep(context, runner.runStep);
-
-    await waitForCondition(() => stoppedSleeps.count > 0);
-
-    stoppedSleeps.count = 0;
-
-    tasks.clock.advance(stoppedStepDelayMs);
-
-    await step;
-  };
-
   return {
     ...tasks,
     context,
     buildSpend,
-    stoppedStep,
     sandboxes,
     tools,
     state,
+    pauseNixie,
     startRunner,
     writeMessage: (text: string) =>
       writeInboxRecords(context, [
         { kind: 'owner_message', definitions, thread: 'conversation', erasable: { text } },
       ]),
     readProgress: () => readTestTaskProgress(context, 'conversation'),
+    readStepCommitCount: async () => {
+      const commits = await readRecords(log, {
+        afterSequence: 0,
+        kinds: ['task.step_committed'],
+        thread: 'conversation',
+      });
+
+      return commits.length;
+    },
     readTurnTexts: () => sandboxes.turns.map((turn) => turn.input.map((message) => message.text)),
   };
 }
@@ -504,12 +512,16 @@ test('it ends the step at the turn limit before the approved call runs, and runs
   ctx.state.pending.push({ text: 'the memory export is ready' });
 
   await ctx.writeMessage('Export my memory.');
-  await ctx.stoppedStep(runner);
+
+  const commitsBeforeStop = await ctx.readStepCommitCount();
+
+  await runNextStep(ctx.context, runner.runStep);
 
   const stopped = ctx.state.pending.length;
   const turnsAtStop = ctx.sandboxes.turns.length;
 
   const progress = await ctx.readProgress();
+  const commitsAtStop = await ctx.readStepCommitCount();
 
   const start = buildSpendPeriods(Date.now(), 'UTC').day.start;
 
@@ -533,8 +545,58 @@ test('it ends the step at the turn limit before the approved call runs, and runs
   const [, second] = ctx.readTurnTexts().map((turn) => turn.join('\n'));
 
   expect([stopped, turnsAtStop, progress.state]).toStrictEqual([1, 1, 'ready']);
+  expect(commitsAtStop).toBe(commitsBeforeStop);
   expect(ctx.state.pending).toStrictEqual([]);
   expect(second).toContain('the memory export is ready');
+});
+
+test('it runs a step to its commit when nixie pauses during the step', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const runner = await ctx.startRunner();
+
+  ctx.sandboxes.setGuestScript(buildStubTurnScript(() => ({ reply: 'Done.' })));
+  ctx.state.pending.push({ text: 'the memory export is ready', isNixiePaused: true });
+
+  await ctx.writeMessage('Export my memory.');
+
+  await runNextStep(ctx.context, runner.runStep);
+
+  const progress = await ctx.readProgress();
+  const commits = await ctx.readStepCommitCount();
+
+  expect(ctx.sandboxes.turns).toHaveLength(1);
+  expect(commits).toBe(1);
+  expect(progress.state).toBe('waiting');
+});
+
+test('it runs a step to its commit when nixie pauses after the guest turn has started', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const runner = await ctx.startRunner();
+
+  const script = buildStubTurnScript(() => ({ reply: 'Done.' }));
+
+  ctx.sandboxes.setGuestScript(async (turn, guest) => {
+    await ctx.pauseNixie();
+
+    return script(turn, guest);
+  });
+
+  await ctx.writeMessage('Export my memory.');
+
+  await runNextStep(ctx.context, runner.runStep);
+
+  const progress = await ctx.readProgress();
+  const commits = await ctx.readStepCommitCount();
+
+  expect(ctx.sandboxes.turns).toHaveLength(1);
+  expect(commits).toBe(1);
+  expect(progress.state).toBe('waiting');
 });
 
 test('it runs no approved call and no turn while the stop stands, and the next step is claimed after the clear', async () => {
@@ -576,7 +638,8 @@ test('it ends a conversation step at the month turn limit with no turn', async (
   await runNextStep(ctx.context, runner.runStep);
 
   await ctx.writeMessage('Second.');
-  await ctx.stoppedStep(runner);
+
+  await runNextStep(ctx.context, runner.runStep);
 
   const stop = await readSpendStopRow(ctx.writer.db);
 
@@ -606,7 +669,7 @@ test('it reads no turn count and writes no stop for a runner with no spend conte
   expect([ctx.sandboxes.turns.length, stop]).toStrictEqual([2, null]);
 });
 
-test('it counts the step error of an approved call that failed, though the stop stands', async () => {
+test('it counts the step error of an approved call that failed', async () => {
   const ctx = await setupTest();
 
   await createConversationTask(ctx.context);
@@ -625,7 +688,6 @@ test('it counts the step error of an approved call that failed, though the stop 
 
   await runTaskStep(ctx.context, claim, {
     runStep: runner.runStep,
-    probeSpendStop: () => Promise.resolve(true),
     leaseMs: 60_000,
     logger: () => {},
     maxStepErrors: 3,

@@ -1,6 +1,9 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { pauseNixieInTransaction, withWriteTransaction } from '@heynixie/log';
+import { buildLogSeeder } from '@heynixie/log/test-utils';
 import invariant from 'tiny-invariant';
+import { writeTaskControl } from '../task/write-task-control';
+import { createTestTaskInState } from '../test-utils/create-test-task-in-state';
 import { startTestTasks } from '../test-utils/start-test-tasks';
 import type { FaultPointContext, FaultPointID, TasksTables } from '../types';
 import { resetLease } from '../utils/reset-lease';
@@ -208,7 +211,7 @@ test('it reaches the claim.before fault point before it looks for work, also whe
   expect(reached).toStrictEqual([{ id: 'claim.before', context: { kind: 'task', id: null } }]);
 });
 
-test('it throws under the test build when a candidate query returns the work of a paused task, and writes no lease', async () => {
+test('it throws under the test build when a candidate query returns the work of a task that a nixie pause holds, and writes no lease', async () => {
   const ctx = await setupTest();
 
   await withWriteTransaction(ctx.writer, (tx) =>
@@ -237,8 +240,95 @@ test('it throws under the test build when a candidate query returns the work of 
 
   expect(claim).rejects.toThrowWithMessage(
     Error,
-    "a candidate query returned work work-1 of task task-1, which nixie's pause stops",
+    'a candidate query returned work work-1 of task task-1, which the task gate holds for nixie',
   );
 
   expect(leases).toStrictEqual([]);
+});
+
+test('it throws under the test build when a task claim returns a task at a standing spending stop', async () => {
+  const ctx = await setupTest();
+
+  await buildLogSeeder(ctx.context).spendStop();
+
+  const claim = claimLease(ctx.context, {
+    kind: 'task',
+    holder: 'runner-a',
+    durationMs: 60_000,
+    readCandidate: () => Promise.resolve({ workID: 'work-1', taskID: 'task-1' }),
+  });
+
+  await Promise.allSettled([claim]);
+
+  expect(claim).rejects.toThrowWithMessage(
+    Error,
+    'a candidate query returned work work-1 of task task-1, which the task gate holds for spend',
+  );
+});
+
+test('it throws under the test build when an action claim returns an unstarted action of a paused task', async () => {
+  const ctx = await setupTest();
+  const task = await createTestTaskInState(ctx.context, 'ready');
+
+  await writeTaskControl(ctx.context, { taskID: task.taskID, control: 'pause' });
+
+  const claim = claimLease(ctx.context, {
+    kind: 'action',
+    holder: 'runner-a',
+    durationMs: 60_000,
+    readCandidate: () => Promise.resolve({ workID: 'action-1', taskID: task.taskID }),
+  });
+
+  await Promise.allSettled([claim]);
+
+  expect(claim).rejects.toThrowWithMessage(
+    Error,
+    `a candidate query returned work action-1 of task ${task.taskID}, which the task gate holds for task`,
+  );
+});
+
+test('it claims the action with a started attempt of a paused task', async () => {
+  const ctx = await setupTest();
+  const task = await createTestTaskInState(ctx.context, 'ready');
+
+  await writeTaskControl(ctx.context, { taskID: task.taskID, control: 'pause' });
+
+  const lease = await claimLease(ctx.context, {
+    kind: 'action',
+    holder: 'runner-a',
+    durationMs: 60_000,
+    readCandidate: () =>
+      Promise.resolve({ workID: 'action-1', taskID: task.taskID, isStarted: true }),
+  });
+
+  expect(lease).toMatchObject({ kind: 'action', workID: 'action-1' });
+});
+
+test('it refuses the action with a started attempt while nixie is paused, and writes no lease', async () => {
+  const ctx = await setupTest();
+  const task = await createTestTaskInState(ctx.context, 'ready');
+
+  await withWriteTransaction(ctx.writer, (tx) =>
+    pauseNixieInTransaction(tx, ctx.context.log, {
+      cause: 'owner',
+      recoveryID: null,
+      by: 'session-a',
+      definitions: { snapshotHash: 'sha256:test' },
+    }),
+  );
+
+  const claim = claimLease(ctx.context, {
+    kind: 'action',
+    holder: 'runner-a',
+    durationMs: 60_000,
+    readCandidate: () =>
+      Promise.resolve({ workID: 'action-1', taskID: task.taskID, isStarted: true }),
+  });
+
+  await Promise.allSettled([claim]);
+
+  expect(claim).rejects.toThrowWithMessage(
+    Error,
+    `a candidate query returned work action-1 of task ${task.taskID}, which the task gate holds for nixie`,
+  );
 });

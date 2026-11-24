@@ -1,5 +1,5 @@
-import { defineRecordCodec } from '@heynixie/log';
 import { z } from 'zod';
+import { defineRecordCodec } from '../utils/define-record-codec';
 
 // A trip by a limit holds the period, the measure and the numbers. A trip because the gateway is
 // unreachable, or because it holds the lost mark, holds the time only. It sits on no thread.

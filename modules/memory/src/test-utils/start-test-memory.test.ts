@@ -14,6 +14,7 @@ test('it starts a store over a log that folds the memory projections, with no re
     'nixie_pause',
     'pause_exemptions',
     'recoveries',
+    'spend_stop',
     'memory_items',
     'memory_versions',
     'memory_labels',

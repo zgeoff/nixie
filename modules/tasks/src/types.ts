@@ -99,6 +99,25 @@ export type {
 
 export type LeaseKind = 'task' | 'action';
 
+// In order of precedence: the first that holds is the reason of the gate. ended: done, stopped,
+// failed or closed. spend: the spending stop's row stands, whatever the exemptions. nixie: nixie is
+// paused and the task isn't exempt. limit: a limit was reached and nothing raised it. task: paused.
+export type TaskHoldReason = 'ended' | 'spend' | 'nixie' | 'limit' | 'task';
+
+// since: the recorded time, in epoch ms, of the record that put the task in its present hold
+export type TaskGate =
+  | { readonly open: true }
+  | { readonly open: false; readonly reason: TaskHoldReason; readonly since: number };
+
+// Which holds stand on a task, each read on its own, so a caller whose rule differs by reason sees
+// a hold that an earlier reason outranks.
+export type TaskHolds = Readonly<Record<TaskHoldReason, boolean>>;
+
+// task_claim: a claim of a task. action: the claim of an action and each attempt it starts.
+// conversation_trigger: a trigger that targets the conversation, which heeds only nixie's pause and
+// the spending stop.
+export type GateCaller = 'task_claim' | 'action' | 'conversation_trigger';
+
 export interface Lease {
   readonly kind: LeaseKind;
   readonly workID: string;
@@ -247,6 +266,10 @@ export interface StepResult {
   // the dollars that only the step's records count, which a commit that fails records as spend
   // instead
   readonly spentDollars?: number;
+
+  // set by a step that the gate held for the spending stop before its turn: the step commits
+  // nothing and frees its lease
+  readonly isHeld?: true;
 }
 
 export interface StepInput {
@@ -411,6 +434,9 @@ export type TaskRow = TaskTable;
 export interface ClaimCandidate {
   readonly workID: string;
   readonly taskID: string;
+
+  // an action whose attempt has started runs on while its task is held for task or limit
+  readonly isStarted?: boolean;
 }
 
 export type TasksTables = CheckedTables<

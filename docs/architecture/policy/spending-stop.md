@@ -46,12 +46,18 @@ drops to that cause's version.
 
 ## Before a turn
 
-Each conversation step and each task step calls `checkSpendTurns` before its model turn. A stopped
-step does no work and sleeps a short fixed time before it ends, so a task the pause exempts does not
-spin. A task step that finds the stop standing counts no step error, and its next claim after the
-resume runs it again. A worker call makes the same check before it starts, because the gateway
-counts no turns, and while the stop stands the call fails with no sandbox started. The tasks module
-takes this check as an injected `probeSpendStop`, because it cannot import the spend module.
+The stop holds a task through the [task gate](../core/pause.md#the-task-gate): the gate reports
+`spend` while the stop's row stands, whatever the pause's cause and the task's exemption, and the
+claim filter leaves the task's work unclaimed. The row lives in the log module, so the tasks module
+reads it without importing the spend module.
+
+Each conversation step calls `checkSpendTurns` before its model turn, which trips the stop when the
+turn count has reached a limit, then reads the task's gate in a read transaction. A step held for
+`spend` ends at once with no step commit: the task goes back to ready with its work, its lease
+frees, and the next claim waits for the clear. A task step that fails while the stop stands counts
+no step error, and its next claim after the resume runs it again. A worker call makes the same two
+reads for the task whose step started it, because the gateway counts no turns, and while the stop
+stands the call fails with no sandbox started. A turn that is running when the stop trips finishes.
 
 ### Plan logins
 

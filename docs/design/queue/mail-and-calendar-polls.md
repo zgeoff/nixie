@@ -371,8 +371,8 @@ each poll event, in batch order. Step 4 runs once, after the last event.
    holds the sequence of each matching event.
 
 - The core stores the cursor of a poll batch whether or not its events were new.
-- While nixie is [paused](pause.md), the core delivers poll events as on any other day. Their fires
-  and met waits stay in the inbox, and no task takes a step until the resume.
+- While nixie is [paused](../../architecture/core/pause.md), the core delivers poll events as on any
+  other day. Their fires and met waits stay in the inbox, and no task takes a step until the resume.
 - Every event of a batch shares one `occurredAt`, the start of its poll. A poll fire sets
   `scheduledFor` to it, `skipped` (the missed slots) to `[]` and `skippedCount` to 0. A poll skip
   sets `scheduledFor` to `[occurredAt]`, and `count` to the number of its matching events.

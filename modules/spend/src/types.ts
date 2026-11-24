@@ -170,18 +170,6 @@ export interface SpendGateway {
   readonly removeSandbox: (name: string) => Promise<Done | Unreachable>;
 }
 
-interface SpendStopTable {
-  readonly id: number;
-  readonly reason: string;
-  readonly period: string | null;
-  readonly measure: string | null;
-  readonly limit_amount: number | null;
-  readonly spent_amount: number | null;
-  readonly at: number;
-  readonly resets_at: number | null;
-  readonly updated_sequence: number;
-}
-
 interface SpendRaiseTable {
   readonly start: string;
   readonly dollars: number;
@@ -204,7 +192,6 @@ interface SpendTurnsFoldedTable {
 
 export type SpendTables = CheckedTables<
   Readonly<{
-    spend_stop: SpendStopTable;
     spend_raises: SpendRaiseTable;
     spend_turns: SpendTurnTable;
     spend_turns_folded: SpendTurnsFoldedTable;

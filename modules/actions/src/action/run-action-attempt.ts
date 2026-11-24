@@ -4,7 +4,6 @@ import type { Lease, TasksContext } from '@heynixie/tasks';
 import { LeaseLostError, startLeaseRenewal, waitAtFaultPoint } from '@heynixie/tasks';
 import type { ActionsTables, OutcomeReason } from '../types';
 import type { ActionAttemptOptions } from './action-attempt-options';
-import { buildRefusalRecords } from './build-refusal-records';
 import { buildUnknownRecords } from './build-unknown-records';
 import { defaultRetryDelaysMs } from './default-retry-delays-ms';
 import { isKeyExpired } from './is-key-expired';
@@ -14,6 +13,7 @@ import { pickOutcome } from './pick-outcome';
 import { readAttemptStep } from './read-attempt-step';
 import { runReconcileCheck } from './run-reconcile-check';
 import { isPastDeadline, writeAttemptStarted } from './write-attempt-started';
+import { writeRefusalUnlessHeld } from './write-refusal-unless-held';
 
 export async function runActionAttempt(
   context: TasksContext,
@@ -139,12 +139,9 @@ async function runAttempt(
   });
 
   if (step.kind !== 'go') {
-    await writeLeasedRecords(context, attempt.lease, {
-      records: buildRefusalRecords(context, attempt, step),
-      reset: true,
-    });
+    const isWritten = await writeRefusalUnlessHeld(context, attempt, step);
 
-    if (step.kind === 'deny' && NIXIE_TEST_BUILD) {
+    if (isWritten && step.kind === 'deny' && NIXIE_TEST_BUILD) {
       await waitAtFaultPoint('attempt.result.after', {
         kind: 'action',
         id: claimed.action.action_id,

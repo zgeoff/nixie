@@ -23,9 +23,6 @@ export interface TaskClaimPoolsOptions {
   readonly onError: (error: unknown) => void;
   readonly logger: Logger;
 
-  // set with spendStop: whether the spending stop stands, read after a step failed
-  readonly probeSpendStop?: () => Promise<boolean>;
-
   readonly size?: number;
   readonly holder?: string;
   readonly leaseMs?: number;
@@ -64,9 +61,6 @@ export function startTaskClaimPools(
           runStep: pool.runStep,
           leaseMs,
           logger: options.logger,
-          ...(options.probeSpendStop === undefined
-            ? {}
-            : { probeSpendStop: options.probeSpendStop }),
           maxStepErrors: options.maxStepErrors ?? DEFAULT_MAX_STEP_ERRORS,
           retryDelayMs: options.retryDelayMs ?? DEFAULT_RETRY_DELAY_MS,
           maxRetryDelayMs: options.maxRetryDelayMs ?? DEFAULT_MAX_RETRY_DELAY_MS,

@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
-import { withWriteTransaction } from '@heynixie/log';
+import { pauseNixieInTransaction, withWriteTransaction } from '@heynixie/log';
+import { buildLogSeeder } from '@heynixie/log/test-utils';
 import { writeStepCommit } from '../step/write-step-commit';
 import { writeStepError } from '../step/write-step-error';
 import { claimTask } from '../task/projection/claim-task';
@@ -162,4 +163,48 @@ test('it answers held for a failed task, and not held after a restart', async ()
 
   expect(failed).toStrictEqual({ taskID, fire: 'held' });
   expect(restarted).not.toMatchObject({ fire: 'held' });
+});
+
+test('it answers wait while nixie is paused, and held for a stopped task whatever the pause', async () => {
+  const ctx = await setupTest();
+
+  const taskID = await seedDefinitionTask(ctx, {
+    definitionID: 'water-the-tomatoes',
+    definitionHash: 'hash-1',
+  });
+
+  await withWriteTransaction(ctx.writer, (tx) =>
+    pauseNixieInTransaction(tx, ctx.context.log, {
+      cause: 'owner',
+      recoveryID: null,
+      by: 'session-a',
+      definitions: ctx.context.definitions(),
+    }),
+  );
+
+  const paused = await ctx.readAnswer('water-the-tomatoes');
+
+  await writeTaskControl(ctx.context, { taskID, control: 'stop' });
+
+  const stopped = await ctx.readAnswer('water-the-tomatoes');
+
+  expect([paused, stopped]).toStrictEqual([
+    { taskID, fire: 'wait' },
+    { taskID, fire: 'held' },
+  ]);
+});
+
+test('it answers wait while the spending stop stands', async () => {
+  const ctx = await setupTest();
+
+  const taskID = await seedDefinitionTask(ctx, {
+    definitionID: 'water-the-tomatoes',
+    definitionHash: 'hash-1',
+  });
+
+  await buildLogSeeder(ctx.context).spendStop();
+
+  const result = await ctx.readAnswer('water-the-tomatoes');
+
+  expect(result).toStrictEqual({ taskID, fire: 'wait' });
 });

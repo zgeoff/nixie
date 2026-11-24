@@ -10,6 +10,7 @@ test('it starts a writer whose log folds the tasks projections, on a test clock'
     'nixie_pause',
     'pause_exemptions',
     'recoveries',
+    'spend_stop',
     'tasks',
     'timers',
     'task_messages',

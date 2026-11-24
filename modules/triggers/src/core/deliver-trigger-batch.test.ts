@@ -1,7 +1,13 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { triggerSchema } from '@heynixie/contract';
 import type { JSONValue } from '@heynixie/log';
-import { readRecords } from '@heynixie/log';
+import {
+  exemptTaskInTransaction,
+  pauseNixieInTransaction,
+  readRecords,
+  withWriteTransaction,
+} from '@heynixie/log';
+import { buildLogSeeder } from '@heynixie/log/test-utils';
 import {
   claimTask,
   createConversationTask,
@@ -23,8 +29,24 @@ import { deliverTriggerBatch } from './deliver-trigger-batch';
 async function setupTest() {
   const triggers = await startTestTriggers();
 
+  const definitions = { snapshotHash: 'sha256:test' };
+
   return {
     ...triggers,
+    seed: buildLogSeeder(triggers.context),
+    pauseNixie: () =>
+      withWriteTransaction(triggers.writer, (tx) =>
+        pauseNixieInTransaction(tx, triggers.context.log, {
+          cause: 'owner',
+          recoveryID: null,
+          by: 'session-a',
+          definitions,
+        }),
+      ),
+    exempt: (taskID: string) =>
+      withWriteTransaction(triggers.writer, (tx) =>
+        exemptTaskInTransaction(tx, triggers.context.log, { taskID, by: 'session-a', definitions }),
+      ),
     deliver: (events: Parameters<typeof buildTestTriggerEvent>[0][], cursor: JSONValue = null) =>
       deliverTriggerBatch(triggers.core, 'schedule', {
         cursor,
@@ -226,6 +248,34 @@ test('it writes trigger.skipped with task_held for a paused task, and fires at t
     ['trigger.skipped', 'water-the-tomatoes|2027-03-10T08:00', 'task_held'],
     ['trigger.fired', 'water-the-tomatoes|2027-03-11T08:00', null],
   ]);
+});
+
+test('it writes trigger.skipped with task_held, not too_late, for a late fire at a paused task', async () => {
+  const ctx = await setupTest();
+
+  const taskID = await seedDefinitionTask(ctx, {
+    definitionID: 'water-the-tomatoes',
+    definitionHash: 'hash-1',
+  });
+
+  await seedArmedDefinitions(ctx, [buildTestArmedDefinition()]);
+  await writeTaskControl(ctx.context, { taskID, control: 'pause' });
+
+  await ctx.deliver([
+    {
+      scheduledFor: '2027-03-09T21:00:00.000Z',
+      dedupeKey: 'water-the-tomatoes|2027-03-10T08:00',
+      skip: 'too_late',
+    },
+  ]);
+
+  const records = await ctx.readTriggerRecords();
+
+  expect(
+    records
+      .filter((record) => record.kind === 'trigger.skipped')
+      .map((record) => record.payload['reason']),
+  ).toStrictEqual(['task_held']);
 });
 
 test('it skips with still_running at each next slot while one fire waits unread beside an idle task run', async () => {
@@ -604,4 +654,205 @@ test('it reaches trigger.batch.before ahead of the write and trigger.batch.after
     ['trigger.batch.before', { kind: 'trigger', id: 'schedule' }, 0],
     ['trigger.batch.after', { kind: 'trigger', id: 'schedule' }, 1],
   ]);
+});
+
+test('it writes nothing and takes no key for a fire at a task that nixie pause holds', async () => {
+  const ctx = await setupTest();
+
+  await seedDefinitionTask(ctx, { definitionID: 'water-the-tomatoes', definitionHash: 'hash-1' });
+  await seedArmedDefinitions(ctx, [buildTestArmedDefinition()]);
+
+  await ctx.pauseNixie();
+
+  const result = await ctx.deliver([
+    {
+      scheduledFor: '2027-03-09T21:00:00.000Z',
+      dedupeKey: 'water-the-tomatoes|2027-03-10T08:00',
+    },
+  ]);
+
+  const records = await ctx.readTriggerRecords();
+  const rows = await readTestTriggerRows(ctx);
+
+  expect(result).toStrictEqual({ delivered: 0 });
+  expect(records.map((record) => record.kind)).toStrictEqual(['trigger.armed']);
+  expect(rows.keys).toStrictEqual([]);
+});
+
+test('it writes nothing for a fire at an exempt task while the spending stop stands', async () => {
+  const ctx = await setupTest();
+
+  const taskID = await seedDefinitionTask(ctx, {
+    definitionID: 'water-the-tomatoes',
+    definitionHash: 'hash-1',
+  });
+
+  await seedArmedDefinitions(ctx, [buildTestArmedDefinition()]);
+
+  await ctx.pauseNixie();
+  await ctx.exempt(taskID);
+  await ctx.seed.spendStop();
+
+  const result = await ctx.deliver([
+    {
+      scheduledFor: '2027-03-09T21:00:00.000Z',
+      dedupeKey: 'water-the-tomatoes|2027-03-10T08:00',
+    },
+  ]);
+
+  const rows = await readTestTriggerRows(ctx);
+
+  expect([result, rows.keys]).toStrictEqual([{ delivered: 0 }, []]);
+});
+
+test('it delivers the same fire once the pause lifts, because its key stayed free', async () => {
+  const ctx = await setupTest();
+
+  const taskID = await seedDefinitionTask(ctx, {
+    definitionID: 'water-the-tomatoes',
+    definitionHash: 'hash-1',
+  });
+
+  await seedArmedDefinitions(ctx, [buildTestArmedDefinition()]);
+
+  await ctx.pauseNixie();
+
+  await ctx.deliver([
+    {
+      scheduledFor: '2027-03-09T21:00:00.000Z',
+      dedupeKey: 'water-the-tomatoes|2027-03-10T08:00',
+    },
+  ]);
+
+  await ctx.exempt(taskID);
+
+  const result = await ctx.deliver([
+    {
+      scheduledFor: '2027-03-09T21:00:00.000Z',
+      dedupeKey: 'water-the-tomatoes|2027-03-10T08:00',
+    },
+  ]);
+
+  expect(result).toStrictEqual({ delivered: 1 });
+});
+
+test('it writes trigger.skipped with task_held for a task at its limit', async () => {
+  const ctx = await setupTest();
+
+  const taskID = await seedDefinitionTask(ctx, {
+    definitionID: 'water-the-tomatoes',
+    definitionHash: 'hash-1',
+  });
+
+  await seedArmedDefinitions(ctx, [buildTestArmedDefinition()]);
+
+  await ctx.seed.record({
+    kind: 'task.limit_reached',
+    thread: taskID,
+    payload: {
+      taskID,
+      stepKey: `${taskID}:1`,
+      used: { turns: 1, dollars: 0.1 },
+      limits: { turns: 1, dollars: 2 },
+    },
+  });
+
+  await ctx.deliver([
+    {
+      scheduledFor: '2027-03-09T21:00:00.000Z',
+      dedupeKey: 'water-the-tomatoes|2027-03-10T08:00',
+    },
+  ]);
+
+  const records = await ctx.readTriggerRecords();
+
+  expect(
+    records
+      .filter((record) => record.kind !== 'trigger.armed')
+      .map((record) => [record.kind, record.payload['reason']]),
+  ).toStrictEqual([['trigger.skipped', 'task_held']]);
+});
+
+test('it writes trigger.skipped with task_held for a stopped task, even while nixie is paused', async () => {
+  const ctx = await setupTest();
+
+  const taskID = await seedDefinitionTask(ctx, {
+    definitionID: 'water-the-tomatoes',
+    definitionHash: 'hash-1',
+  });
+
+  await seedArmedDefinitions(ctx, [buildTestArmedDefinition()]);
+  await writeTaskControl(ctx.context, { taskID, control: 'stop' });
+
+  await ctx.pauseNixie();
+
+  await ctx.deliver([
+    {
+      scheduledFor: '2027-03-09T21:00:00.000Z',
+      dedupeKey: 'water-the-tomatoes|2027-03-10T08:00',
+    },
+  ]);
+
+  const records = await ctx.readTriggerRecords();
+
+  expect(
+    records
+      .filter((record) => record.kind !== 'trigger.armed')
+      .map((record) => [record.kind, record.payload['reason']]),
+  ).toStrictEqual([['trigger.skipped', 'task_held']]);
+});
+
+test('it writes nothing for a conversation target while nixie is paused', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+  await seedArmedDefinitions(ctx, [buildTestArmedDefinition({ target: 'conversation' })]);
+
+  await ctx.pauseNixie();
+
+  const result = await ctx.deliver([
+    {
+      scheduledFor: '2027-03-09T21:00:00.000Z',
+      dedupeKey: 'water-the-tomatoes|2027-03-10T08:00',
+    },
+  ]);
+
+  const rows = await readTestTriggerRows(ctx);
+
+  expect([result, rows.keys]).toStrictEqual([{ delivered: 0 }, []]);
+});
+
+test('it writes nothing for a conversation target while the spending stop stands', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+  await seedArmedDefinitions(ctx, [buildTestArmedDefinition({ target: 'conversation' })]);
+
+  await ctx.seed.spendStop();
+
+  const result = await ctx.deliver([
+    {
+      scheduledFor: '2027-03-09T21:00:00.000Z',
+      dedupeKey: 'water-the-tomatoes|2027-03-10T08:00',
+    },
+  ]);
+
+  expect(result).toStrictEqual({ delivered: 0 });
+});
+
+test('it fires into a conversation that its owner paused', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+  await seedArmedDefinitions(ctx, [buildTestArmedDefinition({ target: 'conversation' })]);
+  await writeTaskControl(ctx.context, { taskID: 'conversation', control: 'pause' });
+
+  const result = await ctx.deliver([
+    {
+      scheduledFor: '2027-03-09T21:00:00.000Z',
+      dedupeKey: 'water-the-tomatoes|2027-03-10T08:00',
+    },
+  ]);
+
+  expect(result).toStrictEqual({ delivered: 1 });
 });

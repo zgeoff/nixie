@@ -1,9 +1,11 @@
 import { expect, test } from 'bun:test';
-import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
+import {
+  spendStopClearedCodec,
+  withWriteTransaction,
+  writeRecordsInTransaction,
+} from '@heynixie/log';
 import { sql } from 'kysely';
 import { spendLimitRaisedCodec } from '../record/spend-limit-raised-codec';
-import { spendStopClearedCodec } from '../record/spend-stop-cleared-codec';
-import { spendStopTrippedCodec } from '../record/spend-stop-tripped-codec';
 import { startTestSpend } from '../test-utils';
 import { spendProjections } from './spend-projections';
 
@@ -27,85 +29,11 @@ async function setupTest() {
   };
 }
 
-test('it lists the 3 projections by their tables', () => {
+test('it lists the 2 projections by their tables', () => {
   expect(spendProjections.map((projection) => projection.table)).toStrictEqual([
-    'spend_stop',
     'spend_raises',
     'spend_turns',
   ]);
-});
-
-test('it folds a trip by a limit into the one stop row', async () => {
-  const ctx = await setupTest();
-
-  await ctx.writeRecord({
-    kind: 'spend.stop_tripped',
-    definitions: ctx.definitions,
-    payload: spendStopTrippedCodec.encode({
-      reason: 'limit',
-      period: 'day',
-      measure: 'dollars',
-      limit: 60,
-      spent: 61.2,
-      at: 1000,
-      resetsAt: 2000,
-    }),
-  });
-
-  const rows = await ctx.readRows('spend_stop');
-
-  expect(rows).toMatchObject([
-    {
-      id: 1,
-      reason: 'limit',
-      period: 'day',
-      measure: 'dollars',
-      limit_amount: 60,
-      spent_amount: 61.2,
-      at: 1000,
-      resets_at: 2000,
-    },
-  ]);
-});
-
-test('it replaces the stop row with a later trip, and a lost trip holds no period', async () => {
-  const ctx = await setupTest();
-
-  await ctx.writeRecord({
-    kind: 'spend.stop_tripped',
-    definitions: ctx.definitions,
-    payload: spendStopTrippedCodec.encode({ reason: 'unreachable', at: 1000 }),
-  });
-
-  await ctx.writeRecord({
-    kind: 'spend.stop_tripped',
-    definitions: ctx.definitions,
-    payload: spendStopTrippedCodec.encode({ reason: 'lost', at: 3000 }),
-  });
-
-  const rows = await ctx.readRows('spend_stop');
-
-  expect(rows).toMatchObject([{ reason: 'lost', period: null, measure: null, at: 3000 }]);
-});
-
-test('it removes the stop row at a clear', async () => {
-  const ctx = await setupTest();
-
-  await ctx.writeRecord({
-    kind: 'spend.stop_tripped',
-    definitions: ctx.definitions,
-    payload: spendStopTrippedCodec.encode({ reason: 'lost', at: 1000 }),
-  });
-
-  await ctx.writeRecord({
-    kind: 'spend.stop_cleared',
-    definitions: ctx.definitions,
-    payload: spendStopClearedCodec.encode({ reason: 'lost_cleared' }),
-  });
-
-  const rows = await ctx.readRows('spend_stop');
-
-  expect(rows).toStrictEqual([]);
 });
 
 test('it keeps the later raise of a day in place of the earlier one', async () => {

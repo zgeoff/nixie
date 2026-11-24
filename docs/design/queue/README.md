@@ -17,7 +17,7 @@ is deleted.
 | The computer    | [the rest of the browser and the shell](computer.md), [the desktop and take-over](desktop.md)     |
 | Web             | [the hop gate](hop-gate.md)                                                                       |
 | Approvals       | [the approval record](../../architecture/policy/approvals.md)                                     |
-| Operations      | [the pause after a restore](pause.md)                                                             |
+| Operations      | [the restart sweep rename](task-gate.md)                                                          |
 | Model harnesses | [the turn-input log](turn-input-log.md)                                                           |
 | Policy          | [the decision point cutover](decision-point-cutover.md)                                           |
 | Connections     | [Google connections](google-connections.md)                                                       |

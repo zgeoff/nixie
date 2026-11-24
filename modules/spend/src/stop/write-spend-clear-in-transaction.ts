@@ -1,6 +1,10 @@
 import type { WriteTransaction } from '@heynixie/log';
-import { readPause, resumeNixieInTransaction, writeRecordsInTransaction } from '@heynixie/log';
-import { spendStopClearedCodec } from '../record/spend-stop-cleared-codec';
+import {
+  readPause,
+  resumeNixieInTransaction,
+  spendStopClearedCodec,
+  writeRecordsInTransaction,
+} from '@heynixie/log';
 import type { SpendContext } from '../types';
 import type { ClearReason } from './pick-spend-move';
 import { readSpendStopRow } from './read-spend-stop-row';

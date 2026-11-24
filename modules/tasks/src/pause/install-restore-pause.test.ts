@@ -9,6 +9,7 @@ import {
   resumeNixieInTransaction,
   withWriteTransaction,
 } from '@heynixie/log';
+import { readTaskGate } from '../gate/read-task-gate';
 import { claimTask } from '../task/projection/claim-task';
 import { readTestTasks } from '../test-utils/read-test-tasks';
 import { seedConversationStep } from '../test-utils/seed-conversation-step';
@@ -19,7 +20,6 @@ import { seedRunningTask } from '../test-utils/seed-running-task';
 import { seedStoppedTask } from '../test-utils/seed-stopped-task';
 import { startTestTasks } from '../test-utils/start-test-tasks';
 import { conversationTaskID } from '../utils/conversation-task-id';
-import { probeTaskPaused } from '../utils/probe-task-paused';
 import { installRestorePause } from './install-restore-pause';
 import { recoveryNoticeCodec } from './recovery-notice-codec';
 
@@ -41,8 +41,8 @@ async function setupTest() {
         pending,
         readTasksWithPendingActions: () => Promise.resolve(pendingTaskIDs),
       }),
-    probeConversationPaused: () =>
-      withWriteTransaction(tasks.writer, (tx) => probeTaskPaused(tx, conversationTaskID)),
+    readConversationGate: () =>
+      withWriteTransaction(tasks.writer, (tx) => readTaskGate(tx, conversationTaskID)),
     readCurrentPause: () => withWriteTransaction(tasks.writer, (tx) => readPause(tx)),
     readPauseRecords: () =>
       readRecords(tasks.context.log, {
@@ -135,10 +135,10 @@ test('it drops an exemption that the backup held and pauses with the cause resto
   await ctx.install([]);
 
   const pause = await ctx.readCurrentPause();
-  const isPaused = await ctx.probeConversationPaused();
+  const gate = await ctx.readConversationGate();
 
   expect(pause).toStrictEqual({ cause: 'restore', recoveryID: 'recovery-a' });
-  expect(isPaused).toBeTrue();
+  expect(gate).toMatchObject({ open: false, reason: 'nixie' });
 });
 
 test('it writes the recovery before the pause, in adjacent records', async () => {
