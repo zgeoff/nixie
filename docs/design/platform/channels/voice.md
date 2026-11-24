@@ -237,6 +237,8 @@ budgets/call-day.yaml, budgets/call-month.yaml   counts: tool:call, limit in dol
   far. Small talk saves nothing to memory, and `dictated` text never counts as memory evidence.
 - The speech layer's filler never says yes, never claims a result and never makes a promise. On a
   long turn, nixie's turn may send one interim line.
+- The speech layer may speak nixie's answer as a close paraphrase. The tuning pass measures how far
+  its wording drifts.
 - A second request during a running hand-off joins that turn as a mid-turn message.
 - When you talk over a reply, the speech layer stops itself, the calls module interrupts the running
   turn, and `call.heard_cut` records the point. You can always cut nixie off.
