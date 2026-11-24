@@ -60,6 +60,24 @@ test('it sends each /rpc request to the API', async () => {
   expect(ctx.paths).toStrictEqual(['api POST /rpc/sessions/list']);
 });
 
+test('it tells its caller the path of each request it sends to the API, and of none it sends to the web server', async () => {
+  const ctx = setupTest();
+  const apiPaths: string[] = [];
+
+  const proxy = startFrontProxy({
+    apiURL: ctx.apiURL,
+    webURL: ctx.webURL,
+    onAPIRequest: (pathname) => {
+      apiPaths.push(pathname);
+    },
+  });
+
+  await fetch(`${proxy.url}/?from=icon`);
+  await fetch(`${proxy.url}/rpc/live/follow?from=tab`, { body: '{}', method: 'POST' });
+
+  expect(apiPaths).toStrictEqual(['/rpc/live/follow']);
+});
+
 test('it follows an API address that a function names on each request', async () => {
   const ctx = setupTest();
   const target = { apiURL: 'http://127.0.0.1:9' };

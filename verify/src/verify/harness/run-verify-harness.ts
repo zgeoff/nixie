@@ -54,7 +54,17 @@ export async function runVerifyHarness(): Promise<void> {
 
   stack.defer(web.stop);
 
-  const front = createFrontProxy({ apiURL: api.url, webURL: web.url });
+  const liveOpens = { count: 0 };
+
+  const front = createFrontProxy({
+    apiURL: api.url,
+    webURL: web.url,
+    onAPIRequest: (pathname) => {
+      if (pathname === '/rpc/live/follow') {
+        liveOpens.count += 1;
+      }
+    },
+  });
 
   stack.defer(() => front.stop(true));
 
@@ -131,6 +141,7 @@ export async function runVerifyHarness(): Promise<void> {
         }),
       };
     },
+    readLiveOpens: () => liveOpens.count,
   });
 
   stack.defer(() => control.stop(true));

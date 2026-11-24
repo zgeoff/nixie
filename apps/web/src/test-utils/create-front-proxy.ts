@@ -6,6 +6,9 @@ export interface FrontProxyTargets {
   // a function names the address again on each request, for an API that restarts on a new port
   readonly apiURL: string | (() => string);
   readonly webURL: string;
+
+  // runs with the path of each request the proxy sends to the API, a WebSocket upgrade included
+  readonly onAPIRequest?: (pathname: string) => void;
 }
 
 interface BridgeData {
@@ -23,7 +26,12 @@ export function createFrontProxy(targets: FrontProxyTargets): Bun.Server<BridgeD
     const url = new URL(request.url);
 
     const apiURL = typeof targets.apiURL === 'function' ? targets.apiURL() : targets.apiURL;
-    const target = url.pathname.startsWith('/rpc/') ? apiURL : targets.webURL;
+    const isAPIPath = url.pathname.startsWith('/rpc/');
+    const target = isAPIPath ? apiURL : targets.webURL;
+
+    if (isAPIPath) {
+      targets.onAPIRequest?.(url.pathname);
+    }
 
     if (request.headers.get('upgrade')?.toLowerCase() === 'websocket') {
       const upstreamURL = `${target.replace(/^http/u, 'ws')}${url.pathname}${url.search}`;

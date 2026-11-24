@@ -24,6 +24,8 @@ export interface ControlHandlers {
   readonly readActionProposals: () => Promise<z.input<typeof controlRoutes.actionProposals.output>>;
 
   readonly readModelInput: () => z.input<typeof controlRoutes.modelInput.output>;
+
+  readonly readLiveOpens: () => number;
 }
 
 export function serveControl(handlers: ControlHandlers): Bun.Server<undefined> {
@@ -44,6 +46,11 @@ export function serveControl(handlers: ControlHandlers): Bun.Server<undefined> {
       },
       [controlRoutes.modelInput.path]: {
         GET: makeRouteHandler(controlRoutes.modelInput, handlers.readModelInput),
+      },
+      [controlRoutes.liveOpens.path]: {
+        GET: makeRouteHandler(controlRoutes.liveOpens, () => ({
+          opened: handlers.readLiveOpens(),
+        })),
       },
       [controlRoutes.showOnDevice.path]: {
         POST: makeRouteHandler(controlRoutes.showOnDevice, async (show) => ({

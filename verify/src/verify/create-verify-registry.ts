@@ -15,6 +15,7 @@ import { conversationRecordSchema } from './collect-conversation-records';
 import { featurePaths, ignoredPaths, sharedPaths } from './feature-paths';
 import { controlRoutes } from './harness/control-routes';
 import { lastFeatures } from './last-features';
+import { pickLiveOpensRefusal } from './pick-live-opens-refusal';
 import { pickTaskRefusal } from './pick-task-refusal';
 import { postControl } from './post-control';
 import { buildServedBlobsArgv, servedSourceFolders } from './preview/build-served-blobs-argv';
@@ -34,6 +35,7 @@ import { readProdVersion } from './prod/read-prod-version';
 import { readConversationTurn } from './read-conversation-turn';
 import { readSessionCheck } from './read-session-check';
 import { refuseHarnessless } from './refuse-harnessless';
+import { refuseOffProd } from './refuse-off-prod';
 import { runEnrolCode } from './run-enrol-code';
 import { runHostCLI } from './run-host-cli';
 import { runPauseFromHost } from './run-pause-from-host';
@@ -299,6 +301,23 @@ export function createVerifyRegistry(): Wringer {
       },
     })
     .command({
+      path: ['live', 'opens'],
+      summary:
+        'Count the live streams the browser opened since `up`, and with --opened check that the count is that number',
+      effect: 'read',
+      args: z.strictObject({ opened: z.int().nonnegative().optional() }),
+      data: controlRoutes.liveOpens.output,
+      run: async (args, ctx) => {
+        refuseHarnessless(ctx.target, 'live opens');
+
+        const counted = await postControl(ctx.drivers.http, controlRoutes.liveOpens, {});
+
+        throwRefusal(pickLiveOpensRefusal(counted.opened, args.opened), counted);
+
+        return counted;
+      },
+    })
+    .command({
       path: ['prod', 'conversation'],
       summary:
         "Check that prod's conversation answers a read with the read-only token, and count the records it returned",
@@ -450,17 +469,6 @@ export function createVerifyRegistry(): Wringer {
     .shared(...sharedPaths)
     .ignore(...ignoredPaths)
     .build();
-}
-
-// The prod reads go through the read-only token and the prod cluster's kubeconfig, which only the
-// prod target uses.
-function refuseOffProd(target: string, command: string): void {
-  if (target !== 'prod') {
-    throw new WringerError('usage', {
-      message: `\`${command}\` reads production nixie, which only the prod target reaches`,
-      hint: 'Run the command with `--target prod`.',
-    });
-  }
 }
 
 const previewRefusalHint =
