@@ -172,5 +172,5 @@ request, and the server runs it on the same stopped path as the full reset:
 The memory items keep their own keys, so the reset leaves every item readable. The next session
 opens as a rebuild after a forget: every summary on the thread is shredded, and the recent turns
 stop at the newest `log_reset` record, so the model reads no line of the old conversation. A crash
-before the last stage leaves the records shredded with no `log_reset` record, and a second reset
-finishes the work.
+before stage 5 leaves the records shredded with no `log_reset` record, and a second reset finishes
+the work.

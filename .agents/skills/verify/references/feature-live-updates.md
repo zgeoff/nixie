@@ -17,8 +17,8 @@ first pause can land while the stream is still opening, so step 2 only waits unt
 open.
 
 `live opens` reads the `local` harness. On `preview`, skip each `live opens` line: there the banner
-shows only that the tab heard of each change, and your reply lists the feature as checked on
-`preview` without the count.
+shows only that the tab heard of each change. Record `done` as usual, and add a line to your reply
+that the count went unchecked on `preview`.
 
 Keep one tab in front for the whole journey, and never switch tabs. A tab that comes to the front
 opens its stream again, which moves the count. `bun verify action pause-from-host` runs

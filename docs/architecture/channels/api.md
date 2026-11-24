@@ -366,7 +366,7 @@ state, last activity, whether it takes a message of the user's, the task it wait
 its runner offers and its [action counts](../core/actions.md#cancelled-actions). It also gives the
 log sequence it read at, which it reads before the tasks, so a client that follows the log from that
 sequence sees every change the list leaves out. It also gives `changesAt`, the earliest time that a
-listed task changes with no write, which is the next run of a task that wakes on a schedule, or
+listed task changes with no write, which is the next task run of a task that wakes on a schedule, or
 null, and a client reads the list again at that time. Each listed task also names its `runner`. A
 client shows only the controls that the task's [runner](../core/started-tasks.md#task-runners)
 offers and the task's state allows. A started task whose name the user forgot shows under its ID. A
