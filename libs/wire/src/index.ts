@@ -137,4 +137,4 @@ export type { VNCFrame } from './computer/vnc-frame';
 export { vncChunkLimitBytes } from './computer/vnc-frame';
 export { decodeVNCFrame } from './computer/decode-vnc-frame';
 export { encodeVNCFrame } from './computer/encode-vnc-frame';
-export { findBotChallenge } from './fetch/find-bot-challenge';
+export { canBeBotChallenge, findBotChallenge } from './fetch/find-bot-challenge';

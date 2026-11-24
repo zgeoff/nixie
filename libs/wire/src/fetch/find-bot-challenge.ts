@@ -2,6 +2,11 @@ const challengeStatuses: ReadonlySet<number> = new Set([403, 503]);
 
 const cloudflareMarks: readonly string[] = ['_cf_chl_opt', '/cdn-cgi/challenge-platform/'];
 
+// Whether a response of this status can be a challenge, so a reader fetches the body only then.
+export function canBeBotChallenge(status: number): boolean {
+  return challengeStatuses.has(status);
+}
+
 export function findBotChallenge(
   status: number,
   headers: Readonly<Record<string, string | readonly string[] | undefined>>,

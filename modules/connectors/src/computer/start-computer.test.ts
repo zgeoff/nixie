@@ -21,6 +21,7 @@ function setupTest() {
           tab: 'g1',
           isDiskNew: false,
           hasChallenge: false,
+          blocked: null,
           page: { url: 'https://site.test/', status: 200, title: 'A', text: 'a', links: [] },
         }),
       10_000_000,

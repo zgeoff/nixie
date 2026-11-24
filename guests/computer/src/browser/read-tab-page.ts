@@ -15,6 +15,9 @@ export interface ReadOptions {
   readonly mode: 'text' | 'snapshot';
   readonly textBytes: number;
   readonly isDiskNew: boolean;
+
+  // why the navigation that loaded the page was a bot protection's answer, or null
+  readonly blocked: string | null;
 }
 
 type PageReply = Extract<ComputerReply, { kind: 'page' }>;
@@ -34,5 +37,6 @@ export async function readTabPage(id: string, tab: Tab, options: ReadOptions): P
     page: { url: page.url, status: tab.status, title: page.title, text, links: page.links },
     isDiskNew: options.isDiskNew,
     hasChallenge: await probeChallenge(tab.page),
+    blocked: options.blocked,
   };
 }

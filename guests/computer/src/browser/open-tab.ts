@@ -1,5 +1,6 @@
 import type { ComputerReply, ComputerRequest } from '@heynixie/wire';
 import type { Page } from 'playwright-core';
+import { goTab } from './go-tab';
 import { readTabPage } from './read-tab-page';
 import type { BrowserState } from './types';
 
@@ -24,24 +25,18 @@ export async function openTab(
 
   state.tabs.set(id, tab);
 
-  try {
-    const response = await page.goto(request.url, {
-      timeout: request.limits.timeoutMs,
-      waitUntil: 'load',
-    });
+  page.on('close', () => {
+    state.tabs.delete(id);
+  });
 
-    tab.status = response?.status() ?? 0;
-  } catch (error) {
+  const went = await goTab(tab, (options) => page.goto(request.url, options), request.limits);
+
+  if (went.kind === 'failed') {
     state.tabs.delete(id);
 
     await page.close();
 
-    return {
-      kind: 'failed',
-      ok: false,
-      reason: 'failed',
-      message: error instanceof Error ? error.message : String(error),
-    };
+    return went.reply;
   }
 
   const isDiskNew = state.isDiskNew;
@@ -52,6 +47,7 @@ export async function openTab(
     mode: 'snapshot',
     textBytes: request.limits.textBytes * 3,
     isDiskNew,
+    blocked: went.blocked,
   });
 }
 

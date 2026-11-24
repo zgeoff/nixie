@@ -41,6 +41,7 @@ async function setupTest(options: SetupOptions) {
       tab: 'g1',
       isDiskNew: false,
       hasChallenge: false,
+      blocked: null,
       page: {
         url: 'https://site.test/form',
         status: 200,

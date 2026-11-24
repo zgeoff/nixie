@@ -6,6 +6,7 @@ import type { ComputerRequest } from '@heynixie/wire';
 import { chromium } from 'playwright-core';
 import { makeStubDriver } from '../screen/make-stub-driver';
 import { makeBrowserHandler } from './make-browser-handler';
+import type { BrowserState } from './types';
 
 const hasChromium = await chromium
   .launch({ headless: true })
@@ -25,6 +26,8 @@ async function setupTest() {
 
   const scanned: string[] = [];
   const refusal: { reason: string | null } = { reason: null };
+  const loads = { count: 0 };
+  const driven: { state: BrowserState | null } = { state: null };
 
   const site = Bun.serve({
     port: 0,
@@ -53,6 +56,20 @@ async function setupTest() {
       '/terms': new Response('<html><title>Terms</title><body>the terms</body></html>', {
         headers: { 'Content-Type': 'text/html' },
       }),
+      '/count': () => {
+        loads.count += 1;
+
+        return new Response(
+          `<html><title>Load ${String(loads.count)}</title><body>loaded</body></html>`,
+          {
+            headers: { 'Content-Type': 'text/html' },
+          },
+        );
+      },
+      '/challenge': new Response(
+        '<html><title>Just a moment</title><body>checking your browser</body></html>',
+        { status: 403, headers: { 'Content-Type': 'text/html', 'cf-mitigated': 'challenge' } },
+      ),
       '/done': new Response('<html><title>Done</title><body>welcome aboard</body></html>', {
         headers: { 'Content-Type': 'text/html' },
       }),
@@ -79,7 +96,14 @@ async function setupTest() {
     },
     checkAddress: () => true,
     resolveHost: () => Promise.resolve(['127.0.0.1']),
-    screen: { makeDriver: (state) => makeStubDriver(state.tabs), settleMs: 50 },
+    screen: {
+      makeDriver: (state) => {
+        driven.state = state;
+
+        return makeStubDriver(state.tabs);
+      },
+      settleMs: 50,
+    },
   });
 
   onTestFinished(async () => {
@@ -112,6 +136,32 @@ async function setupTest() {
       deniedRanges: [],
     }),
     url: `http://pages.test:${String(site.port)}/`,
+    loads,
+    limits: {
+      bodyBytes: 1_000_000,
+      timeoutMs: 20_000,
+      redirects: 5,
+      textBytes: 20_000,
+      imageBytes: 0,
+    },
+
+    // closes the page of the tab the way a person closing its window would, behind the tools
+    closeTabBehindTheTools: async (tab: string): Promise<void> => {
+      await send({ op: 'takeoverBegin' });
+
+      await driven.state?.tabs.get(tab)?.page.close();
+    },
+
+    // makes the page of a tab fail every script it is asked to run, as a page that closes mid-call does
+    breakEvaluate: async (tab: string): Promise<void> => {
+      await send({ op: 'takeoverBegin' });
+
+      const page = driven.state?.tabs.get(tab)?.page;
+
+      if (page !== undefined) {
+        page.evaluate = () => Promise.reject(new Error('the page broke'));
+      }
+    },
     scanned,
     send,
     waitUntilTitle: async (title: string, tab = 't1'): Promise<void> => {
@@ -536,5 +586,171 @@ test.skipIf(!hasChromium)(
     });
 
     expect(reply).toMatchObject({ kind: 'failed', reason: 'screen_changed' });
+  },
+);
+
+test.skipIf(!hasChromium)('it navigates a tab to a new address and keeps its ID', async () => {
+  const ctx = await setupTest();
+
+  await ctx.send(ctx.open(ctx.url));
+
+  const reply = await ctx.send({
+    op: 'navigate',
+    tab: 't1',
+    url: `${ctx.url}terms`,
+    limits: ctx.limits,
+    deniedRanges: [],
+  });
+
+  expect(reply).toMatchObject({
+    kind: 'page',
+    tab: 't1',
+    page: { url: `${ctx.url}terms`, status: 200, title: 'Terms' },
+  });
+});
+
+test.skipIf(!hasChromium)('it scans the address a navigation goes to', async () => {
+  const ctx = await setupTest();
+
+  await ctx.send(ctx.open(ctx.url));
+
+  await ctx.send({
+    op: 'navigate',
+    tab: 't1',
+    url: `${ctx.url}terms`,
+    limits: ctx.limits,
+    deniedRanges: [],
+  });
+
+  expect(ctx.scanned).toContain(`${ctx.url}terms`);
+});
+
+test.skipIf(!hasChromium)('it keeps the tab open when a navigation fails', async () => {
+  const ctx = await setupTest();
+
+  await ctx.send(ctx.open(ctx.url));
+
+  const failed = await ctx.send(
+    { op: 'navigate', tab: 't1', url: `${ctx.url}terms`, limits: ctx.limits, deniedRanges: [] },
+    'no secrets',
+  );
+
+  const again = await ctx.send({
+    op: 'navigate',
+    tab: 't1',
+    url: `${ctx.url}terms`,
+    limits: ctx.limits,
+    deniedRanges: [],
+  });
+
+  expect([failed, again]).toMatchObject([
+    { kind: 'failed', reason: 'failed' },
+    { kind: 'page', tab: 't1', page: { title: 'Terms' } },
+  ]);
+});
+
+test.skipIf(!hasChromium)('it answers tab_gone for a navigation of an unknown tab', async () => {
+  const ctx = await setupTest();
+
+  const reply = await ctx.send({
+    op: 'navigate',
+    tab: 't9',
+    url: ctx.url,
+    limits: ctx.limits,
+    deniedRanges: [],
+  });
+
+  expect(reply).toStrictEqual({ kind: 'failed', ok: false, reason: 'tab_gone' });
+});
+
+test.skipIf(!hasChromium)('it reloads a tab and reads the page again', async () => {
+  const ctx = await setupTest();
+
+  await ctx.send(ctx.open(`${ctx.url}count`));
+
+  const reply = await ctx.send({ op: 'reload', tab: 't1', limits: ctx.limits });
+
+  expect(reply).toMatchObject({ kind: 'page', tab: 't1', page: { title: 'Load 2' } });
+});
+
+test.skipIf(!hasChromium)('it answers tab_gone for a reload of an unknown tab', async () => {
+  const ctx = await setupTest();
+  const reply = await ctx.send({ op: 'reload', tab: 't9', limits: ctx.limits });
+
+  expect(reply).toStrictEqual({ kind: 'failed', ok: false, reason: 'tab_gone' });
+});
+
+test.skipIf(!hasChromium)(
+  'it names the blocked reason when an open lands on a challenge page',
+  async () => {
+    const ctx = await setupTest();
+    const reply = await ctx.send(ctx.open(`${ctx.url}challenge`));
+
+    expect(reply).toMatchObject({
+      kind: 'page',
+      page: { status: 403 },
+      blocked: "blocked by the site's bot protection (Cloudflare challenge)",
+    });
+  },
+);
+
+test.skipIf(!hasChromium)(
+  'it names the blocked reason when a navigation lands on one',
+  async () => {
+    const ctx = await setupTest();
+
+    await ctx.send(ctx.open(ctx.url));
+
+    const reply = await ctx.send({
+      op: 'navigate',
+      tab: 't1',
+      url: `${ctx.url}challenge`,
+      limits: ctx.limits,
+      deniedRanges: [],
+    });
+
+    expect(reply).toMatchObject({
+      kind: 'page',
+      blocked: "blocked by the site's bot protection (Cloudflare challenge)",
+    });
+  },
+);
+
+test.skipIf(!hasChromium)('it names no blocked reason for an ordinary page', async () => {
+  const ctx = await setupTest();
+  const reply = await ctx.send(ctx.open(ctx.url));
+
+  expect(reply).toMatchObject({ kind: 'page', blocked: null });
+});
+
+test.skipIf(!hasChromium)(
+  'it answers tab_gone for a tab whose page closed behind the tools',
+  async () => {
+    const ctx = await setupTest();
+
+    await ctx.send(ctx.open(`${ctx.url}challenge`));
+    await ctx.closeTabBehindTheTools('t1');
+
+    const reply = await ctx.send({ op: 'read', tab: 't1', mode: 'text' });
+
+    expect(reply).toStrictEqual({ kind: 'failed', ok: false, reason: 'tab_gone' });
+  },
+);
+
+test.skipIf(!hasChromium)(
+  'it fails a call whose page breaks under it and keeps answering',
+  async () => {
+    const ctx = await setupTest();
+
+    await ctx.send(ctx.open(ctx.url));
+    await ctx.breakEvaluate('t1');
+
+    const broken = await ctx.send({ op: 'read', tab: 't1', mode: 'text' });
+    const next = await ctx.send({ op: 'read', tab: 't9', mode: 'text' });
+
+    expect([broken, next]).toMatchObject([
+      { kind: 'failed', reason: 'failed', message: 'the page broke' },
+      { kind: 'failed', reason: 'tab_gone' },
+    ]);
   },
 );

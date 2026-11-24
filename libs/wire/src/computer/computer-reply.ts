@@ -44,6 +44,10 @@ const pageReplySchema = z.strictObject({
 
   // true when the tab shows a CAPTCHA or human check, found from its frames and markers alone
   hasChallenge: z.boolean(),
+
+  // why the page is a bot protection's answer in place of the site's, or null; the guest finds it
+  // from the status, headers and body of the navigation that loaded the page
+  blocked: textSchema.nullable(),
 });
 
 const screenshotReplySchema = z.strictObject({

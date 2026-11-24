@@ -28,6 +28,26 @@ test.each([
   ['read', { op: 'read', tab: 't1', mode: 'text' }, 'browser'],
   ['close', { op: 'close', tab: 't1' }, 'browser'],
   ['scroll', { op: 'scroll', tab: 't1', to: 'down' }, 'browser'],
+  [
+    'navigate',
+    {
+      op: 'navigate',
+      tab: 't1',
+      url: 'https://site.test/',
+      limits: { bodyBytes: 1, timeoutMs: 1, redirects: 1, textBytes: 1, imageBytes: 1 },
+      deniedRanges: [],
+    },
+    'browser',
+  ],
+  [
+    'reload',
+    {
+      op: 'reload',
+      tab: 't1',
+      limits: { bodyBytes: 1, timeoutMs: 1, redirects: 1, textBytes: 1, imageBytes: 1 },
+    },
+    'browser',
+  ],
 ] as const satisfies readonly (readonly [string, ComputerRequest, string])[])(
   'it sends the %s request to the %s',
   async (_op, request, expected) => {

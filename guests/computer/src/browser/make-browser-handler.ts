@@ -9,6 +9,7 @@ import { makeOriginLog } from '../takeover/make-origin-log';
 import { actOnTab } from './act-on-tab';
 import { downloadTabFile } from './download-tab-file';
 import { launchBrowser } from './launch-browser';
+import { navigateTab, reloadTab } from './navigate-tab';
 import { openTab } from './open-tab';
 import { readTabPage } from './read-tab-page';
 import { scrollTab } from './scroll-tab';
@@ -117,7 +118,7 @@ export function makeBrowserHandler(options: BrowserHandlerOptions): ComputerHand
   };
 
   return async (request) => {
-    if (request.op === 'open') {
+    if (request.op === 'open' || request.op === 'navigate') {
       ranges.current = request.deniedRanges;
     }
 
@@ -175,7 +176,7 @@ export function makeBrowserHandler(options: BrowserHandlerOptions): ComputerHand
       return handleScreenRequest({ ...desktop, settleMs: screen.settleMs }, request);
     }
 
-    return handleRequest(browser, request);
+    return answerTabRequest(browser, request);
   };
 }
 
@@ -233,6 +234,7 @@ async function readNow(
       mode: 'text',
       textBytes: nowTextBytes,
       isDiskNew: false,
+      blocked: null,
     });
 
     return { kind: 'browser', tab: focus.tab, text: read.page.text };
@@ -253,6 +255,24 @@ function isScreenRequest(request: Parameters<ComputerHandler>[0]): request is Sc
     request.op === 'screenBind' ||
     request.op === 'screenAct'
   );
+}
+
+// A page that closes or moves under a call fails the call. A throw would end the guest, and the
+// server would see its output close with no reply.
+async function answerTabRequest(
+  state: BrowserState,
+  request: Parameters<ComputerHandler>[0],
+): Promise<ComputerReply> {
+  try {
+    return await handleRequest(state, request);
+  } catch (error) {
+    return {
+      kind: 'failed',
+      ok: false,
+      reason: 'failed',
+      message: error instanceof Error ? error.message : String(error),
+    };
+  }
 }
 
 const tabGone: ComputerReply = { kind: 'failed', ok: false, reason: 'tab_gone' };
@@ -281,7 +301,20 @@ function handleRequest(
         mode: read.mode,
         textBytes: 3 * 65_536,
         isDiskNew: false,
+        blocked: null,
       });
+    })
+    .with({ op: 'navigate' }, (navigate) => {
+      const tab = state.tabs.get(navigate.tab);
+
+      return tab === undefined
+        ? Promise.resolve(tabGone)
+        : navigateTab(navigate.tab, tab, navigate);
+    })
+    .with({ op: 'reload' }, (reload) => {
+      const tab = state.tabs.get(reload.tab);
+
+      return tab === undefined ? Promise.resolve(tabGone) : reloadTab(reload.tab, tab, reload);
     })
     .with({ op: 'screenshot' }, (shot) => {
       const tab = state.tabs.get(shot.tab);
