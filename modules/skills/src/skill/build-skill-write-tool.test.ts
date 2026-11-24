@@ -1,4 +1,4 @@
-import { expect, onTestFinished, test } from 'bun:test';
+import { expect, mock, onTestFinished, test } from 'bun:test';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -133,6 +133,64 @@ test('it proposes a new skill for review and records its files and the run that 
       },
     },
   ]);
+});
+
+test('it adds the matching memory to the result of a write as related, from the name and the files', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+
+  const seeded = await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
+
+  const read = mock<(text: string) => Promise<{ shortID: string; text: string }[]>>(() =>
+    Promise.resolve([{ shortID: 'k3m9q2xzab', text: 'Tide tables come from the harbour office' }]),
+  );
+
+  const tool = buildSkillWriteTool({
+    log: ctx.log,
+    clock: createFakeClock({ startMs: 0 }),
+    readInForce: () => seeded.inForce,
+    runInForceSeed: () => Promise.resolve(),
+    refreshDefinitions: () => Promise.resolve(seeded.inForce),
+    readSkillList: () => [],
+    relatedMemory: { read, log: mock() },
+  });
+
+  const text = '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n# Tides\n';
+
+  const outcome = await tool.run(
+    {
+      callID: 'call-1',
+      tool: 'skill_write',
+      input: { name: 'tide-tables', files: [{ path: 'SKILL.md', text }] },
+      toolUseID: null,
+    },
+    {
+      callSequence: 1,
+      run: {
+        runID: 'run-1',
+        thread: 'conversation',
+        logThread: 'conversation',
+        tools: [],
+        model: { model: 'test-model', profile: 'standard' },
+      },
+    },
+  );
+
+  expect(outcome).toMatchObject({
+    status: 'ok',
+    result: {
+      related: [{ shortID: 'k3m9q2xzab', text: 'Tide tables come from the harbour office' }],
+    },
+  });
+
+  expect(read.mock.calls).toStrictEqual([[`tide-tables\n${text}`]]);
 });
 
 test('it records the version in force that a change to a skill would replace', async () => {

@@ -2,7 +2,7 @@ import type { Clock } from '@heynixie/clock';
 import type { DefinitionsInForce, SkillOrigin } from '@heynixie/definitions';
 import type { Log } from '@heynixie/log';
 import type { ProposalContext, ProposalOutcome } from '@heynixie/proposals';
-import type { ToolRun } from '@heynixie/tools';
+import type { RelatedMemoryLookup, ToolRun } from '@heynixie/tools';
 import type { skillsWriteProposedCodec } from './write/skills-write-proposed-codec';
 
 export interface SkillToolsContext {
@@ -14,6 +14,10 @@ export interface SkillToolsContext {
 
   // seeds the definitions in force after a rule applies a write, and wakes the export
   readonly runInForceSeed: () => Promise<void>;
+
+  // what skill_write looks up in memory after it applies; without it, the result carries no
+  // `related`
+  readonly relatedMemory?: RelatedMemoryLookup;
 
   readonly readSkillList: (run: ToolRun, inForce: DefinitionsInForce | null) => readonly string[];
 }

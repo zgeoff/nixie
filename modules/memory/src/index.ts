@@ -1,8 +1,9 @@
 export type { CheckerRule } from './checker/build-checker-rules';
 export { buildCheckerRules } from './checker/build-checker-rules';
-export type { MemoryToolStore } from './tool/memory-tool-store';
+export type { ConversationMemoryStore, MemoryToolStore } from './tool/memory-tool-store';
 export { buildLogReadTool } from './log/build-log-read-tool';
 export { buildLogReadImageTool } from './log/build-log-read-image-tool';
+export { buildRelatedMemoryLookup } from './related/build-related-memory-lookup';
 export { buildMemoryTools } from './memory/build-memory-tools';
 export { buildPinnedCoreStatus } from './pinned/build-pinned-core-status';
 export { buildMomentKeptKind } from './moment/kept/build-moment-kept-kind';

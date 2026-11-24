@@ -4,10 +4,16 @@ import { checkSkillFiles, loadSkillVersions } from '@heynixie/definitions';
 import { writeRecords } from '@heynixie/log';
 import { checkUntypedToken, defaultGateLimits } from '@heynixie/memory';
 import type { ToolCall, ToolContext, ToolDefinition, ToolOutcome } from '@heynixie/tools';
+import { addRelatedMemory, relatedMemoryOutput } from '@heynixie/tools';
 import { z } from 'zod';
 import type { SkillToolsContext } from '../types';
 import { skillsWriteProposedCodec } from '../write/skills-write-proposed-codec';
 import { writeRuleAppliedSkill } from './write-rule-applied-skill';
+
+const writeArguments = z.object({
+  name: z.string(),
+  files: z.object({ path: z.string(), text: z.string() }).array(),
+});
 
 export function buildSkillWriteTool(context: SkillToolsContext): ToolDefinition {
   return {
@@ -17,7 +23,8 @@ export function buildSkillWriteTool(context: SkillToolsContext): ToolDefinition 
       'SKILL.md opens with YAML frontmatter that holds the name and a description of when to use ' +
       "the skill. When an allow rule of the owner's names skill_write, the write applies at once " +
       'and the skill is in force for new tasks. Otherwise, or when the files hold a destination ' +
-      'the owner never typed, the write becomes a proposal that the owner reviews.',
+      'the owner never typed, the write becomes a proposal that the owner reviews. When memory ' +
+      'holds active items close to the skill, `related` lists them with their IDs and text.',
     input: {
       type: 'object',
       properties: {
@@ -44,6 +51,7 @@ export function buildSkillWriteTool(context: SkillToolsContext): ToolDefinition 
         status: { type: 'string', enum: ['applied', 'pending'] },
         proposalID: { type: 'string' },
         message: { type: 'string' },
+        related: relatedMemoryOutput,
       },
       required: ['status', 'message'],
       additionalProperties: false,
@@ -53,17 +61,26 @@ export function buildSkillWriteTool(context: SkillToolsContext): ToolDefinition 
       destinations: [],
       amount: null,
       content: [],
-      results: { status: 'owner_data', proposalID: 'owner_data', message: 'owner_data' },
+      results: {
+        status: 'owner_data',
+        proposalID: 'owner_data',
+        message: 'owner_data',
+        related: 'untrusted',
+      },
     },
     execution: 'direct',
-    run: (call, tool) => runSkillWrite(context, call, tool),
+    run: async (call, tool) => {
+      const outcome = await runSkillWrite(context, call, tool);
+
+      const input = writeArguments.parse(call.input);
+
+      return addRelatedMemory(outcome, context.relatedMemory, {
+        callID: call.callID,
+        text: [input.name, ...input.files.map((file) => file.text)].join('\n'),
+      });
+    },
   };
 }
-
-const writeArguments = z.object({
-  name: z.string(),
-  files: z.object({ path: z.string(), text: z.string() }).array(),
-});
 
 async function runSkillWrite(
   context: SkillToolsContext,

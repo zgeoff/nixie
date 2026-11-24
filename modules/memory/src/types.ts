@@ -21,6 +21,7 @@ import type { IndexLine } from './index-block/collect-topic-lines';
 import type { MemoryIndexConfig } from './index-block/default-index-settings';
 import type { EntryPage, TopicRequest } from './index-block/types';
 import type { StoreIndexes } from './moment/store/start-store-indexes';
+import type { RelatedItem } from './related/read-related-items';
 import type { TurnMemorySettings } from './turn/types';
 import type { UsageListEntry } from './usage/collect-usage-list';
 import type { UsageListRequest } from './usage/read-usage-list';
@@ -321,6 +322,9 @@ export interface MemoryStore {
 
   readonly readSavedTimes: (itemIDs: readonly string[]) => Promise<ReadonlyMap<string, number>>;
   readonly readUsageList: (request: UsageListRequest) => Promise<readonly UsageListEntry[]>;
+
+  // The active items closest to a text, for a tool that shows what memory holds on its call.
+  readonly readRelated: (text: string) => Promise<readonly RelatedItem[]>;
 
   readonly view: MemoryView;
 }

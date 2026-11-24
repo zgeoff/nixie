@@ -1,10 +1,16 @@
 import type { JSONObject } from '@heynixie/log';
-import type { ToolDefinition, ToolOutcome, ToolResolveContext } from '@heynixie/tools';
+import type {
+  RelatedMemoryLookup,
+  ToolDefinition,
+  ToolOutcome,
+  ToolResolveContext,
+} from '@heynixie/tools';
+import { addRelatedMemory, relatedMemoryOutput } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
 import { match } from 'ts-pattern';
 import { parseTaskStartInput } from '../runner/parse-task-start-input';
 import { pickStartRunner } from '../runner/pick-start-runner';
-import type { StartableRunner } from '../runner/types';
+import type { StartDeclaration, StartableRunner } from '../runner/types';
 import { readTaskSetup } from '../task/read-task-setup';
 import type { TaskStartRefusal } from '../task/start/write-task-start';
 import { writeTaskStart } from '../task/start/write-task-start';
@@ -25,6 +31,10 @@ export function buildTaskStartTool(
   context: StartToolContext,
   messaging: Pick<TaskMessaging, 'hopLimit' | 'ownerName'>,
   bounds: TaskStartBounds,
+
+  // what task.start looks up in memory after it applies, for a starter that reads memory; without
+  // it, the result carries no `related`
+  relatedMemory?: RelatedMemoryLookup,
 ): ToolDefinition {
   const owner = messaging.ownerName ?? 'the owner';
   const registry = context.runners;
@@ -58,15 +68,16 @@ export function buildTaskStartTool(
         taskID: { type: 'string' },
         name: { type: 'string' },
         note: { type: 'string' },
+        related: relatedMemoryOutput,
       },
       required: ['taskID', 'name', 'note'],
       additionalProperties: false,
     },
-    declaration: defaultStart.declaration,
+    declaration: addRelatedResult(defaultStart.declaration),
     variants: {
       pick: (input) => pickStartRunner(input, registry).key,
       declarations: Object.fromEntries(
-        startable.map((runner) => [runner.key, runner.start.declaration]),
+        startable.map((runner) => [runner.key, addRelatedResult(runner.start.declaration)]),
       ),
     },
     execution: 'direct',
@@ -116,7 +127,7 @@ export function buildTaskStartTool(
 
       const name = envelope.name.trim();
 
-      return {
+      const started: ToolOutcome = {
         status: 'ok',
         result: {
           taskID: outcome.taskID,
@@ -124,14 +135,28 @@ export function buildTaskStartTool(
           note: `The task starts on its brief now, and ${renderReportNote(plan.envelope.report, disposable)}`,
         },
       };
+
+      // A task that holds no memory never reads what the starter's memory holds.
+      const lookup = planned.memory === 'none' ? undefined : relatedMemory;
+
+      return addRelatedMemory(started, lookup, {
+        callID: call.callID,
+        text: `${envelope.name}\n${envelope.brief}`,
+      });
     },
   };
+}
+
+// Memory text can hold outside content, so a runner's declaration gains a source for `related`.
+function addRelatedResult(declaration: StartDeclaration): StartDeclaration {
+  return { ...declaration, results: { ...declaration.results, related: 'untrusted' } };
 }
 
 type PlannedStart =
   | {
       readonly status: 'planned';
       readonly runner: StartableRunner;
+      readonly memory: TaskMemory;
       readonly plan: Extract<
         ReturnType<StartableRunner['start']['plan']>,
         { readonly status: 'planned' }
@@ -153,7 +178,9 @@ async function planStart(
 
   const plan = runner.start.plan(input, { tools: tool.run.tools, ...access }, bounds);
 
-  return plan.status === 'refused' ? plan : { status: 'planned', runner, plan };
+  return plan.status === 'refused'
+    ? plan
+    : { status: 'planned', runner, memory: access.memory, plan };
 }
 
 // The conversation reads memory. Any other starter reads it only when its own start said so.

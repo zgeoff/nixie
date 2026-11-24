@@ -8,6 +8,10 @@ approves it on the approvals page, `/proposals`. An approved item shows on the m
 `/memory`, and its row in the `memory_items` table has the state `active`. A proposal has no row in
 that table.
 
+Once an item is active, a later call that sets a reminder, starts or defines a task, or writes a
+skill applies at once and its result lists the active items that match its text, as `related`. The
+journey ends with that check for a reminder.
+
 Follow the steps in [Check a change](../SKILL.md#check-a-change) for this journey. Read that section
 for the targets `local` and `preview`, the commands `up`, `attach` and `done`, and the `data` field
 of each command's JSON output.
@@ -101,11 +105,39 @@ item's fact would make nixie keep the item at once, with no proposal.
 
    Expect: one row in `data.rows`, with `state` `active`, and the item's text on the memory page.
 
+7. On `preview`, skip this step and step 8: the real model decides which tools it calls. Set a
+   reminder whose words match the approved item. The scripted model sets it, then writes a note
+   whose body is the short ID of the memory that the reminder's result lists as `related`. When the
+   result lists none, the request fails and no note is written.
+
+   ```bash
+   bun verify action script-reply --reminder '{"name":"Check the bees","note":"Check on the bees on the allotment."}' --text 'The reminder is set.'
+   bun verify browser goto /
+   bun verify browser type --role textbox --name Message --value 'Remind me to check on the bees.'
+   bun verify browser click --role button --name Send
+   bun verify conversation turn --message 'Remind me to check on the bees.' --reply 'The reminder is set.'
+   ```
+
+   Expect: `script-reply` shows `data.replies` of 3, and `conversation turn` exits 0.
+
+8. Check that the reminder is set and the note names the related memory.
+
+   ```bash
+   bun verify db query "select count(*) as reminders from reminders where state = 'active'"
+   bun verify db query "select count(*) as notes from records where kind = 'notebook.note_written'"
+   bun verify db query "select short_id from memory_items where state = 'active'"
+   ```
+
+   Expect: `reminders` is 1, `notes` is 1, and the one row of the third query holds the short ID
+   that the note's body carries. Read the body on the notebook page, `/notebook`.
+
 ## End state
 
 - The approvals page of step 4 listed the item.
 - On `local`, the `db query` of step 6 returns one row, whose `state` is `active`.
 - The memory page shows the item's text from step 4: on `local`, "The user keeps bees on the
   allotment.".
+- On `local`, the reminder of step 7 is active, and the note of step 8 holds the short ID of the
+  approved item: the reminder's result listed it as `related`, and the call applied first.
 - On `preview`, when step 4 found no item, the feature has no verdict. Your reply gives the case
   from step 4.

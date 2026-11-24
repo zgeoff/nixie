@@ -1,4 +1,4 @@
-import { expect, test } from 'bun:test';
+import { expect, mock, test } from 'bun:test';
 import { parseJSONObject } from '@heynixie/log';
 import { buildMockToolCall, buildMockToolContext } from '@heynixie/tools/test-utils';
 import { sql } from 'kysely';
@@ -64,6 +64,37 @@ test('it defines a task and returns its ID, words, next fire and short change ID
       changeID: expect.any(String),
     },
   });
+});
+
+test('it adds the matching memory to the result of a define as related, from the name and the brief', async () => {
+  const ctx = await setupTest();
+
+  const read = mock<(text: string) => Promise<{ shortID: string; text: string }[]>>(() =>
+    Promise.resolve([{ shortID: 'k3m9q2xzab', text: 'The tomatoes are in the greenhouse' }]),
+  );
+
+  const tool = buildTaskDefineTool({
+    readDefinitions: () => ctx.context,
+    readZone: () => Promise.resolve('Europe/Paris'),
+    relatedMemory: { read, log: mock() },
+  });
+
+  await ctx.seed();
+
+  const defineInput = buildTestDefineInput({ name: 'Water the tomatoes', brief: 'Water them.' });
+  const input = parseJSONObject(JSON.stringify(defineInput));
+
+  const outcome = await tool.run(
+    buildMockToolCall({ tool: 'task.define', input }),
+    buildMockToolContext(),
+  );
+
+  expect(outcome).toMatchObject({
+    status: 'ok',
+    result: { related: [{ shortID: 'k3m9q2xzab', text: 'The tomatoes are in the greenhouse' }] },
+  });
+
+  expect(read.mock.calls).toStrictEqual([['Water the tomatoes\nWater them.']]);
 });
 
 test('it stores an at without an offset with the offset of the owner zone', async () => {

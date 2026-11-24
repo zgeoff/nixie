@@ -426,7 +426,10 @@ the item under its old subject, with the new topic. The versions table records n
 for a move, so an undo of the item's last text change leaves its subject as it is.
 
 A refusal returns to the model as a result with `status` `refused`, its `code` and its message, and
-the call records the code as its refusal code.
+the call records the code as its refusal code. An applied move returns `moved`, the count of items
+moved as `active` and `retired`, and `move`, the move in words with the same split, such as
+`owner/home → owner/house, 1 active, 32 retired`. A state with no item moved leaves its part out of
+the words.
 
 The same rules cover `memory.retopic` as cover `memory.edit`: an allow, ask or deny rule that names
 `memory.edit` or the effect `memory_write` matches it. A rule can check `subject`, the subject of
@@ -589,18 +592,18 @@ then runs as in a bulk forget of retired items.
 
 ## The model's tools
 
-| Tool              | Effect         | Does                                                        |
-| ----------------- | -------------- | ----------------------------------------------------------- |
-| `memory.recall`   | `read`         | Recalls items by query, by ID, by topic or a page at a time |
-| `memory.pending`  | `read`         | Lists the proposals that wait for the user's review         |
-| `memory.usage`    | `read`         | Lists the active items that no search or push surfaced      |
-| `memory.remember` | `memory_write` | Creates an item, with a quote or a photo as its source      |
-| `memory.edit`     | `memory_write` | Edits an item at a revision it read, with a quote           |
-| `memory.retire`   | `memory_write` | Retires an item at a revision it read, with an intent quote |
-| `memory.pin`      | `memory_write` | Pins an item at a revision it read, or asks to              |
-| `memory.unpin`    | `note`         | Takes an item out of the pinned core                        |
-| `memory.retopic`  | `memory_write` | Moves a topic, or a list of items, to a topic and subject   |
-| `memory.fold`     | `note`         | Sets the order a topic's folded rows show their items in    |
+| Tool              | Effect         | Does                                                            |
+| ----------------- | -------------- | --------------------------------------------------------------- |
+| `memory.recall`   | `read`         | Recalls items by query, by ID, by topic or a page at a time     |
+| `memory.pending`  | `read`         | Lists the proposals that wait for the user's review             |
+| `memory.usage`    | `read`         | Lists the unpinned active items that no search or push surfaced |
+| `memory.remember` | `memory_write` | Creates an item, with a quote or a photo as its source          |
+| `memory.edit`     | `memory_write` | Edits an item at a revision it read, with a quote               |
+| `memory.retire`   | `memory_write` | Retires an item at a revision it read, with an intent quote     |
+| `memory.pin`      | `memory_write` | Pins an item at a revision it read, or asks to                  |
+| `memory.unpin`    | `note`         | Takes an item out of the pinned core                            |
+| `memory.retopic`  | `memory_write` | Moves a topic, or a list of items, to a topic and subject       |
+| `memory.fold`     | `note`         | Sets the order a topic's folded rows show their items in        |
 
 Each tool runs direct, and the user's rules decide each call by its effect or its name. The starter
 rules `allow-reads` and `allow-notes` allow `read` and `note`. No starter rule allows

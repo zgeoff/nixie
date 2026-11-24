@@ -149,12 +149,13 @@ the `memory.recalled` records written before the call, so a recall never counts 
 - The date after the counts shows only for an item saved before the log's first usage record, so the
   reader knows the counts miss part of its life.
 
-`memory.usage({ days })` lists the active items, pinned ones too, that no search or push surfaced in
-the last `days` days, with the never-surfaced items first and then the longest unsurfaced. Each
-entry holds the item's short ID, topic, gist and usage line, and `neverFiredTriggers`: the trigger
-phrases of an item that no push ever placed, which are the ones to reword. A page that outgrows the
-recall page limit ends with a `next` cursor that the model passes back as `cursor`. The tool writes
-no `memory.recalled` record, so listing usage never changes it.
+`memory.usage({ days })` lists the active items that no search or push surfaced in the last `days`
+days, with the never-surfaced items first and then the longest unsurfaced. It leaves out pinned
+items, because the session's opening holds them and no push places them. Each entry holds the item's
+short ID, topic, gist, the day the item was first saved as `created`, its usage line, and
+`neverFiredTriggers`: the trigger phrases of an item that no push ever placed, which are the ones to
+reword. A page that outgrows the recall page limit ends with a `next` cursor that the model passes
+back as `cursor`. The tool writes no `memory.recalled` record, so listing usage never changes it.
 
 ## Per-turn retrieval
 
@@ -248,6 +249,25 @@ The blocks before the first message keep one order: a new session's opening, the
 note, the retrieved items, the retrieved self-notes, then
 [the events block](../core/conversation-turns.md#the-events-block). The user's own words come last,
 so the model reads each block as context for them.
+
+## Related memory on a call
+
+`reminder.set`, `task.start`, `task.define` and `skill_write` each look memory up after the call
+applies. The lookup searches memory with the call's text arguments: the name and the note of a
+reminder, the name and the brief of a task, the name and the files of a skill. It uses the same
+encoder and the same floors as [per-turn retrieval](#per-turn-retrieval), `trigger_min_score` and
+`trigger_min_similarity`, and takes at most 3 active items. A retired, forgotten or lapsed item
+never shows. The result gains a `related` field that lists each match as its short ID and its text,
+and a call with no match has no `related` field. The text is untrusted content, because an item can
+hold outside text.
+
+The call has applied before the lookup runs, and the lookup never holds, refuses or asks. A lookup
+that fails leaves the result without `related` and logs the failure with the call's ID. The lookup
+writes no `memory.recalled` record, so it counts for no item's usage. A call that a refusal or an
+error ends looks nothing up, and neither does a `task.start` whose started task holds no memory.
+
+The memory module owns the lookup, and the server passes it to each tool as a dependency, so no
+module imports another module's internals.
 
 ## Reading the log
 

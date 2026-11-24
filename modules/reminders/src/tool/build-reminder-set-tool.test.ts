@@ -1,4 +1,5 @@
-import { expect, test } from 'bun:test';
+import { expect, mock, test } from 'bun:test';
+import type { RelatedMemoryLookup } from '@heynixie/tools';
 import { buildMockToolContext } from '@heynixie/tools/test-utils';
 import { readReminderList } from '../reminder/read-reminder-list';
 import { buildReminderToolCall, startTestReminders } from '../test-utils';
@@ -13,10 +14,112 @@ async function setupTest() {
     ...ctx,
     runSet: (input: object) =>
       set.run(buildReminderToolCall('reminder.set', input), buildMockToolContext()),
+    runSetWithMemory: (input: object, relatedMemory: RelatedMemoryLookup) =>
+      buildReminderSetTool({ ...ctx.reminders, relatedMemory }).run(
+        buildReminderToolCall('reminder.set', input),
+        buildMockToolContext(),
+      ),
     readListed: () =>
       readReminderList(ctx.writer.db, { now: ctx.clock.now(), readZone: ctx.reminders.readZone }),
   };
 }
+
+test('#reminder.set adds the matching active items to its result as related, after it applies', async () => {
+  const ctx = await setupTest();
+
+  const read = mock<RelatedMemoryLookup['read']>(() =>
+    Promise.resolve([{ shortID: 'k3m9q2xzab', text: 'The tomatoes are in the greenhouse' }]),
+  );
+
+  const outcome = await ctx.runSetWithMemory(
+    { name: 'Tomatoes', note: 'Water the tomatoes.', trigger: { at: '2027-03-10T08:00:00Z' } },
+    { read, log: mock() },
+  );
+
+  const listed = await ctx.readListed();
+
+  expect(outcome).toStrictEqual({
+    status: 'ok',
+    result: {
+      reminder: expect.stringMatching(/^[0-9a-z]{10}$/u),
+      rendered: 'once on Wed 10 Mar at 08:00',
+      next: ['2027-03-10T08:00:00+00:00'],
+      related: [{ shortID: 'k3m9q2xzab', text: 'The tomatoes are in the greenhouse' }],
+    },
+  });
+
+  expect(listed).toHaveLength(1);
+  expect(read.mock.calls).toStrictEqual([['Tomatoes\nWater the tomatoes.']]);
+});
+
+test('#reminder.set leaves out related when nothing matches', async () => {
+  const ctx = await setupTest();
+
+  const outcome = await ctx.runSetWithMemory(
+    { name: 'Tomatoes', note: 'Water the tomatoes.', trigger: { at: '2027-03-10T08:00:00Z' } },
+    { read: () => Promise.resolve([]), log: mock() },
+  );
+
+  expect(outcome).toStrictEqual({
+    status: 'ok',
+    result: {
+      reminder: expect.stringMatching(/^[0-9a-z]{10}$/u),
+      rendered: 'once on Wed 10 Mar at 08:00',
+      next: ['2027-03-10T08:00:00+00:00'],
+    },
+  });
+});
+
+test('#reminder.set applies with no related and logs the call ID when the lookup throws', async () => {
+  const ctx = await setupTest();
+
+  const log = mock<RelatedMemoryLookup['log']>();
+
+  const outcome = await ctx.runSetWithMemory(
+    { name: 'Tomatoes', note: 'Water the tomatoes.', trigger: { at: '2027-03-10T08:00:00Z' } },
+    { read: () => Promise.reject(new Error('the index is down')), log },
+  );
+
+  const listed = await ctx.readListed();
+
+  expect(outcome).toStrictEqual({
+    status: 'ok',
+    result: {
+      reminder: expect.stringMatching(/^[0-9a-z]{10}$/u),
+      rendered: 'once on Wed 10 Mar at 08:00',
+      next: ['2027-03-10T08:00:00+00:00'],
+    },
+  });
+
+  expect(listed).toHaveLength(1);
+
+  expect(log.mock.calls).toStrictEqual([
+    [
+      'tool.related_memory_failed',
+      { callID: expect.any(String), error: 'Error', message: 'the index is down' },
+      'error',
+    ],
+  ]);
+});
+
+test('#reminder.set looks nothing up for a refused reminder', async () => {
+  const ctx = await setupTest();
+
+  const read = mock<RelatedMemoryLookup['read']>(() => Promise.resolve([]));
+
+  await ctx.runSetWithMemory(
+    {
+      name: 'Tomatoes',
+      note: 'Water the tomatoes.',
+      trigger: {
+        schedule: { repeat: { frequency: 'weekly', interval: 2, byDay: ['mon'], at: ['09:00'] } },
+      },
+    },
+    { read, log: mock() },
+  );
+
+  expect(read.mock.calls).toStrictEqual([]);
+});
 
 test('#reminder.set sets a one-off with its ID, its words and its next fire', async () => {
   const ctx = await setupTest();

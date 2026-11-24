@@ -426,3 +426,49 @@ test('it queues the note writes before the task start when the reply holds both'
     'text',
   ]);
 });
+
+test('it queues a reminder, then a note that holds the short ID of the related memory the reminder named', () => {
+  const replies = buildScriptedReplies({
+    text: 'The reminder is set.',
+    reminder: { name: 'Check the bees', note: 'Check on the bees.' },
+  });
+
+  const body = {
+    messages: [
+      {
+        role: 'user',
+        content: '{"result":{"reminder":"abc","related":[{"shortID":"k3m9q2xzab","text":"Bees"}]}}',
+      },
+    ],
+  };
+
+  const inputs = replies.map((reply) => {
+    const input = 'toolUse' in reply ? reply.toolUse?.input : undefined;
+
+    return typeof input === 'function' ? input(body) : input;
+  });
+
+  expect(inputs).toStrictEqual([
+    {
+      name: 'Check the bees',
+      note: 'Check on the bees.',
+      trigger: { at: '2099-01-01T09:00:00' },
+    },
+    { title: 'Related memory', body: 'k3m9q2xzab', tags: ['verify'] },
+    undefined,
+  ]);
+});
+
+test('it fails the note of a reminder whose result names no related memory', () => {
+  const replies = buildScriptedReplies({
+    text: 'The reminder is set.',
+    reminder: { name: 'Check the bees', note: 'Check on the bees.' },
+  });
+
+  const [, note] = replies;
+  const input = note !== undefined && 'toolUse' in note ? note.toolUse?.input : undefined;
+
+  expect(() =>
+    typeof input === 'function' ? input({ messages: [{ role: 'user', content: '{}' }] }) : null,
+  ).toThrow('names no related memory');
+});
