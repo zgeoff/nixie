@@ -29,6 +29,8 @@ export async function runErasureTree(context: ErasureRunContext, root: OpenErasu
 
   effects.holdCaptures(root.started.erasureID);
 
+  await reachFaultPoint(effects, 'erasure.started', root);
+
   await effects.closeCaptures();
 
   const removedKeys = new Map<string, number>();
@@ -100,6 +102,16 @@ function collectTree(open: readonly OpenErasure[], root: OpenErasure): readonly 
   }
 
   return open.filter((erasure) => members.has(erasure.started.erasureID));
+}
+
+async function reachFaultPoint(
+  effects: ErasureEffects,
+  point: Parameters<ErasureEffects['reachFaultPoint']>[0],
+  root: OpenErasure,
+): Promise<void> {
+  if (NIXIE_TEST_BUILD) {
+    await effects.reachFaultPoint(point, root.started.erasureID);
+  }
 }
 
 // Finds the children of every erasure in the tree until a pass finds no target that is new. A
@@ -189,16 +201,6 @@ async function beginOrJoin(
   invariant(started, 'the child erasure that just began is open');
 
   return started;
-}
-
-async function reachFaultPoint(
-  effects: ErasureEffects,
-  point: Parameters<ErasureEffects['reachFaultPoint']>[0],
-  root: OpenErasure,
-): Promise<void> {
-  if (NIXIE_TEST_BUILD) {
-    await effects.reachFaultPoint(point, root.started.erasureID);
-  }
 }
 
 async function cleanErasure(context: ErasureRunContext, erasure: OpenErasure): Promise<void> {
