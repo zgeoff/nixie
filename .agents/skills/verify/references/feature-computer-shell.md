@@ -154,8 +154,8 @@ Before you start:
    `Version: ImageMagick` line. Fail the journey on a nonzero exit code. When the image ships no
    `magick` binary, run `convert -version` in its place.
 
-   `local`'s test build runs the shell as a process of the host, not in the computer image. The
-   host needs `ffmpeg` and `magick` on its path, or the command exits 127.
+   `local`'s test build runs the shell as a process of the host, not in the computer image. The host
+   needs `ffmpeg` and `magick` on its path, or the command exits 127.
 
 ## End state
 
