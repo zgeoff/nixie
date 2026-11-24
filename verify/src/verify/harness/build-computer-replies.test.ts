@@ -48,20 +48,3 @@ test('it queues a ps run and the reply for the shell-processes kind', () => {
     { text: 'I listed them.' },
   ]);
 });
-
-test('it queues the media tool version run and the reply for the shell-media kind', () => {
-  const replies = buildComputerReplies(
-    { kind: 'shell-media', text: 'I checked them.' },
-    'http://pages.test:4000/',
-  );
-
-  expect(replies).toStrictEqual([
-    {
-      toolUse: {
-        name: 'mcp__nixie__computer_run',
-        input: { command: 'ffmpeg -version && magick -version' },
-      },
-    },
-    { text: 'I checked them.' },
-  ]);
-});

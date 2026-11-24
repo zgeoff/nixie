@@ -2,13 +2,7 @@ import type { ScriptedReply } from '@heynixie/testing';
 import { match } from 'ts-pattern';
 
 export interface ComputerSessionInput {
-  readonly kind:
-    | 'browser'
-    | 'browser-navigate'
-    | 'shell'
-    | 'shell-processes'
-    | 'shell-media'
-    | 'screen';
+  readonly kind: 'browser' | 'browser-navigate' | 'shell' | 'shell-processes' | 'screen';
   readonly text: string;
 }
 
@@ -34,15 +28,6 @@ export function buildComputerReplies(
     ])
     .with('shell-processes', (): ScriptedReply[] => [
       { toolUse: { name: 'mcp__nixie__computer_run', input: { command: 'ps -e -o args=' } } },
-      { text: input.text },
-    ])
-    .with('shell-media', (): ScriptedReply[] => [
-      {
-        toolUse: {
-          name: 'mcp__nixie__computer_run',
-          input: { command: 'ffmpeg -version && magick -version' },
-        },
-      },
       { text: input.text },
     ])
     .with('screen', (): ScriptedReply[] => [

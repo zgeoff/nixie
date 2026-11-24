@@ -132,31 +132,6 @@ Before you start:
    list, and on any other line, such as a display server, a remote-screen socket path or a browser
    flag. The shell's own `/proc` is what keeps those lines out.
 
-9. Check that the terminal has its media tools. `use-computer --kind shell-media` sends the message
-   "Show the versions of your video and image tools.", and queues 2 replies: a `computer.run` call
-   of `ffmpeg -version && magick -version` and the text in `--text`. nixie holds the command until
-   the user approves it. Approve it as steps 6 and 7 do, and read its result as step 8 does.
-
-   ```bash
-   bun verify action use-computer --kind shell-media --text 'The assistant showed the versions.'
-   bun verify proposals --tool computer.run --waiting pending --wait-ms 10000
-   bun verify action script-reply --text 'Thanks, I have the versions.'
-   bun verify browser goto /proposals
-   bun verify browser snapshot
-   bun verify browser click --ref '<item_ref>'
-   bun verify browser snapshot
-   bun verify browser click --ref '<button_ref>'
-   bun verify model input --contains 'ImageMagick'
-   ```
-
-   Expect: `data.replies` is 2, and each command exits 0. `data.text` of `model input` holds
-   `\"exitCode\":0` and a `stdout` that starts with the `ffmpeg version` line and holds the
-   `Version: ImageMagick` line. Fail the journey on a nonzero exit code. When the image ships no
-   `magick` binary, run `convert -version` in its place.
-
-   `local`'s test build runs the shell as a process of the host, not in the computer image. The host
-   needs `ffmpeg` and `magick` on its path, or the command exits 127.
-
 ## End state
 
 The last snapshot of step 4 lists 2 tool calls under "Tools 2", each with its input and its result:
@@ -169,8 +144,5 @@ The last snapshot of step 4 lists 2 tool calls under "Tools 2", each with its in
 
 The input that step 8 returns holds the `computer.run` result with `"exitCode":0` and only 2 lines
 in its stdout: the bridge and `ps -e -o args=`.
-
-The input that step 9 returns holds the `computer.run` result with `"exitCode":0`, the
-`ffmpeg version` line and the `Version: ImageMagick` line.
 
 Once the end state matches, run `bun verify done`.
