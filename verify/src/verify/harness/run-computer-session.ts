@@ -28,6 +28,7 @@ export async function runComputerSession(
       .with('browser-navigate', () => 'Go to the next page in the same tab, then reload it.')
       .with('shell', () => 'Write a note on your computer and read it back.')
       .with('shell-processes', () => 'List the processes that your shell shows.')
+      .with('shell-media', () => 'Show the versions of your video and image tools.')
       .with('screen', () => 'Look at your screen and click the middle of it.')
       .exhaustive(),
     thread: 'conversation',
