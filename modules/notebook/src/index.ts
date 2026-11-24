@@ -41,3 +41,4 @@ export type {
 } from './types';
 
 export { buildNotebookMemory } from './memory/build-notebook-memory';
+export { notebookRecordTopics } from './record/notebook-record-topics';

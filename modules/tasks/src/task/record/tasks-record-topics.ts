@@ -1,0 +1,38 @@
+import type { LiveTopic } from '@heynixie/log';
+import type { TasksRecordKind } from './tasks-record-kind';
+
+// The topics each record kind changes, which the server registers with the log.
+export const tasksRecordTopics = {
+  'task.created': ['tasks', 'definitions'],
+  'task.revived': ['tasks'],
+  'task.step_started': ['tasks'],
+  'task.step_committed': ['tasks'],
+  'task.step_errored': ['tasks'],
+  'task.step_interrupted': ['tasks'],
+  'task.lease_expired': ['tasks'],
+  'task.pause_requested': ['tasks'],
+  'task.paused': ['tasks'],
+  'task.resumed': ['tasks'],
+  'task.stopped': ['tasks'],
+  'task.restarted': ['tasks'],
+  'task.closed': ['tasks'],
+  'task.mark_set': ['tasks'],
+  'task.definition_set': ['tasks', 'definitions'],
+  'trigger.fired': ['tasks', 'triggers'],
+  'trigger.skipped': ['tasks', 'triggers'],
+  'task.interrupted': ['tasks'],
+  'task.limit_reached': ['tasks'],
+  'task.failed_turn_spent': ['tasks'],
+  'task.limit_notice': ['tasks'],
+  'recovery.notice': ['tasks'],
+  'task.limits_raised': ['tasks'],
+  'task.wake': ['tasks'],
+  'task.run_opened': ['tasks'],
+  'task.run_report_requested': ['tasks'],
+  'task.run_ended': ['tasks'],
+  task_message: ['tasks'],
+  'task.exchange_limited': ['tasks'],
+  'timer.fired': ['tasks'],
+  owner_message: ['tasks'],
+  'action.outcome': ['tasks', 'approvals'],
+} as const satisfies Record<TasksRecordKind, readonly LiveTopic[]>;

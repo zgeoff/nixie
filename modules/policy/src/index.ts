@@ -136,3 +136,4 @@ export { isRuleMatch } from './rule/is-rule-match';
 export type { RuleNeed } from './memory/is-need-met';
 export { isNeedMet } from './memory/is-need-met';
 export { listUncoveredMemoryWrites } from './memory/list-uncovered-memory-writes';
+export { policyRecordTopics } from './policy/policy-record-topics';

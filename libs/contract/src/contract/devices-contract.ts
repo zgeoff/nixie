@@ -1,11 +1,10 @@
-import { eventIterator } from '@orpc/contract';
 import { z } from 'zod';
 import { regionContentSchema } from './region-content-schema';
 import { reusedIDErrors } from './reused-id-errors';
 import { screenContentSchema } from './screen-content-schema';
 import { signedIn } from './signed-in';
 
-const pixelsSchema = z.object({
+export const pixelsSchema = z.object({
   width: z.int().min(1).max(20_000),
   height: z.int().min(1).max(20_000),
 
@@ -46,23 +45,19 @@ export const deviceEventSchema = z.discriminatedUnion('kind', [
 
 export type DeviceEvent = z.output<typeof deviceEventSchema>;
 
+export const notADeviceError = {
+  message: 'This session has no device. Register one first',
+  status: 409,
+};
+
 // A call on the session's own device row. A full session that holds no row registers one first.
-const ownDevice = signedIn.errors({
-  NOT_A_DEVICE: {
-    message: 'This session has no device. Register one first',
-    status: 409,
-  },
-});
+const ownDevice = signedIn.errors({ NOT_A_DEVICE: notADeviceError });
 
 export const devicesContract = {
   register: signedIn
     .errors(reusedIDErrors)
     .input(z.object({ clientActionID: z.uuid(), name: z.string().min(1).max(100) }))
     .output(z.object({ deviceID: z.string() })),
-
-  follow: ownDevice
-    .input(z.object({ pixels: pixelsSchema }))
-    .output(eventIterator(deviceEventSchema)),
 
   resize: ownDevice.input(pixelsSchema).output(z.object({})),
 

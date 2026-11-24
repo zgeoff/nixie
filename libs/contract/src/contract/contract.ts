@@ -1,16 +1,14 @@
-import { eventIterator, oc } from '@orpc/contract';
+import { oc } from '@orpc/contract';
 import { z } from 'zod';
 import { codeFileSchema } from '../file/code-file-schema';
 import { spanSchema } from '../span/span-schema';
 import { approvalContract } from './approval-contract';
-import { clippedPayloadSchema } from './clipped-payload-schema';
 import { computerContract } from './computer-contract';
-import { definitionNoticeSchema } from './definition-notice-schema';
 import { definitionsContract } from './definitions-contract';
 import { devicesContract } from './devices-contract';
 import { erasureContract } from './erasure-contract';
+import { followLive } from './follow-live';
 import { forgetBackupSchema } from './forget-backup-schema';
-import { imageLimits } from './image-limits';
 import { imageNotFoundError } from './image-not-found-error';
 import { imageRefusedError } from './image-refused-error';
 import { imagesContract } from './images-contract';
@@ -25,6 +23,12 @@ import { notebookContract } from './notebook-contract';
 import { passkeyContract } from './passkey-contract';
 import { pauseStateSchema } from './pause-state-schema';
 import { readPayloadContract } from './read-payload-contract';
+import {
+  listedActionSchema,
+  recordSchema,
+  versionRefSchema,
+  versionTextSchema,
+} from './record-schema';
 import { recoverySchema } from './recovery-schema';
 import { remindersContract } from './reminders-contract';
 import { reusedIDErrors } from './reused-id-errors';
@@ -37,156 +41,17 @@ import {
   spendStopSchema,
   spendStopStandsError,
 } from './spend-stop-schema';
-import { taskSchema } from './task-schema';
 import { threadSchema } from './thread-schema';
-import { toolCallSchema } from './tool-call-schema';
 import { viewContract } from './view-contract';
-import { workerViewSchema } from './worker-view-schema';
 
 const clientActionIDSchema = z.uuid();
 const sessionScopeSchema = z.enum(['full', 'device']);
-const imageSchema = z.object({ mediaType: z.enum(imageLimits.mediaTypes) });
 const imageFilesSchema = z.array(z.file());
 
 const imageRefSchema = z.object({
   position: z.int().nonnegative(),
   sequence: sequenceSchema,
   thread: threadSchema,
-});
-
-const versionRefSchema = z.object({
-  itemID: z.string().min(1).max(200),
-  version: z.int().nonnegative(),
-});
-
-const recallItemSchema = versionRefSchema.extend({ score: z.number().optional() });
-const recallSchema = z.object({ items: z.array(recallItemSchema) });
-const replyVoidReasonSchema = z.enum(['attempt_failed', 'attempt_lost', 'turn_dropped', 'silent']);
-const tokenCountSchema = z.int().nonnegative();
-const contextSchema = z.object({ size: tokenCountSchema, window: z.int().positive() });
-
-const compactionSchema = z.object({
-  postTokens: tokenCountSchema.optional(),
-  preTokens: tokenCountSchema,
-  trigger: z.enum(['manual', 'auto']),
-});
-
-const summarySchema = z.object({
-  contextSize: tokenCountSchema.optional(),
-  summaryTokens: tokenCountSchema,
-  text: z.string().optional(),
-  trigger: z.enum(['threshold', 'overflow']),
-});
-
-const compactionFailureSchema = z.object({ failures: z.int().positive() });
-
-const versionTextSchema = versionRefSchema.extend({
-  status: z.enum(['readable', 'shredded', 'unreadable', 'missing']),
-  text: z.string().optional(),
-});
-
-const listedActionSchema = z.object({ actionID: z.string(), tool: z.string() });
-
-const taskMessageSchema = z.object({
-  from: threadSchema,
-  fromName: z.string(),
-  hop: z.int().nonnegative(),
-  kind: z.string(),
-  messageID: z.string(),
-  replyTo: z.string().optional(),
-  text: z.string().optional(),
-  to: threadSchema,
-  woke: z.boolean(),
-});
-
-const exchangeNoticeSchema = z.object({
-  link: z.object({ label: z.string(), messageID: z.string(), taskID: threadSchema }),
-  text: z.string(),
-});
-
-const reminderSchema = z.object({
-  // null when the version that holds the name is no longer stored
-  name: z.string().nullable(),
-  note: z.string(),
-  scheduledFor: z.iso.datetime({ offset: true }),
-  lateBySeconds: z.number().nullable(),
-});
-
-const recordSchema = z.object({
-  clipped: z.array(clippedPayloadSchema).optional(),
-  compaction: compactionSchema.optional(),
-
-  exchangeNotice: exchangeNoticeSchema.optional(),
-
-  reminder: reminderSchema.optional(),
-
-  compactionFailure: compactionFailureSchema.optional(),
-
-  forget: z.object({ sequence: sequenceSchema }).optional(),
-
-  context: contextSchema.optional(),
-
-  definitionNotice: definitionNoticeSchema.optional(),
-
-  // set on an assistant's ask for a take-over, with the reason while it is readable
-  handover: z.object({ reason: z.string().optional() }).optional(),
-
-  isRemoved: z.literal(true).optional(),
-
-  isSilentTurn: z.literal(true).optional(),
-
-  kind: z.string(),
-
-  message: z
-    .object({
-      clientMessageId: z.uuid().optional(),
-
-      images: z.array(imageSchema).optional(),
-
-      // set on a model reply that a void record names, with the reason it names
-      isVoided: z.literal(true).optional(),
-      spans: z.array(spanSchema).optional(),
-      text: z.string(),
-      voidReason: replyVoidReasonSchema.optional(),
-    })
-    .optional(),
-
-  moment: z
-    .object({ momentID: z.string(), shortID: z.string(), title: z.string().optional() })
-    .optional(),
-
-  proposal: z.object({ proposalID: z.string(), shortID: z.string() }).optional(),
-
-  recall: recallSchema.optional(),
-  recordedAt: z.date(),
-
-  // set on the outcome of an action that removed a record for good, which names the record and the
-  // call that asked for it
-  removal: z
-    .object({ kind: z.string(), sequence: sequenceSchema, callSequence: sequenceSchema.optional() })
-    .optional(),
-
-  sequence: sequenceSchema,
-
-  // set on a skill that an allow rule applied at once, with the version it put in force
-  skillNotice: z
-    .object({ name: z.string(), skillHash: z.string(), isNew: z.boolean(), ruleID: z.string() })
-    .optional(),
-
-  stop: z.object({ cancelledActions: z.array(listedActionSchema) }).optional(),
-
-  summary: summarySchema.optional(),
-  thread: threadSchema,
-
-  task: taskSchema.optional(),
-
-  taskMessage: taskMessageSchema.optional(),
-
-  toolCall: toolCallSchema.optional(),
-
-  // set on a void record, which names the reply it voids and the reason
-  voidedReply: z.object({ sequence: sequenceSchema, reason: replyVoidReasonSchema }).optional(),
-  worker: workerViewSchema.optional(),
 });
 
 const writerErrorSchema = z
@@ -255,16 +120,6 @@ const backupNoticeSchema = z.object({
   sequence: z.int().positive(),
   raisedAt: z.date(),
 });
-
-const followRecords = signedIn
-  .input(
-    z.object({
-      afterSequence: sequenceSchema,
-      clipPayloads: z.boolean().optional(),
-      thread: threadSchema.optional(),
-    }),
-  )
-  .output(eventIterator(z.object({ record: recordSchema })));
 
 export const contract = {
   conversation: {
@@ -373,7 +228,15 @@ export const contract = {
           })
           .optional(),
       )
-      .output(z.object({ readAtSequence: sequenceSchema, tasks: z.array(listedTaskSchema) })),
+      .output(
+        z.object({
+          readAtSequence: sequenceSchema,
+          tasks: z.array(listedTaskSchema),
+
+          // the earliest time a listed task changes with no write
+          changesAt: z.date().nullable(),
+        }),
+      ),
     read: signedIn
       .errors({ TASK_NOT_FOUND: { message: 'No task has this ID', status: 404 } })
       .input(z.object({ taskID: threadSchema }))
@@ -492,15 +355,8 @@ export const contract = {
   rules: ruleContract,
   approvals: approvalContract,
   passkeys: passkeyContract,
-  log: {
-    // Clients of earlier releases call this path. A content blocker's generic rule for /rpc/log/
-    // stops a browser from reaching it.
-    follow: followRecords.route({ deprecated: true }),
-  },
-  records: {
-    follow: followRecords,
-    readPayload: readPayloadContract,
-  },
+  live: { follow: followLive },
+  records: { readPayload: readPayloadContract },
   sessions: {
     enrol: oc
       .errors(reusedIDErrors)
@@ -532,6 +388,8 @@ export const contract = {
       )
       .output(z.object({ code: z.string(), expiresAt: z.date() })),
 
+    // The client calls it when it shows nixie on screen, and every 60 s while it does.
+    shown: signedIn.input(z.object({})).output(z.object({})),
     signOut: signedIn.input(z.object({})).output(z.object({ signedOutAt: z.date() })),
     list: signedIn.output(z.object({ sessions: z.array(sessionSchema) })),
 

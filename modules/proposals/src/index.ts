@@ -61,3 +61,4 @@ export type { ProposalContext, ProposalOutcome, ProposalState, ProposalStatus } 
 export type { ProposalLapseSource } from './write-proposal-lapses';
 export { writeProposalLapses } from './write-proposal-lapses';
 export { pickNextMidnight } from './sweeps/pick-next-midnight';
+export { proposalRecordTopics } from './records/proposal-record-topics';

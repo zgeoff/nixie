@@ -157,12 +157,67 @@ test('it declares a missing device session and an unknown thread for a read', ()
   ]);
 });
 
-test('it declares a missing device session for a records follow', () => {
-  expect(contract.records.follow['~orpc'].errorMap).toContainAllKeys(['UNAUTHORIZED']);
+test('it declares a missing session, a refused page form and a missing device row for a live follow', () => {
+  expect(contract.live.follow['~orpc'].errorMap).toContainAllKeys([
+    'UNAUTHORIZED',
+    'FORBIDDEN',
+    'NOT_A_DEVICE',
+  ]);
 });
 
-test('it declares a missing device session for the deprecated log follow', () => {
-  expect(contract.log.follow['~orpc'].errorMap).toContainAllKeys(['UNAUTHORIZED']);
+test('it leaves the old streams out of the contract', () => {
+  expect(Object.keys(contract)).not.toContain('log');
+  expect(Object.keys(contract.records)).toStrictEqual(['readPayload']);
+  expect(Object.keys(contract.devices)).not.toContain('follow');
+});
+
+test.each([
+  ['a page form with a thread', { afterSequence: 4812, thread: 't7k2' }],
+  ['a page form with nothing', {}],
+  ['a device form', { device: { pixels: { width: 1080, height: 1920, pixelRatio: 2 } } }],
+])('it accepts %s for a live follow', (_title, input) => {
+  expect(contract.live.follow['~orpc'].inputSchema?.safeParse(input).success).toBe(true);
+});
+
+test('it refuses a live follow that mixes the page and device forms', () => {
+  expect(
+    contract.live.follow['~orpc'].inputSchema?.safeParse({
+      thread: 't7k2',
+      device: { pixels: { width: 1080, height: 1920 } },
+    }).success,
+  ).toBe(false);
+});
+
+test.each([
+  ['opened', { kind: 'opened' }],
+  ['changed', { kind: 'changed', topics: ['nixie', 'tasks'] }],
+  ['device', { kind: 'device', event: { kind: 'idle', scene: [] } }],
+])('it streams a %s event of a live follow', (_title, event) => {
+  expect(
+    getEventIteratorSchemaDetails(contract.live.follow['~orpc'].outputSchema)?.yields[
+      '~standard'
+    ].validate(event),
+  ).toStrictEqual({ value: event });
+});
+
+test('it refuses a changed event with no topic', () => {
+  expect(
+    getEventIteratorSchemaDetails(contract.live.follow['~orpc'].outputSchema)?.yields[
+      '~standard'
+    ].validate({ kind: 'changed', topics: [] }),
+  ).toHaveProperty('issues');
+});
+
+test('it declares a missing session for a sessions shown', () => {
+  expect(contract.sessions.shown['~orpc'].errorMap).toContainAllKeys(['UNAUTHORIZED']);
+});
+
+test('it returns the time a task list next changes on its own', () => {
+  const tasks = { readAtSequence: 4812, tasks: [], changesAt: new Date('2026-11-24T09:00:00Z') };
+
+  expect(contract.tasks.list['~orpc'].outputSchema?.['~standard'].validate(tasks)).toStrictEqual({
+    value: tasks,
+  });
 });
 
 test('it answers a missing device session with 401', () => {
@@ -227,7 +282,7 @@ test('it refuses a span offset below zero', () => {
   ).toPartiallyContain({ path: ['spans', 0, 'start'] });
 });
 
-test('it streams each record of the live stream as one event', () => {
+test('it streams each record of a live follow as one event', () => {
   const record = {
     kind: 'owner_message',
     message: {
@@ -241,10 +296,10 @@ test('it streams each record of the live stream as one event', () => {
   };
 
   expect(
-    getEventIteratorSchemaDetails(contract.records.follow['~orpc'].outputSchema)?.yields[
+    getEventIteratorSchemaDetails(contract.live.follow['~orpc'].outputSchema)?.yields[
       '~standard'
-    ].validate({ record }),
-  ).toStrictEqual({ value: { record } });
+    ].validate({ kind: 'record', record }),
+  ).toStrictEqual({ value: { kind: 'record', record } });
 });
 
 test('it generates an OpenAPI document with one operation for each procedure', () => {
@@ -253,8 +308,7 @@ test('it generates an OpenAPI document with one operation for each procedure', (
       '/conversation/forget': { post: { operationId: 'conversation.forget' } },
       '/conversation/read': { post: { operationId: 'conversation.read' } },
       '/conversation/send': { post: { operationId: 'conversation.send' } },
-      '/log/follow': { post: { deprecated: true, operationId: 'log.follow' } },
-      '/records/follow': { post: { operationId: 'records.follow' } },
+      '/live/follow': { post: { operationId: 'live.follow' } },
       '/sessions/enrol': { post: { operationId: 'sessions.enrol' } },
       '/sessions/issueCode': { post: { operationId: 'sessions.issueCode' } },
       '/sessions/list': { post: { operationId: 'sessions.list' } },

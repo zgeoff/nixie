@@ -123,3 +123,5 @@ export type { WorkerOutcome } from './worker/to-worker-outcome';
 export { toWorkerOutcome } from './worker/to-worker-outcome';
 export type { WorkerLimit } from './worker/to-worker-limit';
 export { toWorkerLimit } from './worker/to-worker-limit';
+export { sessionsRecordTopics } from './session/sessions-record-topics';
+export { workerRecordTopics } from './worker/worker-record-topics';
