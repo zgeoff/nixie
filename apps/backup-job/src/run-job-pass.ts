@@ -72,7 +72,14 @@ async function publishStagedSets(
       continue;
     }
 
-    const receipt = await publishBackupSet(repos, config, files, set);
+    const receipt = await publishBackupSet(repos, config, files, {
+      set,
+      probeIsWithdrawn: () => probeSetBelowFloor(files, config.stagingDir, set),
+    });
+
+    if (receipt === null) {
+      continue;
+    }
 
     await writeReceipt(files, set.directory, receipt);
     await removeCopies(files, set.directory);

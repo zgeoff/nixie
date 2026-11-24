@@ -12,7 +12,7 @@ function setupTest() {
   return { user };
 }
 
-test('it previews the title, the note and each reflection the destroy shreds', async () => {
+test('it previews the title, the note and each reflection the forget removes', async () => {
   const ctx = setupTest();
 
   await createDeviceSession();
@@ -29,13 +29,13 @@ test('it previews the title, the note and each reflection the destroy shreds', a
     ],
   });
 
-  const rendered = render(<MomentView momentID={moment.momentID} onDestroyed={() => {}} />);
+  const rendered = render(<MomentView momentID={moment.momentID} onForgotten={() => {}} />);
 
-  const destroy = await rendered.findByRole('button', { name: 'Destroy this moment' });
+  const forget = await rendered.findByRole('button', { name: 'Forget this moment' });
 
-  await ctx.user.click(destroy);
+  await ctx.user.click(forget);
 
-  const losses = await rendered.findByRole('list', { name: 'What the destroy shreds' });
+  const losses = await rendered.findByRole('list', { name: 'What the forget removes' });
 
   expect(
     within(losses)
@@ -58,13 +58,13 @@ test('it tells the user that the messages and replies of the span, and those tha
 
   const moment = await store.moments.create({ firstSequence: 4, lastSequence: 5 });
 
-  const rendered = render(<MomentView momentID={moment.momentID} onDestroyed={() => {}} />);
+  const rendered = render(<MomentView momentID={moment.momentID} onForgotten={() => {}} />);
 
-  const destroy = await rendered.findByRole('button', { name: 'Destroy this moment' });
+  const forget = await rendered.findByRole('button', { name: 'Forget this moment' });
 
-  await ctx.user.click(destroy);
+  await ctx.user.click(forget);
 
-  const confirmation = rendered.getByRole('group', { name: 'Destroy this moment' });
+  const confirmation = rendered.getByRole('group', { name: 'Forget this moment' });
 
   const kept = await within(confirmation).findByText(/of the conversation stay/u);
 
@@ -73,30 +73,30 @@ test('it tells the user that the messages and replies of the span, and those tha
   );
 });
 
-test('it destroys the moment once the user confirms, and leaves the view', async () => {
+test('it forgets the moment once the user confirms, and leaves the view', async () => {
   const ctx = setupTest();
 
   await createDeviceSession();
 
   const moment = await store.moments.create({ title: 'The ladder on the stairs' });
 
-  const onDestroyed = mock(() => {});
-  const rendered = render(<MomentView momentID={moment.momentID} onDestroyed={onDestroyed} />);
+  const onForgotten = mock(() => {});
+  const rendered = render(<MomentView momentID={moment.momentID} onForgotten={onForgotten} />);
 
-  const destroy = await rendered.findByRole('button', { name: 'Destroy this moment' });
+  const forget = await rendered.findByRole('button', { name: 'Forget this moment' });
 
-  await ctx.user.click(destroy);
-  await rendered.findByRole('list', { name: 'What the destroy shreds' });
-  await ctx.user.click(rendered.getByRole('button', { name: 'Destroy for good' }));
+  await ctx.user.click(forget);
+  await rendered.findByRole('list', { name: 'What the forget removes' });
+  await ctx.user.click(rendered.getByRole('button', { name: 'Forget for good' }));
 
-  const destroyed = await rendered.findByRole('group', { name: 'This moment is destroyed' });
+  const forgotten = await rendered.findByRole('group', { name: 'This moment is forgotten' });
 
-  expect(destroyed).toHaveTextContent(/Key backups: pending/u);
+  expect(forgotten).toHaveTextContent(/Key backups: pending/u);
 
-  await ctx.user.click(within(destroyed).getByRole('button', { name: 'Back to the moments' }));
+  await ctx.user.click(within(forgotten).getByRole('button', { name: 'Back to the moments' }));
 
   await waitFor(() => {
-    expect(onDestroyed).toHaveBeenCalledOnce();
+    expect(onForgotten).toHaveBeenCalledOnce();
   });
 
   expect(
@@ -104,19 +104,19 @@ test('it destroys the moment once the user confirms, and leaves the view', async
   ).toBe('destroyed');
 });
 
-test('it marks the preview stale when the user edits the moment after the preview opens, and destroys nothing', async () => {
+test('it marks the preview stale when the user edits the moment after the preview opens, and forgets nothing', async () => {
   const ctx = setupTest();
 
   await createDeviceSession();
 
   const moment = await store.moments.create({ title: 'The ladder', note: null });
 
-  const rendered = render(<MomentView momentID={moment.momentID} onDestroyed={() => {}} />);
+  const rendered = render(<MomentView momentID={moment.momentID} onForgotten={() => {}} />);
 
-  const destroy = await rendered.findByRole('button', { name: 'Destroy this moment' });
+  const forget = await rendered.findByRole('button', { name: 'Forget this moment' });
 
-  await ctx.user.click(destroy);
-  await rendered.findByRole('list', { name: 'What the destroy shreds' });
+  await ctx.user.click(forget);
+  await rendered.findByRole('list', { name: 'What the forget removes' });
   await ctx.user.click(rendered.getByRole('button', { name: 'Add a note' }));
 
   await ctx.user.type(
@@ -126,15 +126,15 @@ test('it marks the preview stale when the user edits the moment after the previe
 
   await ctx.user.click(rendered.getByRole('button', { name: 'Save the note' }));
 
-  const confirmation = rendered.getByRole('group', { name: 'Destroy this moment' });
+  const confirmation = rendered.getByRole('group', { name: 'Forget this moment' });
 
   const alert = await within(confirmation).findByRole('alert');
 
   expect(alert).toHaveTextContent(
-    'This moment changed after the preview opened, so the preview is stale and nothing was destroyed. Close it, then open it again.',
+    'This moment changed after the preview opened, so the preview is stale and nothing was forgotten. Close it, then open it again.',
   );
 
-  expect(within(confirmation).getByRole('button', { name: 'Destroy for good' })).toBeDisabled();
+  expect(within(confirmation).getByRole('button', { name: 'Forget for good' })).toBeDisabled();
 });
 
 test('it marks the preview stale when the moment changed elsewhere before the user confirms', async () => {
@@ -144,12 +144,12 @@ test('it marks the preview stale when the moment changed elsewhere before the us
 
   const moment = await store.moments.create({ title: 'The ladder' });
 
-  const rendered = render(<MomentView momentID={moment.momentID} onDestroyed={() => {}} />);
+  const rendered = render(<MomentView momentID={moment.momentID} onForgotten={() => {}} />);
 
-  const destroy = await rendered.findByRole('button', { name: 'Destroy this moment' });
+  const forget = await rendered.findByRole('button', { name: 'Forget this moment' });
 
-  await ctx.user.click(destroy);
-  await rendered.findByRole('list', { name: 'What the destroy shreds' });
+  await ctx.user.click(forget);
+  await rendered.findByRole('list', { name: 'What the forget removes' });
 
   await store.moments.update((query) => query.where({ momentID: moment.momentID }), {
     data(draft) {
@@ -157,9 +157,9 @@ test('it marks the preview stale when the moment changed elsewhere before the us
     },
   });
 
-  await ctx.user.click(rendered.getByRole('button', { name: 'Destroy for good' }));
+  await ctx.user.click(rendered.getByRole('button', { name: 'Forget for good' }));
 
-  const confirmation = rendered.getByRole('group', { name: 'Destroy this moment' });
+  const confirmation = rendered.getByRole('group', { name: 'Forget this moment' });
 
   const alert = await within(confirmation).findByRole('alert');
 

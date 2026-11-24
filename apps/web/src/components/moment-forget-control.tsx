@@ -8,20 +8,20 @@ import type { ForgetBackup, MomentDestroyPreview } from '../types';
 import { useNixieClient } from '../utils/use-nixie-client';
 import { ForgetBackupLine } from './forget-backup-line';
 
-export interface MomentDestroyControlProps {
+export interface MomentForgetControlProps {
   readonly momentID: string;
   readonly version: number;
 
-  readonly onDestroyed: () => void;
+  readonly onForgotten: () => void;
 }
 
-interface PendingDestroy {
+interface PendingForget {
   readonly actionID: string;
   readonly version: number;
 }
 
-export function MomentDestroyControl(props: MomentDestroyControlProps): ReactNode {
-  const [pending, setPending] = useState<PendingDestroy | null>(null);
+export function MomentForgetControl(props: MomentForgetControlProps): ReactNode {
+  const [pending, setPending] = useState<PendingForget | null>(null);
 
   if (pending === null) {
     return (
@@ -31,13 +31,13 @@ export function MomentDestroyControl(props: MomentDestroyControlProps): ReactNod
         }}
         type="button"
       >
-        Destroy this moment
+        Forget this moment
       </button>
     );
   }
 
   return (
-    <DestroyConfirmation
+    <ForgetConfirmation
       {...props}
       onCancel={() => {
         setPending(null);
@@ -47,8 +47,8 @@ export function MomentDestroyControl(props: MomentDestroyControlProps): ReactNod
   );
 }
 
-interface DestroyConfirmationProps extends MomentDestroyControlProps {
-  readonly pending: PendingDestroy;
+interface ForgetConfirmationProps extends MomentForgetControlProps {
+  readonly pending: PendingForget;
 
   readonly onCancel: () => void;
 }
@@ -63,7 +63,7 @@ const confirmation = css({
   padding: '2',
 });
 
-function DestroyConfirmation(props: DestroyConfirmationProps): ReactNode {
+function ForgetConfirmation(props: ForgetConfirmationProps): ReactNode {
   const nixie = useNixieClient();
   const queryClient = useQueryClient();
   const target = { momentID: props.momentID, version: props.pending.version };
@@ -78,52 +78,52 @@ function DestroyConfirmation(props: DestroyConfirmationProps): ReactNode {
     staleTime: Number.POSITIVE_INFINITY,
   });
 
-  const destroy = useMutation({
+  const forget = useMutation({
     mutationFn: () =>
       nixie.client.memory.destroyMoment({ ...target, clientActionID: props.pending.actionID }),
   });
 
-  if (destroy.isSuccess) {
+  if (forget.isSuccess) {
     return (
-      <MomentDestroyed
-        backup={destroy.data.backup}
+      <MomentForgotten
+        backup={forget.data.backup}
         onLeave={async () => {
           await queryClient.invalidateQueries({ queryKey: nixie.queryUtils.memory.key() });
 
-          props.onDestroyed();
+          props.onForgotten();
         }}
       />
     );
   }
 
   const isStale =
-    props.version !== props.pending.version || toErrorCode(destroy.error) === 'STALE_VERSION';
+    props.version !== props.pending.version || toErrorCode(forget.error) === 'STALE_VERSION';
 
   return (
-    <div aria-label="Destroy this moment" className={confirmation} role="group">
-      {preview.isPending ? <p>Reading what the destroy shreds…</p> : null}
+    <div aria-label="Forget this moment" className={confirmation} role="group">
+      {preview.isPending ? <p>Reading what the forget removes…</p> : null}
       {preview.isError ? <p role="alert">{pickPreviewNotice(preview.error)}</p> : null}
-      {preview.isSuccess ? <DestroyPreview preview={preview.data} /> : null}
+      {preview.isSuccess ? <ForgetPreview preview={preview.data} /> : null}
       {isStale ? (
         <p role="alert">
           This moment changed after the preview opened, so the preview is stale and nothing was
-          destroyed. Close it, then open it again.
+          forgotten. Close it, then open it again.
         </p>
       ) : null}
-      {destroy.isError && !isStale ? (
-        <p role="alert">The destroy did not finish. Try again.</p>
+      {forget.isError && !isStale ? (
+        <p role="alert">The forget did not finish. Try again.</p>
       ) : null}
       <div className={css({ display: 'flex', flexWrap: 'wrap', gap: '2' })}>
         <button
-          disabled={!preview.isSuccess || isStale || destroy.isPending}
+          disabled={!preview.isSuccess || isStale || forget.isPending}
           onClick={() => {
-            destroy.mutate();
+            forget.mutate();
           }}
           type="button"
         >
-          Destroy for good
+          Forget for good
         </button>
-        <button disabled={destroy.isPending} onClick={props.onCancel} type="button">
+        <button disabled={forget.isPending} onClick={props.onCancel} type="button">
           Keep it
         </button>
       </div>
@@ -131,17 +131,17 @@ function DestroyConfirmation(props: DestroyConfirmationProps): ReactNode {
   );
 }
 
-interface MomentDestroyedProps {
+interface MomentForgottenProps {
   readonly backup: ForgetBackup | undefined;
   readonly onLeave: () => Promise<void>;
 }
 
-// The moment's view stays on screen until the user leaves, so the backup state that the destroy
+// The moment's view stays on screen until the user leaves, so the backup state that the forget
 // reported is not lost with the moment it came from.
-function MomentDestroyed(props: MomentDestroyedProps): ReactNode {
+function MomentForgotten(props: MomentForgottenProps): ReactNode {
   return (
-    <div aria-label="This moment is destroyed" className={confirmation} role="group">
-      <p>The moment is destroyed.</p>
+    <div aria-label="This moment is forgotten" className={confirmation} role="group">
+      <p>The moment is forgotten.</p>
       {props.backup === undefined ? null : <ForgetBackupLine backup={props.backup} />}
       <button
         onClick={() => {
@@ -160,31 +160,31 @@ function toErrorCode(error: unknown): string {
 }
 
 const previewNotices: Readonly<Record<string, string>> = {
-  MOMENT_NOT_FOUND: 'This moment is gone. It was destroyed after the page loaded.',
+  MOMENT_NOT_FOUND: 'This moment is gone. It was forgotten after the page loaded.',
   STALE_VERSION: 'This moment changed after the page loaded. Close this, then try again.',
 };
 
 function pickPreviewNotice(error: unknown): string {
-  return previewNotices[toErrorCode(error)] ?? 'The destroy could not read the moment. Try again.';
+  return previewNotices[toErrorCode(error)] ?? 'The forget could not read the moment. Try again.';
 }
 
-interface DestroyPreviewProps {
+interface ForgetPreviewProps {
   readonly preview: MomentDestroyPreview;
 }
 
 const lossList = css({ listStyleType: 'disc', paddingInlineStart: '5' });
 
-function DestroyPreview(props: DestroyPreviewProps): ReactNode {
+function ForgetPreview(props: ForgetPreviewProps): ReactNode {
   const preview = props.preview;
   const records = preview.kept.records === 1 ? 'record' : 'records';
 
   return (
     <>
       <p className={css({ fontWeight: 'bold' })}>
-        Destroy this moment for good? You cannot undo it.
+        Forget this moment for good? You cannot undo it.
       </p>
-      <p>The destroy shreds every version of these:</p>
-      <ul aria-label="What the destroy shreds" className={lossList}>
+      <p>The forget removes every version of these:</p>
+      <ul aria-label="What the forget removes" className={lossList}>
         <li>The title: {preview.title ?? 'unreadable'}</li>
         {preview.note === null ? null : <li>Your note: {preview.note}</li>}
         {preview.reflections.map((reflection) => (

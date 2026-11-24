@@ -30,11 +30,13 @@ export type {
   APISettings,
   CleanupRecordSessions,
   ComputerWatchPort,
+  ErasureStuckPort,
   ForgetBackupState,
   HostBackups,
   HostRouterOptions,
   Identity,
   ReadViewMemory,
+  StuckForget,
 } from './types';
 
 export type { APIRecordKind } from './api/api-record-kind';

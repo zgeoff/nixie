@@ -48,6 +48,10 @@ export interface ErasureRunnerControl extends ErasureRegistry {
   // is still open after the retry, oldest first, with the failures that the retries threw. An
   // erasure younger than that may still wait on the step that called it, so it is left alone.
   readonly retryStuck: (query: StuckQuery) => Promise<StuckRetry>;
+
+  // The erasures open for stuckAfterMs or longer at nowMs, oldest first. It runs nothing, so a
+  // screen may read it as often as it likes.
+  readonly readStuck: (query: StuckQuery) => Promise<readonly StuckErasure[]>;
 }
 
 export function makeErasureRunner(options: ErasureRunnerOptions): ErasureRunnerControl {
@@ -100,6 +104,11 @@ export function makeErasureRunner(options: ErasureRunnerOptions): ErasureRunnerC
           await runErasureTree(context, pickTopmost(open, first));
         }
       }),
+    readStuck: async (query) => {
+      const open = await readOpenErasures(options.log);
+
+      return pickStuck(open, query);
+    },
     retryStuck: (query) =>
       runSerially(async () => {
         const failures: unknown[] = [];
@@ -191,6 +200,18 @@ function pickTopmost(open: readonly OpenErasure[], erasure: OpenErasure): OpenEr
   return parent === undefined ? erasure : pickTopmost(open, parent);
 }
 
+function pickStuck(open: readonly OpenErasure[], query: StuckQuery): readonly StuckErasure[] {
+  return open
+    .map((erasure) => ({
+      erasureID: erasure.started.erasureID,
+      kind: erasure.started.kind,
+      shortID: erasure.started.shortID,
+      openForMs: query.nowMs - erasure.startedAtMs,
+    }))
+    .filter((erasure) => erasure.openForMs >= query.stuckAfterMs)
+    .toSorted((left, right) => right.openForMs - left.openForMs);
+}
+
 // The topmost erasure of each tree that holds a stuck erasure, each once.
 function collectStuckRoots(
   open: readonly OpenErasure[],
@@ -206,16 +227,4 @@ function collectStuckRoots(
   );
 
   return [...roots.values()];
-}
-
-function pickStuck(open: readonly OpenErasure[], query: StuckQuery): readonly StuckErasure[] {
-  return open
-    .map((erasure) => ({
-      erasureID: erasure.started.erasureID,
-      kind: erasure.started.kind,
-      shortID: erasure.started.shortID,
-      openForMs: query.nowMs - erasure.startedAtMs,
-    }))
-    .filter((erasure) => erasure.openForMs >= query.stuckAfterMs)
-    .toSorted((left, right) => right.openForMs - left.openForMs);
 }

@@ -167,6 +167,20 @@ const noteForgets = new Collection({
 });
 
 // Every notebook.openPrivate call, with the action ID it carried, whether or not it finished; and
+const stuckForgets = new Collection({
+  schema: z.object({
+    kind: z.string().default('note'),
+    openForMs: z.int().nonnegative().default(400_000),
+    shortID: z
+      .string()
+      .nullable()
+      .default(() => faker.string.alphanumeric(6)),
+
+    // true for a forget that a retry cannot finish
+    staysStuck: z.boolean().default(false),
+  }),
+});
+
 // the number of the next calls that fail before they write anything.
 const noteOpenCalls: { clientActionIDs: string[]; failuresLeft: number } = {
   clientActionIDs: [],
@@ -184,6 +198,7 @@ export const mockViewStore = {
   notes,
   reminders,
   reportEntries,
+  stuckForgets,
 
   reset: (): void => {
     endedRuns.clear();
@@ -195,6 +210,7 @@ export const mockViewStore = {
     notes.clear();
     noteOpens.clear();
     noteForgets.clear();
+    stuckForgets.clear();
 
     noteOpenCalls.clientActionIDs = [];
     noteOpenCalls.failuresLeft = 0;

@@ -79,7 +79,7 @@ export function useMomentEdit(momentID: string, onApplied?: () => void): MomentE
 }
 
 const editNotices: Readonly<Record<string, string>> = {
-  MOMENT_NOT_FOUND: 'This moment is gone. It was destroyed after the page loaded.',
+  MOMENT_NOT_FOUND: 'This moment is gone. It was forgotten after the page loaded.',
   STALE_VERSION: 'This moment changed after the page loaded. Check it, then try again.',
   BAD_SPAN: 'The first and last records must both be on this thread, in order.',
   REFLECTION_NOT_FOUND: 'That reflection is already gone.',

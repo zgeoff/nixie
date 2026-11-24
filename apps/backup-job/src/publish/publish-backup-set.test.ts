@@ -3,7 +3,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { BackupReceipt } from '@heynixie/wire';
-import { formatBackupFile } from '@heynixie/wire';
+import { formatBackupFile, getBackupSetDir } from '@heynixie/wire';
 import invariant from 'tiny-invariant';
 import { localJobFiles } from '../local-job-files';
 import { buildResticClient } from '../restic/build-restic-client';
@@ -529,4 +529,35 @@ test('it keeps the note and raises proven-from again when it stops before it rem
 
   expect(hasNote).toBeTrue();
   expect(keys).toStrictEqual([expect.objectContaining({ publish: 2, provenFrom: 2 })]);
+});
+
+test('it throws and writes no receipt when the key snapshot of a withdrawn set cannot be removed', async () => {
+  const ctx = await setupTest();
+
+  await ctx.stageSet(1);
+
+  const failing = ctx.buildClients('forget', '');
+
+  const files = {
+    ...localJobFiles,
+    readFileSHA256: async (path: string) => {
+      await writeFile(
+        join(ctx.config.stagingDir, 'floor.json'),
+        formatBackupFile({ format: 1, sequence: 1 }),
+      );
+
+      return localJobFiles.readFileSHA256(path);
+    },
+  };
+
+  const pass = runJobPass(ctx.config, { data: ctx.repos.data, keys: failing.keys }, files);
+
+  await pass.catch(() => {});
+
+  const hasReceipt = await Bun.file(
+    join(getBackupSetDir(ctx.config.stagingDir, 1), 'receipt.json'),
+  ).exists();
+
+  expect(pass).rejects.toThrow();
+  expect(hasReceipt).toBeFalse();
 });

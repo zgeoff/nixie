@@ -8,6 +8,7 @@ import { mockApprovalProcedures } from './mock-approval-procedures';
 import { mockComputerProcedures } from './mock-computer-procedures';
 import { mockDefinitionProcedures } from './mock-definition-procedures';
 import { mockDeviceProcedures } from './mock-device-procedures';
+import { mockErasureProcedures } from './mock-erasure-procedures';
 import { mockFileProcedures } from './mock-file-procedures';
 import { mockImageProcedures } from './mock-image-procedures';
 import { mockImplementer } from './mock-implementer';
@@ -58,6 +59,7 @@ export const mockAPIRouter = os.router({
   },
   computer: mockComputerProcedures,
   devices: mockDeviceProcedures,
+  erasure: mockErasureProcedures,
   notebook: mockNotebookProcedures,
   files: mockFileProcedures,
   images: mockImageProcedures,

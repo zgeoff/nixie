@@ -37,9 +37,13 @@ every receipt that the job wrote, then stages a set when one is due:
    before `erasure.finished` never publishes: the pass withdraws it, and stages a new set, because a
    stale set holds the deleted keys. The same transaction that writes `erasure.finished` writes
    `floor.json` into the staging folder, naming the highest set that exists then, and the job ships
-   no set at or below it. The withdrawal waits for the job's staging lock, so it never removes a set
-   that the job is shipping, and a pass that finds the lock held withdraws the set on the next pass.
-   A withdrawal that a failure stopped after the rename finishes on the next pass.
+   no set at or below it. The job reads `floor.json` again once a set's key snapshot is in the key
+   repo. When an erasure finished while the keys copied, the job removes that key snapshot, prunes
+   the key repo, publishes nothing and writes no receipt. A failure of that removal fails the job,
+   and the next publish removes the stale snapshot with the other old ones. The withdrawal waits for
+   the job's staging lock, so it never removes a set that the job is shipping, and a pass that finds
+   the lock held withdraws the set on the next pass. A withdrawal that a failure stopped after the
+   rename finishes on the next pass.
 2. A scheduled set is due once the newest staged set is a backup interval old, and never while a set
    waits for its receipt.
 

@@ -31,14 +31,24 @@ interface PublishCount {
 
 type PublishCountRead = PublishCount | { readonly refused: string };
 
+export interface PublishTarget {
+  readonly set: BackupSetEntry;
+
+  // true once a finished erasure has withdrawn the set
+  readonly probeIsWithdrawn: () => Promise<boolean>;
+}
+
 // A failure that restic reports becomes a failed receipt, which nixie records and reports; any
-// other failure leaves the set without a receipt, so the next run publishes it again.
+// other failure leaves the set without a receipt, so the next run publishes it again. An erasure
+// can finish while the keys copy, so a set withdrawn by then leaves no receipt and no key snapshot.
 export async function publishBackupSet(
   repos: BackupRepos,
   config: PublishConfig,
   files: PublishFiles,
-  set: BackupSetEntry,
-): Promise<BackupReceipt> {
+  target: PublishTarget,
+): Promise<BackupReceipt | null> {
+  const set = target.set;
+
   const verified = await readVerifiedManifest(files, set);
 
   if ('refused' in verified) {
@@ -70,6 +80,14 @@ export async function publishBackupSet(
 
   if (typeof keySnapshotID !== 'string') {
     return buildFailedReceipt(set, keySnapshotID.refused);
+  }
+
+  const isWithdrawn = await target.probeIsWithdrawn();
+
+  if (isWithdrawn) {
+    await removeKeySnapshot(repos.keys, keySnapshotID);
+
+    return null;
   }
 
   const failures: string[] = [];
@@ -276,6 +294,11 @@ function pickKeyTagValues(count: PublishCount, note: RestoreNoteRead | null): Ke
   }
 
   return { legacySet: previous.legacySet, provenFrom: previous.provenFrom };
+}
+
+async function removeKeySnapshot(keys: BackupRepository, keySnapshotID: string): Promise<void> {
+  await keys.removeSnapshots([keySnapshotID]);
+  await keys.runPrune();
 }
 
 async function writeDataSnapshot(

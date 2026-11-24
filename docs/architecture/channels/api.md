@@ -316,6 +316,18 @@ The API reads them into the `removal` field of the contract record, with the seq
 that asked for the removal, and the web client shows one muted line under the last reply of the turn
 that made the call, even when the owner approved the call after later turns.
 
+## Stuck forgets
+
+`erasure.readStuck` lists each forget that has stayed open for `erasure.stuck_after_minutes`, with
+its kind, its short ID (null for a kind that has none) and the milliseconds it has been open.
+`erasure.retryStuck` runs each of them again and lists the ones still open. Neither answers the
+erasure's own ID. Both answer `ERASURE_NOT_STARTED` (503) until the erasure runner starts, and a
+read-only token may call neither retry.
+
+The conversation's tool list holds the same 2 calls as `forget.stuck`, which declares `read`, and
+`forget.retry`, which declares `note` like `notebook.forget`, so a retry needs no approval. A tool
+result gives the kind, the short ID as `id`, and whole minutes as `openMinutes`.
+
 ## Undoing a task definition change
 
 `definitions.undo` takes a client action ID and the ID or short ID of a change that a

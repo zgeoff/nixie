@@ -458,3 +458,39 @@ test('it leaves a set that started before a finished erasure unpublished, and sh
 
   expect(withdrawnNames).toIncludeSameMembers(['nixie.db', 'keys.db', 'manifest.json', 'complete']);
 });
+
+test('it publishes nothing of a set that a finished erasure withdraws while its keys copy', async () => {
+  const ctx = await setupTest();
+
+  await createStagedSet({
+    stagingDir: ctx.config.stagingDir,
+    sequence: 1,
+    kind: 'scheduled',
+    isComplete: true,
+  });
+
+  const files = {
+    ...localJobFiles,
+    readFileSHA256: async (path: string) => {
+      await writeFile(
+        join(ctx.config.stagingDir, 'floor.json'),
+        formatBackupFile({ format: 1, sequence: 1 }),
+      );
+
+      return localJobFiles.readFileSHA256(path);
+    },
+  };
+
+  const pass = await runJobPass(ctx.config, ctx.repos, files);
+
+  invariant(pass.status === 'ran', 'no other pass holds the staging lock');
+
+  const keySnapshots = await readdir(join(ctx.keyRepository, 'snapshots'));
+  const dataSnapshots = await readdir(join(ctx.dataRepository, 'snapshots'));
+  const setNames = await readdir(getBackupSetDir(ctx.config.stagingDir, 1));
+
+  expect(pass.receipts).toStrictEqual([]);
+  expect(keySnapshots).toStrictEqual([]);
+  expect(dataSnapshots).toStrictEqual([]);
+  expect(setNames).toIncludeSameMembers(['nixie.db', 'keys.db', 'manifest.json', 'complete']);
+});

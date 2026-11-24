@@ -435,3 +435,23 @@ test('it reports an erasure that stays open after its retry fails', async () => 
     failureCount: retry.failures.length,
   }).toStrictEqual({ stillOpen: [['note', 'short-a', 5000]], failureCount: 1 });
 });
+
+test('it reads the erasures open past the stuck threshold without running any', async () => {
+  const ctx = await setupTest();
+
+  const note = ctx.register('note', 'image', [{ id: 'a', keyIDs: [], childIDs: [] }]);
+
+  await note.begin({ id: 'a' }, { by: 'user' });
+
+  const startedAtMs = ctx.clock.now();
+
+  const young = await ctx.runner.readStuck({ nowMs: startedAtMs + 1000, stuckAfterMs: 5000 });
+  const old = await ctx.runner.readStuck({ nowMs: startedAtMs + 5000, stuckAfterMs: 5000 });
+  const openAfter = await ctx.readOpenCount();
+
+  expect({
+    young,
+    old: old.map((erasure) => [erasure.kind, erasure.shortID, erasure.openForMs]),
+    openAfter,
+  }).toStrictEqual({ young: [], old: [['note', 'short-a', 5000]], openAfter: 1 });
+});
