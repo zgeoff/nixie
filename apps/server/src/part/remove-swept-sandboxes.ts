@@ -4,14 +4,14 @@ import { removeStaleSandboxes } from '@heynixie/sandbox';
 import { checkerOwner } from '@heynixie/sessions';
 import type { TasksContext } from '@heynixie/tasks';
 
-type RecoveredSandboxesOptions = Omit<StaleSandboxesOptions, 'log' | 'keptOwners'>;
+type SweptSandboxesOptions = Omit<StaleSandboxesOptions, 'log' | 'keptOwners'>;
 
-// Recovery removes the sandboxes of every owner that no runner keeps and the checker does not own.
+// The restart sweep removes the sandboxes of every owner that no runner keeps and the checker does not own.
 // It spares the computer and the earlier release's browser and shell sandboxes, whatever their
 // image, until the computer's first call copies their disks and destroys them.
-export async function removeRecoveredSandboxes(
+export async function removeSweptSandboxes(
   context: Pick<TasksContext, 'log' | 'runners'>,
-  options: RecoveredSandboxesOptions,
+  options: SweptSandboxesOptions,
 ): Promise<void> {
   const kept = await context.runners.readKeptSandboxOwners(context);
 

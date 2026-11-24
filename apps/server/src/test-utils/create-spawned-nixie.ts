@@ -40,12 +40,12 @@ import { readDataFiles } from './read-data-files';
 import { readTestBundle } from './read-test-bundle';
 import { readTestRecords } from './read-test-records';
 import { runHostCommand } from './run-host-command';
-import type { AdvanceSteps, MatchRecord, RecoveredState, TestRecord } from './types';
+import type { AdvanceSteps, MatchRecord, SweptState, TestRecord } from './types';
 import { waitForMatch } from './wait-for-match';
 import type { BootFileExtras, BootFiles } from './write-boot-files';
 import { writeBootFiles } from './write-boot-files';
 
-export type { RecoveredState } from './types';
+export type { SweptState } from './types';
 
 type LogLine = Readonly<Record<string, unknown>>;
 
@@ -129,7 +129,7 @@ export interface SpawnedNixie extends BootFiles {
 
   readonly waitForModelCalls: (count: number) => Promise<void>;
 
-  readonly readRecoveredStates: () => readonly RecoveredState[];
+  readonly readSweptStates: () => readonly SweptState[];
 
   readonly readDataFiles: () => Promise<
     readonly { readonly name: string; readonly text: string }[]
@@ -227,10 +227,10 @@ export async function createSpawnedNixie(
   // AsyncDisposableStack disposes in reverse, so every nixie dies before its directory goes.
   stack.defer(() => crashHarness.stop());
 
-  const recovery = startRecoveryReads(crashHarness, launch, reader);
+  const sweep = startSweepReads(crashHarness, launch, reader);
 
   const startProcess = (faultPoints?: readonly FaultPointArm[]): SpawnedNixieProcess =>
-    options.release === undefined ? recovery.start(faultPoints) : startRelease(launch, stack);
+    options.release === undefined ? sweep.start(faultPoints) : startRelease(launch, stack);
 
   const harness: SpawnedNixieHarness = {
     now: crashHarness.now,
@@ -249,7 +249,7 @@ export async function createSpawnedNixie(
     harness,
     ...doubles,
     ...reader,
-    readRecoveredStates: recovery.readRecoveredStates,
+    readSweptStates: sweep.readSweptStates,
     waitForRecord: (matches) => waitForMatch(reader.readRecords, matches, recordTimeoutMs),
     markKnownContact: async (destination) => {
       await runHostCommand(files.configPath, ['contacts', 'mark-known', destination]);
@@ -403,35 +403,35 @@ function buildServeArgs(files: BootFiles): readonly string[] {
   ];
 }
 
-type RecoveryReader = Pick<SpawnedNixie, 'readLeases' | 'readTasks'>;
+type SweepReader = Pick<SpawnedNixie, 'readLeases' | 'readTasks'>;
 
-function startRecoveryReads(
+function startSweepReads(
   crashHarness: CrashHarness,
   launch: Launch,
-  reader: RecoveryReader,
-): Pick<SpawnedNixieHarness, 'start'> & Pick<SpawnedNixie, 'readRecoveredStates'> {
-  const states: RecoveredState[] = [];
+  reader: SweepReader,
+): Pick<SpawnedNixieHarness, 'start'> & Pick<SpawnedNixie, 'readSweptStates'> {
+  const states: SweptState[] = [];
 
   return {
     start: (faultPoints = []) => {
-      const nixie = crashHarness.start([...faultPoints, { point: 'test.recovered' }]);
+      const nixie = crashHarness.start([...faultPoints, { point: 'test.swept' }]);
 
-      void readRecoveredState(nixie, reader, (state) => {
+      void readSweptState(nixie, reader, (state) => {
         states.push(state);
       });
 
       return trackSpawnedNixieProcess(nixie, launch.files);
     },
-    readRecoveredStates: () => states,
+    readSweptStates: () => states,
   };
 }
 
-async function readRecoveredState(
+async function readSweptState(
   nixie: NixieProcess,
-  reader: RecoveryReader,
-  onState: (state: RecoveredState) => void,
+  reader: SweepReader,
+  onState: (state: SweptState) => void,
 ): Promise<void> {
-  const arrival = await nixie.waitForArrival('test.recovered').catch(() => null);
+  const arrival = await nixie.waitForArrival('test.swept').catch(() => null);
 
   if (arrival === null) {
     return;

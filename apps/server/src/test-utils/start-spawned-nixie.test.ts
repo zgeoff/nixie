@@ -29,7 +29,7 @@ test('it reads back the records that nixie writes', async () => {
   expect(record).toMatchObject({ thread: taskID, stepKey: `${taskID}:1` });
 });
 
-test('it keeps the leases and the tasks that each start recovered', async () => {
+test('it keeps the leases and the tasks that each start swept', async () => {
   const nixie = await startSpawnedNixie();
 
   const taskID = 'wait-an-hour';
@@ -45,7 +45,7 @@ test('it keeps the leases and the tasks that each start recovered', async () => 
 
   await second.ready;
 
-  const states = nixie.readRecoveredStates();
+  const states = nixie.readSweptStates();
 
   expect(states[0]).toStrictEqual({ leases: [], tasks: [] });
 

@@ -58,7 +58,7 @@ test('it commits a step that finishes inside the grace window once, and claims n
   });
 });
 
-test('it stops with a step still running at the deadline, which the restart recovers as after a crash', async () => {
+test('it stops with a step still running at the deadline, which the next start sweeps as after a crash', async () => {
   const ctx = await setupTest();
 
   const first = ctx.nixie.harness.start([{ point: 'sigterm.grace', kind: 'pool' }]);

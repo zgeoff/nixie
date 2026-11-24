@@ -1,14 +1,14 @@
 import { writeUnknownOutcomes } from '@heynixie/actions';
-import { conversationTaskID, runRecovery } from '@heynixie/tasks';
+import { conversationTaskID, runRestartSweep } from '@heynixie/tasks';
 import type { ServerParts } from '../types';
-import { removeRecoveredSandboxes } from './remove-recovered-sandboxes';
+import { removeSweptSandboxes } from './remove-swept-sandboxes';
 
-export async function runRecoverySteps(parts: ServerParts): Promise<void> {
-  await runRecovery(parts.context, {
+export async function runRestartSweepSteps(parts: ServerParts): Promise<void> {
+  await runRestartSweep(parts.context, {
     writeUnknownOutcomes: () => writeUnknownOutcomes(parts.context, parts.tools.actions.connectors),
     sandboxes: {
       removeStaleSandboxes: () =>
-        removeRecoveredSandboxes(parts.context, {
+        removeSweptSandboxes(parts.context, {
           logger: parts.log,
           adapter: parts.tools.adapter,
           currentImages: Object.values(parts.images).map((image) => image.name),

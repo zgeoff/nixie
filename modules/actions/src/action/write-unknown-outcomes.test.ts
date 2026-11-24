@@ -1,6 +1,6 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { readRecords } from '@heynixie/log';
-import { runRecovery, setFaultPointHandler } from '@heynixie/tasks';
+import { runRestartSweep, setFaultPointHandler } from '@heynixie/tasks';
 import { readTestLeases, readTestTasks, startNextTestWriter } from '@heynixie/tasks/test-utils';
 import { createTestStep } from '../test-utils/create-test-step';
 import { queueTestAction } from '../test-utils/queue-test-action';
@@ -90,7 +90,7 @@ test('it writes the unknown outcome to the task inbox', async () => {
   ]);
 });
 
-test('it runs as recovery step 3, between the interrupted steps and the late timers', async () => {
+test('it runs as restart sweep step 3, between the interrupted steps and the late timers', async () => {
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
 
@@ -116,22 +116,22 @@ test('it runs as recovery step 3, between the interrupted steps and the late tim
     setFaultPointHandler(null);
   });
 
-  await runRecovery(next.context, {
+  await runRestartSweep(next.context, {
     writeUnknownOutcomes: () => writeUnknownOutcomes(next.context),
     sandboxes: { removeStaleSandboxes: () => Promise.resolve() },
   });
 
   expect(reached).toStrictEqual([
-    'recovery.step.1',
-    'recovery.step.2',
+    'restart_sweep.step.1',
+    'restart_sweep.step.2',
     'inbox.write.after',
-    'recovery.step.3',
-    'recovery.step.4',
-    'recovery.step.5',
+    'restart_sweep.step.3',
+    'restart_sweep.step.4',
+    'restart_sweep.step.5',
   ]);
 });
 
-test('it frees the step and the action leases through recovery', async () => {
+test('it frees the step and the action leases through the restart sweep', async () => {
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
 
@@ -148,7 +148,7 @@ test('it frees the step and the action leases through recovery', async () => {
   const held = await readTestLeases(ctx.writer);
   const next = await startNextTestWriter(ctx);
 
-  await runRecovery(next.context, {
+  await runRestartSweep(next.context, {
     writeUnknownOutcomes: () => writeUnknownOutcomes(next.context),
     sandboxes: { removeStaleSandboxes: () => Promise.resolve() },
   });
@@ -163,7 +163,7 @@ test('it frees the step and the action leases through recovery', async () => {
   expect(leases.map((lease) => lease.holder)).toStrictEqual([null, null]);
 });
 
-test('it readies the task through recovery', async () => {
+test('it readies the task through the restart sweep', async () => {
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
 
@@ -180,7 +180,7 @@ test('it readies the task through recovery', async () => {
   const [before] = await readTestTasks(ctx.writer);
   const next = await startNextTestWriter(ctx);
 
-  await runRecovery(next.context, {
+  await runRestartSweep(next.context, {
     writeUnknownOutcomes: () => writeUnknownOutcomes(next.context),
     sandboxes: { removeStaleSandboxes: () => Promise.resolve() },
   });

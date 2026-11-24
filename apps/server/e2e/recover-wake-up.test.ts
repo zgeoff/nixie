@@ -27,12 +27,12 @@ test('it wakes the conversation for a message written just before nixie died, an
 
   ctx.nixie.model.addReplies({ text: 'Yes.' });
 
-  const second = ctx.nixie.harness.start([{ point: 'recovery.step.5' }]);
+  const second = ctx.nixie.harness.start([{ point: 'restart_sweep.step.5' }]);
 
-  const recovered = await second.waitForArrival('recovery.step.5');
-  const tasksAfterRecovery = await ctx.nixie.readTasks();
+  const swept = await second.waitForArrival('restart_sweep.step.5');
+  const tasksAfterSweep = await ctx.nixie.readTasks();
 
-  second.release(recovered);
+  second.release(swept);
 
   const committed = await ctx.nixie.waitForRecord((record) => record.stepKey === 'conversation:2');
 
@@ -48,7 +48,7 @@ test('it wakes the conversation for a message written just before nixie died, an
 
   const oracle = await runOracle(ctx.nixie);
 
-  expect(tasksAfterRecovery).toPartiallyContain({ id: 'conversation', state: 'ready' });
+  expect(tasksAfterSweep).toPartiallyContain({ id: 'conversation', state: 'ready' });
   expect(committed.payload['readCursor']).toBe(messages[1]?.sequence);
   expect(JSON.stringify(lastRequest?.body?.messages).split('Are you there?')).toHaveLength(2);
 
@@ -81,12 +81,12 @@ test('it wakes a task for a timer that fired just before nixie died, and reads i
   await first.waitForArrival('inbox.write.after', taskID);
   await first.kill();
 
-  const second = ctx.nixie.harness.start([{ point: 'recovery.step.5' }]);
+  const second = ctx.nixie.harness.start([{ point: 'restart_sweep.step.5' }]);
 
-  const recovered = await second.waitForArrival('recovery.step.5');
-  const tasksAfterRecovery = await ctx.nixie.readTasks();
+  const swept = await second.waitForArrival('restart_sweep.step.5');
+  const tasksAfterSweep = await ctx.nixie.readTasks();
 
-  second.release(recovered);
+  second.release(swept);
 
   await ctx.nixie.waitForRecord((record) => record.stepKey === `${taskID}:2`);
   await second.kill();
@@ -97,7 +97,7 @@ test('it wakes a task for a timer that fired just before nixie died, and reads i
 
   const oracle = await runOracle(ctx.nixie);
 
-  expect(tasksAfterRecovery).toPartiallyContain({ id: taskID, state: 'ready' });
+  expect(tasksAfterSweep).toPartiallyContain({ id: taskID, state: 'ready' });
   expect(fired).toHaveLength(1);
 
   expect(
@@ -156,12 +156,12 @@ test('it wakes the conversation for an action outcome written just before nixie 
 
   ctx.nixie.model.addReplies({ text: 'It was sent.' });
 
-  const second = ctx.nixie.harness.start([{ point: 'recovery.step.5' }]);
+  const second = ctx.nixie.harness.start([{ point: 'restart_sweep.step.5' }]);
 
-  const recovered = await second.waitForArrival('recovery.step.5');
-  const tasksAfterRecovery = await ctx.nixie.readTasks();
+  const swept = await second.waitForArrival('restart_sweep.step.5');
+  const tasksAfterSweep = await ctx.nixie.readTasks();
 
-  second.release(recovered);
+  second.release(swept);
 
   const committed = await ctx.nixie.waitForRecord((record) => record.stepKey === 'conversation:2');
 
@@ -179,7 +179,7 @@ test('it wakes the conversation for an action outcome written just before nixie 
 
   const oracle = await runOracle(ctx.nixie);
 
-  expect(tasksAfterRecovery).toPartiallyContain({ id: 'conversation', state: 'ready' });
+  expect(tasksAfterSweep).toPartiallyContain({ id: 'conversation', state: 'ready' });
   expect(outcome?.payload['status']).toBe('done');
   expect(committed.payload['readCursor']).toBe(outcome?.sequence);
   expect(JSON.stringify(lastRequest?.body?.messages).split('An action settled')).toHaveLength(2);

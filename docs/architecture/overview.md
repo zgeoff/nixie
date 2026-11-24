@@ -114,7 +114,7 @@ has, not what happened.
   ([the definitions](./core/definitions.md)).
 - **One claim path.** Task steps and action attempts claim their work through one lease with a
   generation, and every write a runner makes checks that generation, so a runner that lost its claim
-  commits nothing ([leases and recovery](./core/leases-and-recovery.md)).
+  commits nothing ([leases and the restart sweep](./core/leases-and-restart-sweep.md)).
 - **Free text is erasable.** Message text, tool arguments and tool results sit in a record's
   encrypted fields under the record's own key, never in its plain payload, and no projection reads
   them.

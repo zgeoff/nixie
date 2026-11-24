@@ -5,7 +5,7 @@ import { waitAtFaultPoint } from '@heynixie/tasks';
 import type { ActionsTables } from '../types';
 import { buildUnknownRecords } from './build-unknown-records';
 
-// An attempt with a record and no result may have reached the provider, so recovery settles it as an
+// An attempt with a record and no result may have reached the provider, so the restart sweep settles it as an
 // unknown outcome, by what the action's connector declares.
 export async function writeUnknownOutcomes(
   context: TasksContext,

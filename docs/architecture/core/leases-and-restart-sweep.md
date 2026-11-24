@@ -1,13 +1,13 @@
-# Leases and recovery
+# Leases and the restart sweep
 
 A runner works on a task step or an action attempt only while it holds that work's lease, and it
 proves it still holds the lease inside every transaction that writes. A lease expires unless its
 runner renews it, so a runner that dies frees its work within one lease length, and a runner that
 was only slow finds its lease gone and commits nothing. Task steps and action attempts claim through
-the same path, so both kinds of work follow one set of rules. After a crash, recovery runs before
-any runner starts and puts every piece of work that was in flight back into a state a runner can
-claim. `modules/tasks` owns the claim path, the claim pools and recovery. [Tasks](./tasks.md) and
-[actions](./actions.md) cover the work itself.
+the same path, so both kinds of work follow one set of rules. At each start, the restart sweep runs
+before any runner starts and puts every piece of work that a crash left in flight back into a state
+a runner can claim. `modules/tasks` owns the claim path, the claim pools and the restart sweep.
+[Tasks](./tasks.md) and [actions](./actions.md) cover the work itself.
 
 ## The claim path
 
@@ -57,15 +57,17 @@ through a claim pool of their own, with 2 claim loops unless `tasks.startedClaim
 number, so the user's next message never waits behind their long steps.
 
 A stop claims nothing new and waits a bounded grace for the work in flight. Work still running at
-the deadline is left to recover exactly as after a crash, and a claim that commits after the stop
-began never runs: its lease lapses and the next process takes the work back. A claim or a run that
-throws a stale-writer error stops the whole pool, because another process writes the database now.
+the deadline is left for the restart sweep exactly as after a crash, and a claim that commits after
+the stop began never runs: its lease lapses and the next process takes the work back. A claim or a
+run that throws a stale-writer error stops the whole pool, because another process writes the
+database now.
 
-## Crash recovery
+## The restart sweep
 
-Recovery runs before any runner starts, in a process that holds the writer lock under a new writer
-epoch. Every lease still held therefore belongs to a process that is gone. Recovery runs five stages
-in order:
+The restart sweep runs at each start, before any runner starts, in a process that holds the writer
+lock under a new writer epoch. Every lease still held therefore belongs to a process that is gone.
+The sweep runs five stages in order, and the start part `restart_sweep` runs them. After stage `n`,
+the fault point `restart_sweep.step.<n>` holds the process in a test build:
 
 1. It frees every lease claimed under an older epoch, and records each running task's return to
    ready, or its pause when the user asked to pause it.
@@ -80,18 +82,18 @@ in order:
    because its own setup replaces it after copying its session out. A destroy that fails is logged
    and tried again at the next start. The sandboxes projection lists each sandbox that still stands
    with its owner and the adapter that made it
-   ([sandboxes](../connectors/sandboxes.md#records-and-recovery)).
+   ([sandboxes](../connectors/sandboxes.md#records-and-the-restart-sweep)).
 
 A conversation turn writes each reply to the log before its step commits
 ([conversation turns](./conversation-turns.md#records-of-a-turn)), so a crash can leave a reply that
-no commit keeps. Recovery writes nothing for it. The next run of the step, before it spends or
-compacts anything, reads the thread back to its last step commit and voids each reply that no void
-names, with the reason `attempt_lost`. A runner that lost its lease writes no reply and no void: the
-lease check fails inside the write.
+no commit keeps. The restart sweep writes nothing for it. The next run of the step, before it spends
+or compacts anything, reads the thread back to its last step commit and voids each reply that no
+void names, with the reason `attempt_lost`. A runner that lost its lease writes no reply and no
+void: the lease check fails inside the write.
 
 The actions module and the sandbox module depend on tasks, and modules form no cycles, so the server
 passes stages 3 and 5 in as dependencies. Each stage writes nothing when it runs again over the
-state it left, so the next start finishes a recovery that crashed part way through.
+state it left, so the next start finishes a restart sweep that crashed part way through.
 
 ## Fault points
 

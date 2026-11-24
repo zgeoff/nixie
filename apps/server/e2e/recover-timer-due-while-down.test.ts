@@ -22,12 +22,12 @@ test('it fires a timer that fell due while nixie was down once, into the task in
   await first.kill();
   await ctx.nixie.harness.advance(3_700_000);
 
-  const second = ctx.nixie.harness.start([{ point: 'recovery.step.5' }]);
+  const second = ctx.nixie.harness.start([{ point: 'restart_sweep.step.5' }]);
 
-  const recovered = await second.waitForArrival('recovery.step.5');
-  const tasksAfterRecovery = await ctx.nixie.readTasks();
+  const swept = await second.waitForArrival('restart_sweep.step.5');
+  const tasksAfterSweep = await ctx.nixie.readTasks();
 
-  second.release(recovered);
+  second.release(swept);
 
   await second.ready;
 
@@ -44,7 +44,7 @@ test('it fires a timer that fell due while nixie was down once, into the task in
     { timerID: expect.any(String), taskID, dueAt: 4_600_000, firedAt: 4_700_000 },
   ]);
 
-  expect(tasksAfterRecovery).toPartiallyContain({ id: taskID, state: 'ready' });
+  expect(tasksAfterSweep).toPartiallyContain({ id: taskID, state: 'ready' });
 
   expect(
     records.filter((record) => record.kind === 'test.inbox_read').map((record) => record.payload),

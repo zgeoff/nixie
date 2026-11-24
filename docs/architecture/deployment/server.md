@@ -10,8 +10,9 @@ user on a read-only root filesystem. `apps/server` holds the wiring, `modules/op
 checks, and `libs/logger` holds the logger, so a module that logs needs none of the health code.
 
 [The database](../core/database.md) covers the writer lock, the epoch and migrations.
-[Leases and recovery](../core/leases-and-recovery.md) covers claim pools and crash recovery, and
-[sandboxes](../connectors/sandboxes.md) covers the imp adapter that the server adds images through.
+[Leases and the restart sweep](../core/leases-and-restart-sweep.md) covers claim pools and the
+restart sweep, and [sandboxes](../connectors/sandboxes.md) covers the imp adapter that the server
+adds images through.
 
 ## Configuration and secrets
 
@@ -42,27 +43,27 @@ flowchart LR
   L["load config,<br>secrets, manifest"] --> W["writer: lock, epoch,<br>copy, migrate"]
   W --> H["health endpoint,<br>API, control socket"]
   H --> S0["first seed,<br>if none in force"]
-  S0 --> RP["restore pause,<br>if a restore is pending"] --> R["recovery"] --> I["add images"] --> C["conversation imp"] --> M["memory"]
+  S0 --> RP["restore pause,<br>if a restore is pending"] --> R["restart sweep"] --> I["add images"] --> C["conversation imp"] --> M["memory"]
   M --> S["seed"] --> SR["start record"] --> RU["runners claim work"] --> Y["ready"]
 ```
 
 Every record carries the snapshot hash of the definitions in force
 ([the definitions](../core/definitions.md)), so on a first start the seed runs before anything else
-writes, recovery included. Recovery runs under the new writer epoch and before any runner starts, so
-it sees every lease the last process left and settles each one
-([crash recovery](../core/leases-and-recovery.md#crash-recovery)). Its sandbox cleanup destroys
-every sandbox whose owner no longer runs, and keeps the conversation's sandbox, whose task never
-ends, and the memory checker's, which the deployment owns.
+writes, the restart sweep included. The sweep runs under the new writer epoch and before any runner
+starts, so it sees every lease the last process left and settles each one
+([the restart sweep](../core/leases-and-restart-sweep.md#the-restart-sweep)). Its sandbox cleanup
+destroys every sandbox whose owner no longer runs, and keeps the conversation's sandbox, whose task
+never ends, and the memory checker's, which the deployment owns.
 
-The restore pause runs between the first seed and recovery. When the data directory holds the marker
-of a finished restore, it writes one `recovery.started` record that lists each task to check, pauses
-nixie with the cause `restore`, writes one `recovery.notice` on the conversation's thread that wakes
-no step, and then removes the marker. A task is on the list when it was running at the backup or
-owns an action with no outcome. The list reads each task's state and open step before recovery moves
-a running task or writes an `unknown` outcome, so the list shows the backup as it was. A start that
-stops after the pause commits and before the marker goes finds the recovery already recorded, writes
-nothing, and removes the marker. Nothing takes a step on the restored data until a resume
-([the pause after a restore](../core/pause.md#the-pause-after-a-restore)).
+The restore pause runs between the first seed and the restart sweep. When the data directory holds
+the marker of a finished restore, it writes one `recovery.started` record that lists each task to
+check, pauses nixie with the cause `restore`, writes one `recovery.notice` on the conversation's
+thread that wakes no step, and then removes the marker. A task is on the list when it was running at
+the backup or owns an action with no outcome. The list reads each task's state and open step before
+the restart sweep moves a running task or writes an `unknown` outcome, so the list shows the backup
+as it was. A start that stops after the pause commits and before the marker goes finds the recovery
+already recorded, writes nothing, and removes the marker. Nothing takes a step on the restored data
+until a resume ([the pause after a restore](../core/pause.md#the-pause-after-a-restore)).
 
 The server adds each image in the manifest to impd before any part creates a sandbox, because a step
 that creates a sandbox on an image impd lacks would fail. The server sends no add for an image that
@@ -86,9 +87,9 @@ version, the version of the start before it, and what the conversation is given:
 tools and the version of its persona. Because the record follows the seed, it holds the persona this
 start applies. Only then do the runners claim work.
 
-The first seed, the restore pause, recovery, adding the images, starting the conversation imp and
-the memory store, and writing the start record each wait and run again when they fail, with a log
-line per attempt. nixie therefore stays live and unready while impd is down or the definitions
+The first seed, the restore pause, the restart sweep, adding the images, starting the conversation
+imp and the memory store, and writing the start record each wait and run again when they fail, with
+a log line per attempt. nixie therefore stays live and unready while impd is down or the definitions
 refuse to seed, and the container runtime sees why in the readiness report instead of a restart
 loop. Any other failure in the sequence logs the error and ends the process, so the container
 runtime restarts it instead of leaving it live with no runners. A stop during the sequence ends it
@@ -211,7 +212,7 @@ migrations stops nixie once the writer is open. On the signal, every claim pool 
 once, and each step in flight gets the pool's grace period to commit. The server then stops its
 parts in the reverse of their start order: the runners, the conversation imp, the HTTP and control
 sockets, and the writer last. A step that misses its grace keeps its lease, and the next start's
-recovery settles it. The process exits 0 after a clean stop and 1 when a part failed, such as
+restart sweep settles it. The process exits 0 after a clean stop and 1 when a part failed, such as
 another process taking the writer. The container runtime's stop grace must exceed the claim pools'
 grace, with room for the parts that stop after the runners, or the runtime kills nixie before the
 writer closes.

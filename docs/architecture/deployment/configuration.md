@@ -32,7 +32,7 @@ Each part's doc owns the meaning of its own settings, and the file only carries 
 - the [model gateway](../policy/model-gateway.md#how-nixie-uses-the-gateway) that counts every model
   request, which `spendStop` names, and the model limits it sets: the day and the month
 - the shortest gap between two fires of a recurring [reminder](../core/reminders.md#tools)
-- the task and action [claim pool](../core/leases-and-recovery.md#claim-pools) sizes
+- the task and action [claim pool](../core/leases-and-restart-sweep.md#claim-pools) sizes
 - whether nixie stages [backups](backups.md), and how often
 - the tuning of [memory in context](../memory/context.md)
 - the limits of the [notebook](../memory/notebook.md#the-indexes): the characters of a body, the

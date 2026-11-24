@@ -1,11 +1,11 @@
 import { writeUnknownOutcomes } from '@heynixie/actions';
 import { readTestProjectionDrift } from '@heynixie/log/test-utils';
 import type { TaskState, TasksContext } from '@heynixie/tasks';
-import { runRecovery } from '@heynixie/tasks';
+import { runRestartSweep } from '@heynixie/tasks';
 import type { TestTask } from '@heynixie/tasks/test-utils';
 import { createFakeClock } from '@zgeoff/testing/clock';
 import { startDataLog } from './start-data-log';
-import type { RecoveredState, SpawnedNixie } from './start-spawned-nixie';
+import type { SpawnedNixie, SweptState } from './start-spawned-nixie';
 
 interface OracleReport {
   readonly repeatedStepKeys: readonly string[];
@@ -36,7 +36,7 @@ export async function runOracle(nixie: SpawnedNixie): Promise<OracleReport> {
   const context = testLog.context;
 
   try {
-    const recovery = await runRecoveryChecks(context, nixie);
+    const sweep = await runRestartSweepChecks(context, nixie);
     const records = await nixie.readRecords();
 
     return {
@@ -50,7 +50,7 @@ export async function runOracle(nixie: SpawnedNixie): Promise<OracleReport> {
       ),
       strayCalls: collectStrayCalls(nixie, records),
       strayReplies: collectStrayReplies(records),
-      ...recovery,
+      ...sweep,
       projectionDrift: await readTestProjectionDrift(context.log),
     };
   } finally {
@@ -58,23 +58,23 @@ export async function runOracle(nixie: SpawnedNixie): Promise<OracleReport> {
   }
 }
 
-type RecoveryChecks = Pick<OracleReport, 'changedEndStates' | 'heldLeases' | 'unreadyTasks'>;
+type SweepChecks = Pick<OracleReport, 'changedEndStates' | 'heldLeases' | 'unreadyTasks'>;
 
-async function runRecoveryChecks(
+async function runRestartSweepChecks(
   context: TasksContext,
   nixie: SpawnedNixie,
-): Promise<RecoveryChecks> {
-  const recovered = nixie.readRecoveredStates();
+): Promise<SweepChecks> {
+  const swept = nixie.readSweptStates();
 
   const before = await nixie.readTasks();
 
-  await runRecovery(context, {
+  await runRestartSweep(context, {
     writeUnknownOutcomes: () => writeUnknownOutcomes(context),
     sandboxes: { removeStaleSandboxes: () => Promise.resolve() },
   });
 
-  const states: readonly RecoveredState[] = [
-    ...recovered,
+  const states: readonly SweptState[] = [
+    ...swept,
     { leases: await nixie.readLeases(), tasks: await nixie.readTasks() },
   ];
 
@@ -88,7 +88,7 @@ async function runRecoveryChecks(
       state.tasks.filter((task) => isUnready(task)).map((task) => `${index}:${task.id}`),
     ),
     changedEndStates: collectChangedEndStates([
-      ...recovered.map((state) => state.tasks),
+      ...swept.map((state) => state.tasks),
       before,
       states.at(-1)?.tasks ?? [],
     ]),

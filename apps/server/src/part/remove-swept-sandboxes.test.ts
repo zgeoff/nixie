@@ -10,10 +10,10 @@ import { conversationTaskID, taskCreatedCodec } from '@heynixie/tasks';
 import { buildTaskSeeder } from '@heynixie/tasks/test-utils';
 import { createFakeClock } from '@zgeoff/testing/clock';
 import { startDataLog } from '../test-utils/start-data-log';
-import { removeRecoveredSandboxes } from './remove-recovered-sandboxes';
+import { removeSweptSandboxes } from './remove-swept-sandboxes';
 
 async function setupTest() {
-  const dataDir = await mkdtemp(join(tmpdir(), 'nixie-recovery-'));
+  const dataDir = await mkdtemp(join(tmpdir(), 'nixie-restart-sweep-'));
 
   onTestFinished(() => rm(dataDir, { recursive: true, force: true }));
 
@@ -95,7 +95,7 @@ test('it spares the sandboxes of the conversation, the checker and each open sta
     ),
   );
 
-  await removeRecoveredSandboxes(ctx.context, {
+  await removeSweptSandboxes(ctx.context, {
     logger: () => {},
     adapter: ctx.adapter,
     currentImages: [],
@@ -115,7 +115,7 @@ test('it keeps the browser and shell sandboxes of an earlier release on images t
     ctx.seed.sandbox('a-stranger', 'nixie-browser-old'),
   ]);
 
-  await removeRecoveredSandboxes(ctx.context, {
+  await removeSweptSandboxes(ctx.context, {
     logger: () => {},
     adapter: ctx.adapter,
     currentImages: ['nixie-computer-new'],

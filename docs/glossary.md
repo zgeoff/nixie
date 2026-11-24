@@ -107,6 +107,7 @@ one person a nixie deployment works for, and the architecture docs call that per
 | publish number | The positive integer that one publish gives to both the data snapshot and the key snapshot it writes, planned in [GEO-2570](https://linear.app/zgeoff/issue/GEO-2570)                    |
 | backup pair    | The key snapshot and the data snapshot that the fetch picks to restore from, planned in [GEO-2562](https://linear.app/zgeoff/issue/GEO-2562)                                             |
 | recovery       | One restore, under one recovery ID, planned in [GEO-2564](https://linear.app/zgeoff/issue/GEO-2564)                                                                                      |
+| restart sweep  | The start part that runs before any runner and puts the work a crash left in flight back into a state a runner can claim                                                                 |
 | restore marker | The file `restore-incomplete` in the data directory, which a restore writes first and ends by renaming a `holding` marker over, once both databases are in place                         |
 | reader gate    | The stored `oldest_reader` value, raised while nixie is paused so that a release without the pause refuses the database, planned in [GEO-2566](https://linear.app/zgeoff/issue/GEO-2566) |
 | test seed      | A function in a module's test utils that puts one record into one state, which is not the definitions seed                                                                               |

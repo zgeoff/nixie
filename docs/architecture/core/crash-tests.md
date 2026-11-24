@@ -6,9 +6,9 @@ the test checks the event log and the projections against one oracle. Every test
 oracle, so each one proves the same thing: a crash at that point loses nothing and repeats nothing.
 The suites live in the server's `e2e/` folder, `apps/server/e2e/`. The harness that spawns nixie
 lives in the server's test utilities, and the parts it builds on, such as the crash harness and the
-doubles, live in `libs/testing`. [Leases and recovery](./leases-and-recovery.md) covers the fault
-points and the recovery that a restart runs. [Actions](./actions.md) covers the action queue whose
-repeats the tests look for.
+doubles, live in `libs/testing`. [Leases and the restart sweep](./leases-and-restart-sweep.md)
+covers the fault points and the restart sweep that each start runs. [Actions](./actions.md) covers
+the action queue whose repeats the tests look for.
 
 ```mermaid
 flowchart LR
@@ -26,10 +26,10 @@ The child process runs a test build of nixie: the same modules a release compose
 pieces behind the test-build flag switched on ([code layout](../code-layout.md#test-builds)). It
 runs from the test bundle that `bun run test:bundles` builds once for each set of sources, so a
 start pays for no transpile. The bundle keeps each module's source folder, so its guests start from
-their source as they do in an unbundled run. It writes the real event log, runs the real recovery,
-task runners, action runners and tool endpoint, and runs each conversation turn through the real
-Agent SDK. The SDK runs in a guest that the process sandbox adapter starts as a local child, so CI
-needs no `/dev/kvm` and no imp. The test-only parts are four:
+their source as they do in an unbundled run. It writes the real event log, runs the real restart
+sweep, task runners, action runners and tool endpoint, and runs each conversation turn through the
+real Agent SDK. The SDK runs in a guest that the process sandbox adapter starts as a local child, so
+CI needs no `/dev/kvm` and no imp. The test-only parts are four:
 
 - The test connector declares one queued action, `test.send`, which the test rule allows. The
   release build's rules in code hold no such rule, so no release build can queue it.
@@ -88,15 +88,15 @@ the call, so an unplanned call fails its test.
 
 ## The oracle
 
-Each start of nixie holds at the end of its recovery, before any runner claims work, while the test
-reads the leases and the tasks that the recovery left. After the last kill, the oracle runs recovery
-once more in the test process, as a last restart, then checks:
+Each start of nixie holds at the end of its restart sweep, before any runner claims work, while the
+test reads the leases and the tasks that the sweep left. After the last kill, the oracle runs the
+restart sweep once more in the test process, as a last restart, then checks:
 
 - Each step key has at most one commit, and one step queues each call it makes as one action.
 - Each provider call carries the idempotency key of an action, and no key has more calls than the
   action has attempts.
-- No task holds a lease after any start's recovery.
-- After any start's recovery, no task is running, and no waiting task has unread input.
+- No task holds a lease after any start's restart sweep.
+- After any start's restart sweep, no task is running, and no waiting task has unread input.
 - A task that reached an end state keeps it in every later read.
 - Every projection table, rebuilt from the log, equals the live one.
 

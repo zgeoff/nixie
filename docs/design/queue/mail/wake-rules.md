@@ -226,8 +226,9 @@ wake_rules:
 - A wake happens only when at least one of the wake's rules is ready, and a rule that is not ready
   joins that wake without causing it.
 - One arrival gives each target at most one wake, however many of its rules match.
-- The core never reads the [task gate](../task-gate.md) for an arrival or a flush. While a task is
-  held, its wakes land in its inbox and wait there, as the gate design says for poll sources.
+- The core never reads the [task gate](../../../architecture/core/pause.md#the-task-gate) for an
+  arrival or a flush. While a task is held, its wakes land in its inbox and wait there, as the task
+  gate does for poll sources.
 - The core and the flush check that a task has not ended before they call the inbox writer for it.
 - The core matches on the values the source just read from the host, never on erasable fields read
   back.
