@@ -1,7 +1,7 @@
 # 0014: GPT-Live speaks a voice call, and Claude's turn writes every answer
 
 - Date: 2026-10-11
-- Updated: 2026-10-25
+- Updated: 2026-11-25
 - Status: decided
 
 ## Decision
@@ -23,11 +23,11 @@ the answer to every request and GPT-Live speaks it.
 
 ## Rejected alternatives
 
-| Option                                                        | Why not                                                                                                                                                                                                                                          |
-| ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Grok Voice as nixie                                           | It answers requests with its own tool calls, so it holds no long silence, and it stops sooner when you interrupt at about half GPT-Live's cost per minute. Claude then writes none of nixie's answers, and its end-of-turn wait has a long tail. |
-| Grok Voice handing requests to nixie's turn                   | It waits for the turn as GPT-Live does, and keeps Grok Voice's long end-of-turn tail. The reply run did not measure it.                                                                                                                          |
-| a pipeline of speech-to-text, nixie's turn and text-to-speech | Your audio stays home, and one runtime speaks every reply. Behind Piper's voice, a pipeline either reached first audio too late or went quiet after its opener. A pipeline with a streaming cloud voice is untested.                             |
+| Option                                                        | Why not                                                                                                                                                                                                                                              |
+| ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Grok Voice as nixie                                           | It answers requests with its own tool calls, so it holds no long silence, and it stops sooner when you interrupt. Claude then writes none of nixie's answers, its end-of-turn wait has a long tail, and it costs $0.08 a minute to GPT-Live's $0.05. |
+| Grok Voice handing requests to nixie's turn                   | It waits for the turn as GPT-Live does, and keeps Grok Voice's long end-of-turn tail. The reply run did not measure it.                                                                                                                              |
+| a pipeline of speech-to-text, nixie's turn and text-to-speech | Your audio stays home, and one runtime speaks every reply. Behind Piper's voice, a pipeline either reached first audio too late or went quiet after its opener. A pipeline with a streaming cloud voice is untested.                                 |
 
 ## Consequences
 
@@ -36,9 +36,15 @@ the answer to every request and GPT-Live speaks it.
   request.
 - On a request that GPT-Live hands to nixie's turn, you wait while the turn runs. That wait is the
   accepted cost of Claude writing the answers.
+- A call costs $0.05 for each minute GPT-Live is active, plus nixie's Claude turns, at OpenAI's
+  [GPT-Live model page](https://developers.openai.com/api/docs/models/gpt-live-1).
+- GPT-Live runs in the US and the EU only, and OpenAI does not serve Hong Kong. A deployment whose
+  host sits where OpenAI does not serve gets no voice calls.
 
 ## Changes
 
+- 2026-11-25: The cost comparison follows the providers' price pages, and the region risk is added.
+  The reply run had counted GPT-Live's minutes with the delegated Claude turns.
 - 2026-10-25: GPT-Live hears and speaks a call and hands each request to nixie's turn, after the
   reply run. The first version ran the call as a pipeline of speech-to-text, nixie's turn and
   text-to-speech, and kept a speech-to-speech model as the swap if the pipeline missed a median of
