@@ -21,17 +21,17 @@ export async function runJobPass(
   files: JobFiles,
 ): Promise<JobPass> {
   const lockPath = join(config.stagingDir, backupSetLayout.jobLock);
-  let isWritten = true;
 
-  try {
-    await files.writeFile(lockPath, '');
-  } catch (error: unknown) {
-    if (!(error instanceof Error && 'code' in error && error.code === 'ENOENT')) {
+  const isWritten = await files
+    .writeFile(lockPath, '')
+    .then(() => true)
+    .catch((error: unknown) => {
+      if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
+        return false;
+      }
+
       throw error;
-    }
-
-    isWritten = false;
-  }
+    });
 
   if (!isWritten) {
     return { status: 'ran', receipts: [] };

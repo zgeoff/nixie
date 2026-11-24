@@ -97,15 +97,10 @@ export function buildCountedStream(
 
   return new ReadableStream<Uint8Array>({
     pull: async (controller) => {
-      let chunk:
-        | { readonly kind: 'read'; readonly result: Awaited<ReturnType<typeof reader.read>> }
-        | { readonly kind: 'failed'; readonly error: unknown };
-
-      try {
-        chunk = { kind: 'read', result: await reader.read() };
-      } catch (error: unknown) {
-        chunk = { kind: 'failed', error };
-      }
+      const chunk = await reader
+        .read()
+        .then((result) => ({ kind: 'read', result }) as const)
+        .catch((error: unknown) => ({ kind: 'failed', error }) as const);
 
       if (chunk.kind === 'failed') {
         await finish(false);
