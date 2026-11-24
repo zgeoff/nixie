@@ -84,28 +84,31 @@ export async function readRecords(
   );
 }
 
-function decodeRecordErasable(
+async function decodeRecordErasable(
   row: RecordRow,
   getKey: (keyID: string) => CryptoKey | null | undefined,
 ): Promise<ErasableFields> {
   if (row.key_id === null || row.sealed === null) {
-    return Promise.resolve({ status: 'none' });
+    return { status: 'none' };
   }
 
   const key = getKey(row.key_id);
 
   if (key === undefined) {
-    return Promise.resolve({ status: 'shredded' });
+    return { status: 'shredded' };
   }
 
   if (key === null) {
-    return Promise.resolve({ status: 'unreadable' });
+    return { status: 'unreadable' };
   }
 
-  return decodeErasable(key, row.key_id, row.sealed).then(
-    (fields): ErasableFields => ({ status: 'readable', fields }),
-    (): ErasableFields => ({ status: 'unreadable' }),
-  );
+  try {
+    const fields = await decodeErasable(key, row.key_id, row.sealed);
+
+    return { status: 'readable', fields };
+  } catch {
+    return { status: 'unreadable' };
+  }
 }
 
 function buildChanges(

@@ -45,10 +45,7 @@ export async function readReleaseStartOutcome(
   const never = Promise.withResolvers<FirstEvent>();
 
   const first = await Promise.race([
-    nixie.waitForLogEvent('http.listening').then(
-      (line): FirstEvent => ({ kind: 'listening', port: line['port'] }),
-      () => never.promise,
-    ),
+    readListeningEvent(nixie, never.promise),
     nixie.exited.then((exit): FirstEvent => ({ kind: 'exited', exit })),
     Bun.sleep(options.timeoutMs).then((): FirstEvent => ({ kind: 'timeout' })),
   ]);
@@ -85,5 +82,18 @@ export async function readReleaseStartOutcome(
       timeoutMs: options.timeoutMs,
       output: nixie.readOutput(),
     };
+  }
+}
+
+async function readListeningEvent(
+  nixie: ReleaseProcess,
+  exitSettles: Promise<FirstEvent>,
+): Promise<FirstEvent> {
+  try {
+    const line = await nixie.waitForLogEvent('http.listening');
+
+    return { kind: 'listening', port: line['port'] };
+  } catch {
+    return exitSettles;
   }
 }

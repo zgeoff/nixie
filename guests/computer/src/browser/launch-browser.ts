@@ -29,10 +29,9 @@ export async function launchBrowser(launch: BrowserLaunch): Promise<BrowserState
 
   await mkdir(profile, { recursive: true });
 
-  const isUsed = await stat(marker).then(
-    () => true,
-    () => false,
-  );
+  const isUsed = await stat(marker)
+    .then(() => true)
+    .catch(() => false);
 
   await writeFile(marker, '');
 

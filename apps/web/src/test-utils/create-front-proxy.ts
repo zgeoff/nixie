@@ -19,7 +19,7 @@ interface BridgeData {
 // go to the API, and every other path to the web server. A WebSocket upgrade on the API's paths is
 // bridged to the API, so the browser's watch socket reaches it as it does behind an ingress.
 export function createFrontProxy(targets: FrontProxyTargets): Bun.Server<BridgeData> {
-  const answerRequest = (request: Request, server: Bun.Server<BridgeData>) => {
+  const answerRequest = async (request: Request, server: Bun.Server<BridgeData>) => {
     const url = new URL(request.url);
 
     const apiURL = typeof targets.apiURL === 'function' ? targets.apiURL() : targets.apiURL;
@@ -38,14 +38,17 @@ export function createFrontProxy(targets: FrontProxyTargets): Bun.Server<BridgeD
       return server.upgrade(request, { data }) ? undefined : new Response(null, { status: 502 });
     }
 
-    const forwarded = fetch(new Request(`${target}${url.pathname}${url.search}`, request), {
-      redirect: 'manual',
-    });
+    const forwarded = new Request(`${target}${url.pathname}${url.search}`, request);
 
-    return forwarded.then(
-      (response) => buildEndingResponse(response),
-      () => new Response(null, { status: 502 }),
-    );
+    let response: Response;
+
+    try {
+      response = await fetch(forwarded, { redirect: 'manual' });
+    } catch {
+      return new Response(null, { status: 502 });
+    }
+
+    return buildEndingResponse(response);
   };
 
   return Bun.serve<BridgeData>({

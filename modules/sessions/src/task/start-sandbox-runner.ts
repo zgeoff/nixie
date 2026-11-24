@@ -397,16 +397,21 @@ async function runTaskTurn(
     () => readLateSpend(context, parts.taskRun, parts.throughSequence, buildStepRunID(input)),
   );
 
-  const ended = await runConversationStep(
-    buildTaskRun(runner.options, { ...parts, ...held, budget }),
-    {
-      ...input,
-      interrupt: AbortSignal.any([input.interrupt, budget.signal]),
-    },
-  ).then(
-    (result) => ({ result, error: null }),
-    (error: unknown) => ({ result: null, error }),
-  );
+  let ended: { result: Awaited<ReturnType<typeof runConversationStep>> | null; error: unknown };
+
+  try {
+    const result = await runConversationStep(
+      buildTaskRun(runner.options, { ...parts, ...held, budget }),
+      {
+        ...input,
+        interrupt: AbortSignal.any([input.interrupt, budget.signal]),
+      },
+    );
+
+    ended = { result, error: null };
+  } catch (error: unknown) {
+    ended = { result: null, error };
+  }
 
   const isPauseRequested = await probePauseRequested(context.log.writer.db, input.taskID);
 

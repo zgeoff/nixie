@@ -7,10 +7,9 @@ export function makeDiskMarker(home: string): () => Promise<boolean> {
   const marker = join(home, '.nixie-disk-used');
 
   return async () => {
-    const isUsed = await stat(marker).then(
-      () => true,
-      () => false,
-    );
+    const isUsed = await stat(marker)
+      .then(() => true)
+      .catch(() => false);
 
     if (!isUsed) {
       await writeFile(marker, '');
