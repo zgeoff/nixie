@@ -12,6 +12,7 @@ import type { CredentialFetch, CredentialSpec, FetchOptions } from '../types';
 import { findCredentialHeader, placeCredential } from './place-credential';
 import type { PlacedCredential } from './place-credential';
 import { readCappedBody } from './read-capped-body';
+import { readCappedStream } from './read-capped-stream';
 import { sendPinnedRequest } from './send-pinned-request';
 
 export interface FetcherChecks {
@@ -44,17 +45,28 @@ export function createCredentialFetcher(
   target: FetcherTarget,
 ): CredentialFetch {
   return async (input, init) => {
-    const request = new Request(String(input), init);
-
     const value = target.readValue();
     const forms = value === null ? [] : buildValueForms(value);
 
     try {
+      refuseUserinfo(String(input), 'the request URL');
+
+      const request = new Request(String(input), init);
+
       return await sendRequest(checks, target, request, { value, forms });
     } catch (error) {
       throw cleanError(error, forms);
     }
   };
+}
+
+// A Request refuses a URL with userinfo in a TypeError of its own, so the text is checked first.
+function refuseUserinfo(text: string, subject: string): void {
+  const url = URL.parse(text);
+
+  if (url !== null && (url.username !== '' || url.password !== '')) {
+    throw new CredentialRefusalError(`${subject} holds a user name or a password`);
+  }
 }
 
 interface CredentialScrub {
@@ -77,7 +89,7 @@ async function sendRequest(
 
   const url = new URL(request.url);
 
-  refuseRequest(target, request, url);
+  refuseHeaders(target, request);
 
   const body = await readRequestBody(request);
 
@@ -115,6 +127,8 @@ async function sendRequest(
 
     const next = new URL(location, hop.url);
 
+    refuseUserinfo(next.href, 'the redirect');
+
     hop.hasCredential &&= next.origin === hop.url.origin;
     hop.url = next;
     hop.count += 1;
@@ -126,11 +140,7 @@ async function sendRequest(
   }
 }
 
-function refuseRequest(target: FetcherTarget, request: Request, url: URL): void {
-  if (url.username !== '' || url.password !== '') {
-    throw new CredentialRefusalError('the request URL holds a user name or a password');
-  }
-
+function refuseHeaders(target: FetcherTarget, request: Request): void {
   const refused = findRefusedHeader(request.headers.keys(), findCredentialHeader(target.spec));
 
   if (refused !== null) {
@@ -199,38 +209,21 @@ async function sendHop(
   signal: AbortSignal,
   hop: HopRequest,
 ): Promise<HopReply> {
-  if (checks.transport !== undefined) {
-    const response = await checks.transport(hop.url.href, {
-      method: hop.method,
-      headers: hop.headers,
-      ...(hop.body === null ? {} : { body: Buffer.from(hop.body) }),
-      redirect: 'manual',
-      signal,
-    });
-
-    return {
-      status: response.status,
-      statusText: response.statusText,
-      headers: response.headers,
-      read: async () => {
-        const buffer = await response.arrayBuffer();
-
-        return new Uint8Array(buffer);
-      },
-      discard: () => {},
-    };
-  }
-
-  const checkAddress = target.options.deploymentService === true ? () => true : checks.checkAddress;
+  const isDeploymentService = target.options.deploymentService === true;
 
   const planned = await planHop(hop.url.href, {
-    checkAddress,
+    checkAddress: isDeploymentService ? () => true : checks.checkAddress,
     resolveHost: checks.resolveHost,
     signal,
+    allowIPv6Only: isDeploymentService,
   });
 
   if (planned.kind === 'refused') {
     throw new CredentialRefusalError(planned.reason);
+  }
+
+  if (checks.transport !== undefined) {
+    return sendThroughTransport(checks.transport, signal, hop);
   }
 
   const response = await sendPinnedRequest({
@@ -250,6 +243,30 @@ async function sendHop(
     read: () => readCappedBody(response),
     discard: () => {
       response.destroy();
+    },
+  };
+}
+
+async function sendThroughTransport(
+  transport: NonNullable<FetcherChecks['transport']>,
+  signal: AbortSignal,
+  hop: HopRequest,
+): Promise<HopReply> {
+  const response = await transport(hop.url.href, {
+    method: hop.method,
+    headers: hop.headers,
+    ...(hop.body === null ? {} : { body: Buffer.from(hop.body) }),
+    redirect: 'manual',
+    signal,
+  });
+
+  return {
+    status: response.status,
+    statusText: response.statusText,
+    headers: response.headers,
+    read: () => readCappedStream(response.body),
+    discard: () => {
+      void response.body?.cancel();
     },
   };
 }
@@ -274,7 +291,11 @@ async function readResponse(reply: HopReply, forms: readonly string[]): Promise<
   const headers = new Headers();
 
   for (const [name, entry] of reply.headers) {
-    if (!['content-encoding', 'content-length'].includes(name)) {
+    // A header name that holds the value cannot carry the marker, so the header goes whole.
+    const isDropped =
+      ['content-encoding', 'content-length'].includes(name) || scrubText(name, forms) !== name;
+
+    if (!isDropped) {
       headers.append(name, scrubText(entry, forms));
     }
   }
@@ -289,6 +310,8 @@ async function readResponse(reply: HopReply, forms: readonly string[]): Promise<
   });
 }
 
+// The cleaned error keeps the name and the cleaned message and drops the cause, which may hold the
+// value: a caller's abort reason reaches here too.
 function cleanError(error: unknown, forms: readonly string[]): unknown {
   if (error instanceof CredentialRefusalError) {
     return new CredentialRefusalError(scrubText(error.message, forms));
@@ -298,13 +321,9 @@ function cleanError(error: unknown, forms: readonly string[]): unknown {
     return new Error(scrubText(String(error), forms));
   }
 
-  if (error.name === 'AbortError' || error.name === 'TimeoutError') {
-    return error;
-  }
-
   const cleaned = new Error(scrubText(error.message, forms));
 
-  cleaned.name = error.name;
+  cleaned.name = scrubText(error.name, forms);
 
   return cleaned;
 }

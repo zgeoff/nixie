@@ -63,3 +63,27 @@ test('it cuts a value from the text of a text reply', () => {
     isError: true,
   });
 });
+
+test('it cuts a value from each attachment and keeps an attachment that holds none', () => {
+  const ctx = setupTest();
+
+  const holder = new Uint8Array(Buffer.from('out: fake-own-3\n'));
+  const clean = new Uint8Array(Buffer.from('nothing'));
+
+  const cut = removeOwnValues({ ...ctx.base, attachments: [holder, clean] }, ['fake-own-3']);
+
+  expect(cut.attachments?.map((bytes) => Buffer.from(bytes).toString())).toStrictEqual([
+    'out: [secret removed]\n',
+    'nothing',
+  ]);
+});
+
+test('it keeps the same attachment bytes when no value occurs in them', () => {
+  const ctx = setupTest();
+
+  const clean = new Uint8Array(Buffer.from('nothing'));
+
+  const cut = removeOwnValues({ ...ctx.base, attachments: [clean] }, ['fake-own-3']);
+
+  expect(cut.attachments?.[0]).toBe(clean);
+});

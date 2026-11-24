@@ -5,8 +5,8 @@ import { sandboxGrantedCodec } from './sandbox-granted-codec';
 
 const pageSize = 500;
 
-// The broker secrets nixie added, by name: a started grant names one before it installs it, and a
-// granted record names the one a sandbox holds, so a name from before the started record counts too.
+// The broker secrets nixie installed. A started record proves it. A granted record does only with a
+// reference: a host-held name has none, and its sandbox host owns the secret.
 export async function readGrantSecretNames(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
 ): Promise<readonly string[]> {
@@ -24,12 +24,16 @@ export async function readGrantSecretNames(
     for (const entry of page) {
       const record = entry.record;
 
-      const payload =
-        record.kind === sandboxGrantStartedCodec.kind
-          ? sandboxGrantStartedCodec.decode(record.payload)
-          : sandboxGrantedCodec.decode(record.payload);
+      if (record.kind === sandboxGrantStartedCodec.kind) {
+        names.add(sandboxGrantStartedCodec.decode(record.payload).secret);
+        continue;
+      }
 
-      names.add(payload.secret);
+      const granted = sandboxGrantedCodec.decode(record.payload);
+
+      if (granted.reference !== undefined) {
+        names.add(granted.secret);
+      }
     }
 
     const last = page.at(-1);

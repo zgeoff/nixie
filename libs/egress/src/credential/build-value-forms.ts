@@ -1,12 +1,29 @@
-// The forms a value takes in a header, a body or an error: as it is, URL-encoded, and as base64 at
-// each of the 3 alignments it can take inside a longer base64 text, standard and URL-safe alike.
+// The forms a value takes in a header, a body or an error: as it is, URL-encoded in each way a
+// sender writes it, and as base64 at each of the 3 alignments it can take inside a longer base64
+// text, standard and URL-safe alike.
 export function buildValueForms(value: string): readonly string[] {
-  const forms = [value, encodeURIComponent(value), ...buildBase64Forms(value)];
+  const forms = [value, ...buildPercentForms(value), ...buildBase64Forms(value)];
 
   return [...new Set(forms.filter((form) => form !== ''))];
 }
 
-const minBase64Chars = 6;
+// encodeURIComponent writes upper-case hex and leaves !'()* bare. Another sender writes lower-case
+// hex, escapes those 5 characters, or writes a space as a plus.
+function buildPercentForms(value: string): readonly string[] {
+  const standard = encodeURIComponent(value);
+
+  const strict = standard.replaceAll(
+    /[!'()*]/gu,
+    (character) => `%${(character.codePointAt(0) ?? 0).toString(16).toUpperCase()}`,
+  );
+
+  return [standard, strict].flatMap((form) => {
+    const lower = form.replaceAll(/%[\dA-F]{2}/gu, (escape) => escape.toLowerCase());
+
+    return [form, lower, form.replaceAll('%20', '+'), lower.replaceAll('%20', '+')];
+  });
+}
+
 const leadingCharsToSkip = [0, 2, 3] as const;
 
 function buildBase64Forms(value: string): readonly string[] {
@@ -19,7 +36,7 @@ function buildBase64Forms(value: string): readonly string[] {
     const end = isPartialTail ? -1 : undefined;
     const complete = encoded.slice(skip, end);
 
-    if (complete.length < minBase64Chars) {
+    if (complete === '') {
       return [];
     }
 

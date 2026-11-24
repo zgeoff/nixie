@@ -248,9 +248,11 @@ async function setupImp(options: ImpSandboxOptions, sandbox: Sandbox): Promise<S
       'the spec check refuses a grant with no route when the gateway counts',
     );
 
+    const hostFilter = grant.paths === undefined ? undefined : { paths: grant.paths };
+
     const filter =
       options.modelGateway === undefined || route === null
-        ? undefined
+        ? hostFilter
         : { paths: [buildGrantPath(sandbox.id, route)] };
 
     await options.port.addGrant(sandbox.id, grant.secret, filter);

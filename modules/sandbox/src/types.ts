@@ -33,6 +33,10 @@ export interface GrantSpec {
   // what the records show of a credential nixie holds: its reference and keyed fingerprint
   readonly reference?: string;
   readonly fingerprint?: string;
+
+  // the only paths on the secret's host that the grant reaches, as globs. A grant with a route
+  // takes the gateway's path in their place.
+  readonly paths?: readonly string[];
 }
 
 export interface SecretSpec {

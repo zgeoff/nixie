@@ -15,6 +15,7 @@ import { resolveSandboxSettings } from '../sandbox/resolve-sandbox-settings';
 import { createSpendInputs } from '../spend/create-spend-inputs';
 import { createImageSettings } from './create-image-settings';
 import { createSearchSettings } from './create-search-settings';
+import { resolveTestHostAddresses } from './resolve-test-host-addresses';
 import type { ServerOptions, ServerPartsOptions } from './start-server';
 
 export type ServerInputs = Pick<
@@ -54,7 +55,7 @@ export async function loadServerInputs(options: ServerOptions): Promise<ServerIn
 
   const store = createCredentialStore({
     secrets,
-    resolveHost: resolveHostAddresses,
+    resolveHost: NIXIE_TEST_BUILD ? resolveTestHostAddresses : resolveHostAddresses,
     denied: [...(publicEgress?.hostAddresses ?? []), ...(publicEgress?.egressDeny ?? [])],
     ...(NIXIE_TEST_BUILD
       ? { test: { transport: (url: string, init: RequestInit) => fetch(url, init) } }

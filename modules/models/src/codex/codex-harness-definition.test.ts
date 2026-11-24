@@ -16,6 +16,7 @@ test('#buildGrant puts a placeholder where the CLI reads the credential', () => 
     secret: 'model-work-1',
     host: 'api.openai.example.test',
     route: 'codex-main',
+    paths: ['/v1/responses', '/responses', '/v1/models', '/v1/models/*'],
     env: { OPENAI_API_KEY: 'nixie-broker-placeholder' },
   });
 });
@@ -76,6 +77,7 @@ test('#buildGrant keeps the reference and fingerprint of a credential nixie hold
     secret: 'model-work-1',
     host: 'api.openai.example.test',
     route: 'codex-main',
+    paths: ['/v1/responses', '/responses', '/v1/models', '/v1/models/*'],
     env: { OPENAI_API_KEY: 'nixie-broker-placeholder' },
     reference: 'deployment:openai',
     fingerprint: 'a3f09c1e',

@@ -2797,6 +2797,7 @@ test('it grants the secret the sandbox backend holds when the secrets file has n
       secret: 'nixie-model-5954bac4248961e3907',
       host: 'api.anthropic.com',
       route: 'chat-direct',
+      paths: ['/v1/messages', '/v1/messages/count_tokens', '/v1/models', '/v1/models/*'],
       env: { ANTHROPIC_AUTH_TOKEN: 'nixie-broker-placeholder' },
     },
   ]);

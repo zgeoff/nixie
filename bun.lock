@@ -65,7 +65,6 @@
         "zod": "catalog:",
       },
       "devDependencies": {
-        "@heynixie/log": "workspace:*",
         "@heynixie/mock-server": "workspace:*",
         "msw": "catalog:",
       },
@@ -80,7 +79,6 @@
         "zod": "catalog:",
       },
       "devDependencies": {
-        "@heynixie/log": "workspace:*",
         "@heynixie/mock-server": "workspace:*",
         "msw": "catalog:",
       },
@@ -667,9 +665,6 @@
         "@heynixie/sandbox": "workspace:*",
         "tiny-invariant": "catalog:",
         "zod": "catalog:",
-      },
-      "devDependencies": {
-        "@zgeoff/testing": "catalog:",
       },
     },
     "modules/definitions": {

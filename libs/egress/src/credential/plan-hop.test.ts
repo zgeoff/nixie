@@ -45,3 +45,19 @@ test('it refuses a host with a non-public address and names the address', async 
     reason: 'maps.test resolves to 10.0.0.7, which is not a public address',
   });
 });
+
+test('it connects to the IPv6 address of a host when the caller allows IPv6-only hosts', async () => {
+  const ctx = setupTest(['::1']);
+
+  const planned = await planHop('http://spend.test/control', {
+    ...ctx.options,
+    checkAddress: () => true,
+    allowIPv6Only: true,
+  });
+
+  expect(planned).toStrictEqual({
+    kind: 'connect',
+    url: new URL('http://spend.test/control'),
+    address: '::1',
+  });
+});

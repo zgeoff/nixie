@@ -12,9 +12,6 @@ export interface UnheldSecretsOptions {
 
   // the names the config's host-held profiles give, which cleanup never removes
   readonly hostHeldNames: readonly string[];
-
-  // the names a grant in flight added and no sandbox holds yet
-  readonly readPendingNames: () => readonly string[];
 }
 
 // Removes from the broker each secret that nixie added and no live sandbox holds. A name it never
@@ -26,7 +23,6 @@ export async function removeUnheldSecrets(
     added: await readGrantSecretNames(options.log),
     live: await readLiveGrantNames(options.log, options.adapter.id),
     hostHeld: options.hostHeldNames,
-    pending: options.readPendingNames(),
   });
 
   const removed: string[] = [];

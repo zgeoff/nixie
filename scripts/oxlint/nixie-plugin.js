@@ -10,6 +10,7 @@ export default nixiePlugin;
 
 const groups = new Set(['model_credentials', 'connector_credentials']);
 const secretsNames = new Set(['secrets', 'secretsFile']);
+const settingsOnly = new Set(['settings']);
 
 function buildRule() {
   return {
@@ -26,29 +27,42 @@ function buildRule() {
         context.report({ node, messageId: 'banned', data: { group } });
       };
 
+      // the names that hold a secrets object: the ones its owners use, and each name one is copied to
+      const aliases = new Set(secretsNames);
+
       return {
         MemberExpression(node) {
-          const group = findGroup(node);
+          const group = findGroup(node, aliases);
 
           if (group !== null) {
             report(node, group);
           }
         },
-        ObjectPattern(node) {
-          for (const property of node.properties) {
-            const group = property.type === 'Property' ? findKeyName(property) : null;
-
-            if (group !== null && isGroup(group)) {
-              report(property, group);
-            }
+        VariableDeclarator(node) {
+          if (node.init === null || !isSecretsObject(node.init, aliases)) {
+            return;
           }
+
+          if (node.id.type === 'Identifier') {
+            aliases.add(node.id.name);
+          } else if (node.id.type === 'ObjectPattern') {
+            reportPattern(node.id, settingsOnly, report);
+          }
+        },
+        AssignmentExpression(node) {
+          if (node.left.type === 'Identifier' && isSecretsObject(node.right, aliases)) {
+            aliases.add(node.left.name);
+          }
+        },
+        ObjectPattern(node) {
+          reportPattern(node, groups, report);
         },
       };
     },
   };
 }
 
-function findGroup(node) {
+function findGroup(node, aliases) {
   const name = findPropertyName(node);
 
   if (name === null) {
@@ -59,7 +73,7 @@ function findGroup(node) {
     return name;
   }
 
-  return name === 'settings' && isSecretsObject(node.object) ? name : null;
+  return name === 'settings' && isSecretsObject(node.object, aliases) ? name : null;
 }
 
 function findPropertyName(node) {
@@ -78,14 +92,41 @@ function findPropertyName(node) {
   return null;
 }
 
-function isSecretsObject(object) {
-  if (object.type === 'Identifier') {
-    return secretsNames.has(object.name);
+function isSecretsObject(object, aliases) {
+  const inner = unwrap(object);
+
+  if (inner.type === 'Identifier') {
+    return aliases.has(inner.name);
   }
 
-  return object.type === 'MemberExpression' && findPropertyName(object) !== null
-    ? secretsNames.has(findPropertyName(object))
-    : false;
+  const name = inner.type === 'MemberExpression' ? findPropertyName(inner) : null;
+
+  return name !== null && aliases.has(name);
+}
+
+function unwrap(node) {
+  const wrappers = [
+    'TSAsExpression',
+    'TSNonNullExpression',
+    'TSSatisfiesExpression',
+    'ChainExpression',
+    'ParenthesizedExpression',
+  ];
+
+  return wrappers.includes(node.type) ? unwrap(node.expression) : node;
+}
+
+// A group's own name gives it away wherever it is read, so the pattern check for every pattern
+// names the two groups. The settings group shares its name with other things, so it counts only
+// when a pattern takes it from a secrets object.
+function reportPattern(pattern, names, report) {
+  for (const property of pattern.properties) {
+    const name = property.type === 'Property' ? findKeyName(property) : null;
+
+    if (name !== null && names.has(name)) {
+      report(property, name);
+    }
+  }
 }
 
 function findKeyName(property) {
@@ -100,8 +141,4 @@ function findKeyName(property) {
   return property.key.type === 'Literal' && typeof property.key.value === 'string'
     ? property.key.value
     : null;
-}
-
-function isGroup(name) {
-  return groups.has(name);
 }

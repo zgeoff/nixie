@@ -170,10 +170,7 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
                       ? buildStubImageProviders(options.imageSettings.config)
                       : buildImageProviders(options.imageSettings),
                 },
-          readOwnValues: () =>
-            options.secrets.ownValues.read({
-              minChars: options.config.web_fetch.secretOwnValueMinChars,
-            }),
+          readOwnValues: () => options.secrets.ownValues.read({ minChars: 1 }),
           testTools:
             NIXIE_TEST_BUILD && options.harness !== undefined
               ? testSendKinds.map((kind) =>

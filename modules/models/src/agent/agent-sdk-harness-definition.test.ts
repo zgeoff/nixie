@@ -19,8 +19,24 @@ test.each([
     secret: 'model-chat-1',
     host: 'api.anthropic.com',
     route: 'claude-main',
+    paths: ['/v1/messages', '/v1/messages/count_tokens', '/v1/models', '/v1/models/*'],
     env,
   });
+});
+
+test('#buildGrant limits the grant to the API paths under the profile base URL path', () => {
+  const harness = bindHarness(
+    buildMockModelProfile({ id: 'claude-main', baseURL: 'https://api.example.test/anthropic/' }),
+  );
+
+  expect(
+    harness.buildGrant({ name: 'model-chat-1', host: 'api.example.test', header: 'bearer' }).paths,
+  ).toStrictEqual([
+    '/anthropic/v1/messages',
+    '/anthropic/v1/messages/count_tokens',
+    '/anthropic/v1/models',
+    '/anthropic/v1/models/*',
+  ]);
 });
 
 test('it binds the Agent SDK record, which speaks the Anthropic Messages API', () => {

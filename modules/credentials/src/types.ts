@@ -25,7 +25,7 @@ export interface CredentialQuery {
 
 export type ResolveCredential = (query: CredentialQuery) => CredentialRef | null;
 
-export type Backend = CredentialRef['backend'];
+type Backend = CredentialRef['backend'];
 
 export interface BindingRef {
   // a UUID

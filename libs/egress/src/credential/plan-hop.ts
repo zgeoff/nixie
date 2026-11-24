@@ -7,6 +7,9 @@ export interface HopOptions {
   readonly checkAddress: AddressCheck;
   readonly resolveHost: (host: string) => Promise<readonly string[]>;
   readonly signal: AbortSignal;
+
+  // a host-side connection, which an IPv6-only address serves as well as any other
+  readonly allowIPv6Only?: boolean;
 }
 
 export type PlannedHop =
@@ -22,7 +25,10 @@ export async function planHop(text: string, options: HopOptions): Promise<Planne
 
   const host = toBareHost(url.hostname);
   const addresses = isIP(host) === 0 ? await resolveOrAbort(host, options) : [host];
-  const picked = pickConnectAddress(host, addresses, options.checkAddress);
+
+  const picked = pickConnectAddress(host, addresses, options.checkAddress, {
+    allowIPv6Only: options.allowIPv6Only === true,
+  });
 
   return picked.kind === 'connect'
     ? { kind: 'connect', url, address: picked.address }

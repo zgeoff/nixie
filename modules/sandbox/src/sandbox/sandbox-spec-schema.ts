@@ -17,6 +17,9 @@ const grantSchema = z.object({
   // absent for a credential the sandbox host holds, and in a spec stored before grants showed them
   reference: z.string().exactOptional(),
   fingerprint: z.string().exactOptional(),
+
+  // absent in a spec stored before a grant held its paths
+  paths: z.string().array().readonly().exactOptional(),
 });
 
 const limitsSchema = z.object({

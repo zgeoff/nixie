@@ -1168,7 +1168,7 @@ test('it denies a tool the registry does not hold at the registry stage', async 
   const ctx = await setupTest({ tools: [buildMockToolDefinition({ name: 'notes_read' })] });
 
   const result = await runToolCall(
-    { tool: 'shell', input: { query: 'milk' }, toolUseID: null },
+    { tool: 'shell', input: {}, toolUseID: null },
     {
       runID: 'run-1',
       thread: 'task-1',
@@ -1326,7 +1326,7 @@ test('it denies an unlisted tool at the scope stage without checking its input',
   const ctx = await setupTest({ tools: [buildMockToolDefinition({ name: 'notes_read' })] });
 
   const result = await runToolCall(
-    { tool: 'notes_read', input: { query: 'milk' }, toolUseID: null },
+    { tool: 'notes_read', input: {}, toolUseID: null },
     {
       runID: 'run-1',
       thread: 'task-1',
@@ -1990,11 +1990,7 @@ test('it counts no call that came back invalid toward the cap', async () => {
     taskRun: { runID: 'a3f9c2d4', calls: { 'moment.edit': 1 } },
   };
 
-  await runToolCall(
-    { tool: 'moment.edit', input: { query: 'milk' }, toolUseID: 'toolu_1' },
-    run,
-    ctx.options,
-  );
+  await runToolCall({ tool: 'moment.edit', input: {}, toolUseID: 'toolu_1' }, run, ctx.options);
 
   const second = await runToolCall(
     { tool: 'moment.edit', input: { query: 'a' }, toolUseID: 'toolu_2' },
@@ -2147,6 +2143,50 @@ test('it seals the attachments of a result under the result record, in order', a
   expect(entries[1]?.record.erasable).toStrictEqual({
     status: 'readable',
     fields: { result: { text: 'files' } },
+  });
+});
+
+test('it cuts a value nixie holds from the attachments a result seals', async () => {
+  const planted = 'fake-planted-value-8842';
+
+  const ctx = await setupTest({
+    ownValues: () => [planted],
+    tools: [
+      buildMockToolDefinition({
+        name: 'notes_read',
+        run: () =>
+          Promise.resolve({
+            status: 'ok',
+            result: { text: 'files' },
+            attachments: [new Uint8Array(Buffer.from(`out ${planted}`))],
+          }),
+      }),
+    ],
+  });
+
+  await runToolCall(
+    { tool: 'notes_read', input: { query: 'files' }, toolUseID: null },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      logThread: 'task-1',
+      tools: ['notes_read'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  const entries = await readRecords(ctx.log, { afterSequence: 0 });
+
+  const resultSequence = entries[1]?.record.sequence;
+
+  invariant(resultSequence !== undefined);
+
+  const stored = await readRecordAttachments(ctx.log, [resultSequence]);
+
+  expect(stored.get(resultSequence)).toStrictEqual({
+    status: 'readable',
+    attachments: [new Uint8Array(Buffer.from('out [secret removed]'))],
   });
 });
 

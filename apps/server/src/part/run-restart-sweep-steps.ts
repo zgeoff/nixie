@@ -19,13 +19,12 @@ export async function runRestartSweepSteps(parts: ServerParts): Promise<void> {
           imageExemptOwners: [conversationTaskID],
         });
 
-        // No grant is in flight at the start, so every secret nixie added and no sandbox holds goes.
+        // The adapter keeps every name this process added, so a grant a runner already made stays.
         await removeUnheldSecrets({
           log: parts.context.log,
           logger: parts.log,
           adapter: parts.tools.adapter,
           hostHeldNames: collectHostHeldNames(parts.config.models, parts.credentials),
-          readPendingNames: () => [],
         });
       },
     },

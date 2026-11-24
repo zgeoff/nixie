@@ -2,19 +2,43 @@ import type { Sandbox, SandboxAdapter } from '../types';
 import type { UnheldSecretsOptions } from './remove-unheld-secrets';
 import { removeUnheldSecrets } from './remove-unheld-secrets';
 
-export type SecretCleanupOptions = Omit<UnheldSecretsOptions, 'adapter' | 'readPendingNames'>;
+export type SecretCleanupOptions = Omit<UnheldSecretsOptions, 'adapter'>;
 
-// Removes the broker secrets that no live sandbox holds after each sandbox destroy. A secret a
-// grant added stays until a sandbox created with it exists, so a cleanup that runs between the two
-// never removes it. The restart sweep runs the same cleanup at start, when no grant is in flight.
+// Removes the broker secrets that no live sandbox holds after each sandbox destroy, except a name
+// this process added, which a runner may still grant from its cache. Adds and removals run one at a
+// time, so a removal never lands between an add and the sandbox that needs the name.
 export function withSecretCleanup(
   adapter: SandboxAdapter,
   options: SecretCleanupOptions,
 ): SandboxAdapter {
-  const pending = new Set<string>();
+  const added = new Set<string>();
+
+  const queue: { tail: Promise<void> } = { tail: Promise.resolve() };
+
+  const runExclusive = async <Result>(task: () => Promise<Result>): Promise<Result> => {
+    const previous = queue.tail;
+    const turn = Promise.withResolvers<void>();
+
+    queue.tail = turn.promise;
+
+    await previous;
+
+    try {
+      return await task();
+    } finally {
+      turn.resolve();
+    }
+  };
+
+  const removeSecret: SandboxAdapter['removeSecret'] = (name) =>
+    runExclusive(async () => {
+      if (!added.has(name)) {
+        await adapter.removeSecret(name);
+      }
+    });
 
   const clean = (): Promise<readonly string[]> =>
-    removeUnheldSecrets({ ...options, adapter, readPendingNames: () => [...pending] });
+    removeUnheldSecrets({ ...options, adapter: { id: adapter.id, removeSecret } });
 
   const wrap = (sandbox: Sandbox): Sandbox => ({
     ...sandbox,
@@ -48,10 +72,6 @@ export function withSecretCleanup(
     create: async (spec) => {
       const sandbox = await adapter.create(spec);
 
-      for (const grant of spec.grants) {
-        pending.delete(grant.secret);
-      }
-
       return wrap(sandbox);
     },
     read: async (id) => {
@@ -64,12 +84,13 @@ export function withSecretCleanup(
 
       return sandboxes.map((sandbox) => wrap(sandbox));
     },
-    addSecret: async (secret) => {
-      pending.add(secret.name);
+    addSecret: (secret) =>
+      runExclusive(async () => {
+        added.add(secret.name);
 
-      await adapter.addSecret(secret);
-    },
-    removeSecret: adapter.removeSecret,
+        await adapter.addSecret(secret);
+      }),
+    removeSecret,
     addImage: adapter.addImage,
     checkRuntime: adapter.checkRuntime,
   };

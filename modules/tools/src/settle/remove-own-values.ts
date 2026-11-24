@@ -1,9 +1,9 @@
-import { scrubText } from '@heynixie/egress';
+import { scrubBytes, scrubText } from '@heynixie/egress';
 import type { JSONObject, JSONValue } from '@heynixie/log';
 import type { Settled } from './types';
 
-// Cuts each own value out of a settled result, in its content and in its reply, and leaves the
-// marker in its place so the model sees that something was cut.
+// Cuts each own value out of a settled result, in its content, its reply and its attachments, and
+// leaves the marker in its place so the model sees that something was cut.
 export function removeOwnValues(settled: Settled, values: readonly string[]): Settled {
   if (values.length === 0) {
     return settled;
@@ -14,7 +14,14 @@ export function removeOwnValues(settled: Settled, values: readonly string[]): Se
       ? { ...settled.reply, text: scrubText(settled.reply.text, values) }
       : { ...settled.reply, result: scrubObject(settled.reply.result, values) };
 
-  return { ...settled, content: scrubObject(settled.content, values), reply };
+  const attachments = settled.attachments?.map((bytes) => scrubAttachment(bytes, values));
+
+  return {
+    ...settled,
+    content: scrubObject(settled.content, values),
+    reply,
+    ...(attachments === undefined ? {} : { attachments }),
+  };
 }
 
 function scrubObject(object: JSONObject, values: readonly string[]): JSONObject {
@@ -40,4 +47,13 @@ function scrubValue(value: JSONValue, values: readonly string[]): JSONValue {
 
 function isJSONArray(value: JSONValue): value is readonly JSONValue[] {
   return Array.isArray(value);
+}
+
+function scrubAttachment(
+  bytes: Uint8Array<ArrayBuffer>,
+  values: readonly string[],
+): Uint8Array<ArrayBuffer> {
+  const scrubbed = scrubBytes(bytes, values);
+
+  return scrubbed === bytes ? bytes : Uint8Array.from(scrubbed);
 }

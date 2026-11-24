@@ -229,6 +229,24 @@ test('it creates a worker imp from the real spec builder with policy none and no
   ]);
 });
 
+test('it limits a grant with paths and no gateway to those paths on its host', async () => {
+  const ctx = await setupTest();
+
+  const grant = buildMockGrantSpec({ paths: ['/v1/messages', '/v1/models/*'] });
+
+  await seedSecret(ctx.impd, grant.secret, [grant.host]);
+
+  const sandbox = await ctx.adapter.create(buildMockSandboxSpec({ grants: [grant] }));
+
+  expect(ctx.readInputs('grants/add')).toStrictEqual([
+    {
+      name: sandbox.id,
+      secret: grant.secret,
+      filter: { paths: ['/v1/messages', '/v1/models/*'] },
+    },
+  ]);
+});
+
 test.each([
   ['a worker', { kind: 'worker', egress: { kind: 'none' } }],
   ['a coding session', { kind: 'coding', egress: { kind: 'allow', hosts: ['github.com'] } }],

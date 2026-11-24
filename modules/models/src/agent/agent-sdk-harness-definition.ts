@@ -1,5 +1,5 @@
 import type { GrantSpec } from '@heynixie/sandbox';
-import { harnessCapabilities } from '@heynixie/wire';
+import { harnessCapabilities, listModelAPIGlobs } from '@heynixie/wire';
 import type { HarnessDefinition } from '../model/harness';
 import type { ModelProfile, ReasoningEffort } from '../types';
 import { agentSDKProfileSchema } from './agent-sdk-profile-schema';
@@ -31,6 +31,7 @@ export const agentSDKHarnessDefinition: HarnessDefinition<'agent-sdk', AgentSDKP
       secret: secret.name,
       host: secret.host,
       route: profile.id,
+      paths: listModelAPIGlobs('anthropic-messages', new URL(profile.baseURL).pathname),
       ...(secret.reference === undefined
         ? {}
         : { reference: secret.reference, fingerprint: secret.fingerprint }),

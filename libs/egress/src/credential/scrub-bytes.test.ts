@@ -33,3 +33,9 @@ test('it cuts a form inside binary bytes', () => {
     Buffer.concat([Buffer.from([0, 255, 1]), Buffer.from('[secret removed]'), Buffer.from([2])]),
   );
 });
+
+test('it ignores an empty form', () => {
+  const bytes = Buffer.from('nothing here');
+
+  expect(scrubBytes(bytes, [''])).toBe(bytes);
+});

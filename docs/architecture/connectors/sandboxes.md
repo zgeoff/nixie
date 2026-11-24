@@ -88,8 +88,10 @@ the checker's new sandbox starts empty.
 
 Every create, grant, sleep, wake and destroy writes a sandbox record. A grant writes
 `sandbox.grant_started` before the adapter installs the broker secret, so a crash between the two
-leaves a name that cleanup finds. The sandboxes [projection](../../glossary.md) holds one row per
-sandbox that is not yet destroyed, with the adapter that made it, its owner, its state and its spec.
+leaves a name that cleanup finds. Cleanup keeps the names that no started record gives and that only
+a grant without a reference names, because the sandbox host owns those secrets. The sandboxes
+[projection](../../glossary.md) holds one row per sandbox that is not yet destroyed, with the
+adapter that made it, its owner, its state and its spec.
 
 An adapter records a create before it makes anything. A crash between the record and the sandbox
 then leaves a row that the restart sweep finds, and no sandbox exists without a row. A create that

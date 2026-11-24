@@ -67,8 +67,8 @@ async function setupTest(answers: Readonly<Record<string, readonly (readonly str
 
   onTestFinished(() => stack.disposeAsync());
 
-  const serveLocal = (answer: () => Response) => {
-    const server = Bun.serve({ hostname: '127.0.0.1', port: 0, fetch: answer });
+  const serveLocal = (answer: () => Response, hostname = '127.0.0.1') => {
+    const server = Bun.serve({ hostname, port: 0, fetch: answer });
 
     stack.defer(() => server.stop(true));
 
@@ -76,12 +76,13 @@ async function setupTest(answers: Readonly<Record<string, readonly (readonly str
   };
 
   const startLeakingSite = (options: LeakingSiteOptions) =>
-    serveLocal(
-      () =>
-        new Response(options.reply(value), {
-          headers: { 'x-echo': `seen ${value}`, 'content-type': 'text/plain' },
-        }),
-    );
+    serveLocal(() => {
+      const current = values.get(ref.name) ?? value;
+
+      return new Response(options.reply(current), {
+        headers: { 'x-echo': `seen ${current}`, 'content-type': 'text/plain' },
+      });
+    });
 
   return {
     value,
@@ -229,8 +230,31 @@ test('it refuses a URL that holds a user name or a password', async () => {
   const binding = ctx.store.register(ctx.ref, ctx.spec([ctx.origin]));
   const fetchWith = ctx.store.fetcher(binding, [ctx.origin]);
 
-  expect(fetchWith(`https://name:word@service.test:${ctx.site.port}/x`)).rejects.toThrow(
+  expect(fetchWith(`https://name:word@service.test:${ctx.site.port}/x`)).rejects.toThrowWithMessage(
     CredentialRefusalError,
+    'the request URL holds a user name or a password',
+  );
+});
+
+test('it refuses a redirect to a URL that holds a user name or a password', async () => {
+  const ctx = await setupTest();
+
+  const site = await startTestSite({
+    names: ['service.test'],
+    respond: () =>
+      new Response(null, {
+        status: 302,
+        headers: { location: 'https://name:word@service.test/next' },
+      }),
+  });
+
+  const store = ctx.createStore({ ca: site.ca });
+  const origin = `https://service.test:${site.port}`;
+  const fetchWith = store.fetcher(store.register(ctx.ref, ctx.spec([origin])), [origin]);
+
+  expect(fetchWith(`${origin}/x`)).rejects.toThrowWithMessage(
+    CredentialRefusalError,
+    'the redirect holds a user name or a password',
   );
 });
 
@@ -384,14 +408,41 @@ test('it lets a deployment service use http and a private address', async () => 
 });
 
 test.each([
-  { form: 'plain', format: (value: string) => `key=${value}` },
-  { form: 'URL-encoded', format: (value: string) => `key=${encodeURIComponent(value)}` },
+  {
+    form: 'plain',
+    value: 'fake-service-value-0001',
+    format: (value: string) => `key=${value}`,
+  },
+  {
+    form: 'URL-encoded',
+    value: "fake/service+value 0001=!'",
+    format: (value: string) => `key=${encodeURIComponent(value)}`,
+  },
+  {
+    form: 'URL-encoded with lower-case hex',
+    value: 'fake/service+value 0001=',
+    format: (value: string) =>
+      `key=${encodeURIComponent(value).replaceAll(/%[\dA-F]{2}/gu, (escape) => escape.toLowerCase())}`,
+  },
+  {
+    form: 'form-encoded',
+    value: 'fake/service+value 0001=',
+    format: (value: string) => `key=${encodeURIComponent(value).replaceAll('%20', '+')}`,
+  },
   {
     form: 'base64',
+    value: 'fake-service-value-0001',
     format: (value: string) => `key=${Buffer.from(`user:${value}`).toString('base64')}`,
+  },
+  {
+    form: 'base64 of a 4-byte value',
+    value: 'ab12',
+    format: (value: string) => `key=${Buffer.from(`xx${value}-tail`).toString('base64')}`,
   },
 ])('it removes the $form form of the value from a body and a header', async (row) => {
   const ctx = await setupTest();
+
+  ctx.values.set(ctx.ref.name, row.value);
 
   const server = ctx.startLeakingSite({ reply: row.format });
   const origin = `http://gateway.test:${server.port}`;
@@ -407,7 +458,7 @@ test.each([
   expect(response.headers.get('x-echo')).toBe('seen [secret removed]');
   expect(text).toStartWith('key=');
   expect(text).toContain('[secret removed]');
-  expect(buildValueForms(ctx.value).some((form) => text.includes(form))).toBe(false);
+  expect(buildValueForms(row.value).some((form) => text.includes(form))).toBe(false);
 });
 
 test('it removes a value that the service sends split across stream chunks', async () => {
@@ -446,10 +497,12 @@ test('it removes a value that the service sends split across stream chunks', asy
 test('it removes the value from an error message', async () => {
   const ctx = await setupTest();
 
+  ctx.values.set(ctx.ref.name, 'fakehostvalue0003');
+
   const site = await startTestSite({
     names: ['service.test'],
     respond: () =>
-      new Response(null, { status: 302, headers: { location: `https://${ctx.value}.test/` } }),
+      new Response(null, { status: 302, headers: { location: 'https://fakehostvalue0003.test/' } }),
   });
 
   const store = ctx.createStore({ ca: site.ca });
@@ -474,6 +527,140 @@ test('it refuses a response larger than 32 MiB', async () => {
   });
 
   expect(fetchWith(`${origin}/x`)).rejects.toThrow(CredentialRefusalError);
+});
+
+test('it removes the value from the name of a response header', async () => {
+  const ctx = await setupTest();
+
+  const server = ctx.serveLocal(
+    () => new Response('ok', { headers: { [`x-${ctx.value}`]: 'kept-out', 'x-other': 'kept' } }),
+  );
+
+  const origin = `http://gateway.test:${server.port}`;
+  const store = ctx.createStore();
+
+  const fetchWith = store.fetcher(store.register(ctx.ref, ctx.spec([origin])), [origin], {
+    deploymentService: true,
+  });
+
+  const response = await fetchWith(`${origin}/x`);
+
+  expect(Object.fromEntries(response.headers)).toMatchObject({ 'x-other': 'kept' });
+  expect([...response.headers.keys()].join(' ')).not.toContain(ctx.value);
+});
+
+test.each([
+  {
+    kind: 'an abort',
+    reason: (value: string) => new Error(`stopped ${value}`, { cause: value }),
+    expected: { name: 'Error', message: 'stopped [secret removed]' },
+  },
+  {
+    kind: 'a timeout',
+    reason: (value: string) => new DOMException(`slow ${value}`, 'TimeoutError'),
+    expected: { name: 'TimeoutError', message: 'slow [secret removed]' },
+  },
+])('it removes the value from the reason of $kind the caller passes', async (row) => {
+  const ctx = await setupTest();
+
+  const binding = ctx.store.register(ctx.ref, ctx.spec([ctx.origin]));
+  const fetchWith = ctx.store.fetcher(binding, [ctx.origin]);
+
+  const failure = await fetchWith(`${ctx.origin}/x`, {
+    signal: AbortSignal.abort(row.reason(ctx.value)),
+  }).catch((error: unknown) => error);
+
+  expect(failure).toMatchObject(row.expected);
+  expect(failure).not.toHaveProperty('cause');
+});
+
+test('it refuses a compressed response that expands past 32 MiB', async () => {
+  const ctx = await setupTest();
+
+  const bomb = Bun.gzipSync(new Uint8Array(40 * 1024 * 1024));
+
+  const server = ctx.serveLocal(
+    () => new Response(bomb, { headers: { 'content-encoding': 'gzip' } }),
+  );
+
+  const origin = `http://gateway.test:${server.port}`;
+  const store = ctx.createStore();
+
+  const fetchWith = store.fetcher(store.register(ctx.ref, ctx.spec([origin])), [origin], {
+    deploymentService: true,
+  });
+
+  expect(fetchWith(`${origin}/x`)).rejects.toThrowWithMessage(
+    CredentialRefusalError,
+    'the response is larger than the 32 MiB the fetcher buffers',
+  );
+});
+
+test('it reaches a deployment service that has only an IPv6 address', async () => {
+  const ctx = await setupTest();
+
+  const server = ctx.serveLocal(() => new Response('control'), '::1');
+  const origin = `http://[::1]:${server.port}`;
+  const store = ctx.createStore();
+
+  const fetchWith = store.fetcher(store.register(ctx.settingRef, ctx.spec([origin])), [origin], {
+    deploymentService: true,
+  });
+
+  const response = await fetchWith(`${origin}/status`);
+  const text = await response.text();
+
+  expect(text).toBe('control');
+});
+
+test('it plans the address of each hop before a test transport sends it', async () => {
+  const ctx = await setupTest();
+
+  const sent: string[] = [];
+
+  const store = createCredentialStore({
+    secrets: ctx.secrets,
+    resolveHost: () => Promise.resolve(['10.0.0.7']),
+    denied: [],
+    test: {
+      transport: (url) => {
+        sent.push(url);
+
+        return Promise.resolve(new Response('ok'));
+      },
+    },
+  });
+
+  const binding = store.register(ctx.ref, ctx.spec(['https://service.test']));
+  const fetchWith = store.fetcher(binding, ['https://service.test']);
+
+  expect(fetchWith('https://service.test/x')).rejects.toThrowWithMessage(
+    CredentialRefusalError,
+    'service.test resolves to 10.0.0.7, which is not a public address',
+  );
+
+  expect(sent).toStrictEqual([]);
+});
+
+test('it refuses a test transport response larger than 32 MiB', async () => {
+  const ctx = await setupTest();
+
+  const store = createCredentialStore({
+    secrets: ctx.secrets,
+    resolveHost: () => Promise.resolve(['93.184.216.34']),
+    denied: [],
+    test: {
+      transport: () => Promise.resolve(new Response(new Uint8Array(32 * 1024 * 1024 + 1))),
+    },
+  });
+
+  const binding = store.register(ctx.ref, ctx.spec(['https://service.test']));
+  const fetchWith = store.fetcher(binding, ['https://service.test']);
+
+  expect(fetchWith('https://service.test/x')).rejects.toThrowWithMessage(
+    CredentialRefusalError,
+    'the response is larger than the 32 MiB the fetcher buffers',
+  );
 });
 
 test('it adds a registered value to the live set, and a setting joins every scan', async () => {

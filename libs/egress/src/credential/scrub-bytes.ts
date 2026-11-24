@@ -4,6 +4,7 @@ export const removedMarker = '[secret removed]';
 // another is cut whole.
 export function scrubBytes(bytes: Uint8Array, forms: readonly string[]): Uint8Array {
   const needles = [...forms]
+    .filter((form) => form !== '')
     .toSorted((left, right) => right.length - left.length)
     .map((form) => Buffer.from(form, 'utf8'));
 

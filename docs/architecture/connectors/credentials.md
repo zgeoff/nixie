@@ -36,7 +36,8 @@ reads `settings`.
 - `impd_token` and the definitions export secrets stay top-level fields that the server reads at
   start, because no tool uses them.
 - A lint rule refuses a read of the secrets file's groups outside the credentials module, so a value
-  cannot reach a part that bypasses the store.
+  cannot reach a part that bypasses the store. It also refuses a destructured group and a read
+  through a variable that a secrets object was copied to.
 
 ## The fetcher
 
@@ -52,17 +53,20 @@ URL path. The store checks each request before anything leaves the host:
 - The host resolves on every hop, and an address outside the public ranges fails, as in
   [web fetch](web-fetch.md#the-fetcher). The connection goes to the address that passed the check,
   so a second lookup cannot return another one. The spend gateway's control URL is the one service
-  that may use `http` and a private address, because the deployment runs it and names it in the
-  config.
+  that may use `http`, a private address and an IPv6-only address, because the deployment runs it
+  and names it in the config.
 - A request that sets `Authorization`, `Proxy-Authorization`, `Cookie` or the credential's own
-  header, or a URL with a user name or a password, fails. **Why:** a connector that builds one of
-  these from a tool argument would send the request to an allowed host under another account.
+  header, or a URL with a user name or a password, fails. A redirect to a URL with a user name or a
+  password fails too. **Why:** a connector that builds one of these from a tool argument would send
+  the request to an allowed host under another account.
 
 The fetcher removes the value from the response before the connector sees it, in its plain,
-URL-encoded and base64 forms: the status text, each header and the body. It buffers and decodes a
-body up to a fixed cap, and refuses a larger one. The same removal applies to an error message. The
-refusals are `CredentialRefusalError`, which an adapter lets pass, so the tool call fails with an
-error and no reply. The checks live in `libs/egress`, so web fetch shares them.
+URL-encoded and base64 forms: the status text, each header and the body. It buffers a body and
+decodes it up to a fixed cap, and refuses a larger one: the decoder stops at the cap, so a small
+compressed body never allocates what it expands to. The same removal applies to an error message and
+to an abort or timeout reason a caller passes, which loses its cause. A header whose name holds the
+value is dropped. The refusals are `CredentialRefusalError`, which an adapter lets pass, so the tool
+call fails with an error and no reply. The checks live in `libs/egress`, so web fetch shares them.
 
 ## Grants
 
@@ -74,13 +78,21 @@ sandbox adapter, limited to the model host, and the adapter returns the broker's
   broker keeps a granted secret under its name and nixie cannot change its value.
 - A credential that the sandbox host holds keeps the unkeyed name that profile always had, because
   no value goes in.
+- A grant reaches only the paths of the model API the profile speaks, under the path of its base
+  URL, on the model host. A sandbox that has no spend gateway therefore cannot call another endpoint
+  of that host, such as a token endpoint. With the gateway, the grant takes the gateway's route path
+  instead.
 - The sandbox adapter writes `sandbox.grant_started` before it installs the secret, and
   `sandbox.granted` when the sandbox is created. Both records keep the broker's name and host, and
   for a credential nixie holds, its reference and fingerprint.
 - Cleanup removes a broker secret that nixie added once no live sandbox holds a grant of it. It runs
-  at start and after each sandbox destroy. It finds the names in the two records, including the
-  names of a grant that never reached `sandbox.granted`, and never removes a name that a host-held
-  profile gives or that a grant in flight holds.
+  at start and after each sandbox destroy. Only a `sandbox.grant_started` record, or a
+  `sandbox.granted` record with a reference, proves that nixie added a name. A name that only other
+  `sandbox.granted` records give stays, because a credential the sandbox host holds has no reference
+  and its secret belongs to that host, even after its profile leaves the config.
+- A runner caches its grant and makes sandboxes from it later, so cleanup never removes a name the
+  running server added. Such a name stays in the broker until the next start, when the sweep removes
+  it if no live sandbox holds it. Adds and removals run one at a time.
 
 ## Fingerprints and own values
 
@@ -94,8 +106,10 @@ holds as its own. Each scan reads the set when it runs and keeps its own filter:
 
 - The turn-input search, the web fetch scan and the computer scan read the set with
   `web_fetch.secret_own_values` and its minimum length.
-- Every tool result passes a scan of the whole set before it reaches the model or the log. A value
-  found is cut and replaced with `[secret removed]`, so the model sees that something was cut.
+- Every tool result passes a scan of the whole set, whatever a value's length, before it reaches the
+  model or the log. The scan covers the result's fields and its attachments, such as the files of a
+  code run. A value found is cut and replaced with `[secret removed]`, so the model sees that
+  something was cut.
 - The scan of a tool result leaves out the user's name and pronouns, which the prompt shows the
   model by design. The spend gateway's token and every other registered setting stay in.
 
@@ -105,4 +119,5 @@ A test that plants a fake value in the secrets file asserts that the value appea
 result, no log line, no record and no error. `createTestCredentials` in the module's `test-utils`
 builds a resolver and a store over the groups a test names. A test build lets the store send each
 request through the global `fetch` after all its checks, so a mock network answers it, and a release
-build drops that path.
+build drops that path. The test build resolves each `.test` host to a public address, so the address
+checks and the body cap run as they do in a release build.

@@ -259,9 +259,9 @@ host, such as "this key works on all of github.com".
   the name keeps today's unkeyed digest of the first three, since no value goes in. A rotation gives
   a new name, and a sandbox keeps the value it was granted until it is replaced.
 - nixie removes a broker secret it added once no live sandbox holds a grant of it, at start and
-  after each sandbox destroy. It finds the names it added in the `sandbox.grant_started` and
-  `sandbox.granted` records, today's names included, and never removes a name the config's host-held
-  profiles give.
+  after each sandbox destroy. It finds the names it added in the `sandbox.grant_started` records and
+  in the `sandbox.granted` records that carry a reference, and never removes a name the config's
+  host-held profiles give or a name this process added.
 - The store refuses a grant on a token endpoint and a grant of an OAuth client's secret, whatever a
   rule says. imp's broker returns the response body unchanged, so a guest that calls a granted token
   endpoint receives live tokens, as the

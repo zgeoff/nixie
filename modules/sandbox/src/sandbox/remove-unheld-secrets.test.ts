@@ -30,7 +30,14 @@ async function setupTest() {
     {
       event: 'granted',
       sandboxID: 'nixie-gone',
-      secret: 'nixie-model-before-started-records',
+      secret: 'nixie-model-reference-only',
+      host: 'api.example.test',
+      reference: 'deployment:kagi',
+    },
+    {
+      event: 'granted',
+      sandboxID: 'nixie-gone',
+      secret: 'nixie-model-host-held-profile-removed',
       host: 'api.example.test',
     },
   ]);
@@ -43,19 +50,18 @@ async function setupTest() {
       logger,
       adapter: stub.adapter,
       hostHeldNames: ['nixie-model-host'],
-      readPendingNames: (): readonly string[] => [],
     },
   };
 }
 
-test('it removes the names nixie added that no live sandbox holds, a name from before the started record included', async () => {
+test('it removes the names nixie added that no live sandbox holds, a granted record with a reference included', async () => {
   const ctx = await setupTest();
   const removed = await removeUnheldSecrets(ctx.options);
 
   expect(removed).toStrictEqual([
     'nixie-model-old',
     'nixie-model-failed',
-    'nixie-model-before-started-records',
+    'nixie-model-reference-only',
   ]);
 
   expect(ctx.stub.removedSecrets).toStrictEqual(removed);
@@ -73,12 +79,12 @@ test('it keeps the name a live sandbox holds and the name of a host-held profile
   ).toStrictEqual([]);
 });
 
-test('it keeps the name of a grant in flight', async () => {
+test('it keeps a name that only a granted record without a reference names', async () => {
   const ctx = await setupTest();
 
-  await removeUnheldSecrets({ ...ctx.options, readPendingNames: () => ['nixie-model-old'] });
+  await removeUnheldSecrets(ctx.options);
 
-  expect(ctx.stub.removedSecrets).not.toContain('nixie-model-old');
+  expect(ctx.stub.removedSecrets).not.toContain('nixie-model-host-held-profile-removed');
 });
 
 test('it never removes a name the records do not hold', async () => {
@@ -102,7 +108,7 @@ test('it logs a name whose removal failed and goes on with the rest', async () =
     adapter: { id: ctx.stub.adapter.id, removeSecret },
   });
 
-  expect(removed).toStrictEqual(['nixie-model-failed', 'nixie-model-before-started-records']);
+  expect(removed).toStrictEqual(['nixie-model-failed', 'nixie-model-reference-only']);
 
   expect(ctx.logger).toHaveBeenCalledWith(
     'sandbox.secret_remove_failed',
