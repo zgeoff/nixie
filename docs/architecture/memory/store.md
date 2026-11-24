@@ -566,9 +566,10 @@ The runner holds these rules, which the code enforces:
 - A stuck forget shows in 3 places, each read from the open erasures in the log, so they need no
   record of their own. The web client shows a "forget stuck" notice with a retry button, through
   `erasure.readStuck` and `erasure.retryStuck`. The conversation's model lists stuck forgets with
-  the `forget.stuck` tool and runs them again with `forget.retry`. Each shows the kind, the short ID
-  and the minutes open, never the erasure's own ID. A retry goes through the runner's queue, so it
-  never runs beside the watch's retry.
+  the `forget.stuck` tool and runs them again with `forget.retry`. A retry only finishes a forget
+  that a checked action or the host already started, so the model still never starts one. Each shows
+  the kind, the short ID and the minutes open, never the erasure's own ID. A retry goes through the
+  runner's queue, so it never runs beside the watch's retry.
 
 Every step of the cleanup is safe to run twice. A crash between the 2 parts, or anywhere inside the
 cleanup, leaves the item forgetting, and the store's start runs the cleanup for every forgetting

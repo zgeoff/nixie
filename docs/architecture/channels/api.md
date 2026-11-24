@@ -316,7 +316,7 @@ hangs.
 The action's `action.outcome` record holds the removed record's event ID and kind, never its text.
 The API reads them into the `removal` field of the contract record, with the sequence of the call
 that asked for the removal, and the web client shows one muted line under the last reply of the turn
-that made the call, even when the owner approved the call after later turns.
+that made the call, even when the user approved the call after later turns.
 
 ## Stuck forgets
 
