@@ -45,7 +45,7 @@ reaches a device.
 // You start a call from the call screen.
 const call = await nixie.calls.start({ clientActionID });
 // → { callID: 'c_7Q2', state: 'connecting' }
-//   or { error: 'CALL_RUNNING' | 'VOICE_OFF' | 'CALL_BUDGET_REACHED' | 'VOICE_CREDENTIAL_REFUSED' }
+//   or { error: 'CALL_RUNNING' | 'VOICE_OFF' | 'CALL_BUDGET_REACHED' }
 
 // The device sends its WebRTC offer; the server creates the GPT-Live session with it.
 const { sdpAnswer } = await nixie.calls.connect({ callID, sdpOffer });
@@ -60,8 +60,9 @@ await nixie.calls.hangUp({ callID, clientActionID }); // idempotent
 interface SpeechLayer {
   // Creates the session from the device's offer, with `store: false`, and opens the sideband.
   open(input: OpenSpeech): Promise<{ sdpAnswer: string; sessionID: string } | SpeechRefused>;
-  // Sends nixie's answer for a hand-off; the speech layer speaks it.
-  answer(sessionID: string, handOffID: string, text: string): Promise<void>;
+  // Sends one part of nixie's answer for a hand-off; the speech layer speaks it. The last part sets
+  // `final`, which closes the hand-off.
+  answer(sessionID: string, handOffID: string, text: string, final: boolean): Promise<void>;
   // Sends a line for the speech layer to say now, such as the reconnect line.
   say(sessionID: string, text: string): Promise<void>;
   close(sessionID: string): Promise<void>;
@@ -82,51 +83,61 @@ type SpeechEvent =
   | { kind: 'heard'; text: string; startedAtMs: number; endedAtMs: number } // your speech
   | { kind: 'spoke'; text: string; heardUntilMs: number } // the speech layer's own small talk
   | { kind: 'hand_off'; handOffID: string; request: string }
-  | { kind: 'cut'; handOffID: string; heardChars: number } // you talked over a reply; it stopped
+  // You talked over a reply and it stopped. The adapter counts heardChars from the timing of the
+  // speech layer's output transcript.
+  | { kind: 'cut'; handOffID: string; heardChars: number }
   | { kind: 'session_ending' } // the provider's session limit is near
   | { kind: 'dropped' };
 ```
 
 ### The call thread
 
-A call runs on the conversation runner as a second thread, beside the conversation. Its task row
-takes a new start variant, `call`, and each hand-off is one turn of that thread, which commits at
-its end as every step does. Running on the conversation runner gives a call what a started task
-lacks:
+A call runs on a runner of its own, `call`, which runs the conversation's turn code on the call's
+task. Each hand-off is one turn of the call's thread, which commits at its end as every step does.
+The `call` runner gives a call what a started task lacks:
 
 - A turn writes reply records, and the calls module sends their text to the speech layer as the turn
   writes it.
 - A message that lands during a turn reaches it as a mid-turn message, and your speech cuts a model
   call in flight, as in the conversation.
-- The call holds one sandbox from `connect` to its end, so a hand-off never waits for a sandbox to
-  start.
+- The runner claims from a pool of its own, so a call's turn never waits behind a conversation turn.
+- The call holds one sandbox of its own from `connect` to its end, granted the `call` role's
+  credential, so a hand-off never waits for a sandbox to start. The restart sweep keeps it while a
+  call waits to reconnect, and the call's end destroys it.
 
 ```ts
-// tasks module: the start variant the calls module writes when a call connects.
+// tasks module: the creation record's start for a task of the `call` runner.
 type CallTaskStart = {
-  variant: 'call';
+  runner: 'call';
   callID: string; // the call's short ID
   seedThrough: number; // the last conversation sequence the call's session opens with
 };
 ```
 
-- The call's session opens as a rebuilt session does, from the conversation's recent turns through
-  `seedThrough`. A forget of a seeded record reaches the call's session as it reaches any rebuilt
-  session.
-- The call keeps the conversation's persona, memory and tool list, without `call.ring`, and with
-  `call.hang_up`, which ends the call after the speech layer says the turn's last line. A memory
-  write whose quote touches a `dictated` span becomes a proposal, as for any `dictated` text.
+- The session builder reads two threads for a call: the conversation's recent turns and summary
+  through `seedThrough`, then the call's own thread. It gives the call the conversation's pinned
+  memory, memory index and retrieval. A forget invalidates the call's session as it invalidates the
+  conversation's, and the next turn rebuilds it.
+- The call takes the conversation's prompt with the voice-call prompt after it, and the
+  conversation's persona and tool list, without `call.ring`, `task.start` and `worker.run`, and with
+  `call.hang_up`, which ends the call after the speech layer says the turn's last line. It can
+  `task.message` the conversation. A memory write whose quote touches a `dictated` span becomes a
+  proposal, as for any `dictated` text. A call gets no reminders and no compaction.
 - The call's turns use the `call` model role, a new key of `models.roles`. Unset, a call uses the
   conversation's profile.
-- Each `heard` event becomes one message record from you on the call thread, with a short ID and
-  each span's source `dictated`. A `hand_off` starts a turn over the messages since the last turn.
-  `call.handed_off` keeps the speech layer's wording of the request, for timing and fidelity checks.
+- Each `heard` event becomes one `owner_message` record on the call thread, with a short ID and one
+  span of source `dictated` over its text. A `hand_off` starts a turn over the messages since the
+  last turn. `call.handed_off` keeps the speech layer's wording of the request, for timing and
+  fidelity checks.
+- The calls module sends a turn's reply text to the speech layer in parts as the turn writes it, and
+  sends `final: true` with the last part. Every hand-off gets a final part, even when the turn wrote
+  no text, so the speech layer never waits on it.
 - A turn that fails, ends on a proposal or passes a limit sends the speech layer a fixed line that
-  claims no outcome, such as "I couldn't finish that one". A turn that ends with no text sends
-  nothing.
-- When the call ends, the calls module runs one last turn, which posts the summary to the
-  conversation with `task.report`. When that turn fails, or a budget ended the call, the calls
-  module posts a report without a summary that links the call's record.
+  claims no outcome, such as "I couldn't finish that one". The fixed lines live in `voice/` in the
+  definitions, and each one spoken is a `call.spoke` record.
+- When the call ends, by any cause, the calls module writes a `task_message` of kind `report` to the
+  conversation. It holds the summary that the call's last turn wrote. When that turn fails or cannot
+  run, the report holds no summary and links the call's record.
 
 ```text
 calls projection (calls module; one row per call)
@@ -139,8 +150,12 @@ started_at, ended_at
 
 `calls.connect` is a checked action from the carrying session alone. It refuses with
 `CALL_NOT_FOUND`, `NOT_CARRYING_SESSION`, `CALL_CONNECTED`, `SPEECH_UNAVAILABLE` or
-`VOICE_CREDENTIAL_REFUSED`. The server process holds the sideband. After a server restart, the calls
-module keeps a live call for 30 s, and the device reconnects it with a fresh `calls.connect`.
+`VOICE_CREDENTIAL_REFUSED`. The server process holds the sideband.
+
+Every new speech-layer session needs a fresh offer from the device. When the session limit is near,
+a session drops or the server restarts, the server sends `call.reconnect` on the device's live
+stream, and the device answers with a fresh `calls.connect`. After a restart, the device reconnects
+on its own when its live stream returns. The calls module keeps the call for 30 s while it waits.
 
 ```text
 call record kinds (log module; each holds plain payload fields only, unless marked erasable)
@@ -155,9 +170,11 @@ call.heard_cut   callID, handOffID, replyRecordID, heardChars
 call.turn_timed  callID, handOffID, firstAudioMs, handOffWaitMs, cutOffByLayer, interruptedByYou
 ```
 
-- Every `call.*` record sits on the call's thread, except `call.rang`, which sits on the thread that
-  rang. `carryingSession` is the device session's identity ID. `minutes` counts the minutes the call
-  was open.
+- `call.started`, `call.answered` and `call.ended` sit on the conversation's thread as inbox kinds,
+  so each one wakes the conversation. `call.rang` sits on the thread that rang. Every other `call.*`
+  record sits on the call's thread. The calls module owns the record kinds and the projection's
+  migration. `carryingSession` is the device session's identity ID. `minutes` counts the minutes the
+  call was open.
 - The span schema in the client contract gains the source `dictated`. Only a call writes it.
 - Before each hand-off, the calls module writes the speech layer's small talk since the last
   hand-off as `call.spoke` records, so the turn reads the call so far.
@@ -174,7 +191,8 @@ call.turn_timed  callID, handOffID, firstAudioMs, handOffWaitMs, cutOffByLayer, 
 ### Ringing you
 
 ```ts
-// A tool of the conversation and of every task that holds it; it goes through the decision point.
+// A tool of the conversation and of every started task granted it, never of a call.
+// It goes through the decision point.
 await tools.call.ring({ reason: 'Your 3pm moved to 4pm and the venue changed' });
 // → { callID: 'c_9K1', ringing: true }
 //   or { refused: 'do_not_disturb' | 'quiet_hours' | 'call_running' | 'no_device' }
@@ -229,8 +247,11 @@ budgets/call-day.yaml, budgets/call-month.yaml   counts: tool:call, limit in dol
 - Your call audio goes to OpenAI, off the host, as
   [0014](../../../decisions/0014-voice-pipeline.md#consequences) accepts.
 - The deployment's speech credential never reaches a device. The server creates every session.
-- A missing or refused speech credential stops a call at start with `VOICE_CREDENTIAL_REFUSED`, and
-  nixie keeps running.
+- A missing or refused speech credential stops a call at `calls.connect` with
+  `VOICE_CREDENTIAL_REFUSED`, the call ends with `endedBy: 'dropped'`, and nixie keeps running.
+- `calls.start` makes the caller's session the carrying session. A refused start writes nothing.
+- The adapter takes a hand-off's request from GPT-Live's delegation event. When the event holds no
+  request text, the adapter uses your speech since the last hand-off.
 - One call runs at a time. A second start or ring gets `CALL_RUNNING`.
 - The speech layer answers small talk only, and hands every request to nixie's turn.
 - The speech layer never sees memory: its instructions hold the voice-call prompt and the call so
@@ -253,11 +274,13 @@ budgets/call-day.yaml, budgets/call-month.yaml   counts: tool:call, limit in dol
 - When 3 attempts to open the next session fail, or the device and the speech session are both gone
   for 30 s, the call ends with `endedBy: 'dropped'`, and a new call can start.
 - The calls module charges `price_per_minute` as one `budget.charged` record for each started
-  minute, under the tool name `call`, so the built-in `call-day` and `call-month` budgets apply, at
-  $5 a day and $50 a month. The first minute charges at `connect`, and a call that never connects
-  charges nothing. `calls.start` checks both budgets before it creates anything. When a budget is
-  reached, nixie says so and the call ends with `endedBy: 'budget'`. The call's Claude turns count
-  toward the spending stop as every turn does. A ring charges nothing.
+  minute, with a new charge purpose, `call_minute`. It registers `call-day` and `call-month` as
+  built-in budgets, at $5 a day and $50 a month, as a paid tool's budgets are. The first minute
+  charges in the `connect` transaction, and a call that never connects charges nothing. A minute
+  that does not fit the budget charges nothing and ends the call. `calls.start` checks both budgets
+  before it creates anything. When a budget is reached, nixie says so and the call ends with
+  `endedBy: 'budget'`. The call's Claude turns count toward the spending stop as every turn does. A
+  ring charges nothing.
 - A config without the `voice` key turns calls off: `calls.start` answers `VOICE_OFF`, and nixie
   holds no `call.ring` tool.
 - A call that stays `connecting` for 30 s with no `calls.connect` ends with `endedBy: 'dropped'`.
@@ -271,9 +294,9 @@ budgets/call-day.yaml, budgets/call-month.yaml   counts: tool:call, limit in dol
 
 ## Decisions
 
-- **A call is its own thread on the conversation runner.** The conversation stays free during a
-  call, the call's record stays readable as a task's, and the call keeps the conversation's mid-turn
-  messages and a sandbox held for its whole length.
+- **A call is its own thread, on a `call` runner that runs the conversation's turn code.** The
+  conversation stays free during a call, the call's record stays readable as a task's, and the call
+  keeps the conversation's mid-turn messages and a sandbox held for its whole length.
 - **Each hand-off is one turn.** A turn commits at its end, so a crash reruns one hand-off and never
   the speech you heard.
 - **The device carries the audio, the server holds the key.** Audio takes the shortest path, and the

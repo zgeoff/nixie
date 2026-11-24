@@ -17,9 +17,11 @@ the answer to every request and GPT-Live speaks it.
   equal. Both pipelines in the run spoke through Piper, which you ruled out as nixie's voice.
 - Claude writes every answer to a request, so a request keeps nixie's model choice, memory context
   and route through the [decision point](../architecture/policy/decision-point.md).
-- Once Claude writes the answers, Grok Voice waits for nixie's turn the same way. GPT-Live then
-  leads on the long tail of its end-of-turn wait and on quiet speech, and its delegation is built
-  and measured.
+- Once Claude writes the answers, Grok Voice would wait for nixie's turn the same way. What sets the
+  two apart is each one's own turn-taking, which the reply run measured on real speech: GPT-Live's
+  end-of-turn wait has the shorter tail, it answered quiet speech that Grok Voice missed, and its
+  delegation is built and measured. [Voice calls](../design/platform/channels/voice.md) designs the
+  call on it.
 
 ## Rejected alternatives
 
