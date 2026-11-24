@@ -432,6 +432,10 @@ raw socket or `curl --noproxy` finds no route out. The proxy for commands refuse
 it cannot read an encrypted tunnel, so the shell reaches plain HTTP sites only, and the browser
 fetches the rest. A command's processes end with the command.
 
+Each command also has a process namespace and a mount namespace with a `/proc` of its own, so `ps`
+and `/proc` list only the command's processes. The display server, the remote-screen socket path and
+the browser's flags stay out of sight. The command's first process, the bridge, is PID 1.
+
 Nixie scans the URL of a click, a fill and a run the same way, with no typed-URL exemption, because
 a queued action has no message to exempt it.
 

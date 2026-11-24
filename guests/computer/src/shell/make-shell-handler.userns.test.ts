@@ -339,3 +339,28 @@ test('it gives a command no route to a socket in the guest network namespace, su
     accepted: [],
   });
 });
+
+test('it shows a command only its own processes in ps and /proc', async () => {
+  const ctx = await setupTest();
+
+  const outside = Bun.spawn(['sleep', '4242']);
+
+  onTestFinished(() => {
+    outside.kill();
+  });
+
+  const reply = await ctx.send({
+    op: 'run',
+    argv: ['bash', '-c', String.raw`ps -e -o args=; echo ---; tr "\0" " " < /proc/1/cmdline`],
+    timeoutSeconds: 20,
+  });
+
+  invariant(reply.kind === 'run');
+
+  const [processes = '', firstProcess = ''] = reply.run.stdout.text.split('---\n');
+
+  expect(reply.run.exitCode).toBe(0);
+  expect(processes).not.toInclude('sleep 4242');
+  expect(processes).not.toInclude(String(process.pid));
+  expect(firstProcess).toInclude('bridge-main.ts');
+});
