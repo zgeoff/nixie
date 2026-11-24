@@ -39,8 +39,8 @@ export interface PublishTarget {
 }
 
 // A failure that restic reports becomes a failed receipt, which nixie records and reports; any
-// other failure leaves the set without a receipt, so the next run publishes it again. An erasure
-// can finish while the keys copy, so a set withdrawn by then leaves no receipt and no key snapshot.
+// other failure leaves the set without a receipt. An erasure can finish at any step, so the floor
+// is read again after each slow step, and a withdrawn set writes no receipt and removes its key snapshot.
 export async function publishBackupSet(
   repos: BackupRepos,
   config: PublishConfig,
@@ -82,9 +82,9 @@ export async function publishBackupSet(
     return buildFailedReceipt(set, keySnapshotID.refused);
   }
 
-  const isWithdrawn = await target.probeIsWithdrawn();
+  const isWithdrawnAfterKeys = await target.probeIsWithdrawn();
 
-  if (isWithdrawn) {
+  if (isWithdrawnAfterKeys) {
     await removeKeySnapshot(repos.keys, keySnapshotID);
 
     return null;
@@ -108,7 +108,22 @@ export async function publishBackupSet(
     },
   );
 
+  const isWithdrawnAfterData = await target.probeIsWithdrawn();
+
+  if (isWithdrawnAfterData) {
+    await removeKeySnapshot(repos.keys, keySnapshotID);
+
+    return null;
+  }
+
   const keys = await removeOtherKeySnapshots(repos.keys, keySnapshotID, failures);
+  const isWithdrawnAfterPublish = await target.probeIsWithdrawn();
+
+  if (isWithdrawnAfterPublish) {
+    await removeKeySnapshot(repos.keys, keySnapshotID);
+
+    return null;
+  }
 
   if (note !== null) {
     await files.removeFile(notePath).catch((error: unknown) => {
@@ -284,7 +299,9 @@ function pickKeyTagValues(count: PublishCount, note: RestoreNoteRead | null): Ke
   }
 
   if (previous === null) {
-    return { legacySet: null, provenFrom: null };
+    return count.hasPublishNumber
+      ? { legacySet: null, provenFrom: count.publish }
+      : { legacySet: null, provenFrom: null };
   }
 
   if (previous.publish === null) {

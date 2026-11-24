@@ -561,3 +561,88 @@ test('it throws and writes no receipt when the key snapshot of a withdrawn set c
   expect(pass).rejects.toThrow();
   expect(hasReceipt).toBeFalse();
 });
+
+test('it publishes nothing and keeps the older key snapshot when a finished erasure withdraws the set while its data snapshot writes', async () => {
+  const ctx = await setupTest();
+
+  await ctx.stageSet(1);
+  await ctx.runPass(ctx.repos);
+  await ctx.stageSet(2);
+
+  const erasing = {
+    keys: ctx.repos.keys,
+    data: {
+      ...ctx.repos.data,
+      writeSnapshot: async (path: string, name: string, tags: readonly string[]) => {
+        await writeFile(
+          join(ctx.config.stagingDir, 'floor.json'),
+          formatBackupFile({ format: 1, sequence: 2 }),
+        );
+
+        return ctx.repos.data.writeSnapshot(path, name, tags);
+      },
+    },
+  };
+
+  const receipts = await ctx.runPass(erasing);
+  const keys = await ctx.repos.keys.readSnapshots();
+
+  const hasReceipt = await Bun.file(
+    join(getBackupSetDir(ctx.config.stagingDir, 2), 'receipt.json'),
+  ).exists();
+
+  expect(receipts).toStrictEqual([]);
+  expect(keys).toStrictEqual([expect.objectContaining({ set: 1, publish: 1 })]);
+  expect(hasReceipt).toBeFalse();
+});
+
+test('it removes its key snapshot and keeps the note when a finished erasure withdraws the set while the key repo is checked', async () => {
+  const ctx = await setupTest();
+
+  await ctx.stageSet(1);
+  await ctx.runPass(ctx.repos);
+  await ctx.stageSet(2);
+  await ctx.writeNote(null);
+
+  const erasing = {
+    data: ctx.repos.data,
+    keys: {
+      ...ctx.repos.keys,
+      runCheck: async () => {
+        await writeFile(
+          join(ctx.config.stagingDir, 'floor.json'),
+          formatBackupFile({ format: 1, sequence: 2 }),
+        );
+
+        await ctx.repos.keys.runCheck();
+      },
+    },
+  };
+
+  const receipts = await ctx.runPass(erasing);
+  const keys = await ctx.repos.keys.readSnapshots();
+  const hasNote = await ctx.probeNote();
+
+  const hasReceipt = await Bun.file(
+    join(getBackupSetDir(ctx.config.stagingDir, 2), 'receipt.json'),
+  ).exists();
+
+  expect(receipts).toStrictEqual([]);
+  expect(keys).toStrictEqual([]);
+  expect(hasNote).toBeTrue();
+  expect(hasReceipt).toBeFalse();
+});
+
+test('it raises proven-from for the first key snapshot of an empty key repo while the data repo holds a publish number', async () => {
+  const ctx = await setupTest();
+
+  await ctx.writeTaggedSnapshot(ctx.repos.data, ['set-3', 'kind-scheduled', 'publish-3']);
+  await ctx.stageSet(4);
+  await ctx.runPass(ctx.repos);
+
+  const keys = await ctx.repos.keys.readSnapshots();
+
+  expect(keys).toStrictEqual([
+    expect.objectContaining({ set: 4, publish: 4, legacySet: null, provenFrom: 4 }),
+  ]);
+});
