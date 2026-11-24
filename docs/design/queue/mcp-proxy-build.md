@@ -1,6 +1,6 @@
 # The MCP proxy build
 
-- **Status:** draft
+- **Status:** agreed
 - **Work items:** [the proxy](https://linear.app/zgeoff/issue/GEO-1842). It needs
   [the credential store](https://linear.app/zgeoff/issue/GEO-1824),
   [untrusted markers on a direct tool's result](https://linear.app/zgeoff/issue/GEO-2836) and

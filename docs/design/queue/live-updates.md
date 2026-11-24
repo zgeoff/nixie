@@ -1,6 +1,6 @@
 # Live updates and presence
 
-- **Status:** draft
+- **Status:** agreed
 
 The web client hears of a pause, a spending stop or a backup notice up to a minute late, because it
 polls for them. One page can also hold 3 record streams. The server pushes changes to the web client

@@ -1,6 +1,6 @@
 # Trusted places
 
-- **Status:** draft
+- **Status:** agreed
 - **Work items:** [the vault](https://linear.app/zgeoff/issue/GEO-2731),
   [locked entries](https://linear.app/zgeoff/issue/GEO-2814),
   [the wallet](https://linear.app/zgeoff/issue/GEO-2757),

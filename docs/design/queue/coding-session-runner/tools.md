@@ -1,6 +1,6 @@
 # The coding session runner: the tools
 
-- **Status:** draft
+- **Status:** agreed
 - **Work items:** [the atc runner](https://linear.app/zgeoff/issue/GEO-1843)
 
 nixie works with a coding session through these tools of the coding module: it lists the sessions it

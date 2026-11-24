@@ -1,6 +1,6 @@
 # CEL conditions on rules
 
-- **Status:** draft
+- **Status:** agreed
 - **Work items:** [the rest of the rules design](https://linear.app/zgeoff/issue/GEO-2785)
 - **Decision records:** [0004](../../decisions/0004-rule-engine.md)
 

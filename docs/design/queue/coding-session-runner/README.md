@@ -1,6 +1,6 @@
 # The coding session runner
 
-- **Status:** draft
+- **Status:** agreed
 - **Work items:** [the atc runner](https://linear.app/zgeoff/issue/GEO-1843),
   [supervised sessions in the live view](https://linear.app/zgeoff/issue/GEO-311)
 

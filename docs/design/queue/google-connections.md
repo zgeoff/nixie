@@ -1,8 +1,7 @@
 # Google connections
 
-- **Status:** draft
-- **Work items:** [the connections](https://linear.app/zgeoff/issue/GEO-1824). The
-  [OAuth return spike](https://linear.app/zgeoff/issue/GEO-267) settles this page's open question.
+- **Status:** agreed
+- **Work items:** [the connections](https://linear.app/zgeoff/issue/GEO-1824).
 - **Decision records:** [0010](../../decisions/0010-oauth-clients.md),
   [0007](../../decisions/0007-crypto-shredding.md)
 
@@ -356,6 +355,10 @@ stays a `POST` with nixie's custom client header
   OAuth client, and a config key would be one more value to keep in step with the client.
 - **A consent for an account already connected updates that connection.** A second connection would
   leave a second grant at Google, and revoking either would end both.
+- **The return route lives on the deployment's own https name, even one that resolves only inside
+  its private network, and nixie always sends PKCE.** The browser, not Google, follows the redirect,
+  and Google accepts both on a Web application client, as
+  [the OAuth spike](../../../research/google-oauth/results.md#the-web-application-client) found.
 
 ## Builder decides
 
@@ -368,13 +371,3 @@ stays a `POST` with nixie's custom client header
 ## Out of scope
 
 - A second OAuth client per connector, and connectors from other providers.
-
-## Open questions
-
-- **Does Google accept a redirect URI on a private-network HTTPS name, and PKCE on a Web application
-  client?** [The OAuth return spike](https://linear.app/zgeoff/issue/GEO-267) settles it. The return
-  route does not wait for it: it is built as above and tested against a fake Google, with PKCE
-  behind a switch. Until the spike reports, the guide asks for a redirect URI host under a public
-  suffix. The browser follows the redirect, so a public name that resolves only inside the private
-  network works. When Google refuses PKCE on a Web application client, nixie drops it, because the
-  return's security never rests on it.

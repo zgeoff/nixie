@@ -34,13 +34,13 @@ reached it with no extra setup.
 
 ## Answer
 
-| Check                                  | Result                                       |
-| -------------------------------------- | -------------------------------------------- |
-| Consent to `gmail.modify`, unverified  | Granted, with all 3 scopes                   |
-| "Google hasn't verified this app" page | Not shown to the owner, who owns the project |
-| Refresh on day 0                       | HTTP 200                                     |
-| Gmail, Calendar and Drive calls        | HTTP 200 each, once each API was enabled     |
-| Refresh on day 8                       | HTTP 200, and HTTP 200 from each API         |
+| Check                                  | Result                                   |
+| -------------------------------------- | ---------------------------------------- |
+| Consent to `gmail.modify`, unverified  | Granted, with all 3 scopes               |
+| "Google hasn't verified this app" page | Not shown to the consenting account      |
+| Refresh on day 0                       | HTTP 200                                 |
+| Gmail, Calendar and Drive calls        | HTTP 200 each, once each API was enabled |
+| Refresh on day 8                       | HTTP 200, and HTTP 200 from each API     |
 
 - A production app with no test users keeps a working refresh token past testing mode's 7-day limit,
   and needs no Google Cloud setup beyond the 4 steps in [Setup the owner did](#setup-the-owner-did).
@@ -53,6 +53,20 @@ reached it with no extra setup.
   includes them.
 - The warning page did not appear, most likely because the consenting account owns the project. This
   is observed, not confirmed by a Google page.
+
+## The Web application client
+
+A second run, on 25 Nov 2026, answered
+[the OAuth return spike](https://linear.app/zgeoff/issue/GEO-267) with a Web application client in
+the same kind of project, published to production.
+
+- Google accepted a redirect URI and a JavaScript origin on an https name that resolves only inside
+  the deployment's private network, with no warning. Consent completed, and the browser followed the
+  redirect there with `state`, `iss` (`https://accounts.google.com`), `code` and `scope`.
+- Google accepted PKCE S256 beside the client secret. The token request carried both, and Google
+  answered 200 with an access token, an ID token and a refresh token, which the run then revoked.
+- The run sent the right verifier only, so it does not show that Google refuses a wrong one. The
+  client secret guards the exchange either way.
 
 ## Untested
 

@@ -1,6 +1,6 @@
 # Mail
 
-- **Status:** draft
+- **Status:** agreed
 - **Work items:** [the assistant's own mailbox](https://linear.app/zgeoff/issue/GEO-2816) and
   [the mail polls](https://linear.app/zgeoff/issue/GEO-1827)
 

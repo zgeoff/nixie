@@ -1,6 +1,6 @@
 # The coding session runner: the atc adapter
 
-- **Status:** draft
+- **Status:** agreed
 - **Work items:** [the atc runner](https://linear.app/zgeoff/issue/GEO-1843)
 
 atc is a separate program that runs coding sessions, one daemon per machine, and atc-gateway serves

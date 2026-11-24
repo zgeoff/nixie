@@ -1,6 +1,6 @@
 # One price source and one ledger
 
-- **Status:** draft
+- **Status:** agreed
 - Decisions: [0012](../../decisions/0012-spending-stop.md), which puts the count that stops spending
   in the model gateway, outside nixie
 

@@ -1,6 +1,6 @@
 # One way to forget
 
-- **Status:** draft
+- **Status:** agreed
 
 You can forget a memory item, a moment, a note, a record, an image or the whole conversation. nixie
 forgets by destroying the keys that seal a thing, then cleaning up every index, session and spool
