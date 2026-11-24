@@ -2,8 +2,8 @@
 
 A memory item is one stored fact, such as "the spare key sits under the blue flowerpot", and every
 change to its text or state adds a version that nixie never rewrites. Every value of an item, its
-text included, is encrypted under keys that belong to that item alone, so a forget deletes those
-keys and every version becomes unreadable at once, in the database and in every backup of it, under
+text included, is encrypted under keys that belong to that item, so a forget deletes those keys and
+every version becomes unreadable at once, in the database and in every backup of it, under
 [0007](../../decisions/0007-crypto-shredding.md). The model and the client reach memory through one
 interface whose verbs are recall, remember, edit, edit labels, retire, restore, undo, pin, unpin and
 forget. The `modules/memory` package holds the store.
