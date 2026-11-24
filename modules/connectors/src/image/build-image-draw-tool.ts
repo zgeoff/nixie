@@ -5,6 +5,7 @@ import type { DrawReply, ImageProvider } from '../types';
 import { getPageSession } from '../utils/get-page-session';
 import { probeSessionEnded } from '../web/probe-session-ended';
 import { buildImageOutput } from './build-image-output';
+import { buildListedRefusal } from './build-listed-refusal';
 import { collectImageProfiles } from './collect-image-profiles';
 import { convertToPng } from './convert-to-png';
 import { drawArguments } from './draw-arguments';
@@ -92,9 +93,12 @@ export function buildImageDrawTool(options: ImageToolOptions): ToolDefinition {
       check: async (input, context) => {
         const sources = await readDrawSources(options, drawArguments.parse(input));
 
-        return sources.kind === 'refused'
-          ? sources.refusal
-          : holdRoomOrRefuse(context.run, context.callID);
+        const refusal =
+          sources.kind === 'refused'
+            ? sources.refusal
+            : holdRoomOrRefuse(context.run, context.callID);
+
+        return refusal === null ? null : buildListedRefusal(options.images, refusal);
       },
       release: (context) => {
         context.run.session?.releaseImageRoom?.(context.callID);
@@ -106,7 +110,7 @@ export function buildImageDrawTool(options: ImageToolOptions): ToolDefinition {
         const sources = await readDrawSources(options, drawArguments.parse(call.input));
 
         return sources.kind === 'refused'
-          ? { status: 'ok', ...sources.refusal }
+          ? { status: 'ok', ...buildListedRefusal(options.images, sources.refusal) }
           : await runDraw(options, sources, { run: context.run, callID: call.callID });
       } finally {
         context.run.session?.releaseImageRoom?.(call.callID);
@@ -120,8 +124,8 @@ const drawDescription =
   'at a time. nixie keeps every picture it gets back and sends the stored bytes with each edit, ' +
   'so name the image to edit in `from`. `references` are up to 4 image IDs that the provider ' +
   'sees beside the prompt, so a subject stays the same. The picture shows beside the result. A ' +
-  'call is paid. A provider can refuse a prompt: the refusal lists the other profiles, and you ' +
-  'choose whether to retry on one. A failed draw lists the profiles too. A draw that names a ' +
+  'call is paid. A provider can refuse a prompt: the refusal, like every other failed draw, lists ' +
+  'the profiles with their models, and you choose whether to retry on one. A draw that names a ' +
   'photo of the owner is sent to the provider only when the owner allows it.';
 
 function formatDrawDescription(images: ImagesConfig): string {
@@ -249,21 +253,24 @@ function refuseReply(
   sources: Extract<DrawSources, { kind: 'ready' }>,
   reply: Exclude<CalledReply, { kind: 'image' }>,
 ) {
-  const listed = { profiles: collectImageProfiles(options.images) };
-
   if (reply.kind === 'refused') {
     return {
-      ...refuseImage('IMAGE_REFUSED', reply.message, {
-        refused: { profile: sources.picked.key, reason: reply.reason },
-        rest: { profiles: collectImageProfiles(options.images, sources.picked.key) },
-      }),
+      ...buildListedRefusal(
+        options.images,
+        refuseImage('IMAGE_REFUSED', reply.message, {
+          refused: { profile: sources.picked.key, reason: reply.reason },
+        }),
+      ),
       ...(reply.isBilled ? { billed: true as const } : {}),
     };
   }
 
   if (reply.kind === 'failed') {
     return {
-      ...refuseImage('IMAGE_FAILED', `The provider failed: ${reply.reason}`, { rest: listed }),
+      ...buildListedRefusal(
+        options.images,
+        refuseImage('IMAGE_FAILED', `The provider failed: ${reply.reason}`),
+      ),
       ...(reply.isBilled ? { billed: true as const } : {}),
     };
   }
@@ -275,13 +282,10 @@ function refuseReply(
       ? refuseImage(
           'IMAGE_TIMEOUT',
           'The provider gave no reply in time. The image may exist at the provider, and the call was charged.',
-          { rest: listed },
         )
-      : refuseImage('IMAGE_FAILED', 'The provider call failed, and the call was charged.', {
-          rest: listed,
-        });
+      : refuseImage('IMAGE_FAILED', 'The provider call failed, and the call was charged.');
 
-  return { ...refusal, billed: true as const };
+  return { ...buildListedRefusal(options.images, refusal), billed: true as const };
 }
 
 interface StoredDraw extends DrawCall {
@@ -302,9 +306,10 @@ async function writeDraw(
   if (png.kind === 'unreadable') {
     return {
       status: 'ok',
-      ...refuseImage('IMAGE_FAILED', `The reply is no picture that decodes: ${png.reason}`, {
-        rest: { profiles: collectImageProfiles(options.images) },
-      }),
+      ...buildListedRefusal(
+        options.images,
+        refuseImage('IMAGE_FAILED', `The reply is no picture that decodes: ${png.reason}`),
+      ),
       billed: true,
     };
   }
@@ -374,7 +379,8 @@ async function writeDraw(
 }
 
 function refuseOverSize(options: ImageToolOptions) {
-  return refuseImage('IMAGE_FAILED', 'The reply is longer than the 8 MiB that nixie stores.', {
-    rest: { profiles: collectImageProfiles(options.images) },
-  });
+  return buildListedRefusal(
+    options.images,
+    refuseImage('IMAGE_FAILED', 'The reply is longer than the 8 MiB that nixie stores.'),
+  );
 }

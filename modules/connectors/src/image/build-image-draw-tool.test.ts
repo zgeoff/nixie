@@ -128,7 +128,7 @@ test('it keeps every attempt, so image.list finds each edit of an image', async 
   });
 });
 
-test('it returns a refusal with the other profiles, and credits the charge', async () => {
+test('it returns a refusal with every profile, and credits the charge', async () => {
   const ctx = await setupTest();
 
   ctx.main.replyWith(() => ({
@@ -147,7 +147,10 @@ test('it returns a refusal with the other profiles, and credits the charge', asy
       profile: 'main',
       reason: 'safety',
     },
-    profiles: [{ profile: 'second', model: 'model-b' }],
+    profiles: [
+      { profile: 'main', model: 'model-a' },
+      { profile: 'second', model: 'model-b' },
+    ],
   });
 
   const spentMicros = await ctx.readSpentMicros();
@@ -230,7 +233,13 @@ test('it keeps the charge when the provider throws, because the call may have be
 
   const reply = await ctx.call('image.draw', { prompt: 'a cove' });
 
-  expect(readToolResult(reply)).toMatchObject({ refused: { code: 'IMAGE_FAILED' } });
+  expect(readToolResult(reply)).toMatchObject({
+    refused: { code: 'IMAGE_FAILED' },
+    profiles: [
+      { profile: 'main', model: 'model-a' },
+      { profile: 'second', model: 'model-b' },
+    ],
+  });
 
   const spentMicros = await ctx.readSpentMicros();
 
@@ -272,7 +281,13 @@ test('it keeps the charge of a reply that does not decode as a picture', async (
 
   const reply = await ctx.call('image.draw', { prompt: 'a cove' });
 
-  expect(readToolResult(reply)).toMatchObject({ refused: { code: 'IMAGE_FAILED' } });
+  expect(readToolResult(reply)).toMatchObject({
+    refused: { code: 'IMAGE_FAILED' },
+    profiles: [
+      { profile: 'main', model: 'model-a' },
+      { profile: 'second', model: 'model-b' },
+    ],
+  });
 
   const spentMicros = await ctx.readSpentMicros();
 
@@ -290,7 +305,13 @@ test('it keeps the charge of a reply over 8 MiB', async () => {
 
   const reply = await ctx.call('image.draw', { prompt: 'a cove' });
 
-  expect(readToolResult(reply)).toMatchObject({ refused: { code: 'IMAGE_FAILED' } });
+  expect(readToolResult(reply)).toMatchObject({
+    refused: { code: 'IMAGE_FAILED' },
+    profiles: [
+      { profile: 'main', model: 'model-a' },
+      { profile: 'second', model: 'model-b' },
+    ],
+  });
 
   const spentMicros = await ctx.readSpentMicros();
 
@@ -318,6 +339,10 @@ test('it refuses an unknown image before any charge, and never calls the provide
 
   expect(readToolResult(reply)).toStrictEqual({
     refused: { code: 'UNKNOWN_IMAGE', message: 'The from nosuchimage is no image.' },
+    profiles: [
+      { profile: 'main', model: 'model-a' },
+      { profile: 'second', model: 'model-b' },
+    ],
   });
 
   expect(ctx.main.requests).toStrictEqual([]);
@@ -358,6 +383,10 @@ test('it refuses a forgotten image before any charge, naming it', async () => {
       code: 'IMAGE_FORGOTTEN',
       message: `The image ${readImageID(first)} was forgotten.`,
     },
+    profiles: [
+      { profile: 'main', model: 'model-a' },
+      { profile: 'second', model: 'model-b' },
+    ],
   });
 
   const spentMicros = await ctx.readSpentMicros();
@@ -394,7 +423,14 @@ test('it refuses an edit on a profile that takes no image to edit', async () => 
     profile: 'second',
   });
 
-  expect(readToolResult(reply)).toMatchObject({ refused: { code: 'NO_EDIT' } });
+  expect(readToolResult(reply)).toMatchObject({
+    refused: { code: 'NO_EDIT' },
+    profiles: [
+      { profile: 'main', model: 'model-a' },
+      { profile: 'second', model: 'model-b' },
+    ],
+  });
+
   expect(ctx.second.requests).toStrictEqual([]);
 });
 
@@ -425,6 +461,10 @@ test('it refuses a draw when the session caps leave no room, before any charge',
   expect(readToolResult(reply)).toMatchObject({
     refused: { code: 'IMAGE_CAPS_FULL' },
     roomLeft: 0,
+    profiles: [
+      { profile: 'main', model: 'model-a' },
+      { profile: 'second', model: 'model-b' },
+    ],
   });
 
   expect(ledger?.spentMicros).toBe(0);

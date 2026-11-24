@@ -2,6 +2,7 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { z } from 'zod';
 import { loadDeploymentConfig } from './load-deployment-config';
 
 async function setupTest() {
@@ -457,4 +458,47 @@ test('it refuses a file that is not YAML', async () => {
   expect(loadDeploymentConfig(ctx.path)).rejects.toThrow(
     `nixie refuses the deployment configuration in ${ctx.path}: it is not YAML`,
   );
+});
+
+test.each([
+  ['the compose recipe', '../../../../deploy/compose/config.yaml'],
+  ['the compose recipe on the test sandbox', '../../../../deploy/compose/ci/config.yaml'],
+  ['the preview', '../../../../preview/config.yaml'],
+])('it draws on an OpenAI profile by default in the config of %s', async (_name, path) => {
+  const config = await loadDeploymentConfig(join(import.meta.dir, path));
+
+  expect(config.images?.profiles[config.images.default]?.provider).toBe('openai');
+});
+
+test('it keeps a Google profile beside the default in the compose recipe', async () => {
+  const config = await loadDeploymentConfig(
+    join(import.meta.dir, '../../../../deploy/compose/config.yaml'),
+  );
+
+  expect(Object.values(config.images?.profiles ?? {}).map((profile) => profile.provider)).toContain(
+    'gemini',
+  );
+});
+
+test("it draws on an OpenAI profile by default in the Kubernetes manifest's config", async () => {
+  const ctx = await setupTest();
+
+  const manifest = await Bun.file(
+    join(import.meta.dir, '../../../../deploy/kubernetes/config.yaml'),
+  ).text();
+
+  const configMapSchema = z.looseObject({
+    metadata: z.looseObject({ name: z.string() }),
+    data: z.record(z.string(), z.string()).optional(),
+  });
+
+  const parsedManifest: unknown = Bun.YAML.parse(manifest);
+  const documents = z.array(configMapSchema).parse(parsedManifest);
+  const configMap = documents.find((document) => document.metadata.name === 'nixie-config');
+
+  await writeFile(ctx.path, configMap?.data?.['config.yaml'] ?? '');
+
+  const config = await loadDeploymentConfig(ctx.path);
+
+  expect(config.images?.profiles[config.images.default]?.provider).toBe('openai');
 });

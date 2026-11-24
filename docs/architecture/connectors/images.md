@@ -55,8 +55,8 @@ A refusal is a result with a `refusalCode`, never a thrown error. The model read
 | `IMAGE_FAILED`                     | The provider failed, its reply is over `maxStoredBytes`, or the bytes do not decode |
 | `IMAGE_TIMEOUT`                    | The provider gave no reply within `drawTimeoutMs`                                   |
 
-`UNKNOWN_PROFILE`, `IMAGE_FAILED` and `IMAGE_TIMEOUT` set `profiles` to every configured profile,
-and `IMAGE_REFUSED` to the others. Each entry holds the profile's key and its `model`.
+Every refusal and failure of `image.draw` sets `profiles` to every configured profile, so the model
+can pick one to retry on. Each entry holds the profile's key and its `model`.
 
 `image.import` also returns `UNKNOWN_FILE`, `FILE_FORGOTTEN`, `UNKNOWN_PHOTO` and `NOT_IMAGE`.
 `image.name`, `image.pin`, `image.unpin` and `image.read` return `UNKNOWN_IMAGE` or
@@ -125,25 +125,27 @@ readable image returns `failed` billed, because the provider answered.
 
 ```yaml
 images:
-  default: main
+  default: openai # optional; openai is the default
   profiles:
-    main:
+    openai:
       provider: openai # openai or gemini
-      model: <model id>
+      model: gpt-image-1
       credential: deployment:openai-images # a connector_credentials entry
-      prices: { '1024x1024': 40000, '1536x1024': 60000, '1024x1536': 60000 } # micros per image
+      prices: { '1024x1024': 42000, '1536x1024': 63000, '1024x1536': 63000 } # micros per image
     google:
       provider: gemini
-      model: <model id>
+      model: gemini-2.5-flash-image
       credential: deployment:gemini-images
-      prices: { '1024x1024': 40000, '1536x1024': 60000, '1024x1536': 60000 }
+      prices: { '1024x1024': 39000, '1536x1024': 39000, '1024x1536': 39000 }
 ```
 
-`default` names the profile that answers a draw with no `profile`. Name an OpenAI profile there, and
-keep a Gemini profile beside it for the model to retry a refused prompt on. nixie refuses to start
-when a profile names a credential that the secrets file lacks, when `prices` lacks a size, or when
-`default` names no profile. The adapters use each provider's public API address, and the model IDs
-come from the config alone.
+`default` names the profile that answers a draw with no `profile`, and is `openai` when the config
+leaves it out. The shipped configs of the Compose recipe, the Kubernetes manifests and the preview
+set an OpenAI profile there, and keep a Gemini profile beside it for the model to retry a refused
+prompt on, so their secrets file needs an `openai-images` and a `gemini-images` entry under
+`connector_credentials`. nixie refuses to start when a profile names a credential that the secrets
+file lacks, when `prices` lacks a size, or when `default` names no profile. The adapters use each
+provider's public API address, and the model IDs come from the config alone.
 
 ## Storage
 

@@ -1,5 +1,4 @@
 import type { DirectResult } from '@heynixie/tools';
-import { collectImageProfiles } from './collect-image-profiles';
 import type { DrawArguments } from './draw-arguments';
 import type { ImageSize } from './image-size';
 import { isImageSize, parseImageSize, pickNearestImageSize } from './image-size';
@@ -57,7 +56,6 @@ export async function readDrawSources(
       refusal: refuseImage(
         'UNKNOWN_PROFILE',
         `No image profile ${args.profile ?? options.images.default} exists. Pick one of profiles.`,
-        { rest: { profiles: collectImageProfiles(options.images) } },
       ),
     };
   }

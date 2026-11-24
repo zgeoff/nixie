@@ -29,9 +29,9 @@ export async function runVerifyHarness(): Promise<void> {
   const nixie = await createSpawnedNixie(stack, {
     extraConfig: [
       'images:',
-      '  default: main',
+      '  default: openai',
       '  profiles:',
-      '    main:',
+      '    openai:',
       '      provider: openai',
       '      model: image-test-1',
       '      credential: deployment:images',

@@ -81,7 +81,7 @@ Before you start:
   `image_id`.
 - The last snapshot of step 4 lists 4 tool calls under "Tools 4", in this order:
   - `image.draw`, with the input `{ "prompt": "A heron standing in a pond at dawn." }`. Its result
-    has `"image"` set to the first row's `image_id`, `"from": null`, `"profile": "main"` and
+    has `"image"` set to the first row's `image_id`, `"from": null`, `"profile": "openai"` and
     `"model": "image-test-1"`.
   - `image.draw`, with the input `{ "prompt": "Make the sky pink.", "from": "<first image_id>" }`.
     Its result has `"image"` set to the second row's `image_id`, `"from"` set to the first row's,

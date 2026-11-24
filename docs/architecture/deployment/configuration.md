@@ -28,7 +28,9 @@ Each part's doc owns the meaning of its own settings, and the file only carries 
 - the [search](../connectors/search.md) tool's daily call cap, its API URL and its key as a
   reference
 - the [images](../connectors/images.md) profiles: each provider, model, price for each size and key
-  as a reference
+  as a reference, and `images.default`, the profile a draw uses when it names none, which is
+  `openai`. Every `image.draw` result names the profile and its `model`, and every refusal lists the
+  profiles
 - the [model gateway](../policy/model-gateway.md#how-nixie-uses-the-gateway) that counts every model
   request, which `spendStop` names, and the model limits it sets: the day and the month
 - the shortest gap between two fires of a recurring [reminder](../core/reminders.md#tools)
