@@ -82,14 +82,11 @@ test('it refuses a task message of a kind the tool does not send', async () => {
   await sql`insert into records (sequence, recorded_at, kind, snapshot_hash, payload)
     values (1, 1767225600000, 'task_message', 'snapshot-a', '{}')`.execute(ctx.db);
 
-  const refused = await sql`insert into task_messages (message_id, from_task, to_task, kind,
+  await expect(
+    sql`insert into task_messages (message_id, from_task, to_task, kind,
     reply_to, wait_state, sent_sequence)
-    values ('k3vq8m2xpa', 'notes-indexer', 'conversation', 'shout', null, 'none', 1)`
-    .execute(ctx.db)
-    .then(
-      () => null,
-      (error: unknown) => error,
-    );
-
-  expect(refused).toBeInstanceOf(Error);
+    values ('k3vq8m2xpa', 'notes-indexer', 'conversation', 'shout', null, 'none', 1)`.execute(
+      ctx.db,
+    ),
+  ).rejects.toBeInstanceOf(Error);
 });

@@ -295,14 +295,10 @@ test('it keeps a sandbox whose destroy is refused, and records no destroy', asyn
     limits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
   });
 
-  const refused = await sandbox.destroy().then(
-    () => null,
-    (error: unknown) => error,
-  );
+  await expect(sandbox.destroy()).rejects.toBeInstanceOf(Error);
 
   const listed = await adapter.list('web_fetch');
 
-  expect(refused).toBeInstanceOf(Error);
   expect(listed.map((found) => found.id)).toStrictEqual([sandbox.id]);
   expect(adapter.destroyed).toStrictEqual([]);
 });

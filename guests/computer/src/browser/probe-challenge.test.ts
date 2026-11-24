@@ -9,14 +9,14 @@ import { makeBrowserHandler } from './make-browser-handler';
 import { isChallengeFrameURL } from './probe-challenge';
 import type { BrowserState } from './types';
 
-const hasChromium = await chromium.launch({ headless: true }).then(
-  async (browser) => {
+const hasChromium = await chromium
+  .launch({ headless: true })
+  .then(async (browser) => {
     await browser.close();
 
     return true;
-  },
-  () => false,
-);
+  })
+  .catch(() => false);
 
 async function setupTest() {
   const home = await mkdtemp(join(tmpdir(), 'challenge-'));

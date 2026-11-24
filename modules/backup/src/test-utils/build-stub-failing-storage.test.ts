@@ -40,14 +40,12 @@ test('it fails the write of a file with the given name and leaves no file', asyn
 
   const storage = buildStubFailingStorage(localDataStorage, 'complete', 'write');
 
-  const failure = await storage.files.writeFile(join(ctx.directory, 'complete'), '').then(
-    () => null,
-    (error: unknown) => error,
-  );
+  await expect(storage.files.writeFile(join(ctx.directory, 'complete'), '')).rejects.toMatchObject({
+    message: 'the stub fails the write of complete',
+  });
 
   const names = await readdir(ctx.directory);
 
-  expect(failure).toMatchObject({ message: 'the stub fails the write of complete' });
   expect(names).toStrictEqual([]);
 });
 

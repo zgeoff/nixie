@@ -6,14 +6,14 @@ import { startCheckingProxy } from '@heynixie/egress';
 import { chromium } from 'playwright-core';
 import { launchBrowser } from './launch-browser';
 
-const hasChromium = await chromium.launch({ headless: true }).then(
-  async (browser) => {
+const hasChromium = await chromium
+  .launch({ headless: true })
+  .then(async (browser) => {
     await browser.close();
 
     return true;
-  },
-  () => false,
-);
+  })
+  .catch(() => false);
 
 async function setupTest() {
   const folder = await mkdtemp(join(tmpdir(), 'launch-browser-'));
@@ -106,10 +106,9 @@ test.skipIf(!hasChromium)(
         method: 'POST',
         headers: { 'X-Note': 'synthetic-secret' },
         body: 'synthetic-secret',
-      }).then(
-        () => 'sent',
-        () => 'blocked',
-      ),
+      })
+        .then(() => 'sent')
+        .catch(() => 'blocked'),
     );
 
     expect({ outcome, received: ctx.received }).toStrictEqual({ outcome: 'blocked', received: [] });

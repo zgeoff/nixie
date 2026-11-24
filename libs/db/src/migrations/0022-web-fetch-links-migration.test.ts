@@ -91,13 +91,8 @@ test('it refuses a second number for one URL in a session', async () => {
   await sql`insert into web_fetch_links (session_key, number, url, thread)
     values ('session-a', 1, 'https://harbour.test/ferries', 'conversation')`.execute(ctx.db);
 
-  const refused = await sql`insert into web_fetch_links (session_key, number, url, thread)
-    values ('session-a', 2, 'https://harbour.test/ferries', 'conversation')`
-    .execute(ctx.db)
-    .then(
-      () => null,
-      (error: unknown) => error,
-    );
-
-  expect(refused).toBeInstanceOf(Error);
+  await expect(
+    sql`insert into web_fetch_links (session_key, number, url, thread)
+    values ('session-a', 2, 'https://harbour.test/ferries', 'conversation')`.execute(ctx.db),
+  ).rejects.toBeInstanceOf(Error);
 });

@@ -293,16 +293,13 @@ test('it refuses a new item whose end time has passed, and writes nothing', asyn
 
   const memory = await startTestMemory({ gate: { clock } });
 
-  const refused = await memory.store
-    .remember({
+  await expect(
+    memory.store.remember({
       text: 'Is in Lisbon this week',
       until: Date.parse('2026-10-19T08:59:59Z'),
       provenance: buildMockProvenance(),
-    })
-    .then(
-      () => null,
-      (error: unknown) => error,
-    );
+    }),
+  ).rejects.toBeInstanceOf(UntilPassedError);
 
   const rows = await memory.writer.db
     .$extendTables<MemoryTables>()
@@ -310,7 +307,6 @@ test('it refuses a new item whose end time has passed, and writes nothing', asyn
     .select('item_id')
     .execute();
 
-  expect(refused).toBeInstanceOf(UntilPassedError);
   expect(rows).toStrictEqual([]);
 });
 

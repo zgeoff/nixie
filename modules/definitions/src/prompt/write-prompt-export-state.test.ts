@@ -129,20 +129,17 @@ test('it refuses to open a closed export', async () => {
     ctx.writer.db,
   );
 
-  const refused = await withWriteTransaction(ctx.writer, (tx) =>
-    writePromptExportState(tx, {
-      approvalID: approval.approvalID,
-      to: 'opened',
-      baseHash: null,
-      pullRequest: { number: 8, url: 'https://definitions.test/pull/8' },
-      at: 3,
-    }),
-  ).then(
-    () => null,
-    (error: unknown) => error,
-  );
-
-  expect(refused).toStrictEqual(
+  await expect(
+    withWriteTransaction(ctx.writer, (tx) =>
+      writePromptExportState(tx, {
+        approvalID: approval.approvalID,
+        to: 'opened',
+        baseHash: null,
+        pullRequest: { number: 8, url: 'https://definitions.test/pull/8' },
+        at: 3,
+      }),
+    ),
+  ).rejects.toStrictEqual(
     new Error(
       `the export of prompt approval ${approval.approvalID} is closed, so it cannot become opened`,
     ),

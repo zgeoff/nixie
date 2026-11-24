@@ -64,14 +64,9 @@ test('it refuses a stale writer and leaves every record on the thread readable',
 
   await sql`update writer_epoch set epoch = epoch + 1`.execute(ctx.writer.db);
 
-  const refusal = await removeThreadKeys(ctx.log, 'conversation').then(
-    () => null,
-    (error: unknown) => error,
-  );
+  await expect(removeThreadKeys(ctx.log, 'conversation')).rejects.toBeInstanceOf(StaleWriterError);
 
   const read = await readRecords(ctx.log, { afterSequence: 0 });
-
-  expect(refusal).toBeInstanceOf(StaleWriterError);
 
   expect(read.map((entry) => entry.record.erasable)).toStrictEqual([
     { status: 'readable', fields: { text: 'the spare key is under the mat' } },
@@ -178,10 +173,9 @@ test('it leaves no removed key in the key store file or its write-ahead log', as
 
   const files = await Promise.all(
     ['keys.db', 'keys.db-wal'].map((name) =>
-      readFile(join(ctx.dataDir, name)).then(
-        (bytes) => bytes.toString('latin1'),
-        () => '',
-      ),
+      readFile(join(ctx.dataDir, name))
+        .then((bytes) => bytes.toString('latin1'))
+        .catch(() => ''),
     ),
   );
 

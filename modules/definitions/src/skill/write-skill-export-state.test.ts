@@ -282,20 +282,17 @@ test('it refuses to open again an export that closed', async () => {
     });
   });
 
-  const refused = await withWriteTransaction(ctx.writer, (tx) =>
-    writeSkillExportState(tx, {
-      approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
-      to: 'opened',
-      baseHash: null,
-      pullRequest: { number: 8, url: 'https://definitions.test/pull/8' },
-      at: 4,
-    }),
-  ).then(
-    () => null,
-    (error: unknown) => error,
-  );
-
-  expect(refused).toStrictEqual(
+  await expect(
+    withWriteTransaction(ctx.writer, (tx) =>
+      writeSkillExportState(tx, {
+        approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
+        to: 'opened',
+        baseHash: null,
+        pullRequest: { number: 8, url: 'https://definitions.test/pull/8' },
+        at: 4,
+      }),
+    ),
+  ).rejects.toStrictEqual(
     new Error(
       'the export of approval 5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31 is closed, so it cannot become opened',
     ),

@@ -252,15 +252,13 @@ test('it stops the pass and leaves the set with no receipt when its manifest can
     readText: () => Promise.reject(new Error('EIO: i/o error, read')),
   };
 
-  const refused = await runJobPass(ctx.config, ctx.repos, files).then(
-    () => null,
-    (error: unknown) => error,
-  );
+  await expect(runJobPass(ctx.config, ctx.repos, files)).rejects.toMatchObject({
+    message: 'EIO: i/o error, read',
+  });
 
   const names = await readdir(getBackupSetDir(ctx.config.stagingDir, 1));
   const calls = await Bun.file(ctx.calls).exists();
 
-  expect(refused).toMatchObject({ message: 'EIO: i/o error, read' });
   expect(names).toIncludeSameMembers(['nixie.db', 'keys.db', 'manifest.json', 'complete']);
   expect(calls).toBeFalse();
 });

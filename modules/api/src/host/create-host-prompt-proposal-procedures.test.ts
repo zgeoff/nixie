@@ -206,19 +206,14 @@ test('#approve refuses an edited entry that fails the definitions checks with it
     },
   ]);
 
-  const refusal = await ctx
-    .createClient(null)
-    .approve({
+  await expect(
+    ctx.createClient(null).approve({
       proposalID: 'p8w2n4c6ld',
       proposalHash: 'hash-c',
       entry: { _template: '{{ owner.birthday }}' },
-    })
-    .then(
-      () => null,
-      (error: unknown) => error,
-    );
+    }),
+  ).rejects.toMatchObject({ code: 'PROMPT_CHECK', status: 400 });
 
-  expect(refusal).toMatchObject({ code: 'PROMPT_CHECK', status: 400 });
   expect(ctx.wakeExports).not.toHaveBeenCalled();
 });
 
@@ -249,12 +244,9 @@ test('#approve refuses a proposal whose base the override in force moved past wi
     prompts: { compaction: { parts: { safety: 'Quote every fact.' }, template: null } },
   });
 
-  const refusal = await client.approve({ proposalID: 'p8w2n4c6ld', proposalHash: 'hash-c' }).then(
-    () => null,
-    (error: unknown) => error,
-  );
-
-  expect(refusal).toMatchObject({ code: 'STALE_BASE', status: 409 });
+  await expect(
+    client.approve({ proposalID: 'p8w2n4c6ld', proposalHash: 'hash-c' }),
+  ).rejects.toMatchObject({ code: 'STALE_BASE', status: 409 });
 });
 
 test('#reject records the rejection with your reason', async () => {
@@ -299,15 +291,11 @@ test('#reject records the rejection with your reason', async () => {
 test('#reject answers a proposal that does not exist with its typed code', async () => {
   const ctx = await setupTest();
 
-  const refusal = await ctx
-    .createClient(null)
-    .reject({ proposalID: 'p8w2n4c6ld', proposalHash: 'hash-c', reason: 'No.' })
-    .then(
-      () => null,
-      (error: unknown) => error,
-    );
-
-  expect(refusal).toMatchObject({ code: 'NOT_FOUND', status: 404 });
+  await expect(
+    ctx
+      .createClient(null)
+      .reject({ proposalID: 'p8w2n4c6ld', proposalHash: 'hash-c', reason: 'No.' }),
+  ).rejects.toMatchObject({ code: 'NOT_FOUND', status: 404 });
 });
 
 test('#reject refuses an answer under another proposal hash with its code', async () => {
@@ -331,15 +319,11 @@ test('#reject refuses an answer under another proposal hash with its code', asyn
     },
   ]);
 
-  const refusal = await ctx
-    .createClient(null)
-    .reject({ proposalID: 'p8w2n4c6ld', proposalHash: 'hash-d', reason: 'No.' })
-    .then(
-      () => null,
-      (error: unknown) => error,
-    );
-
-  expect(refusal).toMatchObject({
+  await expect(
+    ctx
+      .createClient(null)
+      .reject({ proposalID: 'p8w2n4c6ld', proposalHash: 'hash-d', reason: 'No.' }),
+  ).rejects.toMatchObject({
     code: 'PROPOSAL_HASH',
     status: 409,
     message: 'the answer to prompt proposal p8w2n4c6ld names another proposal hash',
@@ -373,15 +357,9 @@ test('#approve refuses a proposal that a rejection closed with its code', async 
     },
   ]);
 
-  const refusal = await ctx
-    .createClient(null)
-    .approve({ proposalID: 'p8w2n4c6ld', proposalHash: 'hash-c' })
-    .then(
-      () => null,
-      (error: unknown) => error,
-    );
-
-  expect(refusal).toMatchObject({
+  await expect(
+    ctx.createClient(null).approve({ proposalID: 'p8w2n4c6ld', proposalHash: 'hash-c' }),
+  ).rejects.toMatchObject({
     code: 'PROPOSAL_CLOSED',
     status: 409,
     message: 'prompt proposal p8w2n4c6ld is rejected, so it takes no answer',

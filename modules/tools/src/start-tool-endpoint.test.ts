@@ -826,18 +826,13 @@ test('it refuses an approved call under the token of a step that stopped', async
 
   await step.stop();
 
-  const refusal = await run
-    .runApproved(step.token, {
+  await expect(
+    run.runApproved(step.token, {
       actionID: 'proposal-1',
       tool: 'notes_wipe',
       input: { query: 'old' },
       callSequence: 1,
       actionHash: 'sha256:any',
-    })
-    .then(
-      () => null,
-      (error: unknown) => error,
-    );
-
-  expect(refusal).toBeInstanceOf(Error);
+    }),
+  ).rejects.toBeInstanceOf(Error);
 });

@@ -195,14 +195,13 @@ test('it frees the lease of the step a stop ends, so the step commits nothing', 
 
   await writeTaskControl(ctx.context, { taskID: task.taskID, control: 'stop' });
 
-  const commit = await writeStepCommit(ctx.context, task.claim, {
-    next: 'wait',
-    records: [],
-    acknowledged: [],
-  }).then(
-    () => null,
-    (error: unknown) => error,
-  );
+  await expect(
+    writeStepCommit(ctx.context, task.claim, {
+      next: 'wait',
+      records: [],
+      acknowledged: [],
+    }),
+  ).rejects.toBeInstanceOf(LeaseLostError);
 
   const row = await ctx.db
     .selectFrom('tasks')
@@ -210,7 +209,6 @@ test('it frees the lease of the step a stop ends, so the step commits nothing', 
     .where('task_id', '=', task.taskID)
     .executeTakeFirstOrThrow();
 
-  expect(commit).toBeInstanceOf(LeaseLostError);
   expect(row).toStrictEqual({ state: 'stopped', committed_steps: 0, started_step_key: null });
 });
 

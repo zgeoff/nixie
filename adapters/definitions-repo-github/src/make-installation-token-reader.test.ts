@@ -2,7 +2,6 @@ import { expect, test } from 'bun:test';
 import { generateKeyPairSync, verify } from 'node:crypto';
 import { network } from '@heynixie/mock-server';
 import { HttpResponse, http } from 'msw';
-import invariant from 'tiny-invariant';
 import { buildGitHubDefinitionsRepo } from './build-github-definitions-repo';
 import { makeInstallationTokenReader } from './make-installation-token-reader';
 import { createMockGitHubRepo } from './mocks/create-mock-github-repo';
@@ -198,25 +197,17 @@ test('it fails with the status and message of GitHub and quotes no key or JWT', 
     }),
   );
 
-  const failure = await ctx.readToken().then(
-    () => null,
-    (error: unknown) => error,
-  );
-
-  invariant(failure instanceof Error);
-
-  const jwt = sent[0]?.replace('Bearer ', '') ?? '';
-
-  expect(failure.message).toBe(
+  await expect(ctx.readToken()).rejects.toThrowWithMessage(
+    Error,
     'GitHub refused to mint an installation token for the export with 404: Integration not found',
   );
 
+  const jwt = sent[0]?.replace('Bearer ', '') ?? '';
+
   expect(jwt).toMatch(/^[\w-]+\.[\w-]+\.[\w-]+$/u);
-  expect(failure.message).not.toInclude(jwt);
-  expect(failure.message).not.toInclude('PRIVATE KEY');
 });
 
-test('it fails with no key text when the key is not a PEM', async () => {
+test('it fails with no key text when the key is not a PEM', () => {
   const reader = makeInstallationTokenReader({
     apiURL: githubAPIURL,
     clientID: 'Iv1.harbour',
@@ -225,14 +216,8 @@ test('it fails with no key text when the key is not a PEM', async () => {
     readNowMs: () => 0,
   });
 
-  const failure = await reader().then(
-    () => null,
-    (error: unknown) => error,
-  );
-
-  invariant(failure instanceof Error);
-
-  expect(failure.message).toBe(
+  expect(reader()).rejects.toThrowWithMessage(
+    Error,
     'definitions_export_app_key is not a usable RSA private key in PEM form',
   );
 });
@@ -254,22 +239,22 @@ test('it redacts a JWT and a key that GitHub echoes in its message', async () =>
     }),
   );
 
-  const failure = await ctx.readToken().then(
-    () => null,
-    (error: unknown) => error,
-  );
+  const failure = ctx.readToken();
 
-  invariant(failure instanceof Error);
+  await expect(failure).rejects.toThrow(/^GitHub refused to mint an installation token/u);
 
   const jwt = sent[0]?.replace('Bearer ', '') ?? '';
 
   expect(jwt).toMatch(/^[\w-]+\.[\w-]+\.[\w-]+$/u);
-  expect(failure.message).not.toInclude(jwt);
-  expect(failure.message).not.toInclude('PRIVATE KEY');
-  expect(failure.message).toStartWith('GitHub refused to mint an installation token');
+
+  await expect(failure).rejects.toMatchObject({ message: expect.not.stringContaining(jwt) });
+
+  await expect(failure).rejects.toMatchObject({
+    message: expect.not.stringContaining('PRIVATE KEY'),
+  });
 });
 
-test('it refuses a private key that is not RSA', async () => {
+test('it refuses a private key that is not RSA', () => {
   const ecKey = generateKeyPairSync('ec', { namedCurve: 'prime256v1' }).privateKey.export({
     type: 'pkcs8',
     format: 'pem',
@@ -283,31 +268,19 @@ test('it refuses a private key that is not RSA', async () => {
     readNowMs: () => 0,
   });
 
-  const failure = await reader().then(
-    () => null,
-    (error: unknown) => error,
-  );
-
-  invariant(failure instanceof Error);
-
-  expect(failure.message).toBe(
+  expect(reader()).rejects.toThrowWithMessage(
+    Error,
     'definitions_export_app_key is not a usable RSA private key in PEM form',
   );
 });
 
-test('it fails when GitHub answers a mint with an unreadable body', async () => {
+test('it fails when GitHub answers a mint with an unreadable body', () => {
   const ctx = setupTest();
 
   network.use(http.post(ctx.mintURL, () => HttpResponse.json({ token: 'installation-token-1' })));
 
-  const failure = await ctx.readToken().then(
-    () => null,
-    (error: unknown) => error,
-  );
-
-  invariant(failure instanceof Error);
-
-  expect(failure.message).toBe(
+  expect(ctx.readToken()).rejects.toThrowWithMessage(
+    Error,
     'GitHub answered the installation token request with an unreadable body',
   );
 });

@@ -71,10 +71,9 @@ async function setupTest() {
     // An error that the procedure throws in process holds the whole call's context, so a matcher
     // that walks it never ends. This keeps only what the contract shows.
     readRefusal: async (call: Promise<unknown>) => {
-      const refusal = await call.then(
-        () => null,
-        (error: unknown) => (error instanceof ORPCError ? error : null),
-      );
+      const refusal = await call
+        .then(() => null)
+        .catch((error: unknown) => (error instanceof ORPCError ? error : null));
 
       if (refusal === null) {
         return null;

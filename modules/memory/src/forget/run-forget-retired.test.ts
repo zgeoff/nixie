@@ -207,8 +207,8 @@ test('it resumes a run that a crash stopped between two key deletions, and forge
 
   startFaultPointFailure('memory.forget.key_removed');
 
-  const crash = await ctx.memory.store
-    .forgetRetired({
+  await expect(
+    ctx.memory.store.forgetRetired({
       targets: retired,
       provenance: {
         origin: 'owner',
@@ -217,11 +217,8 @@ test('it resumes a run that a crash stopped between two key deletions, and forge
         proposalID: null,
         checks: null,
       },
-    })
-    .then(
-      () => null,
-      (error: unknown) => error,
-    );
+    }),
+  ).rejects.toMatchObject({ message: 'crashed at memory.forget.key_removed' });
 
   const keysAtCrash = await readRecordKeys(ctx.memory.log, [first.itemID, second.itemID]);
   const statusAtCrash = await ctx.memory.store.view.readForgetStatus([first.itemID, second.itemID]);
@@ -230,7 +227,6 @@ test('it resumes a run that a crash stopped between two key deletions, and forge
   const status = await restarted.store.view.readForgetStatus([first.itemID, second.itemID]);
   const keys = await readRecordKeys(restarted.log, [first.itemID, second.itemID]);
 
-  expect(crash).toMatchObject({ message: 'crashed at memory.forget.key_removed' });
   expect([...keysAtCrash.keys()]).toStrictEqual([second.itemID]);
 
   expect(statusAtCrash).toStrictEqual({
@@ -323,8 +319,8 @@ test('it finishes the pending forgets of a run and reports every item deleted', 
 
   startFaultPointFailure('memory.forget.key_removed', second.itemID);
 
-  const failure = await ctx.memory.store
-    .forgetRetired({
+  await expect(
+    ctx.memory.store.forgetRetired({
       targets: retired,
       provenance: {
         origin: 'owner',
@@ -333,17 +329,12 @@ test('it finishes the pending forgets of a run and reports every item deleted', 
         proposalID: null,
         checks: null,
       },
-    })
-    .then(
-      () => null,
-      (error: unknown) => error,
-    );
+    }),
+  ).rejects.toMatchObject({ message: 'crashed at memory.forget.key_removed' });
 
   const before = await ctx.memory.store.view.readForgetStatus([first.itemID, second.itemID]);
   const status = await ctx.memory.store.finishForgets([first.itemID, second.itemID]);
   const records = await readRecords(ctx.memory.log, { afterSequence: 0 });
-
-  expect(failure).toMatchObject({ message: 'crashed at memory.forget.key_removed' });
 
   const forgotten = records.filter((entry) => entry.record.kind === 'memory.forgotten');
 

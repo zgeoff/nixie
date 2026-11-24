@@ -200,17 +200,14 @@ test('it refuses to carry a session from a sandbox that holds no transcript of i
     },
   ]);
 
-  const failure = await writeKeptSession({
-    from,
-    to,
-    command: { argv: ['guest'], env: { HOME: '/home/nixie' } },
-    files: [`${sessionID}.jsonl`, `${sessionID}/`],
-  }).then(
-    () => null,
-    (error: unknown) => error,
-  );
-
-  expect(failure).toStrictEqual(
+  await expect(
+    writeKeptSession({
+      from,
+      to,
+      command: { argv: ['guest'], env: { HOME: '/home/nixie' } },
+      files: [`${sessionID}.jsonl`, `${sessionID}/`],
+    }),
+  ).rejects.toStrictEqual(
     new Error(`the sandbox ${from.id} holds no transcript ${sessionID}.jsonl`),
   );
 });
@@ -236,19 +233,16 @@ test('it leaves no resumable transcript when the move of the staged copy fails',
     },
   ]);
 
-  const failure = await writeKeptSession({
-    from,
-    to,
-    command: { argv: ['guest'], env: { HOME: '/home/nixie' } },
-    files: [`${sessionID}.jsonl`, `${sessionID}/`],
-  }).then(
-    () => null,
-    (error: unknown) => error,
-  );
+  await expect(
+    writeKeptSession({
+      from,
+      to,
+      command: { argv: ['guest'], env: { HOME: '/home/nixie' } },
+      files: [`${sessionID}.jsonl`, `${sessionID}/`],
+    }),
+  ).rejects.toMatchObject({ message: expect.toStartWith('EISDIR') });
 
   const landed = await to.readFilePaths('/home/nixie/.claude/projects');
-
-  expect(failure).toMatchObject({ message: expect.toStartWith('EISDIR') });
 
   expect(landed).toIncludeSameMembers([
     `-home-nixie-conversation/${sessionID}.jsonl.copy`,

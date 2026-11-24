@@ -61,15 +61,10 @@ test.each([
 ])('it refuses a set whose %s the stager never writes', async (column, kind, state) => {
   const ctx = await setupTest();
 
-  const refused = await sql`insert into backup_sets (sequence, kind, state, log_head, staged_at)
-    values (1, ${kind}, ${state}, 12, 1798761600000)`
-    .execute(ctx.db)
-    .then(
-      () => null,
-      (error: unknown) => error,
-    );
-
-  expect(refused).toMatchObject({
+  await expect(
+    sql`insert into backup_sets (sequence, kind, state, log_head, staged_at)
+    values (1, ${kind}, ${state}, 12, 1798761600000)`.execute(ctx.db),
+  ).rejects.toMatchObject({
     message: expect.stringContaining(`CHECK constraint failed: ${column} in`),
   });
 });

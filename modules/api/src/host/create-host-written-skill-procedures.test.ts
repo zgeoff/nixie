@@ -221,12 +221,7 @@ test('#resolve keeps the definitions version and lists the written skill no more
 test('#resolve refuses a written skill that left force with its code', async () => {
   const ctx = await setupTest();
 
-  const refusal = await ctx.client
-    .resolve({ approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31', keep: 'nixie' })
-    .then(
-      () => null,
-      (error: unknown) => error,
-    );
-
-  expect(refusal).toMatchObject({ code: 'WRONG_STATE', status: 409 });
+  await expect(
+    ctx.client.resolve({ approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31', keep: 'nixie' }),
+  ).rejects.toMatchObject({ code: 'WRONG_STATE', status: 409 });
 });

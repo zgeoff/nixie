@@ -167,19 +167,15 @@ test.each([
 
     await seed(laptopClient, laptop.sessionID);
 
-    const refused = await laptopClient.conversation
-      .retry({ clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85' })
-      .then(
-        () => null,
-        (error: unknown) => error,
-      );
+    await expect(
+      laptopClient.conversation.retry({ clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85' }),
+    ).rejects.toMatchObject({ code });
 
     const revivals = await readRecords(ctx.context.log, {
       afterSequence: 0,
       kinds: ['task.revived'],
     });
 
-    expect(refused).toMatchObject({ code });
     expect(revivals).toStrictEqual([]);
   },
 );

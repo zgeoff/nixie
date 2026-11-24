@@ -26,12 +26,9 @@ test('it lists the names in a directory', async () => {
 test('it fails the listing of a directory that does not exist with ENOENT', async () => {
   const ctx = await setupTest();
 
-  const refused = await localBackupFileReads.readDirectory(join(ctx.directory, 'missing')).then(
-    () => null,
-    (error: unknown) => error,
-  );
-
-  expect(refused).toMatchObject({ code: 'ENOENT' });
+  await expect(
+    localBackupFileReads.readDirectory(join(ctx.directory, 'missing')),
+  ).rejects.toMatchObject({ code: 'ENOENT' });
 });
 
 test('it reads whether a file exists', async () => {

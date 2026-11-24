@@ -38,16 +38,11 @@ test('it refuses a moment in a state the store never writes', async () => {
   await sql`insert into records (sequence, recorded_at, kind, snapshot_hash, payload)
     values (1, 1767225600000, 'moment_kept', 'snapshot-a', '{}')`.execute(ctx.db);
 
-  const refused = await sql`insert into moments (moment_id, short_id, thread, first_sequence,
+  await expect(
+    sql`insert into moments (moment_id, short_id, thread, first_sequence,
     last_sequence, state, version, kept_by, kept_at, kept_sequence, title_sequence,
     updated_sequence)
     values ('8a1f3c52-0b6e-4d7a-9c21-5e4f6a7b8c9d', 'p4m8v2qx7k', 'conversation', 1, 1, 'lost', 1,
-      'model', 1767225600000, 1, 1, 1)`
-    .execute(ctx.db)
-    .then(
-      () => null,
-      (error: unknown) => error,
-    );
-
-  expect(refused).toBeInstanceOf(Error);
+      'model', 1767225600000, 1, 1, 1)`.execute(ctx.db),
+  ).rejects.toBeInstanceOf(Error);
 });

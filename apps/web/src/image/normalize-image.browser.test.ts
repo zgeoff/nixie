@@ -161,10 +161,8 @@ test('it refuses bytes the browser cannot decode with an unreadable-image error'
             type: 'image/png',
           }),
         )
-        .then(
-          () => 'decoded',
-          (error: unknown) => (error instanceof Error ? error.name : 'no error'),
-        );
+        .then(() => 'decoded')
+        .catch((error: unknown) => (error instanceof Error ? error.name : 'no error'));
     },
     null,
     z.string(),

@@ -59,10 +59,9 @@ test('it stops the server when the test finishes', () => {
   const api = startStubAPI();
 
   onTestFinished(async () => {
-    const reached = await fetch(`${api.url}/rpc/sessions/list`, { method: 'POST' }).then(
-      () => true,
-      () => false,
-    );
+    const reached = await fetch(`${api.url}/rpc/sessions/list`, { method: 'POST' })
+      .then(() => true)
+      .catch(() => false);
 
     expect(reached).toBeFalse();
   });

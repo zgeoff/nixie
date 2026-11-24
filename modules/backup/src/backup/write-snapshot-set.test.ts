@@ -125,15 +125,13 @@ test.each(['writeSnapshotSet', 'the stage pass'] as const)(
 
     startFaultPointFailure('backup.set.copied');
 
-    const failure = await stageBackupSet(entryPoint, ctx.context, 'scheduled').then(
-      () => null,
-      (error: unknown) => error,
-    );
+    await expect(stageBackupSet(entryPoint, ctx.context, 'scheduled')).rejects.toMatchObject({
+      message: 'crashed at backup.set.copied',
+    });
 
     const staging = await readdir(join(ctx.dataDir, 'backup'));
     const rows = await sql`select state from backup_sets`.execute(ctx.writer.db);
 
-    expect(failure).toMatchObject({ message: 'crashed at backup.set.copied' });
     expect(staging).toStrictEqual([]);
     expect(rows.rows).toStrictEqual([{ state: 'abandoned' }]);
   },
@@ -149,15 +147,13 @@ test.each(['writeSnapshotSet', 'the stage pass'] as const)(
       storage: buildStubFailingStorage(localDataStorage, 'complete', 'write'),
     };
 
-    const failure = await stageBackupSet(entryPoint, context, 'scheduled').then(
-      () => null,
-      (error: unknown) => error,
-    );
+    await expect(stageBackupSet(entryPoint, context, 'scheduled')).rejects.toMatchObject({
+      message: 'the stub fails the write of complete',
+    });
 
     const staging = await readdir(join(ctx.dataDir, 'backup'));
     const rows = await sql`select state from backup_sets`.execute(ctx.writer.db);
 
-    expect(failure).toMatchObject({ message: 'the stub fails the write of complete' });
     expect(staging).toStrictEqual([]);
     expect(rows.rows).toStrictEqual([{ state: 'abandoned' }]);
   },
@@ -173,15 +169,13 @@ test.each(['writeSnapshotSet', 'the stage pass'] as const)(
       storage: buildStubFailingStorage(localDataStorage, 'complete', 'fsync'),
     };
 
-    const failure = await stageBackupSet(entryPoint, context, 'scheduled').then(
-      () => null,
-      (error: unknown) => error,
-    );
+    await expect(stageBackupSet(entryPoint, context, 'scheduled')).rejects.toMatchObject({
+      message: 'the stub fails the fsync of complete',
+    });
 
     const files = await readdir(join(ctx.dataDir, 'backup', '000000000001'));
     const rows = await sql`select state from backup_sets`.execute(ctx.writer.db);
 
-    expect(failure).toMatchObject({ message: 'the stub fails the fsync of complete' });
     expect(files).toIncludeSameMembers(['nixie.db', 'keys.db', 'manifest.json', 'complete']);
     expect(rows.rows).toStrictEqual([{ state: 'staging' }]);
   },

@@ -15,14 +15,14 @@ import { makeBrowserHandler } from './browser/make-browser-handler';
 import { makeComputerHandler } from './make-computer-handler';
 import { makeScanChannel } from './make-scan-channel';
 
-const hasChromium = await chromium.launch({ headless: true }).then(
-  async (browser) => {
+const hasChromium = await chromium
+  .launch({ headless: true })
+  .then(async (browser) => {
     await browser.close();
 
     return true;
-  },
-  () => false,
-);
+  })
+  .catch(() => false);
 
 async function setupTest() {
   const home = await mkdtemp(join(tmpdir(), 'computer-'));
@@ -36,10 +36,7 @@ async function setupTest() {
       '/': new Response(
         `<html><title>waiting</title><body>page<script>
           setTimeout(() => {
-            fetch('/beacon', { method: 'POST', body: 'synthetic-secret' }).then(
-              () => { document.title = 'sent'; },
-              () => { document.title = 'blocked'; },
-            );
+            fetch('/beacon', { method: 'POST', body: 'synthetic-secret' }).then(() => { document.title = 'sent'; }).catch(() => { document.title = 'blocked'; });
           }, 1500);
         </script></body></html>`,
         { headers: { 'Content-Type': 'text/html' } },

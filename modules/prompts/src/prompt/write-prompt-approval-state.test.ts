@@ -50,27 +50,19 @@ test('it refuses to make a superseded approval current again', async () => {
     ctx.writer.db,
   );
 
-  const refused = await withWriteTransaction(ctx.writer, (tx) =>
-    writePromptApprovalState(tx, { approvalID: 'approval-a', to: 'current', at: 2 }),
-  ).then(
-    () => null,
-    (error: unknown) => error,
-  );
-
-  expect(refused).toStrictEqual(
-    new PromptApprovalStateError('approval-a', 'superseded', 'current'),
-  );
+  await expect(
+    withWriteTransaction(ctx.writer, (tx) =>
+      writePromptApprovalState(tx, { approvalID: 'approval-a', to: 'current', at: 2 }),
+    ),
+  ).rejects.toStrictEqual(new PromptApprovalStateError('approval-a', 'superseded', 'current'));
 });
 
 test('it refuses to move an approval that does not exist', async () => {
   const ctx = await setupTest();
 
-  const refused = await withWriteTransaction(ctx.writer, (tx) =>
-    writePromptApprovalState(tx, { approvalID: 'approval-a', to: 'superseded', at: 2 }),
-  ).then(
-    () => null,
-    (error: unknown) => error,
-  );
-
-  expect(refused).toStrictEqual(new PromptApprovalStateError('approval-a', null, 'superseded'));
+  await expect(
+    withWriteTransaction(ctx.writer, (tx) =>
+      writePromptApprovalState(tx, { approvalID: 'approval-a', to: 'superseded', at: 2 }),
+    ),
+  ).rejects.toStrictEqual(new PromptApprovalStateError('approval-a', null, 'superseded'));
 });

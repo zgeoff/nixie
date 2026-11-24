@@ -354,12 +354,9 @@ test('#tasks.read refuses a task that does not exist', async () => {
 
   await createConversationTask(api.context);
 
-  const refused = await client.tasks.read({ taskID: 'k3x9m2p7qa' }).then(
-    () => null,
-    (error: unknown) => error,
-  );
-
-  expect(refused).toMatchObject({ code: 'TASK_NOT_FOUND' });
+  await expect(client.tasks.read({ taskID: 'k3x9m2p7qa' })).rejects.toMatchObject({
+    code: 'TASK_NOT_FOUND',
+  });
 });
 
 test('#tasks.read refuses a caller with no session', async () => {
@@ -369,12 +366,9 @@ test('#tasks.read refuses a caller with no session', async () => {
 
   await createConversationTask(api.context);
 
-  const refused = await stranger.tasks.read({ taskID: 'conversation' }).then(
-    () => null,
-    (error: unknown) => error,
-  );
-
-  expect(refused).toMatchObject({ code: 'UNAUTHORIZED' });
+  await expect(stranger.tasks.read({ taskID: 'conversation' })).rejects.toMatchObject({
+    code: 'UNAUTHORIZED',
+  });
 });
 
 test('#tasks.readActions lists the queued actions a stop would cancel and the started ones apart', async () => {
@@ -414,12 +408,9 @@ test('#tasks.readActions refuses a task that does not exist', async () => {
 
   const client = buildTestClient(api.url, laptop.token);
 
-  const refused = await client.tasks.readActions({ taskID: 'k3x9m2p7qa' }).then(
-    () => null,
-    (error: unknown) => error,
-  );
-
-  expect(refused).toMatchObject({ code: 'TASK_NOT_FOUND' });
+  await expect(client.tasks.readActions({ taskID: 'k3x9m2p7qa' })).rejects.toMatchObject({
+    code: 'TASK_NOT_FOUND',
+  });
 });
 
 test('#tasks.readActions refuses a caller with no session', async () => {
@@ -566,17 +557,12 @@ test('#tasks.stop refuses a client action ID that another control used', async (
     taskID: 'conversation',
   });
 
-  const refused = await client.tasks
-    .stop({
+  await expect(
+    client.tasks.stop({
       clientActionID: '2c4e6a8b-1d3f-4b5c-8e7a-9f0b1c2d3e4f',
       taskID: 'conversation',
-    })
-    .then(
-      () => null,
-      (error: unknown) => error,
-    );
-
-  expect(refused).toMatchObject({ code: 'CLIENT_ACTION_ID_REUSED' });
+    }),
+  ).rejects.toMatchObject({ code: 'CLIENT_ACTION_ID_REUSED' });
 });
 
 test('#tasks.restart refuses a task whose state takes no restart, with the state', async () => {
@@ -587,17 +573,12 @@ test('#tasks.restart refuses a task whose state takes no restart, with the state
 
   await createConversationTask(api.context);
 
-  const refused = await client.tasks
-    .restart({
+  await expect(
+    client.tasks.restart({
       clientActionID: '4e6a8c0d-3f5b-4d7e-8a9c-1b2d3e4f5a6b',
       taskID: 'conversation',
-    })
-    .then(
-      () => null,
-      (error: unknown) => error,
-    );
-
-  expect(refused).toMatchObject({
+    }),
+  ).rejects.toMatchObject({
     code: 'TASK_STATE_REFUSED',
     data: { isPauseRequested: false, state: 'waiting' },
   });
@@ -609,17 +590,12 @@ test('#tasks.interrupt refuses a task that does not exist', async () => {
 
   const client = buildTestClient(api.url, laptop.token);
 
-  const refused = await client.tasks
-    .interrupt({
+  await expect(
+    client.tasks.interrupt({
       clientActionID: '5f7b9d1e-4a6c-4e8f-9b0d-2c3e4f5a6b7c',
       taskID: 'k3x9m2p7qa',
-    })
-    .then(
-      () => null,
-      (error: unknown) => error,
-    );
-
-  expect(refused).toMatchObject({ code: 'TASK_NOT_FOUND' });
+    }),
+  ).rejects.toMatchObject({ code: 'TASK_NOT_FOUND' });
 });
 
 test('#tasks.close closes a started task', async () => {
@@ -654,17 +630,12 @@ test('#tasks.close refuses to close the conversation', async () => {
 
   await createConversationTask(api.context);
 
-  const refused = await client.tasks
-    .close({
+  await expect(
+    client.tasks.close({
       clientActionID: '7b9d1f3a-6c8e-4a0b-9d2f-4e5a6b7c8d9e',
       taskID: 'conversation',
-    })
-    .then(
-      () => null,
-      (error: unknown) => error,
-    );
-
-  expect(refused).toMatchObject({ code: 'CONVERSATION_NEVER_CLOSES' });
+    }),
+  ).rejects.toMatchObject({ code: 'CONVERSATION_NEVER_CLOSES' });
 });
 
 test('#tasks.close refuses to close the task of a definition', async () => {
@@ -692,17 +663,12 @@ test('#tasks.close refuses to close the task of a definition', async () => {
     },
   ]);
 
-  const refused = await client.tasks
-    .close({
+  await expect(
+    client.tasks.close({
       clientActionID: '7b9d1f3a-6c8e-4a0b-9d2f-4e5a6b7c8d9f',
       taskID: 'w4t7r2n9ka',
-    })
-    .then(
-      () => null,
-      (error: unknown) => error,
-    );
-
-  expect(refused).toMatchObject({ code: 'DEFINITION_TASK_NEVER_CLOSES' });
+    }),
+  ).rejects.toMatchObject({ code: 'DEFINITION_TASK_NEVER_CLOSES' });
 });
 
 test('#tasks.pause refuses a caller with no session', async () => {
@@ -710,17 +676,12 @@ test('#tasks.pause refuses a caller with no session', async () => {
 
   const stranger = buildTestClient(api.url);
 
-  const refused = await stranger.tasks
-    .pause({
+  await expect(
+    stranger.tasks.pause({
       clientActionID: '8c0e2a4b-7d9f-4b1c-8e3a-5f6b7c8d9e0f',
       taskID: 'conversation',
-    })
-    .then(
-      () => null,
-      (error: unknown) => error,
-    );
-
-  expect(refused).toMatchObject({ code: 'UNAUTHORIZED' });
+    }),
+  ).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
 });
 
 test('#tasks.list gives the mark of a started task and who closed a closed one', async () => {
@@ -824,18 +785,13 @@ test('#tasks.setDisposable refuses a client action ID that another change used',
     disposable: false,
   });
 
-  const refused = await client.tasks
-    .setDisposable({
+  await expect(
+    client.tasks.setDisposable({
       clientActionID: '3c4d5e6f-7a8b-4c9d-8e1f-2a3b4c5d6e7f',
       taskID: 'k3x9m2p7qa',
       disposable: true,
-    })
-    .then(
-      () => null,
-      (error: unknown) => error,
-    );
-
-  expect(refused).toMatchObject({ code: 'CLIENT_ACTION_ID_REUSED' });
+    }),
+  ).rejects.toMatchObject({ code: 'CLIENT_ACTION_ID_REUSED' });
 });
 
 test('#tasks.setDisposable refuses a task that does not exist', async () => {
@@ -844,18 +800,13 @@ test('#tasks.setDisposable refuses a task that does not exist', async () => {
 
   const client = buildTestClient(api.url, laptop.token);
 
-  const refused = await client.tasks
-    .setDisposable({
+  await expect(
+    client.tasks.setDisposable({
       clientActionID: '4d5e6f7a-8b9c-4d0e-9f2a-3b4c5d6e7f80',
       taskID: 'nosuchtask',
       disposable: true,
-    })
-    .then(
-      () => null,
-      (error: unknown) => error,
-    );
-
-  expect(refused).toMatchObject({ code: 'TASK_NOT_FOUND' });
+    }),
+  ).rejects.toMatchObject({ code: 'TASK_NOT_FOUND' });
 });
 
 test('#tasks.setDisposable refuses the conversation, which has no mark', async () => {
@@ -866,18 +817,13 @@ test('#tasks.setDisposable refuses the conversation, which has no mark', async (
 
   await createConversationTask(api.context);
 
-  const refused = await client.tasks
-    .setDisposable({
+  await expect(
+    client.tasks.setDisposable({
       clientActionID: '5e6f7a8b-9c0d-4e1f-8a3b-4c5d6e7f8091',
       taskID: 'conversation',
       disposable: true,
-    })
-    .then(
-      () => null,
-      (error: unknown) => error,
-    );
-
-  expect(refused).toMatchObject({ code: 'TASK_HAS_NO_MARK' });
+    }),
+  ).rejects.toMatchObject({ code: 'TASK_HAS_NO_MARK' });
 });
 
 test('#tasks.setDisposable refuses a closed task, with its state, and writes nothing', async () => {
@@ -893,23 +839,19 @@ test('#tasks.setDisposable refuses a closed task, with its state, and writes not
     taskID: 'k3x9m2p7qa',
   });
 
-  const refused = await client.tasks
-    .setDisposable({
+  await expect(
+    client.tasks.setDisposable({
       clientActionID: '7a8b9c0d-1e2f-4a3b-8c5d-6e7f8091a2b3',
       taskID: 'k3x9m2p7qa',
       disposable: false,
-    })
-    .then(
-      () => null,
-      (error: unknown) => error,
-    );
+    }),
+  ).rejects.toMatchObject({ code: 'TASK_STATE_REFUSED', data: { state: 'closed' } });
 
   const entries = await readRecords(api.context.log, {
     afterSequence: 0,
     kinds: ['task.mark_set'],
   });
 
-  expect(refused).toMatchObject({ code: 'TASK_STATE_REFUSED', data: { state: 'closed' } });
   expect(entries).toStrictEqual([]);
 });
 
@@ -918,18 +860,13 @@ test('#tasks.setDisposable refuses a caller with no session', async () => {
 
   const stranger = buildTestClient(api.url);
 
-  const refused = await stranger.tasks
-    .setDisposable({
+  await expect(
+    stranger.tasks.setDisposable({
       clientActionID: '8b9c0d1e-2f3a-4b4c-9d6e-7f8091a2b3c4',
       taskID: 'k3x9m2p7qa',
       disposable: true,
-    })
-    .then(
-      () => null,
-      (error: unknown) => error,
-    );
-
-  expect(refused).toMatchObject({ code: 'UNAUTHORIZED' });
+    }),
+  ).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
 });
 
 test('#tasks.list gives each task its listed state, and idle, finished and asleep apart', async () => {

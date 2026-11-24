@@ -1208,13 +1208,8 @@ test('#records.follow ends with UNAUTHORIZED once the session is revoked', async
     sessionID: laptop.sessionID,
   });
 
-  const ended = await reading.then(
-    () => null,
-    (error: unknown) => error,
-  );
-
-  expect(isDefinedError(ended)).toBeTrue();
-  expect(ended).toMatchObject({ code: 'UNAUTHORIZED' });
+  await expect(reading).rejects.toSatisfy(isDefinedError);
+  await expect(reading).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
 });
 
 test('#records.follow started past the head still ends once the session is revoked', async () => {
@@ -1235,12 +1230,7 @@ test('#records.follow started past the head still ends once the session is revok
     sessionID: laptop.sessionID,
   });
 
-  const ended = await reading.then(
-    () => null,
-    (error: unknown) => error,
-  );
-
-  expect(ended).toMatchObject({ code: 'UNAUTHORIZED' });
+  await expect(reading).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
 });
 
 test('#records.follow refuses a revoked session before the stream opens', async () => {

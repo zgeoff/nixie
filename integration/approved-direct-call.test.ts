@@ -145,14 +145,12 @@ test('it refuses a second answer to the approval, and runs nothing more', async 
   await ctx.approve(item.proposal.proposalID, item.proposal.actionHash);
   await ctx.waitForOutcome();
 
-  const second = await ctx.approve(item.proposal.proposalID, item.proposal.actionHash).then(
-    () => null,
-    (error: unknown) => error,
-  );
+  await expect(
+    ctx.approve(item.proposal.proposalID, item.proposal.actionHash),
+  ).rejects.toBeInstanceOf(Error);
 
   const records = await ctx.readThread();
 
-  expect(second).toBeInstanceOf(Error);
   expect(records.filter((record) => record.kind === 'action.attempt_started')).toHaveLength(1);
   expect(records.filter((record) => record.kind === 'action.queued')).toHaveLength(1);
 });

@@ -38,13 +38,11 @@ test('it leaves no set name behind when the removal stops part way', async () =>
     removeFile: () => Promise.reject(new Error('the removal stopped')),
   };
 
-  const refused = await removeRecordedSet(files, join(ctx.stagingDir, '000000000003')).then(
-    () => null,
-    (error: unknown) => error,
-  );
+  await expect(
+    removeRecordedSet(files, join(ctx.stagingDir, '000000000003')),
+  ).rejects.toMatchObject({ message: 'the removal stopped' });
 
   const names = await readdir(ctx.stagingDir);
 
-  expect(refused).toMatchObject({ message: 'the removal stopped' });
   expect(names).toStrictEqual(['000000000003.removed']);
 });

@@ -157,14 +157,15 @@ test('it retires the other lapsed items when one has no readable key, and report
 
   clock.advance(Date.parse('2026-10-20T00:41:00Z') - clock.now());
 
-  const refused = await memory.store.lapse().then(
-    () => null,
-    (error: unknown) => error,
-  );
+  const refused = memory.store.lapse();
+
+  await expect(refused).rejects.toBeInstanceOf(AggregateError);
+
+  await expect(refused).rejects.toMatchObject({
+    errors: [{ message: expect.toInclude(keyless.itemID) }],
+  });
 
   const recalled = await memory.store.recall({ itemIDs: [healthy.itemID], includeRetired: true });
 
-  expect(refused).toBeInstanceOf(AggregateError);
-  expect(refused).toMatchObject({ errors: [{ message: expect.toInclude(keyless.itemID) }] });
   expect(recalled.items).toMatchObject([{ version: 2, change: 'retired', origin: 'lapse' }]);
 });

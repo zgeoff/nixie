@@ -463,7 +463,7 @@ test('it reads no open pull request for a branch whose pull request closed', asy
 test.each([
   ['an answer of the wrong shape', '{}'],
   ['an answer that is not JSON', 'not json'],
-])('it refuses %s with no status', async (_, answer) => {
+])('it refuses %s with no status', (_, answer) => {
   network.use(http.get(`${githubAPIURL}/*`, () => new HttpResponse(answer)));
 
   const repo = buildGitHubDefinitionsRepo({
@@ -473,12 +473,10 @@ test.each([
     apiURL: githubAPIURL,
   });
 
-  const refusal = await repo.readFile('nixie.yaml', 'main').then(
-    () => null,
-    (error: unknown) => error,
-  );
-
-  expect(refusal).toMatchObject({ name: 'GitHubRequestError', status: null });
+  expect(repo.readFile('nixie.yaml', 'main')).rejects.toMatchObject({
+    name: 'GitHubRequestError',
+    status: null,
+  });
 });
 
 test('it refuses a request GitHub refuses, with its status and never the token', async () => {
@@ -491,18 +489,14 @@ test('it refuses a request GitHub refuses, with its status and never the token',
     apiURL: githubAPIURL,
   });
 
-  const refusal = await repo.readBaseRevision().then(
-    () => null,
-    (error: unknown) => error,
-  );
-
-  invariant(refusal instanceof Error);
-
-  expect(refusal).toMatchObject({ name: 'GitHubRequestError', status: 401 });
-  expect(refusal.message).not.toInclude('token-b');
+  expect(repo.readBaseRevision()).rejects.toMatchObject({
+    name: 'GitHubRequestError',
+    status: 401,
+    message: expect.not.stringContaining('token-b'),
+  });
 });
 
-test('it redacts the token that GitHub echoes in a refusal, and drops the rest of the body', async () => {
+test('it redacts the token that GitHub echoes in a refusal, and drops the rest of the body', () => {
   network.use(
     http.get(`${githubAPIURL}/*`, (info) =>
       HttpResponse.json(
@@ -522,14 +516,9 @@ test('it redacts the token that GitHub echoes in a refusal, and drops the rest o
     apiURL: githubAPIURL,
   });
 
-  const refusal = await repo.readBaseRevision().then(
-    () => null,
-    (error: unknown) => error,
-  );
-
-  invariant(refusal instanceof Error);
-
-  expect(refusal.message).not.toInclude('opaque-installation-secret');
-  expect(refusal.message).not.toInclude('docs.example.test');
-  expect(refusal).toMatchObject({ name: 'GitHubRequestError', status: 401 });
+  expect(repo.readBaseRevision()).rejects.toMatchObject({
+    name: 'GitHubRequestError',
+    status: 401,
+    message: expect.not.stringMatching(/opaque-installation-secret|docs\.example\.test/u),
+  });
 });
