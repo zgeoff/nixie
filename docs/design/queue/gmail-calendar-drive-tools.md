@@ -164,8 +164,10 @@ stays as its table gives it. No decision reads endorsement yet; a later taint st
 | `gmail.read`            | `read`  | direct | none                                  | none                      |
 | `gmail.read_attachment` | `read`  | direct | none                                  | none                      |
 | `gmail.label`           | `write` | queued | none                                  | check `gmail.find_labels` |
+| `gmail.draft`           | `write` | queued | none                                  | check `gmail.find_draft`  |
 | `gmail.send`            | `send`  | queued | each address in `to`, `cc` and `bcc`  | check `gmail.find_sent`   |
 | `gmail.reply`           | `send`  | queued | the recipients it reads, in `prepare` | check `gmail.find_sent`   |
+| `gmail.send_draft`      | `send`  | queued | the draft's recipients, in `prepare`  | check `gmail.find_sent`   |
 
 Every Gmail tool needs the scope `gmail.modify`.
 
@@ -194,8 +196,23 @@ gmail.label({
 });
 // → done: { threads: ['k3x9m2p7qa.18c2f0a9b4d1e7c3'], created: [] }   created: user labels the call made
 
-gmail.send({ to: ['sam@example.org'], cc: [], bcc: [], subject: 'Q3 numbers', text: 'Hi Sam, …' });
-// → done: { message: 'k3x9m2p7qa.18c2f1…', thread: 'k3x9m2p7qa.18c2f1…' }
+gmail.send({
+  to: ['sam@example.org'],
+  cc: [],
+  bcc: [],
+  subject: 'Q3 numbers',
+  text: 'Hi Sam, …',
+  html: null, // optional: an HTML body beside the text
+  files: ['f8k2m4'], // optional: file IDs of the assistant's own files, such as a drawing
+});
+// → done: { message: 'k3x9m2p7qa.18c2f1…', thread: 'k3x9m2p7qa.18c2f1…', edited: null }
+//   edited: { subject, text } when you changed them on the card; the mail went out as edited
+
+gmail.draft({ to: ['sam@example.org'], subject: 'Q3 numbers', text: 'Hi Sam, …', files: [] });
+// → done: { draft: 'k3x9m2p7qa.r-8812…' }   the draft stays in the account, and you can open it
+
+gmail.send_draft({ draft: 'k3x9m2p7qa.r-8812…' });
+// → done: { message, thread, edited: null }
 
 gmail.reply({ message: 'k3x9m2p7qa.18c2f0a9b4d1e7c3', text: 'Thanks, got it.', replyAll: false });
 // → done: { message, thread }
@@ -211,8 +228,17 @@ within its message, and carries no prefix.
 - `gmail.label` takes up to 50 threads of one connection, and refuses with `mixed_connections` when
   they name 2. `add` and `remove` take user label names and the system labels `INBOX`, `UNREAD`,
   `STARRED` and `IMPORTANT`. When `add` names a user label that does not exist, the tool creates it.
-- `gmail.send` takes up to 20 addresses across `to`, `cc` and `bcc`, and a plain-text body of up to
-  100 KB. It sends no attachment and no HTML.
+- `gmail.send` and `gmail.draft` take up to 20 addresses across `to`, `cc` and `bcc`, a plain-text
+  body of up to 100 KB, an optional HTML body of up to 100 KB, and up to 10 files of 25 MB in all. A
+  file is one of the assistant's own files, such as a drawing or a file from its computer, and
+  resolves only on the conversation or task run that made it or saved it. `gmail.reply` takes the
+  same `html` and `files`.
+- `gmail.draft` writes a draft in the account and sends nothing. The starter rule
+  `allow-gmail-drafts` allows it, so a draft never shows a card.
+- `gmail.send_draft` reads the draft's recipients, subject, body and files in `prepare`, and is a
+  send like `gmail.send`: your own request covers it, and otherwise it takes a card or an allow
+  rule. Its attempt reads the draft again, and answers `changed` when the draft differs from what
+  `prepare` read.
 - `gmail.reply` takes its recipients from the message, never from the model: `Reply-To`, else
   `From`, and with `replyAll` the message's `To` and `Cc` too, without your own address. A reply to
   your own message goes to its `To`, and with `replyAll` its `Cc` too, as Gmail does. It threads the
@@ -225,16 +251,23 @@ within its message, and carries no prefix.
 
 ### The Gmail cards
 
-| Tool          | Sentence                                          | Approve button |
-| ------------- | ------------------------------------------------- | -------------- |
-| `gmail.send`  | Send an email from {from} to {to}: "{subject}"    | Send email     |
-| `gmail.reply` | Reply to {replyTo} from {from}: "{subject}"       | Send reply     |
-| `gmail.label` | Label {count} threads: add {add}, remove {remove} | Label          |
+| Tool               | Sentence                                          | Approve button |
+| ------------------ | ------------------------------------------------- | -------------- |
+| `gmail.send`       | Send an email from {from} to {to}: "{subject}"    | Send email     |
+| `gmail.reply`      | Reply to {replyTo} from {from}: "{subject}"       | Send reply     |
+| `gmail.send_draft` | Send a draft from {from} to {to}: "{subject}"     | Send email     |
+| `gmail.label`      | Label {count} threads: add {add}, remove {remove} | Label          |
 
 A mail card shows From (the connection's account), To, Cc, Bcc, Subject, In reply to (`gmail.reply`
-only: the original's sender, date and subject) and the whole body as plain text, never HTML. It
-leaves out an empty Cc or Bcc. In the sentence, `{to}` lists every destination, Bcc included,
-separated by commas.
+only: the original's sender, date and subject), the whole text body, and each attachment by name and
+size. An HTML body shows rendered in a sandboxed frame that runs no script and loads nothing remote.
+The card leaves out an empty Cc or Bcc. In the sentence, `{to}` lists every destination, Bcc
+included, separated by commas.
+
+- You can edit the subject and the text body on a mail card before you approve it. nixie sends
+  exactly what you approved, and the result's `edited` gives the model the final subject and text.
+- An edit of the text body of a mail with an HTML body drops the HTML body, so the mail goes out as
+  the text you approved.
 
 ### The Sent-folder check
 
@@ -318,11 +351,14 @@ The check runs at least 5 minutes after the attempt started, and asks Gmail 2 wa
 
 ### Sends and errors
 
-- nixie has no draft tool. Every send passes the decision point. The starter rule
+- Every send, a draft's send included, passes the decision point. The starter rule
   `allow-sends-within-limits` ([rules](../platform/policy/rules.md)) allows a send, and the send
   runs at once only when each destination has a permission at stage 5 or your consent. Every other
   send waits on its card.
-- A send never carries an attachment.
+- Connecting a Google account adds its address to your own places at `self`, so a mail or an
+  invitation to it runs without a card. Forgetting the connection removes that place.
+- `gmail.find_draft` answers found when the account holds a draft whose `Message-ID` header holds
+  the action ID, as the Sent-folder check reads it.
 - Each Google error maps to one `ProviderResponse` kind, and a Gmail 403 with `rateLimitExceeded` or
   `userRateLimitExceeded` is `refused_retryable`.
 
@@ -345,24 +381,12 @@ The check runs at least 5 minutes after the attempt started, and asks Gmail 2 wa
 ## Builder decides
 
 - Internal names, file layout, and how the connector batches metadata reads for `gmail.search`.
-- The MIME encoding of a sent mail, within plain text and the headers above.
+- The MIME encoding of a sent mail, within the text and HTML bodies, the files and the headers
+  above.
 - The wording of each refusal, and of each tool's description.
 - The layout of the tests, and the fake Gmail they use.
 
 ## Out of scope
 
-- Drafts, attachments on a send, forwards, and HTML mail.
+- Forwards.
 - Trashing mail.
-
-## Open questions
-
-- **Is your connected account you?** Connecting could add the account's address as one of your own
-  destinations, so a mail or an invitation to it runs without a card. The owner settles it in
-  [GEO-2838](https://linear.app/zgeoff/issue/GEO-2838); the recommendation is yes, added at connect
-  and removed by Forget. Until then, connecting adds nothing, and a send to the account's own
-  address is decided like any other.
-- **Is a `Reply-To` address a reply target?** Mailing lists and support desks set `Reply-To`, so
-  treating it as a reply target saves a card for each reply to them. A sender writes `Reply-To`,
-  though, so the sender could aim a reply that runs without asking at anyone. The owner settles it
-  in [GEO-2839](https://linear.app/zgeoff/issue/GEO-2839); the recommendation is `From` only. Until
-  then, only `From` is a reply target.

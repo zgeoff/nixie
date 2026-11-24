@@ -168,6 +168,8 @@ connections.checkPicked({ connection: 'k3x9m2p7qa', files: ['1Bx9QvR2…', '1Zq7
 //    { file: '1Zq7…', name: null, isVisible: false }]   false: the server cannot read it
 ```
 
+- A `drive.search` that finds nothing tells the model that it searched only the files you picked for
+  nixie and the files nixie made, so the model can ask you to pick a file.
 - The connection's tokens never reach the browser, because they carry `gmail.modify`. The browser's
   own token lives only in the page's memory, and the server never receives it.
 - The page drops a token whose `scope` holds anything besides `drive.file`, with an error, before
