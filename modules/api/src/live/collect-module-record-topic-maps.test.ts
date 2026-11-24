@@ -27,6 +27,7 @@ import {
 import invariant from 'tiny-invariant';
 import { buildSeeder } from '../test-utils/build-seeder';
 import { buildTestClient } from '../test-utils/build-test-client';
+import { buildTestErasureRunner } from '../test-utils/build-test-erasure-runner';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { startTestAPI } from '../test-utils/start-test-api';
 import { startTestAPIDefinitions } from '../test-utils/start-test-api-definitions';
@@ -72,7 +73,7 @@ async function setupTest() {
     clock: api.clock,
     settings: defaultNotebookSettings,
     memory: buildNotebookMemory(() => memory),
-    cleanupSessions: () => Promise.resolve(),
+    erasure: buildTestErasureRunner(api.context.log),
     readRunningStep: () => Promise.resolve(null),
   });
 

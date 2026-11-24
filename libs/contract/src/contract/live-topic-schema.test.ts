@@ -13,6 +13,7 @@ function setupTest() {
   const unfollowedRoots = [
     'conversation',
     'devices',
+    'erasure',
     'files',
     'live',
     'passkeys',

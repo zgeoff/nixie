@@ -110,6 +110,9 @@ A task due on a schedule moves in the task list with no write, so no topic annou
 `tasks.list` answers `changesAt`, the earliest next run of a listed task, and the client reads the
 list again at that time.
 
+A forget turns stuck once it stays open long enough, with no write, so the `erasure` root has no
+topic, and the web client reads `erasure.readStuck` again on a timer.
+
 ## The client registry
 
 The API holds one registry in memory, and a restart forgets it. It keeps two facts apart:
