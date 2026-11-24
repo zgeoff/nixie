@@ -156,6 +156,7 @@
     "ci:images:check-codex-image": "bun scripts/images/check-codex-image.ts",
     "ci:images:check-conversation-image": "bun scripts/images/check-conversation-image.ts",
     "ci:images:check-carried-manifest": "bun scripts/images/check-carried-manifest.ts",
+    "ci:images:check-image-size": "bun scripts/images/check-image-size.ts",
     "ci:images:check-public-pulls": "bun scripts/images/check-public-pulls.ts",
     "ci:images:check-printed-sandbox-images": "bun scripts/images/check-printed-sandbox-images.ts",
     "ci:images:rehearse-release-assets": "bun scripts/images/rehearse-release-assets.ts",
