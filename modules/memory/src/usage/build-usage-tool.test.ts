@@ -461,6 +461,30 @@ test('it leaves out an item that a forget removes while the usage history is bei
   expect(listed.items.map((item) => item.gist)).toStrictEqual(['bin day']);
 });
 
+test('it shows the created day of an item that a remember adds while the usage history is being read', async () => {
+  const ctx = await setupTest();
+
+  await ctx.remember('piano tuning', []);
+
+  const held = ctx.holdUsageRead();
+  const listing = ctx.readUsage({ days: 1 });
+
+  await held.isReached;
+
+  ctx.clock.advance(2 * ctx.dayMs);
+
+  await ctx.remember('bin day', []);
+
+  held.release();
+
+  const listed = await listing;
+
+  expect(listed.items.map((item) => [item.gist, item.created])).toStrictEqual([
+    ['piano tuning', '1 Sep'],
+    ['bin day', '3 Sep'],
+  ]);
+});
+
 test.each([
   ['a days of 0', { days: 0 }],
   ['a days of 3651', { days: 3651 }],
