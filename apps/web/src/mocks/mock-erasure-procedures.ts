@@ -1,4 +1,3 @@
-// oxlint-disable new-cap -- oRPC names a procedure's typed errors by their upper-case codes
 import { mockImplementer } from './mock-implementer';
 import { mockViewStore } from './mock-view-store';
 import { requireMockSession } from './require-mock-session';
