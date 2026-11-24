@@ -50,6 +50,11 @@ export function buildTestErasureEffects(): TestErasureEffects {
 
       return Promise.resolve();
     },
+    writeBackupFloor: () => {
+      calls.push('writeBackupFloor');
+
+      return Promise.resolve();
+    },
     reachFaultPoint: (point) => {
       if (armed.delete(point)) {
         return Promise.reject(new Error(`crash at ${point}`));

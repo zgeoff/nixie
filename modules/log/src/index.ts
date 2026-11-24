@@ -138,5 +138,12 @@ export type {
   ErasureTurnInputScope,
 } from './erasure/erasure-effects';
 
-export type { ErasureRunnerControl, ErasureRunnerOptions } from './erasure/make-erasure-runner';
+export type {
+  ErasureRunnerControl,
+  ErasureRunnerOptions,
+  StuckErasure,
+  StuckQuery,
+  StuckRetry,
+} from './erasure/make-erasure-runner';
+
 export { makeErasureRunner } from './erasure/make-erasure-runner';

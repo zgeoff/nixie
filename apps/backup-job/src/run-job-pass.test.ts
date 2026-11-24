@@ -1,9 +1,14 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { appendFile, mkdtemp, readdir, rm } from 'node:fs/promises';
+import { appendFile, mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { claimFileLock } from '@heynixie/async';
-import { backupReceiptSchema, getBackupSetDir, parseBackupFile } from '@heynixie/wire';
+import {
+  backupReceiptSchema,
+  formatBackupFile,
+  getBackupSetDir,
+  parseBackupFile,
+} from '@heynixie/wire';
 import invariant from 'tiny-invariant';
 import { localJobFiles } from './local-job-files';
 import { buildResticClient } from './restic/build-restic-client';
@@ -417,4 +422,39 @@ test('it leaves a set that holds its receipt alone', async () => {
   const receipts = pass.receipts;
 
   expect(receipts).toStrictEqual([]);
+});
+
+test('it leaves a set that started before a finished erasure unpublished, and ships the set after it', async () => {
+  const ctx = await setupTest();
+
+  await createStagedSet({
+    stagingDir: ctx.config.stagingDir,
+    sequence: 1,
+    kind: 'scheduled',
+    isComplete: true,
+  });
+
+  await createStagedSet({
+    stagingDir: ctx.config.stagingDir,
+    sequence: 2,
+    kind: 'forget',
+    isComplete: true,
+  });
+
+  await writeFile(
+    join(ctx.config.stagingDir, 'floor.json'),
+    formatBackupFile({ format: 1, sequence: 1 }),
+  );
+
+  const pass = await runJobPass(ctx.config, ctx.repos, localJobFiles);
+
+  invariant(pass.status === 'ran', 'no other pass holds the staging lock');
+
+  const withdrawnNames = await readdir(getBackupSetDir(ctx.config.stagingDir, 1));
+
+  expect(pass.receipts.map((receipt) => [receipt.sequence, receipt.status])).toStrictEqual([
+    [2, 'published'],
+  ]);
+
+  expect(withdrawnNames).toIncludeSameMembers(['nixie.db', 'keys.db', 'manifest.json', 'complete']);
 });

@@ -42,6 +42,8 @@ export interface ServerPartValues {
   readonly checker: CheckerTask;
   readonly erasure: ErasureRunnerControl;
   readonly erasure_catch_up: void;
+  readonly erasure_watch: void;
+  readonly turn_input_work: void;
   readonly memory: StartedMemoryStore;
   readonly notebook: NotebookStore;
 

@@ -1,6 +1,5 @@
 // oxlint-disable new-cap -- oRPC names a procedure's typed errors by their upper-case codes
 import { match } from 'ts-pattern';
-import { probeErasureFinished } from '../forget/probe-erasure-finished';
 import { readForgetBackupState } from '../forget/read-forget-backup-state';
 import { requireCaller } from '../memory/require-caller';
 import type { APIContext, ForgetProgress, ViewNotebookStore } from '../types';
@@ -206,7 +205,7 @@ export function createNotebookProcedures(context: APIContext) {
         .with('reused', () => {
           throw options.errors.CLIENT_ACTION_ID_REUSED();
         })
-        .with('applied', () => probeErasureFinished(() => store.finishForget(target.note)))
+        .with('applied', () => store.finishForget(target.note))
         .exhaustive();
 
       const action = await readClientAction(context.log.writer.db, options.input.clientActionID);

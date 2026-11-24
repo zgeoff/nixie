@@ -89,6 +89,12 @@ test('it destroys the moment once the user confirms, and leaves the view', async
   await rendered.findByRole('list', { name: 'What the destroy shreds' });
   await ctx.user.click(rendered.getByRole('button', { name: 'Destroy for good' }));
 
+  const destroyed = await rendered.findByRole('group', { name: 'This moment is destroyed' });
+
+  expect(destroyed).toHaveTextContent(/Key backups: pending/u);
+
+  await ctx.user.click(within(destroyed).getByRole('button', { name: 'Back to the moments' }));
+
   await waitFor(() => {
     expect(onDestroyed).toHaveBeenCalledOnce();
   });

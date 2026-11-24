@@ -46,6 +46,8 @@ Each part's doc owns the meaning of its own settings, and the file only carries 
 - `forget_notices`, which turns the line that the events block shows for each kind of forget on or
   off: `forget_notices: false` turns every kind off, and the `note` key turns the line for a note
   that the user forgot off
+- `erasure.stuck_after_minutes`, which sets how long a forget stays open before nixie logs it as
+  stuck and retries it every 30 seconds (5 by default)
 
 The model profiles and the definitions source have no defaults, so the file always sets them. The
 imp section is required when the sandbox adapter is imp, which a release build always runs. Every

@@ -58,6 +58,7 @@ test('it serves the memory store the test sets', async () => {
       readDestroyPreview: () => Promise.reject(new Error('no preview runs here')),
       beginDestroy: () => Promise.reject(new Error('no change runs here')),
       finishDestroy: () => Promise.reject(new Error('no change runs here')),
+      readDestroyedSequence: () => Promise.resolve(null),
     },
     view: {
       readPage: () => Promise.resolve({ items: [], next: null }),

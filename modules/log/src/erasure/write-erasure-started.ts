@@ -1,5 +1,6 @@
 import { withWriteTransaction } from '../record/with-write-transaction';
 import { writeRecordsInTransaction } from '../record/write-records-in-transaction';
+import { countErasureKeys } from './count-erasure-keys';
 import { ErasureRefusedError } from './erasure-refused-error';
 import { erasureStartedCodec } from './erasure-started-codec';
 import type {
@@ -31,6 +32,11 @@ export async function writeErasureStarted<Request>(
 
       const erasureID = crypto.randomUUID();
 
+      const keyCount = await countErasureKeys(
+        { writer: { ...context.log.writer, db: tx } },
+        start.capture,
+      );
+
       await writeRecordsInTransaction(tx, context.log, [
         {
           kind: 'erasure.started',
@@ -44,6 +50,7 @@ export async function writeErasureStarted<Request>(
             parentID: options.parent?.erasureID ?? null,
             by: options.by,
             capture: start.capture,
+            keyCount,
           }),
         },
       ]);

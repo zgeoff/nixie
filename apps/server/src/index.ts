@@ -3,6 +3,7 @@ export { createSandboxAdapter } from './sandbox/create-sandbox-adapter';
 export type { DeploymentConfig } from './deployment/deployment-config-schema';
 export { deploymentConfigSchema } from './deployment/deployment-config-schema';
 export { loadDeploymentConfig } from './deployment/load-deployment-config';
+export { erasableDescriptors } from './erasure/erasable-descriptors';
 export { runConversationReset } from './utils/run-conversation-reset';
 export type { ConversationOptions } from './conversation/start-conversation';
 export { startConversation } from './conversation/start-conversation';

@@ -4,8 +4,9 @@ import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { formatMemoryDate } from '../memory/format-memory-date';
 import { css } from '../styled-system/css';
-import type { MomentDestroyPreview } from '../types';
+import type { ForgetBackup, MomentDestroyPreview } from '../types';
 import { useNixieClient } from '../utils/use-nixie-client';
+import { ForgetBackupLine } from './forget-backup-line';
 
 export interface MomentDestroyControlProps {
   readonly momentID: string;
@@ -80,12 +81,20 @@ function DestroyConfirmation(props: DestroyConfirmationProps): ReactNode {
   const destroy = useMutation({
     mutationFn: () =>
       nixie.client.memory.destroyMoment({ ...target, clientActionID: props.pending.actionID }),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: nixie.queryUtils.memory.key() });
-
-      props.onDestroyed();
-    },
   });
+
+  if (destroy.isSuccess) {
+    return (
+      <MomentDestroyed
+        backup={destroy.data.backup}
+        onLeave={async () => {
+          await queryClient.invalidateQueries({ queryKey: nixie.queryUtils.memory.key() });
+
+          props.onDestroyed();
+        }}
+      />
+    );
+  }
 
   const isStale =
     props.version !== props.pending.version || toErrorCode(destroy.error) === 'STALE_VERSION';
@@ -118,6 +127,30 @@ function DestroyConfirmation(props: DestroyConfirmationProps): ReactNode {
           Keep it
         </button>
       </div>
+    </div>
+  );
+}
+
+interface MomentDestroyedProps {
+  readonly backup: ForgetBackup | undefined;
+  readonly onLeave: () => Promise<void>;
+}
+
+// The moment's view stays on screen until the user leaves, so the backup state that the destroy
+// reported is not lost with the moment it came from.
+function MomentDestroyed(props: MomentDestroyedProps): ReactNode {
+  return (
+    <div aria-label="This moment is destroyed" className={confirmation} role="group">
+      <p>The moment is destroyed.</p>
+      {props.backup === undefined ? null : <ForgetBackupLine backup={props.backup} />}
+      <button
+        onClick={() => {
+          void props.onLeave();
+        }}
+        type="button"
+      >
+        Back to the moments
+      </button>
     </div>
   );
 }

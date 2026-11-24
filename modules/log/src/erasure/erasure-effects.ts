@@ -1,7 +1,8 @@
+import type { WriteTransaction } from '../record/with-write-transaction';
 import type { ErasureCapture } from './erasure-capture-schema';
 
 export type ErasureFaultPoint =
-  | 'erasure.started'
+  | 'erasure.begun'
   | 'erasure.sandboxes_destroyed'
   | 'erasure.keys_removed'
   | 'erasure.cleaned'
@@ -41,6 +42,10 @@ export interface ErasureEffects {
   readonly finishPurges: (recordSequence: number) => Promise<void>;
 
   readonly removeTurnInputs: (scope: ErasureTurnInputScope) => Promise<void>;
+
+  // runs in the transaction that writes erasure.finished, after the record: no backup set that
+  // started before it may publish from then on
+  readonly writeBackupFloor: (tx: WriteTransaction) => Promise<void>;
 
   // holds the runner at a fault point of the test build
   readonly reachFaultPoint: (point: ErasureFaultPoint, erasureID: string) => Promise<void>;

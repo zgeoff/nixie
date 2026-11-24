@@ -1,9 +1,7 @@
 // oxlint-disable new-cap -- oRPC names a procedure's typed errors by their upper-case codes
 import { createShortID } from '@heynixie/db';
-import { readErasureFinishedSequence } from '@heynixie/log';
 import { match } from 'ts-pattern';
 import { z } from 'zod';
-import { probeErasureFinished } from '../forget/probe-erasure-finished';
 import { readForgetBackupState } from '../forget/read-forget-backup-state';
 import { requireCaller } from '../memory/require-caller';
 import type { APIContext, ForgetProgress, ReadViewMemory } from '../types';
@@ -131,12 +129,10 @@ export function createMomentProcedures(context: APIContext, readMemory: ReadView
         .with('reused', () => {
           throw options.errors.CLIENT_ACTION_ID_REUSED();
         })
-        .with('applied', () =>
-          probeErasureFinished(() => store.moments.finishDestroy(target.momentID)),
-        )
+        .with('applied', () => store.moments.finishDestroy(target.momentID))
         .exhaustive();
 
-      const sequence = await readErasureFinishedSequence(context.log, 'moment', target.momentID);
+      const sequence = await store.moments.readDestroyedSequence(target.momentID);
 
       const progress: ForgetProgress =
         sequence === null ? { stage: 'deleting' } : { stage: 'forgotten', sequence };

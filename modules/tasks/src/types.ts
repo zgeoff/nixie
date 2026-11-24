@@ -335,7 +335,7 @@ export type FaultPointID =
   | 'memory.purge.keys_removed'
   | 'record.forget.started'
   | 'record.forget.purged'
-  | 'erasure.started'
+  | 'erasure.begun'
   | 'erasure.sandboxes_destroyed'
   | 'erasure.keys_removed'
   | 'erasure.cleaned'

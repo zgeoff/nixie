@@ -6,5 +6,6 @@ export const backupSetLayout = {
   receipt: 'receipt.json',
   restoreNote: 'restore-note.json',
   jobLock: 'job.lock',
+  floor: 'floor.json',
   sequenceDigits: 12,
 } as const;

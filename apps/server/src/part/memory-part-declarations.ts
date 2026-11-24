@@ -1,7 +1,9 @@
 import { runPendingRecordForgets } from '@heynixie/api';
 import { startMemory } from '../cli/start-memory';
 import { startErasureRunner } from '../erasure/start-erasure-runner';
+import { startErasureWatch } from '../erasure/start-erasure-watch';
 import { runTurnInputForget } from '../turn/run-turn-input-forget';
+import { startTurnInputWork } from '../turn/start-turn-input-work';
 import type { AnyPartDeclaration } from '../types';
 import { makeRetriedStart } from './make-retried-start';
 import type { ServerPartValues } from './server-part-values';
@@ -75,6 +77,18 @@ export const memoryPartDeclarations: readonly AnyPartDeclaration<ServerPartValue
     start: makeRetriedStart('erasure_catch_up', (_parts, reader) =>
       reader.get('erasure').finishOpen(),
     ),
+  },
+  {
+    // The turn-input repair and intake wait for the catch-up, so neither reaches what an open forget
+    // deletes.
+    name: 'turn_input_work',
+    needs: ['inputs', 'turn_inputs', 'erasure_catch_up'],
+    start: (reader) => startTurnInputWork(reader),
+  },
+  {
+    name: 'erasure_watch',
+    needs: ['server_parts', 'erasure', 'erasure_catch_up'],
+    start: (reader) => startErasureWatch(reader.get('server_parts'), reader.get('erasure')),
   },
   {
     name: 'record_forgets',

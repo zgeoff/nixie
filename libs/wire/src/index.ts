@@ -60,6 +60,8 @@ export { stripLinkMarks } from './link/strip-link-marks';
 export { recallPageLimitBytes } from './backup/recall-page-limit-bytes';
 export { toolOutputLimitTokens } from './backup/tool-output-limit-tokens';
 export { turnFrameLimitBytes } from './turn/turn-frame-limit-bytes';
+export type { BackupFloor } from './backup/backup-floor';
+export { backupFloorSchema } from './backup/backup-floor';
 export type { BackupReceipt } from './backup/backup-receipt';
 export { backupReceiptSchema } from './backup/backup-receipt';
 export { backupSetLayout } from './backup/backup-set-layout';

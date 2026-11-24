@@ -2,15 +2,15 @@ import { sql } from 'kysely';
 import { withWriteTransaction } from '../record/with-write-transaction';
 import { writeRecordsInTransaction } from '../record/write-records-in-transaction';
 import type { LogTables } from '../types';
+import type { ErasureEffects } from './erasure-effects';
 import { erasureFinishedCodec } from './erasure-finished-codec';
 import type { OpenErasure } from './read-open-erasures';
 import type { ErasureLogContext } from './types';
 
 // Writes erasure.finished once: a repeat after a crash finds the record and writes nothing.
 export function writeErasureFinished(
-  context: ErasureLogContext,
+  context: ErasureLogContext & { readonly effects: Pick<ErasureEffects, 'writeBackupFloor'> },
   erasure: OpenErasure,
-  removedKeys: number,
 ): Promise<void> {
   const started = erasure.started;
 
@@ -37,9 +37,11 @@ export function writeErasureFinished(
           targetID: started.targetID,
           shortID: started.shortID,
           by: started.by,
-          removedKeys,
+          removedKeys: started.keyCount,
         }),
       },
     ]);
+
+    await context.effects.writeBackupFloor(tx);
   });
 }

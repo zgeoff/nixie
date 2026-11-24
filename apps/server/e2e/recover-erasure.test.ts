@@ -1,25 +1,36 @@
 import { expect, test } from 'bun:test';
-import { readPurgeState, seedBegunNoteForget, startE2ENixie } from '@heynixie/server/test-utils';
+import {
+  readSurvivingKeyIDs,
+  readTestRecords,
+  seedBegunNoteForget,
+  startE2ENixie,
+} from '@heynixie/server/test-utils';
 import { z } from 'zod';
 
 async function setupTest() {
   const nixie = await startE2ENixie();
   const seed = await seedBegunNoteForget(nixie);
+  const records = await readTestRecords(nixie.dataDir, nixie.deploymentKey);
 
-  return { nixie, seed };
+  const started = records.find((record) => record.kind === 'erasure.started');
+  const keys = z.object({ ids: z.array(z.string()) });
+  const startedSchema = z.object({ capture: z.object({ keys }) });
+
+  return { nixie, seed, started: startedSchema.parse(started?.payload) };
 }
 
 test.each([
-  'erasure.started',
+  'erasure.begun',
   'erasure.sandboxes_destroyed',
   'erasure.keys_removed',
   'erasure.cleaned',
   'erasure.turn_inputs_removed',
 ] as const)(
-  'it finishes the note forget that nixie was killed during at %s, with no key of the note left',
+  'it finishes the note forget that nixie was killed during at %s, with every captured key gone and counted',
   async (point) => {
     const ctx = await setupTest();
 
+    const capturedKeyIDs = ctx.started.capture.keys.ids;
     const killed = ctx.nixie.harness.start([{ point, kind: 'erasure' }]);
 
     await killed.waitForArrival(point);
@@ -36,11 +47,10 @@ test.each([
 
     await restarted.kill();
 
-    const state = await readPurgeState(ctx.nixie);
+    const surviving = await readSurvivingKeyIDs(ctx.nixie, capturedKeyIDs);
 
-    const removed = z.object({ removedKeys: z.number() }).parse(finished.payload);
-
-    expect(state.keyIDs.filter((keyID) => keyID.includes(ctx.seed.noteID))).toStrictEqual([]);
-    expect(removed.removedKeys).toBeGreaterThanOrEqual(0);
+    expect(capturedKeyIDs.length).toBeGreaterThan(0);
+    expect(surviving).toStrictEqual([]);
+    expect(finished.payload['removedKeys']).toBe(capturedKeyIDs.length);
   },
 );

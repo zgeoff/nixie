@@ -1,5 +1,6 @@
+import { writeBackupFloor } from '@heynixie/backup';
 import type { ErasureRunnerControl } from '@heynixie/log';
-import { makeErasureRunner } from '@heynixie/log';
+import { localDataStorage, makeErasureRunner } from '@heynixie/log';
 import { readCleanedTaskIDs } from '@heynixie/sessions';
 import { waitAtFaultPoint } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
@@ -51,6 +52,10 @@ export function startErasureRunner(
         await memory.finishEvidencePurges({ recordSequence });
       },
       removeTurnInputs: (scope) => parts.turnInputs.removeForgotten(scope),
+      writeBackupFloor: (tx) =>
+        parts.config.backup.isEnabled
+          ? writeBackupFloor({ storage: localDataStorage, writer: parts.context.log.writer }, tx)
+          : Promise.resolve(),
       reachFaultPoint: (point, erasureID) =>
         NIXIE_TEST_BUILD
           ? waitAtFaultPoint(point, { kind: 'erasure', id: erasureID })

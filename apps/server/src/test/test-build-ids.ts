@@ -38,7 +38,7 @@ const faultPointTexts: Readonly<Record<FaultPointID, string>> = {
   'memory.purge.keys_removed': 'memory.purge.keys_removed',
   'record.forget.started': 'record.forget.started',
   'record.forget.purged': 'record.forget.purged',
-  'erasure.started': 'erasure.started',
+  'erasure.begun': 'erasure.begun',
   'erasure.sandboxes_destroyed': 'erasure.sandboxes_destroyed',
   'erasure.keys_removed': 'erasure.keys_removed',
   'erasure.cleaned': 'erasure.cleaned',

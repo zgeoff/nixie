@@ -547,6 +547,23 @@ describe. The runner owns the steps after the start: it captures every key and s
 removes the turn inputs, and writes `erasure.finished`, which makes a backup due. An item's forget
 keeps its own pipeline.
 
+The runner holds these rules, which the code enforces:
+
+- One tree of erasures runs at a time. A retry of a forget, the catch-up at start and the watch
+  below queue behind each other, so no cleanup runs twice and no run releases the capture hold that
+  another still needs.
+- A parent finishes after every child it reached, whichever erasure started that child. A child that
+  changed after the runner read it is read again, so its keys go before the parent finishes.
+- `erasure.started` holds a count of the keys the capture names, taken in the start transaction.
+  `erasure.finished` reports that count as `removedKeys`, so a recovery after the keys went still
+  reports them.
+- At start, the catch-up finishes every open erasure after the session cleanup and before the
+  turn-input repair, the turn-input intake and the runners start.
+- A forget open for the `erasure.stuck_after_minutes` of the config (5 by default) is stuck. Every
+  30 seconds the watch retries such a forget, and logs `erasure.stuck` at the error level for each
+  one that stays open. A younger forget is left alone, because it may wait on the step that called
+  it.
+
 Every step of the cleanup is safe to run twice. A crash between the 2 parts, or anywhere inside the
 cleanup, leaves the item forgetting, and the store's start runs the cleanup for every forgetting
 item before it builds the index and before any runner claims work. A deleted key never returns while

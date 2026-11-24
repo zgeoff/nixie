@@ -103,7 +103,7 @@ test('it leaves the keys gone and no erasure.finished when a step after the keys
 });
 
 test.each<ErasureFaultPoint>([
-  'erasure.started',
+  'erasure.begun',
   'erasure.sandboxes_destroyed',
   'erasure.keys_removed',
   'erasure.cleaned',
@@ -144,6 +144,7 @@ test('it holds capture closed from the first step to the last and releases it be
     'cleanupSessions',
     'removeTurnInputs',
     'releaseCaptures',
+    'writeBackupFloor',
   ]);
 });
 
@@ -186,7 +187,7 @@ test('it finishes each child before its parent, with the keys of the whole tree 
   }).toStrictEqual({
     keysAtCrash: [],
     startedAtCrash: 3,
-    finishedTargets: ['i1', 'i2', 'p'],
+    finishedTargets: ['i2', 'i1', 'p'],
   });
 });
 
@@ -288,4 +289,149 @@ test('it leaves nothing open after a finished erasure', async () => {
   const open = await ctx.readOpenCount();
 
   expect(open).toBe(0);
+});
+
+test('it reports the keys it deleted when a crash after the keys cut the run short', async () => {
+  const ctx = await setupTest();
+
+  const keyIDs = [await ctx.createKey(), await ctx.createKey()];
+  const note = ctx.register('note', 'image', [{ id: 'a', keyIDs, childIDs: [] }]);
+
+  await note.begin({ id: 'a' }, { by: 'user' });
+
+  ctx.crashAt('erasure.keys_removed');
+
+  await note.finish('a').catch(() => null);
+  await ctx.runner.finishOpen();
+
+  const records = await ctx.readErasureRecords();
+
+  expect(records[1]?.payload).toMatchObject({ kind: 'note', targetID: 'a', removedKeys: 2 });
+});
+
+test('it runs one forget once when two retries of it run at the same time', async () => {
+  const ctx = await setupTest();
+
+  const note = ctx.register('note', 'image', [{ id: 'a', keyIDs: [], childIDs: [] }]);
+
+  await note.begin({ id: 'a' }, { by: 'user' });
+  await Promise.all([note.finish('a'), note.finish('a')]);
+
+  const names = ctx.calls.map((call) => call.split(' ')[0]);
+
+  expect(names.filter((name) => name === 'cleanupSessions')).toHaveLength(1);
+  expect(names.filter((name) => name === 'releaseCaptures')).toHaveLength(1);
+});
+
+test('it finishes a child that another forget started before the parent that reaches it', async () => {
+  const ctx = await setupTest();
+
+  const record = ctx.register('record', 'image', [{ id: 'p', keyIDs: [], childIDs: ['i1'] }]);
+  const image = ctx.register('image', 'image', [{ id: 'i1', keyIDs: [], childIDs: [] }]);
+
+  await record.begin({ id: 'p' }, { by: 'user' });
+  await image.begin({ id: 'i1' }, { by: 'user' });
+  await record.finish('p');
+
+  const records = await ctx.readErasureRecords();
+
+  expect(
+    records
+      .filter((entry) => entry.kind === 'erasure.finished')
+      .map((entry) => entry.payload['targetID']),
+  ).toStrictEqual(['i1', 'p']);
+});
+
+test('it reads a child again when it changed after it was read, and deletes its keys before the parent finishes', async () => {
+  const ctx = await setupTest();
+  const childKey = await ctx.createKey();
+
+  const reads = { count: 0 };
+
+  const child = buildTestErasable({
+    kind: 'image',
+    childKind: 'image',
+    targets: [{ id: 'i1', keyIDs: [childKey], childIDs: [], version: 2 }],
+    events: ctx.events,
+  });
+
+  ctx.runner.register({
+    ...child,
+    toRequest: (target) =>
+      target.version === null
+        ? { id: target.targetID }
+        : { id: target.targetID, version: target.version },
+  });
+
+  const parent = buildTestErasable({
+    kind: 'record',
+    childKind: 'image',
+    targets: [{ id: 'p', keyIDs: [], childIDs: ['i1'] }],
+    events: ctx.events,
+  });
+
+  const handle = ctx.runner.register({
+    ...parent,
+    readChildren: () => {
+      reads.count += 1;
+
+      return Promise.resolve([
+        { kind: 'image', targetID: 'i1', version: reads.count === 1 ? 1 : 2 },
+      ]);
+    },
+  });
+
+  await handle.begin({ id: 'p' }, { by: 'user' });
+  await handle.finish('p');
+
+  const remaining = await ctx.readKeyIDs();
+  const records = await ctx.readErasureRecords();
+
+  expect({
+    remaining,
+    finished: records
+      .filter((entry) => entry.kind === 'erasure.finished')
+      .map((entry) => entry.payload['targetID']),
+  }).toStrictEqual({ remaining: [], finished: ['i1', 'p'] });
+});
+
+test('it runs again an erasure open past the stuck threshold, and leaves a younger one alone', async () => {
+  const ctx = await setupTest();
+
+  const note = ctx.register('note', 'image', [{ id: 'a', keyIDs: [], childIDs: [] }]);
+
+  await note.begin({ id: 'a' }, { by: 'user' });
+
+  const startedAtMs = ctx.clock.now();
+
+  const young = await ctx.runner.retryStuck({ nowMs: startedAtMs + 1000, stuckAfterMs: 5000 });
+  const openAfterYoung = await ctx.readOpenCount();
+  const old = await ctx.runner.retryStuck({ nowMs: startedAtMs + 5000, stuckAfterMs: 5000 });
+  const openAfterOld = await ctx.readOpenCount();
+
+  expect({ young, openAfterYoung, old, openAfterOld }).toStrictEqual({
+    young: { stillOpen: [], failures: [] },
+    openAfterYoung: 1,
+    old: { stillOpen: [], failures: [] },
+    openAfterOld: 0,
+  });
+});
+
+test('it reports an erasure that stays open after its retry fails', async () => {
+  const ctx = await setupTest();
+
+  const note = ctx.register('note', 'image', [{ id: 'a', keyIDs: [], childIDs: [] }]);
+
+  await note.begin({ id: 'a' }, { by: 'user' });
+
+  ctx.crashAt('erasure.cleaned');
+
+  const startedAtMs = ctx.clock.now();
+
+  const retry = await ctx.runner.retryStuck({ nowMs: startedAtMs + 5000, stuckAfterMs: 5000 });
+
+  expect({
+    stillOpen: retry.stillOpen.map((erasure) => [erasure.kind, erasure.shortID, erasure.openForMs]),
+    failureCount: retry.failures.length,
+  }).toStrictEqual({ stillOpen: [['note', 'short-a', 5000]], failureCount: 1 });
 });

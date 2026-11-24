@@ -11,4 +11,5 @@ export type { BackupSchedule, BackupScheduleOptions } from './backup/start-backu
 export { startBackupSchedule } from './backup/start-backup-schedule';
 export type { BackupContext, BackupNotice, BackupNoticeCause, BackupSetState } from './types';
 export type { ReceivedReceipt } from './backup/write-received-receipts';
+export { writeBackupFloor } from './backup/write-backup-floor';
 export { writeSnapshotSet } from './backup/write-snapshot-set';

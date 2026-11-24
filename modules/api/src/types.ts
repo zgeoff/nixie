@@ -185,6 +185,7 @@ export type ViewMemoryStore = Pick<
     | 'readDestroyPreview'
     | 'beginDestroy'
     | 'finishDestroy'
+    | 'readDestroyedSequence'
   >;
 } & Pick<ItemIDStore, 'readItemIDMap'>;
 

@@ -15,5 +15,6 @@ export const erasureStartedCodec = defineRecordCodec(
     parentID: z.string().nullable(),
     by: z.enum(['user', 'assistant']),
     capture: erasureCaptureSchema,
+    keyCount: z.int().nonnegative(),
   }),
 );

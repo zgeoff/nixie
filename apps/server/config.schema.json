@@ -1670,6 +1670,17 @@
         }
       ]
     },
+    "erasure": {
+      "type": "object",
+      "properties": {
+        "stuck_after_minutes": {
+          "default": 5,
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
     "policy": {
       "type": "object",
       "properties": {

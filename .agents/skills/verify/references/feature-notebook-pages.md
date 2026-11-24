@@ -91,15 +91,16 @@ Before you start:
    bun verify browser snapshot --until-text 'Winter diary'
    bun verify browser click --role button --name Forget
    bun verify browser click --role button --name 'Forget for good'
-   bun verify browser snapshot --until-text 'Key backups'
+   bun verify browser snapshot --until-text 'Key backups: off'
    bun verify db query "select kind, json_extract(payload, '$.kind') as target, json_extract(payload, '$.by') as by, json_extract(payload, '$.removedKeys') as removed from records where kind like 'erasure.%' order by sequence"
    ```
 
    Expect: the first snapshot shows "Winter diary" under Backlinks, and the page kept the private
-   toggle. The last shows "The note is forgotten." and a line that starts with "Key backups", which
-   reads pending until a backup set at or after the forget publishes. The query lists
-   `erasure.started` and then `erasure.finished`, both with `target` `note` and `by` `user`, and
-   `removed` above 0 on the finish record.
+   toggle. The last shows "The note is forgotten." and the line "Key backups: off", because the
+   local test build keeps backups disabled and stages no set. A deployment with backups on reads
+   "Key backups: pending" there, until a backup set at or after the forget publishes. The query
+   lists `erasure.started` and then `erasure.finished`, both with `target` `note` and `by` `user`,
+   and `removed` above 0 on the finish record.
 
 6. Open the notebook again, and the private note that linked to the forgotten one:
 
@@ -141,8 +142,8 @@ Before you start:
 - Step 4: the private note's page folds its body until Open. After Open, the body shows, and the log
   holds exactly 1 `notebook.private_opened` record.
 - Step 5: the first note's page lists the private note under Backlinks, and after the forget it
-  shows the forgotten line with the key backup state. The log holds an `erasure.started` and then an
-  `erasure.finished` record for the note.
+  shows the forgotten line with the key backup state, off on `local`. The log holds an
+  `erasure.started` and then an `erasure.finished` record for the note.
 - Step 6: the list holds only the private note, and its link to the forgotten note reads "Gone
   (note)".
 - Step 7: the list shows "No notes yet". The log holds 2 `erasure.finished` records of kind `note`,

@@ -3,6 +3,7 @@ import type { BackupReceipt } from '@heynixie/wire';
 import { backupSetFiles, backupSetLayout, formatBackupFile, readBackupSets } from '@heynixie/wire';
 import type { JobFiles } from './local-job-files';
 import type { JobConfig } from './parse-job-config';
+import { probeSetBelowFloor } from './probe-set-below-floor';
 import type { BackupRepos } from './publish/publish-backup-set';
 import { publishBackupSet } from './publish/publish-backup-set';
 
@@ -63,6 +64,14 @@ async function publishStagedSets(
   const receipts: BackupReceipt[] = [];
 
   for (const set of sets.filter((entry) => entry.hasMarker && !entry.hasReceipt)) {
+    // A finished erasure may have deleted keys that this set copied, so nixie withdraws the set and
+    // stages a new one, and the job leaves it alone.
+    const isBelowFloor = await probeSetBelowFloor(files, config.stagingDir, set);
+
+    if (isBelowFloor) {
+      continue;
+    }
+
     const receipt = await publishBackupSet(repos, config, files, set);
 
     await writeReceipt(files, set.directory, receipt);

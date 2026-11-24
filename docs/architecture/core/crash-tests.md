@@ -133,7 +133,7 @@ target remains and `erasure.finished` follows `erasure.started`.
 
 | Fault point                   | Reached                                                                                                    |
 | ----------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `erasure.started`             | after `erasure.started` commits, and when a run of the open erasure begins, before any sandbox or key goes |
+| `erasure.begun`               | after `erasure.started` commits, and when a run of the open erasure begins, before any sandbox or key goes |
 | `erasure.sandboxes_destroyed` | after the code sandboxes, before the keys                                                                  |
 | `erasure.keys_removed`        | after the key deletes, before the session cleanup                                                          |
 | `erasure.cleaned`             | after the session cleanup, before the turn inputs                                                          |

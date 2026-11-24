@@ -35,7 +35,11 @@ every receipt that the job wrote, then stages a set when one is due:
    each of which deletes its keys before it writes that record. The server passes the backup module
    the old end records from each descriptor, so the module imports no store. A set that staged
    before `erasure.finished` never publishes: the pass withdraws it, and stages a new set, because a
-   stale set holds the deleted keys.
+   stale set holds the deleted keys. The same transaction that writes `erasure.finished` writes
+   `floor.json` into the staging folder, naming the highest set that exists then, and the job ships
+   no set at or below it. The withdrawal waits for the job's staging lock, so it never removes a set
+   that the job is shipping, and a pass that finds the lock held withdraws the set on the next pass.
+   A withdrawal that a failure stopped after the rename finishes on the next pass.
 2. A scheduled set is due once the newest staged set is a backup interval old, and never while a set
    waits for its receipt.
 

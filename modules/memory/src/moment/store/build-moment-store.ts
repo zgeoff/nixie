@@ -1,4 +1,5 @@
 import type { ErasureHandle } from '@heynixie/log';
+import { readErasureFinishedSequence } from '@heynixie/log';
 import invariant from 'tiny-invariant';
 import type { WriteInTransaction } from '../../types';
 import type {
@@ -22,6 +23,7 @@ import type { MomentLink } from '../read-moment-links';
 import { readMomentLinks } from '../read-moment-links';
 import type { MomentFindQuery, MomentMatchPage } from '../read-moment-matches';
 import { readMomentMatches } from '../read-moment-matches';
+import { readMomentRow } from '../read-moment-row';
 import type { MomentView } from '../read-moment-view';
 import { readMomentView } from '../read-moment-view';
 import type { MomentWeekCount } from '../read-week-count';
@@ -64,8 +66,12 @@ export interface MomentStore {
     writeInTransaction?: WriteInTransaction,
   ) => Promise<MomentDestroy>;
 
-  // finishes a destroy whose first part committed
-  readonly finishDestroy: (momentID: string) => Promise<void>;
+  // finishes a destroy whose first part committed; the moment is a short ID or a UUID
+  readonly finishDestroy: (moment: string) => Promise<void>;
+
+  // the sequence of the record that ended the moment's destroy, or null while the cleanup still
+  // runs; the moment is a short ID or a UUID
+  readonly readDestroyedSequence: (moment: string) => Promise<number | null>;
 }
 
 export function buildMomentStore(
@@ -99,12 +105,21 @@ export function buildMomentStore(
         ? begun
         : { status: 'begun', momentID: begun.target.targetID };
     },
-    finishDestroy: async (momentID) => {
+    finishDestroy: async (moment) => {
       invariant(erasure, 'the memory store holds an erasure registry');
 
-      await erasure.finish(momentID);
+      const row = await readMomentRow(log.writer.db.$extendTables<MomentTables>(), moment);
+
+      if (row !== null) {
+        await erasure.finish(row.moment_id);
+      }
 
       await updateMomentIndex(log, indexes);
+    },
+    readDestroyedSequence: async (moment) => {
+      const row = await readMomentRow(log.writer.db.$extendTables<MomentTables>(), moment);
+
+      return row === null ? null : readErasureFinishedSequence(log, 'moment', row.moment_id);
     },
   };
 }
