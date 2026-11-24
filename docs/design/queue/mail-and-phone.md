@@ -84,9 +84,11 @@ mail.received                -- one per new mail, keyed by its JMAP ID; from and
 mail.muted, mail.unmuted     -- the mute list is their projection; the address is plain
 ```
 
-The adapter's credential is `deployment:mail`, a `connector_credentials` entry whose value is JSON:
-`{ sessionURL, token }`. The JMAP state, the adapter's cursor, is written in the transaction that
-writes the mail's record.
+The adapter's credential is `deployment:mail`, a `connector_credentials` entry that holds the token
+alone. The config holds `sessionURL` and the account ID. The fetcher's origins are the session URL's
+origin; a session object that names an API, download or upload URL on another origin refuses the
+start. The JMAP state, the adapter's cursor, is written in the transaction that writes the mail's
+record.
 
 ### New mail
 
@@ -132,8 +134,9 @@ phone_texts                  -- connectors module; short ID → the provider's m
 phone.text_received          -- one per new text, keyed by the provider's message ID; from and body erasable
 ```
 
-The adapter's credential is `deployment:phone`, whose value is JSON:
-`{ accountSID, apiKeySID, apiKeySecret, number }`.
+The adapter's credential is `deployment:phone`, a `connector_credentials` entry that holds the API
+key secret alone, sent as HTTP Basic with the API key SID as the user. The config holds the account
+SID, the API key SID and the number.
 
 ## Constraints
 

@@ -283,8 +283,8 @@ Filling:
   account.
 - The guest compares `expectOrigin` with the live top frame's origin right before it fills, and
   fills nothing when they differ.
-- A password goes only into an `<input type=password>` whose form posts to the same origin, or that
-  sits in no form.
+- A password goes only into an `<input type=password>` in a frame of the same origin as the top
+  frame, whose form posts to that origin, or that sits in no form.
 - `add_origin` keeps the origin exactly, with no wildcard. The fill rules apply to it as to the
   first origin.
 - A sign-up that shows a CAPTCHA or a check that wants a person stops, and the assistant calls
@@ -337,7 +337,8 @@ Debugging a fill:
   folder, for a developer on the server to unpack. It holds the tab's MHTML snapshot with every
   frame, each frame's DOM, the accessibility tree, the URLs the page requested, the console log, the
   report, and a screenshot unless a card field was filled. The guest takes the dump from a copy of
-  the page in which every input's value, and every vault secret in the text, reads as dots.
+  the page in which every input's value, and every vault secret in the text, reads as dots. The same
+  scan runs over the requested URLs and the console log before they go in the dump.
 - nixie keeps the newest 50 page dumps and deletes older ones, a setting with that default. The
   model never reads a dump.
 
