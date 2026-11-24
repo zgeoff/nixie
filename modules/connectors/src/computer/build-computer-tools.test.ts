@@ -1632,6 +1632,6 @@ test('it gives no idle reason for a tab that never existed', async () => {
   const outcome = await ctx.call('computer.browser_read', { tab: 't9', mode: 'text' });
 
   expect(outcome).toMatchObject({
-    result: { refused: { message: expect.not.stringContaining('idle') } },
+    result: { refused: { message: expect.stringMatching(/^(?![\s\S]*idle)/u) } },
   });
 });
