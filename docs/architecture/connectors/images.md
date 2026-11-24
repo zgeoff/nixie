@@ -51,7 +51,7 @@ A refusal is a result with a `refusalCode`, never a thrown error. The model read
 | `UNKNOWN_PROFILE`                  | `profile` names no key of `images.profiles`                                         |
 | `NO_EDIT`                          | The profile's provider takes no source or no references                             |
 | `IMAGE_CAPS_FULL`                  | The session has no room for another image; the result sets `roomLeft` to 0          |
-| `IMAGE_REFUSED`                    | The provider refused the prompt; `profiles` lists the other profiles                |
+| `IMAGE_REFUSED`                    | The provider refused the prompt                                                     |
 | `IMAGE_FAILED`                     | The provider failed, its reply is over `maxStoredBytes`, or the bytes do not decode |
 | `IMAGE_TIMEOUT`                    | The provider gave no reply within `drawTimeoutMs`                                   |
 
@@ -84,13 +84,13 @@ counts them. The cost sits under the result's `hidden.costUSD`, which the model 
 ## Photos of the user
 
 A draw whose `from` or `references` names an image imported from a photo sends that photo to the
-provider. The tool's `prepare` hook reports the provider as the call's destination, with the effects
-`fetch` and `send`, so the [decision point](../policy/decision-point.md) treats the draw as a send:
-a rule that allows sends to that provider runs it direct, and otherwise it queues as a proposal for
-the user. The proposal's input holds the image IDs and its destination is the provider. The
-proposal's card shows each photo among them, read from the stored image when the card is read. When
-the user approves, the call runs `prepare` again, and a destination that changed since the proposal
-makes the call return `changed` and run nothing.
+provider. For that call, the tool's `prepare` hook reports the provider as the destination and adds
+the effect `send` to the tool's `fetch`, so the [decision point](../policy/decision-point.md) treats
+the draw as a send: a rule that allows sends to that provider runs it direct, and otherwise it
+queues as a proposal for the user. The proposal's input holds the image IDs and its destination is
+the provider. The proposal's card shows each photo among them, read from the stored image when the
+card is read. When the user approves, the call runs `prepare` again, and a destination that changed
+since the proposal makes the call return `changed` and run nothing.
 
 ## The provider interface
 
