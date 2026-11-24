@@ -1,8 +1,6 @@
 import { expect, test } from 'bun:test';
-import { forgettableKinds } from '@heynixie/contract';
 import type { ErasableRecordKind } from '@heynixie/log';
-import { memoryItemErasableKinds, momentErasableKinds } from '@heynixie/memory';
-import { notebookErasableKinds } from '@heynixie/notebook';
+import { erasableDescriptors } from '../erasure/erasable-descriptors';
 
 function setupTest() {
   // Each kind that carries erasable fields, with the names of those fields. A new erasable kind
@@ -56,21 +54,17 @@ function setupTest() {
     tool_result: [],
   } as const satisfies Record<ErasableRecordKind, readonly string[]>;
 
-  // A forget refuses these records, so their erasable fields stay for as long as the log does.
-  const unforgettableKinds = ['definition.changed'];
-
-  const groups: readonly (readonly string[])[] = [
-    forgettableKinds,
-    unforgettableKinds,
-    momentErasableKinds,
-    memoryItemErasableKinds,
-    notebookErasableKinds,
-  ];
+  // Each list of each descriptor is one group, so a kind in two lists or in none fails.
+  const groups: readonly (readonly string[])[] = erasableDescriptors.flatMap((descriptor) => [
+    descriptor.recordKinds.erasable,
+    descriptor.recordKinds.forgettable,
+    descriptor.recordKinds.unforgettable,
+  ]);
 
   return { erasableKinds: Object.keys(erasableFieldNames), groups };
 }
 
-test('it holds each erasable kind in exactly one of the 5 groups', () => {
+test('it holds each erasable kind in exactly one descriptor list', () => {
   const ctx = setupTest();
 
   const misplaced = ctx.erasableKinds.filter(
@@ -80,14 +74,14 @@ test('it holds each erasable kind in exactly one of the 5 groups', () => {
   expect(misplaced).toStrictEqual([]);
 });
 
-test('it keeps a kind that carries no erasable fields out of the 5 groups', () => {
+test('it keeps a kind that carries no erasable fields out of every descriptor list', () => {
   const ctx = setupTest();
   const stray = ctx.groups.flat().filter((kind) => !ctx.erasableKinds.includes(kind));
 
   expect(stray).toStrictEqual([]);
 });
 
-test('it lists no kind twice across the 5 groups', () => {
+test('it lists no kind twice across every descriptor list', () => {
   const ctx = setupTest();
   const kinds = ctx.groups.flat();
 

@@ -108,7 +108,7 @@
   "scripts": {
     "audit": "bun audit --ignore=GHSA-3g3m-2fjr-6pw4 --ignore=GHSA-g3hv-75wg-m249",
     "boundaries": "turbo boundaries",
-    "check": "bun run audit && bun run deadcode && bun run format:check && bun run lint:full && bun run typecheck && bun run boundaries && bun run prose && bun run test && bun run test:browser && bun run test:agent-sdk && bun run test:e2e && bun run test:journeys",
+    "check": "bun run audit && bun run deadcode && bun run format:check && bun run lint:full && bun run typecheck && bun run boundaries && bun run ci:contract:check-forgettable-kinds && bun run prose && bun run test && bun run test:browser && bun run test:agent-sdk && bun run test:e2e && bun run test:journeys",
     "deadcode": "bash scripts/run-knip.sh",
     "format": "oxfmt . && format-codemod --quiet .",
     "format:check": "oxfmt --check . && format-codemod --check --quiet .",
@@ -140,6 +140,7 @@
     "ci:install-browser": "bun run --cwd guests/computer playwright-core install --with-deps chromium",
     "ci:verify-gate": "bun scripts/verify-gate/run-verify-gate.ts",
     "test:related": "bun run models && bun run test:bundles && bun run test:templates && rig related",
+    "ci:contract:check-forgettable-kinds": "bun run --cwd apps/server forgettable-kinds --check",
     "ci:compatibility:find-last-release": "bun scripts/compatibility/find-last-release.ts",
     "ci:compatibility:run-contract-growth-check": "bun scripts/compatibility/run-contract-growth-check.ts",
     "ci:compatibility:run-migration-check": "bun scripts/compatibility/run-migration-check.ts",

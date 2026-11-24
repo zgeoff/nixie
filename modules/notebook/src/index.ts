@@ -1,5 +1,5 @@
 export type { NotebookRecordKind } from './record/notebook-record-kind';
-export { notebookErasableKinds } from './record/notebook-erasable-kinds';
+export { noteErasableDescriptor } from './record/note-erasable-descriptor';
 export { notebookProjections } from './projection/notebook-projections';
 export { buildItemLinkCounts } from './count/build-item-link-counts';
 export { buildNoteBodies } from './count/build-note-bodies';
