@@ -10,24 +10,25 @@ compares, a search's price is a constant in its adapter, and a task run's dollar
 server pricing turn records its own way, so they disagree with the gateway's count of the same
 replies. Budgets keep integer micros while the task meter sums floats, and each counter has its own
 idea of a day. After this design, each price has one source. When a gateway runs, it counts the
-model dollars nixie limits, a task run's dollars included, and holds a request's worst case before
-it sends it. Every other money count lands in one ledger keyed by counter, unit and period, and one
-helper works out when every period starts. Near a limit, a request with a large `max_tokens` is
-refused where today it would pass.
+model dollars nixie limits, a task run's dollars included, with a day and a month limit for each
+route, so a subscription route and a pay-per-token route each have their own cap and their own
+count. Every other money count lands in one ledger keyed by counter, unit and period, and one helper
+works out when every period starts. Every count is in US dollars, and the client shows each figure
+in your own currency beside it.
 
 Once the owner approves this design, build its work items from it and the built
 [spending stop](../../architecture/policy/spending-stop.md),
 [budgets](../../architecture/policy/budgets.md) and
 [model gateway](../../architecture/policy/model-gateway.md) it changes. The task meter's move needs
-the gateway's held admission, the ledger needs the task meter's `task.meter_read`, and the wallet
+the gateway's per-route counts, the ledger needs the task meter's `task.meter_read`, and the wallet
 needs the ledger.
 
 ## Shape
 
 ```mermaid
 flowchart LR
-  routes[(gateway routes: model prices)] --> gw[model gateway]
-  gw -->|"hold, then settle"| counts[day, month, each sandbox]
+  routes[(gateway routes: model prices, limits)] --> gw[model gateway]
+  gw -->|"count each reply"| counts[each route's day and month, each sandbox]
   counts --> stop[spending stop]
   counts -->|"GET /sandboxes"| meter[task and worker meters]
   tools[(tool prices in config)] --> charge[budget charges]
@@ -43,7 +44,8 @@ flowchart LR
 - A **unit** is what a counter counts: `micros:<currency>` or `tokens`.
 - A **period** is the span a counter resets on: `day`, `week`, `month` or `none`, for a counter that
   never resets, such as a task run's.
-- A **hold** is the gateway's worst-case charge for a request it has admitted and not yet settled.
+- A **route** is one of the gateway's upstreams, such as a model subscription or a pay-per-token
+  provider.
 
 ## Contracts
 
@@ -75,76 +77,72 @@ type Period = { kind: PeriodKind; start: string; startsAtMs: number; endsAtMs: n
 | a picture of each size | `images.profiles.<id>.prices`, as today           | micros of a dollar per image |
 
 - With a gateway, every model dollar nixie limits is the gateway's count. The one exception is a
-  worker run whose end read gets no answer, as the task meter section sets out. A profile's `prices`
-  is then unused, and the server logs a warning at start when it differs from the route's. The
-  release after this design drops the requirement that a profile set `prices` when a gateway runs,
-  so a rollback by one release still reads the config.
+  worker run whose end read gets no answer, as the task meter section sets out. A profile then sets
+  no `prices`, and a config file that sets them beside a gateway fails to load, with an error that
+  names the route's `prices`.
+- A subscription route sets `prices` at the provider's API rates, so its count shows what the same
+  use would cost at those rates.
 - `search.price_micros` defaults to Kagi's 12,000. The search tool charges it and records it as the
-  call's cost, from the one value. A deployment sets it only once the release after this design
-  runs, so the release before still reads the config.
+  call's cost, from the one value.
 - A changed price applies to calls after the process that holds it reads it, and never reprices a
   recorded call.
 
-### The gateway's held admission
+### The gateway's count per route
+
+```yaml
+# The gateway config. Each route has its own limits, in US dollars. No limit spans routes.
+routes:
+  anthropic-plan:
+    prices: { input: 3, output: 15 } # …existing
+    limits: { day: 40, month: 600 }
+  openrouter:
+    prices: { input: 1.25, output: 10 }
+    limits: { day: 5, month: 50 }
+```
 
 ```ts
-// model gateway. After the body, header and model checks, admission adds a hold of the request's
-// worst case to the day, the month and the request's sandbox, in dollars and tokens, just before
-// it sends. The reply settles it.
-const hold = pickRequestHold(body, route); // buildReplyEstimate, worked out before sending
-// → { dollars: 0.23, tokens: 45096 }: a 33,000-token body, max_tokens 8,000, the 4,096 allowance
+// model gateway. GET /status keeps today's fields, one set per route.
+// → { routes: { 'anthropic-plan': { day: { dollars: 12.4, limit: 40, tripped: false },
+//                                   month: { dollars: 211.9, limit: 600, tripped: false } },
+//               openrouter: { day: { dollars: 5.02, limit: 5, tripped: true, sinceMs }, … } } }
 
-// GET /status and GET /sandboxes/<name> keep today's fields and gain the open holds beside them.
-// GET /sandboxes/<name> also gains the last refusal, so the runner can tell why a step stopped.
-// → { dollars: 1.84, tokens: 610000, tripped: false, held: { dollars: 0.23, tokens: 45096 },
-//     lastRefusal: { counter: 'sandbox', atMs: 1795960000000 } }
+// GET /sandboxes/<name> gains the last refusal, so the runner can tell why a step stopped.
+// → { dollars: 1.84, tokens: 610000, tripped: false,
+//     lastRefusal: { counter: 'route_day', route: 'openrouter', atMs: 1795960000000 } }
 ```
 
 ```json
-// The 403 for lack of room, whether the count or the holds filled it.
-{ "type": "error", "error": { "type": "limit_reached", "counter": "day", "message": "…" } }
+// The 403 when a route's day or month count reached its limit, or a sandbox's.
+{
+  "type": "error",
+  "error": {
+    "type": "limit_reached",
+    "counter": "route_day",
+    "route": "openrouter",
+    "message": "…"
+  }
+}
 ```
 
-- For a request the estimate can bound, the hold is exactly today's estimate of a reply with no
-  usage, its 4,096-token allowance included: the body's measured input at the highest input-side
-  rate, plus `max_tokens`, or the route's `maxOutputTokens`, for output.
-- A request whose input the estimate can't bound, such as one that continues a stored response,
-  holds the route's `contextWindow` in place of the measured input, and settles to that hold when
-  its reply has no usage, with no lost mark. Every route sets `contextWindow`. A request with no
-  output bound gets a 400 and sends nothing. Token counts and the model list take no hold.
-- The gateway admits a request only when, for each counter, the count plus its open holds plus this
-  hold stays within the limit in force, raises and overrides included. It adds the hold under the
-  store's lock, so two requests can't both take the last of a limit. A request whose hold alone
-  passes a limit is never admitted; the server refuses to plan a worker run whose limit is below its
-  route's smallest hold.
-- `tripped` keeps its meaning: the count reached the limit. The spending stop trips only on it.
+- The gateway counts each reply after it arrives, as today, into its route's day and month and into
+  the request's sandbox. A request that starts under a limit sends, and its reply may take the count
+  past the limit by that one reply.
+- A route whose day or month count reached its limit refuses every request on that route until the
+  period resets or you raise the limit. Every other route goes on.
+- `tripped` keeps its meaning per route: the count reached the limit. The spending stop trips a
+  route only on it.
 - A step whose sandbox refused it, by `lastRefusal` since the step began, ends with `limit`. A
-  conversation step or a task step refused on the day or the month waits and retries as a step does
-  while the stop is unreachable.
-- Settling replaces the hold with the reply's usage, with the hold itself when the reply spent with
-  no usage, or with nothing when the provider refused the request.
-- A hold counts against the period it settles in, so the open holds carry into a new day or month.
-
-#### The holds file
-
-- The gateway writes each hold to `<store>.holds.json`, version 1, before it sends the request: its
-  random ID, its sandbox and route, its dollars and tokens, and when it began.
-- It adds the charge to the store before it removes the hold, so a crash between them counts twice
-  and never not at all. When the holds file can't be written, the request gets a 503 and sends
-  nothing.
-- At start, before the first request, the gateway settles each hold in the file at its full amount,
-  into the current day and month, and into its sandbox when the store still has it. It drops the
-  holds instead when the store changed after the holds file, which means a gateway of the release
-  before ran in between and counted those requests itself.
-- The store file keeps its version and its float dollars. A gateway of the release before ignores
-  the holds file. The gateway holds under both the `periods` and the `limits` configs, so a preview
-  holds too.
+  conversation step or a task step refused on a route's day or month waits and retries as a step
+  does while the stop is unreachable.
+- When a route trips, nixie sends you a notice that names the route and its limit. The model's next
+  wake after a wait tells it that it was paused for a spending limit and for how long. The model
+  never sees a dollar figure: a paused call tells it only to wait.
 
 ### The task and worker meters
 
 ```text
 PATCH /sandboxes/<name>   { "limit": { "dollars": 1.6, "tokens"?: 2000000 } | null }
-  sets the sandbox's limit whole, and keeps its count and holds; 200, or 404 for an unknown name
+  sets the sandbox's limit whole, and keeps its count; 200, or 404 for an unknown name
 
 task.meter_read           { taskRunID, sandbox, reason, countMicros }
   reason: 'run_start' | 'step_start' | 'step_end' | 'worker_end' | 'run_end'
@@ -153,7 +151,7 @@ task.meter_read           { taskRunID, sandbox, reason, countMicros }
 - A task keeps its sandbox across its task runs, and replaces it when the host loses it. A task
   run's dollars are, for each sandbox it used, the last count less the count at the task run's start
   or at the sandbox's creation, summed, plus each of its worker runs' dollars.
-- What a task run has left is its limit less its dollars and its open holds.
+- What a task run has left is its limit less its dollars.
 - At a task run's start, the server sets the sandbox's limit to its count plus the task run's limit.
   When a worker run starts, the limit drops by the worker run's planned limit; when it ends, the
   planned limit comes back and what the worker run spent comes off. Each worker run's planned limit
@@ -165,16 +163,13 @@ task.meter_read           { taskRunID, sandbox, reason, countMicros }
   doesn't start and retries as a step does while the stop is unreachable. When any other read gets
   no answer, the next read catches up, and a task run waits to close until its end read succeeds.
 - At a restart, the server registers a sandbox with `PUT` only when the gateway has no such name,
-  and patches every other. At start it sends a `PATCH` for a name no sandbox has, and refuses to
-  start when the gateway answers 405 in place of 404, so the gateway ships first.
+  and patches every other.
 - A worker run keeps today's rule: its limit is the smaller of `workerRun` and what its task run has
   left, and when the gateway doesn't answer at its end, it charges the larger of its planned dollars
   and its own tally, recorded in `worker.gateway_charged` as today.
 - With a gateway, the runner's own pricing of each call, its interrupt at the dollar limit, its read
   of late spend, `task.failed_turn_spent` and `task.turn_spend_unrecorded` go: the sandbox's limit
   replaces them.
-- A rollback by one release prices a `meter: 'gateway'` task run's turn records as today, and counts
-  it low for the rest of that task run. The release before ignores the unknown `meter` field.
 - Without a gateway, the task meter prices the guest's call frames with the profile's table, as
   today, and writes `task.meter_read` at the same points.
 - A task run's start record gains `meter: 'gateway' | 'records'`. A task run whose start record has
@@ -200,10 +195,8 @@ spend_ledger          plain table, log module
   on the row its charge added to, whatever the budget's period is by then. A charge from before this
   design has no key, and its credit uses its budget ID, `periodStart` and the period kind the budget
   had at the charge's sequence.
-- For one release the budgets module keeps writing `budget_ledger` beside `spend_ledger`, so the
-  release before reads current balances after a rollback. The release before writes the same
-  records, and `spend_ledger` folds them when the new release runs again. The release after drops
-  `budget_ledger`.
+- `spend_ledger` replaces `budget_ledger`. The migration that adds it drops `budget_ledger`, and the
+  first rebuild fills `spend_ledger` from the records.
 - Every amount in the ledger is an integer. A dollar amount from the gateway converts to micros
   rounded up.
 - `search_calls`, the search tool's daily call count, and the turn count stay in their own tables:
@@ -213,16 +206,30 @@ spend_ledger          plain table, log module
 
 ### What counts where
 
-| Spend           | Counted by the gateway         | Counted in the ledger                                                                                |
-| --------------- | ------------------------------ | ---------------------------------------------------------------------------------------------------- |
-| a model call    | day, month, the call's sandbox | a task's or a worker's call: `task_run` or `worker_run`, from the gateway; a conversation's call: no |
-| a search        | no                             | `budget:search-*`                                                                                    |
-| a picture       | no                             | `budget:image.draw-*`                                                                                |
-| a card purchase | no                             | `budget:card-<account>`                                                                              |
+| Spend           | Counted by the gateway                        | Counted in the ledger                                                                                |
+| --------------- | --------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| a model call    | its route's day and month, the call's sandbox | a task's or a worker's call: `task_run` or `worker_run`, from the gateway; a conversation's call: no |
+| a search        | no                                            | `budget:search-*`                                                                                    |
+| a picture       | no                                            | `budget:image.draw-*`                                                                                |
+| a card purchase | no                                            | `budget:card-<account>`                                                                              |
 
-- The stop reads the gateway's day and month and the turn count, as today. A paid tool counts
-  against its budget and never against the stop. Model dollars on a plan are notional, while tool
-  dollars are real, as [budgets](../../architecture/policy/budgets.md) sets out.
+- The stop reads each route's day and month and the turn count. A paid tool counts against its
+  budget and never against the stop. Model dollars on a plan are notional, while tool dollars are
+  real, as [budgets](../../architecture/policy/budgets.md) sets out.
+
+### Your currency in the client
+
+```yaml
+# The server config. Counts and limits stay in US dollars; this only changes what the client shows.
+display:
+  currency: AUD
+```
+
+- The server reads one US dollar rate for `display.currency` once a day, and keeps the last rate it
+  read. The client shows each dollar figure with the converted amount beside it, marked as
+  approximate, such as "$12.40 (about A$19)".
+- You set every limit in US dollars. When no rate has been read yet, the client shows US dollars
+  only.
 
 ## Constraints
 
@@ -235,12 +242,14 @@ spend_ledger          plain table, log module
   holds equal to the time tool's `default_zone`. A changed zone takes effect at the next reset.
 - Without a gateway, nothing stops model spend outside nixie, as today; the deployment's provider
   limit is the only backstop, as decision 0012 sets out.
+- The model never reads a dollar figure, a limit or a rate, from any tool or notice.
 
 ## Builder decides
 
 - The build order and how the work splits into pull requests, within the needs in the opening.
-- How the client lays out the ledger's counters.
-- The name of the warning when a profile's prices differ from its route's.
+- How the client lays out the ledger's counters and each route's counts.
+- The source of the daily exchange rate.
+- The wording of the notice when a route trips, and of the model's line after a wait.
 
 ## Out of scope
 
@@ -248,12 +257,6 @@ spend_ledger          plain table, log module
   limit stays a wall-time limit.
 - What a coding session spends in atc, which the coding runner design keeps outside nixie.
 - A price feed: prices stay hand-written in config, from each provider's price page.
-- Reserving a turn before a step runs. The turn count stays a count of finished turns.
-
-## Open questions
-
-- **The deployment currency**
-  ([GEO-2821](https://linear.app/zgeoff/issue/GEO-2821/nixie-metering-choose-the-deployment-currency)).
-  Model and tool providers price in US dollars. The owner may want limits and the client in another
-  currency, which needs a rate source for every model call. Until the owner decides, nixie counts in
-  US dollars, and only a wallet card counts in its own currency.
+- Reserving a turn or a worst case before a step runs. The turn count stays a count of finished
+  turns, and the gateway counts each reply after it arrives.
+- A limit that spans routes.
