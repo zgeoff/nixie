@@ -14,7 +14,7 @@ import {
   runMandateExpiry,
   startMandateTimer,
 } from '@heynixie/definitions';
-import { startDeviceWakes } from '@heynixie/devices';
+import { startDeviceWakes, startWaitingShows } from '@heynixie/devices';
 import { toErrorFields } from '@heynixie/logger';
 import { startPromptLapseSweep } from '@heynixie/prompts';
 import { startSpendWatcher } from '@heynixie/spend';
@@ -259,6 +259,27 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
         writeWake: (tx, input) => writeThreadRecordInTransaction(tx, context, input),
         onFailure: (error) => {
           parts.log('devices.wake_failed', toErrorFields(error), 'error');
+        },
+      });
+
+      await parts.cleanup.defer(stop);
+    },
+  },
+  {
+    // A show that waited for its device counts its minutes from the time the device comes online.
+    name: 'device_show_clocks',
+    needs: ['server_parts'],
+    start: async (reader) => {
+      const parts = reader.get('server_parts');
+      const context = parts.apiContext;
+
+      const stop = startWaitingShows({
+        log: context.log,
+        definitions: context.definitions,
+        clock: context.clock,
+        streams: context.clients.devices,
+        onFailure: (error) => {
+          parts.log('devices.show_clock_failed', toErrorFields(error), 'error');
         },
       });
 

@@ -105,13 +105,17 @@ the thread on screen, from the sequence that page read at, and every topic's `ch
 - **A topic invalidates its reads.** A `changed` event invalidates the reads under each topic's
   query-key root, so no page sets a poll on a read that a topic covers. The topic roots and their
   reads are in [Live updates](./live-updates.md#topics).
+- **A read in flight gives way to a new one.** An invalidation cancels a read of that topic that is
+  in flight and reads again, so the page never keeps an answer from before the change.
 - **A first open or a reconnect invalidates every topic,** because a `changed` event carries no
-  event ID and a closed stream misses it.
+  event ID and a closed stream misses it. A new stream that replaces one waiting to reconnect
+  invalidates every topic too, because the old connection missed what changed meanwhile.
 - **A thread switch overlaps two streams.** When the thread on screen changes, including to or from
   a page with no thread, the client opens a stream from the new page's read sequence, and closes the
-  old one once the new one sends `opened`. It invalidates nothing then. A change that several views
-  make in one step, such as a route change that drops one thread page and adds another, opens one
-  stream.
+  old one once the new one sends `opened`. It invalidates nothing then. A thread page reads its
+  conversation in its route loader, so the old page's stream stays open until the new one opens. A
+  change that several views make in one step, such as a route change that drops one thread page and
+  adds another, opens one stream.
 - **A tab sends a beat.** A visible tab calls `sessions.shown` when it becomes visible and every 60
   s while it stays visible, and a tab in the background never calls it. A device page never calls
   it.
@@ -120,10 +124,10 @@ the thread on screen, from the sequence that page read at, and every topic's `ch
 
 A live stream can die without the browser seeing it close, as when a phone sleeps or a proxy loses
 its upstream, so the client watches for that. The API writes a keepalive into a quiet stream, and
-the client fails a stream that has sent no byte for 15 s and follows again. A page that becomes
-visible again, or a browser that comes back online, ends the open connection or the pause before a
-reconnect and follows again at once, because those are the moments a connection most often died
-unseen or the network came back.
+the client fails a stream that has sent no byte for 15 s, and a stream request that gets no response
+headers in 15 s, and follows again. A page that becomes visible again, or a browser that comes back
+online, ends the open connection or the pause before a reconnect and follows again at once, because
+those are the moments a connection most often died unseen or the network came back.
 
 A stream that fails attempt after attempt backs off: the pause before each reconnect doubles up to a
 cap. The API checks the session before it opens the stream, so a stream that opens is one the API

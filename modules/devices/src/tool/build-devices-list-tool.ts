@@ -20,7 +20,7 @@ export function buildDevicesListTool(options: DeviceToolOptions): ToolDefinition
   return {
     name: 'devices.list',
     description:
-      'Lists the devices the owner enrolled, each with its ID, name, whether its screen and camera ' +
+      'Lists the devices the owner enrolled, each with its `shortID`, name, whether its screen and camera ' +
       'are on, whether it is online, the time in milliseconds when it went offline (`offlineSinceMs`, ' +
       'present only for an offline device that had a connection since nixie started), the changes ' +
       'of it that wake you (`wake`, which devices.watch sets), its screen size in pixels and what ' +
@@ -54,7 +54,7 @@ async function readListedDevice(options: DeviceToolOptions, device: Device): Pro
   const offlineSinceMs = options.streams.readOfflineSinceMs(device.deviceID);
 
   return {
-    device: device.deviceID,
+    shortID: device.deviceID,
     name: device.name,
     screen: device.capabilities.screen ? 'on' : 'off',
     camera: device.capabilities.camera ? 'on' : 'off',

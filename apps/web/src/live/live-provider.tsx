@@ -25,10 +25,8 @@ export function LiveProvider(props: LiveProviderProps): ReactNode {
       startTimer,
       invalidate: (topics) => {
         for (const topic of topics) {
-          void queryClient.invalidateQueries(
-            { queryKey: nixie.queryUtils[topic].key() },
-            { cancelRefetch: false },
-          );
+          // A read in flight may hold the state from before the change, so the new read replaces it.
+          void queryClient.invalidateQueries({ queryKey: nixie.queryUtils[topic].key() });
         }
       },
     }),

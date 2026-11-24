@@ -15,7 +15,7 @@ test('it lists an enrolled device with its screen off and nothing it shows', asy
     result: {
       devices: [
         {
-          device: device.deviceID,
+          shortID: device.deviceID,
           name: 'desk panel',
           screen: 'off',
           camera: 'off',
@@ -49,7 +49,7 @@ test('it gives an online device its size and what it shows', async () => {
     result: {
       devices: [
         {
-          device: device.deviceID,
+          shortID: device.deviceID,
           name: 'desk panel',
           screen: 'on',
           camera: 'off',

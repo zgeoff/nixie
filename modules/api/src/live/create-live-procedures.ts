@@ -3,6 +3,7 @@ import { requireDevice } from '../device/require-device';
 import { requireCaller } from '../memory/require-caller';
 import type { APIContext } from '../types';
 import { apiImplementer } from '../utils/api-implementer';
+import { readHeadSequence } from '../utils/read-head-sequence';
 import { streamLiveDevice } from './stream-live-device';
 import { streamLivePage } from './stream-live-page';
 
@@ -27,6 +28,10 @@ export function createLiveProcedures(context: APIContext) {
         });
       }
 
+      // The head is read before the session check, so a revoke that commits after the check lies
+      // past the head, where the stream replays it.
+      const head = await readHeadSequence(context);
+
       const caller = await requireCaller(
         context,
         options.context.sessionToken,
@@ -38,6 +43,7 @@ export function createLiveProcedures(context: APIContext) {
       }
 
       return streamLivePage(context, caller, {
+        head,
         afterSequence: input.afterSequence,
         lastEventID: options.lastEventId,
         thread: input.thread,

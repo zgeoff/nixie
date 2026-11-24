@@ -18,6 +18,8 @@ export type {
 export { createDeviceStreams, deviceOfflineGraceMs } from './stream/create-device-streams';
 export { followDevice } from './stream/follow-device';
 export { startDeviceWakes } from './stream/start-device-wakes';
+export { startWaitingShows } from './stream/start-waiting-shows';
+export type { WaitingShowsOptions } from './stream/start-waiting-shows';
 export type { DeviceWakesOptions } from './stream/start-device-wakes';
 export { writeDevice } from './device/write-device';
 export { removeDevice } from './device/remove-device';

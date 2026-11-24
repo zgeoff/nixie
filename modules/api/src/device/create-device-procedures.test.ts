@@ -9,6 +9,7 @@ import invariant from 'tiny-invariant';
 import { buildTestClient } from '../test-utils/build-test-client';
 import { collectContractPaths } from '../test-utils/collect-contract-paths';
 import { createDeviceSession } from '../test-utils/create-device-session';
+import { dropLiveStream } from '../test-utils/drop-live-stream';
 import { followTestDevice } from '../test-utils/follow-test-device';
 import { startTestAPI } from '../test-utils/start-test-api';
 import type { APITables } from '../types';
@@ -856,25 +857,17 @@ test('it keeps a device online while its device stream is open, and through a la
   expect([layout.value?.kind, isOnline]).toStrictEqual(['layout', true]);
 });
 
-test('it turns a device offline once its connection closed and 60 s passed', async () => {
+test('it turns a device offline within 60 s of its connection dropping, with the server told nothing', async () => {
   const ctx = await setupTest();
   const device = await ctx.enrol('device', 'desk panel');
   const row = await ctx.readDevice(device.sessionID);
 
-  const connection = new AbortController();
+  await dropLiveStream(ctx.url, device.token, {
+    device: { pixels: { width: 800, height: 600 } },
+  });
 
-  const events = await followTestDevice(
-    device.client,
-    { pixels: { width: 800, height: 600 } },
-    { signal: connection.signal },
-  );
-
-  await events.next();
-
-  connection.abort();
-
-  // the grace timer starts once the server drops the stream
-  await waitForCondition(() => ctx.clock.readNextDueMs() !== null);
+  // the server notices the dead connection within 10 s, and the grace timer starts then
+  await waitForCondition(() => ctx.clock.readNextDueMs() !== null, { timeoutMs: 10_000 });
 
   ctx.clock.advance(60_000);
 
@@ -886,27 +879,37 @@ test('it turns a device offline once its connection closed and 60 s passed', asy
 test('it leaves the last seen time of a full session alone while its page stream is open', async () => {
   const ctx = await setupTest();
   const laptop = await ctx.enrol('full', 'laptop');
-  const stream = await laptop.client.live.follow({});
+  const panel = await ctx.enrol('device', 'desk panel');
+  const pageStream = await laptop.client.live.follow({});
 
-  await stream.next();
+  await pageStream.next();
 
-  const before = await ctx.readLastSeen(laptop.sessionID);
+  const laptopBefore = await ctx.readLastSeen(laptop.sessionID);
+
+  const panelStream = await panel.client.live.follow({
+    device: { pixels: { width: 800, height: 600 } },
+  });
+
+  await panelStream.next();
+
+  const panelBefore = await ctx.readLastSeen(panel.sessionID);
 
   ctx.clock.advance(10 * 60_000);
 
-  await stream.return(undefined);
+  // the device stream's periodic update shows that the intervals ran
+  await waitForCondition(async () => (await ctx.readLastSeen(panel.sessionID)) > panelBefore);
 
-  const after = await ctx.readLastSeen(laptop.sessionID);
+  await pageStream.return(undefined);
+  await panelStream.return(undefined);
 
-  expect(after).toBe(before);
+  const laptopAfter = await ctx.readLastSeen(laptop.sessionID);
+
+  expect(laptopAfter).toBe(laptopBefore);
 });
 
 test('it keeps the last seen time of a session fresh while its device stream is open', async () => {
   const ctx = await setupTest();
   const device = await ctx.enrol('device', 'desk panel');
-  const before = await ctx.readLastSeen(device.sessionID);
-
-  ctx.clock.advance(60_000);
 
   const stream = await device.client.live.follow({
     device: { pixels: { width: 800, height: 600 } },
@@ -914,11 +917,16 @@ test('it keeps the last seen time of a session fresh while its device stream is 
 
   await stream.next();
 
-  await waitForCondition(async () => (await ctx.readLastSeen(device.sessionID)) > before);
+  // only a periodic update moves the time once the clock passes the interval
+  const afterOpen = await ctx.readLastSeen(device.sessionID);
+
+  ctx.clock.advance(60_000);
+
+  await waitForCondition(async () => (await ctx.readLastSeen(device.sessionID)) > afterOpen);
 
   await stream.return(undefined);
 
-  const after = await ctx.readLastSeen(device.sessionID);
+  const afterBeat = await ctx.readLastSeen(device.sessionID);
 
-  expect(after).toBeGreaterThan(before);
+  expect(afterBeat).toBeGreaterThan(afterOpen);
 });

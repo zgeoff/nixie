@@ -115,7 +115,7 @@ test('#followDevice sends the idle scene when a show ends, and never an older sh
   await events.next();
 
   await writeShow(
-    { log: ctx.log, definitions: ctx.definitions, clock: ctx.clock, streams: ctx.streams },
+    { log: ctx.log, definitions: ctx.definitions, clock: ctx.clock },
     {
       deviceID: device.deviceID,
       thread: 'conversation',

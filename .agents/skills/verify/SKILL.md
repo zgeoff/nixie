@@ -64,7 +64,7 @@ The mistakes that cost the most time:
 | device-in-browser | Make a signed-in browser a device                             | [references/feature-device-in-browser.md](references/feature-device-in-browser.md) |
 | device-screen     | Enrol a device and see a picture on it                        | [references/feature-device-screen.md](references/feature-device-screen.md)         |
 | device-layout     | Lay out a screen in regions, and change them                  | [references/feature-device-layout.md](references/feature-device-layout.md)         |
-| live-updates      | Pause in one tab, see it in another                           | [references/feature-live-updates.md](references/feature-live-updates.md)           |
+| live-updates      | Pause from the host, see it on the page                       | [references/feature-live-updates.md](references/feature-live-updates.md)           |
 
 <!-- /wringer:features -->
 

@@ -1,16 +1,25 @@
-import { expect, test } from 'bun:test';
+import { expect, onTestFinished, test } from 'bun:test';
 import type { LiveTopic } from '@heynixie/contract';
 import type { JSONObject, RecordKind } from '@heynixie/log';
-import { markChanged, publishChanged, withWriteTransaction, writeRecords } from '@heynixie/log';
+import { withWriteTransaction, writeRecords } from '@heynixie/log';
+import { buildPromptSeeder } from '@heynixie/prompts/test-utils';
+import { startSpendWatcher } from '@heynixie/spend';
+import { buildMockGatewayStatus } from '@heynixie/spend/test-utils';
 import { createConversationTask, createTask } from '@heynixie/tasks';
+import { waitForCondition } from '@heynixie/testing';
+import { writeArmedDefinitions } from '@heynixie/triggers';
+import { buildTestArmedDefinition } from '@heynixie/triggers/test-utils';
+import invariant from 'tiny-invariant';
+import { buildSeeder } from '../test-utils/build-seeder';
 import { buildTestClient } from '../test-utils/build-test-client';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { startTestAPI } from '../test-utils/start-test-api';
+import { defaultAPISettings } from '../utils/default-api-settings';
 
 // The tests below make each change that a topic names, and read the changed event of a stream that
 // was open before it.
 async function setupTest() {
-  const api = await startTestAPI();
+  const api = await startTestAPI(defaultAPISettings, { isSpendOn: true });
 
   await createConversationTask(api.context);
 
@@ -24,6 +33,7 @@ async function setupTest() {
 
   return {
     ...api,
+    seed: buildSeeder(api),
     client,
     readChanged: async () => {
       const next = await stream.next();
@@ -36,7 +46,6 @@ async function setupTest() {
 }
 
 test.each([
-  [['approvals'], 'prompts.override_proposed', {}],
   [
     ['computer', 'tasks'],
     'computer.handover_closed',
@@ -50,7 +59,40 @@ test.each([
   [['images'], 'image.pinned', {}],
   [['memory'], 'memory.pin_noticed', { itemID: 'i1', isPinned: true, noticeKey: 'k1' }],
   [['notebook'], 'notebook.note_read', { note: 'n1' }],
-  [['triggers'], 'trigger.armed', { armed: [], withdrawn: [] }],
+  [
+    ['tasks', 'triggers', 'definitions'],
+    'trigger.fired',
+    {
+      definitionID: 'water-the-tomatoes',
+      definitionHash: 'hash-1',
+      source: 'schedule',
+      dedupeKey: 'slot-1',
+      kind: 'schedule',
+      scheduledFor: '2026-11-25T08:00:00.000Z',
+      firedAt: '2026-11-25T08:00:01.000Z',
+      isCatchUp: false,
+      skipped: [],
+      skippedCount: 0,
+    },
+  ],
+  [
+    ['tasks', 'triggers', 'definitions'],
+    'trigger.skipped',
+    {
+      definitionID: 'water-the-tomatoes',
+      source: 'schedule',
+      dedupeKey: 'slot-1',
+      scheduledFor: ['2026-11-25T08:00:00.000Z'],
+      count: 1,
+      reason: 'too_late',
+      recordedAt: '2026-11-25T08:05:00.000Z',
+    },
+  ],
+  [
+    ['triggers', 'definitions'],
+    'trigger.deferred',
+    { definitionID: 'water-the-tomatoes', slot: '2026-11-25T08:00:00.000Z', until: null },
+  ],
 ] as const satisfies readonly (readonly [readonly LiveTopic[], RecordKind, JSONObject])[])(
   'it sends a changed event with the topics %j when a %s record commits',
   async (topics, kind, payload) => {
@@ -91,24 +133,77 @@ test('it sends a changed event with the tasks topic when the owner sends a messa
   expect(changed).toStrictEqual({ kind: 'changed', topics: ['tasks'] });
 });
 
-test('it sends a changed event with the backups topic when a write with no record marks it', async () => {
+test('it sends a changed event with the approvals topic when a prompt override is proposed', async () => {
   const ctx = await setupTest();
 
-  await withWriteTransaction(ctx.writer, (tx) => {
-    markChanged(tx, ['backups']);
+  await buildPromptSeeder({
+    log: ctx.context.log,
+    clock: ctx.clock,
+    definitions: ctx.context.definitions,
+  }).promptApproval();
 
-    return Promise.resolve();
-  });
+  const changed = await ctx.readChanged();
+
+  expect(changed).toStrictEqual({ kind: 'changed', topics: ['approvals'] });
+});
+
+test('it sends a changed event with the triggers and definitions topics when a definition is armed', async () => {
+  const ctx = await setupTest();
+
+  await withWriteTransaction(ctx.writer, (tx) =>
+    writeArmedDefinitions(tx, { log: ctx.context.log, definitions: ctx.context.definitions }, [
+      buildTestArmedDefinition(),
+    ]),
+  );
+
+  const changed = await ctx.readChanged();
+
+  expect(changed).toStrictEqual({ kind: 'changed', topics: ['triggers', 'definitions'] });
+});
+
+test('it sends a changed event with the backups topic when a backup fails', async () => {
+  const ctx = await setupTest();
+
+  await ctx.seed.failedBackupNotice({ failure: 'data: backup exited 1' });
 
   const changed = await ctx.readChanged();
 
   expect(changed).toStrictEqual({ kind: 'changed', topics: ['backups'] });
 });
 
-test('it sends a changed event with the spend topic when a change that no write made is published', async () => {
+test('it sends a changed event with the spend topic when the gateway stops answering', async () => {
   const ctx = await setupTest();
 
-  publishChanged(ctx.writer, ['spend']);
+  const stopping = new AbortController();
+
+  const spend = ctx.context.spend;
+
+  invariant(spend !== undefined, 'the test API holds a spend context when spend is on');
+
+  onTestFinished(() => {
+    stopping.abort();
+  });
+
+  ctx.spendGateway.readStatus.mockResolvedValue({ kind: 'ok', value: buildMockGatewayStatus() });
+
+  startSpendWatcher({
+    context: spend,
+    limits: {
+      day: { dollars: 60, tokens: 80_000_000 },
+      month: { dollars: 600, tokens: 600_000_000 },
+    },
+    log: () => {},
+    intervalMs: 20,
+    signal: stopping.signal,
+    isStartUnreachable: false,
+  });
+
+  // the first poll set what the next one compares to, so a poll that starts after the first has
+  // ended reads the change
+  await waitForCondition(() => ctx.spendGateway.readStatus.mock.calls.length >= 2);
+
+  // no stop is written for 30 s of no answer, so only the watcher's own notice tells the stream
+  ctx.spendGateway.readStatus.mockResolvedValue({ kind: 'unreachable', reason: 'no answer' });
 
   const changed = await ctx.readChanged();
 

@@ -15,7 +15,6 @@ import { conversationRecordSchema } from './collect-conversation-records';
 import { featurePaths, ignoredPaths, sharedPaths } from './feature-paths';
 import { controlRoutes } from './harness/control-routes';
 import { lastFeatures } from './last-features';
-import { parseEnrolmentCode } from './parse-enrolment-code';
 import { pickTaskRefusal } from './pick-task-refusal';
 import { postControl } from './post-control';
 import { buildServedBlobsArgv, servedSourceFolders } from './preview/build-served-blobs-argv';
@@ -35,7 +34,9 @@ import { readProdVersion } from './prod/read-prod-version';
 import { readConversationTurn } from './read-conversation-turn';
 import { readSessionCheck } from './read-session-check';
 import { refuseHarnessless } from './refuse-harnessless';
+import { runEnrolCode } from './run-enrol-code';
 import { runHostCLI } from './run-host-cli';
+import { runPauseFromHost } from './run-pause-from-host';
 import { sessionsSchema } from './sessions-schema';
 import { throwRefusal } from './throw-refusal';
 import { waitForModelInput } from './wait-for-model-input';
@@ -142,22 +143,19 @@ export function createVerifyRegistry(): Wringer {
     .secret('NIXIE_PROD_TOKEN', 'NIXIE_PROD_KUBECONFIG')
     .action({
       name: 'enrol-code',
-      summary:
-        'Issue a sign-in code with `nixie enrol-code`, for the enrol form on the sign-in page',
+      summary: 'Issue a sign-in code with `nixie enrol-code`, for the enrol form',
       effect: 'write',
       input: z.strictObject({}),
       data: z.strictObject({ code: z.string() }),
-      run: async (_input, ctx) => {
-        const printed = await runHostCLI(ctx, ['enrol-code']);
-
-        const code = parseEnrolmentCode(printed);
-
-        if (code === null) {
-          throw new WringerError('check-failed', { message: 'nixie enrol-code printed no code' });
-        }
-
-        return { code };
-      },
+      run: (_input, ctx) => runEnrolCode(ctx),
+    })
+    .action({
+      name: 'pause-from-host',
+      summary: 'Pause nixie with `nixie pause`, or resume it with `nixie resume`',
+      effect: 'write',
+      input: z.strictObject({ state: z.enum(['paused', 'running']) }),
+      data: z.strictObject({}),
+      run: (input, ctx) => runPauseFromHost(ctx, input.state),
     })
     .action({
       name: 'script-reply',
@@ -218,11 +216,9 @@ export function createVerifyRegistry(): Wringer {
       input: z.strictObject({}),
       data: z.strictObject({ printed: z.string() }),
       timeoutMs: 120_000,
-      run: async (_input, ctx) => {
-        const printed = await runHostCLI(ctx, ['reset', '--keep-sessions', '--yes']);
-
-        return { printed };
-      },
+      run: async (_input, ctx) => ({
+        printed: await runHostCLI(ctx, ['reset', '--keep-sessions', '--yes']),
+      }),
     })
     .command({
       path: ['sessions'],

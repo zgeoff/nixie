@@ -32,7 +32,7 @@ export function buildDeviceShowReplies(input: DeviceShowInput, photo: SentPhoto)
       toolUse: {
         name: 'mcp__nixie__device_show',
         input: (body: ScriptedBody) => ({
-          device: getResultID(body, 'device'),
+          device: getResultID(body, 'shortID'),
           content: { kind: 'image', image: getResultID(body, 'image'), fit: input.fit },
         }),
       },

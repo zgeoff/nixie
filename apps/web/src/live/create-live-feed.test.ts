@@ -160,6 +160,33 @@ test('it opens the stream of a new view beside the old one, closes the old one o
   expect(ctx.invalidate).toHaveBeenCalledOnce();
 });
 
+test('it reads every topic again when a new view opens first while the old stream waits to reconnect', async () => {
+  const ctx = setupTest();
+
+  await createDeviceSession();
+
+  ctx.holdOpen();
+
+  await waitFor(() => {
+    expect(ctx.invalidate).toHaveBeenCalledOnce();
+  });
+
+  server.use(http.post('*/rpc/live/follow', () => HttpResponse.error(), { once: true }));
+
+  // the wake ends the open stream, and the attempt after it fails, so the connection waits to retry
+  globalThis.dispatchEvent(new Event('online'));
+
+  await waitFor(() => {
+    expect(ctx.timer.countPending()).toBe(1);
+  });
+
+  ctx.follow({ thread: 'conversation', afterSequence: 0, onRecord: () => {} });
+
+  await waitFor(() => {
+    expect(ctx.invalidate).toHaveBeenCalledTimes(2);
+  });
+});
+
 test('it opens a stream with no thread again once the last view leaves', async () => {
   const ctx = setupTest();
 

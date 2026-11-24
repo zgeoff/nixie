@@ -1,6 +1,6 @@
 import { featurePaths } from './feature-paths';
 
-// The features that use a device or a second tab, which the registry lists after the others.
+// The features that use a device or a second client, which the registry lists after the others.
 export const lastFeatures = [
   {
     name: 'device-in-browser',
@@ -19,7 +19,7 @@ export const lastFeatures = [
   },
   {
     name: 'live-updates',
-    summary: 'Pause in one tab, see it in another',
+    summary: 'Pause from the host, see it on the page',
     paths: featurePaths['live-updates'],
   },
 ] as const;

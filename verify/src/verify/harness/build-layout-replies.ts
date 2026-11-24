@@ -27,7 +27,7 @@ export function buildLayoutReplies(step: 'set' | 'update'): readonly LayoutReply
       toolUse: {
         name: 'mcp__nixie__device_layout',
         input: (body: ScriptedBody) => ({
-          device: getResultID(body, 'device'),
+          device: getResultID(body, 'shortID'),
           columns: ['1fr', '2fr', '1fr'],
           rows: ['1fr'],
           regions: [
@@ -49,7 +49,7 @@ function buildRegionReply(region: string, content: object, minutes?: number): La
     toolUse: {
       name: 'mcp__nixie__device_region',
       input: (body: ScriptedBody) => ({
-        device: getResultID(body, 'device'),
+        device: getResultID(body, 'shortID'),
         region,
         content,
         ...(minutes === undefined ? {} : { minutes }),

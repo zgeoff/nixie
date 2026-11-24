@@ -45,11 +45,12 @@ otherwise after `afterSequence`, and never past the head, because a start past t
 the server reads from the `record.forget_started` record that names it. A `record` event reads the
 record as a page read does, as [the API doc](./api.md#reading-and-the-live-stream) describes.
 
-The API checks the session before it opens the stream and refuses a missing or revoked session with
-a plain 401. A `session.revoked` record that names the caller ends a page stream with
-`UNAUTHORIZED`, whether or not it sends records. A device-scope session may open the device form
-only, and the page form answers `FORBIDDEN`. A full session with no device row gets `NOT_A_DEVICE`
-from the device form.
+The API reads the head of the log, then checks the session, and refuses a missing or revoked session
+with a plain 401. The head comes first, so a revoke that commits after the check lies past the head,
+where the stream replays it. A `session.revoked` record that names the caller ends a page stream
+with `UNAUTHORIZED`, whether or not it sends records. A device-scope session may open the device
+form only, and the page form answers `FORBIDDEN`. A full session with no device row gets
+`NOT_A_DEVICE` from the device form.
 
 The stream answers at `/rpc/live/follow`. A content blocker's default filter list blocks a path with
 a `log` segment, so the stream has none.
@@ -57,7 +58,8 @@ a `log` segment, so the stream has none.
 One process holds the writer and every stream
 ([the database on one host](../../decisions/0011-sqlite-on-one-host.md)), so a stream wakes on the
 commit event in its own process and watches no file. It sends a topic within a second of its commit,
-and merges the topics of commits that land together into one `changed` event.
+and merges the topics of commits that land together into one `changed` event. A replay of records
+sends the topics that wait between records, so a long replay never holds a topic back.
 
 ### Keepalive
 
@@ -91,7 +93,8 @@ with the log through `registerRecordTopics` when it starts the writer. Every kin
 empty list included, and a test walks every kind the modules declare and fails on a kind with none.
 The log marks the topics of every record a transaction appends. A write that creates a task marks
 `tasks` and `definitions`, because a new task can belong to a definition. A trigger's fire or skip
-marks `tasks` and `triggers`.
+marks `tasks`, `triggers` and `definitions`, because it moves the watermark that the next run of a
+definition reads. A trigger's arm or defer marks `triggers` and `definitions` for the same reason.
 
 Two other marks cover a change with no record. `markChanged(tx, topics)` adds topics to the commit
 of a transaction, and a transaction that rolls back drops them. `publishChanged(writer, topics)`

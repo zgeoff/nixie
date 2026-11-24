@@ -1,11 +1,17 @@
 # live-updates
 
-- [Journey](#journey): open a second tab, pause nixie in it, and see the pause in the first tab.
-- [End state](#end-state): what the first tab shows without a reload, and what the database holds.
+- [Journey](#journey): open the conversation page, pause nixie from the host, and see the pause with
+  no reload.
+- [End state](#end-state): what the page shows without a reload, and what the database holds.
 
-Each tab of the web client holds one live stream. When nixie pauses, the stream tells the first tab,
-which reads the pause again and shows the banner "nixie is paused" with no reload. Run this journey
-on `local` and on `preview`.
+Each tab of the web client holds one live stream. When nixie pauses, the stream tells the tab, which
+reads the pause again and shows the banner "nixie is paused" with no reload. Run this journey on
+`local` and on `preview`.
+
+Keep one tab in front for the whole journey, and never switch tabs. A tab that comes to the front
+opens its stream again and reads every topic, so a tab switch shows the pause with or without a live
+event. `nixie pause` on the host is a second client of the same nixie, so the one tab waits in
+front.
 
 Before you start:
 
@@ -15,65 +21,41 @@ Before you start:
 
 ## Journey
 
-1. Record the next commands under this feature, and script a reply with a link that opens in a new
-   tab:
+1. Record the next commands under this feature, and open the conversation page:
 
    ```bash
    bun verify use --feature live-updates
-   bun verify action script-reply --text 'Open [the task list](/tasks) in a new tab.'
-   ```
-
-   Expect: `data.replies` above 0.
-
-2. Send a message, and open the link in the reply:
-
-   ```bash
    bun verify browser goto /
-   bun verify browser type --role textbox --name Message --value 'Where is the task list?'
-   bun verify browser click --role button --name Send
-   bun verify conversation turn --message 'Where is the task list?' --reply 'Open [the task list](/tasks) in a new tab.'
-   bun verify browser click --text 'the task list'
-   bun verify browser tabs
+   bun verify browser snapshot --until-text 'Send'
+   bun verify db query "select count(*) as paused from nixie_pause"
    ```
 
-   Expect: `browser tabs` lists the conversation as tab 0 and the task list as tab 1.
+   Expect: the page shows the Send button and no banner, and `paused` is 0 in `data.rows`.
 
-3. Pause nixie in the second tab:
-
-   ```bash
-   bun verify browser tab 1
-   bun verify browser snapshot --until-text 'Pause nixie'
-   bun verify browser click --role button --name 'Pause nixie'
-   bun verify browser snapshot --until-text 'nixie is paused'
-   ```
-
-   Expect: the second tab shows "nixie is paused".
-
-4. Go back to the first tab, and read it with no reload:
+2. Pause nixie from the host, and read the page with no reload:
 
    ```bash
-   bun verify browser tab 0
+   bun verify action pause-from-host --state paused
    bun verify browser snapshot --until-text 'nixie is paused'
    bun verify db query "select cause from nixie_pause"
    ```
 
-   Expect: the first tab shows the region "nixie is paused" within a few seconds, and the one row in
+   Expect: the page shows the region "nixie is paused" within a few seconds, and the one row in
    `data.rows` has `cause` `owner`. When the snapshot fails to show it, the tab did not hear of the
    pause: skip `done`, and report the snapshot.
 
-5. Resume nixie from the first tab, and see the banner go from the second tab:
+3. Resume nixie from the host, and see the banner go with no reload:
 
    ```bash
-   bun verify browser click --role button --name 'Resume nixie'
-   bun verify browser tab 1
+   bun verify action pause-from-host --state running
    bun verify browser snapshot --until-no-text 'nixie is paused'
    bun verify db query "select count(*) as paused from nixie_pause"
    ```
 
-   Expect: the second tab no longer shows "nixie is paused", and `paused` is 0 in `data.rows`.
+   Expect: the page no longer shows "nixie is paused", and `paused` is 0 in `data.rows`.
 
 ## End state
 
-- After the pause in the second tab, the first tab shows the banner "nixie is paused" with no
-  reload, and `nixie_pause` holds one row with `cause` `owner`.
-- After the resume in the first tab, the second tab shows no banner, and `nixie_pause` holds no row.
+- After the pause from the host, the page shows the banner "nixie is paused" with no reload, and
+  `nixie_pause` holds one row with `cause` `owner`.
+- After the resume from the host, the page shows no banner, and `nixie_pause` holds no row.

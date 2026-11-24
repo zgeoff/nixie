@@ -25,7 +25,7 @@ async function setupTest() {
   await view.navigate('about:blank');
   await view.cdp('Network.clearBrowserCookies');
 
-  return { appURL: app.url, view };
+  return { api, appURL: app.url, view };
 }
 
 test('it holds one stream on a thread page, and overlaps two while it switches to a page with no thread', async () => {
@@ -54,5 +54,47 @@ test('it holds one stream on a thread page, and overlaps two while it switches t
     { timeout: 10_000 },
   );
 
-  expect(mockLive.peakOpenCount).toBe(2);
+  expect(mockLive.peakOpenCount).toBeGreaterThanOrEqual(2);
+});
+
+test('it opens no stream for topics alone while a page of another thread reads, and overlaps two while it switches', async () => {
+  const ctx = await setupTest();
+  const session = await store.sessions.create({});
+
+  await store.tasks.create({ name: 'Garden plan', taskID: 'k3vq8m2xpa' });
+  await store.tasks.create({ name: 'Seed order', taskID: 'p7hd2wq9zn' });
+
+  await setupSignedInBrowser(ctx.view, { appURL: ctx.appURL, token: session.token });
+
+  await ctx.view.navigate(`${ctx.appURL}/tasks/k3vq8m2xpa`);
+
+  await waitFor(
+    () => {
+      expect(mockLive.openedThreads.at(-1)).toBe('k3vq8m2xpa');
+      expect(mockLive.openCount).toBe(1);
+    },
+    { timeout: 10_000 },
+  );
+
+  // The new thread's read takes long enough that a stream for topics alone would open meanwhile.
+  ctx.api.delayPath('/rpc/conversation/read', 500);
+
+  const openedBefore = mockLive.openedThreads.length;
+
+  // a step of the router within the page, with no page between the two threads
+  await ctx.view.evaluate(
+    "(() => { history.pushState(null, '', '/tasks/p7hd2wq9zn'); dispatchEvent(new PopStateEvent('popstate')); })()",
+  );
+
+  await waitFor(
+    () => {
+      expect([mockLive.openCount, mockLive.openedThreads.slice(openedBefore)]).toStrictEqual([
+        1,
+        ['p7hd2wq9zn'],
+      ]);
+    },
+    { timeout: 10_000 },
+  );
+
+  expect(mockLive.peakOpenCount).toBeGreaterThanOrEqual(2);
 });

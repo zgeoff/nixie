@@ -10,7 +10,7 @@ import { refuseDevice } from './refuse-device';
 const watchInput = {
   type: 'object',
   properties: {
-    device: { type: 'string', minLength: 1, description: 'the device ID from devices.list' },
+    device: { type: 'string', minLength: 1, description: 'the shortID from devices.list' },
     wake: {
       type: 'array',
       items: { type: 'string', enum: ['online', 'offline'] },

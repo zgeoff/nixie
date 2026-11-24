@@ -4,6 +4,9 @@ import { readRecords } from '@heynixie/log';
 export interface ScreenRecord {
   readonly payload: JSONObject;
 
+  // the thread the record was written on, or null for a record on none
+  readonly thread: string | null;
+
   // the erasable fields, or null once a forget removed them
   readonly fields: JSONObject | null;
 }
@@ -32,6 +35,7 @@ export async function readScreenRecord(
 
   return {
     payload: found.record.payload,
+    thread: found.record.thread,
     fields: erasable.status === 'readable' ? erasable.fields : null,
   };
 }

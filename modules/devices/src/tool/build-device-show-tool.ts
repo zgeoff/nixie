@@ -13,7 +13,7 @@ import { writeShow } from './write-show';
 const showInput = {
   type: 'object',
   properties: {
-    device: { type: 'string', minLength: 1, description: 'the device ID from devices.list' },
+    device: { type: 'string', minLength: 1, description: 'the shortID from devices.list' },
     content: screenContentInput,
     minutes: {
       type: 'integer',
@@ -48,6 +48,8 @@ const showOutput = {
 const offlineMessage =
   'The device is offline. The show waits, and the device shows it when it comes back online.';
 
+const offlineMinutesMessage = `${offlineMessage} Its minutes start when the device comes back online.`;
+
 export function buildDeviceShowTool(options: DeviceToolOptions): ToolDefinition {
   return {
     name: 'device.show',
@@ -56,7 +58,8 @@ export function buildDeviceShowTool(options: DeviceToolOptions): ToolDefinition 
       'returns to its idle scene after `minutes`, or keeps the show until the next one when ' +
       "`minutes` is left out. An image takes `fit`: 'whole' (the default) fits it whole on black, " +
       "'fill' covers the screen and crops the overflow. The screen must be on. A device that is " +
-      'offline shows it when it comes back online, and the result says that the show waits. Only ' +
+      'offline shows it when it comes back online, counting `minutes` from then, and the result says ' +
+      'that the show waits. Only ' +
       'the device itself switches its screen on.',
     input: showInput,
     output: showOutput,
@@ -91,8 +94,31 @@ export function buildDeviceShowTool(options: DeviceToolOptions): ToolDefinition 
         return { status: 'ok', ...refuseDevice(refusal ?? 'UNKNOWN_DEVICE') };
       }
 
-      const untilMs =
-        input.minutes === undefined ? null : options.clock.now() + input.minutes * 60_000;
+      const lastsMs = input.minutes === undefined ? null : input.minutes * 60_000;
+
+      // A show that waits for an offline device counts its minutes from the time the device comes
+      // online, so a device that comes back late still shows it.
+      if (!options.streams.isOnline(device.deviceID)) {
+        await writeShow(options, {
+          deviceID: device.deviceID,
+          thread: context.run.thread,
+          content,
+          untilMs: null,
+          lastsMs,
+        });
+
+        return {
+          status: 'ok',
+          result: {
+            shown: true,
+            until: null,
+            waiting: true,
+            message: lastsMs === null ? offlineMessage : offlineMinutesMessage,
+          },
+        };
+      }
+
+      const untilMs = lastsMs === null ? null : options.clock.now() + lastsMs;
 
       await writeShow(options, {
         deviceID: device.deviceID,
@@ -102,13 +128,6 @@ export function buildDeviceShowTool(options: DeviceToolOptions): ToolDefinition 
       });
 
       const until = untilMs === null ? null : new Date(untilMs).toISOString();
-
-      if (!options.streams.isOnline(device.deviceID)) {
-        return {
-          status: 'ok',
-          result: { shown: true, until, waiting: true, message: offlineMessage },
-        };
-      }
 
       return { status: 'ok', result: { shown: true, until } };
     },

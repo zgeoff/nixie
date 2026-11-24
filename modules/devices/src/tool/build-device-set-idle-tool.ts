@@ -14,7 +14,7 @@ const maxBlocks = 8;
 const setIdleInput = {
   type: 'object',
   properties: {
-    device: { type: 'string', minLength: 1, description: 'the device ID from devices.list' },
+    device: { type: 'string', minLength: 1, description: 'the shortID from devices.list' },
     scene: {
       type: 'array',
       maxItems: maxBlocks,

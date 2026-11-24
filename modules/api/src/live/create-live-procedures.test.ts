@@ -1,7 +1,6 @@
 import { expect, test } from 'bun:test';
 import { readRecords, writeRecords } from '@heynixie/log';
 import { claimTask, createConversationTask, createTask } from '@heynixie/tasks';
-import { isDefinedError } from '@orpc/client';
 import invariant from 'tiny-invariant';
 import { buildSeeder } from '../test-utils/build-seeder';
 import { buildTestClient } from '../test-utils/build-test-client';
@@ -310,13 +309,9 @@ test('#live.follow ends with UNAUTHORIZED once the session is revoked', async ()
     sessionID: laptop.sessionID,
   });
 
-  const ended = await reading.then(
-    () => null,
-    (error: unknown) => error,
-  );
+  const [settled] = await Promise.allSettled([reading]);
 
-  expect(isDefinedError(ended)).toBeTrue();
-  expect(ended).toMatchObject({ code: 'UNAUTHORIZED' });
+  expect(settled).toMatchObject({ status: 'rejected', reason: { code: 'UNAUTHORIZED' } });
 });
 
 test('#live.follow started past the head still ends once the session is revoked', async () => {
@@ -337,12 +332,9 @@ test('#live.follow started past the head still ends once the session is revoked'
     sessionID: laptop.sessionID,
   });
 
-  const ended = await reading.then(
-    () => null,
-    (error: unknown) => error,
-  );
+  const [settled] = await Promise.allSettled([reading]);
 
-  expect(ended).toMatchObject({ code: 'UNAUTHORIZED' });
+  expect(settled).toMatchObject({ status: 'rejected', reason: { code: 'UNAUTHORIZED' } });
 });
 
 test('#live.follow refuses a revoked session before the stream opens', async () => {

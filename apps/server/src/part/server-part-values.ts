@@ -62,6 +62,7 @@ export interface ServerPartValues {
   readonly proposal_sweeps: void;
   readonly prompt_lapse_sweep: void;
   readonly device_wakes: void;
+  readonly device_show_clocks: void;
   readonly spend_watcher: void;
   readonly backups: HostBackups;
 

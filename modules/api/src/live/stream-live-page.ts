@@ -8,13 +8,13 @@ import {
 import type { LogRecord, Writer } from '@heynixie/log';
 import { withEventMeta } from '@orpc/server';
 import type { APIContext, Identity } from '../types';
-import { readHeadSequence } from '../utils/read-head-sequence';
 import { sessionRevokedCodec } from '../utils/session-revoked-codec';
 import { pickLiveStart } from './pick-live-start';
 import type { RemovedSequences } from './read-visible-record';
 import { readVisibleRecord } from './read-visible-record';
 
 export interface PageStream {
+  readonly head: number;
   readonly afterSequence: number | undefined;
   readonly lastEventID: string | undefined;
   readonly thread: string | undefined;
@@ -39,9 +39,7 @@ export async function* streamLivePage(
   caller: Identity,
   stream: PageStream,
 ): AsyncGenerator<PageEvent, void, undefined> {
-  const head = await readHeadSequence(context);
-
-  const cursor = { after: pickLiveStart({ ...stream, head }) };
+  const cursor = { after: pickLiveStart(stream) };
 
   const topics = new Set<LiveTopic>();
 
@@ -63,6 +61,9 @@ export async function* streamLivePage(
       for (const entry of batch) {
         const record = entry.record;
 
+        // A replay or a run of writes can fill every batch, so the topics that wait go out between
+        // records, and a pause never waits for the replay to reach the head.
+        yield* takeChanged(topics);
         cursor.after = record.sequence;
 
         if (isRevokeOfCaller(record, caller)) {
@@ -79,14 +80,9 @@ export async function* streamLivePage(
         }
       }
 
+      yield* takeChanged(topics);
+
       if (batch.length < batchSize) {
-        if (topics.size > 0) {
-          const changed = [...topics];
-
-          topics.clear();
-          yield { kind: 'changed', topics: changed };
-        }
-
         await wake.wait();
       }
     }
@@ -123,6 +119,17 @@ function readBatch(context: APIContext, thread: string | undefined, afterSequenc
     limit: batchSize,
     ...(thread === undefined ? { kinds: [sessionRevokedCodec.kind] } : {}),
   });
+}
+
+function* takeChanged(topics: Set<LiveTopic>): Generator<PageEvent, void, undefined> {
+  if (topics.size === 0) {
+    return;
+  }
+
+  const changed = [...topics];
+
+  topics.clear();
+  yield { kind: 'changed', topics: changed };
 }
 
 function isRevokeOfCaller(record: LogRecord, caller: Identity): boolean {

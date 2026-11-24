@@ -55,7 +55,7 @@ test('it lets devices.list show the list that the newest call set', async () => 
 
   expect(listed).toMatchObject({
     status: 'ok',
-    result: { devices: [{ device: device.deviceID, wake: ['offline'] }] },
+    result: { devices: [{ shortID: device.deviceID, wake: ['offline'] }] },
   });
 });
 
@@ -71,8 +71,8 @@ test('it leaves an empty list to a device that no call named', async () => {
   expect(listed).toMatchObject({
     result: {
       devices: [
-        { device: other.deviceID, wake: [] },
-        { device: watched.deviceID, wake: ['online'] },
+        { shortID: other.deviceID, wake: [] },
+        { shortID: watched.deviceID, wake: ['online'] },
       ],
     },
   });

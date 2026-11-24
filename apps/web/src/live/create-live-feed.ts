@@ -41,6 +41,9 @@ interface Connection {
 
   // the connection that this one replaces once it opens
   readonly replaces: Connection | null;
+
+  // true while the connection holds an open stream, and false while it waits to try again
+  isOpen: boolean;
 }
 
 interface FeedState {
@@ -93,6 +96,7 @@ export function createLiveFeed(options: LiveFeedOptions): LiveFeed {
       view,
       controller: new AbortController(),
       replaces: state.live,
+      isOpen: false,
     };
 
     state.starting = connection;
@@ -104,6 +108,11 @@ export function createLiveFeed(options: LiveFeedOptions): LiveFeed {
       signal: connection.controller.signal,
       startTimer: options.startTimer,
       onOpened: (opening) => {
+        // The old connection only covers what this one missed while its own stream is open.
+        const isCovered = opening.isFirst && connection.replaces?.isOpen === true;
+
+        connection.isOpen = true;
+
         setAvailable(true);
 
         if (state.starting === connection) {
@@ -112,9 +121,10 @@ export function createLiveFeed(options: LiveFeedOptions): LiveFeed {
           state.starting = null;
         }
 
-        // A replacing stream opens with nothing to catch up, so only a first open that replaces
-        // nothing, or a reconnect, reads every topic.
-        if (!opening.isFirst || connection.replaces === null) {
+        // A stream that replaces an open one has nothing to catch up. A first open that replaces
+        // none, or one that replaces a connection waiting to try again, and each reconnect, read
+        // every topic.
+        if (!isCovered) {
           options.invalidate(liveTopicSchema.options);
         }
 
@@ -126,6 +136,8 @@ export function createLiveFeed(options: LiveFeedOptions): LiveFeed {
       },
       onChanged: options.invalidate,
       onAttempt: (failures) => {
+        connection.isOpen = false;
+
         if (failures >= unavailableAfterFailures) {
           setAvailable(false);
         }

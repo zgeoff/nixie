@@ -50,7 +50,9 @@ The `devices` table holds a short ID from `createShortID`, the identity, the nam
 as JSON, and two pointers: `shown_sequence` and `idle_sequence`. Each pointer names the record that
 holds what the screen shows:
 
-- `device.shown` holds one show: the content, sealed under the record's own key, and `until`.
+- `device.shown` holds one show: the content, sealed under the record's own key, and `until`. A show
+  that waits for an offline device holds no `until` and a `lastsMs` instead. When the device comes
+  online, the server writes the show again with an `until` that lies `lastsMs` after that time.
 - `device.idle_set` holds one idle scene, sealed the same way.
 - `device.capability_changed` holds a switch of a capability.
 
@@ -139,22 +141,23 @@ inside that time wakes nothing.
 
 ## The tools
 
-| Tool             | What it does                                                                                                                            |
-| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| `devices.list`   | Lists each device: ID, name, screen, camera, online, `offlineSinceMs`, `wake`, pixels, `pixelRatio`, what it shows and its saved layout |
-| `devices.watch`  | Sets which changes of a device wake the model: `online`, `offline`, both or none                                                        |
-| `device.show`    | Shows markdown or an image, with `fit` `whole` or `fill`, for `minutes` or until the next show                                          |
-| `device.setIdle` | Sets the idle scene: up to 8 blocks and 20,000 characters of markdown in all                                                            |
-| `device.layout`  | Sets the grid and its named regions, or clears the layout with `clear: true`                                                            |
-| `device.region`  | Fills one region, for `minutes` with `then` `blank` or `previous`, or until its next call                                               |
+| Tool             | What it does                                                                                                                                   |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `devices.list`   | Lists each device: `shortID`, name, screen, camera, online, `offlineSinceMs`, `wake`, pixels, `pixelRatio`, what it shows and its saved layout |
+| `devices.watch`  | Sets which changes of a device wake the model: `online`, `offline`, both or none                                                               |
+| `device.show`    | Shows markdown or an image, with `fit` `whole` or `fill`, for `minutes` or until the next show                                                 |
+| `device.setIdle` | Sets the idle scene: up to 8 blocks and 20,000 characters of markdown in all                                                                   |
+| `device.layout`  | Sets the grid and its named regions, or clears the layout with `clear: true`                                                                   |
+| `device.region`  | Fills one region, for `minutes` with `then` `blank` or `previous`, or until its next call                                                      |
 
 All 6 declare the `note` effect and run direct. `device.show` checks in this order and returns the
 first refusal: `UNKNOWN_DEVICE`, `SCREEN_OFF`, then the image refusals `UNKNOWN_IMAGE` and
 `IMAGE_FORGOTTEN`. A show to an offline device refuses nothing: the show waits, the device shows it
-when it comes back online, and the result carries `waiting: true` with a message that says so. An
-image is an [image store](../connectors/images.md) short ID. `device.layout` returns
-`UNKNOWN_DEVICE`, `SCREEN_OFF`, `BAD_LAYOUT` with the reason, then `OFFLINE`. `device.region`
-returns `UNKNOWN_DEVICE`, `SCREEN_OFF`, `UNKNOWN_REGION`, `PAGE_NOT_BUILT`, the image refusals, then
+when it comes back online, and the result carries `waiting: true` with a message that says so. The
+`minutes` of a show that waits count from the time the device comes online. An image is an
+[image store](../connectors/images.md) short ID. `device.layout` returns `UNKNOWN_DEVICE`,
+`SCREEN_OFF`, `BAD_LAYOUT` with the reason, then `OFFLINE`. `device.region` returns
+`UNKNOWN_DEVICE`, `SCREEN_OFF`, `UNKNOWN_REGION`, `PAGE_NOT_BUILT`, the image refusals, then
 `OFFLINE`.
 
 `devices.list` shows the saved layout whether or not the device is online, apart from `showing`.
