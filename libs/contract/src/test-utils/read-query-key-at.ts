@@ -1,5 +1,3 @@
-import invariant from 'tiny-invariant';
-
 // The key that the query utils give at a path, which is what the web client invalidates or reads.
 export function readQueryKeyAt(utils: object, path: readonly string[]): unknown[] {
   const node = path.reduce<unknown>(
@@ -7,11 +5,16 @@ export function readQueryKeyAt(utils: object, path: readonly string[]): unknown[
     utils,
   );
 
-  invariant(isObjectLike(node), `the utils hold a node at ${path.join('.')}`);
+  // The published contract takes no assertion library, so the checks throw plain errors.
+  if (!isObjectLike(node)) {
+    throw new TypeError(`the utils hold no node at ${path.join('.')}`);
+  }
 
   const key: unknown = Reflect.apply(Reflect.get(node, 'key'), node, []);
 
-  invariant(Array.isArray(key), `the node at ${path.join('.')} gives a key`);
+  if (!Array.isArray(key)) {
+    throw new TypeError(`the node at ${path.join('.')} gives no key`);
+  }
 
   return key;
 }
