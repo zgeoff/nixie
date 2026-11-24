@@ -82,8 +82,14 @@ Before you start:
    call of `ps -e -o args=` and the text in `--text`. nixie holds the command until the user
    approves it.
 
+   Wait for the turn before you check for the held call. `proposals` checks once, with no wait, and
+   fails with `check-failed` when the turn has not held the call yet. `conversation turn` waits up
+   to 10 s for the message and the reply. The reply arrives before the approval: nixie gives the
+   model a tool result of `queued` at once, and holds the call itself as a proposal.
+
    ```bash
    bun verify action use-computer --kind shell-processes --text 'The assistant listed the processes.'
+   bun verify conversation turn --message 'List the processes that your shell shows.' --reply 'The assistant listed the processes.'
    bun verify proposals --tool computer.run --waiting pending
    bun verify action script-reply --text 'Thanks, I have the list.'
    ```
@@ -122,10 +128,11 @@ Before you start:
    ```
 
    Expect: the command exits 0, which means the input holds `\"exitCode\":0`, and `data.text` shows
-   a `stdout` that lists only the bridge (`bridge-main.ts`), `ps -e -o args=` and the shell that
-   runs it. Fail the journey on a nonzero exit code, on an empty list, and on any other line, such
-   as a display server, a remote-screen socket path or a browser flag. The shell's own `/proc` is
-   what keeps those lines out.
+   a `stdout` of 2 lines: the bridge (`bridge-main.ts`, whose arguments end in
+   `bash -lc ps -e -o args=`) and `ps -e -o args=`. `bash -lc` runs its last command in its own
+   process, so no separate shell line shows. Fail the journey on a nonzero exit code, on an empty
+   list, and on any other line, such as a display server, a remote-screen socket path or a browser
+   flag. The shell's own `/proc` is what keeps those lines out.
 
 ## End state
 
@@ -137,7 +144,7 @@ The last snapshot of step 4 lists 2 tool calls under "Tools 2", each with its in
 - `computer.read_file`, with the input `{ "path": "notes/hello.txt" }`. Its result has
   `"text": "hello from the shell"` and `"isDiskNew": false`.
 
-The input that step 8 returns holds the `computer.run` result with `"exitCode":0` and only the 3
-processes of the shell in its stdout.
+The input that step 8 returns holds the `computer.run` result with `"exitCode":0` and only 2 lines
+in its stdout: the bridge and `ps -e -o args=`.
 
 Once the end state matches, run `bun verify done`.
