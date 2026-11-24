@@ -111,17 +111,23 @@ Before you start:
 
    Expect: both clicks exit 0.
 
-8. Check the outcome of the command. The shell's own `/proc` leaves only the bridge, the command's
-   `ps` and its parent shell in `ps -e`: no display server, no remote-screen socket path and no
-   browser flag. The userns test of the shell guest asserts that list, because this CLI cannot read
-   the command's output.
+8. Read the command's result on the conversation page. Take each `ref` from the snapshot just before
+   its click, as in step 4: the collapsed line of the turn whose text holds "computer run:", then
+   the line that starts with `group "Tools 1"`.
 
    ```bash
-   bun verify proposals --tool computer.run --waiting none
-   bun verify db query "select json_extract(payload, '$.status') as status from records where kind = 'action.outcome' and json_extract(payload, '$.tool') = 'computer.run'"
+   bun verify browser goto /
+   bun verify browser snapshot
+   bun verify browser click --ref '<turn_ref>'
+   bun verify browser snapshot
+   bun verify browser click --ref '<tools_ref>'
+   bun verify browser snapshot
    ```
 
-   Expect: `proposals` exits 0, and the query returns one row, with `status` `done`.
+   Expect: the `computer.run` result has `"exitCode": 0`, and its stdout lists only the bridge
+   (`bridge-main.ts`), `ps -e -o args=` and the shell that runs it. Fail the journey on a nonzero
+   exit code, on an empty list, and on any other line, such as a display server, a remote-screen
+   socket path or a browser flag. The shell's own `/proc` is what keeps those lines out.
 
 ## End state
 
@@ -133,6 +139,7 @@ The last snapshot of step 4 lists 2 tool calls under "Tools 2", each with its in
 - `computer.read_file`, with the input `{ "path": "notes/hello.txt" }`. Its result has
   `"text": "hello from the shell"` and `"isDiskNew": false`.
 
-The query of step 8 returned one `computer.run` outcome with `status` `done`.
+The last snapshot of step 8 shows the `computer.run` result with `"exitCode": 0` and only the 3
+processes of the shell in its stdout.
 
 Once the end state matches, run `bun verify done`.

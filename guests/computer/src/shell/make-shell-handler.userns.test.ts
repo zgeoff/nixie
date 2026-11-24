@@ -351,7 +351,11 @@ test('it shows a command only its own processes in ps and /proc', async () => {
 
   const reply = await ctx.send({
     op: 'run',
-    argv: ['bash', '-c', String.raw`ps -e -o args=; echo ---; tr "\0" " " < /proc/1/cmdline`],
+    argv: [
+      'bash',
+      '-c',
+      String.raw`set -e; ps -e -o args=; echo ---; tr "\0" " " < /proc/1/cmdline`,
+    ],
     timeoutSeconds: 20,
   });
 
@@ -360,6 +364,7 @@ test('it shows a command only its own processes in ps and /proc', async () => {
   const [processes = '', firstProcess = ''] = reply.run.stdout.text.split('---\n');
 
   expect(reply.run.exitCode).toBe(0);
+  expect(processes).toInclude('ps -e -o args=');
   expect(processes).not.toInclude('sleep 4242');
   expect(processes).not.toInclude(String(process.pid));
   expect(firstProcess).toInclude('bridge-main.ts');

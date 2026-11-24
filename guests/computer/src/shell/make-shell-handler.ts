@@ -58,9 +58,9 @@ export function buildProxyEnv(
   };
 }
 
-// The command, as the terminal's account, in new user, network, process and mount namespaces, with
-// a /proc of its own. The display's socket sits in the guest's own network namespace, so no command
-// reaches it. unshare kills the namespace when it is killed, so a timed-out command leaves nothing.
+// The guest's own /proc lists the display server and the browser's flags, so the command gets a
+// /proc of its own. The display's socket sits in the guest's network namespace, out of its reach.
+// unshare kills the namespace when it is killed, so a timed-out command leaves nothing.
 export function buildNamespacedArgv(
   options: Pick<ShellHandlerOptions, 'account' | 'bridgeScript' | 'proxySocketPath'>,
   argv: readonly string[],

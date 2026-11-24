@@ -1,27 +1,22 @@
 import type { ScriptedReply } from '@heynixie/testing';
+import { match } from 'ts-pattern';
 
 export interface ComputerSessionInput {
   readonly kind: 'browser' | 'browser-navigate' | 'shell' | 'shell-processes' | 'screen';
   readonly text: string;
 }
 
-// The replies of a turn in which the model opens the harness's own page in its browser, sends the
-// tab to the harness's next page and reloads it, writes a file on its shell's disk and reads it back,
-// lists the processes that its shell shows, or takes a screenshot of the desktop and clicks a point
-// of it.
+// A journey needs a fixed turn for each kind, because the CLI cannot make the model choose.
 export function buildComputerReplies(
   input: ComputerSessionInput,
   siteURL: string,
 ): ScriptedReply[] {
-  if (input.kind === 'browser') {
-    return [
+  return match(input.kind)
+    .with('browser', (): ScriptedReply[] => [
       { toolUse: { name: 'mcp__nixie__computer_browser_open', input: { url: siteURL } } },
       { text: input.text },
-    ];
-  }
-
-  if (input.kind === 'browser-navigate') {
-    return [
+    ])
+    .with('browser-navigate', (): ScriptedReply[] => [
       {
         toolUse: {
           name: 'mcp__nixie__computer_browser_navigate',
@@ -30,23 +25,12 @@ export function buildComputerReplies(
       },
       { toolUse: { name: 'mcp__nixie__computer_browser_reload', input: { tab: 't1' } } },
       { text: input.text },
-    ];
-  }
-
-  if (input.kind === 'shell-processes') {
-    return [
-      {
-        toolUse: {
-          name: 'mcp__nixie__computer_run',
-          input: { command: 'ps -e -o args=' },
-        },
-      },
+    ])
+    .with('shell-processes', (): ScriptedReply[] => [
+      { toolUse: { name: 'mcp__nixie__computer_run', input: { command: 'ps -e -o args=' } } },
       { text: input.text },
-    ];
-  }
-
-  if (input.kind === 'screen') {
-    return [
+    ])
+    .with('screen', (): ScriptedReply[] => [
       { toolUse: { name: 'mcp__nixie__computer_screenshot', input: {} } },
       {
         toolUse: {
@@ -55,17 +39,16 @@ export function buildComputerReplies(
         },
       },
       { text: input.text },
-    ];
-  }
-
-  return [
-    {
-      toolUse: {
-        name: 'mcp__nixie__computer_write_file',
-        input: { path: 'notes/hello.txt', text: 'hello from the shell' },
+    ])
+    .with('shell', (): ScriptedReply[] => [
+      {
+        toolUse: {
+          name: 'mcp__nixie__computer_write_file',
+          input: { path: 'notes/hello.txt', text: 'hello from the shell' },
+        },
       },
-    },
-    { toolUse: { name: 'mcp__nixie__computer_read_file', input: { path: 'notes/hello.txt' } } },
-    { text: input.text },
-  ];
+      { toolUse: { name: 'mcp__nixie__computer_read_file', input: { path: 'notes/hello.txt' } } },
+      { text: input.text },
+    ])
+    .exhaustive();
 }
