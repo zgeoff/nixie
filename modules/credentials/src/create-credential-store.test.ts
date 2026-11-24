@@ -1,5 +1,5 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { CredentialRefusalError, buildValueForms } from '@heynixie/egress';
+import { CredentialRefusalError, buildValueForms, scrubText } from '@heynixie/egress';
 import { buildStubResolver, startTestSite } from '@heynixie/egress/test-utils';
 import type { SecretSpec } from '@heynixie/sandbox';
 import { createCredentialStore } from './create-credential-store';
@@ -435,6 +435,11 @@ test.each([
     format: (value: string) => `key=${Buffer.from(`user:${value}`).toString('base64')}`,
   },
   {
+    form: 'URL-encoded with mixed-case hex',
+    value: 'fake/service+value 0001=',
+    format: () => 'key=fake%2fservice%2Bvalue%200001%3d',
+  },
+  {
     form: 'base64 of a 4-byte value',
     value: 'ab12',
     format: (value: string) => `key=${Buffer.from(`xx${value}-tail`).toString('base64')}`,
@@ -458,7 +463,7 @@ test.each([
   expect(response.headers.get('x-echo')).toBe('seen [secret removed]');
   expect(text).toStartWith('key=');
   expect(text).toContain('[secret removed]');
-  expect(buildValueForms(row.value).some((form) => text.includes(form))).toBe(false);
+  expect(scrubText(text, buildValueForms(row.value))).toBe(text);
 });
 
 test('it removes a value that the service sends split across stream chunks', async () => {
@@ -529,6 +534,29 @@ test('it refuses a response larger than 32 MiB', async () => {
   expect(fetchWith(`${origin}/x`)).rejects.toThrow(CredentialRefusalError);
 });
 
+test('it removes a mixed-case value from the name of a response header', async () => {
+  const ctx = await setupTest();
+
+  ctx.values.set(ctx.ref.name, 'Fake-Mixed-Value-0001');
+
+  const server = ctx.serveLocal(
+    () =>
+      new Response('ok', { headers: { 'x-Fake-Mixed-Value-0001': 'kept-out', 'x-other': 'kept' } }),
+  );
+
+  const origin = `http://gateway.test:${server.port}`;
+  const store = ctx.createStore();
+
+  const fetchWith = store.fetcher(store.register(ctx.ref, ctx.spec([origin])), [origin], {
+    deploymentService: true,
+  });
+
+  const response = await fetchWith(`${origin}/x`);
+
+  expect([...response.headers.keys()].join(' ').toLowerCase()).not.toContain('fake-mixed-value');
+  expect(response.headers.get('x-other')).toBe('kept');
+});
+
 test('it removes the value from the name of a response header', async () => {
   const ctx = await setupTest();
 
@@ -572,6 +600,34 @@ test.each([
 
   expect(failure).toMatchObject(row.expected);
   expect(failure).not.toHaveProperty('cause');
+});
+
+test('it removes the value from a compressed JSON body that a service echoes it in', async () => {
+  const ctx = await setupTest();
+
+  const echoed = JSON.stringify({ title: `Ferry times for ${ctx.value}`, other: 'kept' });
+
+  const server = ctx.serveLocal(
+    () =>
+      new Response(Bun.gzipSync(Buffer.from(echoed)), {
+        headers: { 'content-encoding': 'gzip', 'content-type': 'application/json' },
+      }),
+  );
+
+  const origin = `http://gateway.test:${server.port}`;
+  const store = ctx.createStore();
+
+  const fetchWith = store.fetcher(store.register(ctx.ref, ctx.spec([origin])), [origin], {
+    deploymentService: true,
+  });
+
+  const response = await fetchWith(`${origin}/x`);
+  const body = await response.json();
+
+  expect(body).toStrictEqual({
+    title: 'Ferry times for [secret removed]',
+    other: 'kept',
+  });
 });
 
 test('it refuses a compressed response that expands past 32 MiB', async () => {

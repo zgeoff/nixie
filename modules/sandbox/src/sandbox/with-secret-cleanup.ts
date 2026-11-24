@@ -40,6 +40,16 @@ export function withSecretCleanup(
   const clean = (): Promise<readonly string[]> =>
     removeUnheldSecrets({ ...options, adapter: { id: adapter.id, removeSecret } });
 
+  const cleanQuietly = async (): Promise<void> => {
+    await clean().catch((error: unknown) => {
+      options.logger(
+        'sandbox.secret_cleanup_failed',
+        { reason: error instanceof Error ? error.message : String(error) },
+        'warn',
+      );
+    });
+  };
+
   const wrap = (sandbox: Sandbox): Sandbox => ({
     ...sandbox,
     get id() {
@@ -57,22 +67,28 @@ export function withSecretCleanup(
     destroy: async () => {
       await sandbox.destroy();
 
-      await clean().catch((error: unknown) => {
-        options.logger(
-          'sandbox.secret_cleanup_failed',
-          { reason: error instanceof Error ? error.message : String(error) },
-          'warn',
-        );
-      });
+      await cleanQuietly();
     },
   });
 
   return {
     id: adapter.id,
     create: async (spec) => {
-      const sandbox = await adapter.create(spec);
+      try {
+        const sandbox = await adapter.create(spec);
 
-      return wrap(sandbox);
+        return wrap(sandbox);
+      } catch (error) {
+        // No sandbox holds the names of a failed create, so they stop being protected and the
+        // cleanup removes them. A caller that cached the grant adds it again on its next attempt.
+        for (const grant of spec.grants) {
+          added.delete(grant.secret);
+        }
+
+        await cleanQuietly();
+
+        throw error;
+      }
     },
     read: async (id) => {
       const sandbox = await adapter.read(id);

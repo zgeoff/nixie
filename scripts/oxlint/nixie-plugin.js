@@ -39,6 +39,10 @@ function buildRule() {
           }
         },
         VariableDeclarator(node) {
+          if (node.id.type === 'ObjectPattern') {
+            collectPatternAliases(node.id, aliases);
+          }
+
           if (node.init === null || !isSecretsObject(node.init, aliases)) {
             return;
           }
@@ -50,8 +54,18 @@ function buildRule() {
           }
         },
         AssignmentExpression(node) {
-          if (node.left.type === 'Identifier' && isSecretsObject(node.right, aliases)) {
+          if (node.left.type === 'ObjectPattern') {
+            collectPatternAliases(node.left, aliases);
+          }
+
+          if (!isSecretsObject(node.right, aliases)) {
+            return;
+          }
+
+          if (node.left.type === 'Identifier') {
             aliases.add(node.left.name);
+          } else if (node.left.type === 'ObjectPattern') {
+            reportPattern(node.left, settingsOnly, report);
           }
         },
         ObjectPattern(node) {
@@ -116,15 +130,21 @@ function unwrap(node) {
   return wrappers.includes(node.type) ? unwrap(node.expression) : node;
 }
 
-// A group's own name gives it away wherever it is read, so the pattern check for every pattern
-// names the two groups. The settings group shares its name with other things, so it counts only
-// when a pattern takes it from a secrets object.
-function reportPattern(pattern, names, report) {
+// A pattern that takes a property named like a secrets object, such as `{ secrets: held }`, makes
+// the name it binds a secrets object too.
+function collectPatternAliases(pattern, aliases) {
   for (const property of pattern.properties) {
-    const name = property.type === 'Property' ? findKeyName(property) : null;
+    if (property.type !== 'Property') {
+      continue;
+    }
 
-    if (name !== null && names.has(name)) {
-      report(property, name);
+    const target =
+      property.value.type === 'AssignmentPattern' ? property.value.left : property.value;
+
+    if (target.type === 'ObjectPattern') {
+      collectPatternAliases(target, aliases);
+    } else if (target.type === 'Identifier' && aliases.has(findKeyName(property))) {
+      aliases.add(target.name);
     }
   }
 }
@@ -141,4 +161,17 @@ function findKeyName(property) {
   return property.key.type === 'Literal' && typeof property.key.value === 'string'
     ? property.key.value
     : null;
+}
+
+// A group's own name gives it away wherever it is read, so the pattern check for every pattern
+// names the two groups. The settings group shares its name with other things, so it counts only
+// when a pattern takes it from a secrets object.
+function reportPattern(pattern, names, report) {
+  for (const property of pattern.properties) {
+    const name = property.type === 'Property' ? findKeyName(property) : null;
+
+    if (name !== null && names.has(name)) {
+      report(property, name);
+    }
+  }
 }

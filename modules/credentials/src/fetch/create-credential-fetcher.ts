@@ -1,5 +1,5 @@
 import type { IncomingHttpHeaders } from 'node:http';
-import type { AddressCheck } from '@heynixie/egress';
+import type { AddressCheck, ValueForm } from '@heynixie/egress';
 import {
   CredentialRefusalError,
   buildValueForms,
@@ -7,6 +7,7 @@ import {
   planHop,
   scrubBytes,
   scrubText,
+  toCaseInsensitiveForms,
 } from '@heynixie/egress';
 import type { CredentialFetch, CredentialSpec, FetchOptions } from '../types';
 import { findCredentialHeader, placeCredential } from './place-credential';
@@ -71,7 +72,7 @@ function refuseUserinfo(text: string, subject: string): void {
 
 interface CredentialScrub {
   readonly value: string | null;
-  readonly forms: readonly string[];
+  readonly forms: readonly ValueForm[];
 }
 
 const maxRedirects = 5;
@@ -283,17 +284,18 @@ function toHeaders(raw: IncomingHttpHeaders): Headers {
   return headers;
 }
 
-async function readResponse(reply: HopReply, forms: readonly string[]): Promise<Response> {
+async function readResponse(reply: HopReply, forms: readonly ValueForm[]): Promise<Response> {
   const raw = await reply.read();
 
   const body = scrubBytes(raw, forms);
+  const nameForms = toCaseInsensitiveForms(forms);
 
   const headers = new Headers();
 
   for (const [name, entry] of reply.headers) {
     // A header name that holds the value cannot carry the marker, so the header goes whole.
     const isDropped =
-      ['content-encoding', 'content-length'].includes(name) || scrubText(name, forms) !== name;
+      ['content-encoding', 'content-length'].includes(name) || scrubText(name, nameForms) !== name;
 
     if (!isDropped) {
       headers.append(name, scrubText(entry, forms));
@@ -312,7 +314,7 @@ async function readResponse(reply: HopReply, forms: readonly string[]): Promise<
 
 // The cleaned error keeps the name and the cleaned message and drops the cause, which may hold the
 // value: a caller's abort reason reaches here too.
-function cleanError(error: unknown, forms: readonly string[]): unknown {
+function cleanError(error: unknown, forms: readonly ValueForm[]): unknown {
   if (error instanceof CredentialRefusalError) {
     return new CredentialRefusalError(scrubText(error.message, forms));
   }

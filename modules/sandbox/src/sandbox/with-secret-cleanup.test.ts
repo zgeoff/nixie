@@ -76,7 +76,7 @@ test('it keeps a secret that a runner cached after the last sandbox using it is 
   expect(ctx.stub.removedSecrets).toStrictEqual([]);
 });
 
-test('it keeps the secret of a grant whose sandbox create failed', async () => {
+test('it removes the secret of a grant whose sandbox create failed', async () => {
   const ctx = await setupTest();
 
   const failing = withSecretCleanup(
@@ -95,12 +95,16 @@ test('it keeps the secret of a grant whose sandbox create failed', async () => {
     header: 'bearer',
   });
 
-  const created = failing.create(buildMockSandboxSpec());
+  const created = failing.create(
+    buildMockSandboxSpec({
+      grants: [{ secret: 'nixie-model-new', host: 'api.example.test', env: {} }],
+    }),
+  );
 
   await Promise.allSettled([created]);
-  await failing.removeSecret('nixie-model-new');
 
-  expect(ctx.stub.removedSecrets).toStrictEqual([]);
+  expect(created).rejects.toThrow('no capacity');
+  expect(ctx.stub.removedSecrets).toStrictEqual(['nixie-model-new']);
 });
 
 test('it keeps the secret of a second grant when the first sandbox create succeeds', async () => {

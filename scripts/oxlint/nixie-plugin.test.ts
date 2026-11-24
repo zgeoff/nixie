@@ -67,6 +67,22 @@ test.each([
     'the settings group through a destructured alias of an alias',
     'const copy = secrets;\nconst { settings } = copy;',
   ],
+  [
+    'the settings group through a destructuring assignment',
+    'let settings;\n({ settings } = secrets);',
+  ],
+  [
+    'the settings group through an alias that destructuring options.secrets made',
+    'const { secrets: held } = options;\nconst a = held.settings;',
+  ],
+  [
+    'the settings group through an alias made by an assignment pattern with a default',
+    'const { secretsFile: held = other } = options;\nconst a = held.settings;',
+  ],
+  [
+    'the settings group through an alias made by a nested pattern',
+    'const { deps: { secrets: held } } = options;\nconst a = held.settings;',
+  ],
   ['the settings group through a type assertion', 'const a = (secrets as Loaded).settings;'],
   ['the settings group through an optional chain', 'const a = secrets?.settings;'],
 ])('it refuses a read of a secrets group by %s', async (_label, source) => {
@@ -83,6 +99,10 @@ test.each([
   [
     'the settings member of an alias of another object',
     'const copy = form;\nconst a = copy.settings;',
+  ],
+  [
+    'an alias that destructuring another object made',
+    'const { form: held } = options;\nconst a = held.settings;',
   ],
   ['a string that names a group', "const a = 'model_credentials';"],
 ])('it allows %s', async (_label, source) => {

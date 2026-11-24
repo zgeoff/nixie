@@ -271,15 +271,22 @@ function buildTaskImpParts(runner: TaskRunner, taskID: string): TaskImpParts {
     readSandbox: (id) => options.sandboxes.read(id),
     createSandbox: async () => {
       const run = await readStartedRun(runner, taskID);
+      const modelGrant = await resolveModelGrant(runner, run.profile);
 
-      return createWorkerSandbox({
-        sandboxes: options.sandboxes,
-        image: getHarnessImage(options.images, run.harness.imageKey),
-        owner: taskID,
-        limits: runner.session.limits,
-        modelGrant: await resolveModelGrant(runner, run.profile),
-        log: options.log,
-      });
+      try {
+        return await createWorkerSandbox({
+          sandboxes: options.sandboxes,
+          image: getHarnessImage(options.images, run.harness.imageKey),
+          owner: taskID,
+          limits: runner.session.limits,
+          modelGrant,
+          log: options.log,
+        });
+      } catch (error) {
+        // A failed create lets the broker drop the grant's secret, so the next step grants again.
+        runner.grants.delete(run.profile.profile.id);
+        throw error;
+      }
     },
     removeSandboxes: () => removeTaskSandboxes(options, taskID),
     onSleepFailed: (error) => {
