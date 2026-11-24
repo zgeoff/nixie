@@ -208,9 +208,8 @@ mcp_tool_forms, a projection, one row per tool form a server listing has held
   listed_seq    integer not null  -- the mcp.tool_listed record whose erasable fields hold the form
 ```
 
-- A new tool on a server that is not trusted stays `hidden_new`, and its listing writes an `allow`
-  proposal whose card shows the form and the declaration it would run under. A new tool on a trusted
-  server pins at once.
+- A new tool stays `hidden_new` on every server, trusted or not, and its listing writes an `allow`
+  proposal whose card shows the form and the declaration it would run under.
 - An approved `allow` moves the pin to the hash its operation holds, never to a later one.
 - A trusted server's change moves the pin to the new hash, description changes included, unless the
   new input schema adds a property at any depth. That change stops the tool as `stopped_changed` on
