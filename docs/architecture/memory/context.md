@@ -268,7 +268,9 @@ A call that a refusal or an error ends looks nothing up. Neither does a `task.st
 task holds no memory, nor a `skill_write` that waits as a proposal for review.
 
 The model reads `related`, but the log record of the tool result never holds it. A forget of an item
-erases the item's keys, and a copy of its text in a result would outlive it.
+erases the item's keys, and a copy of its text in a result would outlive it. A call that runs after
+the user approves it returns no `related` at all: the step keeps that call's result in memory until
+a later turn reads it, and a forget can land in between.
 
 The lookup ranks a page of matches at a time and drops each retired, lapsed or forgotten item before
 it counts toward the 3, so inactive items that rank higher never hide an active match.

@@ -36,6 +36,8 @@ export { readEventsBlock } from './event/read-events-block';
 export type { EventsBlockSettings } from './event/render-events-block';
 export { readEventsNote } from './event/read-events-note';
 export { readTurnNoteRange } from './turn/read-turn-note-range';
+export type { ActionResultBlock } from './inbox/render-action-result';
+export { renderActionResult } from './inbox/render-action-result';
 export { renderImageMarkers } from './utils/render-image-markers';
 export { renderOwnerText } from './utils/render-owner-text';
 export { renderSessionMessages } from './session/render-session-messages';

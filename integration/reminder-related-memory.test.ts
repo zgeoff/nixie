@@ -8,12 +8,15 @@ import {
   readItemShortID,
   startTestMemory,
 } from '@heynixie/memory/test-utils';
+import { actionProposedCodec } from '@heynixie/policy';
 import { readStarterDecisionPoint } from '@heynixie/policy/test-utils';
 import { buildReminderSetTool } from '@heynixie/reminders';
 import { buildReminderToolCall, startTestReminders } from '@heynixie/reminders/test-utils';
-import type { RelatedMemoryLookup } from '@heynixie/tools';
-import { buildToolRegistry, runToolCall } from '@heynixie/tools';
-import { buildMockToolContext } from '@heynixie/tools/test-utils';
+import { renderActionResult } from '@heynixie/sessions';
+import type { ApprovedRun, RelatedMemoryLookup, ToolCallOptions, ToolRun } from '@heynixie/tools';
+import { buildToolRegistry, runApprovedCall, runToolCall } from '@heynixie/tools';
+import { buildMockToolContext, buildStubActionQueue } from '@heynixie/tools/test-utils';
+import invariant from 'tiny-invariant';
 
 async function setupTest() {
   const memory = await startTestMemory({
@@ -78,6 +81,80 @@ async function setupTest() {
           queuedWaitMs: 1000,
         },
       );
+    },
+    askSetTomatoes: async () => {
+      await memory.store.waitForSemanticIndex();
+
+      const run: ToolRun = {
+        runID: 'run-1',
+        thread: 'conversation',
+        logThread: 'conversation',
+        tools: ['reminder.set'],
+        model: { model: 'model-a', profile: 'chat-direct' },
+      };
+
+      const options: ToolCallOptions = {
+        registry,
+        decide: readStarterDecisionPoint(
+          (tool) => registry.findTool(tool)?.definition.declaration ?? null,
+          {
+            extraRules: [
+              {
+                id: 'ask-reminders',
+                revision: 2,
+                rule: { id: 'ask-reminders', outcome: 'ask', tools: ['reminder.set'] },
+              },
+            ],
+          },
+        ),
+        log: memory.log,
+        definitions: () => ({ snapshotHash: 'sha256:test' }),
+        queue: buildStubActionQueue().queue,
+        queuedWaitMs: 1000,
+      };
+
+      await runToolCall(
+        { tool: 'reminder.set', input: setTomatoes, toolUseID: null },
+        run,
+        options,
+      );
+
+      const entries = await readRecords(memory.log, { afterSequence: 0 });
+
+      const proposed = entries.find((entry) => entry.record.kind === 'policy.action_proposed');
+
+      invariant(proposed, 'the call asks');
+
+      const proposal = actionProposedCodec.decode(proposed.record.payload);
+
+      return {
+        approve: () =>
+          runApprovedCall(
+            {
+              actionID: proposal.proposalID,
+              tool: 'reminder.set',
+              input: setTomatoes,
+              callSequence: proposal.callSequence,
+              actionHash: proposal.actionHash,
+            },
+            run,
+            options,
+          ),
+      };
+    },
+    readApprovedRender: async (approved: ApprovedRun) => {
+      invariant(approved.status === 'done', 'the approved call ran');
+
+      const entries = await readRecords(memory.log, { afterSequence: 0 });
+
+      const result = entries.find((entry) => entry.record.sequence === approved.resultSequence);
+
+      invariant(result, 'the approved call wrote its result');
+
+      return renderActionResult(result.record, {
+        result: approved.result,
+        images: approved.images,
+      }).text;
     },
     readStoredText: async () => {
       const entries = await readRecords(memory.log, { afterSequence: 0 });
@@ -157,4 +234,17 @@ test('it keeps the text of a related item out of the stored result, so a forget 
   const stored = await ctx.readStoredText();
 
   expect(stored).not.toContain('The tomatoes live in the greenhouse');
+});
+
+test('it renders the result of an approved reminder with no trace of a related item forgotten before the render', async () => {
+  const ctx = await setupTest();
+  const tomatoes = await ctx.remember('The tomatoes live in the greenhouse');
+  const asked = await ctx.askSetTomatoes();
+  const approved = await asked.approve();
+
+  await ctx.memory.store.forget({ target: tomatoes, provenance: buildMockProvenance() });
+
+  const rendered = await ctx.readApprovedRender(approved);
+
+  expect(rendered).not.toContain('The tomatoes live in the greenhouse');
 });
