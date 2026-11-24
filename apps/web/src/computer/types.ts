@@ -16,8 +16,7 @@ export interface Viewer {
   // only while this device holds the desktop.
   readonly setInput: (isOn: boolean) => void;
 
-  // Sets the desktop's clipboard to the text and presses the paste chord there, so the text lands in
-  // the field in focus.
+  // Types the text as keys, so it lands in the field in focus.
   readonly paste: (text: string) => void;
 }
 

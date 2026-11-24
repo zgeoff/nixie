@@ -27,9 +27,9 @@ The desktop runs Xvfb as the display, openbox as the window manager, xterm as th
 x11vnc as a VNC server. The display is 1280 by 800. The VNC server listens on a Unix socket in a
 directory that only the screen's account can open, and on no TCP port, so the browser and the
 terminal cannot reach it. The primary selection is off, and so are the remote control commands that
-an X client can send it through the display, which Chromium is. The clipboard is on, for the
-[copy and paste](#copy-and-paste) of a take-over. The VNC server accepts the keys, pointer and
-clipboard text of a viewer, and the relay passes them only while a device
+an X client can send it through the display, which Chromium is. The VNC server sends the clipboard
+to its viewers, for the [copy and paste](#copy-and-paste) of a take-over, and never sets it from a
+viewer. It accepts the keys and pointer of a viewer, and the relay passes them only while a device
 [holds the desktop](#taking-over). The user's client reaches it as [Watching](#watching) says.
 
 Chromium runs in the time zone of `time.default_zone` in the config, so a page that shows "today" or
@@ -325,14 +325,20 @@ connector side, `openComputerWatch`, does the rest for each socket:
   never takes the turn for longer than that start, so a call never answers `BUSY` because of one.
 - The relay lets through the messages that a viewer needs: the handshake, `SetPixelFormat`,
   `SetEncodings` and `FramebufferUpdateRequest`. It passes `KeyEvent` and `PointerEvent` only while
-  the viewer's device holds the desktop, and drops them silently otherwise. It passes a
-  `ClientCutText` the same way, and always drops the extended clipboard format, and closes the
-  socket and the stream on a message that is malformed, unknown or past a size cap, including a
-  `SetPixelFormat` with an invalid pixel format. It reads the length of a `ClientCutText` as signed,
-  because a viewer that speaks the extended clipboard format sends a negative one. A passed
-  `ClientCutText` goes on as its bytes arrive, and counts as input that holds off the idle
-  hand-back. While the sandbox wakes, it queues the viewer's bytes up to a cap far above what a
-  viewer sends before it hears from the desktop, and closes the socket past it.
+  the viewer's device holds the desktop, and drops them silently otherwise. It always drops
+  `ClientCutText`, the extended clipboard format included, which it reads as signed because a viewer
+  that speaks that format sends a negative length. It closes the socket and the stream on a message
+  that is malformed, unknown or past a size cap, including a `SetPixelFormat` with an invalid pixel
+  format or with another pixel size than the desktop announced. It cuts the encodings of a
+  `SetEncodings` to Raw, CopyRect, ZRLE and the desktop size and cursor pseudo-encodings, and adds
+  Raw when the viewer left it out. While the sandbox wakes, it queues the viewer's bytes up to a cap
+  far above what a viewer sends before it hears from the desktop, and closes the socket past it.
+- The relay reads the VNC server's bytes as messages too. Those encodings are the ones whose size it
+  reads without decoding, so it knows where each message ends. It passes the clipboard text of the
+  desktop, a `ServerCutText`, only to the viewer whose device holds the desktop, and it checks that
+  at the end of the text, so a hold that ends part way through sends none of it. It closes the
+  socket and the stream on bytes it cannot read as a message, because they could hold clipboard
+  text.
 
 ## Taking over
 
@@ -393,16 +399,23 @@ the record by its short ID.
 ### Copy and paste
 
 While a device holds the desktop, the user can paste text into the take-over screen and copy text
-out of it, through the VNC connection's own clipboard messages. The page reads the user's clipboard
-only for a paste the user makes, which carries the text in its event, and never on its own.
+out of it. The page reads the user's clipboard only for a paste the user makes, which carries the
+text in its event, and never on its own.
 
-- A paste sets the desktop's clipboard with a `ClientCutText` and then presses the paste chord, so
-  the text reaches the field in focus. The page holds back the user's own paste chord, which would
-  reach the desktop before the text does. The legacy message carries ISO 8859-1 text, so a character
-  outside it arrives as a question mark.
-- Text that a program on the desktop copies reaches every viewer as a `ServerCutText`, and the page
-  writes it to the user's clipboard only while this device holds the desktop. A browser that refuses
-  a write that no gesture asked for leaves the text on the desktop.
+- A paste types the text as key events, one press and release for each character, so the text
+  reaches the field in focus whether it is in the browser or the terminal. A character in Latin-1
+  has the keysym of its code point, any other character has a Unicode keysym, a line break is
+  Return, a tab is Tab, and any other control character is left out. The VNC clipboard message
+  carries Latin-1 text alone, and the VNC server has no extended clipboard format, so it would turn
+  a character such as a snowman into a question mark. The page holds back the user's own paste
+  chord, which would reach the desktop before the text does, and pastes at most 2000 characters at a
+  time, because each one is 2 messages on the wire. The relay passes each key only while the device
+  holds the desktop, so a hold that ends part way through a paste sends no more of it.
+- Text that a program on the desktop copies reaches the relay as a `ServerCutText`. The relay passes
+  it only to the viewer whose device holds the desktop, as [Watching](#watching) says, and the page
+  writes it to the user's clipboard. A browser may refuse a write that no gesture asked for, and
+  then the page keeps the text and offers a button that writes it, until the user hands the desktop
+  back.
 - The primary selection stays off, so a selection never moves without a copy or a paste.
 
 ## Asking for a take-over

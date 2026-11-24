@@ -237,52 +237,48 @@ test('it starts no take-over on a refresh of the computer page after a take-over
   expect(text).not.toInclude('You have taken over the computer');
 });
 
-test('it sends text that the user pastes to the desktop, then presses paste there', async () => {
+test('it types text that the user pastes as keys, with a character outside Latin-1 and a line break', async () => {
   const ctx = await setupTest();
 
   await ctx.takeOver();
 
   await ctx.view.evaluate(`(() => {
     const data = new DataTransfer();
-    data.setData('text/plain', 'hunter2');
+    data.setData('text/plain', 'né☃\\n');
     document.querySelector('main [role="img"] canvas').dispatchEvent(
       new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }),
     );
   })()`);
 
   await waitFor(() => {
-    expect(ctx.desktop.received.keys).toHaveLength(4);
+    expect(ctx.desktop.received.keys).toHaveLength(8);
   });
 
-  expect([ctx.desktop.received.clipboard, ctx.desktop.received.keys]).toStrictEqual([
-    ['hunter2'],
-    [
-      { keysym: 0xff_e3, isDown: true },
-      { keysym: 0x76, isDown: true },
-      { keysym: 0x76, isDown: false },
-      { keysym: 0xff_e3, isDown: false },
-    ],
+  expect(ctx.desktop.received.keys).toStrictEqual([
+    { keysym: 0x6e, isDown: true },
+    { keysym: 0x6e, isDown: false },
+    { keysym: 0xe9, isDown: true },
+    { keysym: 0xe9, isDown: false },
+    { keysym: 0x01_00_26_03, isDown: true },
+    { keysym: 0x01_00_26_03, isDown: false },
+    { keysym: 0xff_0d, isDown: true },
+    { keysym: 0xff_0d, isDown: false },
   ]);
 });
 
-test('it copies text that the desktop copies to the clipboard of the user while the user holds it', async () => {
+test('it offers a button for copied text that the browser refuses to write', async () => {
   const ctx = await setupTest();
 
   await ctx.takeOver();
 
-  await ctx.view.evaluate(`(() => {
-    globalThis.copied = [];
-    Object.defineProperty(navigator, 'clipboard', {
-      configurable: true,
-      value: { writeText: (text) => { globalThis.copied.push(text); return Promise.resolve(); } },
-    });
-  })()`);
-
   ctx.desktop.sendCutText('order 4471');
 
-  await waitForPage(ctx.view, 'globalThis.copied.length === 1');
+  await waitForPage(
+    ctx.view,
+    "[...document.querySelectorAll('button')].some((button) => button.innerText === 'Copy it')",
+  );
 
-  const copied: unknown = await ctx.view.evaluate('globalThis.copied');
+  const text: unknown = await ctx.view.evaluate('document.querySelector("main").innerText');
 
-  expect(copied).toStrictEqual(['order 4471']);
+  expect(text).toInclude('Your browser would not copy the text that the computer copied.');
 });

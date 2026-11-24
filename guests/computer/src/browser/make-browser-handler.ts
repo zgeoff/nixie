@@ -8,6 +8,7 @@ import { readFocusedTitle } from '../screen/read-focused-title';
 import type { DesktopDriver, ScreenTabs } from '../screen/types';
 import { makeOriginLog, toOrigin } from '../takeover/make-origin-log';
 import { actOnTab } from './act-on-tab';
+import { adoptOpenPages } from './adopt-open-pages';
 import { downloadTabFile } from './download-tab-file';
 import { launchBrowser } from './launch-browser';
 import { navigateTab } from './navigate-tab';
@@ -152,6 +153,10 @@ export function makeBrowserHandler(
     }
 
     const browser = await ensure();
+
+    if (request.op === 'takeoverEnd') {
+      adoptOpenPages(browser);
+    }
 
     const screen = options.screen;
 

@@ -15,6 +15,7 @@ import { conversationRecordSchema } from './collect-conversation-records';
 import { featurePaths, ignoredPaths, sharedPaths } from './feature-paths';
 import { controlRoutes } from './harness/control-routes';
 import { lastFeatures } from './last-features';
+import { pickModelRefusal } from './pick-model-refusal';
 import { pickTaskRefusal } from './pick-task-refusal';
 import { postControl } from './post-control';
 import { buildServedBlobsArgv, servedSourceFolders } from './preview/build-served-blobs-argv';
@@ -262,6 +263,23 @@ export function createVerifyRegistry(): Wringer {
         throwRefusal(pickTaskRefusal(listed.tasks, args), listed);
 
         return listed;
+      },
+    })
+    .command({
+      path: ['model', 'received'],
+      summary:
+        'Check that a request that the scripted model received holds the text --text, waiting up to 10 seconds for one',
+      effect: 'read',
+      args: z.strictObject({ text: z.string().min(1) }),
+      data: controlRoutes.modelReceived.output,
+      run: async (args, ctx) => {
+        refuseHarnessless(ctx.target, 'model received');
+
+        const counted = await postControl(ctx.drivers.http, controlRoutes.modelReceived, args);
+
+        throwRefusal(pickModelRefusal(counted.requests, args.text), counted);
+
+        return counted;
       },
     })
     .command({

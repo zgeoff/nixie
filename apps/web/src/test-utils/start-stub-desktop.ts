@@ -8,7 +8,6 @@ interface KeyEvent {
 }
 
 interface Received {
-  readonly clipboard: string[];
   readonly keys: KeyEvent[];
 }
 
@@ -23,7 +22,7 @@ export interface StubDesktop {
   // the WebSocket URL that a viewer connects to
   readonly url: string;
 
-  // the text of each ClientCutText message the viewer sent, and each key event, in order
+  // each key event the viewer sent, in order
   readonly received: Received;
 
   // sends a ServerCutText message with the text to every viewer
@@ -32,9 +31,9 @@ export interface StubDesktop {
 
 // A VNC server in the test process, for a browser suite: it speaks the 3.8 handshake with no
 // security, then answers the first whole-screen request with one raw frame of a flat colour, which
-// is enough for the viewer to show the desktop. It records the keys and clipboard text it receives.
+// is enough for the viewer to show the desktop. It records the keys it receives.
 export function startStubDesktop(): StubDesktop {
-  const received: Received = { clipboard: [], keys: [] };
+  const received: Received = { keys: [] };
 
   const sockets = new Set<Bun.ServerWebSocket<DesktopSocketData>>();
 
@@ -140,8 +139,6 @@ function answerNext(socket: Bun.ServerWebSocket<DesktopSocketData>): boolean {
       keysym: new DataView(message.buffer, message.byteOffset).getUint32(4),
       isDown: message[1] !== 0,
     });
-  } else if (message[0] === 6) {
-    data.received.clipboard.push(new TextDecoder().decode(message.subarray(8)));
   }
 
   return true;

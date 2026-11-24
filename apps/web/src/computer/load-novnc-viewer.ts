@@ -1,12 +1,10 @@
+import { buildPasteKeys } from './build-paste-keys';
 import type { StartViewer, ViewerEvents } from './types';
 import { waitForFrame } from './wait-for-frame';
 
-const controlKeysym = 0xff_e3;
-const vKeysym = 0x76;
-
 // noVNC reads the window when it loads, so the page loads it in the browser alone. The viewer is
 // view only until the page turns input on, which it does while this device holds the desktop. It
-// sends clipboard text only for a paste, and the server drops it unless this device holds.
+// types a paste as keys, and the server drops every key unless this device holds.
 export async function loadNoVNCViewer(): Promise<StartViewer> {
   const novnc = await import('@novnc/novnc');
 
@@ -42,10 +40,9 @@ export async function loadNoVNCViewer(): Promise<StartViewer> {
 
     return {
       paste: (text) => {
-        viewer.clipboardPasteFrom(text);
-        viewer.sendKey(controlKeysym, 'ControlLeft', true);
-        viewer.sendKey(vKeysym, 'KeyV');
-        viewer.sendKey(controlKeysym, 'ControlLeft', false);
+        for (const keysym of buildPasteKeys(text)) {
+          viewer.sendKey(keysym, '');
+        }
       },
       setInput: (isOn) => {
         viewer.viewOnly = !isOn;

@@ -3,7 +3,11 @@ import { makeClientMessageFilter } from './make-client-message-filter';
 
 function setupTest() {
   const holder = { isHolding: false };
-  const filter = makeClientMessageFilter({ canInput: () => holder.isHolding });
+
+  const filter = makeClientMessageFilter({
+    canInput: () => holder.isHolding,
+    readPixelBits: () => 32,
+  });
 
   const version = new TextEncoder().encode('RFB 003.008\n');
 
@@ -69,7 +73,6 @@ test.each([
     name: 'SetPixelFormat',
     message: [0, 0, 0, 0, 32, 24, 0, 1, 0, 255, 0, 255, 0, 255, 16, 8, 0, 0, 0, 0],
   },
-  { name: 'SetEncodings', message: [2, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 5] },
   {
     name: 'FramebufferUpdateRequest',
     message: [3, 1, 0, 0, 0, 0, 5, 0, 3, 32],
@@ -81,6 +84,48 @@ test.each([
 
   expect(ctx.filter.push(new Uint8Array(row.message))).toStrictEqual({
     forward: [new Uint8Array(row.message)],
+    isMalformed: false,
+    isInput: false,
+  });
+});
+
+test.each([
+  {
+    name: 'only the encodings whose size the server filter can read',
+    asked: [7, 0, 5, 16, -239, 21, 1],
+    passed: [0, 1, 16, -239],
+  },
+  { name: 'Raw added to a list without it', asked: [5, 16], passed: [0, 16] },
+  { name: 'Raw alone for a list of none it can read', asked: [7, 5], passed: [0] },
+])('it passes a SetEncodings message with $name', (row) => {
+  const ctx = setupTest();
+
+  ctx.shakeHands();
+
+  const message = new Uint8Array(4 + 4 * row.asked.length);
+  const view = new DataView(message.buffer);
+
+  message[0] = 2;
+
+  view.setUint16(2, row.asked.length);
+
+  for (const [index, encoding] of row.asked.entries()) {
+    view.setInt32(4 + 4 * index, encoding);
+  }
+
+  const expected = new Uint8Array(4 + 4 * row.passed.length);
+  const expectedView = new DataView(expected.buffer);
+
+  expected[0] = 2;
+
+  expectedView.setUint16(2, row.passed.length);
+
+  for (const [index, encoding] of row.passed.entries()) {
+    expectedView.setInt32(4 + 4 * index, encoding);
+  }
+
+  expect(ctx.filter.push(message)).toStrictEqual({
+    forward: [expected],
     isMalformed: false,
     isInput: false,
   });
@@ -170,68 +215,24 @@ test('it releases nothing when every key and button is up, and nothing the secon
 });
 
 test.each([
+  { name: 'ClientCutText', message: [6, 0, 0, 0, 0, 0, 0, 3, 97, 98, 99] },
+  { name: 'empty ClientCutText', message: [6, 0, 0, 0, 0, 0, 0, 0] },
   {
-    name: 'ClientCutText from a viewer that does not hold the desktop',
-    isHolding: false,
-    message: [6, 0, 0, 0, 0, 0, 0, 3, 97, 98, 99],
-  },
-  {
-    name: 'extended clipboard reply, whose length is negative, even from the holder',
-    isHolding: true,
+    name: 'extended clipboard reply, whose length is negative',
     message: [6, 0, 0, 0, 255, 255, 255, 248, 0, 0, 0, 6, 0, 0, 0, 1],
   },
-])('it drops a $name', (row) => {
+])('it drops a $name message even from the viewer that holds the desktop', (row) => {
   const ctx = setupTest();
 
   ctx.shakeHands();
 
-  ctx.holder.isHolding = row.isHolding;
+  ctx.holder.isHolding = true;
 
   expect(ctx.filter.push(new Uint8Array(row.message))).toStrictEqual({
     forward: [],
     isMalformed: false,
     isInput: false,
   });
-});
-
-test('it passes the ClientCutText of the viewer that holds the desktop, and counts it as input', () => {
-  const ctx = setupTest();
-
-  ctx.shakeHands();
-
-  ctx.holder.isHolding = true;
-
-  const result = ctx.filter.push(new Uint8Array([6, 0, 0, 0, 0, 0, 0, 3, 97, 98, 99]));
-
-  expect(result).toStrictEqual({
-    forward: [new Uint8Array([6, 0, 0, 0, 0, 0, 0, 3]), new Uint8Array([97, 98, 99])],
-    isMalformed: false,
-    isInput: true,
-  });
-});
-
-test('it passes the text of a held ClientCutText that arrives in pieces, and then the next message', () => {
-  const ctx = setupTest();
-
-  const request = new Uint8Array([3, 1, 0, 0, 0, 0, 5, 0, 3, 32]);
-
-  ctx.shakeHands();
-
-  ctx.holder.isHolding = true;
-
-  const results = [
-    ctx.filter.push(new Uint8Array([6, 0, 0, 0, 0, 0, 0, 4, 1, 2])),
-    ctx.filter.push(new Uint8Array([3, 4, ...request])),
-  ];
-
-  expect(results).toStrictEqual([
-    {
-      forward: [new Uint8Array([6, 0, 0, 0, 0, 0, 0, 4]), new Uint8Array([1, 2])],
-      isMalformed: false,
-      isInput: true,
-    },
-    { forward: [new Uint8Array([3, 4]), request], isMalformed: false, isInput: false },
-  ]);
 });
 
 test('it passes a viewing message that follows dropped input', () => {
@@ -310,6 +311,10 @@ test.each([
   {
     name: 'an extended ClientCutText far past any clipboard',
     message: [6, 0, 0, 0, 128, 0, 0, 0],
+  },
+  {
+    name: 'a SetPixelFormat with another pixel size than the server announced',
+    message: [0, 0, 0, 0, 16, 16, 0, 1, 0, 31, 0, 63, 0, 31, 11, 5, 0, 0, 0, 0],
   },
   {
     name: 'a SetPixelFormat of zero bits per pixel',

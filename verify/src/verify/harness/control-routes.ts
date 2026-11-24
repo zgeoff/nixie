@@ -112,6 +112,12 @@ export const controlRoutes = {
     }),
     output: z.strictObject({ replies: z.int().positive() }),
   },
+  modelReceived: {
+    method: 'POST',
+    path: '/control/model-received',
+    input: z.strictObject({ text: z.string().min(1) }),
+    output: z.strictObject({ requests: z.int().nonnegative() }),
+  },
   tasks: {
     method: 'GET',
     path: '/control/tasks',

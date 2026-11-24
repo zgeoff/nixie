@@ -21,6 +21,7 @@ function setupTest() {
   const inputs: boolean[] = [];
   const pastes: string[] = [];
   const copied: string[] = [];
+  const clipboard = { isRefusing: false };
 
   const answerRequest = (request: Request, server: Bun.Server<undefined>) =>
     tickets.some((ticket) => request.url.endsWith(ticket)) && server.upgrade(request)
@@ -82,7 +83,9 @@ function setupTest() {
       writeText: (text: string) => {
         copied.push(text);
 
-        return Promise.resolve();
+        return clipboard.isRefusing
+          ? Promise.reject(new DOMException('no gesture', 'NotAllowedError'))
+          : Promise.resolve();
       },
     },
   });
@@ -95,7 +98,7 @@ function setupTest() {
     }
   });
 
-  return { started, tickets, inputs, pastes, copied, loadViewer };
+  return { started, tickets, inputs, pastes, copied, clipboard, loadViewer };
 }
 
 test('it asks for a ticket and gives the viewer the socket that the API names', async () => {
@@ -519,4 +522,156 @@ test('it never writes to the clipboard of the user while the user only watches',
 
   ctx.started[0]?.events.onCopy('order 4471');
   expect(ctx.copied).toStrictEqual([]);
+});
+
+test('it offers a button for text that the browser would not put on the clipboard, and copies it on a press', async () => {
+  const user = userEvent.setup();
+  const ctx = setupTest();
+
+  await createDeviceSession();
+
+  const rendered = render(<ComputerView loadViewer={ctx.loadViewer} />);
+
+  await rendered.findByText('The computer is waking.');
+
+  ctx.started[0]?.events.onConnect();
+
+  const takeOverButton = await rendered.findByRole('button', { name: 'Take over' });
+
+  await user.click(takeOverButton);
+  await rendered.findByRole('button', { name: 'Hand back' });
+
+  ctx.clipboard.isRefusing = true;
+  ctx.started[0]?.events.onCopy('order 4471');
+
+  const copyButton = await rendered.findByRole('button', { name: 'Copy it' });
+
+  ctx.clipboard.isRefusing = false;
+
+  await user.click(copyButton);
+
+  await waitFor(() => {
+    expect(rendered.queryByRole('button', { name: 'Copy it' })).toBeNull();
+  });
+
+  expect(ctx.copied).toStrictEqual(['order 4471', 'order 4471']);
+});
+
+test('it keeps the button while the browser still refuses the text', async () => {
+  const user = userEvent.setup();
+  const ctx = setupTest();
+
+  await createDeviceSession();
+
+  const rendered = render(<ComputerView loadViewer={ctx.loadViewer} />);
+
+  await rendered.findByText('The computer is waking.');
+
+  ctx.started[0]?.events.onConnect();
+
+  const takeOverButton = await rendered.findByRole('button', { name: 'Take over' });
+
+  await user.click(takeOverButton);
+  await rendered.findByRole('button', { name: 'Hand back' });
+
+  ctx.clipboard.isRefusing = true;
+  ctx.started[0]?.events.onCopy('order 4471');
+
+  const copyButton = await rendered.findByRole('button', { name: 'Copy it' });
+
+  await user.click(copyButton);
+
+  await waitFor(() => {
+    expect(ctx.copied).toHaveLength(2);
+  });
+
+  expect(rendered.getByRole('button', { name: 'Copy it' })).toBeVisible();
+});
+
+test('it drops the uncopied text when the user hands the computer back', async () => {
+  const user = userEvent.setup();
+  const ctx = setupTest();
+
+  network.use(
+    http.post('https://nixie.test/rpc/computer/handBack', () =>
+      HttpResponse.json({ json: { durationSeconds: 5 }, meta: [] }),
+    ),
+  );
+
+  await createDeviceSession();
+
+  const rendered = render(<ComputerView loadViewer={ctx.loadViewer} />);
+
+  await rendered.findByText('The computer is waking.');
+
+  ctx.started[0]?.events.onConnect();
+
+  const takeOverButton = await rendered.findByRole('button', { name: 'Take over' });
+
+  await user.click(takeOverButton);
+
+  const handBackButton = await rendered.findByRole('button', { name: 'Hand back' });
+
+  ctx.clipboard.isRefusing = true;
+  ctx.started[0]?.events.onCopy('order 4471');
+
+  await rendered.findByRole('button', { name: 'Copy it' });
+  await user.click(handBackButton);
+
+  await waitFor(() => {
+    expect(rendered.queryByRole('button', { name: 'Copy it' })).toBeNull();
+  });
+});
+
+test('it hands a paste of 2000 characters to the viewer', async () => {
+  const user = userEvent.setup();
+  const ctx = setupTest();
+
+  await createDeviceSession();
+
+  const rendered = render(<ComputerView loadViewer={ctx.loadViewer} />);
+
+  await rendered.findByText('The computer is waking.');
+
+  ctx.started[0]?.events.onConnect();
+
+  const takeOverButton = await rendered.findByRole('button', { name: 'Take over' });
+
+  await user.click(takeOverButton);
+  await rendered.findByRole('button', { name: 'Hand back' });
+
+  fireEvent.paste(rendered.getByRole('img', { name: "The computer's desktop" }), {
+    clipboardData: { getData: () => 'é'.repeat(2000), types: ['text/plain'], files: [] },
+  });
+
+  expect(ctx.pastes).toStrictEqual(['é'.repeat(2000)]);
+});
+
+test('it hands a longer paste to no one and tells the user', async () => {
+  const user = userEvent.setup();
+  const ctx = setupTest();
+
+  await createDeviceSession();
+
+  const rendered = render(<ComputerView loadViewer={ctx.loadViewer} />);
+
+  await rendered.findByText('The computer is waking.');
+
+  ctx.started[0]?.events.onConnect();
+
+  const takeOverButton = await rendered.findByRole('button', { name: 'Take over' });
+
+  await user.click(takeOverButton);
+  await rendered.findByRole('button', { name: 'Hand back' });
+
+  fireEvent.paste(rendered.getByRole('img', { name: "The computer's desktop" }), {
+    clipboardData: { getData: () => 'a'.repeat(2001), types: ['text/plain'], files: [] },
+  });
+
+  const alert = await rendered.findByRole('alert');
+
+  expect([alert.textContent, ctx.pastes]).toStrictEqual([
+    'That text is too long to paste. Paste up to 2000 characters at a time.',
+    [],
+  ]);
 });

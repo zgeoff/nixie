@@ -117,12 +117,15 @@ that turn no reply, so the turn fails.
    bun verify browser click --role button --name 'Hand back'
    bun verify browser snapshot --until-text 'Take over'
    bun verify db query "select kind from records where kind like 'computer.takeover_%' order by sequence"
+   bun verify model received --text ', t2 http://pages.test'
+   bun verify model received --text ', t3 http://pages.test'
    ```
 
-   Expect: all three commands exit 0. The query returns 2 rows, `computer.takeover_started` then
-   `computer.takeover_ended`. The hand-back record lists the 2 tabs from step 5 with their tab IDs
-   and sites, and `bun verify db query` cannot read it, because its fields are erasable and
-   encrypted. The connector's and the inbox's unit tests check the list.
+   Expect: all five commands exit 0. The query returns 2 rows, `computer.takeover_started` then
+   `computer.takeover_ended`. The hand-back record's fields are erasable, so the query cannot read
+   its tab list. The model's request for the turn that the record wakes lists both tabs from step 5
+   by tab ID and site, `t2` and `t3`, because the computer-browser journey holds `t1`. So each
+   `model received` finds one request.
 
 ## End state
 
@@ -136,6 +139,7 @@ that turn no reply, so the turn fails.
   `computer.handover_asked` record.
 - In step 7, the banner's Take over opened the computer page, which offered "Hand back" with no
   banner, and nixie held one start record.
-- In step 8, the page offered "Take over" again and nixie held the start record and the end record.
+- In step 8, the page offered "Take over" again, nixie held the start record and the end record, and
+  the model received a hand-back that lists both tabs.
 
 Once the end state matches, run `bun verify done`.

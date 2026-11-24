@@ -1,3 +1,5 @@
+import { framedEncodings, rawEncoding } from './constants';
+
 type Phase = 'version' | 'security' | 'init' | 'messages';
 
 interface ClientFilterResult {
@@ -25,6 +27,9 @@ export interface ClientMessageFilter {
 export interface ClientFilterOptions {
   // whether the viewer holds the desktop now: only then does a key or pointer message pass
   readonly canInput: () => boolean;
+
+  // the bits per pixel that the VNC server announced, or null before it did
+  readonly readPixelBits: () => number | null;
 }
 
 interface FilterState {
@@ -33,11 +38,9 @@ interface FilterState {
 
   // the bytes of a dropped clipboard message that the viewer has still to send
   skipBytes: number;
-
-  // the bytes of a passed clipboard message that the viewer has still to send
-  passBytes: number;
   isMalformed: boolean;
   readonly canInput: () => boolean;
+  readonly readPixelBits: () => number | null;
 
   // the keys passed down and not yet up, and the pointer as it was last passed on
   readonly pressedKeys: Set<number>;
@@ -48,17 +51,17 @@ interface FilterState {
   readonly inputMessages: WeakSet<Uint8Array>;
 }
 
-// Reads the viewer's bytes as RFB messages, whatever size the chunks arrive in. A key, pointer or
-// clipboard message passes only while the viewer holds the desktop, never the extended clipboard.
+// Reads the viewer's bytes as RFB messages, whatever size the chunks arrive in. A key or pointer
+// message passes only while the viewer holds the desktop, and the clipboard message never does.
 // The handshake is the 3.8 version with no security, which the VNC server offers alone.
 export function makeClientMessageFilter(options: ClientFilterOptions): ClientMessageFilter {
   const state: FilterState = {
     phase: 'version',
     buffer: new Uint8Array(),
     skipBytes: 0,
-    passBytes: 0,
     isMalformed: false,
     canInput: options.canInput,
+    readPixelBits: options.readPixelBits,
     pressedKeys: new Set(),
     pointer: null,
     inputCount: 0,
@@ -110,8 +113,8 @@ function join(first: Uint8Array, second: Uint8Array): Uint8Array {
 }
 
 // The messages a viewer sends to the VNC server, as RFC 6143 lays them out. A watch passes the
-// handshake and the three messages that ask to see the screen. It passes a key, a pointer and a
-// clipboard message only while the viewer holds the desktop.
+// handshake and the three messages that ask to see the screen. It passes the two that act on the
+// desktop, a key and a pointer event, only while the viewer holds it, and never the clipboard.
 const passedTypes: ReadonlySet<number> = new Set([0, 2, 3]);
 
 // The bytes of the next message to pass on, an empty array for a message dropped, or null when the
@@ -123,10 +126,6 @@ function takeNext(state: FilterState): Uint8Array | null {
 
   if (state.skipBytes > 0) {
     return skipDropped(state);
-  }
-
-  if (state.passBytes > 0) {
-    return passText(state);
   }
 
   if (state.phase !== 'messages') {
@@ -167,33 +166,6 @@ function skipDropped(state: FilterState): Uint8Array | null {
   return new Uint8Array();
 }
 
-// The text of a passed clipboard message goes on as it arrives, so the VNC server stays in step with
-// the viewer even when a hold ends part way through.
-function passText(state: FilterState): Uint8Array | null {
-  if (state.buffer.byteLength === 0) {
-    return null;
-  }
-
-  const size = Math.min(state.passBytes, state.buffer.byteLength);
-
-  state.passBytes -= size;
-
-  return takeBytes(state, size, true);
-}
-
-// Takes a whole message of the size from the buffer, and returns it when it is to pass on.
-function takeBytes(state: FilterState, size: number, isPassed: boolean): Uint8Array | null {
-  if (state.buffer.byteLength < size) {
-    return null;
-  }
-
-  const message = state.buffer.slice(0, size);
-
-  state.buffer = state.buffer.subarray(size);
-
-  return isPassed ? message : new Uint8Array();
-}
-
 const protocolVersion = new TextEncoder().encode('RFB 003.008\n');
 
 const securityNone = 1;
@@ -226,6 +198,19 @@ function takeHandshake(state: FilterState): Uint8Array | null {
   state.phase = 'messages';
 
   return takeBytes(state, 1, true);
+}
+
+// Takes a whole message of the size from the buffer, and returns it when it is to pass on.
+function takeBytes(state: FilterState, size: number, isPassed: boolean): Uint8Array | null {
+  if (state.buffer.byteLength < size) {
+    return null;
+  }
+
+  const message = state.buffer.slice(0, size);
+
+  state.buffer = state.buffer.subarray(size);
+
+  return isPassed ? message : new Uint8Array();
 }
 
 function reject(state: FilterState): null {
@@ -281,29 +266,18 @@ function takeCutText(state: FilterState): Uint8Array | null {
 
   // A negative length is the extended clipboard format, which a viewer such as noVNC answers with
   // even when it is view only. The size of its data is the length without the sign.
-  const signedLength = new DataView(
-    state.buffer.buffer,
-    state.buffer.byteOffset,
-    state.buffer.byteLength,
-  ).getInt32(4);
-
-  const length = Math.abs(signedLength);
+  const length = Math.abs(
+    new DataView(state.buffer.buffer, state.buffer.byteOffset, state.buffer.byteLength).getInt32(4),
+  );
 
   if (length > maxCutTextBytes) {
     return reject(state);
   }
 
-  if (signedLength < 0 || !state.canInput()) {
-    state.buffer = state.buffer.subarray(cutTextHeaderBytes);
-    state.skipBytes = length;
+  state.buffer = state.buffer.subarray(cutTextHeaderBytes);
+  state.skipBytes = length;
 
-    return new Uint8Array();
-  }
-
-  state.inputCount += 1;
-  state.passBytes = length;
-
-  return takeBytes(state, cutTextHeaderBytes, true);
+  return new Uint8Array();
 }
 
 const framebufferRequestBytes = 10;
@@ -331,9 +305,13 @@ function takePassed(state: FilterState, type: number): Uint8Array | null {
     state.buffer.byteLength,
   ).getUint16(2);
 
-  return count > maxEncodings
-    ? reject(state)
-    : takeBytes(state, setEncodingsHeaderBytes + 4 * count, true);
+  if (count > maxEncodings) {
+    return reject(state);
+  }
+
+  const message = takeBytes(state, setEncodingsHeaderBytes + 4 * count, true);
+
+  return message === null ? null : narrowEncodings(message);
 }
 
 const setPixelFormatBytes = 20;
@@ -345,7 +323,11 @@ function takePixelFormat(state: FilterState): Uint8Array | null {
     return null;
   }
 
-  return isPixelFormat(state.buffer.subarray(pixelFormatOffset, setPixelFormatBytes))
+  const format = state.buffer.subarray(pixelFormatOffset, setPixelFormatBytes);
+
+  // A format with another pixel size than the server announced would change how many bytes the server
+  // filter reads for each rectangle, in the middle of an update that is on its way.
+  return isPixelFormat(format) && format[0] === state.readPixelBits()
     ? takeBytes(state, setPixelFormatBytes, true)
     : reject(state);
 }
@@ -381,6 +363,34 @@ function isPixelFormat(format: Uint8Array): boolean {
         channel.shift + channel.max.toString(2).length <= bitsPerPixel,
     )
   );
+}
+
+// The message with only the encodings that the server's filter can frame, in the order the filter lists them, with
+// Raw added when the viewer left it out, because a VNC server may always fall back to it.
+function narrowEncodings(message: Uint8Array): Uint8Array {
+  const view = new DataView(message.buffer, message.byteOffset, message.byteLength);
+
+  const asked = new Set(
+    Array.from({ length: view.getUint16(2) }, (_, index) =>
+      view.getInt32(setEncodingsHeaderBytes + 4 * index),
+    ),
+  );
+
+  const kept = framedEncodings.filter((encoding) => asked.has(encoding));
+  const listed = kept.includes(rawEncoding) ? kept : [rawEncoding, ...kept];
+
+  const narrowed = new Uint8Array(setEncodingsHeaderBytes + 4 * listed.length);
+  const narrowedView = new DataView(narrowed.buffer);
+
+  narrowed[0] = 2;
+
+  narrowedView.setUint16(2, listed.length);
+
+  for (const [index, encoding] of listed.entries()) {
+    narrowedView.setInt32(setEncodingsHeaderBytes + 4 * index, encoding);
+  }
+
+  return narrowed;
 }
 
 function collectReleases(state: FilterState): Uint8Array[] {

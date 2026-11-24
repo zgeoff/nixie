@@ -1,6 +1,7 @@
 import type { ContractClient } from '@heynixie/contract';
 import { getDataFilePath } from '@heynixie/log';
 import { createSpawnedNixie, createTestClient, readTestBundle } from '@heynixie/server/test-utils';
+import type { ScriptedModel } from '@heynixie/testing';
 import { createBuiltWeb, createFrontProxy, readWebBuild } from '@heynixie/web/test-utils';
 import { buildScriptedReplies } from './build-scripted-replies';
 import { localMemoryConfig } from './local-memory-config';
@@ -112,6 +113,7 @@ export async function runVerifyHarness(): Promise<void> {
 
       return minutes;
     },
+    countModelRequests: (text) => countModelRequests(nixie.model, text),
     readTasks: async () => {
       const listed = await api.client.tasks.list();
       const records = await nixie.readRecords();
@@ -171,6 +173,27 @@ async function watchExit(exited: Promise<unknown>, running: RunningState): Promi
   await exited;
 
   running.isRunning = false;
+}
+
+// how long a check waits for the model to receive text
+const modelWaitMs = 10_000;
+
+// A request that the model has not received yet counts too once it arrives, so the wait is for the
+// turn that a record wakes.
+async function countModelRequests(model: ScriptedModel, text: string): Promise<number> {
+  const deadlineMs = Date.now() + modelWaitMs;
+
+  for (;;) {
+    const count = model.requests.filter((request) =>
+      JSON.stringify(request.body).includes(text),
+    ).length;
+
+    if (count > 0 || Date.now() >= deadlineMs) {
+      return count;
+    }
+
+    await Bun.sleep(100);
+  }
 }
 
 function writeLine(line: Readonly<Record<string, unknown>>): void {

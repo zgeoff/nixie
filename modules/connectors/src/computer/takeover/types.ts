@@ -5,7 +5,7 @@ import type { WatchConnection } from '../watch/types';
 export type TakeoverEnd = 'user' | 'assistant' | 'idle' | 'restart';
 
 // An open tab at a hand-back, by the ID the assistant names it with, and its site
-export interface HandBackTab {
+interface HandBackTab {
   readonly tab: string;
   readonly origin: string | null;
 }
