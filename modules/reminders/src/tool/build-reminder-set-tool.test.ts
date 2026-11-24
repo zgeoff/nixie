@@ -33,7 +33,7 @@ test('#reminder.set adds the matching active items to its result as related, aft
 
   const outcome = await ctx.runSetWithMemory(
     { name: 'Tomatoes', note: 'Water the tomatoes.', trigger: { at: '2027-03-10T08:00:00Z' } },
-    { read, timeoutMs: 1000, log: mock() },
+    { read, timeoutMs: 1000, log: mock<RelatedMemoryLookup['log']>() },
   );
 
   const listed = await ctx.readListed();
@@ -62,7 +62,7 @@ test('#reminder.set leaves out related when nothing matches', async () => {
 
   const outcome = await ctx.runSetWithMemory(
     { name: 'Tomatoes', note: 'Water the tomatoes.', trigger: { at: '2027-03-10T08:00:00Z' } },
-    { read: () => Promise.resolve([]), timeoutMs: 1000, log: mock() },
+    { read: () => Promise.resolve([]), timeoutMs: 1000, log: mock<RelatedMemoryLookup['log']>() },
   );
 
   expect(outcome).toStrictEqual({
@@ -152,7 +152,7 @@ test('#reminder.set looks nothing up for a refused reminder', async () => {
         schedule: { repeat: { frequency: 'weekly', interval: 2, byDay: ['mon'], at: ['09:00'] } },
       },
     },
-    { read, timeoutMs: 1000, log: mock() },
+    { read, timeoutMs: 1000, log: mock<RelatedMemoryLookup['log']>() },
   );
 
   expect(read.mock.calls).toStrictEqual([]);

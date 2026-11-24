@@ -11,6 +11,7 @@ import {
 import { readStarterDecisionPoint } from '@heynixie/policy/test-utils';
 import { buildReminderSetTool } from '@heynixie/reminders';
 import { buildReminderToolCall, startTestReminders } from '@heynixie/reminders/test-utils';
+import type { RelatedMemoryLookup } from '@heynixie/tools';
 import { buildToolRegistry, runToolCall } from '@heynixie/tools';
 import { buildMockToolContext } from '@heynixie/tools/test-utils';
 
@@ -26,7 +27,7 @@ async function setupTest() {
 
   const set = buildReminderSetTool({
     ...reminders.reminders,
-    relatedMemory: buildRelatedMemoryLookup(() => memory.store, mock()),
+    relatedMemory: buildRelatedMemoryLookup(() => memory.store, mock<RelatedMemoryLookup['log']>()),
   });
 
   const registry = buildToolRegistry([set]);

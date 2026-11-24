@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { createPathSource, readWrittenSkills, runSeed } from '@heynixie/definitions';
 import { buildTestTaskSeed } from '@heynixie/definitions/test-utils';
 import { readRecords, startWriter, writeRecords } from '@heynixie/log';
+import type { RelatedMemoryLookup } from '@heynixie/tools';
 import { buildToolRegistry } from '@heynixie/tools';
 import { createFakeClock } from '@zgeoff/testing/clock';
 import invariant from 'tiny-invariant';
@@ -159,7 +160,7 @@ test('it adds the matching memory to the result of an applied write as related, 
     runInForceSeed: () => Promise.resolve(),
     refreshDefinitions: () => Promise.resolve(seeded.inForce),
     readSkillList: () => [],
-    relatedMemory: { read, timeoutMs: 1000, log: mock() },
+    relatedMemory: { read, timeoutMs: 1000, log: mock<RelatedMemoryLookup['log']>() },
   });
 
   const text = '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n# Tides\n';
@@ -219,7 +220,7 @@ test('it looks nothing up for a write that waits as a proposal', async () => {
     runInForceSeed: () => Promise.resolve(),
     refreshDefinitions: () => Promise.resolve(seeded.inForce),
     readSkillList: () => [],
-    relatedMemory: { read, timeoutMs: 1000, log: mock() },
+    relatedMemory: { read, timeoutMs: 1000, log: mock<RelatedMemoryLookup['log']>() },
   });
 
   const text = '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n# Tides\n';

@@ -1,5 +1,6 @@
 import { expect, mock, test } from 'bun:test';
 import { parseJSONObject } from '@heynixie/log';
+import type { RelatedMemoryLookup } from '@heynixie/tools';
 import { buildMockToolCall, buildMockToolContext } from '@heynixie/tools/test-utils';
 import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
@@ -76,7 +77,7 @@ test('it adds the matching memory to the result of a define as related, from the
   const tool = buildTaskDefineTool({
     readDefinitions: () => ctx.context,
     readZone: () => Promise.resolve('Europe/Paris'),
-    relatedMemory: { read, timeoutMs: 1000, log: mock() },
+    relatedMemory: { read, timeoutMs: 1000, log: mock<RelatedMemoryLookup['log']>() },
   });
 
   await ctx.seed();
