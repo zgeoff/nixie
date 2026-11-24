@@ -2,8 +2,9 @@
 
 - **Status:** draft
 - **Work items:** [the proxy](https://linear.app/zgeoff/issue/GEO-1842). It needs
-  [the credential store](https://linear.app/zgeoff/issue/GEO-1824). Two items build on it:
-  [a changed tool in a running task](https://linear.app/zgeoff/issue/GEO-1254) and
+  [the credential store](https://linear.app/zgeoff/issue/GEO-1824) and
+  [untrusted markers on a direct tool's result](https://linear.app/zgeoff/issue/GEO-2836). Two items
+  build on it: [a changed tool in a running task](https://linear.app/zgeoff/issue/GEO-1254) and
   [the pin in the action hash](https://linear.app/zgeoff/issue/GEO-1255).
 - **Decision records:** [0009](../../decisions/0009-mcp-proxy.md)
 
@@ -15,8 +16,8 @@ credential store. The first build serves 2 HTTP servers of your own: a work trac
 delivery-metrics server. [The MCP proxy design](../platform/connectors/mcp-proxy.md) holds the rules
 for pins, failed listings and declarations, and this design holds the contracts the build follows.
 Build the proxy item from this design once the owner sets Status to agreed and the credential store
-item has landed. Each [open question](#open-questions) changes only a config value or a declaration,
-so the build ships with each one's default and needs no answer first.
+and direct-tool marker items have landed. Each [open question](#open-questions) changes only a
+config value or a declaration, so the build ships with each one's default and needs no answer first.
 
 ## Shape
 
