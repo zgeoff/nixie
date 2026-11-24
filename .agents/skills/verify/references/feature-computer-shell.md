@@ -113,18 +113,19 @@ Before you start:
 
 8. Read the command's result. The result sits sealed on the call's `action.outcome` record, which no
    page shows. nixie hands it to the model in the turn that the outcome starts, which uses the reply
-   that step 5 queued. `model input` waits up to 10 s for that turn's input to hold `exitCode`, and
-   returns the input in `data.text`.
+   that step 5 queued. `model input` waits up to 10 s for that turn's input to hold the text of
+   `--contains`, and returns the input in `data.text`. It has no flag that matches absence, so
+   `--contains` requires the zero exit code and you read `data.text` for the rest.
 
    ```bash
-   bun verify model input --contains exitCode
+   bun verify model input --contains '\"exitCode\":0'
    ```
 
-   Expect: the command exits 0, and `data.text` shows `\"exitCode\":0` and a `stdout` that lists
-   only the bridge (`bridge-main.ts`), `ps -e -o args=` and the shell that runs it. Fail the journey
-   on a nonzero exit code, on an empty list, and on any other line, such as a display server, a
-   remote-screen socket path or a browser flag. The shell's own `/proc` is what keeps those lines
-   out.
+   Expect: the command exits 0, which means the input holds `\"exitCode\":0`, and `data.text` shows
+   a `stdout` that lists only the bridge (`bridge-main.ts`), `ps -e -o args=` and the shell that
+   runs it. Fail the journey on a nonzero exit code, on an empty list, and on any other line, such
+   as a display server, a remote-screen socket path or a browser flag. The shell's own `/proc` is
+   what keeps those lines out.
 
 ## End state
 
