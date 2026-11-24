@@ -67,17 +67,17 @@ gmail.wake_cancel({ rule: 'wz7p2k9q4m' }); // → { rule: 'wz7p2k9q4m', ended: t
 - `gmail.wake_set` and `gmail.wake_list` take the
   [connection argument](../../platform/connectors/connector.md#the-connection-argument).
   `gmail.wake_cancel` takes the connection from the rule.
-- `gmail.wake_set` takes the same match, `expires` and `window` as `mail.wake_set` in
+- `gmail.wake_set` takes the same match, `wake`, `expires` and `window` as `mail.wake_set` in
   [the mailbox](mailbox.md#the-tools), with Gmail's thread ID in `thread`.
 - `gmail.wake_set` declares `schedule`. No
   [starter rule](../../platform/policy/rules.md#the-starter-rule-set) allows `schedule`, so a call
   asks you unless consent or an allow rule covers it. One allow rule with `tools: [gmail.wake_set]`
   makes every Gmail rule free.
 - The rule starts when the approved action runs: `createdAt` and the expiry count from then, and
-  mail that arrived while the call waited for you is found with `gmail.search`. When the task has
-  ended by then, the action fails with `TASK_ENDED`.
-- `gmail.wake_list` lists only the calling task's rules on that connection. `gmail.wake_cancel`
-  refuses `UNKNOWN_RULE` for a rule of another task or another mailbox.
+  mail that arrived while the call waited for you is found with `gmail.search`. When the target task
+  has ended by then, the action fails with `TASK_ENDED`.
+- `gmail.wake_list` lists every live rule on that connection, with its target. `gmail.wake_cancel`
+  refuses `UNKNOWN_RULE` for a rule of another mailbox.
 - Cancelling and listing never ask: a cancel only narrows what wakes the assistant.
 
 ### Reply rules
@@ -85,10 +85,10 @@ gmail.wake_cancel({ rule: 'wz7p2k9q4m' }); // → { rule: 'wz7p2k9q4m', ended: t
 - `gmail.send` and `gmail.reply` in the [Gmail tools design](../gmail-calendar-drive-tools.md) gain
   the argument `replyWake`, as `mail.send` has it.
 - When their outcome records a sent mail, the same transaction calls `setWakeRuleInTransaction` with
-  Gmail's thread ID of the sent mail, the sending task, `origin: 'reply'` and an expiry of
+  Gmail's thread ID of the sent mail, the sender as the target, `origin: 'reply'` and an expiry of
   `replyWake`, which defaults to `wake_rules.reply_expiry`. `replyWake: 'off'` registers none.
-- Until the owner decides otherwise in [GEO-2829](https://linear.app/zgeoff/issue/GEO-2829), the
-  send's decision covers its reply rule, and the send's approval card shows the rule's expiry.
+- The send's decision covers its reply rule, and the send's approval card shows the rule and its
+  expiry.
 
 ## Constraints
 

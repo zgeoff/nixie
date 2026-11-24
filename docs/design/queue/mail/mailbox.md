@@ -79,7 +79,9 @@ mail.reply({ message: 'mz4k8q2w7p', text, files: [], replyWake: 'off' });
 mail.wake_set({ from: ['@library.example.org'], subject: 'code', expires: '30m', window: '1m' });
 // → { rule: 'wq4k8m2x7p', expiresAt: '2026-11-24T10:45:00Z', window: '1m', replaced: false,
 //     recent: [] }   recent: stored mail of the last 10 minutes that the match takes, as mail.list
-mail.wake_list(); // → { rules: [{ rule, match, expiresAt, window, origin: 'tool' | 'reply' }] }
+// wake: 'conversation' or a task's short ID; omitted, the caller. No expires: the rule stays.
+mail.wake_set({ wake: 'conversation', window: '30m' });
+mail.wake_list(); // → { rules: [{ rule, match, wake, expiresAt, window, origin: 'tool' | 'reply' }] }
 mail.wake_cancel({ rule: 'wq4k8m2x7p' }); // → { rule: 'wq4k8m2x7p', ended: true }
 ```
 
@@ -93,13 +95,16 @@ mail.wake_cancel({ rule: 'wq4k8m2x7p' }); // → { rule: 'wq4k8m2x7p', ended: tr
   starter rules `allow-reads` and `allow-notes` let the first 2 rows through, so setting a rule on
   the assistant's own mailbox never asks you, as
   [`reminder.set`](../../../architecture/core/reminders.md) never does.
-- `mail.wake_set` calls `setWakeRuleInTransaction` with the mailbox `{ kind: 'mail' }` and the
-  calling task. `expires` runs from `1m` to `wake_rules.max_expiry`. `window` runs from `1m` to
-  `expires`, and defaults to `wake_rules.window`.
+- `mail.wake_set` calls `setWakeRuleInTransaction` with the mailbox `{ kind: 'mail' }`, the target
+  that `wake` names, and the caller as `setBy`. `wake` takes `conversation` or the short ID of any
+  task that has not ended, and refuses `UNKNOWN_TASK` for any other. `expires` is optional, from
+  `1m` with no upper limit. `window` runs from `1m`, at most `expires` when one is given, and
+  defaults to `wake_rules.window`.
 - `recent` shows a code that arrived while the assistant set the rule. The rule itself never matches
   that code. In the tool's description, ask the assistant to set the rule before it asks a site for
   a code, and to give a short window when it waits on one.
-- `mail.wake_cancel` refuses `UNKNOWN_RULE` for a rule of another task or another mailbox.
+- `mail.wake_list` lists every live rule on the mailbox, with its target. `mail.wake_cancel` cancels
+  any of them, and refuses `UNKNOWN_RULE` for a rule of another mailbox.
 - `files` takes up to 10 file IDs, 25 MiB in all. A file resolves only on the conversation or task
   run that made it.
 - The tools can refuse `UNKNOWN_MESSAGE`, `UNKNOWN_ATTACHMENT`, `UNKNOWN_FILE`, `UNKNOWN_RULE`,
@@ -121,9 +126,9 @@ mail.sent           -- one per sent mail, written by the send's outcome
 ### Reply rules
 
 - When a `mail.send` or `mail.reply` outcome writes `mail.sent`, the same transaction calls
-  `setWakeRuleInTransaction` with `{ thread }` of the sent mail, the sending task, `origin: 'reply'`
-  and an expiry of `replyWake`, which defaults to `wake_rules.reply_expiry`. `replyWake: 'off'`
-  registers none.
+  `setWakeRuleInTransaction` with `{ thread }` of the sent mail, the sender as the target, whether
+  the conversation or a task, `origin: 'reply'` and an expiry of `replyWake`, which defaults to
+  `wake_rules.reply_expiry`. `replyWake: 'off'` registers none.
 - A send whose outcome is unknown registers its rule once the reconcile finds the sent mail.
 
 ## Constraints
