@@ -312,8 +312,8 @@ acts on what it finds then:
 
 - The adapter never holds the token. It calls `https://api.telegram.org` through the credential
   store's fetcher, which puts the token in the request path, as
-  [the credential store](../platform/connectors/credentials.md#the-fetcher-and-the-socket) sets out.
-  Each error the adapter logs or returns holds the method name and the status only.
+  [the credential store](../platform/connectors/credentials.md#the-fetcher) sets out. Each error the
+  adapter logs or returns holds the method name and the status only.
 - The token never appears in a record, an error, a health report or a notice.
 
 ### Inbound updates
