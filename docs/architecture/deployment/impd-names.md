@@ -45,13 +45,17 @@ release fails its pull check until the package is public
 ## Model secrets
 
 A sandbox reaches its model through a secret that impd's broker adds to each request to the model
-host. nixie names the secret `nixie-model-<19 hex>`, where the hex digits are the first 19 of the
-SHA-256 of these lines, joined by newlines with none after the last:
+host. nixie names the secret `nixie-model-<19 hex>`, where the hex digits are the first 19 of a
+digest of these lines, joined by newlines with none after the last:
 
 1. the model profile's ID;
 2. its auth header, `bearer` or `x-api-key`;
 3. the model host;
 4. the credential, only when nixie's secrets file holds it.
+
+The digest is a SHA-256 of the 3 lines when the deployment holds the credential. When nixie holds
+it, the digest is an HMAC-SHA-256 of all 4 lines under nixie's fingerprint key, so a name never
+exposes a value that someone could guess and check against it.
 
 impd caps a name at 31 characters, and a profile ID has no cap, so the profile goes into the digest
 instead of the name. [Model profiles](../core/model-profiles.md#credentials) covers who holds the

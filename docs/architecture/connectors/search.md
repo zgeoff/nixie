@@ -120,7 +120,8 @@ The [secrets file](../deployment/server.md#configuration-and-secrets) holds the 
 server resolves the reference, and refuses to start when the secrets file lacks the entry. A
 deployment whose config sets no credential gets no search tool.
 
-The key stays in the server's memory. The adapter sends the key only in the `Authorization` header
-of its requests to the API URL, and a provider's failure reason never holds the key, so the key
-reaches no record, log event or sandbox. The server reads the secrets file only at start, so a new
-key takes effect at the next restart, which a deploy causes.
+The key stays in the server's memory. The adapter holds no key: it calls the API URL through a
+[credential store](credentials.md#the-fetcher) fetcher, which adds the key in the `Authorization`
+header on the host and removes it from every response and error, so the key reaches no record, log
+event or sandbox. The server reads the secrets file only at start, so a new key takes effect at the
+next restart, which a deploy causes.

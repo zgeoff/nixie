@@ -463,7 +463,10 @@ spendStop:
   modelURL: http://10.0.0.2:8789 # the gateway's model listener, as the sandbox host reaches it
 ```
 
-The server refuses to start when the secrets file lacks the settings entry that `token` names.
+The server refuses to start when the secrets file lacks the settings entry that `token` names. The
+gateway's client calls the control URL through a fetcher of
+[the credential store](../connectors/credentials.md#the-fetcher), which adds the token on the host.
+The control URL is the one address that fetcher reaches over `http` and at a private address.
 
 The [spending stop](spending-stop.md) adds the turn count, the pause and the raise.
 

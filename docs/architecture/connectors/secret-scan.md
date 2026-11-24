@@ -74,12 +74,16 @@ The builder makes these choices, and the rule file's header lists each one where
 
 ## The own values
 
-The server picks the own values from the 6 credential entries of the secrets file by default:
-`deployment_key`, `impd_token`, `definitions_export_token`, `definitions_export_app_key`,
-`model_credentials` and `connector_credentials`. The `settings` entry holds the user's name and
-pronouns, and a scan for them would refuse an ordinary URL that holds the user's name. A map entry
-contributes its values and never its keys. [Web fetch](./web-fetch.md#the-config-keys) covers the
-keys that change the entries and the minimum length of a value.
+The own values are one live set, which every scan reads when it runs, so a value that the credential
+store adds later is in the next scan. The server picks the web fetch and turn-input scans' values
+from the 6 credential entries of the secrets file by default: `deployment_key`, `impd_token`,
+`definitions_export_token`, `definitions_export_app_key`, `model_credentials` and
+`connector_credentials`. The `settings` entry holds the user's name and pronouns, and a scan for
+them would refuse an ordinary URL that holds the user's name. A map entry contributes its values and
+never its keys. [Web fetch](./web-fetch.md#the-config-keys) covers the keys that change the entries
+and the minimum length of a value. The spend gateway's token is a `settings` entry that every scan
+keeps. Every tool result also passes a scan of the whole set, with only the minimum length as a
+filter, and the user's name and pronouns left out.
 
 ## Tests
 

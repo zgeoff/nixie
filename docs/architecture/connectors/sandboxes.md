@@ -86,9 +86,10 @@ the checker's new sandbox starts empty.
 
 ## Records and the restart sweep
 
-Every create, grant, sleep, wake and destroy writes a sandbox record. The sandboxes
-[projection](../../glossary.md) holds one row per sandbox that is not yet destroyed, with the
-adapter that made it, its owner, its state and its spec.
+Every create, grant, sleep, wake and destroy writes a sandbox record. A grant writes
+`sandbox.grant_started` before the adapter installs the broker secret, so a crash between the two
+leaves a name that cleanup finds. The sandboxes [projection](../../glossary.md) holds one row per
+sandbox that is not yet destroyed, with the adapter that made it, its owner, its state and its spec.
 
 An adapter records a create before it makes anything. A crash between the record and the sandbox
 then leaves a row that the restart sweep finds, and no sandbox exists without a row. A create that
@@ -101,7 +102,10 @@ sandbox of a kept owner when its image is not one the release's manifest holds, 
 conversation's, which its own setup replaces after it copies the session out. A destroy that fails
 is logged and tried again at the next start. A replace of a kept owner's sandbox, such as after an
 image change, logs a failed destroy of the old sandbox and goes on with the new one. A spec holds
-each grant's placeholders and never its credential, so a sandbox record never holds a credential.
+each grant's placeholders and never its credential, so a sandbox record never holds a credential. A
+grant of a credential nixie holds also records its reference and fingerprint. After a destroy, nixie
+removes each broker secret it added that no live sandbox holds, as
+[the credential store](credentials.md#grants) describes.
 
 ### A started task's sandbox
 

@@ -24,8 +24,9 @@ Secrets never appear in the configuration. The configuration holds the path of t
 sops file that nixie decrypts at start by running sops in a child process and reading its JSON from
 stdout. The plaintext stays in the process's memory: it never touches a tmpfs, an environment
 variable or a Compose secret, so neither the container's configuration nor its disk holds it. The
-deployment key becomes a non-extractable AES-KW key at once. A restart decrypts again, so the
-restart policy alone brings nixie back after a reboot.
+deployment key becomes a non-extractable AES-KW key at once, and the fingerprint key derives from it
+as [the credential store](../connectors/credentials.md#fingerprints-and-own-values) describes. A
+restart decrypts again, so the restart policy alone brings nixie back after a reboot.
 
 The sandbox manifest fixes the image of each kind of sandbox by digest. The release workflow writes
 it into the nixie image, so the images a release runs are the images it was tested with. The server

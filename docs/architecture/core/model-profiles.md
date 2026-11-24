@@ -309,9 +309,9 @@ gateway or an aggregator, and an API key header for Anthropic's own endpoint. Th
 placeholder in the variable that the Agent SDK reads for that header
 ([sandboxes](../connectors/sandboxes.md)).
 
-nixie names each secret by a SHA-256 digest of the profile's ID, the harness's secret header and the
-model host ([names in impd](../deployment/impd-names.md#model-secrets)). The credential reaches the
-sandbox host in one of 2 ways:
+nixie names each secret by a digest of the profile's ID, the harness's secret header and the model
+host ([names in impd](../deployment/impd-names.md#model-secrets)). The credential reaches the
+sandbox host in one of 2 ways, through [the credential store](../connectors/credentials.md#grants):
 
 - **The deployment holds the credential.** nixie's decrypted secrets file has no entry `<name>`
   under `model_credentials`, and the deployment adds the secret to the sandbox host under nixie's
@@ -320,9 +320,9 @@ sandbox host in one of 2 ways:
   refuses to create the sandbox that needs it, and names the missing secret in the error.
 - **nixie holds the credential.** The secrets file has the entry, and nixie adds the secret before
   it grants it. nixie adds a secret only when the sandbox host lacks its name, and never replaces a
-  secret's value, so it puts the credential into the digest as well. To rotate the credential, the
-  deployment changes the entry, and nixie adds a secret under the new name. A sandbox granted the
-  old secret keeps working until nixie replaces the sandbox.
+  secret's value, so it puts the credential into a keyed digest as well. To rotate the credential,
+  the deployment changes the entry, and nixie adds a secret under the new name. A sandbox granted
+  the old secret keeps working until nixie replaces the sandbox.
 
 ### Credentials with a spending gateway
 
