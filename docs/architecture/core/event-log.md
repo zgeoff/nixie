@@ -76,8 +76,8 @@ owns one projection of its own, one row per thread. Each module defines its own 
 server adds them to the log's list when it builds the log.
 
 A rebuild empties every projection and the changed rows, then folds the log from the first record,
-all in one write transaction, so no reader sees a half-built table. The fold reads only what the
-record holds, never the clock or another table, which is why a rebuild gives the live rows.
+all in one write transaction, so no reader sees a half-built table. A fold reads only the record and
+the projections that fold before it, never the clock, which is why a rebuild gives the live rows.
 
 ## Reading by sequence
 
@@ -121,7 +121,8 @@ stages:
    a key.
 4. One write transaction, behind the writer epoch check, defers its foreign key checks to the
    commit, drops the triggers, and deletes every row of every table but the writer epoch, the schema
-   version and the identity record. It deletes the revoked and lapsed identities.
+   version, the identity record and the log's last record. It deletes the revoked and lapsed
+   identities.
 5. The same transaction writes the first records of the new log: a definitions seed record that
    repeats the seed in force, with the skills nixie wrote that stay in force over the definitions
    and the versions beneath them, a `log_reset` record on the conversation thread, and a
@@ -138,12 +139,12 @@ a second reset finishes the work. A turn still running at the end of the grace l
 so its commit fails the lease check and writes nothing.
 
 The new log continues the old sequence. SQLite gives a new row the highest sequence plus 1, so the
-reset's transaction deletes the old last record only after the `log_reset` record has taken the
-number after it. When the transaction commits, no old record is left. A device that resumes its live
-stream after the last sequence it saw therefore reads the `log_reset` record next. The `log_reset`
-record holds the reset time, the old last sequence, the mode and the number of kept sessions, and no
-free text, so it gets no key. Because the conversation's thread ID never changes, the record folds
-on that thread before the start creates the conversation task again.
+reset's transaction deletes the old last record only after the first new record has taken the number
+after it. When the transaction commits, no old record is left. A device that resumes its live stream
+after the last sequence it saw therefore reads the `log_reset` record next. The `log_reset` record
+holds the reset time, the old last sequence, the mode and the number of kept sessions, and no free
+text, so it gets no key. Because the conversation's thread ID never changes, the record folds on
+that thread before the start creates the conversation task again.
 
 ### Resetting the conversation
 
