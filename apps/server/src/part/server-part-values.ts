@@ -8,6 +8,7 @@ import type { CheckerTask, SandboxRunner, WorkerTool } from '@heynixie/sessions'
 import type { TurnInputs } from '@heynixie/turn-inputs';
 import type { ServerCoding } from '../coding/build-server-coding';
 import type { ConversationImp } from '../conversation/start-conversation-imp';
+import type { ServerMail } from '../mail/build-server-mail';
 import type { ServerResetControl } from '../server/build-server-reset';
 import type { ServerParts } from '../types';
 import type { APIGate } from '../utils/build-api-gate';
@@ -21,6 +22,7 @@ export interface ServerPartValues {
   readonly state: ServerParts['state'];
   readonly context: Pick<ServerParts, 'apiContext' | 'inForce'> & {
     readonly coding: ServerCoding | null;
+    readonly mail: ServerMail | null;
   };
   readonly decisions: DecisionPointFactory;
   readonly sandbox_adapter: Tools['adapter'];

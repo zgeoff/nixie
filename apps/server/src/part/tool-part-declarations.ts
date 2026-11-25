@@ -10,6 +10,9 @@ import { refreshDefinitions } from '../definition/refresh-definitions';
 import { makeReadErasureStuckPort } from '../erasure/make-read-erasure-stuck-port';
 import { addLogForget } from '../forget/add-log-forget';
 import { buildLogForgetTool } from '../forget/build-log-forget-tool';
+import { addMailConnectors } from '../mail/add-mail-connectors';
+import { buildServerMailContext } from '../mail/build-server-mail';
+import { buildServerMailTools } from '../mail/build-server-mail-tools';
 import { runInForceSeedAndWake } from '../seed/run-in-force-seed-and-wake';
 import { buildActions } from '../test/build-actions';
 import { buildStubImageProviders } from '../test/build-stub-image-providers';
@@ -113,8 +116,11 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
 
       const withForget = addLogForget(actions, buildLogForgetTool(apiContext));
       const withComputer = addComputerConnector(withForget, parts.get('computer'));
+      const withCoding = addCodingConnectors(withComputer, parts.get('context').coding);
+      const mail = parts.get('context').mail;
+      const mailContext = buildServerMailContext(mail, apiContext, options.log);
 
-      return Promise.resolve(addCodingConnectors(withComputer, parts.get('context').coding));
+      return Promise.resolve(addMailConnectors(withCoding, mail, mailContext));
     },
   },
   {
@@ -133,6 +139,13 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
     start: (parts) => {
       const options = parts.get('inputs').options;
       const inForce = parts.get('context').inForce;
+
+      const mailContext = buildServerMailContext(
+        parts.get('context').mail,
+        parts.get('context').apiContext,
+        options.log,
+      );
+
       const definitionsExport = options.definitionsExport;
 
       return startConversationEndpoint(
@@ -146,6 +159,7 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
           webFetch: parts.get('web_fetch').tool,
           computer: parts.get('computer').tools,
           coding: buildServerCodingTools(parts.get('context')),
+          mail: buildServerMailTools(mailContext),
 
           harnesses: collectProfileHarnesses(options.config.models),
           codeRun: parts.get('code_run').tool,

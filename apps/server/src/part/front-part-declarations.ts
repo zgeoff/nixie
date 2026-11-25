@@ -3,6 +3,7 @@ import { buildRunSettings } from '@heynixie/sessions';
 import { buildServerCoding } from '../coding/build-server-coding';
 import { readDefinitionsContext } from '../definition/read-definitions-context';
 import { makeReadErasureStuckPort } from '../erasure/make-read-erasure-stuck-port';
+import { buildServerMail } from '../mail/build-server-mail';
 import { buildSeedInputs } from '../seed/build-seed-inputs';
 import { runInForceSeedAndWake } from '../seed/run-in-force-seed-and-wake';
 import { buildServerReset } from '../server/build-server-reset';
@@ -94,9 +95,15 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
 
       coding?.bindTasks(context.apiContext);
 
+      const mail = buildServerMail({
+        config: options.config,
+        now: () => context.apiContext.clock.now(),
+      });
+
       return {
         ...context,
         coding,
+        mail,
         apiContext: {
           ...context.apiContext,
           readCodeCleanup: () => parts.find('code_run')?.cleanup.destroyForRecords ?? null,
