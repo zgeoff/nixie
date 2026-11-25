@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
+import { readSpendLedger } from '@heynixie/budgets';
 import type { RecordKind } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
-import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
 import { writeStepCommit } from '../step/write-step-commit';
 import { writeTaskLimitRaise } from '../task/limit/write-task-limit-raise';
@@ -87,18 +87,14 @@ test('it sets the ledger row of the task run to its dollars in the transaction o
   });
 
   const [ended] = await ctx.readKinds('task.run_ended');
+  const ledger = await readSpendLedger(ctx.writer.db);
 
-  const ledger =
-    await sql`select counter, unit, period_kind, period_start, amount from spend_ledger`.execute(
-      ctx.writer.db,
-    );
-
-  expect(ledger.rows).toStrictEqual([
+  expect(ledger).toStrictEqual([
     {
       counter: `task_run:${String(ended?.payload['runID'])}`,
       unit: 'micros:USD',
-      period_kind: 'none',
-      period_start: '',
+      periodKind: 'none',
+      periodStart: '',
       amount: 410_000,
     },
   ]);

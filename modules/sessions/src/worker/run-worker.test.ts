@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { budgetProjections } from '@heynixie/budgets';
+import { budgetProjections, readSpendLedger } from '@heynixie/budgets';
 import { createTestCredentials } from '@heynixie/credentials/test-utils';
 import type { JSONObject, RecordKinds } from '@heynixie/log';
 import { readRecords, writeRecords } from '@heynixie/log';
@@ -12,7 +12,6 @@ import { waitForCondition } from '@heynixie/testing';
 import type { GuestToolRun, ToolOutcome, ToolStepHold } from '@heynixie/tools';
 import { buildMockToolContext, buildMockToolDefinition } from '@heynixie/tools/test-utils';
 import { createFakeClock } from '@zgeoff/testing/clock';
-import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
 import { startTestSessionHost } from '../test-utils/start-test-session-host';
 import { startWorkerTool } from './start-worker-tool';
@@ -308,12 +307,9 @@ async function setupTest(config: SetupConfig = {}) {
       return entries.map((entry) => entry.record);
     },
     readLedger: async () => {
-      const rows =
-        await sql`select counter, unit, amount from spend_ledger order by ledger_key`.execute(
-          host.context.log.writer.db,
-        );
+      const rows = await readSpendLedger(host.context.log.writer.db);
 
-      return rows.rows;
+      return rows.map((row) => ({ counter: row.counter, unit: row.unit, amount: row.amount }));
     },
     readOwners: async () => {
       const entries = await readRecords(host.context.log, {

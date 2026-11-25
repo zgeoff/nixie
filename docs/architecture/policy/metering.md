@@ -51,7 +51,9 @@ without dollars prices through the profile's table when the meter reads it.
 A profile that a task, a selectable model or the worker role runs on needs `prices`, with a gateway
 or without. The task's dollar limit counts each call by the profile's prices, because the task
 runner stops a task at its limit itself. The gateway's own count of a route uses the prices in the
-gateway's config.
+gateway's config. Both price a reply with `buildCallCost` from `@heynixie/models/prices`, so one
+function turns a reply's usage into dollars, and each count converts to whole micros, never rounding
+a positive amount to nothing.
 
 ## The spend ledger
 
@@ -64,9 +66,12 @@ A budget charge adds its amount to the row of its key, and a credit subtracts fr
 charge added to. The charge record names its `ledgerKey`, and the `budget_charges` projection keeps
 it, so a credit lands on the charge's row even when the budget's period has changed since. A charge
 recorded before the ledger names no key, so its key takes the period kind that the migration kept
-for it in `legacy_charge_kinds`: the kind of the budget in force then, or the kind its ID ends with
-for a built-in budget that no row holds. A rebuild reads the kept kind, so a budget that changes its
-period afterwards never moves the charge to another key.
+for it in `legacy_charge_kinds`. The migration takes the kind of the budget in force, or the kind
+that a built-in budget's ID ends with, only when the charge's period start is a start of that kind:
+a Monday for a week, the 1st for a month. Any other charge is a day's, so a budget that changed its
+period since the charge never moves it to a row that its own period start cannot belong to. A
+rebuild reads the kept kind, so a budget that changes its period afterwards never moves the charge
+to another key.
 
 A task run's row, `task_run:<ID>`, and a worker run's row, `worker_run:<ID>`, sit under the period
 `none` and are set to the run's dollars in micros, rounded up, by the record that ends the run:
@@ -75,8 +80,11 @@ too. A run ends once, so its record sets the row and never adds to it, and a reb
 The ledger reads only the run's ID and what it used from those records.
 
 A charge reads the budget's row, compares it with the limit, and writes its record in one
-transaction, so the ledger row and the record that causes it commit together or not at all. Only the
-log writer writes, so two charges never both fit in the last of a budget.
+transaction, so the ledger row and the record that causes it commit together or not at all. A paid
+tool's charge commits in the transaction that writes the call's `tool_called` record, and its credit
+commits in the transaction that writes the `tool_result` record, so a fault between the two leaves a
+call with its charge or with neither, and a result with its credit or with neither. Only the log
+writer writes, so two charges never both fit in the last of a budget.
 
 A migration replaces the `budget_ledger` table with `spend_ledger`: it copies each amount into a row
 with its key, and gives each earlier charge its key.
@@ -97,6 +105,11 @@ the model never reads a rate or a dollar figure.
 | a model call | the day and the month of its route | a task run's calls: `task_run`; a worker run's: `worker_run`; a conversation's: no |
 | a search     | no                                 | `budget:search-day`, `budget:search-month`                                         |
 | a picture    | no                                 | `budget:image.draw-day`, `budget:image.draw-month`                                 |
+
+A model reply charges the gateway's count of its route when it arrives, and no ledger row holds it
+until the task run it belongs to ends: `task.run_ended` sets the run's row from the run's priced
+turns in its own transaction, and `worker.run_ended` does the same for a worker run. A conversation
+reply has no row, because the gateway's count of its route is the one place that holds it.
 
 The gateway limits each route on its own, and no limit spans routes. The spending stop reads the
 gateway's counts of the routes and the turn count: a route at its limit holds only its own work, and

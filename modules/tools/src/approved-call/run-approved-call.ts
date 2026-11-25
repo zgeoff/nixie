@@ -3,6 +3,7 @@ import { readRecords } from '@heynixie/log';
 import { buildActionHash } from '@heynixie/policy';
 import { z } from 'zod';
 import { makeCallRecorder } from '../call-record/make-call-recorder';
+import { withCreditBeside } from '../paid/run-charged-call';
 import { runPaidCall } from '../paid/run-paid-call';
 import { pickVariant } from '../policy-call/pick-variant';
 import { omitRelatedMemory } from '../related/omit-related-memory';
@@ -178,9 +179,11 @@ async function tryRunApproved(
   facts: ApprovedRunFacts,
 ): Promise<Settled> {
   try {
-    const outcome = await runPaidCall(registered, { call, run: facts.run }, options, () =>
+    const paid = await runPaidCall(registered, { call, run: facts.run }, options, () =>
       registered.definition.run(call, { run: facts.run, callSequence: facts.callSequence }),
     );
+
+    const outcome = paid.outcome;
 
     if (outcome.status === 'budget_reached') {
       return buildMessage('denied', outcome.message, {
@@ -190,17 +193,20 @@ async function tryRunApproved(
     }
 
     // a tool's error can quote what an outside service said, so it counts as outside content
-    return outcome.status === 'error'
-      ? buildMessage('error', outcome.message, {
-          source: 'untrusted',
-          hidden: outcome.hidden,
-          actionID: facts.actionID,
-        })
-      : buildTypedResult(
-          registered,
-          { ...outcome, result: omitRelatedMemory(outcome.result) },
-          facts.actionID,
-        );
+    const settled =
+      outcome.status === 'error'
+        ? buildMessage('error', outcome.message, {
+            source: 'untrusted',
+            hidden: outcome.hidden,
+            actionID: facts.actionID,
+          })
+        : buildTypedResult(
+            registered,
+            { ...outcome, result: omitRelatedMemory(outcome.result) },
+            facts.actionID,
+          );
+
+    return withCreditBeside(settled, paid.credit);
   } catch (error) {
     return buildMessage(
       'error',

@@ -119,3 +119,31 @@ test('it carries each count over to the row of its ledger key and drops the old 
     ],
   ]);
 });
+
+test('it keys a charge by the period its start shows when the budget in force has changed its period since', async () => {
+  const ctx = await setupTest();
+
+  await ctx.migrateTo(ctx.version - 1);
+
+  await sql`insert into budgets_in_force (budget_id, counts, limit_micros, period, hash, updated_sequence)
+    values ('groceries', 'spend', 50000000, 'month', 'h', 20)`.execute(ctx.db);
+
+  await sql`insert into budget_charges
+    (charge_id, budget_id, period_start, amount_micros, for_kind, for_id, credited) values
+    ('c1', 'groceries', '2026-10-16', 4000000, 'action', 'a1', 0),
+    ('c2', 'groceries', '2026-11-01', 3000000, 'action', 'a2', 0)`.execute(ctx.db);
+
+  await sql`insert into budget_ledger (budget_id, period_start, spent_micros) values
+    ('groceries', '2026-10-16', 4000000),
+    ('groceries', '2026-11-01', 3000000)`.execute(ctx.db);
+
+  await ctx.migrateTo(ctx.version);
+
+  const keys = await sql`select charge_id, ledger_key from budget_charges
+    order by charge_id`.execute(ctx.db);
+
+  expect(keys.rows).toStrictEqual([
+    { charge_id: 'c1', ledger_key: 'budget:groceries|micros:USD|day|2026-10-16' },
+    { charge_id: 'c2', ledger_key: 'budget:groceries|micros:USD|month|2026-11-01' },
+  ]);
+});

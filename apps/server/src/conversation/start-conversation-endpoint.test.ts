@@ -823,13 +823,13 @@ test('it refuses a search whose day budget is full, with the budget notice, and 
     content: [
       {
         type: 'text',
-        text: 'budget reached: search-day ($5.00 of $5.00). Resets at midnight.',
+        text: 'budget reached: search-day. Resets at midnight.',
       },
     ],
     isError: true,
   });
 
-  expect(noticeMessage).toBe('budget reached: search-day ($5.00 of $5.00). Resets at midnight.');
+  expect(noticeMessage).toBe('budget reached: search-day. Resets at midnight.');
   expect(kagiStore.requests.findMany()).toHaveLength(0);
 });
 

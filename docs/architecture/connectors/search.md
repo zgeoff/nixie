@@ -63,7 +63,7 @@ in micros with `search.price_micros` in the server config, which is 12,000 ($0.0
 price on Kagi's [price list](https://kagi.com/api/pricing). The tool's hidden `costUSD` comes from
 the same number. Each search charges that price to the built-in budgets `search-day` ($5) and
 `search-month` ($50) before the provider sees it. At a limit, the model reads
-`budget reached: search-day ($5.00 of $5.00). Resets at midnight.` and the provider gets nothing.
+`budget reached: search-day. Resets at midnight.` and the provider gets nothing.
 
 A search that fails at the provider credits both charges, because the provider did not bill. A
 search that the tool refuses because a forget ended the session keeps both charges, because the

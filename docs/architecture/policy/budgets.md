@@ -66,14 +66,18 @@ The tool's `check` can refuse the call first, and a refused call charges nothing
 the built-in budgets `<tool>-day` at $5 and `<tool>-month` at $50, and a budget in the definitions
 with the same ID replaces one. `image.draw` has its own limits: `image.draw-day` at $2 and
 `image.draw-month` at $20, and its cost never counts toward the spending stop. `run-tool-call`
-charges both in one transaction before the provider sees the call:
+charges both in the transaction that writes the call's `tool_called` record, before the provider
+sees the call, so the record and its charge commit together or not at all:
 
-- At the limit, the call returns `budget reached: search-day ($5.00 of $5.00). Resets at midnight.`
-  to the model, and nothing else is written.
+- At the limit, the call returns `budget reached: search-day. Resets at midnight.` to the model,
+  with no dollar figure, and the provider gets nothing.
 - A tool that answers with an error, or with a refusal code, did not spend, so its charges are
-  credited. An error that sets `billed`, because the provider answered before the error, keeps its
-  charges.
+  credited in the transaction that writes the call's `tool_result` record. An error that sets
+  `billed`, because the provider answered before the error, keeps its charges.
 - A tool that throws leaves an unknown outcome, so its charges stand.
+- A call that the owner approved from a held action has its call record from earlier, so its charge
+  commits in a transaction of its own before the provider sees the call, and its credit commits with
+  its result record.
 
 A paid tool can also set a call cap, a limit on the count of its calls, such as the search tool's
 [daily call cap](../connectors/search.md#the-daily-call-cap). The charge's write transaction first

@@ -1,14 +1,21 @@
 import { sql } from 'kysely';
 import type { Migration } from '../types';
 
-// The ledger key joins the counter, the unit, the period kind and the period start. A charge from
-// before the key names none, so the key takes the kind from the budget in force, and from the
-// budget's ID suffix for a built-in budget. A table keeps that kind for the replay of the records.
-const kindOfBudget = sql`coalesce(
-  (select period from budgets_in_force where budgets_in_force.budget_id = budget_charges.budget_id),
+// A charge from before the key names no period kind. The budget in force may have changed its
+// period since, so its kind or a built-in budget's ID suffix counts only when the charge's period
+// start is a start of that kind, a Monday for a week or the 1st for a month. Else it is a day's.
+const isMonthStart = sql`substr(budget_charges.period_start, 9, 2) = '01'`;
+const isWeekStart = sql`strftime('%w', budget_charges.period_start) = '1'`;
+
+const inForcePeriod = sql`(select period from budgets_in_force
+  where budgets_in_force.budget_id = budget_charges.budget_id)`;
+
+const kindOfBudget = sql`(
   case
-    when budget_charges.budget_id like '%-month' then 'month'
-    when budget_charges.budget_id like '%-week' then 'week'
+    when ${inForcePeriod} = 'month' and ${isMonthStart} then 'month'
+    when ${inForcePeriod} = 'week' and ${isWeekStart} then 'week'
+    when budget_charges.budget_id like '%-month' and ${isMonthStart} then 'month'
+    when budget_charges.budget_id like '%-week' and ${isWeekStart} then 'week'
     else 'day'
   end
 )`;

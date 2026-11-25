@@ -1,7 +1,7 @@
 import type { Transaction } from 'kysely';
 import type { BudgetsTables } from '../types';
 import { buildBudgetLedgerKey } from './build-budget-ledger-key';
-import { pickLedgerPeriodKind } from './pick-ledger-period-kind';
+import { isLedgerPeriodKind, pickLedgerPeriodKind } from './pick-ledger-period-kind';
 
 export interface ChargedPayload {
   readonly chargeID: string;
@@ -29,9 +29,9 @@ export async function readChargeLedgerKey(
     .where('charge_id', '=', payload.chargeID)
     .executeTakeFirst();
 
-  if (kept !== undefined) {
+  if (kept !== undefined && isLedgerPeriodKind(kept.period_kind)) {
     return buildBudgetLedgerKey(payload.budgetID, {
-      kind: pickLedgerPeriodKind(kept.period_kind, payload.budgetID),
+      kind: kept.period_kind,
       start: payload.periodStart,
     });
   }
@@ -42,7 +42,7 @@ export async function readChargeLedgerKey(
     .where('budget_id', '=', payload.budgetID)
     .executeTakeFirst();
 
-  const kind = pickLedgerPeriodKind(row?.period, payload.budgetID);
+  const kind = pickLedgerPeriodKind(row?.period, payload.budgetID, payload.periodStart);
 
   return buildBudgetLedgerKey(payload.budgetID, { kind, start: payload.periodStart });
 }

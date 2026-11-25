@@ -1,8 +1,8 @@
 import { expect, test } from 'bun:test';
-import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
+import { readRecords, withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
+import { spendLimitRaisedCodec } from '@heynixie/spend';
 import { buildMockGatewayStatus, buildTrippedGatewayStatus } from '@heynixie/spend/test-utils';
 import { createFakeClock } from '@zgeoff/testing/clock';
-import { sql } from 'kysely';
 import { buildTestClient } from '../test-utils/build-test-client';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { startTestAPI } from '../test-utils/start-test-api';
@@ -166,10 +166,10 @@ test('#spend.raise lifts a route with one call, and writes the session as the ac
 
   const raised = await ctx.client.spend.raise({ start: '2026-11-13', route: 'plan', dollars: 60 });
 
-  const result =
-    await sql`select kind, payload from records where kind = 'spend.limit_raised'`.execute(
-      ctx.writer.db,
-    );
+  const records = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['spend.limit_raised'],
+  });
 
   expect(raised).toStrictEqual({ state: 'clear' });
 
@@ -177,16 +177,8 @@ test('#spend.raise lifts a route with one call, and writes the session as the ac
     [{ route: 'plan', start: '2026-11-13', dollars: 60 }],
   ]);
 
-  expect(result.rows).toStrictEqual([
-    {
-      kind: 'spend.limit_raised',
-      payload: JSON.stringify({
-        start: '2026-11-13',
-        route: 'plan',
-        dollars: 60,
-        by: ctx.laptop.caller.identityID,
-      }),
-    },
+  expect(records.map((entry) => spendLimitRaisedCodec.decode(entry.record.payload))).toStrictEqual([
+    { start: '2026-11-13', route: 'plan', dollars: 60, by: ctx.laptop.caller.identityID },
   ]);
 });
 

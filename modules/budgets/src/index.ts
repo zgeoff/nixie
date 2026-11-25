@@ -12,6 +12,7 @@ export type { CreditTarget } from './charge/credit-budget-charges-in-transaction
 
 export {
   formatBudgetReached,
+  formatBudgetRefusal,
   formatBudgetReset,
   formatDollars,
 } from './charge/format-budget-reached';
@@ -20,6 +21,8 @@ export type { BudgetStatus } from './read/read-budget-statuses';
 export { readBudgetStatuses } from './read/read-budget-statuses';
 export type { BudgetLedger, LedgerCharge } from './read/read-budget-ledger';
 export { readBudgetLedger } from './read/read-budget-ledger';
+export type { SpendLedgerEntry } from './read/read-spend-ledger';
+export { readSpendLedger } from './read/read-spend-ledger';
 
 export type {
   BudgetLimit,
