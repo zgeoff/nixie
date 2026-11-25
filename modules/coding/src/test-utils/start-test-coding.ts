@@ -54,6 +54,9 @@ export interface TestCoding {
   // runs every action attempt that is due, with the coding connectors, until none is left
   readonly runActions: (options?: Partial<ActionAttemptOptions>) => Promise<number>;
 
+  // runs a cleanup at the test's end, before the harness stops its writer
+  readonly defer: (cleanup: () => Promise<void>) => void;
+
   // a step of the conversation that holds its lease, as a turn that calls tools does
   readonly claimConversation: () => Promise<StartedClaim>;
 
@@ -158,6 +161,7 @@ export async function startTestCoding(): Promise<TestCoding> {
   };
 
   return {
+    defer: base.defer,
     clock: base.clock,
     log,
     context,

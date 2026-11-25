@@ -1,4 +1,4 @@
-import { expect, onTestFinished, test } from 'bun:test';
+import { expect, test } from 'bun:test';
 import { readRecords } from '@heynixie/log';
 import type { TriggerContext, TriggersTables } from '@heynixie/triggers';
 import { deliverTriggerBatch } from '@heynixie/triggers';
@@ -18,18 +18,21 @@ async function setupTest() {
     ...ctx,
     health,
     seed: {
+      // a join binds in the start's own transaction, with no spawn or step to run
       session: async (): Promise<string> => {
-        const taskID = await ctx.startTask(claim, {
+        ctx.adapter.addSession({ id: 'cloud.3f9a1c2e.00000001', name: 'login fix', state: 'idle' });
+
+        const listed = await ctx.callTool(claim, 'coding.sessions', {});
+
+        const shortID = /"id":"(?<id>[^"]+)"/u.exec(JSON.stringify(listed.outcome))?.groups?.['id'];
+
+        return ctx.startTask(claim, {
           runner: 'atc',
           name: 'Fix the flaky login test',
-          brief: 'Find why the login test fails.',
-          repo: { url: 'https://github.com/example/shop.git', ref: 'main' },
+          brief: 'Watch the login fix.',
+          session: shortID ?? '',
+          wake: ['idle'],
         });
-
-        await ctx.runActions();
-        await ctx.runSteps();
-
-        return taskID;
       },
     },
     startSource: async (cursor: string | null) => {
@@ -46,7 +49,8 @@ async function setupTest() {
 
       await source.start(trigger);
 
-      onTestFinished(async () => {
+      // the harness's own cleanup stops the writer, so the source stops on its stack, before it
+      ctx.defer(async () => {
         controller.abort();
 
         await source.stop();
