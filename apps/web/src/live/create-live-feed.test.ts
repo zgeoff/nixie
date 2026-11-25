@@ -88,6 +88,7 @@ test('it reads every topic again when its first stream opens', async () => {
     'approvals',
     'backups',
     'computer',
+    'connections',
     'definitions',
     'images',
     'memory',

@@ -19,6 +19,7 @@ const entries = [
   { exact: false, label: 'Definitions', to: '/definitions' },
   { exact: false, label: 'Reminders', to: '/reminders' },
   { exact: false, label: 'Passkeys', to: '/passkeys' },
+  { exact: false, label: 'Connections', to: '/settings/connections' },
   { exact: false, label: 'Add a device', to: '/add-device' },
 ] as const;
 
@@ -36,7 +37,13 @@ const bar = css({
   zIndex: '10',
 });
 
-const barNav = css({ display: { base: 'none', md: 'flex' }, gap: '5' });
+// The bar scrolls sideways inside itself when the entries outgrow the window, so the page never does.
+const barNav = css({
+  display: { base: 'none', md: 'flex' },
+  gap: '5',
+  minWidth: '0',
+  overflowX: 'auto',
+});
 
 const menuButton = css({
   borderColor: 'borderStrong',
@@ -54,8 +61,10 @@ const navLink = css({
   borderBottomWidth: '2px',
   borderColor: 'transparent',
   color: 'text',
+  flexShrink: '0',
   fontSize: 'sm',
   paddingBlock: '1',
+  whiteSpace: 'nowrap',
   _hover: { color: 'link' },
   _currentPage: { borderColor: 'link', color: 'link', fontWeight: 'semibold' },
 });

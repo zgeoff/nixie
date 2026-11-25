@@ -4,13 +4,13 @@ import { WringerError, createHostUploader, createWringer, local } from '@wringer
 import type { Wringer } from '@wringer/core';
 import { db } from '@wringer/db';
 import { http } from '@wringer/http';
-import type { HttpClient } from '@wringer/http';
 import { stream } from '@wringer/stream';
 import { terminal } from '@wringer/terminal';
 import { $ } from 'bun';
 import { match } from 'ts-pattern';
 import { z } from 'zod';
 import { buildHostCLIArgv } from './build-host-cli-argv';
+import { checkHarness } from './check-harness';
 import { conversationRecordSchema } from './collect-conversation-records';
 import { computerFeatures } from './computer-features';
 import { featurePaths, ignoredPaths, sharedPaths } from './feature-paths';
@@ -466,6 +466,11 @@ export function createVerifyRegistry(): Wringer {
         summary: 'Browse notes, open a private one, forget one',
         paths: featurePaths['notebook-pages'],
       },
+      {
+        name: 'google-connections',
+        summary: 'Connect a Google account and forget it',
+        paths: featurePaths['google-connections'],
+      },
       ...computerFeatures,
       ...lastFeatures,
     )
@@ -520,17 +525,4 @@ async function checkServedSources(host: PreviewHost, container: ServedContainer)
   if (refusal !== null) {
     throw new WringerError('check-failed', { message: refusal, hint: previewRefusalHint });
   }
-}
-
-async function checkHarness(client: HttpClient): Promise<{ commit: string }> {
-  const health = await postControl(client, controlRoutes.health, {});
-
-  if (!health.isNixieRunning) {
-    throw new WringerError('check-failed', {
-      message: 'nixie exited inside the harness',
-      hint: 'Run `bun verify up --restart`, then `bun verify doctor`.',
-    });
-  }
-
-  return { commit: 'worktree' };
 }

@@ -149,6 +149,7 @@
       },
       "devDependencies": {
         "@heynixie/backup": "workspace:*",
+        "@heynixie/connections": "workspace:*",
         "@heynixie/db": "workspace:*",
         "@heynixie/log": "workspace:*",
         "@heynixie/memory": "workspace:*",
@@ -189,6 +190,7 @@
         "@heynixie/coding": "workspace:*",
         "@heynixie/coding-atc": "workspace:*",
         "@heynixie/compaction": "workspace:*",
+        "@heynixie/connections": "workspace:*",
         "@heynixie/connectors": "workspace:*",
         "@heynixie/contract": "workspace:*",
         "@heynixie/credentials": "workspace:*",
@@ -391,6 +393,7 @@
         "@heynixie/actions": "workspace:*",
         "@heynixie/api": "workspace:*",
         "@heynixie/backup": "workspace:*",
+        "@heynixie/connections": "workspace:*",
         "@heynixie/connectors": "workspace:*",
         "@heynixie/contract": "workspace:*",
         "@heynixie/credentials": "workspace:*",
@@ -418,6 +421,7 @@
         "@heynixie/testing": "workspace:*",
         "@heynixie/tools": "workspace:*",
         "@heynixie/triggers": "workspace:*",
+        "@heynixie/web": "workspace:*",
         "@heynixie/wire": "workspace:*",
         "@impz/testing": "catalog:",
         "@modelcontextprotocol/server": "catalog:",
@@ -573,6 +577,7 @@
         "@heynixie/calls": "workspace:*",
         "@heynixie/clock": "workspace:*",
         "@heynixie/coding": "workspace:*",
+        "@heynixie/connections": "workspace:*",
         "@heynixie/connectors": "workspace:*",
         "@heynixie/contract": "workspace:*",
         "@heynixie/db": "workspace:*",
@@ -696,6 +701,25 @@
         "@heynixie/sandbox": "workspace:*",
         "@heynixie/wire": "workspace:*",
         "zod": "catalog:",
+      },
+    },
+    "modules/connections": {
+      "name": "@heynixie/connections",
+      "version": "0.0.0",
+      "dependencies": {
+        "@heynixie/connectors": "workspace:*",
+        "@heynixie/credentials": "workspace:*",
+        "@heynixie/db": "workspace:*",
+        "@heynixie/log": "workspace:*",
+        "kysely": "catalog:",
+        "tiny-invariant": "catalog:",
+        "ts-pattern": "catalog:",
+        "zod": "catalog:",
+      },
+      "devDependencies": {
+        "@heynixie/tools": "workspace:*",
+        "@heynixie/turn-inputs": "workspace:*",
+        "@zgeoff/testing": "catalog:",
       },
     },
     "modules/connectors": {
@@ -1677,6 +1701,8 @@
     "@heynixie/compaction": ["@heynixie/compaction@workspace:modules/compaction"],
 
     "@heynixie/computer": ["@heynixie/computer@workspace:guests/computer"],
+
+    "@heynixie/connections": ["@heynixie/connections@workspace:modules/connections"],
 
     "@heynixie/connectors": ["@heynixie/connectors@workspace:modules/connectors"],
 

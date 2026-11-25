@@ -1,7 +1,12 @@
 import { startFakeATCGateway } from '@heynixie/coding-atc/test-utils';
 import type { ContractClient } from '@heynixie/contract';
 import { getDataFilePath } from '@heynixie/log';
-import { createSpawnedNixie, createTestClient, readTestBundle } from '@heynixie/server/test-utils';
+import {
+  createSpawnedNixie,
+  createTestClient,
+  readTestBundle,
+  startFakeGoogleSite,
+} from '@heynixie/server/test-utils';
 import type { ScriptedModel } from '@heynixie/testing';
 import { createBuiltWeb, createFrontProxy, readWebBuild } from '@heynixie/web/test-utils';
 import { buildScriptedReplies } from './build-scripted-replies';
@@ -40,12 +45,18 @@ export async function runVerifyHarness(): Promise<void> {
     stack.defer(() => gateway.stop());
   }
 
+  // the test build reaches Google's endpoints at this site, so no journey reaches Google
+  const google = startFakeGoogleSite();
+
+  stack.defer(() => google.stop());
+
   // the test build answers each image call with a stub, so the key is a placeholder
   // A start with NIXIE_VERIFY_CALLS=1 turns calls on, with the test build's fake speech layer.
   const isCallsOn = process.env['NIXIE_VERIFY_CALLS'] === '1';
 
   const nixie = await createSpawnedNixie(stack, {
     ...(isCallsOn ? { voicePricePerMinute: 0.05 } : {}),
+    googleURL: google.url,
     ...(gateway === null ? {} : { atcURL: gateway.url }),
     memoryConfig: localMemoryConfig,
     extraConfig: [

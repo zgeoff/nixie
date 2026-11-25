@@ -5,6 +5,7 @@ import { sentSpanSchema } from '../span/span-schema';
 import { approvalContract } from './approval-contract';
 import { callsContract } from './calls-contract';
 import { computerContract } from './computer-contract';
+import { connectionsContract } from './connections-contract';
 import { definitionsContract } from './definitions-contract';
 import { devicesContract } from './devices-contract';
 import { erasureContract } from './erasure-contract';
@@ -305,6 +306,7 @@ export const contract = {
     ...memoryViewContract,
   },
   notebook: notebookContract,
+  connections: connectionsContract,
   images: imagesContract,
   calls: callsContract,
   computer: computerContract,

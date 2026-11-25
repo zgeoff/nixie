@@ -7,7 +7,7 @@ import { runMigrations } from '../migration/run-migrations';
 import { nixieSchema } from '../schema/nixie-schema';
 import { buildSqliteWorkerDialect } from '../sqlite/build-sqlite-worker-dialect';
 import { readRunPrefix } from '../test-utils/read-run-prefix';
-import { callsMigration } from './0083-calls-migration';
+import { callsMigration } from './0085-calls-migration';
 
 async function setupTest() {
   const stack = new AsyncDisposableStack();
@@ -31,7 +31,7 @@ async function setupTest() {
 }
 
 test('it moves the schema to version 83', () => {
-  expect(nixieSchema.migrations.indexOf(callsMigration) + 1).toBe(83);
+  expect(nixieSchema.migrations.indexOf(callsMigration) + 1).toBe(85);
 });
 
 test('it creates the table of calls', async () => {

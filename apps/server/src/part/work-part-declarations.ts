@@ -47,7 +47,6 @@ import { startHeartbeat } from '../server/start-heartbeat';
 import { startServerBackups } from '../server/start-server-backups';
 import { runUnknownTaskStep } from '../task/run-unknown-task-step';
 import { startSandboxTaskRunner } from '../task/start-sandbox-task-runner';
-import { recoverTestCredentials } from '../test/recover-test-credentials';
 import { registerCredentialOperations } from '../test/register-credential-operations';
 import { runTestTaskStep } from '../test/run-test-task-step';
 import type { AnyPartDeclaration } from '../types';
@@ -426,7 +425,15 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
   },
   {
     name: 'ready',
-    needs: ['inputs', 'server_parts', 'seed_poll', 'notebook', 'takeover_restart'],
+    needs: [
+      'inputs',
+      'server_parts',
+      'seed_poll',
+      'notebook',
+      'takeover_restart',
+      'connections',
+      'erasure',
+    ],
     start: async (reader) => {
       const parts = reader.get('server_parts');
 
@@ -444,10 +451,8 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
       const harness = reader.get('inputs').options.harness;
 
       if (NIXIE_TEST_BUILD && harness !== undefined) {
-        await recoverTestCredentials(parts.context);
-
         registerHarnessOperations(harness.link, parts.context, parts.apiContext.calls);
-        registerCredentialOperations(harness.link, parts.context);
+        registerCredentialOperations(harness.link, parts.context, reader.get('erasure'));
 
         harness.link.sendReady();
       }

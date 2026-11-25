@@ -5,8 +5,12 @@ import type { TasksContext } from '@heynixie/tasks';
 import { conversationTaskID } from '@heynixie/tasks';
 import type { ForgetScope, TurnInputs } from '@heynixie/turn-inputs';
 
-// A note and a moment forget on the erasure runner, which removes their turn inputs itself.
-type TurnInputForgetCause = Exclude<SessionCleanupCause, { readonly noteID: string }>;
+// A note, a moment and a connection forget on the erasure runner, which removes their turn inputs
+// itself.
+type TurnInputForgetCause = Exclude<
+  SessionCleanupCause,
+  { readonly noteID: string } | { readonly connectionID: string }
+>;
 
 export interface TurnInputForgetOptions {
   readonly context: TasksContext;

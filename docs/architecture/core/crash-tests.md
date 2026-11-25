@@ -29,7 +29,8 @@ start pays for no transpile. The bundle keeps each module's source folder, so it
 their source as they do in an unbundled run. It writes the real event log, runs the real restart
 sweep, task runners, action runners and tool endpoint, and runs each conversation turn through the
 real Agent SDK. The SDK runs in a guest that the process sandbox adapter starts as a local child, so
-CI needs no `/dev/kvm` and no imp. The test-only parts are five:
+CI needs no `/dev/kvm` and no imp. Beside the fault points that later sections list, the test build
+adds these test-only parts:
 
 - The test connector declares one queued action, `test.send`, which the test rule allows. The
   release build's rules in code hold no such rule, so no release build can queue it.
@@ -44,8 +45,14 @@ CI needs no `/dev/kvm` and no imp. The test-only parts are five:
   stale writer epoch. A guest leads its own process group and would otherwise outlive nixie, which a
   host that loses nixie never allows.
 
-A test can also point the coding runner at a double of atc-gateway, through `NIXIE_TEST_ATC_URL`,
-because the configuration accepts only an `https` URL. The release build drops that read.
+The release build also drops these test-only paths:
+
+- `NIXIE_TEST_ATC_URL` points the coding runner at a double of atc-gateway, because the
+  configuration accepts only an `https` URL.
+- `NIXIE_TEST_GOOGLE_URL` points Google's endpoints at a fake Google. The connector then sends the
+  browser to that site's authorize page, and the credential store sends each token, revoke and API
+  request for a `.google.test` host to the same site.
+- The OAuth client accepts an `http` loopback origin, so a local run can register one.
 
 The server's action queue bridge, which the test build composes like any other part, maps the thread
 of a running step to that step's claim. It queues each allowed call under that claim with an action
@@ -147,11 +154,11 @@ target remains and `erasure.finished` follows `erasure.started`.
 
 ## Fault point of a credential refresh
 
-`credential.refresh.token_saved` sits behind the test-build flag, in the in-memory held backend of
-the test build, after a refreshed token saves and before its `credential.refresh_saved` record goes
-to the log. `recover-credential-refresh.test.ts` arms it, kills nixie there, and checks that the
-restart writes the owed record and leaves the credential active. See
-[credentials](../connectors/credentials.md#refresh).
+`credential.refresh.token_saved` sits behind the test-build flag, in the credential database
+backend, after the commit of the transaction that saves a refreshed token and its
+`credential.refresh_saved` record. `recover-credential-refresh.test.ts` arms it, kills nixie there,
+and checks that the restart finds the token and the record together and leaves the credential
+active. See [credentials](../connectors/credentials.md#refresh).
 
 ## Fault point of a live reply
 

@@ -6,13 +6,15 @@ const tokenReplySchema = z.object({
   refresh_token: z.string().min(1).exactOptional(),
   expires_in: z.number().positive().default(3600),
   id_token: z.string().exactOptional(),
+  scope: z.string().exactOptional(),
+  refresh_token_expires_in: z.number().positive().exactOptional(),
 });
 
 export type TokenReply = z.output<typeof tokenReplySchema>;
 
 export type TokenRequestResult =
   | { readonly kind: 'tokens'; readonly reply: TokenReply }
-  | { readonly kind: 'refused' }
+  | { readonly kind: 'refused'; readonly providerError: string }
   | { readonly kind: 'service_error' }
   | { readonly kind: 'no_answer' };
 
@@ -56,10 +58,18 @@ export async function sendTokenRequest(
 
   const failure = errorReplySchema.safeParse(body);
 
-  const isRefusal =
+  if (
     (response.status === 400 || response.status === 401) &&
     failure.success &&
-    refusalErrors.has(failure.data.error);
+    refusalErrors.has(failure.data.error)
+  ) {
+    return { kind: 'refused', providerError: failure.data.error };
+  }
 
-  return { kind: isRefusal ? 'refused' : 'service_error' };
+  return { kind: 'service_error' };
+}
+
+// The provider's error code of a refusal for good, and null for any other result.
+export function pickProviderError(result: TokenRequestResult): string | null {
+  return result.kind === 'refused' ? result.providerError : null;
 }

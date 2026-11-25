@@ -7,6 +7,7 @@ import type { Logger } from '@heynixie/logger';
 import type { ModelCredentials } from '@heynixie/models';
 import type { SandboxAdapter } from '@heynixie/sandbox';
 import { writeMissedTurns } from '@heynixie/spend';
+import type { HeldSlot } from '../credential/create-held-slot';
 import type { DefinitionsExportSettings } from '../definition/resolve-definitions-export';
 import type { DeploymentConfig } from '../deployment/deployment-config-schema';
 import { registerServerRecordTopics } from '../part/register-server-record-topics';
@@ -63,6 +64,7 @@ export interface ServerPartsOptions extends ServerOptions {
   readonly config: DeploymentConfig;
   readonly secrets: Secrets;
   readonly credentials: ModelCredentials;
+  readonly heldSlot: HeldSlot;
   readonly images: SandboxImages;
 
   readonly sandbox: SandboxSettings;

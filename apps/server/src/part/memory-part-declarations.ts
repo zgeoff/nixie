@@ -8,6 +8,7 @@ import type { AnyPartDeclaration } from '../types';
 import { makeRetriedStart } from './make-retried-start';
 import type { ServerPartValues } from './server-part-values';
 import { startChecker } from './start-checker';
+import { startConnectionsPart } from './start-connections-part';
 import { startNotebookPart } from './start-notebook-part';
 
 export const memoryPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>[] = [
@@ -21,6 +22,18 @@ export const memoryPartDeclarations: readonly AnyPartDeclaration<ServerPartValue
     needs: ['server_parts', 'conversation_imp', 'sandbox_runner'],
     uses: ['memory', 'code_run'],
     start: (reader) => Promise.resolve(startErasureRunner(reader.get('server_parts'), reader)),
+  },
+  {
+    // The credential store's database backend, and the connection's forget on the runner.
+    name: 'connections',
+    needs: ['inputs', 'server_parts', 'erasure'],
+    start: makeRetriedStart('connections', (parts, reader) =>
+      startConnectionsPart(
+        parts,
+        reader.get('erasure'),
+        reader.get('inputs').options.harness?.googleURL ?? null,
+      ),
+    ),
   },
   {
     name: 'memory',
@@ -73,7 +86,7 @@ export const memoryPartDeclarations: readonly AnyPartDeclaration<ServerPartValue
     // A forget that a crash cut short finishes before any claim pool or turn-input work can reach
     // what it deletes.
     name: 'erasure_catch_up',
-    needs: ['server_parts', 'session_cleanup', 'memory', 'notebook', 'erasure'],
+    needs: ['server_parts', 'session_cleanup', 'memory', 'notebook', 'erasure', 'connections'],
     start: makeRetriedStart('erasure_catch_up', (_parts, reader) =>
       reader.get('erasure').finishOpen(),
     ),
