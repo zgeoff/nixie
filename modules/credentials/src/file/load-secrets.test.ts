@@ -53,6 +53,35 @@ test('it keeps no impd token when the secrets file holds none', async () => {
   expect(secrets.impdToken).toBeNull();
 });
 
+test('it keeps the atc token, and adds it to the own values', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(ctx.path, `deployment_key: ${ctx.deploymentKey}\natc_token: atcs_token-value\n`);
+
+  const secrets = await loadSecrets({ path: ctx.path, sopsArgv: ctx.sopsArgv });
+
+  expect({
+    atcToken: secrets.atcToken,
+    ownValues: secrets.ownValues.read({ minChars: 8 }),
+  }).toStrictEqual({
+    atcToken: 'atcs_token-value',
+    ownValues: [ctx.deploymentKey, 'atcs_token-value'],
+  });
+});
+
+test('it loads a secrets file of the shape a deployment has before the coding runner, with no atc token', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(
+    ctx.path,
+    `deployment_key: ${ctx.deploymentKey}\nimpd_token: impd-token\nmodel_credentials:\n  anthropic: model-key-value\nconnector_credentials:\n  kagi: search-key-value\nsettings:\n  owner_name: Wren Halloway\n`,
+  );
+
+  const secrets = await loadSecrets({ path: ctx.path, sopsArgv: ctx.sopsArgv });
+
+  expect(secrets.atcToken).toBeNull();
+});
+
 test('it derives a fingerprint key that signs and never exports', async () => {
   const ctx = await setupTest();
 

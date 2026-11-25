@@ -22,6 +22,9 @@ export interface Secrets {
   readonly definitionsExportToken: string | null;
   readonly definitionsExportAppKey: string | null;
 
+  // the service token of atc-gateway, set when the deployment runs the coding runner
+  readonly atcToken: string | null;
+
   readonly resolveCredential: ResolveCredential;
 
   // the owner's name and pronouns, which the prompt needs
@@ -71,6 +74,7 @@ export async function loadSecrets(options: SecretsOptions): Promise<Secrets> {
     impdToken: file.impd_token ?? null,
     definitionsExportToken: file.definitions_export_token ?? null,
     definitionsExportAppKey: file.definitions_export_app_key ?? null,
+    atcToken: file.atc_token ?? null,
     resolveCredential: createResolver(file),
     readSetting: (reference) => readSetting(file, reference),
     readFileValue: (ref) => {
@@ -101,6 +105,7 @@ function createFileOwnValues(file: SecretsFile): OwnValueSet {
     ['impd_token', file.impd_token],
     ['definitions_export_token', file.definitions_export_token],
     ['definitions_export_app_key', file.definitions_export_app_key],
+    ['atc_token', file.atc_token],
   ] as const;
 
   for (const [group, value] of topLevel) {

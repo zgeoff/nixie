@@ -8,6 +8,7 @@ export const secretsSchema = z.strictObject({
 
   definitions_export_token: z.string().min(1).optional(),
   definitions_export_app_key: z.string().min(1).optional(),
+  atc_token: z.string().min(1).optional(),
   model_credentials: z.record(z.string(), z.string().min(1)).default({}),
   connector_credentials: z.record(z.string(), z.string().min(1)).default({}),
   settings: z.record(z.string(), z.string().min(1)).default({}),

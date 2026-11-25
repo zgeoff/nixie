@@ -31,3 +31,6 @@ export { buildCodingTools } from './tool/build-coding-tools';
 export { buildCodingSource } from './source/build-coding-source';
 export { runCodingSweep } from './end/run-coding-sweep';
 export { startCodingSweep } from './end/start-coding-sweep';
+export type { CodingConfig } from './config/coding-config-schema';
+export { codingConfigSchema } from './config/coding-config-schema';
+export { buildCodingSettings } from './config/build-coding-settings';
