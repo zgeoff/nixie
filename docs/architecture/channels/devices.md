@@ -1,21 +1,23 @@
 # Devices
 
-A device is a browser that shows what the assistant puts on its screen. A browser becomes a device
-in one of 2 ways. A browser with no session enrols with a code and a name, and gets a device session
-of its own. A browser that is signed in names itself, and the session it holds gets a device row.
-The device opens the device form of the live stream and sends its screen size. The assistant lists
-devices and shows markdown or an image on a screen that is on. The camera, the speaker and the
-microphone are not built: a device record holds their capabilities, and every one of them stays off.
+A device is a browser that shows what the assistant puts on its screen. A browser with no session
+enrols with a code and a name, and gets a device session of its own. A browser that is signed in
+names itself, and the session it holds gets a device row. The device opens the device form of the
+live stream and sends its screen size. The assistant lists devices and shows markdown or an image on
+a screen that is on. The camera, the speaker and the microphone are not built: a device record holds
+their capabilities, and every one of them stays off.
 
 The `devices` module owns the record, the screen state, the open streams and the tools. The
 [API](api.md) owns registration, enrolment and the session scope, and the [web client](client.md)
-owns device mode.
+owns device mode. Read this doc before you change the `devices` module, a device tool or device
+mode.
 
 ## Enrolment and the session scope
 
-A session has a scope, `full` or `device`, stored on `identities` and on `enrolment_codes`. Only a
-code carries a scope: `sessions.enrol` takes none, so a device code can't make a full session and a
-full code can't make a device session.
+A session has a scope, `full` or `device`, stored on `identities`. Each enrolment code stores the
+scope of the session it makes, on `enrolment_codes`. `sessions.enrol` takes no scope, so the session
+takes the scope of its code: a device code makes only a device session, and a full code only a full
+session.
 
 A device row belongs to one session, and a session holds at most one. A device session holds its row
 from enrolment until a revoke or a sign-out removes the row. A full session holds one only after it
@@ -63,12 +65,12 @@ holds the content outside the log.
 
 ## The screen state
 
-`readScreenState` reads the two pointed records and `pickScreenState` picks the state: the show,
-while it has no `until` or its `until` is ahead, or else the idle scene. A new show replaces the one
-before it, and an `until` that passes ends the show, never returning to an older one. While no show
-covers the layout, the screen draws it in place of the idle scene when a region shows content or has
-a background, as [Layouts and regions](#layouts-and-regions) says. An idle device with no scene
-shows black.
+`readScreenState` reads the two pointed records, and `pickScreenState` picks the show while it has
+no `until` or its `until` is ahead, and the idle scene otherwise. A new show replaces the one before
+it, and an `until` that passes ends the show, never returning to an older one. `pickScreenState`
+never returns the layout. The device page's `pickSurface` and `devices.list` put the layout in place
+of the idle scene when a region shows content or has a background, as
+[Layouts and regions](#layouts-and-regions) says. An idle device with no scene shows black.
 
 ## Layouts and regions
 
@@ -111,9 +113,11 @@ saved layout and writes a `device.layout_removed` record. None of the three reco
 
 A saved layout holds no copy of the content, so a forget has nothing more to erase. A restore leaves
 a region blank when a forget erased its content record, and the result lists those regions in
-`emptied`. A region whose minutes ran out since the save restores as blank too, because the region
-reads its record at the time it is asked. A reset deletes the saved layouts along with the layout
-pointers. So does a device removal, which a revoke or a sign-out of the device's session causes.
+`emptied`. A save stores the record each region shows at that time, and a restore points the region
+at that record only. So a region whose saved record's minutes ran out after the save comes back
+blank and is listed in `emptied`, even with `then: 'previous'`. A reset deletes the saved layouts
+along with the layout pointers, and so does a device removal, which a revoke or a sign-out of the
+device's session causes.
 
 The record kinds `device.layout_saved`, `device.layout_restored` and `device.layout_removed` have an
 empty list of live topics, as the other layout records do: a device page follows its own stream,
