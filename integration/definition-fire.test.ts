@@ -415,6 +415,7 @@ test('it starts the task run of a fire untrusted, holds it to its version tools 
   expect(calls.listed).toStrictEqual(['tasks.list', 'test.send']);
 
   expect(session.policy).toStrictEqual({
+    arrivedMails: [],
     context: 'task',
     definitionID: null,
     onBehalfOf: [],

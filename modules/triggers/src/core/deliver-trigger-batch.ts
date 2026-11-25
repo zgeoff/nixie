@@ -12,6 +12,7 @@ import {
   writeInboxRecordsInTransaction,
 } from '@heynixie/tasks';
 import type { Transaction } from 'kysely';
+import { P, match } from 'ts-pattern';
 import { triggerArmedCodec } from '../record/trigger-armed-codec';
 import { triggerDeliveredCodec } from '../record/trigger-delivered-codec';
 import type {
@@ -23,6 +24,8 @@ import type {
 } from '../types';
 import { buildSourceKey } from '../utils/build-source-key';
 import { toCanonicalJSON } from '../utils/to-canonical-json';
+import { removeSpentArrivalKeys } from '../wake/remove-spent-arrival-keys';
+import { writeMailArrival } from '../wake/write-mail-arrival';
 import { catchUpThresholdMs, maxSkippedSlots } from './constants';
 import { isEventDeliverable } from './is-event-deliverable';
 import type { EventOutcome } from './pick-event-outcome';
@@ -43,10 +46,13 @@ export async function deliverTriggerBatch(
     let delivered = 0;
 
     for (const event of batch.events) {
-      const isWritten =
-        event.kind === 'task_input'
-          ? await writeTaskInput(tx, core, sourceID, event)
-          : await writeEvent(tx, core, sourceID, event);
+      const isWritten = await match(event)
+        .with({ kind: 'task_input' }, (input) => writeTaskInput(tx, core, sourceID, input))
+        .with({ kind: 'mail' }, (mail) => writeMailArrival(tx, core, sourceID, mail))
+        .with({ kind: P.union('schedule', 'at') }, (schedule) =>
+          writeEvent(tx, core, sourceID, schedule),
+        )
+        .exhaustive();
 
       if (isWritten) {
         delivered += 1;
@@ -55,14 +61,18 @@ export async function deliverTriggerBatch(
 
     await writeCursor(tx, core, sourceID, batch.cursor);
 
-    return { delivered };
+    return { delivered, hasMail: batch.events.some((event) => event.kind === 'mail') };
   });
+
+  if (result.hasMail) {
+    await removeSpentArrivalKeys(core);
+  }
 
   if (NIXIE_TEST_BUILD) {
     await waitAtFaultPoint('trigger.batch.after', { kind: 'trigger', id: sourceID });
   }
 
-  return result;
+  return { delivered: result.delivered };
 }
 
 // An event that names its task reads no definition. It is dropped when its key is held or its task

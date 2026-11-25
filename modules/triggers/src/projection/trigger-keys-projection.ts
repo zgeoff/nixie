@@ -1,5 +1,6 @@
 import type { EnvelopeRecord, Projection } from '@heynixie/log';
 import { triggerFiredCodec, triggerSkippedCodec, triggerTaskInputCodec } from '@heynixie/tasks';
+import { triggerMailArrivedCodec } from '../record/trigger-mail-arrived-codec';
 import type { TriggersTables } from '../types';
 import { buildSourceKey } from '../utils/build-source-key';
 
@@ -13,7 +14,8 @@ export const triggerKeysProjection: Projection = {
     if (
       record.kind !== 'trigger.fired' &&
       record.kind !== 'trigger.skipped' &&
-      record.kind !== 'trigger.task_input'
+      record.kind !== 'trigger.task_input' &&
+      record.kind !== triggerMailArrivedCodec.kind
     ) {
       return [];
     }
@@ -38,7 +40,11 @@ function decodeFire(record: EnvelopeRecord): {
     return triggerFiredCodec.decode(record.payload);
   }
 
-  return record.kind === 'trigger.skipped'
-    ? triggerSkippedCodec.decode(record.payload)
+  if (record.kind === 'trigger.skipped') {
+    return triggerSkippedCodec.decode(record.payload);
+  }
+
+  return record.kind === triggerMailArrivedCodec.kind
+    ? triggerMailArrivedCodec.decode(record.payload)
     : triggerTaskInputCodec.decode(record.payload);
 }

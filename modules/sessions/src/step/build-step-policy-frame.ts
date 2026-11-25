@@ -1,6 +1,6 @@
 import type { LogRecord } from '@heynixie/log';
 import type { RuleSource } from '@heynixie/policy';
-import { taskMessageCodec } from '@heynixie/tasks';
+import { taskMessageCodec, triggerMailWokeCodec } from '@heynixie/tasks';
 import type { StepPolicyFrame } from '@heynixie/tools';
 import type { SessionFrame } from '../types';
 
@@ -12,6 +12,7 @@ export function buildStepPolicyFrame(
   records: readonly LogRecord[],
 ): StepPolicyFrame {
   const sources = collectSources(records);
+  const arrivedMails = collectArrivedMails(records);
 
   if (frame.kind === 'conversation') {
     const turn = records.findLast((record) => record.kind === 'owner_message');
@@ -22,6 +23,7 @@ export function buildStepPolicyFrame(
       turnMessageSequence: turn?.sequence ?? null,
       onBehalfOf: [],
       sources,
+      arrivedMails,
     };
   }
 
@@ -31,6 +33,7 @@ export function buildStepPolicyFrame(
     turnMessageSequence: null,
     onBehalfOf: collectLinkedMessages(records),
     sources,
+    arrivedMails,
   };
 }
 
@@ -52,6 +55,15 @@ function collectSources(records: readonly LogRecord[]): readonly RuleSource[] {
   });
 
   return [...new Set(sources)].toSorted();
+}
+
+function collectArrivedMails(records: readonly LogRecord[]): readonly string[] {
+  const ids = records
+    .filter((record) => record.kind === triggerMailWokeCodec.kind)
+    .flatMap((record) => triggerMailWokeCodec.tryDecodePartial(record.payload)?.mails ?? [])
+    .map((mail) => mail.messageID);
+
+  return [...new Set(ids)].toSorted();
 }
 
 function collectLinkedMessages(records: readonly LogRecord[]): readonly number[] {

@@ -20,6 +20,7 @@ export type { FetchReply } from './utils/fetch-reply';
 export type { AskHop } from './fetch/make-hop-asker';
 export { makeHopAsker } from './fetch/make-hop-asker';
 export type { FetchLimits, FetchRequest } from './fetch/fetch-request';
+export { maxFetchHTMLChars, maxFetchRequestBytes } from './fetch/fetch-request';
 export { frameHeaderBytes } from './frame/frame-header-bytes';
 export { FrameTooLargeError } from './frame/frame-too-large-error';
 export type { GuestFrame, ModelAPIErrorKind, TurnOutcome } from './frame/guest-frame';

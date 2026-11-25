@@ -90,6 +90,9 @@ export interface ConversationEndpointTools {
 
   // builds coding.start, which starts a coding task; null without a coding runner
   readonly buildCodingStart: BuildCodingStart | null;
+
+  // the tools on the assistant's own mailbox, none without a mailbox
+  readonly mail: readonly ToolDefinition[];
   readonly codeRun: ToolDefinition;
   readonly fileSend: ToolDefinition;
   readonly forget: ToolDefinition;
@@ -311,6 +314,7 @@ export async function startConversationEndpoint(
     ...(tools.buildCodingStart === null
       ? []
       : [tools.buildCodingStart({ messaging, bounds, relatedMemory })]),
+    ...tools.mail,
     ...search,
     ...images,
     ...devices,

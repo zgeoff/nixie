@@ -515,3 +515,97 @@ test('it fails the note of a reminder whose result names no related memory', () 
     typeof input === 'function' ? input({ messages: [{ role: 'user', content: '{}' }] }) : null,
   ).toThrow('names no related memory');
 });
+
+test('it queues the wake rule call of the mailbox before the reply', () => {
+  expect(
+    buildScriptedReplies({
+      text: 'I will watch for it.',
+      mailWatch: { from: '@library.example.org' },
+    }),
+  ).toStrictEqual([
+    {
+      toolUse: {
+        name: 'mcp__nixie__mail_wake_set',
+        input: { from: ['@library.example.org'], window: '1m' },
+      },
+    },
+    { text: 'I will watch for it.' },
+  ]);
+});
+
+test('it opens the mail that the list of unread mail named', () => {
+  const replies = buildScriptedReplies({
+    text: 'I read it.',
+    mailRead: { from: '@library.example.org' },
+  });
+
+  const [list, open, closing] = replies;
+  const listCall = list !== undefined && 'toolUse' in list ? list.toolUse : null;
+  const openCall = open !== undefined && 'toolUse' in open ? open.toolUse : null;
+  const readInput = openCall?.input;
+
+  const listed = {
+    messages: [
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'tool_result',
+            tool_use_id: 'toolu_list',
+            content: JSON.stringify({ mails: [{ message: 'k3x9a2m1', subject: 'Reset' }] }),
+          },
+        ],
+      },
+    ],
+  };
+
+  const opened = typeof readInput === 'function' ? readInput(listed) : readInput;
+
+  expect(listCall?.input).toStrictEqual({ unread: true, from: '@library.example.org' });
+
+  expect([listCall?.name, openCall?.name, closing]).toStrictEqual([
+    'mcp__nixie__mail_list',
+    'mcp__nixie__mail_read',
+    { text: 'I read it.' },
+  ]);
+
+  expect(opened).toStrictEqual({ message: 'k3x9a2m1' });
+});
+
+test('it fails the open of a mail when the newest list is empty, though an older list named a mail', () => {
+  const replies = buildScriptedReplies({
+    text: 'I read it.',
+    mailRead: { from: '@library.example.org' },
+  });
+
+  const [, open] = replies;
+  const openCall = open !== undefined && 'toolUse' in open ? open.toolUse : null;
+  const readInput = openCall?.input;
+
+  const body = {
+    messages: [
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'tool_result',
+            tool_use_id: 'toolu_list',
+            content: JSON.stringify({ mails: [{ message: 'k3x9a2m1', subject: 'Reset' }] }),
+          },
+        ],
+      },
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'tool_result',
+            tool_use_id: 'toolu_again',
+            content: JSON.stringify({ mails: [] }),
+          },
+        ],
+      },
+    ],
+  };
+
+  expect(() => (typeof readInput === 'function' ? readInput(body) : null)).toThrow('names no mail');
+});
