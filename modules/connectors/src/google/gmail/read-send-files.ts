@@ -3,7 +3,7 @@ import { readCodeFile } from '../../code/read-code-file';
 import { readCodeFileEntry } from '../../code/read-code-file-entry';
 import { maxAttachmentBytes } from '../read-attachment-content';
 
-export interface SendFile {
+interface SendFile {
   readonly file: string;
   readonly name: string;
   readonly type: string;

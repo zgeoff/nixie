@@ -107,7 +107,7 @@ export async function runGmailLabel(
 }
 
 // A name that is no label of the account has nothing to remove, so it drops out.
-export function collectIDs(ids: ReadonlyMap<string, string>, names: readonly string[]): string[] {
+function collectIDs(ids: ReadonlyMap<string, string>, names: readonly string[]): string[] {
   return names.flatMap((name) => {
     const id = ids.get(name);
 

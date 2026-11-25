@@ -11,7 +11,7 @@ type HTMLReader = (html: string) => Promise<FetchReply>;
 
 type LiveReader = (connection?: string) => Promise<readonly ConnectionContext[]>;
 
-export interface GoogleRuntime {
+interface GoogleRuntime {
   readonly readLiveContexts: LiveReader;
   readonly log: GmailDeps['log'];
   readonly clock: GmailDeps['clock'];

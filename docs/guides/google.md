@@ -91,11 +91,11 @@ scope, and a button to ask Google again. The conversation never shows that notic
 
 - Searching and reading mail runs at once. nixie asks Gmail at each call and keeps no copy of your
   mail beyond what a call returned.
-- Labelling and writing a draft run at once under the starter rules. A draft stays in your account
-  for you to open.
+- Labelling and writing a draft fall under the starter rule that allows service writes, unless a
+  rule of yours asks first. A draft stays in your account for you to open.
 - A send to an address with no permission waits for your answer on a card that shows the account,
-  each recipient, the subject and the whole text. A reply to the sender of a mail runs at once, and
-  a reply to any other address waits on its card.
+  each recipient, the subject and the whole text. A reply to the sender of the mail it answers has
+  that sender's permission, and a reply to any other address waits on its card.
 - When a send's outcome is unknown, nixie waits 5 minutes, then looks for the mail in your Sent
   folder. When it finds the mail, the send counts as done. Otherwise nixie brings it to you on a
   card, and sends nothing again until you answer.

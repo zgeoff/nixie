@@ -7,11 +7,7 @@ import { makeResolveGmailInput } from './make-resolve-gmail-input';
 import { normalizeAddresses } from './normalize-addresses';
 import { readCallContext } from './read-call-context';
 import { readSendFiles } from './read-send-files';
-import {
-  draftArgumentsSchema,
-  newMailInputSchema,
-  sendArgumentsSchema,
-} from './send-arguments-schema';
+import { newMailInputSchema, sendArgumentsSchema } from './send-arguments-schema';
 import type { GmailDeps } from './types';
 
 const sentOutput = {
@@ -35,7 +31,7 @@ export type NewMailKind = 'send' | 'draft';
 // nothing. `prepare` reads the account and the files for the card.
 export function buildGmailSendTool(deps: GmailDeps, kind: NewMailKind): ToolDefinition {
   const name = kind === 'send' ? gmailToolNames.send : gmailToolNames.draft;
-  const schema = kind === 'send' ? sendArgumentsSchema : draftArgumentsSchema;
+  const schema = sendArgumentsSchema;
 
   return {
     name,

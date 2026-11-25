@@ -13,7 +13,6 @@ import { readGmailDraft } from './read-gmail-draft';
 import { readGmailMessage } from './read-gmail-message';
 import { readSendFiles } from './read-send-files';
 import {
-  draftArgumentsSchema,
   replyArgumentsSchema,
   sendArgumentsSchema,
   sendDraftArgumentsSchema,
@@ -72,9 +71,7 @@ export async function planOutgoingMail(
     return planReplyMail(deps, context, { attempt, base, thread: facts.thread });
   }
 
-  const parsed = (
-    request.tool === gmailToolNames.send ? sendArgumentsSchema : draftArgumentsSchema
-  ).safeParse(attempt.arguments);
+  const parsed = sendArgumentsSchema.safeParse(attempt.arguments);
 
   if (!parsed.success) {
     return refuse('the arguments of the mail are unreadable');

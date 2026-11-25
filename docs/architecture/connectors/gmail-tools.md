@@ -143,8 +143,8 @@ holds a draft whose `Message-ID` header holds the action's ID.
 names and the system labels `INBOX`, `UNREAD`, `STARRED` and `IMPORTANT`. A name in `add` that no
 label has makes the label, and a name in `remove` that no label has drops out. A change made twice
 has no further effect, so a retry is safe. `gmail.draft` writes a draft in the account and sends
-nothing. Both have the effect `write`, so the starter rule `allow-service-writes` allows them
-without a card.
+nothing. Both have the effect `write`, so the starter rule `allow-service-writes` covers them. A
+rule that asks, or a call that follows outside content, can still hold one on a card.
 
 ## Testing
 

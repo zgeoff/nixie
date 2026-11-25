@@ -1,12 +1,10 @@
 import { z } from 'zod';
 
 // An address that a send writes into a header: printable ASCII only, with an ASCII host.
-export const gmailAddressPattern =
-  "^[A-Za-z0-9!#$%&'*+/=?^_`{|}~.-]+@[A-Za-z0-9-]+(?:\\.[A-Za-z0-9-]+)+$";
-
-export const maxBodyChars = 100_000;
-export const maxAddresses = 20;
-export const maxFiles = 10;
+const gmailAddressPattern = "^[A-Za-z0-9!#$%&'*+/=?^_`{|}~.-]+@[A-Za-z0-9-]+(?:\\.[A-Za-z0-9-]+)+$";
+const maxBodyChars = 100_000;
+const maxAddresses = 20;
+const maxFiles = 10;
 const addressSchema = z.string().regex(new RegExp(gmailAddressPattern, 'u'));
 
 const bodyFields = {
@@ -37,8 +35,6 @@ interface AddressLists {
 function hasFewAddresses(mail: AddressLists): boolean {
   return mail.to.length + (mail.cc?.length ?? 0) + (mail.bcc?.length ?? 0) <= maxAddresses;
 }
-
-export const draftArgumentsSchema = sendArgumentsSchema;
 
 export const replyArgumentsSchema = z.strictObject({
   message: z.string(),

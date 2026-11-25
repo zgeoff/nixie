@@ -3,6 +3,8 @@ import type { Prepared } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
 import type { FakeMailSeed } from '../../test-utils/fake-gmail/create-fake-gmail';
 import { startGmailTools } from '../../test-utils/start-gmail-tools';
+import { buildGmailSendFields } from './build-gmail-send-fields';
+import { parseCardAttachment } from './gmail-card';
 
 async function setupTest() {
   const ctx = await startGmailTools();
@@ -159,4 +161,23 @@ test('it fails the action and sends to none when the message moved to Spam since
   const response = await ctx.attempt({ message }, prepared);
 
   expect([response.kind, ctx.site.gmail.sent]).toStrictEqual(['destinations_changed', []]);
+});
+
+test('it seals the card of a reply so the card reads back its sentence and fields', async () => {
+  const ctx = await setupTest();
+  const prepared = await ctx.prepare({ message: ctx.addMessage() });
+
+  const bytes = prepared.attachments?.[0];
+
+  invariant(bytes !== undefined, 'the reply seals its card');
+
+  const card = parseCardAttachment(bytes);
+
+  invariant(card !== null, 'the sealed card parses');
+
+  expect(buildGmailSendFields('gmail.reply', card)).toMatchObject({
+    status: 'fields',
+    sentence: expect.stringContaining('Reply to sam@example.org'),
+    approveLabel: 'Send reply',
+  });
 });
