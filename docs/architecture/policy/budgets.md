@@ -64,9 +64,11 @@ A tool that costs money for each call sets `paid: { priceMicros }` in its defini
 direct. `priceMicros` is a number, or a function of the input for a tool whose price depends on it.
 The tool's `check` can refuse the call first, and a refused call charges nothing. Each paid tool has
 the built-in budgets `<tool>-day` at $5 and `<tool>-month` at $50, and a budget in the definitions
-with the same ID replaces one. `image.draw` has its own limits: `image.draw-day` at $2 and
-`image.draw-month` at $20, and its cost never counts toward the spending stop. `run-tool-call`
-charges both in one transaction before the provider sees the call:
+with the same ID replaces one. A [voice call](../channels/calls.md#price-and-budget) charges the
+same way, per minute, against `call-day` and `call-month` at the default limits. `image.draw` has
+its own limits: `image.draw-day` at $2 and `image.draw-month` at $20, and its cost never counts
+toward the spending stop. `run-tool-call` charges both in one transaction before the provider sees
+the call:
 
 - At the limit, the call returns `budget reached: search-day ($5.00 of $5.00). Resets at midnight.`
   to the model, and nothing else is written.

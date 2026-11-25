@@ -203,7 +203,7 @@ export interface ConsentMessage {
   readonly spans: readonly {
     readonly start: number;
     readonly end: number;
-    readonly source: 'typed' | 'pasted' | 'dropped' | 'unknown';
+    readonly source: 'typed' | 'pasted' | 'dropped' | 'dictated' | 'unknown';
   }[];
   readonly sentAt: number;
 }

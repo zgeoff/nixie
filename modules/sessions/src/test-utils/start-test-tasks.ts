@@ -4,6 +4,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Log, Writer } from '@heynixie/log';
 import { logProjections, startWriter } from '@heynixie/log';
+import { mapActionProposalRecord } from '@heynixie/policy';
+import { buildProposalsProjection } from '@heynixie/proposals';
 import { tasksProjections } from '@heynixie/tasks';
 import type { TasksContext, TasksTables } from '@heynixie/tasks';
 import {
@@ -28,6 +30,9 @@ interface TestTasks {
 interface TestTasksOptions {
   // starts the clock the log stamps its records with, so a test moves the time between records
   readonly recordsAtMs?: number;
+
+  // folds the action proposals into their table too, for a test that reads open proposals
+  readonly withProposals?: true;
 }
 
 export async function startTestTasks(options: TestTasksOptions = {}): Promise<TestTasks> {
@@ -53,7 +58,18 @@ export async function startTestTasks(options: TestTasksOptions = {}): Promise<Te
     'unwrapKey',
   ]);
 
-  const log: Log = { writer, deploymentKey, projections: [...logProjections, ...tasksProjections] };
+  const log: Log = {
+    writer,
+    deploymentKey,
+    projections: [
+      ...logProjections,
+      ...tasksProjections,
+      ...(options.withProposals === true
+        ? [buildProposalsProjection([mapActionProposalRecord])]
+        : []),
+    ],
+  };
+
   const definitionStore = buildTestDefinitionStore();
 
   return {

@@ -43,12 +43,12 @@ to the content hash, so a new commit or a new origin over the same files seeds a
 a branch, or a directory with no git file, keeps the content hash as its revision and names no repo.
 
 A source reads only the known definitions paths: the manifest, `nixie.yaml`, and the persona at the
-root, and the `budgets`, `effects`, `prompts`, `rules`, `skills` and `tasks` folders. It skips every
-other entry at the root by name, without reading or entering it, so that entry never enters the
-content hash, never has to parse, and never counts towards the size limits. A definitions repo can
-then hold its own docs and scripts, and editing a readme never makes a new definitions version. The
-snapshot still lists every skipped root entry, so a misnamed folder such as `rule/` shows in the
-seed's record instead of its rules going unread without a trace.
+root, and the `budgets`, `effects`, `prompts`, `rules`, `skills`, `tasks` and `voice` folders. It
+skips every other entry at the root by name, without reading or entering it, so that entry never
+enters the content hash, never has to parse, and never counts towards the size limits. A definitions
+repo can then hold its own docs and scripts, and editing a readme never makes a new definitions
+version. The snapshot still lists every skipped root entry, so a misnamed folder such as `rule/`
+shows in the seed's record instead of its rules going unread without a trace.
 
 Within the known paths, every source applies one filter. It skips every path with a part that starts
 with a dot, such as `.git`. It keeps every file under `skills/`, whatever its extension, because a
@@ -83,11 +83,13 @@ names as a prompt part. Format 3 therefore refuses a repo whose existing rule fi
 seed applies each folder under `tasks/` as a [task definition](#task-definitions) from format 4, and
 lists the `tasks/` files of an older format as unapplied. From format 5, it applies each
 `budgets/*.yaml` file as [budgets](../policy/budgets.md#the-budget-format), and lists those files of
-an older format as unapplied. From format 6, it applies each `mcp/<server>.yaml` file as the
-[overrides](../connectors/mcp-proxy-declarations.md#override-files) of one MCP server's tools, and
-lists those files of an older format as unapplied. The prompt and task exports raise the manifest's
-`format` line to the format they need, as [prompts](prompts.md) and
-[the export of task definitions](#the-export-of-task-definitions) describe. The seed applies no
+an older format as unapplied. From format 5 too, the seed reads `voice/voice.yaml` and
+`voice/lines.yaml` as the [voice settings](../channels/calls.md#configuration), and a fault in
+either leaves it unapplied and never refuses the seed. From format 6, it applies each
+`mcp/<server>.yaml` file as the [overrides](../connectors/mcp-proxy-declarations.md#override-files)
+of one MCP server's tools, and lists those files of an older format as unapplied. The prompt and
+task exports raise the manifest's `format` line to the format they need, as [prompts](prompts.md)
+and [the export of task definitions](#the-export-of-task-definitions) describe. The seed applies no
 other file, and lists each one in its record as unapplied. Each unapplied YAML or JSON file must
 still parse.
 

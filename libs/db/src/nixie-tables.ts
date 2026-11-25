@@ -67,6 +67,19 @@ export interface NixieTables {
     readonly hash: string;
     readonly updated_sequence: number;
   };
+  readonly calls: {
+    readonly call_id: string;
+    readonly task_id: string;
+    readonly state: string;
+    readonly started_by: string;
+    readonly carrying_session: string;
+    readonly started_at: number;
+    readonly connected_at: number | null;
+    readonly ended_at: number | null;
+    readonly ended_by: string | null;
+    readonly minutes: number;
+    readonly updated_sequence: number;
+  };
   readonly client_actions: {
     readonly client_action_id: string;
     readonly procedure: string;
@@ -273,6 +286,18 @@ export interface NixieTables {
     readonly epoch: number;
     readonly generation: number;
   };
+  readonly mail_messages: {
+    readonly message_id: string;
+    readonly short_id: string;
+    readonly thread_short_id: string;
+    readonly host_message_id: string;
+    readonly direction: string;
+    readonly received_at: number;
+    readonly unread: number;
+    readonly header_hash: string;
+    readonly record_sequence: number;
+    readonly updated_sequence: number;
+  };
   readonly mcp_servers: {
     readonly server_id: string;
     readonly state: string;
@@ -300,18 +325,6 @@ export interface NixieTables {
     readonly state: string;
     readonly hidden_reason: string | null;
     readonly proposal_id: string | null;
-    readonly updated_sequence: number;
-  };
-  readonly mail_messages: {
-    readonly message_id: string;
-    readonly short_id: string;
-    readonly thread_short_id: string;
-    readonly host_message_id: string;
-    readonly direction: string;
-    readonly received_at: number;
-    readonly unread: number;
-    readonly header_hash: string;
-    readonly record_sequence: number;
     readonly updated_sequence: number;
   };
   readonly memory_change_notices: {

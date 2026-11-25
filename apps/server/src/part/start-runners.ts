@@ -30,6 +30,10 @@ export async function startRunners(
       runStep: parts.tools.actions.trackSteps(runStep),
       size: parts.config.tasks.startedClaimLoops,
     },
+    call: {
+      runStep: parts.tools.actions.trackSteps(runStep),
+      size: parts.config.tasks.callClaimLoops,
+    },
     onStepErrored: (errored) => {
       logStepError(errored);
       markConversationFailure(errored);

@@ -1,6 +1,7 @@
 import { actionsConfigSchema } from '@heynixie/actions';
 import { apiConfigSchema } from '@heynixie/api';
 import { backupConfigSchema } from '@heynixie/backup';
+import { voiceConfigSchema } from '@heynixie/calls';
 import { codingConfigSchema } from '@heynixie/coding';
 import {
   computerConfigSchema,
@@ -59,6 +60,7 @@ export const deploymentConfigSchema = z
     turn_input_log: turnInputLogConfigSchema.optional(),
     spendStop: spendStopSchema.optional(),
     coding: codingConfigSchema.optional(),
+    voice: voiceConfigSchema.optional(),
     mail: mailConfigSchema.optional(),
     wake_rules: wakeRulesConfigSchema.default(wakeRulesConfigSchema.parse({})),
   })

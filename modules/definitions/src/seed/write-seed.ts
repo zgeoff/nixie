@@ -110,6 +110,7 @@ export async function writeSeed(
     skills: plan.overlay.skills.map((skill) => toSkillRef(skill)),
     conversationSkills: plan.overlay.conversationSkills,
     tasks: plan.built.tasks,
+    voice: plan.built.voice,
   };
 
   await writeSeedRow(tx, inForce);

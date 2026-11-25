@@ -9,6 +9,13 @@ test.each([
   ['tool_changed', 'conversation', false],
   ['task.step_committed', 'task-1', false],
   ['owner_message', null, false],
+  ['call.started', 'conversation', true],
+  ['call.answered', 'conversation', true],
+  ['call.ended', 'conversation', true],
+  ['call.rang', 'conversation', false],
+  ['call.handed_off', 'call-task', true],
+  ['call.spoke', 'call-task', false],
+  ['call.heard_cut', 'call-task', false],
 ] as const)('it reads a %s record on thread %s as waking: %p', (kind, thread, expected) => {
   expect(isWakingRecord({ kind, thread, payload: {} })).toBe(expected);
 });
@@ -23,4 +30,11 @@ test.each([
   expect(isWakingRecord({ kind: 'policy.action_answered', thread: 'task-1', payload })).toBe(
     expected,
   );
+});
+
+test.each([
+  ['a line the speech layer heard', { identityID: 'identity-1', isDictated: true }, false],
+  ['a line the owner typed', { identityID: 'identity-1' }, true],
+] as const)('it reads an owner_message of %s as waking: %p', (_name, payload, expected) => {
+  expect(isWakingRecord({ kind: 'owner_message', thread: 'call-task', payload })).toBe(expected);
 });

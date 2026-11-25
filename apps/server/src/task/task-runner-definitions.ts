@@ -1,5 +1,5 @@
 import type { TaskRunnerDefinition } from '@heynixie/tasks';
-import { conversationRunner, sandboxRunner } from '@heynixie/tasks';
+import { callRunner, conversationRunner, sandboxRunner } from '@heynixie/tasks';
 import { queueCheckRunner } from '../queue/queue-check-runner';
 
 // The one list of runner definitions. A task runs on the runner whose definition lists it, or
@@ -7,6 +7,7 @@ import { queueCheckRunner } from '../queue/queue-check-runner';
 export const taskRunnerDefinitions: readonly TaskRunnerDefinition[] = [
   conversationRunner,
   sandboxRunner,
+  callRunner,
   queueCheckRunner,
 ];
 

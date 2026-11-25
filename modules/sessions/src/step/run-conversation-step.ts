@@ -7,6 +7,7 @@ import {
   readTaskGateSnapshot,
   readUnlistedProfiles,
 } from '@heynixie/tasks';
+import { match } from 'ts-pattern';
 import { runCompactionStep } from '../compaction/run-compaction-step';
 import { runInboxStep } from '../inbox/run-inbox-step';
 import { canSessionTake } from '../session/can-session-take';
@@ -47,7 +48,7 @@ export async function runConversationStep(
   const capture = await openStepCapture(conversation.turnInputs, {
     step: { taskID: input.taskID, stepRunID: buildStepRunID(input) },
     profile: conversation.profile.profile,
-    role: conversation.frame.kind === 'task' ? 'task' : 'conversation',
+    role: pickCaptureRole(conversation.frame),
     isRewritten: conversation.harness.rewritesRequests,
   });
 
@@ -94,6 +95,14 @@ async function runSpendCheck(
     sessionBoundary: input.sessionBoundary,
     isHeld: true,
   };
+}
+
+function pickCaptureRole(frame: SessionFrame): 'task' | 'call' | 'conversation' {
+  return match(frame)
+    .with({ kind: 'task' }, () => 'task' as const)
+    .with({ kind: 'call' }, () => 'call' as const)
+    .with({ kind: 'conversation' }, () => 'conversation' as const)
+    .exhaustive();
 }
 
 function runSessionTurn(conversation: ConversationRun, input: StepInput): Promise<StepResult> {
@@ -150,7 +159,14 @@ function runSessionTurn(conversation: ConversationRun, input: StepInput): Promis
 async function runSessionStep(step: SessionStep): Promise<StepResult> {
   const frame = step.run.frame;
 
-  if (isSessionLive(step.position) && canSessionTake(step.position.state, 'compact')) {
+  // A call is short and speaks each answer at once, so it never waits on a summary.
+  const canCompact = frame.kind !== 'call';
+
+  if (
+    canCompact &&
+    isSessionLive(step.position) &&
+    canSessionTake(step.position.state, 'compact')
+  ) {
     return runCompactionStep(step, step.position.boundary);
   }
 
@@ -171,7 +187,7 @@ async function runSessionStep(step: SessionStep): Promise<StepResult> {
     };
   }
 
-  return runInboxStep(step, { canCompact: true, before: [] });
+  return runInboxStep(step, { canCompact, before: [] });
 }
 
 // A started task's brief is its first piece of work, and it arrives in no inbox record. A forget can

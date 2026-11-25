@@ -391,6 +391,10 @@
             "checker": {
               "type": "string",
               "pattern": "^[a-z0-9][a-z0-9-]*$"
+            },
+            "call": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9-]*$"
             }
           },
           "additionalProperties": false,
@@ -1475,6 +1479,12 @@
           "exclusiveMinimum": 0,
           "maximum": 9007199254740991
         },
+        "callClaimLoops": {
+          "default": 1,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
         "messaging": {
           "default": {
             "hopLimit": 20
@@ -1874,7 +1884,8 @@
                 "type": "string",
                 "enum": [
                   "conversation",
-                  "task"
+                  "task",
+                  "call"
                 ]
               },
               {
@@ -2101,6 +2112,24 @@
           "additionalProperties": false
         }
       },
+      "additionalProperties": false
+    },
+    "voice": {
+      "type": "object",
+      "properties": {
+        "provider": {
+          "type": "string",
+          "const": "gpt-live"
+        },
+        "credential": {
+          "type": "string",
+          "pattern": "^deployment:.+$"
+        }
+      },
+      "required": [
+        "provider",
+        "credential"
+      ],
       "additionalProperties": false
     },
     "mail": {

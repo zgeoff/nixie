@@ -3,6 +3,7 @@ import {
   createFirstEnrolmentCode,
   defaultPolicySettings,
 } from '@heynixie/api';
+import { startCallSweep } from '@heynixie/calls';
 import { buildCodingSource, startCodingSweep } from '@heynixie/coding';
 import {
   endTakeoverCutByRestart,
@@ -22,6 +23,7 @@ import { startPromptLapseSweep } from '@heynixie/prompts';
 import { startSpendWatcher } from '@heynixie/spend';
 import type { RunStep } from '@heynixie/tasks';
 import {
+  callRunner,
   conversationRunner,
   conversationTaskID,
   createConversationTask,
@@ -235,6 +237,7 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
         [
           { definition: conversationRunner, runStep: reader.get('conversation_imp').runStep },
           { definition: sandboxRunner, runStep: reader.get('sandbox_runner').runStep },
+          { definition: callRunner, runStep: reader.get('sandbox_runner').runCallStep },
           { definition: queueCheckRunner, runStep: checkStep },
           ...(coding === null
             ? []
@@ -263,6 +266,24 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
       const sweep = startCodingSweep(coding.context, coding.adapter);
 
       await reader.get('server_parts').cleanup.defer(() => sweep.stop());
+    },
+  },
+  {
+    // Charges each started minute of a live call, and ends a call that never connects or lost its
+    // speech session. Without the voice section, no call runs.
+    name: 'calls_sweep',
+    needs: ['server_parts', 'runners'],
+    start: async (reader) => {
+      const parts = reader.get('server_parts');
+      const calls = parts.apiContext.calls;
+
+      if (calls === undefined || calls.voice === null) {
+        return;
+      }
+
+      const sweep = startCallSweep(calls);
+
+      await parts.cleanup.defer(() => sweep.stop());
     },
   },
   {
@@ -449,6 +470,7 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
         registerHarnessOperations(
           harness.link,
           parts.context,
+          parts.apiContext.calls,
           reader.get('context').mail?.memory ?? null,
         );
 

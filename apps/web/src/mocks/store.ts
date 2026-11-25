@@ -35,7 +35,7 @@ const enrolmentCodes = new Collection({
 
 const spanSchema = z.object({
   end: z.int().default(() => faker.number.int({ max: 200, min: 101 })),
-  source: z.enum(['typed', 'pasted', 'dropped', 'unknown']).default('typed'),
+  source: z.enum(['typed', 'pasted', 'dropped', 'dictated', 'unknown']).default('typed'),
   start: z.int().default(() => faker.number.int({ max: 100, min: 0 })),
 });
 

@@ -30,6 +30,8 @@ test('it reads the format version and the persona, and lists every other file un
     ruleWarnings: [],
     tasks: [],
     taskWarnings: [],
+    voice: null,
+    voiceProblems: [],
     unapplied: ['notes.md', 'rules/mail.yaml', 'tasks/morning/task.yaml'],
   });
 });
@@ -201,6 +203,8 @@ test('it ignores the prompts map under format 2 and lists its part files as unap
     ruleWarnings: [],
     tasks: [],
     taskWarnings: [],
+    voice: null,
+    voiceProblems: [],
     unapplied: ['prompts/writer.md'],
   });
 });
@@ -272,6 +276,8 @@ test('it reads each skill under format 2, and lists none of its files as unappli
     ruleWarnings: [],
     tasks: [],
     taskWarnings: [],
+    voice: null,
+    voiceProblems: [],
     unapplied: [],
   });
 });
@@ -425,6 +431,8 @@ test('it reads a part override from its file and a template inline under format 
     ruleWarnings: [],
     tasks: [],
     taskWarnings: [],
+    voice: null,
+    voiceProblems: [],
     unapplied: ['prompts/draft.md'],
   });
 });
@@ -718,4 +726,61 @@ test('it refuses the whole seed when an override file fails to parse', () => {
       buildTestTaskSeed(),
     ),
   ).toThrow('mcp/tracker.yaml');
+});
+
+test('it reads the voice settings of voice/voice.yaml and voice/lines.yaml from format 5', () => {
+  const files = new Map([
+    ['nixie.yaml', new TextEncoder().encode('format: 5\n')],
+    ['persona.md', new TextEncoder().encode('# Persona\n')],
+    [
+      'voice/voice.yaml',
+      new TextEncoder().encode('voice: cedar\nhold_after_ms: 2000\nprice_per_minute: 0.05\n'),
+    ],
+    ['voice/lines.yaml', new TextEncoder().encode('holding: Hang on.\n')],
+    ['voice/prompt.md', new TextEncoder().encode('Speak plainly.\n')],
+  ]);
+
+  const parsed = parseDefinitions(
+    { contentHash: 'c', files, revision: 'r', repository: null, skipped: [] },
+    buildTestTaskSeed(),
+  );
+
+  expect([parsed.voice?.voice, parsed.voice?.pricePerMinuteMicros, parsed.unapplied]).toStrictEqual(
+    ['cedar', 50_000, ['voice/prompt.md']],
+  );
+});
+
+test('it reports a voice file with a fault, applies none of it and never refuses the seed', () => {
+  const files = new Map([
+    ['nixie.yaml', new TextEncoder().encode('format: 5\n')],
+    ['persona.md', new TextEncoder().encode('# Persona\n')],
+    ['voice/voice.yaml', new TextEncoder().encode('price_per_minute: [unclosed\n')],
+    ['voice/other.yaml', new TextEncoder().encode('key: [unclosed\n')],
+  ]);
+
+  const parsed = parseDefinitions(
+    { contentHash: 'c', files, revision: 'r', repository: null, skipped: [] },
+    buildTestTaskSeed(),
+  );
+
+  expect([parsed.voice, parsed.voiceProblems, parsed.unapplied]).toStrictEqual([
+    null,
+    [{ path: 'voice/voice.yaml', reason: expect.any(String) }],
+    ['voice/other.yaml', 'voice/voice.yaml'],
+  ]);
+});
+
+test('it leaves the voice files of a format before 5 unapplied', () => {
+  const files = new Map([
+    ['nixie.yaml', new TextEncoder().encode('format: 4\n')],
+    ['persona.md', new TextEncoder().encode('# Persona\n')],
+    ['voice/voice.yaml', new TextEncoder().encode('price_per_minute: 0.05\n')],
+  ]);
+
+  const parsed = parseDefinitions(
+    { contentHash: 'c', files, revision: 'r', repository: null, skipped: [] },
+    buildTestTaskSeed(),
+  );
+
+  expect([parsed.voice, parsed.unapplied]).toStrictEqual([null, ['voice/voice.yaml']]);
 });

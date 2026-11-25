@@ -1,5 +1,6 @@
 import { join } from 'node:path';
 import type { ErasureStuckPort } from '@heynixie/api';
+import type { CallsContext } from '@heynixie/calls';
 import type {
   ImageProvider,
   ImagesConfig,
@@ -41,7 +42,7 @@ import {
   buildReminderUpdateTool,
   buildRemindersListTool,
 } from '@heynixie/reminders';
-import { buildSilentEndTool } from '@heynixie/sessions';
+import { buildHangUpTool, buildSilentEndTool } from '@heynixie/sessions';
 import type { WorkerTool } from '@heynixie/sessions';
 import type { SkillVendorContext } from '@heynixie/skills';
 import type { TaskStartBounds } from '@heynixie/tasks';
@@ -139,6 +140,9 @@ export interface ConversationEndpointTools {
   readonly vendor: SkillVendorContext | null;
 
   readonly isPromptExported: boolean;
+
+  // the calls module, whose running call the hang-up tool ends
+  readonly calls: CallsContext | undefined;
 }
 
 export interface ConversationEndpoint {
@@ -343,9 +347,12 @@ export async function startConversationEndpoint(
     buildTaskReportTool(options.context),
   ];
 
+  // Only a call's thread holds the hang-up, so it stays out of the conversation's own list.
+  const hangUp = buildHangUpTool(() => tools.calls, options.context);
+
   const clash = findServerIDClash(
     Object.keys(options.config.mcp.servers),
-    [...definitions, ...tools.testTools].map((definition) => definition.name),
+    [...definitions, hangUp, ...tools.testTools].map((definition) => definition.name),
   );
 
   if (clash !== null) {
@@ -354,7 +361,10 @@ export async function startConversationEndpoint(
     );
   }
 
-  const registry = buildToolRegistry([...definitions, ...tools.testTools], tools.toolSources);
+  const registry = buildToolRegistry(
+    [...definitions, hangUp, ...tools.testTools],
+    tools.toolSources,
+  );
 
   const endpoint = await startToolEndpoint({
     socketDir: join(options.config.server.dataDir, 'run', 'tools'),

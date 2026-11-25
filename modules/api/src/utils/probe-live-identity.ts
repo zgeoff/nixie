@@ -1,14 +1,14 @@
-import type { Transaction } from 'kysely';
+import type { Kysely } from 'kysely';
 import type { APIContext, APITables } from '../types';
 
 // The caller runs this inside the action's write transaction, so a revoke that commits after the
-// call resolved its session still stops the action.
+// call resolved its session still stops the action. Outside a transaction it answers for now only.
 export async function probeLiveIdentity(
-  tx: Transaction<unknown>,
+  db: Kysely<unknown>,
   context: APIContext,
   identityID: string,
 ): Promise<boolean> {
-  const row = await tx
+  const row = await db
     .$extendTables<APITables>()
     .selectFrom('identities')
     .select('identity_id')

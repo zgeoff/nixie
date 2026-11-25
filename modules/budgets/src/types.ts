@@ -25,7 +25,7 @@ export interface BudgetsContext {
 }
 
 export interface ChargeFor {
-  readonly kind: 'tool_call' | 'action';
+  readonly kind: 'tool_call' | 'action' | 'call_minute';
   readonly id: string;
 }
 

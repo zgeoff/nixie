@@ -2,6 +2,10 @@ import { onTestFinished } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { actionsProjection } from '@heynixie/actions';
+import { budgetProjections } from '@heynixie/budgets';
+import { callsProjection } from '@heynixie/calls';
+import type { TestCallsContext, TestCallsOptions } from '@heynixie/calls/test-utils';
+import { buildTestCallsContext } from '@heynixie/calls/test-utils';
 import type { ConnectionsPort } from '@heynixie/connections';
 import { readDefinitionNotices, readDefinitionVersion } from '@heynixie/definitions';
 import { definitionTaskProjections } from '@heynixie/definitions/test-utils';
@@ -83,12 +87,18 @@ interface TestAPI {
   // the stub gateway, which the context holds only when the test turns the spending stop on
   readonly spendGateway: ReturnType<typeof buildStubSpendGateway>;
 
+  // the calls context on a fake speech layer, which the context holds only when the test turns calls on
+  readonly calls: TestCallsContext | null;
+
   readonly url: string;
 }
 
 interface TestAPIOptions {
   // gives the context a spending stop on a stub gateway, with turn limits of 3 a day (cap 5) and 4 a month
   readonly isSpendOn?: boolean;
+
+  // gives the context a calls module on a fake speech layer, set up as the options say
+  readonly calls?: TestCallsOptions;
 }
 
 export async function startTestAPI(
@@ -127,7 +137,7 @@ export async function startTestAPI(
 
   const logged: string[] = [];
 
-  const context = await createTestContext(writer, settings, definitionStore, {
+  const created = await createTestContext(writer, settings, definitionStore, {
     readSessionCleanup: () => sessions.cleanup,
     readNotebook: () => notebook.store,
     readErasure: () => erasure.port,
@@ -143,8 +153,10 @@ export async function startTestAPI(
       logged.push(JSON.stringify({ event, fields }));
     },
     spendGateway: options.isSpendOn === true ? spendGateway : null,
+    calls: options.calls ?? null,
   });
 
+  const context = created.context;
   const served = startTestApp(context);
 
   stack.defer(served.stop);
@@ -155,6 +167,7 @@ export async function startTestAPI(
     clock: context.clock,
     context,
     spendGateway,
+    calls: created.calls,
     definitionStore,
     url: served.url,
     setMemory: served.setMemory,
@@ -194,6 +207,7 @@ interface TestContextDeps {
   readonly readTakeover: ComputerWatchPort['readTakeover'];
   readonly logger: ComputerWatchPort['logger'];
   readonly spendGateway: ReturnType<typeof buildStubSpendGateway> | null;
+  readonly calls: TestCallsOptions | null;
 }
 
 async function createTestContext(
@@ -201,7 +215,10 @@ async function createTestContext(
   settings: APIContext['settings'],
   definitionStore: TestDefinitionStore,
   deps: TestContextDeps,
-): Promise<APIContext & { readonly clock: FakeClock }> {
+): Promise<{
+  readonly context: APIContext & { readonly clock: FakeClock };
+  readonly calls: TestCallsContext | null;
+}> {
   const deploymentKey = await crypto.subtle.generateKey({ name: 'AES-KW', length: 256 }, false, [
     'wrapKey',
     'unwrapKey',
@@ -226,8 +243,13 @@ async function createTestContext(
       ...notebookProjections,
       proposalsProjection,
       ...spendProjections,
+      ...budgetProjections,
+      callsProjection,
     ],
   };
+
+  const calls =
+    deps.calls === null ? null : buildTestCallsContext({ log, clock: writer.clock }, deps.calls);
 
   const clock = createFakeClock({ startMs: 1_000_000 });
 
@@ -273,11 +295,12 @@ async function createTestContext(
     readSessionCleanup: deps.readSessionCleanup,
     readNotebook: deps.readNotebook,
     readErasure: deps.readErasure,
+    ...(calls === null ? {} : { calls: calls.context }),
     readConnections: deps.readConnections,
     readMcp: deps.readMcp,
   };
 
-  return context;
+  return { context, calls };
 }
 
 function readTestDefinitions() {

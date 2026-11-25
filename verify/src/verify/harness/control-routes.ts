@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { callStepSchema } from './run-call-step';
 
 const listedTaskSchema = z.strictObject({
   taskID: z.string(),
@@ -38,6 +39,7 @@ const writtenNotesSchema = z.strictObject({
   privateBody: z.string().min(1),
 });
 
+const speechCallSchema = z.strictObject({ method: z.string(), text: z.string().nullable() });
 const actionProposalSchema = z.strictObject({ proposalID: z.string(), tool: z.string() });
 
 // The harness's control routes, which the verify CLI's actions and checks call through the http
@@ -135,6 +137,14 @@ export const controlRoutes = {
       text: z.string().min(1),
     }),
     output: z.strictObject({ replies: z.int().positive() }),
+  },
+  callStep: {
+    method: 'POST',
+    path: '/control/call-step',
+    input: z.strictObject({ step: callStepSchema }),
+
+    // the call's ID, and each call that nixie made on the fake speech layer, oldest first
+    output: z.strictObject({ callID: z.string(), speech: z.array(speechCallSchema) }),
   },
   deliverMail: {
     method: 'POST',

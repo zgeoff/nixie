@@ -70,7 +70,7 @@ export interface OwnerMessage {
 export interface MessageSpan {
   readonly start: number;
   readonly end: number;
-  readonly source: 'typed' | 'pasted' | 'dropped' | 'unknown';
+  readonly source: 'typed' | 'pasted' | 'dropped' | 'dictated' | 'unknown';
 }
 
 export type ReviewReason = (typeof reviewReasons)[number];

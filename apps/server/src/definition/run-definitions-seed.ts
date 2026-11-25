@@ -19,6 +19,9 @@ export function runDefinitionsSeed(parts: SeedParts): Promise<SeedResult> {
 
         parts.log(event, { ...warning }, 'warn');
       },
+      onVoiceProblem: (problem) => {
+        parts.log('definitions.voice_file_skipped', { ...problem }, 'warn');
+      },
       source: parts.source,
       tasks: parts.tasks,
       buildPolicy: parts.buildPolicy,

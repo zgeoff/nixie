@@ -21,6 +21,7 @@ export type SystemMessageType =
   | 'reminder'
   | 'restore'
   | 'computer'
+  | 'call'
   | 'page-event'
   | 'mail'
   | 'mcp';
