@@ -76,8 +76,8 @@ Other rules of the adapter:
   the session. A close that nixie asked for raises no `dropped`.
 - A provider error is logged as `calls.speech_provider_error` with the session ID, and the session
   stays open. A create request that the provider answers with 401 or 403 is
-  `VOICE_CREDENTIAL_REFUSED`, and any other failure, including a sideband that does not open within
-  15 s, is `SPEECH_UNAVAILABLE`.
+  `VOICE_CREDENTIAL_REFUSED`, and any other failure, including a sideband that does not open in
+  time, is `SPEECH_UNAVAILABLE`.
 - Every `open` creates a session from a fresh offer of the device. The adapter holds no state across
   sessions.
 
