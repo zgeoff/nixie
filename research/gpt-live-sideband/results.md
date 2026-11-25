@@ -6,8 +6,8 @@ browser's microphone. Every event from the sideband and from the browser's data 
 log. The excerpts below come from those logs, with IDs shortened; times in brackets are `start_ms`
 and `end_ms` on GPT-Live's session timeline.
 
-The probes are [`run-probe.ts`](run-probe.ts) and its helpers in this folder, and the
-[README](README.md#run-it) holds the commands that run them and print their logs.
+The probes are [`run-probe.ts`](run-probe.ts) and its helpers in this folder. Run them and print
+their logs with the commands in the [README](README.md#run-it).
 
 ## Setup
 
@@ -37,17 +37,17 @@ below:
 
 The probes:
 
-- `delegation` greets, asks for tomorrow's calendar and answers in 3 parts, sends a late part 6 s
-  after GPT-Live goes quiet, asks for a reminder and leaves it unanswered for 15 s, then sends an
-  empty part, a real answer, and a part for an unknown delegation ID.
-- `cut` asks 3 questions, answers each with a 330-character reply, and talks over the reply once
-  GPT-Live has said 40, 110 and 180 characters of it.
-- `reconnect` restricts the device's data channel and has the device send a command, sends the first
-  offer again, moves the call to a new session with an ICE-restart offer from the same peer
-  connection, and asks to fork the first session.
-- `quiet` sets `acknowledgement_delay_ms: 800`, answers each of 2 delegations at once with an empty
-  `session.thinking.append`, sends the answer 8 s later, and then sends a line as a commentary part
-  with a null delegation ID.
+- In `delegation`, the caller greets, asks for tomorrow's calendar and answers in 3 parts, sends a
+  late part 6 s after GPT-Live goes quiet, asks for a reminder and leaves it unanswered for 15 s,
+  then sends an empty part, a real answer, and a part for an unknown delegation ID.
+- In `cut`, the caller asks 3 questions, answers each with a 330-character reply, and talks over the
+  reply once GPT-Live has said 40, 110 and 180 characters of it.
+- In `reconnect`, the probe restricts the device's data channel and has the device send a command,
+  sends the first offer again, moves the call to a new session with an ICE-restart offer from the
+  same peer connection, and asks to fork the first session.
+- In `quiet`, the probe sets `acknowledgement_delay_ms: 800`, answers each of 2 delegations at once
+  with an empty `session.thinking.append`, sends the answer 8 s later, and then sends a line as a
+  commentary part with a null delegation ID.
 
 Sessions and their billed seconds, from `session.closed`:
 
@@ -179,7 +179,7 @@ The adapter can still find the cut and the heard text from the sideband:
 4. GPT-Live paraphrases, so the heard text is not a prefix of what nixie sent.
    [`pickHeardChars`](pick-heard-chars.ts) aligns the words, and counts the sent text up to the last
    spoken word.
-5. Transcript deltas carry no delegation ID. The adapter knows the hand-off from the commentary it
+5. Transcript deltas carry no delegation ID, so take the hand-off from the commentary the adapter
    last sent.
 
 | Model          | Trial | Cut at   | Output audio ends | Event naming the cut | Spoken before the cut                                                                                                                                                                                  | heardChars / sent | Speaker quiet after |
