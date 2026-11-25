@@ -1,7 +1,10 @@
 // Runs one probe of GPT-Live over WebRTC with a server sideband, and logs every event to results/.
-// Usage: OPENAI_API_KEY=… bun run-probe.ts <delegation|cut|reconnect|quiet|parts> [--model gpt-live-1]
+// Usage: OPENAI_API_KEY=… bun run-probe.ts <delegation|cut|reconnect|quiet|parts|holds> [--model gpt-live-1]
 //   parts only: [--trials 8] [--shapes a,b,c] [--gap 3000]: trials of each shape, each in a session
 //   of its own, with the gap between parts fixed instead of taking turns at 300, 550 and 800 ms
+//   holds only: --hold 15000 [--trials 6] [--no-line]: trials that hold the delegation this long
+//   before the whole answer, with the holding line at 1.5 s unless --no-line
+import { appendFile } from 'node:fs/promises';
 import { parseArgs } from 'node:util';
 import { match } from 'ts-pattern';
 import { z } from 'zod';
@@ -27,12 +30,14 @@ const { positionals, values } = parseArgs({
   allowPositionals: true,
   options: {
     gap: { type: 'string' },
+    hold: { type: 'string' },
     model: { default: 'gpt-live-1', type: 'string' },
+    'no-line': { default: false, type: 'boolean' },
     shapes: { default: 'a,b,c', type: 'string' },
     trials: { default: '8', type: 'string' },
   },
 });
-const scenario = z.enum(['delegation', 'cut', 'reconnect', 'quiet', 'parts']).parse(positionals[0]);
+const scenario = z.enum(['delegation', 'cut', 'reconnect', 'quiet', 'parts', 'holds']).parse(positionals[0]);
 const key = z.string().min(1).parse(process.env.OPENAI_API_KEY);
 const label = `${scenario}-${values.model}-${new Date().toISOString().replaceAll(':', '-').slice(0, 19)}`;
 const session = { delegation: { type: 'client' }, instructions: voicePrompt, model: values.model, store: false };
@@ -355,6 +360,94 @@ async function runPartsTrial(call: Call, request: string, parts: readonly string
   return true;
 }
 
+// The design's hold, its holding line and the whole answer as one part, with a long wait between.
+const holdingLine = 'One moment.';
+const holdingLineAfterMs = 1500;
+// Wall-clock time of every holds trial so far, summed across invocations from results/. $2 of
+// sessions at $0.05 a minute; wall time runs longer than billed time, so the cap errs low.
+const holdsBudgetMs = 2_400_000;
+const holdsSpentPath = new URL('./results/holds-spent.jsonl', import.meta.url).pathname;
+
+// Each trial is a session of its own. The answers take turns, and a trial without a delegation runs
+// again. A trial that could cross the budget never starts.
+async function runHoldsProbe(): Promise<void> {
+  const trials = z.coerce.number().int().positive().parse(values.trials);
+  const holdMs = z.coerce.number().int().min(holdingLineAfterMs).parse(values.hold);
+  const line = values['no-line'] ? null : holdingLine;
+  let spentMs = await readHoldsSpentMs();
+  let valid = 0;
+  for (let attempt = 0; valid < trials && attempt < trials + 3; attempt++) {
+    if (spentMs + holdMs + 60_000 > holdsBudgetMs) {
+      console.log(`stopped: ${spentMs} ms spent of ${holdsBudgetMs} ms`);
+      return;
+    }
+    const answer = partsAnswers[valid % partsAnswers.length];
+    const text = [answer.leadIn, ...answer.statements].join(' ');
+    const trialLabel = `holds-${values.model}-${holdMs}-${line === null ? 'noline' : 'line'}-${valid}-${new Date().toISOString().replaceAll(':', '-').slice(0, 19)}`;
+    const startedAtMs = Date.now();
+    let delegated = false;
+    await withCall(
+      { key, label: trialLabel, session: { ...session, delegation: { acknowledgement_delay_ms: 800, type: 'client' } } },
+      async (call) => {
+        call.mark('hold_trial', { answer: text, answerSet: valid % partsAnswers.length, holdMs, line });
+        delegated = await runHoldTrial(call, answer.request, text, holdMs, line);
+      },
+    );
+    const trialMs = Date.now() - startedAtMs;
+    spentMs += trialMs;
+    await appendFile(holdsSpentPath, `${JSON.stringify({ label: trialLabel, trialMs })}\n`);
+    console.log(`${trialLabel}: ${delegated ? 'delegated' : 'no delegation'}, ${Math.round(trialMs / 1000)} s`);
+    if (delegated) {
+      valid++;
+    }
+  }
+}
+
+async function readHoldsSpentMs(): Promise<number> {
+  const file = Bun.file(holdsSpentPath);
+  if (!(await file.exists())) {
+    return 0;
+  }
+  return (await file.text())
+    .split('\n')
+    .filter((row) => row !== '')
+    .reduce((sumMs, row) => sumMs + z.object({ trialMs: z.number() }).parse(JSON.parse(row)).trialMs, 0);
+}
+
+// Both timers run from the delegation's arrival, as the calls module's would.
+async function runHoldTrial(
+  call: Call,
+  request: string,
+  text: string,
+  holdMs: number,
+  line: string | null,
+): Promise<boolean> {
+  await Bun.sleep(1500);
+  const delegated = await call.sideband.waitFor(
+    (event) => event.type === 'session.delegation.created',
+    delegationTimeoutMs,
+    await say(call, request),
+  );
+  const delegationID = z.object({ delegation: z.object({ id: z.string() }) }).safeParse(delegated?.event).data
+    ?.delegation.id;
+  if (!delegated || !delegationID) {
+    call.mark('no_delegation');
+    return false;
+  }
+  call.sideband.send({ content: '', delegation_id: delegationID, event_id: 'hold', type: 'session.thinking.append' });
+  if (line !== null) {
+    await Bun.sleep(Math.max(0, delegated.receivedAtMs + holdingLineAfterMs - Date.now()));
+    appendCommentary(call, null, 'holding_line', line);
+  }
+  await Bun.sleep(Math.max(0, delegated.receivedAtMs + holdMs - Date.now()));
+  const answerIndex = call.sideband.log.length;
+  appendCommentary(call, delegationID, 'answer', text);
+  await call.sideband.waitFor((event) => event.type === 'session.output_transcript.delta', 10_000, answerIndex);
+  await waitForQuiet(call.sideband, 3000, 30_000);
+  await Bun.sleep(2000);
+  return true;
+}
+
 // Runs last, so every constant above is initialised before a probe reads it.
 await match(scenario)
   .with('delegation', () => withCall({ key, label, session }, runDelegationProbe))
@@ -367,8 +460,9 @@ await match(scenario)
     ),
   )
   .with('parts', () => runPartsProbe())
+  .with('holds', () => runHoldsProbe())
   .exhaustive();
-if (scenario !== 'parts') {
+if (scenario !== 'parts' && scenario !== 'holds') {
   console.log(`logged results/${label}.jsonl`);
 }
 process.exit(0);
