@@ -50,9 +50,13 @@ async function installPinnedChrome(chrome: ChromePin, cacheDir: string): Promise
   const installDir = join(cacheDir, chrome.version);
   const chromePath = join(installDir, 'chrome-linux64', 'chrome');
 
-  const isInstalled = await Bun.file(chromePath).exists();
+  // The marker holds the checksum the install was checked against, so a new pin never reuses an
+  // install that the old pin checked.
+  const markerFile = Bun.file(join(installDir, 'pin-sha256'));
 
-  if (isInstalled) {
+  const isInstalled = await markerFile.exists();
+
+  if (isInstalled && (await markerFile.text()) === chrome.sha256) {
     return chromePath;
   }
 
@@ -73,7 +77,7 @@ async function installPinnedChrome(chrome: ChromePin, cacheDir: string): Promise
   }
 
   // Unpack beside the final folder and rename, so a stopped run leaves no half-built install.
-  const partDir = `${installDir}.part`;
+  const partDir = `${installDir}.part-${process.pid}`;
 
   await rm(partDir, { recursive: true, force: true });
   await mkdir(partDir, { recursive: true });
@@ -87,6 +91,9 @@ async function installPinnedChrome(chrome: ChromePin, cacheDir: string): Promise
   }
 
   await rm(join(partDir, 'chrome.zip'));
+
+  await Bun.write(join(partDir, 'pin-sha256'), chrome.sha256);
+
   await rm(installDir, { recursive: true, force: true });
   await rename(partDir, installDir);
 

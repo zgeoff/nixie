@@ -10,13 +10,21 @@ const root = join(import.meta.dir, '..', '..');
 const pinText = await Bun.file(join(root, 'chrome-pin.json')).text();
 
 const pin = parseChromePin(pinText);
-const playwrightPath = Bun.resolveSync('playwright-core/package.json', join(root, 'guests/render'));
-const browsersFile = Bun.file(join(playwrightPath, '..', 'browsers.json'));
 
-const browsers: unknown = await browsersFile.json();
+// Each guest resolves playwright-core from its own folder.
+for (const guest of ['guests/computer', 'guests/render']) {
+  const playwrightPath = Bun.resolveSync('playwright-core/package.json', join(root, guest));
+  const browsersFile = Bun.file(join(playwrightPath, '..', 'browsers.json'));
 
-for (const name of ['chromium', 'chromium-headless-shell']) {
-  checkChromeVersion(`playwright-core's ${name}`, getBrowserVersion(browsers, name), pin.version);
+  const browsers: unknown = await browsersFile.json();
+
+  for (const name of ['chromium', 'chromium-headless-shell']) {
+    checkChromeVersion(
+      `${guest}'s playwright-core ${name}`,
+      getBrowserVersion(browsers, name),
+      pin.version,
+    );
+  }
 }
 
 process.stdout.write(`playwright-core installs Chrome ${pin.version}\n`);
