@@ -257,6 +257,95 @@ test('it keeps a page from opening a connection by markup in a browser without t
   ]).toStrictEqual([{ trustedTypes: 'undefined', frame: 'SPAN', links: 0 }, 0, []]);
 });
 
+test.each([
+  { route: 'document.write arguments', browser: 'with', hasTrustedTypes: true },
+  { route: 'document.write calls', browser: 'with', hasTrustedTypes: true },
+  { route: 'document.writeln arguments', browser: 'with', hasTrustedTypes: true },
+  { route: 'a prefixed element name', browser: 'with', hasTrustedTypes: true },
+  { route: 'prefixed XML markup', browser: 'with', hasTrustedTypes: true },
+  { route: 'a new document', browser: 'with', hasTrustedTypes: true },
+  { route: 'an XSLT transform', browser: 'with', hasTrustedTypes: true },
+  { route: 'markup after replaced RegExp methods', browser: 'with', hasTrustedTypes: true },
+  { route: 'document.write arguments', browser: 'without', hasTrustedTypes: false },
+  { route: 'document.write calls', browser: 'without', hasTrustedTypes: false },
+  { route: 'document.writeln arguments', browser: 'without', hasTrustedTypes: false },
+  { route: 'a prefixed element name', browser: 'without', hasTrustedTypes: false },
+  { route: 'prefixed XML markup', browser: 'without', hasTrustedTypes: false },
+  { route: 'a new document', browser: 'without', hasTrustedTypes: false },
+  { route: 'an XSLT transform', browser: 'without', hasTrustedTypes: false },
+  { route: 'markup after replaced RegExp methods', browser: 'without', hasTrustedTypes: false },
+])(
+  'it keeps a page from opening a connection by a resource hint made through $route, $browser trusted types',
+  async (row) => {
+    const ctx = await setupTest({ hasTrustedTypes: row.hasTrustedTypes });
+
+    await ctx.openPage(`<script>
+    const evil = ${JSON.stringify(ctx.front.evilOrigin)};
+    const xhtml = 'http://www.w3.org/1999/xhtml';
+    const hint = '<li' + 'nk rel="preconnect" href="' + evil;
+
+    const attacks = {
+      'document.write arguments': () => document.write('<li', 'nk rel="preconnect" href="' + evil + '/arguments">'),
+      'document.write calls': () => {
+        document.write('<li');
+        document.write('nk rel="preconnect" href="' + evil + '/calls">');
+      },
+      'document.writeln arguments': () => document.writeln('<li', 'nk rel="preconnect" href="' + evil + '/writeln">'),
+      'a prefixed element name': () => {
+        const link = document.createElementNS(xhtml, 'x:link');
+        link.rel = 'preconnect';
+        link.href = evil + '/prefixed';
+        document.head.append(link);
+      },
+      'prefixed XML markup': () => {
+        const markup = '<x:link xmlns:x="' + xhtml + '" rel="preconnect" href="' + evil + '/xml"/>';
+        const parsed = new DOMParser().parseFromString(markup, 'application/xml');
+        document.head.append(document.importNode(parsed.documentElement, true));
+      },
+      'a new document': () => {
+        const link = document.implementation.createDocument(xhtml, 'link', null).documentElement;
+        link.setAttribute('rel', 'preconnect');
+        link.setAttribute('href', evil + '/document');
+        document.head.append(document.adoptNode(link));
+      },
+      'an XSLT transform': () => {
+        const sheet = '<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">' +
+          '<xsl:template match="/"><xsl:element name="link" namespace="' + xhtml + '">' +
+          '<xsl:attribute name="rel">preconnect</xsl:attribute>' +
+          '<xsl:attribute name="href">' + evil + '/xslt</xsl:attribute>' +
+          '</xsl:element></xsl:template></xsl:stylesheet>';
+        const processor = new XSLTProcessor();
+        processor.importStylesheet(new DOMParser().parseFromString(sheet, 'application/xml'));
+        const source = new DOMParser().parseFromString('<a/>', 'application/xml');
+        document.head.append(processor.transformToFragment(source, document));
+      },
+      'markup after replaced RegExp methods': () => {
+        RegExp.prototype[Symbol.replace] = function (text) { return text; };
+        RegExp.prototype.exec = function () { return null; };
+        const holder = document.createElement('div');
+        holder.innerHTML = hint + '/regexp">';
+        document.body.append(holder);
+      },
+    };
+
+    try {
+      attacks[${JSON.stringify(row.route)}]();
+    } catch (error) {}
+    setTimeout(() => nixie.send('settled', { links: document.querySelectorAll('link').length }), 1500);
+  </script>`);
+
+    await ctx.waitForPost('settled');
+
+    const posts = await ctx.readPosts();
+
+    expect([
+      posts.find((post) => post.name === 'settled')?.data,
+      ctx.front.evilConnections.count,
+      ctx.front.evilRequests,
+    ]).toStrictEqual([{ links: 0 }, 0, []]);
+  },
+);
+
 test('it keeps a page that opens on its own, outside the device page, from the origin of the app', async () => {
   const ctx = await setupTest();
 

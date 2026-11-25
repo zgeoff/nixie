@@ -209,23 +209,31 @@ The policy also sets `sandbox allow-scripts`. A person who opens the frame's add
 the same opaque origin, and the page reads none of the app's storage.
 
 The policy leaves two ways out open: a peer connection reaches any server its page names, and a link
-element opens a connection from a resource hint such as `preconnect`. A frame, object or embed
-element gives the page a second window that has neither guard. Three things close them:
+element opens a connection from a resource hint such as `preconnect`. No directive closes the
+second: Chrome opens a preconnect's connection under `connect-src 'none'`, and blocks only a
+prefetch. A frame, object or embed element gives the page a second window that has neither guard.
+Four things close them:
 
 - `device.region` refuses a page that holds a link, frame, object or embed element, because the page
   has no network and its styles go in a style element.
-- The bridge removes `RTCPeerConnection` and makes the page's `createElement` build a span for each
-  of those elements.
+- The bridge removes `RTCPeerConnection` and `XSLTProcessor`, which builds elements by name. It
+  makes `createElement`, `createElementNS` and `createDocument` build a span for each of those
+  elements, with a namespace prefix or without.
+- The bridge refuses `document.write` and `document.writeln`, because a page can split a start tag
+  across 2 writes, and no check of each write sees the whole tag.
 - The bridge cleans each string that the page turns into markup, so a string never brings the
-  elements back. A browser with trusted types gets this from the `default` policy that the bridge
-  makes, which the frame's policy requires and allows alone. A browser without trusted types gets it
-  from the bridge's own wrappers around `innerHTML`, `outerHTML`, `insertAdjacentHTML`, `srcdoc`,
-  `DOMParser`, `createContextualFragment` and `document.write`.
+  elements back, with or without a namespace prefix. A browser with trusted types gets this from the
+  `default` policy that the bridge makes, which the frame's policy requires and allows alone. That
+  policy also refuses each write, at the browser's own call, so no script can undo it. A browser
+  without trusted types gets it from the bridge's own wrappers around `innerHTML`, `outerHTML`,
+  `insertAdjacentHTML`, `srcdoc`, `DOMParser` and `createContextualFragment`.
 
-The browser test opens each of those against a server that counts connections, in a browser with
-trusted types and in one without, and expects none. The response also sets
-`x-dns-prefetch-control: off`. The frame builder and the bridge live in `libs/wire`, so the device
-page's own browser tests frame their pages with the same bridge.
+The bridge's guards call only the built-ins it took before the page's script ran, so a page that
+replaces a built-in, such as a method of `RegExp`, changes no guard. The browser test opens each of
+those ways against a server that counts connections, in a browser with trusted types and in one
+without, and expects none. The response also sets `x-dns-prefetch-control: off`. The frame builder
+and the bridge live in `libs/wire`, so the device page's own browser tests frame their pages with
+the same bridge.
 
 The frame's URL is built from the request's own origin, with the forwarded protocol and host
 cleaned, so a page behind a reverse proxy loads its images from the same origin as the frame. The
