@@ -2,6 +2,7 @@ import type { ConnectionTables } from '@heynixie/connections';
 import { startConnections } from '@heynixie/connections';
 import { buildHeldSpec } from '@heynixie/credentials/test-build';
 import type { ErasureRegistry, KeyStoreTables } from '@heynixie/log';
+import { readRecordKeys } from '@heynixie/log';
 import type { TasksContext } from '@heynixie/tasks';
 import type { HarnessLink } from '@heynixie/testing';
 import { buildNixieOperationSchemas } from '../part/build-nixie-operation-schemas';
@@ -44,6 +45,7 @@ export function registerCredentialOperations(
       link.waitAtFaultPoint(point, { kind: 'credential', id: args.tokenCredentialID });
 
     const held = await createTestCredentialStore(context, args.ca, {
+      afterKeyCreated: () => waitAt('credential.refresh.key_created'),
       beforeTokenWrite: () => waitAt('credential.refresh.before_save'),
       afterTokenSaved: () => waitAt('credential.refresh.token_saved'),
     });
@@ -108,6 +110,25 @@ export function registerCredentialOperations(
       .execute();
 
     return stored.filter((row) => credentialKeys.has(row.key_id)).length;
+  });
+
+  // The key IDs that a mark names, which are the keys that may belong to no row.
+  link.registerOperation('readCredentialMarks', schemas.readCredentialMarks, async () => {
+    const marks = await context.log.writer.db
+      .$extendTables<ConnectionTables>()
+      .selectFrom('key_marks')
+      .select('key_id')
+      .execute();
+
+    return marks.map((row) => row.key_id);
+  });
+
+  // Whether the key store holds this key, which is the check of a leak that a count of the keys that
+  // rows and marks name cannot make once a key has lost both.
+  link.registerOperation('hasCredentialKey', schemas.hasCredentialKey, async (args) => {
+    const keys = await readRecordKeys(context.log, [args.keyID]);
+
+    return keys.has(args.keyID);
   });
 
   link.registerOperation('forgetConnection', schemas.forgetConnection, async (args) => {

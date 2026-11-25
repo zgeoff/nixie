@@ -18,11 +18,14 @@ export async function startConnectionsPart(
   const log = parts.context.log;
   const definitions = parts.context.definitions;
   const now = () => parts.context.clock.now();
-  const recorder = createCredentialRecorder({ log, definitions });
-  const backend = createDatabaseHeldBackend({ log, definitions, recorder, now });
 
-  parts.heldSlot.bind({ backend, recorder });
+  const wiring = parts.heldSlot.bind(() => {
+    const recorder = createCredentialRecorder({ log, definitions });
 
+    return { backend: createDatabaseHeldBackend({ log, definitions, recorder, now }), recorder };
+  });
+
+  const backend = wiring.backend;
   const store = parts.credentials.store;
   const connections = startConnections({ log, definitions, store, backend, erasure, now });
 

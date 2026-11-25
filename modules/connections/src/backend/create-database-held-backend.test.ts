@@ -31,23 +31,32 @@ test('it saves a token and reads it back with its state and account', async () =
   const connection = await ctx.seedConnection();
   const token = await ctx.held.backend.readToken(connection.tokenRef.credentialID);
 
-  expect(token).toMatchObject({
-    clientCredentialID: connection.clientRef.credentialID,
-    accountSubject: null,
-    state: { status: 'active', failures: 0 },
-  });
+  expect([
+    token?.clientCredentialID === connection.clientRef.credentialID,
+    token?.accountSubject,
+    token?.state.status,
+    token?.state.failures,
+  ]).toStrictEqual([true, null, 'active', 0]);
 });
 
 test('it seals the refresh token and the client secret under keys of their own', async () => {
   const ctx = await setupTest();
   const connection = await ctx.seedConnection();
   const row = await ctx.readRow(connection.tokenRef.credentialID);
+  const client = await ctx.readClientRow(connection.clientRef.credentialID);
 
   const leaksToken = Buffer.from(row?.refresh_token_sealed ?? []).includes('fake-refresh-token-1');
+  const leaksSecret = Buffer.from(client?.secret_sealed ?? []).includes('fake-client-secret-value');
+  const keyIDs = [client?.key_id, row?.key_id, row?.token_key_id];
 
-  expect([leaksToken, row?.token_key_id === row?.key_id, row?.token_key_id !== null]).toStrictEqual(
-    [false, false, true],
-  );
+  expect([
+    row?.refresh_token_sealed !== null,
+    client?.secret_sealed !== null,
+    leaksToken,
+    leaksSecret,
+    keyIDs.includes(undefined) || keyIDs.includes(null),
+    new Set(keyIDs).size,
+  ]).toStrictEqual([true, true, false, false, false, 3]);
 });
 
 test('it keeps the access token in memory, so a restart finds none', async () => {
@@ -56,9 +65,9 @@ test('it keeps the access token in memory, so a restart finds none', async () =>
   const before = await ctx.held.backend.readToken(connection.tokenRef.credentialID);
   const after = await ctx.restart().readToken(connection.tokenRef.credentialID);
 
-  expect([before?.accessToken === 'fake-access-token-1', after?.accessToken]).toStrictEqual([
+  expect([before?.accessToken === 'fake-access-token-1', after?.accessToken === '']).toStrictEqual([
     true,
-    '',
+    true,
   ]);
 });
 

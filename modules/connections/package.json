@@ -20,6 +20,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@heynixie/turn-inputs": "workspace:*",
     "@zgeoff/testing": "catalog:"
   }
 }

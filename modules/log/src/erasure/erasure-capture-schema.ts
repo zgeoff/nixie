@@ -22,9 +22,10 @@ const sessionCauseSchema = z.union([
 const purgeSchema = z.strictObject({ recordSequence: z.int(), itemIDs: z.array(z.string()) });
 const threadList = z.array(z.string());
 const allThreads = z.literal('all');
+const noThreads = z.literal('none');
 
 const turnInputsSchema = z.strictObject({
-  threads: z.union([threadList, allThreads]),
+  threads: z.union([threadList, allThreads, noThreads]),
   cleaned: z.boolean(),
   floor: z.int().nullable(),
 });

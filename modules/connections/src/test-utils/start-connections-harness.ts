@@ -11,7 +11,7 @@ import type { Connections } from '../start-connections';
 import { startConnections } from '../start-connections';
 import type { DatabaseTestStore } from '../test-build/create-database-test-store';
 import { createDatabaseTestStore } from '../test-build/create-database-test-store';
-import type { BackendHooks, ConnectionRow, ConnectionTables } from '../types';
+import type { BackendHooks, ClientRow, ConnectionRow, ConnectionTables } from '../types';
 import type { HarnessEffects } from './build-harness-effects';
 import { buildHarnessEffects } from './build-harness-effects';
 
@@ -19,8 +19,16 @@ type MutableHooks = {
   -readonly [Name in keyof BackendHooks]: BackendHooks[Name];
 };
 
+export interface ConnectionsHarnessOptions {
+  // how long a request to the provider's token endpoint may take, in ms
+  readonly tokenRequestTimeoutMs?: number;
+}
+
 export interface ConnectionsHarness {
   readonly log: Log;
+
+  // the data directory that holds nixie.db and the key store
+  readonly dataDir: string;
   readonly provider: FakeOAuthProvider;
   readonly held: DatabaseTestStore;
   readonly runner: ErasureRunnerControl;
@@ -38,13 +46,18 @@ export interface ConnectionsHarness {
   // the stored row of a connection, which a test reads to see what a forget left in it
   readonly readRow: (connectionID: string) => Promise<ConnectionRow | null>;
 
+  // the stored row of an OAuth client, which a test reads to see how its secret is sealed
+  readonly readClientRow: (clientID: string) => Promise<ClientRow | null>;
+
   // what a test sets, to hold the backend part way through a save
   readonly hooks: MutableHooks;
 }
 
 // A real log on disk, a fake Google provider, the credential store over the database backend, and an
 // erasure runner whose effects touch nothing, with the connections module registered on it.
-export async function startConnectionsHarness(): Promise<ConnectionsHarness> {
+export async function startConnectionsHarness(
+  options: ConnectionsHarnessOptions = {},
+): Promise<ConnectionsHarness> {
   const provider = await startFakeOAuthProvider();
 
   const clock = createFakeClock({ startMs: Date.parse('2026-11-20T09:00:00Z') });
@@ -66,7 +79,7 @@ export async function startConnectionsHarness(): Promise<ConnectionsHarness> {
     log: testLog.log,
     ca: provider.ca,
     now: () => clock.now(),
-    tokenRequestTimeoutMs: 1000,
+    tokenRequestTimeoutMs: options.tokenRequestTimeoutMs ?? 1000,
     hooks,
   });
 
@@ -95,6 +108,7 @@ export async function startConnectionsHarness(): Promise<ConnectionsHarness> {
 
   return {
     log: testLog.log,
+    dataDir: testLog.dataDir,
     provider,
     held,
     runner,
@@ -117,6 +131,16 @@ export async function startConnectionsHarness(): Promise<ConnectionsHarness> {
         .selectFrom('connections')
         .selectAll()
         .where('connection_id', '=', connectionID)
+        .executeTakeFirst();
+
+      return row ?? null;
+    },
+    readClientRow: async (clientID) => {
+      const row = await testLog.log.writer.db
+        .$extendTables<ConnectionTables>()
+        .selectFrom('oauth_clients')
+        .selectAll()
+        .where('oauth_client_id', '=', clientID)
         .executeTakeFirst();
 
       return row ?? null;

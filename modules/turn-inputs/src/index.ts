@@ -1,5 +1,6 @@
 export type { InputLogSetting } from './state/pick-input-log-state';
 export type { ForgetScope } from './removal/pick-forgotten-inputs';
+export { pickForgottenInputs } from './removal/pick-forgotten-inputs';
 export type { LoggedInput, LoggedMiss, TurnInputList } from './reading/list-turn-inputs';
 export type { OpenTurnInputResult } from './reading/open-turn-input';
 export type { SetInputLogRequest, SetInputLogResult } from './state/set-input-log';

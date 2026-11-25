@@ -36,6 +36,10 @@ export async function writeToken(
   const existing = await readConnectionRow(context, write.credentialID);
   const sealed = await sealToken(context, write.token, existing);
 
+  if (sealed === null) {
+    return 'removed';
+  }
+
   const outcome = await withWriteTransaction(context.log.writer, (tx) =>
     writeInTransaction(tx, context, { ...write, sealed }),
   );
@@ -76,11 +80,12 @@ interface SealedToken {
   readonly account: SealedAccount;
 }
 
+// Returns null when the account key is gone, which only a forget of the connection does.
 async function sealToken(
   context: BackendContext,
   token: HeldToken,
   existing: ConnectionRow | null,
-): Promise<SealedToken> {
+): Promise<SealedToken | null> {
   const keys = await readRecordKeys(context.log, [token.keyID]);
 
   const tokenKey = keys.get(token.keyID);
@@ -96,14 +101,16 @@ async function sealToken(
           token.refreshToken,
         );
 
-  return { refreshSealed, account: await sealAccount(context, token, existing) };
+  const account = await sealAccount(context, token, existing);
+
+  return account === null ? null : { refreshSealed, account };
 }
 
 async function sealAccount(
   context: BackendContext,
   token: HeldToken,
   existing: ConnectionRow | null,
-): Promise<SealedAccount> {
+): Promise<SealedAccount | null> {
   const minted: RecordKey | null = existing === null ? await mintKey(context) : null;
   const keyID = existing?.key_id ?? minted?.keyID;
 
@@ -117,7 +124,9 @@ async function sealAccount(
 
   const key = minted?.key ?? stored.get(keyID);
 
-  invariant(key, 'an account is sealed under a key that the backend made');
+  if (key === undefined || key === null) {
+    return null;
+  }
 
   const sealed = await sealValue(
     key,

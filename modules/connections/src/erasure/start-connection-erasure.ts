@@ -42,7 +42,9 @@ export async function startConnectionErasure(
       sandboxCallIDs: [],
       purges: [],
       sessionCause: { connectionID: row.connection_id },
-      turnInputs: { threads: [], cleaned: false, floor: null },
+
+      // A token reaches no session and no turn input, so a forget removes none of them.
+      turnInputs: { threads: 'none', cleaned: false, floor: null },
     },
   };
 }
