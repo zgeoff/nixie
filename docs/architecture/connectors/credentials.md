@@ -12,10 +12,10 @@ host. No tool or connector ever holds a value. A credential's value never enters
 prompt, a log line, a record or an error message. [Two secrets](#references-and-the-resolver) stay
 outside the store.
 
-A release server's store has one backend, the secrets file, which the
-[server](../deployment/server.md#configuration-and-secrets) decrypts at start. It holds the search,
+The store has 2 backends. The secrets file, which the
+[server](../deployment/server.md#configuration-and-secrets) decrypts at start, holds the search,
 image and model credentials, the spend gateway's token, and the user's name and pronouns, settings
-the prompt shows by design. Only the test build adds a held backend, for the
+the prompt shows by design. The [credential database](credential-database.md) holds the
 [OAuth tokens](#oauth-tokens) that nixie changes at runtime.
 
 ```mermaid
@@ -107,13 +107,14 @@ connection and the body cap apply. The client secret, the authorization code, th
 the refresh token go in the request body, never in a header, and no connector holds them. The
 fetcher cuts the client secret from the reply and from any error.
 
-The held backend interface is `HeldBackend`. It stores a client's secret, a token with its state,
-and the removal counter, and it keeps each token's key under a random UUID. `writeToken` saves a
-token only when the credential's counter still equals the one the caller read, and `remove` deletes
-the credential and advances the counter in one transaction. `writeState` takes the counter too, so a
-late result of an older binding never changes the status of a credential that was removed and
-connected again. `writeToken` also takes the record of a refresh, `credential.refresh_saved`, and
-commits it with the token, so a crash leaves both or neither.
+The held backend interface is `HeldBackend`, and [the credential database](credential-database.md)
+is its database backend. It stores a client's secret, a token with its state, and the removal
+counter, and it keeps each token's key under a random UUID. `writeToken` saves a token only when the
+credential's counter still equals the one the caller read, and `remove` deletes the credential and
+advances the counter in one transaction. `writeState` takes the counter too, so a late result of an
+older binding never changes the status of a credential that was removed and connected again.
+`writeToken` also takes the record of a refresh, `credential.refresh_saved`, and commits it with the
+token, so a crash leaves both or neither.
 
 A token records the `sub` of the account its ID token named at the credential's first use. A second
 code exchanged into the same credential that names another account, or none, marks the credential
@@ -178,10 +179,9 @@ At start, `recover` reads the log for each `credential.refresh_started` that no 
 discarded or lost record closes. The provider may hold a token nixie never saved, and revoking the
 spent one may not end it, so `recover` marks the credential `needs_consent` and writes
 `credential.refresh_lost` for the refresh. The next start finds nothing. The check reads the log
-alone, so it holds after a crash that loses the held backend's memory. A test build of the server
-runs `recover` at each start, over a backend in a file of the data directory, and the crash suite
-`recover-credential-refresh.test.ts` kills the process during a refresh and checks the status after
-the restart.
+alone, so it holds after a crash that loses the held backend's memory. Each start runs `recover`,
+and the crash suite `recover-credential-refresh.test.ts` kills the process during a refresh and
+checks the status after the restart.
 
 ## Grants
 
