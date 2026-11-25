@@ -27,11 +27,19 @@ export interface CodingAdapter {
   readonly stop: (session: SessionRef) => Promise<AdapterReply<{ stopped: boolean }>>;
 
   // Reads the event trail from the cursor, a page at a time, each page after the last. A page with
-  // no events means the read caught up.
+  // no events means the read caught up, and a read that has more pages to read never gives one.
+  // `readBound` names the sessions to read the state of now and then, as each page asks.
   readonly events: (
     cursor: string | null,
     signal: AbortSignal,
+    readBound: () => Promise<readonly BoundSession[]>,
   ) => AsyncIterable<{ readonly cursor: string; readonly events: readonly SessionEvent[] }>;
+}
+
+// A session that an open coding task binds, with the state its task last saw.
+export interface BoundSession {
+  readonly id: string;
+  readonly state: SessionState;
 }
 
 export interface SessionBrief {

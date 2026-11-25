@@ -41,6 +41,9 @@ export function buildATCAdapter(options: ATCAdapterOptions): CodingAdapter {
 
   const known = new Map<string, KnownSession>();
 
+  // the cursor each unfinished start read before its spawn, so a replay of the spawn keeps it
+  const startCursors = new Map<string, string>();
+
   const run = async <Value>(
     tool: string,
     args: Readonly<Record<string, unknown>>,
@@ -58,6 +61,12 @@ export function buildATCAdapter(options: ATCAdapterOptions): CodingAdapter {
     return page.status === 'ok' ? { status: 'ok', value: page.value.cursor } : page;
   };
 
+  const isConfiguredTarget = (entry: z.infer<typeof atcSchemas.sessionEntry>): boolean =>
+    options.targets.some(
+      (target) =>
+        target.daemon === entry.locator.daemon && target.target === entry.locator.targetID,
+    );
+
   const mapState = (id: string, entry: z.infer<typeof atcSchemas.sessionEntry>): SessionState => {
     const state = mapATCState(entry.state, entry.lifecycle?.harness);
 
@@ -66,6 +75,28 @@ export function buildATCAdapter(options: ATCAdapterOptions): CodingAdapter {
     }
 
     return state ?? known.get(id)?.state ?? 'running';
+  };
+
+  // A replay that read the cursor again would skip the events since the first spawn. A cursor that
+  // cannot be read may hide a spawn that ran, so it gives the unknown outcome, which keeps the key.
+  const readStartCursor = async (idempotencyKey: string): Promise<AdapterReply<string>> => {
+    const kept = startCursors.get(idempotencyKey);
+
+    if (kept !== undefined) {
+      return { status: 'ok', value: kept };
+    }
+
+    const cursor = await readCursor();
+
+    if (cursor.status === 'ok') {
+      startCursors.set(idempotencyKey, cursor.value);
+
+      return cursor;
+    }
+
+    return cursor.status === 'refused' && cursor.canClear
+      ? { status: 'unknown', reason: cursor.reason }
+      : cursor;
   };
 
   const readSession = async (session: SessionRef) => {
@@ -90,7 +121,7 @@ export function buildATCAdapter(options: ATCAdapterOptions): CodingAdapter {
   return {
     id: 'atc',
     start: async (brief, idempotencyKey) => {
-      const cursor = await readCursor();
+      const cursor = await readStartCursor(idempotencyKey);
 
       if (cursor.status !== 'ok') {
         return cursor;
@@ -102,6 +133,10 @@ export function buildATCAdapter(options: ATCAdapterOptions): CodingAdapter {
         atcSchemas.sessionEntry,
         idempotencyKey,
       );
+
+      if (spawned.status !== 'unknown') {
+        startCursors.delete(idempotencyKey);
+      }
 
       if (spawned.status !== 'ok') {
         return spawned;
@@ -121,6 +156,10 @@ export function buildATCAdapter(options: ATCAdapterOptions): CodingAdapter {
 
       if (read.status !== 'ok') {
         return read;
+      }
+
+      if (!isConfiguredTarget(read.value.session)) {
+        return { status: 'refused', canClear: false, reason: 'no_such_session' };
       }
 
       const cursor = await readCursor();
@@ -143,13 +182,8 @@ export function buildATCAdapter(options: ATCAdapterOptions): CodingAdapter {
         return listed;
       }
 
-      const sessions = listed.value.sessions.flatMap((entry): ReachableSession[] => {
-        const isConfigured = options.targets.some(
-          (target) =>
-            target.daemon === entry.locator.daemon && target.target === entry.locator.targetID,
-        );
-
-        return isConfigured
+      const sessions = listed.value.sessions.flatMap((entry): ReachableSession[] =>
+        isConfiguredTarget(entry)
           ? [
               {
                 session: { id: entry.id },
@@ -159,8 +193,8 @@ export function buildATCAdapter(options: ATCAdapterOptions): CodingAdapter {
                 state: mapState(entry.id, entry),
               },
             ]
-          : [];
-      });
+          : [],
+      );
 
       return { status: 'ok', value: sessions };
     },
@@ -237,7 +271,7 @@ export function buildATCAdapter(options: ATCAdapterOptions): CodingAdapter {
         ? { status: 'ok', value: { stopped: stopped.value.stopped } }
         : stopped;
     },
-    events: (cursor, signal) =>
+    events: (cursor, signal, readBound) =>
       readATCEvents(
         {
           call,
@@ -249,6 +283,7 @@ export function buildATCAdapter(options: ATCAdapterOptions): CodingAdapter {
         },
         cursor,
         signal,
+        readBound,
       ),
   };
 }

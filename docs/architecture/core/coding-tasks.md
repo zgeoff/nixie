@@ -154,11 +154,23 @@ the `atc_token` entry of the secrets file, like every other secret, and a config
 no such entry stops the server at start. The secrets file's `atc_token` entry is optional, and the
 secret scan treats its value as one of nixie's own values.
 
-The adapter keeps no state of its own besides a map of the sessions it has seen start or join, which
-it needs to read their state, because the source's `events` call carries no list of bound sessions.
-It calls the gateway only through its documented tools, refuses a gateway whose version it does not
-support, and maps each failure to a value of the adapter interface. A session's own text reaches
-nixie only as untrusted data.
+The adapter keeps 2 maps in memory: the state of each session it has seen, and the trail cursor of
+each start that may have spawned. The source's `events` call carries a read of the bound sessions,
+and the adapter reads the state of each bound session that has not ended every minute, and at once
+for a session it has not seen since it started. A state read that fails still counts as a read, so a
+failing session never makes the adapter poll without waiting. A start whose cursor read fails, or
+whose spawn gives no answer, returns the unknown outcome, so the queue keeps the attempt's key and a
+replay finds the first session. The replay reuses the first attempt's cursor, so the catch-up from
+it skips no event. After a server restart the replay reads a fresh cursor, so the catch-up can miss
+events that the session wrote between the first spawn and the replay.
+
+A join refuses a session whose target the config does not list, even when a saved short ID names it.
+The adapter yields a page of the trail only when the page holds an event or the read caught up, so
+the source's catch-up never stops at a page of events that the adapter drops while more pages wait.
+
+The adapter calls the gateway only through its documented tools, refuses a gateway whose version it
+does not support, and maps each failure to a value of the adapter interface. A session's own text
+reaches nixie only as untrusted data.
 
 The server wires the module in four places:
 

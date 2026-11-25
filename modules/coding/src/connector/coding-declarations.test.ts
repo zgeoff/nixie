@@ -78,6 +78,15 @@ test.each([
     outcome: 'allow',
     rule: 'allow-stop-started-sessions',
   },
+  {
+    label: 'a stop of a started session that its task does not hold',
+    tool: 'coding.stop',
+    toolList: ['coding.stop'],
+    args: { session: 'atc:cloud.3f9a1c2e.2', origin: 'started' },
+    destinations: ['atc:cloud.3f9a1c2e.2'],
+    outcome: 'allow',
+    rule: 'allow-stop-started-sessions',
+  },
 ])('it decides $label as $outcome, under the starter rule $rule', async (row) => {
   const ctx = setupTest();
 

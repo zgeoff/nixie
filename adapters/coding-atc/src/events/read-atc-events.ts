@@ -1,4 +1,4 @@
-import type { SessionEvent, SessionState } from '@heynixie/coding';
+import type { BoundSession, SessionEvent, SessionState } from '@heynixie/coding';
 import type { Logger } from '@heynixie/logger';
 import { atcSchemas } from '../atc-schemas';
 import type { CallATC } from '../call/make-atc-caller';
@@ -30,18 +30,28 @@ export interface EventsPage {
 }
 
 // Reads atc's trail from the cursor, a page at a time, with no session filter. A page after one
-// with events comes at once, empty when the read caught up; any other page waits for an event.
-// A session with a trail event, or not read in `stateReadMs`, gets a state read.
+// with events comes at once, empty when the read caught up; any other page waits for an event. A
+// page with more after it and no events goes unyielded. A bound session gets a state read.
 export async function* readATCEvents(
   deps: EventsDependencies,
   cursor: string | null,
   signal: AbortSignal,
+  readBound: () => Promise<readonly BoundSession[]>,
 ): AsyncGenerator<EventsPage> {
   let current = cursor;
   let isDue = true;
 
   while (!signal.aborted) {
-    const waitMs = isDue ? 0 : Math.ceil(Math.min(deps.waitMs, getMsToNextStateRead(deps)));
+    const bound = current === null ? [] : await readBound();
+
+    registerBound(deps, bound);
+
+    const boundIDs = new Set(bound.map((session) => session.id));
+
+    const waitMs = isDue
+      ? 0
+      : Math.ceil(Math.min(deps.waitMs, getMsToNextStateRead(deps, boundIDs)));
+
     const args = current === null ? { limit: 1 } : { cursor: current, limit: 200, waitMs };
 
     const outcome = await deps.call('atc_events_read', args, signal);
@@ -64,21 +74,37 @@ export async function* readATCEvents(
 
     const events = [
       ...buildSessionEvents(page.events),
-      ...(await readStateEvents(deps, collectStateReads(deps, page.events), signal)),
+      ...(await readStateEvents(deps, collectStateReads(deps, page.events, boundIDs), signal)),
     ];
 
     current = page.cursor;
+
+    if (page.more && events.length === 0) {
+      isDue = true;
+      continue;
+    }
+
     isDue = page.more || events.length > 0;
     yield { cursor: page.cursor, events };
   }
 }
 
-function getMsToNextStateRead(deps: EventsDependencies): number {
+// A bound session that the adapter has not seen yet is read at once: its state may have changed
+// while nixie was down.
+function registerBound(deps: EventsDependencies, bound: readonly BoundSession[]): void {
+  for (const session of bound) {
+    if (!deps.known.has(session.id)) {
+      deps.known.set(session.id, { state: session.state, readAtMs: 0 });
+    }
+  }
+}
+
+function getMsToNextStateRead(deps: EventsDependencies, boundIDs: ReadonlySet<string>): number {
   const nowMs = deps.now();
 
-  const dueIn = [...deps.known.values()]
-    .filter((known) => known.state !== 'ended')
-    .map((known) => known.readAtMs + deps.stateReadMs - nowMs);
+  const dueIn = [...deps.known]
+    .filter(([id, known]) => boundIDs.has(id) && known.state !== 'ended')
+    .map(([, known]) => known.readAtMs + deps.stateReadMs - nowMs);
 
   return Math.max(0, Math.min(Number.POSITIVE_INFINITY, ...dueIn));
 }
@@ -114,12 +140,15 @@ async function readStateEvent(
 
   const nowMs = deps.now();
   const read = pickStateRead(deps, outcome);
+  const known = deps.known.get(id);
 
   if (read === null) {
+    if (known !== undefined) {
+      deps.known.set(id, { ...known, readAtMs: nowMs });
+    }
+
     return null;
   }
-
-  const known = deps.known.get(id);
 
   deps.known.set(id, { state: read.state, readAtMs: nowMs });
 
@@ -171,12 +200,18 @@ function pickStateRead(
 function collectStateReads(
   deps: EventsDependencies,
   trail: readonly { readonly session: string }[],
+  boundIDs: ReadonlySet<string>,
 ): string[] {
   const nowMs = deps.now();
 
   const due = [...deps.known]
-    .filter(([, known]) => known.state !== 'ended' && nowMs - known.readAtMs >= deps.stateReadMs)
+    .filter(
+      ([id, known]) =>
+        boundIDs.has(id) && known.state !== 'ended' && nowMs - known.readAtMs >= deps.stateReadMs,
+    )
     .map(([id]) => id);
 
-  return [...new Set([...trail.map((event) => event.session).filter((id) => id !== ''), ...due])];
+  return [
+    ...new Set([...trail.map((event) => event.session).filter((id) => boundIDs.has(id)), ...due]),
+  ];
 }

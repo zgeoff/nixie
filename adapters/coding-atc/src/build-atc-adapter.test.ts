@@ -1,5 +1,5 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import type { SessionEvent } from '@heynixie/coding';
+import type { BoundSession, SessionEvent } from '@heynixie/coding';
 import { buildATCAdapter } from './build-atc-adapter';
 import { startFakeATCGateway } from './test-utils';
 import type { FakeATCGatewayOptions } from './test-utils';
@@ -23,12 +23,18 @@ async function setupTest(options: FakeATCGatewayOptions & { adapterToken?: strin
     stateReadMs: 20,
   });
 
-  const readPages = async (cursor: string | null, pages: number) => {
+  const readPages = async (
+    cursor: string | null,
+    pages: number,
+    bound: readonly BoundSession[] = [],
+  ) => {
     const controller = new AbortController();
 
     const collected: { cursor: string; events: readonly SessionEvent[] }[] = [];
 
-    for await (const page of adapter.events(cursor, controller.signal)) {
+    for await (const page of adapter.events(cursor, controller.signal, () =>
+      Promise.resolve(bound),
+    )) {
       collected.push(page);
 
       if (collected.length === pages) {
@@ -99,6 +105,54 @@ test('it gives the first answer to a spawn that a key repeats, and starts one se
   expect(ctx.gateway.sessions.size).toBe(1);
 });
 
+test('it keeps the cursor of a start whose spawn answer was lost, so the replay catches up from it', async () => {
+  const ctx = await setupTest();
+
+  const brief = {
+    name: 'Login fix',
+    prompt: 'Fix the login test.',
+    repo: { url: 'https://example.net/acme/app.git', ref: 'main' },
+    target: { daemon: 'cloud', target: 'cloud' },
+  };
+
+  ctx.gateway.failNext('atc_session_spawn', { kind: 'code', code: 'daemon_unavailable' });
+
+  const lost = await ctx.adapter.start(brief, 'action-1');
+
+  ctx.gateway.emit({
+    session: 'cloud.3f9a1c2e.a',
+    kind: 'note',
+    at: 1,
+    detail: 'x',
+    label: 'progress',
+    text: 'Early.',
+  });
+
+  const replay = await ctx.adapter.start(brief, 'action-1');
+
+  expect([lost.status, replay.status === 'ok' ? replay.value.fromCursor : null]).toStrictEqual([
+    'unknown',
+    'g0',
+  ]);
+});
+
+test('it gives the unknown outcome to a start whose cursor read failed, so the next attempt keeps the key', async () => {
+  const ctx = await setupTest();
+
+  const brief = {
+    name: 'Login fix',
+    prompt: 'Fix the login test.',
+    repo: { url: 'https://example.net/acme/app.git', ref: 'main' },
+    target: { daemon: 'cloud', target: 'cloud' },
+  };
+
+  ctx.gateway.failNext('atc_events_read', { kind: 'code', code: 'daemon_unavailable' });
+
+  const reply = await ctx.adapter.start(brief, 'action-1');
+
+  expect(reply).toStrictEqual({ status: 'unknown', reason: 'daemon_unavailable' });
+});
+
 test('it lists only the sessions of a configured target', async () => {
   const ctx = await setupTest();
 
@@ -137,6 +191,16 @@ test('it joins a running session with the cursor of the trail and sends the sess
     'atc_session_get',
     'atc_events_read',
   ]);
+});
+
+test('it refuses to join a session on a target that the config no longer lists', async () => {
+  const ctx = await setupTest();
+
+  ctx.gateway.addSession({ id: 'laptop.77aa00bb.b', daemon: 'laptop', targetID: 'local' });
+
+  const reply = await ctx.adapter.join({ id: 'laptop.77aa00bb.b' });
+
+  expect(reply).toStrictEqual({ status: 'refused', canClear: false, reason: 'no_such_session' });
 });
 
 test('it refuses to join a session that atc does not know', async () => {
@@ -402,7 +466,7 @@ test('it builds answers and notes from the trail, with the key of the daemon cur
     { session: 'cloud.3f9a1c2e.a', kind: 'turn-done', at: Date.UTC(2026, 10, 25), detail: null },
   );
 
-  const pages = await ctx.readPages('g0', 1);
+  const pages = await ctx.readPages('g0', 1, [{ id: 'cloud.3f9a1c2e.a', state: 'running' }]);
 
   expect(pages).toStrictEqual([
     {
@@ -472,7 +536,7 @@ test('it drops a trail event of a kind it does not know, and a note with a label
     { session: 'cloud.3f9a1c2e.a', kind: 'note', at: 1, detail: 'x', label: 'chatter', text: 'x' },
   );
 
-  const [page] = await ctx.readPages('g0', 1);
+  const [page] = await ctx.readPages('g0', 1, [{ id: 'cloud.3f9a1c2e.a', state: 'running' }]);
 
   expect(page?.events.map((event) => event.kind)).toStrictEqual(['state']);
 });
@@ -490,11 +554,13 @@ test('it yields a state event only when a session state changed, and reads a ses
     session.state = 'done';
   }
 
-  const changed = await ctx.readPages('g0', 3);
+  const bound: BoundSession[] = [{ id: 'cloud.3f9a1c2e.a', state: 'running' }];
+
+  const changed = await ctx.readPages('g0', 3, bound);
 
   ctx.gateway.sessions.delete('cloud.3f9a1c2e.a');
 
-  const gone = await ctx.readPages('g0', 3);
+  const gone = await ctx.readPages('g0', 3, bound);
 
   expect([
     changed
@@ -506,16 +572,88 @@ test('it yields a state event only when a session state changed, and reads a ses
   ]).toStrictEqual([[['state', 'idle']], [['state', 'gone']]]);
 });
 
-test('it reads the next page at once while the gateway says more events wait', async () => {
+test('it reads the next page at once while the gateway says more events wait, and yields only a page with events or the page that caught up', async () => {
   const ctx = await setupTest();
 
   for (let index = 0; index < 205; index += 1) {
     ctx.gateway.emit({ session: '', kind: 'other', at: 1, detail: null });
   }
 
-  const pages = await ctx.readPages('g0', 2);
+  const pages = await ctx.readPages('g0', 1);
 
-  expect(pages.map((page) => page.cursor)).toStrictEqual(['g200', 'g205']);
+  expect(pages.map((page) => page.cursor)).toStrictEqual(['g205']);
+});
+
+test('it yields a note on a later page when the first page holds only events it drops', async () => {
+  const ctx = await setupTest();
+
+  for (let index = 0; index < 205; index += 1) {
+    ctx.gateway.emit({ session: '', kind: 'other', at: 1, detail: null });
+  }
+
+  ctx.gateway.emit({
+    session: 'cloud.3f9a1c2e.a',
+    kind: 'note',
+    at: 1,
+    detail: 'x',
+    label: 'progress',
+    text: 'Halfway.',
+  });
+
+  const [page] = await ctx.readPages('g0', 1);
+
+  expect(page?.events.map((event) => event.kind)).toStrictEqual(['note']);
+});
+
+test('it reads the state of a bound session that the trail never names, from the first read after a restart', async () => {
+  const ctx = await setupTest();
+
+  ctx.gateway.addSession({ id: 'cloud.3f9a1c2e.a', state: 'done' });
+
+  const [page] = await ctx.readPages('g0', 1, [{ id: 'cloud.3f9a1c2e.a', state: 'running' }]);
+
+  expect(page?.events).toStrictEqual([
+    {
+      kind: 'state',
+      state: 'idle',
+      question: null,
+      session: 'cloud.3f9a1c2e.a',
+      eventKey: expect.stringMatching(/^cloud\.3f9a1c2e\.a\|state\|idle\|/u),
+      at: expect.any(String),
+    },
+  ]);
+});
+
+test('it reads no state of a session that no task binds', async () => {
+  const ctx = await setupTest();
+
+  ctx.gateway.addSession({ id: 'cloud.3f9a1c2e.a' });
+
+  ctx.gateway.emit({
+    session: 'cloud.3f9a1c2e.a',
+    kind: 'note',
+    at: 1,
+    detail: 'x',
+    label: 'progress',
+    text: 'Halfway.',
+  });
+
+  await ctx.readPages('g0', 1);
+
+  expect(ctx.gateway.calls.map((call) => call.tool)).toStrictEqual(['atc_events_read']);
+});
+
+test('it waits for the state read interval after a state read that failed, and does not read again at once', async () => {
+  const ctx = await setupTest({ now: () => 1000 });
+
+  ctx.gateway.addSession({ id: 'cloud.3f9a1c2e.a' });
+  ctx.gateway.failNext('atc_session_get', { kind: 'code', code: 'daemon_unavailable' });
+
+  await ctx.readPages('g0', 2, [{ id: 'cloud.3f9a1c2e.a', state: 'running' }]);
+
+  const reads = ctx.gateway.calls.filter((call) => call.tool === 'atc_events_read');
+
+  expect(reads.map((call) => call.args['waitMs'])).toStrictEqual([0, 20]);
 });
 
 test('it fails an events read when the gateway answers with an error', async () => {

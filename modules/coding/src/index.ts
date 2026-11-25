@@ -1,6 +1,7 @@
 export type {
   AdapterReply,
   Binding,
+  BoundSession,
   CodingAdapter,
   CodingContext,
   CodingSettings,

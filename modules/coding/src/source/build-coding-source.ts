@@ -2,7 +2,7 @@ import { toErrorFields } from '@heynixie/logger';
 import type { TriggerContext, TriggerSource } from '@heynixie/triggers';
 import { codingSourcePrefix } from '../projection/coding-source-prefix';
 import { toBinding } from '../session/read-binding';
-import type { Binding, CodingAdapter, CodingContext, CodingTables } from '../types';
+import type { Binding, BoundSession, CodingAdapter, CodingContext, CodingTables } from '../types';
 import { collectTaskInputs } from './collect-task-inputs';
 
 // The trigger source that reads the adapter's event trail into the thread of each coding task, one
@@ -91,7 +91,9 @@ async function readStreamPages(run: StreamRun): Promise<void> {
 
   await runCatchUps(run);
 
-  for await (const page of run.adapter.events(run.cursor, run.signal)) {
+  for await (const page of run.adapter.events(run.cursor, run.signal, () =>
+    readBoundSessions(run),
+  )) {
     await runCatchUps(run);
 
     const bindings = await readLiveBindings(run);
@@ -110,11 +112,15 @@ async function readStreamPages(run: StreamRun): Promise<void> {
 // At its first start, the source keeps only the cursor of its first read, so it never replays the
 // trail.
 async function readFirstCursor(run: StreamRun): Promise<string> {
-  for await (const page of run.adapter.events(null, run.signal)) {
+  for await (const page of run.adapter.events(null, run.signal, readNoBound)) {
     return page.cursor;
   }
 
   throw new Error('the event trail gave no cursor');
+}
+
+function readNoBound(): Promise<readonly BoundSession[]> {
+  return Promise.resolve([]);
 }
 
 // A session's events can reach the trail before its task binds it, so the source reads each newly
@@ -148,7 +154,7 @@ async function readLiveBindings(run: StreamRun): Promise<ReadonlyMap<string, Bin
 async function runCatchUp(run: StreamRun, binding: Binding): Promise<void> {
   const only = new Map([[binding.sessionID, binding]]);
 
-  for await (const page of run.adapter.events(binding.fromCursor, run.signal)) {
+  for await (const page of run.adapter.events(binding.fromCursor, run.signal, readNoBound)) {
     if (page.events.length === 0) {
       return;
     }
@@ -158,4 +164,20 @@ async function runCatchUp(run: StreamRun, binding: Binding): Promise<void> {
       events: collectTaskInputs(page.events, only),
     });
   }
+}
+
+// The sessions whose state the adapter reads now and then: each one that is bound and has not ended.
+async function readBoundSessions(run: StreamRun): Promise<readonly BoundSession[]> {
+  const bindings = await readLiveBindings(run);
+
+  return [...bindings.values()].flatMap((binding): BoundSession[] =>
+    binding.state === 'ended'
+      ? []
+      : [
+          {
+            id: binding.sessionID,
+            state: binding.state === 'starting' ? 'running' : binding.state,
+          },
+        ],
+  );
 }

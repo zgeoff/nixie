@@ -167,3 +167,14 @@ test('it reports itself running once it delivers a page', async () => {
 
   expect(ctx.health.at(-1)).toBe('running');
 });
+
+test('it gives the adapter the sessions that open coding tasks bind, so it reads their state after a restart', async () => {
+  const ctx = await setupTest();
+
+  await ctx.seed.session();
+  await ctx.startSource('0');
+
+  await waitFor(() => {
+    expect(ctx.adapter.boundReads).toContainEqual(['cloud.3f9a1c2e.00000001']);
+  });
+});

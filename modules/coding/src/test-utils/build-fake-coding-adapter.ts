@@ -39,6 +39,9 @@ export interface FakeCodingAdapter extends CodingAdapter {
   // each call that reached the fake, in order
   readonly calls: FakeCall[];
 
+  // the IDs that each page of `events` got from its read of the bound sessions, in order
+  readonly boundReads: string[][];
+
   // the sessions the fake holds, by the fake's session ID
   readonly sessions: Map<string, FakeSession>;
 
@@ -59,6 +62,7 @@ export interface FakeCodingAdapter extends CodingAdapter {
 // and does nothing again. A steer to a session that waits on a menu is refused with `menu_open`.
 export function buildFakeCodingAdapter(): FakeCodingAdapter {
   const calls: FakeCall[] = [];
+  const boundReads: string[][] = [];
 
   const sessions = new Map<string, FakeSession>();
   const startsByKey = new Map<string, AdapterReply<StartedSession>>();
@@ -99,6 +103,7 @@ export function buildFakeCodingAdapter(): FakeCodingAdapter {
   return {
     id: 'atc',
     calls,
+    boundReads,
     sessions,
     replyNext: (method, reply) => {
       scripted.set(method, [...(scripted.get(method) ?? []), reply]);
@@ -254,7 +259,7 @@ export function buildFakeCodingAdapter(): FakeCodingAdapter {
 
       return Promise.resolve({ status: 'ok', value: { stopped: true } });
     },
-    events: async function* events(cursor, signal) {
+    events: async function* events(cursor, signal, readBound) {
       record({ method: 'events', session: null, idempotencyKey: null, text: cursor });
 
       let after = cursor === null ? 0 : Number(cursor);
@@ -264,6 +269,10 @@ export function buildFakeCodingAdapter(): FakeCodingAdapter {
       let isDue = true;
 
       while (!signal.aborted) {
+        const bound = await readBound();
+
+        boundReads.push(bound.map((session) => session.id));
+
         const page = trail.slice(after);
 
         if (page.length > 0 || isDue) {
