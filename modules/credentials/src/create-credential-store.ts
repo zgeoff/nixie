@@ -9,6 +9,7 @@ import { buildHostHeldName } from './grant/build-host-held-name';
 import { modelSecretNameLength, modelSecretPrefix } from './grant/constants';
 import { createHeldCredentials } from './held/create-held-credentials';
 import type { HeldHandle } from './held/create-held-credentials';
+import { CredentialRemovedError } from './held/credential-removed-error';
 import type {
   CredentialRecorder,
   HeldBackend,
@@ -267,14 +268,14 @@ export function createCredentialStore(options: CredentialStoreOptions): Credenti
 
       const makeSender = (
         readValue: () => string | null | Promise<string | null>,
-        checkBeforeSend?: () => Promise<void>,
+        withSendCheck?: <T>(start: () => T) => Promise<T>,
       ) =>
         createCredentialFetcher(fetcherChecks, {
           spec: binding?.spec ?? null,
           readValue,
           origins: allowed,
           options: fetchOptions,
-          ...(checkBeforeSend === undefined ? {} : { checkBeforeSend }),
+          ...(withSendCheck === undefined ? {} : { withSendCheck }),
         });
 
       if (ref === null || binding === null) {
@@ -289,8 +290,12 @@ export function createCredentialStore(options: CredentialStoreOptions): Credenti
 
       const handle = toHandle({ ...ref, backend: 'database' });
       const checkHandle = () => requireHeld().checkCounter(handle);
-      const send = makeSender(() => requireHeld().readAccessToken(handle), checkHandle);
-      const sendRefreshed = makeSender(() => requireHeld().readCurrentToken(handle), checkHandle);
+
+      const withSendCheck = <T>(start: () => T): Promise<T> =>
+        requireHeld().withSendCheck(handle, start);
+
+      const send = makeSender(() => requireHeld().readAccessToken(handle), withSendCheck);
+      const sendRefreshed = makeSender(() => requireHeld().readCurrentToken(handle), withSendCheck);
 
       return async (input, init) => {
         const replayable = await readReplayableInit(init);
@@ -303,6 +308,10 @@ export function createCredentialStore(options: CredentialStoreOptions): Credenti
         }
 
         const outcome = await requireHeld().refresh(handle);
+
+        if (outcome === 'removed') {
+          throw new CredentialRemovedError(binding.spec.label);
+        }
 
         if (outcome !== 'saved') {
           return first;

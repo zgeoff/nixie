@@ -22,6 +22,12 @@ export interface HeldTestStoreOptions {
 
   // runs after a token saves and before its record is written
   readonly afterTokenSaved?: () => Promise<void>;
+
+  // runs after a removal counter is read and before the read returns
+  readonly afterCounterRead?: (credentialID: string) => Promise<void>;
+
+  // runs before a key is made
+  readonly beforeKeyCreated?: () => Promise<void>;
 }
 
 export interface HeldTestStore {
@@ -42,6 +48,12 @@ export async function createHeldTestStore(options: HeldTestStoreOptions): Promis
     recorder,
     ...(options.backendFile === undefined ? {} : { file: options.backendFile }),
     ...(options.afterTokenSaved === undefined ? {} : { afterTokenSaved: options.afterTokenSaved }),
+    ...(options.afterCounterRead === undefined
+      ? {}
+      : { afterCounterRead: options.afterCounterRead }),
+    ...(options.beforeKeyCreated === undefined
+      ? {}
+      : { beforeKeyCreated: options.beforeKeyCreated }),
   });
 
   const ownValues = createOwnValueSet();

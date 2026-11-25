@@ -23,7 +23,18 @@ async function setupTest() {
 
   lookups.gate.resolve();
 
+  const hooks: {
+    afterCounterRead: ((credentialID: string) => Promise<void>) | null;
+    beforeKeyCreated: (() => Promise<void>) | null;
+  } = { afterCounterRead: null, beforeKeyCreated: null };
+
   const held = await createHeldTestStore({
+    afterCounterRead: async (credentialID) => {
+      await hooks.afterCounterRead?.(credentialID);
+    },
+    beforeKeyCreated: async () => {
+      await hooks.beforeKeyCreated?.();
+    },
     log: testLog.log,
     ca: provider.ca,
     now: () => clock.now(),
@@ -39,8 +50,24 @@ async function setupTest() {
 
   const logOutput: string[] = [];
 
+  // Each argument is kept as Bun prints it, with no depth limit, so a value inside an object
+  // field or in bytes written to a stream shows in the output.
   const captureOutput = (...args: readonly unknown[]) => {
-    logOutput.push(args.map(String).join(' '));
+    logOutput.push(
+      args
+        .map((arg) => {
+          if (typeof arg === 'string') {
+            return arg;
+          }
+
+          if (arg instanceof Uint8Array) {
+            return new TextDecoder().decode(arg);
+          }
+
+          return Bun.inspect(arg, { depth: Number.POSITIVE_INFINITY });
+        })
+        .join(' '),
+    );
   };
 
   for (const level of ['log', 'info', 'warn', 'error', 'debug'] as const) {
@@ -94,7 +121,21 @@ async function setupTest() {
 
       return lookups.gate.resolve;
     },
-    readLogOutput: () => logOutput.join('\n'),
+    hooks,
+
+    // whether each test value shows in a record, in the given result or in the log output
+    readLeakFlags: async (result: unknown) => {
+      const records = await readRecordEntries();
+
+      const everything = JSON.stringify([records, result, logOutput]);
+
+      return [
+        'fake-access-token',
+        'fake-refresh-token',
+        'fake-client-secret-value',
+        'fake-code',
+      ].map((value) => everything.includes(value));
+    },
     readRecordKinds: async () => {
       const records = await readRecordEntries();
 
@@ -745,20 +786,29 @@ test('it puts no token, client secret or key in a record, an error or the log ou
     .fetcher(connection.token, [ctx.provider.origin])(`${ctx.provider.origin}/data`)
     .catch(String);
 
-  const kinds = await ctx.readRecordKinds();
-  const grouped = await Promise.all(kinds.map((kind) => ctx.readRecordPayloads(kind)));
-
-  const payloads = grouped.flat();
-  const everything = JSON.stringify([payloads, failure, ctx.readLogOutput()]);
-
-  const leaks = [
-    'fake-access-token',
-    'fake-refresh-token',
-    'fake-client-secret-value',
-    'fake-code',
-  ].map((value) => everything.includes(value));
+  const leaks = await ctx.readLeakFlags(failure);
 
   expect(leaks).toStrictEqual([false, false, false, false]);
+});
+
+test('it finds a token that the log output carries inside a field of an object', async () => {
+  const ctx = await setupTest();
+
+  console.error('refresh failed', { detail: { token: 'fake-refresh-token-planted' } });
+
+  const leaks = await ctx.readLeakFlags('');
+
+  expect(leaks).toStrictEqual([false, true, false, false]);
+});
+
+test('it finds a token that a write to standard error carries as bytes', async () => {
+  const ctx = await setupTest();
+
+  process.stderr.write(new TextEncoder().encode('fake-access-token-planted\n'));
+
+  const leaks = await ctx.readLeakFlags('');
+
+  expect(leaks).toStrictEqual([true, false, false, false]);
 });
 
 test('it adds the tokens it holds to the own-value set, and takes them out on a removal', async () => {
@@ -1095,6 +1145,148 @@ test('it replaces the token, and deletes the old key, when a second code names t
   const connected = await ctx.backend.readToken(connection.tokenRef.credentialID);
 
   expect(saved?.state.status).toBe('active');
+
+  expect(ctx.backend.readKeyIDs().toSorted()).toStrictEqual(
+    [saved?.keyID ?? '', connected?.keyID ?? ''].toSorted(),
+  );
+});
+
+test('it holds a removal until the counter check before a send has handed the request off', async () => {
+  const ctx = await setupTest();
+  const connection = await ctx.connectCredential();
+
+  ctx.provider.answerToken(() => new Response('data'));
+
+  const send = ctx.store.fetcher(connection.token, [ctx.provider.origin]);
+  const lookupsBefore = ctx.readLookupCount();
+  const release = ctx.pauseLookups();
+  const sending = send(`${ctx.provider.origin}/data`);
+
+  await waitFor(() => expect(ctx.readLookupCount()).toBe(lookupsBefore + 1));
+
+  const seen = { removal: Promise.resolve(), hasCounterMoved: false };
+
+  ctx.hooks.afterCounterRead = async (read) => {
+    ctx.hooks.afterCounterRead = null;
+    seen.removal = ctx.store.remove(connection.tokenRef);
+
+    const turn = Promise.withResolvers<void>();
+
+    setImmediate(turn.resolve);
+
+    await turn.promise;
+
+    seen.hasCounterMoved = (await ctx.backend.readRemovalCounter(read)) !== 0;
+  };
+
+  release();
+
+  await Promise.allSettled([sending]);
+
+  await seen.removal;
+
+  expect(seen.hasCounterMoved).toBe(false);
+});
+
+test('it refuses, and never returns the rejection, when the credential was removed during the refresh after a 401', async () => {
+  const ctx = await setupTest();
+  const connection = await ctx.connectCredential();
+
+  const gate = Promise.withResolvers<void>();
+
+  ctx.provider.answerToken(async (request) => {
+    if (request.path === '/data') {
+      return new Response('denied', { status: 401 });
+    }
+
+    await gate.promise;
+
+    return Response.json({
+      access_token: 'fake-access-token-9',
+      refresh_token: 'fake-refresh-token-9',
+      expires_in: 3600,
+    });
+  });
+
+  const sending = ctx.store.fetcher(connection.token, [ctx.provider.origin])(
+    `${ctx.provider.origin}/data`,
+  );
+
+  await waitFor(() => expect(ctx.countRefreshRequests()).toBe(1));
+
+  await ctx.store.remove(connection.tokenRef);
+
+  gate.resolve();
+
+  await expect(sending).rejects.toBeInstanceOf(CredentialRemovedError);
+});
+
+test('it lets one of two overlapping exchanges into one credential save, and revokes the tokens of the other', async () => {
+  const ctx = await setupTest();
+  const connection = await ctx.connectCredential();
+
+  const answers = { count: 0 };
+
+  ctx.provider.answerToken(() => {
+    answers.count += 1;
+
+    const suffix = answers.count === 1 ? 'first' : 'second';
+
+    return Response.json({
+      access_token: `fake-access-token-${suffix}`,
+      refresh_token: `fake-refresh-token-${suffix}`,
+      expires_in: 3600,
+      id_token: buildIDToken({
+        iss: 'https://issuer.example',
+        aud: 'client-123',
+        exp: ctx.clock.now() / 1000 + 600,
+        sub: `subject-${suffix}`,
+      }),
+    });
+  });
+
+  // Each exchange reads the client's counter before it sends and again after the answer, so 4
+  // reads mean both answers are in. A save waits for them and for the turn of the event loop that
+  // lets the later exchange read the credential's slot, so both exchanges overlap.
+  const clientReads = { count: 0, both: Promise.withResolvers<void>() };
+
+  ctx.hooks.afterCounterRead = (read) => {
+    if (read === connection.clientRef.credentialID) {
+      clientReads.count += 1;
+    }
+
+    if (clientReads.count === 4) {
+      setImmediate(clientReads.both.resolve);
+    }
+
+    return Promise.resolve();
+  };
+
+  ctx.hooks.beforeKeyCreated = () => clientReads.both.promise;
+
+  const credentialID = crypto.randomUUID();
+
+  const outcomes = await Promise.allSettled([
+    ctx.exchangeCode(connection.client, credentialID),
+    ctx.exchangeCode(connection.client, credentialID),
+  ]);
+
+  const saved = await ctx.backend.readToken(credentialID);
+  const connected = await ctx.backend.readToken(connection.tokenRef.credentialID);
+
+  const revoked = ctx.provider.requests
+    .filter((request) => request.path === '/revoke')
+    .map((request) => request.form['token']);
+
+  expect(outcomes.map((outcome) => outcome.status).toSorted()).toStrictEqual([
+    'fulfilled',
+    'rejected',
+  ]);
+
+  expect([saved?.refreshToken, ...revoked].toSorted()).toStrictEqual([
+    'fake-refresh-token-first',
+    'fake-refresh-token-second',
+  ]);
 
   expect(ctx.backend.readKeyIDs().toSorted()).toStrictEqual(
     [saved?.keyID ?? '', connected?.keyID ?? ''].toSorted(),

@@ -3,6 +3,7 @@ import { planBackoffDelay } from '@heynixie/retry';
 import { readFingerprint } from '../fingerprint/read-fingerprint';
 import type { OwnValueSet } from '../own-values/create-own-value-set';
 import type { CredentialFetch, OAuthProvider } from '../types';
+import { createKeyedLock } from './create-keyed-lock';
 import { CredentialRemovedError } from './credential-removed-error';
 import { parseIDToken } from './parse-id-token';
 import { recoverLostRefreshes } from './recover-lost-refreshes';
@@ -19,6 +20,7 @@ import type {
   TokenExchange,
   TokenResult,
 } from './types';
+import { writeExchangedToken } from './write-exchanged-token';
 
 export interface HeldOptions {
   readonly backend: HeldBackend;
@@ -50,6 +52,10 @@ type CounterHandle = Pick<HeldHandle, 'credentialID' | 'removalCounter' | 'label
 export interface HeldCredentials {
   readonly readCounter: (credentialID: string) => Promise<number>;
   readonly checkCounter: (handle: CounterHandle) => Promise<void>;
+
+  // Checks the counter and runs `start` under the credential's lock, which a removal takes too, so
+  // no removal lands between the check and the send that `start` hands off.
+  readonly withSendCheck: <T>(handle: CounterHandle, start: () => T) => Promise<T>;
   readonly exchange: (client: HeldHandle, request: TokenExchange) => Promise<TokenResult>;
   readonly refresh: (handle: HeldHandle) => Promise<RefreshOutcome>;
   readonly refreshIfDue: (handle: HeldHandle) => Promise<RefreshOutcome | null>;
@@ -76,6 +82,14 @@ export function createHeldCredentials(options: HeldOptions): HeldCredentials {
   const backend = options.backend;
 
   const inFlight = new Map<string, Promise<RefreshOutcome>>();
+
+  // A removal and the check before a send take this lock, so a send never starts after a removal
+  // its check missed.
+  const removalLock = createKeyedLock();
+
+  // Each read of a credential's token that leads to a write of it holds this lock until the write
+  // and the delete of the key it replaced, so two saves never both find the same token.
+  const slotLock = createKeyedLock();
 
   const checkCounter: HeldCredentials['checkCounter'] = async (handle) => {
     const current = await backend.readRemovalCounter(handle.credentialID);
@@ -226,11 +240,30 @@ export function createHeldCredentials(options: HeldOptions): HeldCredentials {
       },
     };
 
-    const written = await backend.writeToken(handle.credentialID, renewed, handle.removalCounter, {
-      event: 'refresh_saved',
-      credentialID: handle.credentialID,
-      attemptID,
-      fingerprint: await readFingerprint(renewed.accessToken, options.fingerprintKey),
+    const fingerprint = await readFingerprint(renewed.accessToken, options.fingerprintKey);
+
+    const written = await slotLock.withLock(handle.credentialID, async () => {
+      // An exchange may have replaced the token since the refresh read it, so the key to delete is
+      // the one of the token this write replaces.
+      const replaced = await backend.readToken(handle.credentialID);
+
+      const outcome = await backend.writeToken(
+        handle.credentialID,
+        renewed,
+        handle.removalCounter,
+        {
+          event: 'refresh_saved',
+          credentialID: handle.credentialID,
+          attemptID,
+          fingerprint,
+        },
+      );
+
+      if (outcome === 'saved' && replaced !== null && replaced.keyID !== newKeyID) {
+        await backend.removeKey(replaced.keyID);
+      }
+
+      return outcome;
     });
 
     if (written === 'removed') {
@@ -249,10 +282,6 @@ export function createHeldCredentials(options: HeldOptions): HeldCredentials {
     }
 
     addOwnValues(handle.credentialID, renewed);
-
-    if (token.keyID !== newKeyID) {
-      await backend.removeKey(token.keyID);
-    }
 
     if (token.state.status !== 'active') {
       await options.recorder.write({
@@ -348,9 +377,17 @@ export function createHeldCredentials(options: HeldOptions): HeldCredentials {
     return token.accessToken;
   };
 
+  const exchangeWriter = { backend, now: options.now, writeState, addOwnValues };
+
   return {
     readCounter: backend.readRemovalCounter,
     checkCounter,
+    withSendCheck: (handle, start) =>
+      removalLock.withLock(handle.credentialID, async () => {
+        await checkCounter(handle);
+
+        return start();
+      }),
     refresh,
     refreshIfDue,
     exchange: async (client, request) => {
@@ -398,62 +435,16 @@ export function createHeldCredentials(options: HeldOptions): HeldCredentials {
         throw error;
       }
 
-      const existing = await backend.readToken(request.credentialID);
-
-      if (existing !== null && hasAccountChanged(existing, account)) {
-        await dropTokens();
-
-        await writeState(
-          request.credentialID,
-          existing.state,
-          { ...existing.state, status: 'needs_consent', sinceMs: options.now() },
+      return slotLock.withLock(request.credentialID, () =>
+        writeExchangedToken(exchangeWriter, {
+          client,
+          request,
+          reply: result.reply,
+          account,
           tokenCounter,
-        );
-
-        throw new TokenRequestError('account_changed');
-      }
-
-      const nowMs = options.now();
-
-      const keyID = await backend.createKey();
-
-      const token: HeldToken = {
-        accessToken: result.reply.access_token,
-        refreshToken: result.reply.refresh_token ?? null,
-        expiresAtMs: nowMs + result.reply.expires_in * 1000,
-        keyID,
-        clientCredentialID: client.credentialID,
-        accountSubject: account?.subject ?? null,
-        state: {
-          status: 'active',
-          sinceMs: nowMs,
-          lastSuccessAtMs: nowMs,
-          failures: 0,
-          retryAtMs: null,
-        },
-      };
-
-      const written = await backend.writeToken(request.credentialID, token, tokenCounter, null);
-
-      if (written === 'removed') {
-        await dropTokens();
-
-        await backend.removeKey(keyID);
-
-        throw new CredentialRemovedError(client.label);
-      }
-
-      if (existing !== null) {
-        await backend.removeKey(existing.keyID);
-      }
-
-      addOwnValues(request.credentialID, token);
-
-      return {
-        credentialID: request.credentialID,
-        expiresAtMs: token.expiresAtMs,
-        account,
-      };
+          dropTokens,
+        }),
+      );
     },
     readAccessToken: async (handle) => {
       await refreshIfDue(handle);
@@ -482,12 +473,13 @@ export function createHeldCredentials(options: HeldOptions): HeldCredentials {
 
       return token?.state ?? null;
     },
-    remove: async (credentialID) => {
-      await backend.remove(credentialID);
+    remove: (credentialID) =>
+      removalLock.withLock(credentialID, async () => {
+        await backend.remove(credentialID);
 
-      options.ownValues.remove('connector_credentials', `held:${credentialID}:access`);
-      options.ownValues.remove('connector_credentials', `held:${credentialID}:refresh`);
-    },
+        options.ownValues.remove('connector_credentials', `held:${credentialID}:access`);
+        options.ownValues.remove('connector_credentials', `held:${credentialID}:refresh`);
+      }),
     recover: () =>
       recoverLostRefreshes({
         backend,
@@ -578,10 +570,4 @@ async function readAccount(
   }
 
   return { subject: parsed.subject, email: parsed.email };
-}
-
-// A credential records the account it named at its first use. A new token that names another
-// account, or none, is not the owner's reconnect of the same account.
-function hasAccountChanged(existing: HeldToken, account: TokenResult['account']): boolean {
-  return existing.accountSubject !== null && existing.accountSubject !== account?.subject;
 }

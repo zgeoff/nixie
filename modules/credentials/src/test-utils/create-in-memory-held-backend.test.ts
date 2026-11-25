@@ -183,3 +183,38 @@ test('it writes no record at settle for a refresh the log already closed', async
 
   expect(ctx.written).toStrictEqual([]);
 });
+
+test('it returns the counter it read before the removal that ran while the read was held', async () => {
+  const ctx = await setupTest();
+
+  const backend = createInMemoryHeldBackend({
+    recorder: ctx.recorder,
+    afterCounterRead: async (credentialID) => {
+      await backend.remove(credentialID);
+    },
+  });
+
+  const counter = await backend.readRemovalCounter('credential');
+
+  expect(counter).toBe(0);
+});
+
+test('it makes no key until the hook before key creation returns', async () => {
+  const ctx = await setupTest();
+
+  const gate = Promise.withResolvers<void>();
+
+  const backend = createInMemoryHeldBackend({
+    recorder: ctx.recorder,
+    beforeKeyCreated: () => gate.promise,
+  });
+
+  const creating = backend.createKey();
+  const before = backend.readKeyIDs();
+
+  gate.resolve();
+
+  const keyID = await creating;
+
+  expect([before, backend.readKeyIDs()]).toStrictEqual([[], [keyID]]);
+});

@@ -38,9 +38,10 @@ export interface FetcherTarget {
   // and from an error, though never placed
   readonly bodyValues?: readonly string[];
 
-  // Runs after the checks of each hop and just before the request leaves, so a credential removed
-  // while the request waited on a lookup never sends. An error it throws reaches the caller as it is.
-  readonly checkBeforeSend?: () => Promise<void>;
+  // Runs `start`, which hands the request off, after each hop's checks, under the credential's lock
+  // from its own check until `start` returns, so no removal lands between the check and the send.
+  // An error it throws reaches the caller as it is.
+  readonly withSendCheck?: <T>(start: () => T) => Promise<T>;
 
   // the origins the caller passed, all inside the spec's
   readonly origins: readonly string[];
@@ -241,13 +242,31 @@ async function sendHop(
     throw new CredentialRefusalError(planned.reason);
   }
 
-  await target.checkBeforeSend?.();
+  // The reply goes in an object, so the lock is released once the request is handed off and not
+  // held until the answer comes.
+  const start = () => ({ reply: startHop(checks, signal, planned, hop) });
+  const started = target.withSendCheck === undefined ? start() : await target.withSendCheck(start);
 
+  return started.reply;
+}
+
+interface PlannedAddress {
+  readonly url: URL;
+  readonly address: string;
+}
+
+// Hands the request off before it returns: nothing it does before the send waits.
+function startHop(
+  checks: FetcherChecks,
+  signal: AbortSignal,
+  planned: PlannedAddress,
+  hop: HopRequest,
+): Promise<HopReply> {
   if (checks.transport !== undefined) {
     return sendThroughTransport(checks.transport, signal, hop);
   }
 
-  const response = await sendPinnedRequest({
+  const response = sendPinnedRequest({
     url: planned.url,
     address: planned.address,
     method: hop.method,
@@ -260,15 +279,15 @@ async function sendHop(
     ...(checks.ca === undefined ? {} : { ca: checks.ca }),
   });
 
-  return {
-    status: response.statusCode ?? 502,
-    statusText: response.statusMessage ?? '',
-    headers: toHeaders(response.headers),
-    read: () => readCappedBody(response),
+  return response.then((answer) => ({
+    status: answer.statusCode ?? 502,
+    statusText: answer.statusMessage ?? '',
+    headers: toHeaders(answer.headers),
+    read: () => readCappedBody(answer),
     discard: () => {
-      response.destroy();
+      answer.destroy();
     },
-  };
+  }));
 }
 
 async function sendThroughTransport(

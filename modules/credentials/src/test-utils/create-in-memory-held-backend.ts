@@ -30,6 +30,13 @@ export interface InMemoryHeldBackendOptions {
   // runs after the token is saved and before its record is written: a crash test holds the process
   // here
   readonly afterTokenSaved?: () => Promise<void>;
+
+  // runs after a removal counter is read and before the read returns, so a test can move the
+  // counter while a caller holds the value it read
+  readonly afterCounterRead?: (credentialID: string) => Promise<void>;
+
+  // runs before a key is made, so a test can hold a save part way through
+  readonly beforeKeyCreated?: () => Promise<void>;
 }
 
 const stateSchema = z.object({
@@ -115,7 +122,13 @@ export function createInMemoryHeldBackend(
   };
 
   return {
-    readRemovalCounter: (credentialID) => Promise.resolve(readCounter(credentialID)),
+    readRemovalCounter: async (credentialID) => {
+      const counter = readCounter(credentialID);
+
+      await options.afterCounterRead?.(credentialID);
+
+      return counter;
+    },
     readClient: (credentialID) => Promise.resolve(clients.get(credentialID) ?? null),
     writeClient: (credentialID, client) => {
       clients.set(credentialID, client);
@@ -162,14 +175,16 @@ export function createInMemoryHeldBackend(
 
       return Promise.resolve('saved');
     },
-    createKey: () => {
+    createKey: async () => {
+      await options.beforeKeyCreated?.();
+
       const keyID = crypto.randomUUID();
 
       keys.add(keyID);
 
       mirror();
 
-      return Promise.resolve(keyID);
+      return keyID;
     },
     removeKey: (keyID) => {
       keys.delete(keyID);
