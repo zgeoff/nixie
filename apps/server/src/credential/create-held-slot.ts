@@ -2,7 +2,7 @@ import type { DatabaseHeldBackend } from '@heynixie/connections';
 import type { HeldWiring } from '@heynixie/credentials';
 import invariant from 'tiny-invariant';
 
-export interface DatabaseHeldWiring extends HeldWiring {
+interface DatabaseHeldWiring extends HeldWiring {
   readonly backend: DatabaseHeldBackend;
 }
 
