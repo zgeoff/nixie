@@ -35,6 +35,8 @@ export interface HeldToken {
 }
 
 export interface HeldClient {
+  // the OAuth client's public ID, which is no secret
+  readonly clientID: string;
   readonly clientSecret: string;
 }
 

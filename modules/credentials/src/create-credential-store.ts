@@ -308,9 +308,8 @@ export function createCredentialStore(options: CredentialStoreOptions): Credenti
       const send = makeSender(() => requireHeld().readAccessToken(handle), withSendCheck);
       const sendRefreshed = makeSender(() => requireHeld().readCurrentToken(handle), withSendCheck);
 
-      return async (input, init) => {
-        const replayable = await readReplayableInit(init);
-        const first = await send(input, replayable);
+      const sendWithRetry: CredentialFetch = async (input, init) => {
+        const first = await send(input, init);
 
         await checkHandle();
 
@@ -330,7 +329,7 @@ export function createCredentialStore(options: CredentialStoreOptions): Credenti
           return first;
         }
 
-        const second = await sendRefreshed(input, replayable);
+        const second = await sendRefreshed(input, init);
 
         await checkHandle();
 
@@ -339,6 +338,32 @@ export function createCredentialStore(options: CredentialStoreOptions): Credenti
         }
 
         return second;
+      };
+
+      // A removal aborts every request in flight on the credential, so a fetch that races it ends
+      // with the removal's error instead of an answer.
+      return async (input, init) => {
+        const replayable = await readReplayableInit(init);
+
+        const request = requireHeld().trackRequest(handle.credentialID);
+
+        try {
+          return await sendWithRetry(input, {
+            ...replayable,
+            signal:
+              replayable?.signal === undefined || replayable.signal === null
+                ? request.signal
+                : AbortSignal.any([replayable.signal, request.signal]),
+          });
+        } catch (error) {
+          if (request.signal.aborted) {
+            throw new CredentialRemovedError(binding.spec.label);
+          }
+
+          throw error;
+        } finally {
+          request.end();
+        }
       };
     },
     grant: async (source, sandboxes, request) => {

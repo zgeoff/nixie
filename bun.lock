@@ -172,6 +172,7 @@
         "@heynixie/budgets": "workspace:*",
         "@heynixie/clock": "workspace:*",
         "@heynixie/compaction": "workspace:*",
+        "@heynixie/connections": "workspace:*",
         "@heynixie/connectors": "workspace:*",
         "@heynixie/contract": "workspace:*",
         "@heynixie/credentials": "workspace:*",
@@ -626,6 +627,21 @@
         "@heynixie/sandbox": "workspace:*",
         "@heynixie/wire": "workspace:*",
         "zod": "catalog:",
+      },
+    },
+    "modules/connections": {
+      "name": "@heynixie/connections",
+      "version": "0.0.0",
+      "dependencies": {
+        "@heynixie/credentials": "workspace:*",
+        "@heynixie/db": "workspace:*",
+        "@heynixie/log": "workspace:*",
+        "kysely": "catalog:",
+        "tiny-invariant": "catalog:",
+        "zod": "catalog:",
+      },
+      "devDependencies": {
+        "@zgeoff/testing": "catalog:",
       },
     },
     "modules/connectors": {
@@ -1594,6 +1610,8 @@
     "@heynixie/compaction": ["@heynixie/compaction@workspace:modules/compaction"],
 
     "@heynixie/computer": ["@heynixie/computer@workspace:guests/computer"],
+
+    "@heynixie/connections": ["@heynixie/connections@workspace:modules/connections"],
 
     "@heynixie/connectors": ["@heynixie/connectors@workspace:modules/connectors"],
 

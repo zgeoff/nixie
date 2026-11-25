@@ -1,5 +1,4 @@
 import { CredentialRefusalError } from '@heynixie/egress';
-import { planBackoffDelay } from '@heynixie/retry';
 import { match } from 'ts-pattern';
 import { readFingerprint } from '../fingerprint/read-fingerprint';
 import type { OwnValueSet } from '../own-values/create-own-value-set';
@@ -7,6 +6,8 @@ import type { CredentialFetch, OAuthProvider } from '../types';
 import { createKeyedLock } from './create-keyed-lock';
 import { CredentialRemovedError } from './credential-removed-error';
 import { parseIDToken } from './parse-id-token';
+import { pickFailureState } from './pick-failure-state';
+import type { RefreshFailureKind } from './pick-failure-state';
 import { recoverLostRefreshes } from './recover-lost-refreshes';
 import { sendRevocation } from './send-revocation';
 import { sendTokenRequest } from './send-token-request';
@@ -50,6 +51,11 @@ export interface HeldHandle {
   readonly provider: OAuthProvider;
 }
 
+interface TrackedRequest {
+  readonly signal: AbortSignal;
+  readonly end: () => void;
+}
+
 type CounterHandle = Pick<HeldHandle, 'credentialID' | 'removalCounter' | 'label'>;
 
 export interface HeldCredentials {
@@ -71,6 +77,9 @@ export interface HeldCredentials {
   readonly readCurrentToken: (handle: HeldHandle) => Promise<string>;
   readonly markFailing: (handle: HeldHandle, reason: FailingReason) => Promise<void>;
 
+  // Registers a request in flight on the credential. A removal aborts its signal.
+  readonly trackRequest: (credentialID: string) => TrackedRequest;
+
   // Sends the credential's refresh token to the provider's revoke URL once, and says how it ended.
   // It reads the token that a removal began, which every other path refuses.
   readonly revoke: (handle: HeldHandle) => Promise<RevokeResult>;
@@ -82,13 +91,14 @@ export interface HeldCredentials {
 interface FailureInput {
   readonly token: HeldToken;
   readonly attemptID: string;
-  readonly kind: 'refused' | 'service_error' | 'no_answer';
+  readonly kind: RefreshFailureKind;
 }
 
 export function createHeldCredentials(options: HeldOptions): HeldCredentials {
   const backend = options.backend;
 
   const inFlight = new Map<string, Promise<RefreshOutcome>>();
+  const requests = new Map<string, Set<AbortController>>();
 
   // A removal and the check before a send take this lock, so a send never starts after a removal
   // its check missed.
@@ -513,13 +523,33 @@ export function createHeldCredentials(options: HeldOptions): HeldCredentials {
 
       return token?.state ?? null;
     },
-    remove: (credentialID) =>
-      removalLock.withLock(credentialID, async () => {
+    trackRequest: (credentialID) => {
+      const controller = new AbortController();
+
+      const active = requests.get(credentialID) ?? new Set<AbortController>();
+
+      active.add(controller);
+      requests.set(credentialID, active);
+
+      return {
+        signal: controller.signal,
+        end: () => {
+          active.delete(controller);
+        },
+      };
+    },
+    remove: (credentialID) => {
+      for (const controller of requests.get(credentialID) ?? []) {
+        controller.abort();
+      }
+
+      return removalLock.withLock(credentialID, async () => {
         await backend.remove(credentialID);
 
         options.ownValues.remove('connector_credentials', `held:${credentialID}:access`);
         options.ownValues.remove('connector_credentials', `held:${credentialID}:refresh`);
-      }),
+      });
+    },
     recover: () =>
       recoverLostRefreshes({
         backend,
@@ -532,45 +562,6 @@ export function createHeldCredentials(options: HeldOptions): HeldCredentials {
 
 function pickRevocable(reply: TokenReply): string {
   return reply.refresh_token ?? reply.access_token;
-}
-
-const failuresBeforeFailing = 3;
-
-// The pause after a failed refresh, which web fetch's host backoff also uses.
-const retryBackoff = { firstMs: 30_000, maxMs: 300_000 } as const;
-
-// The state after a refresh that gave no token. A refusal for good needs the owner. Three failures
-// in a row mark the credential failing, and every failure pushes the next timed refresh back.
-function pickFailureState(
-  previous: HeldState,
-  kind: FailureInput['kind'],
-  nowMs: number,
-): HeldState {
-  const failures = previous.failures + 1;
-  const retryAtMs = nowMs + planBackoffDelay(failures, retryBackoff);
-
-  if (kind === 'refused') {
-    return {
-      ...previous,
-      status: 'needs_consent',
-      sinceMs: nowMs,
-      failures,
-      retryAtMs,
-    };
-  }
-
-  if (failures >= failuresBeforeFailing) {
-    return {
-      ...previous,
-      status: 'failing',
-      reason: kind,
-      sinceMs: nowMs,
-      failures,
-      retryAtMs,
-    };
-  }
-
-  return { ...previous, failures, retryAtMs };
 }
 
 // The refresh timings: a token refreshes 5 minutes before it expires, and at least every 7 days.
