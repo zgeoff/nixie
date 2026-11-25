@@ -12,11 +12,18 @@ export interface LayoutReply {
   };
 }
 
-export type LayoutStep = 'set' | 'update' | 'save' | 'change' | 'restore' | 'preview';
+export type LayoutStep =
+  | 'set'
+  | 'update'
+  | 'save'
+  | 'change'
+  | 'restore'
+  | 'preview'
+  | 'page'
+  | 'message';
 
-// The calls that lay out the first device's screen and fill it, update its second region, save its
-// layout, lay it out again with 2 regions, restore the saved layout, or preview the screen. Each call names the device
-// by the ID that the list result gave the model.
+// The calls of each step of the device-layout journey. Each call names the device by the ID that
+// the list result gave the model.
 export function buildLayoutReplies(step: LayoutStep): readonly LayoutReply[] {
   const listing: LayoutReply = { toolUse: { name: 'mcp__nixie__devices_list', input: {} } };
 
@@ -27,6 +34,33 @@ export function buildLayoutReplies(step: LayoutStep): readonly LayoutReply[] {
         toolUse: {
           name: 'mcp__nixie__device_preview',
           input: (body: ScriptedBody) => ({ device: getResultID(body, 'shortID') }),
+        },
+      },
+    ];
+  }
+
+  if (step === 'page') {
+    return [
+      listing,
+      buildRegionReply('pond', {
+        kind: 'html',
+        html: "<p id=\"seen\">Waiting</p><script>nixie.onMessage((data) => { document.getElementById('seen').textContent = 'Got ' + data.text; nixie.send('echo', data); });</script>",
+      }),
+    ];
+  }
+
+  if (step === 'message') {
+    return [
+      listing,
+      {
+        toolUse: {
+          name: 'mcp__nixie__device_sendToPage',
+          input: (body: ScriptedBody) => ({
+            device: getResultID(body, 'shortID'),
+            region: 'pond',
+            data: { text: 'hello' },
+            retain: true,
+          }),
         },
       },
     ];

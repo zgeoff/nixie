@@ -2,6 +2,12 @@ import type { Clock } from '@heynixie/clock';
 import type { ScreenPixels } from '../types';
 import type { PageErrors } from './create-page-errors';
 import { createPageErrors } from './create-page-errors';
+import type { PageEventLimits } from './create-page-event-limits';
+import { createPageEventLimits } from './create-page-event-limits';
+import type { PageMessage, PageMessages } from './create-page-messages';
+import { createPageMessages } from './create-page-messages';
+import type { PageTickets } from './create-page-tickets';
+import { createPageTickets } from './create-page-tickets';
 
 // How long a device keeps its online state after its last stream closes, so a reconnect never
 // reads as offline.
@@ -9,6 +15,12 @@ export const deviceOfflineGraceMs = 60_000;
 
 export interface OpenDeviceStream {
   readonly close: () => void;
+
+  // the messages that arrived since the last read, oldest first
+  readonly readMessages: () => readonly PageMessage[];
+
+  // resolves when a message is waiting, or when the signal aborts
+  readonly waitForMessage: (signal: AbortSignal) => Promise<void>;
 }
 
 export interface DeviceStatusChange {
@@ -36,12 +48,27 @@ export interface DeviceStreams {
   // the last errors that each device's regions reported
   readonly errors: PageErrors;
 
+  // the tickets that each page region's frame and images load by
+  readonly tickets: PageTickets;
+
+  // the retained message of each page region
+  readonly messages: PageMessages;
+
+  // the limits on the events of each page region
+  readonly eventLimits: PageEventLimits;
+
+  // Hands a message to each open stream of the device, and returns whether it has one. A message to
+  // an offline device reaches no stream.
+  readonly sendMessage: (deviceID: string, message: PageMessage) => boolean;
+
   // calls back on each change of a device to online or offline
   readonly subscribeToStatus: (onChange: (change: DeviceStatusChange) => void) => () => void;
 }
 
 interface HeldStream {
   pixels: ScreenPixels;
+  queue: PageMessage[];
+  wakers: Set<() => void>;
 }
 
 interface HeldDevice {
@@ -121,9 +148,25 @@ export function createDeviceStreams(options: DeviceStreamsOptions): DeviceStream
 
   return {
     errors: createPageErrors(),
+    tickets: createPageTickets(),
+    messages: createPageMessages(),
+    eventLimits: createPageEventLimits(),
+    sendMessage: (deviceID, message) => {
+      const streams = devices.get(deviceID)?.streams ?? [];
+
+      for (const stream of streams) {
+        stream.queue.push(message);
+
+        for (const wake of stream.wakers) {
+          wake();
+        }
+      }
+
+      return streams.length > 0;
+    },
     open: (deviceID, pixels) => {
       const held = hold(deviceID);
-      const stream: HeldStream = { pixels };
+      const stream: HeldStream = { pixels, queue: [], wakers: new Set() };
 
       held.grace?.abort();
       held.grace = null;
@@ -140,6 +183,25 @@ export function createDeviceStreams(options: DeviceStreamsOptions): DeviceStream
         close: () => {
           close(deviceID, stream);
         },
+        readMessages: () => stream.queue.splice(0),
+        waitForMessage: (signal) =>
+          new Promise<void>((resolve) => {
+            if (stream.queue.length > 0 || signal.aborted) {
+              resolve();
+
+              return;
+            }
+
+            const wake = (): void => {
+              stream.wakers.delete(wake);
+              signal.removeEventListener('abort', wake);
+
+              resolve();
+            };
+
+            stream.wakers.add(wake);
+            signal.addEventListener('abort', wake, { once: true });
+          }),
       };
     },
     isOnline: (deviceID) => devices.get(deviceID)?.isOnline ?? false,

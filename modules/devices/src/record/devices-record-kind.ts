@@ -8,9 +8,14 @@ export type DevicesRecordKind =
   | 'device.layout_restored'
   | 'device.layout_removed'
   | 'device.watch_set'
-  | 'device.status_changed';
+  | 'device.status_changed'
+  | 'device.page_event';
 
-type DevicesErasableRecordKind = 'device.shown' | 'device.idle_set' | 'device.region_shown';
+type DevicesErasableRecordKind =
+  | 'device.shown'
+  | 'device.idle_set'
+  | 'device.region_shown'
+  | 'device.page_event';
 
 declare module '@heynixie/log' {
   // oxlint-disable-next-line typescript/no-empty-interface -- the merge adds the kinds above to the registry

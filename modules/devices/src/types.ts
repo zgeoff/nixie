@@ -1,4 +1,10 @@
-import type { RegionBackground, RegionContent, ScreenContent } from '@heynixie/contract';
+import type {
+  PageData,
+  RegionBackground,
+  RegionContent,
+  RegionEventContent,
+  ScreenContent,
+} from '@heynixie/contract';
 import type { CheckedTables } from '@heynixie/db';
 
 export type DeviceCapability = 'screen' | 'camera' | 'speaker' | 'microphone';
@@ -127,9 +133,20 @@ export interface LayoutState {
       readonly columnSpan: number;
       readonly rowSpan: number;
       readonly background: RegionBackground | null;
-      readonly content: RegionContent | null;
+      readonly content: RegionEventContent | null;
       readonly shown: string | null;
       readonly until: string | null;
     }[];
   } | null;
+}
+
+// A message that the assistant sent into a page region, as the device stream carries it.
+export interface PageMessageState {
+  readonly kind: 'message';
+  readonly region: string;
+
+  // the short ID of the content the message is for
+  readonly shown: string;
+  readonly data: PageData;
+  readonly retain: boolean;
 }

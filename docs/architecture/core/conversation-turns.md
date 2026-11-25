@@ -249,9 +249,9 @@ opens a turn's batch or lands while the turn runs, and that step opens a rebuilt
 no request passes the size or the image count the Messages API accepts. The first message of a new
 session always goes. An image a tool returns during the turn counts against the same caps, and the
 turn refuses one that would pass either cap. A rebuilt session's history and every other render of
-the message show only the markers, never the bytes, so an image reaches the model once, in the turn
-it was sent. The pasted-text rule in the system prompt names the images too: the model treats an
-image's content, its text included, as it treats dropped text.
+the message show only the markers, never the bytes, so a rebuilt session never sends an image again.
+The pasted-text rule in the system prompt names the images too: the model treats an image's content,
+its text included, as it treats dropped text.
 
 ## Interrupts
 
@@ -436,7 +436,9 @@ the moments, leaves out a voided reply.
 The step returns to waiting once it commits, because the conversation always waits for the user's
 next message. A turn that fails for any reason but a lost session, such as a disconnected tool
 server, throws, so the tasks module records the error and retries the step after a delay that grows
-with each failure in a row. The conversation never fails ([tasks](./tasks.md#steps)).
+with each failure in a row. The exception is a
+[model API refusal that waits for the user](#a-call-the-model-api-refuses). The conversation never
+fails ([tasks](./tasks.md#steps)).
 
 ### A turn that ends with nothing sent
 
@@ -505,13 +507,13 @@ step commit instead of writing it as a live reply.
 
 The conversation hears of what happened outside it through the events block, which goes before the
 user's message on the next turn. The block lists memory that changed outside the conversation, the
-user's answers to memory proposals, nixie's outages and restarts, the conversation's own turns that
-failed and were retried, and the warning that compaction is near, each after its time, oldest first,
-up to a cap and then a count of the rest. One exception: a kind whose notice no later note gives
-again, such as the compaction warning, lists every event outside the cap. A turn after which nothing
-happened gets no block. The block reads a range of the log, from the sequence the last turn's note
-covered to the log's head, so the next turn's note starts where this one ends and no event appears
-twice.
+user's answers to memory proposals, nixie's outages and restarts, the page events of a device that
+did not wake the conversation, the conversation's own turns that failed and were retried, and the
+warning that compaction is near, each after its time, oldest first, up to a cap and then a count of
+the rest. One exception: a kind whose notice no later note gives again, such as the compaction
+warning, lists every event outside the cap. A turn after which nothing happened gets no block. The
+block reads a range of the log, from the sequence the last turn's note covered to the log's head, so
+the next turn's note starts where this one ends and no event appears twice.
 
 Each kind of event is one entry in a registry: its name, how it reads its events in a range of the
 log, and how one event's line renders. The block merges every entry's events by sequence, so a new
@@ -559,6 +561,13 @@ reads.
   it out. Each start is read once, because the block's range begins where the last turn's note
   ended, so a later turn never repeats the line. Telling the user about the outage is not part of
   this entry.
+- **A page event** reads each `device.page_event` record that has no wake, because the page did not
+  ask for one or the server did not grant it. The line names the device and the region, then shows
+  the event's name and data inside the markers of an untrusted page read, because the page's text is
+  outside content. An event that woke the conversation reaches it through its inbox, so the block
+  leaves it out. An entry names the source of its events, and a block that lists one of them adds
+  that source, `outside` for a page event, to the step's policy frame. A page event that woke a
+  step, in its opening batch or while it ran, adds the same source.
 - **A restart** reads the record the server writes at each start, with nixie's version and the
   version of the start before it. When the conversation's tools or persona changed since the start
   before, a second line names each tool added or removed and says when the persona was updated,

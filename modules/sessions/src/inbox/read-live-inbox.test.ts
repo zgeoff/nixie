@@ -1,5 +1,6 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { writeRecords } from '@heynixie/log';
+import type { RuleSource } from '@heynixie/policy';
 import { createConversationTask, writeInboxRecords } from '@heynixie/tasks';
 import { writeTestTriggerFire } from '@heynixie/tasks/test-utils';
 import invariant from 'tiny-invariant';
@@ -42,6 +43,7 @@ test('it yields a message that lands during the turn and adds its images to the 
     times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
     images,
     silence: buildTurnSilence([]),
+    sources: [],
     log: () => {},
   });
 
@@ -90,6 +92,7 @@ test('it ends the feed at a message whose images would pass the session budget',
     times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
     images,
     silence: buildTurnSilence([]),
+    sources: [],
     log: () => {},
   });
 
@@ -136,6 +139,7 @@ test('it ends the feed at a message whose images would pass the session count', 
     times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
     images,
     silence: buildTurnSilence([]),
+    sources: [],
     log: () => {},
   });
 
@@ -177,6 +181,7 @@ test('it yields a message with no images past a spent session budget', async () 
     times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
     images,
     silence: buildTurnSilence([]),
+    sources: [],
     log: () => {},
   });
 
@@ -216,6 +221,7 @@ test('it ends the feed at a message that lands after the turn ended silently, an
     times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
     images: { spent: { bytes: 0, count: 0 }, budget: { bytes: 16, count: 100 }, isCapped: false },
     silence,
+    sources: [],
     log: (event, fields) => {
       events.push({ event, fields });
     },
@@ -263,6 +269,7 @@ test("it counts an owner message that lands during the turn against the turn's s
     times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
     images: { spent: { bytes: 0, count: 0 }, budget: { bytes: 16, count: 100 }, isCapped: false },
     silence,
+    sources: [],
     log: () => {},
   });
 
@@ -295,6 +302,7 @@ test('it passes over a record of a kind no module registers and yields the next 
     times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
     images: { spent: { bytes: 0, count: 0 }, budget: { bytes: 16, count: 100 }, isCapped: false },
     silence: buildTurnSilence([]),
+    sources: [],
     log: () => {},
   });
 
@@ -339,6 +347,7 @@ test("it passes over a fire on the task's own thread that lands during the turn,
     times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
     images: { spent: { bytes: 0, count: 0 }, budget: { bytes: 16, count: 100 }, isCapped: false },
     silence: buildTurnSilence([]),
+    sources: [],
     log: () => {},
   });
 
@@ -381,6 +390,7 @@ test('it takes an approval that queued an action as read with no message, and yi
     times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
     images: { spent: { bytes: 0, count: 0 }, budget: { bytes: 16, count: 100 }, isCapped: false },
     silence: buildTurnSilence([]),
+    sources: [],
     log: () => {},
   });
 
@@ -430,6 +440,7 @@ test('it marks an owner message as cutting a call when the harness can cut', asy
     times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
     images: { spent: { bytes: 0, count: 0 }, budget: { bytes: 16, count: 100 }, isCapped: false },
     silence: buildTurnSilence([]),
+    sources: [],
     log: () => {},
   });
 
@@ -464,6 +475,7 @@ test('it does not mark an owner message as cutting a call when the harness canno
     times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
     images: { spent: { bytes: 0, count: 0 }, budget: { bytes: 16, count: 100 }, isCapped: false },
     silence: buildTurnSilence([]),
+    sources: [],
     log: () => {},
   });
 
@@ -498,6 +510,7 @@ test('it does not mark a task message as cutting a call, even when the harness c
     times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
     images: { spent: { bytes: 0, count: 0 }, budget: { bytes: 16, count: 100 }, isCapped: false },
     silence: buildTurnSilence([]),
+    sources: [],
     log: () => {},
   });
 
@@ -570,6 +583,7 @@ test.each([
       times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
       images: { spent: { bytes: 0, count: 0 }, budget: { bytes: 16, count: 100 }, isCapped: false },
       silence: buildTurnSilence([]),
+      sources: [],
       gaps: makeGapReader(ctx.context),
       log: () => {},
     });
@@ -596,3 +610,40 @@ test.each([
     );
   },
 );
+
+test('it adds the source of a message that lands during the turn to the sources of its step', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const sources: RuleSource[] = ['owner'];
+
+  const live = readLiveInbox(ctx.context, {
+    taskID: 'conversation',
+    canCut: false,
+    sent: new Set([0]),
+    silent: new Set(),
+    signal: ctx.signal,
+    view: buildMockTaskMessageView(),
+    times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
+    images: { spent: { bytes: 0, count: 0 }, budget: { bytes: 16, count: 100 }, isCapped: false },
+    silence: buildTurnSilence([]),
+    sources,
+    log: () => {},
+  });
+
+  await writeInboxRecords(ctx.context, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      contentSource: 'untrusted',
+      payload: { images: [] },
+      erasable: { text: 'The doorbell rang.' },
+    },
+  ]);
+
+  await live.next();
+
+  expect(sources).toStrictEqual(['outside', 'owner']);
+});

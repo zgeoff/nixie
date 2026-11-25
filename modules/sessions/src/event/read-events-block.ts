@@ -1,3 +1,4 @@
+import type { RuleSource } from '@heynixie/policy';
 import type { EventRegistry, TurnNoteRange } from '../types';
 import type { EventsBlockSettings } from './render-events-block';
 import { renderEventsBlock } from './render-events-block';
@@ -5,6 +6,9 @@ import { renderEventsBlock } from './render-events-block';
 export interface EventsBlock {
   readonly text: string | null;
   readonly count: number;
+
+  // where the content of the listed events came from, sorted and with no repeat
+  readonly sources: readonly RuleSource[];
 }
 
 export interface EventsBlockRead extends EventsBlockSettings {
@@ -36,8 +40,15 @@ export async function readEventsBlock(
     registry.map((kind) => kind.complete(listed.filter((event) => event.kind === kind.name))),
   );
 
+  const listedKinds = new Set(listed.map((event) => event.kind));
+
+  const sources = registry.flatMap((kind) =>
+    kind.source !== null && listedKinds.has(kind.name) ? [kind.source] : [],
+  );
+
   return {
     text: renderEventsBlock(completed.flat(), events.length - listed.length, settings),
     count: events.length,
+    sources: [...new Set(sources)].toSorted(),
   };
 }

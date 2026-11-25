@@ -21,6 +21,7 @@ import { buildPromptProposalAnswerKind } from '../prompt/build-prompt-proposal-a
 import { buildMandateEndedKind } from './build-mandate-ended-kind';
 import { buildMandateStartedKind } from './build-mandate-started-kind';
 import { buildOutageKind } from './build-outage-kind';
+import { buildPageEventKind } from './build-page-event-kind';
 import { buildRestartKind } from './build-restart-kind';
 import { readTurnNotes } from './read-turn-notes';
 
@@ -65,6 +66,7 @@ export function makeTurnNoteReader(
     buildPromptProposalAnswerKind(options.log, conversationTaskID),
     buildMandateStartedKind(options.log),
     buildMandateEndedKind(options.log),
+    buildPageEventKind(options.log),
   ]);
 
   const events = options.forgetNotices.note

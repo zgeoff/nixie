@@ -41,11 +41,11 @@ act on the caller's own row. A full session with no row gets `NOT_A_DEVICE` and 
 first. A device session whose row a revoke removed gets the refusal of a missing session.
 
 `create-api-app.ts` refuses with 403 each call from a device session except `live.follow` in its
-device form, `devices.resize`, `devices.pageError`, `devices.setCapability`, `devices.readImage` and
-`sessions.signOut`. The test in `create-device-procedures.test.ts` walks every contract path to keep
-that list true. A revoke or a sign-out of a session, full or device, removes its device row and ends
-its open streams. A full session's revoke also closes its computer watch sockets. A reset keeps the
-device rows and clears what they show.
+device form, `devices.resize`, `devices.pageError`, `devices.pageEvent`, `devices.setCapability`,
+`devices.readImage` and `sessions.signOut`. The test in `create-device-procedures.test.ts` walks
+every contract path to keep that list true. A revoke or a sign-out of a session, full or device,
+removes its device row and ends its open streams. A full session's revoke also closes its computer
+watch sockets. A reset keeps the device rows and clears what they show.
 
 ## The device record
 
@@ -60,8 +60,8 @@ holds what the screen shows:
 - `device.capability_changed` holds a switch of a capability.
 
 A forget of a `device.shown` or `device.idle_set` record erases the content. The state reader then
-drops that content, and an image that is forgotten or missing counts as erased too. The server never
-holds the content outside the log.
+drops that content, and an image that is forgotten or missing counts as erased too. The server keeps
+no copy of the content outside the log, apart from the files of a preview while it draws one.
 
 ## The screen state
 
@@ -83,8 +83,10 @@ spans one or more tracks without overlapping another or leaving the grid. A regi
 
 The background belongs to the grid, so a new layout sets it again. A region holds markdown (up to
 20,000 characters), an image with `fit` `whole` or `fill`, or a live value: a clock in `HH:mm`,
-`HH:mm:ss` or `EEE d MMM`, or a countdown to a time with an optional label. A region cannot hold a
-page yet, and a call that sends one gets `PAGE_NOT_BUILT`.
+`HH:mm:ss` or `EEE d MMM`, or a countdown to a time with an optional label. A region can also hold a
+[page](#page-regions): up to 200,000 characters of HTML and up to 20 images. A call that declares
+`packages` or `fetches` for a page gets `PACKAGES_NOT_BUILT` or `FETCHES_NOT_BUILT`, and the page
+keeps what it showed before.
 
 Two record kinds hold a layout and its content, and three tables point at those records:
 
@@ -152,11 +154,12 @@ stream open, and for `deviceOfflineGraceMs` after its last one closes, so a reco
 offline.
 
 For an offline device, `devices.list` gives the time its last stream closed, unless the process
-restarted since. `devices.resize({ width, height })` gives every open stream of the caller's device
-a new size, and `devices.list` reads the new size at once. One pixels schema bounds the size in both
-calls. The stream sends `opened` first, then what the screen shows now. A later event follows a
-commit that touches the device, and the stream sends an event only when the state changes. The event
-of a show carries the `fit` of an image, `whole` or `fill`.
+restarted since. `devices.resize(pixels)`, which takes the fields that `live.follow` opens with,
+gives every open stream of the caller's device a new size, and `devices.list` reads the new size at
+once. One pixels schema bounds the size in both calls. The stream sends `opened` first, then what
+the screen shows now. A later event follows a commit that touches the device, or the end of a show
+or of a region's minutes. The stream sends an event only when the state changes. The event of a show
+carries the `fit` of an image, `whole` or `fill`.
 
 A region's `layout` event carries the short ID of the region's `device.region_shown` record as
 `shown`, which the device names in the errors it reports. The layout travels in its own `layout`
@@ -168,6 +171,141 @@ regions, including while a show covers the layout.
 
 `devices.readImage` serves an image only while it is in the current show, the idle scene or a region
 of the layout, and returns `NOT_SHOWN` otherwise.
+
+A `message` event carries a message that `device.sendToPage` sent, with the region, the short ID of
+the content it was for, the data and whether it was retained. The stream sends it only to the
+streams of that device, and the device drops it when the region no longer shows that content. A
+message to a stream that is not open is lost, except a retained message: each time the stream opens,
+it sends the retained message of each page region right after its first layout.
+
+## Page regions
+
+A page is a region whose content has `kind: 'html'`: the `html` in a body, and `images`, a map from
+an ID the page names to an image-store short ID. The server keeps no copy of the markup outside the
+record that seals it, apart from the files of a preview while it draws one, and `devices.list` never
+shows it.
+
+### The frame
+
+The device page shows a page in an `<iframe sandbox="allow-scripts">` with no other sandbox token,
+so the page runs scripts in an opaque origin. In that origin the page has no cookie, no storage and
+no access to the device page's DOM, and it can't navigate the device page. The frame loads from
+`/rpc/device/frames/<ticket>`, and the page's images from `/rpc/device/images/<ticket>`. These two
+paths take no session and no client header: the ticket in the path is the credential, and
+`answerPageRequest` runs before the client-header check.
+
+A ticket names a device, a region and one `device.region_shown` record. The server issues the
+tickets in memory when it builds a `layout` event.
+
+A ticket stays the same while the stream and the region show the same content. A request reads the
+layout at that moment and answers 404 unless the region still shows the content that the ticket
+names. The response carries `no-store`, `nosniff` and `no-referrer`. The frame's own policy sets
+`default-src 'none'`, scripts and styles inline, `connect-src 'none'`, `form-action 'none'`,
+`base-uri 'none'`, and images only from that page's image URLs and `data:`. So a page can't fetch,
+open a socket, submit a form or load anything else. The device page's own policy adds
+`frame-src 'self'`, which keeps a page from framing another site. A page can still navigate its own
+frame, and each test of the policy runs in a real browser in `answer-page-request.browser.test.ts`.
+
+The policy also sets `sandbox allow-scripts`. A person who opens the frame's address in a tab gets
+the same opaque origin, and the page reads none of the app's storage.
+
+The policy leaves three ways out open. A peer connection reaches any server its page names. A link
+element opens a connection from a resource hint such as `preconnect`, and no directive closes it:
+Chrome opens a preconnect's connection under `connect-src 'none'`, and blocks only a prefetch. A
+frame, object or embed element gives the page a second window, where the bridge's guards don't run.
+nixie closes them this way:
+
+- The input check of `device.region` fails a page that holds a link, frame, object or embed element,
+  because the page has no network and its styles go in a style element.
+- The bridge removes `RTCPeerConnection` and `XSLTProcessor`, which builds elements by name. It
+  makes `createElement`, `createElementNS` and `createDocument` build a span for each of those
+  elements, with a namespace prefix or without.
+- The bridge refuses `document.write` and `document.writeln`, because a page can split a start tag
+  across 2 writes, and no check of each write sees the whole tag.
+- The bridge cleans each string that the page turns into markup, so a string never brings the
+  elements back, with or without a namespace prefix.
+
+In a browser with trusted types, the refusal and the cleaning come from the bridge's `default`
+policy, the one policy that the frame's policy requires and allows. The browser calls that policy
+itself, so no script can undo it. A browser without trusted types gets them from the bridge's own
+wrappers around `document.write`, `document.writeln`, `innerHTML`, `outerHTML`,
+`insertAdjacentHTML`, `srcdoc`, `DOMParser` and `createContextualFragment`.
+
+The bridge's guards call only the built-ins it took before the page's script ran, so a page that
+replaces a built-in, such as a method of `RegExp`, changes no guard. The browser test opens each of
+those ways against a server that counts connections, in Chrome with trusted types and with trusted
+types hidden from the frame, and expects none. The response also sets `x-dns-prefetch-control: off`.
+The frame builder and the bridge live in `libs/wire`, so the device page's own browser tests frame
+their pages with the same bridge.
+
+The frame's URL is built from the request's own origin, with the forwarded protocol and host
+cleaned, so a page behind a reverse proxy loads its images from the same origin as the frame. The
+recipe's proxy trusts the forwarded protocol and host of the HTTPS proxy in front of it, and
+`check-forwarded-proto.ts` checks that it hands them on. The proxy's log drops each frame ticket and
+image ticket from a request address, which `check-ticket-log.ts` checks.
+
+### The page bridge
+
+An inline script defines the frozen global `nixie` in each page:
+
+- `nixie.send(name, data, { wake })` sends an event. The name and the JSON data each have a size
+  limit, which `pageEventDataLimitBytes` and the contract's schema hold.
+- `nixie.onMessage(handler)` takes each message that `device.sendToPage` sent. A message that comes
+  before the handler waits for it, and the page's retained message comes first.
+- `nixie.image(id)` returns the URL of a declared image.
+- `nixie.data` and `nixie.onData` exist and answer nothing.
+
+The bridge takes a message only from its parent window, so a sibling frame can't send the page one.
+It reports an uncaught error to the device page, which reports it with `devices.pageError`, so
+`device.preview` shows it. The device page only takes a message from the window of its own frame.
+
+A touch inside a frame never reaches the device page, so the bridge sends the device page a `touch`
+message, at most 4 times a second. The device page then shows its buttons as it does for a touch of
+its own, so a page that fills the screen leaves the user a way to close it, switch off the screen or
+sign out.
+
+A page that replaces another page loads in a new frame, so a message for the new page never goes to
+the document of the old one.
+
+### Events from a page
+
+The device page sends a page's event with `devices.pageEvent({ region, shown, name, data, wake })`,
+which a device session may call. It drops an event past 1 a second and 30 a minute for each region,
+and the server applies the same limits and drops the rest. The call returns `STALE`, and keeps
+nothing, when the screen is off or the region no longer shows the content that `shown` names. The
+server reads the region, the limit and the hour's wake count in the same write transaction that
+keeps the event, so two events that arrive together never both take the last wake of the hour, and a
+replacement that commits first makes the event stale.
+
+A page event is outside content, as a web page is. The server writes a `device.page_event` record
+with `contentSource` `untrusted` and the event's data as an erasable field, so a forget erases it.
+The record names the device, the region, the event name and whether it woke the conversation. The
+assistant reads the text inside the markers of an untrusted page read, never as an instruction. A
+page event carries no authority: it is not the user's message, and no rule treats it as one.
+
+The wake is the page's request, and the server grants it for at most 6 events an hour for each
+device. A page event with a wake it was granted is an inbox record, which wakes a step and reaches
+the conversation as a `page-event` system message. An event with no wake, or past that limit, is no
+inbox record, and the next turn's events block lists it. A page event that woke the conversation
+never also shows in the events block.
+
+A page event marks the step's policy frame as holding outside content as soon as it reaches the
+model. A rule that allows a call on owner content and asks about one on outside content then asks.
+The mark covers an event in the step's opening batch, an event that the turn's events block lists,
+and a waking event that lands while the turn runs.
+
+### Messages to a page
+
+`device.sendToPage` sends data into the page of a region. With `retain: true` the server also keeps
+the message as the page's state, the newest one for each page region, in memory in the stream
+registry. A stream hands that message to the page each time the page loads, after a reload or a
+reconnect, until new content replaces the page. The server forgets it on a restart. A
+`device.region` call that writes any content drops the region's retained message and its tickets, so
+a temporary replacement that ends with `previous` brings the earlier page back with no state and new
+tickets. The device page keeps each region's newest retained message past its limit of 200 messages,
+so a frame that loads again on the same stream starts from it. A layout event that no longer shows a
+page drops that page's messages, so a page that a replacement gives back starts with no state. A
+retained message is kept even when the device is offline, and the call then returns `OFFLINE`.
 
 ## Waking the model
 
@@ -193,9 +331,10 @@ writes nothing. A device counts as offline once it has had no open stream for
 | `device.layout_restore` | Puts a saved layout back: its grid and every region's content                                                                                     |
 | `device.layouts`        | Lists the saved names, each with the time it was saved                                                                                            |
 | `device.layout_remove`  | Deletes a saved layout                                                                                                                            |
+| `device.sendToPage`     | Sends a message into the page of a region, and keeps it for each load of the page with `retain`                                                   |
 | `device.preview`        | Returns a picture of the screen and the errors the device reported, as [The preview](#the-preview) describes                                      |
 
-All 11 declare the `note` effect and run direct, inside the turn. The user's rules still decide each
+All 12 declare the `note` effect and run direct, inside the turn. The user's rules still decide each
 call, so an ask rule can hold a call for approval. `device.show` checks in this order and returns
 the first refusal: `UNKNOWN_DEVICE`, `SCREEN_OFF`, then the image refusals `UNKNOWN_IMAGE` and
 `IMAGE_FORGOTTEN`. A show to an offline device refuses nothing: the show waits, the device shows it
@@ -207,8 +346,12 @@ when it comes back online, and the result carries `waiting: true` with a message
 `UNKNOWN_DEVICE`, `SCREEN_OFF`, `OFFLINE`, then `UNKNOWN_LAYOUT`. `device.layout_remove` and
 `device.layouts` return `UNKNOWN_DEVICE`, and the remove call returns `UNKNOWN_LAYOUT` too. An
 `UNKNOWN_LAYOUT` message lists the saved names. `device.region` returns `UNKNOWN_DEVICE`,
-`SCREEN_OFF`, `UNKNOWN_REGION`, `PAGE_NOT_BUILT`, the image refusals, then `OFFLINE`.
-`device.preview` returns `UNKNOWN_DEVICE`, then `SCREEN_OFF`.
+`SCREEN_OFF`, `UNKNOWN_REGION`, `PACKAGES_NOT_BUILT`, `FETCHES_NOT_BUILT`, the image refusals, then
+`OFFLINE`. Its input check fails a page that holds a link, frame, object or embed element before any
+refusal. `device.region` also returns `UNKNOWN_REGION` when a layout was set after the call's own
+record. `device.sendToPage` returns `UNKNOWN_DEVICE`, `SCREEN_OFF`, `UNKNOWN_REGION`, `NOT_A_PAGE`
+for a region that holds no page, then `OFFLINE`. `device.preview` returns `UNKNOWN_DEVICE`, then
+`SCREEN_OFF`.
 
 `devices.list` shows the layout a device holds whether or not the device is online, unlike
 `showing`, which is null while the device is offline. `showing` follows the screen's order: it is
@@ -271,8 +414,12 @@ is cut to the exact size, so a device with an odd width gets a picture of its ow
 sends the PNG on at that exact size, so a large screen is not shrunk, and the picture is
 `unavailable` when the PNG passes the byte limit that the model takes.
 
-`buildPreviewPage` matches each kind of region content with no fallback, so a new kind, such as the
-one that page regions add, fails the type check until `buildPreviewPage` has a branch for it.
+A page region draws as a sealed frame of its own, one of the preview's files, which holds the same
+document and policy as the device's frame, with its images by path and its retained message already
+in place. The guest renders it with scripts on, and the frame has the same sandbox as on the device.
+
+`buildPreviewPage` matches each kind of region content with no fallback, so a new kind fails the
+type check until `buildPreviewPage` has a branch for it.
 
 ### The errors
 

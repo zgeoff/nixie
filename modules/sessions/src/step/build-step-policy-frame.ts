@@ -5,13 +5,13 @@ import type { StepPolicyFrame } from '@heynixie/tools';
 import type { SessionFrame } from '../types';
 
 // What a step's tool calls tell the decision point about the turn they belong to: where the call
-// runs, which owner message started it, which messages a task passed on, and where the step's
-// content came from.
+// runs, which owner message started it, which messages a task passed on, which mail woke it, and
+// where its content came from. The caller adds to `sources` as more content reaches the model.
 export function buildStepPolicyFrame(
   frame: SessionFrame,
   records: readonly LogRecord[],
+  sources: readonly RuleSource[],
 ): StepPolicyFrame {
-  const sources = collectSources(records);
   const arrivedMails = collectArrivedMails(records);
 
   if (frame.kind === 'conversation') {
@@ -35,26 +35,6 @@ export function buildStepPolicyFrame(
     sources,
     arrivedMails,
   };
-}
-
-function collectSources(records: readonly LogRecord[]): readonly RuleSource[] {
-  const sources = records.flatMap((record): RuleSource[] => {
-    if (record.kind === 'task_message') {
-      return ['task'];
-    }
-
-    if (record.contentSource === 'owner') {
-      return ['owner'];
-    }
-
-    if (record.contentSource === 'owner_data') {
-      return ['own_data'];
-    }
-
-    return record.contentSource === 'untrusted' ? ['outside'] : [];
-  });
-
-  return [...new Set(sources)].toSorted();
 }
 
 function collectArrivedMails(records: readonly LogRecord[]): readonly string[] {

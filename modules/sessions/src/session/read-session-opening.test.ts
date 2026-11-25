@@ -300,7 +300,7 @@ test('it carries the note again over the span from the oldest recent turn throug
   ]);
 
   const readTurnNote = mock(() =>
-    Promise.resolve({ text: 'REPLAYED NOTE', throughSequence: 3, eventCount: 1 }),
+    Promise.resolve({ text: 'REPLAYED NOTE', throughSequence: 3, eventCount: 1, sources: [] }),
   );
 
   const opening = await readSessionOpening(ctx.tasks.context, {
@@ -326,6 +326,44 @@ test('it carries the note again over the span from the oldest recent turn throug
 
   expect(opening.blocks.at(-1)).toBe('REPLAYED NOTE');
   expect(opening.record.recentEvents).toBe(1);
+});
+
+test('it reports the sources of the events that the replayed note lists', async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'Did the parcel come?' },
+    },
+    {
+      kind: 'model.turn_ended',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: { memoryNotedThrough: 2 },
+    },
+  ]);
+
+  const opening = await readSessionOpening(ctx.tasks.context, {
+    taskID: 'conversation',
+    start: { kind: 'rebuild', reason: 'lost', lostSessionID: null },
+    beforeSequence: Number.MAX_SAFE_INTEGER,
+    rebuildTokens: 30_000,
+    brief: null,
+    isFirstSession: false,
+    inbox: [],
+    messaging: buildMockTaskMessageView().messaging,
+    times: { defaultZone: 'Australia/Sydney', now: new Date() },
+    pinnedMemory: 'Nothing is pinned in your memory.',
+    model: 'claude-test-1',
+    status: [buildStartStatus()],
+    readTurnNote: () =>
+      Promise.resolve({ text: 'EVENTS', throughSequence: 2, eventCount: 1, sources: ['outside'] }),
+  });
+
+  expect(opening.sources).toStrictEqual(['outside']);
 });
 
 test('it starts the span where the note of the oldest kept turn started, so an event noted with that turn comes along', async () => {
@@ -360,7 +398,7 @@ test('it starts the span where the note of the oldest kept turn started, so an e
   ]);
 
   const readTurnNote = mock(() =>
-    Promise.resolve({ text: 'REPLAYED NOTE', throughSequence: 4, eventCount: 0 }),
+    Promise.resolve({ text: 'REPLAYED NOTE', throughSequence: 4, eventCount: 0, sources: [] }),
   );
 
   await readSessionOpening(ctx.tasks.context, {
@@ -389,7 +427,7 @@ test('it carries no note again for a session with no recent turn', async () => {
   const ctx = await setupTest();
 
   const readTurnNote = mock(() =>
-    Promise.resolve({ text: 'REPLAYED NOTE', throughSequence: 3, eventCount: 1 }),
+    Promise.resolve({ text: 'REPLAYED NOTE', throughSequence: 3, eventCount: 1, sources: [] }),
   );
 
   await readSessionOpening(ctx.tasks.context, {

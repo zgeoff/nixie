@@ -151,3 +151,32 @@ test('it queues a preview of the listed device', () => {
     ['mcp__nixie__device_preview', { device: 'dk4m7q2w9x' }],
   ]);
 });
+
+test('it queues a page for the pond, and a retained message into it', () => {
+  const body = {
+    messages: [{ role: 'user', content: '{"result":{"devices":[{"shortID":"dk4m7q2w9x"}]}}' }],
+  };
+
+  const calls = [...buildLayoutReplies('page'), ...buildLayoutReplies('message')].map((reply) => {
+    const input = reply.toolUse.input;
+
+    return [reply.toolUse.name, typeof input === 'function' ? input(body) : input];
+  });
+
+  expect(calls).toStrictEqual([
+    ['mcp__nixie__devices_list', {}],
+    [
+      'mcp__nixie__device_region',
+      {
+        device: 'dk4m7q2w9x',
+        region: 'pond',
+        content: { kind: 'html', html: expect.stringContaining('nixie.onMessage') },
+      },
+    ],
+    ['mcp__nixie__devices_list', {}],
+    [
+      'mcp__nixie__device_sendToPage',
+      { device: 'dk4m7q2w9x', region: 'pond', data: { text: 'hello' }, retain: true },
+    ],
+  ]);
+});
