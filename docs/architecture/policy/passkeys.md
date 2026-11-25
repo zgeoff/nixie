@@ -5,8 +5,7 @@ covers a proposal that spends money, raises a budget, or adds a mandate, a propo
 contact. The class `lifting` covers a proposal that creates or widens a rule that lets nixie skip
 those asks. To approve either, the client asks the user's passkey for a WebAuthn assertion with user
 verification, bound to the one answer the user gives, and the API refuses the answer without it. One
-tap also opens a [window](#the-window) of 10 minutes in which the same browser session skips the
-passkey.
+tap also opens a [window](#the-window) in which the same browser session skips the passkey.
 
 A passkey here is a WebAuthn discoverable credential, whether one device holds it or a provider
 syncs it between the user's devices. `@simplewebauthn/server` verifies each response and
