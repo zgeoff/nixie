@@ -107,6 +107,23 @@ export interface NixieTables {
     readonly binding: string;
     readonly removal_counter: number;
     readonly created_at: number;
+    readonly label_sealed: Uint8Array<ArrayBuffer> | null;
+    readonly granted_scopes: string;
+    readonly missing_scopes: string;
+    readonly refresh_expires_at: number | null;
+    readonly token_fingerprint: string | null;
+  };
+  readonly consent_requests: {
+    readonly consent_id: string;
+    readonly state_hash: string;
+    readonly device_session_id: string;
+    readonly oauth_client_id: string;
+    readonly connection_id: string | null;
+    readonly key_id: string;
+    readonly verifier_sealed: Uint8Array<ArrayBuffer>;
+    readonly claimed_at: number | null;
+    readonly created_at: number;
+    readonly expires_at: number;
   };
   readonly definition_rules: {
     readonly rule_id: string;
@@ -445,6 +462,12 @@ export interface NixieTables {
     readonly removal_counter: number;
     readonly created_at: number;
     readonly removed_at: number | null;
+    readonly short_id: string | null;
+    readonly origin: string | null;
+    readonly redirect_uri: string | null;
+    readonly picker_key: string | null;
+    readonly project_number: string | null;
+    readonly secret_fingerprint: string | null;
   };
   readonly passkeys: {
     readonly passkey_id: string;

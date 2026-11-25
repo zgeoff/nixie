@@ -6,6 +6,8 @@ const tokenReplySchema = z.object({
   refresh_token: z.string().min(1).exactOptional(),
   expires_in: z.number().positive().default(3600),
   id_token: z.string().exactOptional(),
+  scope: z.string().exactOptional(),
+  refresh_token_expires_in: z.number().positive().exactOptional(),
 });
 
 export type TokenReply = z.output<typeof tokenReplySchema>;

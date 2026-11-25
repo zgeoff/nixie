@@ -175,6 +175,12 @@ export interface TokenResult {
   readonly credentialID: string;
   readonly expiresAtMs: number;
 
+  // the scopes the provider says it granted, as it wrote them; empty when it names none
+  readonly grantedScopes: readonly string[];
+
+  // when a grant of limited time ends, from the provider's refresh_token_expires_in; null otherwise
+  readonly refreshExpiresAtMs: number | null;
+
   // the account the ID token named, read only after its issuer, audience and expiry passed
   readonly account: {
     readonly subject: string;

@@ -286,6 +286,9 @@ export function createCredentialStore(options: CredentialStoreOptions): Credenti
           readValue,
           origins: allowed,
           options: fetchOptions,
+          ...(binding?.spec.provider === undefined
+            ? {}
+            : { oauthHostnames: listOAuthHostnames(binding.spec.provider) }),
           ...(withSendCheck === undefined ? {} : { withSendCheck }),
         });
 
@@ -453,6 +456,12 @@ function requireProviderOrigins(spec: CredentialSpec): void {
       throw new Error(`${origin} is not an origin of the credential ${spec.label}`);
     }
   }
+}
+
+function listOAuthHostnames(provider: OAuthProvider): readonly string[] {
+  return [provider.tokenURL, provider.revokeURL, provider.authorizeURL]
+    .filter((url) => url !== undefined)
+    .map((url) => new URL(url).hostname.toLowerCase());
 }
 
 // A request body that is a stream is read once, so the retry after a refresh needs the bytes.

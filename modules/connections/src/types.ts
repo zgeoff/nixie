@@ -12,6 +12,12 @@ interface OAuthClientRow {
   readonly removal_counter: Generated<number>;
   readonly created_at: number;
   readonly removed_at: number | null;
+  readonly short_id: string | null;
+  readonly origin: string | null;
+  readonly redirect_uri: string | null;
+  readonly picker_key: string | null;
+  readonly project_number: string | null;
+  readonly secret_fingerprint: string | null;
 }
 
 interface ConnectionTableRow {
@@ -32,6 +38,28 @@ interface ConnectionTableRow {
   readonly binding: Generated<string>;
   readonly removal_counter: Generated<number>;
   readonly created_at: number;
+  readonly label_sealed: Uint8Array<ArrayBuffer> | null;
+
+  // JSON arrays of short scope names, and of MissingScope
+  readonly granted_scopes: Generated<string>;
+  readonly missing_scopes: Generated<string>;
+  readonly refresh_expires_at: number | null;
+  readonly token_fingerprint: string | null;
+}
+
+interface ConsentRequestRow {
+  readonly consent_id: string;
+
+  // SHA-256 of the state, which is never stored
+  readonly state_hash: string;
+  readonly device_session_id: string;
+  readonly oauth_client_id: string;
+  readonly connection_id: string | null;
+  readonly key_id: string;
+  readonly verifier_sealed: Uint8Array<ArrayBuffer>;
+  readonly claimed_at: number | null;
+  readonly created_at: number;
+  readonly expires_at: number;
 }
 
 interface KeyMarkRow {
@@ -41,6 +69,8 @@ interface KeyMarkRow {
 
 export type ConnectionRow = Selectable<ConnectionTableRow>;
 
+export type ConsentRow = Selectable<ConsentRequestRow>;
+
 export type ClientRow = Selectable<OAuthClientRow>;
 
 // mapped types, because Kysely's table map needs the index signature an interface lacks
@@ -48,6 +78,7 @@ export type ConnectionTables = CheckedTables<
   Readonly<{
     oauth_clients: OAuthClientRow;
     connections: ConnectionTableRow;
+    consent_requests: ConsentRequestRow;
     key_marks: KeyMarkRow;
   }>
 >;

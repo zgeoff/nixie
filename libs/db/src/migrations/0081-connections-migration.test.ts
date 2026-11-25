@@ -37,9 +37,10 @@ test('it moves the schema to version 81', () => {
 test('it creates the table that holds each connection', async () => {
   const ctx = await setupTest();
 
-  const columns = await sql`select name from pragma_table_info('connections') order by cid`.execute(
-    ctx.db,
-  );
+  const columns =
+    await sql`select name from pragma_table_info('connections') order by cid limit 17`.execute(
+      ctx.db,
+    );
 
   expect(columns.rows).toStrictEqual([
     { name: 'connection_id' },
@@ -66,7 +67,9 @@ test('it creates the tables that hold OAuth clients and the marks of minted keys
   const ctx = await setupTest();
 
   const clients =
-    await sql`select name from pragma_table_info('oauth_clients') order by cid`.execute(ctx.db);
+    await sql`select name from pragma_table_info('oauth_clients') order by cid limit 8`.execute(
+      ctx.db,
+    );
 
   const marks = await sql`select name from pragma_table_info('key_marks') order by cid`.execute(
     ctx.db,

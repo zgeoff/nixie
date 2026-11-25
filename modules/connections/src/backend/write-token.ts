@@ -150,7 +150,7 @@ async function writeInTransaction(
 
   const current = await tables
     .selectFrom('connections')
-    .select(['removal_counter', 'token_key_id', 'binding'])
+    .select(['removal_counter', 'token_key_id', 'binding', 'account_sealed'])
     .where('connection_id', '=', write.credentialID)
     .executeTakeFirst();
 
@@ -171,10 +171,17 @@ async function writeInTransaction(
 
   const token = write.token;
 
+  // The account that a consent sealed with its address stays as it is: a save that names the account
+  // again would drop the address.
+  const account =
+    current?.account_sealed === null || current === undefined
+      ? { account_sealed: write.sealed.account.sealed }
+      : {};
+
   const columns = {
     oauth_client_id: token.clientCredentialID,
     key_id: write.sealed.account.keyID,
-    account_sealed: write.sealed.account.sealed,
+    ...account,
     token_key_id: token.keyID,
     refresh_token_sealed: write.sealed.refreshSealed,
     status: token.state.status,

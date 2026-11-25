@@ -455,6 +455,14 @@ export function createHeldCredentials(options: HeldOptions): HeldCredentials {
         await revoke(client, secret.clientSecret, pickRevocable(result.reply));
       };
 
+      // A grant with no refresh token cannot be used again, so an exchange that returns none keeps
+      // nothing and revokes what it received.
+      if (result.reply.refresh_token === undefined) {
+        await dropTokens();
+
+        throw new TokenRequestError('no_refresh_token');
+      }
+
       const account = await readAccount(result.reply, client.provider, options.now(), dropTokens);
 
       try {
