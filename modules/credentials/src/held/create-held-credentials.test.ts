@@ -1,4 +1,5 @@
 import { expect, onTestFinished, spyOn, test } from 'bun:test';
+import { formatWithOptions } from 'node:util';
 import { CredentialRefusalError } from '@heynixie/egress';
 import { readRecords } from '@heynixie/log';
 import { waitFor } from '@zgeoff/testing';
@@ -50,24 +51,10 @@ async function setupTest() {
 
   const logOutput: string[] = [];
 
-  // Each argument is kept as Bun prints it, with no depth limit, so a value inside an object
-  // field or in bytes written to a stream shows in the output.
+  // The arguments are formatted as the console formats them, format strings included, with no depth
+  // limit, so a value inside an object field or split across `%s` parts shows in the output.
   const captureOutput = (...args: readonly unknown[]) => {
-    logOutput.push(
-      args
-        .map((arg) => {
-          if (typeof arg === 'string') {
-            return arg;
-          }
-
-          if (arg instanceof Uint8Array) {
-            return new TextDecoder().decode(arg);
-          }
-
-          return Bun.inspect(arg, { depth: Number.POSITIVE_INFINITY });
-        })
-        .join(' '),
-    );
+    logOutput.push(formatWithOptions({ depth: Number.POSITIVE_INFINITY }, ...args));
   };
 
   for (const level of ['log', 'info', 'warn', 'error', 'debug'] as const) {
@@ -78,7 +65,9 @@ async function setupTest() {
 
   for (const stream of [process.stdout, process.stderr]) {
     const spy = spyOn(stream, 'write').mockImplementation((chunk) => {
-      captureOutput(chunk);
+      const text = typeof chunk === 'string' ? chunk : new TextDecoder().decode(chunk);
+
+      logOutput.push(text);
 
       return true;
     });
@@ -801,6 +790,16 @@ test('it finds a token that the log output carries inside a field of an object',
   expect(leaks).toStrictEqual([false, true, false, false]);
 });
 
+test('it finds a token that the log output joins from parts of a format string', async () => {
+  const ctx = await setupTest();
+
+  console.error('%s%s', 'fake-access', '-token-planted');
+
+  const leaks = await ctx.readLeakFlags('');
+
+  expect(leaks).toStrictEqual([true, false, false, false]);
+});
+
 test('it finds a token that a write to standard error carries as bytes', async () => {
   const ctx = await setupTest();
 
@@ -1188,38 +1187,49 @@ test('it holds a removal until the counter check before a send has handed the re
   expect(seen.hasCounterMoved).toBe(false);
 });
 
-test('it refuses, and never returns the rejection, when the credential was removed during the refresh after a 401', async () => {
-  const ctx = await setupTest();
-  const connection = await ctx.connectCredential();
-
-  const gate = Promise.withResolvers<void>();
-
-  ctx.provider.answerToken(async (request) => {
-    if (request.path === '/data') {
-      return new Response('denied', { status: 401 });
-    }
-
-    await gate.promise;
-
-    return Response.json({
+test.each([
+  {
+    answer: 'new tokens',
+    status: 200,
+    body: {
       access_token: 'fake-access-token-9',
       refresh_token: 'fake-refresh-token-9',
       expires_in: 3600,
+    },
+  },
+  { answer: 'invalid_grant', status: 400, body: { error: 'invalid_grant' } },
+  { answer: 'a server error', status: 500, body: { error: 'server_error' } },
+])(
+  'it refuses, and never returns the 401, when the credential was removed during the refresh after it and the refresh got $answer',
+  async (row) => {
+    const ctx = await setupTest();
+    const connection = await ctx.connectCredential();
+
+    const gate = Promise.withResolvers<void>();
+
+    ctx.provider.answerToken(async (request) => {
+      if (request.path === '/data') {
+        return new Response('denied', { status: 401 });
+      }
+
+      await gate.promise;
+
+      return Response.json(row.body, { status: row.status });
     });
-  });
 
-  const sending = ctx.store.fetcher(connection.token, [ctx.provider.origin])(
-    `${ctx.provider.origin}/data`,
-  );
+    const sending = ctx.store.fetcher(connection.token, [ctx.provider.origin])(
+      `${ctx.provider.origin}/data`,
+    );
 
-  await waitFor(() => expect(ctx.countRefreshRequests()).toBe(1));
+    await waitFor(() => expect(ctx.countRefreshRequests()).toBe(1));
 
-  await ctx.store.remove(connection.tokenRef);
+    await ctx.store.remove(connection.tokenRef);
 
-  gate.resolve();
+    gate.resolve();
 
-  await expect(sending).rejects.toBeInstanceOf(CredentialRemovedError);
-});
+    await expect(sending).rejects.toBeInstanceOf(CredentialRemovedError);
+  },
+);
 
 test('it lets one of two overlapping exchanges into one credential save, and revokes the tokens of the other', async () => {
   const ctx = await setupTest();
@@ -1230,39 +1240,33 @@ test('it lets one of two overlapping exchanges into one credential save, and rev
   ctx.provider.answerToken(() => {
     answers.count += 1;
 
-    const suffix = answers.count === 1 ? 'first' : 'second';
-
     return Response.json({
-      access_token: `fake-access-token-${suffix}`,
-      refresh_token: `fake-refresh-token-${suffix}`,
+      access_token: `fake-access-token-exchange-${String(answers.count)}`,
+      refresh_token: `fake-refresh-token-exchange-${String(answers.count)}`,
       expires_in: 3600,
       id_token: buildIDToken({
         iss: 'https://issuer.example',
         aud: 'client-123',
         exp: ctx.clock.now() / 1000 + 600,
-        sub: `subject-${suffix}`,
+        sub: `subject-${String(answers.count)}`,
       }),
     });
   });
 
-  // Each exchange reads the client's counter before it sends and again after the answer, so 4
-  // reads mean both answers are in. A save waits for them and for the turn of the event loop that
-  // lets the later exchange read the credential's slot, so both exchanges overlap.
-  const clientReads = { count: 0, both: Promise.withResolvers<void>() };
+  // Each exchange reads the client's counter before it sends and again after the answer. A save
+  // waits for 4 such reads and one turn of the event loop, which lets an exchange that holds no
+  // lock read the credential's slot, so both exchanges overlap.
+  const clientReads = { count: 0 };
 
   ctx.hooks.afterCounterRead = (read) => {
-    if (read === connection.clientRef.credentialID) {
-      clientReads.count += 1;
-    }
-
-    if (clientReads.count === 4) {
-      setImmediate(clientReads.both.resolve);
-    }
+    clientReads.count += Number(read === connection.clientRef.credentialID);
 
     return Promise.resolve();
   };
 
-  ctx.hooks.beforeKeyCreated = () => clientReads.both.promise;
+  ctx.hooks.beforeKeyCreated = async () => {
+    await waitFor(() => expect(clientReads.count).toBeGreaterThanOrEqual(4));
+  };
 
   const credentialID = crypto.randomUUID();
 
@@ -1276,19 +1280,73 @@ test('it lets one of two overlapping exchanges into one credential save, and rev
 
   const revoked = ctx.provider.requests
     .filter((request) => request.path === '/revoke')
-    .map((request) => request.form['token']);
+    .map((request) => request.form['token'] ?? '');
 
   expect(outcomes.map((outcome) => outcome.status).toSorted()).toStrictEqual([
     'fulfilled',
     'rejected',
   ]);
 
-  expect([saved?.refreshToken, ...revoked].toSorted()).toStrictEqual([
-    'fake-refresh-token-first',
-    'fake-refresh-token-second',
-  ]);
+  expect([
+    revoked.length,
+    revoked.includes(saved?.refreshToken ?? ''),
+    revoked.every((token) => token.startsWith('fake-refresh-token-exchange-')),
+  ]).toStrictEqual([1, false, true]);
 
   expect(ctx.backend.readKeyIDs().toSorted()).toStrictEqual(
     [saved?.keyID ?? '', connected?.keyID ?? ''].toSorted(),
   );
+});
+
+test('it refuses every exchange whose OAuth client was removed before it saved, and revokes its tokens', async () => {
+  const ctx = await setupTest();
+  const connection = await ctx.connectCredential();
+
+  const answers = { count: 0 };
+
+  ctx.provider.answerToken(() => {
+    answers.count += 1;
+
+    return Response.json({
+      access_token: `fake-access-token-exchange-${String(answers.count)}`,
+      refresh_token: `fake-refresh-token-exchange-${String(answers.count)}`,
+      expires_in: 3600,
+    });
+  });
+
+  const clientReads = { count: 0 };
+  const gate = Promise.withResolvers<void>();
+
+  ctx.hooks.afterCounterRead = (read) => {
+    clientReads.count += Number(read === connection.clientRef.credentialID);
+
+    return Promise.resolve();
+  };
+
+  ctx.hooks.beforeKeyCreated = () => gate.promise;
+
+  const credentialID = crypto.randomUUID();
+
+  const exchanges = Promise.allSettled([
+    ctx.exchangeCode(connection.client, credentialID),
+    ctx.exchangeCode(connection.client, credentialID),
+  ]);
+
+  await waitFor(() => expect(clientReads.count).toBeGreaterThanOrEqual(4));
+
+  await ctx.store.remove(connection.clientRef);
+
+  gate.resolve();
+
+  const outcomes = await exchanges;
+
+  const refused = outcomes.filter(
+    (outcome) => outcome.status === 'rejected' && outcome.reason instanceof CredentialRemovedError,
+  );
+
+  const revoked = ctx.provider.requests.filter((request) => request.path === '/revoke');
+
+  const saved = await ctx.backend.readToken(credentialID);
+
+  expect([refused.length, revoked.length, saved === null]).toStrictEqual([2, 2, true]);
 });

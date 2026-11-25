@@ -314,6 +314,8 @@ export function createCredentialStore(options: CredentialStoreOptions): Credenti
         }
 
         if (outcome !== 'saved') {
+          await checkHandle();
+
           return first;
         }
 

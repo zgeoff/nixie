@@ -1,5 +1,6 @@
 import { CredentialRefusalError } from '@heynixie/egress';
 import { planBackoffDelay } from '@heynixie/retry';
+import { match } from 'ts-pattern';
 import { readFingerprint } from '../fingerprint/read-fingerprint';
 import type { OwnValueSet } from '../own-values/create-own-value-set';
 import type { CredentialFetch, OAuthProvider } from '../types';
@@ -435,16 +436,28 @@ export function createHeldCredentials(options: HeldOptions): HeldCredentials {
         throw error;
       }
 
-      return slotLock.withLock(request.credentialID, () =>
+      const written = await slotLock.withLock(request.credentialID, () =>
         writeExchangedToken(exchangeWriter, {
-          client,
+          clientCredentialID: client.credentialID,
           request,
           reply: result.reply,
           account,
           tokenCounter,
-          dropTokens,
+          probeClient: async () =>
+            (await backend.readRemovalCounter(client.credentialID)) === client.removalCounter,
         }),
       );
+
+      if (written.kind === 'saved') {
+        return written.result;
+      }
+
+      await dropTokens();
+
+      throw match(written)
+        .with({ kind: 'removed' }, () => new CredentialRemovedError(client.label))
+        .with({ kind: 'account_changed' }, () => new TokenRequestError('account_changed'))
+        .exhaustive();
     },
     readAccessToken: async (handle) => {
       await refreshIfDue(handle);

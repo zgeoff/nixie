@@ -1,6 +1,4 @@
-import { CredentialRemovedError } from './credential-removed-error';
 import type { TokenReply } from './send-token-request';
-import { TokenRequestError } from './token-request-error';
 import type { HeldBackend, HeldState, HeldToken, TokenExchange, TokenResult } from './types';
 
 export interface ExchangeWriter {
@@ -20,7 +18,7 @@ export interface ExchangeWriter {
 }
 
 export interface ExchangedTokens {
-  readonly client: { readonly credentialID: string; readonly label: string };
+  readonly clientCredentialID: string;
   readonly request: TokenExchange;
   readonly reply: TokenReply;
   readonly account: TokenResult['account'];
@@ -28,9 +26,16 @@ export interface ExchangedTokens {
   // the counter of the credential the tokens save into, read before the code went out
   readonly tokenCounter: number;
 
-  // revokes the tokens the exchange received
-  readonly dropTokens: () => Promise<void>;
+  // whether the OAuth client that issued the tokens is still the one the exchange began with
+  readonly probeClient: () => Promise<boolean>;
 }
+
+// What a write did. Only `saved` keeps the tokens: the caller revokes them on any other outcome,
+// once it has let go of the slot lock, so no request to the provider holds the lock.
+export type ExchangeWrite =
+  | { readonly kind: 'saved'; readonly result: TokenResult }
+  | { readonly kind: 'account_changed' }
+  | { readonly kind: 'removed' };
 
 // Saves the tokens of an exchange into its credential, in place of any token there. The caller
 // holds the credential's slot lock, so no other save reads the slot until this one wrote it and
@@ -38,14 +43,12 @@ export interface ExchangedTokens {
 export async function writeExchangedToken(
   writer: ExchangeWriter,
   exchanged: ExchangedTokens,
-): Promise<TokenResult> {
+): Promise<ExchangeWrite> {
   const credentialID = exchanged.request.credentialID;
 
   const existing = await writer.backend.readToken(credentialID);
 
   if (existing !== null && hasAccountChanged(existing, exchanged.account)) {
-    await exchanged.dropTokens();
-
     await writer.writeState(
       credentialID,
       existing.state,
@@ -53,7 +56,7 @@ export async function writeExchangedToken(
       exchanged.tokenCounter,
     );
 
-    throw new TokenRequestError('account_changed');
+    return { kind: 'account_changed' };
   }
 
   const nowMs = writer.now();
@@ -65,7 +68,7 @@ export async function writeExchangedToken(
     refreshToken: exchanged.reply.refresh_token ?? null,
     expiresAtMs: nowMs + exchanged.reply.expires_in * 1000,
     keyID,
-    clientCredentialID: exchanged.client.credentialID,
+    clientCredentialID: exchanged.clientCredentialID,
     accountSubject: exchanged.account?.subject ?? null,
     state: {
       status: 'active',
@@ -76,18 +79,16 @@ export async function writeExchangedToken(
     },
   };
 
-  const written = await writer.backend.writeToken(
-    credentialID,
-    token,
-    exchanged.tokenCounter,
-    null,
-  );
+  const isClientCurrent = await exchanged.probeClient();
+
+  const written = isClientCurrent
+    ? await writer.backend.writeToken(credentialID, token, exchanged.tokenCounter, null)
+    : 'removed';
 
   if (written === 'removed') {
-    await exchanged.dropTokens();
     await writer.backend.removeKey(keyID);
 
-    throw new CredentialRemovedError(exchanged.client.label);
+    return { kind: 'removed' };
   }
 
   if (existing !== null) {
@@ -96,7 +97,10 @@ export async function writeExchangedToken(
 
   writer.addOwnValues(credentialID, token);
 
-  return { credentialID, expiresAtMs: token.expiresAtMs, account: exchanged.account };
+  return {
+    kind: 'saved',
+    result: { credentialID, expiresAtMs: token.expiresAtMs, account: exchanged.account },
+  };
 }
 
 // A credential records the account it named at its first use. A new token that names another
