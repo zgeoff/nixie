@@ -10,6 +10,9 @@ import { toDollars } from '../periods/to-dollars';
 import { startModelGateway } from '../proxy/start-model-gateway';
 
 export interface TestModelGateway {
+  // stops the gateway and removes its folder
+  readonly stop: () => Promise<void>;
+
   // the gateway's origin, which a deployment's turn_input_log source names
   readonly url: string;
 
@@ -87,8 +90,20 @@ export const testGatewayPrices = {
 
 const defaultLimits = { day: 100, month: 1000 };
 
-// An in-process gateway with one route to an upstream, counting against no real budget.
+// An in-process gateway with one route to an upstream, counting against no real budget. It stops
+// when the test ends.
 export async function startTestModelGateway(
+  options: TestModelGatewayOptions,
+): Promise<TestModelGateway> {
+  const gateway = await createTestModelGateway(options);
+
+  onTestFinished(gateway.stop);
+
+  return gateway;
+}
+
+// The same gateway for a caller that is no test, such as the verify harness, which stops it itself.
+export async function createTestModelGateway(
   options: TestModelGatewayOptions,
 ): Promise<TestModelGateway> {
   const directory = await mkdtemp(join(tmpdir(), 'nixie-gateway-'));
@@ -141,15 +156,14 @@ export async function startTestModelGateway(
     ...(periods.now === undefined ? {} : { now: periods.now }),
   });
 
-  onTestFinished(async () => {
-    await gateway.stop();
-
-    await rm(directory, { recursive: true, force: true });
-  });
-
   const readCount = createPeriodsCountReader(join(directory, 'counter.json'));
 
   return {
+    stop: async () => {
+      await gateway.stop();
+
+      await rm(directory, { recursive: true, force: true });
+    },
     url: gateway.url,
     baseURL: `${gateway.url}/scripted`,
     spoolDir,

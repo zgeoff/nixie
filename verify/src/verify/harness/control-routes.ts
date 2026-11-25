@@ -128,6 +128,23 @@ export const controlRoutes = {
     }),
     output: z.strictObject({ replies: z.int().positive() }),
   },
+  probeRoute: {
+    method: 'POST',
+    path: '/control/probe-route',
+    input: z.strictObject({ route: z.string().min(1) }),
+
+    // the gateway's answer to one model request on the route, with the error it names, or null
+    output: z.strictObject({
+      status: z.int(),
+      error: z
+        .strictObject({
+          type: z.string(),
+          counter: z.string().optional(),
+          route: z.string().optional(),
+        })
+        .nullable(),
+    }),
+  },
   modelReceived: {
     method: 'POST',
     path: '/control/model-received',

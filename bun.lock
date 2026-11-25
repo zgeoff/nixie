@@ -1417,6 +1417,7 @@
         "@heynixie/contract": "workspace:*",
         "@heynixie/log": "workspace:*",
         "@heynixie/memory": "workspace:*",
+        "@heynixie/model-gateway": "workspace:*",
         "@heynixie/server": "workspace:*",
         "@heynixie/testing": "workspace:*",
         "@heynixie/web": "workspace:*",

@@ -41,7 +41,7 @@ test('it shows each route with its day and month counts in US dollars and approx
     'Today: $12.40 (about A$19) of $40.00 (about A$61)',
     'This month: $211.90 (about A$322) of $600.00 (about A$912)',
     'Today: $5.02 (about A$7.63) of $5.00 (about A$7.60) (limit reached)',
-    'This month: $5.02 (about A$7.63) no limit',
+    'This month: $5.02 (about A$7.63) no limit set, so requests are refused',
   ]);
 });
 

@@ -193,6 +193,16 @@ export function createVerifyRegistry(): Wringer {
       run: (input, ctx) => postControl(ctx.drivers.http, controlRoutes.layoutOnDevice, input),
     })
     .action({
+      name: 'probe-route',
+      summary:
+        "Send one model request to the spending gateway's route --route, and read its answer: a route at its limit answers 403 with the error limit_reached, which names the route. Needs a start with NIXIE_VERIFY_SPEND=1",
+      effect: 'write',
+      targets: ['local'],
+      input: controlRoutes.probeRoute.input,
+      data: controlRoutes.probeRoute.output,
+      run: (input, ctx) => postControl(ctx.drivers.http, controlRoutes.probeRoute, input),
+    })
+    .action({
       name: 'advance-clock',
       summary:
         "Move nixie's clock forward by --minutes, so content that lasts minutes ends with no wait",

@@ -63,6 +63,7 @@ The mistakes that cost the most time:
 | computer-browser   | Open a page in the assistant's browser                        | [references/feature-computer-browser.md](references/feature-computer-browser.md)     |
 | computer-screen    | Click a point of the assistant's desktop                      | [references/feature-computer-screen.md](references/feature-computer-screen.md)       |
 | computer-watch     | Watch the assistant's desktop                                 | [references/feature-computer-watch.md](references/feature-computer-watch.md)         |
+| spend-routes       | Read each route's counts                                      | [references/feature-spend-routes.md](references/feature-spend-routes.md)             |
 | device-in-browser  | Make a signed-in browser a device                             | [references/feature-device-in-browser.md](references/feature-device-in-browser.md)   |
 | device-screen      | Enrol a device and see a picture on it                        | [references/feature-device-screen.md](references/feature-device-screen.md)           |
 | device-layout      | Lay out a screen in regions, and change them                  | [references/feature-device-layout.md](references/feature-device-layout.md)           |
@@ -149,11 +150,11 @@ command with neither runs on the registry's first target, so run `use` first.
 
 <!-- repo: targets -->
 
-| Target    | Run `bun verify`                      | Access     | Notes                                                               |
-| --------- | ------------------------------------- | ---------- | ------------------------------------------------------------------- |
-| `local`   | `use --target local`, then `up`       | read-write | Test build, scripted model.                                         |
-| `preview` | `use --target preview`, then `attach` | read-write | The PR's preview, real model; [setup](references/preview-setup.md). |
-| `prod`    | `use --target prod`, then `attach`    | read-only  | [The prod check](references/prod-check.md).                         |
+| Target    | Run `bun verify`                      | Access     | Notes                                         |
+| --------- | ------------------------------------- | ---------- | --------------------------------------------- |
+| `local`   | `use --target local`, then `up`       | read-write | Scripted model.                               |
+| `preview` | `use --target preview`, then `attach` | read-write | [Preview setup](references/preview-setup.md). |
+| `prod`    | `use --target prod`, then `attach`    | read-only  | [The prod check](references/prod-check.md).   |
 
 <!-- /repo -->
 
@@ -170,7 +171,7 @@ for its commands.
 
 <!-- repo: commands -->
 
-- Pass `--role` and `--name` to `browser type` and `browser click`, or `--ref` from the last
+- `browser type` and `browser click` take `--role` and `--name`, or `--ref` from the last
   `browser snapshot`.
 
 <!-- /repo -->
@@ -179,9 +180,9 @@ for its commands.
 
 <!-- repo: registry -->
 
-Declare targets, actions, commands, checks and features in
-[`create-verify-registry.ts`](../../../verify/src/verify/create-verify-registry.ts). Edit its globs
-in [`feature-paths.ts`](../../../verify/src/verify/feature-paths.ts).
+Edit targets, actions and checks in
+[`create-verify-registry.ts`](../../../verify/src/verify/create-verify-registry.ts), and feature
+globs in [`feature-paths.ts`](../../../verify/src/verify/feature-paths.ts).
 
 <!-- /repo -->
 

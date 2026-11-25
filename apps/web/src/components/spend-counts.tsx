@@ -70,7 +70,9 @@ function PeriodLine(props: PeriodLineProps): ReactNode {
   const spent = formatSpendAmount(count.dollars, props.display);
 
   const limit =
-    count.limit === null ? 'no limit' : `of ${formatSpendAmount(count.limit, props.display)}`;
+    count.limit === null
+      ? 'no limit set, so requests are refused'
+      : `of ${formatSpendAmount(count.limit, props.display)}`;
 
   return (
     <p>

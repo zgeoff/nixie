@@ -3,6 +3,11 @@ import { featurePaths } from './feature-paths';
 // The features that use a device or a second client, which the registry lists after the others.
 export const lastFeatures = [
   {
+    name: 'spend-routes',
+    summary: "Read each route's counts",
+    paths: featurePaths['spend-routes'],
+  },
+  {
     name: 'device-in-browser',
     summary: 'Make a signed-in browser a device',
     paths: featurePaths['device-in-browser'],
