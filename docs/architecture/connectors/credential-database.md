@@ -4,9 +4,8 @@ A Google connection holds a refresh token that nixie changes at runtime: each re
 it. The credential store's database backend keeps these values in `nixie.db`, sealed under keys of
 the key store, so that forgetting a connection deletes its keys and leaves nothing readable in the
 database or in any backup. [The credential store](credentials.md) defines the backend's interface,
-the removal counter and the refresh. This doc covers what the database backend does behind that
-interface: where it keeps each value, how a rotated token survives a crash, and how a connection is
-forgotten.
+the removal counter and the refresh. The sections below cover where the database backend keeps each
+value, how a rotated token survives a crash, and how a connection is forgotten.
 
 [Erasable fields](../core/erasable-fields.md) covers the key store, and
 [the database](../core/database.md#key-store-ids) covers why every key ID is random.
@@ -39,7 +38,7 @@ so a binding made before the removal never matches again.
 one write transaction. The transaction first compares two removal counters with the ones the caller
 read: the credential's own, and its OAuth client's. A client removed after the caller's last check
 therefore never gets a token saved, and the save answers `removed`. A refresh that finishes after a
-removal revokes the token it received instead of keeping it.
+removal revokes the token it received.
 
 The transaction writes `credential.refresh_saved` with the token, so a crash leaves both or neither.
 A start never finds a saved token whose refresh reads as lost.
@@ -47,9 +46,9 @@ A start never finds a saved token whose refresh reads as lost.
 ## Rotation and the key sweep
 
 The key store and `nixie.db` commit apart, so a key ID needs a mark that survives a crash between
-the two. The backend writes the mark before it makes the key, and the token's transaction does two
-things at once: it clears the mark of the new key, because a row now names it, and it writes a mark
-for the key it replaced. After the commit, the refresh deletes the old key and its mark.
+the two. The backend writes the mark before it makes the key. In the token's transaction, it clears
+the mark of the new key, because a row now names it, and writes a mark for the key it replaced.
+After the commit, the refresh deletes the old key and its mark.
 
 A crash at any point then leaves one whole token in the row, and a mark for each key that may be
 left over:
@@ -89,11 +88,11 @@ key is deleted:
    set to `removed`.
 
 The revocation is sent at most once, because a second request could revoke a grant that a later
-consent made. A start finds each forget that began and has no outcome record, since its request may
-have left before the crash, and writes `unknown` for it before the runner's catch-up runs. A retry
-in the same process finds the outcome recorded, or finds that this process already sent, and sends
-nothing. Every outcome lets the forget finish, so a revocation that fails still ends with the keys
-deleted.
+consent made. At start, before the runner's catch-up runs, nixie writes `unknown` for each forget
+that began and has no outcome record, because its request may have left before the crash. A retry in
+the same process finds the outcome recorded, or finds that this process already sent the request,
+and sends nothing. Every outcome lets the forget finish, so a revocation that fails still ends with
+the keys deleted.
 
 A backup that holds `nixie.db` from before the forget holds the sealed values and no key. The backup
 job prunes the key repository after the forget, so no backup holds a key that opens them. A restic

@@ -133,11 +133,11 @@ the caller passes. Its result holds the expiry and the account the ID token name
 When the reply holds an ID token, nixie checks its issuer, audience and expiry before it reads `sub`
 or `email`. A failed check throws `TokenRequestError` with the code `id_token_issuer`,
 `id_token_audience`, `id_token_expired` or `id_token_malformed`, revokes the tokens that arrived,
-and saves nothing. An exchange takes an optional `probeRevocable` callback, which it asks with the
-`sub` before each revocation of a token it keeps nothing of. A caller answers false for an account
-whose grant another live connection uses, because the provider ends the whole grant when any token
-of it is revoked. nixie does not check the token's signature, because the token comes straight from
-the provider's token URL over the checked connection.
+and saves nothing. An exchange takes an optional `probeRevocable` callback, which it calls with the
+`sub` before each revocation of a token it keeps nothing of. The callback returns false for an
+account whose grant another live connection uses, because the provider ends the whole grant when any
+token of it is revoked. nixie does not check the token's signature, because the token comes straight
+from the provider's token URL over the checked connection.
 
 ### Refresh
 
@@ -163,8 +163,8 @@ the provider's token URL over the checked connection.
 - A refresh that finishes after a removal advanced the counter revokes the token it received, which
   is the new refresh token, or the new access token when the reply holds none. It saves nothing and
   removes its new key. When the credential still holds a token, a consent connected it again while
-  the refresh ran, so the refresh drops its reply and revokes nothing: the revocation would end the
-  grant of the new token.
+  the refresh ran. The refresh then drops its reply and revokes nothing, because the revocation
+  would end the grant of the new token.
 
 ### Records
 
@@ -183,12 +183,12 @@ kind has an entry, with no live topic, in `credentialRecordTopics`, which the se
 At start, `recover` reads the log for each `credential.refresh_started` that no saved, failed,
 discarded or lost record closes. The provider may hold a token nixie never saved, and revoking the
 spent one may not end it, so `recover` marks the credential `needs_consent` and writes
-`credential.refresh_lost` for the refresh. A credential whose removal counter moved since the
-refresh began was connected again, so `recover` leaves its status and only closes the refresh. The
-next start finds nothing. The check reads the log alone, so it holds after a crash that loses the
-held backend's memory. The server runs `recover` at each start, over the credential database, and
-the crash suite `recover-credential-refresh.test.ts` kills the process during a refresh and checks
-the status after the restart.
+`credential.refresh_lost` for the refresh. When a credential's removal counter moved since the
+refresh began, a consent connected it again, so `recover` only closes the refresh and leaves the
+status. The next start finds nothing. The check reads the log alone, so it holds after a crash that
+loses the held backend's memory. The server runs `recover` at each start, over the credential
+database, and the crash suite `recover-credential-refresh.test.ts` kills the process during a
+refresh and checks the status after the restart.
 
 ## Grants
 

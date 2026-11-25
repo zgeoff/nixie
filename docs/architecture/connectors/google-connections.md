@@ -19,8 +19,8 @@ actions hash their input, and `registerClient` leaves the secret out of that has
 A checked action stores a marker before it runs, and stores its outcome under a `result` key, so an
 outcome with no data still counts as finished. `registerClient`, `setPicker`, `removeClient` and
 `startConsent` commit their outcome in the same transaction as their last write, so a crash never
-leaves a change with no stored outcome. A retry of a `removeClient` whose removal committed and
-whose record did not finishes the record and answers `ok`.
+leaves a change with no stored outcome. When a `removeClient` removal committed and its record did
+not, a retry finishes the record and answers `ok`.
 
 ## The consent
 
@@ -33,13 +33,13 @@ whose record did not finishes the record and answers `ok`.
    status 400 that names the error code and Google's own code.
 3. `finishConsent` claims the request once, deletes the verifier's key, and exchanges the code into
    a fresh credential of its own. The claim's write repeats the checks of the state, the device
-   session and the expiry, so a retry that replaced the state, or a lapse, between the check and the
-   write claims nothing. The account comes from the ID token.
-4. The module reads each scope once, then decides and writes under one lock: a new account becomes a
-   new connection, an account a live connection reaches moves the new token into that connection,
-   and an account under a Forget waits a bounded time for it, outside the lock. Two consents for one
-   account at once therefore make one connection. A token response with no refresh token keeps
-   nothing.
+   session and the expiry. The write claims nothing when a retry replaced the state, or the request
+   lapsed, between the check and the write. The account comes from the ID token.
+4. The module reads each scope once, then decides and writes under one lock. A new account becomes a
+   new connection. For an account that a live connection reaches, the module moves the new token
+   into that connection. For an account under a Forget, it waits a bounded time for the Forget,
+   outside the lock. Two consents for one account at once therefore make one connection. A token
+   response with no refresh token keeps nothing.
 
 A renewal advances the connection's removal counter, so a refresh that began before it saves nothing
 and revokes nothing, and a check that began before it keeps the scopes the consent found. The
@@ -55,13 +55,13 @@ claimed.
 
 ## Fewer scopes
 
-The check reads one call per scope after each consent and once a day. A scope Google did not grant
+The check makes one call per scope after each consent and once a day. A scope Google did not grant
 is `not_granted`, and one whose API the project has not enabled is `api_disabled`. A quota answer,
-such as `userRateLimitExceeded`, says nothing about the scope, so the check fails and keeps what the
-last check found. The connection keeps the result as `missing`, and the daily check clears it. The
-tool endpoint reads the held-back list again for each tool list and each call, so a conversation
-follows a consent that changes it. A tool is held back when every live connection lacks at least one
-scope of the tool.
+such as `userRateLimitExceeded`, carries nothing about the scope, so the check fails and keeps what
+the last check found. The connection keeps the result as `missing`, and the daily check clears it. A
+tool is held back when every live connection lacks at least one scope of the tool. The tool endpoint
+reads the held-back list again for each tool list and each call, so a conversation follows a consent
+that changes it.
 
 ## The fetcher
 

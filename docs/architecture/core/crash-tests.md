@@ -142,10 +142,10 @@ target remains and `erasure.finished` follows `erasure.started`.
 ## Fault point of a credential refresh
 
 `credential.refresh.token_saved` sits behind the test-build flag, in the credential database
-backend, after the transaction that saves a refreshed token and its `credential.refresh_saved`
-record commits. `recover-credential-refresh.test.ts` arms it, kills nixie there, and checks that the
-restart finds the token and the record together and leaves the credential active. See
-[credentials](../connectors/credentials.md#refresh).
+backend, after the commit of the transaction that saves a refreshed token and its
+`credential.refresh_saved` record. `recover-credential-refresh.test.ts` arms it, kills nixie there,
+and checks that the restart finds the token and the record together and leaves the credential
+active. See [credentials](../connectors/credentials.md#refresh).
 
 ## Fault point of a live reply
 
