@@ -127,7 +127,7 @@ export type SessionEvent = SessionEventFacts &
     | { readonly kind: 'note'; readonly label: NoteLabel; readonly text: string }
   );
 
-export interface SessionEventFacts {
+interface SessionEventFacts {
   readonly session: string;
   readonly eventKey: string;
   readonly at: string;
@@ -197,7 +197,7 @@ export type SessionOrigin = 'started' | 'joined';
 
 // An answer that reached the task before the outcome of its note's action: the sequence of the
 // trigger.task_input record that holds it.
-export interface HeldAnswer {
+interface HeldAnswer {
   readonly messageRef: string;
   readonly sequence: number;
 }

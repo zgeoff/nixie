@@ -27,7 +27,6 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@heynixie/testing": "workspace:*",
     "@zgeoff/testing": "catalog:"
   }
 }
