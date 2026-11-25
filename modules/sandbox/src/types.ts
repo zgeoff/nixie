@@ -8,6 +8,7 @@ export type SandboxKind =
   | 'fetch'
   | 'coding'
   | 'computer'
+  | 'render'
   | LegacySandboxKind;
 
 // The kinds of the assistant's browser and shell sandboxes, which the computer kind replaced. A
