@@ -74,6 +74,7 @@ export function writeSentMail(context: MailContext, input: SentMailInput): Promi
             expiresAt: input.sentAt + input.replyExpiryMs,
             windowMs: context.settings.wake.window,
             origin: 'reply',
+            createdAt: input.sentAt,
           });
 
     const sent: SentMail = {

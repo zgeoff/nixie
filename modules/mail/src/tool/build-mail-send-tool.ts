@@ -1,20 +1,17 @@
-import type { ToolDefinition } from '@heynixie/tools';
+import type { DestinationResolution, ToolDefinition } from '@heynixie/tools';
 import { z } from 'zod';
 import { mailDeclarations } from '../connector/mail-declarations';
 import { mailToolNames } from '../connector/mail-tool-names';
+import { isMailAddress } from '../parse/is-mail-address';
+import { mailAddressPattern } from '../parse/mail-address-pattern';
 import { readMailFields } from '../store/read-mail-fields';
 import { readMailRow } from '../store/read-mail-row';
 import type { MailContext } from '../types';
 
 export type MailSendKind = 'send' | 'reply';
 
-type DestinationResolution = Awaited<
-  ReturnType<NonNullable<ToolDefinition['resolveDestinations']>>
->;
-
 const maxTextLength = 100_000;
-const durationPattern = '^([1-9][0-9]{0,8}(ms|s|m|h|d)|off)$';
-const addressPattern = String.raw`^[^@\s<>,;]+@[^@\s<>,;]+\.[^@\s<>,;]+$`;
+const durationPattern = '^([1-9][0-9]{0,6}(ms|s|m|h|d)|off)$';
 
 const replyWakeSchema = {
   type: 'string',
@@ -48,7 +45,7 @@ export function buildMailSendTool(context: MailContext, kind: MailSendKind): Too
             properties: {
               to: {
                 type: 'array',
-                items: { type: 'string', pattern: addressPattern },
+                items: { type: 'string', pattern: mailAddressPattern },
                 minItems: 1,
                 maxItems: 20,
               },
@@ -74,14 +71,17 @@ export function buildMailSendTool(context: MailContext, kind: MailSendKind): Too
     execution: 'queued',
     ...(kind === 'reply'
       ? {
-          resolveDestinations: (input): Promise<DestinationResolution> => {
+          resolveDestinations: (input, toolContext): Promise<DestinationResolution> => {
             const parsed = replyInputSchema.safeParse({ message: input['message'] });
 
             if (!parsed.success) {
               return Promise.resolve({ status: 'error', message: z.prettifyError(parsed.error) });
             }
 
-            return resolveReplyDestination(context, parsed.data.message);
+            return resolveReplyDestination(context, {
+              message: parsed.data.message,
+              arrivedMails: toolContext.run.session?.policy?.arrivedMails ?? [],
+            });
           },
         }
       : {}),
@@ -89,11 +89,21 @@ export function buildMailSendTool(context: MailContext, kind: MailSendKind): Too
   };
 }
 
-// The sender of the mail that a reply answers is its destination, and the one reply target.
+interface ReplyRequest {
+  readonly message: string;
+
+  // the mail whose arrival woke the turn that makes the call
+  readonly arrivedMails: readonly string[];
+}
+
+// The sender of the mail that a reply answers is its destination. It is a reply target only when
+// that mail's arrival woke this turn, because the sender's address is text the mail itself claims.
 async function resolveReplyDestination(
   context: MailContext,
-  message: string,
+  request: ReplyRequest,
 ): Promise<DestinationResolution> {
+  const message = request.message;
+
   const unknown: DestinationResolution = {
     status: 'error',
     message: `UNKNOWN_MESSAGE: no mail has the ID ${message}`,
@@ -115,5 +125,14 @@ async function resolveReplyDestination(
 
   const address = row.direction === 'in' ? fields.from : (fields.to[0] ?? '');
 
-  return { status: 'ok', destinations: [{ value: address, replyTarget: row.direction === 'in' }] };
+  if (!isMailAddress(address)) {
+    return {
+      status: 'error',
+      message: `BAD_ADDRESS: the mail ${message} has no sender address that a reply can go to`,
+    };
+  }
+
+  const isReplyTarget = row.direction === 'in' && request.arrivedMails.includes(row.short_id);
+
+  return { status: 'ok', destinations: [{ value: address, replyTarget: isReplyTarget }] };
 }

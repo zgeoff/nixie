@@ -48,7 +48,7 @@ export function buildScriptedReplies(
           },
         ];
 
-  const mailRead = reply.mailRead === true ? buildMailReadReplies() : [];
+  const mailRead = reply.mailRead === undefined ? [] : buildMailReadReplies(reply.mailRead.from);
 
   const forgetNote =
     reply.forgetNote === undefined
@@ -286,11 +286,12 @@ function readWrittenNoteID(body: ScriptedBody, title: string): string {
   return noteID;
 }
 
-// A list of the unread mail, and the open of the first mail it lists. The open names the mail by
-// the ID that the list's result gave, so a list with no mail fails the request instead.
-function buildMailReadReplies() {
+// A list of the unread mail from one sender, and the open of the newest mail it lists. The list
+// puts the newest first, in the order the mailbox stored the mail. The open names the mail by the ID
+// that the list's result gave, so a list with no mail fails the request instead.
+function buildMailReadReplies(from: string) {
   return [
-    { toolUse: { name: 'mcp__nixie__mail_list', input: { unread: true } } },
+    { toolUse: { name: 'mcp__nixie__mail_list', input: { unread: true, from } } },
     {
       toolUse: {
         name: 'mcp__nixie__mail_read',

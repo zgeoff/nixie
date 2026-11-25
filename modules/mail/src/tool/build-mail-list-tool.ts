@@ -4,6 +4,7 @@ import { mailDeclarations } from '../connector/mail-declarations';
 import { mailToolNames } from '../connector/mail-tool-names';
 import { readMailPage } from '../store/read-mail-page';
 import type { MailContext } from '../types';
+import { renderOutsideText } from './render-outside-text';
 
 const inputSchema = z.strictObject({
   from: z.string().exactOptional(),
@@ -71,7 +72,18 @@ export function buildMailListTool(context: MailContext): ToolDefinition {
         unread: mail.unread,
       }));
 
-      return { status: 'ok', result: { mails, next: page.next } };
+      return {
+        status: 'ok',
+        result: {
+          mails: mails.map((mail) => ({
+            ...mail,
+            from: renderOutsideText(mail.from),
+            subject: renderOutsideText(mail.subject),
+          })),
+          next: page.next,
+        },
+        record: { mails, next: page.next },
+      };
     },
   };
 }

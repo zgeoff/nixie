@@ -1,12 +1,17 @@
 import { expect, test } from 'bun:test';
 import { buildActionSeeder } from '@heynixie/actions/test-utils';
-import type { JSONObject } from '@heynixie/log';
+import type { JSONObject, LogTables } from '@heynixie/log';
+import { readRecords, removeRecordKey } from '@heynixie/log';
 import { buildTaskSeeder } from '@heynixie/tasks/test-utils';
 import { readWakeRules } from '@heynixie/triggers';
+import { waitFor } from '@zgeoff/testing';
+import invariant from 'tiny-invariant';
 import { buildOutgoingMail } from '../parse/build-outgoing-mail';
 import { parseMail } from '../parse/parse-mail';
+import { readMailPage } from '../store/read-mail-page';
+import { readMailRow } from '../store/read-mail-row';
 import type { MemoryMail } from '../test-utils';
-import { seedReceivedMail, startTestMail } from '../test-utils';
+import { seedReceivedMail, startTestMail, startTestMailSource } from '../test-utils';
 
 async function setupTest() {
   const mail = await startTestMail();
@@ -35,6 +40,24 @@ async function setupTest() {
     readRules: () =>
       readWakeRules(mail.writer.db, { mailbox: { kind: 'mail' }, at: mail.clock.now() }),
     receive: (incoming: MemoryMail) => seedReceivedMail(mail, incoming),
+
+    // makes the text of a stored mail unreadable, as a forget does
+    forget: async (shortID: string) => {
+      const row = await readMailRow(mail.context.log, shortID);
+
+      invariant(row !== null, 'the mail is stored');
+
+      const record = await mail.writer.db
+        .$extendTables<LogTables>()
+        .selectFrom('records')
+        .select('key_id')
+        .where('sequence', '=', row.record_sequence)
+        .executeTakeFirstOrThrow();
+
+      invariant(record.key_id !== null, 'the mail holds a key');
+
+      await removeRecordKey(mail.context.log, record.key_id);
+    },
   };
 }
 
@@ -155,17 +178,19 @@ test('it finds a send at the host by its Message-ID, and writes its record and r
     text: 'Could you help?',
   });
 
-  await ctx.host.send(
-    buildOutgoingMail({
-      messageID: `${attempt.actionID}@nixie.example.org`,
-      from: 'assistant@nixie.example.org',
-      to: ['hello@library.example.org'],
-      subject: 'A question',
-      text: 'Could you help?',
-      references: [],
-      sentAt: ctx.clock.now(),
-    }),
-  );
+  const mail = buildOutgoingMail({
+    messageID: `${attempt.actionID}@nixie.example.org`,
+    from: 'assistant@nixie.example.org',
+    to: ['hello@library.example.org'],
+    subject: 'A question',
+    text: 'Could you help?',
+    references: [],
+    sentAt: ctx.clock.now(),
+  });
+
+  invariant(mail !== null, 'the draft is valid');
+
+  await ctx.host.send(mail);
 
   const first = await ctx.connectors.get('mail.send')?.check?.(attempt);
   const second = await ctx.connectors.get('mail.send')?.check?.(attempt);
@@ -188,4 +213,113 @@ test('it finds nothing at the host for a send that never went out', async () => 
   const checked = await ctx.connectors.get('mail.send')?.check?.(attempt);
 
   expect(checked).toStrictEqual({ kind: 'not_found' });
+});
+
+test('it records a send that the host holds, though the mail it answered was forgotten since', async () => {
+  const ctx = await setupTest();
+
+  const received = await ctx.receive({
+    from: 'hello@library.example.org',
+    subject: 'Your loan',
+    text: 'Your loan is due.',
+    messageID: 'loan-1@library.example.org',
+  });
+
+  const attempt = await ctx.queueSend('mail.reply', {
+    message: received.shortID,
+    text: 'Thank you, I will return it.',
+  });
+
+  const mail = buildOutgoingMail({
+    messageID: `${attempt.actionID}@nixie.example.org`,
+    from: 'assistant@nixie.example.org',
+    to: ['hello@library.example.org'],
+    subject: 'Re: Your loan',
+    text: 'Thank you, I will return it.',
+    references: ['loan-1@library.example.org'],
+    sentAt: ctx.clock.now(),
+  });
+
+  invariant(mail !== null, 'the draft is valid');
+
+  await ctx.host.send(mail);
+  await ctx.forget(received.shortID);
+
+  const checked = await ctx.connectors.get('mail.reply')?.check?.(attempt);
+  const rules = await ctx.readRules();
+
+  expect(checked).toMatchObject({ kind: 'found', result: { thread: received.threadShortID } });
+  expect(rules.map((rule) => rule.match)).toStrictEqual([{ thread: received.threadShortID }]);
+});
+
+test('it refuses a reply to a mail whose sender address cannot go in a header', async () => {
+  const ctx = await setupTest();
+
+  const received = await ctx.receive({
+    from: 'helloŁ@library.example.org',
+    subject: 'Your loan',
+    text: 'Your loan is due.',
+  });
+
+  const attempt = await ctx.queueSend('mail.reply', {
+    message: received.shortID,
+    text: 'Thank you.',
+  });
+
+  const response = await ctx.connectors.get('mail.reply')?.run(attempt);
+
+  expect(response).toMatchObject({
+    kind: 'refused',
+    reason: expect.stringContaining('BAD_ADDRESS'),
+  });
+
+  expect(ctx.host.readSent()).toStrictEqual([]);
+});
+
+test('it joins a reply that reaches the host during the send to the sent mail, and wakes its sender once', async () => {
+  const ctx = await setupTest();
+
+  await startTestMailSource(ctx);
+
+  const received = await ctx.receive({
+    from: 'hello@library.example.org',
+    subject: 'Your loan',
+    text: 'Your loan is due.',
+    messageID: 'loan-1@library.example.org',
+  });
+
+  const attempt = await ctx.queueSend('mail.reply', {
+    message: received.shortID,
+    text: 'Thank you, I will return it.',
+    replyWake: '1d',
+  });
+
+  ctx.host.replyDuringNextSend(() => ({
+    from: 'hello@library.example.org',
+    subject: 'Re: Your loan',
+    text: 'You are welcome.',
+    references: [`${attempt.actionID}@nixie.example.org`],
+  }));
+
+  await ctx.connectors.get('mail.reply')?.run(attempt);
+
+  const wakes = await waitFor(async () => {
+    const records = await readRecords(ctx.tasks.log, {
+      afterSequence: 0,
+      kinds: ['trigger.mail_woke'],
+    });
+
+    expect(records).toHaveLength(1);
+
+    return records;
+  });
+
+  const page = await readMailPage(ctx.context, { limit: 10 });
+
+  expect(page.mails.map((entry) => [entry.subject, entry.thread])).toStrictEqual([
+    ['Re: Your loan', received.threadShortID],
+    ['Your loan', received.threadShortID],
+  ]);
+
+  expect(wakes[0]?.record.thread).toBe('conversation');
 });

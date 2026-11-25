@@ -7,7 +7,7 @@ import type { TasksContext } from '@heynixie/tasks';
 import type { DeploymentConfig } from '../deployment/deployment-config-schema';
 
 export interface ServerMailOptions {
-  readonly config: Pick<DeploymentConfig, 'mail' | 'wake_rules'>;
+  readonly config: Pick<DeploymentConfig, 'mail' | 'wake_rules' | 'web_fetch'>;
   readonly now: () => number;
 }
 
@@ -37,7 +37,11 @@ export function buildServerMail(options: ServerMailOptions): ServerMail | null {
   return {
     host: memory,
     memory,
-    settings: buildMailSettings(mail, options.config.wake_rules),
+    settings: buildMailSettings(
+      mail,
+      options.config.wake_rules,
+      options.config.web_fetch.linkPathChars,
+    ),
   };
 }
 

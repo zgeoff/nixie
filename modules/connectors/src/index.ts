@@ -42,6 +42,7 @@ export { makeCodeRunCleanup } from './code/make-code-run-cleanup';
 export type { CodeSkill, NoteBodies, SkillLookup } from './code/resolve-code-run-inputs';
 export { buildWebFetchTool } from './web/build-web-fetch-tool';
 export { readLinkTarget } from './web/read-link-target';
+export { writeLinkTags } from './web/write-link-tags';
 export { readMessageTimeZone } from './time/read-message-time-zone';
 export { readTriggerZone } from './time/read-trigger-zone';
 export { removeWebFetchThread } from './web/remove-web-fetch-thread';

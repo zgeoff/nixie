@@ -78,9 +78,9 @@ export const controlRoutes = {
       // mail from this address or `@domain`
       mailWatch: z.strictObject({ from: z.string().min(1) }).optional(),
 
-      // the model lists its unread mail with the mail tool, then opens the first mail, before its
-      // reply
-      mailRead: z.boolean().optional(),
+      // the model lists its unread mail from this address or `@domain` with the mail tool, then
+      // opens the newest, before its reply
+      mailRead: z.strictObject({ from: z.string().min(1) }).optional(),
 
       // a picture the model draws with the image tool before its reply, the one edit it then makes
       // to that picture, and a list of its pictures

@@ -5,13 +5,16 @@ import { readMailFields } from '../store/read-mail-fields';
 import { readMailRow } from '../store/read-mail-row';
 import type { SentMailInput } from '../store/write-sent-mail';
 import type { MailToolContext, OutgoingMail } from '../types';
+import { buildSendMessageID } from './build-send-message-id';
 import type { SendArguments } from './parse-send-arguments';
-import { readActionTaskID } from './read-action-task-id';
+import { readActionFacts } from './read-action-facts';
 
 export type SendPlan =
   | {
       readonly status: 'planned';
-      readonly mail: OutgoingMail;
+
+      // null in a reconcile, which sends nothing
+      readonly mail: OutgoingMail | null;
 
       // the Message-ID of the send, without angle brackets
       readonly messageIDHeader: string;
@@ -24,26 +27,30 @@ export type SendPlan =
 interface SendRequest {
   readonly actionID: string;
   readonly arguments: SendArguments;
+
+  // true when the plan only records a send that the host has already, so a reply whose original mail
+  // was forgotten since still gets its record
+  readonly isReconcile: boolean;
 }
 
 // Plans one send from its arguments: the message, its Message-ID, which the action ID makes, and the
-// record that its outcome writes. A retry or a reconcile of the action plans the same Message-ID.
+// record that its outcome writes. A retry or a reconcile of the action plans the same Message-ID and
+// the same send time, which is the time of the action's first attempt.
 export async function planSend(context: MailToolContext, request: SendRequest): Promise<SendPlan> {
-  const senderTaskID = await readActionTaskID(context.log, request.actionID);
+  const facts = await readActionFacts(context.log, request.actionID);
 
-  if (senderTaskID === null) {
+  if (facts === null) {
     return { status: 'refused', reason: `no action has the ID ${request.actionID}` };
   }
 
-  const answer = await readAnswer(context, request.arguments);
+  const answer = await readAnswer(context, request);
 
   if (answer.status === 'refused') {
     return answer;
   }
 
-  const sentAt = context.clock.now();
-  const domain = context.settings.address.slice(context.settings.address.lastIndexOf('@') + 1);
-  const messageIDHeader = `${request.actionID}@${domain}`;
+  const sentAt = facts.firstAttemptAt ?? context.clock.now();
+  const messageIDHeader = buildSendMessageID(context.settings, request.actionID);
   const to = request.arguments.kind === 'send' ? request.arguments.to : [answer.replyTo];
 
   const draft: OutgoingDraft = {
@@ -61,9 +68,22 @@ export async function planSend(context: MailToolContext, request: SendRequest): 
       ? null
       : (parseDuration(request.arguments.replyWake ?? '') ?? context.settings.wake.reply_expiry);
 
+  if (replyExpiryMs !== null && Number.isNaN(new Date(sentAt + replyExpiryMs).getTime())) {
+    return { status: 'refused', reason: 'BAD_DURATION: the reply wake ends past the last date' };
+  }
+
+  const mail = request.isReconcile ? null : buildOutgoingMail(draft);
+
+  if (mail === null && !request.isReconcile) {
+    return {
+      status: 'refused',
+      reason: 'BAD_ADDRESS: an address or an ID of the send is not printable ASCII',
+    };
+  }
+
   return {
     status: 'planned',
-    mail: buildOutgoingMail(draft),
+    mail,
     messageIDHeader,
     toSentInput: (hostMessageID) => ({
       actionID: request.actionID,
@@ -75,7 +95,7 @@ export async function planSend(context: MailToolContext, request: SendRequest): 
       subject: answer.subject,
       text: request.arguments.text,
       sentAt,
-      senderTaskID,
+      senderTaskID: facts.taskID,
       replyExpiryMs,
     }),
   };
@@ -92,8 +112,11 @@ type Answer =
   | { readonly status: 'refused'; readonly reason: string };
 
 // What the mail being answered gives a send: nothing for a new mail, and for a reply its subject, its
-// thread, the IDs it chains to and its sender.
-async function readAnswer(context: MailToolContext, args: SendArguments): Promise<Answer> {
+// thread, the IDs it chains to and its sender. A reconcile of a reply whose mail was forgotten keeps
+// the mail's thread and nothing else of it.
+async function readAnswer(context: MailToolContext, request: SendRequest): Promise<Answer> {
+  const args = request.arguments;
+
   if (args.kind === 'send') {
     return {
       status: 'answered',
@@ -112,7 +135,9 @@ async function readAnswer(context: MailToolContext, args: SendArguments): Promis
   const row = await readMailRow(context.log, args.message);
 
   if (row === null) {
-    return unknown;
+    return request.isReconcile
+      ? { status: 'answered', subject: '', references: [], threadShortID: null, replyTo: '' }
+      : unknown;
   }
 
   const stored = await readMailFields(context, [row]);
@@ -120,7 +145,15 @@ async function readAnswer(context: MailToolContext, args: SendArguments): Promis
   const fields = stored.get(row.record_sequence);
 
   if (fields === undefined) {
-    return unknown;
+    return request.isReconcile
+      ? {
+          status: 'answered',
+          subject: '',
+          references: [],
+          threadShortID: row.thread_short_id,
+          replyTo: '',
+        }
+      : unknown;
   }
 
   const chain = fields.messageIDHeader === '' ? [] : [fields.messageIDHeader, ...fields.references];

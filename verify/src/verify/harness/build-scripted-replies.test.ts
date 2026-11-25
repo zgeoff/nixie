@@ -535,7 +535,11 @@ test('it queues the wake rule call of the mailbox before the reply', () => {
 });
 
 test('it opens the mail that the list of unread mail named', () => {
-  const replies = buildScriptedReplies({ text: 'I read it.', mailRead: true });
+  const replies = buildScriptedReplies({
+    text: 'I read it.',
+    mailRead: { from: '@library.example.org' },
+  });
+
   const [list, open, closing] = replies;
   const listCall = list !== undefined && 'toolUse' in list ? list.toolUse : null;
   const openCall = open !== undefined && 'toolUse' in open ? open.toolUse : null;
@@ -556,6 +560,8 @@ test('it opens the mail that the list of unread mail named', () => {
   };
 
   const opened = typeof readInput === 'function' ? readInput(listed) : readInput;
+
+  expect(listCall?.input).toStrictEqual({ unread: true, from: '@library.example.org' });
 
   expect([listCall?.name, openCall?.name, closing]).toStrictEqual([
     'mcp__nixie__mail_list',

@@ -165,7 +165,7 @@ export function createVerifyRegistry(): Wringer {
     .action({
       name: 'script-reply',
       summary:
-        "Queue the scripted model's next reply. With --memory it first proposes that memory, with --reminder it first sets that reminder and writes a note of the memory that the result names as related, with --export it first asks to export memory, with --task it first starts that task, with --coding-task it first starts that coding task on atc, with --mail-watch it first sets a wake rule on the assistant's mailbox for mail from that address, with --mail-read it first lists the unread mail and opens the first, with --handover it first asks the user to take over the computer, for that reason, with --notebook it first writes 2 notes, one private, and links them, and with --forget-note it first forgets the note with that short ID",
+        "Queue the scripted model's next reply. With --memory it first proposes that memory, with --reminder it first sets that reminder and writes a note of the memory that the result names as related, with --export it first asks to export memory, with --task it first starts that task, with --coding-task it first starts that coding task on atc, with --mail-watch it first sets a wake rule on the assistant's mailbox for mail from that address, with --mail-read it first lists the unread mail from that address and opens the newest, with --handover it first asks the user to take over the computer, for that reason, with --notebook it first writes 2 notes, one private, and links them, and with --forget-note it first forgets the note with that short ID",
       effect: 'write',
       targets: ['local'],
       input: controlRoutes.addReply.input,
@@ -428,7 +428,7 @@ export function createVerifyRegistry(): Wringer {
       },
       {
         name: 'memory-approval',
-        summary: 'Approve a memory the model proposed, and see it become active',
+        summary: 'Approve a proposed memory',
         paths: featurePaths['memory-approval'],
       },
       {
@@ -448,7 +448,7 @@ export function createVerifyRegistry(): Wringer {
       },
       {
         name: 'mail-wake',
-        summary: 'Wake the conversation with a mail, and read it',
+        summary: 'Mail wakes the chat',
         paths: featurePaths['mail-wake'],
       },
       {

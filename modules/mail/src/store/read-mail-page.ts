@@ -22,13 +22,16 @@ export interface MailQuery {
   readonly before?: string | null;
 }
 
-export interface ListedMail {
+interface ListedMail {
   readonly message: string;
   readonly thread: string;
   readonly from: string;
   readonly subject: string;
   readonly at: string;
   readonly unread: boolean;
+
+  // the sequence of the mail's record, which orders mail that arrived in the same millisecond
+  readonly sequence: number;
 }
 
 export interface MailPage {
@@ -71,7 +74,7 @@ export async function readMailPage(context: MailContext, query: MailQuery): Prom
       return { mails, next: null };
     }
 
-    before = `${String(last.received_at)}:${last.short_id}`;
+    before = `${String(last.received_at)}:${String(last.record_sequence)}`;
   }
 }
 
@@ -82,7 +85,7 @@ function readRows(
 ): Promise<MailTables['mail_messages'][]> {
   const cursor = before === null ? null : before.split(':');
   const receivedAt = Number(cursor?.[0]);
-  const shortID = cursor?.[1] ?? '';
+  const sequence = Number(cursor?.[1]);
 
   return context.log.writer.db
     .$extendTables<MailTables>()
@@ -94,12 +97,15 @@ function readRows(
       query.where((builder) =>
         builder.or([
           builder('received_at', '<', receivedAt),
-          builder.and([builder('received_at', '=', receivedAt), builder('short_id', '<', shortID)]),
+          builder.and([
+            builder('received_at', '=', receivedAt),
+            builder('record_sequence', '<', sequence),
+          ]),
         ]),
       ),
     )
     .orderBy('received_at', 'desc')
-    .orderBy('short_id', 'desc')
+    .orderBy('record_sequence', 'desc')
     .limit(batchSize)
     .execute();
 }
@@ -123,7 +129,7 @@ function isWanted(
 }
 
 function buildCursor(mail: ListedMail | undefined): string | null {
-  return mail === undefined ? null : `${String(Date.parse(mail.at))}:${mail.message}`;
+  return mail === undefined ? null : `${String(Date.parse(mail.at))}:${String(mail.sequence)}`;
 }
 
 function toListedMail(row: MailTables['mail_messages'], fields: StoredMailFields): ListedMail {
@@ -134,5 +140,6 @@ function toListedMail(row: MailTables['mail_messages'], fields: StoredMailFields
     subject: fields.subject,
     at: new Date(row.received_at).toISOString(),
     unread: row.unread === 1,
+    sequence: row.record_sequence,
   };
 }

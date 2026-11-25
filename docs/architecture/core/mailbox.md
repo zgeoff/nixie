@@ -15,13 +15,13 @@ and [erasable fields](./erasable-fields.md) for what a forget destroys.
 The mail module reaches a mail system only through the `MailHost` interface, so one module serves
 every host.
 
-| Call                      | Does                                                                                                         |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| `begin()`                 | returns the cursor of the host's present state, so a first start reads no older mail                         |
-| `readChanges(cursor)`     | returns the mail after the cursor with a new cursor, or `failed` with the reason and an optional retry delay |
-| `send(mail)`              | sends one built message and returns the host's ID for it                                                     |
-| `findSent(messageID)`     | finds a sent mail by the Message-ID header that the send set, or null                                        |
-| `watch(signal)`, optional | yields a hint when mail may have arrived, so the source reads at once                                        |
+| Call                      | Does                                                                                                                                                                           |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `begin()`                 | returns the cursor of the host's present state, so a first start reads no older mail                                                                                           |
+| `readChanges(cursor)`     | returns the mail after the cursor with a new cursor, `resynced` with every mail when the cursor is not the host's own, or `failed` with the reason and an optional retry delay |
+| `send(mail)`              | sends one built message and returns the host's ID for it                                                                                                                       |
+| `findSent(messageID)`     | finds a sent mail by the Message-ID header that the send set, or null                                                                                                          |
+| `watch(signal)`, optional | yields a hint when mail may have arrived, so the source reads at once                                                                                                          |
 
 A test build serves the one host built so far, which keeps mail in memory. The server starts it when
 the config holds a `mail` section, and the harness operation `deliverMail` puts a mail in it. A
@@ -38,8 +38,14 @@ poll interval, and at once on a hint.
 For each new mail, the source parses it and writes it in a write transaction of its own, then
 delivers the mail's arrival to the trigger core with the host's new cursor. A crash between the two
 delivers the arrival again, and the core drops it by its dedupe key, the host's ID for the mail. A
-read that fails backs off, doubling the wait up to a cap, and the source reports `unhealthy` after 3
-failures in a row.
+read that fails, whether the host answers `failed` or throws, backs off from a minute, doubling the
+wait up to an hour. A retry time that the host names replaces the backoff. The source reports
+`unhealthy` after 3 failures in a row.
+
+The source and each send share one lock per host. A send holds it from the host's send to its stored
+record and reply rule, so a reply that reaches the host in between is read only once both exist. The
+reply joins the sent mail's thread and wakes its sender. A rule that a send sets starts at the send
+time, so it matches a reply that came before the rule was written.
 
 ## The stored mail
 
@@ -49,14 +55,21 @@ fields, so a forget destroys them. The `mail_messages` table keeps what a read n
 text: a short ID from `createShortID`, the thread's short ID, the direction, the receive time and
 the unread flag.
 
-The model reads each mail by its short ID, and never by the host's ID. Mail joins a thread by the
-Message-ID headers that it answers. The table stores each header as a hash, so a thread lookup needs
-no text.
+The mail list pages by the order in which the mailbox stored the mail, which breaks a tie between
+mail of one second. The model reads each mail by its short ID, and never by the host's ID. Mail
+joins a thread by the Message-ID headers that it answers. The table stores each header as a hash, so
+a thread lookup needs no text.
 
 The parser reads UTF-8, Latin-1 and Windows-1252 text, quoted-printable and base64 bodies, encoded
 subject words and multipart mail. It prefers the plain part. For an HTML part it drops scripts and
-styles and shows each link as its label followed by the address in parentheses, so a reset link
-stays readable. A mail with attachments lists each by name and size.
+styles and keeps each link's label. A multipart mail with an HTML part and no plain part keeps its
+body. A mail with attachments lists each by name and size.
+
+`mail.read` numbers each link of the text as a link ID of the session, such as
+`[L1 · example.org/reset]`, and the model opens it with `web_fetch` by that ID. The text the model
+sees never holds the address of a link, so a link with a token stays out of the model's input until
+it opens the link. The numbers belong to the conversation session, or the task run, that reads the
+mail, and the same address keeps its number there.
 
 ## The tools
 
@@ -70,18 +83,23 @@ stays readable. A mail with attachments lists each by name and size.
 | `mail.wake_list`   | lists every live rule, whoever set it                                                   |
 | `mail.wake_cancel` | ends a rule by its short ID                                                             |
 
-Every field of an incoming mail is content from outside, so a result that holds a sender, a subject
-or a text carries the source `untrusted`, and the tool result record keeps it. Each result field a
-tool returns has a declared source, which the tool registry checks when the server starts.
+Every field of an incoming mail is content from outside. The model sees each sender, subject and
+text of a result fenced as outside text, and the tool result record keeps the plain value with the
+source `untrusted`. Each result field a tool returns has a declared source, which the tool registry
+checks when the server starts.
 
 Tool errors start with a code: `UNKNOWN_MESSAGE`, `UNKNOWN_RULE`, `UNKNOWN_TASK`, `BAD_ADDRESS` or
-`BAD_DURATION`.
+`BAD_DURATION`. An address with a character outside ASCII is a `BAD_ADDRESS`, because the header
+cannot carry it. A duration is a number of seconds, minutes, hours or days of at most 7 digits, from
+a minute. A call that sets no window takes the default window, cut to the expiry when the expiry is
+shorter.
 
 ## Sending
 
 `mail.send` and `mail.reply` are queued tools, so each call runs under the
 [decision point](../policy/decision-point.md) and then through the action queue. The send names each
-recipient as a destination. The reply names the sender of the mail it answers, as the reply target.
+recipient as a destination. The reply names the sender of the mail it answers, and counts that
+sender as the reply target only when that mail is one that woke the turn.
 
 The Message-ID of a send is the action's ID at the assistant's domain, so a retry builds the same
 message. The connector sends the mail and writes the `mail.sent` record. Its reconcile check asks
@@ -96,9 +114,9 @@ sent mail's thread and wakes the caller that queued the send, the conversation o
 after the `replyWake` argument of the call, such as `2d`, or after the deployment's
 `wake_rules.reply_expiry`. The value `off` sets no rule.
 
-`replyWake` is one of the call's arguments, so the approval card shows it with the others, and the
-user's approval of the call covers the rule. A reply rule's origin is `reply`, which
-`mail.wake_list` shows.
+The approval card of a send shows the reply rule: the length the call names, `off`, or the
+deployment's default length when the call names none. The user's approval of the call covers the
+rule. A reply rule's origin is `reply`, which `mail.wake_list` shows.
 
 ## Wake rules
 
@@ -137,10 +155,15 @@ drops it when the dedupe key is held. Then it reads the live rules and matches t
 and subject as outside content, with the mail's short ID. A mail forgotten since shows as forgotten.
 The model then opens a mail with `mail.read`.
 
-The arrival's erasable fields keep their key while a held match names the arrival. Once none does,
-the core removes the key after the commit, so the sender and subject of a mail that woke nothing
-more are destroyed. A crash between the commit and the removal leaves the key in place until a later
-forget.
+The wake flush decides inside the write transaction that writes the wakes, so an arrival that wakes
+a rule at the same time cannot let the flush wake it again inside its window. When the task of a
+rule has ended, the flush drops the rule's held matches, a cancelled rule's too.
+
+The arrival's erasable fields keep their key while a held match names the arrival. Each arrival sits
+in `wake_arrival_cleanup` from its write. The core removes the key of each such arrival that no held
+match names, after each batch that holds a mail and at each flush, and then removes the row. A crash
+between a commit and the removal leaves the row, so a later flush destroys the sender and subject of
+a mail that woke nothing more.
 
 ## What is not built
 
@@ -150,6 +173,5 @@ The [mail design](../../design/queue/mail/README.md) covers the rest, and
 - A mail host other than the host in memory, so a release build has no mailbox.
 - The `mail.save_attachment` tool and a `files` argument on a send. A mail lists each attachment by
   name and size and holds no attachment.
-- The fetch sandbox's parse of an HTML mail, and the link IDs that the
-  [web fetch](../connectors/web-fetch.md) tools open. A link stays an address in the text.
+- The fetch sandbox's parse of an HTML mail. The mail module parses HTML in process.
 - The Gmail mailbox.

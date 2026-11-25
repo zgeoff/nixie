@@ -92,6 +92,9 @@ export interface MailSettings {
   readonly address: string;
   readonly hostPollIntervalMs: number;
   readonly wake: WakeRulesConfig;
+
+  // the most characters of a link's path that its tag shows, as the web fetch tool sets it
+  readonly linkPathChars: number;
 }
 
 export interface MailContext {

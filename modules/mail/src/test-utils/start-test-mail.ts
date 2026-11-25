@@ -12,7 +12,7 @@ import {
   buildTestRunSettings,
   buildTestTaskRunners,
 } from '@heynixie/tasks/test-utils';
-import type { ToolOutcome } from '@heynixie/tools';
+import type { DestinationResolution, ToolOutcome, ToolRun } from '@heynixie/tools';
 import { buildMockToolCall, buildMockToolContext } from '@heynixie/tools/test-utils';
 import type { TriggerCoreContext, TriggerSource } from '@heynixie/triggers';
 import { startTriggerSources, triggersProjections } from '@heynixie/triggers';
@@ -36,8 +36,16 @@ export interface TestMail {
   readonly host: MemoryMailHost;
   readonly source: TriggerSource;
 
-  // calls a mail tool as the conversation, or as the task whose ID the thread names
+  // calls a mail tool as the conversation, or as the task whose ID the thread names, in one session
+  // for the whole test
   readonly callTool: (tool: string, input: object, thread?: string) => Promise<ToolOutcome>;
+
+  // the destinations that a mail tool names for a call, as the decision point reads them
+  readonly resolveDestinations: (
+    tool: string,
+    input: object,
+    run?: Pick<ToolRun, 'session'>,
+  ) => Promise<DestinationResolution>;
 
   // the queue's connector of a send or a reply, which runs on the host
   readonly connectors: ReturnType<typeof buildMailConnectors>;
@@ -115,6 +123,7 @@ export async function startTestMail(): Promise<TestMail> {
       address: testMailAddress,
       hostPollIntervalMs: 30_000,
       wake: { window: 900_000, reply_expiry: 604_800_000 },
+      linkPathChars: 24,
     },
   };
 
@@ -137,7 +146,24 @@ export async function startTestMail(): Promise<TestMail> {
 
       const call = buildMockToolCall({ tool: name, input: parseJSONObject(JSON.stringify(input)) });
 
-      return tool.run(call, buildMockToolContext({ run: { thread, tools: [name] } }));
+      return tool.run(
+        call,
+        buildMockToolContext({
+          run: { thread, tools: [name], session: { key: 'test-session', invalidatedThrough: 0 } },
+        }),
+      );
+    },
+    resolveDestinations: (name, input, run) => {
+      const tool = toolsByName.get(name);
+
+      if (tool?.resolveDestinations === undefined) {
+        throw new Error(`the test holds no tool ${name} that resolves destinations`);
+      }
+
+      return tool.resolveDestinations(
+        parseJSONObject(JSON.stringify(input)),
+        buildMockToolContext({ run: { tools: [name], ...run } }),
+      );
     },
     connectors: buildMailConnectors(context, host),
     logged,

@@ -55,17 +55,20 @@ export function collectParts(raw: string): MailParts {
 function collectMultipart(body: string, boundary: string): MailParts {
   const escaped = boundary.replaceAll(/[.*+?^${}()|[\]\\]/gu, String.raw`\$&`);
 
-  const pieces = body.split(
-    new RegExp(`(?:^|\\r?\\n)--${escaped}(?:--)?[ \\t]*(?:\\r?\\n|$)`, 'u'),
-  );
-
+  // the capture holds the closing mark of a boundary line, so the text after the closing boundary,
+  // which is no part, is told apart from a part
+  const pieces = body.split(new RegExp(`(?:^|\\r?\\n)--${escaped}(--)?[ \\t]*(?:\\r?\\n|$)`, 'u'));
   const texts: string[] = [];
   const htmls: string[] = [];
   const attachments: MailAttachment[] = [];
 
-  // the first piece is the preamble
-  for (const piece of pieces.slice(1)) {
-    const part = collectParts(piece);
+  // the first piece is the preamble, and each boundary line gives a closing mark and a piece
+  for (let index = 1; index < pieces.length; index += 2) {
+    if (pieces[index] === '--') {
+      break;
+    }
+
+    const part = collectParts(pieces[index + 1] ?? '');
 
     texts.push(...part.texts);
     htmls.push(...part.htmls);

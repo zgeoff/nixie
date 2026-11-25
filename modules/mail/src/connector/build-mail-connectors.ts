@@ -4,16 +4,18 @@ import type {
   CheckResponse,
   ProviderResponse,
 } from '@heynixie/connectors';
+import { withHostLock } from '../host/with-host-lock';
 import { writeSentMail } from '../store/write-sent-mail';
 import type { MailHost, MailToolContext } from '../types';
+import { buildSendMessageID } from './build-send-message-id';
 import { mailToolNames } from './mail-tool-names';
 import { parseSendArguments } from './parse-send-arguments';
 import type { SendPlan } from './plan-send';
 import { planSend } from './plan-send';
 
 // The queue's connectors for the send and the reply. The Message-ID that the action ID makes lets a
-// check find a send of unknown outcome at the host, and the send's record and reply rule are written
-// once, whichever of the run or the check finds the mail first.
+// check find a send of unknown outcome at the host. The host's send and its record sit inside the
+// host's lock, so a reply that comes back at once is read after the record exists.
 export function buildMailConnectors(
   context: MailToolContext,
   host: MailHost,
@@ -35,26 +37,42 @@ async function runSend(
   host: MailHost,
   attempt: ActionAttempt,
 ): Promise<ProviderResponse> {
-  const plan = await readPlan(context, attempt);
+  const plan = await readPlan(context, attempt, { isReconcile: false });
 
   if (plan.status === 'refused') {
     return { kind: 'refused', reason: plan.reason };
   }
 
-  const sent = await host.send(plan.mail);
-  const written = await writeSentMail(context, plan.toSentInput(sent.hostMessageID));
+  const outgoing = plan.mail;
 
-  return {
-    kind: 'success',
-    result: {
-      message: written.shortID,
-      thread: written.threadShortID,
-      replyRule: written.replyRuleShortID,
-    },
-  };
+  if (outgoing === null) {
+    return { kind: 'refused', reason: 'the plan of the send holds no mail' };
+  }
+
+  return withHostLock<ProviderResponse>(host, async () => {
+    const sent = await host.send(outgoing);
+    const written = await writeSentMail(context, plan.toSentInput(sent.hostMessageID));
+
+    return {
+      kind: 'success',
+      result: {
+        message: written.shortID,
+        thread: written.threadShortID,
+        replyRule: written.replyRuleShortID,
+      },
+    };
+  });
 }
 
-function readPlan(context: MailToolContext, attempt: ActionAttempt): Promise<SendPlan> {
+interface PlanOptions {
+  readonly isReconcile: boolean;
+}
+
+function readPlan(
+  context: MailToolContext,
+  attempt: ActionAttempt,
+  options: PlanOptions,
+): Promise<SendPlan> {
   const parsed = parseSendArguments(attempt.tool, attempt.arguments);
 
   if (parsed === null) {
@@ -64,34 +82,44 @@ function readPlan(context: MailToolContext, attempt: ActionAttempt): Promise<Sen
     });
   }
 
-  return planSend(context, { actionID: attempt.actionID, arguments: parsed });
+  return planSend(context, {
+    actionID: attempt.actionID,
+    arguments: parsed,
+    isReconcile: options.isReconcile,
+  });
 }
 
-async function checkSend(
+// Asks the host first, by the Message-ID that the action ID makes, so a send that went out is found
+// even when the mail it answered was forgotten since. Only a found send needs the plan.
+function checkSend(
   context: MailToolContext,
   host: MailHost,
   attempt: ActionAttempt,
 ): Promise<CheckResponse> {
-  const plan = await readPlan(context, attempt);
+  const messageIDHeader = buildSendMessageID(context.settings, attempt.actionID);
 
-  if (plan.status === 'refused') {
-    return { kind: 'inconclusive' };
-  }
+  return withHostLock<CheckResponse>(host, async () => {
+    const found = await host.findSent(messageIDHeader);
 
-  const found = await host.findSent(plan.messageIDHeader);
+    if (found === null) {
+      return { kind: 'not_found' };
+    }
 
-  if (found === null) {
-    return { kind: 'not_found' };
-  }
+    const plan = await readPlan(context, attempt, { isReconcile: true });
 
-  const written = await writeSentMail(context, plan.toSentInput(found.hostMessageID));
+    if (plan.status === 'refused') {
+      return { kind: 'inconclusive' };
+    }
 
-  return {
-    kind: 'found',
-    result: {
-      message: written.shortID,
-      thread: written.threadShortID,
-      replyRule: written.replyRuleShortID,
-    },
-  };
+    const written = await writeSentMail(context, plan.toSentInput(found.hostMessageID));
+
+    return {
+      kind: 'found',
+      result: {
+        message: written.shortID,
+        thread: written.threadShortID,
+        replyRule: written.replyRuleShortID,
+      },
+    };
+  });
 }

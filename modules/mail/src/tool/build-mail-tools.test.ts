@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import { buildTaskSeeder } from '@heynixie/tasks/test-utils';
 import { buildToolRegistry } from '@heynixie/tools';
-import { seedReceivedMail, startTestMail } from '../test-utils';
+import { matchOutsideText, seedReceivedMail, startTestMail } from '../test-utils';
 import { buildMailTools } from './build-mail-tools';
 
 async function setupTest() {
@@ -17,6 +17,23 @@ async function setupTest() {
     starter,
     receive: (from: string, subject: string, text = 'Hello.') =>
       seedReceivedMail(mail, { from, subject, text }),
+    buildSession: (arrivedMails?: readonly string[]) =>
+      arrivedMails === undefined
+        ? {}
+        : {
+            session: {
+              key: 'session-a',
+              invalidatedThrough: 0,
+              policy: {
+                context: 'conversation' as const,
+                definitionID: null,
+                turnMessageSequence: null,
+                onBehalfOf: [],
+                sources: [],
+                arrivedMails,
+              },
+            },
+          },
     declarations: buildMailTools(mail.context).map((tool) => tool.declaration),
   };
 }
@@ -36,8 +53,16 @@ test('#mail.list lists the mail newest first with its sender, subject and read s
     status: 'ok',
     result: {
       mails: [
-        { from: 'news@school.example.org', subject: 'Term dates', unread: true },
-        { from: 'hello@library.example.org', subject: 'Your loan', unread: true },
+        {
+          from: matchOutsideText('news@school.example.org'),
+          subject: matchOutsideText('Term dates'),
+          unread: true,
+        },
+        {
+          from: matchOutsideText('hello@library.example.org'),
+          subject: matchOutsideText('Your loan'),
+          unread: true,
+        },
       ],
       next: null,
     },
@@ -62,7 +87,7 @@ test.each([
 
   expect(listed).toMatchObject({
     status: 'ok',
-    result: { mails: subjects.map((subject) => ({ subject })) },
+    result: { mails: subjects.map((subject) => ({ subject: matchOutsideText(subject) })) },
   });
 });
 
@@ -87,7 +112,7 @@ test('#mail.list pages with next and before', async () => {
 
   expect(second).toMatchObject({
     status: 'ok',
-    result: { mails: [{ subject: 'First' }], next: null },
+    result: { mails: [{ subject: matchOutsideText('First') }], next: null },
   });
 });
 
@@ -100,6 +125,15 @@ test('#mail.read opens a mail and marks it read', async () => {
   expect(opened).toStrictEqual({
     status: 'ok',
     result: {
+      from: matchOutsideText('hello@library.example.org'),
+      to: [matchOutsideText('assistant@nixie.example.org')],
+      cc: [],
+      subject: matchOutsideText('Your loan'),
+      thread: received.threadShortID,
+      text: matchOutsideText('Due on Friday.'),
+      attachments: [],
+    },
+    record: {
       from: 'hello@library.example.org',
       to: ['assistant@nixie.example.org'],
       cc: [],
@@ -217,6 +251,8 @@ test('#mail.wake_set refuses a task that has ended and one that never existed', 
 
 test.each([
   ['an expiry under a minute', { expires: '30s' }],
+  ['an expiry past the last date', { expires: '100000000d' }],
+  ['a window past the last date', { window: '100000000d', expires: '5m' }],
   ['a window under a minute', { window: '10s' }],
   ['a window past the expiry', { expires: '5m', window: '10m' }],
   ['text that is no duration', { expires: 'soon' }],
@@ -225,6 +261,15 @@ test.each([
   const set = await ctx.callTool('mail.wake_set', input);
 
   expect(set).toMatchObject({ status: 'error', message: expect.stringContaining('BAD_DURATION') });
+});
+
+test('#mail.wake_set shortens the default window to an expiry under it', async () => {
+  const ctx = await setupTest();
+  const set = await ctx.callTool('mail.wake_set', { expires: '5m' });
+  const listed = await ctx.callTool('mail.wake_list', {});
+
+  expect(set).toMatchObject({ status: 'ok', result: { window: '5m' } });
+  expect(listed).toMatchObject({ status: 'ok', result: { rules: [{ window: '5m' }] } });
 });
 
 test('#mail.wake_set lists the mail of the last 10 minutes that the rule takes', async () => {
@@ -240,7 +285,14 @@ test('#mail.wake_set lists the mail of the last 10 minutes that the rule takes',
 
   expect(set).toMatchObject({
     status: 'ok',
-    result: { recent: [{ from: 'hello@library.example.org', subject: 'Your code' }] },
+    result: {
+      recent: [
+        {
+          from: matchOutsideText('hello@library.example.org'),
+          subject: matchOutsideText('Your code'),
+        },
+      ],
+    },
   });
 });
 
@@ -273,6 +325,75 @@ test('#mail.wake_cancel ends a rule, and refuses a rule that is not live', async
     status: 'error',
     message: expect.stringContaining('UNKNOWN_RULE'),
   });
+});
+
+test('#mail.reply names the sender of the mail that woke the turn as the reply target', async () => {
+  const ctx = await setupTest();
+  const received = await ctx.receive('hello@library.example.org', 'Your loan');
+
+  const resolved = await ctx.resolveDestinations(
+    'mail.reply',
+    { message: received.shortID },
+    ctx.buildSession([received.shortID]),
+  );
+
+  expect(resolved).toStrictEqual({
+    status: 'ok',
+    destinations: [{ value: 'hello@library.example.org', replyTarget: true }],
+  });
+});
+
+test.each([
+  ['another mail woke the turn', ['mnotthismail']],
+  ['no mail woke the turn', []],
+  ['the call has no session', undefined],
+])('#mail.reply names the sender of a mail as no reply target when %s', async (_name, arrived) => {
+  const ctx = await setupTest();
+  const received = await ctx.receive('hello@library.example.org', 'Your loan');
+
+  const run = ctx.buildSession(arrived);
+
+  const resolved = await ctx.resolveDestinations('mail.reply', { message: received.shortID }, run);
+
+  expect(resolved).toStrictEqual({
+    status: 'ok',
+    destinations: [{ value: 'hello@library.example.org', replyTarget: false }],
+  });
+});
+
+test('#mail.reply refuses a mail whose sender address cannot go in a header', async () => {
+  const ctx = await setupTest();
+  const received = await ctx.receive('hello\u0141@library.example.org', 'Your loan');
+
+  const resolved = await ctx.resolveDestinations(
+    'mail.reply',
+    { message: received.shortID },
+    ctx.buildSession([received.shortID]),
+  );
+
+  expect(resolved).toMatchObject({
+    status: 'error',
+    message: expect.stringContaining('BAD_ADDRESS'),
+  });
+});
+
+test('#mail.read numbers each link of the text as an ID of the session, and numbers it again as the same', async () => {
+  const ctx = await setupTest();
+
+  const received = await ctx.receive(
+    'hello@library.example.org',
+    'Your loan',
+    'Renew at https://library.example.org/renew?id=7 or see https://library.example.org/help.',
+  );
+
+  const first = await ctx.callTool('mail.read', { message: received.shortID });
+  const second = await ctx.callTool('mail.read', { message: received.shortID });
+
+  const text = matchOutsideText(
+    'Renew at [L1 · library.example.org/renew] or see [L2 · library.example.org/help].',
+  );
+
+  expect([first, second]).toMatchObject([{ result: { text } }, { result: { text } }]);
 });
 
 test('it registers every tool of the module, so each result field has a source', async () => {

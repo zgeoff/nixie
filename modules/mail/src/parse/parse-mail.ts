@@ -14,7 +14,8 @@ export function parseMail(raw: Uint8Array): ParsedMail {
   // an 8-bit header holds UTF-8 bytes, which the latin1 reading splits
   const headers = parseHeaders(Buffer.from(split.head, 'latin1').toString('utf8'));
   const parts = collectParts(latin1);
-  const text = parts.texts.length > 0 ? parts.texts.join('\n') : parts.htmls.join('\n');
+  const plain = parts.texts.filter((part) => part.trim() !== '');
+  const text = plain.length > 0 ? plain.join('\n') : parts.htmls.join('\n');
   const answered = [...(headers.get('in-reply-to') ?? []), ...(headers.get('references') ?? [])];
 
   return {

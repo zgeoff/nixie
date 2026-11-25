@@ -1,4 +1,6 @@
 import type { OutgoingMail } from '../types';
+import { isMailAddress } from './is-mail-address';
+import { isMessageIDText } from './is-message-id-text';
 
 export interface OutgoingDraft {
   // the Message-ID without its angle brackets
@@ -15,8 +17,20 @@ export interface OutgoingDraft {
   readonly sentAt: number;
 }
 
-// Builds the RFC 5322 message of a send. The text travels in base64, so no line of it needs care.
-export function buildOutgoingMail(draft: OutgoingDraft): OutgoingMail {
+// Builds the RFC 5322 message of a send, or null when an address or an ID that a header would carry
+// is not printable ASCII, because the headers go out as Latin-1 and a character past it would change
+// the address or end the header. The text travels in base64, so no line of it needs care.
+export function buildOutgoingMail(draft: OutgoingDraft): OutgoingMail | null {
+  const isSafe =
+    isMailAddress(draft.from) &&
+    draft.to.length > 0 &&
+    draft.to.every((address) => isMailAddress(address)) &&
+    [draft.messageID, ...draft.references].every((id) => isMessageIDText(id));
+
+  if (!isSafe) {
+    return null;
+  }
+
   const answered = draft.references.map((id) => `<${id}>`);
   const [nearest] = answered;
 

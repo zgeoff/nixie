@@ -118,6 +118,53 @@ test('#parseMail prefers the plain part of a multipart mail and lists its attach
   ]);
 });
 
+test.each([
+  ['nothing after the closing boundary', ['--b1--', '']],
+  ['text after the closing boundary', ['--b1--', 'Sent from my phone.']],
+])('#parseMail reads the HTML part of a multipart mail with %s', (_name, ending) => {
+  const ctx = setupTest();
+
+  const parsed = parseMail(
+    ctx.buildRaw([
+      'From: a@x.example.org',
+      'Subject: Reset your password',
+      'Content-Type: multipart/mixed; boundary="b1"',
+      '',
+      '--b1',
+      'Content-Type: text/html; charset=utf-8',
+      '',
+      '<p>Tap <a href="https://library.example.org/reset?token=t0k3n">Reset password</a>.</p>',
+      ...ending,
+    ]),
+  );
+
+  expect(parsed.text).toBe('Tap Reset password (https://library.example.org/reset?token=t0k3n).');
+});
+
+test('#parseMail prefers the HTML part over a plain part with no text', () => {
+  const ctx = setupTest();
+
+  const parsed = parseMail(
+    ctx.buildRaw([
+      'From: a@x.example.org',
+      'Subject: Reset your password',
+      'Content-Type: multipart/alternative; boundary="b1"',
+      '',
+      '--b1',
+      'Content-Type: text/plain; charset=utf-8',
+      '',
+      '',
+      '--b1',
+      'Content-Type: text/html; charset=utf-8',
+      '',
+      '<p>Your code is <b>482913</b>.</p>',
+      '--b1--',
+    ]),
+  );
+
+  expect(parsed.text).toBe('Your code is 482913.');
+});
+
 test('#parseMail shows each link of an HTML mail beside its label', () => {
   const ctx = setupTest();
 

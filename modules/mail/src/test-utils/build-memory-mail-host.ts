@@ -1,4 +1,8 @@
+import { z } from 'zod';
 import type { HostChanges, HostCursor, HostMail, MailHost, OutgoingMail } from '../types';
+
+const replySettleMs = 50;
+const hostCursorSchema = z.object({ instance: z.string(), count: z.int().min(0) });
 
 export interface MemoryMail {
   readonly from: string;
@@ -31,6 +35,10 @@ export interface MemoryMailHost extends MailHost {
 
   // makes the next read fail
   readonly failNextRead: (reason: string, after?: number) => void;
+
+  // makes the next send put a reply in the inbox before it returns, so the reply reaches the host
+  // while nixie has not yet stored the sent mail
+  readonly replyDuringNextSend: (reply: (sent: SentMemoryMail) => MemoryMail) => void;
 }
 
 export interface MemoryMailHostOptions {
@@ -38,17 +46,20 @@ export interface MemoryMailHostOptions {
   readonly now: () => number;
 }
 
-// A mail host in memory, the stand-in for a real one. Its cursor is the count of mail that it held
-// when the reader last read it.
+// A mail host in memory, the stand-in for a real one. Each host takes an ID that its mail IDs carry,
+// so a restarted host never repeats an earlier ID, and a cursor from an earlier host reads as a
+// resync with every mail of this one.
 export function buildMemoryMailHost(options: MemoryMailHostOptions): MemoryMailHost {
+  const instance = crypto.randomUUID().slice(0, 8);
   const inbox: HostMail[] = [];
+  const replies: ((sent: SentMemoryMail) => MemoryMail)[] = [];
   const sent: SentMemoryMail[] = [];
   const hints: (() => void)[] = [];
   const failures: { reason: string; after: number | undefined }[] = [];
 
   const writeMail = (raw: Uint8Array): HostMail => {
     const mail: HostMail = {
-      hostMessageID: `host-${String(inbox.length + 1)}`,
+      hostMessageID: `host-${instance}-${String(inbox.length + 1)}`,
       receivedAt: options.now(),
       raw,
     };
@@ -63,7 +74,7 @@ export function buildMemoryMailHost(options: MemoryMailHostOptions): MemoryMailH
   };
 
   return {
-    begin: () => Promise.resolve(inbox.length),
+    begin: () => Promise.resolve({ instance, count: inbox.length }),
     readChanges: (cursor: HostCursor): Promise<HostChanges> => {
       const failure = failures.shift();
 
@@ -73,16 +84,35 @@ export function buildMemoryMailHost(options: MemoryMailHostOptions): MemoryMailH
         return Promise.resolve({ kind: 'failed', reason: failure.reason, ...after });
       }
 
-      const from = typeof cursor === 'number' ? cursor : 0;
+      const read = hostCursorSchema.safeParse(cursor);
+      const isOwn = read.success && read.data.instance === instance;
+      const from = read.success && isOwn ? read.data.count : 0;
 
-      return Promise.resolve({ kind: 'changes', cursor: inbox.length, mails: inbox.slice(from) });
+      return Promise.resolve({
+        kind: isOwn ? 'changes' : 'resynced',
+        cursor: { instance, count: inbox.length },
+        mails: inbox.slice(from),
+      });
     },
-    send: (mail: OutgoingMail) => {
-      const hostMessageID = `sent-${String(sent.length + 1)}`;
+    send: async (mail: OutgoingMail) => {
+      const hostMessageID = `sent-${instance}-${String(sent.length + 1)}`;
+      const stored = { hostMessageID, raw: mail.raw };
 
-      sent.push({ hostMessageID, raw: mail.raw });
+      sent.push(stored);
 
-      return Promise.resolve({ hostMessageID });
+      const reply = replies.shift();
+
+      if (reply !== undefined) {
+        writeMail(buildRaw(options.address, reply(stored)));
+
+        // the host answers a moment after the reply reached it, which a reader that does not wait
+        // for the send uses to read the reply first
+        await new Promise((resolve) => {
+          setTimeout(resolve, replySettleMs);
+        });
+      }
+
+      return { hostMessageID };
     },
     findSent: (messageIDHeader) => {
       const found = sent.find((mail) =>
@@ -117,6 +147,9 @@ export function buildMemoryMailHost(options: MemoryMailHostOptions): MemoryMailH
     readSent: () => sent,
     failNextRead: (reason, after) => {
       failures.push({ reason, after });
+    },
+    replyDuringNextSend: (reply) => {
+      replies.push(reply);
     },
   };
 }

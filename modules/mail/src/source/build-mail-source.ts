@@ -1,5 +1,6 @@
 import { toErrorFields } from '@heynixie/logger';
 import type { MailArrivalEvent, TriggerContext, TriggerSource } from '@heynixie/triggers';
+import { withHostLock } from '../host/with-host-lock';
 import { parseMail } from '../parse/parse-mail';
 import { writeReceivedMail } from '../store/write-received-mail';
 import type { HostCursor, HostMail, MailContext, MailHost } from '../types';
@@ -51,8 +52,6 @@ export function buildMailSource(context: MailContext, host: MailHost): TriggerSo
   };
 }
 
-const firstRetryMs = 60_000;
-const maxRetryMs = 60 * 60_000;
 const unhealthyAfter = 3;
 
 async function runMailLoop(run: MailRun): Promise<void> {
@@ -62,19 +61,25 @@ async function runMailLoop(run: MailRun): Promise<void> {
     let delayMs = run.context.settings.hostPollIntervalMs;
 
     try {
-      const retryAfterMs = await readHostOnce(run);
+      const read = await withHostLock(run.host, () => readHostOnce(run));
 
-      if (retryAfterMs === null) {
+      if (read.kind === 'read') {
         failures = 0;
 
         run.trigger.reportHealth('running');
       } else {
         failures += 1;
-        delayMs = retryAfterMs;
+        delayMs = read.afterMs ?? buildBackoffMs(failures);
+
+        run.context.logEvent('mail.host_read_failed', {
+          reason: read.reason,
+          failures,
+          retryInMs: delayMs,
+        });
       }
     } catch (error) {
       failures += 1;
-      delayMs = Math.min(maxRetryMs, firstRetryMs * 2 ** (failures - 1));
+      delayMs = buildBackoffMs(failures);
 
       run.context.logEvent('mail.source_failed', { failures, ...toErrorFields(error) });
     }
@@ -87,9 +92,15 @@ async function runMailLoop(run: MailRun): Promise<void> {
   }
 }
 
-// Reads the host once. Returns null after a read that stored and delivered, or the time to wait
-// after a failed read.
-async function readHostOnce(run: MailRun): Promise<number | null> {
+type HostRead =
+  | { readonly kind: 'read' }
+
+  // afterMs: the host's own retry time, when it names one
+  | { readonly kind: 'failed'; readonly reason: string; readonly afterMs: number | undefined };
+
+// Reads the host once, and stores and delivers what it holds, or reports the failure that the host
+// answered.
+async function readHostOnce(run: MailRun): Promise<HostRead> {
   if (run.cursor === null) {
     run.cursor = await run.host.begin();
 
@@ -99,9 +110,7 @@ async function readHostOnce(run: MailRun): Promise<number | null> {
   const changes = await run.host.readChanges(run.cursor);
 
   if (changes.kind === 'failed') {
-    run.context.logEvent('mail.host_read_failed', { reason: changes.reason });
-
-    return changes.after ?? firstRetryMs;
+    return { kind: 'failed', reason: changes.reason, afterMs: changes.after };
   }
 
   const events: MailArrivalEvent[] = [];
@@ -116,7 +125,7 @@ async function readHostOnce(run: MailRun): Promise<number | null> {
 
   run.cursor = changes.cursor;
 
-  return null;
+  return { kind: 'read' };
 }
 
 async function writeArrival(context: MailContext, mail: HostMail): Promise<MailArrivalEvent> {
@@ -137,6 +146,14 @@ async function writeArrival(context: MailContext, mail: HostMail): Promise<MailA
       subject: parsed.subject,
     },
   };
+}
+
+const firstRetryMs = 60_000;
+const maxRetryMs = 60 * 60_000;
+
+// The wait after a run of failures: a minute after the first, doubling after each, up to an hour.
+function buildBackoffMs(failures: number): number {
+  return Math.min(maxRetryMs, firstRetryMs * 2 ** (failures - 1));
 }
 
 async function sleepUntilHint(run: MailRun, delayMs: number): Promise<void> {

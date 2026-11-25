@@ -85,6 +85,9 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
               quietHours: options.config.quiet_hours ?? null,
               defaultZone: options.config.time.default_zone,
             },
+            ...(options.config.mail === undefined
+              ? {}
+              : { mail: { replyExpiryMs: options.config.wake_rules.reply_expiry } }),
             policy: {
               proposedRules: options.config.policy.proposedRules,
               mandates: options.config.policy.mandates,

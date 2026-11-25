@@ -1,4 +1,3 @@
-import { parseDuration } from '@heynixie/clock';
 import { withWriteTransaction } from '@heynixie/log';
 import { conversationTaskID } from '@heynixie/tasks';
 import type { ToolDefinition } from '@heynixie/tools';
@@ -9,10 +8,12 @@ import { mailToolNames } from '../connector/mail-tool-names';
 import { readMailPage } from '../store/read-mail-page';
 import type { MailToolContext } from '../types';
 import { formatDurationText } from './format-duration-text';
+import { pickWakeTiming } from './pick-wake-timing';
+import { renderOutsideText } from './render-outside-text';
 import { resolveWakeTarget } from './resolve-wake-target';
 
-const minDurationMs = 60_000;
 const recentMs = 10 * 60_000;
+const durationPattern = '^[1-9][0-9]{0,6}(ms|s|m|h|d)$';
 const addressPattern = String.raw`^(@[^@\s]+\.[^@\s]+|[^@\s]+@[^@\s]+\.[^@\s]+)$`;
 
 const inputSchema = z.strictObject({
@@ -45,8 +46,16 @@ export function buildMailWakeSetTool(context: MailToolContext): ToolDefinition {
         subject: { type: 'string', minLength: 1 },
         thread: { type: 'string', description: 'a thread ID from mail.list' },
         wake: { type: 'string', description: 'conversation, or the ID of a task' },
-        expires: { type: 'string', description: 'from 1m, such as 30m or 7d; none stays' },
-        window: { type: 'string', description: 'from 1m, such as 1m or 15m' },
+        expires: {
+          type: 'string',
+          pattern: durationPattern,
+          description: 'from 1m, such as 30m or 7d; none stays',
+        },
+        window: {
+          type: 'string',
+          pattern: durationPattern,
+          description: 'from 1m, such as 1m or 15m; at most expires',
+        },
       },
       additionalProperties: false,
     },
@@ -72,16 +81,16 @@ export function buildMailWakeSetTool(context: MailToolContext): ToolDefinition {
       }
 
       const input = parsed.data;
-      const expiresMs = input.expires === undefined ? null : parseDuration(input.expires);
-      const windowMs = input.window === undefined ? null : parseDuration(input.window);
-      const durations = [expiresMs, windowMs].filter((value) => value !== null);
+      const now = context.clock.now();
 
-      if (
-        (input.expires !== undefined && expiresMs === null) ||
-        (input.window !== undefined && windowMs === null) ||
-        durations.some((value) => value < minDurationMs) ||
-        (expiresMs !== null && windowMs !== null && windowMs > expiresMs)
-      ) {
+      const timing = pickWakeTiming({
+        expires: input.expires,
+        window: input.window,
+        nowMs: now,
+        defaultWindowMs: context.settings.wake.window,
+      });
+
+      if (timing.status === 'bad') {
         return {
           status: 'error',
           message:
@@ -96,7 +105,7 @@ export function buildMailWakeSetTool(context: MailToolContext): ToolDefinition {
         return { status: 'error', message: resolved.message };
       }
 
-      const now = context.clock.now();
+      const expiresAt = timing.expiresAt;
 
       const match = {
         ...(input.from === undefined ? {} : { from: input.from }),
@@ -110,8 +119,8 @@ export function buildMailWakeSetTool(context: MailToolContext): ToolDefinition {
           match,
           target: resolved.target,
           setBy: toolContext.run.thread === '' ? conversationTaskID : toolContext.run.thread,
-          expiresAt: expiresMs === null ? null : now + expiresMs,
-          windowMs: windowMs ?? context.settings.wake.window,
+          expiresAt,
+          windowMs: timing.windowMs,
           origin: 'tool',
         }),
       );
@@ -122,22 +131,33 @@ export function buildMailWakeSetTool(context: MailToolContext): ToolDefinition {
         match,
       });
 
+      const recentMails = recent.mails.map((mail) => ({
+        message: mail.message,
+        thread: mail.thread,
+        from: mail.from,
+        subject: mail.subject,
+        at: mail.at,
+        unread: mail.unread,
+      }));
+
+      const settled = {
+        rule: rule.shortID,
+        expiresAt: expiresAt === null ? null : new Date(expiresAt).toISOString(),
+        window: formatDurationText(rule.windowMs),
+        replaced: rule.replaced,
+      };
+
       return {
         status: 'ok',
         result: {
-          rule: rule.shortID,
-          expiresAt: rule.expiresAt === null ? null : new Date(rule.expiresAt).toISOString(),
-          window: formatDurationText(rule.windowMs),
-          replaced: rule.replaced,
-          recent: recent.mails.map((mail) => ({
-            message: mail.message,
-            thread: mail.thread,
-            from: mail.from,
-            subject: mail.subject,
-            at: mail.at,
-            unread: mail.unread,
+          ...settled,
+          recent: recentMails.map((mail) => ({
+            ...mail,
+            from: renderOutsideText(mail.from),
+            subject: renderOutsideText(mail.subject),
           })),
         },
+        record: { ...settled, recent: recentMails },
       };
     },
   };
