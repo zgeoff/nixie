@@ -12,6 +12,7 @@ import { match } from 'ts-pattern';
 import { z } from 'zod';
 import { buildHostCLIArgv } from './build-host-cli-argv';
 import { conversationRecordSchema } from './collect-conversation-records';
+import { computerFeatures } from './computer-features';
 import { featurePaths, ignoredPaths, sharedPaths } from './feature-paths';
 import { controlRoutes } from './harness/control-routes';
 import { lastFeatures } from './last-features';
@@ -444,26 +445,7 @@ export function createVerifyRegistry(): Wringer {
         summary: 'Browse notes, open a private one, forget one',
         paths: featurePaths['notebook-pages'],
       },
-      {
-        name: 'computer-shell',
-        summary: 'Write and read back a shell file',
-        paths: featurePaths['computer-shell'],
-      },
-      {
-        name: 'computer-browser',
-        summary: "Open a page in the assistant's browser",
-        paths: featurePaths['computer-browser'],
-      },
-      {
-        name: 'computer-screen',
-        summary: "Click a point of the assistant's desktop",
-        paths: featurePaths['computer-screen'],
-      },
-      {
-        name: 'computer-watch',
-        summary: "Watch the assistant's desktop",
-        paths: featurePaths['computer-watch'],
-      },
+      ...computerFeatures,
       ...lastFeatures,
     )
     .shared(...sharedPaths)

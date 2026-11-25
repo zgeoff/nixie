@@ -3,13 +3,11 @@ import { buildPasteKeys } from './build-paste-keys';
 
 test.each([
   { name: 'ASCII text', text: 'hunter2', keys: [0x68, 0x75, 0x6e, 0x74, 0x65, 0x72, 0x32] },
-  { name: 'a Latin-1 letter, by its code point', text: 'né', keys: [0x6e, 0xe9] },
   {
-    name: 'characters outside Latin-1, by Unicode keysym',
-    text: 'a☃日',
-    keys: [0x61, 0x01_00_26_03, 0x01_00_65_e5],
+    name: 'characters outside ASCII left out',
+    text: 'né☃日😀x',
+    keys: [0x6e, 0x78],
   },
-  { name: 'a character past the basic plane, once', text: '😀', keys: [0x01_01_f6_00] },
   {
     name: 'a line break of each kind as one Return',
     text: 'a\nb\r\nc\rd',

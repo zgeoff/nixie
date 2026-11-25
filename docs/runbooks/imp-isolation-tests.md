@@ -176,7 +176,7 @@ on a page in Chromium changes the page's title. They also check that a click on 
 returns `SCREEN_CHANGED` once a new tab replaced the window it was bound to.
 
 One test sends the keys of a take-over's paste through a watch to the real VNC server. It checks
-that `né☃` and a line break reach the focused field of a page in Chromium. CI never runs it, so run
+that `hi` and a line break reach the focused field of a page in Chromium. CI never runs it, so run
 it after each change to the VNC server's options or to the keys that the web client sends.
 
 1. Build the computer image into impd from `guests/computer/Dockerfile`, with the repo root as the
@@ -195,6 +195,7 @@ it after each change to the VNC server's options or to the keys that the web cli
    The tests list and remove only the sandboxes that they created, so an impd that runs other
    sandboxes keeps them.
 
-The tests skip while any of the 4 variables is unset. With all 4 set, expect `0 fail`, with no
-skipped test. Each test boots its own computer sandbox. Remove the image when you finish, by its
-exact name.
+The tests skip while any of the 4 variables is unset. With all 4 set, expect `0 fail`, with one
+skipped test: the paste of characters outside ASCII, which waits for the Chromium release that
+carries the upstream keymap fix. Each test boots its own computer sandbox. Remove the image when you
+finish, by its exact name.

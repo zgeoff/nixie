@@ -641,10 +641,10 @@ test('it hands a paste of 2000 characters to the viewer', async () => {
   await rendered.findByRole('button', { name: 'Hand back' });
 
   fireEvent.paste(rendered.getByRole('img', { name: "The computer's desktop" }), {
-    clipboardData: { getData: () => 'é'.repeat(2000), types: ['text/plain'], files: [] },
+    clipboardData: { getData: () => 'a'.repeat(2000), types: ['text/plain'], files: [] },
   });
 
-  expect(ctx.pastes).toStrictEqual(['é'.repeat(2000)]);
+  expect(ctx.pastes).toStrictEqual(['a'.repeat(2000)]);
 });
 
 test('it hands a longer paste to no one and tells the user', async () => {

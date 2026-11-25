@@ -403,13 +403,12 @@ out of it. The page reads the user's clipboard only for a paste the user makes, 
 text in its event, and never on its own.
 
 - A paste types the text as key events, one press and release for each character, so the text
-  reaches the field in focus whether it is in the browser or the terminal. A character in Latin-1
-  has the keysym of its code point, any other character has a Unicode keysym, a line break is
-  Return, a tab is Tab, and any other control character is left out. A multi-line paste therefore
-  submits each line at a shell prompt, as typing it would, and the browser suite checks the text
-  that a focused field receives for such a paste. The VNC clipboard message carries Latin-1 text
-  alone, and the VNC server has no extended clipboard format, so it would turn a character such as a
-  snowman into a question mark. The page holds back the user's own paste chord, which would reach
+  reaches the field in focus whether it is in the browser or the terminal. A printable ASCII
+  character has the keysym of its code point, a line break is Return, a tab is Tab, and any other
+  character is left out. A character outside ASCII waits for the Chromium release that carries the
+  upstream keymap fix, and nixie has no workaround for it. A multi-line paste therefore submits each
+  line at a shell prompt, as typing it would, and the browser suite checks the text that a focused
+  field receives for such a paste. The page holds back the user's own paste chord, which would reach
   the desktop before the text does, and pastes at most 2000 characters at a time, because each one
   is 2 messages on the wire. The relay passes each key only while the device holds the desktop, so a
   hold that ends part way through a paste sends no more of it.

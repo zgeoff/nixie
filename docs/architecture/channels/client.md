@@ -377,12 +377,13 @@ in the browser only, because the library reads the window when it loads.
 - While the user holds the desktop, a paste in the screen reaches the focused field, and text that
   the desktop copies reaches the user's clipboard. The page holds back the user's paste chord, so
   the viewer does not send it as a key before the text. The paste event carries the text, and the
-  page hands it to the viewer, which types it as keys, so a character outside Latin-1 arrives as
-  itself. A paste over 2000 characters types nothing and says so. The page reads the user's
-  clipboard only for that event, never on its own. The page writes the desktop's copied text to the
-  clipboard only while it holds. When the browser refuses the write, the page shows a button, Copy
-  it, whose press writes the text, and drops the text at the hand-back.
-  [Copy and paste](../connectors/computer.md#copy-and-paste) holds the server side.
+  page hands it to the viewer, which types it as keys. A paste of plain letters, digits and
+  punctuation arrives as typed, and a character outside ASCII is left out until the Chromium release
+  that carries the upstream keymap fix. A paste over 2000 characters types nothing and says so. The
+  page reads the user's clipboard only for that event, never on its own. The page writes the
+  desktop's copied text to the clipboard only while it holds. When the browser refuses the write,
+  the page shows a button, Copy it, whose press writes the text, and drops the text at the
+  hand-back. [Copy and paste](../connectors/computer.md#copy-and-paste) holds the server side.
 - The status line reads "Connecting to the computer." until the ticket comes, then "The computer is
   waking." while the socket is open and no picture has come, and "Your input won't reach the
   computer until you take over." once the viewer has drawn the desktop. The viewer's connect event
