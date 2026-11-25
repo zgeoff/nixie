@@ -7,6 +7,7 @@ import {
   withWriteTransaction,
 } from '@heynixie/log';
 import { sql } from 'kysely';
+import { writeHostSpendRaise } from '../raise/write-host-spend-raise';
 import { writeSpendRaiseRecord } from '../raise/write-spend-raise-record';
 import { buildMockGatewayStatus, startTestSpend } from '../test-utils';
 import { readSpendFacts } from './read-spend-facts';
@@ -74,12 +75,11 @@ test('it writes no trip of the stop when the route stops fail to settle', async 
   const ctx = await setupTest();
 
   const definitions = ctx.context.definitions();
-
-  const facts = await readSpendFacts(ctx.context);
-
   let calls = 0;
 
   await ctx.trip();
+
+  const facts = await readSpendFacts(ctx.context);
 
   const settling = settleSpendStop(
     {
@@ -94,7 +94,7 @@ test('it writes no trip of the stop when the route stops fail to settle', async 
         return definitions;
       },
     },
-    { ...facts, turns: { day: 3, month: 3 } },
+    facts,
   );
 
   const [settled] = await Promise.allSettled([settling]);
@@ -103,6 +103,29 @@ test('it writes no trip of the stop when the route stops fail to settle', async 
     status: 'rejected',
     reason: new Error('the definitions are gone'),
   });
+
+  const stop = await readSpendStopRow(ctx.writer.db);
+
+  expect(stop).toBeNull();
+});
+
+test('it puts back no stop that a raise of turns cleared, when a settle that read the turns before the raise settles after it', async () => {
+  const ctx = await setupTest();
+
+  const lateStatus = Promise.withResolvers<Awaited<ReturnType<typeof ctx.gateway.readStatus>>>();
+
+  await ctx.trip();
+  await ctx.settle();
+
+  ctx.gateway.readStatus.mockReturnValueOnce(lateStatus.promise);
+
+  const late = ctx.settle();
+
+  await writeHostSpendRaise(ctx.context, { turns: 10 });
+
+  lateStatus.resolve({ kind: 'ok', value: buildMockGatewayStatus() });
+
+  await late;
 
   const stop = await readSpendStopRow(ctx.writer.db);
 

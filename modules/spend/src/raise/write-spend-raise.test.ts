@@ -243,6 +243,32 @@ test('it keeps the larger dollars when two raises of a route land at once', asyn
   expect(raises).toMatchObject([{ route_id: 'plan', dollars: 60 }]);
 });
 
+test('it puts back no route stop that a raise of the route cleared while a raise of turns waited on its status', async () => {
+  const ctx = await setupTest();
+
+  const turnsStatus = Promise.withResolvers<Awaited<ReturnType<typeof ctx.gateway.readStatus>>>();
+
+  await ctx.trip();
+
+  ctx.gateway.readStatus.mockReturnValueOnce(turnsStatus.promise);
+
+  const turnsRaise = writeSpendRaise(ctx.context, {
+    start: '2026-11-13',
+    turns: 1500,
+    by: 'session-a',
+  });
+
+  await ctx.raise({ dollars: 60 });
+
+  turnsStatus.resolve({ kind: 'ok', value: buildTrippedGatewayStatus() });
+
+  await turnsRaise;
+
+  const routeStops = await readSpendRouteStops(ctx.writer.db);
+
+  expect(routeStops).toStrictEqual([]);
+});
+
 test('it holds the plan logins that the gateway reports', async () => {
   const ctx = await setupTest();
 

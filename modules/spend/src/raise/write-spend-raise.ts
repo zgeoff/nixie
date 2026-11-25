@@ -2,6 +2,7 @@ import { readPlanLogins } from '../login/read-plan-logins';
 import { readSpendFacts } from '../stop/read-spend-facts';
 import { readSpendRouteRaises } from '../stop/read-spend-route-raises';
 import { settleSpendStop } from '../stop/settle-spend-stop';
+import { takeSettleOrder } from '../stop/take-settle-order';
 import type { SpendContext } from '../types';
 import type { RaiseRequest } from './pick-raise-refusal';
 import { pickRaiseRefusal } from './pick-raise-refusal';
@@ -27,6 +28,9 @@ export async function writeSpendRaise(
   context: SpendContext,
   request: RaiseRequest & { readonly by: string },
 ): Promise<SpendRaiseResult> {
+  // The status it settles comes from a request sent after this place, so a settle that a newer read
+  // made never comes undone by it.
+  const order = takeSettleOrder(context);
   const readAtMs = context.clock.now();
 
   const [status] = await Promise.all([context.gateway.readStatus(), readPlanLogins(context)]);
@@ -64,7 +68,7 @@ export async function writeSpendRaise(
   const after = posted?.kind === 'ok' ? posted.value : status.value;
   const statusAtMs = posted?.kind === 'ok' ? postedAtMs : readAtMs;
 
-  const stop = await settleSpendStop(context, { ...facts, status: after, statusAtMs });
+  const stop = await settleSpendStop(context, { ...facts, status: after, statusAtMs, order });
 
   const isRouteTripped = Object.values(after.routes).some(
     (route) => route.day.tripped || route.month.tripped,

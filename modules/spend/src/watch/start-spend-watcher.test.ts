@@ -1,6 +1,8 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
 import {
   readPause,
+  readRecords,
+  spendWaitNoticeCodec,
   subscribeToChanged,
   withWriteTransaction,
   writeRecordsInTransaction,
@@ -8,8 +10,10 @@ import {
 import type { Logger } from '@heynixie/logger';
 import { waitForCondition } from '@heynixie/testing';
 import { sql } from 'kysely';
+import { writeSpendRaise } from '../raise/write-spend-raise';
 import { spendLimitRaisedCodec } from '../record/spend-limit-raised-codec';
 import { holdTaskOnRefusal } from '../route/hold-task-on-refusal';
+import { holdTaskOnRoute } from '../route/hold-task-on-route';
 import type { SpendRaise } from '../stop/read-spend-raise';
 import { readSpendRouteStops } from '../stop/read-spend-route-stops';
 import { readSpendStopRow } from '../stop/read-spend-stop-row';
@@ -267,6 +271,78 @@ test('it keeps the route stop cleared when a task read the route before the rais
   const routeStops = await readSpendRouteStops(ctx.writer.db);
 
   expect(routeStops).toStrictEqual([]);
+});
+
+test('it keeps the route stop cleared when your raise clears it while the gateway has yet to answer the resend of the watcher', async () => {
+  const ctx = await setupTest();
+
+  const state = { noAnswerSince: null, lastStopKey: null };
+  const resendAnswer = Promise.withResolvers<Awaited<ReturnType<typeof ctx.gateway.postRaise>>>();
+  let yourRaise: Promise<unknown> = Promise.resolve();
+
+  ctx.gateway.readStatus.mockResolvedValue({ kind: 'ok', value: buildTrippedGatewayStatus() });
+
+  await ctx.poll(state);
+  await ctx.writeRaise({ dollars: 41, by: 'session-a' });
+
+  ctx.gateway.postRaise
+    .mockImplementationOnce(() => {
+      yourRaise = writeSpendRaise(ctx.context, {
+        start: '2026-11-13',
+        route: 'plan',
+        dollars: 60,
+        by: 'session-b',
+      });
+
+      return resendAnswer.promise;
+    })
+    .mockResolvedValueOnce({ kind: 'ok', value: buildMockGatewayStatus() });
+
+  const polling = ctx.poll(state);
+
+  await waitForCondition(() => ctx.gateway.postRaise.mock.calls.length >= 2);
+  await yourRaise;
+
+  resendAnswer.resolve({ kind: 'ok', value: buildTrippedGatewayStatus() });
+
+  await polling;
+
+  const routeStops = await readSpendRouteStops(ctx.writer.db);
+
+  expect(routeStops).toStrictEqual([]);
+});
+
+test('it ends a wait notice no earlier than the hold began, when a task is held while the resend is in flight', async () => {
+  const ctx = await setupTest();
+
+  const state = { noAnswerSince: null, lastStopKey: null };
+
+  ctx.gateway.readStatus.mockResolvedValue({ kind: 'ok', value: buildTrippedGatewayStatus() });
+
+  await ctx.poll(state);
+  await ctx.writeRaise({ dollars: 60, by: 'session-a' });
+
+  const heldAtMs = ctx.clock.now() + 60_000;
+
+  ctx.gateway.postRaise.mockImplementationOnce(async () => {
+    ctx.clock.advance(60_000);
+
+    await holdTaskOnRoute(ctx.context, 'task-a', 'plan');
+
+    return { kind: 'ok', value: buildMockGatewayStatus() };
+  });
+
+  await ctx.poll(state);
+
+  const notices = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    thread: 'task-a',
+    kinds: ['spend.wait_notice'],
+  });
+
+  expect(notices.map((entry) => spendWaitNoticeCodec.decode(entry.record.payload))).toStrictEqual([
+    { taskID: 'task-a', sinceMs: heldAtMs, untilMs: heldAtMs },
+  ]);
 });
 
 test('it keeps the route stop and sends the raise again at the next poll when the gateway does not answer the raise', async () => {

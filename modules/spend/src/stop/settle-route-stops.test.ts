@@ -173,3 +173,34 @@ test('it puts back no stop that a newer settle cleared, when a poll that read th
 
   expect(stops).toStrictEqual([]);
 });
+
+test('it clears the stop with facts read before a settle that failed', async () => {
+  const ctx = await setupTest();
+
+  ctx.gateway.readStatus.mockResolvedValue({ kind: 'ok', value: buildTrippedGatewayStatus() });
+
+  await ctx.settle();
+
+  ctx.gateway.readStatus.mockResolvedValue({ kind: 'ok', value: buildMockGatewayStatus() });
+
+  const clearFacts = await readSpendFacts(ctx.context);
+  const failingFacts = await readSpendFacts(ctx.context);
+
+  const failing = settleRouteStops(
+    {
+      ...ctx.context,
+      definitions: () => {
+        throw new Error('the definitions are gone');
+      },
+    },
+    failingFacts,
+  );
+
+  await Promise.allSettled([failing]);
+
+  await settleRouteStops(ctx.context, clearFacts);
+
+  const stops = await readSpendRouteStops(ctx.writer.db);
+
+  expect(stops).toStrictEqual([]);
+});

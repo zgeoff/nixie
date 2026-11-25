@@ -44,7 +44,7 @@ export async function settleRouteStopsInTransaction(
         payload: spendWaitNoticeCodec.encode({
           taskID: hold.taskID,
           sinceMs: hold.sinceMs,
-          untilMs: facts.now,
+          untilMs: Math.max(facts.now, hold.sinceMs),
         }),
       })),
       {
