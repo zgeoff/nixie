@@ -73,8 +73,9 @@ below, as step 5 of Check a change in the [verify skill](../SKILL.md#check-a-cha
    bun verify db query "select count(*) as reports from records where kind = 'task_message' and json_extract(payload, '$.kind') = 'report'"
    ```
 
-   Expect: the first query lists `call.started`, `call.answered`, `call.spoke`, `call.handed_off`,
-   `call.closing` and `call.ended`, each once. The second query returns 1 or more.
+   Expect: the first query lists `call.started`, `call.answered`, `call.spoke` for the small talk,
+   `call.handed_off`, `call.spoke` for the holding line, `call.closing` and `call.ended`, in that
+   order. The second query returns 1 or more.
 
 ## End state
 
