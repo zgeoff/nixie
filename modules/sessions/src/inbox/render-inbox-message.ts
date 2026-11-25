@@ -14,6 +14,7 @@ import { renderApprovalAnswer } from './render-approval-answer';
 import { renderHandoverAsked } from './render-handover-asked';
 import { renderHandoverClosed } from './render-handover-closed';
 import { renderLimitNotice } from './render-limit-notice';
+import { renderPageEventMessage } from './render-page-event-message';
 import { renderProposalDecline } from './render-proposal-decline';
 import { renderProposalDefer } from './render-proposal-defer';
 import { renderRecoveryNotice } from './render-recovery-notice';
@@ -78,6 +79,10 @@ export function renderInboxMessage(
 
   if (record.kind === 'computer.handover_asked') {
     return renderHandoverAsked(record, times, view.messaging.ownerName);
+  }
+
+  if (record.kind === 'device.page_event') {
+    return renderPageEventMessage(record, times);
   }
 
   if (record.kind === 'policy.action_answered') {

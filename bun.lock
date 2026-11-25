@@ -974,6 +974,7 @@
         "@heynixie/contract": "workspace:*",
         "@heynixie/credentials": "workspace:*",
         "@heynixie/db": "workspace:*",
+        "@heynixie/devices": "workspace:*",
         "@heynixie/log": "workspace:*",
         "@heynixie/logger": "workspace:*",
         "@heynixie/models": "workspace:*",
