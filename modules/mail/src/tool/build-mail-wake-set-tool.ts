@@ -50,7 +50,18 @@ export function buildMailWakeSetTool(context: MailToolContext): ToolDefinition {
       },
       additionalProperties: false,
     },
-    output: { type: 'object' },
+    output: {
+      type: 'object',
+      properties: {
+        rule: { type: 'string' },
+        expiresAt: { type: ['string', 'null'] },
+        window: { type: 'string' },
+        replaced: { type: 'boolean' },
+        recent: { type: 'array', items: { type: 'object' } },
+      },
+      required: ['rule', 'expiresAt', 'window', 'replaced', 'recent'],
+      additionalProperties: false,
+    },
     declaration: mailDeclarations.wakeSet,
     execution: 'direct',
     run: async (call, toolContext) => {

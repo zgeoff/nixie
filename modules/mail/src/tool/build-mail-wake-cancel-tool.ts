@@ -22,7 +22,12 @@ export function buildMailWakeCancelTool(context: MailContext): ToolDefinition {
       required: ['rule'],
       additionalProperties: false,
     },
-    output: { type: 'object' },
+    output: {
+      type: 'object',
+      properties: { rule: { type: 'string' }, ended: { type: 'boolean' } },
+      required: ['rule', 'ended'],
+      additionalProperties: false,
+    },
     declaration: mailDeclarations.wakeCancel,
     execution: 'direct',
     run: async (call) => {

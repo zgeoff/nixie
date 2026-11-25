@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import { buildTaskSeeder } from '@heynixie/tasks/test-utils';
+import { buildToolRegistry } from '@heynixie/tools';
 import { seedReceivedMail, startTestMail } from '../test-utils';
 import { buildMailTools } from './build-mail-tools';
 
@@ -272,4 +273,20 @@ test('#mail.wake_cancel ends a rule, and refuses a rule that is not live', async
     status: 'error',
     message: expect.stringContaining('UNKNOWN_RULE'),
   });
+});
+
+test('it registers every tool of the module, so each result field has a source', async () => {
+  const ctx = await setupTest();
+
+  const registry = buildToolRegistry(buildMailTools(ctx.context));
+
+  expect(registry.toolNames).toStrictEqual([
+    'mail.list',
+    'mail.read',
+    'mail.send',
+    'mail.reply',
+    'mail.wake_set',
+    'mail.wake_list',
+    'mail.wake_cancel',
+  ]);
 });

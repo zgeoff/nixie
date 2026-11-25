@@ -36,7 +36,15 @@ export function buildMailListTool(context: MailContext): ToolDefinition {
       },
       additionalProperties: false,
     },
-    output: { type: 'object' },
+    output: {
+      type: 'object',
+      properties: {
+        mails: { type: 'array', items: { type: 'object' } },
+        next: { type: ['string', 'null'] },
+      },
+      required: ['mails', 'next'],
+      additionalProperties: false,
+    },
     declaration: mailDeclarations.list,
     execution: 'direct',
     run: async (call) => {

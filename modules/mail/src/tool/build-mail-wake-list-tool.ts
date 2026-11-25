@@ -13,7 +13,12 @@ export function buildMailWakeListTool(context: MailContext): ToolDefinition {
       'Lists every wake rule of your own mailbox that has not ended: its ID, what it matches, ' +
       'whom it wakes, when it expires, its window, and whether you set it or a send did.',
     input: { type: 'object', properties: {}, additionalProperties: false },
-    output: { type: 'object' },
+    output: {
+      type: 'object',
+      properties: { rules: { type: 'array', items: { type: 'object' } } },
+      required: ['rules'],
+      additionalProperties: false,
+    },
     declaration: mailDeclarations.wakeList,
     execution: 'direct',
     run: async () => {

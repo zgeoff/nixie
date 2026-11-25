@@ -9,7 +9,7 @@ export const mailDeclarations = {
     destinations: [],
     amount: null,
     content: [],
-    results: { mails: 'untrusted' },
+    results: { mails: 'untrusted', next: 'owner_data' },
   },
   read: {
     effects: ['read'],
@@ -18,6 +18,7 @@ export const mailDeclarations = {
     content: [],
     results: {
       from: 'untrusted',
+      thread: 'owner_data',
       to: 'untrusted',
       cc: 'untrusted',
       subject: 'untrusted',
@@ -44,20 +45,26 @@ export const mailDeclarations = {
     destinations: [],
     amount: null,
     content: [],
-    results: { recent: 'untrusted' },
+    results: {
+      rule: 'owner_data',
+      expiresAt: 'owner_data',
+      window: 'owner_data',
+      replaced: 'owner_data',
+      recent: 'untrusted',
+    },
   },
   wakeList: {
     effects: ['read'],
     destinations: [],
     amount: null,
     content: [],
-    results: {},
+    results: { rules: 'owner_data' },
   },
   wakeCancel: {
     effects: ['note'],
     destinations: [],
     amount: null,
     content: [],
-    results: {},
+    results: { rule: 'owner_data', ended: 'owner_data' },
   },
 } as const satisfies Readonly<Record<string, EffectDeclaration>>;

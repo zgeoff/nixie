@@ -25,7 +25,20 @@ export function buildMailReadTool(context: MailContext): ToolDefinition {
       required: ['message'],
       additionalProperties: false,
     },
-    output: { type: 'object' },
+    output: {
+      type: 'object',
+      properties: {
+        from: { type: 'string' },
+        to: { type: 'array', items: { type: 'string' } },
+        cc: { type: 'array', items: { type: 'string' } },
+        subject: { type: 'string' },
+        thread: { type: 'string' },
+        text: { type: 'string' },
+        attachments: { type: 'array', items: { type: 'object' } },
+      },
+      required: ['from', 'to', 'cc', 'subject', 'thread', 'text', 'attachments'],
+      additionalProperties: false,
+    },
     declaration: mailDeclarations.read,
     execution: 'direct',
     run: async (call) => {
