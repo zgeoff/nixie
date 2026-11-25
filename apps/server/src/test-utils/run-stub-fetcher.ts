@@ -35,7 +35,7 @@ process.stdout.write(encodeFrame(encodeFetchMessage(reply)));
 
 async function answerRequest(request: FetchRequest): Promise<FetchReply> {
   if (request.html !== undefined) {
-    return await askGuest(request);
+    return askGuest(request);
   }
 
   const name = new URL(request.url).pathname.split('/').pop() ?? '';

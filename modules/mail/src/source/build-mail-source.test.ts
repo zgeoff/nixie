@@ -42,7 +42,9 @@ async function setupTest() {
     startSource: () => startTestMailSource(mail),
 
     // the host is read again, as it is each poll interval
-    poll: () => mail.clock.advance(mail.context.settings.hostPollIntervalMs),
+    poll: () => {
+      mail.clock.advance(mail.context.settings.hostPollIntervalMs);
+    },
     readStored: () => readMailPage(mail.context, { limit: 50 }),
 
     // the source commits its cursor with each batch it delivers, so a cursor at the count of the

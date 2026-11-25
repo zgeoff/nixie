@@ -185,8 +185,9 @@ async function runHintLoop(run: MailRun): Promise<void> {
   }
 
   try {
-    for await (const hint of run.host.watch(run.signal)) {
-      void hint;
+    const hints = run.host.watch(run.signal)[Symbol.asyncIterator]();
+
+    for (let next = await hints.next(); next.done !== true; next = await hints.next()) {
       run.wake();
     }
   } catch (error) {

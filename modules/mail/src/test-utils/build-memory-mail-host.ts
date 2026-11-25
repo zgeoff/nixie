@@ -173,7 +173,11 @@ export function buildMemoryMailHost(options: MemoryMailHostOptions): MemoryMailH
 
       replies.push({ reply, released });
 
-      return { release: (failure) => released.resolve(failure) };
+      return {
+        release: (failure) => {
+          released.resolve(failure);
+        },
+      };
     },
   };
 }
