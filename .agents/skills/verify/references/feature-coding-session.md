@@ -3,14 +3,14 @@
 Contents: [Journey](#journey), [End state](#end-state).
 
 When the model starts a coding task, nixie holds the start until you approve it, because the starter
-rule `ask-coding-sessions` asks before every `coding.start`. After you approve, nixie starts one
-session on the coding gateway, binds the session to a task of its own, and the task waits for the
-session's events:
+rule `ask-coding-sessions` makes nixie ask before every `coding.start`. After you approve, nixie
+starts one session on the coding gateway, binds the session to a task of its own, and the task waits
+for the session's events:
 
-- The model's `task.start` call has the policy name `task.start/atc`. The approvals page,
-  `/proposals`, lists it under "Routine".
-- Approving it adds an `action.queued` record for `coding.start`, a `task.created` record whose
-  `runner` is `atc`, and a `coding.session_bound` record whose `origin` is `started`.
+- The model's `task.start` call has the policy name `task.start/atc`. You find it under "Routine" on
+  the approvals page, `/proposals`.
+- When you approve it, nixie adds an `action.queued` record for `coding.start`, a `task.created`
+  record whose `runner` is `atc`, and a `coding.session_bound` record whose `origin` is `started`.
 - The `coding_sessions` table holds one row for the session, with `adapter` `atc`.
 - The task reads as "Idle" on its page, like any waiting task.
 
@@ -18,18 +18,19 @@ Follow the steps in [Check a change](../SKILL.md#check-a-change) for this journe
 for the targets `local` and `preview`, the commands `up` and `done`, and the `data` field of each
 command's JSON output.
 
-Run this journey on `local` only, on a start of its own:
+Run this journey on `local` only, on an `up` of its own:
 
 - On `local`, `NIXIE_VERIFY_CODING=1 bun verify up` runs a test build of nixie with a scripted model
-  and a double of the coding gateway. That start makes the coding runner the only one that the start
-  tool offers, so it starts no sandbox task. Run no other journey on it.
+  and a double of the coding gateway. On that `up`, the start tool offers only the coding runner, so
+  the model can start no sandbox task. Run only sign-in-enrol and then this journey on it.
 - On `preview`, skip this journey, and list the feature as not verified there in your reply.
 
 Before you start:
 
 - Run `NIXIE_VERIFY_CODING=1 bun verify up --restart` and `bun verify doctor`, then
   [sign-in-enrol](feature-sign-in-enrol.md).
-- Run this journey once per start: step 4 expects exactly one held call of `task.start/atc`.
+- Run this journey once per `up`, because in step 4 nixie must hold exactly one call of
+  `task.start/atc`.
 
 ## Journey
 
@@ -54,7 +55,7 @@ Before you start:
 
    Expect: `conversation turn` exits 0.
 
-3. Script a text reply for the turn that the approval starts, or that turn fails:
+3. Script a text reply for the turn that nixie starts after you approve, or that turn fails:
 
    ```bash
    bun verify action script-reply --text 'Thanks, I have your answer.'
