@@ -70,6 +70,9 @@ export interface SearchToolOptions {
 
   readonly dailyCallCap: number;
 
+  // what one search costs, in millionths of a dollar: the charge and the call's recorded cost
+  readonly priceMicros: number;
+
   // the IANA zone whose midnight starts a new day of the cap
   readonly timeZone: string;
 }
@@ -99,7 +102,7 @@ export function buildSearchTool(
     },
     execution: 'direct',
     paid: {
-      priceMicros: provider.priceMicros,
+      priceMicros: options.priceMicros,
       callCap: {
         openCall: () => {
           const call = {
@@ -148,7 +151,7 @@ export function buildSearchTool(
           billed: true,
 
           // the provider answered, so the search was paid for
-          hidden: { costUSD: reply.costUSD },
+          hidden: { costUSD: options.priceMicros / 1_000_000 },
         };
       }
 
@@ -156,7 +159,11 @@ export function buildSearchTool(
 
       // the cost goes under hidden, which the model never reads, because it could steer what the
       // model searches for
-      return { status: 'ok', result: { hits }, hidden: { costUSD: reply.costUSD } };
+      return {
+        status: 'ok',
+        result: { hits },
+        hidden: { costUSD: options.priceMicros / 1_000_000 },
+      };
     },
   };
 }

@@ -41,11 +41,13 @@ run a worker and can call one, so while the `worker` role is set, the schema che
 wait of each entry that has no `ask: true`: the harness must have one, and the worker run limit's
 minutes must fit inside it. The error names the selectable model.
 
-The schema refuses an entry whose profile the file does not define, and an entry whose profile has
-no price table, because a task counts the cost of its turns against its dollar limit
-([started tasks](./started-tasks.md#limits)). For the same reason, the schema refuses a config whose
-task profile has no price table. A config that leaves the `task` role unset runs its tasks on the
-conversation's profile, so that profile then needs a price table too.
+The schema refuses an entry whose profile the file does not define. When no gateway runs, the
+deployment config also refuses an entry whose profile has no price table, because a task counts the
+cost of its turns against its dollar limit ([started tasks](./started-tasks.md#limits)). For the
+same reason, it refuses a config whose task profile or worker profile has no price table. A config
+that leaves the `task` role unset runs its tasks on the conversation's profile, so that profile then
+needs a price table too. When a gateway runs, the config refuses a profile that sets prices: the
+route's prices are the one source, as [metering](../policy/metering.md#prices) says.
 
 The section's `limits.taskRun` sets the default and the max of a started task's limits, each as a
 count of turns and an amount of dollars. The schema refuses a default above its max.

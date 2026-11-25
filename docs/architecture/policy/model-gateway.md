@@ -367,9 +367,9 @@ replies that were running at that moment.
 ## The periods
 
 A config with `periods` counts a day and a month in place of one total. Each resets at local
-midnight in `periods.zone`, an IANA zone that equals the deployment's default time zone. The server
-sets the limits and the gateway's own config sets the caps above them, so code in the deployment
-cannot move a cap.
+midnight in `periods.zone`, an IANA zone that equals the deployment's default time zone, and
+[`periodOf`](metering.md#periods) works out each start. The server sets the limits and the gateway's
+own config sets the caps above them, so code in the deployment cannot move a cap.
 
 ```yaml
 periods:

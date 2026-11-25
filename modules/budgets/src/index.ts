@@ -2,8 +2,6 @@ export { budgetProjections } from './projection/budget-projections';
 export { budgetChargedCodec } from './record/budget-charged-codec';
 export { budgetCreditedCodec } from './record/budget-credited-codec';
 export type { BudgetRecordKind } from './record/budget-record-kind';
-export { buildBudgetPeriod } from './period/build-budget-period';
-export type { BudgetPeriodBounds } from './period/build-budget-period';
 export type { PaidToolLimits } from './limit/build-built-in-budgets';
 export { buildBuiltInBudgets } from './limit/build-built-in-budgets';
 export { pickBudgetLimit } from './limit/pick-budget-limit';

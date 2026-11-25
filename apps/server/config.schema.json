@@ -886,6 +886,7 @@
       "default": {
         "daily_call_cap": 200,
         "credential": null,
+        "price_micros": 12000,
         "api_url": "https://kagi.com/api/v1"
       },
       "type": "object",
@@ -907,6 +908,12 @@
               "type": "null"
             }
           ]
+        },
+        "price_micros": {
+          "default": 12000,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
         },
         "api_url": {
           "default": "https://kagi.com/api/v1",

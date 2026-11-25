@@ -28,11 +28,12 @@ can tell a late "goodnight" from an early "good morning" and work out the gap be
 itself. The stamp gives the weekday, the day, the month, the hour and minute without am or pm, and
 the zone's city, and adds the year only when the message came from an earlier year than the current
 one in that zone. A message that carries no zone uses the default zone from the deployment
-configuration. The inbox and a rebuilt session's history render the stamp the same way. In that
-history each reply shows its own time in the same format, in the zone of the message it answers, so
-both sides of the conversation read on one clock. A reply carries no zone, so it takes the zone of
-the newest message before it that is not still waiting in the inbox, or the default zone when none
-comes before it.
+configuration. The config refuses a zone whose offset the turn count's buckets cannot add up to, as
+[metering](../policy/metering.md#periods) says. The inbox and a rebuilt session's history render the
+stamp the same way. In that history each reply shows its own time in the same format, in the zone of
+the message it answers, so both sides of the conversation read on one clock. A reply carries no
+zone, so it takes the zone of the newest message before it that is not still waiting in the inbox,
+or the default zone when none comes before it.
 
 A message that reached nixie long after the user wrote it, such as one that waited on a phone with
 no signal, shows both times, such as `[#48213 · typed 08:12, sent Wed 14 Oct, 18:36, Sydney]`, so

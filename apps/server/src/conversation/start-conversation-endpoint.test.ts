@@ -559,6 +559,45 @@ test("it serves search to the conversation with the key from the secrets file, s
   });
 });
 
+test("it records the search price that the config sets as the search's cost", async () => {
+  const nixie = await startInProcessNixie({
+    extraConfig: [
+      'search:',
+      '  credential: deployment:search',
+      '  price_micros: 15000',
+      `  api_url: ${kagiAPIURL}`,
+    ],
+    extraSecrets: ['connector_credentials:', '  search: kagi-key-a'],
+  });
+
+  const api = await createTestClient(nixie);
+
+  await kagiStore.keys.create({ key: 'kagi-key-a' });
+
+  await kagiStore.results.create({
+    query: 'low tide today',
+    url: 'https://tides.test/bondi',
+    title: 'Bondi tide times',
+    snippet: 'Low tide at 13:40.',
+    time: '2026-11-06T21:00:00Z',
+  });
+
+  nixie.guest.addReplies(
+    { toolUse: { name: 'search', input: { query: 'low tide today' } } },
+    { text: 'Low tide is at 13:40.' },
+  );
+
+  const records = await sendClientMessage(
+    api.client,
+    { text: 'When is low tide at Bondi?' },
+    'Low tide is at 13:40.',
+  );
+
+  const result = records.find((record) => record.kind === 'tool_result');
+
+  expect(result?.toolCall).toMatchObject({ content: { hidden: { costUSD: 0.015 } } });
+});
+
 test('it serves the image tools to the conversation when the config sets an images block', async () => {
   const nixie = await startInProcessNixie({
     extraConfig: [

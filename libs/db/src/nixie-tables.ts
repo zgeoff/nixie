@@ -51,11 +51,7 @@ export interface NixieTables {
     readonly for_kind: string;
     readonly for_id: string;
     readonly credited: number;
-  };
-  readonly budget_ledger: {
-    readonly budget_id: string;
-    readonly period_start: string;
-    readonly spent_micros: number;
+    readonly ledger_key: string;
   };
   readonly budgets_in_force: {
     readonly budget_id: string;
@@ -660,6 +656,14 @@ export interface NixieTables {
     readonly origin: string;
     readonly in_conversation: number;
     readonly approval_id: string | null;
+  };
+  readonly spend_ledger: {
+    readonly ledger_key: string;
+    readonly counter: string;
+    readonly unit: string;
+    readonly period_kind: string;
+    readonly period_start: string;
+    readonly amount: number;
   };
   readonly spend_raises: {
     readonly start: string;

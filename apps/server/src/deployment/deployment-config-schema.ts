@@ -10,6 +10,7 @@ import {
 } from '@heynixie/connectors';
 import { definitionsConfigSchema } from '@heynixie/definitions';
 import { memoryConfigSchema } from '@heynixie/memory';
+import { collectMissingPriceIssues } from '@heynixie/models';
 import { notebookConfigSchema } from '@heynixie/notebook';
 import { policyConfigSchema } from '@heynixie/policy';
 import { approvalsConfigSchema, quietHoursSchema } from '@heynixie/proposals';
@@ -61,6 +62,27 @@ export const deploymentConfigSchema = z
         path: ['imp'],
         message: 'the imp section is unset, and the imp sandbox adapter needs it',
       });
+    }
+
+    // with a gateway, each route's prices are the one source of a model's prices
+    if (config.spendStop !== undefined) {
+      for (const [id, profile] of Object.entries(config.models.profiles)) {
+        if (profile.prices !== null) {
+          issues.addIssue({
+            code: 'custom',
+            path: ['models', 'profiles', id, 'prices'],
+            message: `the profile ${id} sets prices, and the spendStop section is set, so the gateway route's prices are the one source of the model's prices: remove the profile's prices and set the route's prices`,
+          });
+        }
+      }
+    }
+
+    // Without a gateway, nixie prices each call itself. A models section that failed its own checks
+    // is not yet in its final shape, so the price check waits for it.
+    if (config.spendStop === undefined && issues.issues.length === 0) {
+      for (const issue of collectMissingPriceIssues(config.models)) {
+        issues.addIssue({ code: 'custom', path: [...issue.path], message: issue.message });
+      }
     }
 
     // the server reaches the gateway's logins through the spendStop section

@@ -7,6 +7,7 @@ export interface SearchSettings {
   readonly fetch: ProviderFetch;
   readonly apiURL: string;
   readonly dailyCallCap: number;
+  readonly priceMicros: number;
 }
 
 export function createSearchSettings(
@@ -37,5 +38,6 @@ export function createSearchSettings(
     fetch: credentials.store.fetcher(binding, [origin]),
     apiURL: config.api_url,
     dailyCallCap: config.daily_call_cap,
+    priceMicros: config.price_micros,
   };
 }

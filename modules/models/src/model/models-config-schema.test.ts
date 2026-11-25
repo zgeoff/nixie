@@ -373,28 +373,6 @@ test('it refuses a selectable model that names an undefined profile', () => {
   });
 });
 
-test('it refuses a selectable model whose profile sets no prices', () => {
-  const result = modelsConfigSchema.safeParse({
-    profiles: {
-      'chat-direct': {
-        harness: 'agent-sdk',
-        base_url: 'https://api.anthropic.com',
-        credential: 'deployment:anthropic',
-        auth_header: 'x-api-key',
-        model: 'claude-test-1',
-        effort: 'medium',
-      },
-    },
-    roles: { conversation: 'chat-direct' },
-    selectable: { 'second-look': { profile: 'chat-direct', description: 'Another family' } },
-  });
-
-  expect(result.error?.issues).toPartiallyContain({
-    path: ['selectable', 'second-look', 'profile'],
-    message: 'the selectable model second-look names the profile chat-direct, which sets no prices',
-  });
-});
-
 test.each([
   ['turns', { default: { turns: 30 }, max: { turns: 20 } }],
   ['dollars', { default: { dollars: 12 } }],

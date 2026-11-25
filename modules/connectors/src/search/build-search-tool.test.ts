@@ -19,7 +19,6 @@ test('it returns each hit with a link ID and a date only on a dated hit, and kee
   const ctx = await setupTest();
 
   const provider = {
-    priceMicros: 12_000,
     readHits: () =>
       Promise.resolve<SearchReply>({
         kind: 'hits',
@@ -37,7 +36,6 @@ test('it returns each hit with a link ID and a date only on a dated hit, and kee
             date: null,
           },
         ],
-        costUSD: 0.012,
       }),
   };
 
@@ -45,6 +43,7 @@ test('it returns each hit with a link ID and a date only on a dated hit, and kee
     log: ctx.log,
     clock: createFakeClock({ startMs: Date.parse('2026-11-07T01:00:00.000Z') }),
     dailyCallCap: 200,
+    priceMicros: 12_000,
     timeZone: 'Australia/Sydney',
   });
 
@@ -92,7 +91,6 @@ test('it numbers a hit after the links the session already holds, and gives a kn
 
   const tool = buildSearchTool(
     {
-      priceMicros: 12_000,
       readHits: () =>
         Promise.resolve<SearchReply>({
           kind: 'hits',
@@ -100,13 +98,13 @@ test('it numbers a hit after the links the session already holds, and gives a kn
             { title: 'Ferry fares', url: 'https://ferries.test/fares', snippet: null, date: null },
             { title: 'Manly ferry', url: 'https://ferries.test/manly', snippet: null, date: null },
           ],
-          costUSD: 0.012,
         }),
     },
     {
       log: ctx.log,
       clock: createFakeClock({ startMs: Date.parse('2026-11-07T01:00:00.000Z') }),
       dailyCallCap: 200,
+      priceMicros: 12_000,
       timeZone: 'Australia/Sydney',
     },
   );
@@ -143,7 +141,6 @@ test('it gives two hits with one URL the same link ID', async () => {
 
   const tool = buildSearchTool(
     {
-      priceMicros: 12_000,
       readHits: () =>
         Promise.resolve<SearchReply>({
           kind: 'hits',
@@ -151,13 +148,13 @@ test('it gives two hits with one URL the same link ID', async () => {
             { title: 'Ferry fares', url: 'https://ferries.test/fares', snippet: null, date: null },
             { title: 'Fares 2026', url: 'https://ferries.test/fares', snippet: null, date: null },
           ],
-          costUSD: 0.012,
         }),
     },
     {
       log: ctx.log,
       clock: createFakeClock({ startMs: Date.parse('2026-11-07T01:00:00.000Z') }),
       dailyCallCap: 200,
+      priceMicros: 12_000,
       timeZone: 'Australia/Sydney',
     },
   );
@@ -194,18 +191,17 @@ test('it keys the link IDs of a call under the run token by the run', async () =
 
   const tool = buildSearchTool(
     {
-      priceMicros: 12_000,
       readHits: () =>
         Promise.resolve<SearchReply>({
           kind: 'hits',
           hits: [{ title: 'Tides', url: 'https://tides.test/', snippet: null, date: null }],
-          costUSD: 0.012,
         }),
     },
     {
       log: ctx.log,
       clock: createFakeClock({ startMs: Date.parse('2026-11-07T01:00:00.000Z') }),
       dailyCallCap: 200,
+      priceMicros: 12_000,
       timeZone: 'Australia/Sydney',
     },
   );
@@ -243,18 +239,17 @@ test('it refuses a search whose session a forget ended, and stores no link', asy
 
   const tool = buildSearchTool(
     {
-      priceMicros: 12_000,
       readHits: () =>
         Promise.resolve<SearchReply>({
           kind: 'hits',
           hits: [{ title: 'Tides', url: 'https://tides.test/', snippet: null, date: null }],
-          costUSD: 0.012,
         }),
     },
     {
       log: ctx.log,
       clock: createFakeClock({ startMs: Date.parse('2026-11-07T01:00:00.000Z') }),
       dailyCallCap: 200,
+      priceMicros: 12_000,
       timeZone: 'Australia/Sydney',
     },
   );
@@ -295,18 +290,17 @@ test.each([
 
   const tool = buildSearchTool(
     {
-      priceMicros: 12_000,
       readHits: () =>
         Promise.resolve<SearchReply>({
           kind: 'hits',
           hits: [{ title: 'Tides', url: 'https://tides.test/', snippet: null, date }],
-          costUSD: 0.012,
         }),
     },
     {
       log: ctx.log,
       clock: createFakeClock({ startMs: Date.parse('2026-11-07T01:00:00.000Z') }),
       dailyCallCap: 200,
+      priceMicros: 12_000,
       timeZone: 'Australia/Sydney',
     },
   );
@@ -336,15 +330,16 @@ test('it asks the provider for 10 hits from any site at any time when the call s
   const ctx = await setupTest();
 
   const readHits = mock<(request: SearchRequest) => Promise<SearchReply>>(() =>
-    Promise.resolve({ kind: 'hits', hits: [], costUSD: 0.012 }),
+    Promise.resolve({ kind: 'hits', hits: [] }),
   );
 
   const tool = buildSearchTool(
-    { priceMicros: 12_000, readHits },
+    { readHits },
     {
       log: ctx.log,
       clock: createFakeClock({ startMs: Date.parse('2026-11-07T01:00:00.000Z') }),
       dailyCallCap: 200,
+      priceMicros: 12_000,
       timeZone: 'Australia/Sydney',
     },
   );
@@ -375,15 +370,16 @@ test('it passes the limit, the sites and the freshness the call sets to the prov
   const ctx = await setupTest();
 
   const readHits = mock<(request: SearchRequest) => Promise<SearchReply>>(() =>
-    Promise.resolve({ kind: 'hits', hits: [], costUSD: 0.012 }),
+    Promise.resolve({ kind: 'hits', hits: [] }),
   );
 
   const tool = buildSearchTool(
-    { priceMicros: 12_000, readHits },
+    { readHits },
     {
       log: ctx.log,
       clock: createFakeClock({ startMs: Date.parse('2026-11-07T01:00:00.000Z') }),
       dailyCallCap: 200,
+      priceMicros: 12_000,
       timeZone: 'Australia/Sydney',
     },
   );
@@ -420,17 +416,37 @@ test('it passes the limit, the sites and the freshness the call sets to the prov
   });
 });
 
-test('it prices a search at the provider price, and shows the model no price', async () => {
+test('it charges a search at the configured price, records that price as its cost, and shows the model no price', async () => {
   const ctx = await setupTest();
 
   const tool = buildSearchTool(buildStubSearchProvider(), {
     log: ctx.log,
     clock: createFakeClock({ startMs: 0 }),
     dailyCallCap: 200,
+    priceMicros: 20_000,
     timeZone: 'UTC',
   });
 
-  expect(tool.paid?.priceMicros).toBe(12_000);
+  const outcome = await tool.run(
+    { callID: 'call-1', tool: 'search', input: { query: 'tide times' }, toolUseID: null },
+    {
+      callSequence: 1,
+      run: {
+        runID: 'run-1',
+        thread: 'conversation',
+        logThread: 'conversation',
+        tools: ['search'],
+        model: { model: 'model-a', profile: 'chat-direct' },
+        session: { key: 'session-a', invalidatedThrough: 0 },
+      },
+    },
+  );
+
+  expect({ charged: tool.paid?.priceMicros, outcome }).toStrictEqual({
+    charged: 20_000,
+    outcome: { status: 'ok', result: { hits: [] }, hidden: { costUSD: 0.02 } },
+  });
+
   expect(tool.description).not.toMatch(/\$|price|cost/iu);
 });
 
@@ -441,6 +457,7 @@ test('it reports the cap as full past 200 calls in a day, naming the cap and whe
     log: ctx.log,
     clock: createFakeClock({ startMs: Date.parse('2026-11-07T01:00:00.000Z') }),
     dailyCallCap: 200,
+    priceMicros: 12_000,
     timeZone: 'Australia/Sydney',
   });
 
@@ -471,6 +488,7 @@ test('it reports room under the cap, and writes no count when it checks', async 
     log: ctx.log,
     clock: createFakeClock({ startMs: Date.parse('2026-11-07T01:00:00.000Z') }),
     dailyCallCap: 1,
+    priceMicros: 12_000,
     timeZone: 'Australia/Sydney',
   });
 
@@ -499,6 +517,7 @@ test('it counts afresh from local midnight', async () => {
     log: ctx.log,
     clock,
     dailyCallCap: 1,
+    priceMicros: 12_000,
     timeZone: 'Australia/Sydney',
   });
 
@@ -526,6 +545,7 @@ test('it reports the cap as full before local midnight under a cap of 1', async 
     log: ctx.log,
     clock,
     dailyCallCap: 1,
+    priceMicros: 12_000,
     timeZone: 'Australia/Sydney',
   });
 
@@ -554,13 +574,13 @@ test("it returns the provider's failure as an error the model reads", async () =
 
   const tool = buildSearchTool(
     {
-      priceMicros: 12_000,
       readHits: () => Promise.resolve<SearchReply>({ kind: 'failed', reason: 'Kagi answered 503' }),
     },
     {
       log: ctx.log,
       clock: createFakeClock({ startMs: Date.parse('2026-11-07T01:00:00.000Z') }),
       dailyCallCap: 200,
+      priceMicros: 12_000,
       timeZone: 'Australia/Sydney',
     },
   );
@@ -590,10 +610,15 @@ test('it declares the fetch effect and runs inside the turn', async () => {
 
   const tool = buildSearchTool(
     {
-      priceMicros: 12_000,
       readHits: () => Promise.resolve<SearchReply>({ kind: 'failed', reason: 'unused' }),
     },
-    { log: ctx.log, clock: createFakeClock({ startMs: 0 }), dailyCallCap: 200, timeZone: 'UTC' },
+    {
+      log: ctx.log,
+      clock: createFakeClock({ startMs: 0 }),
+      dailyCallCap: 200,
+      priceMicros: 12_000,
+      timeZone: 'UTC',
+    },
   );
 
   expect({ declaration: tool.declaration, execution: tool.execution }).toStrictEqual({
@@ -613,10 +638,15 @@ test('it marks every result field as outside content', async () => {
 
   const tool = buildSearchTool(
     {
-      priceMicros: 12_000,
       readHits: () => Promise.resolve<SearchReply>({ kind: 'failed', reason: 'unused' }),
     },
-    { log: ctx.log, clock: createFakeClock({ startMs: 0 }), dailyCallCap: 200, timeZone: 'UTC' },
+    {
+      log: ctx.log,
+      clock: createFakeClock({ startMs: 0 }),
+      dailyCallCap: 200,
+      priceMicros: 12_000,
+      timeZone: 'UTC',
+    },
   );
 
   expect(tool.declaration.results).toStrictEqual({ hits: 'untrusted' });
@@ -627,10 +657,15 @@ test("it endorses only a hit's date, and gives the model no cost", async () => {
 
   const tool = buildSearchTool(
     {
-      priceMicros: 12_000,
       readHits: () => Promise.resolve<SearchReply>({ kind: 'failed', reason: 'unused' }),
     },
-    { log: ctx.log, clock: createFakeClock({ startMs: 0 }), dailyCallCap: 200, timeZone: 'UTC' },
+    {
+      log: ctx.log,
+      clock: createFakeClock({ startMs: 0 }),
+      dailyCallCap: 200,
+      priceMicros: 12_000,
+      timeZone: 'UTC',
+    },
   );
 
   expect(tool.output['properties']).toStrictEqual({
@@ -657,10 +692,15 @@ test('it is a tool the registry accepts, whose output schema holds a dated hit',
 
   const tool = buildSearchTool(
     {
-      priceMicros: 12_000,
       readHits: () => Promise.resolve<SearchReply>({ kind: 'failed', reason: 'unused' }),
     },
-    { log: ctx.log, clock: createFakeClock({ startMs: 0 }), dailyCallCap: 200, timeZone: 'UTC' },
+    {
+      log: ctx.log,
+      clock: createFakeClock({ startMs: 0 }),
+      dailyCallCap: 200,
+      priceMicros: 12_000,
+      timeZone: 'UTC',
+    },
   );
 
   const registered = buildToolRegistry([tool]).findTool('search');

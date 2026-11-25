@@ -8,6 +8,9 @@ const payloadSchema = z.object({
   chargeID: z.string(),
   budgetID: z.string(),
   periodStart: z.string(),
+
+  // the spend ledger row the charge added to; a charge from before the ledger names none
+  ledgerKey: z.string().exactOptional(),
   amountMicros: z.number().int().positive(),
   for: forSchema,
 });

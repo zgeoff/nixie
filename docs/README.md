@@ -89,6 +89,8 @@ holds the design for a piece of work that is not built yet, with its spikes in
   widening check
 - [The model gateway](architecture/policy/model-gateway.md) — routes, the count and its store, the
   spending limit and the refusals
+- [Metering](architecture/policy/metering.md) — the one helper for periods, the one source of each
+  price and the spend ledger
 - [The spending stop](architecture/policy/spending-stop.md) — the stop's states, the watcher, the
   check before a turn, the raise and the notice
 - [The turn-input log](architecture/policy/turn-input-log.md) — the capture of a step, the intake,

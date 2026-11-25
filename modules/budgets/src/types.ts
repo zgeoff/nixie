@@ -67,12 +67,16 @@ interface BudgetChargeRow {
   readonly for_kind: string;
   readonly for_id: string;
   readonly credited: number;
+  readonly ledger_key: string;
 }
 
-interface BudgetLedgerRow {
-  readonly budget_id: string;
+interface SpendLedgerRow {
+  readonly ledger_key: string;
+  readonly counter: string;
+  readonly unit: string;
+  readonly period_kind: string;
   readonly period_start: string;
-  readonly spent_micros: number;
+  readonly amount: number;
 }
 
 interface BudgetInForceRow {
@@ -87,7 +91,7 @@ interface BudgetInForceRow {
 export type BudgetsTables = CheckedTables<
   Readonly<{
     budget_charges: BudgetChargeRow;
-    budget_ledger: BudgetLedgerRow;
+    spend_ledger: SpendLedgerRow;
     budgets_in_force: BudgetInForceRow;
   }>
 >;
