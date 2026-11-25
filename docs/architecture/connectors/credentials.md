@@ -9,8 +9,9 @@ A part of nixie names a credential by a reference, a resolver turns the referenc
 the store serves the entry: a fetcher makes a request to an outside service with the value added on
 the host, and a grant passes the value through the sandbox adapter to a sandbox's broker for one
 host. No tool or connector ever holds a value. A credential's value never enters a tool result, a
-prompt, a log line, a record or an error message. [A few secrets](#references-and-the-resolver) stay
-outside the store.
+prompt, a log line, a record or an error message. The settings are the one exception: the prompt
+shows the user's name and pronouns. [A few secrets](#references-and-the-resolver) stay outside the
+store.
 
 A release server's store has 2 backends. The first is the secrets file, which the
 [server](../deployment/server.md#configuration-and-secrets) decrypts at start. It holds the search,

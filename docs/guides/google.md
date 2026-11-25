@@ -99,8 +99,8 @@ an unverified app in production keeps working.
 1. Open the connection from Settings → Connections.
 2. Select Forget this connection, then Forget for good.
 
-nixie revokes the grant at Google and deletes the connection's keys, so its tokens are unreadable at
-once. The page then shows 3 lines:
+nixie revokes the grant at Google and deletes the connection's keys, so the tokens in its database
+are unreadable at once. The page then shows 3 lines:
 
 - Erasure: whether nixie deleted the keys.
 - Revocation: whether Google ended the grant. After "refused", Google still holds the grant. After
