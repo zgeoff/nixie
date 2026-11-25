@@ -2,12 +2,12 @@
 
 Contents: [Journey](#journey), [End state](#end-state).
 
-Read what the assistant wrote with the notebook tools on the notebook pages, which never edit a
-note. `/notebook` lists the notes, newest edit first. A note's page at `/notebook/<note ID>` shows
-its body, links and backlinks. A private note is absent until the user ticks "Show private", which
-sets `?private=1` and writes nothing. Its body stays folded until the user presses Open, which
-appends one `notebook.private_opened` record. Forget on a note's page removes the whole note, and so
-does the assistant's `notebook.forget`.
+Read what the assistant wrote with the notebook tools on the notebook pages. The pages never change
+a note's text. `/notebook` lists the notes, newest edit first. A note's page at
+`/notebook/<note ID>` shows its body, links and backlinks. A private note is absent until the user
+ticks "Show private", which sets `?private=1` and writes nothing. The private note's body stays
+folded until the user presses Open, which appends one `notebook.private_opened` record. Forget on a
+note's page removes the whole note, and so does the assistant's `notebook.forget`.
 
 Follow the steps in [Check a change](../SKILL.md#check-a-change) for this journey. Read that section
 for the commands `up` and `done`, and for the `data` field of each command's JSON output.
@@ -20,6 +20,8 @@ Before you start:
 
 - When you have not run [sign-in-enrol](feature-sign-in-enrol.md) since `up`, run it first.
 - Run this journey once per `up`. It leaves both notes forgotten.
+- Expect notes that earlier journeys wrote, such as memory-approval's, in the lists. Find this
+  journey's notes by their titles on the pages, and by the link between them in the database.
 - Before you run the journey again, even after a failed pass, run `bun verify up --restart` and
   `bun verify doctor`. Then run sign-in-enrol. `up --restart` starts nixie on a new, empty database.
 
@@ -44,11 +46,14 @@ Before you start:
    bun verify browser type --role textbox --name Message --value 'Write down the boiler notes and a private diary entry.'
    bun verify browser click --role button --name Send
    bun verify conversation turn --message 'Write down the boiler notes and a private diary entry.' --reply 'Both notes are in the notebook.'
-   bun verify db query "select kind, count(*) as n from records where kind like 'notebook.%' group by kind order by kind"
+   bun verify db query "select n.is_private as private, count(l.link_key) as links from notebook_notes n left join notebook_links l on l.from_note_id = n.note_id where n.is_private = 1 or n.note_id in (select target_id from notebook_links where target_kind = 'note') group by n.note_id order by n.is_private"
+   bun verify db query "select count(*) as opened from records where kind = 'notebook.private_opened'"
    ```
 
-   Expect: `conversation turn` exits 0. The query lists `notebook.linked` with `n` 1 and
-   `notebook.note_written` with `n` 2, and no `notebook.private_opened`.
+   Expect: `conversation turn` exits 0. The first query lists 2 rows: the first note with `private`
+   0 and `links` 0, then the private note with `private` 1 and `links` 1. It picks the notes by the
+   link between them, so notes that earlier journeys wrote stay out. The second query's `opened`
+   is 0.
 
 3. Open the notebook with the private toggle off, and open the first note:
 
@@ -60,9 +65,9 @@ Before you start:
    ```
 
    Expect: the first snapshot shows the heading "Notebook", the unticked checkbox "Show private" and
-   the link "Boiler notes", and no text "Winter diary" and no placeholder for it. The last shows the
-   body "The boiler trips after a cold night.", "This note links to nothing." and "No note links
-   here."
+   the link "Boiler notes". It shows no text "Winter diary", no placeholder for it and no count of
+   hidden notes. The second shows the body "The boiler trips after a cold night.", "This note links
+   to nothing." and "No note links here.", and no text "Winter diary".
 
 4. Tick "Show private", then open the private note and its body:
 
@@ -92,7 +97,7 @@ Before you start:
    bun verify browser click --role button --name Forget
    bun verify browser click --role button --name 'Forget for good'
    bun verify browser snapshot --until-text 'Key backups: off'
-   bun verify db query "select kind, json_extract(payload, '$.kind') as target, json_extract(payload, '$.by') as by, json_extract(payload, '$.removedKeys') as removed from records where kind like 'erasure.%' order by sequence"
+   bun verify db query "select kind, json_extract(payload, '$.kind') as target, json_extract(payload, '$.by') as by, json_extract(payload, '$.removedKeys') as removed from records where kind like 'erasure.%' and json_extract(payload, '$.kind') = 'note' order by sequence"
    ```
 
    Expect: the first snapshot shows "Winter diary" under Backlinks, and the page kept the private
@@ -117,25 +122,26 @@ Before you start:
 7. Script a turn in which the assistant forgets the private note. Read the note's short ID first:
 
    ```bash
-   bun verify db query "select json_extract(payload, '$.shortID') as id from records where kind = 'notebook.note_written' and json_extract(payload, '$.shortID') not in (select json_extract(payload, '$.shortID') from records where kind = 'erasure.started' and json_extract(payload, '$.kind') = 'note')"
+   bun verify db query "select distinct n.short_id as id from notebook_notes n join notebook_links l on l.from_note_id = n.note_id where n.is_private = 1 and n.state = 'active' and l.target_kind = 'note'"
    bun verify action script-reply --forget-note '<the id>' --text 'The diary note is forgotten.'
    bun verify browser goto /
    bun verify browser type --role textbox --name Message --value 'Forget the diary note.'
    bun verify browser click --role button --name Send
    bun verify conversation turn --message 'Forget the diary note.' --reply 'The diary note is forgotten.' --wait-ms 60000
    bun verify browser goto '/notebook?private=1'
-   bun verify browser snapshot --until-text 'No notes yet'
+   bun verify browser snapshot --until-no-text 'Loading notes'
    bun verify db query "select json_extract(payload, '$.by') as by, count(*) as n from records where kind = 'erasure.finished' and json_extract(payload, '$.kind') = 'note' group by by order by by"
    ```
 
-   Expect: the first query lists 1 note, the private one. The `conversation turn` exits 0, and the
-   turn replies once because the note's session cleanup starts only after the step that forgets the
-   note has committed. The list shows "No notes yet" and no link "Winter diary". The last query
-   lists `assistant` with `n` 1 and `user` with `n` 1.
+   Expect: the first query lists 1 note, the private one, which it finds by its link to the
+   forgotten note. `conversation turn` exits 0, and the turn replies once, because the note's
+   session cleanup starts only after the step that forgets the note commits. The list shows no link
+   "Winter diary" and no link "Boiler notes". It shows "No notes yet" when no earlier journey wrote
+   a note. The last query lists `assistant` with `n` 1 and `user` with `n` 1.
 
 ## End state
 
-- Step 2: the log holds 2 `notebook.note_written` records and 1 `notebook.linked` record, and no
+- Step 2: nixie holds the 2 notes, the private one with 1 link to the first, and the log holds no
   `notebook.private_opened` record.
 - Step 3: with the toggle off, the list and the first note's page show no title of the private note,
   no link to it and no count.
@@ -144,7 +150,7 @@ Before you start:
 - Step 5: the first note's page lists the private note under Backlinks, and after the forget it
   shows the forgotten line with the key backup state, off on `local`. The log holds an
   `erasure.started` and then an `erasure.finished` record for the note.
-- Step 6: the list holds only the private note, and its link to the forgotten note reads "Gone
-  (note)".
-- Step 7: the list shows "No notes yet". The log holds 2 `erasure.finished` records of kind `note`,
+- Step 6: the list shows the private note and no link to the forgotten note. On the private note's
+  page, the link to the forgotten note reads "Gone (note)".
+- Step 7: the list shows neither note. The log holds 2 `erasure.finished` records of kind `note`,
   one with `by` `user` and one with `by` `assistant`.
