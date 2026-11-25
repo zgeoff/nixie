@@ -7,7 +7,6 @@ import { useConversationRecords } from '../conversation/use-conversation-records
 import { useMemoryNotices } from '../memory/use-memory-notices';
 import { useOutbox } from '../outbox/use-outbox';
 import { css } from '../styled-system/css';
-import type { StartTimer } from '../utils/start-platform-timer';
 import { BudgetNotice } from './budget-notice';
 import { CompactionFailureNotice } from './compaction-failure-notice';
 import { Composer } from './composer';
@@ -25,8 +24,6 @@ export interface ConversationProps {
   readonly composerNotice?: ReactNode;
 
   readonly messageID?: string;
-
-  readonly startTimer?: StartTimer;
 }
 
 const layout = css({
@@ -89,12 +86,10 @@ const notice = css({
 });
 
 export function Conversation(props: ConversationProps): ReactNode {
-  const liveOptions = props.startTimer === undefined ? {} : { startTimer: props.startTimer };
   const messageOptions = props.messageID === undefined ? {} : { messageID: props.messageID };
   const [isEarlierWanted, setEarlierWanted] = useState(false);
 
   const conversation = useConversationRecords(props.thread, {
-    ...liveOptions,
     ...messageOptions,
     isEarlierWanted,
   });

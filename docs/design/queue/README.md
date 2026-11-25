@@ -23,7 +23,7 @@ is deleted.
 | Connections     | [Google connections](google-connections.md), [the connection store](google-connection-store.md)   |
 | Google tools    | [Gmail](gmail-calendar-drive-tools.md), [Calendar and Drive](google-calendar-drive-tools.md)      |
 | MCP servers     | [the MCP proxy build](mcp-proxy-build.md)                                                         |
-| Channels        | [the push notice](push-notice.md), [live updates and presence](live-updates.md)                   |
+| Channels        | [the push notice](push-notice.md)                                                                 |
 | Devices         | [the camera, the speaker and the microphone](devices.md), [layouts](device-layout.md)             |
 | Accounts        | [accounts and sign-in](accounts.md), [the wallet](wallet.md), [mail and phone](mail-and-phone.md) |
 

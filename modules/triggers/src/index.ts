@@ -55,3 +55,5 @@ export type {
   TriggerSource,
   TriggersTables,
 } from './types';
+
+export { triggersRecordTopics } from './record/triggers-record-topics';

@@ -32,6 +32,18 @@ export function createSessionProcedures(context: APIContext) {
       return { code: result.code, expiresAt: new Date(result.expiresAt) };
     }),
 
+    shown: apiImplementer.sessions.shown.handler(async (options) => {
+      const caller = await requireCaller(
+        context,
+        options.context.sessionToken,
+        options.errors.UNAUTHORIZED,
+      );
+
+      context.clients.recordShown(caller.identityID);
+
+      return {};
+    }),
+
     list: apiImplementer.sessions.list.handler(async (options) => {
       const caller = await requireCaller(
         context,

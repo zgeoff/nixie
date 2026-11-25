@@ -130,3 +130,5 @@ export {
 export { handoverClosedCodec, handoverCloses } from './computer/handover/handover-closed-codec';
 export { computerOwner, legacyComputerOwners } from './computer/computer-owner';
 export { makeUnexemptScans } from './computer/run-computer-call';
+export { computerTakeoverRecordTopics } from './computer/takeover/computer-takeover-record-topics';
+export { imagesRecordTopics } from './image/images-record-topics';

@@ -61,3 +61,5 @@ export type {
   SpendTurnLimits,
   Unreachable,
 } from './types';
+
+export { spendRecordTopics } from './record/spend-record-topics';

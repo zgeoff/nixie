@@ -3,6 +3,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import { waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
+import { LiveConnection } from '../live/live-connection';
+import { mockLive } from '../mocks/mock-live';
 import { pauseStore } from '../mocks/pause-store';
 import { store } from '../mocks/store';
 import { buildStubTimer } from '../test-utils/build-stub-timer';
@@ -210,4 +212,25 @@ test('it shows a task as running again when another client resumed it alone', as
   await waitFor(() => {
     expect(row).not.toHaveTextContent('Paused by nixie');
   });
+});
+
+test('it shows a pause that another device starts while the page is open, with no reload', async () => {
+  await createDeviceSession();
+
+  const rendered = render(
+    <>
+      <LiveConnection />
+      <PauseBanner />
+    </>,
+  );
+
+  await waitFor(() => {
+    expect(mockLive.openCount).toBe(1);
+  });
+
+  await pauseStore.pauses.create({ cause: 'owner', since: new Date('2026-11-02T08:00:00Z') });
+
+  const banner = await rendered.findByRole('region', { name: 'nixie is paused' });
+
+  expect(banner).toBeVisible();
 });

@@ -14,7 +14,7 @@ shows memory writes as [notices](../memory/writes.md#notices).
 ## The contract
 
 The contract has three kinds of procedure: reads, which a client caches; checked actions, which
-change state; and the live stream of log records.
+change state; and the [live stream](./live-updates.md).
 
 - **Checked actions.** A client creates an ID once per action and sends it again on every retry, so
   the server applies the action once and answers a retry with the first result, or with a fresh
@@ -27,14 +27,15 @@ change state; and the live stream of log records.
   so a retried bearer enrolment receives a fresh token for the same session.
 - **The client header.** Every call carries a custom client header, and the API refuses a call
   without it, because a cross-site form cannot send a custom header.
-- **The live stream.** A conversation read returns a page of records with the log sequence it read
-  at. The client follows the log from that sequence, and each streamed event's ID is its record's
-  sequence, so a reconnect resumes with no gap and no repeat. A `log_reset` record on the stream
-  means the [reset](../core/event-log.md#the-reset) removed every record before it, or a reset of
-  the conversation shredded every record before it on the thread, so the client drops what it read
+- **The live stream.** A tab holds one `live.follow` stream, which carries the records of the thread
+  on screen and a `changed` event for each topic a commit touched. [Live updates](./live-updates.md)
+  describes the stream and its topics, and [The live stream in the client](#the-live-stream)
+  describes how the tab holds it. A `log_reset` record on the stream means the
+  [reset](../core/event-log.md#the-reset) removed every record before it, or a reset of the
+  conversation shredded every record before it on the thread, so the client drops what it read
   before that record and reads its queries again. The conversation shows the record as a rule across
   the feed with the time of the reset in the user's own time zone. The server restarts after a
-  reset, so the client reads them once more when the stream next connects.
+  reset, so the client reads them once more when the stream next opens.
 
 A client renders a record by its kind, and shows a kind it does not know by its name. Beside its
 kind, a record carries what a client shows of it: a message's text, the task and step of a task
@@ -94,19 +95,47 @@ was read at, and a dropped stream reconnects from the last sequence it delivered
 drops the page with the stream's records, so a return reads a fresh page and never shows the text of
 a message forgotten in between.
 
+## The live stream
+
+The web client holds one `live.follow` stream in each tab, above every page, so a change of route
+keeps it open. A signed-in page keeps it open, and the `/device` page, which holds a device-form
+stream of its own, never opens a page stream. The stream is a page form: it carries the records of
+the thread on screen, from the sequence that page read at, and every topic's `changed` events.
+
+- **A topic invalidates its reads.** A `changed` event invalidates the reads under each topic's
+  query-key root, so no page sets a poll on a read that a topic covers. The topic roots and their
+  reads are in [Live updates](./live-updates.md#topics).
+- **A read in flight gives way to a new one.** An invalidation cancels a read of that topic that is
+  in flight and reads again, so the page never keeps an answer from before the change.
+- **A first open or a reconnect invalidates every topic,** because a `changed` event carries no
+  event ID and a closed stream misses it. A new stream that replaces one waiting to reconnect
+  invalidates every topic too, because the old connection missed what changed meanwhile.
+- **A thread switch overlaps two streams.** When the thread on screen changes, including to or from
+  a page with no thread, the client opens a stream from the new page's read sequence, and closes the
+  old one once the new one sends `opened`. It invalidates nothing then. A thread page reads its
+  conversation in its route loader, so the old page's stream stays open until the new one opens. A
+  change that several views make in one step, such as a route change that drops one thread page and
+  adds another, opens one stream.
+- **A tab sends a beat.** A visible tab calls `sessions.shown` when it becomes visible and every 60
+  s while it stays visible, and a tab in the background never calls it. A device page never calls
+  it.
+- **A task due on a schedule.** The task list reads again at the `changesAt` time that `tasks.list`
+  answers.
+
 A live stream can die without the browser seeing it close, as when a phone sleeps or a proxy loses
 its upstream, so the client watches for that. The API writes a keepalive into a quiet stream, and
-the client fails a stream that misses three keepalives in a row and follows again. A page that
-becomes visible again, or a browser that comes back online, ends the open connection or the pause
-before a reconnect and follows again at once, because those are the moments a connection most often
-died unseen or the network came back.
+the client fails a stream that has sent no byte, and a stream request that gets no response headers,
+within the idle limit in `liveStreamTiming`, and follows again. A page that becomes visible again,
+or a browser that comes back online, ends the open connection or the pause before a reconnect and
+follows again at once, because those are the moments a connection most often died unseen or the
+network came back.
 
 A stream that fails attempt after attempt backs off: the pause before each reconnect doubles up to a
 cap. The API checks the session before it opens the stream, so a stream that opens is one the API
-accepted, and only an open stream resets the backoff, unless the API then ends it with an error.
-After a few failures in a row the page says live updates are unavailable, so a stream that a content
-blocker, a down server or a revoked session stops fails visibly. The notice goes once the stream
-opens again.
+accepted, and only an `opened` event resets the backoff. After 3 failures in a row the page says
+live updates are unavailable, so a stream that a content blocker, a down server or a revoked session
+stops fails visibly, and each topic's reads run again every `liveFallbackMs`. The notice goes, and
+those reads stop, once a stream opens again.
 
 The page also says when nixie is failing to answer: the conversation's last step failed and its
 errors in a row reached the limit at which another task would fail. A turn that
@@ -274,9 +303,8 @@ for missing content in place of the name and the trigger, and keeps the undo whi
 it. A refused undo shows one sentence for the error's code beside the notice, and the sentence for
 `REPLACED` names the short ID of the head change.
 
-Both routes follow the live stream, which starts at the head the task list read. `/tasks/ended`
-reads again on a `trigger.fired`, `trigger.skipped` or `task.run_ended` record, and `/definitions`
-on a `definition.changed` record, so neither polls.
+Both routes read again when the live stream's topics change: `/tasks/ended` on `tasks` and
+`triggers`, and `/definitions` on `definitions`, so neither polls.
 
 ## The files page
 
@@ -341,11 +369,11 @@ in the browser only, because the library reads the window when it loads.
 - Take over calls `computer.takeOver` and, once it answers, turns `viewOnly` off and focuses the
   viewer, so the user's keys and pointer reach the desktop. The status line then says that the user
   has taken over, and Take over becomes Hand back, which calls `computer.handBack` and turns
-  `viewOnly` on, and then the page opens a new stream. A refused take-over shows its reason next to
-  the button. The server closes every stream of the holder's device when a hold ends, by a hand-back
-  from any tab, the idle time or a restart, and a page whose stream ended while it held shows "Your
-  hold on the computer ended." and returns to view only. A hand-back that finds the hold gone shows
-  the same line.
+  `viewOnly` on, and then the page opens its desktop connection again. A refused take-over shows its
+  reason next to the button. The server closes every stream of the holder's device when a hold ends,
+  by a hand-back from any tab, the idle time or a restart, and a page whose stream ended while it
+  held shows "Your hold on the computer ended." and returns to view only. A hand-back that finds the
+  hold gone shows the same line.
 - The status line reads "Connecting to the computer." until the ticket comes, then "The computer is
   waking." while the socket is open and no picture has come, and "Your input won't reach the
   computer until you take over." once the viewer has drawn the desktop. The viewer's connect event
@@ -358,14 +386,12 @@ in the browser only, because the library reads the window when it loads.
 ## The handover banner
 
 While the assistant asks the user to take over the computer, every signed-in page shows a banner
-with the assistant's reason and a Take over button. The client reads `computer.readHandover` once
-for the standing ask and a log sequence, then follows the conversation's thread from that sequence.
-The stream opens a second after the page loads, so the page's own streams get their connections
-first. A `computer.handover_asked` record opens the banner on every open client, and a
+with the assistant's reason and a Take over button. The client reads `computer.readHandover` for the
+standing ask, and reads it again when the `computer` topic changes or the window gains focus. A
+`computer.handover_asked` record opens the banner on every open client, and a
 `computer.takeover_started` or `computer.handover_closed` record clears it, so a take-over from one
 device clears the banner on the others. When the ask's record is forgotten, the open banner drops
-the reason and shows the ask without it. The client reads the ask again every minute and when the
-window gains focus.
+the reason and shows the ask without it.
 
 Take over leaves a one-time mark in the tab's session storage and opens `/computer`. The computer
 page reads and clears the mark, and takes over once, as soon as it shows the desktop, so the user
@@ -494,13 +520,10 @@ so a server that gives no `definitionID` shows no definition filter. The filters
 only the groups that hold a match, and a Clear filters button. With no match, it shows the
 empty-group text.
 
-The dashboard reads the task list and follows the live stream of every thread from the log sequence
-the list was read at. Each record that moves a task's state or last activity, such as a pause, a
-message of the user's or a `trigger.fired`, makes the dashboard read the list again. The live stream
-carries no pause or resume of nixie, and a task that wakes on a schedule changes with no record of
-its own, so the dashboard also reads the list on a timer, `taskListRefetchMs`, while the page is
-visible, and at once when the page becomes visible. A dropped stream reconnects from the last
-sequence it delivered, as the conversation view's stream does, so the dashboard misses no change.
+The dashboard reads the task list again on each `changed` event of the `tasks` topic, and when the
+page comes to the front. A task that wakes on a schedule changes with no write, so no topic
+announces it. The list's answer gives that time in `changesAt`, and the dashboard reads the list
+again then. This is the one timed read of a read that a topic covers.
 
 Each task shows the controls that its runner offers and its state allows, as
 [controlling a task](./api.md#controlling-a-task) describes. Each control is a checked action, so a
@@ -513,10 +536,10 @@ conversation offers no close.
 While nixie is paused, every signed-in page shows a banner with the cause in words, a restore, you
 or the spending limit, and since when, beside a Resume nixie button that acts at once. A restore
 pause also lists each task that the restore left to check, with a link to the task, its state at the
-backup, whether a step was running, and its actions without an outcome. The client polls the pause
-state on a timer and when the window gains focus, and reads the task list again when that state
-changes. The dashboard shows a Pause nixie button while nothing pauses nixie, and neither button
-asks to confirm.
+backup, whether a step was running, and its actions without an outcome. The client reads the pause
+state again when the `nixie` topic changes, and reads the task list again when that state changes.
+The dashboard shows a Pause nixie button while nothing pauses nixie, and neither button asks to
+confirm.
 
 A ready, running, waiting or paused task that nixie's pause stops shows as paused by nixie, and its
 listed state is `paused`. It offers its own Resume, which runs that task alone. A done, stopped,

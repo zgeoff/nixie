@@ -1,6 +1,7 @@
 import { expect, mock, test } from 'bun:test';
 import { waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { LiveConnection } from '../live/live-connection';
 import { store } from '../mocks/store';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { render } from '../test-utils/render';
@@ -15,7 +16,12 @@ test('it shows nothing while no ask stands', async () => {
 
   await createDeviceSession();
 
-  const rendered = render(<HandoverBanner onTakeOver={ctx.onTakeOver} />);
+  const rendered = render(
+    <>
+      <LiveConnection />
+      <HandoverBanner onTakeOver={ctx.onTakeOver} />
+    </>,
+  );
 
   await waitFor(() => {
     expect(rendered.container).toBeEmptyDOMElement();
@@ -32,7 +38,12 @@ test('it shows the reason and a Take over button for an ask that stands when the
     message: { text: 'itch.io asks for a CAPTCHA' },
   });
 
-  const rendered = render(<HandoverBanner onTakeOver={ctx.onTakeOver} />);
+  const rendered = render(
+    <>
+      <LiveConnection />
+      <HandoverBanner onTakeOver={ctx.onTakeOver} />
+    </>,
+  );
 
   const banner = await rendered.findByRole('region', {
     name: 'the assistant asks you to take over the computer',
@@ -48,7 +59,12 @@ test('it shows the banner when the ask arrives on the live stream', async () => 
 
   await createDeviceSession();
 
-  const rendered = render(<HandoverBanner onTakeOver={ctx.onTakeOver} />);
+  const rendered = render(
+    <>
+      <LiveConnection />
+      <HandoverBanner onTakeOver={ctx.onTakeOver} />
+    </>,
+  );
 
   await waitFor(() => {
     expect(rendered.container).toBeEmptyDOMElement();
@@ -80,7 +96,12 @@ test.each(['computer.handover_closed', 'computer.takeover_started'])(
       message: { text: 'a bank check' },
     });
 
-    const rendered = render(<HandoverBanner onTakeOver={ctx.onTakeOver} />);
+    const rendered = render(
+      <>
+        <LiveConnection />
+        <HandoverBanner onTakeOver={ctx.onTakeOver} />
+      </>,
+    );
 
     await rendered.findByRole('region', {
       name: 'the assistant asks you to take over the computer',
@@ -108,7 +129,12 @@ test('it takes the user to the computer when they press Take over', async () => 
     message: { text: 'a bank check' },
   });
 
-  const rendered = render(<HandoverBanner onTakeOver={ctx.onTakeOver} />);
+  const rendered = render(
+    <>
+      <LiveConnection />
+      <HandoverBanner onTakeOver={ctx.onTakeOver} />
+    </>,
+  );
 
   const button = await rendered.findByRole('button', { name: 'Take over' });
 

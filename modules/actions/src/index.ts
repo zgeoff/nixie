@@ -67,3 +67,4 @@ export { writeUnknownOutcomes } from './action/write-unknown-outcomes';
 export type { ActionsRecordKind } from './action/actions-record-kind';
 export type { InStepActionsOptions, InStepSettled } from './action/run-in-step-actions';
 export { probeInStepActionPending, runInStepActions } from './action/run-in-step-actions';
+export { actionsRecordTopics } from './action/actions-record-topics';

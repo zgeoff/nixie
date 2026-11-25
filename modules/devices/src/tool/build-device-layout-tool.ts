@@ -12,7 +12,7 @@ import { writeLayout } from './write-layout';
 const layoutInput = {
   type: 'object',
   properties: {
-    device: { type: 'string', minLength: 1, description: 'the device ID from devices.list' },
+    device: { type: 'string', minLength: 1, description: 'the shortID from devices.list' },
     columns: {
       type: 'array',
       items: { type: 'string' },

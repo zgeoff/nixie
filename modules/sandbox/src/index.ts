@@ -75,3 +75,4 @@ export type {
 } from './types';
 
 export type { SandboxRecordKind } from './sandbox/sandbox-record-kind';
+export { sandboxRecordTopics } from './sandbox/sandbox-record-topics';

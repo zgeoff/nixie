@@ -1,26 +1,14 @@
-import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { useIsHydrated } from '../conversation/use-is-hydrated';
+import { useLiveUnavailable } from '../live/use-live-unavailable';
 import { css } from '../styled-system/css';
 import { buildReportSince } from '../task/build-report-since';
 import { buildTaskHref } from '../task/build-task-href';
 import { formatReportEntry } from '../task/format-report-entry';
-import { useFollowViewRecords } from '../task/use-follow-view-records';
-import type { StartTimer } from '../utils/start-platform-timer';
 import { useNixieClient } from '../utils/use-nixie-client';
 
-export interface EndedTasksProps {
-  readonly startTimer?: StartTimer;
-}
-
 const pageSize = 50;
-
-// The records that end a task run or add to the trigger report
-const followedKinds: ReadonlySet<string> = new Set([
-  'task.run_ended',
-  'trigger.fired',
-  'trigger.skipped',
-]);
 
 const page = css({
   display: 'flex',
@@ -37,20 +25,11 @@ const list = css({ display: 'flex', flexDirection: 'column', gap: '3' });
 const heading = css({ fontSize: 'lg', fontWeight: 'semibold' });
 const link = css({ color: 'link', textDecoration: 'underline' });
 
-export function EndedTasks(props: EndedTasksProps): ReactNode {
+export function EndedTasks(): ReactNode {
   const nixie = useNixieClient();
-  const queryClient = useQueryClient();
   const isHydrated = useIsHydrated();
   const since = isHydrated ? buildReportSince(new Date()) : undefined;
-
-  const followed = useFollowViewRecords({
-    kinds: followedKinds,
-    onChange: () => {
-      void queryClient.invalidateQueries({ queryKey: nixie.queryUtils.tasks.listEnded.key() });
-      void queryClient.invalidateQueries({ queryKey: nixie.queryUtils.triggers.report.key() });
-    },
-    ...(props.startTimer === undefined ? {} : { startTimer: props.startTimer }),
-  });
+  const isUnavailable = useLiveUnavailable();
 
   const ended = useInfiniteQuery(
     nixie.queryUtils.tasks.listEnded.infiniteOptions({
@@ -78,7 +57,7 @@ export function EndedTasks(props: EndedTasksProps): ReactNode {
   return (
     <main className={page}>
       <h1>Ended task runs</h1>
-      {followed.unavailable ? (
+      {isUnavailable ? (
         <p className={notice} role="status">
           Live updates unavailable
         </p>

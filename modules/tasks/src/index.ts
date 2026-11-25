@@ -288,3 +288,4 @@ export { installRestorePause } from './pause/install-restore-pause';
 export type { RecoveryStarted } from './pause/read-recovery-started';
 export { readLatestRecovery } from './pause/read-latest-recovery';
 export { readTasksPausedByNixie } from './pause/read-tasks-paused-by-nixie';
+export { tasksRecordTopics } from './task/record/tasks-record-topics';

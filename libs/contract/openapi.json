@@ -3488,11 +3488,24 @@
                           "taskID"
                         ]
                       }
+                    },
+                    "changesAt": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "format": "date-time",
+                          "x-native-type": "date"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
                     }
                   },
                   "required": [
                     "readAtSequence",
-                    "tasks"
+                    "tasks",
+                    "changesAt"
                   ]
                 }
               }
@@ -23779,567 +23792,6 @@
         }
       }
     },
-    "/devices/follow": {
-      "post": {
-        "operationId": "devices.follow",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "pixels": {
-                    "type": "object",
-                    "properties": {
-                      "width": {
-                        "type": "integer",
-                        "minimum": 1,
-                        "maximum": 20000
-                      },
-                      "height": {
-                        "type": "integer",
-                        "minimum": 1,
-                        "maximum": 20000
-                      },
-                      "pixelRatio": {
-                        "type": "number",
-                        "maximum": 16,
-                        "exclusiveMinimum": 0,
-                        "default": 1
-                      }
-                    },
-                    "required": [
-                      "width",
-                      "height"
-                    ]
-                  }
-                },
-                "required": [
-                  "pixels"
-                ]
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/event-stream": {
-                "schema": {
-                  "oneOf": [
-                    {
-                      "type": "object",
-                      "properties": {
-                        "event": {
-                          "const": "message"
-                        },
-                        "data": {
-                          "anyOf": [
-                            {
-                              "type": "object",
-                              "properties": {
-                                "kind": {
-                                  "const": "show"
-                                },
-                                "content": {
-                                  "anyOf": [
-                                    {
-                                      "type": "object",
-                                      "properties": {
-                                        "kind": {
-                                          "const": "markdown"
-                                        },
-                                        "text": {
-                                          "type": "string",
-                                          "minLength": 1,
-                                          "maxLength": 20000
-                                        }
-                                      },
-                                      "required": [
-                                        "kind",
-                                        "text"
-                                      ]
-                                    },
-                                    {
-                                      "type": "object",
-                                      "properties": {
-                                        "kind": {
-                                          "const": "image"
-                                        },
-                                        "image": {
-                                          "type": "string",
-                                          "minLength": 1,
-                                          "maxLength": 100
-                                        },
-                                        "fit": {
-                                          "enum": [
-                                            "whole",
-                                            "fill"
-                                          ],
-                                          "type": "string",
-                                          "default": "whole"
-                                        }
-                                      },
-                                      "required": [
-                                        "kind",
-                                        "image"
-                                      ]
-                                    }
-                                  ]
-                                },
-                                "until": {
-                                  "anyOf": [
-                                    {
-                                      "type": "string",
-                                      "format": "date-time"
-                                    },
-                                    {
-                                      "type": "null"
-                                    }
-                                  ]
-                                }
-                              },
-                              "required": [
-                                "kind",
-                                "content",
-                                "until"
-                              ]
-                            },
-                            {
-                              "type": "object",
-                              "properties": {
-                                "kind": {
-                                  "const": "idle"
-                                },
-                                "scene": {
-                                  "type": "array",
-                                  "items": {
-                                    "anyOf": [
-                                      {
-                                        "type": "object",
-                                        "properties": {
-                                          "kind": {
-                                            "const": "markdown"
-                                          },
-                                          "text": {
-                                            "type": "string",
-                                            "minLength": 1,
-                                            "maxLength": 20000
-                                          }
-                                        },
-                                        "required": [
-                                          "kind",
-                                          "text"
-                                        ]
-                                      },
-                                      {
-                                        "type": "object",
-                                        "properties": {
-                                          "kind": {
-                                            "const": "image"
-                                          },
-                                          "image": {
-                                            "type": "string",
-                                            "minLength": 1,
-                                            "maxLength": 100
-                                          },
-                                          "fit": {
-                                            "enum": [
-                                              "whole",
-                                              "fill"
-                                            ],
-                                            "type": "string",
-                                            "default": "whole"
-                                          }
-                                        },
-                                        "required": [
-                                          "kind",
-                                          "image"
-                                        ]
-                                      }
-                                    ]
-                                  }
-                                }
-                              },
-                              "required": [
-                                "kind",
-                                "scene"
-                              ]
-                            },
-                            {
-                              "type": "object",
-                              "properties": {
-                                "kind": {
-                                  "const": "layout"
-                                },
-                                "layout": {
-                                  "anyOf": [
-                                    {
-                                      "type": "object",
-                                      "properties": {
-                                        "columns": {
-                                          "type": "array",
-                                          "items": {
-                                            "type": "string"
-                                          }
-                                        },
-                                        "rows": {
-                                          "type": "array",
-                                          "items": {
-                                            "type": "string"
-                                          }
-                                        },
-                                        "regions": {
-                                          "type": "array",
-                                          "items": {
-                                            "type": "object",
-                                            "properties": {
-                                              "name": {
-                                                "type": "string"
-                                              },
-                                              "column": {
-                                                "type": "integer",
-                                                "minimum": -9007199254740991,
-                                                "maximum": 9007199254740991
-                                              },
-                                              "row": {
-                                                "type": "integer",
-                                                "minimum": -9007199254740991,
-                                                "maximum": 9007199254740991
-                                              },
-                                              "columnSpan": {
-                                                "type": "integer",
-                                                "minimum": -9007199254740991,
-                                                "maximum": 9007199254740991
-                                              },
-                                              "rowSpan": {
-                                                "type": "integer",
-                                                "minimum": -9007199254740991,
-                                                "maximum": 9007199254740991
-                                              },
-                                              "content": {
-                                                "anyOf": [
-                                                  {
-                                                    "anyOf": [
-                                                      {
-                                                        "type": "object",
-                                                        "properties": {
-                                                          "kind": {
-                                                            "const": "markdown"
-                                                          },
-                                                          "markdown": {
-                                                            "type": "string",
-                                                            "minLength": 1,
-                                                            "maxLength": 20000
-                                                          }
-                                                        },
-                                                        "required": [
-                                                          "kind",
-                                                          "markdown"
-                                                        ]
-                                                      },
-                                                      {
-                                                        "type": "object",
-                                                        "properties": {
-                                                          "kind": {
-                                                            "const": "image"
-                                                          },
-                                                          "image": {
-                                                            "type": "string",
-                                                            "minLength": 1,
-                                                            "maxLength": 100
-                                                          },
-                                                          "fit": {
-                                                            "enum": [
-                                                              "whole",
-                                                              "fill"
-                                                            ],
-                                                            "type": "string",
-                                                            "default": "whole"
-                                                          }
-                                                        },
-                                                        "required": [
-                                                          "kind",
-                                                          "image"
-                                                        ]
-                                                      },
-                                                      {
-                                                        "type": "object",
-                                                        "properties": {
-                                                          "kind": {
-                                                            "const": "live"
-                                                          },
-                                                          "live": {
-                                                            "const": "clock"
-                                                          },
-                                                          "format": {
-                                                            "enum": [
-                                                              "HH:mm",
-                                                              "HH:mm:ss",
-                                                              "EEE d MMM"
-                                                            ],
-                                                            "type": "string"
-                                                          }
-                                                        },
-                                                        "required": [
-                                                          "kind",
-                                                          "live",
-                                                          "format"
-                                                        ]
-                                                      },
-                                                      {
-                                                        "type": "object",
-                                                        "properties": {
-                                                          "kind": {
-                                                            "const": "live"
-                                                          },
-                                                          "live": {
-                                                            "const": "countdown"
-                                                          },
-                                                          "to": {
-                                                            "type": "string",
-                                                            "format": "date-time"
-                                                          },
-                                                          "label": {
-                                                            "type": "string",
-                                                            "minLength": 1,
-                                                            "maxLength": 100
-                                                          }
-                                                        },
-                                                        "required": [
-                                                          "kind",
-                                                          "live",
-                                                          "to"
-                                                        ]
-                                                      }
-                                                    ]
-                                                  },
-                                                  {
-                                                    "type": "null"
-                                                  }
-                                                ]
-                                              },
-                                              "until": {
-                                                "anyOf": [
-                                                  {
-                                                    "type": "string",
-                                                    "format": "date-time"
-                                                  },
-                                                  {
-                                                    "type": "null"
-                                                  }
-                                                ]
-                                              }
-                                            },
-                                            "required": [
-                                              "name",
-                                              "column",
-                                              "row",
-                                              "columnSpan",
-                                              "rowSpan",
-                                              "content",
-                                              "until"
-                                            ]
-                                          }
-                                        }
-                                      },
-                                      "required": [
-                                        "columns",
-                                        "rows",
-                                        "regions"
-                                      ]
-                                    },
-                                    {
-                                      "type": "null"
-                                    }
-                                  ]
-                                }
-                              },
-                              "required": [
-                                "kind",
-                                "layout"
-                              ]
-                            }
-                          ]
-                        },
-                        "id": {
-                          "type": "string"
-                        },
-                        "retry": {
-                          "type": "number"
-                        }
-                      },
-                      "required": [
-                        "event",
-                        "data"
-                      ]
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "event": {
-                          "const": "done"
-                        },
-                        "data": {},
-                        "id": {
-                          "type": "string"
-                        },
-                        "retry": {
-                          "type": "number"
-                        }
-                      },
-                      "required": [
-                        "event"
-                      ]
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "event": {
-                          "const": "error"
-                        },
-                        "data": {},
-                        "id": {
-                          "type": "string"
-                        },
-                        "retry": {
-                          "type": "number"
-                        }
-                      },
-                      "required": [
-                        "event"
-                      ]
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "401",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "oneOf": [
-                    {
-                      "type": "object",
-                      "properties": {
-                        "defined": {
-                          "const": true
-                        },
-                        "code": {
-                          "const": "UNAUTHORIZED"
-                        },
-                        "status": {
-                          "const": 401
-                        },
-                        "message": {
-                          "type": "string",
-                          "default": "The device session is missing, lapsed or revoked"
-                        },
-                        "data": {}
-                      },
-                      "required": [
-                        "defined",
-                        "code",
-                        "status",
-                        "message"
-                      ]
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "defined": {
-                          "const": false
-                        },
-                        "code": {
-                          "type": "string"
-                        },
-                        "status": {
-                          "type": "number"
-                        },
-                        "message": {
-                          "type": "string"
-                        },
-                        "data": {}
-                      },
-                      "required": [
-                        "defined",
-                        "code",
-                        "status",
-                        "message"
-                      ]
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "409",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "oneOf": [
-                    {
-                      "type": "object",
-                      "properties": {
-                        "defined": {
-                          "const": true
-                        },
-                        "code": {
-                          "const": "NOT_A_DEVICE"
-                        },
-                        "status": {
-                          "const": 409
-                        },
-                        "message": {
-                          "type": "string",
-                          "default": "This session has no device. Register one first"
-                        },
-                        "data": {}
-                      },
-                      "required": [
-                        "defined",
-                        "code",
-                        "status",
-                        "message"
-                      ]
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "defined": {
-                          "const": false
-                        },
-                        "code": {
-                          "type": "string"
-                        },
-                        "status": {
-                          "type": "number"
-                        },
-                        "message": {
-                          "type": "string"
-                        },
-                        "data": {}
-                      },
-                      "required": [
-                        "defined",
-                        "code",
-                        "status",
-                        "message"
-                      ]
-                    }
-                  ]
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/devices/resize": {
       "post": {
         "operationId": "devices.resize",
@@ -32310,33 +31762,76 @@
         }
       }
     },
-    "/log/follow": {
+    "/live/follow": {
       "post": {
-        "operationId": "log.follow",
-        "deprecated": true,
+        "operationId": "live.follow",
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "properties": {
-                  "afterSequence": {
-                    "type": "integer",
-                    "minimum": 0,
-                    "maximum": 9007199254740991
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "afterSequence": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "thread": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                      },
+                      "clipPayloads": {
+                        "type": "boolean"
+                      }
+                    },
+                    "additionalProperties": false
                   },
-                  "clipPayloads": {
-                    "type": "boolean"
-                  },
-                  "thread": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 200
+                  {
+                    "type": "object",
+                    "properties": {
+                      "device": {
+                        "type": "object",
+                        "properties": {
+                          "pixels": {
+                            "type": "object",
+                            "properties": {
+                              "width": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 20000
+                              },
+                              "height": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 20000
+                              },
+                              "pixelRatio": {
+                                "type": "number",
+                                "maximum": 16,
+                                "exclusiveMinimum": 0,
+                                "default": 1
+                              }
+                            },
+                            "required": [
+                              "width",
+                              "height"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "pixels"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "device"
+                    ],
+                    "additionalProperties": false
                   }
-                },
-                "required": [
-                  "afterSequence"
                 ]
               }
             }
@@ -32356,822 +31851,792 @@
                           "const": "message"
                         },
                         "data": {
-                          "type": "object",
-                          "properties": {
-                            "record": {
+                          "anyOf": [
+                            {
                               "type": "object",
                               "properties": {
-                                "clipped": {
-                                  "type": "array",
-                                  "items": {
-                                    "type": "object",
-                                    "properties": {
-                                      "field": {
-                                        "enum": [
-                                          "toolCall.input",
-                                          "toolCall.content",
-                                          "worker.text",
-                                          "worker.detail"
-                                        ],
-                                        "type": "string"
-                                      },
-                                      "path": {
-                                        "type": "array",
-                                        "items": {
-                                          "anyOf": [
-                                            {
-                                              "type": "string"
-                                            },
-                                            {
-                                              "type": "number"
-                                            }
-                                          ]
-                                        }
-                                      },
-                                      "bytes": {
-                                        "type": "number"
-                                      }
-                                    },
-                                    "required": [
-                                      "field",
-                                      "path",
-                                      "bytes"
-                                    ]
-                                  }
-                                },
-                                "compaction": {
-                                  "type": "object",
-                                  "properties": {
-                                    "postTokens": {
-                                      "type": "integer",
-                                      "minimum": 0,
-                                      "maximum": 9007199254740991
-                                    },
-                                    "preTokens": {
-                                      "type": "integer",
-                                      "minimum": 0,
-                                      "maximum": 9007199254740991
-                                    },
-                                    "trigger": {
-                                      "enum": [
-                                        "manual",
-                                        "auto"
-                                      ],
-                                      "type": "string"
-                                    }
-                                  },
-                                  "required": [
-                                    "preTokens",
-                                    "trigger"
-                                  ]
-                                },
-                                "exchangeNotice": {
-                                  "type": "object",
-                                  "properties": {
-                                    "link": {
-                                      "type": "object",
-                                      "properties": {
-                                        "label": {
-                                          "type": "string"
-                                        },
-                                        "messageID": {
-                                          "type": "string"
-                                        },
-                                        "taskID": {
-                                          "type": "string",
-                                          "minLength": 1,
-                                          "maxLength": 200
-                                        }
-                                      },
-                                      "required": [
-                                        "label",
-                                        "messageID",
-                                        "taskID"
-                                      ]
-                                    },
-                                    "text": {
-                                      "type": "string"
-                                    }
-                                  },
-                                  "required": [
-                                    "link",
-                                    "text"
-                                  ]
-                                },
-                                "reminder": {
-                                  "type": "object",
-                                  "properties": {
-                                    "name": {
-                                      "anyOf": [
-                                        {
-                                          "type": "string"
-                                        },
-                                        {
-                                          "type": "null"
-                                        }
-                                      ]
-                                    },
-                                    "note": {
-                                      "type": "string"
-                                    },
-                                    "scheduledFor": {
-                                      "type": "string",
-                                      "format": "date-time"
-                                    },
-                                    "lateBySeconds": {
-                                      "anyOf": [
-                                        {
-                                          "type": "number"
-                                        },
-                                        {
-                                          "type": "null"
-                                        }
-                                      ]
-                                    }
-                                  },
-                                  "required": [
-                                    "name",
-                                    "note",
-                                    "scheduledFor",
-                                    "lateBySeconds"
-                                  ]
-                                },
-                                "compactionFailure": {
-                                  "type": "object",
-                                  "properties": {
-                                    "failures": {
-                                      "type": "integer",
-                                      "minimum": -9007199254740991,
-                                      "maximum": 9007199254740991,
-                                      "exclusiveMinimum": 0
-                                    }
-                                  },
-                                  "required": [
-                                    "failures"
-                                  ]
-                                },
-                                "forget": {
-                                  "type": "object",
-                                  "properties": {
-                                    "sequence": {
-                                      "type": "integer",
-                                      "minimum": 0,
-                                      "maximum": 9007199254740991
-                                    }
-                                  },
-                                  "required": [
-                                    "sequence"
-                                  ]
-                                },
-                                "context": {
-                                  "type": "object",
-                                  "properties": {
-                                    "size": {
-                                      "type": "integer",
-                                      "minimum": 0,
-                                      "maximum": 9007199254740991
-                                    },
-                                    "window": {
-                                      "type": "integer",
-                                      "minimum": -9007199254740991,
-                                      "maximum": 9007199254740991,
-                                      "exclusiveMinimum": 0
-                                    }
-                                  },
-                                  "required": [
-                                    "size",
-                                    "window"
-                                  ]
-                                },
-                                "definitionNotice": {
-                                  "type": "object",
-                                  "properties": {
-                                    "definitionID": {
-                                      "type": "string"
-                                    },
-                                    "name": {
-                                      "anyOf": [
-                                        {
-                                          "type": "string"
-                                        },
-                                        {
-                                          "type": "null"
-                                        }
-                                      ]
-                                    },
-                                    "operation": {
-                                      "enum": [
-                                        "add",
-                                        "change",
-                                        "remove",
-                                        "undo"
-                                      ],
-                                      "type": "string"
-                                    },
-                                    "shortID": {
-                                      "type": "string"
-                                    },
-                                    "changeID": {
-                                      "type": "string"
-                                    },
-                                    "hasVersion": {
-                                      "type": "boolean"
-                                    },
-                                    "rendered": {
-                                      "anyOf": [
-                                        {
-                                          "type": "string"
-                                        },
-                                        {
-                                          "type": "null"
-                                        }
-                                      ]
-                                    },
-                                    "next": {
-                                      "anyOf": [
-                                        {
-                                          "type": "string"
-                                        },
-                                        {
-                                          "type": "null"
-                                        }
-                                      ]
-                                    },
-                                    "state": {
-                                      "enum": [
-                                        "in_force",
-                                        "superseded",
-                                        "adopted",
-                                        "retired"
-                                      ],
-                                      "type": "string"
-                                    },
-                                    "isUnreadable": {
-                                      "type": "boolean"
-                                    }
-                                  },
-                                  "required": [
-                                    "definitionID",
-                                    "name",
-                                    "operation",
-                                    "shortID",
-                                    "changeID",
-                                    "hasVersion",
-                                    "rendered",
-                                    "next",
-                                    "state",
-                                    "isUnreadable"
-                                  ]
-                                },
-                                "handover": {
-                                  "type": "object",
-                                  "properties": {
-                                    "reason": {
-                                      "type": "string"
-                                    }
-                                  }
-                                },
-                                "isRemoved": {
-                                  "const": true
-                                },
-                                "isSilentTurn": {
-                                  "const": true
-                                },
                                 "kind": {
-                                  "type": "string"
+                                  "const": "opened"
+                                }
+                              },
+                              "required": [
+                                "kind"
+                              ]
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "const": "record"
                                 },
-                                "message": {
+                                "record": {
                                   "type": "object",
                                   "properties": {
-                                    "clientMessageId": {
-                                      "type": "string",
-                                      "format": "uuid"
-                                    },
-                                    "images": {
+                                    "clipped": {
                                       "type": "array",
                                       "items": {
                                         "type": "object",
                                         "properties": {
-                                          "mediaType": {
+                                          "field": {
                                             "enum": [
-                                              "image/jpeg",
-                                              "image/png",
-                                              "image/webp",
-                                              "image/gif"
-                                            ],
-                                            "type": "string"
-                                          }
-                                        },
-                                        "required": [
-                                          "mediaType"
-                                        ]
-                                      }
-                                    },
-                                    "isVoided": {
-                                      "const": true
-                                    },
-                                    "spans": {
-                                      "type": "array",
-                                      "items": {
-                                        "type": "object",
-                                        "properties": {
-                                          "end": {
-                                            "type": "integer",
-                                            "minimum": 0,
-                                            "maximum": 9007199254740991
-                                          },
-                                          "source": {
-                                            "enum": [
-                                              "typed",
-                                              "pasted",
-                                              "dropped",
-                                              "unknown"
+                                              "toolCall.input",
+                                              "toolCall.content",
+                                              "worker.text",
+                                              "worker.detail"
                                             ],
                                             "type": "string"
                                           },
-                                          "start": {
-                                            "type": "integer",
-                                            "minimum": 0,
-                                            "maximum": 9007199254740991
-                                          }
-                                        },
-                                        "required": [
-                                          "end",
-                                          "source",
-                                          "start"
-                                        ]
-                                      }
-                                    },
-                                    "text": {
-                                      "type": "string"
-                                    },
-                                    "voidReason": {
-                                      "enum": [
-                                        "attempt_failed",
-                                        "attempt_lost",
-                                        "turn_dropped",
-                                        "silent"
-                                      ],
-                                      "type": "string"
-                                    }
-                                  },
-                                  "required": [
-                                    "text"
-                                  ]
-                                },
-                                "moment": {
-                                  "type": "object",
-                                  "properties": {
-                                    "momentID": {
-                                      "type": "string"
-                                    },
-                                    "shortID": {
-                                      "type": "string"
-                                    },
-                                    "title": {
-                                      "type": "string"
-                                    }
-                                  },
-                                  "required": [
-                                    "momentID",
-                                    "shortID"
-                                  ]
-                                },
-                                "proposal": {
-                                  "type": "object",
-                                  "properties": {
-                                    "proposalID": {
-                                      "type": "string"
-                                    },
-                                    "shortID": {
-                                      "type": "string"
-                                    }
-                                  },
-                                  "required": [
-                                    "proposalID",
-                                    "shortID"
-                                  ]
-                                },
-                                "recall": {
-                                  "type": "object",
-                                  "properties": {
-                                    "items": {
-                                      "type": "array",
-                                      "items": {
-                                        "type": "object",
-                                        "properties": {
-                                          "itemID": {
-                                            "type": "string",
-                                            "minLength": 1,
-                                            "maxLength": 200
+                                          "path": {
+                                            "type": "array",
+                                            "items": {
+                                              "anyOf": [
+                                                {
+                                                  "type": "string"
+                                                },
+                                                {
+                                                  "type": "number"
+                                                }
+                                              ]
+                                            }
                                           },
-                                          "version": {
-                                            "type": "integer",
-                                            "minimum": 0,
-                                            "maximum": 9007199254740991
-                                          },
-                                          "score": {
+                                          "bytes": {
                                             "type": "number"
                                           }
                                         },
                                         "required": [
-                                          "itemID",
-                                          "version"
+                                          "field",
+                                          "path",
+                                          "bytes"
                                         ]
                                       }
-                                    }
-                                  },
-                                  "required": [
-                                    "items"
-                                  ]
-                                },
-                                "recordedAt": {
-                                  "type": "string",
-                                  "format": "date-time",
-                                  "x-native-type": "date"
-                                },
-                                "removal": {
-                                  "type": "object",
-                                  "properties": {
-                                    "kind": {
-                                      "type": "string"
                                     },
-                                    "sequence": {
-                                      "type": "integer",
-                                      "minimum": 0,
-                                      "maximum": 9007199254740991
-                                    },
-                                    "callSequence": {
-                                      "type": "integer",
-                                      "minimum": 0,
-                                      "maximum": 9007199254740991
-                                    }
-                                  },
-                                  "required": [
-                                    "kind",
-                                    "sequence"
-                                  ]
-                                },
-                                "sequence": {
-                                  "type": "integer",
-                                  "minimum": 0,
-                                  "maximum": 9007199254740991
-                                },
-                                "skillNotice": {
-                                  "type": "object",
-                                  "properties": {
-                                    "name": {
-                                      "type": "string"
-                                    },
-                                    "skillHash": {
-                                      "type": "string"
-                                    },
-                                    "isNew": {
-                                      "type": "boolean"
-                                    },
-                                    "ruleID": {
-                                      "type": "string"
-                                    }
-                                  },
-                                  "required": [
-                                    "name",
-                                    "skillHash",
-                                    "isNew",
-                                    "ruleID"
-                                  ]
-                                },
-                                "stop": {
-                                  "type": "object",
-                                  "properties": {
-                                    "cancelledActions": {
-                                      "type": "array",
-                                      "items": {
-                                        "type": "object",
-                                        "properties": {
-                                          "actionID": {
-                                            "type": "string"
-                                          },
-                                          "tool": {
-                                            "type": "string"
-                                          }
-                                        },
-                                        "required": [
-                                          "actionID",
-                                          "tool"
-                                        ]
-                                      }
-                                    }
-                                  },
-                                  "required": [
-                                    "cancelledActions"
-                                  ]
-                                },
-                                "summary": {
-                                  "type": "object",
-                                  "properties": {
-                                    "contextSize": {
-                                      "type": "integer",
-                                      "minimum": 0,
-                                      "maximum": 9007199254740991
-                                    },
-                                    "summaryTokens": {
-                                      "type": "integer",
-                                      "minimum": 0,
-                                      "maximum": 9007199254740991
-                                    },
-                                    "text": {
-                                      "type": "string"
-                                    },
-                                    "trigger": {
-                                      "enum": [
-                                        "threshold",
-                                        "overflow"
-                                      ],
-                                      "type": "string"
-                                    }
-                                  },
-                                  "required": [
-                                    "summaryTokens",
-                                    "trigger"
-                                  ]
-                                },
-                                "thread": {
-                                  "type": "string",
-                                  "minLength": 1,
-                                  "maxLength": 200
-                                },
-                                "task": {
-                                  "type": "object",
-                                  "properties": {
-                                    "error": {
-                                      "type": "string"
-                                    },
-                                    "errorLimit": {
-                                      "type": "integer",
-                                      "minimum": -9007199254740991,
-                                      "maximum": 9007199254740991,
-                                      "exclusiveMinimum": 0
-                                    },
-                                    "errors": {
-                                      "type": "integer",
-                                      "minimum": -9007199254740991,
-                                      "maximum": 9007199254740991,
-                                      "exclusiveMinimum": 0
-                                    },
-                                    "isWaitingForRetry": {
-                                      "type": "boolean"
-                                    },
-                                    "readCursor": {
-                                      "type": "integer",
-                                      "minimum": 0,
-                                      "maximum": 9007199254740991
-                                    },
-                                    "reason": {
-                                      "type": "string"
-                                    },
-                                    "retryAt": {
-                                      "type": "string",
-                                      "format": "date-time",
-                                      "x-native-type": "date"
-                                    },
-                                    "stepKey": {
-                                      "type": "string"
-                                    },
-                                    "taskID": {
-                                      "type": "string"
-                                    }
-                                  },
-                                  "required": [
-                                    "taskID"
-                                  ]
-                                },
-                                "taskMessage": {
-                                  "type": "object",
-                                  "properties": {
-                                    "from": {
-                                      "type": "string",
-                                      "minLength": 1,
-                                      "maxLength": 200
-                                    },
-                                    "fromName": {
-                                      "type": "string"
-                                    },
-                                    "hop": {
-                                      "type": "integer",
-                                      "minimum": 0,
-                                      "maximum": 9007199254740991
-                                    },
-                                    "kind": {
-                                      "type": "string"
-                                    },
-                                    "messageID": {
-                                      "type": "string"
-                                    },
-                                    "replyTo": {
-                                      "type": "string"
-                                    },
-                                    "text": {
-                                      "type": "string"
-                                    },
-                                    "to": {
-                                      "type": "string",
-                                      "minLength": 1,
-                                      "maxLength": 200
-                                    },
-                                    "woke": {
-                                      "type": "boolean"
-                                    }
-                                  },
-                                  "required": [
-                                    "from",
-                                    "fromName",
-                                    "hop",
-                                    "kind",
-                                    "messageID",
-                                    "to",
-                                    "woke"
-                                  ]
-                                },
-                                "toolCall": {
-                                  "type": "object",
-                                  "properties": {
-                                    "callID": {
-                                      "type": "string"
-                                    },
-                                    "content": {
-                                      "type": "object",
-                                      "propertyNames": {
-                                        "type": "string"
-                                      },
-                                      "additionalProperties": {}
-                                    },
-                                    "input": {
-                                      "type": "object",
-                                      "propertyNames": {
-                                        "type": "string"
-                                      },
-                                      "additionalProperties": {}
-                                    },
-                                    "outcome": {
-                                      "type": "string"
-                                    },
-                                    "runID": {
-                                      "type": "string"
-                                    },
-                                    "tool": {
-                                      "type": "string"
-                                    }
-                                  },
-                                  "required": [
-                                    "callID"
-                                  ]
-                                },
-                                "voidedReply": {
-                                  "type": "object",
-                                  "properties": {
-                                    "sequence": {
-                                      "type": "integer",
-                                      "minimum": 0,
-                                      "maximum": 9007199254740991
-                                    },
-                                    "reason": {
-                                      "enum": [
-                                        "attempt_failed",
-                                        "attempt_lost",
-                                        "turn_dropped",
-                                        "silent"
-                                      ],
-                                      "type": "string"
-                                    }
-                                  },
-                                  "required": [
-                                    "sequence",
-                                    "reason"
-                                  ]
-                                },
-                                "worker": {
-                                  "anyOf": [
-                                    {
+                                    "compaction": {
                                       "type": "object",
                                       "properties": {
-                                        "phase": {
-                                          "const": "started"
+                                        "postTokens": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
                                         },
-                                        "workerRunID": {
+                                        "preTokens": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "trigger": {
+                                          "enum": [
+                                            "manual",
+                                            "auto"
+                                          ],
                                           "type": "string"
-                                        },
-                                        "shortID": {
-                                          "type": "string"
-                                        },
-                                        "callID": {
-                                          "type": "string"
-                                        },
-                                        "model": {
-                                          "type": "string"
-                                        },
-                                        "tools": {
-                                          "type": "array",
-                                          "items": {
-                                            "type": "string"
-                                          }
-                                        },
-                                        "limits": {
-                                          "type": "object",
-                                          "properties": {
-                                            "minutes": {
-                                              "type": "number"
-                                            },
-                                            "turns": {
-                                              "type": "number"
-                                            },
-                                            "tokens": {
-                                              "type": "number"
-                                            },
-                                            "dollars": {
-                                              "type": "number"
-                                            }
-                                          },
-                                          "required": [
-                                            "minutes",
-                                            "turns",
-                                            "tokens",
-                                            "dollars"
-                                          ]
-                                        },
-                                        "isTaskLimit": {
-                                          "type": "boolean"
                                         }
                                       },
                                       "required": [
-                                        "phase",
-                                        "workerRunID",
-                                        "shortID",
-                                        "callID",
-                                        "model",
-                                        "tools",
-                                        "limits",
-                                        "isTaskLimit"
+                                        "preTokens",
+                                        "trigger"
                                       ]
                                     },
-                                    {
+                                    "exchangeNotice": {
                                       "type": "object",
                                       "properties": {
-                                        "phase": {
-                                          "const": "turn"
-                                        },
-                                        "workerRunID": {
-                                          "type": "string"
-                                        },
-                                        "callID": {
-                                          "type": "string"
-                                        },
-                                        "turn": {
-                                          "type": "number"
-                                        },
-                                        "tokens": {
-                                          "type": "number"
-                                        },
-                                        "dollars": {
-                                          "type": "number"
+                                        "link": {
+                                          "type": "object",
+                                          "properties": {
+                                            "label": {
+                                              "type": "string"
+                                            },
+                                            "messageID": {
+                                              "type": "string"
+                                            },
+                                            "taskID": {
+                                              "type": "string",
+                                              "minLength": 1,
+                                              "maxLength": 200
+                                            }
+                                          },
+                                          "required": [
+                                            "label",
+                                            "messageID",
+                                            "taskID"
+                                          ]
                                         },
                                         "text": {
                                           "type": "string"
                                         }
                                       },
                                       "required": [
-                                        "phase",
-                                        "workerRunID",
-                                        "callID",
-                                        "turn",
-                                        "tokens",
-                                        "dollars"
+                                        "link",
+                                        "text"
                                       ]
                                     },
-                                    {
+                                    "reminder": {
                                       "type": "object",
                                       "properties": {
-                                        "phase": {
-                                          "const": "ended"
+                                        "name": {
+                                          "anyOf": [
+                                            {
+                                              "type": "string"
+                                            },
+                                            {
+                                              "type": "null"
+                                            }
+                                          ]
                                         },
-                                        "workerRunID": {
+                                        "note": {
                                           "type": "string"
                                         },
+                                        "scheduledFor": {
+                                          "type": "string",
+                                          "format": "date-time"
+                                        },
+                                        "lateBySeconds": {
+                                          "anyOf": [
+                                            {
+                                              "type": "number"
+                                            },
+                                            {
+                                              "type": "null"
+                                            }
+                                          ]
+                                        }
+                                      },
+                                      "required": [
+                                        "name",
+                                        "note",
+                                        "scheduledFor",
+                                        "lateBySeconds"
+                                      ]
+                                    },
+                                    "compactionFailure": {
+                                      "type": "object",
+                                      "properties": {
+                                        "failures": {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991,
+                                          "exclusiveMinimum": 0
+                                        }
+                                      },
+                                      "required": [
+                                        "failures"
+                                      ]
+                                    },
+                                    "forget": {
+                                      "type": "object",
+                                      "properties": {
+                                        "sequence": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        }
+                                      },
+                                      "required": [
+                                        "sequence"
+                                      ]
+                                    },
+                                    "context": {
+                                      "type": "object",
+                                      "properties": {
+                                        "size": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "window": {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991,
+                                          "exclusiveMinimum": 0
+                                        }
+                                      },
+                                      "required": [
+                                        "size",
+                                        "window"
+                                      ]
+                                    },
+                                    "definitionNotice": {
+                                      "type": "object",
+                                      "properties": {
+                                        "definitionID": {
+                                          "type": "string"
+                                        },
+                                        "name": {
+                                          "anyOf": [
+                                            {
+                                              "type": "string"
+                                            },
+                                            {
+                                              "type": "null"
+                                            }
+                                          ]
+                                        },
+                                        "operation": {
+                                          "enum": [
+                                            "add",
+                                            "change",
+                                            "remove",
+                                            "undo"
+                                          ],
+                                          "type": "string"
+                                        },
+                                        "shortID": {
+                                          "type": "string"
+                                        },
+                                        "changeID": {
+                                          "type": "string"
+                                        },
+                                        "hasVersion": {
+                                          "type": "boolean"
+                                        },
+                                        "rendered": {
+                                          "anyOf": [
+                                            {
+                                              "type": "string"
+                                            },
+                                            {
+                                              "type": "null"
+                                            }
+                                          ]
+                                        },
+                                        "next": {
+                                          "anyOf": [
+                                            {
+                                              "type": "string"
+                                            },
+                                            {
+                                              "type": "null"
+                                            }
+                                          ]
+                                        },
+                                        "state": {
+                                          "enum": [
+                                            "in_force",
+                                            "superseded",
+                                            "adopted",
+                                            "retired"
+                                          ],
+                                          "type": "string"
+                                        },
+                                        "isUnreadable": {
+                                          "type": "boolean"
+                                        }
+                                      },
+                                      "required": [
+                                        "definitionID",
+                                        "name",
+                                        "operation",
+                                        "shortID",
+                                        "changeID",
+                                        "hasVersion",
+                                        "rendered",
+                                        "next",
+                                        "state",
+                                        "isUnreadable"
+                                      ]
+                                    },
+                                    "handover": {
+                                      "type": "object",
+                                      "properties": {
+                                        "reason": {
+                                          "type": "string"
+                                        }
+                                      }
+                                    },
+                                    "isRemoved": {
+                                      "const": true
+                                    },
+                                    "isSilentTurn": {
+                                      "const": true
+                                    },
+                                    "kind": {
+                                      "type": "string"
+                                    },
+                                    "message": {
+                                      "type": "object",
+                                      "properties": {
+                                        "clientMessageId": {
+                                          "type": "string",
+                                          "format": "uuid"
+                                        },
+                                        "images": {
+                                          "type": "array",
+                                          "items": {
+                                            "type": "object",
+                                            "properties": {
+                                              "mediaType": {
+                                                "enum": [
+                                                  "image/jpeg",
+                                                  "image/png",
+                                                  "image/webp",
+                                                  "image/gif"
+                                                ],
+                                                "type": "string"
+                                              }
+                                            },
+                                            "required": [
+                                              "mediaType"
+                                            ]
+                                          }
+                                        },
+                                        "isVoided": {
+                                          "const": true
+                                        },
+                                        "spans": {
+                                          "type": "array",
+                                          "items": {
+                                            "type": "object",
+                                            "properties": {
+                                              "end": {
+                                                "type": "integer",
+                                                "minimum": 0,
+                                                "maximum": 9007199254740991
+                                              },
+                                              "source": {
+                                                "enum": [
+                                                  "typed",
+                                                  "pasted",
+                                                  "dropped",
+                                                  "unknown"
+                                                ],
+                                                "type": "string"
+                                              },
+                                              "start": {
+                                                "type": "integer",
+                                                "minimum": 0,
+                                                "maximum": 9007199254740991
+                                              }
+                                            },
+                                            "required": [
+                                              "end",
+                                              "source",
+                                              "start"
+                                            ]
+                                          }
+                                        },
+                                        "text": {
+                                          "type": "string"
+                                        },
+                                        "voidReason": {
+                                          "enum": [
+                                            "attempt_failed",
+                                            "attempt_lost",
+                                            "turn_dropped",
+                                            "silent"
+                                          ],
+                                          "type": "string"
+                                        }
+                                      },
+                                      "required": [
+                                        "text"
+                                      ]
+                                    },
+                                    "moment": {
+                                      "type": "object",
+                                      "properties": {
+                                        "momentID": {
+                                          "type": "string"
+                                        },
+                                        "shortID": {
+                                          "type": "string"
+                                        },
+                                        "title": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "required": [
+                                        "momentID",
+                                        "shortID"
+                                      ]
+                                    },
+                                    "proposal": {
+                                      "type": "object",
+                                      "properties": {
+                                        "proposalID": {
+                                          "type": "string"
+                                        },
+                                        "shortID": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "required": [
+                                        "proposalID",
+                                        "shortID"
+                                      ]
+                                    },
+                                    "recall": {
+                                      "type": "object",
+                                      "properties": {
+                                        "items": {
+                                          "type": "array",
+                                          "items": {
+                                            "type": "object",
+                                            "properties": {
+                                              "itemID": {
+                                                "type": "string",
+                                                "minLength": 1,
+                                                "maxLength": 200
+                                              },
+                                              "version": {
+                                                "type": "integer",
+                                                "minimum": 0,
+                                                "maximum": 9007199254740991
+                                              },
+                                              "score": {
+                                                "type": "number"
+                                              }
+                                            },
+                                            "required": [
+                                              "itemID",
+                                              "version"
+                                            ]
+                                          }
+                                        }
+                                      },
+                                      "required": [
+                                        "items"
+                                      ]
+                                    },
+                                    "recordedAt": {
+                                      "type": "string",
+                                      "format": "date-time",
+                                      "x-native-type": "date"
+                                    },
+                                    "removal": {
+                                      "type": "object",
+                                      "properties": {
+                                        "kind": {
+                                          "type": "string"
+                                        },
+                                        "sequence": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "callSequence": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        }
+                                      },
+                                      "required": [
+                                        "kind",
+                                        "sequence"
+                                      ]
+                                    },
+                                    "sequence": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "skillNotice": {
+                                      "type": "object",
+                                      "properties": {
+                                        "name": {
+                                          "type": "string"
+                                        },
+                                        "skillHash": {
+                                          "type": "string"
+                                        },
+                                        "isNew": {
+                                          "type": "boolean"
+                                        },
+                                        "ruleID": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "required": [
+                                        "name",
+                                        "skillHash",
+                                        "isNew",
+                                        "ruleID"
+                                      ]
+                                    },
+                                    "stop": {
+                                      "type": "object",
+                                      "properties": {
+                                        "cancelledActions": {
+                                          "type": "array",
+                                          "items": {
+                                            "type": "object",
+                                            "properties": {
+                                              "actionID": {
+                                                "type": "string"
+                                              },
+                                              "tool": {
+                                                "type": "string"
+                                              }
+                                            },
+                                            "required": [
+                                              "actionID",
+                                              "tool"
+                                            ]
+                                          }
+                                        }
+                                      },
+                                      "required": [
+                                        "cancelledActions"
+                                      ]
+                                    },
+                                    "summary": {
+                                      "type": "object",
+                                      "properties": {
+                                        "contextSize": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "summaryTokens": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "text": {
+                                          "type": "string"
+                                        },
+                                        "trigger": {
+                                          "enum": [
+                                            "threshold",
+                                            "overflow"
+                                          ],
+                                          "type": "string"
+                                        }
+                                      },
+                                      "required": [
+                                        "summaryTokens",
+                                        "trigger"
+                                      ]
+                                    },
+                                    "thread": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 200
+                                    },
+                                    "task": {
+                                      "type": "object",
+                                      "properties": {
+                                        "error": {
+                                          "type": "string"
+                                        },
+                                        "errorLimit": {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991,
+                                          "exclusiveMinimum": 0
+                                        },
+                                        "errors": {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991,
+                                          "exclusiveMinimum": 0
+                                        },
+                                        "isWaitingForRetry": {
+                                          "type": "boolean"
+                                        },
+                                        "readCursor": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "reason": {
+                                          "type": "string"
+                                        },
+                                        "retryAt": {
+                                          "type": "string",
+                                          "format": "date-time",
+                                          "x-native-type": "date"
+                                        },
+                                        "stepKey": {
+                                          "type": "string"
+                                        },
+                                        "taskID": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "required": [
+                                        "taskID"
+                                      ]
+                                    },
+                                    "taskMessage": {
+                                      "type": "object",
+                                      "properties": {
+                                        "from": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 200
+                                        },
+                                        "fromName": {
+                                          "type": "string"
+                                        },
+                                        "hop": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "kind": {
+                                          "type": "string"
+                                        },
+                                        "messageID": {
+                                          "type": "string"
+                                        },
+                                        "replyTo": {
+                                          "type": "string"
+                                        },
+                                        "text": {
+                                          "type": "string"
+                                        },
+                                        "to": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 200
+                                        },
+                                        "woke": {
+                                          "type": "boolean"
+                                        }
+                                      },
+                                      "required": [
+                                        "from",
+                                        "fromName",
+                                        "hop",
+                                        "kind",
+                                        "messageID",
+                                        "to",
+                                        "woke"
+                                      ]
+                                    },
+                                    "toolCall": {
+                                      "type": "object",
+                                      "properties": {
                                         "callID": {
                                           "type": "string"
+                                        },
+                                        "content": {
+                                          "type": "object",
+                                          "propertyNames": {
+                                            "type": "string"
+                                          },
+                                          "additionalProperties": {}
+                                        },
+                                        "input": {
+                                          "type": "object",
+                                          "propertyNames": {
+                                            "type": "string"
+                                          },
+                                          "additionalProperties": {}
                                         },
                                         "outcome": {
                                           "type": "string"
                                         },
-                                        "limit": {
+                                        "runID": {
                                           "type": "string"
                                         },
-                                        "used": {
+                                        "tool": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "required": [
+                                        "callID"
+                                      ]
+                                    },
+                                    "voidedReply": {
+                                      "type": "object",
+                                      "properties": {
+                                        "sequence": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "reason": {
+                                          "enum": [
+                                            "attempt_failed",
+                                            "attempt_lost",
+                                            "turn_dropped",
+                                            "silent"
+                                          ],
+                                          "type": "string"
+                                        }
+                                      },
+                                      "required": [
+                                        "sequence",
+                                        "reason"
+                                      ]
+                                    },
+                                    "worker": {
+                                      "anyOf": [
+                                        {
                                           "type": "object",
                                           "properties": {
-                                            "minutes": {
-                                              "type": "number"
+                                            "phase": {
+                                              "const": "started"
                                             },
-                                            "turns": {
+                                            "workerRunID": {
+                                              "type": "string"
+                                            },
+                                            "shortID": {
+                                              "type": "string"
+                                            },
+                                            "callID": {
+                                              "type": "string"
+                                            },
+                                            "model": {
+                                              "type": "string"
+                                            },
+                                            "tools": {
+                                              "type": "array",
+                                              "items": {
+                                                "type": "string"
+                                              }
+                                            },
+                                            "limits": {
+                                              "type": "object",
+                                              "properties": {
+                                                "minutes": {
+                                                  "type": "number"
+                                                },
+                                                "turns": {
+                                                  "type": "number"
+                                                },
+                                                "tokens": {
+                                                  "type": "number"
+                                                },
+                                                "dollars": {
+                                                  "type": "number"
+                                                }
+                                              },
+                                              "required": [
+                                                "minutes",
+                                                "turns",
+                                                "tokens",
+                                                "dollars"
+                                              ]
+                                            },
+                                            "isTaskLimit": {
+                                              "type": "boolean"
+                                            }
+                                          },
+                                          "required": [
+                                            "phase",
+                                            "workerRunID",
+                                            "shortID",
+                                            "callID",
+                                            "model",
+                                            "tools",
+                                            "limits",
+                                            "isTaskLimit"
+                                          ]
+                                        },
+                                        {
+                                          "type": "object",
+                                          "properties": {
+                                            "phase": {
+                                              "const": "turn"
+                                            },
+                                            "workerRunID": {
+                                              "type": "string"
+                                            },
+                                            "callID": {
+                                              "type": "string"
+                                            },
+                                            "turn": {
                                               "type": "number"
                                             },
                                             "tokens": {
@@ -33179,25 +32644,452 @@
                                             },
                                             "dollars": {
                                               "type": "number"
+                                            },
+                                            "text": {
+                                              "type": "string"
                                             }
                                           },
                                           "required": [
-                                            "minutes",
-                                            "turns",
+                                            "phase",
+                                            "workerRunID",
+                                            "callID",
+                                            "turn",
                                             "tokens",
                                             "dollars"
                                           ]
                                         },
-                                        "detail": {
-                                          "type": "string"
+                                        {
+                                          "type": "object",
+                                          "properties": {
+                                            "phase": {
+                                              "const": "ended"
+                                            },
+                                            "workerRunID": {
+                                              "type": "string"
+                                            },
+                                            "callID": {
+                                              "type": "string"
+                                            },
+                                            "outcome": {
+                                              "type": "string"
+                                            },
+                                            "limit": {
+                                              "type": "string"
+                                            },
+                                            "used": {
+                                              "type": "object",
+                                              "properties": {
+                                                "minutes": {
+                                                  "type": "number"
+                                                },
+                                                "turns": {
+                                                  "type": "number"
+                                                },
+                                                "tokens": {
+                                                  "type": "number"
+                                                },
+                                                "dollars": {
+                                                  "type": "number"
+                                                }
+                                              },
+                                              "required": [
+                                                "minutes",
+                                                "turns",
+                                                "tokens",
+                                                "dollars"
+                                              ]
+                                            },
+                                            "detail": {
+                                              "type": "string"
+                                            }
+                                          },
+                                          "required": [
+                                            "phase",
+                                            "workerRunID",
+                                            "callID",
+                                            "outcome",
+                                            "used"
+                                          ]
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "recordedAt",
+                                    "sequence",
+                                    "thread"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "kind",
+                                "record"
+                              ]
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "const": "changed"
+                                },
+                                "topics": {
+                                  "type": "array",
+                                  "minItems": 1,
+                                  "items": {
+                                    "enum": [
+                                      "approvals",
+                                      "backups",
+                                      "computer",
+                                      "definitions",
+                                      "images",
+                                      "memory",
+                                      "nixie",
+                                      "notebook",
+                                      "spend",
+                                      "tasks",
+                                      "triggers"
+                                    ],
+                                    "type": "string"
+                                  }
+                                }
+                              },
+                              "required": [
+                                "kind",
+                                "topics"
+                              ]
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "const": "device"
+                                },
+                                "event": {
+                                  "anyOf": [
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "kind": {
+                                          "const": "show"
+                                        },
+                                        "content": {
+                                          "anyOf": [
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "kind": {
+                                                  "const": "markdown"
+                                                },
+                                                "text": {
+                                                  "type": "string",
+                                                  "minLength": 1,
+                                                  "maxLength": 20000
+                                                }
+                                              },
+                                              "required": [
+                                                "kind",
+                                                "text"
+                                              ]
+                                            },
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "kind": {
+                                                  "const": "image"
+                                                },
+                                                "image": {
+                                                  "type": "string",
+                                                  "minLength": 1,
+                                                  "maxLength": 100
+                                                },
+                                                "fit": {
+                                                  "enum": [
+                                                    "whole",
+                                                    "fill"
+                                                  ],
+                                                  "type": "string",
+                                                  "default": "whole"
+                                                }
+                                              },
+                                              "required": [
+                                                "kind",
+                                                "image"
+                                              ]
+                                            }
+                                          ]
+                                        },
+                                        "until": {
+                                          "anyOf": [
+                                            {
+                                              "type": "string",
+                                              "format": "date-time"
+                                            },
+                                            {
+                                              "type": "null"
+                                            }
+                                          ]
                                         }
                                       },
                                       "required": [
-                                        "phase",
-                                        "workerRunID",
-                                        "callID",
-                                        "outcome",
-                                        "used"
+                                        "kind",
+                                        "content",
+                                        "until"
+                                      ]
+                                    },
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "kind": {
+                                          "const": "idle"
+                                        },
+                                        "scene": {
+                                          "type": "array",
+                                          "items": {
+                                            "anyOf": [
+                                              {
+                                                "type": "object",
+                                                "properties": {
+                                                  "kind": {
+                                                    "const": "markdown"
+                                                  },
+                                                  "text": {
+                                                    "type": "string",
+                                                    "minLength": 1,
+                                                    "maxLength": 20000
+                                                  }
+                                                },
+                                                "required": [
+                                                  "kind",
+                                                  "text"
+                                                ]
+                                              },
+                                              {
+                                                "type": "object",
+                                                "properties": {
+                                                  "kind": {
+                                                    "const": "image"
+                                                  },
+                                                  "image": {
+                                                    "type": "string",
+                                                    "minLength": 1,
+                                                    "maxLength": 100
+                                                  },
+                                                  "fit": {
+                                                    "enum": [
+                                                      "whole",
+                                                      "fill"
+                                                    ],
+                                                    "type": "string",
+                                                    "default": "whole"
+                                                  }
+                                                },
+                                                "required": [
+                                                  "kind",
+                                                  "image"
+                                                ]
+                                              }
+                                            ]
+                                          }
+                                        }
+                                      },
+                                      "required": [
+                                        "kind",
+                                        "scene"
+                                      ]
+                                    },
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "kind": {
+                                          "const": "layout"
+                                        },
+                                        "layout": {
+                                          "anyOf": [
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "columns": {
+                                                  "type": "array",
+                                                  "items": {
+                                                    "type": "string"
+                                                  }
+                                                },
+                                                "rows": {
+                                                  "type": "array",
+                                                  "items": {
+                                                    "type": "string"
+                                                  }
+                                                },
+                                                "regions": {
+                                                  "type": "array",
+                                                  "items": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                      "name": {
+                                                        "type": "string"
+                                                      },
+                                                      "column": {
+                                                        "type": "integer",
+                                                        "minimum": -9007199254740991,
+                                                        "maximum": 9007199254740991
+                                                      },
+                                                      "row": {
+                                                        "type": "integer",
+                                                        "minimum": -9007199254740991,
+                                                        "maximum": 9007199254740991
+                                                      },
+                                                      "columnSpan": {
+                                                        "type": "integer",
+                                                        "minimum": -9007199254740991,
+                                                        "maximum": 9007199254740991
+                                                      },
+                                                      "rowSpan": {
+                                                        "type": "integer",
+                                                        "minimum": -9007199254740991,
+                                                        "maximum": 9007199254740991
+                                                      },
+                                                      "content": {
+                                                        "anyOf": [
+                                                          {
+                                                            "anyOf": [
+                                                              {
+                                                                "type": "object",
+                                                                "properties": {
+                                                                  "kind": {
+                                                                    "const": "markdown"
+                                                                  },
+                                                                  "markdown": {
+                                                                    "type": "string",
+                                                                    "minLength": 1,
+                                                                    "maxLength": 20000
+                                                                  }
+                                                                },
+                                                                "required": [
+                                                                  "kind",
+                                                                  "markdown"
+                                                                ]
+                                                              },
+                                                              {
+                                                                "type": "object",
+                                                                "properties": {
+                                                                  "kind": {
+                                                                    "const": "image"
+                                                                  },
+                                                                  "image": {
+                                                                    "type": "string",
+                                                                    "minLength": 1,
+                                                                    "maxLength": 100
+                                                                  },
+                                                                  "fit": {
+                                                                    "enum": [
+                                                                      "whole",
+                                                                      "fill"
+                                                                    ],
+                                                                    "type": "string",
+                                                                    "default": "whole"
+                                                                  }
+                                                                },
+                                                                "required": [
+                                                                  "kind",
+                                                                  "image"
+                                                                ]
+                                                              },
+                                                              {
+                                                                "type": "object",
+                                                                "properties": {
+                                                                  "kind": {
+                                                                    "const": "live"
+                                                                  },
+                                                                  "live": {
+                                                                    "const": "clock"
+                                                                  },
+                                                                  "format": {
+                                                                    "enum": [
+                                                                      "HH:mm",
+                                                                      "HH:mm:ss",
+                                                                      "EEE d MMM"
+                                                                    ],
+                                                                    "type": "string"
+                                                                  }
+                                                                },
+                                                                "required": [
+                                                                  "kind",
+                                                                  "live",
+                                                                  "format"
+                                                                ]
+                                                              },
+                                                              {
+                                                                "type": "object",
+                                                                "properties": {
+                                                                  "kind": {
+                                                                    "const": "live"
+                                                                  },
+                                                                  "live": {
+                                                                    "const": "countdown"
+                                                                  },
+                                                                  "to": {
+                                                                    "type": "string",
+                                                                    "format": "date-time"
+                                                                  },
+                                                                  "label": {
+                                                                    "type": "string",
+                                                                    "minLength": 1,
+                                                                    "maxLength": 100
+                                                                  }
+                                                                },
+                                                                "required": [
+                                                                  "kind",
+                                                                  "live",
+                                                                  "to"
+                                                                ]
+                                                              }
+                                                            ]
+                                                          },
+                                                          {
+                                                            "type": "null"
+                                                          }
+                                                        ]
+                                                      },
+                                                      "until": {
+                                                        "anyOf": [
+                                                          {
+                                                            "type": "string",
+                                                            "format": "date-time"
+                                                          },
+                                                          {
+                                                            "type": "null"
+                                                          }
+                                                        ]
+                                                      }
+                                                    },
+                                                    "required": [
+                                                      "name",
+                                                      "column",
+                                                      "row",
+                                                      "columnSpan",
+                                                      "rowSpan",
+                                                      "content",
+                                                      "until"
+                                                    ]
+                                                  }
+                                                }
+                                              },
+                                              "required": [
+                                                "columns",
+                                                "rows",
+                                                "regions"
+                                              ]
+                                            },
+                                            {
+                                              "type": "null"
+                                            }
+                                          ]
+                                        }
+                                      },
+                                      "required": [
+                                        "kind",
+                                        "layout"
                                       ]
                                     }
                                   ]
@@ -33205,14 +33097,9 @@
                               },
                               "required": [
                                 "kind",
-                                "recordedAt",
-                                "sequence",
-                                "thread"
+                                "event"
                               ]
                             }
-                          },
-                          "required": [
-                            "record"
                           ]
                         },
                         "id": {
@@ -33327,969 +33214,9 @@
                 }
               }
             }
-          }
-        }
-      }
-    },
-    "/records/follow": {
-      "post": {
-        "operationId": "records.follow",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "afterSequence": {
-                    "type": "integer",
-                    "minimum": 0,
-                    "maximum": 9007199254740991
-                  },
-                  "clipPayloads": {
-                    "type": "boolean"
-                  },
-                  "thread": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 200
-                  }
-                },
-                "required": [
-                  "afterSequence"
-                ]
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/event-stream": {
-                "schema": {
-                  "oneOf": [
-                    {
-                      "type": "object",
-                      "properties": {
-                        "event": {
-                          "const": "message"
-                        },
-                        "data": {
-                          "type": "object",
-                          "properties": {
-                            "record": {
-                              "type": "object",
-                              "properties": {
-                                "clipped": {
-                                  "type": "array",
-                                  "items": {
-                                    "type": "object",
-                                    "properties": {
-                                      "field": {
-                                        "enum": [
-                                          "toolCall.input",
-                                          "toolCall.content",
-                                          "worker.text",
-                                          "worker.detail"
-                                        ],
-                                        "type": "string"
-                                      },
-                                      "path": {
-                                        "type": "array",
-                                        "items": {
-                                          "anyOf": [
-                                            {
-                                              "type": "string"
-                                            },
-                                            {
-                                              "type": "number"
-                                            }
-                                          ]
-                                        }
-                                      },
-                                      "bytes": {
-                                        "type": "number"
-                                      }
-                                    },
-                                    "required": [
-                                      "field",
-                                      "path",
-                                      "bytes"
-                                    ]
-                                  }
-                                },
-                                "compaction": {
-                                  "type": "object",
-                                  "properties": {
-                                    "postTokens": {
-                                      "type": "integer",
-                                      "minimum": 0,
-                                      "maximum": 9007199254740991
-                                    },
-                                    "preTokens": {
-                                      "type": "integer",
-                                      "minimum": 0,
-                                      "maximum": 9007199254740991
-                                    },
-                                    "trigger": {
-                                      "enum": [
-                                        "manual",
-                                        "auto"
-                                      ],
-                                      "type": "string"
-                                    }
-                                  },
-                                  "required": [
-                                    "preTokens",
-                                    "trigger"
-                                  ]
-                                },
-                                "exchangeNotice": {
-                                  "type": "object",
-                                  "properties": {
-                                    "link": {
-                                      "type": "object",
-                                      "properties": {
-                                        "label": {
-                                          "type": "string"
-                                        },
-                                        "messageID": {
-                                          "type": "string"
-                                        },
-                                        "taskID": {
-                                          "type": "string",
-                                          "minLength": 1,
-                                          "maxLength": 200
-                                        }
-                                      },
-                                      "required": [
-                                        "label",
-                                        "messageID",
-                                        "taskID"
-                                      ]
-                                    },
-                                    "text": {
-                                      "type": "string"
-                                    }
-                                  },
-                                  "required": [
-                                    "link",
-                                    "text"
-                                  ]
-                                },
-                                "reminder": {
-                                  "type": "object",
-                                  "properties": {
-                                    "name": {
-                                      "anyOf": [
-                                        {
-                                          "type": "string"
-                                        },
-                                        {
-                                          "type": "null"
-                                        }
-                                      ]
-                                    },
-                                    "note": {
-                                      "type": "string"
-                                    },
-                                    "scheduledFor": {
-                                      "type": "string",
-                                      "format": "date-time"
-                                    },
-                                    "lateBySeconds": {
-                                      "anyOf": [
-                                        {
-                                          "type": "number"
-                                        },
-                                        {
-                                          "type": "null"
-                                        }
-                                      ]
-                                    }
-                                  },
-                                  "required": [
-                                    "name",
-                                    "note",
-                                    "scheduledFor",
-                                    "lateBySeconds"
-                                  ]
-                                },
-                                "compactionFailure": {
-                                  "type": "object",
-                                  "properties": {
-                                    "failures": {
-                                      "type": "integer",
-                                      "minimum": -9007199254740991,
-                                      "maximum": 9007199254740991,
-                                      "exclusiveMinimum": 0
-                                    }
-                                  },
-                                  "required": [
-                                    "failures"
-                                  ]
-                                },
-                                "forget": {
-                                  "type": "object",
-                                  "properties": {
-                                    "sequence": {
-                                      "type": "integer",
-                                      "minimum": 0,
-                                      "maximum": 9007199254740991
-                                    }
-                                  },
-                                  "required": [
-                                    "sequence"
-                                  ]
-                                },
-                                "context": {
-                                  "type": "object",
-                                  "properties": {
-                                    "size": {
-                                      "type": "integer",
-                                      "minimum": 0,
-                                      "maximum": 9007199254740991
-                                    },
-                                    "window": {
-                                      "type": "integer",
-                                      "minimum": -9007199254740991,
-                                      "maximum": 9007199254740991,
-                                      "exclusiveMinimum": 0
-                                    }
-                                  },
-                                  "required": [
-                                    "size",
-                                    "window"
-                                  ]
-                                },
-                                "definitionNotice": {
-                                  "type": "object",
-                                  "properties": {
-                                    "definitionID": {
-                                      "type": "string"
-                                    },
-                                    "name": {
-                                      "anyOf": [
-                                        {
-                                          "type": "string"
-                                        },
-                                        {
-                                          "type": "null"
-                                        }
-                                      ]
-                                    },
-                                    "operation": {
-                                      "enum": [
-                                        "add",
-                                        "change",
-                                        "remove",
-                                        "undo"
-                                      ],
-                                      "type": "string"
-                                    },
-                                    "shortID": {
-                                      "type": "string"
-                                    },
-                                    "changeID": {
-                                      "type": "string"
-                                    },
-                                    "hasVersion": {
-                                      "type": "boolean"
-                                    },
-                                    "rendered": {
-                                      "anyOf": [
-                                        {
-                                          "type": "string"
-                                        },
-                                        {
-                                          "type": "null"
-                                        }
-                                      ]
-                                    },
-                                    "next": {
-                                      "anyOf": [
-                                        {
-                                          "type": "string"
-                                        },
-                                        {
-                                          "type": "null"
-                                        }
-                                      ]
-                                    },
-                                    "state": {
-                                      "enum": [
-                                        "in_force",
-                                        "superseded",
-                                        "adopted",
-                                        "retired"
-                                      ],
-                                      "type": "string"
-                                    },
-                                    "isUnreadable": {
-                                      "type": "boolean"
-                                    }
-                                  },
-                                  "required": [
-                                    "definitionID",
-                                    "name",
-                                    "operation",
-                                    "shortID",
-                                    "changeID",
-                                    "hasVersion",
-                                    "rendered",
-                                    "next",
-                                    "state",
-                                    "isUnreadable"
-                                  ]
-                                },
-                                "handover": {
-                                  "type": "object",
-                                  "properties": {
-                                    "reason": {
-                                      "type": "string"
-                                    }
-                                  }
-                                },
-                                "isRemoved": {
-                                  "const": true
-                                },
-                                "isSilentTurn": {
-                                  "const": true
-                                },
-                                "kind": {
-                                  "type": "string"
-                                },
-                                "message": {
-                                  "type": "object",
-                                  "properties": {
-                                    "clientMessageId": {
-                                      "type": "string",
-                                      "format": "uuid"
-                                    },
-                                    "images": {
-                                      "type": "array",
-                                      "items": {
-                                        "type": "object",
-                                        "properties": {
-                                          "mediaType": {
-                                            "enum": [
-                                              "image/jpeg",
-                                              "image/png",
-                                              "image/webp",
-                                              "image/gif"
-                                            ],
-                                            "type": "string"
-                                          }
-                                        },
-                                        "required": [
-                                          "mediaType"
-                                        ]
-                                      }
-                                    },
-                                    "isVoided": {
-                                      "const": true
-                                    },
-                                    "spans": {
-                                      "type": "array",
-                                      "items": {
-                                        "type": "object",
-                                        "properties": {
-                                          "end": {
-                                            "type": "integer",
-                                            "minimum": 0,
-                                            "maximum": 9007199254740991
-                                          },
-                                          "source": {
-                                            "enum": [
-                                              "typed",
-                                              "pasted",
-                                              "dropped",
-                                              "unknown"
-                                            ],
-                                            "type": "string"
-                                          },
-                                          "start": {
-                                            "type": "integer",
-                                            "minimum": 0,
-                                            "maximum": 9007199254740991
-                                          }
-                                        },
-                                        "required": [
-                                          "end",
-                                          "source",
-                                          "start"
-                                        ]
-                                      }
-                                    },
-                                    "text": {
-                                      "type": "string"
-                                    },
-                                    "voidReason": {
-                                      "enum": [
-                                        "attempt_failed",
-                                        "attempt_lost",
-                                        "turn_dropped",
-                                        "silent"
-                                      ],
-                                      "type": "string"
-                                    }
-                                  },
-                                  "required": [
-                                    "text"
-                                  ]
-                                },
-                                "moment": {
-                                  "type": "object",
-                                  "properties": {
-                                    "momentID": {
-                                      "type": "string"
-                                    },
-                                    "shortID": {
-                                      "type": "string"
-                                    },
-                                    "title": {
-                                      "type": "string"
-                                    }
-                                  },
-                                  "required": [
-                                    "momentID",
-                                    "shortID"
-                                  ]
-                                },
-                                "proposal": {
-                                  "type": "object",
-                                  "properties": {
-                                    "proposalID": {
-                                      "type": "string"
-                                    },
-                                    "shortID": {
-                                      "type": "string"
-                                    }
-                                  },
-                                  "required": [
-                                    "proposalID",
-                                    "shortID"
-                                  ]
-                                },
-                                "recall": {
-                                  "type": "object",
-                                  "properties": {
-                                    "items": {
-                                      "type": "array",
-                                      "items": {
-                                        "type": "object",
-                                        "properties": {
-                                          "itemID": {
-                                            "type": "string",
-                                            "minLength": 1,
-                                            "maxLength": 200
-                                          },
-                                          "version": {
-                                            "type": "integer",
-                                            "minimum": 0,
-                                            "maximum": 9007199254740991
-                                          },
-                                          "score": {
-                                            "type": "number"
-                                          }
-                                        },
-                                        "required": [
-                                          "itemID",
-                                          "version"
-                                        ]
-                                      }
-                                    }
-                                  },
-                                  "required": [
-                                    "items"
-                                  ]
-                                },
-                                "recordedAt": {
-                                  "type": "string",
-                                  "format": "date-time",
-                                  "x-native-type": "date"
-                                },
-                                "removal": {
-                                  "type": "object",
-                                  "properties": {
-                                    "kind": {
-                                      "type": "string"
-                                    },
-                                    "sequence": {
-                                      "type": "integer",
-                                      "minimum": 0,
-                                      "maximum": 9007199254740991
-                                    },
-                                    "callSequence": {
-                                      "type": "integer",
-                                      "minimum": 0,
-                                      "maximum": 9007199254740991
-                                    }
-                                  },
-                                  "required": [
-                                    "kind",
-                                    "sequence"
-                                  ]
-                                },
-                                "sequence": {
-                                  "type": "integer",
-                                  "minimum": 0,
-                                  "maximum": 9007199254740991
-                                },
-                                "skillNotice": {
-                                  "type": "object",
-                                  "properties": {
-                                    "name": {
-                                      "type": "string"
-                                    },
-                                    "skillHash": {
-                                      "type": "string"
-                                    },
-                                    "isNew": {
-                                      "type": "boolean"
-                                    },
-                                    "ruleID": {
-                                      "type": "string"
-                                    }
-                                  },
-                                  "required": [
-                                    "name",
-                                    "skillHash",
-                                    "isNew",
-                                    "ruleID"
-                                  ]
-                                },
-                                "stop": {
-                                  "type": "object",
-                                  "properties": {
-                                    "cancelledActions": {
-                                      "type": "array",
-                                      "items": {
-                                        "type": "object",
-                                        "properties": {
-                                          "actionID": {
-                                            "type": "string"
-                                          },
-                                          "tool": {
-                                            "type": "string"
-                                          }
-                                        },
-                                        "required": [
-                                          "actionID",
-                                          "tool"
-                                        ]
-                                      }
-                                    }
-                                  },
-                                  "required": [
-                                    "cancelledActions"
-                                  ]
-                                },
-                                "summary": {
-                                  "type": "object",
-                                  "properties": {
-                                    "contextSize": {
-                                      "type": "integer",
-                                      "minimum": 0,
-                                      "maximum": 9007199254740991
-                                    },
-                                    "summaryTokens": {
-                                      "type": "integer",
-                                      "minimum": 0,
-                                      "maximum": 9007199254740991
-                                    },
-                                    "text": {
-                                      "type": "string"
-                                    },
-                                    "trigger": {
-                                      "enum": [
-                                        "threshold",
-                                        "overflow"
-                                      ],
-                                      "type": "string"
-                                    }
-                                  },
-                                  "required": [
-                                    "summaryTokens",
-                                    "trigger"
-                                  ]
-                                },
-                                "thread": {
-                                  "type": "string",
-                                  "minLength": 1,
-                                  "maxLength": 200
-                                },
-                                "task": {
-                                  "type": "object",
-                                  "properties": {
-                                    "error": {
-                                      "type": "string"
-                                    },
-                                    "errorLimit": {
-                                      "type": "integer",
-                                      "minimum": -9007199254740991,
-                                      "maximum": 9007199254740991,
-                                      "exclusiveMinimum": 0
-                                    },
-                                    "errors": {
-                                      "type": "integer",
-                                      "minimum": -9007199254740991,
-                                      "maximum": 9007199254740991,
-                                      "exclusiveMinimum": 0
-                                    },
-                                    "isWaitingForRetry": {
-                                      "type": "boolean"
-                                    },
-                                    "readCursor": {
-                                      "type": "integer",
-                                      "minimum": 0,
-                                      "maximum": 9007199254740991
-                                    },
-                                    "reason": {
-                                      "type": "string"
-                                    },
-                                    "retryAt": {
-                                      "type": "string",
-                                      "format": "date-time",
-                                      "x-native-type": "date"
-                                    },
-                                    "stepKey": {
-                                      "type": "string"
-                                    },
-                                    "taskID": {
-                                      "type": "string"
-                                    }
-                                  },
-                                  "required": [
-                                    "taskID"
-                                  ]
-                                },
-                                "taskMessage": {
-                                  "type": "object",
-                                  "properties": {
-                                    "from": {
-                                      "type": "string",
-                                      "minLength": 1,
-                                      "maxLength": 200
-                                    },
-                                    "fromName": {
-                                      "type": "string"
-                                    },
-                                    "hop": {
-                                      "type": "integer",
-                                      "minimum": 0,
-                                      "maximum": 9007199254740991
-                                    },
-                                    "kind": {
-                                      "type": "string"
-                                    },
-                                    "messageID": {
-                                      "type": "string"
-                                    },
-                                    "replyTo": {
-                                      "type": "string"
-                                    },
-                                    "text": {
-                                      "type": "string"
-                                    },
-                                    "to": {
-                                      "type": "string",
-                                      "minLength": 1,
-                                      "maxLength": 200
-                                    },
-                                    "woke": {
-                                      "type": "boolean"
-                                    }
-                                  },
-                                  "required": [
-                                    "from",
-                                    "fromName",
-                                    "hop",
-                                    "kind",
-                                    "messageID",
-                                    "to",
-                                    "woke"
-                                  ]
-                                },
-                                "toolCall": {
-                                  "type": "object",
-                                  "properties": {
-                                    "callID": {
-                                      "type": "string"
-                                    },
-                                    "content": {
-                                      "type": "object",
-                                      "propertyNames": {
-                                        "type": "string"
-                                      },
-                                      "additionalProperties": {}
-                                    },
-                                    "input": {
-                                      "type": "object",
-                                      "propertyNames": {
-                                        "type": "string"
-                                      },
-                                      "additionalProperties": {}
-                                    },
-                                    "outcome": {
-                                      "type": "string"
-                                    },
-                                    "runID": {
-                                      "type": "string"
-                                    },
-                                    "tool": {
-                                      "type": "string"
-                                    }
-                                  },
-                                  "required": [
-                                    "callID"
-                                  ]
-                                },
-                                "voidedReply": {
-                                  "type": "object",
-                                  "properties": {
-                                    "sequence": {
-                                      "type": "integer",
-                                      "minimum": 0,
-                                      "maximum": 9007199254740991
-                                    },
-                                    "reason": {
-                                      "enum": [
-                                        "attempt_failed",
-                                        "attempt_lost",
-                                        "turn_dropped",
-                                        "silent"
-                                      ],
-                                      "type": "string"
-                                    }
-                                  },
-                                  "required": [
-                                    "sequence",
-                                    "reason"
-                                  ]
-                                },
-                                "worker": {
-                                  "anyOf": [
-                                    {
-                                      "type": "object",
-                                      "properties": {
-                                        "phase": {
-                                          "const": "started"
-                                        },
-                                        "workerRunID": {
-                                          "type": "string"
-                                        },
-                                        "shortID": {
-                                          "type": "string"
-                                        },
-                                        "callID": {
-                                          "type": "string"
-                                        },
-                                        "model": {
-                                          "type": "string"
-                                        },
-                                        "tools": {
-                                          "type": "array",
-                                          "items": {
-                                            "type": "string"
-                                          }
-                                        },
-                                        "limits": {
-                                          "type": "object",
-                                          "properties": {
-                                            "minutes": {
-                                              "type": "number"
-                                            },
-                                            "turns": {
-                                              "type": "number"
-                                            },
-                                            "tokens": {
-                                              "type": "number"
-                                            },
-                                            "dollars": {
-                                              "type": "number"
-                                            }
-                                          },
-                                          "required": [
-                                            "minutes",
-                                            "turns",
-                                            "tokens",
-                                            "dollars"
-                                          ]
-                                        },
-                                        "isTaskLimit": {
-                                          "type": "boolean"
-                                        }
-                                      },
-                                      "required": [
-                                        "phase",
-                                        "workerRunID",
-                                        "shortID",
-                                        "callID",
-                                        "model",
-                                        "tools",
-                                        "limits",
-                                        "isTaskLimit"
-                                      ]
-                                    },
-                                    {
-                                      "type": "object",
-                                      "properties": {
-                                        "phase": {
-                                          "const": "turn"
-                                        },
-                                        "workerRunID": {
-                                          "type": "string"
-                                        },
-                                        "callID": {
-                                          "type": "string"
-                                        },
-                                        "turn": {
-                                          "type": "number"
-                                        },
-                                        "tokens": {
-                                          "type": "number"
-                                        },
-                                        "dollars": {
-                                          "type": "number"
-                                        },
-                                        "text": {
-                                          "type": "string"
-                                        }
-                                      },
-                                      "required": [
-                                        "phase",
-                                        "workerRunID",
-                                        "callID",
-                                        "turn",
-                                        "tokens",
-                                        "dollars"
-                                      ]
-                                    },
-                                    {
-                                      "type": "object",
-                                      "properties": {
-                                        "phase": {
-                                          "const": "ended"
-                                        },
-                                        "workerRunID": {
-                                          "type": "string"
-                                        },
-                                        "callID": {
-                                          "type": "string"
-                                        },
-                                        "outcome": {
-                                          "type": "string"
-                                        },
-                                        "limit": {
-                                          "type": "string"
-                                        },
-                                        "used": {
-                                          "type": "object",
-                                          "properties": {
-                                            "minutes": {
-                                              "type": "number"
-                                            },
-                                            "turns": {
-                                              "type": "number"
-                                            },
-                                            "tokens": {
-                                              "type": "number"
-                                            },
-                                            "dollars": {
-                                              "type": "number"
-                                            }
-                                          },
-                                          "required": [
-                                            "minutes",
-                                            "turns",
-                                            "tokens",
-                                            "dollars"
-                                          ]
-                                        },
-                                        "detail": {
-                                          "type": "string"
-                                        }
-                                      },
-                                      "required": [
-                                        "phase",
-                                        "workerRunID",
-                                        "callID",
-                                        "outcome",
-                                        "used"
-                                      ]
-                                    }
-                                  ]
-                                }
-                              },
-                              "required": [
-                                "kind",
-                                "recordedAt",
-                                "sequence",
-                                "thread"
-                              ]
-                            }
-                          },
-                          "required": [
-                            "record"
-                          ]
-                        },
-                        "id": {
-                          "type": "string"
-                        },
-                        "retry": {
-                          "type": "number"
-                        }
-                      },
-                      "required": [
-                        "event",
-                        "data"
-                      ]
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "event": {
-                          "const": "done"
-                        },
-                        "data": {},
-                        "id": {
-                          "type": "string"
-                        },
-                        "retry": {
-                          "type": "number"
-                        }
-                      },
-                      "required": [
-                        "event"
-                      ]
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "event": {
-                          "const": "error"
-                        },
-                        "data": {},
-                        "id": {
-                          "type": "string"
-                        },
-                        "retry": {
-                          "type": "number"
-                        }
-                      },
-                      "required": [
-                        "event"
-                      ]
-                    }
-                  ]
-                }
-              }
-            }
           },
-          "401": {
-            "description": "401",
+          "403": {
+            "description": "403",
             "content": {
               "application/json": {
                 "schema": {
@@ -34301,14 +33228,74 @@
                           "const": true
                         },
                         "code": {
-                          "const": "UNAUTHORIZED"
+                          "const": "FORBIDDEN"
                         },
                         "status": {
-                          "const": 401
+                          "const": 403
                         },
                         "message": {
                           "type": "string",
-                          "default": "The device session is missing, lapsed or revoked"
+                          "default": "A device session follows only its own screen"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": false
+                        },
+                        "code": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "number"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "409",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": true
+                        },
+                        "code": {
+                          "const": "NOT_A_DEVICE"
+                        },
+                        "status": {
+                          "const": 409
+                        },
+                        "message": {
+                          "type": "string",
+                          "default": "This session has no device. Register one first"
                         },
                         "data": {}
                       },
@@ -34908,6 +33895,93 @@
                         "message": {
                           "type": "string",
                           "default": "The client action ID belongs to a different action"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": false
+                        },
+                        "code": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "number"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sessions/shown": {
+      "post": {
+        "operationId": "sessions.shown",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "401",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": true
+                        },
+                        "code": {
+                          "const": "UNAUTHORIZED"
+                        },
+                        "status": {
+                          "const": 401
+                        },
+                        "message": {
+                          "type": "string",
+                          "default": "The device session is missing, lapsed or revoked"
                         },
                         "data": {}
                       },

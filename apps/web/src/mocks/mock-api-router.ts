@@ -1,8 +1,6 @@
 // oxlint-disable new-cap -- oRPC names a procedure's typed errors by their upper-case codes
 import { renderSessionCookie } from '@heynixie/contract';
-import { withEventMeta } from '@orpc/server';
 import { match } from 'ts-pattern';
-import type { ReadonlyDeep } from '../types';
 import { isForgettableKind } from './is-forgettable-kind';
 import { mockApprovalProcedures } from './mock-approval-procedures';
 import { mockComputerProcedures } from './mock-computer-procedures';
@@ -12,6 +10,7 @@ import { mockErasureProcedures } from './mock-erasure-procedures';
 import { mockFileProcedures } from './mock-file-procedures';
 import { mockImageProcedures } from './mock-image-procedures';
 import { mockImplementer } from './mock-implementer';
+import { mockLiveProcedures } from './mock-live-procedures';
 import { mockMandateProcedures } from './mock-mandate-procedures';
 import { mockMemoryRouter } from './mock-memory-router';
 import { mockNotebookProcedures } from './mock-notebook-procedures';
@@ -41,12 +40,6 @@ import { writeMockTaskControl } from './write-mock-task-control';
 import { writeMockTaskMark } from './write-mock-task-mark';
 
 const os = mockImplementer;
-
-const followProcedure = os.records.follow.handler((options) => {
-  requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
-
-  return streamRecordEvents({ ...options.input, signal: options.signal });
-});
 
 export const mockAPIRouter = os.router({
   approvals: mockApprovalProcedures,
@@ -195,7 +188,7 @@ export const mockAPIRouter = os.router({
       return { retriedAt: result.retriedAt };
     }),
   },
-  log: { follow: followProcedure },
+  live: mockLiveProcedures,
   memory: mockMemoryRouter,
   nixie: {
     read: os.nixie.read.handler((options) => {
@@ -215,7 +208,7 @@ export const mockAPIRouter = os.router({
   },
   passkeys: mockPasskeyProcedures,
   spend: mockSpendProcedures,
-  records: { follow: followProcedure, readPayload: mockReadPayloadProcedure },
+  records: { readPayload: mockReadPayloadProcedure },
   rules: { ...mockRuleProcedures, ...mockMandateProcedures },
   sessions: {
     enrol: os.sessions.enrol.handler(async (options) => {
@@ -243,6 +236,12 @@ export const mockAPIRouter = os.router({
       const code = await store.enrolmentCodes.create({});
 
       return { code: code.code, expiresAt: code.expiresAt };
+    }),
+
+    shown: os.sessions.shown.handler((options) => {
+      requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+      return {};
     }),
 
     signOut: os.sessions.signOut.handler(async (options) => {
@@ -400,59 +399,6 @@ async function readStoredImage(image: Blob) {
   const bytes = await image.bytes();
 
   return { data: bytes.toBase64(), mediaType };
-}
-
-interface RecordStream {
-  readonly afterSequence: number;
-  readonly clipPayloads?: boolean | undefined;
-  readonly signal?: AbortSignal | undefined;
-  readonly thread?: string | undefined;
-}
-
-async function* streamRecordEvents(stream: RecordStream) {
-  const cursor = { after: stream.afterSequence };
-
-  while (stream.signal?.aborted !== true) {
-    for (const record of collectRecordsAfter(cursor.after, stream.thread)) {
-      cursor.after = record.sequence;
-
-      yield withEventMeta(
-        { record: toClippedLogRecord(record, stream.clipPayloads) },
-        { id: String(record.sequence) },
-      );
-    }
-
-    await waitForRecord(stream.signal);
-  }
-}
-
-type StoredRecord = ReadonlyDeep<ReturnType<typeof store.records.all>[number]>;
-
-function collectRecordsAfter(after: number, thread: string | undefined): readonly StoredRecord[] {
-  return store.records.findMany(
-    (query) =>
-      query.where(
-        (record) => record.sequence > after && (thread === undefined || record.thread === thread),
-      ),
-    { orderBy: { sequence: 'asc' } },
-  );
-}
-
-// A collection runs its create hooks before it adds the record, so the wait ends a macrotask
-// later, once the record is in.
-async function waitForRecord(signal: AbortSignal | undefined): Promise<void> {
-  await new Promise<void>((resolve) => {
-    const waiting = new AbortController();
-
-    const stopWaiting = (): void => {
-      waiting.abort();
-
-      setTimeout(resolve, 0);
-    };
-
-    store.records.hooks.once('create', stopWaiting, { signal: waiting.signal });
-    signal?.addEventListener('abort', stopWaiting, { once: true, signal: waiting.signal });
-  });
 }
 
 type MockNixieControlOptions = Parameters<Parameters<typeof os.nixie.pause.handler>[0]>[0];

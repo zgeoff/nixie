@@ -4,18 +4,22 @@ import { clientHeaderName, contract, sessionCookieName } from '@heynixie/contrac
 import { readDeviceByIdentity } from '@heynixie/devices';
 import { makeDeviceToolCaller } from '@heynixie/devices/test-utils';
 import { createConversationTask } from '@heynixie/tasks';
+import { waitForCondition } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import { buildTestClient } from '../test-utils/build-test-client';
 import { collectContractPaths } from '../test-utils/collect-contract-paths';
 import { createDeviceSession } from '../test-utils/create-device-session';
+import { dropLiveStream } from '../test-utils/drop-live-stream';
+import { followTestDevice } from '../test-utils/follow-test-device';
 import { startTestAPI } from '../test-utils/start-test-api';
 import type { APITables } from '../types';
+import { defaultAPISettings } from '../utils/default-api-settings';
 import { readSessions } from '../utils/read-sessions';
 
 type Client = ReturnType<typeof buildTestClient>;
 
 async function setupTest() {
-  const api = await startTestAPI();
+  const api = await startTestAPI({ ...defaultAPISettings, lastSeenIntervalMs: 50 });
   const owner = await createDeviceSession(api.context, 'laptop');
 
   const ownerClient = buildTestClient(api.url, owner.token);
@@ -46,7 +50,7 @@ async function setupTest() {
       log: api.context.log,
       definitions: api.context.definitions,
       clock: api.context.clock,
-      streams: api.context.devices,
+      streams: api.context.clients.devices,
     }),
     readSessionCount: async () => {
       const sessions = await readSessions(api.context, null);
@@ -54,6 +58,16 @@ async function setupTest() {
       return sessions.length;
     },
     readDevice: (sessionID: string) => readDeviceByIdentity(api.writer.db, sessionID),
+    readLastSeen: async (sessionID: string) => {
+      const identity = await api.writer.db
+        .$extendTables<APITables>()
+        .selectFrom('identities')
+        .select('last_seen_at')
+        .where('identity_id', '=', sessionID)
+        .executeTakeFirstOrThrow();
+
+      return identity.last_seen_at;
+    },
     callPath: async (path: string, token: string) => {
       try {
         return await fetch(`${api.url}${path}`, {
@@ -103,7 +117,7 @@ test('it tells a full session with no device row to register before it follows',
   const ctx = await setupTest();
   const session = await ctx.enrol('full', 'phone');
 
-  const refused = session.client.devices.follow({ pixels: { width: 800, height: 600 } });
+  const refused = followTestDevice(session.client, { pixels: { width: 800, height: 600 } });
 
   expect(refused).rejects.toMatchObject({ code: 'NOT_A_DEVICE' });
 });
@@ -236,7 +250,8 @@ test('it updates the size that devices.list reads when a full session resizes', 
 
   const stopped = new AbortController();
 
-  const events = await session.client.devices.follow(
+  const events = await followTestDevice(
+    session.client,
     { pixels: { width: 800, height: 600 } },
     { signal: stopped.signal },
   );
@@ -273,12 +288,14 @@ test('it resizes only the open streams of the session that resizes when 2 device
 
   const stopped = new AbortController();
 
-  const panelEvents = await panel.client.devices.follow(
+  const panelEvents = await followTestDevice(
+    panel.client,
     { pixels: { width: 640, height: 480 } },
     { signal: stopped.signal },
   );
 
-  const sessionEvents = await session.client.devices.follow(
+  const sessionEvents = await followTestDevice(
+    session.client,
     { pixels: { width: 800, height: 600 } },
     { signal: stopped.signal },
   );
@@ -387,7 +404,8 @@ test('it lets a full session with a device row follow, switch its screen on and 
     bytes: new Uint8Array([1, 2, 3]),
   });
 
-  const events = await session.client.devices.follow(
+  const events = await followTestDevice(
+    session.client,
     { pixels: { width: 800, height: 600 } },
     { signal: stopped.signal },
   );
@@ -422,7 +440,8 @@ test('it updates the size that devices.list reads when a session resizes', async
 
   const stopped = new AbortController();
 
-  const events = await device.client.devices.follow(
+  const events = await followTestDevice(
+    device.client,
     { pixels: { width: 800, height: 600 } },
     { signal: stopped.signal },
   );
@@ -480,10 +499,10 @@ test('it lets a device session reach only the paths of its own device', async ()
   );
 
   expect(reached.filter((entry) => entry.isReached).map((entry) => entry.path)).toStrictEqual([
-    '/rpc/devices/follow',
     '/rpc/devices/resize',
     '/rpc/devices/setCapability',
     '/rpc/devices/readImage',
+    '/rpc/live/follow',
     '/rpc/sessions/signOut',
   ]);
 });
@@ -497,7 +516,8 @@ test('it follows the device from what it shows now, then each show', async () =>
 
   await device.client.devices.setCapability({ capability: 'screen', isOn: true });
 
-  const events = await device.client.devices.follow(
+  const events = await followTestDevice(
+    device.client,
     { pixels: { width: 1920, height: 480 } },
     { signal: stopped.signal },
   );
@@ -542,7 +562,8 @@ test('it lets a device read the image it shows and no other image', async () => 
     bytes: new Uint8Array([4]),
   });
 
-  const events = await device.client.devices.follow(
+  const events = await followTestDevice(
+    device.client,
     { pixels: { width: 800, height: 600 } },
     { signal: stopped.signal },
   );
@@ -600,7 +621,7 @@ test('it refuses a show on a screen that the device switched off', async () => {
 test('it ends the stream of a device when the owner revokes its session, and removes its row', async () => {
   const ctx = await setupTest();
   const device = await ctx.enrol('device', 'desk panel');
-  const events = await device.client.devices.follow({ pixels: { width: 800, height: 600 } });
+  const events = await followTestDevice(device.client, { pixels: { width: 800, height: 600 } });
 
   await events.next();
 
@@ -639,7 +660,7 @@ test('it removes the row and ends the streams of a full session that signs out',
     name: 'kitchen tab',
   });
 
-  const events = await session.client.devices.follow({ pixels: { width: 800, height: 600 } });
+  const events = await followTestDevice(session.client, { pixels: { width: 800, height: 600 } });
 
   await events.next();
   await session.client.sessions.signOut({});
@@ -659,7 +680,7 @@ test('it removes the row and ends the streams of a full session that the owner r
     name: 'kitchen tab',
   });
 
-  const events = await session.client.devices.follow({ pixels: { width: 800, height: 600 } });
+  const events = await followTestDevice(session.client, { pixels: { width: 800, height: 600 } });
 
   await events.next();
 
@@ -771,4 +792,144 @@ test('it keeps the first enrolment code available while only a device holds a se
     .execute();
 
   expect(live.map((row) => row.scope)).toStrictEqual(['full', 'device']);
+});
+
+test('it sends opened first, then the screen, on the device form of a live follow', async () => {
+  const ctx = await setupTest();
+  const device = await ctx.enrol('device', 'desk panel');
+
+  const stream = await device.client.live.follow({
+    device: { pixels: { width: 800, height: 600 } },
+  });
+
+  const first = await stream.next();
+  const second = await stream.next();
+
+  await stream.return(undefined);
+
+  expect([first.value, second.value]).toStrictEqual([
+    { kind: 'opened' },
+    { kind: 'device', event: { kind: 'idle', scene: [] } },
+  ]);
+});
+
+test('it refuses the page form of a live follow to a device session', async () => {
+  const ctx = await setupTest();
+  const device = await ctx.enrol('device', 'desk panel');
+
+  expect(device.client.live.follow({ thread: 'conversation' })).rejects.toMatchObject({
+    code: 'FORBIDDEN',
+  });
+});
+
+test('it keeps a device online while its device stream is open, and through a layout change', async () => {
+  const ctx = await setupTest();
+  const device = await ctx.enrol('device', 'desk panel');
+  const row = await ctx.readDevice(device.sessionID);
+
+  await device.client.devices.setCapability({ capability: 'screen', isOn: true });
+
+  const stopped = new AbortController();
+
+  const events = await followTestDevice(
+    device.client,
+    { pixels: { width: 800, height: 600 } },
+    { signal: stopped.signal },
+  );
+
+  await events.next();
+
+  await ctx.call('device.layout', {
+    device: row?.deviceID ?? '',
+    columns: ['1fr'],
+    rows: ['1fr'],
+    regions: [{ name: 'pond', column: 1, row: 1 }],
+  });
+
+  const layout = await events.next();
+
+  ctx.clock.advance(120_000);
+
+  const isOnline = ctx.context.clients.devices.isOnline(row?.deviceID ?? '');
+
+  stopped.abort();
+
+  expect([layout.value?.kind, isOnline]).toStrictEqual(['layout', true]);
+});
+
+test('it turns a device offline within 60 s of its connection dropping, with the server told nothing', async () => {
+  const ctx = await setupTest();
+  const device = await ctx.enrol('device', 'desk panel');
+  const row = await ctx.readDevice(device.sessionID);
+
+  await dropLiveStream(ctx.url, device.token, {
+    device: { pixels: { width: 800, height: 600 } },
+  });
+
+  // the server notices the dead connection within 10 s, and the grace timer starts then
+  await waitForCondition(() => ctx.clock.readNextDueMs() !== null, { timeoutMs: 10_000 });
+
+  ctx.clock.advance(60_000);
+
+  await waitForCondition(() => !ctx.context.clients.devices.isOnline(row?.deviceID ?? ''));
+
+  expect(ctx.context.clients.devices.isOnline(row?.deviceID ?? '')).toBeFalse();
+});
+
+test('it leaves the last seen time of a full session alone while its page stream is open', async () => {
+  const ctx = await setupTest();
+  const laptop = await ctx.enrol('full', 'laptop');
+  const panel = await ctx.enrol('device', 'desk panel');
+
+  const panelStream = await panel.client.live.follow({
+    device: { pixels: { width: 800, height: 600 } },
+  });
+
+  await panelStream.next();
+
+  const panelBefore = await ctx.readLastSeen(panel.sessionID);
+
+  // inside the interval, the call that opens the stream moves nothing, so any write shows
+  ctx.clock.advance(ctx.context.settings.lastSeenIntervalMs / 2);
+
+  const laptopBefore = await ctx.readLastSeen(laptop.sessionID);
+  const pageStream = await laptop.client.live.follow({});
+
+  await pageStream.next();
+
+  ctx.clock.advance(10 * 60_000);
+
+  // the device stream's periodic update shows that the intervals ran
+  await waitForCondition(async () => (await ctx.readLastSeen(panel.sessionID)) > panelBefore);
+
+  await pageStream.return(undefined);
+  await panelStream.return(undefined);
+
+  const laptopAfter = await ctx.readLastSeen(laptop.sessionID);
+
+  expect(laptopAfter).toBe(laptopBefore);
+});
+
+test('it keeps the last seen time of a session fresh while its device stream is open', async () => {
+  const ctx = await setupTest();
+  const device = await ctx.enrol('device', 'desk panel');
+
+  const stream = await device.client.live.follow({
+    device: { pixels: { width: 800, height: 600 } },
+  });
+
+  await stream.next();
+
+  // only a periodic update moves the time once the clock passes the interval
+  const afterOpen = await ctx.readLastSeen(device.sessionID);
+
+  ctx.clock.advance(60_000);
+
+  await waitForCondition(async () => (await ctx.readLastSeen(device.sessionID)) > afterOpen);
+
+  await stream.return(undefined);
+
+  const afterBeat = await ctx.readLastSeen(device.sessionID);
+
+  expect(afterBeat).toBeGreaterThan(afterOpen);
 });

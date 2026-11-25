@@ -1,6 +1,8 @@
 import { expect, test } from 'bun:test';
 import { waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { LiveConnection } from '../live/live-connection';
+import { mockLive } from '../mocks/mock-live';
 import { spendStore } from '../mocks/spend-store';
 import { buildMockSpendTrip } from '../test-utils/build-mock-spend-trip';
 import { createDeviceSession } from '../test-utils/create-device-session';
@@ -68,4 +70,25 @@ test('it raises the limit with one confirm and clears the notice', async () => {
   await waitFor(() => {
     expect(rendered.container).toBeEmptyDOMElement();
   });
+});
+
+test('it shows a stop that the watcher trips while the page is open, with no reload', async () => {
+  await createDeviceSession();
+
+  const rendered = render(
+    <>
+      <LiveConnection />
+      <SpendStopNotice />
+    </>,
+  );
+
+  await waitFor(() => {
+    expect(mockLive.openCount).toBe(1);
+  });
+
+  await spendStore.stops.create({ stop: buildMockSpendTrip() });
+
+  const notice = await rendered.findByRole('region', { name: 'model spending is stopped' });
+
+  expect(notice).toHaveTextContent(/the daily limit of \$60 was reached/u);
 });

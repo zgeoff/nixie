@@ -12,10 +12,9 @@ import { match } from 'ts-pattern';
 import { z } from 'zod';
 import { buildHostCLIArgv } from './build-host-cli-argv';
 import { conversationRecordSchema } from './collect-conversation-records';
-import { deviceFeatures } from './device-features';
 import { featurePaths, ignoredPaths, sharedPaths } from './feature-paths';
 import { controlRoutes } from './harness/control-routes';
-import { parseEnrolmentCode } from './parse-enrolment-code';
+import { lastFeatures } from './last-features';
 import { pickTaskRefusal } from './pick-task-refusal';
 import { postControl } from './post-control';
 import { buildServedBlobsArgv, servedSourceFolders } from './preview/build-served-blobs-argv';
@@ -33,9 +32,13 @@ import { readProdErrors } from './prod/read-prod-errors';
 import { readProdHealth } from './prod/read-prod-health';
 import { readProdVersion } from './prod/read-prod-version';
 import { readConversationTurn } from './read-conversation-turn';
+import { readLiveOpens } from './read-live-opens';
 import { readSessionCheck } from './read-session-check';
 import { refuseHarnessless } from './refuse-harnessless';
+import { refuseOffProd } from './refuse-off-prod';
+import { runEnrolCode } from './run-enrol-code';
 import { runHostCLI } from './run-host-cli';
+import { runPauseFromHost } from './run-pause-from-host';
 import { sessionsSchema } from './sessions-schema';
 import { throwRefusal } from './throw-refusal';
 import { waitForModelInput } from './wait-for-model-input';
@@ -142,22 +145,19 @@ export function createVerifyRegistry(): Wringer {
     .secret('NIXIE_PROD_TOKEN', 'NIXIE_PROD_KUBECONFIG')
     .action({
       name: 'enrol-code',
-      summary:
-        'Issue a sign-in code with `nixie enrol-code`, for the enrol form on the sign-in page',
+      summary: 'Issue a sign-in code with `nixie enrol-code`, for the enrol form',
       effect: 'write',
       input: z.strictObject({}),
       data: z.strictObject({ code: z.string() }),
-      run: async (_input, ctx) => {
-        const printed = await runHostCLI(ctx, ['enrol-code']);
-
-        const code = parseEnrolmentCode(printed);
-
-        if (code === null) {
-          throw new WringerError('check-failed', { message: 'nixie enrol-code printed no code' });
-        }
-
-        return { code };
-      },
+      run: (_input, ctx) => runEnrolCode(ctx),
+    })
+    .action({
+      name: 'pause-from-host',
+      summary: 'Pause nixie with `nixie pause`, or resume it with `nixie resume`',
+      effect: 'write',
+      input: z.strictObject({ state: z.enum(['paused', 'running']) }),
+      data: z.strictObject({}),
+      run: (input, ctx) => runPauseFromHost(ctx, input.state),
     })
     .action({
       name: 'script-reply',
@@ -218,11 +218,9 @@ export function createVerifyRegistry(): Wringer {
       input: z.strictObject({}),
       data: z.strictObject({ printed: z.string() }),
       timeoutMs: 120_000,
-      run: async (_input, ctx) => {
-        const printed = await runHostCLI(ctx, ['reset', '--keep-sessions', '--yes']);
-
-        return { printed };
-      },
+      run: async (_input, ctx) => ({
+        printed: await runHostCLI(ctx, ['reset', '--keep-sessions', '--yes']),
+      }),
     })
     .command({
       path: ['sessions'],
@@ -301,6 +299,14 @@ export function createVerifyRegistry(): Wringer {
           args,
         );
       },
+    })
+    .command({
+      path: ['live', 'opens'],
+      summary: 'Count the live streams the browser opened since `up`; --opened checks the count',
+      effect: 'read',
+      args: z.strictObject({ opened: z.int().nonnegative().optional() }),
+      data: controlRoutes.liveOpens.output,
+      run: (args, ctx) => readLiveOpens(ctx, args.opened),
     })
     .command({
       path: ['prod', 'conversation'],
@@ -391,12 +397,12 @@ export function createVerifyRegistry(): Wringer {
     .feature(
       {
         name: 'sign-in-enrol',
-        summary: 'Sign a browser in with a code from `nixie enrol-code`, and see its session',
+        summary: 'Sign a browser in with an enrol code',
         paths: featurePaths['sign-in-enrol'],
       },
       {
         name: 'chat-turn',
-        summary: 'Send a message from the page, and see the reply after it, in order',
+        summary: 'Send a message, and see the reply after it',
         paths: featurePaths['chat-turn'],
       },
       {
@@ -449,22 +455,11 @@ export function createVerifyRegistry(): Wringer {
         summary: "Watch the assistant's desktop",
         paths: featurePaths['computer-watch'],
       },
-      ...deviceFeatures,
+      ...lastFeatures,
     )
     .shared(...sharedPaths)
     .ignore(...ignoredPaths)
     .build();
-}
-
-// The prod reads go through the read-only token and the prod cluster's kubeconfig, which only the
-// prod target uses.
-function refuseOffProd(target: string, command: string): void {
-  if (target !== 'prod') {
-    throw new WringerError('usage', {
-      message: `\`${command}\` reads production nixie, which only the prod target reaches`,
-      hint: 'Run the command with `--target prod`.',
-    });
-  }
 }
 
 const previewRefusalHint =

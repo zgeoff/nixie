@@ -6,6 +6,8 @@ import { createRecordKey } from './create-record-key';
 import { encodeAttachment } from './encode-attachment';
 import { encodeErasable } from './encode-erasable';
 import { MissingDefinitionsError } from './missing-definitions-error';
+import { pendingTopics } from './pending-topics';
+import { getRecordTopics } from './register-record-topics';
 
 export async function writeRecordsInTransaction(
   tx: Transaction<unknown>,
@@ -24,6 +26,10 @@ export async function writeRecordsInTransaction(
     const record = await writeRecord(tx, log, { input, sealed: sealed[index] ?? null });
 
     records.push(record);
+
+    for (const topic of getRecordTopics(log.writer, record.kind)) {
+      pendingTopics.read(tx)?.add(topic);
+    }
   }
 
   return records;

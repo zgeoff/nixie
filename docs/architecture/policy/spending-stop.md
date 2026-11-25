@@ -37,6 +37,9 @@ transaction:
 - A clear writes `spend.stop_cleared` and resumes only a pause whose cause is `spending`.
 - A raise that the gateway did not answer stays in the log as `spend.limit_raised`, and the watcher
   sends it again until the day ends.
+- When the stop it reads, or whether the gateway answers, differs from its last read, the watcher
+  calls `publishChanged` with the `spend` topic, so an open client reads `spend.read` again. The
+  [live stream](../channels/live-updates.md#topics) carries it, because no write makes that change.
 - When the gateway did not answer at the start, the server starts with the limits unsent, and the
   watcher trips on its first poll and sends the limits when the gateway answers.
 
@@ -79,8 +82,8 @@ logins through it.
 ## Resume and raise
 
 While the stop stands, the API refuses `nixie.resume` and a task's resume, whatever the pause's
-cause, with the way the stop clears. A pause and a stop of a task work as usual. When you pause
-nixie while the stop stands, the cause becomes `owner`, and the clear leaves nixie paused.
+cause, with the way the stop clears. A pause and a stop of a task work as usual. When the user
+pauses nixie while the stop stands, the cause becomes `owner`, and the clear leaves nixie paused.
 
 `spend.read` gives the notice. `spend.raise` takes the period's start and the totals for dollars,
 tokens and turns, and works for a day trip only. It calls the gateway's `POST /raise`, then writes

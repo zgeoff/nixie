@@ -54,7 +54,17 @@ export async function runVerifyHarness(): Promise<void> {
 
   stack.defer(web.stop);
 
-  const front = createFrontProxy({ apiURL: api.url, webURL: web.url });
+  const liveOpens = { count: 0 };
+
+  const front = createFrontProxy({
+    apiURL: api.url,
+    webURL: web.url,
+    onAPIRequest: (pathname) => {
+      if (pathname === '/rpc/live/follow') {
+        liveOpens.count += 1;
+      }
+    },
+  });
 
   stack.defer(() => front.stop(true));
 
@@ -131,6 +141,7 @@ export async function runVerifyHarness(): Promise<void> {
         }),
       };
     },
+    readLiveOpens: () => liveOpens.count,
   });
 
   stack.defer(() => control.stop(true));
@@ -168,12 +179,16 @@ function writeLine(line: Readonly<Record<string, unknown>>): void {
 
 // Each record on the conversation thread, in the order nixie wrote them.
 async function writeRecordLines(client: ContractClient, signal: AbortSignal): Promise<void> {
-  const records = await client.records.follow(
+  const records = await client.live.follow(
     { afterSequence: 0, thread: 'conversation' },
     { signal },
   );
 
   for await (const event of records) {
+    if (event.kind !== 'record') {
+      continue;
+    }
+
     writeLine({
       event: 'record',
       sequence: event.record.sequence,

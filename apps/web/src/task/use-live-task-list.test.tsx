@@ -1,5 +1,4 @@
-import { expect, mock, onTestFinished, test } from 'bun:test';
-import { timeoutManager } from '@tanstack/react-query';
+import { expect, mock, test } from 'bun:test';
 import { act, waitFor } from '@testing-library/react';
 import { HttpResponse, http } from 'msw';
 import { server } from '../mocks/server';
@@ -7,77 +6,26 @@ import { store } from '../mocks/store';
 import { buildStubTimer } from '../test-utils/build-stub-timer';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { renderHook } from '../test-utils/render-hook';
-import { taskListRefetchMs, useLiveTaskList } from './use-live-task-list';
+import { useLiveTaskList } from './use-live-task-list';
 
 function setupTest() {
-  const follows = mock<(body: unknown) => void>();
-
-  server.use(
-    http.post('*/rpc/records/follow', async (info) => {
-      const body: unknown = await info.request.clone().json();
-
-      follows(body);
-    }),
-  );
-
-  return { follows, timer: buildStubTimer() };
+  return { timer: buildStubTimer() };
 }
 
-test('it follows every thread from the sequence the list read at', async () => {
+test('it lists the tasks the API reads', async () => {
   const ctx = setupTest();
 
   await createDeviceSession();
 
-  await store.tasks.create({ name: 'Garden plan', taskID: 'k3vq8m2xpa' });
-
-  const read = await store.records.create({ kind: 'task.created', thread: 'k3vq8m2xpa' });
+  await store.tasks.create({ name: 'Garden plan' });
 
   const hook = renderHook(() => useLiveTaskList({ startTimer: ctx.timer.startTimer }));
 
   await waitFor(() => {
-    expect(ctx.follows).toHaveBeenCalledWith({
-      json: { afterSequence: read.sequence, clipPayloads: true },
-    });
+    expect(hook.result.current.tasks.map((task) => task.name)).toStrictEqual(['Garden plan']);
   });
 
   expect(hook.result.current.status).toBe('loaded');
-});
-
-test('it reads the list again for a task record and leaves it for any other', async () => {
-  const ctx = setupTest();
-  const lists = mock<() => void>();
-
-  server.use(
-    http.post('*/rpc/tasks/list', () => {
-      lists();
-    }),
-  );
-
-  await createDeviceSession();
-
-  const garden = await store.tasks.create({ name: 'Garden plan', state: 'running' });
-
-  const hook = renderHook(() => useLiveTaskList({ startTimer: ctx.timer.startTimer }));
-
-  await waitFor(() => {
-    expect(ctx.follows).toHaveBeenCalledOnce();
-  });
-
-  await store.records.create({ kind: 'owner_message', message: { text: 'Hello.' } });
-
-  await store.tasks.update(garden, {
-    data(draft) {
-      draft.state = 'paused';
-    },
-  });
-
-  await store.records.create({ kind: 'task.paused', thread: garden.taskID });
-
-  await waitFor(() => {
-    expect(hook.result.current.tasks.map((task) => task.state)).toStrictEqual(['paused']);
-  });
-
-  expect(lists).toHaveBeenCalledTimes(2);
 });
 
 test('it reports a list that failed to load, and loads it again on a retry', async () => {
@@ -104,36 +52,9 @@ test('it reports a list that failed to load, and loads it again on a retry', asy
   });
 });
 
-test('it reads the list again each minute, and with a filter puts it in the read', async () => {
+test('it puts the filter in the read', async () => {
   const ctx = setupTest();
-
-  const intervals = new Map<number, () => void>();
-
   const bodies = mock<(body: unknown) => void>();
-
-  const systemProvider = {
-    setTimeout: (callback: () => void, delayMs: number) => setTimeout(callback, delayMs),
-    clearTimeout: (id: ReturnType<typeof setTimeout> | undefined) => {
-      clearTimeout(id);
-    },
-    setInterval: (callback: () => void, delayMs: number) => setInterval(callback, delayMs),
-    clearInterval: (id: ReturnType<typeof setInterval> | undefined) => {
-      clearInterval(id);
-    },
-  };
-
-  timeoutManager.setTimeoutProvider({
-    ...systemProvider,
-    setInterval: (callback, delayMs) => {
-      intervals.set(delayMs, callback);
-
-      return systemProvider.setInterval(() => {}, delayMs);
-    },
-  });
-
-  onTestFinished(() => {
-    timeoutManager.setTimeoutProvider(systemProvider);
-  });
 
   server.use(
     http.post('*/rpc/tasks/list', async (info) => {
@@ -144,8 +65,6 @@ test('it reads the list again each minute, and with a filter puts it in the read
   );
 
   await createDeviceSession();
-
-  await store.tasks.create({ name: 'Garden plan' });
 
   const hook = renderHook(() =>
     useLiveTaskList({
@@ -159,15 +78,69 @@ test('it reads the list again each minute, and with a filter puts it in the read
     expect(hook.result.current.status).toBe('loaded');
   });
 
-  act(() => {
-    intervals.get(taskListRefetchMs)?.();
-  });
-
-  await waitFor(() => {
-    expect(bodies).toHaveBeenCalledTimes(2);
-  });
-
-  expect(bodies).toHaveBeenLastCalledWith({
+  expect(bodies).toHaveBeenCalledWith({
     json: { definitionID: 'water-the-tomatoes', states: ['asleep'] },
   });
+});
+
+test('it reads the list again at the time the list says it changes on its own', async () => {
+  const ctx = setupTest();
+  const lists = mock<() => void>();
+
+  server.use(
+    http.post('*/rpc/tasks/list', () => {
+      lists();
+    }),
+  );
+
+  await createDeviceSession();
+
+  await store.tasks.create({
+    name: 'Water the tomatoes',
+    nextRunAt: new Date(Date.now() + 3_600_000).toISOString(),
+  });
+
+  const hook = renderHook(() => useLiveTaskList({ startTimer: ctx.timer.startTimer }));
+
+  await waitFor(() => {
+    expect(hook.result.current.status).toBe('loaded');
+  });
+
+  const delayMs = await ctx.timer.advanceToNext();
+
+  await waitFor(() => {
+    expect(lists).toHaveBeenCalledTimes(2);
+  });
+
+  expect(delayMs).toBeWithin(3_590_000, 3_600_001);
+});
+
+test('it starts no timer for a list with no time of its own change', async () => {
+  const ctx = setupTest();
+
+  await createDeviceSession();
+
+  await store.tasks.create({ name: 'Garden plan' });
+
+  const hook = renderHook(() => useLiveTaskList({ startTimer: ctx.timer.startTimer }));
+
+  await waitFor(() => {
+    expect(hook.result.current.status).toBe('loaded');
+  });
+
+  expect(ctx.timer.countPending()).toBe(0);
+});
+
+test('it shows live updates as available while no stream failed', async () => {
+  const ctx = setupTest();
+
+  await createDeviceSession();
+
+  const hook = renderHook(() => useLiveTaskList({ startTimer: ctx.timer.startTimer }));
+
+  await waitFor(() => {
+    expect(hook.result.current.status).toBe('loaded');
+  });
+
+  expect(hook.result.current.unavailable).toBe(false);
 });

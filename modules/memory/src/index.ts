@@ -164,3 +164,4 @@ export type { CleanupCause, ItemLinkCount, ItemLinkCounts } from './types';
 export type { MomentLabel } from './moment/read-moment-labels';
 export { readMomentLabels } from './moment/read-moment-labels';
 export type { MomentDestroy, MomentTarget } from './utils/moment-context';
+export { memoryRecordTopics } from './record/memory-record-topics';

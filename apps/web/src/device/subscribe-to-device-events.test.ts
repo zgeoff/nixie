@@ -68,7 +68,7 @@ test('it opens the stream again after a break, with a pause that doubles', async
 
   await createDeviceSession();
 
-  server.use(http.post('*/rpc/devices/follow', () => HttpResponse.error()));
+  server.use(http.post('*/rpc/live/follow', () => HttpResponse.error()));
   void ctx.subscribe({ onConnection: ctx.onConnection, onEvent: ctx.onEvent });
 
   const first = await ctx.timer.advanceToNext();

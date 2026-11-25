@@ -18,3 +18,4 @@ export { turnInputLogConfigSchema } from './turn-input-log-config-schema';
 export type { InputMissReason } from './utils/turn-inputs-tables';
 export type { TurnInputsRecordKind } from './state/turn-inputs-record-kind';
 export type { Capture, OpenCaptureInput, TurnInputsOptions } from './types';
+export { turnInputsRecordTopics } from './state/turn-inputs-record-topics';

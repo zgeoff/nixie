@@ -1,4 +1,4 @@
-import { withWriteTransaction } from '@heynixie/log';
+import { markChanged, withWriteTransaction } from '@heynixie/log';
 import type { BackupContext, BackupNotice, BackupTables } from '../types';
 import { pickBackupNotices } from './pick-backup-notices';
 
@@ -50,6 +50,8 @@ export async function writeBackupNotices(
       )
       .onConflict((conflict) => conflict.doNothing())
       .execute();
+
+    markChanged(tx, ['backups']);
   });
 
   return notices;

@@ -29,6 +29,7 @@ test('it lists each task, most recently active first, with its action counts', a
   const record = await store.records.create({ kind: 'task.paused', thread: 'k3x9m2p7qa' });
 
   expect(readMockTaskList()).toStrictEqual({
+    changesAt: null,
     readAtSequence: record.sequence,
     tasks: [
       {

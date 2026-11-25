@@ -21,22 +21,6 @@ export const mockDeviceProcedures = {
     return { deviceID: 'dk4m7q2w9x' };
   }),
 
-  follow: os.devices.follow.handler(async function* followDevice(options) {
-    const session = requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
-
-    if (!deviceStore.hasDevice(session.sessionID)) {
-      throw options.errors.NOT_A_DEVICE();
-    }
-
-    yield { kind: 'idle' as const, scene: [{ kind: 'markdown' as const, text: '# Saturday' }] };
-
-    await new Promise<void>((resolve) => {
-      options.signal?.addEventListener('abort', () => {
-        resolve();
-      });
-    });
-  }),
-
   resize: os.devices.resize.handler(async (options) => {
     const session = requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
 

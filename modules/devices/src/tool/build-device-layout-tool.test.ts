@@ -115,8 +115,7 @@ test('it keeps the layout of a device that went offline, and lists it', async ()
   const stream = ctx.streams.open(device.deviceID, { width: 1920, height: 480, pixelRatio: 1 });
 
   await ctx.seed.layout(device.deviceID);
-
-  stream.close();
+  await ctx.closeStream(device.deviceID, stream);
 
   const listed = await ctx.call('devices.list', {});
 

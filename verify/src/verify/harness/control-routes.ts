@@ -130,6 +130,14 @@ export const controlRoutes = {
     input: z.strictObject({}),
     output: z.strictObject({ text: z.string() }),
   },
+  liveOpens: {
+    method: 'GET',
+    path: '/control/live-opens',
+    input: z.strictObject({}),
+
+    // each live.follow request that the browser sent through the front proxy since the start
+    output: z.strictObject({ opened: z.int().nonnegative() }),
+  },
 } as const;
 
 export interface ControlRoute<Input extends z.ZodType, Output extends z.ZodType> {

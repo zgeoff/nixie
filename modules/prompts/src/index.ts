@@ -43,3 +43,4 @@ export { untilConventions } from './prompt/until-conventions';
 export type { PromptExport } from './prompt/write-prompt-export-record';
 export { writePromptExportRecord } from './prompt/write-prompt-export-record';
 export { writePromptProposalAnswer } from './prompt/write-prompt-proposal-answer';
+export { promptsRecordTopics } from './prompt/prompts-record-topics';

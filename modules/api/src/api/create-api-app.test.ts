@@ -26,8 +26,7 @@ test.each([
   ['/rpc/sessions/revoke'],
   ['/rpc/conversation/read'],
   ['/rpc/conversation/send'],
-  ['/rpc/log/follow'],
-  ['/rpc/records/follow'],
+  ['/rpc/live/follow'],
 ])('it refuses %s without the client header, even with a live session', async (path) => {
   const ctx = await setupTest();
   const laptop = await createDeviceSession(ctx.context, 'laptop');
@@ -138,7 +137,7 @@ test.each([
   ['/rpc/sessions/issueCode'],
   ['/rpc/sessions/revoke'],
   ['/rpc/tasks/pause'],
-  ['/rpc/records/follow'],
+  ['/rpc/live/follow'],
   ['/rpc/images/list'],
   ['/rpc/images/readBytes'],
   ['/rpc/conversation/read/'],

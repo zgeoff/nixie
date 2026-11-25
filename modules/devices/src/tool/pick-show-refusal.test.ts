@@ -8,7 +8,6 @@ interface Row {
   readonly title: string;
   readonly device: Device | null;
   readonly images: ImageState[];
-  readonly isOnline: boolean;
   readonly expected: ShowRefusal | null;
 }
 
@@ -17,7 +16,6 @@ test.each<Row>([
     title: 'an unknown device before anything else',
     device: null,
     images: ['missing'],
-    isOnline: false,
     expected: 'UNKNOWN_DEVICE',
   },
   {
@@ -31,11 +29,10 @@ test.each<Row>([
       idleSequence: null,
     },
     images: ['missing'],
-    isOnline: false,
     expected: 'SCREEN_OFF',
   },
   {
-    title: 'an unknown image before an offline device',
+    title: 'an unknown image before a forgotten one',
     device: {
       deviceID: 'dk4m7q2w9x',
       identityID: 'an-identity',
@@ -45,11 +42,10 @@ test.each<Row>([
       idleSequence: null,
     },
     images: ['forgotten', 'missing'],
-    isOnline: false,
     expected: 'UNKNOWN_IMAGE',
   },
   {
-    title: 'a forgotten image before an offline device',
+    title: 'a forgotten image after a ready one',
     device: {
       deviceID: 'dk4m7q2w9x',
       identityID: 'an-identity',
@@ -59,25 +55,10 @@ test.each<Row>([
       idleSequence: null,
     },
     images: ['ok', 'forgotten'],
-    isOnline: false,
     expected: 'IMAGE_FORGOTTEN',
   },
   {
-    title: 'an offline device last',
-    device: {
-      deviceID: 'dk4m7q2w9x',
-      identityID: 'an-identity',
-      name: 'desk panel',
-      capabilities: { screen: true, camera: false, speaker: false, microphone: false },
-      shownSequence: null,
-      idleSequence: null,
-    },
-    images: ['ok'],
-    isOnline: false,
-    expected: 'OFFLINE',
-  },
-  {
-    title: 'no refusal for an online device with its screen on',
+    title: 'no refusal for a device with its screen on and its images ready',
     device: {
       deviceID: 'dk4m7q2w9x',
       identityID: 'an-identity',
@@ -87,11 +68,8 @@ test.each<Row>([
       idleSequence: null,
     },
     images: [],
-    isOnline: true,
     expected: null,
   },
 ])('#pickShowRefusal gives $title', (row) => {
-  expect(pickShowRefusal({ device: row.device, images: row.images, isOnline: row.isOnline })).toBe(
-    row.expected,
-  );
+  expect(pickShowRefusal({ device: row.device, images: row.images })).toBe(row.expected);
 });

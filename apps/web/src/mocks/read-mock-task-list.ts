@@ -15,6 +15,7 @@ export function readMockTaskList(input: ContractInputs['tasks']['list'] = {}) {
     .slice(0, listLimit);
 
   return {
+    changesAt: readMockChangesAt(tasks),
     readAtSequence: store.records
       .all()
       .reduce((head, record) => Math.max(head, record.sequence), 0),
@@ -59,4 +60,15 @@ function readMockListedState(task: MockTask) {
   const own = task.listedState ?? task.state;
 
   return pausableStates.has(task.state) && probeMockTaskPaused(task.taskID) ? 'paused' : own;
+}
+
+// The earliest next run that still lies ahead, as the API reads it
+function readMockChangesAt(tasks: readonly MockTask[]): Date | null {
+  const nowMs = Date.now();
+
+  const upcomingMs = tasks
+    .map((task) => (task.nextRunAt === undefined ? Number.NaN : Date.parse(task.nextRunAt)))
+    .filter((runMs) => runMs > nowMs);
+
+  return upcomingMs.length === 0 ? null : new Date(Math.min(...upcomingMs));
 }

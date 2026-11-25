@@ -5,11 +5,7 @@ import { join } from 'node:path';
 import type { Log, Writer } from '@heynixie/log';
 import { logProjections, startWriter } from '@heynixie/log';
 import type { TasksContext } from '@heynixie/tasks';
-import {
-  readDefinitionTaskInTransaction,
-  tasksProjections,
-  withdrawDefinitionTaskInTransaction,
-} from '@heynixie/tasks';
+import { tasksProjections } from '@heynixie/tasks';
 import {
   buildTestDefinitionStore,
   buildTestRunSettings,
@@ -19,6 +15,7 @@ import type { FakeClock } from '@zgeoff/testing/clock';
 import { createFakeClock } from '@zgeoff/testing/clock';
 import { triggersProjections } from '../projection/triggers-projections';
 import type { TriggerCoreContext } from '../types';
+import { buildTestTriggerCore } from './build-test-trigger-core';
 
 export interface TestTriggers {
   readonly writer: Writer;
@@ -82,16 +79,8 @@ export async function startTestTriggers(): Promise<TestTriggers> {
     context,
     definitionStore,
     logged,
-    core: {
-      log,
-      clock,
-      definitions: context.definitions,
-      logEvent: (event, fields) => {
-        logged.push({ event, fields });
-      },
-      readDefinitionTask: readDefinitionTaskInTransaction,
-      retireOneShot: (tx, definitionID) =>
-        withdrawDefinitionTaskInTransaction(tx, context, definitionID),
-    },
+    core: buildTestTriggerCore(context, (event, fields) => {
+      logged.push({ event, fields });
+    }),
   };
 }

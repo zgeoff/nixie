@@ -44,6 +44,7 @@ const faultPointTexts: Readonly<Record<FaultPointID, string>> = {
   'erasure.cleaned': 'erasure.cleaned',
   'erasure.turn_inputs_removed': 'erasure.turn_inputs_removed',
   'backup.set.copied': 'backup.set.copied',
+  'session.checked': 'session.checked',
 };
 
 export const testBuildIDs: readonly string[] = [

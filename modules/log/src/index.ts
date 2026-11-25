@@ -42,11 +42,17 @@ export type { StartWriterOptions } from './writer/start-writer';
 export { startWriter } from './writer/start-writer';
 export type { RecordWake, RecordWakeOptions } from './record/start-record-wake';
 export { startRecordWake } from './record/start-record-wake';
+export { markChanged } from './record/mark-changed';
+export { publishChanged } from './record/publish-changed';
+export type { RecordTopics } from './record/register-record-topics';
+export { registerRecordTopics } from './record/register-record-topics';
+export { subscribeToChanged } from './record/subscribe-to-changed';
 export { subscribeToCommits } from './record/subscribe-to-commits';
 export { subscribeToRecordCommits } from './record/subscribe-to-record-commits';
 export type { SubscribeToRecordsOptions } from './record/subscribe-to-records';
 export { subscribeToRecords } from './record/subscribe-to-records';
 export { threadsProjection } from './record/threads-projection';
+export type { LiveTopic } from '@heynixie/contract';
 
 export type {
   Approval,

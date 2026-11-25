@@ -1,6 +1,5 @@
 import { expect, mock, test } from 'bun:test';
-import { createPasskeyState, defaultAPISettings } from '@heynixie/api';
-import { createDeviceStreams } from '@heynixie/devices';
+import { createClientRegistry, createPasskeyState, defaultAPISettings } from '@heynixie/api';
 import { runTestSeed } from '../test-utils/run-test-seed';
 import { startTestServer } from '../test-utils/start-test-server';
 import { buildCleanup } from './build-cleanup';
@@ -17,7 +16,7 @@ async function setupTest() {
       readSessionCleanup: () => null,
       readZone: () => Promise.resolve('UTC'),
       passkeys: createPasskeyState(),
-      devices: createDeviceStreams(),
+      clients: createClientRegistry({ clock: server.context.clock }),
     },
     work: buildCleanup(),
   };

@@ -1,7 +1,12 @@
 import { expect, mock, test } from 'bun:test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { createPasskeyState, defaultAPISettings, readAllPasskeys } from '@heynixie/api';
+import {
+  createClientRegistry,
+  createPasskeyState,
+  defaultAPISettings,
+  readAllPasskeys,
+} from '@heynixie/api';
 import { createDeviceSession, seedPasskey, seedRevokedPasskey } from '@heynixie/api/test-utils';
 import {
   createPathSource,
@@ -10,7 +15,7 @@ import {
   runSeed,
 } from '@heynixie/definitions';
 import { buildTestTaskSeed } from '@heynixie/definitions/test-utils';
-import { createDeviceStreams, readDeviceByIdentity } from '@heynixie/devices';
+import { readDeviceByIdentity } from '@heynixie/devices';
 import { makeDeviceToolCaller, seedScreenOnDevice } from '@heynixie/devices/test-utils';
 import { readRecords, writeRecords } from '@heynixie/log';
 import { buildMockSandboxSpec } from '@heynixie/sandbox/test-utils';
@@ -30,7 +35,7 @@ async function setupTest() {
     readSessionCleanup: () => null,
     readZone: () => Promise.resolve('UTC'),
     passkeys: createPasskeyState(),
-    devices: createDeviceStreams(),
+    clients: createClientRegistry({ clock: server.context.clock }),
   };
 
   return { ...server, context };
@@ -243,7 +248,7 @@ test('it refuses a reset before any definitions are in force, and stops no work'
       readSessionCleanup: () => null,
       readZone: () => Promise.resolve('UTC'),
       passkeys: createPasskeyState(),
-      devices: createDeviceStreams(),
+      clients: createClientRegistry({ clock: server.context.clock }),
     },
     adapter: server.sandboxes,
     stopWork,
@@ -370,13 +375,13 @@ test('it keeps an enrolled device through a reset and clears what it showed', as
 
   const device = await seedScreenOnDevice({ log: ctx.context.log, clock: ctx.context.clock });
 
-  ctx.context.devices.open(device.deviceID, { width: 1920, height: 480, pixelRatio: 1 });
+  ctx.context.clients.devices.open(device.deviceID, { width: 1920, height: 480, pixelRatio: 1 });
 
   const call = makeDeviceToolCaller({
     log: ctx.context.log,
     definitions: ctx.context.definitions,
     clock: ctx.context.clock,
-    streams: ctx.context.devices,
+    streams: ctx.context.clients.devices,
   });
 
   await call('device.setIdle', {

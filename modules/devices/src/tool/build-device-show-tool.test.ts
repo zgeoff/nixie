@@ -34,7 +34,7 @@ test('it refuses a screen that is off', async () => {
   });
 });
 
-test('it refuses an offline device with its screen on', async () => {
+test('it keeps a show for an offline device and says that the show waits', async () => {
   const ctx = await setupTest();
   const device = await ctx.seed.screenOnDevice();
 
@@ -43,7 +43,52 @@ test('it refuses an offline device with its screen on', async () => {
     content: { kind: 'markdown', text: '# Saturday' },
   });
 
-  expect(outcome).toMatchObject({ status: 'ok', refusalCode: 'OFFLINE' });
+  expect(outcome).toStrictEqual({
+    status: 'ok',
+    result: {
+      shown: true,
+      until: null,
+      waiting: true,
+      message:
+        'The device is offline. The show waits, and the device shows it when it comes back online.',
+    },
+  });
+});
+
+test('it gives a show with minutes for an offline device no end until the device comes online', async () => {
+  const ctx = await setupTest();
+  const device = await ctx.seed.screenOnDevice();
+
+  const outcome = await ctx.call('device.show', {
+    device: device.deviceID,
+    content: { kind: 'markdown', text: '# Saturday' },
+    minutes: 10,
+  });
+
+  expect(outcome).toStrictEqual({
+    status: 'ok',
+    result: {
+      shown: true,
+      until: null,
+      waiting: true,
+      message:
+        'The device is offline. The show waits, and the device shows it when it comes back online. Its minutes start when the device comes back online.',
+    },
+  });
+});
+
+test('it points an offline device at the show it waits with', async () => {
+  const ctx = await setupTest();
+  const device = await ctx.seed.screenOnDevice();
+
+  await ctx.call('device.show', {
+    device: device.deviceID,
+    content: { kind: 'markdown', text: '# Saturday' },
+  });
+
+  const row = await ctx.readDevice(device.identityID);
+
+  expect(row?.shownSequence).toBeNumber();
 });
 
 test('it refuses an image that is not in the store', async () => {

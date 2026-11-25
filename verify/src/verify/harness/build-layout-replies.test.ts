@@ -3,7 +3,7 @@ import { buildLayoutReplies } from './build-layout-replies';
 
 test('it queues a layout of 3 regions and the content of each, naming the listed device', () => {
   const body = {
-    messages: [{ role: 'user', content: '{"result":{"devices":[{"device":"dk4m7q2w9x"}]}}' }],
+    messages: [{ role: 'user', content: '{"result":{"devices":[{"shortID":"dk4m7q2w9x"}]}}' }],
   };
 
   const calls = buildLayoutReplies('set').map((reply) => {
@@ -57,7 +57,7 @@ test('it queues a layout of 3 regions and the content of each, naming the listed
 
 test('it queues a replacement of the text of the second region', () => {
   const body = {
-    messages: [{ role: 'user', content: '{"result":{"devices":[{"device":"dk4m7q2w9x"}]}}' }],
+    messages: [{ role: 'user', content: '{"result":{"devices":[{"shortID":"dk4m7q2w9x"}]}}' }],
   };
 
   const calls = buildLayoutReplies('update').map((reply) => {

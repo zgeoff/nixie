@@ -9,7 +9,13 @@ interface ReceivedEvent {
   readonly lagMs: number;
 }
 
-type EventStream = AsyncIterator<{ readonly record: StreamedRecord }>;
+// a live stream's events, of which only the record events carry a record
+interface StreamedEvent {
+  readonly kind?: string;
+  readonly record?: StreamedRecord;
+}
+
+type EventStream = AsyncIterator<StreamedEvent>;
 
 type Events = readonly ReceivedEvent[];
 
@@ -29,13 +35,14 @@ export async function readStepEvents(stream: EventStream, now: () => number): Pr
       return received;
     }
 
-    received.push({
-      kind: next.value.record.kind,
-      lagMs: now() - next.value.record.recordedAt.getTime(),
-    });
+    const record = next.value.record;
 
-    if (stepEnds.has(next.value.record.kind)) {
-      return received;
+    if (record !== undefined) {
+      received.push({ kind: record.kind, lagMs: now() - record.recordedAt.getTime() });
+
+      if (stepEnds.has(record.kind)) {
+        return received;
+      }
     }
   }
 }

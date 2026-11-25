@@ -224,3 +224,6 @@ export type { UndoHooks, UndoneChange } from './runtime-task/undo-definition-cha
 export { definitionChangedCodec } from './runtime-task/definition-changed-codec';
 export { readDefinitionNotices } from './runtime-task/read-definition-notices';
 export type { DefinitionListing } from './runtime-task/read-definition-listings';
+export { definitionTaskRecordTopics } from './runtime-task/definition-task-record-topics';
+export { definitionsSeededRecordTopics } from './skill/definitions-seeded-record-topics';
+export { rulesRecordTopics } from './skill/rules-record-topics';

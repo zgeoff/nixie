@@ -340,11 +340,13 @@ export type FaultPointID =
   | 'erasure.keys_removed'
   | 'erasure.cleaned'
   | 'erasure.turn_inputs_removed'
-  | 'backup.set.copied';
+  | 'backup.set.copied'
+  | 'session.checked';
 
 export interface FaultPointContext {
   readonly kind:
     | LeaseKind
+    | 'session'
     | 'recovery'
     | 'restart_sweep'
     | 'pool'

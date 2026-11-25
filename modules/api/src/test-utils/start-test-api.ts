@@ -4,9 +4,8 @@ import { tmpdir } from 'node:os';
 import { actionsProjection } from '@heynixie/actions';
 import { readDefinitionNotices, readDefinitionVersion } from '@heynixie/definitions';
 import { definitionTaskProjections } from '@heynixie/definitions/test-utils';
-import { createDeviceStreams } from '@heynixie/devices';
 import type { Writer } from '@heynixie/log';
-import { logProjections, startWriter } from '@heynixie/log';
+import { logProjections, registerRecordTopics, startWriter } from '@heynixie/log';
 import { memoryProjections } from '@heynixie/memory';
 import { notebookProjections } from '@heynixie/notebook';
 import { createPlanLoginsHolder, spendProjections } from '@heynixie/spend';
@@ -27,6 +26,8 @@ import { createAPIApp } from '../api/create-api-app';
 import type { WatchSocketData } from '../computer/create-watch-route';
 import { createWatchRoute } from '../computer/create-watch-route';
 import { createWatchTickets } from '../computer/create-watch-tickets';
+import { collectModuleRecordTopicMaps } from '../live/collect-module-record-topic-maps';
+import { createClientRegistry } from '../live/create-client-registry';
 import { createPasskeyState } from '../passkey/passkey-state';
 import { proposalsProjection } from '../proposal/proposals-projection';
 import type {
@@ -95,6 +96,10 @@ export async function startTestAPI(
   stack.defer(() => rm(dataDir, { recursive: true, force: true }));
 
   const writer = await startWriter({ dataDir });
+
+  for (const topics of collectModuleRecordTopicMaps()) {
+    registerRecordTopics(writer, topics);
+  }
 
   stack.defer(() => writer.stop());
 
@@ -241,7 +246,7 @@ async function createTestContext(
     runners: buildTestTaskRunners(),
     settings,
     passkeys: createPasskeyState(),
-    devices: createDeviceStreams(),
+    clients: createClientRegistry({ clock }),
 
     readZone: () => Promise.resolve('UTC'),
     readSessionCleanup: deps.readSessionCleanup,

@@ -146,7 +146,7 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
             nowMs: () => parts.get('context').apiContext.clock.now(),
             stuckAfterMs: options.config.erasure.stuckAfterMs,
           }),
-          deviceStreams: parts.get('context').apiContext.devices,
+          deviceStreams: parts.get('context').apiContext.clients.devices,
           worker: parts.get('worker'),
           search:
             options.search === null

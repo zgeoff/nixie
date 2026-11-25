@@ -6,6 +6,8 @@ import { nixieSchema, runMigrations, startDatabase, syncPauseGate } from '@heyni
 import { getDataFilePath } from '../data/get-data-file-path';
 import { startKeyStore } from '../key/start-key-store';
 import { claimWriterEpoch } from '../record/claim-writer-epoch';
+import { logRecordTopics } from '../record/log-record-topics';
+import { registerRecordTopics } from '../record/register-record-topics';
 import type { PendingRestore } from '../restore/pending-restore';
 import { readRestoreState } from '../restore/read-restore-state';
 import type { ReadFilesystemType, Writer } from '../types';
@@ -61,7 +63,7 @@ export async function startWriter(options: StartWriterOptions): Promise<Writer> 
 
     const keys = await startKeyStore(options.dataDir, options.keyStoreBusyTimeoutMs);
 
-    return {
+    const writer: Writer = {
       dataDir: options.dataDir,
       db,
       keys,
@@ -72,6 +74,10 @@ export async function startWriter(options: StartWriterOptions): Promise<Writer> 
       migration,
       stop: makeStopOnce([db, keys], lock),
     };
+
+    registerRecordTopics(writer, logRecordTopics);
+
+    return writer;
   } catch (error) {
     await stopWriter([db], lock);
 

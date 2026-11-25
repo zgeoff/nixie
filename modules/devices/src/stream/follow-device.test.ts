@@ -115,7 +115,7 @@ test('#followDevice sends the idle scene when a show ends, and never an older sh
   await events.next();
 
   await writeShow(
-    { log: ctx.log, definitions: ctx.definitions, clock: ctx.clock, streams: ctx.streams },
+    { log: ctx.log, definitions: ctx.definitions, clock: ctx.clock },
     {
       deviceID: device.deviceID,
       thread: 'conversation',
@@ -280,7 +280,7 @@ test('#followDevice drops a forgotten image from the idle scene and sends the sc
   });
 });
 
-test('#followDevice holds the device online while the stream is open and offline after it ends', async () => {
+test('#followDevice holds the device online while the stream is open and for 60 s after it ends', async () => {
   const ctx = await setupTest();
   const device = await ctx.seed.screenOnDevice();
 
@@ -294,7 +294,17 @@ test('#followDevice holds the device online while the stream is open and offline
 
   await events.next();
 
-  expect([during, ctx.streams.isOnline(device.deviceID)]).toStrictEqual([true, false]);
+  ctx.clock.advance(59_000);
+
+  const inGrace = ctx.streams.isOnline(device.deviceID);
+
+  ctx.clock.advance(1000);
+
+  await waitFor(() => {
+    expect(ctx.streams.isOnline(device.deviceID)).toBeFalse();
+  });
+
+  expect([during, inGrace]).toStrictEqual([true, true]);
 });
 
 test('#followDevice ends when the row of the device goes', async () => {

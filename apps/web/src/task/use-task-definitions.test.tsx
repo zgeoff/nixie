@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import { waitFor } from '@testing-library/react';
+import { useLiveConnection } from '../live/use-live-connection';
 import { store } from '../mocks/store';
 import { buildStubTimer } from '../test-utils/build-stub-timer';
 import { createDeviceSession } from '../test-utils/create-device-session';
@@ -18,10 +19,14 @@ test('it offers the definition of a task created while the dashboard is open', a
 
   await store.tasks.create({ definitionID: 'water-the-tomatoes', name: 'Water the tomatoes' });
 
-  const hook = renderHook(() => ({
-    definitions: useTaskDefinitions(),
-    listed: useLiveTaskList({ startTimer: ctx.timer.startTimer }),
-  }));
+  const hook = renderHook(() => {
+    useLiveConnection();
+
+    return {
+      definitions: useTaskDefinitions(),
+      listed: useLiveTaskList({ startTimer: ctx.timer.startTimer }),
+    };
+  });
 
   await waitFor(() => {
     expect(hook.result.current.definitions).toStrictEqual([

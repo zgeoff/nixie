@@ -1,0 +1,38 @@
+import type { LiveTopic } from '@heynixie/log';
+import type { MemoryRecordKind } from './memory-record-kind';
+
+// The topics each record kind changes, which the server registers with the log.
+export const memoryRecordTopics = {
+  'memory.approval_recorded': ['memory', 'approvals'],
+  'memory.evidence_purge_closed': ['memory'],
+  'memory.evidence_purge_started': ['memory'],
+  'memory.evidence_purged': ['memory'],
+  'memory.forget_started': ['memory'],
+  'memory.fold_ordered': ['memory'],
+  'memory.forgotten': ['memory'],
+  'memory.image_offered': ['memory'],
+  'memory.labelled': ['memory'],
+  'memory.pin_noticed': ['memory'],
+  'memory.pinned': ['memory'],
+  'memory.proposal_labelled': ['memory', 'approvals'],
+  'memory.proposal_lapsed': ['memory', 'approvals'],
+  'memory.proposal_merged': ['memory', 'approvals'],
+  'memory.proposal_rejected': ['memory', 'approvals', 'tasks'],
+  'memory.proposal_self_noted': ['memory', 'approvals'],
+  'memory.proposal_shared_noted': ['memory', 'approvals'],
+  'memory.proposal_subject_changed': ['memory', 'approvals'],
+  'memory.proposed': ['memory', 'approvals'],
+  'memory.rated': ['memory'],
+  'memory.self_noted': ['memory'],
+  'memory.shared_noted': ['memory'],
+  'memory.subject_changed': ['memory'],
+  'memory.version_added': ['memory'],
+  'memory.version_keyed': ['memory'],
+  moment_destroyed: ['memory'],
+  moment_edited: ['memory'],
+  moment_kept: ['memory'],
+  moment_linked: ['memory'],
+  moment_retired: ['memory'],
+  'record.forget_started': ['memory'],
+  'record.forgotten': ['memory'],
+} as const satisfies Record<MemoryRecordKind, readonly LiveTopic[]>;

@@ -166,7 +166,6 @@ const noteForgets = new Collection({
   }),
 });
 
-// Every notebook.openPrivate call, with the action ID it carried, whether or not it finished; and
 const stuckForgets = new Collection({
   schema: z.object({
     kind: z.string().default('note'),
@@ -181,6 +180,7 @@ const stuckForgets = new Collection({
   }),
 });
 
+// Every notebook.openPrivate call, with the action ID it carried, whether or not it finished; and
 // the number of the next calls that fail before they write anything.
 const noteOpenCalls: { clientActionIDs: string[]; failuresLeft: number } = {
   clientActionIDs: [],

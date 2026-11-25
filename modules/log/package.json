@@ -13,6 +13,7 @@
   "dependencies": {
     "@heynixie/async": "workspace:*",
     "@heynixie/clock": "workspace:*",
+    "@heynixie/contract": "workspace:*",
     "@heynixie/db": "workspace:*",
     "@heynixie/task-control": "workspace:*",
     "@heynixie/wire": "workspace:*",

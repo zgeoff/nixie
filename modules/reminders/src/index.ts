@@ -27,3 +27,4 @@ export type { ReminderOrigin, ReminderState, RemindersContext, RemindersTables }
 export type { ReminderMove } from './move/read-reminder-moves';
 export type { SettleMovedDefinition } from './move/run-reminder-moves';
 export { runReminderMoves } from './move/run-reminder-moves';
+export { remindersRecordTopics } from './record/reminders-record-topics';

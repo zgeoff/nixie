@@ -15,11 +15,12 @@ test('it lists an enrolled device with its screen off and nothing it shows', asy
     result: {
       devices: [
         {
-          device: device.deviceID,
+          shortID: device.deviceID,
           name: 'desk panel',
           screen: 'off',
           camera: 'off',
           online: false,
+          wake: [],
           pixels: null,
           showing: null,
           layout: null,
@@ -48,11 +49,12 @@ test('it gives an online device its size and what it shows', async () => {
     result: {
       devices: [
         {
-          device: device.deviceID,
+          shortID: device.deviceID,
           name: 'desk panel',
           screen: 'on',
           camera: 'off',
           online: true,
+          wake: [],
           pixels: { width: 1920, height: 480, pixelRatio: 2 },
           showing: { kind: 'markdown', until: '2026-11-21T08:10:00.000Z' },
           layout: null,
@@ -112,4 +114,34 @@ test('it lists the screen as the layout when a region shows content and no show 
   const listed = await ctx.call('devices.list', {});
 
   expect(listed).toMatchObject({ result: { devices: [{ showing: { kind: 'layout' } }] } });
+});
+
+test('it gives an offline device the time its last connection closed', async () => {
+  const ctx = await setupTest();
+  const device = await ctx.seed.screenOnDevice({ name: 'desk panel' });
+
+  const stream = ctx.streams.open(device.deviceID, { width: 1920, height: 480, pixelRatio: 1 });
+  const closedAtMs = ctx.clock.now();
+
+  await ctx.closeStream(device.deviceID, stream);
+
+  const listed = await ctx.call('devices.list', {});
+
+  expect(listed).toMatchObject({
+    result: { devices: [{ online: false, offlineSinceMs: closedAtMs }] },
+  });
+});
+
+test('it keeps a device online in the list for 60 s after its last connection closed', async () => {
+  const ctx = await setupTest();
+  const device = await ctx.seed.screenOnDevice({ name: 'desk panel' });
+
+  const stream = ctx.streams.open(device.deviceID, { width: 1920, height: 480, pixelRatio: 1 });
+
+  stream.close();
+  ctx.clock.advance(59_000);
+
+  const listed = await ctx.call('devices.list', {});
+
+  expect(listed).toMatchObject({ result: { devices: [{ online: true }] } });
 });

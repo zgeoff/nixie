@@ -367,7 +367,6 @@
         "@heynixie/contract": "workspace:*",
         "@heynixie/db": "workspace:*",
         "@heynixie/definitions": "workspace:*",
-        "@heynixie/devices": "workspace:*",
         "@heynixie/log": "workspace:*",
         "@heynixie/logger": "workspace:*",
         "@heynixie/memory": "workspace:*",
@@ -540,6 +539,7 @@
         "@heynixie/async": "workspace:*",
         "@heynixie/backup": "workspace:*",
         "@heynixie/budgets": "workspace:*",
+        "@heynixie/clock": "workspace:*",
         "@heynixie/connectors": "workspace:*",
         "@heynixie/contract": "workspace:*",
         "@heynixie/db": "workspace:*",
@@ -692,6 +692,7 @@
       },
       "devDependencies": {
         "@heynixie/policy": "workspace:*",
+        "@heynixie/testing": "workspace:*",
         "@zgeoff/testing": "catalog:",
       },
     },
@@ -701,6 +702,7 @@
       "dependencies": {
         "@heynixie/async": "workspace:*",
         "@heynixie/clock": "workspace:*",
+        "@heynixie/contract": "workspace:*",
         "@heynixie/db": "workspace:*",
         "@heynixie/task-control": "workspace:*",
         "@heynixie/wire": "workspace:*",

@@ -6,6 +6,7 @@ import type { SandboxAdapter } from '@heynixie/sandbox';
 import { writeMissedTurns } from '@heynixie/spend';
 import type { DefinitionsExportSettings } from '../definition/resolve-definitions-export';
 import type { DeploymentConfig } from '../deployment/deployment-config-schema';
+import { registerServerRecordTopics } from '../part/register-server-record-topics';
 import type { SandboxAdapterOptions } from '../sandbox/create-sandbox-adapter';
 import type { SandboxImages } from '../sandbox/load-sandbox-manifest';
 import type { SandboxSettings } from '../sandbox/resolve-sandbox-settings';
@@ -120,6 +121,8 @@ async function startLoggedWriter(dataDir: string, options: LoggedWriterOptions):
     installsRestorePause: true,
     ...(options.clock === undefined ? {} : { clock: options.clock }),
   });
+
+  registerServerRecordTopics(writer);
 
   await options.cleanup.defer(() => writer.stop());
 

@@ -44,3 +44,4 @@ export type {
 } from './types';
 
 export type { ModelsRecordKind } from './model/models-record-kind';
+export { modelsRecordTopics } from './model/models-record-topics';

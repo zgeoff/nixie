@@ -14,16 +14,19 @@ import {
   runMandateExpiry,
   startMandateTimer,
 } from '@heynixie/definitions';
+import { startDeviceWakes, startWaitingShows } from '@heynixie/devices';
 import { toErrorFields } from '@heynixie/logger';
 import { startPromptLapseSweep } from '@heynixie/prompts';
 import { startSpendWatcher } from '@heynixie/spend';
 import type { RunStep } from '@heynixie/tasks';
 import {
   conversationRunner,
+  conversationTaskID,
   createConversationTask,
   readDefinitionTaskInTransaction,
   reviveHeldTasks,
   sandboxRunner,
+  writeThreadRecordInTransaction,
 } from '@heynixie/tasks';
 import { buildScheduleSource, startTriggerSources } from '@heynixie/triggers';
 import { runDefinitionsSeed } from '../definition/run-definitions-seed';
@@ -237,6 +240,50 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
       });
 
       await parts.cleanup.defer(() => sweep.stop());
+    },
+  },
+  {
+    // A device that goes online or offline wakes the model when the list that devices.watch set
+    // names the change.
+    name: 'device_wakes',
+    needs: ['server_parts', 'conversation_task'],
+    start: async (reader) => {
+      const parts = reader.get('server_parts');
+      const context = parts.apiContext;
+
+      const stop = startDeviceWakes({
+        log: context.log,
+        definitions: context.definitions,
+        streams: context.clients.devices,
+        thread: conversationTaskID,
+        writeWake: (tx, input) => writeThreadRecordInTransaction(tx, context, input),
+        onFailure: (error) => {
+          parts.log('devices.wake_failed', toErrorFields(error), 'error');
+        },
+      });
+
+      await parts.cleanup.defer(stop);
+    },
+  },
+  {
+    // A show that waited for its device counts its minutes from the time the device comes online.
+    name: 'device_show_clocks',
+    needs: ['server_parts'],
+    start: async (reader) => {
+      const parts = reader.get('server_parts');
+      const context = parts.apiContext;
+
+      const stop = startWaitingShows({
+        log: context.log,
+        definitions: context.definitions,
+        clock: context.clock,
+        streams: context.clients.devices,
+        onFailure: (error) => {
+          parts.log('devices.show_clock_failed', toErrorFields(error), 'error');
+        },
+      });
+
+      await parts.cleanup.defer(stop);
     },
   },
   {

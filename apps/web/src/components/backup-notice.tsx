@@ -14,17 +14,9 @@ const notice = css({
   width: 'full',
 });
 
-// nixie checks for receipts once a minute, so a read each minute shows a notice soon after it rises.
-const refetchIntervalMs = 60_000;
-
 export function BackupNotice(): ReactNode {
   const nixie = useNixieClient();
-
-  const read = useQuery({
-    ...nixie.queryUtils.backups.readNotice.queryOptions(),
-    refetchInterval: refetchIntervalMs,
-  });
-
+  const read = useQuery(nixie.queryUtils.backups.readNotice.queryOptions());
   const current = read.data?.notice ?? null;
 
   if (current === null) {

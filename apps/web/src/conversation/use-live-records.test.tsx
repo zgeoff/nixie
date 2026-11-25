@@ -12,22 +12,27 @@ function setupTest() {
   const follows = mock<(body: unknown) => void>();
 
   server.use(
-    http.post('*/rpc/records/follow', async (info) => {
+    http.post('*/rpc/live/follow', async (info) => {
       const body: unknown = await info.request.clone().json();
 
       follows(body);
     }),
   );
 
-  return { follows, timer: buildStubTimer() };
+  return {
+    follows,
+    timer: buildStubTimer(),
+    useRecords: (afterSequence: number | undefined) =>
+      useLiveRecords('conversation', afterSequence),
+  };
 }
 
 test('it delivers a tool call and its result within a second of the API recording them', async () => {
-  setupTest();
+  const ctx = setupTest();
 
   await createDeviceSession();
 
-  const hook = renderHook(() => useLiveRecords('conversation', 0));
+  const hook = renderHook(() => ctx.useRecords(0));
 
   await store.records.create({ kind: 'tool_called' });
   await store.records.create({ kind: 'tool_result' });
@@ -44,11 +49,11 @@ test('it delivers a tool call and its result within a second of the API recordin
 });
 
 test('it drops the records it delivered before a reset once the reset arrives', async () => {
-  setupTest();
+  const ctx = setupTest();
 
   await createDeviceSession();
 
-  const hook = renderHook(() => useLiveRecords('conversation', 0));
+  const hook = renderHook(() => ctx.useRecords(0));
 
   await store.records.create({ kind: 'tool_called' });
 
@@ -72,7 +77,7 @@ test('it catches up after the stream drops, with no gap and no repeat', async ()
 
   await createDeviceSession();
 
-  const hook = renderHook(() => useLiveRecords('conversation', 0));
+  const hook = renderHook(() => ctx.useRecords(0));
 
   const one = await store.records.create({ kind: 'tool_called' });
 
@@ -80,7 +85,7 @@ test('it catches up after the stream drops, with no gap and no repeat', async ()
     expect(hook.result.current.records).toHaveLength(1);
   });
 
-  server.use(http.post('*/rpc/records/follow', () => HttpResponse.error(), { once: true }));
+  server.use(http.post('*/rpc/live/follow', () => HttpResponse.error(), { once: true }));
   globalThis.dispatchEvent(new Event('online'));
 
   const two = await store.records.create({ kind: 'tool_result' });
@@ -109,7 +114,7 @@ test('it follows the log again at once when the page becomes visible', async () 
 
   server.use(
     http.post(
-      '*/rpc/records/follow',
+      '*/rpc/live/follow',
       () => {
         stalled();
 
@@ -121,7 +126,7 @@ test('it follows the log again at once when the page becomes visible', async () 
     ),
   );
 
-  const hook = renderHook(() => useLiveRecords('conversation', 0));
+  const hook = renderHook(() => ctx.useRecords(0));
 
   await waitFor(() => {
     expect(stalled).toHaveBeenCalledOnce();
@@ -157,18 +162,21 @@ test('it keeps reporting live updates unavailable while the API refuses a revoke
   });
 
   server.use(
-    http.post('*/rpc/records/follow', async () => {
+    http.post('*/rpc/live/follow', async () => {
       await delay(20);
     }),
   );
 
-  renderHook(() => {
-    const live = useLiveRecords('conversation', 0, { startTimer: ctx.timer.startTimer });
+  renderHook(
+    () => {
+      const live = ctx.useRecords(0);
 
-    reported.push(live.unavailable);
+      reported.push(live.unavailable);
 
-    return live;
-  });
+      return live;
+    },
+    { startTimer: ctx.timer.startTimer },
+  );
 
   await ctx.timer.advanceToNext();
   await ctx.timer.advanceToNext();
@@ -185,11 +193,9 @@ test('it keeps live updates available after two failed attempts in a row', async
 
   await createDeviceSession();
 
-  server.use(http.post('*/rpc/records/follow', () => HttpResponse.error()));
+  server.use(http.post('*/rpc/live/follow', () => HttpResponse.error()));
 
-  const hook = renderHook(() =>
-    useLiveRecords('conversation', 0, { startTimer: ctx.timer.startTimer }),
-  );
+  const hook = renderHook(() => ctx.useRecords(0), { startTimer: ctx.timer.startTimer });
 
   await ctx.timer.advanceToNext();
 
@@ -207,11 +213,9 @@ test('it reports live updates unavailable after three failed attempts in a row',
 
   await createDeviceSession();
 
-  server.use(http.post('*/rpc/records/follow', () => HttpResponse.error()));
+  server.use(http.post('*/rpc/live/follow', () => HttpResponse.error()));
 
-  const hook = renderHook(() =>
-    useLiveRecords('conversation', 0, { startTimer: ctx.timer.startTimer }),
-  );
+  const hook = renderHook(() => ctx.useRecords(0), { startTimer: ctx.timer.startTimer });
 
   await ctx.timer.advanceToNext();
   await ctx.timer.advanceToNext();
@@ -227,14 +231,12 @@ test('it clears the unavailable report once the stream connects again', async ()
   await createDeviceSession();
 
   server.use(
-    http.post('*/rpc/records/follow', () => HttpResponse.error(), { once: true }),
-    http.post('*/rpc/records/follow', () => HttpResponse.error(), { once: true }),
-    http.post('*/rpc/records/follow', () => HttpResponse.error(), { once: true }),
+    http.post('*/rpc/live/follow', () => HttpResponse.error(), { once: true }),
+    http.post('*/rpc/live/follow', () => HttpResponse.error(), { once: true }),
+    http.post('*/rpc/live/follow', () => HttpResponse.error(), { once: true }),
   );
 
-  const hook = renderHook(() =>
-    useLiveRecords('conversation', 0, { startTimer: ctx.timer.startTimer }),
-  );
+  const hook = renderHook(() => ctx.useRecords(0), { startTimer: ctx.timer.startTimer });
 
   await ctx.timer.advanceToNext();
   await ctx.timer.advanceToNext();
