@@ -70,7 +70,9 @@ interface BudgetChargeRow {
   readonly for_kind: string;
   readonly for_id: string;
   readonly credited: number;
-  readonly ledger_key: string;
+
+  // null for a charge from before the ledger whose period the old rows could not show
+  readonly ledger_key: string | null;
 }
 
 interface SpendLedgerRow {
@@ -84,7 +86,7 @@ interface SpendLedgerRow {
 
 interface LegacyChargeKindRow {
   readonly charge_id: string;
-  readonly period_kind: string;
+  readonly period_kind: string | null;
 }
 
 interface BudgetInForceRow {

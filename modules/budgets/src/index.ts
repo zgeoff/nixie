@@ -24,6 +24,8 @@ export type { BudgetLedger, LedgerCharge } from './read/read-budget-ledger';
 export { readBudgetLedger } from './read/read-budget-ledger';
 export type { SpendLedgerEntry } from './read/read-spend-ledger';
 export { readSpendLedger } from './read/read-spend-ledger';
+export type { UncountedCharge } from './read/read-uncounted-charges';
+export { readUncountedCharges } from './read/read-uncounted-charges';
 
 export type {
   BudgetLimit,

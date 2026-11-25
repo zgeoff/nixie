@@ -1,36 +1,45 @@
 import { sql } from 'kysely';
 import type { Migration } from '../types';
 
-// A charge from before the key names no period kind. The kind in force or a built-in ID suffix
-// counts only when the charge's period start is a start of that kind, a Monday or the 1st, and no
-// later charge of the budget starts off that kind. Else it is a day's.
-const isMonthStart = sql`substr(budget_charges.period_start, 9, 2) = '01'`;
-const isWeekStart = sql`strftime('%w', budget_charges.period_start) = '1'`;
-
-const inForcePeriod = sql`(select period from budgets_in_force
-  where budgets_in_force.budget_id = budget_charges.budget_id)`;
-
-const laterOffMonth = sql`exists (select 1 from budget_charges as later
-  where later.budget_id = budget_charges.budget_id and later.rowid > budget_charges.rowid
-    and substr(later.period_start, 9, 2) <> '01')`;
-
-const laterOffWeek = sql`exists (select 1 from budget_charges as later
-  where later.budget_id = budget_charges.budget_id and later.rowid > budget_charges.rowid
-    and strftime('%w', later.period_start) <> '1')`;
-
-const kindOfBudget = sql`(
-  case
-    when ${inForcePeriod} = 'month' and ${isMonthStart} and not ${laterOffMonth} then 'month'
-    when ${inForcePeriod} = 'week' and ${isWeekStart} and not ${laterOffWeek} then 'week'
-    when budget_charges.budget_id like '%-month' and ${isMonthStart} then 'month'
-    when budget_charges.budget_id like '%-week' and ${isWeekStart} then 'week'
-    else 'day'
-  end
-)`;
+// A charge's kind comes only from a fact in the old rows, never a guess from its date: a budget can
+// change its period after a charge on a day that starts several kinds of period. A charge with no
+// such fact keeps a null kind, and counts nowhere.
+const kindsOfCharges = sql`
+  with charge_records as (
+    select json_extract(payload, '$.chargeID') as charge_id, max(sequence) as sequence
+    from records
+    where kind = 'budget.charged'
+    group by 1
+  ),
+  seeded as (
+    select distinct json_extract(json_each.value, '$.id') as budget_id
+    from records, json_each(records.payload, '$.repoBudgets')
+    where records.kind = 'definitions_seeded'
+  ),
+  facts as (
+    select budget_charges.charge_id, budget_charges.budget_id,
+      case when budgets_in_force.updated_sequence < charge_records.sequence
+        then budgets_in_force.period end as in_force_kind,
+      budgets_in_force.budget_id is null and seeded.budget_id is null as is_built_in,
+      substr(budget_charges.period_start, 9, 2) = '01' as is_month_start,
+      strftime('%w', budget_charges.period_start) = '1' as is_week_start
+    from budget_charges
+    left join charge_records on charge_records.charge_id = budget_charges.charge_id
+    left join budgets_in_force on budgets_in_force.budget_id = budget_charges.budget_id
+    left join seeded on seeded.budget_id = budget_charges.budget_id
+  )
+  select charge_id,
+    case
+      when in_force_kind is not null then in_force_kind
+      when is_built_in and budget_id like '%-day' then 'day'
+      when is_built_in and budget_id like '%-month' then
+        case when is_month_start then 'month' end
+      when not is_month_start and not is_week_start then 'day'
+    end
+  from facts`;
 
 // spend_ledger replaces budget_ledger, which the release before reads, so the schema's oldest
-// reader moves up to this migration. The amounts carry over, so a period under way keeps its count
-// until the first rebuild folds the same rows from the records.
+// reader moves up to this migration. Each row sums its uncredited charges, as a rebuild does.
 export const spendLedgerMigration: Migration = {
   name: 'replace the budget ledger with the spend ledger, keyed by counter, unit and period',
   up: async (tx) => {
@@ -43,30 +52,31 @@ export const spendLedgerMigration: Migration = {
       amount integer not null
     ) strict`.execute(tx);
 
-    await sql`alter table budget_charges add column ledger_key text not null default ''`.execute(
-      tx,
-    );
+    await sql`alter table budget_charges add column ledger_key text`.execute(tx);
 
     await sql`create table if not exists legacy_charge_kinds (
       charge_id text primary key,
-      period_kind text not null
+      period_kind text
     ) strict`.execute(tx);
 
-    await sql`insert into legacy_charge_kinds (charge_id, period_kind)
-      select charge_id, ${kindOfBudget} from budget_charges`.execute(tx);
-
-    await sql`update budget_charges
-      set ledger_key = 'budget:' || budget_id || '|micros:USD|' || ${kindOfBudget} || '|' || period_start`.execute(
+    await sql`insert into legacy_charge_kinds (charge_id, period_kind) ${kindsOfCharges}`.execute(
       tx,
     );
 
+    await sql`update budget_charges
+      set ledger_key = (select 'budget:' || budget_charges.budget_id || '|micros:USD|'
+          || legacy_charge_kinds.period_kind || '|' || budget_charges.period_start
+        from legacy_charge_kinds
+        where legacy_charge_kinds.charge_id = budget_charges.charge_id)`.execute(tx);
+
     await sql`insert into spend_ledger (ledger_key, counter, unit, period_kind, period_start, amount)
-      select distinct budget_charges.ledger_key, 'budget:' || budget_charges.budget_id, 'micros:USD',
-        ${kindOfBudget}, budget_charges.period_start, budget_ledger.spent_micros
+      select budget_charges.ledger_key, 'budget:' || budget_charges.budget_id, 'micros:USD',
+        legacy_charge_kinds.period_kind, budget_charges.period_start,
+        sum(budget_charges.amount_micros)
       from budget_charges
-      join budget_ledger
-        on budget_ledger.budget_id = budget_charges.budget_id
-        and budget_ledger.period_start = budget_charges.period_start`.execute(tx);
+      join legacy_charge_kinds on legacy_charge_kinds.charge_id = budget_charges.charge_id
+      where budget_charges.ledger_key is not null and budget_charges.credited = 0
+      group by budget_charges.ledger_key`.execute(tx);
 
     await sql`delete from projection_changes where projection = 'budget_ledger'`.execute(tx);
     await sql`drop table budget_ledger`.execute(tx);

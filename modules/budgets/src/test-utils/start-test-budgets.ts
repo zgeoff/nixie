@@ -22,10 +22,10 @@ export interface TestBudgets {
   // puts a budget in force as the seed does
   readonly seedBudgetInForce: (budget: BudgetLimit) => Promise<void>;
 
-  // keeps the period kind that the migration gave a charge from before the ledger
+  // keeps the period kind that the migration gave a charge from before the ledger, or null for none
   readonly seedLegacyChargeKind: (
     chargeID: string,
-    periodKind: 'day' | 'week' | 'month',
+    periodKind: 'day' | 'week' | 'month' | null,
   ) => Promise<void>;
 }
 

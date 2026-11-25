@@ -53,7 +53,7 @@ export interface NixieTables {
     readonly for_kind: string;
     readonly for_id: string;
     readonly credited: number;
-    readonly ledger_key: string;
+    readonly ledger_key: string | null;
   };
   readonly budgets_in_force: {
     readonly budget_id: string;
@@ -271,7 +271,7 @@ export interface NixieTables {
   };
   readonly legacy_charge_kinds: {
     readonly charge_id: string;
-    readonly period_kind: string;
+    readonly period_kind: string | null;
   };
   readonly mail_messages: {
     readonly message_id: string;

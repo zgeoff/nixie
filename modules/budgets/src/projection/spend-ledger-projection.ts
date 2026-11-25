@@ -25,6 +25,10 @@ export const spendLedgerProjection: Projection = {
 
       const key = await readChargeLedgerKey(tx, payload);
 
+      if (key === null) {
+        return [];
+      }
+
       await writeLedgerDelta(tx, key, payload.amountMicros);
 
       return [key];
@@ -39,7 +43,7 @@ export const spendLedgerProjection: Projection = {
         .where('charge_id', '=', payload.chargeID)
         .executeTakeFirst();
 
-      if (charge === undefined || charge.credited === 1) {
+      if (charge === undefined || charge.credited === 1 || charge.ledger_key === null) {
         return [];
       }
 

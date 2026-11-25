@@ -1,3 +1,4 @@
+import { readUncountedCharges } from '@heynixie/budgets';
 import type { Clock } from '@heynixie/clock';
 import type { Secrets } from '@heynixie/credentials';
 import type { Writer } from '@heynixie/log';
@@ -14,6 +15,7 @@ import type { SandboxAdapterOptions } from '../sandbox/create-sandbox-adapter';
 import type { SandboxImages } from '../sandbox/load-sandbox-manifest';
 import type { SandboxSettings } from '../sandbox/resolve-sandbox-settings';
 import type { SpendInputs } from '../spend/create-spend-inputs';
+import { isSpendLedgerUpgrade } from '../spend/is-spend-ledger-upgrade';
 import { startSpendChecks } from '../spend/start-spend-checks';
 import type { Cleanup, ServerParts } from '../types';
 import { buildCleanup } from './build-cleanup';
@@ -140,6 +142,12 @@ async function startLoggedWriter(dataDir: string, options: LoggedWriterOptions):
     schemaTo: writer.migration.to,
     isCopied: writer.migration.copyPath !== null,
   });
+
+  if (isSpendLedgerUpgrade(writer.migration)) {
+    for (const total of await readUncountedCharges(writer.db)) {
+      options.log('spend.ledger_uncounted', { ...total }, 'warn');
+    }
+  }
 
   return writer;
 }

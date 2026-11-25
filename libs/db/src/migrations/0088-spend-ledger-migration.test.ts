@@ -35,6 +35,18 @@ async function setupTest() {
         schema: { migrations: nixieSchema.migrations.slice(0, target), oldestReader: 0 },
         copyDir: directory,
       }),
+    readKeys: async () => {
+      const result = await sql`select charge_id, ledger_key from budget_charges
+        order by charge_id`.execute(db);
+
+      return result.rows;
+    },
+    readLedger: async () => {
+      const result = await sql`select ledger_key, amount from spend_ledger
+        order by ledger_key`.execute(db);
+
+      return result.rows;
+    },
   };
 }
 
@@ -53,6 +65,11 @@ test('it carries each count over to the row of its ledger key and drops the old 
   await sql`insert into budgets_in_force (budget_id, counts, limit_micros, period, hash, updated_sequence)
     values ('groceries', 'spend', 50000000, 'week', 'h', 20)`.execute(ctx.db);
 
+  await sql`insert into records (sequence, recorded_at, kind, snapshot_hash, payload) values
+    (30, 1791000000000, 'budget.charged', 's', '{"chargeID":"c1"}'),
+    (31, 1791000000000, 'budget.charged', 's', '{"chargeID":"c2"}'),
+    (32, 1791000000000, 'budget.charged', 's', '{"chargeID":"c3"}')`.execute(ctx.db);
+
   await sql`insert into budget_charges
     (charge_id, budget_id, period_start, amount_micros, for_kind, for_id, credited) values
     ('c1', 'groceries', '2026-10-12', 4000000, 'action', 'a1', 0),
@@ -69,9 +86,6 @@ test('it carries each count over to the row of its ledger key and drops the old 
   const rows = await sql`select ledger_key, counter, unit, period_kind, period_start, amount
     from spend_ledger order by ledger_key`.execute(ctx.db);
 
-  const keys = await sql`select charge_id, ledger_key from budget_charges
-    order by charge_id`.execute(ctx.db);
-
   const old = await sql`select name from sqlite_master where name = 'budget_ledger'`.execute(
     ctx.db,
   );
@@ -79,7 +93,7 @@ test('it carries each count over to the row of its ledger key and drops the old 
   const kinds = await sql`select charge_id, period_kind from legacy_charge_kinds
     order by charge_id`.execute(ctx.db);
 
-  expect([rows.rows, keys.rows, old.rows, kinds.rows]).toStrictEqual([
+  expect([rows.rows, await ctx.readKeys(), old.rows, kinds.rows]).toStrictEqual([
     [
       {
         ledger_key: 'budget:groceries|micros:USD|week|2026-10-12',
@@ -120,41 +134,79 @@ test('it carries each count over to the row of its ledger key and drops the old 
   ]);
 });
 
-test('it keys a charge by the period its start shows when the budget in force has changed its period since', async () => {
+test('it keys a charge by the period in force when the budget has not changed since the charge', async () => {
   const ctx = await setupTest();
 
   await ctx.migrateTo(ctx.version - 1);
 
   await sql`insert into budgets_in_force (budget_id, counts, limit_micros, period, hash, updated_sequence)
     values ('groceries', 'spend', 50000000, 'month', 'h', 20)`.execute(ctx.db);
+
+  await sql`insert into records (sequence, recorded_at, kind, snapshot_hash, payload) values
+    (30, 1790812800000, 'budget.charged', 's', '{"chargeID":"c1"}')`.execute(ctx.db);
 
   await sql`insert into budget_charges
     (charge_id, budget_id, period_start, amount_micros, for_kind, for_id, credited) values
-    ('c1', 'groceries', '2026-10-16', 4000000, 'action', 'a1', 0),
-    ('c2', 'groceries', '2026-11-01', 3000000, 'action', 'a2', 0)`.execute(ctx.db);
+    ('c1', 'groceries', '2026-10-01', 4000000, 'action', 'a1', 0)`.execute(ctx.db);
 
   await sql`insert into budget_ledger (budget_id, period_start, spent_micros) values
-    ('groceries', '2026-10-16', 4000000),
-    ('groceries', '2026-11-01', 3000000)`.execute(ctx.db);
+    ('groceries', '2026-10-01', 4000000)`.execute(ctx.db);
 
   await ctx.migrateTo(ctx.version);
 
-  const keys = await sql`select charge_id, ledger_key from budget_charges
-    order by charge_id`.execute(ctx.db);
-
-  expect(keys.rows).toStrictEqual([
-    { charge_id: 'c1', ledger_key: 'budget:groceries|micros:USD|day|2026-10-16' },
-    { charge_id: 'c2', ledger_key: 'budget:groceries|micros:USD|month|2026-11-01' },
+  expect([await ctx.readKeys(), await ctx.readLedger()]).toStrictEqual([
+    [{ charge_id: 'c1', ledger_key: 'budget:groceries|micros:USD|month|2026-10-01' }],
+    [{ ledger_key: 'budget:groceries|micros:USD|month|2026-10-01', amount: 4_000_000 }],
   ]);
 });
 
-test('it keys a day charge made on the 1st by its day when the budget has switched to a month since', async () => {
+test.each([
+  { title: 'alone', later: [] },
+  { title: 'with a charge on 2 October after it', later: ['c2'] },
+])('it gives a charge on the 1st no key when its budget changed since, $title', async (row) => {
+  const ctx = await setupTest();
+
+  await ctx.migrateTo(ctx.version - 1);
+
+  await sql`insert into budgets_in_force (budget_id, counts, limit_micros, period, hash, updated_sequence)
+      values ('groceries', 'spend', 50000000, 'month', 'h', 20)`.execute(ctx.db);
+
+  await sql`insert into records (sequence, recorded_at, kind, snapshot_hash, payload) values
+      (10, 1790812800000, 'budget.charged', 's', '{"chargeID":"c1"}'),
+      (11, 1790899200000, 'budget.charged', 's', '{"chargeID":"c2"}')`.execute(ctx.db);
+
+  await sql`insert into budget_charges
+      (charge_id, budget_id, period_start, amount_micros, for_kind, for_id, credited) values
+      ('c1', 'groceries', '2026-10-01', 4000000, 'action', 'a1', 0)`.execute(ctx.db);
+
+  await sql`insert into budget_ledger (budget_id, period_start, spent_micros) values
+      ('groceries', '2026-10-01', 4000000)`.execute(ctx.db);
+
+  for (const chargeID of row.later) {
+    await sql`insert into budget_charges
+        (charge_id, budget_id, period_start, amount_micros, for_kind, for_id, credited) values
+        (${chargeID}, 'groceries', '2026-10-02', 3000000, 'action', 'a2', 0)`.execute(ctx.db);
+  }
+
+  await ctx.migrateTo(ctx.version);
+
+  const keys = await ctx.readKeys();
+
+  expect(keys[0]).toStrictEqual({ charge_id: 'c1', ledger_key: null });
+});
+
+test('it counts nothing for a charge it cannot key, and keys the charges it can', async () => {
   const ctx = await setupTest();
 
   await ctx.migrateTo(ctx.version - 1);
 
   await sql`insert into budgets_in_force (budget_id, counts, limit_micros, period, hash, updated_sequence)
     values ('groceries', 'spend', 50000000, 'month', 'h', 20)`.execute(ctx.db);
+
+  await sql`insert into records (sequence, recorded_at, kind, snapshot_hash, payload) values
+    (10, 1790812800000, 'budget.charged', 's', '{"chargeID":"c1"}'),
+    (11, 1790899200000, 'budget.charged', 's', '{"chargeID":"c2"}'),
+    (30, 1793491200000, 'budget.charged', 's', '{"chargeID":"c3"}')`.execute(ctx.db);
 
   await sql`insert into budget_charges
     (charge_id, budget_id, period_start, amount_micros, for_kind, for_id, credited) values
@@ -169,12 +221,40 @@ test('it keys a day charge made on the 1st by its day when the budget has switch
 
   await ctx.migrateTo(ctx.version);
 
-  const keys = await sql`select charge_id, ledger_key from budget_charges
-    order by charge_id`.execute(ctx.db);
+  expect([await ctx.readKeys(), await ctx.readLedger()]).toStrictEqual([
+    [
+      { charge_id: 'c1', ledger_key: null },
+      { charge_id: 'c2', ledger_key: 'budget:groceries|micros:USD|day|2026-10-02' },
+      { charge_id: 'c3', ledger_key: 'budget:groceries|micros:USD|month|2026-11-01' },
+    ],
+    [
+      { ledger_key: 'budget:groceries|micros:USD|day|2026-10-02', amount: 3_000_000 },
+      { ledger_key: 'budget:groceries|micros:USD|month|2026-11-01', amount: 2_000_000 },
+    ],
+  ]);
+});
 
-  expect(keys.rows).toStrictEqual([
-    { charge_id: 'c1', ledger_key: 'budget:groceries|micros:USD|day|2026-10-01' },
-    { charge_id: 'c2', ledger_key: 'budget:groceries|micros:USD|day|2026-10-02' },
-    { charge_id: 'c3', ledger_key: 'budget:groceries|micros:USD|month|2026-11-01' },
+test('it gives no key to a charge of a built-in ID that a definition once replaced', async () => {
+  const ctx = await setupTest();
+
+  await ctx.migrateTo(ctx.version - 1);
+
+  await sql`insert into records (sequence, recorded_at, kind, snapshot_hash, payload) values
+    (5, 1790000000000, 'definitions_seeded', 's',
+      '{"repoBudgets":[{"id":"search-day","counts":"spend","limitMicros":1,"period":"week","hash":"h"}]}'),
+    (30, 1791331200000, 'budget.charged', 's', '{"chargeID":"c1"}')`.execute(ctx.db);
+
+  await sql`insert into budget_charges
+    (charge_id, budget_id, period_start, amount_micros, for_kind, for_id, credited) values
+    ('c1', 'search-day', '2026-10-12', 12000, 'tool_call', 't1', 0)`.execute(ctx.db);
+
+  await sql`insert into budget_ledger (budget_id, period_start, spent_micros) values
+    ('search-day', '2026-10-12', 12000)`.execute(ctx.db);
+
+  await ctx.migrateTo(ctx.version);
+
+  expect([await ctx.readKeys(), await ctx.readLedger()]).toStrictEqual([
+    [{ charge_id: 'c1', ledger_key: null }],
+    [],
   ]);
 });

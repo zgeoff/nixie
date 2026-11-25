@@ -1,7 +1,6 @@
 import type { Transaction } from 'kysely';
 import type { BudgetsTables } from '../types';
 import { buildBudgetLedgerKey } from './build-budget-ledger-key';
-import { isLedgerPeriodKind, pickLedgerPeriodKind } from './pick-ledger-period-kind';
 
 export interface ChargedPayload {
   readonly chargeID: string;
@@ -10,39 +9,29 @@ export interface ChargedPayload {
   readonly ledgerKey?: string;
 }
 
-// The ledger key of a charge. A charge from before the ledger names none, so its key takes the kind
-// that the migration kept for it, which a replay finds whatever the budget has become since. A
-// charge that the migration never saw takes the period kind of the budget in force.
+// A charge from before the ledger names no key, so it takes the kind that the migration kept for
+// it, whatever the budget has become since. With no kept kind it gets none, and counts nowhere: the
+// budget's period now can differ from the one it was charged under.
 export async function readChargeLedgerKey(
   tx: Transaction<unknown>,
   payload: ChargedPayload,
-): Promise<string> {
+): Promise<string | null> {
   if (payload.ledgerKey !== undefined) {
     return payload.ledgerKey;
   }
 
-  const tables = tx.$extendTables<BudgetsTables>();
-
-  const kept = await tables
+  const kept = await tx
+    .$extendTables<BudgetsTables>()
     .selectFrom('legacy_charge_kinds')
     .select('period_kind')
     .where('charge_id', '=', payload.chargeID)
     .executeTakeFirst();
 
-  if (kept !== undefined && isLedgerPeriodKind(kept.period_kind)) {
-    return buildBudgetLedgerKey(payload.budgetID, {
-      kind: kept.period_kind,
-      start: payload.periodStart,
-    });
+  const kind = kept?.period_kind;
+
+  if (kind !== 'day' && kind !== 'week' && kind !== 'month') {
+    return null;
   }
-
-  const row = await tables
-    .selectFrom('budgets_in_force')
-    .select('period')
-    .where('budget_id', '=', payload.budgetID)
-    .executeTakeFirst();
-
-  const kind = pickLedgerPeriodKind(row?.period, payload.budgetID, payload.periodStart);
 
   return buildBudgetLedgerKey(payload.budgetID, { kind, start: payload.periodStart });
 }

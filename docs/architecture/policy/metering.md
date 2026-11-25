@@ -66,12 +66,17 @@ A budget charge adds its amount to the row of its key, and a credit subtracts fr
 charge added to. The charge record names its `ledgerKey`, and the `budget_charges` projection keeps
 it, so a credit lands on the charge's row even when the budget's period has changed since. A charge
 recorded before the ledger names no key, so its key takes the period kind that the migration kept
-for it in `legacy_charge_kinds`. The migration takes the kind of the budget in force, or the kind
-that a built-in budget's ID ends with, only when the charge's period start is a start of that kind:
-a Monday for a week, the 1st for a month. Any other charge is a day's, so a budget that changed its
-period since the charge never moves it to a row that its own period start cannot belong to. A
-rebuild reads the kept kind, so a budget that changes its period afterwards never moves the charge
-to another key.
+for it in `legacy_charge_kinds`. The migration keeps a kind only when the old rows prove it:
+
+- The charge's record comes after the last change of its budget in force, which
+  `budgets_in_force.updated_sequence` names, so the charge took the period now in force.
+- The budget is a built-in one, `<tool>-day` or `<tool>-month`, that no seed record ever named, so
+  the charge took the period its ID ends with.
+- The charge's period start is neither a Monday nor the 1st, so only a day can start there.
+
+Any other charge keeps no kind, gets no key and counts in no row, and its credit changes no row: its
+budget may have changed its period since the charge. A rebuild reads the kept kind, so a budget that
+changes its period afterwards never moves the charge to another key.
 
 A task run's row, `task_run:<ID>`, and a worker run's row, `worker_run:<ID>`, sit under the period
 `none` and are set to the run's dollars in micros, rounded up, by the record that ends the run:
@@ -86,8 +91,11 @@ commits in the transaction that writes the `tool_result` record, so a fault betw
 call with its charge or with neither, and a result with its credit or with neither. Only the log
 writer writes, so two charges never both fit in the last of a budget.
 
-A migration replaces the `budget_ledger` table with `spend_ledger`: it copies each amount into a row
-with its key, and gives each earlier charge its key.
+A migration replaces the `budget_ledger` table with `spend_ledger`. It gives each earlier charge its
+key when it can, and sets each row to the total of the uncredited charges with that key, as a
+rebuild does. So a period under way starts at zero for each charge with no key. The start that runs
+the migration logs `spend.ledger_uncounted` once for each budget period of those charges, with the
+uncredited total in micros that no row counts.
 
 ## The display currency
 

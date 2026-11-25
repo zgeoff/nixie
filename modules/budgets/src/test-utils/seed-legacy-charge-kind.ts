@@ -2,11 +2,12 @@ import type { Writer } from '@heynixie/log';
 import { withWriteTransaction } from '@heynixie/log';
 import type { BudgetsTables } from '../types';
 
-// Keeps the period kind that the migration gave a charge from before the ledger.
+// Keeps the period kind that the migration gave a charge from before the ledger, or null for a
+// charge whose kind the old rows could not show.
 export async function seedLegacyChargeKind(
   writer: Writer,
   chargeID: string,
-  periodKind: 'day' | 'week' | 'month',
+  periodKind: 'day' | 'week' | 'month' | null,
 ): Promise<void> {
   await withWriteTransaction(writer, async (tx) => {
     await tx
