@@ -330,7 +330,7 @@ tasks.list({ runner: 'atc', state: 'waiting', limit: 20 });
   `coding.start` is on the tool list only then.
 - `coding.start` is a tool of its own because the Agent SDK's harness drops a tool whose input
   schema has a root `oneOf`, so a second variant of `task.start` never reaches the model.
-  `task.start` keeps a plain object root with the sandbox task's input only, and `coding.start`
+  `task.start` takes a plain object root with the sandbox task's input only, and `coding.start`
   takes the coding input only. Both create their task through the same path.
 - The `coding.start` tool runs inside the model's turn, unqueued. In one transaction, a start writes
   `task.created` with `runner: 'atc'`, then queues the spawn as a `RunnerAction` on the new task's

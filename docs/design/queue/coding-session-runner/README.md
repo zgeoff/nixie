@@ -121,9 +121,9 @@ This work changes these modules that every runner or connector uses:
   adapter, such as a built-in one that runs a session in an [imp](../../../glossary.md), gets its
   own key and its own start tool. The wake set, the tools and the `coding.wake` config are the same
   for every adapter, and only `coding.<key>` holds what the adapter needs.
-- **A coding task starts from its own tool, `coding.start`.** `task.start` keeps a plain object
-  input for sandbox tasks, because the Agent SDK's harness drops a tool whose input schema has a
-  root `oneOf`, and the model never sees that tool.
+- **A coding task starts from its own tool, `coding.start`.** `task.start` takes a plain object
+  input for sandbox tasks only. The Agent SDK's harness drops a tool whose input schema has a root
+  `oneOf`, so the model would never see a `task.start` that took both inputs.
 - **The spawn, each steer, each note and each `coding.stop` are actions on the action queue.** The
   spawn and each note declare `idempotency_key` reconciliation, so a crash never spawns a second
   session or sends a note twice. A steer declares `none`, because atc's typing call takes no key and

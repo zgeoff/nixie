@@ -142,11 +142,11 @@ in this order:
    earlier records never named one.
 4. Any other task has no runner. It keeps all 6 controls, and the server's fallback step runs it.
 
-`task.start` starts the default runner, the sandbox runner, and its input is a plain object. Every
-other runner that a model can start has a start tool of its own, such as `coding.start` for the
-[coding runner](./coding-tasks.md#starting-and-joining), with that runner's input. Each runner's
-start plans itself. A refusal comes back as the tool's error before the policy decision, so a
-refused start writes no proposal. A rule matches the sandbox start by the tool name
+`task.start` starts the sandbox runner, the default one, and takes a plain object as its input.
+Every other runner that a model can start has a start tool of its own, such as `coding.start` for
+the [coding runner](./coding-tasks.md#starting-and-joining), with that runner's input. Each start
+tool runs its own runner's plan. A refusal comes back as the tool's error before the policy
+decision, so a refused start writes no proposal. A rule matches the sandbox start by the tool name
 `task.start/sandbox`, and the other starts by their own tool names, as [rules](../policy/rules.md)
 describes.
 
