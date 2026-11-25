@@ -133,10 +133,10 @@ under a name, lay the screen out again, and restore the saved layout in one call
    bun verify db query "select region from device_regions order by region"
    ```
 
-   Expect: `data.replies` of 3. The snapshot shows "Dentist at 3" and a time, and no "Water the
-   pots" and no "Ripples", because the minute of `pond` passed before the save. The query lists
-   `clock` and `note`: a save stores no content for a blank region, so `pond` comes back blank with
-   no pointer.
+   Expect: `data.replies` of 3. The snapshot shows "Dentist at 3" and a time, and neither "Water the
+   pots" nor "Ripples", because the minute of `pond` passed before the save. The query lists `clock`
+   and `note`. A save stores no content for a blank region, so `pond` comes back blank with no
+   pointer.
 
 ## End state
 
