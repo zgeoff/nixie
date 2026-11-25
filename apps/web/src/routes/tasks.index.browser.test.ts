@@ -6,6 +6,7 @@ import { setupSignedInBrowser } from '../test-utils/setup-signed-in-browser';
 import { startBuiltWeb } from '../test-utils/start-built-web';
 import { startFrontProxy } from '../test-utils/start-front-proxy';
 import { startStubAPI } from '../test-utils/start-stub-api';
+import { waitForPage } from '../test-utils/wait-for-page';
 
 async function setupTest() {
   const api = startStubAPI();
@@ -85,21 +86,25 @@ test('it pauses a task from the dashboard, then opens it and sends it a message'
     { timeout: 10_000 },
   );
 
+  // The page moves the paused task from Working to Held only once its list reads again, and a
+  // click that lands while the row moves misses the link.
+  await waitForPage(
+    ctx.view,
+    `document.querySelector('section[aria-label="Held"] a[href="/tasks/k3vq8m2xpa"]') !== null`,
+  );
+
   await ctx.view.click('a[href="/tasks/k3vq8m2xpa"]');
 
-  await waitFor(
-    async () => {
-      const hasComposer: unknown = await ctx.view.evaluate(
-        "document.querySelector('textarea') !== null",
-      );
-
-      expect(hasComposer).toBeTrue();
-    },
-    { timeout: 10_000 },
-  );
+  await waitForPage(ctx.view, "document.querySelector('textarea:enabled') !== null");
 
   await ctx.view.click('textarea');
   await ctx.view.cdp('Input.insertText', { text: 'Put the beans in the north bed.' });
+
+  await waitForPage(
+    ctx.view,
+    "document.querySelector('textarea').value === 'Put the beans in the north bed.'",
+  );
+
   await ctx.view.click('button[type=submit]');
 
   await waitFor(
