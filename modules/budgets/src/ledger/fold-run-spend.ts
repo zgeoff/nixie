@@ -5,8 +5,8 @@ import type { BudgetsTables } from '../types';
 import { splitLedgerKey } from './split-ledger-key';
 import { toMicrosUp } from './to-micros-up';
 
-export const taskRunEndedKind = 'task.run_ended';
-export const workerRunEndedKind = 'worker.run_ended';
+const taskRunEndedKind = 'task.run_ended';
+const workerRunEndedKind = 'worker.run_ended';
 
 // Only the fields the ledger reads. The kinds belong to the tasks and sessions modules, which depend
 // on this one, so the ledger parses their payloads for itself.

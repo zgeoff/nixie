@@ -68,6 +68,12 @@ for it in `legacy_charge_kinds`: the kind of the budget in force then, or the ki
 for a built-in budget that no row holds. A rebuild reads the kept kind, so a budget that changes its
 period afterwards never moves the charge to another key.
 
+A task run's row, `task_run:<ID>`, and a worker run's row, `worker_run:<ID>`, sit under the period
+`none` and are set to the run's dollars in micros, rounded up, by the record that ends the run:
+`task.run_ended` for a task run, and `worker.run_ended` for a worker run, whose row in tokens is set
+too. A run ends once, so its record sets the row and never adds to it, and a rebuild reproduces it.
+The ledger reads only the run's ID and what it used from those records.
+
 A charge reads the budget's row, compares it with the limit, and writes its record in one
 transaction, so the ledger row and the record that causes it commit together or not at all. Only the
 log writer writes, so two charges never both fit in the last of a budget.
@@ -75,13 +81,22 @@ log writer writes, so two charges never both fit in the last of a budget.
 A migration replaces the `budget_ledger` table with `spend_ledger`: it copies each amount into a row
 with its key, and gives each earlier charge its key.
 
+## The display currency
+
+With `display.currency` in the server config, such as `AUD`, the server reads the rate of one US
+dollar in that currency once a day and keeps the last rate it read. `display.rates_url` sets the
+rate source's base URL, which is the Frankfurter API by default. A read that fails or gives no rate
+keeps the last rate, and logs `spend.rate_read_failed`. Until a read gives a rate, `spend.counts`
+names no display, and the client shows US dollars alone. Counts and limits stay in US dollars, and
+the model never reads a rate or a dollar figure.
+
 ## What counts where
 
-| Spend        | The gateway's count                | The ledger                                         |
-| ------------ | ---------------------------------- | -------------------------------------------------- |
-| a model call | the day and the month of its route | no                                                 |
-| a search     | no                                 | `budget:search-day`, `budget:search-month`         |
-| a picture    | no                                 | `budget:image.draw-day`, `budget:image.draw-month` |
+| Spend        | The gateway's count                | The ledger                                                                         |
+| ------------ | ---------------------------------- | ---------------------------------------------------------------------------------- |
+| a model call | the day and the month of its route | a task run's calls: `task_run`; a worker run's: `worker_run`; a conversation's: no |
+| a search     | no                                 | `budget:search-day`, `budget:search-month`                                         |
+| a picture    | no                                 | `budget:image.draw-day`, `budget:image.draw-month`                                 |
 
 The gateway limits each route on its own, and no limit spans routes. The spending stop reads the
 gateway's counts of the routes and the turn count: a route at its limit holds only its own work, and

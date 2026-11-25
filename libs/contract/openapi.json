@@ -24762,6 +24762,180 @@
         }
       }
     },
+    "/spend/counts": {
+      "post": {
+        "operationId": "spend.counts",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "routes": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "route": {
+                            "type": "string"
+                          },
+                          "day": {
+                            "type": "object",
+                            "properties": {
+                              "dollars": {
+                                "type": "number"
+                              },
+                              "limit": {
+                                "anyOf": [
+                                  {
+                                    "type": "number"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "tripped": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "dollars",
+                              "limit",
+                              "tripped"
+                            ]
+                          },
+                          "month": {
+                            "type": "object",
+                            "properties": {
+                              "dollars": {
+                                "type": "number"
+                              },
+                              "limit": {
+                                "anyOf": [
+                                  {
+                                    "type": "number"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "tripped": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "dollars",
+                              "limit",
+                              "tripped"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "route",
+                          "day",
+                          "month"
+                        ]
+                      }
+                    },
+                    "display": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "currency": {
+                              "type": "string"
+                            },
+                            "rate": {
+                              "type": "number",
+                              "exclusiveMinimum": 0
+                            }
+                          },
+                          "required": [
+                            "currency",
+                            "rate"
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "routes",
+                    "display"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "401",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": true
+                        },
+                        "code": {
+                          "const": "UNAUTHORIZED"
+                        },
+                        "status": {
+                          "const": 401
+                        },
+                        "message": {
+                          "type": "string",
+                          "default": "The device session is missing, lapsed or revoked"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": false
+                        },
+                        "code": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "number"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/spend/raise": {
       "post": {
         "operationId": "spend.raise",

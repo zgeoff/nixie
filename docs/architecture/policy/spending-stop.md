@@ -152,6 +152,11 @@ The host command `nixie spend raise --turns <n>` raises the day's turns past the
 writes the host as `by`. A route's dollars pass its cap only through the gateway's own `raise`
 command, and the month's limits move only in the gateway's config.
 
+`spend.counts` gives each route's day and month count and limit in US dollars, and the display
+currency with the rate of one US dollar in it. It reads the gateway's status, so a gateway that does
+not answer gives no route. The [metering doc](metering.md#the-display-currency) says where the rate
+comes from.
+
 The web client shows the notice under the pause banner. A turn trip of the day offers "Raise today's
 limit" with today's limit plus half, up to the cap, and the amount stays editable until the one
 confirm. Each stopped route shows a line that names the route and says its work waits. A route that
@@ -159,3 +164,9 @@ tripped its day limit, below its cap, also offers "Raise the day limit of" the r
 limit plus half in dollars, up to the route's cap, and one confirm sends `spend.raise` with the
 route and the dollars. A month trip, `unreachable` and `lost` show no button, and the pause banner
 offers no resume for the cause `spending`.
+
+The spending page, at `/spend`, lists each route with its day and month count against its limit.
+Each figure is in US dollars with the approximate amount in the display currency beside it, such as
+"$12.40 (about A$19)". A route with no limit set says that it refuses requests, and a route at a
+limit says so. The page reads `spend.counts` on a short interval, because the gateway counts each
+reply as it arrives and no live topic says so.
