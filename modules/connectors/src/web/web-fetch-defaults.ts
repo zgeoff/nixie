@@ -23,6 +23,9 @@ export interface WebFetchConfig {
   // whether a typed URL's exemption from the secret scan covers its redirects too
   readonly secretTypedURLCovers: 'named_url' | 'redirects';
 
+  // the address of the npm registry that device pages' packages come from, with no trailing slash
+  readonly packageRegistry: string;
+
   // the entries of the secrets file whose values the scan matches exactly
   readonly secretOwnValues: readonly SecretsEntryName[];
   readonly secretOwnValueMinChars: number;
@@ -43,6 +46,7 @@ export const webFetchDefaults: WebFetchConfig = {
   cacheMs: 300_000,
   backoff: { backoffMs: 30_000, backoffCapMs: 300_000, backoffWaitMs: 5000 },
   secretTypedURLCovers: 'redirects',
+  packageRegistry: 'https://registry.npmjs.org',
   secretOwnValues: [
     'deployment_key',
     'impd_token',

@@ -20,6 +20,7 @@ export const pageEventNameLimit = 64;
 export const devicePagePaths = {
   frames: '/rpc/device/frames/',
   images: '/rpc/device/images/',
+  packages: '/rpc/device/packages/',
 } as const;
 
 export const pageEventDataLimitBytes = 2048;
@@ -75,6 +76,8 @@ export const deviceEventSchema = z.discriminatedUnion('kind', [
 
   // A message that the assistant sent into a page region, which the device hands to the page. The
   // server sends each region's retained message again when a stream opens.
+  // A declared fetch of a page refreshed, so the page's nixie.onData fires for its URL
+  z.object({ kind: z.literal('data'), region: z.string(), shown: z.string(), url: z.string() }),
   z.object({
     kind: z.literal('message'),
     region: z.string(),
@@ -139,6 +142,32 @@ export const devicesContract = {
       }),
     )
     .output(z.object({})),
+
+  // One of the fetches that a page declared, as the server last fetched it. NOT_DECLARED names a
+  // URL the page did not declare, REFUSED a fetch the rules or the fetcher refused, and NOT_READY
+  // a fetch that has returned nothing yet.
+  pageData: ownDevice
+    .errors({
+      STALE: { message: 'The region no longer shows that content', status: 409 },
+      NOT_DECLARED: { message: 'The page did not declare that URL', status: 404 },
+      REFUSED: { message: 'The fetch of that URL was refused', status: 403 },
+      NOT_READY: { message: 'The fetch of that URL has returned nothing yet', status: 409 },
+    })
+    .input(
+      z.object({
+        region: z.string().min(1).max(32),
+        shown: z.string().min(1).max(100),
+        url: z.string().min(1).max(2000),
+      }),
+    )
+    .output(
+      z.object({
+        status: z.int(),
+        type: z.string(),
+        body: z.string(),
+        fetchedAt: z.iso.datetime(),
+      }),
+    ),
 
   setCapability: ownDevice
     .input(z.object({ capability: z.enum(['screen']), isOn: z.boolean() }))

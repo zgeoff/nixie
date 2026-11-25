@@ -380,6 +380,26 @@ test('it asks at stage 5 for a destination with no permission, past an ask and a
   });
 });
 
+test('it asks at stage 5 for a read of a host that no rule allows, as a page with a declared fetch is sent', async () => {
+  const ctx = buildTestDecisionPoint({
+    declaration: buildTestDeclaration({ effects: ['read'], destinations: [] }),
+  });
+
+  const decided = await ctx.decide(
+    buildPolicyCall({
+      destinations: [{ value: 'tides.example', replyTarget: false }],
+      effects: ['read'],
+    }),
+  );
+
+  expect(decided.decision).toMatchObject({
+    outcome: 'ask',
+    stage: 5,
+    cause: 'outside_steering',
+    destinations: [{ value: 'tides.example', permission: null }],
+  });
+});
+
 test('it passes stage 5 for a reply target and lets an ask rule decide at stage 6', async () => {
   const ctx = buildTestDecisionPoint({
     rules: [

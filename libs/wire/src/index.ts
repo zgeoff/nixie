@@ -1,4 +1,4 @@
-export type { PageFrame, PageFrameInput } from './page/build-page-frame';
+export type { PageFetchReply, PageFrame, PageFrameInput } from './page/build-page-frame';
 export { buildPageFrame } from './page/build-page-frame';
 export type { CheckReply, CheckRequest } from './fetch/check-request-schema';
 export { checkReplySchema, checkRequestSchema } from './fetch/check-request-schema';
