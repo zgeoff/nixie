@@ -157,8 +157,9 @@ For an offline device, `devices.list` gives the time its last stream closed, unl
 restarted since. `devices.resize({ width, height })` gives every open stream of the caller's device
 a new size, and `devices.list` reads the new size at once. One pixels schema bounds the size in both
 calls. The stream sends `opened` first, then what the screen shows now. A later event follows a
-commit that touches the device, and the stream sends an event only when the state changes. The event
-of a show carries the `fit` of an image, `whole` or `fill`.
+commit that touches the device, or the end of a show or a region's minutes, and the stream sends an
+event only when the state changes. The event of a show carries the `fit` of an image, `whole` or
+`fill`.
 
 A region's `layout` event carries the short ID of the region's `device.region_shown` record as
 `shown`, which the device names in the errors it reports. The layout travels in its own `layout`
@@ -213,8 +214,8 @@ Chrome opens a preconnect's connection under `connect-src 'none'`, and blocks on
 frame, object or embed element gives the page a second window, where the bridge's guards don't run.
 nixie closes them this way:
 
-- `device.region` refuses a page that holds a link, frame, object or embed element, because the page
-  has no network and its styles go in a style element.
+- The input check of `device.region` fails a page that holds a link, frame, object or embed element,
+  because the page has no network and its styles go in a style element.
 - The bridge removes `RTCPeerConnection` and `XSLTProcessor`, which builds elements by name. It
   makes `createElement`, `createElementNS` and `createDocument` build a span for each of those
   elements, with a namespace prefix or without.
