@@ -4,8 +4,8 @@ import { buildATCAdapter } from './build-atc-adapter';
 import { buildMemoryCursorStore, startFakeATCGateway } from './test-utils';
 import type { FakeATCGatewayOptions } from './test-utils';
 
-async function setupTest(options: FakeATCGatewayOptions & { adapterToken?: string } = {}) {
-  const gateway = await startFakeATCGateway(options);
+function setupTest(options: FakeATCGatewayOptions & { adapterToken?: string } = {}) {
+  const gateway = startFakeATCGateway(options);
 
   onTestFinished(() => gateway.stop());
 
@@ -54,7 +54,7 @@ async function setupTest(options: FakeATCGatewayOptions & { adapterToken?: strin
 }
 
 test('it spawns a session with the brief, the target and the key, after it reads the trail cursor', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
 
   const brief = {
     name: 'Login fix',
@@ -93,7 +93,7 @@ test('it spawns a session with the brief, the target and the key, after it reads
 });
 
 test('it gives the first answer to a spawn that a key repeats, and starts one session', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
 
   const brief = {
     name: 'Login fix',
@@ -111,7 +111,7 @@ test('it gives the first answer to a spawn that a key repeats, and starts one se
 });
 
 test('it keeps the cursor of a start whose spawn answer was lost, so the replay catches up from it', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
 
   const brief = {
     name: 'Login fix',
@@ -142,7 +142,7 @@ test('it keeps the cursor of a start whose spawn answer was lost, so the replay 
 });
 
 test('it replays a start on an adapter built again from the cursor of the first, so the catch-up skips no note', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
 
   const brief = {
     name: 'Login fix',
@@ -183,7 +183,7 @@ test('it replays a start on an adapter built again from the cursor of the first,
 });
 
 test('it reads a new cursor for the next key after a refused spawn', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
 
   const brief = {
     name: 'Login fix',
@@ -207,7 +207,7 @@ test('it reads a new cursor for the next key after a refused spawn', async () =>
 });
 
 test('it gives the unknown outcome to a start whose cursor read failed, so the next attempt keeps the key', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
 
   const brief = {
     name: 'Login fix',
@@ -224,7 +224,7 @@ test('it gives the unknown outcome to a start whose cursor read failed, so the n
 });
 
 test('it lists only the sessions of a configured target', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
 
   ctx.gateway.addSession({ id: 'cloud.3f9a1c2e.a', name: 'Billing', state: 'needs_you' });
   ctx.gateway.addSession({ id: 'laptop.77aa00bb.b', daemon: 'laptop', targetID: 'local' });
@@ -246,7 +246,7 @@ test('it lists only the sessions of a configured target', async () => {
 });
 
 test('it joins a running session with the cursor of the trail and sends the session nothing', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
 
   ctx.gateway.addSession({ id: 'cloud.3f9a1c2e.a' });
 
@@ -264,7 +264,7 @@ test('it joins a running session with the cursor of the trail and sends the sess
 });
 
 test('it refuses to join a session on a target that the config no longer lists', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
 
   ctx.gateway.addSession({ id: 'laptop.77aa00bb.b', daemon: 'laptop', targetID: 'local' });
 
@@ -274,7 +274,8 @@ test('it refuses to join a session on a target that the config no longer lists',
 });
 
 test('it refuses to join a session that atc does not know', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
   const reply = await ctx.adapter.join({ id: 'cloud.3f9a1c2e.none' });
 
   expect(reply).toStrictEqual({
@@ -285,7 +286,7 @@ test('it refuses to join a session that atc does not know', async () => {
 });
 
 test('it reads the state, the question, the last reply and the prompt when asked', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
 
   ctx.gateway.addSession({
     id: 'cloud.3f9a1c2e.a',
@@ -310,7 +311,7 @@ test('it reads the state, the question, the last reply and the prompt when asked
 });
 
 test('it builds the tail from the transcript pages, grouped into turns, and keeps the newest', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
 
   ctx.gateway.addSession({
     id: 'cloud.3f9a1c2e.a',
@@ -332,7 +333,7 @@ test('it builds the tail from the transcript pages, grouped into turns, and keep
 });
 
 test('it gives an unsupported tail for an agent with no transcript reader', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
 
   ctx.gateway.addSession({ id: 'cloud.3f9a1c2e.a', hasTranscript: false });
 
@@ -342,7 +343,7 @@ test('it gives an unsupported tail for an agent with no transcript reader', asyn
 });
 
 test('it types a steer into a session that runs', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
 
   ctx.gateway.addSession({ id: 'cloud.3f9a1c2e.a' });
 
@@ -357,7 +358,7 @@ test('it types a steer into a session that runs', async () => {
 });
 
 test('it refuses a steer to a session that waits on a menu, and types nothing', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
 
   ctx.gateway.addSession({ id: 'cloud.3f9a1c2e.a', state: 'needs_you' });
 
@@ -368,7 +369,7 @@ test('it refuses a steer to a session that waits on a menu, and types nothing', 
 });
 
 test('it sends a note under its key and gives the message ID back', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
 
   ctx.gateway.addSession({ id: 'cloud.3f9a1c2e.a' });
 
@@ -378,7 +379,7 @@ test('it sends a note under its key and gives the message ID back', async () => 
 });
 
 test('it stops a session', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
 
   ctx.gateway.addSession({ id: 'cloud.3f9a1c2e.a' });
 
@@ -407,8 +408,7 @@ test.each([
   },
 ] as const)('it refuses $label with canClear $expected.canClear', async (row) => {
   const clock = { now: 1_000_000 };
-
-  const ctx = await setupTest({ now: () => clock.now });
+  const ctx = setupTest({ now: () => clock.now });
 
   ctx.gateway.addSession({ id: 'cloud.3f9a1c2e.a', createdAt: clock.now - row.ageMs });
   ctx.gateway.failNext('atc_message_send', { kind: 'code', code: row.code });
@@ -419,7 +419,7 @@ test.each([
 });
 
 test('it gives an unknown outcome to a keyed call that atc answers with daemon_unavailable', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
 
   const brief = {
     name: 'Login fix',
@@ -440,7 +440,7 @@ test('it gives an unknown outcome to a keyed call that atc answers with daemon_u
 });
 
 test('it gives a refusal that may clear to a call with no key that atc answers with daemon_unavailable', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
 
   ctx.gateway.failNext('atc_session_stop', { kind: 'code', code: 'daemon_unavailable' });
 
@@ -454,7 +454,7 @@ test('it gives a refusal that may clear to a call with no key that atc answers w
 });
 
 test('it gives an unknown outcome to a call that the gateway lost after the request left', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
 
   ctx.gateway.addSession({ id: 'cloud.3f9a1c2e.a' });
   ctx.gateway.failNext('atc_session_stop', { kind: 'http', status: 500 });
@@ -468,7 +468,8 @@ test('it gives an unknown outcome to a call that the gateway lost after the requ
 });
 
 test('it gives a refusal that may clear to a token that the gateway rejects', async () => {
-  const ctx = await setupTest({ adapterToken: 'wrong' });
+  const ctx = setupTest({ adapterToken: 'wrong' });
+
   const reply = await ctx.adapter.list();
 
   expect(reply).toStrictEqual({
@@ -479,7 +480,8 @@ test('it gives a refusal that may clear to a token that the gateway rejects', as
 });
 
 test('it sends nothing past the initialize to a gateway on a version the table lacks', async () => {
-  const ctx = await setupTest({ version: 'atc-gateway/8.0.0' });
+  const ctx = setupTest({ version: 'atc-gateway/8.0.0' });
+
   const reply = await ctx.adapter.list();
 
   expect(reply).toStrictEqual({
@@ -492,7 +494,7 @@ test('it sends nothing past the initialize to a gateway on a version the table l
 });
 
 test('it reads only the cursor at its first events read, and keeps no event', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
 
   ctx.gateway.addSession({ id: 'cloud.3f9a1c2e.a' });
 
@@ -511,7 +513,7 @@ test('it reads only the cursor at its first events read, and keeps no event', as
 });
 
 test('it builds answers and notes from the trail, with the key of the daemon cursor, and a state event for the session', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
 
   ctx.gateway.addSession({ id: 'cloud.3f9a1c2e.a', state: 'done' });
 
@@ -575,7 +577,7 @@ test.each([
   { label: 'an incomplete answer', fields: { complete: false } },
   { label: 'an answer whose text failed to load', fields: { textError: 'timeout' } },
 ])('it keeps the preview of $label and ends it with a line that says atc cut it', async (row) => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
 
   ctx.gateway.addSession({ id: 'cloud.3f9a1c2e.a' });
 
@@ -597,7 +599,7 @@ test.each([
 });
 
 test('it drops a trail event of a kind it does not know, and a note with a label it does not know', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
 
   ctx.gateway.addSession({ id: 'cloud.3f9a1c2e.a', state: 'exited' });
 
@@ -612,7 +614,7 @@ test('it drops a trail event of a kind it does not know, and a note with a label
 });
 
 test('it yields a state event only when a session state changed, and reads a session that went missing as gone', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
 
   ctx.gateway.addSession({ id: 'cloud.3f9a1c2e.a' });
 
@@ -643,7 +645,7 @@ test('it yields a state event only when a session state changed, and reads a ses
 });
 
 test('it reads the next page at once while the gateway says more events wait, and yields only a page with events or the page that caught up', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
 
   for (let index = 0; index < 205; index += 1) {
     ctx.gateway.emit({ session: '', kind: 'other', at: 1, detail: null });
@@ -655,7 +657,7 @@ test('it reads the next page at once while the gateway says more events wait, an
 });
 
 test('it yields a note on a later page when the first page holds only events it drops', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
 
   for (let index = 0; index < 205; index += 1) {
     ctx.gateway.emit({ session: '', kind: 'other', at: 1, detail: null });
@@ -676,7 +678,7 @@ test('it yields a note on a later page when the first page holds only events it 
 });
 
 test('it reads the state of a bound session that the trail never names, from the first read after a restart', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
 
   ctx.gateway.addSession({ id: 'cloud.3f9a1c2e.a', state: 'done' });
 
@@ -695,7 +697,7 @@ test('it reads the state of a bound session that the trail never names, from the
 });
 
 test('it reads no state of a session that no task binds', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
 
   ctx.gateway.addSession({ id: 'cloud.3f9a1c2e.a' });
 
@@ -714,7 +716,7 @@ test('it reads no state of a session that no task binds', async () => {
 });
 
 test('it waits for the state read interval after a state read that failed, and does not read again at once', async () => {
-  const ctx = await setupTest({ now: () => 1000 });
+  const ctx = setupTest({ now: () => 1000 });
 
   ctx.gateway.addSession({ id: 'cloud.3f9a1c2e.a' });
   ctx.gateway.failNext('atc_session_get', { kind: 'code', code: 'daemon_unavailable' });
@@ -726,10 +728,10 @@ test('it waits for the state read interval after a state read that failed, and d
   expect(reads.map((call) => call.args['waitMs'])).toStrictEqual([0, 20]);
 });
 
-test('it fails an events read when the gateway answers with an error', async () => {
-  const ctx = await setupTest();
+test('it fails an events read when the gateway answers with an error', () => {
+  const ctx = setupTest();
 
   ctx.gateway.failNext('atc_events_read', { kind: 'code', code: 'daemon_unavailable' });
 
-  await expect(ctx.readPages('g0', 1)).rejects.toThrow(/daemon_unavailable/u);
+  expect(ctx.readPages('g0', 1)).rejects.toThrow(/daemon_unavailable/u);
 });
