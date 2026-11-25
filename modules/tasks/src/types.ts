@@ -12,11 +12,12 @@ import type {
 } from '@heynixie/log';
 import type { ResumeState, TaskState } from '@heynixie/task-control';
 import type { HarnessCapability } from '@heynixie/wire';
-import type { Kysely } from 'kysely';
+import type { Kysely, Transaction } from 'kysely';
 import type { z } from 'zod';
 import type { ReportShape } from './report/types';
 import type { RunLimits, RunSettings, TaskRun } from './run/types';
-import type { TaskRunnerRegistry } from './runner/types';
+import type { RunnerAction, TaskRunnerRegistry } from './runner/types';
+import type { TaskMessageRequest } from './task/message/plan-task-message';
 
 export interface TasksContext {
   readonly log: Log;
@@ -41,6 +42,24 @@ export interface TasksContext {
   // the next fire of a definition as an ISO instant, or null when no slot is left. The triggers
   // module builds it.
   readonly readDefinitionNextFire: ReadDefinitionNextFire;
+
+  // queues runner actions in the caller's write transaction. The actions module builds it, because
+  // tasks depends on no queue; a context without it can queue none.
+  readonly queueRunnerActions?: QueueRunnerActions;
+}
+
+// Writes one action.queued record per action on the task's thread, and returns each action's ID in
+// order; an action that repeats an earlier one returns that one's ID. `stepKey` is the step that
+// caused them: the stepping task's, or the start's calling step, or a label for a stop.
+export type QueueRunnerActions = (
+  tx: Transaction<unknown>,
+  request: QueueRunnerActionsRequest,
+) => Promise<readonly string[]>;
+
+export interface QueueRunnerActionsRequest {
+  readonly taskID: string;
+  readonly stepKey: string;
+  readonly actions: readonly RunnerAction[];
 }
 
 export interface DefinitionVersion {
@@ -255,11 +274,26 @@ export interface StepResult {
     readonly report?: {
       readonly summary: string;
       readonly fields?: JSONObject;
+
+      // true: the summary is outside content, and the report message is marked so
+      readonly outside?: true;
     };
   };
   readonly records: readonly RecordInput[];
+
+  // true with `next: 'done'`: the task is over, so a report of this step leaves it done. Without
+  // it, a started task that reported waits for its starter's next message.
+  readonly isFinal?: true;
   readonly acknowledged: readonly number[];
   readonly timers?: readonly { readonly dueAt: number }[];
+
+  // queued in the commit's transaction, after its lease check
+  readonly actions?: readonly RunnerAction[];
+
+  // written in the commit's transaction through the task message write, with the hop-limit hold,
+  // the waits and the wake that every task message gets; `from` is the stepping task. `senderHop`
+  // is the hop the message counts from, and defaults to the step's own.
+  readonly messages?: readonly StepMessage[];
 
   readonly sessionBoundary?: string | null;
 
@@ -270,7 +304,13 @@ export interface StepResult {
   // set by a step that the gate held for the spending stop before its turn: the step commits
   // nothing and frees its lease
   readonly isHeld?: true;
+
+  // runs in the commit's transaction after its lease check: a result it returns commits in place of
+  // this one, and null keeps this one. Its result sends messages only when this one does.
+  readonly resolveInCommit?: (tx: Transaction<unknown>) => Promise<StepResult | null>;
 }
+
+export type StepMessage = Omit<TaskMessageRequest, 'from'> & { readonly senderHop?: number };
 
 export interface StepInput {
   // the open task run, or null for a task with none, such as the conversation

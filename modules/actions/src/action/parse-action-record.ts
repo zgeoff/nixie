@@ -22,6 +22,7 @@ export type ActionRecord =
       readonly deadlineAt: number | null;
       readonly isApproved: boolean;
       readonly runsInStep: boolean;
+      readonly isRunner: boolean;
     }
   | { readonly kind: 'action.attempt_started'; readonly actionID: string; readonly attempt: number }
   | {
@@ -86,6 +87,7 @@ const actionRecordParsers: ReadonlyMap<string, Parser> = new Map<string, Parser>
       deadlineAt: toOptionalNumber(getField('deadlineAt')),
       isApproved: getField('isApproved') === true,
       runsInStep: getField('runsInStep') === true,
+      isRunner: getField('isRunner') === true,
     }),
   ],
   [
@@ -166,6 +168,7 @@ const optionalFields: ReadonlySet<string> = new Set([
   'deadlineAt',
   'isApproved',
   'runsInStep',
+  'isRunner',
   'ownerReason',
   'nextAttemptAt',
 ]);

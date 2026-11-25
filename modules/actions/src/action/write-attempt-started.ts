@@ -9,6 +9,7 @@ import {
 } from '@heynixie/tasks';
 import type { ActionRow, ActionsTables, Admission, AdmitTool } from '../types';
 import { buildCancelledCheck } from './build-cancelled-check';
+import { buildGateWork } from './build-gate-work';
 import { buildHeldCheck } from './build-held-check';
 import type { Attempt } from './leased-records';
 
@@ -121,7 +122,12 @@ function readAndWriteStart(
 
     const gate = await readTaskGate(tx, attempt.action.task_id, 'action');
 
-    const isGateHeld = isGateBarring('action', gate, { isStarted: action.attempt_count > 0 });
+    const isGateHeld = isGateBarring(
+      'action',
+      gate,
+      buildGateWork({ attempt_count: action.attempt_count, step_key: attempt.action.step_key }),
+    );
+
     const isBarred = action.is_barred === 1 || action.is_barred === true;
     const isToolHeld = probeToolHeld(options, action.tool);
 

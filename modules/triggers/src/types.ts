@@ -1,7 +1,7 @@
 import type { Clock } from '@heynixie/clock';
 import type { Schedule, Trigger } from '@heynixie/contract';
 import type { CheckedTables } from '@heynixie/db';
-import type { Definitions, JSONValue, Log } from '@heynixie/log';
+import type { Definitions, JSONObject, JSONValue, Log } from '@heynixie/log';
 import type { Logger } from '@heynixie/logger';
 import type { readDefinitionTaskInTransaction } from '@heynixie/tasks';
 import type { Transaction } from 'kysely';
@@ -20,7 +20,7 @@ export interface ArmedDefinition {
   readonly after?: number;
 }
 
-export interface TriggerEvent {
+export interface ScheduleTriggerEvent {
   readonly definitionID: string;
 
   // the version the source computed the event from
@@ -47,6 +47,34 @@ export interface TriggerEvent {
   readonly payload: null;
 }
 
+// An event of a source that names its task, such as a coding session's event. The core writes it as
+// a `trigger.task_input` record on the task's thread, and reads no definition for it.
+export interface TaskInputEvent {
+  readonly kind: 'task_input';
+  readonly taskID: string;
+
+  // unique within the source; the core drops an event whose key it holds
+  readonly dedupeKey: string;
+
+  // ISO instant
+  readonly occurredAt: string;
+
+  // the hop of the exchange the event belongs to
+  readonly hop: number;
+
+  // true: the record wakes the task
+  readonly wake: boolean;
+
+  // the facts of the event that are no text of a person's, such as its kind and a state, which the
+  // source's own projection reads; the record keeps them in its payload
+  readonly facts: Readonly<Record<string, string | number | boolean | null>>;
+
+  // the event itself, kept in the record's erasable fields
+  readonly payload: JSONObject;
+}
+
+export type TriggerEvent = ScheduleTriggerEvent | TaskInputEvent;
+
 export interface TriggerBatch {
   readonly cursor: JSONValue;
   readonly events: readonly TriggerEvent[];
@@ -69,7 +97,7 @@ export interface TriggerContext {
 export interface TriggerSource {
   // stable across restarts, such as 'schedule'
   readonly id: string;
-  readonly kind: 'schedule';
+  readonly kind: 'schedule' | 'stream';
 
   // resolves once the source runs
   readonly start: (context: TriggerContext) => Promise<void>;

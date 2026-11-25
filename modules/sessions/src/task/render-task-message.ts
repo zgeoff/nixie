@@ -30,6 +30,7 @@ export function renderTaskMessage(
       replyTo: message.replyTo,
       sent: formatMessageTime(record.recordedAt, null, times),
       onBehalfOf: message.onBehalfOf,
+      outside: message.outside === true,
       body: typeof body === 'string' ? body : null,
     },
     mint,

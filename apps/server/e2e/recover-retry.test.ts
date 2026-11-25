@@ -117,9 +117,13 @@ test('it resumes the retry schedule across a restart and fails the action on the
     { actionID, tool: 'test.send', status: 'failed', attempt: 5, reason: 'retries_exhausted' },
   ]);
 
-  expect(ctx.nixie.provider.calls.map((call) => call.idempotencyKey)).toStrictEqual(
-    Array.from({ length: 5 }, () => actionID),
-  );
+  expect(ctx.nixie.provider.calls.map((call) => call.idempotencyKey)).toStrictEqual([
+    actionID,
+    `${actionID}.1`,
+    `${actionID}.2`,
+    `${actionID}.3`,
+    `${actionID}.4`,
+  ]);
 
   expect(JSON.stringify(lastRequest?.body?.messages)).toInclude('retries_exhausted');
 

@@ -45,7 +45,7 @@ interface CodingAdapter {
     text: string,
     idempotencyKey: string,
   ): Promise<AdapterReply<{ messageRef: string }>>;
-  stop(session: SessionRef): Promise<AdapterReply<{ stopped: boolean }>>; // started or joined
+  stop(session: SessionRef): Promise<AdapterReply<{ stopped: boolean }>>; // started sessions only
   events(
     cursor: string | null,
     signal: AbortSignal,
@@ -158,8 +158,8 @@ declare function buildCodingSource(adapter: CodingAdapter, context: CodingContex
 
 For each `TaskInputEvent`, the core's `deliverTriggerBatch` writes one `trigger.task_input` record
 on the task's thread, in the batch's transaction, with its dedupe key in `trigger_keys`. It reads no
-definition for such an event, and drops one whose task is missing, done, failed or closed. The
-record is an inbox record when `wake` is true. `buildStepWake` reads the `hop` of a
+definition for such an event, and drops one whose task is missing, stopped, done, failed or closed.
+The record is an inbox record when `wake` is true. `buildStepWake` reads the `hop` of a
 `trigger.task_input`, and gives hop 0 to every other waking record that is not a task message.
 
 - The tasks module owns the codec of `trigger.task_input`, because `buildStepWake` reads it and the
@@ -343,8 +343,8 @@ service tokens and every tool this adapter calls.
   set holds the event's state, for a `state` event, or its label, for a `note`. Every other event
   gets `wake: false`, and its record wakes no step: only the coding module's fold of it updates
   `coding_sessions`.
-- The source drops an event of a task that is done, failed or closed, and of a session whose row has
-  `unbound_at` set, and still moves its cursor.
+- The source drops an event of a task that is stopped, done, failed or closed, and of a session
+  whose row has `unbound_at` set, and still moves its cursor.
 - After a failed read, the source waits from 1 s, doubling to 5 min, and reports itself unhealthy
   after 3 failures in a row.
 

@@ -16,7 +16,7 @@ import {
   writeStepCommit,
   writeTaskControl,
 } from '@heynixie/tasks';
-import { seedDefinitionTask } from '@heynixie/tasks/test-utils';
+import { buildTaskSeeder, readTestTasks, seedDefinitionTask } from '@heynixie/tasks/test-utils';
 import {
   buildTestArmedDefinition,
   buildTestTriggerEvent,
@@ -24,6 +24,7 @@ import {
   seedArmedDefinitions,
   startTestTriggers,
 } from '../test-utils';
+import type { TaskInputEvent } from '../types';
 import { deliverTriggerBatch } from './deliver-trigger-batch';
 
 async function setupTest() {
@@ -68,6 +69,26 @@ async function setupTest() {
         thread: entry.record.thread,
         payload: entry.record.payload,
       }));
+    },
+    taskSeed: buildTaskSeeder({ context: triggers.context }),
+    deliverTaskInputs: (events: readonly TaskInputEvent[]) =>
+      deliverTriggerBatch(triggers.core, 'coding', { cursor: null, events }),
+    readTaskInputs: async () => {
+      const records = await readRecords(triggers.context.log, {
+        afterSequence: 0,
+        kinds: ['trigger.task_input'],
+      });
+
+      return records.map((entry) => ({
+        thread: entry.record.thread,
+        payload: entry.record.payload,
+        erasable: entry.record.erasable,
+      }));
+    },
+    readTaskState: async (taskID: string) => {
+      const tasks = await readTestTasks(triggers.writer);
+
+      return tasks.find((task) => task.id === taskID)?.state;
     },
     readBindings: async () => {
       const records = await readRecords(triggers.context.log, {
@@ -855,4 +876,296 @@ test('it fires into a conversation that its owner paused', async () => {
   ]);
 
   expect(result).toStrictEqual({ delivered: 1 });
+});
+
+test('it writes trigger.task_input on the thread of the task that a task input names', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.taskSeed.conversationStep();
+
+  const taskID = await ctx.taskSeed.waitingTask({
+    starter: starter.claim,
+    name: 'Garden planner',
+    brief: 'Add a frost warning to the planner.',
+  });
+
+  const result = await ctx.deliverTaskInputs([
+    {
+      kind: 'task_input',
+      taskID,
+      dedupeKey: 'session-1|event-4',
+      occurredAt: '2027-03-09T00:00:00.000Z',
+      hop: 2,
+      wake: true,
+      facts: { event: 'pull_request_opened', number: 12 },
+      payload: { title: 'Add a frost warning' },
+    },
+  ]);
+
+  const records = await ctx.readTaskInputs();
+
+  expect(result).toStrictEqual({ delivered: 1 });
+
+  expect(records).toStrictEqual([
+    {
+      thread: taskID,
+      payload: {
+        taskID,
+        source: 'coding',
+        dedupeKey: 'session-1|event-4',
+        occurredAt: '2027-03-09T00:00:00.000Z',
+        hop: 2,
+        wake: true,
+        facts: { event: 'pull_request_opened', number: 12 },
+      },
+      erasable: { status: 'readable', fields: { event: { title: 'Add a frost warning' } } },
+    },
+  ]);
+});
+
+test('it puts a task input that wakes its task in the inbox, and readies the waiting task', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.taskSeed.conversationStep();
+
+  const taskID = await ctx.taskSeed.waitingTask({
+    starter: starter.claim,
+    name: 'Garden planner',
+    brief: 'Add a frost warning to the planner.',
+  });
+
+  await ctx.deliverTaskInputs([
+    {
+      kind: 'task_input',
+      taskID,
+      dedupeKey: 'session-1|event-4',
+      occurredAt: '2027-03-09T00:00:00.000Z',
+      hop: 2,
+      wake: true,
+      facts: { event: 'pull_request_opened' },
+      payload: { title: 'Add a frost warning' },
+    },
+  ]);
+
+  const inbox = await readInbox(ctx.context, taskID);
+  const state = await ctx.readTaskState(taskID);
+
+  expect(inbox.map((record) => record.kind)).toStrictEqual(['trigger.task_input']);
+  expect(state).toBe('ready');
+});
+
+test('it wakes the task of a task input into a step at the hop of the input', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.taskSeed.conversationStep();
+
+  const taskID = await ctx.taskSeed.waitingTask({
+    starter: starter.claim,
+    name: 'Garden planner',
+    brief: 'Add a frost warning to the planner.',
+  });
+
+  await ctx.deliverTaskInputs([
+    {
+      kind: 'task_input',
+      taskID,
+      dedupeKey: 'session-1|event-4',
+      occurredAt: '2027-03-09T00:00:00.000Z',
+      hop: 2,
+      wake: true,
+      facts: { event: 'pull_request_opened' },
+      payload: { title: 'Add a frost warning' },
+    },
+  ]);
+
+  const claim = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000, taskID });
+
+  expect(claim?.wake).toStrictEqual({ hop: 2, cause: { kind: 'event' } });
+});
+
+test('it keeps a task input that does not wake its task out of the inbox, and leaves the task waiting', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.taskSeed.conversationStep();
+
+  const taskID = await ctx.taskSeed.waitingTask({
+    starter: starter.claim,
+    name: 'Garden planner',
+    brief: 'Add a frost warning to the planner.',
+  });
+
+  await ctx.deliverTaskInputs([
+    {
+      kind: 'task_input',
+      taskID,
+      dedupeKey: 'session-1|event-4',
+      occurredAt: '2027-03-09T00:00:00.000Z',
+      hop: 2,
+      wake: false,
+      facts: { event: 'checks_started' },
+      payload: { title: 'Add a frost warning' },
+    },
+  ]);
+
+  const inbox = await readInbox(ctx.context, taskID);
+  const state = await ctx.readTaskState(taskID);
+
+  expect(inbox).toStrictEqual([]);
+  expect(state).toBe('waiting');
+});
+
+test('it writes nothing for a task input whose key an earlier delivery took', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.taskSeed.conversationStep();
+
+  const taskID = await ctx.taskSeed.waitingTask({
+    starter: starter.claim,
+    name: 'Garden planner',
+    brief: 'Add a frost warning to the planner.',
+  });
+
+  const event: TaskInputEvent = {
+    kind: 'task_input',
+    taskID,
+    dedupeKey: 'session-1|event-4',
+    occurredAt: '2027-03-09T00:00:00.000Z',
+    hop: 2,
+    wake: true,
+    facts: { event: 'pull_request_opened' },
+    payload: { title: 'Add a frost warning' },
+  };
+
+  await ctx.deliverTaskInputs([event]);
+
+  const result = await ctx.deliverTaskInputs([event]);
+  const records = await ctx.readTaskInputs();
+
+  expect(result).toStrictEqual({ delivered: 0 });
+  expect(records).toHaveLength(1);
+});
+
+test('it writes one record for 2 task inputs of one batch that share a key', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.taskSeed.conversationStep();
+
+  const taskID = await ctx.taskSeed.waitingTask({
+    starter: starter.claim,
+    name: 'Garden planner',
+    brief: 'Add a frost warning to the planner.',
+  });
+
+  const event: TaskInputEvent = {
+    kind: 'task_input',
+    taskID,
+    dedupeKey: 'session-1|event-4',
+    occurredAt: '2027-03-09T00:00:00.000Z',
+    hop: 2,
+    wake: true,
+    facts: { event: 'pull_request_opened' },
+    payload: { title: 'Add a frost warning' },
+  };
+
+  const result = await ctx.deliverTaskInputs([event, event]);
+
+  expect(result).toStrictEqual({ delivered: 1 });
+});
+
+test('it writes nothing for a task input whose task does not exist', async () => {
+  const ctx = await setupTest();
+
+  const result = await ctx.deliverTaskInputs([
+    {
+      kind: 'task_input',
+      taskID: 'nosuchtask',
+      dedupeKey: 'session-1|event-4',
+      occurredAt: '2027-03-09T00:00:00.000Z',
+      hop: 2,
+      wake: true,
+      facts: { event: 'pull_request_opened' },
+      payload: { title: 'Add a frost warning' },
+    },
+  ]);
+
+  const records = await ctx.readTaskInputs();
+
+  expect(result).toStrictEqual({ delivered: 0 });
+  expect(records).toStrictEqual([]);
+});
+
+test.each([['doneTask'], ['closedTask'], ['failedTask'], ['stoppedTask']] as const)(
+  'it writes nothing for a task input whose task the %s seed ended',
+  async (seedName) => {
+    const ctx = await setupTest();
+    const starter = await ctx.taskSeed.conversationStep();
+
+    const taskID = await ctx.taskSeed[seedName]({
+      starter: starter.claim,
+      name: 'Garden planner',
+      brief: 'Add a frost warning to the planner.',
+    });
+
+    const result = await ctx.deliverTaskInputs([
+      {
+        kind: 'task_input',
+        taskID,
+        dedupeKey: 'session-1|event-4',
+        occurredAt: '2027-03-09T00:00:00.000Z',
+        hop: 2,
+        wake: true,
+        facts: { event: 'pull_request_opened' },
+        payload: { title: 'Add a frost warning' },
+      },
+    ]);
+
+    const records = await ctx.readTaskInputs();
+
+    expect(result).toStrictEqual({ delivered: 0 });
+    expect(records).toStrictEqual([]);
+  },
+);
+
+test('it leaves the key of a task input for a stopped task free, so the same event lands on the next task', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.taskSeed.conversationStep();
+
+  const stoppedTaskID = await ctx.taskSeed.stoppedTask({
+    starter: starter.claim,
+    name: 'Garden planner',
+    brief: 'Add a frost warning to the planner.',
+  });
+
+  const nextTaskID = await ctx.taskSeed.waitingTask({
+    starter: starter.claim,
+    name: 'Garden planner, again',
+    brief: 'Watch the frost warning work.',
+  });
+
+  const event = {
+    kind: 'task_input',
+    dedupeKey: 'session-1|event-4',
+    occurredAt: '2027-03-09T00:00:00.000Z',
+    hop: 2,
+    wake: false,
+    facts: { event: 'pull_request_opened' },
+    payload: { title: 'Add a frost warning' },
+  } as const;
+
+  await ctx.deliverTaskInputs([{ ...event, taskID: stoppedTaskID }]);
+
+  const result = await ctx.deliverTaskInputs([{ ...event, taskID: nextTaskID }]);
+  const records = await ctx.readTaskInputs();
+
+  expect(result).toStrictEqual({ delivered: 1 });
+
+  expect(records).toStrictEqual([
+    {
+      thread: nextTaskID,
+      payload: {
+        taskID: nextTaskID,
+        source: 'coding',
+        dedupeKey: 'session-1|event-4',
+        occurredAt: '2027-03-09T00:00:00.000Z',
+        hop: 2,
+        wake: false,
+        facts: { event: 'pull_request_opened' },
+      },
+      erasable: { status: 'readable', fields: { event: { title: 'Add a frost warning' } } },
+    },
+  ]);
 });

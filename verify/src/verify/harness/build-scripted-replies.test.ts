@@ -28,6 +28,50 @@ test('it queues the export call before the reply', () => {
   ]);
 });
 
+test('it queues the atc start for the conversation before the reply, and no reply for a task', () => {
+  const replies = buildScriptedReplies({
+    text: 'I asked to start the session.',
+    codingTask: {
+      name: 'Login fix',
+      brief: 'Fix the login test.',
+      repo: { url: 'https://example.net/acme/app.git', ref: 'main' },
+    },
+  });
+
+  const conversation = { tools: [{ name: 'mcp__nixie__task_start' }] };
+  const taskBody = { tools: [{ name: 'mcp__nixie__memory_recall' }] };
+
+  expect(
+    replies.map((reply) => ({
+      reply: { ...reply, when: undefined },
+      forConversation: reply.when?.(conversation),
+      forTask: reply.when?.(taskBody),
+    })),
+  ).toStrictEqual([
+    {
+      reply: {
+        toolUse: {
+          name: 'mcp__nixie__task_start',
+          input: {
+            name: 'Login fix',
+            brief: 'Fix the login test.',
+            repo: { url: 'https://example.net/acme/app.git', ref: 'main' },
+            runner: 'atc',
+          },
+        },
+        when: undefined,
+      },
+      forConversation: true,
+      forTask: false,
+    },
+    {
+      reply: { text: 'I asked to start the session.', when: undefined },
+      forConversation: true,
+      forTask: false,
+    },
+  ]);
+});
+
 test('it queues the task start and the conversation reply for the conversation, and the task reply for the task', () => {
   const replies = buildScriptedReplies({
     text: 'I started the tide tables.',

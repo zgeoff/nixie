@@ -9,6 +9,9 @@ export interface TaskEnvelope {
   readonly sent: string;
   readonly onBehalfOf: readonly string[];
 
+  // true: the body is text from outside nixie, and the element says so
+  readonly outside?: boolean;
+
   // null once a forget removes the body
   readonly body: string | null;
 }
@@ -30,6 +33,7 @@ export function renderTaskEnvelope(
       ...(envelope.onBehalfOf.length === 0
         ? {}
         : { 'on-behalf-of': envelope.onBehalfOf.join(' ') }),
+      ...(envelope.outside === true ? { source: 'outside' } : {}),
     },
     text: envelope.body ?? '[a message since forgotten]',
     fence: mint(),

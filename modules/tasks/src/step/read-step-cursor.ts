@@ -32,7 +32,9 @@ export async function readStepCursor(
     .orderBy('sequence')
     .execute();
 
-  const inbox = unread.filter((record) => isInboxRecord(record));
+  const inbox = unread.filter((record) =>
+    isInboxRecord({ ...record, payload: parseJSONObject(record.payload) }),
+  );
 
   const read = new Set(acknowledged);
 

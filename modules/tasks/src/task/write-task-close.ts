@@ -1,4 +1,5 @@
 import { withWriteTransaction } from '@heynixie/log';
+import { runEndedHook } from '../runner/run-ended-hook';
 import { readLeasedStepHop } from '../step/read-leased-step-hop';
 import type { TasksContext, TasksTables } from '../types';
 import { parseStepRunID } from '../utils/parse-step-run-id';
@@ -16,7 +17,23 @@ export type TaskCloseOutcome =
   | { readonly status: 'closed'; readonly wasClosed: boolean }
   | { readonly status: 'refused'; readonly refusal: TaskCloseRefusal };
 
-export function writeTaskClose(
+export async function writeTaskClose(
+  context: Pick<
+    TasksContext,
+    'clock' | 'definitions' | 'log' | 'runSettings' | 'runners' | 'queueRunnerActions'
+  >,
+  request: TaskCloseRequest,
+): Promise<TaskCloseOutcome> {
+  const outcome = await writeTaskCloseTransaction(context, request);
+
+  if (outcome.status === 'closed' && !outcome.wasClosed) {
+    await runEndedHook(context, request.taskID, 'closed');
+  }
+
+  return outcome;
+}
+
+function writeTaskCloseTransaction(
   context: Pick<TasksContext, 'clock' | 'definitions' | 'log' | 'runSettings' | 'runners'>,
   request: TaskCloseRequest,
 ): Promise<TaskCloseOutcome> {

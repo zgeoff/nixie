@@ -1,4 +1,4 @@
-import type { TriggerEvent } from '../types';
+import type { ScheduleTriggerEvent } from '../types';
 
 export interface DeliveryRow {
   readonly source_id: string;
@@ -10,7 +10,7 @@ export interface DeliveryRow {
 
 // Rows 1 and 2 of the table of one deliver call: false when the event writes nothing.
 export function isEventDeliverable(
-  event: Pick<TriggerEvent, 'definitionHash' | 'kind' | 'scheduledFor'>,
+  event: Pick<ScheduleTriggerEvent, 'definitionHash' | 'kind' | 'scheduledFor'>,
   sourceID: string,
   row: DeliveryRow | undefined,
   isKeyTaken: boolean,

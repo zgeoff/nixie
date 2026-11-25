@@ -1,12 +1,15 @@
 import { expect, test } from 'bun:test';
-import { readRecords } from '@heynixie/log';
+import { readRecords, writeRecordsInTransaction } from '@heynixie/log';
+import invariant from 'tiny-invariant';
 import { readInbox } from '../../inbox/read-inbox';
 import { taskRunOptionsSchema } from '../../limit/task-run-options-schema';
+import type { RunnerAction } from '../../runner/types';
 import { buildStepRunID } from '../../step/build-step-run-id';
 import { seedConversationStep } from '../../test-utils/seed-conversation-step';
 import { startTestTasks } from '../../test-utils/start-test-tasks';
-import type { TasksTables } from '../../types';
+import type { QueueRunnerActionsRequest, TasksTables } from '../../types';
 import { startedTaskDefaultTools } from '../started-task-default-tools';
+import type { TaskStartRequest } from './write-task-start';
 import { writeTaskStart } from './write-task-start';
 
 async function setupTest() {
@@ -38,6 +41,33 @@ async function setupTest() {
         stepRunID: buildStepRunID(starter.claim),
         disposable: false,
       }),
+    startPlanned: (
+      plan: Pick<TaskStartRequest, 'actions' | 'transaction'>,
+      context: Parameters<typeof writeTaskStart>[0],
+    ) =>
+      writeTaskStart(context, {
+        from: 'conversation',
+        name: 'Garden planner',
+        brief: 'Add a frost warning to the planner.',
+        runner: 'sandbox',
+        stored: { kind: 'built', options },
+        hopLimit: 7,
+        stepRunID: buildStepRunID(starter.claim),
+        disposable: false,
+        ...plan,
+      }),
+    stepKey: starter.claim.stepKey,
+    readMarks: async () => {
+      const entries = await readRecords(tasks.context.log, {
+        afterSequence: 0,
+        kinds: ['task.mark_set'],
+      });
+
+      return entries.map((entry) => ({
+        thread: entry.record.thread,
+        payload: entry.record.payload,
+      }));
+    },
     readStartRecords: async (afterSequence: number) => {
       const entries = await readRecords(tasks.context.log, {
         afterSequence,
@@ -161,5 +191,145 @@ test('it leaves no task and no brief when the brief record fails to write', asyn
   const tasks = await ctx.readTasks();
 
   expect(records).toStrictEqual([]);
+  expect(tasks).toStrictEqual([]);
+});
+
+test('it queues the actions of a start on the new task thread under the starting step key', async () => {
+  const ctx = await setupTest();
+
+  const queued: QueueRunnerActionsRequest[] = [];
+
+  const action: RunnerAction = {
+    tool: 'coding.start',
+    args: { repo: 'garden-planner' },
+    hashParts: ['garden-planner'],
+    causedBy: { kind: 'tool_call', callID: 'call-1' },
+  };
+
+  const outcome = await ctx.startPlanned(
+    { actions: [action] },
+    {
+      ...ctx.context,
+      queueRunnerActions: (_tx, request) => {
+        queued.push(request);
+
+        return Promise.resolve(['action-1']);
+      },
+    },
+  );
+
+  invariant(outcome.status === 'started', 'the planned start is valid');
+
+  expect(queued).toStrictEqual([
+    { taskID: outcome.taskID, stepKey: ctx.stepKey, actions: [action] },
+  ]);
+});
+
+test('it queues the actions of a start once when a rerun of the starting step starts it again', async () => {
+  const ctx = await setupTest();
+
+  const queued: QueueRunnerActionsRequest[] = [];
+
+  const context = {
+    ...ctx.context,
+    queueRunnerActions: (_tx: unknown, request: QueueRunnerActionsRequest) => {
+      queued.push(request);
+
+      return Promise.resolve(['action-1']);
+    },
+  };
+
+  const plan = {
+    actions: [
+      {
+        tool: 'coding.start',
+        args: { repo: 'garden-planner' },
+        hashParts: ['garden-planner'],
+        causedBy: { kind: 'tool_call' as const, callID: 'call-1' },
+      },
+    ],
+  };
+
+  await ctx.startPlanned(plan, context);
+  await ctx.startPlanned(plan, context);
+
+  expect(queued).toHaveLength(1);
+});
+
+test('it refuses a start with the sentence of the runner check, and writes no task', async () => {
+  const ctx = await setupTest();
+
+  const outcome = await ctx.startPlanned(
+    {
+      transaction: {
+        check: () => Promise.resolve('Another open task already runs that session.'),
+        write: () => Promise.resolve(),
+      },
+    },
+    ctx.context,
+  );
+
+  const tasks = await ctx.readTasks();
+
+  expect(outcome).toStrictEqual({
+    status: 'refused',
+    refusal: {
+      reason: 'runner_refused',
+      sentence: 'Another open task already runs that session.',
+    },
+  });
+
+  expect(tasks).toStrictEqual([]);
+});
+
+test('it runs the runner write of a start with the new task ID, in the start transaction', async () => {
+  const ctx = await setupTest();
+
+  const outcome = await ctx.startPlanned(
+    {
+      transaction: {
+        check: () => Promise.resolve(null),
+        write: async (tx, taskID) => {
+          await writeRecordsInTransaction(tx, ctx.context.log, [
+            {
+              kind: 'task.mark_set',
+              definitions: ctx.context.definitions(),
+              thread: taskID,
+              payload: { taskID, disposable: true },
+            },
+          ]);
+        },
+      },
+    },
+    ctx.context,
+  );
+
+  invariant(outcome.status === 'started', 'the planned start is valid');
+
+  const marks = await ctx.readMarks();
+
+  expect(marks).toStrictEqual([
+    { thread: outcome.taskID, payload: { taskID: outcome.taskID, disposable: true } },
+  ]);
+});
+
+test('it leaves no task when the runner write of a start fails', async () => {
+  const ctx = await setupTest();
+
+  const started = ctx.startPlanned(
+    {
+      transaction: {
+        check: () => Promise.resolve(null),
+        write: () => Promise.reject(new Error('the session is already bound')),
+      },
+    },
+    ctx.context,
+  );
+
+  await Promise.allSettled([started]);
+
+  const tasks = await ctx.readTasks();
+
+  expect(started).rejects.toThrow('the session is already bound');
   expect(tasks).toStrictEqual([]);
 });

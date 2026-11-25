@@ -151,6 +151,9 @@ export interface SpawnedNixieOptions {
 
   readonly extraConfig?: readonly string[];
 
+  // the URL of a double of atc-gateway that the coding runner calls in place of the configured one
+  readonly atcURL?: string;
+
   // settings of the config's `memory` section beside the checker timeout, by their config names
   readonly memoryConfig?: Readonly<Record<string, number>>;
 
@@ -221,6 +224,7 @@ export async function createSpawnedNixie(
     env: {
       NIXIE_TEST_PROVIDER_URL: doubles.provider.url,
       NIXIE_TEST_FETCHER: join(import.meta.dir, 'run-stub-fetcher.ts'),
+      ...(options.atcURL === undefined ? {} : { NIXIE_TEST_ATC_URL: options.atcURL }),
     },
     files,
   };
