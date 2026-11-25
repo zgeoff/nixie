@@ -160,6 +160,7 @@ Each module package covers one area of the architecture, and its doc covers the 
 | `sessions`    | The [conversation's turns](core/conversation-turns.md), [session opening](core/session-opening.md) and each system task's own session           |
 | `compaction`  | The [compactor](core/compaction.md) and its summary records                                                                                     |
 | `triggers`    | [Triggers](core/triggers.md): the trigger core, the arming hook, the watermark and the fire times                                               |
+| `mail`        | [The assistant's mailbox](core/mailbox.md): the mail host interface, the stored mail, the mail tools and the send                               |
 | `definitions` | [The definitions](core/definitions.md) and the path source                                                                                      |
 | `prompts`     | The built-in [prompts](core/prompts.md), their parts and templates, and the render that applies the overrides                                   |
 | `policy`      | [The decision point](policy/decision-point.md) and its fixed rules                                                                              |

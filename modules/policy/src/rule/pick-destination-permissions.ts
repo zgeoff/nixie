@@ -37,13 +37,23 @@ function pickPermission(
     return 'known_contact';
   }
 
-  if (sources.taskDestinations.some((pattern) => isPatternMatch(pattern, destination.value))) {
+  if (sources.taskDestinations.some((pattern) => isCovering(pattern, destination.value))) {
     return 'task';
   }
 
   const isRuleCovered = sources.allowRules.some((rule) =>
-    (rule.destinations ?? []).some((pattern) => isPatternMatch(pattern, destination.value)),
+    (rule.destinations ?? []).some((pattern) => isCovering(pattern, destination.value)),
   );
 
   return isRuleCovered ? 'rule' : null;
+}
+
+// A pattern with a wildcard never covers an email address: only an exact address holds act trust,
+// and a whole domain holds read trust only.
+function isCovering(pattern: string, value: string): boolean {
+  return isEmailAddress(value) && pattern.includes('*') ? false : isPatternMatch(pattern, value);
+}
+
+function isEmailAddress(value: string): boolean {
+  return /^[^@\s]+@[^@\s]+$/u.test(value);
 }

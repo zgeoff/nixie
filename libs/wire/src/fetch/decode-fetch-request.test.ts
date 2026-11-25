@@ -139,3 +139,43 @@ test.each([
 
   expect(() => decodeFetchRequest(bytes)).toThrowWithMessage(TypeError, /hopGate\.redirects/u);
 });
+
+test('it returns the HTML that a request carries', () => {
+  const limits = {
+    bodyBytes: 2_097_152,
+    timeoutMs: 15_000,
+    redirects: 5,
+    textBytes: 262_144,
+    imageBytes: 2_097_152,
+  };
+
+  const bytes = new TextEncoder().encode(
+    JSON.stringify({
+      url: 'about:blank',
+      limits,
+      deniedRanges: [],
+      html: '<p>Hello <a href="https://example.org/a">there</a></p>',
+    }),
+  );
+
+  expect(decodeFetchRequest(bytes)).toStrictEqual({
+    url: 'about:blank',
+    limits,
+    deniedRanges: [],
+    hops: 'none',
+    html: '<p>Hello <a href="https://example.org/a">there</a></p>',
+  });
+});
+
+test('it refuses a request whose html is not text', () => {
+  const bytes = new TextEncoder().encode(
+    JSON.stringify({
+      url: 'about:blank',
+      limits: { bodyBytes: 1, timeoutMs: 1, redirects: 0, textBytes: 1, imageBytes: 0 },
+      deniedRanges: [],
+      html: 4,
+    }),
+  );
+
+  expect(() => decodeFetchRequest(bytes)).toThrowWithMessage(TypeError, /needs html/u);
+});

@@ -27,6 +27,7 @@ export const featurePaths = {
   'policy-proposal': [...everyJourney],
   'task-control': [...everyJourney],
   'coding-session': [...everyJourney],
+  'mail-wake': [...everyJourney],
   drawing: [...everyJourney],
   'images-page': [...everyJourney],
   'notebook-pages': [...everyJourney],

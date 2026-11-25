@@ -59,7 +59,7 @@ export function renderLinkedText(
   return { text: pieces.join(''), tags };
 }
 
-interface TagContext {
+export interface TagContext {
   readonly pageHost: string | null;
   readonly linkPathChars: number;
 }
@@ -87,7 +87,9 @@ function pickFittingTag(
   return Buffer.byteLength(shortTag) <= limitBytes ? shortTag : '';
 }
 
-function formatLinkTag(number: number, target: string, context: TagContext): string {
+// The tag of a link: its ID alone for a link on the page's own host, else its ID with the host and
+// the start of the path.
+export function formatLinkTag(number: number, target: string, context: TagContext): string {
   const url = URL.parse(target);
 
   return url === null || url.hostname === context.pageHost

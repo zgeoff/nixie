@@ -20,7 +20,8 @@ export type SystemMessageType =
   | 'approval'
   | 'reminder'
   | 'restore'
-  | 'computer';
+  | 'computer'
+  | 'mail';
 
 export interface SystemMessage {
   readonly type: SystemMessageType;

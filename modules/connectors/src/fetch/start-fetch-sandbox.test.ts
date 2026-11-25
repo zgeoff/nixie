@@ -1545,3 +1545,43 @@ test('it returns a web fetch page before the memory kill read ends', async () =>
   expect(reply).toMatchObject({ kind: 'page', text: 'hello' });
   expect(destroyedBeforeRelease).toStrictEqual([]);
 });
+
+test('it sends the fetcher the HTML of a document in place of an address to fetch', async () => {
+  const answer = mock((request: FetchRequest) => ({
+    kind: 'page' as const,
+    retryAfterMs: null,
+    isGated: false,
+    url: request.url,
+    status: 200,
+    contentType: 'text/html',
+    text: 'Reset password',
+    links: ['https://example.org/reset'],
+    isTruncated: false,
+    blocked: null,
+  }));
+
+  const fetchSandbox = startFetchSandbox({
+    adapter: buildStubSandboxAdapter(makeStubFetcher(answer)),
+    image: 'nixie-fetch',
+    argv: ['bun', '/app/fetch.js'],
+    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50, imageBytes: 100 },
+    deniedRanges: [],
+    sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
+  });
+
+  onTestFinished(() => fetchSandbox.stop());
+
+  const reply = await fetchSandbox.readHTML(
+    '<a href="https://example.org/reset">Reset password</a>',
+  );
+
+  expect(reply).toMatchObject({ kind: 'page', links: ['https://example.org/reset'] });
+
+  expect(answer).toHaveBeenCalledExactlyOnceWith({
+    url: 'about:blank',
+    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50, imageBytes: 100 },
+    deniedRanges: [],
+    hops: 'none',
+    html: '<a href="https://example.org/reset">Reset password</a>',
+  });
+});

@@ -15,3 +15,4 @@ export { loadSandboxManifest } from './sandbox/load-sandbox-manifest';
 export type { WebFetch, WebFetchOptions } from './part/start-web-fetch';
 export { fetchImageArgv, startWebFetch } from './part/start-web-fetch';
 export type { ServerRecordKind } from './part/server-record-kind';
+export { buildMailPorts } from './mail/build-mail-ports';

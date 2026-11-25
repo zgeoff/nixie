@@ -26,11 +26,14 @@ async function setupTest() {
   };
 }
 
-test('it lists the 3 projections by their tables', () => {
+test('it lists the 6 projections by their tables', () => {
   expect(triggersProjections.map((projection) => projection.table)).toStrictEqual([
     'trigger_keys',
     'trigger_sources',
     'trigger_definitions',
+    'wake_rules',
+    'wake_rule_windows',
+    'wake_held',
   ]);
 });
 

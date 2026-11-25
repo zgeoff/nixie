@@ -7,7 +7,7 @@ import { runMigrations } from '../migration/run-migrations';
 import { nixieSchema } from '../schema/nixie-schema';
 import { buildSqliteWorkerDialect } from '../sqlite/build-sqlite-worker-dialect';
 import { readRunPrefix } from '../test-utils/read-run-prefix';
-import { spendRoutesMigration } from './0086-spend-routes-migration';
+import { spendRoutesMigration } from './0089-spend-routes-migration';
 
 async function setupTest() {
   const stack = new AsyncDisposableStack();

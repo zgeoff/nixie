@@ -37,6 +37,10 @@ interface FetchPageOptions {
 export interface FetchSandbox {
   readonly readPage: (url: string, options?: FetchPageOptions) => Promise<FetchReply>;
 
+  // Reads the text and the links of an HTML document the caller holds, in a fetch sandbox, and
+  // makes no request. The reply is a page, or a failure.
+  readonly readHTML: (html: string) => Promise<FetchReply>;
+
   readonly stop: () => Promise<void>;
 }
 
@@ -48,42 +52,50 @@ interface FetchSandboxState {
   needsSweep: boolean;
 }
 
+// the address that the links of a document with none resolve against
+const htmlBaseURL = 'about:blank';
+
+interface FetchTarget {
+  readonly url: string;
+  readonly scanHop: HopScan | undefined;
+
+  // the HTML of a document read in place of a page
+  readonly html?: string;
+}
+
 export function startFetchSandbox(options: FetchSandboxOptions): FetchSandbox {
   const state: FetchSandboxState = { queue: Promise.resolve(), isStopped: false, needsSweep: true };
 
+  const enqueue = async (target: FetchTarget): Promise<FetchReply> => {
+    const previous = state.queue;
+    const ended = Promise.withResolvers<void>();
+
+    state.queue = ended.promise;
+
+    await previous;
+
+    if (state.isStopped) {
+      ended.resolve();
+
+      return {
+        kind: 'failed',
+        reason: 'the fetch sandbox is stopped',
+        isGated: target.scanHop !== undefined,
+      };
+    }
+
+    return runFetch(options, state, target, ended.resolve);
+  };
+
   return {
-    readPage: async (url, readOptions) => {
-      const scanHop = readOptions?.scanHop;
-      const previous = state.queue;
-      const ended = Promise.withResolvers<void>();
-
-      state.queue = ended.promise;
-
-      await previous;
-
-      if (state.isStopped) {
-        ended.resolve();
-
-        return {
-          kind: 'failed',
-          reason: 'the fetch sandbox is stopped',
-          isGated: scanHop !== undefined,
-        };
-      }
-
-      return runFetch(options, state, { url, scanHop }, ended.resolve);
-    },
+    readPage: (url, readOptions) => enqueue({ url, scanHop: readOptions?.scanHop }),
+    readHTML: (html) => enqueue({ url: htmlBaseURL, scanHop: undefined, html }),
     stop: async () => {
       state.isStopped = true;
 
       await state.queue;
     },
   };
-}
-
-interface FetchTarget {
-  readonly url: string;
-  readonly scanHop: HopScan | undefined;
 }
 
 // returns the reply as soon as the fetcher sends it, and destroys the sandbox after, off the reply's
@@ -250,6 +262,7 @@ async function runFetcher(
     limits: options.limits,
     deniedRanges: options.deniedRanges,
     hops: target.scanHop === undefined ? ('none' as const) : ('ask' as const),
+    ...(target.html === undefined ? {} : { html: target.html }),
   };
 
   try {

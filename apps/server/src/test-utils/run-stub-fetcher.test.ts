@@ -129,3 +129,24 @@ test("it cuts the text at the request's text limit and marks it truncated, as th
 
   expect(replies).toMatchObject([{ kind: 'page', text: 'xxxxx', isTruncated: true }]);
 });
+
+test('it reads the HTML of a request with the real guest and makes no request', async () => {
+  const child = Bun.spawn([process.execPath, join(import.meta.dir, 'run-stub-fetcher.ts')], {
+    stdin: encodeFrame(
+      encodeFetchMessage({
+        url: 'about:blank',
+        limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 0, textBytes: 1000, imageBytes: 0 },
+        deniedRanges: [],
+        hops: 'none',
+        html: '<p>Tap <a href="https://pier.test/reset">Reset</a>.</p>',
+      }),
+    ),
+    stdout: 'pipe',
+  });
+
+  const stdout = await new Response(child.stdout).bytes();
+
+  const replies = makeFrameDecoder(100_000)(stdout).map((message) => decodeFetchReply(message));
+
+  expect(replies).toMatchObject([{ kind: 'page', links: ['https://pier.test/reset'] }]);
+});

@@ -34,6 +34,7 @@ import { readProdErrors } from './prod/read-prod-errors';
 import { readProdHealth } from './prod/read-prod-health';
 import { readProdVersion } from './prod/read-prod-version';
 import { readConversationTurn } from './read-conversation-turn';
+import { readHarnessReady } from './read-harness-ready';
 import { readLiveOpens } from './read-live-opens';
 import { readModelReceived } from './read-model-received';
 import { readSessionCheck } from './read-session-check';
@@ -51,7 +52,6 @@ const conversationTurnSchema = z.strictObject({ records: z.array(conversationRec
 const harnessPath = join(import.meta.dir, 'harness', 'run-verify-harness.ts');
 
 // The prod reads leave out each record's and each task's content, which is the owner's data.
-const conversationPageSchema = z.object({ records: z.array(z.unknown()) });
 const taskListSchema = z.object({ tasks: z.array(z.unknown()) });
 const prodReadPaths = ['/rpc/conversation/read', '/rpc/tasks/list'] as const;
 
@@ -79,16 +79,7 @@ export function createVerifyRegistry(): Wringer {
       host: local(),
       launch: () => ({
         command: [process.execPath, '--define', 'NIXIE_TEST_BUILD=true', harnessPath],
-        ready: (line) =>
-          line['event'] === 'ready'
-            ? {
-                web: String(line['web']),
-                control: String(line['control']),
-                config: String(line['config']),
-                cli: String(line['cli']),
-                db: String(line['db']),
-              }
-            : null,
+        ready: readHarnessReady,
       }),
       drivers: {
         browser: () => ({}),
@@ -165,12 +156,22 @@ export function createVerifyRegistry(): Wringer {
     .action({
       name: 'script-reply',
       summary:
-        "Queue the scripted model's next reply. With --memory it first proposes that memory, with --reminder it first sets that reminder and writes a note of the memory that the result names as related, with --export it first asks to export memory, with --task it first starts that task, with --coding-task it first starts that coding task on atc, with --handover it first asks the user to take over the computer, for that reason, with --notebook it first writes 2 notes, one private, and links them, and with --forget-note it first forgets the note with that short ID",
+        "Queue the scripted model's next reply. With --memory it first proposes that memory, with --reminder it first sets that reminder and writes a note of the memory that the result names as related, with --export it first asks to export memory, with --task it first starts that task, with --coding-task it first starts that coding task on atc, with --mail-watch it first sets a wake rule on the assistant's mailbox for mail from that address, with --mail-read it first lists the unread mail from that address and opens the newest, with --handover it first asks the user to take over the computer, for that reason, with --notebook it first writes 2 notes, one private, and links them, and with --forget-note it first forgets the note with that short ID",
       effect: 'write',
       targets: ['local'],
       input: controlRoutes.addReply.input,
       data: controlRoutes.addReply.output,
       run: (input, ctx) => postControl(ctx.drivers.http, controlRoutes.addReply, input),
+    })
+    .action({
+      name: 'deliver-mail',
+      summary:
+        "Deliver a mail to the assistant's own mailbox, which a start with NIXIE_VERIFY_MAIL=1 gives it, on a host in memory: from --from, with the subject --subject, the text --text, and an HTML body --html in place of the text",
+      effect: 'write',
+      targets: ['local'],
+      input: controlRoutes.deliverMail.input,
+      data: controlRoutes.deliverMail.output,
+      run: (input, ctx) => postControl(ctx.drivers.http, controlRoutes.deliverMail, input),
     })
     .action({
       name: 'show-on-device',
@@ -344,7 +345,7 @@ export function createVerifyRegistry(): Wringer {
           limit: 5,
         });
 
-        const page = conversationPageSchema.parse(answer);
+        const page = z.object({ records: z.array(z.unknown()) }).parse(answer);
 
         return { recordCount: page.records.length };
       },
@@ -428,7 +429,7 @@ export function createVerifyRegistry(): Wringer {
       },
       {
         name: 'memory-approval',
-        summary: 'Approve a memory the model proposed, and see it become active',
+        summary: 'Approve a proposed memory',
         paths: featurePaths['memory-approval'],
       },
       {

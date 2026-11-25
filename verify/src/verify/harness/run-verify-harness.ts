@@ -61,6 +61,9 @@ export async function runVerifyHarness(): Promise<void> {
     stack.defer(() => rates.stop(true));
   }
 
+  // A start with NIXIE_VERIFY_MAIL=1 gives nixie its own mailbox, on a host in memory.
+  const hasMail = process.env['NIXIE_VERIFY_MAIL'] === '1';
+
   // the test build reaches Google's endpoints at this site, so no journey reaches Google
   const google = startFakeGoogleSite();
 
@@ -102,6 +105,7 @@ export async function runVerifyHarness(): Promise<void> {
       '      credential: deployment:images',
       '      prices: { 1024x1024: 40000, 1536x1024: 60000, 1024x1536: 60000 }',
       ...(gateway === null ? [] : buildCodingConfigLines()),
+      ...(hasMail ? buildMailConfigLines() : []),
     ],
     extraSecrets: [
       'connector_credentials:',
@@ -175,6 +179,9 @@ export async function runVerifyHarness(): Promise<void> {
       }),
     showOnDevice: (show) => runDeviceShow(api.client, nixie.model, show),
     layoutOnDevice: (layout) => runDeviceLayout(api.client, nixie.model, layout),
+    deliverMail: async (mail) => {
+      await server.request('deliverMail', mail);
+    },
     advanceClock: async (minutes) => {
       await nixie.harness.advance(minutes * 60_000);
 
@@ -260,6 +267,10 @@ function buildCodingConfigLines(): string[] {
     '      - { daemon: cloud, target: cloud }',
     '    defaultTarget: cloud/cloud',
   ];
+}
+
+function buildMailConfigLines(): string[] {
+  return ['mail:', '  address: assistant@nixie.example.org'];
 }
 
 async function watchExit(exited: Promise<unknown>, running: RunningState): Promise<void> {

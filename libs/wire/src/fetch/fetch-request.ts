@@ -19,4 +19,15 @@ export interface FetchRequest {
 
   // 'ask': the fetcher sends a hop frame and waits for a pass before each hop after hop 0
   readonly hops: 'ask' | 'none';
+
+  // The HTML of a document that the host already holds, such as a mail's. The fetcher reads its
+  // text and its links the way it reads a page, makes no request, and takes `url` as the address
+  // that relative links resolve against.
+  readonly html?: string;
 }
+
+// The most bytes of one request frame. A request that carries HTML needs room for the document.
+export const maxFetchRequestBytes = 8_388_608;
+
+// The most characters of HTML that a request carries, which JSON escapes to fit one frame.
+export const maxFetchHTMLChars = 1_000_000;
