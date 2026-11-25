@@ -109,7 +109,7 @@ drive.change({ file: 'k3x9m2p7qa.1Bx9QvR2â€¦', name: null, text: '# Trip plan\nâ
 | `drive.change`                      | none                                                 | none          | Replace the content of "{name}"                      | Replace content  |
 
 - `calendar.respond` and the change and cancel tools with guests read their destinations and card
-  fields in `prepare`, as [the declarations](gmail-calendar-drive-tools.md#the-declarations) set
+  fields in `prepare`, as [the declarations](gmail-calendar-drive-tools.md#every-google-tool) set
   out. `calendar.create_event_with_guests` takes its `guests` argument as its destinations.
 - A calendar card shows the event's title, times with their zone, calendar, location and each guest.
   A change card shows each changed field before and after.

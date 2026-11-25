@@ -2,10 +2,10 @@
 
 Make an OAuth client in your own Google Cloud project, register it in nixie, and connect a Google
 account from Settings → Connections. nixie keeps the account's refresh token sealed in its database.
-The tools that read [Gmail](https://linear.app/zgeoff/issue/GEO-1825),
-[Calendar](https://linear.app/zgeoff/issue/GEO-1826) and
-[Drive](https://linear.app/zgeoff/issue/GEO-1827) come later, so a connection gives the model no
-Google tool yet. To learn how consent, refresh and Forget work, read the
+A connection gives the model the [Gmail tools](../architecture/connectors/gmail-tools.md): it
+searches, reads and labels your mail, writes drafts and sends mail. The tools for
+[Calendar](https://linear.app/zgeoff/issue/GEO-1826) and Drive come later. To learn how consent,
+refresh and Forget work, read the
 [Google connections](../architecture/connectors/google-connections.md) doc.
 
 Settings → Connections lists 6 steps, titled like the sections of this guide from "Create a Google
@@ -86,6 +86,20 @@ The setup ends here. Come back to this guide when you want to forget the connect
 
 When you untick a scope on Google's page, the connection still works. Its page lists each missing
 scope, and a button to ask Google again. The conversation never shows that notice.
+
+## What the assistant does with your mail
+
+- Searching and reading mail runs at once. nixie asks Gmail at each call and keeps no copy of your
+  mail beyond what a call returned.
+- Labelling and writing a draft run at once under the starter rules. A draft stays in your account
+  for you to open.
+- A send to an address with no permission waits for your answer on a card that shows the account,
+  each recipient, the subject and the whole text. A reply to the sender of a mail runs at once, and
+  a reply to any other address waits on its card.
+- When a send's outcome is unknown, nixie waits 5 minutes, then looks for the mail in your Sent
+  folder. When it finds the mail, the send counts as done. Otherwise nixie brings it to you on a
+  card, and sends nothing again until you answer.
+- A mail nixie sends carries no header that names nixie.
 
 ## The unverified-app warning
 
