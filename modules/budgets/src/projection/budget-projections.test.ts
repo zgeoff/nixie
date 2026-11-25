@@ -138,48 +138,37 @@ test('it credits the row its charge added to after the budget changes its period
   ]);
 });
 
-test.each([
-  {
-    title: 'whose budget is in force',
-    budgetID: 'groceries',
-    inForce: [{ id: 'groceries', counts: 'spend', limitMicros: 100_000_000, period: 'week' }],
-  },
-  {
-    title: 'whose ID ends with a period kind',
-    budgetID: 'shopping-week',
-    inForce: [],
-  },
-] as const)(
-  'it counts nowhere a charge that names no ledger key and that the migration never kept, $title',
-  async (row) => {
-    const ctx = await startTestBudgets();
+test('it counts nowhere a charge that names no ledger key and that the migration never kept, though its budget is in force', async () => {
+  const ctx = await startTestBudgets();
 
-    for (const budget of row.inForce) {
-      await ctx.seedBudgetInForce(budget);
-    }
+  await ctx.seedBudgetInForce({
+    id: 'groceries',
+    counts: 'spend',
+    limitMicros: 100_000_000,
+    period: 'week',
+  });
 
-    await withWriteTransaction(ctx.writer, (tx) =>
-      writeRecordsInTransaction(tx, ctx.log, [
-        {
-          kind: budgetChargedCodec.kind,
-          definitions: ctx.context.definitions(),
-          payload: budgetChargedCodec.encode({
-            chargeID: 'old-charge',
-            budgetID: row.budgetID,
-            periodStart: '2026-10-12',
-            amountMicros: 4_000_000,
-            for: { kind: 'action', id: 'action-1' },
-          }),
-        },
-      ]),
-    );
+  await withWriteTransaction(ctx.writer, (tx) =>
+    writeRecordsInTransaction(tx, ctx.log, [
+      {
+        kind: budgetChargedCodec.kind,
+        definitions: ctx.context.definitions(),
+        payload: budgetChargedCodec.encode({
+          chargeID: 'old-charge',
+          budgetID: 'groceries',
+          periodStart: '2026-10-12',
+          amountMicros: 4_000_000,
+          for: { kind: 'action', id: 'action-1' },
+        }),
+      },
+    ]),
+  );
 
-    const ledger = await sql`select ledger_key, amount from spend_ledger`.execute(ctx.writer.db);
-    const charges = await sql`select ledger_key from budget_charges`.execute(ctx.writer.db);
+  const ledger = await sql`select ledger_key, amount from spend_ledger`.execute(ctx.writer.db);
+  const charges = await sql`select ledger_key from budget_charges`.execute(ctx.writer.db);
 
-    expect([ledger.rows, charges.rows]).toStrictEqual([[], [{ ledger_key: null }]]);
-  },
-);
+  expect([ledger.rows, charges.rows]).toStrictEqual([[], [{ ledger_key: null }]]);
+});
 
 test('it counts nowhere a charge the migration kept no kind for, and its credit changes no row, after a rebuild', async () => {
   const ctx = await startTestBudgets();

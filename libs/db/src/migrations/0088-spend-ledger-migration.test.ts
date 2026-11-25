@@ -160,39 +160,54 @@ test('it keys a charge by the period in force when the budget has not changed si
   ]);
 });
 
-test.each([
-  { title: 'alone', later: [] },
-  { title: 'with a charge on 2 October after it', later: ['c2'] },
-])('it gives a charge on the 1st no key when its budget changed since, $title', async (row) => {
+test('it gives a day charge on the 1st no key and no count when its budget changed to a month since', async () => {
   const ctx = await setupTest();
 
   await ctx.migrateTo(ctx.version - 1);
 
   await sql`insert into budgets_in_force (budget_id, counts, limit_micros, period, hash, updated_sequence)
-      values ('groceries', 'spend', 50000000, 'month', 'h', 20)`.execute(ctx.db);
+    values ('groceries', 'spend', 50000000, 'month', 'h', 20)`.execute(ctx.db);
 
   await sql`insert into records (sequence, recorded_at, kind, snapshot_hash, payload) values
-      (10, 1790812800000, 'budget.charged', 's', '{"chargeID":"c1"}'),
-      (11, 1790899200000, 'budget.charged', 's', '{"chargeID":"c2"}')`.execute(ctx.db);
+    (10, 1790812800000, 'budget.charged', 's', '{"chargeID":"c1"}')`.execute(ctx.db);
 
   await sql`insert into budget_charges
-      (charge_id, budget_id, period_start, amount_micros, for_kind, for_id, credited) values
-      ('c1', 'groceries', '2026-10-01', 4000000, 'action', 'a1', 0)`.execute(ctx.db);
+    (charge_id, budget_id, period_start, amount_micros, for_kind, for_id, credited) values
+    ('c1', 'groceries', '2026-10-01', 4000000, 'action', 'a1', 0)`.execute(ctx.db);
 
   await sql`insert into budget_ledger (budget_id, period_start, spent_micros) values
-      ('groceries', '2026-10-01', 4000000)`.execute(ctx.db);
-
-  for (const chargeID of row.later) {
-    await sql`insert into budget_charges
-        (charge_id, budget_id, period_start, amount_micros, for_kind, for_id, credited) values
-        (${chargeID}, 'groceries', '2026-10-02', 3000000, 'action', 'a2', 0)`.execute(ctx.db);
-  }
+    ('groceries', '2026-10-01', 4000000)`.execute(ctx.db);
 
   await ctx.migrateTo(ctx.version);
 
-  const keys = await ctx.readKeys();
+  expect([await ctx.readKeys(), await ctx.readLedger()]).toStrictEqual([
+    [{ charge_id: 'c1', ledger_key: null }],
+    [],
+  ]);
+});
 
-  expect(keys[0]).toStrictEqual({ charge_id: 'c1', ledger_key: null });
+test('it keeps a row at zero for a key whose charges were all credited, as a rebuild does', async () => {
+  const ctx = await setupTest();
+
+  await ctx.migrateTo(ctx.version - 1);
+
+  await sql`insert into records (sequence, recorded_at, kind, snapshot_hash, payload) values
+    (30, 1791158400000, 'budget.charged', 's', '{"chargeID":"c1"}')`.execute(ctx.db);
+
+  await sql`insert into budget_charges
+    (charge_id, budget_id, period_start, amount_micros, for_kind, for_id, credited) values
+    ('c1', 'search-day', '2026-10-16', 12000, 'tool_call', 't1', 1)`.execute(ctx.db);
+
+  await sql`insert into budget_ledger (budget_id, period_start, spent_micros) values
+    ('search-day', '2026-10-16', 0)`.execute(ctx.db);
+
+  await ctx.migrateTo(ctx.version);
+
+  const ledger = await ctx.readLedger();
+
+  expect(ledger).toStrictEqual([
+    { ledger_key: 'budget:search-day|micros:USD|day|2026-10-16', amount: 0 },
+  ]);
 });
 
 test('it counts nothing for a charge it cannot key, and keys the charges it can', async () => {

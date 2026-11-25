@@ -72,10 +72,10 @@ export const spendLedgerMigration: Migration = {
     await sql`insert into spend_ledger (ledger_key, counter, unit, period_kind, period_start, amount)
       select budget_charges.ledger_key, 'budget:' || budget_charges.budget_id, 'micros:USD',
         legacy_charge_kinds.period_kind, budget_charges.period_start,
-        sum(budget_charges.amount_micros)
+        sum(case when budget_charges.credited = 0 then budget_charges.amount_micros else 0 end)
       from budget_charges
       join legacy_charge_kinds on legacy_charge_kinds.charge_id = budget_charges.charge_id
-      where budget_charges.ledger_key is not null and budget_charges.credited = 0
+      where budget_charges.ledger_key is not null
       group by budget_charges.ledger_key`.execute(tx);
 
     await sql`delete from projection_changes where projection = 'budget_ledger'`.execute(tx);
