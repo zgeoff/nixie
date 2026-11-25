@@ -6,6 +6,7 @@ import { setupSignedInBrowser } from '../test-utils/setup-signed-in-browser';
 import { startBuiltWeb } from '../test-utils/start-built-web';
 import { startFrontProxy } from '../test-utils/start-front-proxy';
 import { startStubAPI } from '../test-utils/start-stub-api';
+import { waitForPage } from '../test-utils/wait-for-page';
 
 async function setupTest() {
   const api = startStubAPI();
@@ -39,27 +40,16 @@ test('it opens the thread of the task of an ended run from the list', async () =
 
   await ctx.view.navigate(`${ctx.appURL}/tasks/ended`);
 
-  await waitFor(
-    async () => {
-      const hasLink: unknown = await ctx.view.evaluate(
-        'document.querySelector(\'a[href="/tasks/k3vq8m2xpa"]\') !== null',
-      );
-
-      expect(hasLink).toBeTrue();
-    },
-    { timeout: 10_000 },
+  // The trigger report's line lands after the link and moves it down, so a click sent before it
+  // lands can miss the link.
+  await waitForPage(
+    ctx.view,
+    `document.querySelector('a[href="/tasks/k3vq8m2xpa"]') !== null && document.body.innerText.includes('No late or skipped fires since')`,
   );
 
   await ctx.view.click('a[href="/tasks/k3vq8m2xpa"]');
 
-  await waitFor(
-    async () => {
-      const path: unknown = await ctx.view.evaluate('location.pathname');
-
-      expect(path).toBe('/tasks/k3vq8m2xpa');
-    },
-    { timeout: 10_000 },
-  );
+  await waitForPage(ctx.view, `location.pathname === '/tasks/k3vq8m2xpa'`);
 });
 
 test('it shows a skipped fire in the trigger report with no reload when its record arrives', async () => {
