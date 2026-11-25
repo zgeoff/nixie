@@ -99,6 +99,7 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
         coding,
         apiContext: {
           ...context.apiContext,
+          logger: options.log,
           readCodeCleanup: () => parts.find('code_run')?.cleanup.destroyForRecords ?? null,
           readNotebook: () => parts.find('notebook') ?? null,
           readErasure: makeReadErasureStuckPort(() => parts.find('erasure'), {

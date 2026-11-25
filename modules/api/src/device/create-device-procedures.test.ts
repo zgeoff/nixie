@@ -3,6 +3,8 @@ import { seedImage } from '@heynixie/connectors/test-utils';
 import { clientHeaderName, contract, sessionCookieName } from '@heynixie/contract';
 import { readDeviceByIdentity } from '@heynixie/devices';
 import { makeDeviceToolCaller } from '@heynixie/devices/test-utils';
+import type { JSONObject } from '@heynixie/log';
+import { readRecords } from '@heynixie/log';
 import { createConversationTask } from '@heynixie/tasks';
 import { waitForCondition } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
@@ -51,7 +53,7 @@ async function setupTest() {
 
   // a device whose screen is on and follows its stream, with a layout of one region that holds
   // markdown, and the ID the stream gave that content
-  const startRegionDevice = async () => {
+  const startRegionDevice = async (content?: JSONObject) => {
     const device = await enrol('device', 'desk panel');
     const row = await readDeviceByIdentity(api.writer.db, device.sessionID);
 
@@ -79,24 +81,30 @@ async function setupTest() {
     await call('device.region', {
       device: row.deviceID,
       region: 'pond',
-      content: { kind: 'markdown', markdown: 'Ripples' },
+      content: content ?? { kind: 'markdown', markdown: 'Ripples' },
     });
 
     let shown: string | null = null;
+    let frame: string | null = null;
 
     while (shown === null) {
       const next = await events.next();
 
-      shown =
+      const region =
         next.value !== undefined && next.value.kind === 'layout'
-          ? (next.value.layout?.regions[0]?.shown ?? null)
-          : null;
+          ? next.value.layout?.regions[0]
+          : undefined;
+
+      shown = region?.shown ?? null;
+      frame = region?.content?.kind === 'html' ? region.content.frame : null;
     }
 
     return {
       client: device.client,
       deviceID: row.deviceID,
       shown,
+      frame,
+      events,
       stop: () => {
         stopped.abort();
       },
@@ -605,6 +613,7 @@ test('it lets a device session reach only the paths of its own device', async ()
   expect(reached.filter((entry) => entry.isReached).map((entry) => entry.path)).toStrictEqual([
     '/rpc/devices/resize',
     '/rpc/devices/pageError',
+    '/rpc/devices/pageEvent',
     '/rpc/devices/setCapability',
     '/rpc/devices/readImage',
     '/rpc/live/follow',
@@ -1085,4 +1094,238 @@ test('it refuses an error for content that its region no longer shows, and keeps
   region.stop();
 
   expect(outcome).toMatchObject({ result: { errors: [] } });
+});
+
+test('it keeps an event that a page sends, with its data, on the conversation thread', async () => {
+  const ctx = await setupTest();
+  const page = await ctx.startRegionDevice({ kind: 'html', html: '<p>ripples</p>' });
+
+  await page.client.devices.pageEvent({
+    region: 'pond',
+    shown: page.shown ?? '',
+    name: 'touched',
+    data: { ripples: 3 },
+    wake: false,
+  });
+
+  const [event] = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['device.page_event'],
+  });
+
+  page.stop();
+
+  expect([event?.record.thread, event?.record.payload, event?.record.erasable]).toStrictEqual([
+    'conversation',
+    {
+      device: page.deviceID,
+      deviceName: 'desk panel',
+      region: 'pond',
+      shown: page.shown ?? '',
+      name: 'touched',
+      wake: false,
+    },
+    { status: 'readable', fields: { data: { ripples: 3 } } },
+  ]);
+});
+
+test('it refuses an event for content that its region no longer shows, and keeps nothing', async () => {
+  const ctx = await setupTest();
+  const page = await ctx.startRegionDevice({ kind: 'html', html: '<p>ripples</p>' });
+
+  const refused = page.client.devices.pageEvent({
+    region: 'pond',
+    shown: 'stale-id',
+    name: 'touched',
+    wake: false,
+  });
+
+  expect(refused).rejects.toMatchObject({ code: 'STALE' });
+
+  const events = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['device.page_event'],
+  });
+
+  page.stop();
+
+  expect(events).toStrictEqual([]);
+});
+
+test('it refuses an event from a region that shows no page', async () => {
+  const ctx = await setupTest();
+  const region = await ctx.startRegionDevice();
+
+  const refused = region.client.devices.pageEvent({
+    region: 'pond',
+    shown: region.shown ?? '',
+    name: 'touched',
+    wake: false,
+  });
+
+  expect(refused).rejects.toMatchObject({ code: 'STALE' });
+
+  region.stop();
+});
+
+test('it refuses an event with data past 2 KiB', async () => {
+  const ctx = await setupTest();
+  const page = await ctx.startRegionDevice({ kind: 'html', html: '<p>ripples</p>' });
+
+  const refused = page.client.devices.pageEvent({
+    region: 'pond',
+    shown: page.shown ?? '',
+    name: 'touched',
+    data: 'x'.repeat(2048),
+    wake: false,
+  });
+
+  expect(refused).rejects.toThrow();
+
+  page.stop();
+});
+
+test('it refuses an event from a full session that holds no device', async () => {
+  const ctx = await setupTest();
+  const full = await ctx.enrol('full', 'laptop');
+
+  const refused = full.client.devices.pageEvent({
+    region: 'pond',
+    shown: 'any',
+    name: 'touched',
+    wake: false,
+  });
+
+  expect(refused).rejects.toMatchObject({ code: 'NOT_A_DEVICE' });
+});
+
+test('it wakes the conversation with an event that asks for it, when the conversation has a task', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const page = await ctx.startRegionDevice({ kind: 'html', html: '<p>ripples</p>' });
+
+  await page.client.devices.pageEvent({
+    region: 'pond',
+    shown: page.shown ?? '',
+    name: 'touched',
+    wake: true,
+  });
+
+  const [event] = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['device.page_event'],
+  });
+
+  page.stop();
+
+  expect(event?.record.payload['wake']).toBe(true);
+});
+
+test('it serves a page by its frame ticket with no session and no client header', async () => {
+  const ctx = await setupTest();
+  const page = await ctx.startRegionDevice({ kind: 'html', html: '<p>ripples</p>' });
+  const response = await fetch(`${ctx.url}/rpc/device/frames/${page.frame ?? ''}`);
+
+  page.stop();
+
+  const body = await response.text();
+
+  expect([
+    response.status,
+    response.headers.get('content-type'),
+    response.headers.get('content-security-policy'),
+    body.includes('<p>ripples</p>'),
+  ]).toStrictEqual([
+    200,
+    'text/html; charset=utf-8',
+    expect.stringContaining("connect-src 'none'"),
+    true,
+  ]);
+});
+
+test('it names its own origin in the policy of a frame', async () => {
+  const ctx = await setupTest();
+  const page = await ctx.startRegionDevice({ kind: 'html', html: '<p>ripples</p>' });
+
+  const response = await fetch(`${ctx.url}/rpc/device/frames/${page.frame ?? ''}`, {
+    headers: { 'x-forwarded-proto': 'https', 'x-forwarded-host': 'nixie.test' },
+  });
+
+  page.stop();
+
+  expect(response.headers.get('content-security-policy')).toContain(
+    'img-src https://nixie.test/rpc/device/images/ data:',
+  );
+});
+
+test('it ignores a forwarded host that could add to the policy', async () => {
+  const ctx = await setupTest();
+  const page = await ctx.startRegionDevice({ kind: 'html', html: '<p>ripples</p>' });
+
+  const response = await fetch(`${ctx.url}/rpc/device/frames/${page.frame ?? ''}`, {
+    headers: { 'x-forwarded-host': 'evil.test; connect-src *' },
+  });
+
+  page.stop();
+
+  expect(response.headers.get('content-security-policy')).not.toContain('evil.test');
+});
+
+test('it answers 404 for a frame ticket that nobody issued', async () => {
+  const ctx = await setupTest();
+  const response = await fetch(`${ctx.url}/rpc/device/frames/0e0b4b3e-0000-4000-8000-000000000000`);
+
+  expect(response.status).toBe(404);
+});
+
+test('it answers 404 for a frame ticket once new content replaced the page', async () => {
+  const ctx = await setupTest();
+  const page = await ctx.startRegionDevice({ kind: 'html', html: '<p>ripples</p>' });
+
+  await ctx.call('device.region', {
+    device: page.deviceID,
+    region: 'pond',
+    content: { kind: 'html', html: '<p>other</p>' },
+  });
+
+  const response = await fetch(`${ctx.url}/rpc/device/frames/${page.frame ?? ''}`);
+
+  page.stop();
+
+  expect(response.status).toBe(404);
+});
+
+test('it serves a declared image by its image ticket and no other image', async () => {
+  const ctx = await setupTest();
+
+  await seedImage(ctx.context.log, {
+    image: 'k3x9m2p7qa',
+    source: 'file',
+    bytes: new Uint8Array([1, 2, 3]),
+  });
+
+  const page = await ctx.startRegionDevice({
+    kind: 'html',
+    html: '<p>ripples</p>',
+    images: ['k3x9m2p7qa'],
+  });
+
+  const framed = await fetch(`${ctx.url}/rpc/device/frames/${page.frame ?? ''}`);
+  const frame = await framed.text();
+
+  const found = /"k3x9m2p7qa":"[^"]*\/rpc\/device\/images\/(?<ticket>[^"]+)"/u.exec(frame);
+  const ticket = found?.groups?.['ticket'] ?? '';
+
+  const image = await fetch(`${ctx.url}/rpc/device/images/${ticket}`);
+  const other = await fetch(`${ctx.url}/rpc/device/images/${page.frame ?? ''}`);
+
+  page.stop();
+
+  const buffer = await image.arrayBuffer();
+
+  const bytes = new Uint8Array(buffer);
+
+  expect([image.status, bytes, other.status]).toStrictEqual([200, new Uint8Array([1, 2, 3]), 404]);
 });

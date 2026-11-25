@@ -1,16 +1,20 @@
-import type { RegionContent } from '@heynixie/contract';
+import type { RegionEventContent } from '@heynixie/contract';
 import type { ReactNode } from 'react';
 import { ReplyText } from '../components/reply-text';
 import { css } from '../styled-system/css';
 import { DeviceImage } from './device-image';
 import { FitBox } from './fit-box';
 import { LiveValue } from './live-value';
+import { PageRegion } from './page-region';
 import { pickRegionTextColour } from './pick-region-text-colour';
-import type { DeviceLayout } from './use-device-events';
+import type { DeviceLayout, PageDelivery } from './use-device-events';
 import { useReportRegionError } from './use-report-region-error';
 
 export interface LayoutViewProps {
   readonly layout: NonNullable<DeviceLayout>;
+
+  // each message that the assistant sent into a page since the stream opened
+  readonly messages?: readonly PageDelivery[];
 }
 
 const grid = css({
@@ -59,11 +63,14 @@ export function LayoutView(props: LayoutViewProps): ReactNode {
           {region.content === null ? null : (
             <RegionBody
               content={region.content}
+              messages={props.messages ?? []}
               onFail={(message) => {
                 if (region.shown !== null) {
                   report({ region: region.name, shown: region.shown, message });
                 }
               }}
+              region={region.name}
+              shown={region.shown}
             />
           )}
         </div>
@@ -78,7 +85,10 @@ function toTrack(track: string): string {
 }
 
 interface RegionBodyProps {
-  readonly content: RegionContent;
+  readonly content: RegionEventContent;
+  readonly region: string;
+  readonly shown: string | null;
+  readonly messages: readonly PageDelivery[];
   readonly onFail: (message: string) => void;
 }
 
@@ -103,6 +113,18 @@ function RegionBody(props: RegionBodyProps): ReactNode {
 
   if (content.kind === 'image') {
     return <DeviceImage fit={content.fit} image={content.image} onFail={props.onFail} />;
+  }
+
+  if (content.kind === 'html') {
+    return props.shown === null ? null : (
+      <PageRegion
+        frame={content.frame}
+        messages={props.messages}
+        onFail={props.onFail}
+        region={props.region}
+        shown={props.shown}
+      />
+    );
   }
 
   return <LiveValue content={content} />;

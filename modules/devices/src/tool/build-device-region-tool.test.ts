@@ -164,7 +164,14 @@ test('it refuses a region that the layout does not name', async () => {
   expect(outcome).toMatchObject({ status: 'ok', refusalCode: 'UNKNOWN_REGION' });
 });
 
-test('it refuses a page, which a region cannot hold yet', async () => {
+test.each([
+  { title: 'packages', extra: { packages: ['chart.js@4.4.6'] }, code: 'PACKAGES_NOT_BUILT' },
+  {
+    title: 'fetches',
+    extra: { fetches: [{ url: 'https://example.com/tides' }] },
+    code: 'FETCHES_NOT_BUILT',
+  },
+])('it refuses a page that names $title, which are not built yet', async (row) => {
   const ctx = await setupTest();
   const device = await ctx.seed.screenOnDevice();
 
@@ -175,14 +182,104 @@ test('it refuses a page, which a region cannot hold yet', async () => {
   const outcome = await ctx.call('device.region', {
     device: device.deviceID,
     region: 'pond',
-    content: { kind: 'page', html: '<p>ripples</p>' },
+    content: { kind: 'html', html: '<p>ripples</p>', ...row.extra },
   });
 
   expect(outcome).toMatchObject({
     status: 'ok',
-    refusalCode: 'PAGE_NOT_BUILT',
-    result: { refused: 'PAGE_NOT_BUILT' },
+    refusalCode: row.code,
+    result: { refused: row.code },
   });
+});
+
+test('it leaves a region as it was when a page that names packages is refused', async () => {
+  const ctx = await setupTest();
+  const device = await ctx.seed.screenOnDevice();
+
+  ctx.streams.open(device.deviceID, { width: 1920, height: 480, pixelRatio: 1 });
+
+  await ctx.seed.layout(device.deviceID);
+
+  await ctx.call('device.region', {
+    device: device.deviceID,
+    region: 'pond',
+    content: { kind: 'markdown', markdown: 'Ripples' },
+  });
+
+  await ctx.call('device.region', {
+    device: device.deviceID,
+    region: 'pond',
+    content: { kind: 'html', html: '<p>ripples</p>', packages: ['chart.js@4.4.6'] },
+  });
+
+  const listed = await ctx.readRegions();
+
+  expect(listed).toMatchObject({
+    devices: [{ layout: { regions: [{ name: 'pond', kind: 'markdown' }, {}, {}] } }],
+  });
+});
+
+test('it fills a region with a page, and devices.list shows its kind and never its markup', async () => {
+  const ctx = await setupTest();
+  const device = await ctx.seed.screenOnDevice();
+
+  ctx.streams.open(device.deviceID, { width: 1920, height: 480, pixelRatio: 1 });
+
+  await ctx.seed.layout(device.deviceID);
+
+  const outcome = await ctx.call('device.region', {
+    device: device.deviceID,
+    region: 'pond',
+    content: {
+      kind: 'html',
+      html: '<canvas id="pond"></canvas><script>/* secret-markup */</script>',
+    },
+  });
+
+  const listed = await ctx.readRegions();
+
+  expect([outcome, JSON.stringify(listed).includes('secret-markup')]).toStrictEqual([
+    { status: 'ok', result: { device: device.deviceID, region: 'pond', until: null } },
+    false,
+  ]);
+
+  expect(listed).toMatchObject({
+    devices: [{ layout: { regions: [{ name: 'pond', kind: 'html' }, {}, {}] } }],
+  });
+});
+
+test('it refuses a page that declares an image that is not in the store', async () => {
+  const ctx = await setupTest();
+  const device = await ctx.seed.screenOnDevice();
+
+  ctx.streams.open(device.deviceID, { width: 1920, height: 480, pixelRatio: 1 });
+
+  await ctx.seed.layout(device.deviceID);
+
+  const outcome = await ctx.call('device.region', {
+    device: device.deviceID,
+    region: 'pond',
+    content: { kind: 'html', html: '<p>ripples</p>', images: ['k3x9m2p7qa'] },
+  });
+
+  expect(outcome).toMatchObject({ status: 'ok', refusalCode: 'UNKNOWN_IMAGE' });
+});
+
+test('it fails a page past 200,000 characters', async () => {
+  const ctx = await setupTest();
+  const device = await ctx.seed.screenOnDevice();
+
+  ctx.streams.open(device.deviceID, { width: 1920, height: 480, pixelRatio: 1 });
+
+  await ctx.seed.layout(device.deviceID);
+
+  const outcome = await ctx.call('device.region', {
+    device: device.deviceID,
+    region: 'pond',
+    content: { kind: 'html', html: 'x'.repeat(200_001) },
+  });
+
+  expect(outcome).toMatchObject({ status: 'error' });
 });
 
 test('it refuses an image that is not in the store', async () => {

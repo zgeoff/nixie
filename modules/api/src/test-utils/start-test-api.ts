@@ -214,6 +214,7 @@ async function createTestContext(
   const context = {
     log,
     clock,
+    logger: deps.logger,
     computerWatch: {
       tickets: createWatchTickets(clock),
       logger: deps.logger,

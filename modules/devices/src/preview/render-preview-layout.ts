@@ -1,10 +1,15 @@
+import type { RenderFile } from '@heynixie/wire';
 import type { LayoutView } from '../types';
 import { pickTextColour } from './pick-text-colour';
 import { renderPreviewRegion } from './render-preview-region';
 import type { PreviewPageInput } from './types';
 
 // The markup of the device page's grid, with each region's background and content.
-export function renderPreviewLayout(layout: LayoutView, input: PreviewPageInput): string {
+export function renderPreviewLayout(
+  layout: LayoutView,
+  input: PreviewPageInput,
+  pages: ReadonlyMap<string, RenderFile>,
+): string {
   const columns = layout.columns.map(toTrack).join(' ');
   const rows = layout.rows.map(toTrack).join(' ');
 
@@ -21,6 +26,7 @@ export function renderPreviewLayout(layout: LayoutView, input: PreviewPageInput)
         ? ''
         : renderPreviewRegion(region.shown.content, {
             images: input.images,
+            pagePath: pages.get(region.name)?.path ?? null,
             nowMs: input.nowMs,
             timeZone: input.timeZone,
           });

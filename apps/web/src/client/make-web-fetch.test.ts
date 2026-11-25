@@ -268,6 +268,7 @@ test('it gives the device page a content security policy that forbids framing', 
   expect(policy.split('; ')).toIncludeAllMembers([
     "default-src 'self'",
     "connect-src 'self'",
+    "frame-src 'self'",
     "frame-ancestors 'none'",
   ]);
 });

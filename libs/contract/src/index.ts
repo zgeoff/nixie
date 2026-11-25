@@ -55,8 +55,19 @@ export type {
   SpanState,
 } from './types';
 
-export type { DeviceEvent } from './contract/devices-contract';
-export { deviceEventSchema, pageErrorMessageLimit } from './contract/devices-contract';
+export type { DeviceEvent, PageData } from './contract/devices-contract';
+
+export {
+  devicePagePaths,
+  pageDataSchema,
+  deviceEventSchema,
+  isJSONWithin,
+  pageErrorMessageLimit,
+  pageEventDataLimitBytes,
+  pageEventNameLimit,
+  pageMessageLimitBytes,
+} from './contract/devices-contract';
+
 export type { RegionBackground } from './contract/region-background-schema';
 
 export {
@@ -65,11 +76,14 @@ export {
   regionBackgroundSchema,
 } from './contract/region-background-schema';
 
-export type { RegionContent } from './contract/region-content-schema';
+export type { RegionContent, RegionEventContent } from './contract/region-content-schema';
 
 export {
   clockFormats,
   regionContentSchema,
+  regionEventContentSchema,
+  regionHTMLLimit,
+  regionImagesLimit,
   regionMarkdownLimit,
 } from './contract/region-content-schema';
 

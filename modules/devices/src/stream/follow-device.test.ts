@@ -634,3 +634,202 @@ test('#followDevice sends a null layout when the assistant clears it', async () 
 
   expect(third).toStrictEqual({ done: false, value: { kind: 'layout', layout: null } });
 });
+
+test('#followDevice sends a page as the ticket of its frame, and never its markup', async () => {
+  const ctx = await setupTest();
+  const device = await ctx.seed.screenOnDevice();
+
+  ctx.streams.open(device.deviceID, { width: 1920, height: 480, pixelRatio: 1 });
+
+  await ctx.seed.layout(device.deviceID);
+
+  await ctx.call('device.region', {
+    device: device.deviceID,
+    region: 'pond',
+    content: { kind: 'html', html: '<p>secret-markup</p>' },
+  });
+
+  const events = ctx.follow(device.deviceID);
+
+  await events.next();
+
+  const layout = await events.next();
+
+  ctx.stop();
+
+  expect(layout).toMatchObject({
+    value: {
+      kind: 'layout',
+      layout: {
+        regions: [
+          {
+            name: 'pond',
+            content: { kind: 'html', frame: expect.toBeString(), images: [] },
+            shown: expect.toBeString(),
+          },
+          {},
+          {},
+        ],
+      },
+    },
+  });
+
+  expect(JSON.stringify(layout)).not.toContain('secret-markup');
+});
+
+test('#followDevice gives a reconnecting device the same frame ticket while the page stays', async () => {
+  const ctx = await setupTest();
+  const device = await ctx.seed.screenOnDevice();
+
+  ctx.streams.open(device.deviceID, { width: 1920, height: 480, pixelRatio: 1 });
+
+  await ctx.seed.layout(device.deviceID);
+
+  await ctx.call('device.region', {
+    device: device.deviceID,
+    region: 'pond',
+    content: { kind: 'html', html: '<p>secret-markup</p>' },
+  });
+
+  const first = ctx.follow(device.deviceID);
+
+  await first.next();
+
+  const before = await first.next();
+
+  const second = ctx.follow(device.deviceID);
+
+  await second.next();
+
+  const after = await second.next();
+
+  ctx.stop();
+
+  expect(after).toStrictEqual(before);
+});
+
+test('#followDevice sends a message into a page after the layout that holds the page', async () => {
+  const ctx = await setupTest();
+  const device = await ctx.seed.screenOnDevice();
+
+  ctx.streams.open(device.deviceID, { width: 1920, height: 480, pixelRatio: 1 });
+
+  await ctx.seed.layout(device.deviceID);
+
+  await ctx.call('device.region', {
+    device: device.deviceID,
+    region: 'pond',
+    content: { kind: 'html', html: '<p>secret-markup</p>' },
+  });
+
+  const events = ctx.follow(device.deviceID);
+
+  await events.next();
+  await events.next();
+
+  const waiting = events.next();
+
+  await ctx.call('device.sendToPage', {
+    device: device.deviceID,
+    region: 'pond',
+    data: { ripples: 3 },
+  });
+
+  const message = await waiting;
+
+  ctx.stop();
+
+  expect(message).toStrictEqual({
+    done: false,
+    value: {
+      kind: 'message',
+      region: 'pond',
+      shown: expect.toBeString(),
+      data: { ripples: 3 },
+      retain: false,
+    },
+  });
+});
+
+test('#followDevice sends a retained message again when the device reconnects', async () => {
+  const ctx = await setupTest();
+  const device = await ctx.seed.screenOnDevice();
+
+  ctx.streams.open(device.deviceID, { width: 1920, height: 480, pixelRatio: 1 });
+
+  await ctx.seed.layout(device.deviceID);
+
+  await ctx.call('device.region', {
+    device: device.deviceID,
+    region: 'pond',
+    content: { kind: 'html', html: '<p>secret-markup</p>' },
+  });
+
+  await ctx.call('device.sendToPage', {
+    device: device.deviceID,
+    region: 'pond',
+    data: { ripples: 3 },
+    retain: true,
+  });
+
+  const events = ctx.follow(device.deviceID);
+
+  await events.next();
+  await events.next();
+
+  const message = await events.next();
+
+  ctx.stop();
+
+  expect(message).toStrictEqual({
+    done: false,
+    value: {
+      kind: 'message',
+      region: 'pond',
+      shown: expect.toBeString(),
+      data: { ripples: 3 },
+      retain: true,
+    },
+  });
+});
+
+test('#followDevice sends no retained message to a page that new content replaced', async () => {
+  const ctx = await setupTest();
+  const device = await ctx.seed.screenOnDevice();
+
+  ctx.streams.open(device.deviceID, { width: 1920, height: 480, pixelRatio: 1 });
+
+  await ctx.seed.layout(device.deviceID);
+
+  await ctx.call('device.region', {
+    device: device.deviceID,
+    region: 'pond',
+    content: { kind: 'html', html: '<p>secret-markup</p>' },
+  });
+
+  await ctx.call('device.sendToPage', {
+    device: device.deviceID,
+    region: 'pond',
+    data: { ripples: 3 },
+    retain: true,
+  });
+
+  await ctx.call('device.region', {
+    device: device.deviceID,
+    region: 'pond',
+    content: { kind: 'html', html: '<p>other</p>' },
+  });
+
+  const events = ctx.follow(device.deviceID);
+
+  await events.next();
+  await events.next();
+
+  const next = events.next();
+
+  ctx.stop();
+
+  const ended = await next;
+
+  expect(ended).toStrictEqual({ done: true, value: undefined });
+});

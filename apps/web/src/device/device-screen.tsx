@@ -17,6 +17,14 @@ export interface DeviceScreenProps {
   readonly onSignOut: () => void;
 }
 
+// a layout that a show or the idle scene covers: it stays loaded at its size, so a page keeps running
+const covered = css({
+  inset: '0',
+  pointerEvents: 'none',
+  position: 'fixed',
+  visibility: 'hidden',
+});
+
 const controls = css({
   display: 'flex',
   gap: '2',
@@ -49,11 +57,12 @@ export function DeviceScreen(props: DeviceScreenProps): ReactNode {
 
   return (
     <>
-      {surface.kind === 'layout' ? (
-        <LayoutView layout={surface.layout} />
-      ) : (
-        <ScreenView blocks={surface.blocks} />
+      {events.layout === null ? null : (
+        <div className={surface.kind === 'layout' ? undefined : covered}>
+          <LayoutView layout={events.layout} messages={events.messages} />
+        </div>
       )}
+      {surface.kind === 'layout' ? null : <ScreenView blocks={surface.blocks} />}
       <div className={controls} style={{ visibility: isRevealed ? 'visible' : 'hidden' }}>
         <button onClick={props.onClose} type="button">
           Close

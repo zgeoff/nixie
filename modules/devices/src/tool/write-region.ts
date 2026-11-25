@@ -98,12 +98,18 @@ export async function writeRegion(
   return outcome;
 }
 
-// The content as a JSON object, which leaves out a label that the call left out.
+// The content as a JSON object, which leaves out a label or the images that the call left out.
 function toStoredContent(content: RegionContent): JSONObject {
   if (content.kind === 'live' && content.live === 'countdown') {
     const countdown = { kind: content.kind, live: content.live, to: content.to };
 
     return content.label === undefined ? countdown : { ...countdown, label: content.label };
+  }
+
+  if (content.kind === 'html') {
+    const page = { kind: content.kind, html: content.html };
+
+    return content.images === undefined ? page : { ...page, images: content.images };
   }
 
   return content;

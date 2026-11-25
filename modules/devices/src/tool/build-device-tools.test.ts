@@ -44,14 +44,14 @@ test('it lets a layout with an overlap and a bad name reach the tool, which refu
   ).toBeTrue();
 });
 
-test('it lets a page reach the region tool, which refuses it by name', async () => {
+test('it lets a page with packages reach the region tool, which refuses it by name', async () => {
   const ctx = await setupTest();
 
   expect(
     ctx.isValid('device.region', {
       device: 'dk4m7q2w9x',
       region: 'pond',
-      content: { kind: 'page', html: '<p>ripples</p>', packages: ['chart.js@4.4.6'] },
+      content: { kind: 'html', html: '<p>ripples</p>', packages: ['chart.js@4.4.6'] },
     }),
   ).toBeTrue();
 });

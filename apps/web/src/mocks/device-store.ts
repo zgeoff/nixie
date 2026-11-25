@@ -17,6 +17,17 @@ const pageErrors = new Collection({
   schema: z.object({ region: z.string(), shown: z.string(), message: z.string() }),
 });
 
+// the events that devices.pageEvent received, so a test reads what a page sent
+const pageEvents = new Collection({
+  schema: z.object({
+    region: z.string(),
+    shown: z.string(),
+    name: z.string(),
+    data: z.json().nullable(),
+    wake: z.boolean(),
+  }),
+});
+
 // the sessions that hold no device row: a session has one unless it is listed here
 const sessionsWithoutDevice = new Collection({
   schema: z.object({ sessionID: z.uuid() }),
@@ -30,6 +41,7 @@ const layoutHolder: { layout: Extract<DeviceEvent, { kind: 'layout' }>['layout']
 export const deviceStore = {
   resizes,
   pageErrors,
+  pageEvents,
   layoutHolder,
   sessionsWithoutDevice,
   hasDevice: (sessionID: string): boolean =>
@@ -37,6 +49,7 @@ export const deviceStore = {
   reset: (): void => {
     resizes.clear();
     pageErrors.clear();
+    pageEvents.clear();
     sessionsWithoutDevice.clear();
 
     layoutHolder.layout = null;

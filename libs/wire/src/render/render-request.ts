@@ -5,6 +5,10 @@ import { z } from 'zod';
 export const renderFrameLimitBytes = 64 * 1024 * 1024;
 export const renderEntryPath = 'index.html';
 
+// The page's own origin. Every request to it is answered from the request's files, and the render
+// refuses every other.
+export const renderOrigin = 'http://nixie-render.invalid/';
+
 const renderFileSchema = z.strictObject({
   // a relative path with no `..` segment; the page names its files by it
   path: z.string().min(1).max(256),

@@ -147,6 +147,7 @@ export type { RenderFile, RenderReply, RenderRequest } from './render/render-req
 export {
   renderEntryPath,
   renderFrameLimitBytes,
+  renderOrigin,
   renderReplySchema,
   renderRequestSchema,
 } from './render/render-request';

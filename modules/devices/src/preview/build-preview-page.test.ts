@@ -195,3 +195,155 @@ test('it draws nothing for an image that has no file', () => {
 
   expect(page.includes('<img')).toBeFalse();
 });
+
+test('it frames a page in a sandboxed frame with its own file', () => {
+  const files = buildPreviewPage({
+    surface: {
+      kind: 'layout',
+      layout: {
+        layoutID: 'ly3k7m2q9x',
+        columns: ['1fr'],
+        rows: ['1fr'],
+        regions: [
+          {
+            name: 'pond',
+            column: 1,
+            row: 1,
+            columnSpan: 1,
+            rowSpan: 1,
+            background: null,
+            shown: {
+              shownID: 'sh3k7m2q9x',
+              sequence: 5,
+              untilMs: null,
+              content: { kind: 'html', html: '<canvas id="pond"></canvas>' },
+            },
+          },
+        ],
+      },
+    },
+    images: new Map(),
+    nowMs: Date.parse('2026-11-21T08:05:09.000Z'),
+    timeZone: 'UTC',
+  });
+
+  const page = readPreviewPage(files);
+
+  expect([
+    page.includes('<iframe class="page" sandbox="allow-scripts" src="pages/0.html"></iframe>'),
+    files.map((file) => file.path),
+  ]).toStrictEqual([true, ['index.html', 'pages/0.html']]);
+});
+
+test('it gives a page the policy of a device frame in a meta tag, with no network', () => {
+  const files = buildPreviewPage({
+    surface: {
+      kind: 'layout',
+      layout: {
+        layoutID: 'ly3k7m2q9x',
+        columns: ['1fr'],
+        rows: ['1fr'],
+        regions: [
+          {
+            name: 'pond',
+            column: 1,
+            row: 1,
+            columnSpan: 1,
+            rowSpan: 1,
+            background: null,
+            shown: {
+              shownID: 'sh3k7m2q9x',
+              sequence: 5,
+              untilMs: null,
+              content: { kind: 'html', html: '<p>ripples</p>' },
+            },
+          },
+        ],
+      },
+    },
+    images: new Map(),
+    nowMs: Date.parse('2026-11-21T08:05:09.000Z'),
+    timeZone: 'UTC',
+  });
+
+  const frame = Buffer.from(files[1]?.base64 ?? '', 'base64').toString();
+
+  expect([
+    frame.includes('<meta http-equiv="Content-Security-Policy" content="default-src \'none\''),
+    frame.includes("connect-src 'none'"),
+    frame.includes('<p>ripples</p>'),
+  ]).toStrictEqual([true, true, true]);
+});
+
+test('it hands a page its retained message as its first message', () => {
+  const files = buildPreviewPage({
+    surface: {
+      kind: 'layout',
+      layout: {
+        layoutID: 'ly3k7m2q9x',
+        columns: ['1fr'],
+        rows: ['1fr'],
+        regions: [
+          {
+            name: 'pond',
+            column: 1,
+            row: 1,
+            columnSpan: 1,
+            rowSpan: 1,
+            background: null,
+            shown: {
+              shownID: 'sh3k7m2q9x',
+              sequence: 5,
+              untilMs: null,
+              content: { kind: 'html', html: '<p>ripples</p>' },
+            },
+          },
+        ],
+      },
+    },
+    images: new Map(),
+    retained: new Map([['pond', { ripples: 3 }]]),
+    nowMs: Date.parse('2026-11-21T08:05:09.000Z'),
+    timeZone: 'UTC',
+  });
+
+  const frame = Buffer.from(files[1]?.base64 ?? '', 'base64').toString();
+
+  expect(frame).toContain('var buffer = [{"ripples":3}];');
+});
+
+test('it points a declared image of a page at the image file the preview holds', () => {
+  const files = buildPreviewPage({
+    surface: {
+      kind: 'layout',
+      layout: {
+        layoutID: 'ly3k7m2q9x',
+        columns: ['1fr'],
+        rows: ['1fr'],
+        regions: [
+          {
+            name: 'pond',
+            column: 1,
+            row: 1,
+            columnSpan: 1,
+            rowSpan: 1,
+            background: null,
+            shown: {
+              shownID: 'sh3k7m2q9x',
+              sequence: 5,
+              untilMs: null,
+              content: { kind: 'html', html: '<p></p>', images: ['k3x9m2p7qa'] },
+            },
+          },
+        ],
+      },
+    },
+    images: new Map([['k3x9m2p7qa', { path: 'images/0', mediaType: 'image/png', base64: 'AQID' }]]),
+    nowMs: Date.parse('2026-11-21T08:05:09.000Z'),
+    timeZone: 'UTC',
+  });
+
+  const frame = Buffer.from(files.at(-1)?.base64 ?? '', 'base64').toString();
+
+  expect(frame).toContain('"k3x9m2p7qa":"http://nixie-render.invalid/images/0"');
+});

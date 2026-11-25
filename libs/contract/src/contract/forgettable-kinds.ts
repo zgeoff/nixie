@@ -8,6 +8,7 @@ export const forgettableKinds = [
   'computer.handover_asked',
   'computer.takeover_ended',
   'device.idle_set',
+  'device.page_event',
   'device.region_shown',
   'device.shown',
   'image.named',

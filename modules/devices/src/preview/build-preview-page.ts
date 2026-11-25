@@ -1,6 +1,7 @@
 import type { RenderFile } from '@heynixie/wire';
 import { renderEntryPath } from '@heynixie/wire';
 import { match } from 'ts-pattern';
+import { buildPreviewPages } from './build-preview-pages';
 import { previewFitScript } from './preview-fit-script';
 import { renderPreviewBlocks } from './render-preview-blocks';
 import { renderPreviewLayout } from './render-preview-layout';
@@ -29,6 +30,7 @@ html, body { margin: 0; background: black; color: white; font-family: system-ui,
 .reply table { border-collapse: collapse; }
 .reply td, .reply th { border: 1px solid; padding-inline: 0.5em; }
 img { width: 100%; height: 100%; }
+.page { display: block; width: 100%; height: 100%; border: 0; }
 img.whole { object-fit: contain; }
 img.fill { object-fit: cover; object-position: center; }
 .screen { display: flex; flex-direction: column; width: 100vw; height: 100vh; overflow: hidden; }
@@ -40,15 +42,17 @@ img.fill { object-fit: cover; object-position: center; }
 // blocks of a show or an idle scene, and the files it names. It holds no network request but those
 // for its own files, and the sandbox refuses every other.
 export function buildPreviewPage(input: PreviewPageInput): RenderFile[] {
+  const pages = buildPreviewPages(input);
+
   const body = match(input.surface)
-    .with({ kind: 'layout' }, (surface) => renderPreviewLayout(surface.layout, input))
+    .with({ kind: 'layout' }, (surface) => renderPreviewLayout(surface.layout, input, pages))
     .with({ kind: 'blocks' }, (surface) => renderPreviewBlocks(surface.blocks, input))
     .exhaustive();
 
   const html =
     '<!doctype html><html><head><meta charset="utf-8">' +
     '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; ' +
-    "script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self'\">" +
+    "script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self'; frame-src 'self'\">" +
     `<style>${previewStyle}</style></head><body>${body}<script>${previewFitScript}</script></body></html>`;
 
   return [
@@ -58,5 +62,6 @@ export function buildPreviewPage(input: PreviewPageInput): RenderFile[] {
       base64: Buffer.from(html).toString('base64'),
     },
     ...input.images.values(),
+    ...pages.values(),
   ];
 }

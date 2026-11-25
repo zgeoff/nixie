@@ -1,0 +1,93 @@
+// The script that opens each page's frame: it defines the one global a page sees, `nixie`, and talks
+// to the device page around the frame by postMessage. `__IMAGES__` and `__INITIAL__` are filled
+// in by the frame builder.
+export const pageBridgeScript = `(function () {
+  var images = __IMAGES__;
+  var handlers = [];
+  var buffer = __INITIAL__;
+  var parentWindow = window.parent;
+
+  function post(message) {
+    message.nixie = true;
+    parentWindow.postMessage(message, '*');
+  }
+
+  function refuse() {
+    var error = new Error('NOT_DECLARED');
+    error.code = 'NOT_DECLARED';
+    return error;
+  }
+
+  function receive(data) {
+    if (handlers.length === 0) {
+      buffer.push(data);
+      return;
+    }
+    handlers.slice().forEach(function (handler) {
+      try {
+        handler(data);
+      } catch (error) {
+        post({ type: 'error', message: String(error && error.stack ? error.stack : error) });
+      }
+    });
+  }
+
+  window.addEventListener('message', function (event) {
+    var message = event.data;
+    if (event.source !== parentWindow || !message || message.nixie !== true) {
+      return;
+    }
+    if (message.type === 'message') {
+      receive(message.data);
+    }
+  });
+
+  window.addEventListener('error', function (event) {
+    post({ type: 'error', message: String(event.message || 'Uncaught error') });
+  });
+
+  window.addEventListener('unhandledrejection', function (event) {
+    post({ type: 'error', message: 'Unhandled rejection: ' + String(event.reason) });
+  });
+
+  var logError = console.error;
+  console.error = function () {
+    post({ type: 'error', message: Array.prototype.map.call(arguments, String).join(' ') });
+    return logError.apply(console, arguments);
+  };
+
+  window.addEventListener('load', function () {
+    post({ type: 'ready' });
+  });
+
+  Object.defineProperty(window, 'nixie', {
+    value: Object.freeze({
+      send: function (name, data, options) {
+        var message = { type: 'event', name: String(name), wake: !!(options && options.wake === true) };
+        if (data !== undefined) {
+          message.data = JSON.parse(JSON.stringify(data));
+        }
+        post(message);
+      },
+      onMessage: function (handler) {
+        handlers.push(handler);
+        var waiting = buffer;
+        buffer = [];
+        waiting.forEach(receive);
+      },
+      data: function () {
+        return Promise.reject(refuse());
+      },
+      onData: function () {},
+      size: function () {
+        return { width: window.innerWidth, height: window.innerHeight };
+      },
+      image: function (image) {
+        if (!Object.prototype.hasOwnProperty.call(images, image)) {
+          throw refuse();
+        }
+        return images[image];
+      },
+    }),
+  });
+})();`;
