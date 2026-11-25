@@ -14,6 +14,7 @@ const layoutMessages = {
   save: 'Save the layout of the screen in the hall as evening.',
   change: 'Change the layout of the screen in the hall.',
   restore: 'Restore the evening layout of the screen in the hall.',
+  preview: 'Show me what the screen in the hall looks like.',
 } as const satisfies Record<LayoutStep, string>;
 
 // Queues the turn that lays out the first device's screen, or updates one of its regions, then

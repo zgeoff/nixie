@@ -2,7 +2,7 @@
 
 - [Journey](#journey): enrol a browser as a device, switch its screen on, and have the model lay it
   out in 3 regions, update one, let another time out, then save the layout, change it and restore
-  it.
+  it, then have the model preview the screen.
 - [End state](#end-state): what the page and the records show.
 
 Run this journey on `local` only. It needs the scripted model and the `layout-on-device` action,
@@ -138,6 +138,17 @@ under a name, lay the screen out again, and restore the saved layout in one call
    and `note`. A save stores no content for a blank region, so `pond` comes back blank with no
    pointer.
 
+9. Have the model preview the screen, then read the call's result:
+
+   ```bash
+   bun verify action layout-on-device --step preview --text 'The preview is back.'
+   bun verify conversation turn --message 'Show me what the screen in the hall looks like.' --reply 'The preview is back.'
+   bun verify db query "select json_extract(res.payload, '$.outcome') as outcome from records call join records res on json_extract(res.payload, '$.callID') = json_extract(call.payload, '$.callID') where call.kind = 'tool_called' and res.kind = 'tool_result' and json_extract(call.payload, '$.tool') = 'device.preview'"
+   ```
+
+   Expect: `layout-on-device` returns `data.replies` of 3, and `conversation turn` exits 0. The
+   query returns one row, with `outcome` `result`.
+
 ## End state
 
 - The last snapshot shows "Dentist at 3" and a time, and no "Ripples", no "Water the pots" and no
@@ -145,6 +156,7 @@ under a name, lay the screen out again, and restore the saved layout in one call
 - `device_regions` holds 2 rows, `clock` and `note`, the regions of the restored layout that hold
   content.
 - `device_saved_layouts` holds the one row, `evening`.
+- In step 9, the model's one call of `device.preview` returned a result.
 - The screenshots are evidence for the reviewer. Check nothing in them.
 
 Once the end state matches, run `bun verify done`.

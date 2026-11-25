@@ -12,13 +12,25 @@ export interface LayoutReply {
   };
 }
 
-export type LayoutStep = 'set' | 'update' | 'save' | 'change' | 'restore';
+export type LayoutStep = 'set' | 'update' | 'save' | 'change' | 'restore' | 'preview';
 
 // The calls that lay out the first device's screen and fill it, update its second region, save its
-// layout, lay it out again with 2 regions, or restore the saved layout. Each call names the device
+// layout, lay it out again with 2 regions, restore the saved layout, or preview the screen. Each call names the device
 // by the ID that the list result gave the model.
 export function buildLayoutReplies(step: LayoutStep): readonly LayoutReply[] {
   const listing: LayoutReply = { toolUse: { name: 'mcp__nixie__devices_list', input: {} } };
+
+  if (step === 'preview') {
+    return [
+      listing,
+      {
+        toolUse: {
+          name: 'mcp__nixie__device_preview',
+          input: (body: ScriptedBody) => ({ device: getResultID(body, 'shortID') }),
+        },
+      },
+    ];
+  }
 
   if (step === 'update') {
     return [listing, buildRegionReply('note', { kind: 'markdown', markdown: 'Dentist at 3' })];
