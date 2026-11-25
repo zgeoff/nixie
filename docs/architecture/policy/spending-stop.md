@@ -47,12 +47,12 @@ route's stop beside the stop of nixie, in the same transaction. A route whose da
 - Each read of the facts takes the next place in line, and a settle whose facts took a place no
   later than the last settle's writes nothing, so a poll that settles late never puts back a stop
   that a raise cleared, even when both read in the same millisecond. When the watcher sends a raise
-  again, the status that the gateway answers with takes the next place in line after the answer, so
-  a step that read the route before the raise took effect never puts back the stop the raise
-  cleared, even when its answer comes later. A trip whose period has ended at the instant before the
-  gateway answered is no trip, and an ended day never hides a month that still binds. A raise
-  settles with the instant before its own request, so midnight during the raise does not expire the
-  status that the request returned.
+  again, the status in the gateway's answer takes the next place in line once the answer arrives. A
+  step that read the route before the raise took effect then never puts back the stop the raise
+  cleared, even when that step's answer arrives later. A trip whose period has ended at the instant
+  before the gateway answered is no trip, and an ended day never hides a month that still binds. A
+  raise settles with the instant before its own request, so midnight during the raise does not
+  expire the status that the request returned.
 - A gateway that did not answer changes no route's stop. The stop of nixie covers it.
 
 A task that a refusal or a stopped route held has a row in `spend_route_holds`. A step holds its
