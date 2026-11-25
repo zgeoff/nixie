@@ -6,11 +6,11 @@ names a credential, [register](#bindings-and-the-removal-counter) the credential
 service through the store's [fetcher](#the-fetcher) or a [grant](#grants).
 
 A part of nixie names a credential by a reference, a resolver turns the reference into an entry, and
-the part uses the entry through the store: a fetcher makes a request to an outside service with the
-value added on the host, and a grant passes the value through the sandbox adapter to a sandbox's
-broker for one host. No tool or connector ever holds a value. A credential's value never enters a
-tool result, a prompt, a log line, a record or an error message.
-[Two secrets](#references-and-the-resolver) stay outside the store.
+the store serves the entry: a fetcher makes a request to an outside service with the value added on
+the host, and a grant passes the value through the sandbox adapter to a sandbox's broker for one
+host. No tool or connector ever holds a value. A credential's value never enters a tool result, a
+prompt, a log line, a record or an error message. [Two secrets](#references-and-the-resolver) stay
+outside the store.
 
 A release server's store has one backend, the secrets file, which the
 [server](../deployment/server.md#configuration-and-secrets) decrypts at start. It holds the search,
@@ -240,11 +240,11 @@ process at the fault point `credential.refresh.token_saved`, after the token sav
 record, kills it there, and checks that the restart leaves the credential `active` with
 `credential.refresh_saved` written.
 
-A test that plants a fake value in the secrets file asserts that the value appears in no tool
-result, no log line, no record and no error. `createTestCredentials` in the module's `test-utils`
-builds a resolver and a store over the groups a test names. A test build lets the store send each
-request through the global `fetch` after all its checks, so a mock network answers it, and a release
-build drops that path. The test build resolves each `.test` host to a public address, so the address
-checks and the body cap run as they do in a release build. A test that starts nixie with a loopback
-HTTPS site sends every request over the pinned connection a release build opens, and to that site
-alone. The planted-key test runs both ways, so a fault in either body reader fails it.
+Plant a fake value in the secrets file and assert that it appears in no tool result, no log line, no
+record and no error. `createTestCredentials` in the module's `test-utils` builds a resolver and a
+store over the groups a test names. A test build lets the store send each request through the global
+`fetch` after all its checks, so a mock network answers it, and a release build drops that path. The
+test build resolves each `.test` host to a public address, so the address checks and the body cap
+run as they do in a release build. When a test starts nixie with a loopback HTTPS site, every
+request goes over the pinned connection a release build opens, and to that site alone. The
+planted-key test runs both ways, so a fault in either body reader fails it.
