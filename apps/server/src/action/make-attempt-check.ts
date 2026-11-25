@@ -1,13 +1,18 @@
 import type { AttemptCheck, AttemptCheckInput, AttemptVerdict } from '@heynixie/actions';
 import type { Clock } from '@heynixie/clock';
 import type { Definitions, Log } from '@heynixie/log';
-import type { AskCause, EffectDeclaration, PolicyDecision } from '@heynixie/policy';
+import type {
+  AskCause,
+  CallDestination,
+  EffectDeclaration,
+  PolicyCall,
+  PolicyDecision,
+} from '@heynixie/policy';
 import { buildActionProposalInput, makeFaultSafeDecisionPoint } from '@heynixie/policy';
 import type { ToolRegistry } from '@heynixie/tools';
 import { findToolDeclaration, pickPolicyToolName } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
 import type { DecisionPointFactory } from '../utils/make-server-decisions';
-import type { StoredCall } from './read-stored-call';
 import { readStoredCall } from './read-stored-call';
 
 export interface AttemptCheckOptions {
@@ -16,6 +21,9 @@ export interface AttemptCheckOptions {
   readonly definitions: () => Definitions;
   readonly decisions: DecisionPointFactory;
   readonly registry: ToolRegistry;
+
+  // the declaration of an action that a runner queues, which no model's tool list holds
+  readonly findRunnerDeclaration: (tool: string) => EffectDeclaration | null;
 }
 
 // Decides an action again before each attempt, from the stored call, against the rules in force now
@@ -23,6 +31,10 @@ export interface AttemptCheckOptions {
 // ahead as it was decided.
 export function makeAttemptCheck(options: AttemptCheckOptions): AttemptCheck {
   return async (input) => {
+    if (input.action.is_runner === 1) {
+      return decideRunnerAction(options, input);
+    }
+
     const sequence = input.action.call_sequence;
     const stored = sequence === null ? null : await readStoredCall(options.log, sequence);
 
@@ -53,21 +65,89 @@ export function makeAttemptCheck(options: AttemptCheckOptions): AttemptCheck {
       snapshot: options.definitions().snapshotHash,
     });
 
-    return buildVerdict(options, { policy, stored, policyTool, declaration, input });
+    return buildVerdict(options, {
+      policy,
+      policyTool,
+      declaration,
+      input,
+      destinations: stored.destinations,
+      frame: stored.inputs,
+    });
   };
+}
+
+const runnerFrame = { context: 'task', definitionID: null, sources: ['task'] } as const;
+
+// An action that a runner queued has no call of its own, so its attempt meets the decision point
+// under its own tool, with its task as the caller.
+async function decideRunnerAction(
+  options: AttemptCheckOptions,
+  input: AttemptCheckInput,
+): Promise<AttemptVerdict> {
+  const tool = input.action.tool;
+
+  const declaration =
+    options.findRunnerDeclaration(tool) ?? findToolDeclaration(options.registry, tool);
+
+  if (declaration === null) {
+    return { kind: 'deny', rule: null, message: `no tool declares the effects of ${tool}` };
+  }
+
+  const destinations = collectRunnerDestinations(declaration, input);
+
+  const decide = makeFaultSafeDecisionPoint(
+    options.decisions((name) => (name === tool ? declaration : null), {
+      readConsent: () => Promise.resolve(null),
+    }),
+  );
+
+  const policy = await decide({
+    tool,
+    toolList: [tool],
+    ...runnerFrame,
+    sources: [...runnerFrame.sources],
+    args: input.arguments,
+    destinations,
+    at: options.clock.now(),
+    turnMessageSequence: null,
+    onBehalfOf: [],
+    snapshot: options.definitions().snapshotHash,
+  });
+
+  return buildVerdict(options, {
+    policy,
+    policyTool: tool,
+    declaration,
+    input,
+    destinations,
+    frame: runnerFrame,
+  });
+}
+
+// Each argument that the declaration names holds one destination, as a call's does.
+function collectRunnerDestinations(
+  declaration: EffectDeclaration,
+  input: AttemptCheckInput,
+): CallDestination[] {
+  return declaration.destinations.flatMap((argument) => {
+    const value = input.arguments[argument];
+
+    return typeof value === 'string' ? [{ value: value.normalize('NFC'), replyTarget: false }] : [];
+  });
 }
 
 interface VerdictFacts {
   readonly policy: PolicyDecision;
-  readonly stored: StoredCall;
   readonly policyTool: string;
   readonly declaration: EffectDeclaration | null;
   readonly input: AttemptCheckInput;
+  readonly destinations: readonly CallDestination[];
+  readonly frame: Pick<PolicyCall, 'context' | 'definitionID' | 'sources'>;
 }
 
 function buildVerdict(options: AttemptCheckOptions, facts: VerdictFacts): AttemptVerdict {
   const decision = facts.policy.decision;
-  const destinations = facts.stored.destinations.map((destination) => destination.value);
+  const destinations = facts.destinations.map((destination) => destination.value);
 
   if (decision.outcome === 'deny') {
     return {
@@ -97,12 +177,12 @@ function buildVerdict(options: AttemptCheckOptions, facts: VerdictFacts): Attemp
     effects: facts.declaration.effects,
     cause,
     input: facts.input.arguments,
-    destinations: facts.stored.destinations,
+    destinations: facts.destinations,
     content: facts.declaration.content,
     frame: {
-      context: facts.stored.inputs.context,
-      definitionID: facts.stored.inputs.definitionID,
-      sources: facts.stored.inputs.sources,
+      context: facts.frame.context,
+      definitionID: facts.frame.definitionID,
+      sources: facts.frame.sources,
     },
     deadlineAt: action.deadline_at,
     now: options.clock.now(),
@@ -119,7 +199,10 @@ function buildVerdict(options: AttemptCheckOptions, facts: VerdictFacts): Attemp
 }
 
 function invariantSequence(sequence: number | null): number {
-  invariant(sequence !== null, 'a call that was read again has its sequence');
+  invariant(
+    sequence !== null,
+    'a call that was read again, or a runner action, has the sequence of its cause',
+  );
 
   return sequence;
 }

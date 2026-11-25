@@ -7,14 +7,22 @@ import {
   readTestAction,
   startTestActions,
 } from '@heynixie/actions/test-utils';
-import { writeRecords } from '@heynixie/log';
+import { codingActionDeclarations } from '@heynixie/coding';
+import { parseJSONObject, readRecords, withWriteTransaction, writeRecords } from '@heynixie/log';
 import type { RuleEntry } from '@heynixie/policy';
 import { actionProposedCodec, makeDecisionPoint } from '@heynixie/policy';
+import { readStarterRules } from '@heynixie/policy/test-utils';
 import type { ApprovedCallRequest, ToolDefinition } from '@heynixie/tools';
 import { buildToolRegistry, toolCalledCodec } from '@heynixie/tools';
 import { buildMockVariantToolDefinition } from '@heynixie/tools/test-utils';
 import invariant from 'tiny-invariant';
 import { makeAttemptCheck } from './make-attempt-check';
+
+interface RunnerActionInput {
+  tool: string;
+  args: object;
+  sequence: number;
+}
 
 async function setupTest() {
   const actions = await startTestActions();
@@ -57,6 +65,7 @@ async function setupTest() {
     log: actions.context.log,
     clock: actions.clock,
     definitions: actions.context.definitions,
+    findRunnerDeclaration: (name) => codingActionDeclarations.get(name) ?? null,
     registry: buildToolRegistry([
       tool,
       reader,
@@ -87,7 +96,47 @@ async function setupTest() {
       }),
   });
 
-  return { ...actions, check, rules };
+  return {
+    ...actions,
+    check,
+    rules,
+    queueRunnerAction: async (taskID: string, action: RunnerActionInput) => {
+      const queue = actions.context.queueRunnerActions;
+
+      invariant(queue, 'the test actions queue runner actions');
+
+      const [actionID] = await withWriteTransaction(actions.writer, (tx) =>
+        queue(tx, {
+          taskID,
+          stepKey: 'ended:stopped',
+          actions: [
+            {
+              tool: action.tool,
+              args: parseJSONObject(JSON.stringify(action.args)),
+              hashParts: ['stop'],
+              causedBy: { kind: 'record', sequence: action.sequence },
+            },
+          ],
+        }),
+      );
+
+      invariant(actionID, 'the queue returns the action it wrote');
+
+      return readTestAction(actions.writer, actionID);
+    },
+    readNewestSequence: async (thread: string) => {
+      const [newest] = await readRecords(actions.context.log, {
+        afterSequence: 0,
+        thread,
+        order: 'newest',
+        limit: 1,
+      });
+
+      invariant(newest, 'the thread holds a record');
+
+      return newest.record.sequence;
+    },
+  };
 }
 
 test('it gives the proposal of an allowed action that no rule now steers the frame of its call, so its answer joins a gap group', async () => {
@@ -299,3 +348,77 @@ test('it fails an approved in-step call rule_denied, and runs no call, when a ru
   expect(calls).toStrictEqual([]);
   expect(action).toMatchObject({ status: 'failed', reason: 'rule_denied', attempt_count: 0 });
 });
+
+test('it decides a runner action under its own tool with the task as caller, and asks before a stop of a joined session with the record that caused it', async () => {
+  const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
+
+  ctx.rules.push(...readStarterRules());
+
+  const cause = await ctx.readNewestSequence(step.lease.workID);
+
+  const action = await ctx.queueRunnerAction(step.lease.workID, {
+    tool: 'coding.stop',
+    args: { session: 'atc:cloud.3f9a1c2e.7c1d0e55', origin: 'joined' },
+    sequence: cause,
+  });
+
+  const verdict = await ctx.check({
+    action,
+    arguments: { session: 'atc:cloud.3f9a1c2e.7c1d0e55', origin: 'joined' },
+    proposalID: action.action_id,
+  });
+
+  invariant(verdict.kind === 'ask' && verdict.record.payload, 'the stop of a joined session asks');
+
+  const proposed = actionProposedCodec.decode(verdict.record.payload);
+
+  expect({
+    destinations: verdict.destinations,
+    parent: verdict.record.parent,
+    tool: proposed.tool,
+    callSequence: proposed.callSequence,
+  }).toStrictEqual({
+    destinations: ['atc:cloud.3f9a1c2e.7c1d0e55'],
+    parent: cause,
+    tool: 'coding.stop',
+    callSequence: cause,
+  });
+});
+
+test.each([
+  [
+    'the stop of a started session',
+    'coding.stop',
+    { session: 'atc:cloud.3f9a1c2e.1', origin: 'started' },
+    ['atc:cloud.3f9a1c2e.1'],
+  ],
+  [
+    'the spawn of a start',
+    'coding.start',
+    { name: 'Login fix', prompt: 'Fix the login test.' },
+    [],
+  ],
+] as const)(
+  'it lets %s go ahead under the starter rules',
+  async (_label, tool, args, destinations) => {
+    const ctx = await setupTest();
+    const step = await createTestStep(ctx.context);
+
+    ctx.rules.push(...readStarterRules());
+
+    const action = await ctx.queueRunnerAction(step.lease.workID, {
+      tool,
+      args,
+      sequence: await ctx.readNewestSequence(step.lease.workID),
+    });
+
+    const verdict = await ctx.check({
+      action,
+      arguments: parseJSONObject(JSON.stringify(args)),
+      proposalID: action.action_id,
+    });
+
+    expect(verdict).toStrictEqual({ kind: 'go', destinations: [...destinations] });
+  },
+);
