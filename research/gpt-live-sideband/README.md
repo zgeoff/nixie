@@ -12,7 +12,8 @@ Does a delegation event carry the request's text, can nixie send one answer in s
 the last one closing it, which event reports a cut and how does it map to the characters of the
 answer, which session fields turn delegation on and does `store: false` apply, and can the server
 open a new session for the same call without a new offer from the device? And under the design's
-hold, does GPT-Live speak a lead-in sentence part and wait for the next part?
+hold, does GPT-Live speak a lead-in sentence part and wait for the next part, and does it stay quiet
+through a hold of up to 30 s with a holding line?
 
 ## Answer
 
@@ -24,6 +25,9 @@ hold, does GPT-Live speak a lead-in sentence part and wait for the next part?
 - Under the acknowledgement delay and an empty thinking part, a lead-in sentence part is safe only
   when the next part arrives while GPT-Live still speaks it. With parts 3 s apart, GPT-Live invented
   facts after "You have two new messages." and the like in 4 of 8 trials.
+- Under the same hold, a holding line at 1.5 s and the whole answer at 5, 15 or 30 s worked in 18 of
+  18 trials: GPT-Live spoke the line, stayed silent until the answer and invented no fact. It added
+  a word to the line in 2 trials, and added no promise.
 - No event reports a cut. In 6 of 6 trials, output stopped where your speech started on the session
   timeline, and word alignment maps the paraphrase onto the sent text.
 - `delegation: { type: 'client' }` and `store: false` apply, and `client.data_channel` keeps the
@@ -45,9 +49,12 @@ bun print-timeline.ts results/<label>.jsonl
 bun report-cuts.ts results/cut-<label>.jsonl
 OPENAI_API_KEY=$(op read 'op://nixie/voice-openai/credential') bun run-probe.ts parts --trials 8
 bun report-parts.ts results/parts-*.jsonl
+OPENAI_API_KEY=$(op read 'op://nixie/voice-openai/credential') bun run-probe.ts holds --hold 15000 --trials 6
+bun report-holds.ts results/holds-gpt-*.jsonl
 ```
 
-The [setup](results.md#setup) gives the versions, the 5 probes and the cost.
+The `holds` probe refuses a trial once the sessions it has logged under `results/` would pass 40
+minutes, about $2. The [setup](results.md#setup) gives the versions, the 6 probes and the cost.
 
 ## Results
 

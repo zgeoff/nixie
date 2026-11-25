@@ -52,6 +52,9 @@ The probes:
   asks one question, the probe sends an empty `session.thinking.append` as soon as the delegation
   arrives, and it sends the answer 1.2 s later in one of 3 shapes, as
   [Question 6](#question-6-sentence-parts-under-the-hold) describes.
+- In `holds`, each trial is a session of its own under the same hold. The probe sends the holding
+  line 1.5 s after the delegation arrives and the whole answer 5, 15 or 30 s after it, as
+  [Question 7](#question-7-a-long-hold-with-the-holding-line) describes.
 
 Sessions and their billed seconds, from `session.closed`:
 
@@ -69,8 +72,11 @@ Sessions and their billed seconds, from `session.closed`:
 | `parts`, a pilot of 3 sessions                           | `gpt-live-1`   | 53             |
 | `parts`, 24 sessions with parts 300 to 800 ms apart      | `gpt-live-1`   | 387            |
 | `parts`, 16 sessions with parts 3 s apart                | `gpt-live-1`   | 271            |
+| `holds`, 6 sessions with a 5 s hold                      | `gpt-live-1`   | 122            |
+| `holds`, 6 sessions with a 15 s hold                     | `gpt-live-1`   | 183            |
+| `holds`, 7 sessions with a 30 s hold                     | `gpt-live-1`   | 318            |
 
-The total is about 1,164 s, 19.4 minutes, or $0.97 at $0.05 a minute. The synthetic speech cost
+The total is about 1,787 s, 29.8 minutes, or $1.49 at $0.05 a minute. The synthetic speech cost
 under $0.01.
 
 ## Question 1: the request's text
@@ -401,6 +407,80 @@ So a whole sentence is not a safe part. A lead-in is safe only when the next par
 GPT-Live finishes speaking it, and a full statement still drew an invented count in 1 trial of 8 at
 a 3 s gap.
 
+## Question 7: a long hold with the holding line
+
+Does GPT-Live stay quiet through a hold of 5, 15 or 30 s, speak the holding line as sent, and then
+speak the whole answer without invented facts?
+
+It does at all 3 lengths. In 18 of 18 trials, GPT-Live said nothing before the holding line, spoke
+the line, stayed silent for the rest of the hold and spoke the answer with no invented fact. It
+added a word to the line in 2 of 18 trials, "One moment, checking." and "One moment checking that.",
+and never added a promise. No trial got an error, and nothing closed a delegation held for 30 s.
+With no holding line, GPT-Live stayed silent for the whole 30 s, then spoke the answer.
+
+### Setup of the holds probe
+
+Each trial ran in a session of its own on `gpt-live-1`, with the voice prompt of the other probes,
+`delegation: { acknowledgement_delay_ms: 800, type: 'client' }` and `store: false`. The caller asked
+one of the 3 questions of [Question 6](#setup-of-the-parts-probe), and the answers took turns. The
+probe timed each send from the arrival of `session.delegation.created`:
+
+1. At once, an empty `session.thinking.append` on the delegation, the hold of Question 6.
+2. At 1.5 s, the design's `hold_after_ms`, the holding line "One moment." as
+   `session.commentary.append` with `delegation_id: null`.
+   [Question 2](#question-2-an-answer-in-parts) showed that a null delegation ID is how `say` sends
+   a line.
+3. At 5, 15 or 30 s, the whole answer as one `session.commentary.append` on the delegation, the
+   lead-in and both statements of shape a.
+
+One more trial at 30 s sent no holding line. [`report-holds.ts`](report-holds.ts) splits the output
+transcript on the session timeline at each part's `session.commentary.appended`: speech before the
+holding line, speech in the hold, and speech after the answer. It splits the hold into stretches of
+speech at each 600 ms of silence, and lists the answer's new words with
+[`collectNewWords`](collect-new-words.ts). Each new word was then read by hand, as in Question 6.
+The reflected output audio in each hold was also checked for loud chunks after the holding line.
+
+### Results of the holds probe
+
+| Hold | Trials     | Spoke before the line | Spoke the line | Changed the line | Spoke in the rest of the hold | Answer in full | Invented a fact | Errors |
+| ---- | ---------- | --------------------- | -------------- | ---------------- | ----------------------------- | -------------- | --------------- | ------ |
+| 5 s  | 6          | 0                     | 6              | 0                | 0                             | 6              | 0               | 0      |
+| 15 s | 6          | 0                     | 6              | 1, added a word  | 0                             | 6              | 0               | 0      |
+| 30 s | 6          | 0                     | 6              | 1, added 2 words | 0                             | 6              | 0               | 0      |
+| 30 s | 1, no line | 0                     | no line sent   | no line sent     | 0                             | 1              | 0               | 0      |
+
+Each trial:
+
+| Hold | Answer   | Holding line as spoken      | Answer's wording changes, no new fact                    |
+| ---- | -------- | --------------------------- | -------------------------------------------------------- |
+| 5 s  | calendar | "One moment."               | "And at eleven"                                          |
+| 5 s  | calendar | "One moment."               | joined the sentences                                     |
+| 5 s  | messages | "One moment."               | none                                                     |
+| 5 s  | forecast | "One moment."               | "Saturday's cool and windy", "while Sunday turns bright" |
+| 5 s  | calendar | "One moment."               | "So tomorrow morning", and dropped "two things"          |
+| 5 s  | messages | "One moment."               | none                                                     |
+| 15 s | calendar | "One moment."               | "At nine a.m."                                           |
+| 15 s | messages | "One moment, checking."     | none                                                     |
+| 15 s | forecast | "One moment."               | none                                                     |
+| 15 s | calendar | "One moment."               | joined the sentences                                     |
+| 15 s | messages | "One moment."               | none                                                     |
+| 15 s | forecast | "One moment."               | joined the sentences                                     |
+| 30 s | calendar | "One moment."               | dropped "morning", "and then at eleven"                  |
+| 30 s | messages | "One moment."               | none                                                     |
+| 30 s | forecast | "One moment."               | dropped "around"                                         |
+| 30 s | calendar | "One moment checking that." | "you've got two things"                                  |
+| 30 s | messages | "One moment."               | none                                                     |
+| 30 s | forecast | "One moment."               | none                                                     |
+| 30 s | calendar | no line sent                | joined the sentences                                     |
+
+On the server's clock, the holding line's first loud audio came 0.8 to 1.4 s after the probe sent
+it, so 2.3 to 2.9 s after the delegation arrived. The answer's first loud audio came 0.7 to 0.9 s
+after the probe sent it, at every hold length.
+
+So "hold, then a holding line, then the whole answer" works at 5, 15 and 30 s on `gpt-live-1`. The
+line is a request to speak, which GPT-Live may pad with a word or two. Its audio starts about 1.2 s
+after `hold_after_ms` on the server's clock, before the device's playback delay.
+
 ## Contract lines that must change
 
 Each line below is quoted from [Voice calls](../../docs/design/platform/channels/voice.md), with the
@@ -482,5 +562,6 @@ reason it no longer holds.
 - A second request while a hand-off is running.
 - A session that omits `delegation`, and a session seeded with a long call through `input`.
 - How the device's playback delay varies, beyond the 6 trials here.
-- Sentence parts on `gpt-live-1.1`, gaps between 800 ms and 3 s, and a hold longer than 1.2 s before
-  the first part.
+- Sentence parts on `gpt-live-1.1`, and gaps between 800 ms and 3 s.
+- A hold longer than 30 s, a hold on `gpt-live-1.1`, the interim line on a long turn, and the
+  holding line sent on the delegation's ID in place of a null one.
