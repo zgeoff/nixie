@@ -1,5 +1,5 @@
 import type { CleanupRecordSessions, HostBackups } from '@heynixie/api';
-import type { ComputerTools } from '@heynixie/connectors';
+import type { ComputerTools, RenderSandbox } from '@heynixie/connectors';
 import type { DefinitionsExportSweep, SeedResult } from '@heynixie/definitions';
 import type { ErasureRunnerControl } from '@heynixie/log';
 import type { StartedMemoryStore } from '@heynixie/memory';
@@ -23,6 +23,7 @@ export interface ServerPartValues {
   readonly sandbox_adapter: Tools['adapter'];
   readonly web_fetch: Tools['webFetch'];
   readonly computer: ComputerTools;
+  readonly render: RenderSandbox;
   readonly code_run: CodeRunPart;
   readonly worker: WorkerTool | null;
   readonly actions: Tools['actions'];

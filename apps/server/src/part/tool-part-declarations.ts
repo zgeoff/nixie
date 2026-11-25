@@ -17,6 +17,7 @@ import { collectHostHeldNames } from './collect-host-held-names';
 import type { ServerPartValues } from './server-part-values';
 import { startCodeRunPart } from './start-code-run-part';
 import { startComputerPart } from './start-computer-part';
+import { startRenderPart } from './start-render-part';
 import { startSandboxAdapterPart } from './start-sandbox-adapter-part';
 import { startWebFetchPart } from './start-web-fetch-part';
 import { startWorkerPart } from './start-worker-part';
@@ -70,6 +71,16 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
       }),
   },
   {
+    name: 'render',
+    needs: ['inputs', 'sandbox_adapter'],
+    images: () => ['render'],
+    start: (parts) =>
+      startRenderPart({
+        options: parts.get('inputs').options,
+        adapter: parts.get('sandbox_adapter'),
+      }),
+  },
+  {
     name: 'code_run',
     needs: ['inputs', 'context', 'sandbox_adapter'],
     images: () => ['code'],
@@ -120,6 +131,7 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
       'context',
       'web_fetch',
       'computer',
+      'render',
       'code_run',
       'worker',
       'actions',
@@ -141,6 +153,7 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
         {
           webFetch: parts.get('web_fetch').tool,
           computer: parts.get('computer').tools,
+          render: parts.get('render'),
           codeRun: parts.get('code_run').tool,
           fileSend: parts.get('code_run').sendTool,
           forget: parts.get('actions').forget.tool,

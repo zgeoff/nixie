@@ -64,6 +64,7 @@ test('it needs each image that a declaration names', async () => {
     { key: 'conversation', neededBy: 'the profile scripted on the agent-sdk harness' },
     { key: 'fetch', neededBy: 'the web_fetch part' },
     { key: 'computer', neededBy: 'the computer part' },
+    { key: 'render', neededBy: 'the render part' },
     { key: 'code', neededBy: 'the code_run part' },
   ]);
 });
@@ -76,6 +77,7 @@ test('it needs no image for a declaration that names none', async () => {
     (declaration) =>
       declaration.name !== 'web_fetch' &&
       declaration.name !== 'computer' &&
+      declaration.name !== 'render' &&
       declaration.name !== 'code_run',
   );
 

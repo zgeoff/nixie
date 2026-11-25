@@ -1,6 +1,11 @@
 import { join } from 'node:path';
 import type { ErasureStuckPort } from '@heynixie/api';
-import type { ImageProvider, ImagesConfig, SearchProvider } from '@heynixie/connectors';
+import type {
+  ImageProvider,
+  ImagesConfig,
+  RenderSandbox,
+  SearchProvider,
+} from '@heynixie/connectors';
 import {
   buildImageTools,
   buildSearchTool,
@@ -76,6 +81,7 @@ interface ConversationImages {
 export interface ConversationEndpointTools {
   readonly webFetch: ToolDefinition;
   readonly computer: readonly ToolDefinition[];
+  readonly render: RenderSandbox;
   readonly codeRun: ToolDefinition;
   readonly fileSend: ToolDefinition;
   readonly forget: ToolDefinition;
@@ -261,6 +267,11 @@ export async function startConversationEndpoint(
     definitions: options.context.definitions,
     clock: options.context.clock,
     streams: tools.deviceStreams,
+    preview: {
+      draw: tools.render.draw,
+      imageLongEdge: options.config.web_fetch.imageLongEdge,
+      timeZone: options.config.time.default_zone,
+    },
   });
 
   const worker = tools.worker === null ? [] : [tools.worker.buildTool(bounds)];
