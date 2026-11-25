@@ -57,7 +57,7 @@ export function buildNixieOperationSchemas() {
     releaseWriterLock: z.null(),
 
     // a call that the user started and connected, on the harness's speech layer
-    startCall: z.null(),
+    placeHarnessCall: z.null(),
 
     // an event that the speech layer's session raises, as the provider would
     emitSpeech: z.object({ sessionID: z.string(), event: speechEventSchema }),

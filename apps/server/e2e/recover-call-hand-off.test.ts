@@ -22,7 +22,7 @@ test('it reruns only the hand-off turn that a crash cut, and writes no small tal
     ...Array.from({ length: 8 }, () => ({ text: 'Noted.' })),
   );
 
-  const callID = await first.request('startCall', null);
+  const callID = await first.request('placeHarnessCall', null);
   const started = await ctx.nixie.waitForRecord((record) => record.kind === 'call.started');
 
   const taskID = String(started.payload['taskID']);

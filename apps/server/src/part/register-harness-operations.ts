@@ -67,7 +67,7 @@ export function registerHarnessOperations(
 function registerCallOperations(link: HarnessLink, calls: CallsContext | undefined): void {
   const schemas = buildNixieOperationSchemas();
 
-  link.registerOperation('startCall', schemas.startCall, async () => {
+  link.registerOperation('placeHarnessCall', schemas.placeHarnessCall, async () => {
     invariant(calls !== undefined, 'the test build holds no calls');
 
     const started = await startCall(calls, { carryingSession: 'harness-session' });

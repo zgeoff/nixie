@@ -57,7 +57,7 @@ export const testBuildIDs: readonly string[] = [
   'test.inbox_read',
   'runs as an action, never inside the turn',
   'releaseWriterLock',
-  'startCall',
+  'placeHarnessCall',
   'emitSpeech',
   'readSpeechCalls',
   'fake-session-',

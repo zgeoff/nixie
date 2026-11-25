@@ -138,7 +138,7 @@ export async function runVerifyHarness(): Promise<void> {
           client: api.client,
           model: nixie.model,
           advanceClock: (durationMs) => nixie.harness.advance(durationMs),
-          startCall: () => server.request('startCall', null),
+          startCall: () => server.request('placeHarnessCall', null),
           emitSpeech: (event) =>
             server.request('emitSpeech', { sessionID: 'fake-session-1', event }),
           readSpeechCalls: () => server.request('readSpeechCalls', null),
