@@ -12,11 +12,11 @@ the harness that runs nixie on `local` serves. On `preview`, list the feature as
 run no `bun verify done`.
 
 Start from a browser with no session, because the device page shows the enrolment form only to such
-a browser. Before step 1, run `bun verify up --restart` and `bun verify doctor`, and do not run
-`sign-in-enrol` first, because it signs the browser in. This journey is the last one of a pass. To
-run another journey after it, restart and run `sign-in-enrol` again. Restart the same way before
-each repeat of this journey, even after a failed one: a restart gives nixie a new, empty database,
-which holds no session for the browser.
+a browser. Before step 1, run `bun verify up --restart` and `bun verify doctor`, and run no
+`sign-in-enrol` between that restart and step 1, because it signs the browser in. This journey is
+the last one of a pass. To run another journey after it, restart and run `sign-in-enrol` again.
+Restart the same way before each repeat of this journey, even after a failed one: a restart gives
+nixie a new, empty database, which holds no session for the browser.
 
 A layout is a grid of named regions on a device's screen. Each region shows its own content, and the
 model updates or times out one region with no change to the others. The model can also save a layout
@@ -92,7 +92,7 @@ under a name, lay the screen out again, and restore the saved layout in one call
 
    Expect: `advance-clock` returns `data.minutes` of 2. The snapshot no longer shows "Ripples", and
    still shows "Dentist at 3" and a time. The query lists `clock`, `note` and `pond`: a timed-out
-   region keeps its pointer, and the server reads that its minutes passed.
+   region keeps its pointer, and nixie finds its minutes passed each time it reads the region.
 
 6. Have the model save the layout as `evening`, then read the saved names:
 
@@ -118,8 +118,8 @@ under a name, lay the screen out again, and restore the saved layout in one call
    ```
 
    Expect: `data.replies` of 4. The snapshot shows "Water the pots" and "Dentist at 3", and no time.
-   The screenshot shows the teal background behind "Water the pots". The query lists `garden` and
-   `note`.
+   The screenshot gives the reviewer the teal background behind "Water the pots". The query lists
+   `garden` and `note`.
 
 8. Have the model restore `evening`:
 

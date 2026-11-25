@@ -17,8 +17,9 @@ A session has a scope, `full` or `device`, stored on `identities` and on `enrolm
 code carries a scope: `sessions.enrol` takes none, so a device code can't make a full session and a
 full code can't make a device session.
 
-A device row belongs to one session, and a session holds at most one. A device session always holds
-its row. A full session holds one only after it registers.
+A device row belongs to one session, and a session holds at most one. A device session holds its row
+from enrolment until a revoke or a sign-out removes the row. A full session holds one only after it
+registers.
 
 1. A signed-in client calls `sessions.issueCode({ scope: 'device' })`, and the page `/add-device`
    shows the code. `nixie enrol-code device` issues the same code from the host.
@@ -64,10 +65,10 @@ holds the content outside the log.
 
 `readScreenState` reads the two pointed records and `pickScreenState` picks the state: the show,
 while it has no `until` or its `until` is ahead, or else the idle scene. A new show replaces the one
-before it, and an `until` that passes ends the show, never returning to an older one. The screen
-then draws the layout while a region shows content or has a background, as
-[Layouts and regions](#layouts-and-regions) says, or else the idle scene. An idle device with no
-scene shows black.
+before it, and an `until` that passes ends the show, never returning to an older one. While no show
+covers it, the screen draws the layout in place of the idle scene when a region shows content or has
+a background, as [Layouts and regions](#layouts-and-regions) says. An idle device with no scene
+shows black.
 
 ## Layouts and regions
 
@@ -127,8 +128,8 @@ region whose image is forgotten or missing goes blank too. A reset, a revoke and
 delete the layout and region pointers.
 
 A show covers the layout without touching it, so a region's minutes keep counting under a show. The
-screen draws, in order, an unexpired `device.show`, the layout while at least one region shows
-content or has a background, then the idle scene.
+screen draws, in order, an unexpired `device.shown` record, the layout while at least one region
+shows content or has a background, then the idle scene.
 
 `device.region` reads the layout when its call runs, so a call that waited for approval fails with
 `UNKNOWN_REGION` when a clear or a new layout removed its region in the meantime. A layout set after
@@ -153,9 +154,9 @@ The event of a show carries the `fit` of an image, `whole` or `fill`.
 
 The layout travels in `layout` events, apart from the `show` and `idle` events. A stream sends one
 when the device holds a layout, and again when the grid or a region's content changes, a region's
-minutes pass or a forget blanks a region. A cleared layout sends a `layout` event with no layout. A
-device that holds no layout gets none. The stream wakes at the earliest end among the show and the
-regions, including while a show covers the layout.
+minutes pass or a forget blanks a region. A clear sends a `layout` event with no layout. A stream
+that opens on a device with no layout sends no `layout` event. The stream wakes at the earliest end
+among the show and the regions, including while a show covers the layout.
 
 `devices.readImage` serves an image only while it is in the current show, the idle scene or a region
 of the layout, and returns `NOT_SHOWN` otherwise.
