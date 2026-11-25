@@ -178,8 +178,8 @@ stores each in a `trigger.wake_rule_set` record, and the `wake_rules` table fold
   match filters and never checks trust.
 - **Target.** The rule wakes the conversation, or any task, which the call that sets the rule names.
   A call from a task that names no target wakes that task. A rule whose task ended ends with it.
-- **Expiry.** The expiry is optional, so a rule can stay for good, and at most 3650 days. A rule
-  matches the mail received before its expiry.
+- **Expiry.** The expiry is optional, so a rule can stay for good. An expiry is at most 3650 days. A
+  rule matches the mail received before its expiry.
 - **Window.** The window is the shortest time between two wakes by one rule. The deployment's
   `wake_rules.window` sets the default, and a call sets a window of a minute at least. Each rule
   keeps its own window, and no limit holds for the mailbox as a whole.
@@ -205,9 +205,9 @@ drops it when the dedupe key is held. Then it reads the live rules and matches t
 and subject as outside content, with the mail's short ID. A mail forgotten since shows as forgotten.
 The model then opens a mail with `mail.read`.
 
-The wake flush decides inside the write transaction that writes the wakes, so an arrival that wakes
-a rule at the same time cannot let the flush wake it again inside its window. When the task of a
-rule has ended, the flush drops the rule's held matches, a cancelled rule's too.
+The wake flush runs inside the write transaction that writes the wakes, so an arrival that wakes a
+rule at the same time cannot let the flush wake it again inside its window. When the task of a rule
+has ended, the flush drops the rule's held matches, a cancelled rule's too.
 
 The arrival's erasable fields keep their key while a held match names the arrival. Each arrival sits
 in `wake_arrival_cleanup` from its write. The core removes the key of each such arrival that no held

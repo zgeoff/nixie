@@ -51,7 +51,8 @@ Before you start:
    bun verify db query "select json_extract(match, '$.from') as from_match, window_ms from wake_rules"
    ```
 
-   Expect: one row, with `from_match` `["@library.example.org"]` and `window_ms` 60000.
+   Expect: one row, with `window_ms` 60000 and `from_match` `["@library.example.org"]`: the rule
+   stores the address in a list.
 
 4. Deliver a mail that no rule matches, and check that it wakes nothing. The mail reaches the
    mailbox within a second, so run the first query again when it counts 0.

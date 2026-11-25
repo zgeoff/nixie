@@ -18,3 +18,5 @@ gate reads.
 
 3. Expect: `ok: true`, `data.action` of `created`, `replaced` or `unchanged`, and `data.local` of 0.
    Each file that `data.local` counts stayed on your machine, where a reviewer can't open it.
+
+When `publish` fails, do what its row in [Exit codes](exit-codes.md) says.

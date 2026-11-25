@@ -136,7 +136,7 @@ command with neither runs on the registry's first target, so run `use` first.
 
 <!-- repo: targets -->
 
-The [targets table](references/targets.md) gives each target's start commands and access.
+See the [targets table](references/targets.md) for each target's start commands and access.
 
 <!-- /repo -->
 
