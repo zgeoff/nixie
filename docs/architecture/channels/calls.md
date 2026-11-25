@@ -71,18 +71,18 @@ Each call writes these record kinds. The model sees only the kinds with a short 
 below, and only `call.rang`, `call.spoke` and `call.handed_off` hold text that the user can ask
 nixie to forget.
 
-| Kind               | Thread       | What it records                                                                             |
-| ------------------ | ------------ | ------------------------------------------------------------------------------------------- |
-| `call.started`     | conversation | A call began, who began it and the ID of its task.                                          |
-| `call.answered`    | conversation | The starting session answered the call.                                                     |
-| `call.ended`       | conversation | The call ended, with who ended it and how many minutes it charged.                          |
-| `call.spoke`       | call         | One line of the speech layer's own small talk, with its line ID. It holds no other speaker. |
-| `call.handed_off`  | call         | A request that the speech layer passed to nixie's turn, with its short ID.                  |
-| `call.heard_cut`   | call         | The user talked over a reply, and how many characters of it they heard.                     |
-| `call.closing`     | call         | The call ended, and its thread now runs a last turn that writes the summary.                |
-| `call.rang`        | none yet     | nixie rang the user. The kind has a codec, and no code writes it yet.                       |
-| `call.reconnected` | none yet     | The speech session came back. The kind has a codec, and no code writes it yet.              |
-| `call.turn_timed`  | none yet     | How long a turn took. The kind has a codec, and no code writes it yet.                      |
+| Kind               | Thread       | What it records                                                                                                                                      |
+| ------------------ | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `call.started`     | conversation | A call began, who began it and the ID of its task.                                                                                                   |
+| `call.answered`    | conversation | The starting session answered the call.                                                                                                              |
+| `call.ended`       | conversation | The call ended, with who ended it and how many minutes it charged.                                                                                   |
+| `call.spoke`       | call         | One line that the speech layer said, with its line ID: its own small talk, the holding line or the `couldnt_finish` line. It holds no other speaker. |
+| `call.handed_off`  | call         | A request that the speech layer passed to nixie's turn, with its short ID.                                                                           |
+| `call.heard_cut`   | call         | The user talked over a reply, and how many characters of it they heard.                                                                              |
+| `call.closing`     | call         | The call ended, and its thread now runs a last turn that writes the summary.                                                                         |
+| `call.rang`        | none yet     | nixie rang the user. The kind has a codec, and no code writes it yet.                                                                                |
+| `call.reconnected` | none yet     | The speech session came back. The kind has a codec, and no code writes it yet.                                                                       |
+| `call.turn_timed`  | none yet     | How long a turn took. The kind has a codec, and no code writes it yet.                                                                               |
 
 The `calls` projection folds `call.started`, `call.rang`, `call.answered`, `call.ended` and
 `budget.charged` into one row per call, in the same transaction as each record. A call that nixie
@@ -108,8 +108,8 @@ called `seedThrough`. The runner runs the same turn code as a started task, with
 - A new session opens with two threads: the conversation's summary and recent turns through
   `seedThrough`, then the call's own thread. The call's thread shows the user's speech, the speech
   layer's small talk and the replies.
-- The call gets memory read, the task and time tools, and `task.message`. It gets none of the tools
-  that start work or ring the user.
+- The call gets the conversation's tool list, so its connectors answer a request such as "what is on
+  today". It never gets `call.ring`, `task.start`, `worker.run` or `task.report`.
 
 ## Hand-offs
 
@@ -126,14 +126,16 @@ call's thread:
 A `call.spoke` record wakes nothing and shows no message of its own: the turn reads each line of
 small talk beside the hand-off that follows it, so the first reply of the turn is the answer. The
 call's task runs one turn over what it has not read. When the turn ends, the module sends the text
-of its replies to the speech layer in one `answer` call. A turn that fails, passes a limit or writes
-no text sends the `couldnt_finish` line instead, so the speech layer never makes up an answer. A
-turn that the user cut sends nothing.
+of its replies to the speech layer in one `answer` call for each hand-off the turn took: the ones it
+started with and the ones that landed during it, oldest first. A hand-off that already has its
+answer gets no second one. A turn that fails, passes a limit or writes no text sends the
+`couldnt_finish` line instead, so the speech layer never makes up an answer, and the module writes
+that line as a `call.spoke` record. A turn that the user cut sends nothing.
 
 When no answer has been sent `hold_after_ms` after a hand-off, the module sends the `holding` line
-through `say`. That line is not part of the answer, and it writes no record, because `call.spoke`
-holds only the speech layer's own speech. A second hand-off during a running turn joins that turn as
-a mid-turn message, and the turn answers the newest hand-off.
+through `say`. That line is not part of the answer. The module writes it as a `call.spoke` record
+once the speech layer has it. A second hand-off during a running turn joins that turn as a mid-turn
+message, and the turn answers it with the same text as the first.
 
 A `cut` event does one of two things:
 

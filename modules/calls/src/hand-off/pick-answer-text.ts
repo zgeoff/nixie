@@ -9,14 +9,23 @@ export interface AnswerParts {
   readonly lines: Pick<VoiceLines, 'couldntFinish'>;
 }
 
+export interface AnswerText {
+  readonly text: string;
+
+  // true when the text is the fixed line in place of the turn's reply
+  readonly isFixedLine: boolean;
+}
+
 // The whole text that the speech layer gets for a hand-off. A turn that failed or wrote no text gets
 // the fixed line instead, because an empty answer makes the speech layer invent one, and the line
 // claims no outcome.
-export function pickAnswerText(parts: AnswerParts): string {
+export function pickAnswerText(parts: AnswerParts): AnswerText {
   const text = parts.replies
     .map((reply) => reply.trim())
     .filter((reply) => reply !== '')
     .join('\n\n');
 
-  return parts.isFailed || text === '' ? parts.lines.couldntFinish : text;
+  return parts.isFailed || text === ''
+    ? { text: parts.lines.couldntFinish, isFixedLine: true }
+    : { text, isFixedLine: false };
 }

@@ -137,6 +137,7 @@ test('it says no holding line when the answer started before hold_after_ms', asy
 
   await sendTurnAnswer(ctx.context, {
     callID: ctx.callID,
+    taskID: ctx.taskID,
     handOffID: 'h1',
     replies: ['You have two things today.'],
     replyRecordID: '12',
@@ -167,6 +168,7 @@ test('it sends the reply text to the speech layer as one final answer', async ()
 
   await sendTurnAnswer(ctx.context, {
     callID: ctx.callID,
+    taskID: ctx.taskID,
     handOffID: 'h1',
     replies: ['You have two things today.', 'The first is at nine.'],
     replyRecordID: '12',
@@ -204,6 +206,7 @@ test.each([
 
   await sendTurnAnswer(ctx.context, {
     callID: ctx.callID,
+    taskID: ctx.taskID,
     handOffID: 'h1',
     replies,
     replyRecordID: null,
@@ -233,6 +236,7 @@ test('it marks the reply with how much the user heard when they talk over an ans
 
   await sendTurnAnswer(ctx.context, {
     callID: ctx.callID,
+    taskID: ctx.taskID,
     handOffID: 'h1',
     replies: ['You have two things today.'],
     replyRecordID: '12',
@@ -303,4 +307,98 @@ test('it writes nothing for a speech event after the call ended', async () => {
   const thread = await ctx.readThread();
 
   expect(thread.map((record) => record.kind)).toStrictEqual(['call.closing']);
+});
+
+test('it sends one answer for a hand-off when its answer is sent twice', async () => {
+  const ctx = await setupTest();
+
+  ctx.speech.emit(ctx.sessionID, {
+    kind: 'hand_off',
+    handOffID: 'h1',
+    request: 'what is on today',
+  });
+
+  await waitFor(async () => {
+    const thread = await ctx.readThread();
+
+    expect(thread).toHaveLength(1);
+  });
+
+  const answer = {
+    callID: ctx.callID,
+    taskID: ctx.taskID,
+    handOffID: 'h1',
+    replies: [],
+    replyRecordID: null,
+    isFailed: true,
+  };
+
+  await sendTurnAnswer(ctx.context, answer);
+
+  await sendTurnAnswer(ctx.context, {
+    ...answer,
+    replies: ['You have two things today.'],
+    isFailed: false,
+  });
+
+  expect(ctx.speech.calls.filter((call) => call.method === 'answer')).toHaveLength(1);
+});
+
+test('it records the holding line as speech layer speech on the call thread', async () => {
+  const ctx = await setupTest();
+
+  ctx.speech.emit(ctx.sessionID, {
+    kind: 'hand_off',
+    handOffID: 'h1',
+    request: 'what is on today',
+  });
+
+  await waitFor(() => expect(ctx.clock.readNextDueMs()).not.toBeNull());
+
+  ctx.clock.advance(1500);
+
+  await waitFor(async () => {
+    const thread = await ctx.readThread();
+
+    expect(thread.map((record) => record.kind)).toStrictEqual(['call.handed_off', 'call.spoke']);
+  });
+
+  const thread = await ctx.readThread();
+
+  const spoke = thread.at(-1);
+
+  expect(spoke?.payload).toMatchObject({ speaker: 'speech_layer', heardChars: 11 });
+  expect(spoke?.erasable).toMatchObject({ fields: { text: 'One moment.' } });
+});
+
+test('it records the fixed line of a failed turn as speech layer speech on the call thread', async () => {
+  const ctx = await setupTest();
+
+  ctx.speech.emit(ctx.sessionID, {
+    kind: 'hand_off',
+    handOffID: 'h1',
+    request: 'what is on today',
+  });
+
+  await waitFor(async () => {
+    const thread = await ctx.readThread();
+
+    expect(thread).toHaveLength(1);
+  });
+
+  await sendTurnAnswer(ctx.context, {
+    callID: ctx.callID,
+    taskID: ctx.taskID,
+    handOffID: 'h1',
+    replies: [],
+    replyRecordID: null,
+    isFailed: true,
+  });
+
+  const thread = await ctx.readThread();
+
+  const spoke = thread.at(-1);
+
+  expect(spoke?.kind).toBe('call.spoke');
+  expect(spoke?.erasable).toMatchObject({ fields: { text: "I couldn't finish that one." } });
 });

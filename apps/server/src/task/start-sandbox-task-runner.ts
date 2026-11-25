@@ -38,6 +38,7 @@ export async function startSandboxTaskRunner(
     log: parts.log,
     calls: {
       voicePrompt: defaultVoicePrompt,
+      conversationToolNames: parts.tools.definitions.map((definition) => definition.name),
       answer: async (answer) => {
         const calls = parts.apiContext.calls;
 

@@ -265,7 +265,13 @@ function buildTaskImpParts(runner: TaskRunner, taskID: string): TaskImpParts {
         runID: taskID,
         thread: taskID,
         logThread: run.options.log === 'conversation' ? conversationTaskID : taskID,
-        tools: [...new Set([...run.options.tools, silentEndToolName, taskReportToolName])],
+        tools: [
+          ...new Set([
+            ...run.options.tools,
+            silentEndToolName,
+            ...(run.call === null ? [taskReportToolName] : []),
+          ]),
+        ],
         model: run.model,
         ...(run.hasSelfNoteGrant
           ? { hasSelfNoteGrant: true, selfNoteOnlyTools: run.selfNoteOnlyTools }

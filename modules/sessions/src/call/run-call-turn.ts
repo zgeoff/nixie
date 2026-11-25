@@ -1,5 +1,6 @@
 import { callHandedOffCodec } from '@heynixie/calls';
 import type { LogRecord } from '@heynixie/log';
+import { readRecords } from '@heynixie/log';
 import type { StepInput, StepResult, TasksContext } from '@heynixie/tasks';
 import { buildStepRunID, conversationTaskID, readCallTask } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
@@ -57,7 +58,10 @@ export async function runCallTurn(turn: CallTurn): Promise<StepResult> {
   }
 
   if (ended.result === null) {
-    await sendAnswer(turn, { texts: [], lastReplyRecordID: null }, true);
+    await sendAnswers(turn, pickHandOffIDs(turn.input.inbox), {
+      replies: { texts: [], lastReplyRecordID: null },
+      isFailed: true,
+    });
 
     throw ended.error;
   }
@@ -70,7 +74,14 @@ export async function runCallTurn(turn: CallTurn): Promise<StepResult> {
       buildStepRunID(turn.input),
     );
 
-    await sendAnswer(turn, replies, ended.result.run?.limit !== undefined);
+    const isLimited = ended.result.run?.limit !== undefined;
+
+    const handOffIDs = await readTakenHandOffs(turn, ended.result, isLimited);
+
+    await sendAnswers(turn, handOffIDs, {
+      replies,
+      isFailed: isLimited,
+    });
   }
 
   return ended.result;
@@ -107,24 +118,70 @@ async function writeClosing(turn: CallTurn, result: StepResult | null): Promise<
   };
 }
 
-async function sendAnswer(turn: CallTurn, replies: TurnReplies, isFailed: boolean): Promise<void> {
-  const handOff = findNewestHandOff(turn.input.inbox);
-
-  if (handOff === null) {
-    return;
-  }
-
-  await turn.hooks.answer({
-    callID: turn.callID,
-    handOffID: handOff,
-    replies: replies.texts,
-    replyRecordID: replies.lastReplyRecordID,
-    isFailed,
-  });
+interface AnswerOptions {
+  readonly replies: TurnReplies;
+  readonly isFailed: boolean;
 }
 
-function findNewestHandOff(inbox: readonly LogRecord[]): string | null {
-  const record = inbox.findLast((entry) => entry.kind === 'call.handed_off');
+// The turn's one answer goes to each hand-off it took, oldest first, so each hand-off gets exactly
+// one answer and the newest one is the last the speech layer hears.
+async function sendAnswers(
+  turn: CallTurn,
+  handOffIDs: readonly string[],
+  options: AnswerOptions,
+): Promise<void> {
+  for (const handOffID of handOffIDs) {
+    await turn.hooks.answer({
+      callID: turn.callID,
+      taskID: turn.input.taskID,
+      handOffID,
+      replies: options.replies.texts,
+      replyRecordID: options.replies.lastReplyRecordID,
+      isFailed: options.isFailed,
+    });
+  }
+}
 
-  return record === undefined ? null : callHandedOffCodec.decode(record.payload).handOffID;
+function pickHandOffIDs(records: readonly LogRecord[]): readonly string[] {
+  return records
+    .filter((entry) => entry.kind === callHandedOffCodec.kind)
+    .map((entry) => callHandedOffCodec.decode(entry.payload).handOffID);
+}
+
+// The hand-offs a turn took: those its inbox started with and those that landed during it, which
+// the live inbox passed in and the step acknowledged. A turn that stopped at a limit took none, so
+// it answers the hand-offs it was given with the fixed line.
+async function readTakenHandOffs(
+  turn: CallTurn,
+  result: StepResult,
+  isLimited: boolean,
+): Promise<readonly string[]> {
+  if (isLimited) {
+    return pickHandOffIDs(turn.input.inbox);
+  }
+
+  const acknowledged = new Set(result.acknowledged);
+
+  const starting = turn.input.inbox.filter((record) => acknowledged.has(record.sequence));
+
+  const known = new Set(turn.input.inbox.map((record) => record.sequence));
+
+  const liveSequences = result.acknowledged.filter((sequence) => !known.has(sequence));
+
+  const live =
+    liveSequences.length === 0
+      ? []
+      : await readRecords(turn.context.log, {
+          afterSequence: 0,
+          thread: turn.input.taskID,
+          kinds: [callHandedOffCodec.kind],
+          sequences: liveSequences,
+          limit: liveSequences.length,
+        });
+
+  return pickHandOffIDs(
+    [...starting, ...live.map((entry) => entry.record)].toSorted(
+      (earlier, later) => earlier.sequence - later.sequence,
+    ),
+  );
 }

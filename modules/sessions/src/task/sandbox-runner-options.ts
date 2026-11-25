@@ -47,6 +47,9 @@ export interface CallStepHooks {
   // the voice-call prompt, which follows the conversation's prompt in a call's session
   readonly voicePrompt: string;
 
+  // the conversation's tool names, from which a call's tool list is built
+  readonly conversationToolNames: readonly string[];
+
   // sends a turn's answer to the speech layer when the turn ends
   readonly answer: (answer: TurnAnswer) => Promise<void>;
 }

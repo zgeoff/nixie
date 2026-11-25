@@ -1,8 +1,10 @@
 import type { CallsContext } from '../types';
 import { pickAnswerText } from './pick-answer-text';
+import { writeFixedLine } from './write-fixed-line';
 
 export interface TurnAnswer {
   readonly callID: string;
+  readonly taskID: string;
   readonly handOffID: string;
 
   // the text of each reply record the turn wrote, in order
@@ -21,21 +23,30 @@ export async function sendTurnAnswer(context: CallsContext, answer: TurnAnswer):
   const sessionID = context.sessions.get(answer.callID);
   const handOff = context.runtime.handOffs.get(answer.callID)?.get(answer.handOffID);
 
-  if (context.speech === null || sessionID === undefined || handOff === undefined) {
+  if (
+    context.speech === null ||
+    sessionID === undefined ||
+    handOff === undefined ||
+    handOff.isAnswered
+  ) {
     return;
   }
 
   handOff.isAnswered = true;
   handOff.replyRecordID = answer.replyRecordID;
 
-  const text = pickAnswerText({
+  const answerText = pickAnswerText({
     replies: answer.replies,
     isFailed: answer.isFailed,
     lines: context.readVoiceDefinitions().lines,
   });
 
   try {
-    await context.speech.answer(sessionID, answer.handOffID, text, true);
+    await context.speech.answer(sessionID, answer.handOffID, answerText.text, true);
+
+    if (answerText.isFixedLine) {
+      await writeFixedLine(context, answer, answerText.text);
+    }
   } catch (error) {
     context.logEvent('calls.answer_failed', {
       callID: answer.callID,

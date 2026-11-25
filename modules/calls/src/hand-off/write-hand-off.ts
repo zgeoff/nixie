@@ -1,9 +1,8 @@
 import { createShortID } from '@heynixie/db';
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
-import type { RecordInput } from '@heynixie/log';
 import { callHandedOffCodec } from '../record/call-handed-off-codec';
-import { callSpokeCodec } from '../record/call-spoke-codec';
 import type { Call, CallsContext, SmallTalkLine } from '../types';
+import { buildSpokeRecord } from './build-spoke-record';
 
 export interface HandOffWrite {
   readonly handOffID: string;
@@ -20,21 +19,7 @@ export async function writeHandOff(
   call: Pick<Call, 'callID' | 'taskID'>,
   handOff: HandOffWrite,
 ): Promise<void> {
-  const model = context.voice?.provider ?? 'gpt-live';
-
-  const spoke: RecordInput[] = handOff.smallTalk.map((line) => ({
-    kind: callSpokeCodec.kind,
-    definitions: context.definitions(),
-    thread: call.taskID,
-    payload: callSpokeCodec.encode({
-      callID: call.callID,
-      lineID: createShortID(),
-      speaker: 'speech_layer',
-      model,
-      heardChars: line.heardChars,
-    }),
-    erasable: { text: line.text },
-  }));
+  const spoke = handOff.smallTalk.map((line) => buildSpokeRecord(context, call, line));
 
   await withWriteTransaction(context.log.writer, (tx) =>
     writeRecordsInTransaction(tx, context.log, [

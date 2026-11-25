@@ -21,6 +21,7 @@ import invariant from 'tiny-invariant';
 import { match } from 'ts-pattern';
 import { buildGuestCommand } from './build-guest-command';
 import type { SystemTaskSession } from './make-system-task-runner';
+import { pickCallTools } from './pick-call-tools';
 import type { SandboxRunnerOptions } from './sandbox-runner-options';
 
 export interface RunReader {
@@ -174,8 +175,8 @@ function pickSinceSequence(
 }
 
 // A call's turns use the call role, or the conversation's profile when the role is unset. The call
-// takes the conversation's persona, memory read, the task and time tools, and no tool that starts
-// work or rings.
+// takes the conversation's persona, memory read and tool list, less the tools that start work,
+// ring or end a task run.
 async function readCallRun(
   runner: RunReader,
   taskID: string,
@@ -186,6 +187,9 @@ async function readCallRun(
   invariant(call !== null, `the call's task ${taskID} holds no call`);
 
   const roles = runner.options.models.roles;
+  const calls = runner.options.calls;
+
+  invariant(calls !== undefined, `the call's task ${taskID} runs where calls are off`);
 
   return buildRunParts(runner, {
     startedBy: setup.startedBy,
@@ -195,7 +199,7 @@ async function readCallRun(
       persona: 'default',
       memory: 'read',
       log: 'own',
-      tools: [...new Set([...startedTaskDefaultTools, ...runner.options.memoryReadTools])],
+      tools: pickCallTools(calls.conversationToolNames),
       report: 'none',
       limits: runner.options.models.limits.taskRun.default,
     },

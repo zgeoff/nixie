@@ -1,0 +1,152 @@
+import { expect, test } from 'bun:test';
+import type { TurnAnswer } from '@heynixie/calls';
+import { writeRecords } from '@heynixie/log';
+import type { StepInput, StepResult } from '@heynixie/tasks';
+import invariant from 'tiny-invariant';
+import { startTestTasks } from '../test-utils/start-test-tasks';
+import { runCallTurn } from './run-call-turn';
+
+async function setupTest() {
+  const tasks = await startTestTasks({ recordsAtMs: Date.parse('2027-03-09T03:00:00Z') });
+
+  const answers: TurnAnswer[] = [];
+
+  const interrupt = new AbortController();
+
+  const writeHandOff = async (handOffID: string) => {
+    const [record] = await writeRecords(tasks.context.log, [
+      {
+        kind: 'call.handed_off',
+        definitions: { snapshotHash: 'sha256:test' },
+        thread: 'call-task',
+        payload: { callID: 'c1', handOffID, shortID: `short-${handOffID}` },
+        erasable: { request: 'a request' },
+      },
+    ]);
+
+    invariant(record, 'the hand-off was written');
+
+    return record;
+  };
+
+  const runTurn = (input: StepInput, runStep: () => Promise<StepResult>) =>
+    runCallTurn({
+      context: tasks.context,
+      hooks: {
+        voicePrompt: '',
+        conversationToolNames: [],
+        answer: (answer) => {
+          answers.push(answer);
+
+          return Promise.resolve();
+        },
+      },
+      input,
+      callID: 'c1',
+      runTurn: runStep,
+    });
+
+  const buildInput = (inbox: StepInput['inbox']): StepInput => ({
+    run: null,
+    taskID: 'call-task',
+    stepKey: 'call-task:2',
+    lease: {
+      kind: 'task',
+      workID: 'call-task',
+      holder: 'runner-1',
+      generation: 1,
+      epoch: 1,
+      expiresAt: 0,
+    },
+    inbox,
+    wake: { hop: 0, cause: { kind: 'event' } },
+    sessionBoundary: null,
+    signal: new AbortController().signal,
+    interrupt: interrupt.signal,
+  });
+
+  return { answers, writeHandOff, runTurn, buildInput };
+}
+
+test('it answers each hand-off of the turn once, oldest first, when two are in its inbox', async () => {
+  const ctx = await setupTest();
+  const first = await ctx.writeHandOff('h1');
+  const second = await ctx.writeHandOff('h2');
+
+  await ctx.runTurn(ctx.buildInput([first, second]), () =>
+    Promise.resolve({
+      next: 'wait',
+      records: [],
+      acknowledged: [first.sequence, second.sequence],
+    }),
+  );
+
+  expect(ctx.answers.map((answer) => [answer.handOffID, answer.isFailed])).toStrictEqual([
+    ['h1', false],
+    ['h2', false],
+  ]);
+});
+
+test('it answers a hand-off that landed during the turn, with the one it started on', async () => {
+  const ctx = await setupTest();
+  const first = await ctx.writeHandOff('h1');
+
+  await ctx.runTurn(ctx.buildInput([first]), async () => {
+    const live = await ctx.writeHandOff('h2');
+
+    return { next: 'wait', records: [], acknowledged: [first.sequence, live.sequence] };
+  });
+
+  expect(ctx.answers.map((answer) => answer.handOffID)).toStrictEqual(['h1', 'h2']);
+});
+
+test('it leaves a hand-off the turn did not take for the next turn', async () => {
+  const ctx = await setupTest();
+  const first = await ctx.writeHandOff('h1');
+  const second = await ctx.writeHandOff('h2');
+
+  await ctx.runTurn(ctx.buildInput([first, second]), () =>
+    Promise.resolve({ next: 'continue', records: [], acknowledged: [first.sequence] }),
+  );
+
+  expect(ctx.answers.map((answer) => answer.handOffID)).toStrictEqual(['h1']);
+});
+
+test('it answers each hand-off of a failed turn with the failure and rethrows', async () => {
+  const ctx = await setupTest();
+  const first = await ctx.writeHandOff('h1');
+  const second = await ctx.writeHandOff('h2');
+
+  const ended = ctx.runTurn(ctx.buildInput([first, second]), () =>
+    Promise.reject(new Error('the model failed')),
+  );
+
+  expect(ended).rejects.toThrow('the model failed');
+
+  await ended.catch(() => null);
+
+  expect(ctx.answers.map((answer) => [answer.handOffID, answer.isFailed])).toStrictEqual([
+    ['h1', true],
+    ['h2', true],
+  ]);
+});
+
+test('it answers each hand-off of a turn that stopped at a limit with the failure', async () => {
+  const ctx = await setupTest();
+  const first = await ctx.writeHandOff('h1');
+  const second = await ctx.writeHandOff('h2');
+
+  await ctx.runTurn(ctx.buildInput([first, second]), () =>
+    Promise.resolve({
+      next: 'continue',
+      records: [],
+      acknowledged: [],
+      run: { activity: 'none', limit: { meter: 'turns', used: 25, limit: 25 } },
+    }),
+  );
+
+  expect(ctx.answers.map((answer) => [answer.handOffID, answer.isFailed])).toStrictEqual([
+    ['h1', true],
+    ['h2', true],
+  ]);
+});
