@@ -30,6 +30,7 @@ test.each([
   },
   { label: 'a negated class', released: '^deployment:[^:]+$', current: '^deployment:.+$' },
   { label: 'a class with .', released: '^deployment:[a.]+$', current: '^deployment:.+$' },
+  { label: 'a class with an escaped .', released: String.raw`^[\.]+$`, current: '^.+$' },
   {
     label: 'a class with a newline escape',
     released: String.raw`^deployment:[a\n]+$`,

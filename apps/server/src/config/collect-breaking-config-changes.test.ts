@@ -228,6 +228,18 @@ test.each([
     expected: ['[]: adds minLength'],
   },
   {
+    label: 'a widened pattern that a not reaches through $ref',
+    released: {
+      properties: { token: { pattern: '^[a]+$' } },
+      not: { properties: { other: { $ref: '#/properties/token' } }, required: ['other'] },
+    },
+    current: {
+      properties: { token: { pattern: '^.+$' } },
+      not: { properties: { other: { $ref: '#/properties/token' } }, required: ['other'] },
+    },
+    expected: ['(root): changes a schema that uses $ref'],
+  },
+  {
     label: 'a narrower key name',
     released: { propertyNames: { pattern: '^[a-z]+$' } },
     current: { propertyNames: { pattern: '^[a-z]$' } },

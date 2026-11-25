@@ -4,7 +4,25 @@ export function collectBreakingConfigChanges(
   released: unknown,
   current: unknown,
 ): readonly string[] {
-  return collectNodeChanges(toNode(released), toNode(current), []);
+  // A reference can reuse a subschema where a wider value refuses more, such as under not, and the
+  // check compares each subschema only where it sits, so any change to a schema with one counts.
+  const isReferenced =
+    !Bun.deepEquals(released, current) && (hasReference(released) || hasReference(current));
+
+  return [
+    ...(isReferenced ? ['(root): changes a schema that uses $ref'] : []),
+    ...collectNodeChanges(toNode(released), toNode(current), []),
+  ];
+}
+
+function hasReference(value: unknown): boolean {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+
+  return Object.entries(value).some(
+    ([key, entry]) => key === '$ref' || key === '$dynamicRef' || hasReference(entry),
+  );
 }
 
 type SchemaNode = Readonly<Record<string, unknown>>;

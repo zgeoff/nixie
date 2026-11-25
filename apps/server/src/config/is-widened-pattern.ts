@@ -6,9 +6,9 @@ const classPattern =
 const openPattern = /^\^(?<prefix>(?:[^\\[\](){}.*+?^$|]|\\[!-/:-@[-`{-~])*)\.(?<repeat>[+*])\$$/u;
 
 // Each class member is a printable ASCII character other than `.`, `\`, `]` and `^`, a range of
-// them, \w, \d, or a backslash before ASCII punctuation. Such a class never opens with `^`, and
-// never matches a line terminator, the one kind of character `.` refuses.
-const safeMembers = /^(?:[ -\-/-[_-~]|\\[wd]|\\[!-/:-@[-`{-~])+$/u;
+// them, \w, \d, or a backslash before ASCII punctuation other than `.`. Such a class never opens
+// with `^`, and never matches a line terminator, the one kind of character `.` refuses.
+const safeMembers = /^(?:[ -\-/-[_-~]|\\[wd]|\\[!-\-/:-@[-`{-~])+$/u;
 
 // True when every string the released pattern accepts, the current one accepts too: the current
 // pattern keeps the released prefix and opens the class after it to any character but a line
