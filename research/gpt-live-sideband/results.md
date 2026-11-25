@@ -271,10 +271,11 @@ channel or nixie's own live stream; the spike tried neither.
 Does GPT-Live speak a lead-in sentence part and then wait for the next part, or invent the rest,
 when the adapter holds it with the acknowledgement delay and an empty thinking part?
 
-It waits only when the next part is already there. With parts 300 to 800 ms apart, the next part
-always arrived before or while GPT-Live spoke the lead-in, and it invented nothing in 8 of 8 trials.
-With parts 3 s apart, it invented facts after the lead-in in 4 of 8 trials, and went quiet to wait
-for the next part in 2 of 8.
+GPT-Live does not reliably wait. With parts 300 to 800 ms apart, it never had to: the next part
+always arrived before or while it spoke the lead-in, and it invented nothing in 8 of 8 trials. With
+parts 3 s apart, it invented facts after the lead-in in 4 of 8 trials, and went quiet to wait for
+the next part in 2 of 8. Both waits lasted 1000 ms, so no trial shows GPT-Live waiting longer than
+about 1 s.
 
 ### Setup of the parts probe
 
@@ -294,8 +295,11 @@ The 3 answers carry the same facts in each shape:
 | c     | each statement alone, such as "At nine tomorrow, you have a dentist check-up on Elm Street." |
 
 Shapes took turns, and so did the answers: a calendar, 2 messages and a weekend forecast. In the
-first batch, the gap between parts took turns at 300, 550 and 800 ms. A second batch ran shapes b
-and c with a 3 s gap, the time a turn could take to write its next sentence after a tool call.
+first batch, the gap between parts took turns at 300, 550 and 800 ms, in step with the answers: the
+calendar always ran at 300 ms, the messages at 550 ms and the forecast at 800 ms. So shape b had
+only 2 trials at 800 ms, and the earlier spike's failing lead-in, the calendar's, ran only at 300
+ms. A second batch ran shapes b and c with a 3 s gap, the time a turn could take to write its next
+sentence after a tool call.
 
 Each trial was scored from the log with [`report-parts.ts`](report-parts.ts):
 
@@ -367,12 +371,16 @@ Each trial:
 | c     | 3 s    | calendar | none                                                                       | 833 ms      | 0 ms                             |
 | c     | 3 s    | messages | none                                                                       | 932 ms      | 0 ms                             |
 
+In the rows with a 3 s gap, 0 ms means GPT-Live was speaking when the next part came: either still
+the lead-in, or words it had invented after it. The "Invented" column tells the two apart.
+
 An invented fact comes out mid-sentence, before the real part arrives, and GPT-Live then speaks the
 real part beside it. In one messages trial, the lead-in "You have two new messages." went on as
 "One's from Alex: 'Hey, are we still on for lunch tomorrow?'", and the school's message, which
 arrived during that line, became "The other's from the school", followed by "Also," and the bike
-shop: 3 messages after saying 2. In the forecast trial, GPT-Live said "Saturday looks mild" 300 ms
-before the part with Saturday's weather was accepted:
+shop: 3 messages after saying 2. In the forecast trial, the server received "Saturday" before it
+sent the part with Saturday's weather. On the session timeline, "Saturday" starts 1000 ms before
+that part's `appended`, and "looks mild" ends as the part is accepted:
 
 ```text
 said [5600-5800] " Saturday"
@@ -388,7 +396,7 @@ here, because every part was ready within 1.6 s of the first; the probe did not 
 writes its sentences slowly.
 
 So a whole sentence is not a safe part. A lead-in is safe only when the next part arrives before
-GPT-Live finishes speaking it, and a full statement still drew an invented count once in 8 trials at
+GPT-Live finishes speaking it, and a full statement still drew an invented count in 1 trial of 8 at
 a 3 s gap.
 
 ## Contract lines that must change
