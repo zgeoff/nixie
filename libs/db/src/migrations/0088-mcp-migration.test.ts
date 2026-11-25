@@ -30,8 +30,8 @@ async function setupTest() {
   return { db };
 }
 
-test('it moves the schema to version 85', () => {
-  expect(nixieSchema.migrations.indexOf(mcpMigration) + 1).toBe(85);
+test('it moves the schema to version 88', () => {
+  expect(nixieSchema.migrations.indexOf(mcpMigration) + 1).toBe(88);
 });
 
 test('it creates the tables of the servers, their tools and the tool forms', async () => {
