@@ -203,6 +203,16 @@ export function createVerifyRegistry(): Wringer {
       run: (input, ctx) => postControl(ctx.drivers.http, controlRoutes.advanceClock, input),
     })
     .action({
+      name: 'call-step',
+      summary:
+        'Play one step of a call on the fake speech layer: --step start starts a call and connects it, --step hand-off has the speech layer hand off one question, whose model reply waits, --step hold moves the clock past the hold time and waits for the holding line, --step release lets the reply go, --step hang-up hangs the call up, and --step read changes nothing. Each step returns the call ID and every call that nixie made on the speech layer',
+      effect: 'write',
+      targets: ['local'],
+      input: controlRoutes.callStep.input,
+      data: controlRoutes.callStep.output,
+      run: (input, ctx) => postControl(ctx.drivers.http, controlRoutes.callStep, input),
+    })
+    .action({
       name: 'use-computer',
       summary:
         "Send the owner message and queue the scripted model turn that uses the assistant's browser (--kind browser: opens the harness page; --kind browser-two-tabs: opens it and its next page in 2 tabs; --kind browser-navigate: sends the open tab to the harness's next page and reloads it), shell (--kind shell: writes a file and reads it back), shell-processes (--kind shell-processes: runs ps -e in the shell, which waits for approval) or screen (--kind screen: takes a screenshot of the desktop and clicks its middle), with the closing reply --text",
@@ -435,6 +445,11 @@ export function createVerifyRegistry(): Wringer {
         name: 'coding-session',
         summary: 'Start a coding session from chat',
         paths: featurePaths['coding-session'],
+      },
+      {
+        name: 'call-hand-off',
+        summary: 'Hand one question off in a call, and hear the holding line and the answer',
+        paths: featurePaths['call-hand-off'],
       },
       {
         name: 'drawing',

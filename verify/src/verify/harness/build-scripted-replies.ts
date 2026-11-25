@@ -104,7 +104,7 @@ export function buildScriptedReplies(
   ];
 }
 
-function isConversationTurn(body: ScriptedBody): boolean {
+export function isConversationTurn(body: ScriptedBody): boolean {
   return body.tools?.some((tool) => tool.name === 'mcp__nixie__task_start') === true;
 }
 

@@ -47,25 +47,26 @@ The mistakes that cost the most time:
 
 <!-- wringer:features -->
 
-| Feature           | Summary                                                       | File                                                                               |
-| ----------------- | ------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| sign-in-enrol     | Sign a browser in with an enrol code                          | [references/feature-sign-in-enrol.md](references/feature-sign-in-enrol.md)         |
-| chat-turn         | Send a message, and see the reply after it                    | [references/feature-chat-turn.md](references/feature-chat-turn.md)                 |
-| memory-approval   | Approve a memory the model proposed, and see it become active | [references/feature-memory-approval.md](references/feature-memory-approval.md)     |
-| policy-proposal   | Approve a call that an ask rule held unrun                    | [references/feature-policy-proposal.md](references/feature-policy-proposal.md)     |
-| task-control      | Pause and resume a task, and see its records agree            | [references/feature-task-control.md](references/feature-task-control.md)           |
-| coding-session    | Start a coding session from chat                              | [references/feature-coding-session.md](references/feature-coding-session.md)       |
-| drawing           | Draw a picture, edit it, and list both                        | [references/feature-drawing.md](references/feature-drawing.md)                     |
-| images-page       | Browse and forget images                                      | [references/feature-images-page.md](references/feature-images-page.md)             |
-| notebook-pages    | Browse notes, open a private one, forget one                  | [references/feature-notebook-pages.md](references/feature-notebook-pages.md)       |
-| computer-shell    | Write and read back a shell file                              | [references/feature-computer-shell.md](references/feature-computer-shell.md)       |
-| computer-browser  | Open a page in the assistant's browser                        | [references/feature-computer-browser.md](references/feature-computer-browser.md)   |
-| computer-screen   | Click a point of the assistant's desktop                      | [references/feature-computer-screen.md](references/feature-computer-screen.md)     |
-| computer-watch    | Watch the assistant's desktop                                 | [references/feature-computer-watch.md](references/feature-computer-watch.md)       |
-| device-in-browser | Make a signed-in browser a device                             | [references/feature-device-in-browser.md](references/feature-device-in-browser.md) |
-| device-screen     | Enrol a device and see a picture on it                        | [references/feature-device-screen.md](references/feature-device-screen.md)         |
-| device-layout     | Lay out a screen in regions, and change them                  | [references/feature-device-layout.md](references/feature-device-layout.md)         |
-| live-updates      | Pause from the host, see it on the page                       | [references/feature-live-updates.md](references/feature-live-updates.md)           |
+| Feature           | Summary                                                                   | File                                                                               |
+| ----------------- | ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| sign-in-enrol     | Sign a browser in with an enrol code                                      | [references/feature-sign-in-enrol.md](references/feature-sign-in-enrol.md)         |
+| chat-turn         | Send a message, and see the reply after it                                | [references/feature-chat-turn.md](references/feature-chat-turn.md)                 |
+| memory-approval   | Approve a memory the model proposed, and see it become active             | [references/feature-memory-approval.md](references/feature-memory-approval.md)     |
+| policy-proposal   | Approve a call that an ask rule held unrun                                | [references/feature-policy-proposal.md](references/feature-policy-proposal.md)     |
+| task-control      | Pause and resume a task, and see its records agree                        | [references/feature-task-control.md](references/feature-task-control.md)           |
+| coding-session    | Start a coding session from chat                                          | [references/feature-coding-session.md](references/feature-coding-session.md)       |
+| call-hand-off     | Hand one question off in a call, and hear the holding line and the answer | [references/feature-call-hand-off.md](references/feature-call-hand-off.md)         |
+| drawing           | Draw a picture, edit it, and list both                                    | [references/feature-drawing.md](references/feature-drawing.md)                     |
+| images-page       | Browse and forget images                                                  | [references/feature-images-page.md](references/feature-images-page.md)             |
+| notebook-pages    | Browse notes, open a private one, forget one                              | [references/feature-notebook-pages.md](references/feature-notebook-pages.md)       |
+| computer-shell    | Write and read back a shell file                                          | [references/feature-computer-shell.md](references/feature-computer-shell.md)       |
+| computer-browser  | Open a page in the assistant's browser                                    | [references/feature-computer-browser.md](references/feature-computer-browser.md)   |
+| computer-screen   | Click a point of the assistant's desktop                                  | [references/feature-computer-screen.md](references/feature-computer-screen.md)     |
+| computer-watch    | Watch the assistant's desktop                                             | [references/feature-computer-watch.md](references/feature-computer-watch.md)       |
+| device-in-browser | Make a signed-in browser a device                                         | [references/feature-device-in-browser.md](references/feature-device-in-browser.md) |
+| device-screen     | Enrol a device and see a picture on it                                    | [references/feature-device-screen.md](references/feature-device-screen.md)         |
+| device-layout     | Lay out a screen in regions, and change them                              | [references/feature-device-layout.md](references/feature-device-layout.md)         |
+| live-updates      | Pause from the host, see it on the page                                   | [references/feature-live-updates.md](references/feature-live-updates.md)           |
 
 <!-- /wringer:features -->
 

@@ -7,6 +7,8 @@ import { createBuiltWeb, createFrontProxy, readWebBuild } from '@heynixie/web/te
 import { buildScriptedReplies } from './build-scripted-replies';
 import { localMemoryConfig } from './local-memory-config';
 import { readLastModelInput } from './read-last-model-input';
+import type { CallState } from './run-call-step';
+import { runCallStep } from './run-call-step';
 import { runComputerSession } from './run-computer-session';
 import { runDeviceLayout } from './run-device-layout';
 import { runDeviceShow } from './run-device-show';
@@ -39,7 +41,11 @@ export async function runVerifyHarness(): Promise<void> {
   }
 
   // the test build answers each image call with a stub, so the key is a placeholder
+  // A start with NIXIE_VERIFY_CALLS=1 turns calls on, with the test build's fake speech layer.
+  const isCallsOn = process.env['NIXIE_VERIFY_CALLS'] === '1';
+
   const nixie = await createSpawnedNixie(stack, {
+    ...(isCallsOn ? { voicePricePerMinute: 0.05 } : {}),
     ...(gateway === null ? {} : { atcURL: gateway.url }),
     memoryConfig: localMemoryConfig,
     extraConfig: [
@@ -108,6 +114,8 @@ export async function runVerifyHarness(): Promise<void> {
 
   stack.defer(() => site.stop(true));
 
+  const callState: CallState = { callID: null, gate: null };
+
   const control = serveControl({
     isNixieRunning: () => running.isRunning,
     addReply: (reply) => {
@@ -124,6 +132,20 @@ export async function runVerifyHarness(): Promise<void> {
       }),
     showOnDevice: (show) => runDeviceShow(api.client, nixie.model, show),
     layoutOnDevice: (layout) => runDeviceLayout(api.client, nixie.model, layout),
+    runCallStep: (call) =>
+      runCallStep(
+        {
+          client: api.client,
+          model: nixie.model,
+          advanceClock: (durationMs) => nixie.harness.advance(durationMs),
+          startCall: () => server.request('startCall', null),
+          emitSpeech: (event) =>
+            server.request('emitSpeech', { sessionID: 'fake-session-1', event }),
+          readSpeechCalls: () => server.request('readSpeechCalls', null),
+        },
+        callState,
+        call.step,
+      ),
     advanceClock: async (minutes) => {
       await nixie.harness.advance(minutes * 60_000);
 
