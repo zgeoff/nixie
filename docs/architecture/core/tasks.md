@@ -102,11 +102,11 @@ commit queues each [action](./actions.md#actions-a-runner-queues) the step retur
 [task message](./task-messages.md) the step returned with the waits, the hop-limit hold and the wake
 that every task message gets. When the message write refuses a message, such as one to a finished
 task, the commit writes a `task.message_refused` record on the step's thread with the receiver and
-the reason, and keeps no body. A step marks its result final when the task is over, so a report from
-it leaves a started task done in place of waiting for its starter's next message. A step can also
-check again, inside the commit's transaction and after the lease check, a fact it read before the
-commit: its result then carries a check that returns another result for the commit to write in its
-place.
+the reason, and with no message body. A step marks its result final when the task is over, so a
+report from it leaves a started task done in place of waiting for its starter's next message. A step
+can also have its commit check again a fact the step read earlier. The step puts that check in its
+result. The commit runs the check inside its transaction, after the lease check, and writes any
+result the check returns in place of the step's own.
 
 A runner can also act when its task ends, through an end hook that runs after a stop, a close or a
 failure commits. The hook writes its records and queues its actions in one transaction of its own,

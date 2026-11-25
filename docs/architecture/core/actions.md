@@ -100,9 +100,10 @@ message that a note carries. No model call names the action's tool, so the decis
 each attempt under the declaration of the action's own tool, with the task as the caller and its
 sources as `task`. An end hook fills each destination of its action from its own task's state, such
 as the session that a coding task binds, with no model call behind it, so each such destination gets
-the `task` permission at stage 5, and the ask and allow rules decide the attempt. A step's action
-follows a model's choice of task, so its destinations meet the destination limits as a call's do. A
-proposal for such an action points at the record that caused it, in place of a tool call.
+the `task` permission at stage 5. The ask and allow rules then decide the attempt. A step's action
+comes from a model's choice of task, so the destination limits apply to its destinations as they do
+to a call's. A proposal for such an action points at the record that caused it, in place of a tool
+call.
 
 ## Deadlines
 

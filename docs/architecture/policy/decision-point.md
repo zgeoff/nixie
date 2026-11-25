@@ -79,9 +79,9 @@ Stage 5 gives each destination of a call the first permission that holds:
    `nixie contacts mark-known <destination>` marks one, and `nixie contacts unmark <contactID>`
    removes it. A record forget of the marking record removes the contact's details, so the contact
    then grants nothing.
-4. `task`: the task definition whose task run makes the call names the destination, or an action
-   that a runner's end hook queued names it from its own task, such as the session that a coding
-   task binds. No definition names one yet.
+4. `task`: the task definition whose task run makes the call names the destination, or a runner's
+   end hook queued the action and took the destination from its own task, such as the session that a
+   coding task binds. No definition names one yet.
 5. `rule`: an allow rule that matches the call names the destination.
 
 A destination with none of them asks at stage 5 unless consent covers it. A call reads the contacts
