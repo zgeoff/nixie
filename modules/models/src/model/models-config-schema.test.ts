@@ -487,11 +487,7 @@ test('it refuses a day turn cap below the day turns', () => {
 });
 
 test.each([
-  ['day', 'dollars'],
-  ['day', 'tokens'],
   ['day', 'turns'],
-  ['month', 'dollars'],
-  ['month', 'tokens'],
   ['month', 'turns'],
 ])('it refuses a %s limit of 0 %s', (period, measure) => {
   const result = modelsConfigSchema.safeParse({

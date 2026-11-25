@@ -17,6 +17,8 @@ test('it starts a log with the tasks, sandboxes and memory projections, an endpo
     'pause_exemptions',
     'recoveries',
     'spend_stop',
+    'spend_route_stops',
+    'spend_route_holds',
     'tasks',
     'timers',
     'task_messages',
