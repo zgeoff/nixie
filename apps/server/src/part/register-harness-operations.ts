@@ -1,6 +1,8 @@
+import { createHash } from 'node:crypto';
 import { closeSync, readdirSync, readlinkSync, realpathSync } from 'node:fs';
 import type { CallsContext } from '@heynixie/calls';
 import { connectCall, startCall } from '@heynixie/calls';
+import { writeDevicePackage } from '@heynixie/devices';
 import type { MemoryMailHost } from '@heynixie/mail/memory-host';
 import type { TasksContext } from '@heynixie/tasks';
 import { createTask, writeInboxRecords, writeTaskControl } from '@heynixie/tasks';
@@ -64,6 +66,21 @@ export function registerHarnessOperations(
     }
 
     return mail.deliver(incoming).hostMessageID;
+  });
+
+  link.registerOperation('approvePackage', schemas.approvePackage, async () => {
+    const bytes = new TextEncoder().encode('window.rippleCount = 7;');
+
+    await writeDevicePackage(context, {
+      name: 'ripple-count',
+      version: '1.0.0',
+      integrity: `sha512-${createHash('sha512').update(bytes).digest('base64')}`,
+      publisher: 'a-publisher',
+      files: [{ path: 'ripples.js', bytes }],
+      thread: 'conversation',
+    });
+
+    return null;
   });
 
   link.registerOperation('releaseWriterLock', schemas.releaseWriterLock, () => {

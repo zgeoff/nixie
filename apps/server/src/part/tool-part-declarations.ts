@@ -191,6 +191,12 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
             stuckAfterMs: options.config.erasure.stuckAfterMs,
           }),
           deviceStreams: parts.get('context').apiContext.clients.devices,
+          deviceFetch: {
+            fetch: parts.get('web_fetch').deviceFetch,
+            registry: parts.get('web_fetch').packageRegistry,
+            backoff: parts.get('web_fetch').backoff,
+            checkAddress: parts.get('web_fetch').checkAddress,
+          },
           worker: parts.get('worker'),
           search:
             options.search === null

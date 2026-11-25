@@ -38,6 +38,11 @@ async function answerRequest(request: FetchRequest): Promise<FetchReply> {
     return askGuest(request);
   }
 
+  // a page's declared fetch reads the tide site of the journeys, which the stub serves itself
+  if (request.mode?.kind === 'body') {
+    return answerBody(request);
+  }
+
   const name = new URL(request.url).pathname.split('/').pop() ?? '';
   const size = /^(?<width>\d+)x(?<height>\d+)\.png$/u.exec(name)?.groups;
 
@@ -108,4 +113,27 @@ async function askGuest(request: FetchRequest): Promise<FetchReply> {
   return message === undefined
     ? { kind: 'failed', reason: 'the fetch guest sent no reply', isGated: false }
     : decodeFetchReply(message);
+}
+
+function answerBody(request: FetchRequest): FetchReply {
+  const url = new URL(request.url);
+
+  if (url.host !== 'tides.test' || url.pathname !== '/today') {
+    return {
+      kind: 'failed',
+      reason: 'the stub fetcher serves only tides.test/today',
+      isGated: false,
+    };
+  }
+
+  return {
+    kind: 'body',
+    url: request.url,
+    status: 200,
+    contentType: 'application/json',
+    text: '{"high":"14:05"}',
+    isTruncated: false,
+    retryAfterMs: null,
+    isGated: false,
+  };
 }

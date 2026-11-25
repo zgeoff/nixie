@@ -150,3 +150,26 @@ test('it reads the HTML of a request with the real guest and makes no request', 
 
   expect(replies).toMatchObject([{ kind: 'page', links: ['https://pier.test/reset'] }]);
 });
+
+test('it answers a body request for the tide site of the journeys with its JSON', async () => {
+  const child = Bun.spawn([process.execPath, join(import.meta.dir, 'run-stub-fetcher.ts')], {
+    stdin: encodeFrame(
+      encodeFetchMessage({
+        url: 'https://tides.test/today',
+        limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 1, textBytes: 100, imageBytes: 100 },
+        deniedRanges: [],
+        hops: 'none',
+        mode: { kind: 'body' },
+      }),
+    ),
+    stdout: 'pipe',
+  });
+
+  const stdout = await new Response(child.stdout).bytes();
+
+  const replies = makeFrameDecoder(100_000)(stdout).map((message) => decodeFetchReply(message));
+
+  expect(replies).toMatchObject([
+    { kind: 'body', status: 200, contentType: 'application/json', text: '{"high":"14:05"}' },
+  ]);
+});
