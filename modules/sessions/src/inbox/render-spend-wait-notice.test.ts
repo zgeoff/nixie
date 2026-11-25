@@ -59,7 +59,8 @@ test('it tells the model its next wake that it waited about so many minutes for 
     'This task waited about 5 min for a spending limit and has resumed. Nothing was lost.',
   );
 
-  expect(message).not.toMatch(/\$|dollar|plan|41/u);
+  // the message's id is random hex, so a figure counts only as a whole word
+  expect(message).not.toMatch(/\$|dollar|\bplan\b|\b41(?:\.2)?\b/u);
 });
 
 test('it tells the model in the turn after a full batch of earlier messages, not never', async () => {
