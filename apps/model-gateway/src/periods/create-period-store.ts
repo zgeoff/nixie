@@ -11,7 +11,6 @@ import type {
 import { buildFreshStore } from './build-fresh-store';
 import { buildResetStore } from './build-reset-store';
 import { buildTrippedStore } from './build-tripped-store';
-import { getLocalDate } from './get-local-date';
 import { parsePeriodStore } from './parse-period-store';
 import { parseStartStore } from './parse-start-store';
 
@@ -28,13 +27,11 @@ export async function createPeriodStore(options: PeriodStoreOptions): Promise<Pe
 
   const exists = await Bun.file(path).exists();
 
-  const today = getLocalDate(options.now(), options.zone);
-
   if (exists) {
     const stored: unknown = await Bun.file(path).json();
 
     // the count of a limits config moves to the periods form in one write; any other shape throws
-    const start = parseStartStore(stored, today);
+    const start = parseStartStore(stored, options.now(), options.zone);
 
     if (start.kind === 'moved') {
       await writeStore(path, start.store);
@@ -42,7 +39,7 @@ export async function createPeriodStore(options: PeriodStoreOptions): Promise<Pe
       options.log('store.moved', { ...start.old, lost: start.store.lost }, 'warn');
     }
   } else {
-    await writeStore(path, buildFreshStore(today));
+    await writeStore(path, buildFreshStore(options.now(), options.zone));
   }
 
   // one change at a time, so two replies that end together never write over each other's count,
@@ -68,8 +65,7 @@ export async function createPeriodStore(options: PeriodStoreOptions): Promise<Pe
   const readReset = async (): Promise<{ store: PeriodStore; didReset: boolean }> => {
     const stored = await readStore(path);
 
-    const currentDay = getLocalDate(options.now(), options.zone);
-    const store = buildResetStore(stored, currentDay);
+    const store = buildResetStore(stored, options.now(), options.zone);
 
     return { store, didReset: store !== stored };
   };

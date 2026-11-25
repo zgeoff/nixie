@@ -1,13 +1,13 @@
+import { periodOf } from '@heynixie/periods';
 import type { PeriodCount, PeriodStore } from '../types';
-import { getPeriodStart } from './get-period-start';
 
-export function buildFreshStore(today: string): PeriodStore {
+export function buildFreshStore(nowMs: number, zone: string): PeriodStore {
   return {
     version: 2,
     lost: false,
     periods: {
-      day: buildEmptyCount(getPeriodStart('day', today)),
-      month: buildEmptyCount(getPeriodStart('month', today)),
+      day: buildEmptyCount(periodOf('day', nowMs, zone).start),
+      month: buildEmptyCount(periodOf('month', nowMs, zone).start),
     },
     sandboxes: {},
   };

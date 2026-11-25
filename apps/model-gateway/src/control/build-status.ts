@@ -1,5 +1,7 @@
+import { buildDayStart } from '@heynixie/clock';
+import { periodOf } from '@heynixie/periods';
+import invariant from 'tiny-invariant';
 import { collectTrips } from '../periods/collect-trips';
-import { getResetMs } from '../periods/get-reset-ms';
 import { pickLimitInForce } from '../periods/pick-limit-in-force';
 import type { Measures, Override, PeriodName, PeriodStore, PeriodsConfig } from '../types';
 
@@ -34,9 +36,15 @@ export function buildStatus(
   const buildPeriod = (name: PeriodName): PeriodStatus => {
     const count = store.periods[name];
 
+    // local midnight of the count's start lies inside its period, so the period ends when its next
+    // one starts
+    const ends = periodOf(name, buildDayStart(count.start, config.zone), config.zone).endsAtMs;
+
+    invariant(ends !== null, 'a day and a month end');
+
     return {
       start: count.start,
-      resetsAt: formatInstant(getResetMs(name, count.start, config.zone)),
+      resetsAt: formatInstant(ends),
       spent: { dollars: count.dollars, tokens: count.tokens },
       limit: pickLimitInForce(name, count, override),
       cap: config.caps[name],

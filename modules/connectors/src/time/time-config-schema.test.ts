@@ -14,3 +14,9 @@ test('it takes a configured IANA zone', () => {
 test('it refuses a zone that is no IANA time zone', () => {
   expect(timeConfigSchema.safeParse({ default_zone: 'Atlantis/Poseidonia' }).success).toBeFalse();
 });
+
+test('it takes a zone whose offset is 45 minutes past the hour', () => {
+  expect(timeConfigSchema.parse({ default_zone: 'Asia/Kathmandu' })).toStrictEqual({
+    default_zone: 'Asia/Kathmandu',
+  });
+});

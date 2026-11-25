@@ -20,7 +20,7 @@ const limitsCountSchema = z.strictObject({
 // The count of a limits config is one total that never reset, so it says nothing of today's or
 // this month's spend: the periods start at zero. The lost mark carries over, because only an
 // operator may clear it. Any other shape throws, so the gateway stops at start.
-export function parseStartStore(stored: unknown, today: string): StartStore {
+export function parseStartStore(stored: unknown, nowMs: number, zone: string): StartStore {
   const old = limitsCountSchema.safeParse(stored);
 
   if (!old.success) {
@@ -29,7 +29,7 @@ export function parseStartStore(stored: unknown, today: string): StartStore {
 
   return {
     kind: 'moved',
-    store: { ...buildFreshStore(today), lost: old.data.lost === true },
+    store: { ...buildFreshStore(nowMs, zone), lost: old.data.lost === true },
     old: { dollars: old.data.dollars, tokens: old.data.tokens },
   };
 }

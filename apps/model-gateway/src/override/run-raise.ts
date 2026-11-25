@@ -1,5 +1,4 @@
-import { getLocalDate } from '../periods/get-local-date';
-import { getPeriodStart } from '../periods/get-period-start';
+import { periodOf } from '@heynixie/periods';
 import { loadProxyConfig } from '../proxy/load-proxy-config';
 import type { Override, PeriodName } from '../types';
 import { overrideSchema } from './override-schema';
@@ -28,11 +27,9 @@ export async function runRaise(options: RaiseOptions): Promise<Override> {
     );
   }
 
-  const today = getLocalDate(options.now(), config.periods.zone);
-
   const override: Override = overrideSchema.parse({
     period: options.period,
-    start: getPeriodStart(options.period, today),
+    start: periodOf(options.period, options.now(), config.periods.zone).start,
     limit: { dollars: options.dollars, tokens: options.tokens },
   });
 

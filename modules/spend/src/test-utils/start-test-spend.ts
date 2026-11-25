@@ -1,3 +1,5 @@
+// oxlint-disable-next-line import/no-unassigned-import -- the import brings in the record kinds that the triggers module's dependencies register, which the test log's types need
+import '@heynixie/triggers';
 import type { Log, Writer } from '@heynixie/log';
 import { logProjections, withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import { startTestLog } from '@heynixie/log/test-utils';

@@ -1,13 +1,13 @@
 import { expect, test } from 'bun:test';
-import type { BudgetPeriodBounds } from './build-budget-period';
-import { buildBudgetPeriod } from './build-budget-period';
+import { periodOf } from './period-of';
+import type { Period } from './types';
 
 test.each<{
   label: string;
   now: string;
   zone: string;
   period: 'day' | 'week' | 'month';
-  expected: BudgetPeriodBounds;
+  expected: Omit<Period, 'kind'>;
 }>([
   {
     label: 'a day in UTC',
@@ -16,9 +16,8 @@ test.each<{
     period: 'day',
     expected: {
       start: '2026-10-16',
-      resetsOn: '2026-10-17',
-      startMs: Date.parse('2026-10-16T00:00:00Z'),
-      resetsAtMs: Date.parse('2026-10-17T00:00:00Z'),
+      startsAtMs: Date.parse('2026-10-16T00:00:00Z'),
+      endsAtMs: Date.parse('2026-10-17T00:00:00Z'),
     },
   },
   {
@@ -28,9 +27,8 @@ test.each<{
     period: 'week',
     expected: {
       start: '2026-10-12',
-      resetsOn: '2026-10-19',
-      startMs: Date.parse('2026-10-12T00:00:00Z'),
-      resetsAtMs: Date.parse('2026-10-19T00:00:00Z'),
+      startsAtMs: Date.parse('2026-10-12T00:00:00Z'),
+      endsAtMs: Date.parse('2026-10-19T00:00:00Z'),
     },
   },
   {
@@ -40,9 +38,8 @@ test.each<{
     period: 'week',
     expected: {
       start: '2026-10-12',
-      resetsOn: '2026-10-19',
-      startMs: Date.parse('2026-10-12T00:00:00Z'),
-      resetsAtMs: Date.parse('2026-10-19T00:00:00Z'),
+      startsAtMs: Date.parse('2026-10-12T00:00:00Z'),
+      endsAtMs: Date.parse('2026-10-19T00:00:00Z'),
     },
   },
   {
@@ -52,9 +49,8 @@ test.each<{
     period: 'week',
     expected: {
       start: '2026-10-12',
-      resetsOn: '2026-10-19',
-      startMs: Date.parse('2026-10-12T00:00:00Z'),
-      resetsAtMs: Date.parse('2026-10-19T00:00:00Z'),
+      startsAtMs: Date.parse('2026-10-12T00:00:00Z'),
+      endsAtMs: Date.parse('2026-10-19T00:00:00Z'),
     },
   },
   {
@@ -64,9 +60,8 @@ test.each<{
     period: 'month',
     expected: {
       start: '2026-12-01',
-      resetsOn: '2027-01-01',
-      startMs: Date.parse('2026-12-01T00:00:00Z'),
-      resetsAtMs: Date.parse('2027-01-01T00:00:00Z'),
+      startsAtMs: Date.parse('2026-12-01T00:00:00Z'),
+      endsAtMs: Date.parse('2027-01-01T00:00:00Z'),
     },
   },
   {
@@ -76,9 +71,8 @@ test.each<{
     period: 'day',
     expected: {
       start: '2026-10-15',
-      resetsOn: '2026-10-16',
-      startMs: Date.parse('2026-10-15T04:00:00Z'),
-      resetsAtMs: Date.parse('2026-10-16T04:00:00Z'),
+      startsAtMs: Date.parse('2026-10-15T04:00:00Z'),
+      endsAtMs: Date.parse('2026-10-16T04:00:00Z'),
     },
   },
   {
@@ -88,9 +82,8 @@ test.each<{
     period: 'day',
     expected: {
       start: '2026-03-29',
-      resetsOn: '2026-03-30',
-      startMs: Date.parse('2026-03-29T00:00:00Z'),
-      resetsAtMs: Date.parse('2026-03-29T23:00:00Z'),
+      startsAtMs: Date.parse('2026-03-29T00:00:00Z'),
+      endsAtMs: Date.parse('2026-03-29T23:00:00Z'),
     },
   },
   {
@@ -100,9 +93,8 @@ test.each<{
     period: 'day',
     expected: {
       start: '2026-10-25',
-      resetsOn: '2026-10-26',
-      startMs: Date.parse('2026-10-24T23:00:00Z'),
-      resetsAtMs: Date.parse('2026-10-26T00:00:00Z'),
+      startsAtMs: Date.parse('2026-10-24T23:00:00Z'),
+      endsAtMs: Date.parse('2026-10-26T00:00:00Z'),
     },
   },
   {
@@ -112,9 +104,8 @@ test.each<{
     period: 'week',
     expected: {
       start: '2026-03-23',
-      resetsOn: '2026-03-30',
-      startMs: Date.parse('2026-03-23T00:00:00Z'),
-      resetsAtMs: Date.parse('2026-03-29T23:00:00Z'),
+      startsAtMs: Date.parse('2026-03-23T00:00:00Z'),
+      endsAtMs: Date.parse('2026-03-29T23:00:00Z'),
     },
   },
   {
@@ -124,11 +115,28 @@ test.each<{
     period: 'month',
     expected: {
       start: '2026-10-01',
-      resetsOn: '2026-11-01',
-      startMs: Date.parse('2026-09-30T23:00:00Z'),
-      resetsAtMs: Date.parse('2026-11-01T00:00:00Z'),
+      startsAtMs: Date.parse('2026-09-30T23:00:00Z'),
+      endsAtMs: Date.parse('2026-11-01T00:00:00Z'),
     },
   },
 ])('it builds $label', (row) => {
-  expect(buildBudgetPeriod(Date.parse(row.now), row.zone, row.period)).toStrictEqual(row.expected);
+  expect(periodOf(row.period, Date.parse(row.now), row.zone)).toStrictEqual({
+    kind: row.period,
+    ...row.expected,
+  });
+});
+
+test('it builds a period that never resets with no start and no end', () => {
+  expect(periodOf('none', Date.parse('2026-10-16T09:30:00Z'), 'UTC')).toStrictEqual({
+    kind: 'none',
+    start: '',
+    startsAtMs: 0,
+    endsAtMs: null,
+  });
+});
+
+test('it starts a day in Auckland on the date that the instant has there', () => {
+  expect(periodOf('day', Date.parse('2026-11-23T23:30:00Z'), 'Pacific/Auckland').start).toBe(
+    '2026-11-24',
+  );
 });

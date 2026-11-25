@@ -10,8 +10,10 @@
     "typecheck": "tsrs --fast --noEmit"
   },
   "dependencies": {
+    "@heynixie/clock": "workspace:*",
     "@heynixie/logger": "workspace:*",
     "@heynixie/models": "workspace:*",
+    "@heynixie/periods": "workspace:*",
     "@heynixie/wire": "workspace:*",
     "@zgeoff/std": "catalog:",
     "gunshi": "catalog:",
