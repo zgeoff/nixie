@@ -75,21 +75,21 @@ The manifest holds the definitions format version. A release reads formats 2 to 
 other, because an image upgrade and a definitions change land in separate repos, in either order.
 The persona must be UTF-8 text and not blank.
 
-Each format applies what the formats before it apply, and adds these files. The seed lists each file
-that a repo's format comes before as unapplied:
+Each format applies what the formats before it apply, and adds these files. The seed lists as
+unapplied each file that belongs to a format later than the repo's own:
 
 - Format 2: each skill under `skills/`.
 - Format 3: the prompt overrides in the manifest's `prompts:` map, as
   [prompts](prompts.md#overrides-from-the-definitions) describes, and each `rules/*.yaml` file as a
   rules file, as [rules in force](../policy/rules.md#rules-in-force) describes, except a file that
-  the `prompts:` map names as a prompt part. Format 3 therefore refuses a repo whose existing rule
-  files fail the [rule format](../policy/rules.md#the-rule-format), and the error lists each file
-  with its fault.
+  the `prompts:` map names as a prompt part. From format 3, the seed therefore refuses a repo whose
+  existing rule files fail the [rule format](../policy/rules.md#the-rule-format), and the error
+  lists each file with its fault.
 - Format 4: each folder under `tasks/` as a [task definition](#task-definitions).
 - Format 5: each `budgets/*.yaml` file as [budgets](../policy/budgets.md#the-budget-format), and
   `voice/voice.yaml` and `voice/lines.yaml` as the
-  [voice settings](../channels/calls.md#configuration). A fault in either voice file leaves it
-  unapplied and never refuses the seed.
+  [voice settings](../channels/calls.md#configuration). The seed leaves a voice file with a fault
+  unapplied, and never refuses the repo over it.
 - Format 6: each `mcp/<server>.yaml` file as the
   [overrides](../connectors/mcp-proxy-declarations.md#override-files) of one MCP server's tools.
 
