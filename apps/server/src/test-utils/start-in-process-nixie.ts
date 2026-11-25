@@ -2,6 +2,7 @@ import { onTestFinished } from 'bun:test';
 import { cp, mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import type { SpeechLayer } from '@heynixie/calls';
 import { countTextTokens } from '@heynixie/compaction';
 import type { LogRecord } from '@heynixie/log';
 import { startWriter } from '@heynixie/log';
@@ -57,6 +58,9 @@ export interface InProcessNixieOptions {
   // A loopback site that every credential request goes to, over the connection a release build
   // opens, in place of the mock network.
   readonly credentialSite?: TestCredentialSite;
+
+  // The speech layer that the server's calls go through. With none, the server wires no adapter.
+  readonly speech?: SpeechLayer;
 
   // Runs on the migrated data before the first start, so a test seeds state without a restart.
   readonly beforeStart?: (files: BootFiles, seed: BootSeeder) => Promise<void>;
@@ -225,6 +229,7 @@ async function startFirstRun(
     host,
     fetchPages: options.fetchPages ?? [],
     credentialSite: options.credentialSite ?? null,
+    speech: options.speech ?? null,
     stack,
     runBeforeCleanup,
     runs: [],
@@ -271,6 +276,7 @@ interface InProcessNixieFiles {
   readonly host: RunHost;
   readonly fetchPages: readonly FetchPage[];
   readonly credentialSite: TestCredentialSite | null;
+  readonly speech: SpeechLayer | null;
 
   readonly stack: AsyncDisposableStack;
   readonly runBeforeCleanup: RunBeforeCleanup;
@@ -294,6 +300,7 @@ function startNixieRun(start: InProcessNixieFiles): InProcessNixie {
         print: () => {},
         waitForSignal: () => stopSignal.promise,
         ...(start.credentialSite === null ? {} : { credentialSite: start.credentialSite }),
+        ...(start.speech === null ? {} : { speech: start.speech }),
         createSandboxAdapter: (options) => {
           start.host.attach(options);
 

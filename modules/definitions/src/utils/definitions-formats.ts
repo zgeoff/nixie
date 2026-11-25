@@ -18,4 +18,6 @@ export const definitionsFormats = {
   tasks: 4,
 
   budgets: 5,
+
+  voice: 5,
 };

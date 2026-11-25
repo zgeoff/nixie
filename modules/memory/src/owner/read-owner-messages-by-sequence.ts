@@ -25,7 +25,7 @@ export async function readOwnerMessagesBySequence(
 const spanSchema = z.object({
   start: z.int(),
   end: z.int(),
-  source: z.enum(['typed', 'pasted', 'dropped', 'unknown']),
+  source: z.enum(['typed', 'pasted', 'dropped', 'dictated', 'unknown']),
 });
 
 const textSchema = z.string();

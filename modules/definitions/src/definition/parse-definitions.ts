@@ -1,3 +1,4 @@
+import { parseVoiceFiles } from '@heynixie/calls';
 import type { BudgetDefinition, EffectOverride } from '@heynixie/policy';
 import { parseRuleDefinitions } from '../rule/parse-rule-definitions';
 import { manifestSchema } from '../skill/manifest-schema';
@@ -26,7 +27,8 @@ export function parseDefinitions(
   snapshot: Snapshot,
   tasks: TaskSeedContext | null,
 ): ParsedDefinitions {
-  const texts = decodeFiles(snapshot.files);
+  const decoded = decodeFiles(snapshot.files);
+  const texts = decoded.texts;
   const manifest = parseManifest(texts.get(manifestPath));
   const formatVersion = manifest.format;
   const persona = parsePersona(texts.get(personaPath));
@@ -58,6 +60,20 @@ export function parseDefinitions(
       ? parseEffectDefinitions(texts, overrides.partFiles)
       : { effects: new Map<string, EffectOverride>(), paths: new Set<string>() };
 
+  const readsVoice = formatVersion >= definitionsFormats.voice;
+
+  const voice = readsVoice
+    ? parseVoiceFiles(
+        new Map(
+          [...texts].filter(
+            ([path]) => path.startsWith('voice/') && !overrides.partFiles.has(path),
+          ),
+        ),
+      )
+    : { voice: null, problems: [], paths: new Set<string>() };
+
+  const voiceProblems = [...voice.problems, ...decoded.unreadableVoicePaths.map(toNotTextProblem)];
+
   const taskTexts = new Map(
     [...texts].filter(([path]) => path.startsWith('tasks/') && !overrides.partFiles.has(path)),
   );
@@ -79,14 +95,17 @@ export function parseDefinitions(
     .filter((path) => !rules.paths.has(path))
     .filter((path) => !effects.paths.has(path))
     .filter((path) => !taskDefinitions.paths.has(path))
+    .filter((path) => !voice.paths.has(path))
     .toSorted();
 
-  // A file under tasks/ that no definition applies is listed and never read.
+  // A file under tasks/ that no definition applies is listed and never read. A file under voice/
+  // that the voice settings leave out is listed, and a fault in it never refuses the seed.
   const readsTasks = formatVersion >= definitionsFormats.tasks;
 
   requireParsable(
     unapplied
       .filter((path) => !readsTasks || !path.startsWith('tasks/'))
+      .filter((path) => !readsVoice || !path.startsWith('voice/'))
       .map((path) => [path, texts.get(path) ?? '']),
   );
 
@@ -102,11 +121,21 @@ export function parseDefinitions(
     effects: effects.effects,
     tasks: taskDefinitions.definitions,
     taskWarnings: taskDefinitions.warnings,
+    voice: voice.voice,
+    voiceProblems,
     unapplied,
   };
 }
 
-function decodeFiles(files: Snapshot['files']): ReadonlyMap<string, string> {
+interface DecodedFiles {
+  readonly texts: ReadonlyMap<string, string>;
+
+  // the files under voice/ that are not UTF-8 text, which the voice settings report in place of a
+  // refusal, whatever the format
+  readonly unreadableVoicePaths: readonly string[];
+}
+
+function decodeFiles(files: Snapshot['files']): DecodedFiles {
   const decoder = new TextDecoder('utf-8', { fatal: true });
 
   const decoded = [...files].map(([path, bytes]) => {
@@ -117,15 +146,24 @@ function decodeFiles(files: Snapshot['files']): ReadonlyMap<string, string> {
     }
   });
 
-  const problems = decoded
-    .filter((file) => file.text === null)
-    .map((file) => ({ path: file.path, reason: 'the file is not UTF-8 text' }));
+  const unreadable = decoded.filter((file) => file.text === null);
+
+  const problems = unreadable
+    .filter((file) => !file.path.startsWith('voice/'))
+    .map((file) => toNotTextProblem(file.path));
 
   if (problems.length > 0) {
     throw new DefinitionsParseError(problems);
   }
 
-  return new Map(decoded.map((file) => [file.path, file.text ?? '']));
+  return {
+    texts: new Map(decoded.flatMap((file) => (file.text === null ? [] : [[file.path, file.text]]))),
+    unreadableVoicePaths: unreadable.map((file) => file.path),
+  };
+}
+
+function toNotTextProblem(path: string): ParseProblem {
+  return { path, reason: 'the file is not UTF-8 text' };
 }
 
 interface Manifest {

@@ -9,7 +9,7 @@ export interface OwnerMessageQuery {
   readonly limit: number;
 }
 
-const spanSource = z.enum(['typed', 'pasted', 'dropped', 'unknown']);
+const spanSource = z.enum(['typed', 'pasted', 'dropped', 'dictated', 'unknown']);
 const messageSpan = z.object({ start: z.int(), end: z.int(), source: spanSource });
 const messageFields = z.object({ text: z.string(), spans: z.array(messageSpan) });
 

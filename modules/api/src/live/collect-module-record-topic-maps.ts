@@ -1,5 +1,6 @@
 import { actionsRecordTopics } from '@heynixie/actions';
 import { budgetRecordTopics } from '@heynixie/budgets';
+import { callRecordTopics } from '@heynixie/calls';
 import { codingRecordTopics } from '@heynixie/coding';
 import { computerTakeoverRecordTopics, imagesRecordTopics } from '@heynixie/connectors';
 import {
@@ -31,6 +32,7 @@ export function collectModuleRecordTopicMaps() {
     actionsRecordTopics,
     apiRecordTopics,
     budgetRecordTopics,
+    callRecordTopics,
     codingRecordTopics,
     computerTakeoverRecordTopics,
     definitionTaskRecordTopics,

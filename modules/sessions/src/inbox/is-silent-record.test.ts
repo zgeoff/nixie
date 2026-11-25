@@ -12,6 +12,8 @@ test.each([
   ['computer.handover_asked', 'conversation', {}, false],
   ['computer.handover_closed', 'conversation', { by: 'assistant' }, false],
   ['computer.handover_closed', 'conversation', { by: 'expired' }, false],
+  ['call.spoke', 'call-task', { callID: 'c1' }, true],
+  ['call.handed_off', 'call-task', { callID: 'c1' }, false],
 ] as const)(
   'it reads a %s record on thread %s with %o as silent: %p',
   (kind, thread, payload, expected) => {

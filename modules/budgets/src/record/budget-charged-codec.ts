@@ -2,7 +2,10 @@ import { defineRecordCodec } from '@heynixie/log';
 import { z } from 'zod';
 
 // One amount on one budget for one period. It sits on no thread, so no task reads it.
-const forSchema = z.object({ kind: z.enum(['tool_call', 'action']), id: z.string() });
+const forSchema = z.object({
+  kind: z.enum(['tool_call', 'action', 'call_minute']),
+  id: z.string(),
+});
 
 const payloadSchema = z.object({
   chargeID: z.string(),

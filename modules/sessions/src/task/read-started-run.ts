@@ -2,12 +2,15 @@ import type { Harness, ResolvedProfile } from '@heynixie/models';
 import { bindHarness } from '@heynixie/models';
 import type { GuestCommand } from '@heynixie/sandbox';
 import type {
+  CallTaskOptions,
   DefinitionRunContext,
   DefinitionVersion,
   StartedTaskSetup,
   TaskRunOptions,
 } from '@heynixie/tasks';
 import {
+  callRunnerKey,
+  readCallTask,
   readDefinitionRunContext,
   readTaskSetup,
   selfNoteToolNames,
@@ -18,6 +21,7 @@ import invariant from 'tiny-invariant';
 import { match } from 'ts-pattern';
 import { buildGuestCommand } from './build-guest-command';
 import type { SystemTaskSession } from './make-system-task-runner';
+import { pickCallTools } from './pick-call-tools';
 import type { SandboxRunnerOptions } from './sandbox-runner-options';
 
 export interface RunReader {
@@ -47,6 +51,9 @@ export interface StartedRun {
   readonly harness: Harness;
   readonly command: GuestCommand;
   readonly model: ToolRunModel;
+
+  // the call that the task holds, or null for a task that is no call's
+  readonly call: CallTaskOptions | null;
 }
 
 export async function readStartedRun(runner: RunReader, taskID: string): Promise<StartedRun> {
@@ -57,6 +64,10 @@ export async function readStartedRun(runner: RunReader, taskID: string): Promise
   }
 
   invariant(setup?.kind === 'started', `the sandbox runner runs started tasks only, not ${taskID}`);
+
+  if (setup.runner === callRunnerKey) {
+    return readCallRun(runner, taskID, setup);
+  }
 
   return buildStartedRun(runner, setup);
 }
@@ -109,7 +120,8 @@ type RunParts = Pick<
   | 'hasSelfNoteGrant'
   | 'selfNoteOnlyTools'
   | 'sinceSequence'
->;
+> &
+  Partial<Pick<StartedRun, 'call'>>;
 
 function buildRunParts(runner: RunReader, parts: RunParts): StartedRun {
   const profile =
@@ -127,6 +139,7 @@ function buildRunParts(runner: RunReader, parts: RunParts): StartedRun {
     harness,
     command: buildGuestCommand(runner.options.sandboxes, harness.guest),
     model: { model: profile.profile.model, profile: profile.profile.id },
+    call: parts.call ?? null,
   };
 }
 
@@ -159,6 +172,43 @@ function pickSinceSequence(
   found: DefinitionRunContext,
 ): number | null {
   return context === 'fresh' && found.pieceStart !== null ? found.pieceStart - 1 : null;
+}
+
+// A call's turns use the call role, or the conversation's profile when the role is unset. The call
+// takes the conversation's persona, memory read and tool list, less the tools that start work,
+// ring or end a task run.
+async function readCallRun(
+  runner: RunReader,
+  taskID: string,
+  setup: StartedTaskSetup,
+): Promise<StartedRun> {
+  const call = await readCallTask(runner.options.context, taskID);
+
+  invariant(call !== null, `the call's task ${taskID} holds no call`);
+
+  const roles = runner.options.models.roles;
+  const calls = runner.options.calls;
+
+  invariant(calls !== undefined, `the call's task ${taskID} runs where calls are off`);
+
+  return buildRunParts(runner, {
+    startedBy: setup.startedBy,
+    options: {
+      model: null,
+      profile: roles.call ?? roles.conversation,
+      persona: 'default',
+      memory: 'read',
+      log: 'own',
+      tools: pickCallTools(calls.conversationToolNames),
+      report: 'none',
+      limits: runner.options.models.limits.taskRun.default,
+    },
+    definitionHash: null,
+    hasSelfNoteGrant: false,
+    selfNoteOnlyTools: [],
+    sinceSequence: null,
+    call,
+  });
 }
 
 function buildStartedRun(runner: RunReader, setup: StartedTaskSetup): StartedRun {

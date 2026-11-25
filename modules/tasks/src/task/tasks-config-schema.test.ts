@@ -5,6 +5,7 @@ test('it runs 3 task runners and 2 claim loops for started tasks, and stops waki
   expect(tasksConfigSchema.safeParse({}).data).toStrictEqual({
     runners: 3,
     startedClaimLoops: 2,
+    callClaimLoops: 1,
     messaging: { hopLimit: 20 },
   });
 });
@@ -13,6 +14,7 @@ test('it takes the pool size the file names', () => {
   expect(tasksConfigSchema.safeParse({ runners: 5 }).data).toStrictEqual({
     runners: 5,
     startedClaimLoops: 2,
+    callClaimLoops: 1,
     messaging: { hopLimit: 20 },
   });
 });
@@ -21,6 +23,7 @@ test('it takes the number of claim loops for started tasks the file names', () =
   expect(tasksConfigSchema.safeParse({ startedClaimLoops: 4 }).data).toStrictEqual({
     runners: 3,
     startedClaimLoops: 4,
+    callClaimLoops: 1,
     messaging: { hopLimit: 20 },
   });
 });
@@ -29,6 +32,7 @@ test('it takes the hop limit the file names', () => {
   expect(tasksConfigSchema.safeParse({ messaging: { hopLimit: 6 } }).data).toStrictEqual({
     runners: 3,
     startedClaimLoops: 2,
+    callClaimLoops: 1,
     messaging: { hopLimit: 6 },
   });
 });

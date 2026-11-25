@@ -38,6 +38,9 @@ adds these test-only parts:
   read, and finishes when its inbox holds a finish request, so a test can see a wake-up, a timer
   fire and a task that stays done.
 - A harness link connects the process to the test over an IPC channel.
+- A fake speech layer stands in for the speech provider when the config holds a `voice` section. The
+  harness operations `placeHarnessCall`, `emitSpeech` and `readSpeechCalls` start a call as the user
+  and play the provider, so a test hands a request off with no device.
 - The process kills every guest it started before it exits on its own, as on a graceful stop or a
   stale writer epoch. A guest leads its own process group and would otherwise outlive nixie, which a
   host that loses nixie never allows.

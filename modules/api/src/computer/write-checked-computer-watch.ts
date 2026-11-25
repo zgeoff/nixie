@@ -18,6 +18,7 @@ export async function writeCheckedComputerWatch(
 ): Promise<CheckedComputerWatchResult> {
   const checked = await writeCheckedComputerAction(context, caller, {
     procedure: 'computer.watch',
+    input: {},
     clientActionID,
     result: { minted: true },
   });

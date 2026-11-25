@@ -46,6 +46,7 @@ test('it builds the canonical form and its hashes', () => {
           "origin": "definitions",
         },
       ],
+      "voice": null,
     }
   `);
 });

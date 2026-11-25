@@ -1,8 +1,9 @@
 import { oc } from '@orpc/contract';
 import { z } from 'zod';
 import { codeFileSchema } from '../file/code-file-schema';
-import { spanSchema } from '../span/span-schema';
+import { sentSpanSchema } from '../span/span-schema';
 import { approvalContract } from './approval-contract';
+import { callsContract } from './calls-contract';
 import { computerContract } from './computer-contract';
 import { connectionsContract } from './connections-contract';
 import { definitionsContract } from './definitions-contract';
@@ -154,7 +155,7 @@ export const contract = {
           clientMessageId: clientActionIDSchema,
 
           images: imageFilesSchema.optional(),
-          spans: z.array(spanSchema).max(100_000),
+          spans: z.array(sentSpanSchema).max(100_000),
           text: z.string().min(1).max(100_000),
           thread: threadSchema,
 
@@ -307,6 +308,7 @@ export const contract = {
   notebook: notebookContract,
   connections: connectionsContract,
   images: imagesContract,
+  calls: callsContract,
   computer: computerContract,
   files: {
     read: signedIn

@@ -30,6 +30,16 @@ export function renderSessionPrompt(frame: SessionFrame, values: SessionPromptVa
         values.prompts,
       ),
     )
+    .with({ kind: 'call' }, (call) =>
+      [
+        renderPrompt(
+          'session',
+          { persona: values.persona, skillCatalog: values.skillCatalog, owner },
+          values.prompts,
+        ),
+        call.voicePrompt,
+      ].join('\n\n'),
+    )
     .with({ kind: 'task' }, () => {
       const profile = values.messaging.directory.find((entry) => entry.taskID === values.taskID);
 

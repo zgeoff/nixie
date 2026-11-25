@@ -1,3 +1,4 @@
+import type { SpeechLayer } from '@heynixie/calls';
 import type { Clock } from '@heynixie/clock';
 import type { Secrets } from '@heynixie/credentials';
 import type { Writer } from '@heynixie/log';
@@ -40,6 +41,9 @@ export interface ServerOptions {
 
   // a test build's loopback site, which every credential request goes to
   readonly credentialSite?: TestCredentialSite;
+
+  // the speech layer of a test build, because the server holds no speech adapter
+  readonly speech?: SpeechLayer;
 }
 
 export interface Server {

@@ -11,6 +11,9 @@ import { renderOwnerText } from '../utils/render-owner-text';
 import { renderActionFailure } from './render-action-failure';
 import type { ActionResultBlock } from './render-action-result';
 import { renderApprovalAnswer } from './render-approval-answer';
+import { renderCallNotice } from './render-call-notice';
+import { renderCallThreadLine } from './render-call-thread-line';
+import type { HeardCut } from './render-call-thread-line';
 import { renderHandoverAsked } from './render-handover-asked';
 import { renderHandoverClosed } from './render-handover-closed';
 import { renderLimitNotice } from './render-limit-notice';
@@ -29,6 +32,8 @@ interface RenderedExtras {
   readonly reminder?: ReminderRead | null;
   readonly result?: ActionResultBlock | null;
   readonly approvedAt?: Date | null;
+  readonly cut?: HeardCut | null;
+  readonly smallTalk?: readonly string[];
 }
 
 export function renderInboxMessage(
@@ -80,6 +85,22 @@ export function renderInboxMessage(
 
   if (record.kind === 'computer.handover_asked') {
     return renderHandoverAsked(record, times, view.messaging.ownerName);
+  }
+
+  if (
+    record.kind === 'call.started' ||
+    record.kind === 'call.answered' ||
+    record.kind === 'call.ended'
+  ) {
+    return renderCallNotice(record, times, view.messaging.ownerName ?? 'the user');
+  }
+
+  if (
+    record.kind === 'call.handed_off' ||
+    record.kind === 'call.heard_cut' ||
+    record.kind === 'call.closing'
+  ) {
+    return renderCallThreadLine(record, times, extras.cut ?? null, extras.smallTalk ?? []);
   }
 
   if (record.kind === 'device.page_event') {
