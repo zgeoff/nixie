@@ -559,13 +559,13 @@ reads.
   it out. Each start is read once, because the block's range begins where the last turn's note
   ended, so a later turn never repeats the line. Telling the user about the outage is not part of
   this entry.
-- **A page event** reads each `device.page_event` record that has no wake, which is a request from a
-  page on a device that the server did not grant or the page did not make. The line names the device
-  and the region, then shows the event's name and data inside the markers of an untrusted page read,
-  because the page's text is outside content. An event that woke the conversation reaches it through
-  its inbox, so the block leaves it out. An entry names the source of its events, and a block that
-  lists one of them adds that source, `outside` for a page event, to the step's policy frame. A page
-  event that woke a step, in its opening batch or while it ran, adds the same source.
+- **A page event** reads each `device.page_event` record that has no wake, because the page did not
+  ask for one or the server did not grant it. The line names the device and the region, then shows
+  the event's name and data inside the markers of an untrusted page read, because the page's text is
+  outside content. An event that woke the conversation reaches it through its inbox, so the block
+  leaves it out. An entry names the source of its events, and a block that lists one of them adds
+  that source, `outside` for a page event, to the step's policy frame. A page event that woke a
+  step, in its opening batch or while it ran, adds the same source.
 - **A restart** reads the record the server writes at each start, with nixie's version and the
   version of the start before it. When the conversation's tools or persona changed since the start
   before, a second line names each tool added or removed and says when the persona was updated,

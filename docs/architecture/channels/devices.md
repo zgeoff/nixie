@@ -174,9 +174,8 @@ of the layout, and returns `NOT_SHOWN` otherwise.
 A `message` event carries a message that `device.sendToPage` sent, with the region, the short ID of
 the content it was for, the data and whether it was retained. The stream sends it only to the
 streams of that device, and the device drops it when the region no longer shows that content. A
-message to a stream that is not open is lost, and a retained message is the exception: the stream
-sends the retained message of each page region right after its first layout, each time the stream
-opens.
+message to a stream that is not open is lost, except a retained message: each time the stream opens,
+it sends the retained message of each page region right after its first layout.
 
 ## Page regions
 
@@ -187,8 +186,8 @@ record that seals it, and `devices.list` never shows it.
 ### The frame
 
 The device page shows a page in an `<iframe sandbox="allow-scripts">` with no other sandbox token,
-so the page runs scripts in an opaque origin. That origin gives the page no cookie, no storage, no
-access to the device page's DOM and no navigation of the device page. The frame loads from
+so the page runs scripts in an opaque origin. In that origin the page has no cookie, no storage and
+no access to the device page's DOM, and it can't navigate the device page. The frame loads from
 `/rpc/device/frames/<ticket>`, and the page's images from `/rpc/device/images/<ticket>`. These two
 paths take no session and no client header: the ticket in the path is the credential, and
 `answerPageRequest` runs before the client-header check.
@@ -211,8 +210,8 @@ the same opaque origin, and the page reads none of the app's storage.
 The policy leaves two ways out open: a peer connection reaches any server its page names, and a link
 element opens a connection from a resource hint such as `preconnect`. No directive closes the
 second: Chrome opens a preconnect's connection under `connect-src 'none'`, and blocks only a
-prefetch. A frame, object or embed element gives the page a second window that has neither guard.
-Four things close them:
+prefetch. A frame, object or embed element gives the page a second window, where the bridge's guards
+don't run. nixie closes them this way:
 
 - `device.region` refuses a page that holds a link, frame, object or embed element, because the page
   has no network and its styles go in a style element.
@@ -224,8 +223,8 @@ Four things close them:
 - The bridge cleans each string that the page turns into markup, so a string never brings the
   elements back, with or without a namespace prefix.
 
-A browser with trusted types gets the refusal and the cleaning from the `default` policy that the
-bridge makes, which the frame's policy requires and allows alone. The browser calls that policy
+In a browser with trusted types, the refusal and the cleaning come from the bridge's `default`
+policy, the one policy that the frame's policy requires and allows. The browser calls that policy
 itself, so no script can undo it. A browser without trusted types gets them from the bridge's own
 wrappers around `document.write`, `document.writeln`, `innerHTML`, `outerHTML`,
 `insertAdjacentHTML`, `srcdoc`, `DOMParser` and `createContextualFragment`.
@@ -240,8 +239,8 @@ their pages with the same bridge.
 The frame's URL is built from the request's own origin, with the forwarded protocol and host
 cleaned, so a page behind a reverse proxy loads its images from the same origin as the frame. The
 recipe's proxy trusts the forwarded protocol and host of the HTTPS proxy in front of it, and
-`check-forwarded-proto.ts` checks that it hands them on. Its log drops each frame ticket and image
-ticket from a request address, which `check-ticket-log.ts` checks.
+`check-forwarded-proto.ts` checks that it hands them on. The proxy's log drops each frame ticket and
+image ticket from a request address, which `check-ticket-log.ts` checks.
 
 ### The page bridge
 
@@ -258,9 +257,10 @@ The bridge takes a message only from its parent window, so a sibling frame can't
 It reports an uncaught error to the device page, which reports it with `devices.pageError`, so
 `device.preview` shows it. The device page only takes a message from the window of its own frame.
 
-A touch inside a frame never reaches the device page, so the bridge sends it a `touch` message, at
-most 4 times a second. The device page then shows its buttons as it does for a touch of its own, so
-a page that fills the screen leaves the user a way to close it, switch off the screen or sign out.
+A touch inside a frame never reaches the device page, so the bridge sends the device page a `touch`
+message, at most 4 times a second. The device page then shows its buttons as it does for a touch of
+its own, so a page that fills the screen leaves the user a way to close it, switch off the screen or
+sign out.
 
 A page that replaces another page loads in a new frame, so a message for the new page never goes to
 the document of the old one.
@@ -278,32 +278,32 @@ replacement that commits first makes the event stale.
 A page event is outside content, as a web page is. The server writes a `device.page_event` record
 with `contentSource` `untrusted` and the event's data as an erasable field, so a forget erases it.
 The record names the device, the region, the event name and whether it woke the conversation. The
-assistant reads the text inside the markers of an untrusted page read, and never as an instruction.
-A page event carries no authority: it is not the user's message, and no rule treats it as one.
+assistant reads the text inside the markers of an untrusted page read, never as an instruction. A
+page event carries no authority: it is not the user's message, and no rule treats it as one.
 
 The wake is the page's request, and the server grants it for at most 6 events an hour for each
 device. A page event with a wake it was granted is an inbox record, which wakes a step and reaches
 the conversation as a `page-event` system message. An event with no wake, or past that limit, is no
 inbox record, and the next turn's events block lists it. A page event that woke the conversation
-never shows in the events block too.
+never also shows in the events block.
 
 A page event marks the step's policy frame as holding outside content as soon as it reaches the
-model, so a rule that allows a call on owner content and asks about one on outside content asks.
-That covers an event in the step's opening batch, an event that the turn's events block lists, and a
-waking event that lands while the turn runs.
+model. A rule that allows a call on owner content and asks about one on outside content then asks.
+The mark covers an event in the step's opening batch, an event that the turn's events block lists,
+and a waking event that lands while the turn runs.
 
 ### Messages to a page
 
 `device.sendToPage` sends data into the page of a region. With `retain: true` the server also keeps
 the message as the page's state, the newest one for each page region, in memory in the stream
 registry. A stream hands that message to the page each time the page loads, after a reload or a
-reconnect, until new content replaces the page, and a restart forgets it. A `device.region` call
-that writes any content drops the region's retained message and its tickets, so a temporary
-replacement that ends with `previous` brings the earlier page back with no state and new tickets.
-The device page keeps each region's newest retained message past its limit of 200 messages, so a
-frame that loads again on the same stream starts from it. A layout event that no longer shows a page
-drops that page's messages, so a page that a replacement gives back starts with no state. A retained
-message is kept even when the device is offline, and the call then returns `OFFLINE`.
+reconnect, until new content replaces the page. The server forgets it on a restart. A
+`device.region` call that writes any content drops the region's retained message and its tickets, so
+a temporary replacement that ends with `previous` brings the earlier page back with no state and new
+tickets. The device page keeps each region's newest retained message past its limit of 200 messages,
+so a frame that loads again on the same stream starts from it. A layout event that no longer shows a
+page drops that page's messages, so a page that a replacement gives back starts with no state. A
+retained message is kept even when the device is offline, and the call then returns `OFFLINE`.
 
 ## Waking the model
 
@@ -410,7 +410,7 @@ is cut to the exact size, so a device with an odd width gets a picture of its ow
 sends the PNG on at that exact size, so a large screen is not shrunk, and the picture is
 `unavailable` when the PNG passes the byte limit that the model takes.
 
-A page region draws as a sealed frame of its own, a file of the page's files that holds the same
+A page region draws as a sealed frame of its own, one of the preview's files, which holds the same
 document and policy as the device's frame, with its images by path and its retained message already
 in place. The guest renders it with scripts on, and the frame has the same sandbox as on the device.
 
