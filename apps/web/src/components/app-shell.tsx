@@ -1,6 +1,7 @@
 import { Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { useEffect, useRef, useState } from 'react';
+import { useIsHydrated } from '../conversation/use-is-hydrated';
 import { css } from '../styled-system/css';
 
 const entries = [
@@ -43,6 +44,7 @@ const menuButton = css({
   borderWidth: '1px',
   cursor: 'pointer',
   display: { base: 'inline-block', md: 'none' },
+  _disabled: { cursor: 'default', opacity: 0.5 },
   fontSize: 'sm',
   paddingBlock: '1',
   paddingInline: '3',
@@ -102,7 +104,10 @@ export interface AppShellProps {
   readonly children: ReactNode;
 }
 
+// Menu waits for hydration, because the server render shows it before React attaches its click
+// handler, and a tap that early is lost.
 export function AppShell(props: AppShellProps): ReactNode {
+  const isHydrated = useIsHydrated();
   const dialogRef = useRef<HTMLDialogElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const [isOpen, setIsOpen] = useState(false);
@@ -158,6 +163,7 @@ export function AppShell(props: AppShellProps): ReactNode {
           aria-haspopup="dialog"
           aria-label="Menu"
           className={menuButton}
+          disabled={!isHydrated}
           onClick={handleOpen}
           ref={buttonRef}
           type="button"
