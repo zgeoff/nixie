@@ -14,6 +14,7 @@ export { signInReturnPath, signInStatePrefix } from './signin/create-sign-in';
 export type { ConnectResult, FinishInput, FinishResult } from './signin/create-sign-in';
 export type { ListResult, Mcp, McpOptions, McpPort } from './start-mcp';
 export { startMcp } from './start-mcp';
+export type { McpNotice } from './notice/read-notices';
 export type { AllowResult } from './proposal/allow-tool';
 
 export type {

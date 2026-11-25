@@ -6,9 +6,6 @@ export interface DiscoveredAuthorization {
   readonly authorizeURL: string;
   readonly tokenURL: string;
   readonly revokeURL: string | null;
-
-  // RFC 9207: the server says which issuer answered, so a mix-up is caught on the return
-  readonly isIssuerReturned: boolean;
 }
 
 // Sends one request to a URL, through a fetcher whose origins the caller chose.
@@ -82,7 +79,6 @@ const serverMetadataSchema = z.object({
   token_endpoint: z.string(),
   revocation_endpoint: z.string().optional(),
   code_challenge_methods_supported: z.array(z.string()).optional(),
-  authorization_response_iss_parameter_supported: z.boolean().optional(),
 });
 
 async function discoverEndpoints(
@@ -131,6 +127,5 @@ async function discoverEndpoints(
     authorizeURL: parsed.data.authorization_endpoint,
     tokenURL: parsed.data.token_endpoint,
     revokeURL: parsed.data.revocation_endpoint ?? null,
-    isIssuerReturned: parsed.data.authorization_response_iss_parameter_supported === true,
   };
 }

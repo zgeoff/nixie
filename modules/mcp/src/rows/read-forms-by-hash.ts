@@ -14,7 +14,7 @@ export interface FoundForm {
 // The tool form each hash names, from the erasable fields of the record that listed it. A hash that
 // no listing held reads as none, and one whose key a forget deleted reads as unreadable.
 export async function readFormsByHash(
-  log: Log,
+  log: Pick<Log, 'deploymentKey' | 'writer'>,
   hashes: readonly string[],
 ): Promise<Map<string, FoundForm>> {
   const found = new Map<string, FoundForm>(

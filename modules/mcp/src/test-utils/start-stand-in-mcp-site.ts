@@ -48,7 +48,15 @@ export interface StandInMcpSite {
   readonly readListingCount: () => number;
 }
 
+export interface StandInMcpSiteOptions {
+  readonly tools?: readonly StandInTool[];
+
+  // whether the authorization server's metadata says that its return carries `iss`; default true
+  readonly advertisesIssuer?: boolean;
+}
+
 interface SiteState {
+  readonly advertisesIssuer: boolean;
   tools: readonly StandInTool[];
   isListingFailing: boolean;
   isRefreshRefused: boolean;
@@ -66,12 +74,13 @@ interface SiteState {
 // Streamable HTTP at /mcp, OAuth 2.1 with the authorization code grant and PKCE, a public client,
 // and a refresh token that rotates at each use. A test reaches it over the pinned connection.
 export async function startStandInMcpSite(
-  options: { readonly tools?: readonly StandInTool[] } = {},
+  options: StandInMcpSiteOptions = {},
 ): Promise<StandInMcpSite> {
   const host = 'mcp.test';
   const clientID = 'nixie-stand-in';
 
   const state: SiteState = {
+    advertisesIssuer: options.advertisesIssuer ?? true,
     tools: options.tools ?? [],
     isListingFailing: false,
     isRefreshRefused: false,
@@ -159,7 +168,7 @@ function answerRequest(site: SiteRequest): Promise<Response> | Response {
       grant_types_supported: ['authorization_code', 'refresh_token'],
       code_challenge_methods_supported: ['S256'],
       token_endpoint_auth_methods_supported: ['none'],
-      authorization_response_iss_parameter_supported: true,
+      authorization_response_iss_parameter_supported: site.state.advertisesIssuer,
     });
   }
 

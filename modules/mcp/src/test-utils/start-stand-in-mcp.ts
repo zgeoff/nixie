@@ -1,3 +1,4 @@
+import type { CredentialStore } from '@heynixie/credentials';
 import { createHeldTestStore } from '@heynixie/credentials/test-utils';
 import type { HeldTestStore } from '@heynixie/credentials/test-utils';
 import invariant from 'tiny-invariant';
@@ -18,6 +19,7 @@ export interface StandInMcpOptions {
   readonly tools?: readonly StandInTool[];
   readonly facts?: Partial<ServerFacts>;
   readonly listingTimeoutSeconds?: number;
+  readonly advertisesIssuer?: boolean;
 }
 
 export interface StandInMcp {
@@ -28,8 +30,9 @@ export interface StandInMcp {
   // the proxy over the real store, started with the server `tracker` in its config
   readonly mcp: Mcp;
 
-  // Starts another proxy over the same log and store, as a restart does: it holds nothing in memory.
-  readonly restart: (changed?: Partial<ServerFacts>) => Mcp;
+  // Starts another proxy over the same log, as a restart does: it holds nothing in memory. It uses
+  // the same store unless `store` stands in for it.
+  readonly restart: (changed?: Partial<ServerFacts>, store?: CredentialStore) => Mcp;
 
   // approves the server's proposal, so the server joins as added
   readonly approveServer: () => Promise<void>;
@@ -43,9 +46,12 @@ export interface StandInMcp {
 // loopback. The site's host resolves to the loopback address, which only the config's private range
 // lets through, as it does for a server on a private network.
 export async function startStandInMcp(options: StandInMcpOptions = {}): Promise<StandInMcp> {
-  const siteOptions = options.tools === undefined ? {} : { tools: options.tools };
-
-  const site = await startStandInMcpSite(siteOptions);
+  const site = await startStandInMcpSite({
+    ...(options.tools === undefined ? {} : { tools: options.tools }),
+    ...(options.advertisesIssuer === undefined
+      ? {}
+      : { advertisesIssuer: options.advertisesIssuer }),
+  });
 
   const holder: { mcp: Mcp | null } = { mcp: null };
 
@@ -72,12 +78,12 @@ export async function startStandInMcp(options: StandInMcpOptions = {}): Promise<
     ...options.facts,
   });
 
-  const makeMcp = (changed: Partial<ServerFacts> = {}): Mcp =>
+  const makeMcp = (changed: Partial<ServerFacts> = {}, store = held.store): Mcp =>
     startMcp({
       log: test.log,
       definitions: test.context.definitions,
       now: test.context.now,
-      store: held.store,
+      store,
       backend: held.backend,
       servers: { tracker: { ...facts, ...changed } },
       listingTimeoutSeconds: options.listingTimeoutSeconds ?? 5,
@@ -100,8 +106,8 @@ export async function startStandInMcp(options: StandInMcpOptions = {}): Promise<
     test,
     held,
     mcp,
-    restart: (changed) => {
-      const restarted = makeMcp(changed);
+    restart: (changed, store) => {
+      const restarted = makeMcp(changed, store);
 
       holder.mcp = restarted;
 

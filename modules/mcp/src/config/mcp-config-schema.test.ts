@@ -30,7 +30,7 @@ test.each(['T', 'a', 'tracker-1', '1tracker', 'averyveryverylongid'])(
   },
 );
 
-test.each(['web', 'memory', 'notebook', 'task'])(
+test.each(['web', 'coding', 'memory', 'notebook', 'task'])(
   'it refuses the server ID %s, the first segment of a tool nixie registers',
   (id) => {
     const result = buildMcpConfigSchema(false).safeParse({

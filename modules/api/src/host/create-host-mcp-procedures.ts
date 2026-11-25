@@ -4,11 +4,22 @@ import type { APIContext } from '../types';
 import { hostImplementer } from './host-implementer';
 
 // The host writes the allow proposal of a tool that waits for one, as `nixie mcp allow` does after a
-// proposal was declined or lapsed.
+// proposal was declined or lapsed, and reads the notices of changes that applied with no allow, as
+// `nixie mcp notices` does.
 export function createHostMcpProcedures(context: APIContext) {
   const mcp = hostImplementer.mcp;
 
   return {
+    notices: mcp.notices.handler(async (options) => {
+      const port = context.readMcp?.() ?? null;
+
+      if (port === null) {
+        throw options.errors.MCP_NOT_STARTED();
+      }
+
+      return { notices: await port.readNotices(options.input.limit) };
+    }),
+
     allow: mcp.allow.handler(async (options) => {
       const port = context.readMcp?.() ?? null;
 

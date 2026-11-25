@@ -3,6 +3,7 @@
 // catches a tool that a release adds and this list lacks.
 export const reservedServerIDs: readonly string[] = [
   'code',
+  'coding',
   'computer',
   'contact',
   'contacts',

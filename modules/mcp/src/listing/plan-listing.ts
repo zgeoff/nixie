@@ -3,7 +3,7 @@ import { buildProxiedToolName, pickNameRefusal } from '../name/pick-name-refusal
 import { decideMissingPin, decidePin } from '../pin/decide-pin';
 import type { PinDecision } from '../pin/decide-pin';
 import { hashToolForm } from '../pin/hash-tool-form';
-import { buildProxiedTool } from '../registry/build-proxied-tool';
+import { pickFormRefusal } from '../registry/pick-form-refusal';
 import type { ToolForm } from '../types';
 import type { ListingState } from './types';
 
@@ -165,11 +165,4 @@ function planListedTool(
       proposeAllow !== null ||
       withdrawProposalID !== null,
   };
-}
-
-// Why the registry refuses the form, or null when it registers.
-function pickFormRefusal(tool: string, form: ToolForm): string | null {
-  const built = buildProxiedTool(tool, form);
-
-  return built.kind === 'refused' ? built.reason : null;
 }

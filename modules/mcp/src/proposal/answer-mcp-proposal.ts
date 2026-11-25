@@ -2,17 +2,20 @@ import type { RecordInput } from '@heynixie/log';
 import { writeRecordsInTransaction } from '@heynixie/log';
 import type { ApplyOutcome, ProposalAnswerInput, SharedProposal } from '@heynixie/proposals';
 import type { Transaction } from 'kysely';
+import { pickNameRefusal } from '../name/pick-name-refusal';
 import { mcpAnsweredCodec } from '../record/mcp-answered-codec';
 import { mcpPinMovedCodec } from '../record/mcp-pin-moved-codec';
 import { mcpServerChangedCodec } from '../record/mcp-server-changed-codec';
 import { mcpToolChangedCodec } from '../record/mcp-tool-changed-codec';
+import { pickFormRefusal } from '../registry/pick-form-refusal';
 import type { McpServerRow, McpToolRow } from '../rows/mcp-tables';
+import { readFormsByHash } from '../rows/read-forms-by-hash';
 import { readServerRows } from '../rows/read-server-rows';
 import { readToolRows } from '../rows/read-tool-rows';
 import { toCredentialFields } from '../rows/to-credential-fields';
 import { toFactsInUse } from '../rows/to-facts-in-use';
 import { toRequestedFacts } from '../rows/to-requested-facts';
-import type { McpContext, OnPinMoved } from '../types';
+import type { McpContext, OnPinMoved, ToolForm } from '../types';
 
 export interface AnswerContext extends McpContext {
   readonly onPinMoved?: OnPinMoved;
@@ -154,6 +157,15 @@ async function answerAllow(
 ): Promise<ApplyOutcome> {
   const tool = request.tool;
   const proposalID = request.proposalID;
+
+  if (request.isApproved) {
+    const form = await readPinnedForm(context, tx, tool);
+
+    if (isFormRefused(tool, form)) {
+      return { status: 'refused', refusal: { error: 'NOT_ALLOWED', reason: 'form_refused' } };
+    }
+  }
+
   const nextState = tool.state === 'removed' ? 'removed' : 'exposed';
 
   const changed: RecordInput = {
@@ -200,4 +212,35 @@ async function answerAllow(
     status: 'done',
     result: { proposalID, state: request.isApproved ? 'approved' : 'declined' },
   };
+}
+
+// The form that an approval would pin. A listing keeps a refused form hidden, but a proposal that
+// an older listing wrote can still wait on one.
+async function readPinnedForm(
+  context: AnswerContext,
+  tx: Transaction<unknown>,
+  tool: McpToolRow,
+): Promise<ToolForm | null> {
+  const found = await readFormsByHash(
+    { deploymentKey: context.log.deploymentKey, writer: { ...context.log.writer, db: tx } },
+    [tool.latest_hash],
+  );
+
+  return found.get(tool.latest_hash)?.form ?? null;
+}
+
+// Whether the registry refuses the form, or no readable form is left to pin.
+function isFormRefused(tool: McpToolRow, form: ToolForm | null): boolean {
+  if (form === null) {
+    return true;
+  }
+
+  const refusal =
+    pickNameRefusal({
+      serverID: tool.server_id,
+      toolName: form.name,
+      takenModelNames: new Set(),
+    }) ?? pickFormRefusal(tool.tool, form);
+
+  return refusal !== null;
 }

@@ -26,3 +26,10 @@ test('it takes the tool name as the one argument of allow', async () => {
 
   expect(allowed.exitCode).not.toBe(0);
 });
+
+test('it prints no notice and succeeds when no tool changed with no allow', async () => {
+  const ctx = await setupTest();
+  const noticed = await runHostCommand(ctx.configPath, ['mcp', 'notices']);
+
+  expect([noticed.exitCode, noticed.stdout]).toStrictEqual([0, '']);
+});

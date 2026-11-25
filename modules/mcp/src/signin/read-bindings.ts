@@ -24,7 +24,8 @@ export interface ServerBindings {
   readonly grantCredentialID: string;
 
   // Whether the authorization server that answers now differs from the one that the grant was
-  // signed in under. A grant that has moved is never refreshed, and only a new sign-in replaces it.
+  // signed in under, or the grant has no recorded sign-in. A grant that has moved is never
+  // refreshed, and only a new sign-in replaces it.
   readonly hasMoved: boolean;
 }
 
@@ -177,7 +178,7 @@ export function toBinding(found: DiscoveredAuthorization): GrantBinding {
 
 function isMoved(saved: GrantBinding | null, found: DiscoveredAuthorization): boolean {
   if (saved === null) {
-    return false;
+    return true;
   }
 
   return (

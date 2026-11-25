@@ -59,18 +59,20 @@ The browser returns to `/connections/google/return`, the one OAuth return route 
 consent uses too. The route sends a state that begins with `mcp.` to `mcp.finishSignIn`, and every
 other state to the Google consent. nixie checks that the state is its own and has not lapsed, and
 that the `iss` parameter is present and names the authorization server that nixie asked, so a second
-server cannot answer for the first. A return with no `iss` stops before the exchange. nixie then
-exchanges the code through the credential store, which reaches a token endpoint on a private host
-the same way every other request does.
+server cannot answer for the first. A return with no `iss` stops before the exchange, whether or not
+the server's metadata says it returns one. nixie then exchanges the code through the credential
+store, which reaches a token endpoint on a private host the same way every other request does.
 
 The PKCE verifier waits in memory under the state, because a restart in the middle of a sign-in
 costs only another press of Connect. Tokens never leave the store: a refresh token is sealed with a
 key of its own, which the store's forget removes with the credential.
 
 A finished sign-in records the issuer, the token endpoint and the revocation endpoint it was signed
-in under. After a restart, nixie discovers the authorization server again. A grant whose discovery
-now names another issuer or endpoint is never refreshed and its server is not listed: the refresh
-token would reach a party the user never signed in to, so only a new sign-in replaces the grant.
+in under, after the exchange saved the grant. After a restart, nixie discovers the authorization
+server again. Nixie never refreshes a grant that has no recorded sign-in, such as one saved just
+before nixie stopped, or whose discovery now names another issuer or endpoint, and it does not list
+that server: the refresh token would reach a party the user never signed in to, so only a new
+sign-in replaces the grant.
 
 Every request to the server goes through a fetcher that the store makes for the server's origin. It
 follows no redirect, and it reaches a private address only for the host that the server's private
@@ -97,9 +99,11 @@ listing record keeps it in an erasable field, and a forget of the record leaves 
 the form. A tool whose form can no longer be read stays stopped.
 
 A listing that omits a tool closes the tool's open allow proposal, so a withdrawn form cannot be
-approved. A form that the registry refuses stays hidden with the reason and writes no proposal. When
-a trusted server's change applies, or a listing drops a tool, nixie writes an `mcp.notice` record
-that names the tool and its old and new hash. The tool rows are decided inside the write
+approved. A form that the registry refuses stays hidden with the reason and writes no proposal, and
+an approval of a waiting proposal for such a form, or for a form that a forget erased, is refused.
+When a trusted server's change applies, or a listing drops a tool, nixie writes an `mcp.notice`
+record that names the tool and its old and new hash. `nixie mcp notices` prints the newest ones, one
+JSON line each, newest first, and takes `--limit`. The tool rows are decided inside the write
 transaction, so an allow that commits while a listing runs is never overwritten with an older pin. A
 server listing has one timeout for every page together, so a server that keeps returning a page
 cursor cannot hold a sign-in open. After the user declines an allow proposal or it lapses,

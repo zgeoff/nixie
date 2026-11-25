@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import type { CredentialStore } from '@heynixie/credentials';
 import { readServerRows } from '../rows/read-server-rows';
 import { readToolRow } from '../rows/read-tool-rows';
 import { startStandInMcp } from './start-stand-in-mcp';
@@ -26,6 +27,7 @@ async function setupTest() {
 
   return {
     ...ctx,
+    itemGet,
     itemNotify,
     readTool: (tool: string) => readToolRow(ctx.test.log.writer.db, tool),
     readServer: async () => {
@@ -66,10 +68,18 @@ test('it sends the resource and no client secret with the code, and keeps the to
 });
 
 test.each([
-  { title: 'no issuer', iss: null },
-  { title: 'another issuer', iss: 'https://other.example.org' },
+  { title: 'no issuer', iss: null, advertisesIssuer: true },
+  {
+    title: 'no issuer from a server that does not advertise one',
+    iss: null,
+    advertisesIssuer: false,
+  },
+  { title: 'another issuer', iss: 'https://other.example.org', advertisesIssuer: true },
 ])('it stops a return with $title before the code is exchanged', async (row) => {
-  const ctx = await setupTest();
+  const ctx = await startStandInMcp({ advertisesIssuer: row.advertisesIssuer });
+
+  await ctx.approveServer();
+
   const finished = await ctx.signIn(ctx.mcp, row.iss);
 
   expect([finished, ctx.site.tokenRequests.length]).toStrictEqual([
@@ -94,6 +104,30 @@ test('it keeps the pinned tool in its pinned form when the next listing fails', 
     'exposed',
     true,
   ]);
+});
+
+test('it stops a tool that stays listed with a changed form until you allow it', async () => {
+  const ctx = await setupTest();
+
+  await ctx.signIn(ctx.mcp);
+  await ctx.test.allow('tracker.item_get');
+
+  const pinned = await ctx.readTool('tracker.item_get');
+
+  ctx.site.setTools([
+    { ...ctx.itemGet, description: 'Read one item, and say who owns it.' },
+    ctx.itemNotify,
+  ]);
+
+  await ctx.mcp.list('tracker');
+
+  const tool = await ctx.readTool('tracker.item_get');
+
+  expect([
+    tool?.state,
+    tool?.pinned_hash === pinned?.pinned_hash,
+    tool?.latest_hash === pinned?.latest_hash,
+  ]).toStrictEqual(['stopped_changed', true, false]);
 });
 
 test('it drops a tool that the next listing lacks and tells you', async () => {
@@ -133,6 +167,27 @@ test('it refreshes with the rotating refresh token when the access token stops w
   ]);
 });
 
+test('it keeps the rotated refresh token, so a second refresh after the first still signs in', async () => {
+  const ctx = await setupTest();
+
+  await ctx.signIn(ctx.mcp);
+
+  ctx.site.expireAccessTokens();
+
+  const first = await ctx.mcp.list('tracker');
+
+  ctx.site.expireAccessTokens();
+
+  const second = await ctx.mcp.list('tracker');
+
+  const refreshes = ctx.site.tokenRequests.filter(
+    (request) => request['grant_type'] === 'refresh_token',
+  );
+
+  expect([first.status, second.status, refreshes.length]).toStrictEqual(['listed', 'listed', 2]);
+  expect(refreshes[1]?.['refresh_token']).not.toBe(refreshes[0]?.['refresh_token']);
+});
+
 test('it stops listing a server whose refresh the authorization server refused for good', async () => {
   const ctx = await setupTest();
 
@@ -154,6 +209,33 @@ test('it never sends a saved refresh token to a token endpoint that moved after 
   const ctx = await setupTest();
 
   await ctx.signIn(ctx.mcp);
+
+  const restarted = ctx.restart();
+
+  ctx.site.moveTokenEndpoint(true);
+  ctx.site.expireAccessTokens();
+
+  const listed = await restarted.list('tracker');
+
+  expect([listed, ctx.site.tokenRequests.length]).toStrictEqual([
+    { status: 'skipped', reason: 'needs_sign_in' },
+    1,
+  ]);
+});
+
+test('it never sends a saved refresh token to a token endpoint that moved when nixie stopped before it recorded the sign-in', async () => {
+  const ctx = await setupTest();
+
+  const stopsAfterExchange: CredentialStore = {
+    ...ctx.held.store,
+    exchange: async (client, request) => {
+      await ctx.held.store.exchange(client, request);
+
+      throw new Error('nixie stopped after the exchange');
+    },
+  };
+
+  await Promise.allSettled([ctx.signIn(ctx.restart({}, stopsAfterExchange))]);
 
   const restarted = ctx.restart();
 

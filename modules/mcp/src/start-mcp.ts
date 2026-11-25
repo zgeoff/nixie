@@ -4,6 +4,8 @@ import { subscribeToChanged } from '@heynixie/log';
 import type { ProposalKindHandler } from '@heynixie/proposals';
 import { applyListing } from './listing/apply-listing';
 import { listServerTools } from './listing/list-server-tools';
+import { readNotices } from './notice/read-notices';
+import type { McpNotice } from './notice/read-notices';
 import { allowTool } from './proposal/allow-tool';
 import type { AllowResult } from './proposal/allow-tool';
 import { makeMcpProposalHandler } from './proposal/make-mcp-proposal-handler';
@@ -43,7 +45,10 @@ export type ListResult =
   | { readonly status: 'skipped'; readonly reason: 'not_added' | 'no_grant' | 'needs_sign_in' };
 
 // What the API reaches: the two steps of a sign-in, and the forget of a server's credentials.
-export type McpPort = Pick<Mcp, 'connect' | 'finishSignIn' | 'forgetGrants' | 'allow'>;
+export type McpPort = Pick<
+  Mcp,
+  'connect' | 'finishSignIn' | 'forgetGrants' | 'allow' | 'readNotices'
+>;
 
 export interface Mcp {
   // the tools that the registry serves from the proxy
@@ -65,6 +70,9 @@ export interface Mcp {
 
   // writes the allow proposal of a tool that waits, as `nixie mcp allow` does
   readonly allow: (tool: string) => Promise<AllowResult>;
+
+  // the newest notices of changes that applied with no allow, newest first
+  readonly readNotices: (limit: number) => Promise<McpNotice[]>;
   readonly readServers: () => Promise<McpServerRow[]>;
   readonly readTools: (serverID?: string) => Promise<McpToolRow[]>;
 }
@@ -207,6 +215,7 @@ export function startMcp(options: McpOptions): Mcp {
     forgetGrants: forgetCredentials,
     list,
     allow: (tool) => allowTool(context, tool),
+    readNotices: (limit) => readNotices(context, limit),
     readServers: () => readServerRows(options.log.writer.db),
     readTools: (serverID) => readToolRows(options.log.writer.db, serverID),
   };
