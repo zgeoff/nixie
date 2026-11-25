@@ -105,3 +105,117 @@ export interface BackendOptions {
   readonly now: () => number;
   readonly hooks?: BackendHooks;
 }
+
+export interface ConnectionMissingScope {
+  readonly scope: string;
+  readonly reason: 'not_granted' | 'api_disabled';
+}
+
+export type RegisterClientResult =
+  | { readonly kind: 'registered'; readonly client: string; readonly redirectURI: string }
+  | { readonly kind: 'invalid_origin' }
+  | { readonly kind: 'client_exists' };
+
+export type SetPickerResult = { readonly kind: 'ok' } | { readonly kind: 'client_not_found' };
+
+export type RemoveClientResult =
+  | { readonly kind: 'ok' }
+  | { readonly kind: 'client_not_found' }
+  | { readonly kind: 'client_in_use' };
+
+export type StartConsentResult =
+  | {
+      readonly kind: 'started';
+      readonly consentID: string;
+      readonly consentURL: string;
+      readonly expiresAt: number;
+    }
+  | { readonly kind: 'client_missing' }
+  | { readonly kind: 'connection_not_found' };
+
+export interface StartConsentInput {
+  readonly deviceSessionID: string;
+  readonly connection: string | null;
+
+  // a consent that an earlier try of the same action began; its state and URL are made again
+  readonly consentID?: string;
+}
+
+export interface FinishConsentInput {
+  readonly deviceSessionID: string;
+  readonly state: string;
+  readonly code: string | null;
+  readonly error: string | null;
+}
+
+export type FinishConsentResult =
+  | {
+      readonly kind: 'finished';
+      readonly connection: string;
+      readonly missing: readonly ConnectionMissingScope[];
+    }
+  | { readonly kind: 'consent_not_found' }
+  | { readonly kind: 'consent_refused' }
+  | { readonly kind: 'token_exchange_failed'; readonly googleError: string | null }
+  | { readonly kind: 'no_refresh_token' }
+  | { readonly kind: 'account_mismatch' }
+  | { readonly kind: 'forget_in_progress' };
+
+export interface ForgetState {
+  readonly erasure: 'pending' | 'done';
+
+  // the sequence of the record that ended the erasure, which the backup state reads; null while it runs
+  readonly finishedSequence: number | null;
+  readonly revocation: 'pending' | 'confirmed' | 'refused' | 'unknown' | 'not_attempted';
+}
+
+export interface ListedConnection {
+  readonly connection: string;
+  readonly connector: string;
+
+  // null for a forgotten connection
+  readonly label: string | null;
+  readonly account: string | null;
+  readonly status: 'active' | 'failing' | 'needs_consent' | 'expiring' | 'forgotten';
+  readonly reason: 'unauthorised' | 'service_error' | 'no_answer' | null;
+  readonly statusSince: number;
+  readonly lastSuccessAt: number | null;
+  readonly scopes: readonly string[];
+  readonly missing: readonly ConnectionMissingScope[];
+  readonly fingerprint: string | null;
+
+  // null while the connection lives
+  readonly forget: ForgetState | null;
+}
+
+export type ForgetConnectionResult =
+  | { readonly kind: 'forgotten'; readonly connectionID: string; readonly state: ForgetState }
+  | { readonly kind: 'connection_not_found' };
+
+export interface RegisteredClient {
+  readonly client: string;
+  readonly origin: string;
+  readonly redirectURI: string;
+  readonly fingerprint: string;
+  readonly pickerKey: string | null;
+  readonly projectNumber: string | null;
+}
+
+export interface SetupReply {
+  readonly steps: readonly {
+    readonly id: string;
+    readonly title: string;
+    readonly body: string;
+    readonly links: readonly { readonly label: string; readonly url: string }[];
+    readonly input?: 'oauth_client';
+  }[];
+  readonly client: RegisteredClient | null;
+}
+
+// What a Google tool, attempt or check gets for one live connection.
+export interface ConnectionContext {
+  readonly connectionID: string;
+  readonly connection: string;
+  readonly account: string;
+  readonly fetch: (input: string, init?: RequestInit) => Promise<Response>;
+}

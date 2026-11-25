@@ -50,6 +50,15 @@ export { fetchSandboxOwner, startFetchSandbox } from './fetch/start-fetch-sandbo
 export { timeConfigSchema } from './time/time-config-schema';
 export type { DefaultLabelOptions } from './web/pick-default-label';
 export { pickDefaultLabel } from './web/pick-default-label';
+export type { GoogleHosts } from './google/google-hosts';
+export { googleHosts } from './google/google-hosts';
+export { buildGoogleOAuthSpec } from './google/build-google-oauth-spec';
+export { createGoogleConnector } from './google/create-google-connector';
+export { fillSetupSteps } from './google/fill-setup-steps';
+export type { SetupPlaceholders } from './google/fill-setup-steps';
+export { googleSetupSteps } from './google/google-setup-steps';
+export { collectHeldBackTools, pickAvailableActions } from './google/pick-available-actions';
+export { ScopeCheckError } from './google/check-google-scopes';
 
 export type {
   ActionAttempt,
@@ -59,7 +68,13 @@ export type {
   CheckResponse,
   Connector,
   ConnectorAction,
+  ConnectionRef,
+  ConnectorContext,
   HealthReport,
+  MissingScope,
+  OAuthSpec,
+  SetupLink,
+  SetupStep,
   ProviderResponse,
   Reconcile,
   DrawImage,

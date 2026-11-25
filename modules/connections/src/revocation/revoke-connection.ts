@@ -1,4 +1,5 @@
 import type { CredentialStore, HeldBackend, RevokeResult } from '@heynixie/credentials';
+import { buildProviderSpec } from '../provider/build-provider-spec';
 import type { ProviderEndpoints } from '../provider/google-endpoints';
 import { readConnectionOwner } from './read-connection-owner';
 import { readRecordedRevocations } from './read-recorded-revocations';
@@ -57,17 +58,7 @@ async function sendRevocation(
 
   const binding = await dependencies.store.register(
     { backend: 'database', credentialID: connectionID },
-    {
-      kind: 'oauth_token',
-      label: 'Google connection',
-      origins: dependencies.endpoints.origins,
-      provider: {
-        tokenURL: dependencies.endpoints.tokenURL,
-        revokeURL: dependencies.endpoints.revokeURL,
-        issuer: dependencies.endpoints.issuer,
-        clientID: client.clientID,
-      },
-    },
+    buildProviderSpec(dependencies.endpoints, { kind: 'oauth_token', clientID: client.clientID }),
   );
 
   return dependencies.store.revoke(binding);

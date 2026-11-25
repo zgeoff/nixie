@@ -7,10 +7,11 @@ import { toErrorFields } from '@heynixie/logger';
 import type { ServerParts } from '../types';
 
 const sweepIntervalMs = 60 * 60 * 1000;
+const checkIntervalMs = 24 * 60 * 60 * 1000;
 
-// Starts the credential store's database backend over the log and registers the connection's
-// erasable. Each start closes the refreshes a crash lost, sweeps the keys no row names, and records
-// `unknown` for a forget that began without a revocation outcome.
+// Starts the credential store's database backend and registers the connection's erasable. Each start
+// closes the refreshes a crash lost, sweeps keys and lapsed consents, and records `unknown` for a
+// forget with no revocation outcome. A daily pass checks each connection's scopes.
 export async function startConnectionsPart(
   parts: ServerParts,
   erasure: ErasureRegistry,
@@ -32,19 +33,33 @@ export async function startConnectionsPart(
   await store.recover();
   await backend.sweepKeys();
   await connections.writeLostRevocations();
+  await connections.sweepConsents();
 
   const sweep = startSweep({
     clock: parts.context.clock,
     intervalMs: sweepIntervalMs,
     run: async () => {
       await backend.sweepKeys();
+      await connections.sweepConsents();
     },
     onError: (error) => {
       parts.log('connections.key_sweep_failed', toErrorFields(error), 'warn');
     },
   });
 
+  const check = startSweep({
+    clock: parts.context.clock,
+    intervalMs: checkIntervalMs,
+    run: async () => {
+      await connections.runDailyChecks();
+    },
+    onError: (error) => {
+      parts.log('connections.daily_check_failed', toErrorFields(error), 'warn');
+    },
+  });
+
   await parts.cleanup.defer(() => sweep.stop());
+  await parts.cleanup.defer(() => check.stop());
 
   return connections;
 }

@@ -1,4 +1,4 @@
-import type { HeldBackend } from '@heynixie/credentials';
+import type { HeldBackend, HeldClient } from '@heynixie/credentials';
 import type { BackendOptions, ConnectionTables } from '../types';
 import type { BackendContext } from './backend-context';
 import { mintKey, removeKey } from './mint-key';
@@ -7,6 +7,7 @@ import { readConnectionToken, readRevocableToken } from './read-connection-token
 import { removeCredential } from './remove-credential';
 import { sweepOrphanKeys } from './sweep-orphan-keys';
 import { writeClientSecret } from './write-client-secret';
+import type { ClientRegistration } from './write-client-secret';
 import { writeConnectionState } from './write-connection-state';
 import { writeToken } from './write-token';
 
@@ -14,6 +15,18 @@ export interface DatabaseHeldBackend extends HeldBackend {
   // Deletes each marked key that no row and no unfinished refresh names. A start runs it after the
   // refreshes that a crash lost are closed, and an hourly pass runs it beside live refreshes.
   readonly sweepKeys: () => Promise<readonly string[]>;
+
+  // Saves an OAuth client with what its registration adds, and the registration's record, in one
+  // transaction.
+  readonly writeRegisteredClient: (
+    credentialID: string,
+    client: HeldClient,
+    registration: ClientRegistration,
+  ) => Promise<void>;
+
+  // what the consent and client operations of this module share with the backend: the keys it minted
+  // and has not committed, and the access tokens in memory
+  readonly shared: BackendContext;
 }
 
 // The credential store's backend over the connections tables of nixie.db and the key store. Each
@@ -68,5 +81,8 @@ export function createDatabaseHeldBackend(options: BackendOptions): DatabaseHeld
     removeKey: (keyID) => removeKey(context, keyID),
     remove: (credentialID) => removeCredential(context, credentialID),
     sweepKeys: () => sweepOrphanKeys(context),
+    writeRegisteredClient: (credentialID, client, registration) =>
+      writeClientSecret(context, credentialID, client, registration),
+    shared: context,
   };
 }

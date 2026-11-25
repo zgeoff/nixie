@@ -144,8 +144,11 @@ export function registerCredentialOperations(
       endpoints: {
         tokenURL: args.tokenURL,
         revokeURL: args.revokeURL,
+        authorizeURL: `${args.origin}/authorize`,
         issuer: 'https://issuer.example',
         origins: [args.origin],
+        apiOrigins: [args.origin],
+        returnPath: '/connections/google/return',
       },
     });
 

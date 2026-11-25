@@ -3,6 +3,7 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { z } from 'zod';
+import { store } from '../mocks/store';
 import { startStubAPI } from '../test-utils/start-stub-api';
 import { makeWebFetch } from './make-web-fetch';
 
@@ -318,4 +319,27 @@ test('it keeps the conversation page to the frame rule alone in its content secu
   const response = await webFetch(new Request('http://web.test/'));
 
   expect(response.headers.get('content-security-policy')).toBe("frame-ancestors 'none'");
+});
+
+test('it answers the return route of a Google consent from the API, and never renders a page for it', async () => {
+  const ctx = await setupTest();
+
+  const api = startStubAPI();
+  const startFetch = mock(() => new Response('start'));
+
+  const session = await store.sessions.create({});
+
+  const webFetch = makeWebFetch({ apiURL: api.url, clientDir: ctx.clientDir, startFetch });
+
+  const response = await webFetch(
+    new Request('http://web.test/connections/google/return?state=abc&code=4%2F0Ab', {
+      headers: { cookie: `nixie_session=${session.token}` },
+    }),
+  );
+
+  expect([
+    response.status,
+    api.requests.map((request) => request.path),
+    startFetch.mock.calls.length,
+  ]).toStrictEqual([503, ['/rpc/connections/finishConsent'], 0]);
 });

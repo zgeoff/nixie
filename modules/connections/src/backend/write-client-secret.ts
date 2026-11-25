@@ -1,9 +1,21 @@
 import type { HeldClient } from '@heynixie/credentials';
-import { withWriteTransaction } from '@heynixie/log';
+import type { JSONObject } from '@heynixie/log';
+import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import type { ConnectionTables } from '../types';
 import type { BackendContext } from './backend-context';
 import { mintKey, removeKey } from './mint-key';
 import { sealValue } from './seal-value';
+
+// What an owner's registration adds to the client's row, and the record that commits with it.
+export interface ClientRegistration {
+  readonly shortID: string;
+  readonly origin: string;
+  readonly redirectURI: string;
+  readonly pickerKey: string | null;
+  readonly projectNumber: string | null;
+  readonly secretFingerprint: string;
+  readonly record: { readonly kind: 'connection.client_registered'; readonly payload: JSONObject };
+}
 
 // Seals the secret under a key of its own and saves it. A client that was saved before keeps its
 // removal counter, and its old key goes once the new row commits.
@@ -11,6 +23,7 @@ export async function writeClientSecret(
   context: BackendContext,
   credentialID: string,
   client: HeldClient,
+  registration: ClientRegistration | null = null,
 ): Promise<void> {
   const minted = await mintKey(context);
 
@@ -38,6 +51,7 @@ export async function writeClientSecret(
           key_id: minted.keyID,
           secret_sealed: sealed,
           created_at: context.now(),
+          ...toRegistrationColumns(registration),
         })
         .execute();
     } else {
@@ -48,12 +62,23 @@ export async function writeClientSecret(
           key_id: minted.keyID,
           secret_sealed: sealed,
           removed_at: null,
+          ...toRegistrationColumns(registration),
         })
         .where('oauth_client_id', '=', credentialID)
         .execute();
     }
 
     await tables.deleteFrom('key_marks').where('key_id', '=', minted.keyID).execute();
+
+    if (registration !== null) {
+      await writeRecordsInTransaction(tx, context.log, [
+        {
+          kind: registration.record.kind,
+          payload: registration.record.payload,
+          definitions: context.definitions(),
+        },
+      ]);
+    }
 
     if (existing !== undefined) {
       await tables
@@ -71,4 +96,19 @@ export async function writeClientSecret(
   if (replacedKeyID !== null) {
     await removeKey(context, replacedKeyID);
   }
+}
+
+function toRegistrationColumns(registration: ClientRegistration | null) {
+  if (registration === null) {
+    return {};
+  }
+
+  return {
+    short_id: registration.shortID,
+    origin: registration.origin,
+    redirect_uri: registration.redirectURI,
+    picker_key: registration.pickerKey,
+    project_number: registration.projectNumber,
+    secret_fingerprint: registration.secretFingerprint,
+  };
 }

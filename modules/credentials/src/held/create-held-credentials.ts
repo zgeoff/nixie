@@ -11,7 +11,7 @@ import { pickFailureState } from './pick-failure-state';
 import type { RefreshFailureKind } from './pick-failure-state';
 import { recoverLostRefreshes } from './recover-lost-refreshes';
 import { sendRevocation } from './send-revocation';
-import { sendTokenRequest } from './send-token-request';
+import { pickProviderError, sendTokenRequest } from './send-token-request';
 import type { TokenReply } from './send-token-request';
 import { TokenRequestError } from './token-request-error';
 import type {
@@ -448,15 +448,14 @@ export function createHeldCredentials(options: HeldOptions): HeldCredentials {
       );
 
       if (result.kind !== 'tokens') {
-        throw new TokenRequestError(result.kind);
+        throw new TokenRequestError(result.kind, pickProviderError(result));
       }
 
       const dropTokens = async (): Promise<void> => {
         await revoke(client, secret.clientSecret, pickRevocable(result.reply));
       };
 
-      // A grant with no refresh token cannot be used again, so an exchange that returns none keeps
-      // nothing and revokes what it received.
+      // an exchange with no refresh token keeps nothing and revokes what it received
       if (result.reply.refresh_token === undefined) {
         await dropTokens();
 

@@ -548,6 +548,7 @@
         "@heynixie/backup": "workspace:*",
         "@heynixie/budgets": "workspace:*",
         "@heynixie/clock": "workspace:*",
+        "@heynixie/connections": "workspace:*",
         "@heynixie/connectors": "workspace:*",
         "@heynixie/contract": "workspace:*",
         "@heynixie/db": "workspace:*",
@@ -634,6 +635,7 @@
       "name": "@heynixie/connections",
       "version": "0.0.0",
       "dependencies": {
+        "@heynixie/connectors": "workspace:*",
         "@heynixie/credentials": "workspace:*",
         "@heynixie/db": "workspace:*",
         "@heynixie/log": "workspace:*",

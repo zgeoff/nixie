@@ -28,6 +28,8 @@ export async function sweepOrphanKeys(context: BackendContext): Promise<readonly
     .where('secret_sealed', 'is not', null)
     .execute();
 
+  // a consent request's key seals its PKCE verifier until the request is claimed
+  const consents = await tables.selectFrom('consent_requests').select('key_id').execute();
   const refreshes = await context.recorder.readOpenRefreshes();
 
   const named = new Set<string>(inFlight);
@@ -41,6 +43,10 @@ export async function sweepOrphanKeys(context: BackendContext): Promise<readonly
   }
 
   for (const row of clients) {
+    named.add(row.key_id);
+  }
+
+  for (const row of consents) {
     named.add(row.key_id);
   }
 
