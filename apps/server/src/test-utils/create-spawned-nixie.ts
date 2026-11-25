@@ -151,6 +151,9 @@ export interface SpawnedNixieOptions {
 
   readonly extraConfig?: readonly string[];
 
+  // the address of a fake Google, which a test build reaches Google's endpoints at
+  readonly googleURL?: string;
+
   // the URL of a double of atc-gateway that the coding runner calls in place of the configured one
   readonly atcURL?: string;
 
@@ -225,6 +228,7 @@ export async function createSpawnedNixie(
       NIXIE_TEST_PROVIDER_URL: doubles.provider.url,
       NIXIE_TEST_FETCHER: join(import.meta.dir, 'run-stub-fetcher.ts'),
       ...(options.atcURL === undefined ? {} : { NIXIE_TEST_ATC_URL: options.atcURL }),
+      ...(options.googleURL === undefined ? {} : { NIXIE_TEST_GOOGLE_URL: options.googleURL }),
     },
     files,
   };

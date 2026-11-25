@@ -26,9 +26,13 @@ export const memoryPartDeclarations: readonly AnyPartDeclaration<ServerPartValue
   {
     // The credential store's database backend, and the connection's forget on the runner.
     name: 'connections',
-    needs: ['server_parts', 'erasure'],
+    needs: ['inputs', 'server_parts', 'erasure'],
     start: makeRetriedStart('connections', (parts, reader) =>
-      startConnectionsPart(parts, reader.get('erasure')),
+      startConnectionsPart(
+        parts,
+        reader.get('erasure'),
+        reader.get('inputs').options.harness?.googleURL ?? null,
+      ),
     ),
   },
   {

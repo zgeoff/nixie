@@ -27,6 +27,12 @@ test.each([
     expected: null,
   },
   {
+    title: 'http on the loopback address, which only a test build takes',
+    origin: 'http://127.0.0.1:4000',
+    header: 'http://127.0.0.1:4000',
+    expected: 'http://127.0.0.1:4000',
+  },
+  {
     title: 'a path',
     origin: 'https://nixie.example.org/settings',
     header: 'https://nixie.example.org',

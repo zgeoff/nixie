@@ -1,9 +1,11 @@
 import { startSweep } from '@heynixie/clock';
 import type { Connections } from '@heynixie/connections';
 import { createDatabaseHeldBackend, startConnections } from '@heynixie/connections';
+import { createGoogleConnector } from '@heynixie/connectors';
 import { createCredentialRecorder } from '@heynixie/credentials';
 import type { ErasureRegistry } from '@heynixie/log';
 import { toErrorFields } from '@heynixie/logger';
+import { buildTestGoogleHosts } from '../test/build-test-google-hosts';
 import type { ServerParts } from '../types';
 
 const sweepIntervalMs = 60 * 60 * 1000;
@@ -15,6 +17,7 @@ const checkIntervalMs = 24 * 60 * 60 * 1000;
 export async function startConnectionsPart(
   parts: ServerParts,
   erasure: ErasureRegistry,
+  googleURL: string | null,
 ): Promise<Connections> {
   const log = parts.context.log;
   const definitions = parts.context.definitions;
@@ -28,7 +31,18 @@ export async function startConnectionsPart(
 
   const backend = wiring.backend;
   const store = parts.credentials.store;
-  const connections = startConnections({ log, definitions, store, backend, erasure, now });
+
+  const connections = startConnections({
+    log,
+    definitions,
+    store,
+    backend,
+    erasure,
+    now,
+    ...(!NIXIE_TEST_BUILD || googleURL === null
+      ? {}
+      : { connector: createGoogleConnector(buildTestGoogleHosts(googleURL)) }),
+  });
 
   await store.recover();
   await backend.sweepKeys();

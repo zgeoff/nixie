@@ -61,7 +61,10 @@ export async function loadServerInputs(options: ServerOptions): Promise<ServerIn
     held: heldSlot.read,
     denied: [...(publicEgress?.hostAddresses ?? []), ...(publicEgress?.egressDeny ?? [])],
     ...(NIXIE_TEST_BUILD
-      ? buildTestCredentialChecks(options.credentialSite ?? null)
+      ? buildTestCredentialChecks(
+          options.credentialSite ?? null,
+          options.harness?.googleURL ?? null,
+        )
       : { resolveHost: resolveHostAddresses }),
   });
 

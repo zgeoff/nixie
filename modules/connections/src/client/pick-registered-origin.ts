@@ -6,7 +6,7 @@ export function pickRegisteredOrigin(
 ): string | null {
   const url = URL.parse(origin);
 
-  if (url === null || url.protocol !== 'https:') {
+  if (url === null || !isAllowedProtocol(url)) {
     return null;
   }
 
@@ -24,4 +24,12 @@ export function pickRegisteredOrigin(
   }
 
   return url.origin;
+}
+
+// A test build also takes an http loopback origin, which the verify run's local build serves.
+function isAllowedProtocol(url: URL): boolean {
+  return (
+    url.protocol === 'https:' ||
+    (NIXIE_TEST_BUILD && url.protocol === 'http:' && url.hostname === '127.0.0.1')
+  );
 }

@@ -451,6 +451,11 @@ export function createVerifyRegistry(): Wringer {
         summary: 'Browse notes, open a private one, forget one',
         paths: featurePaths['notebook-pages'],
       },
+      {
+        name: 'google-connections',
+        summary: 'Register an OAuth client, connect a Google account, and forget it',
+        paths: featurePaths['google-connections'],
+      },
       ...computerFeatures,
       ...lastFeatures,
     )
