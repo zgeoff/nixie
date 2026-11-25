@@ -12,6 +12,7 @@ import { mergeImageTallies } from '../utils/merge-image-tallies';
 import { isSilentRecord } from './is-silent-record';
 import { readActionResult } from './read-action-result';
 import { readApprovalTime } from './read-approval-time';
+import { readHeardCut } from './read-heard-cut';
 import { readReminder } from './read-reminder';
 import { toInboxMessage } from './to-inbox-message';
 
@@ -97,6 +98,7 @@ async function readInboxMessage(
   );
 
   const approvedAt = await readApprovalTime(context, record);
+  const cut = await readHeardCut(context, record);
 
   if (ownerMessageCodec.tryDecodePartial(record.payload)?.images === undefined) {
     return toInboxMessage(record, read.times, read.view, {
@@ -104,6 +106,7 @@ async function readInboxMessage(
       reminder,
       result,
       approvedAt,
+      cut,
       ...(gaps === undefined ? {} : { gaps }),
     });
   }
@@ -118,6 +121,7 @@ async function readInboxMessage(
     reminder,
     result,
     approvedAt,
+    cut,
     ...(gaps === undefined ? {} : { gaps }),
   });
 }

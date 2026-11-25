@@ -1,6 +1,7 @@
 import { readSessionSummary } from '@heynixie/compaction';
 import type { LogRecord } from '@heynixie/log';
 import type { TaskBrief, TaskMessaging, TasksContext } from '@heynixie/tasks';
+import { conversationTaskID } from '@heynixie/tasks';
 import type { SystemMessageType } from '@heynixie/wire';
 import { mintBlockID, renderSystemMessage } from '@heynixie/wire';
 import { formatMessageTime } from '../message/format-message-time';
@@ -55,6 +56,10 @@ export interface SessionOpeningQuery {
   // the blocks of the open task run that a rebuilt or compacted session pins beside its brief, which
   // the turn's preamble then leaves out
   readonly runBlocks?: string | null;
+
+  // A call's session opens with the conversation as it stood through this sequence, then the
+  // call's own thread. Absent for every other session.
+  readonly seedThrough?: number;
 
   // the unread records that the turn renders
   readonly inbox: readonly LogRecord[];
@@ -122,6 +127,8 @@ export async function readSessionOpening(
     ...(query.briefPlace === undefined ? {} : { place: query.briefPlace }),
   });
 
+  const seeded = await readSeedBlocks(context, query, at);
+
   const facts = { ...query, openedAt };
 
   const status = await Promise.all(
@@ -157,6 +164,7 @@ export async function readSessionOpening(
     memoryBlock,
     indexBlock,
     query.runBlocks ?? null,
+    ...seeded,
     brief.pinned === null
       ? null
       : renderBriefEnvelope(
@@ -191,6 +199,51 @@ export async function readSessionOpening(
   };
 }
 
+// The conversation's summary and its recent turns through the call's seed, as the conversation's
+// own session would hold them.
+async function readSeedBlocks(
+  context: Pick<TasksContext, 'log' | 'clock'>,
+  query: SessionOpeningQuery,
+  at: string,
+): Promise<readonly (string | null)[]> {
+  if (query.seedThrough === undefined) {
+    return [];
+  }
+
+  const found = await readSessionSummary(context, conversationTaskID);
+
+  const recent = await readRecentTurns(context, {
+    taskID: conversationTaskID,
+    beforeSequence: query.seedThrough + 1,
+    afterSequence: found?.throughSequence ?? 0,
+    tokens: query.rebuildTokens,
+    times: query.times,
+    messaging: query.messaging,
+  });
+
+  const mint = query.mintBlockID ?? mintBlockID;
+  const summary = found === null ? null : `The conversation so far:\n${found.text}\n${summaryCue}`;
+
+  return [
+    renderOpeningMessage('summary', at, summary, mint),
+    renderOpeningMessage(
+      'recent-turns',
+      at,
+      renderSessionHistory(recent, query.times, query, mint),
+      mint,
+    ),
+  ];
+}
+
+function renderOpeningMessage(
+  type: SystemMessageType,
+  at: string,
+  body: string | null,
+  mint: () => string,
+): string | null {
+  return body === null ? null : renderSystemMessage({ type, at, body }, mint());
+}
+
 async function readReplayedNote(
   context: Pick<TasksContext, 'log'>,
   query: SessionOpeningQuery,
@@ -208,15 +261,6 @@ async function readReplayedNote(
   const span = { after: first.after, through: last.after };
 
   return span.through > span.after ? query.readTurnNote({ span, isNewSession: true }) : null;
-}
-
-function renderOpeningMessage(
-  type: SystemMessageType,
-  at: string,
-  body: string | null,
-  mint: () => string,
-): string | null {
-  return body === null ? null : renderSystemMessage({ type, at, body }, mint());
 }
 
 function pickIndexText(index: SessionIndex | null): string | null {

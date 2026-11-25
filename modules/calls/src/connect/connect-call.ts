@@ -1,5 +1,6 @@
 import { withWriteTransaction } from '@heynixie/log';
 import type { Kysely } from 'kysely';
+import { startCallWatch } from '../hand-off/start-call-watch';
 import type { CallsContext, OpenedSpeech, SpeechLayer } from '../types';
 import { chargeCallMinute } from '../utils/charge-call-minute';
 import { closeSpeechSession } from '../utils/close-speech-session';
@@ -116,6 +117,12 @@ async function openAndCharge(
   const outcome = await chargeFirstMinute(context, input, terms, opened);
 
   if (outcome === 'charged') {
+    const live = await readCall(context.log.writer.db, input.callID);
+
+    if (live !== null) {
+      startCallWatch(context, live, opened.sessionID);
+    }
+
     return { status: 'connected', sdpAnswer: opened.sdpAnswer };
   }
 

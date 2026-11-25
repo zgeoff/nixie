@@ -12,6 +12,8 @@ import { renderActionFailure } from './render-action-failure';
 import type { ActionResultBlock } from './render-action-result';
 import { renderApprovalAnswer } from './render-approval-answer';
 import { renderCallNotice } from './render-call-notice';
+import { renderCallThreadLine } from './render-call-thread-line';
+import type { HeardCut } from './render-call-thread-line';
 import { renderHandoverAsked } from './render-handover-asked';
 import { renderHandoverClosed } from './render-handover-closed';
 import { renderLimitNotice } from './render-limit-notice';
@@ -28,6 +30,7 @@ interface RenderedExtras {
   readonly reminder?: ReminderRead | null;
   readonly result?: ActionResultBlock | null;
   readonly approvedAt?: Date | null;
+  readonly cut?: HeardCut | null;
 }
 
 export function renderInboxMessage(
@@ -87,6 +90,15 @@ export function renderInboxMessage(
     record.kind === 'call.ended'
   ) {
     return renderCallNotice(record, times, view.messaging.ownerName ?? 'the user');
+  }
+
+  if (
+    record.kind === 'call.spoke' ||
+    record.kind === 'call.handed_off' ||
+    record.kind === 'call.heard_cut' ||
+    record.kind === 'call.closing'
+  ) {
+    return renderCallThreadLine(record, times, extras.cut ?? null);
   }
 
   if (record.kind === 'policy.action_answered') {

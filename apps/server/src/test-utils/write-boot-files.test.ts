@@ -162,6 +162,7 @@ test('it appends the extra lines to the configuration', async () => {
   expect(config.tasks).toStrictEqual({
     runners: 5,
     startedClaimLoops: 2,
+    callClaimLoops: 1,
     messaging: { hopLimit: 20 },
   });
 });

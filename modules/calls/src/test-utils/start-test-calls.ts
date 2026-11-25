@@ -6,6 +6,7 @@ import { startTestLog } from '@heynixie/log/test-utils';
 import type { FakeClock } from '@zgeoff/testing/clock';
 import { callsProjection } from '../projection/calls-projection';
 import type { CallsContext, CreateCallTask, VoiceDefinitions } from '../types';
+import { buildCallRuntime } from '../utils/build-call-runtime';
 import { callBudgetName } from '../utils/call-budget-ids';
 import { defaultVoiceDefinitions } from '../voice/voice-definitions-schema';
 import type { FakeSpeechLayer } from './build-fake-speech-layer';
@@ -28,6 +29,9 @@ export interface TestCallsContext {
 
   // each task that the seam created, in order
   readonly createdTasks: readonly (CreateCallTask & { readonly taskID: string })[];
+
+  // each task whose turn the module interrupted
+  readonly interrupted: readonly string[];
 
   // each event that the calls module logged
   readonly logged: readonly { readonly event: string; readonly fields: unknown }[];
@@ -54,6 +58,7 @@ export function buildTestCallsContext(
   const speech = buildFakeSpeechLayer();
   const createdTasks: (CreateCallTask & { readonly taskID: string })[] = [];
   const logged: { event: string; fields: unknown }[] = [];
+  const interrupted: string[] = [];
 
   const voice: VoiceDefinitions = {
     ...defaultVoiceDefinitions,
@@ -89,11 +94,17 @@ export function buildTestCallsContext(
       return Promise.resolve(taskID);
     },
     readInstructions: () => Promise.resolve('the voice-call prompt'),
+    interruptTurn: (taskID) => {
+      interrupted.push(taskID);
+
+      return Promise.resolve();
+    },
+    runtime: buildCallRuntime(),
     sessions: new Map(),
     openings: new Set(),
   };
 
-  return { context, speech, createdTasks, logged };
+  return { context, speech, createdTasks, logged, interrupted };
 }
 
 // A log that folds the budget and call records, and the calls context on top. The clock starts at

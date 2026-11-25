@@ -8,7 +8,8 @@ export type TasksTestRecordKind =
   | 'call.ended'
   | 'call.spoke'
   | 'call.handed_off'
-  | 'call.heard_cut';
+  | 'call.heard_cut'
+  | 'call.closing';
 
 declare module '@heynixie/log' {
   // oxlint-disable-next-line typescript/no-empty-interface -- the merge adds the kinds above to the registry

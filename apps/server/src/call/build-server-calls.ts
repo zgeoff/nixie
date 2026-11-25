@@ -1,8 +1,10 @@
 import type { CallsContext, SpeechLayer, VoiceConfig } from '@heynixie/calls';
-import { defaultVoiceDefinitions } from '@heynixie/calls';
+import { buildCallRuntime, defaultVoiceDefinitions, defaultVoicePrompt } from '@heynixie/calls';
 import type { Clock } from '@heynixie/clock';
 import type { Definitions, Log } from '@heynixie/log';
 import type { Logger } from '@heynixie/logger';
+import type { TasksContext } from '@heynixie/tasks';
+import { writeCallTask, writeTaskControl } from '@heynixie/tasks';
 import type { InForce } from '../types';
 
 export interface ServerCallsOptions {
@@ -18,11 +20,16 @@ export interface ServerCallsOptions {
 
   // null where the server wires no adapter
   readonly speech: SpeechLayer | null;
+
+  // what the call's task and the cut of its turn need
+  readonly tasks: Pick<
+    TasksContext,
+    'log' | 'clock' | 'definitions' | 'runSettings' | 'runners' | 'queueRunnerActions'
+  >;
 }
 
 // The calls module's context. The server holds no speech adapter yet, so `calls.start` answers
-// SPEECH_UNAVAILABLE for a configured voice unless a test build passes a speech layer, and no call
-// reaches the task or the instructions below.
+// SPEECH_UNAVAILABLE for a configured voice unless a test build passes a speech layer.
 export function buildServerCalls(options: ServerCallsOptions): CallsContext {
   return {
     log: options.log,
@@ -33,8 +40,12 @@ export function buildServerCalls(options: ServerCallsOptions): CallsContext {
     voice: options.voice,
     speech: options.speech,
     readVoiceDefinitions: () => options.inForce.read()?.voice ?? defaultVoiceDefinitions,
-    createTask: () => Promise.reject(new Error('a call task needs the call runner')),
-    readInstructions: () => Promise.reject(new Error('a call needs the voice-call prompt')),
+    createTask: (tx, input) => writeCallTask(tx, options.tasks, input),
+    readInstructions: () => Promise.resolve(defaultVoicePrompt),
+    interruptTurn: async (taskID) => {
+      await writeTaskControl(options.tasks, { taskID, control: 'interrupt' });
+    },
+    runtime: buildCallRuntime(),
     sessions: new Map(),
     openings: new Set(),
   };

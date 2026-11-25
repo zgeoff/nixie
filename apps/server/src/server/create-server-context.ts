@@ -96,6 +96,18 @@ export async function createServerContext(
         voice: options.calls?.voice ?? null,
         logEvent: options.calls?.logEvent ?? (() => {}),
         speech: options.calls?.speech ?? null,
+        tasks: {
+          log,
+          clock: writer.clock,
+          definitions,
+          runSettings: options.runSettings,
+          runners: options.runners,
+          queueRunnerActions: makeQueueRunnerActions({
+            log,
+            clock: writer.clock,
+            definitions,
+          }),
+        },
       }),
       ...(options.spend === undefined
         ? {}

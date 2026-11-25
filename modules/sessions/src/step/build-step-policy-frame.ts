@@ -13,7 +13,7 @@ export function buildStepPolicyFrame(
 ): StepPolicyFrame {
   const sources = collectSources(records);
 
-  if (frame.kind === 'conversation') {
+  if (frame.kind !== 'task') {
     const turn = records.findLast((record) => record.kind === 'owner_message');
 
     return {

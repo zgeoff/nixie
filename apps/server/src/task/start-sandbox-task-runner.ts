@@ -1,3 +1,4 @@
+import { defaultVoicePrompt, sendTurnAnswer } from '@heynixie/calls';
 import type { StartedMemoryStore } from '@heynixie/memory';
 import type { SandboxRunner } from '@heynixie/sessions';
 import { startSandboxRunner } from '@heynixie/sessions';
@@ -35,6 +36,16 @@ export async function startSandboxTaskRunner(
     clearFetchPauses: parts.tools.webFetch.clearPauses,
     inStepActions: makeInStepActions(parts),
     log: parts.log,
+    calls: {
+      voicePrompt: defaultVoicePrompt,
+      answer: async (answer) => {
+        const calls = parts.apiContext.calls;
+
+        if (calls !== undefined) {
+          await sendTurnAnswer(calls, answer);
+        }
+      },
+    },
   });
 
   await parts.cleanup.defer(() => runner.stop());

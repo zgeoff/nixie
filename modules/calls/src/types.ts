@@ -95,6 +95,31 @@ export interface CreateCallTask {
   readonly seedThrough: number;
 }
 
+// What the calls module keeps in memory for the calls that run in this process.
+export interface CallRuntime {
+  // stops each call's watch of its speech session, by call ID
+  readonly watches: Map<string, AbortController>;
+
+  // the hand-offs of each call, by call ID and hand-off ID
+  readonly handOffs: Map<string, Map<string, HandOff>>;
+
+  // the speech layer's own lines since the call's last hand-off, by call ID
+  readonly smallTalk: Map<string, SmallTalkLine[]>;
+}
+
+export interface HandOff {
+  // set once the module has sent nixie's answer for the hand-off
+  isAnswered: boolean;
+
+  // the record that holds the answered reply, which a cut marks
+  replyRecordID: string | null;
+}
+
+export interface SmallTalkLine {
+  readonly text: string;
+  readonly heardChars: number;
+}
+
 export interface CallsContext {
   readonly log: Log;
   readonly clock: Clock;
@@ -115,6 +140,11 @@ export interface CallsContext {
 
   // the speech session's instructions at connect
   readonly readInstructions: (callID: string) => Promise<string>;
+
+  // Interrupts the turn that the call's task runs, so that the user talking over a reply cuts a
+  // model call in flight.
+  readonly interruptTurn: (taskID: string) => Promise<void>;
+  readonly runtime: CallRuntime;
 
   // the speech sessions of the calls that run in this process, by call ID
   readonly sessions: Map<string, string>;

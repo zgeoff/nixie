@@ -13,4 +13,5 @@ export const callRecordTopics = {
   'call.handed_off': [],
   'call.heard_cut': [],
   'call.turn_timed': [],
+  'call.closing': [],
 } as const satisfies Record<CallRecordKind, readonly LiveTopic[]>;

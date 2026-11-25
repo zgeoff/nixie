@@ -22,6 +22,7 @@ import { startPromptLapseSweep } from '@heynixie/prompts';
 import { startSpendWatcher } from '@heynixie/spend';
 import type { RunStep } from '@heynixie/tasks';
 import {
+  callRunner,
   conversationRunner,
   conversationTaskID,
   createConversationTask,
@@ -222,6 +223,7 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
         [
           { definition: conversationRunner, runStep: reader.get('conversation_imp').runStep },
           { definition: sandboxRunner, runStep: reader.get('sandbox_runner').runStep },
+          { definition: callRunner, runStep: reader.get('sandbox_runner').runCallStep },
           { definition: queueCheckRunner, runStep: checkStep },
           ...(coding === null
             ? []

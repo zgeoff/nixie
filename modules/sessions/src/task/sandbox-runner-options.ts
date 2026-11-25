@@ -1,3 +1,4 @@
+import type { TurnAnswer } from '@heynixie/calls';
 import type { CompactionSettings } from '@heynixie/compaction';
 import type { Logger } from '@heynixie/logger';
 import type { SpendContext } from '@heynixie/spend';
@@ -37,4 +38,15 @@ export interface SandboxRunnerOptions extends SystemTaskOptions {
   // set with spendStop: each step checks the turn count and the stop before its turn
   readonly spend?: SpendContext;
   readonly log: Logger;
+
+  // the calls module's side of a call's turns, or absent where calls are off
+  readonly calls?: CallStepHooks;
+}
+
+export interface CallStepHooks {
+  // the voice-call prompt, which follows the conversation's prompt in a call's session
+  readonly voicePrompt: string;
+
+  // sends a turn's answer to the speech layer when the turn ends
+  readonly answer: (answer: TurnAnswer) => Promise<void>;
 }

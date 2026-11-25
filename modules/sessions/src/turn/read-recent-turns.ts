@@ -1,3 +1,4 @@
+import { callHeardCutCodec } from '@heynixie/calls';
 import { countTextTokens } from '@heynixie/compaction';
 import type { LogRecord } from '@heynixie/log';
 import { readThreadNewestFirst } from '@heynixie/log';
@@ -25,6 +26,9 @@ export interface HistoryTurn {
   readonly answered: LogRecord | null;
 
   readonly isSent?: boolean;
+
+  // how many characters of a reply the user heard before they talked over it
+  readonly heardChars?: number;
 }
 
 export async function readRecentTurns(
@@ -47,13 +51,23 @@ export async function readRecentTurns(
   return kept.toReversed();
 }
 
-const historyKinds = ['owner_message', 'task_message', 'model.reply', 'log_reset'] as const;
+const historyKinds = [
+  'owner_message',
+  'task_message',
+  'model.reply',
+  'call.spoke',
+  'call.heard_cut',
+  'log_reset',
+] as const;
 
 async function* readTurnsNewestFirst(
   context: Pick<TasksContext, 'log'>,
   query: RecentTurnsQuery,
 ): AsyncGenerator<HistoryTurn> {
   const unanswered: HistoryTurn[] = [];
+
+  // A cut sits after the reply it marks, so the newest-first read meets it first.
+  const cuts = new Map<string, number>();
 
   const records = mergeNewestFirst(
     readThreadNewestFirst(context, query.taskID, historyKinds),
@@ -65,21 +79,31 @@ async function* readTurnsNewestFirst(
       break;
     }
 
-    if (record.kind === 'model.reply') {
+    if (record.kind === 'call.heard_cut') {
+      const cut = callHeardCutCodec.decode(record.payload);
+
+      cuts.set(cut.replyRecordID, cut.heardChars);
+    } else if (record.kind === 'call.spoke') {
+      unanswered.push({ record, answered: null });
+    } else if (record.kind === 'model.reply') {
       // an attempt that kept no reply leaves none in the history a rebuilt session reads
       const voided = await readVoidedReplies(context.log.writer.db, [record.sequence]);
 
       if (!voided.has(record.sequence)) {
-        unanswered.push({ record, answered: null });
+        const heardChars = cuts.get(String(record.sequence));
+
+        unanswered.push({
+          record,
+          answered: null,
+          ...(heardChars === undefined ? {} : { heardChars }),
+        });
       }
     } else if (record.thread !== query.taskID) {
       unanswered.push({ record, answered: null, isSent: true });
     } else if (record.sequence < query.beforeSequence) {
       yield* unanswered
         .splice(0)
-        .map((later) =>
-          later.isSent === true ? later : { record: later.record, answered: record },
-        );
+        .map((later) => (later.isSent === true ? later : toAnswered(later, record)));
 
       yield { record, answered: null };
     }
@@ -106,4 +130,10 @@ async function* mergeNewestFirst(
       right = await second.next();
     }
   }
+}
+
+function toAnswered(turn: HistoryTurn, answered: LogRecord): HistoryTurn {
+  return turn.heardChars === undefined
+    ? { record: turn.record, answered }
+    : { record: turn.record, answered, heardChars: turn.heardChars };
 }

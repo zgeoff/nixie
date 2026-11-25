@@ -7,7 +7,8 @@ export type CallRecordKind =
   | 'call.spoke'
   | 'call.handed_off'
   | 'call.heard_cut'
-  | 'call.turn_timed';
+  | 'call.turn_timed'
+  | 'call.closing';
 
 type CallErasableRecordKind = 'call.rang' | 'call.spoke' | 'call.handed_off';
 

@@ -1,6 +1,7 @@
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import { conversationTaskID } from '@heynixie/tasks';
 import type { CallsContext } from '../types';
+import { callClosingCodec } from './call-closing-codec';
 import type { CallEndedBy } from './call-ended-by';
 import { callEndedCodec } from './call-ended-codec';
 import { chargeOwedMinutes } from './charge-owed-minutes';
@@ -33,6 +34,12 @@ export async function endCall(
 
     await writeRecordsInTransaction(tx, context.log, [
       {
+        kind: callClosingCodec.kind,
+        definitions: context.definitions(),
+        thread: call.taskID,
+        payload: callClosingCodec.encode({ callID }),
+      },
+      {
         kind: callEndedCodec.kind,
         definitions: context.definitions(),
         thread: conversationTaskID,
@@ -48,10 +55,19 @@ export async function endCall(
   });
 
   if (ended !== null) {
+    stopWatch(context, callID);
+
     await closeSession(context, callID, ended);
   }
 
   return ended;
+}
+
+function stopWatch(context: CallsContext, callID: string): void {
+  context.runtime.watches.get(callID)?.abort();
+  context.runtime.watches.delete(callID);
+  context.runtime.handOffs.delete(callID);
+  context.runtime.smallTalk.delete(callID);
 }
 
 async function closeSession(

@@ -7,6 +7,7 @@ import {
   readTaskGateSnapshot,
   readUnlistedProfiles,
 } from '@heynixie/tasks';
+import { match } from 'ts-pattern';
 import { runCompactionStep } from '../compaction/run-compaction-step';
 import { runInboxStep } from '../inbox/run-inbox-step';
 import { canSessionTake } from '../session/can-session-take';
@@ -47,7 +48,7 @@ export async function runConversationStep(
   const capture = await openStepCapture(conversation.turnInputs, {
     step: { taskID: input.taskID, stepRunID: buildStepRunID(input) },
     profile: conversation.profile.profile,
-    role: conversation.frame.kind === 'task' ? 'task' : 'conversation',
+    role: pickCaptureRole(conversation.frame),
     isRewritten: conversation.harness.rewritesRequests,
   });
 
@@ -94,6 +95,14 @@ async function runSpendCheck(
     sessionBoundary: input.sessionBoundary,
     isHeld: true,
   };
+}
+
+function pickCaptureRole(frame: SessionFrame): 'task' | 'call' | 'conversation' {
+  return match(frame)
+    .with({ kind: 'task' }, () => 'task' as const)
+    .with({ kind: 'call' }, () => 'call' as const)
+    .with({ kind: 'conversation' }, () => 'conversation' as const)
+    .exhaustive();
 }
 
 function runSessionTurn(conversation: ConversationRun, input: StepInput): Promise<StepResult> {
