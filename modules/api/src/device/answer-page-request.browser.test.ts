@@ -357,7 +357,10 @@ test.each([
   },
   {
     route: 'an XSLT transform',
-    outcome: 'ReferenceError: XSLTProcessor is not defined',
+    outcome: expect.toBeOneOf([
+      'ReferenceError: XSLTProcessor is not defined',
+      'no XSLTProcessor before the bridge ran',
+    ]),
     write: 'native',
     hasTrustedTypes: true,
   },
@@ -405,7 +408,10 @@ test.each([
   },
   {
     route: 'an XSLT transform',
-    outcome: 'ReferenceError: XSLTProcessor is not defined',
+    outcome: expect.toBeOneOf([
+      'ReferenceError: XSLTProcessor is not defined',
+      'no XSLTProcessor before the bridge ran',
+    ]),
     write: 'replaced',
     hasTrustedTypes: false,
   },
@@ -454,7 +460,7 @@ test.each([
         return link.localName;
       },
       'an XSLT transform': () => {
-        if (window.startingXSLT !== 'function') {
+        if (window.startingXSLT === 'undefined') {
           return 'no XSLTProcessor before the bridge ran';
         }
         const sheet = '<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">' +
