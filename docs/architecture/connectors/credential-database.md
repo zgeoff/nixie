@@ -36,9 +36,9 @@ so a binding made before the removal never matches again.
 
 `writeToken` seals the refresh token, then commits the row, the token's record and the key marks in
 one write transaction. The transaction first compares two removal counters with the ones the caller
-read: the credential's own, and its OAuth client's. A client removed after the caller's last check
-therefore never gets a token saved, and the save answers `removed`. A refresh that finishes after a
-removal revokes the token it received.
+read: the credential's own, and its OAuth client's. When either has advanced, for example because
+the client was removed after the caller's last check, nothing is saved and `writeToken` answers
+`removed`. A refresh that finishes after a removal revokes the token it received.
 
 The same transaction writes the `credential.refresh_saved` record, so a crash leaves both the token
 and the record or neither. A start never finds a saved token whose refresh reads as lost.

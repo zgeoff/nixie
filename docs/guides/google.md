@@ -5,12 +5,11 @@ account from Settings → Connections. nixie keeps the account's refresh token s
 The tools that read [Gmail](https://linear.app/zgeoff/issue/GEO-1825),
 [Calendar](https://linear.app/zgeoff/issue/GEO-1826) and
 [Drive](https://linear.app/zgeoff/issue/GEO-1827) come later, so a connection gives the model no
-Google tool yet. The [Google connections](../architecture/connectors/google-connections.md) doc
-covers how consent, refresh and Forget work.
+Google tool yet. To learn how consent, refresh and Forget work, read the
+[Google connections](../architecture/connectors/google-connections.md) doc.
 
-Settings → Connections shows 6 steps with the same titles as the sections of this guide from "Create
-a Google Cloud project" to "Connect an account". It fills in your page's address where a step names
-it.
+Settings → Connections lists 6 steps, titled like the sections of this guide from "Create a Google
+Cloud project" to "Connect an account", and fills in your page's address where a step names it.
 
 ## Before you start
 
@@ -109,7 +108,7 @@ are unreadable at once. The page then shows 3 lines:
 - Key backups: whether a published backup set no longer holds the keys. A backup set that nixie made
   before the forget stays readable until the backup job prunes the key repository.
 
-Using the account again takes a fresh consent.
+To use the account again, consent again.
 
 ## Revoke a grant by hand
 

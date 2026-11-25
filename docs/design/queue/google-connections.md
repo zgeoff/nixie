@@ -9,11 +9,12 @@
 
 You connect a Google account from the web client, and every Google tool reads Google live through
 that connection. nixie keeps no copy of your mail, events or files, and the text a tool returned
-lives only in that call's record. The connection itself is built:
-[Google connections](../../architecture/connectors/google-connections.md) covers the client, the
-consent, the fewer-scopes check and the fetcher, and [the setup guide](../../guides/google.md)
-covers the steps you take. The rest of this page covers what the Google tools need from the
-connection. Build each tool work item on these contracts, starting with Gmail.
+lives only in that call's record. The connection itself is built. Read
+[Google connections](../../architecture/connectors/google-connections.md) for the client, the
+consent, the fewer-scopes check and the fetcher, and follow
+[the setup guide](../../guides/google.md) for the steps you take. The rest of this page sets out
+what the Google tools need from the connection. Build each tool work item on these contracts,
+starting with Gmail.
 
 | Part                                                                            | What it holds                                                                        |
 | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |

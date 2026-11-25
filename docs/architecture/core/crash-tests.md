@@ -30,7 +30,7 @@ their source as they do in an unbundled run. It writes the real event log, runs 
 sweep, task runners, action runners and tool endpoint, and runs each conversation turn through the
 real Agent SDK. The SDK runs in a guest that the process sandbox adapter starts as a local child, so
 CI needs no `/dev/kvm` and no imp. Beside the fault points that later sections list, the test build
-adds four test-only parts:
+adds these test-only parts:
 
 - The test connector declares one queued action, `test.send`, which the test rule allows. The
   release build's rules in code hold no such rule, so no release build can queue it.
@@ -42,7 +42,7 @@ adds four test-only parts:
   stale writer epoch. A guest leads its own process group and would otherwise outlive nixie, which a
   host that loses nixie never allows.
 
-The release build drops 3 more test-only paths:
+The release build also drops these test-only paths:
 
 - `NIXIE_TEST_ATC_URL` points the coding runner at a double of atc-gateway, because the
   configuration accepts only an `https` URL.

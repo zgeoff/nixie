@@ -9,16 +9,15 @@ A part of nixie names a credential by a reference, a resolver turns the referenc
 the store serves the entry: a fetcher makes a request to an outside service with the value added on
 the host, and a grant passes the value through the sandbox adapter to a sandbox's broker for one
 host. No tool or connector ever holds a value. A credential's value never enters a tool result, a
-prompt, a log line, a record or an error message. The settings are the one exception: the prompt
-shows the user's name and pronouns. [A few secrets](#references-and-the-resolver) stay outside the
-store.
+prompt, a log line, a record or an error message. The one exception is the user's name and pronouns,
+which the prompt shows. [A few secrets](#references-and-the-resolver) stay outside the store.
 
-A release server's store has 2 backends. The first is the secrets file, which the
-[server](../deployment/server.md#configuration-and-secrets) decrypts at start. It holds the search,
-image and model credentials, the spend gateway's token, and the user's name and pronouns, settings
-the prompt shows by design. The second is a held backend over
-[the credential database](credential-database.md), for the [OAuth tokens](#oauth-tokens) that nixie
-changes at runtime. Every build of the server runs both.
+A release server's store reads the secrets file, which the
+[server](../deployment/server.md#configuration-and-secrets) decrypts at start, and a held backend
+over [the credential database](credential-database.md). The secrets file holds the search, image and
+model credentials, the spend gateway's token, and the user's name and pronouns, settings the prompt
+shows by design. The held backend holds the [OAuth tokens](#oauth-tokens) that nixie changes at
+runtime. Every build of the server runs both.
 
 ```mermaid
 flowchart LR
@@ -182,15 +181,13 @@ A record holds a credential's ID and a fingerprint, never a token, a client secr
 kind has an entry, with no live topic, in `credentialRecordTopics`, which the server registers.
 
 At start, `recover` reads the log for each `credential.refresh_started` that no saved, failed,
-discarded or lost record closes. The provider may hold a token nixie never saved, and revoking the
-spent one may not end it, so `recover` marks the credential `needs_consent` and writes
-`credential.refresh_lost` for the refresh. When a credential's removal counter moved since the
-refresh began, a removal or a new consent replaced what the refresh could touch, so `recover` only
-closes the refresh and leaves the status. The next start finds nothing. The check finds each open
-refresh in the log, and reads the counter and the token from the credential database. The server
-runs `recover` at each start, over the credential database, and the crash suite
-`recover-credential-refresh.test.ts` kills the process during a refresh and checks the status after
-the restart.
+discarded or lost record closes, and reads the counter and the token from the credential database.
+The provider may hold a token nixie never saved, and revoking the spent one may not end it, so
+`recover` marks the credential `needs_consent` and writes `credential.refresh_lost` for the refresh.
+When the credential's removal counter moved since the refresh began, a removal or a new consent
+replaced what the refresh could touch, so `recover` only closes the refresh and leaves the status.
+The next start finds nothing. The crash suite `recover-credential-refresh.test.ts` kills the process
+during a refresh and checks the status after the restart.
 
 ## Grants
 
