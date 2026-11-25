@@ -30,8 +30,12 @@ export interface FetcherChecks {
 export interface FetcherTarget {
   readonly spec: CredentialSpec | null;
 
-  // the credential's value, read when a request sends
-  readonly readValue: () => string | null;
+  // the credential's value, read when a request sends. A read that throws stops the request.
+  readonly readValue: () => string | null | Promise<string | null>;
+
+  // values that go in the request body, and that the response never shows: cut from the response
+  // and from an error, though never placed
+  readonly bodyValues?: readonly string[];
 
   // the origins the caller passed, all inside the spec's
   readonly origins: readonly string[];
@@ -46,8 +50,11 @@ export function createCredentialFetcher(
   target: FetcherTarget,
 ): CredentialFetch {
   return async (input, init) => {
-    const value = target.readValue();
-    const forms = value === null ? [] : buildValueForms(value);
+    const value = await target.readValue();
+
+    const forms = [value, ...(target.bodyValues ?? [])].flatMap((held) =>
+      held === null ? [] : buildValueForms(held),
+    );
 
     try {
       refuseUserinfo(String(input), 'the request URL');
@@ -94,7 +101,13 @@ async function sendRequest(
 
   const body = await readRequestBody(request);
 
-  const hop = { url, method: request.method, body, hasCredential: value !== null, count: 0 };
+  const hop = {
+    url,
+    method: request.method,
+    body,
+    hasCredential: value !== null,
+    count: 0,
+  };
 
   for (;;) {
     refuseOrigin(target, hop.url);
@@ -231,7 +244,10 @@ async function sendHop(
     url: planned.url,
     address: planned.address,
     method: hop.method,
-    headers: { ...Object.fromEntries(hop.headers), 'accept-encoding': 'gzip, deflate, br' },
+    headers: {
+      ...Object.fromEntries(hop.headers),
+      'accept-encoding': 'gzip, deflate, br',
+    },
     body: hop.body,
     signal,
     ...(checks.ca === undefined ? {} : { ca: checks.ca }),

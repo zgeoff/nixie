@@ -1,4 +1,4 @@
-import type { CredentialRef, CredentialStore, ResolveCredential } from '@heynixie/credentials';
+import type { CredentialStore, FileCredentialRef, ResolveCredential } from '@heynixie/credentials';
 import type { HarnessID } from '@heynixie/wire';
 import type { AgentSDKProfile } from './agent/agent-sdk-harness-definition';
 import type { CodexProfile } from './codex/codex-harness-definition';
@@ -97,5 +97,5 @@ export interface ResolvedProfile {
   readonly profile: HarnessProfile;
 
   // null when the sandbox host holds the credential
-  readonly credential: CredentialRef | null;
+  readonly credential: FileCredentialRef | null;
 }

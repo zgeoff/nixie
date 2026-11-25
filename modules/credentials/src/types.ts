@@ -11,7 +11,14 @@ export interface FileCredentialRef {
   readonly name: string;
 }
 
-export type CredentialRef = FileCredentialRef;
+export interface DatabaseCredentialRef {
+  readonly backend: 'database';
+
+  // a UUID: a connection, an OAuth client or a consent
+  readonly credentialID: string;
+}
+
+export type CredentialRef = FileCredentialRef | DatabaseCredentialRef;
 
 export interface CredentialQuery {
   readonly class: 'model' | 'connector' | 'setting';
@@ -23,18 +30,34 @@ export interface CredentialQuery {
   readonly configKey?: string;
 }
 
-export type ResolveCredential = (query: CredentialQuery) => CredentialRef | null;
+export type ResolveCredential = (query: CredentialQuery) => FileCredentialRef | null;
 
 type Backend = CredentialRef['backend'];
 
-export interface BindingRef {
+export interface BindingRef<B extends Backend = Backend> {
   // a UUID
   readonly bindingID: string;
-  readonly backend: Backend;
+  readonly backend: B;
+
+  // the reference's removal counter when the binding was made: after a removal advances it, every
+  // handle that carries an older value refuses
+  readonly removalCounter: number;
+}
+
+// Where an OAuth provider takes requests, and who it says it is.
+export interface OAuthProvider {
+  readonly tokenURL: string;
+  readonly revokeURL?: string;
+
+  // the `iss` of the provider's ID tokens
+  readonly issuer: string;
+
+  // the OAuth client's public ID, which is the `aud` of its ID tokens
+  readonly clientID: string;
 }
 
 export interface CredentialSpec {
-  readonly kind: 'static' | 'model';
+  readonly kind: 'static' | 'model' | 'oauth_client' | 'oauth_token';
 
   // such as 'Kagi'
   readonly label: string;
@@ -47,6 +70,9 @@ export interface CredentialSpec {
     | { readonly header: string; readonly scheme?: 'Bearer' }
     | { readonly basic: { readonly user: string } }
     | { readonly path: true };
+
+  // an OAuth client or token names its provider, whose origins the spec must hold
+  readonly provider?: OAuthProvider;
 }
 
 export interface FetchOptions {

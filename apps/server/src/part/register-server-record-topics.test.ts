@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import { collectModuleRecordTopicMaps } from '@heynixie/api';
+import { credentialRecordTopics } from '@heynixie/credentials';
 import { startTestLog } from '@heynixie/log/test-utils';
 import { sandboxRecordTopics } from '@heynixie/sandbox';
 import { readDeclaredRecordKinds } from '../test-utils/read-declared-record-kinds';
@@ -9,9 +10,12 @@ import { serverRecordTopics } from './server-record-topics';
 async function setupTest() {
   // the spend module names two kinds that the models and sessions modules own
   const registered = new Map<string, readonly string[]>(
-    [...collectModuleRecordTopicMaps(), sandboxRecordTopics, serverRecordTopics].flatMap((map) =>
-      Object.entries(map),
-    ),
+    [
+      ...collectModuleRecordTopicMaps(),
+      credentialRecordTopics,
+      sandboxRecordTopics,
+      serverRecordTopics,
+    ].flatMap((map) => Object.entries(map)),
   );
 
   return { declaredKinds: await readDeclaredRecordKinds(), registered };

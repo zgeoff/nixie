@@ -7,13 +7,26 @@ import type { Secrets } from './file/load-secrets';
 import { readFingerprint } from './fingerprint/read-fingerprint';
 import { buildHostHeldName } from './grant/build-host-held-name';
 import { modelSecretNameLength, modelSecretPrefix } from './grant/constants';
+import { createHeldCredentials } from './held/create-held-credentials';
+import type { HeldHandle } from './held/create-held-credentials';
+import type {
+  CredentialRecorder,
+  HeldBackend,
+  HeldState,
+  RefreshOutcome,
+  TokenExchange,
+  TokenResult,
+} from './held/types';
 import type {
   BindingRef,
   CredentialFetch,
   CredentialRef,
   CredentialSpec,
+  DatabaseCredentialRef,
   FetchOptions,
+  FileCredentialRef,
   GrantRequest,
+  OAuthProvider,
   ResolveCredential,
 } from './types';
 
@@ -23,6 +36,16 @@ export interface CredentialStoreOptions {
 
   // web fetch's deny list: the deployment's egress denies beside the non-public ranges
   readonly denied: readonly string[];
+
+  // The database backend's storage, and the log the store writes its records to. Without it the
+  // store holds file credentials alone.
+  readonly held?: {
+    readonly backend: HeldBackend;
+    readonly recorder: CredentialRecorder;
+  };
+
+  // the time a refresh reads, in ms; the system clock by default
+  readonly now?: () => number;
 
   // what a test replaces to reach a loopback site
   readonly test?: {
@@ -43,12 +66,19 @@ interface GrantSandboxes {
   readonly addSecret: (secret: SecretSpec) => Promise<void>;
 }
 
-type GrantSource = BindingRef | { readonly hostHeld: true };
+type GrantSource = BindingRef<'file'> | { readonly hostHeld: true };
 
 export interface CredentialStore {
-  readonly register: (ref: CredentialRef, spec: CredentialSpec) => BindingRef;
+  readonly register: (ref: FileCredentialRef, spec: CredentialSpec) => BindingRef<'file'>;
 
-  // null: no credential, the same checks
+  // A database reference reads its removal counter, so its binding carries the counter's value.
+  readonly registerHeld: (
+    ref: DatabaseCredentialRef,
+    spec: CredentialSpec,
+  ) => Promise<BindingRef<'database'>>;
+
+  // null: no credential, the same checks. A database binding takes an OAuth token: the fetcher
+  // refreshes it before it expires, and refreshes once and retries once on a 401.
   readonly fetcher: (
     binding: BindingRef | null,
     origins: readonly string[],
@@ -62,6 +92,27 @@ export interface CredentialStore {
     sandboxes: GrantSandboxes,
     request: GrantRequest,
   ) => Promise<GrantedSecret>;
+
+  // Turns an OAuth client's code into tokens, saved under the credential the request names.
+  readonly exchange: (
+    client: BindingRef<'database'>,
+    request: TokenExchange,
+  ) => Promise<TokenResult>;
+
+  // One refresh per credential at a time: a caller that arrives during one waits for its outcome.
+  readonly refresh: (binding: BindingRef<'database'>) => Promise<RefreshOutcome>;
+
+  // refreshes when the token expires within 5 minutes or 7 days passed since the last success, and
+  // the backoff after a failure has run out; null when it did not send
+  readonly refreshIfDue: (binding: BindingRef<'database'>) => Promise<RefreshOutcome | null>;
+  readonly readStatus: (binding: BindingRef<'database'>) => Promise<HeldState | null>;
+
+  // Removes a database credential and advances its removal counter in one transaction. Every
+  // handle made before it refuses from then on, and a refresh in flight saves nothing.
+  readonly remove: (ref: DatabaseCredentialRef) => Promise<void>;
+
+  // At start: a refresh that sent and never saved a result marks its credential `needs_consent`.
+  readonly recover: () => Promise<void>;
 }
 
 // What a part of the server takes to resolve a reference and to fetch or grant with the result.
@@ -80,6 +131,42 @@ export function createCredentialStore(options: CredentialStoreOptions): Credenti
   const ids = new Map<string, string>();
 
   const checkAddress = options.test?.checkAddress ?? makeAddressCheck(options.denied);
+  const now = options.now ?? (() => Date.now());
+
+  const fetcherChecks = {
+    resolveHost: options.resolveHost,
+    checkAddress,
+    ...(options.test?.ca === undefined ? {} : { ca: options.test.ca }),
+    ...(options.test?.transport === undefined ? {} : { transport: options.test.transport }),
+  };
+
+  const held =
+    options.held === undefined
+      ? null
+      : createHeldCredentials({
+          backend: options.held.backend,
+          recorder: options.held.recorder,
+          fingerprintKey: options.secrets.fingerprintKey,
+          ownValues: options.secrets.ownValues,
+          now,
+          makeProviderFetch: (provider, bodyValues) =>
+            createCredentialFetcher(fetcherChecks, {
+              spec: null,
+              readValue: () => null,
+              bodyValues,
+              origins: normalizeOrigins(listProviderURLs(provider)),
+              options: { redirects: 'none' },
+            }),
+        });
+
+  const requireHeld = () => {
+    invariant(
+      held !== null,
+      'a database credential needs the store to be made with a held backend',
+    );
+
+    return held;
+  };
 
   const getBinding = (ref: BindingRef): Binding => {
     const binding = bindings.get(ref.bindingID);
@@ -89,20 +176,40 @@ export function createCredentialStore(options: CredentialStoreOptions): Credenti
     return binding;
   };
 
+  const toHandle = (ref: BindingRef<'database'>): HeldHandle => {
+    const binding = getBinding(ref);
+
+    invariant(binding.ref.backend === 'database', 'a database binding names a database reference');
+    invariant(binding.spec.provider !== undefined, 'a database binding names its OAuth provider');
+
+    return {
+      credentialID: binding.ref.credentialID,
+      removalCounter: ref.removalCounter,
+      label: binding.spec.label,
+      provider: binding.spec.provider,
+    };
+  };
+
+  const addBinding = (ref: CredentialRef, spec: CredentialSpec): string => {
+    const key = JSON.stringify([ref, spec]);
+    const known = ids.get(key);
+    const bindingID = known ?? crypto.randomUUID();
+
+    if (known === undefined) {
+      const normalized = { ...spec, origins: normalizeOrigins(spec.origins) };
+
+      requireProviderOrigins(normalized);
+
+      ids.set(key, bindingID);
+      bindings.set(bindingID, { ref, spec: normalized });
+    }
+
+    return bindingID;
+  };
+
   return {
     register: (ref, spec) => {
-      const key = JSON.stringify([ref, spec]);
-      const known = ids.get(key);
-      const bindingID = known ?? crypto.randomUUID();
-
-      if (known === undefined) {
-        ids.set(key, bindingID);
-
-        bindings.set(bindingID, {
-          ref,
-          spec: { ...spec, origins: normalizeOrigins(spec.origins) },
-        });
-      }
+      const bindingID = addBinding(ref, spec);
 
       options.secrets.ownValues.add({
         group: ref.group,
@@ -111,7 +218,14 @@ export function createCredentialStore(options: CredentialStoreOptions): Credenti
         isAlways: ref.group === 'settings',
       });
 
-      return { bindingID, backend: ref.backend };
+      return { bindingID, backend: 'file', removalCounter: 0 };
+    },
+    registerHeld: async (ref, spec) => {
+      const bindingID = addBinding(ref, spec);
+
+      const removalCounter = await requireHeld().readCounter(ref.credentialID);
+
+      return { bindingID, backend: 'database', removalCounter };
     },
     fetcher: (ref, origins, fetchOptions = {}) => {
       const binding = ref === null ? null : getBinding(ref);
@@ -123,20 +237,56 @@ export function createCredentialStore(options: CredentialStoreOptions): Credenti
         }
       }
 
-      return createCredentialFetcher(
-        {
-          resolveHost: options.resolveHost,
-          checkAddress,
-          ...(options.test?.ca === undefined ? {} : { ca: options.test.ca }),
-          ...(options.test?.transport === undefined ? {} : { transport: options.test.transport }),
-        },
-        {
-          spec: binding?.spec ?? null,
-          readValue: () => (binding === null ? null : options.secrets.readFileValue(binding.ref)),
-          origins: allowed,
-          options: fetchOptions,
-        },
-      );
+      const readValue = ((): (() => string | null | Promise<string | null>) => {
+        if (ref === null || binding === null) {
+          return () => null;
+        }
+
+        if (binding.ref.backend === 'database') {
+          const handle = toHandle({ ...ref, backend: 'database' });
+
+          return () => requireHeld().readAccessToken(handle);
+        }
+
+        const fileRef = binding.ref;
+
+        return () => options.secrets.readFileValue(fileRef);
+      })();
+
+      const send = createCredentialFetcher(fetcherChecks, {
+        spec: binding?.spec ?? null,
+        readValue,
+        origins: allowed,
+        options: fetchOptions,
+      });
+
+      if (ref === null || ref.backend !== 'database') {
+        return send;
+      }
+
+      const handle = toHandle({ ...ref, backend: 'database' });
+
+      return async (input, init) => {
+        const first = await send(input, init);
+
+        if (first.status !== 401) {
+          return first;
+        }
+
+        const outcome = await requireHeld().refresh(handle);
+
+        if (outcome !== 'saved') {
+          return first;
+        }
+
+        const second = await send(input, init);
+
+        if (second.status === 401) {
+          await requireHeld().markFailing(handle, 'unauthorised');
+        }
+
+        return second;
+      };
     },
     grant: async (source, sandboxes, request) => {
       if ('hostHeld' in source) {
@@ -153,6 +303,9 @@ export function createCredentialStore(options: CredentialStoreOptions): Credenti
       }
 
       const binding = getBinding(source);
+
+      invariant(binding.ref.backend === 'file', 'a file binding names a file reference');
+
       const value = options.secrets.readFileValue(binding.ref);
 
       const fingerprint = await readFingerprint(value, options.secrets.fingerprintKey);
@@ -171,11 +324,34 @@ export function createCredentialStore(options: CredentialStoreOptions): Credenti
 
       return { secret: name, reference, fingerprint };
     },
+    exchange: (client, request) => requireHeld().exchange(toHandle(client), request),
+    refresh: (binding) => requireHeld().refresh(toHandle(binding)),
+    refreshIfDue: (binding) => requireHeld().refreshIfDue(toHandle(binding)),
+    readStatus: (binding) => requireHeld().readState(toHandle(binding).credentialID),
+    remove: (ref) => requireHeld().remove(ref.credentialID),
+    recover: () => requireHeld().recover(),
   };
 }
 
 function normalizeOrigins(origins: readonly string[]): readonly string[] {
   return origins.map((origin) => new URL(origin).origin);
+}
+
+function listProviderURLs(provider: OAuthProvider): readonly string[] {
+  return [provider.tokenURL, ...(provider.revokeURL === undefined ? [] : [provider.revokeURL])];
+}
+
+// A provider's endpoints go through the fetcher, whose origins the credential's spec must name.
+function requireProviderOrigins(spec: CredentialSpec): void {
+  if (spec.provider === undefined) {
+    return;
+  }
+
+  for (const origin of normalizeOrigins(listProviderURLs(spec.provider))) {
+    if (!spec.origins.includes(origin)) {
+      throw new Error(`${origin} is not an origin of the credential ${spec.label}`);
+    }
+  }
 }
 
 // A value nixie holds goes into a keyed digest, because the broker keeps a granted secret under its
