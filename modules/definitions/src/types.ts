@@ -4,6 +4,7 @@ import type {
   BudgetCounts,
   BudgetPeriod,
   EffectOverride,
+  McpOverrides,
   RuleFileEntry,
   RuleFileWarning,
   RuleForm,
@@ -103,6 +104,9 @@ export interface ParsedDefinitions {
   readonly budgets: readonly DefinitionBudget[];
   readonly ruleWarnings: readonly RuleFileWarning[];
   readonly effects: ReadonlyMap<string, EffectOverride>;
+
+  // the override files of the MCP proxy, by server ID
+  readonly mcp: McpOverrides;
   readonly tasks: readonly TaskDefinition[];
   readonly taskWarnings: readonly TaskDefinitionWarning[];
   readonly unapplied: readonly string[];

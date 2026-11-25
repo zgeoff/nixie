@@ -68,6 +68,27 @@ export interface EffectOverride {
   readonly remove: readonly Effect[];
 }
 
+// How an interrupted queued call of a proxied tool settles: it retries under an idempotency key
+// that the proxy puts in the named argument, or it reads the named read tool of the same server.
+export type McpReconcile = { readonly idempotencyKey: string } | { readonly check: string };
+
+// The declaration that the definitions repo gives one tool of an MCP server, in place of the one its
+// annotations make.
+export interface McpToolOverride {
+  readonly effects: readonly Effect[];
+
+  // argument names, as `a.b` for a nested one, `a[]` for an array's items and `a.*` for free keys
+  readonly destinations: readonly string[];
+  readonly amount: string | null;
+
+  // null keeps the default: every string argument
+  readonly content: readonly string[] | null;
+  readonly reconcile: McpReconcile | null;
+}
+
+// The overrides of the definitions: by server ID, then by the tool's own name at the server.
+export type McpOverrides = Readonly<Record<string, Readonly<Record<string, McpToolOverride>>>>;
+
 export interface PolicyCall {
   readonly tool: string;
   readonly toolList: readonly string[];

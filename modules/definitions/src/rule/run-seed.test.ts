@@ -490,7 +490,7 @@ test('it keeps the last seed when the source refuses the snapshot', async () => 
 test('it refuses a first snapshot that fails to parse and leaves no seed', async () => {
   const ctx = await setupTest();
 
-  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 6\n');
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 7\n');
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
 
   const result = await runSeed({

@@ -18,6 +18,7 @@ import type { ManifestPrompts } from '../utils/parse-prompt-overrides';
 import { parsePromptOverrides } from '../utils/parse-prompt-overrides';
 import { parseBudgetDefinitions } from './parse-budget-definitions';
 import { parseEffectDefinitions } from './parse-effect-definitions';
+import { parseMcpDefinitions } from './parse-mcp-definitions';
 
 const personaPath = 'persona.md';
 
@@ -58,6 +59,11 @@ export function parseDefinitions(
       ? parseEffectDefinitions(texts, overrides.partFiles)
       : { effects: new Map<string, EffectOverride>(), paths: new Set<string>() };
 
+  const mcp =
+    formatVersion >= definitionsFormats.mcp
+      ? parseMcpDefinitions(texts, overrides.partFiles)
+      : { overrides: {}, paths: new Set<string>() };
+
   const taskTexts = new Map(
     [...texts].filter(([path]) => path.startsWith('tasks/') && !overrides.partFiles.has(path)),
   );
@@ -78,6 +84,7 @@ export function parseDefinitions(
     .filter((path) => !budgets.paths.has(path))
     .filter((path) => !rules.paths.has(path))
     .filter((path) => !effects.paths.has(path))
+    .filter((path) => !mcp.paths.has(path))
     .filter((path) => !taskDefinitions.paths.has(path))
     .toSorted();
 
@@ -100,6 +107,7 @@ export function parseDefinitions(
     budgets: budgets.budgets.map((entry) => toDefinitionBudget(entry.budget)),
     ruleWarnings: rules.warnings,
     effects: effects.effects,
+    mcp: mcp.overrides,
     tasks: taskDefinitions.definitions,
     taskWarnings: taskDefinitions.warnings,
     unapplied,

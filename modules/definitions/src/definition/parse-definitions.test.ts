@@ -19,6 +19,7 @@ test('it reads the format version and the persona, and lists every other file un
     ),
   ).toStrictEqual({
     effects: new Map(),
+    mcp: {},
     formatVersion: 2,
     persona: '# Persona\n',
     skills: [],
@@ -63,7 +64,7 @@ test('it refuses definitions without a manifest', () => {
 });
 
 test.each([
-  ['format 6, which a newer release writes', 'format: 6\n'],
+  ['format 7, which a newer release writes', 'format: 7\n'],
   ['format 1, which two releases back wrote', 'format: 1\n'],
   ['format 0', 'format: 0\n'],
 ])('it refuses a manifest with %s', (_label, manifest) => {
@@ -79,7 +80,7 @@ test.each([
     ),
   ).toThrowWithMessage(
     Error,
-    /^nixie\.yaml: format \d is not one this release reads, which is 2 or 3 or 4 or 5$/u,
+    /^nixie\.yaml: format \d is not one this release reads, which is 2 or 3 or 4 or 5 or 6$/u,
   );
 });
 
@@ -189,6 +190,7 @@ test('it ignores the prompts map under format 2 and lists its part files as unap
     ),
   ).toStrictEqual({
     effects: new Map(),
+    mcp: {},
     formatVersion: 2,
     persona: '# Persona\n',
     skills: [],
@@ -241,6 +243,7 @@ test('it reads each skill under format 2, and lists none of its files as unappli
     ),
   ).toStrictEqual({
     effects: new Map(),
+    mcp: {},
     formatVersion: 2,
     persona: '# Persona\n',
     skills: [
@@ -408,6 +411,7 @@ test('it reads a part override from its file and a template inline under format 
     ),
   ).toStrictEqual({
     effects: new Map(),
+    mcp: {},
     formatVersion: 3,
     persona: '# Persona\n',
     skills: [],
@@ -651,4 +655,67 @@ test.each([
       buildTestTaskSeed(),
     ),
   ).toThrowWithMessage(Error, message);
+});
+
+test('it parses the override files of the MCP proxy in a format 6 repo', () => {
+  const files = new Map([
+    ['nixie.yaml', new TextEncoder().encode('format: 6\n')],
+    ['persona.md', new TextEncoder().encode('# Persona\n')],
+    [
+      'mcp/tracker.yaml',
+      new TextEncoder().encode(
+        'item_notify:\n  effects: [send]\n  destinations: [assignee_email]\n  content: [message]\n',
+      ),
+    ],
+  ]);
+
+  const parsed = parseDefinitions(
+    { contentHash: 'c', files, revision: 'r', repository: null, skipped: [] },
+    buildTestTaskSeed(),
+  );
+
+  expect([parsed.mcp, parsed.unapplied]).toStrictEqual([
+    {
+      tracker: {
+        item_notify: {
+          effects: ['send'],
+          destinations: ['assignee_email'],
+          amount: null,
+          content: ['message'],
+          reconcile: null,
+        },
+      },
+    },
+    [],
+  ]);
+});
+
+test('it leaves override files unapplied in a format 5 repo', () => {
+  const files = new Map([
+    ['nixie.yaml', new TextEncoder().encode('format: 5\n')],
+    ['persona.md', new TextEncoder().encode('# Persona\n')],
+    ['mcp/tracker.yaml', new TextEncoder().encode('item_get:\n  effects: [read]\n')],
+  ]);
+
+  const parsed = parseDefinitions(
+    { contentHash: 'c', files, revision: 'r', repository: null, skipped: [] },
+    buildTestTaskSeed(),
+  );
+
+  expect([parsed.mcp, parsed.unapplied]).toStrictEqual([{}, ['mcp/tracker.yaml']]);
+});
+
+test('it refuses the whole seed when an override file fails to parse', () => {
+  const files = new Map([
+    ['nixie.yaml', new TextEncoder().encode('format: 6\n')],
+    ['persona.md', new TextEncoder().encode('# Persona\n')],
+    ['mcp/tracker.yaml', new TextEncoder().encode('item_get:\n  effects: []\n')],
+  ]);
+
+  expect(() =>
+    parseDefinitions(
+      { contentHash: 'c', files, revision: 'r', repository: null, skipped: [] },
+      buildTestTaskSeed(),
+    ),
+  ).toThrow('mcp/tracker.yaml');
 });
