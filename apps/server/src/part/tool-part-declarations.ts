@@ -10,6 +10,7 @@ import { refreshDefinitions } from '../definition/refresh-definitions';
 import { makeReadErasureStuckPort } from '../erasure/make-read-erasure-stuck-port';
 import { addLogForget } from '../forget/add-log-forget';
 import { buildLogForgetTool } from '../forget/build-log-forget-tool';
+import { addGoogleConnectors } from '../google/add-google-connectors';
 import { addMailConnectors } from '../mail/add-mail-connectors';
 import { buildServerMailContext } from '../mail/build-server-mail-context';
 import { buildServerMailTools } from '../mail/build-server-mail-tools';
@@ -56,13 +57,19 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
   {
     name: 'web_fetch',
     needs: ['inputs', 'context', 'sandbox_adapter'],
+    uses: ['connections'],
     images: () => ['fetch'],
-    start: (parts) =>
-      startWebFetchPart({
+    start: async (parts) => {
+      const webFetch = await startWebFetchPart({
         options: parts.get('inputs').options,
         adapter: parts.get('sandbox_adapter'),
         log: parts.get('context').apiContext.log,
-      }),
+      });
+
+      parts.find('connections')?.bindHTMLReader(webFetch.readHTML);
+
+      return webFetch;
+    },
   },
   {
     name: 'computer',
@@ -115,6 +122,7 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
   {
     name: 'actions',
     needs: ['inputs', 'context', 'computer'],
+    uses: ['connections'],
     start: (parts) => {
       const options = parts.get('inputs').options;
       const apiContext = parts.get('context').apiContext;
@@ -130,8 +138,11 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
       const withCoding = addCodingConnectors(withComputer, parts.get('context').coding);
       const mail = parts.get('context').mail;
       const mailContext = buildServerMailContext(mail, apiContext, options.log);
+      const withMail = addMailConnectors(withCoding, mail, mailContext);
 
-      return Promise.resolve(addMailConnectors(withCoding, mail, mailContext));
+      return Promise.resolve(
+        addGoogleConnectors(withMail, parts.find('connections')?.actions ?? []),
+      );
     },
   },
   {
@@ -181,6 +192,7 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
           render: parts.get('render'),
           coding: buildServerCodingTools(parts.get('context')),
           mail: buildServerMailTools(mailContext, parts.get('web_fetch')),
+          google: parts.find('connections')?.actions.map((action) => action.tool) ?? [],
 
           buildCodingStart: buildServerCodingStart(parts.get('context')),
           codeRun: parts.get('code_run').tool,

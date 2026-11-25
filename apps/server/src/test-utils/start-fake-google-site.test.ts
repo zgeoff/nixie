@@ -64,3 +64,31 @@ test('it answers a read call of a scope with 200', async () => {
 
   expect(response.status).toBe(200);
 });
+
+test('it answers a Gmail search with the one mail in its mailbox', async () => {
+  const site = startFakeGoogleSite();
+
+  onTestFinished(() => site.stop());
+
+  const response = await fetch(`${site.url}/gmail/v1/users/me/messages?q=numbers`);
+  const body: unknown = await response.json();
+
+  expect(body).toStrictEqual({ messages: [expect.objectContaining({ id: expect.any(String) })] });
+});
+
+test('it keeps a mail that Gmail sends in the mailbox it hands back', async () => {
+  const site = startFakeGoogleSite();
+
+  onTestFinished(() => site.stop());
+
+  const raw = Buffer.from(
+    'From: verify@example.test\r\nTo: sam@example.org\r\nSubject: Hi\r\nMessage-ID: <a@example.test>\r\n\r\nHello',
+  ).toString('base64url');
+
+  await fetch(`${site.url}/gmail/v1/users/me/messages/send`, {
+    method: 'POST',
+    body: JSON.stringify({ raw }),
+  });
+
+  expect(site.gmail.sent).toHaveLength(1);
+});

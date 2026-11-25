@@ -1,3 +1,5 @@
+import { createFakeGmail } from '@heynixie/connectors/test-utils';
+import type { FakeGmail } from '@heynixie/connectors/test-utils';
 import { buildIDToken } from '@heynixie/credentials/test-utils';
 import { buildTestGoogleHosts } from '../test/build-test-google-hosts';
 
@@ -5,23 +7,41 @@ export interface FakeGoogleSite {
   // the loopback address a test build reaches Google's endpoints at
   readonly url: string;
 
+  // the mailbox behind Gmail's paths, for a test to read what the assistant sent
+  readonly gmail: FakeGmail;
+
   readonly stop: () => Promise<void>;
 }
 
-// A Google that grants every scope to one account. Its authorize page sends the browser straight
-// back with a code, its token endpoint answers a code with tokens and an ID token, and every other
-// path answers 200 with an empty body, as a scope's read call does.
+// A Google that grants every scope to one account. Its authorize page sends the browser back with a
+// code, its token endpoint answers a code with tokens, its Gmail paths answer from a mailbox with
+// one mail, and every other path answers 200 with an empty body.
 export function startFakeGoogleSite(): FakeGoogleSite {
+  const gmail = createFakeGmail('verify@example.test');
+
+  gmail.seed({
+    from: 'Sam Lee <sam@example.org>',
+    to: ['verify@example.test'],
+    subject: 'Q3 numbers',
+    text: 'Hi, the Q3 numbers are in the shared sheet.',
+  });
+
+  const answerRequest = async (request: Request): Promise<Response> => {
+    const answered = await gmail.serve(request);
+
+    return answered ?? answerGoogle(request);
+  };
+
   const site = Bun.serve({
     port: 0,
     hostname: '127.0.0.1',
     fetch: answerRequest,
   });
 
-  return { url: `http://127.0.0.1:${String(site.port)}`, stop: () => site.stop(true) };
+  return { url: `http://127.0.0.1:${String(site.port)}`, gmail, stop: () => site.stop(true) };
 }
 
-async function answerRequest(request: Request): Promise<Response> {
+async function answerGoogle(request: Request): Promise<Response> {
   const url = new URL(request.url);
 
   if (request.method === 'GET' && url.pathname === '/authorize') {
