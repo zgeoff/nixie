@@ -1,0 +1,25 @@
+{
+  "name": "@heynixie/coding-atc",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts",
+    "./test-utils": "./src/test-utils/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsrs --fast --noEmit"
+  },
+  "dependencies": {
+    "@heynixie/coding": "workspace:*",
+    "@heynixie/logger": "workspace:*",
+    "@modelcontextprotocol/client": "catalog:",
+    "ts-pattern": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/server": "catalog:",
+    "@zgeoff/testing": "catalog:"
+  }
+}
