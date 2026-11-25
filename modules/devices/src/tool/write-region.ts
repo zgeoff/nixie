@@ -93,6 +93,8 @@ export async function writeRegion(
 
   if (outcome === 'written') {
     options.streams.errors.remove(write.deviceID, write.region);
+    options.streams.messages.remove(write.deviceID, write.region);
+    options.streams.tickets.remove(write.deviceID, write.region);
   }
 
   return outcome;

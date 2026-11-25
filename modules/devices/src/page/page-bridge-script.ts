@@ -7,6 +7,41 @@ export const pageBridgeScript = `(function () {
   var buffer = __INITIAL__;
   var parentWindow = window.parent;
 
+  // The frame's policy leaves two ways out that it cannot close: a peer connection reaches any
+  // server a page names, and a link element opens a connection from a resource hint. The page
+  // gets neither, and the default trusted-types policy cleans every string it turns into markup.
+  ['RTCPeerConnection', 'webkitRTCPeerConnection', 'mozRTCPeerConnection'].forEach(function (name) {
+    try {
+      delete window[name];
+    } catch (error) {}
+  });
+
+  var createElement = Document.prototype.createElement;
+  var createElementNS = Document.prototype.createElementNS;
+  var linkTag = /^link$/i;
+  Document.prototype.createElement = function (name) {
+    return createElement.call(this, linkTag.test(String(name)) ? 'span' : name, arguments[1]);
+  };
+  Document.prototype.createElementNS = function (namespace, name) {
+    return createElementNS.call(this, namespace, linkTag.test(String(name)) ? 'span' : name, arguments[2]);
+  };
+
+  var linkMarkup = /<link(?![\\w-])/gi;
+  function clean(markup) {
+    return String(markup).replace(linkMarkup, '<span');
+  }
+  if (window.trustedTypes) {
+    window.trustedTypes.createPolicy('default', {
+      createHTML: clean,
+      createScript: function (script) {
+        return script;
+      },
+      createScriptURL: function () {
+        throw new TypeError('a page cannot load a script by its address');
+      },
+    });
+  }
+
   function post(message) {
     message.nixie = true;
     parentWindow.postMessage(message, '*');
@@ -55,6 +90,19 @@ export const pageBridgeScript = `(function () {
     post({ type: 'error', message: Array.prototype.map.call(arguments, String).join(' ') });
     return logError.apply(console, arguments);
   };
+
+  // A touch inside the frame never reaches the device page, so the bridge tells it, at most 4 times
+  // a second. The listener is the first on the window and sees the event before any the page adds.
+  var lastTouchAt = 0;
+  function touch() {
+    var now = Date.now();
+    if (now - lastTouchAt >= 250) {
+      lastTouchAt = now;
+      post({ type: 'touch' });
+    }
+  }
+  window.addEventListener('pointerdown', touch, true);
+  window.addEventListener('pointermove', touch, true);
 
   window.addEventListener('load', function () {
     post({ type: 'ready' });

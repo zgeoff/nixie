@@ -45,3 +45,14 @@ test('#createPageTickets keeps the tickets of one region apart from another', ()
 test('#createPageTickets reads no ticket that it never issued', () => {
   expect(createPageTickets().read('0e0b4b3e-0000-4000-8000-000000000000')).toBeNull();
 });
+
+test('#createPageTickets ends the tickets of a region that was removed, and gives new ones after', () => {
+  const tickets = createPageTickets();
+  const first = tickets.issue('dk4m7q2w9x', 'pond', 'sh1', ['k3x9m2p7qa']);
+
+  tickets.remove('dk4m7q2w9x', 'pond');
+
+  const again = tickets.issue('dk4m7q2w9x', 'pond', 'sh1', ['k3x9m2p7qa']);
+
+  expect([tickets.read(first.frame), again.frame === first.frame]).toStrictEqual([null, false]);
+});

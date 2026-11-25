@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { renderRequestSchema } from '@heynixie/wire';
 import { readPreviewPage } from '../test-utils';
 import { buildPreviewPage } from './build-preview-page';
 
@@ -346,4 +347,49 @@ test('it points a declared image of a page at the image file the preview holds',
   const frame = Buffer.from(files.at(-1)?.base64 ?? '', 'base64').toString();
 
   expect(frame).toContain('"k3x9m2p7qa":"http://nixie-render.invalid/images/0"');
+});
+
+test('it builds a render request that the sandbox takes for the largest layout of pages with images', () => {
+  const imageIDs = Array.from({ length: 36 * 20 }, (_, index) => `img${String(index)}`);
+
+  const files = buildPreviewPage({
+    surface: {
+      kind: 'layout',
+      layout: {
+        layoutID: 'ly3k7m2q9x',
+        columns: ['1fr'],
+        rows: ['1fr'],
+        regions: Array.from({ length: 36 }, (_, index) => ({
+          name: `page${String(index)}`,
+          column: 1,
+          row: 1,
+          columnSpan: 1,
+          rowSpan: 1,
+          background: null,
+          shown: {
+            shownID: `sh${String(index)}`,
+            sequence: index + 1,
+            untilMs: null,
+            content: {
+              kind: 'html' as const,
+              html: '<p></p>',
+              images: imageIDs.slice(index * 20, index * 20 + 20),
+            },
+          },
+        })),
+      },
+    },
+    images: new Map(
+      imageIDs.map((image) => [
+        image,
+        { path: `images/${image}`, mediaType: 'image/png', base64: 'AA==' },
+      ]),
+    ),
+    nowMs: Date.parse('2026-11-21T08:05:09.000Z'),
+    timeZone: 'UTC',
+  });
+
+  const request = renderRequestSchema.safeParse({ width: 1920, height: 480, pixelRatio: 1, files });
+
+  expect([files.length, request.success]).toStrictEqual([757, true]);
 });

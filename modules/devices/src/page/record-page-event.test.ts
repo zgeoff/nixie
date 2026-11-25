@@ -69,6 +69,39 @@ async function setupTest() {
           ...(report.data === undefined ? {} : { data: report.data }),
         },
       ),
+
+    // sends one event, and calls back when the region's limit admits it, which is after the event's
+    // checks began and before it writes
+    sendObserved: (report: PageSend, onAdmit: () => void) =>
+      recordPageEvent(
+        {
+          ...sink,
+          streams: {
+            eventLimits: {
+              admit: (...args) => {
+                onAdmit();
+
+                return ctx.streams.eventLimits.admit(...args);
+              },
+            },
+          },
+        },
+        { ...device },
+        {
+          region: report.region ?? 'pond',
+          shown: report.shown ?? pond?.shown?.shownID ?? '',
+          name: report.name,
+          wake: report.wake,
+        },
+      ),
+    readRecordKinds: async () => {
+      const found = await readRecords(ctx.log, {
+        afterSequence: 0,
+        kinds: ['device.page_event', 'device.region_shown'],
+      });
+
+      return found.map((entry) => entry.record.kind);
+    },
     readEvents: async () => {
       const found = await readRecords(ctx.log, { afterSequence: 0, kinds: ['device.page_event'] });
 
@@ -211,4 +244,68 @@ test('#recordPageEvent says stale when the screen is off', async () => {
   const events = await ctx.readEvents();
 
   expect([outcome, events]).toStrictEqual(['stale', []]);
+});
+
+test('#recordPageEvent gives only one of 2 events that overlap the last wake of the hour', async () => {
+  const ctx = await setupTest();
+
+  await ctx.call('device.region', {
+    device: ctx.device.deviceID,
+    region: 'note',
+    content: { kind: 'html', html: '<p>notes</p>' },
+  });
+
+  const layout = await ctx.readLayout(ctx.device.deviceID);
+
+  const note = layout?.regions.find((region) => region.name === 'note');
+
+  for (let count = 0; count < 5; count += 1) {
+    await ctx.send({ name: `touch-${String(count)}`, wake: true });
+
+    ctx.clock.advance(2000);
+  }
+
+  const overlapping: Promise<unknown>[] = [];
+
+  await ctx.sendObserved({ name: 'pond-touch', wake: true }, () => {
+    overlapping.push(
+      ctx.send({
+        name: 'note-touch',
+        wake: true,
+        region: 'note',
+        shown: note?.shown?.shownID ?? '',
+      }),
+    );
+  });
+
+  await Promise.all(overlapping);
+
+  const events = await ctx.readEvents();
+
+  const wakes = events.map((event) => event.payload['wake']);
+
+  expect(wakes).toStrictEqual([true, true, true, true, true, true, false]);
+});
+
+test('#recordPageEvent writes an event ahead of a region replacement that arrives between its checks and its write', async () => {
+  const ctx = await setupTest();
+
+  const replacing: Promise<unknown>[] = [];
+
+  const first = await ctx.sendObserved({ name: 'touched', wake: false }, () => {
+    replacing.push(
+      ctx.call('device.region', {
+        device: ctx.device.deviceID,
+        region: 'pond',
+        content: { kind: 'markdown', markdown: 'Bins go out tonight' },
+      }),
+    );
+  });
+
+  await Promise.all(replacing);
+
+  expect([first, await ctx.readRecordKinds()]).toStrictEqual([
+    'recorded',
+    ['device.region_shown', 'device.page_event', 'device.region_shown'],
+  ]);
 });

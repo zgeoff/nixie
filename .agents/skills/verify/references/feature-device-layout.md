@@ -163,20 +163,22 @@ under a name, lay the screen out again, and restore the saved layout in one call
     bun verify conversation turn --message 'Send the page in the pond of the screen in the hall a message.' --reply 'The message is sent.'
     bun verify browser snapshot --until-text 'Got hello'
     bun verify db query "select json_extract(payload, '$.name') as name, json_extract(payload, '$.region') as region, json_extract(payload, '$.wake') as wake from records where kind = 'device.page_event'"
+    bun verify db query "select region from device_regions order by region"
     ```
 
     Expect: each `layout-on-device` returns `data.replies` of 3, and each `conversation turn`
     exits 0. The first snapshot shows "Waiting", and the second shows "Got hello", because the page
     ran in its frame and read the message. The query returns one row: `echo`, `pond` and `0`, the
-    event the page sent back, which woke nothing. When a snapshot does not list the text inside the
+    event the page sent back, which woke nothing. The region query lists `clock`, `note` and `pond`,
+    because the page gave `pond` a pointer again. When a snapshot does not list the text inside the
     frame, take a screenshot and read the page from it.
 
 ## End state
 
 - The last snapshot shows "Dentist at 3" and a time, and no "Ripples", no "Water the pots" and no
   "Bins go out tonight".
-- `device_regions` holds 2 rows, `clock` and `note`, the regions of the restored layout that hold
-  content.
+- After step 8, `device_regions` holds 2 rows, `clock` and `note`, the regions of the restored
+  layout that hold content. After step 10 it holds 3, `clock`, `note` and `pond`.
 - `device_saved_layouts` holds the one row, `evening`.
 - In step 9, the model's one call of `device.preview` returned a result with `picture` `shown`.
 - In step 10, the page in `pond` shows "Got hello", and `records` holds one `device.page_event`

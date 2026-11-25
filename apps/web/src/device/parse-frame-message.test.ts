@@ -55,3 +55,10 @@ test('#parseFrameMessage refuses an event with data past 2 KiB', () => {
     }),
   ).toStrictEqual({ status: 'refused', reason: 'nixie.send data is over 2 KiB' });
 });
+
+test('#parseFrameMessage reads a touch message', () => {
+  expect(parseFrameMessage({ nixie: true, type: 'touch' })).toStrictEqual({
+    status: 'message',
+    message: { type: 'touch' },
+  });
+});

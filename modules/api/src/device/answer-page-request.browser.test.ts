@@ -76,6 +76,16 @@ async function setupTest() {
       await view.navigate('about:blank');
       await view.navigate(front.hostURL);
     },
+
+    // opens the frame's own address as a page, as a person who copies it from the device page would
+    openFrameOnItsOwn: async () => {
+      await view.navigate(`${new URL(front.hostURL).origin}/rpc/device/frames/${holder.frame}`);
+    },
+    readTitle: async () => {
+      const title = await view.evaluate('document.title');
+
+      return String(title);
+    },
     waitForPost: (name: string) =>
       waitForCondition(
         async () => {
@@ -169,6 +179,77 @@ test('it keeps a page from reaching the network or the device page around it', a
     },
     ['/control'],
   ]);
+});
+
+test('it keeps a page from opening a connection by a resource hint, a string of markup or WebRTC', async () => {
+  const ctx = await setupTest();
+
+  const evil = ctx.front.evilOrigin;
+
+  await ctx.openPage(`<script>
+    for (const rel of ['preconnect', 'prefetch', 'prerender', 'dns-prefetch']) {
+      const hint = document.createElement('link');
+      hint.rel = rel;
+      hint.href = ${JSON.stringify(evil)} + '/' + rel;
+      document.head.append(hint);
+    }
+
+    const holder = document.createElement('div');
+    holder.innerHTML = '<' + 'link rel="preconnect" href="${evil}/inner">';
+    document.body.append(holder);
+
+    const parsed = new DOMParser().parseFromString('<' + 'link rel="preconnect" href="${evil}/parsed">', 'text/html');
+    document.body.append(document.importNode(parsed.head.firstChild ?? document.body, true));
+
+    nixie.send('probed', { peer: typeof RTCPeerConnection, prefixed: typeof webkitRTCPeerConnection });
+    setTimeout(() => nixie.send('settled'), 1500);
+  </script>`);
+
+  await ctx.waitForPost('settled');
+
+  const posts = await ctx.readPosts();
+
+  expect([
+    posts.find((post) => post.name === 'probed')?.data,
+    ctx.front.evilConnections.count,
+    ctx.front.evilRequests,
+  ]).toStrictEqual([{ peer: 'undefined', prefixed: 'undefined' }, 0, []]);
+});
+
+test('it keeps a page that opens on its own, outside the device page, from the origin of the app', async () => {
+  const ctx = await setupTest();
+
+  await ctx.openPage(`<script>
+    const results = { origin: window.origin };
+
+    for (const name of ['localStorage', 'sessionStorage']) {
+      try {
+        window[name].length;
+        results[name] = 'allowed';
+      } catch (error) {
+        results[name] = error.name;
+      }
+    }
+
+    try {
+      results.cookie = document.cookie;
+    } catch (error) {
+      results.cookie = error.name;
+    }
+
+    document.title = JSON.stringify(results);
+  </script>`);
+
+  await ctx.openFrameOnItsOwn();
+
+  const title = await ctx.readTitle();
+
+  expect(JSON.parse(title)).toStrictEqual({
+    origin: 'null',
+    localStorage: 'SecurityError',
+    sessionStorage: 'SecurityError',
+    cookie: 'SecurityError',
+  });
 });
 
 test('it hands a page the message that came before the page asked for messages', async () => {

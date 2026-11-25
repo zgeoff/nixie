@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { isJSONWithin } from './is-json-within';
 import { layoutLimits, regionBackgroundSchema } from './region-background-schema';
 import { regionEventContentSchema } from './region-content-schema';
 import { reusedIDErrors } from './reused-id-errors';
@@ -23,11 +24,6 @@ export const devicePagePaths = {
 
 export const pageEventDataLimitBytes = 2048;
 export const pageMessageLimitBytes = 16 * 1024;
-
-// JSON the size limit holds, measured as the bytes of its text
-export function isJSONWithin(value: unknown, limitBytes: number): boolean {
-  return new TextEncoder().encode(JSON.stringify(value)).byteLength <= limitBytes;
-}
 
 export const pixelsSchema = z.object({
   width: z.int().min(1).max(20_000),

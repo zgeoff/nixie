@@ -3223,6 +3223,7 @@ test('it puts the memory note before the first message of the turn and leaves th
           text: 'Memory changed: you moved to Lisbon.',
           throughSequence: 7,
           eventCount: 0,
+          sources: [],
         }),
     },
   });
@@ -3266,6 +3267,7 @@ test('it records the sequence the memory note covers on the turn end', async () 
           text: 'Memory changed: you moved to Lisbon.',
           throughSequence: 7,
           eventCount: 0,
+          sources: [],
         }),
     },
   });
@@ -3288,7 +3290,8 @@ test('it records the sequence a turn with no memory changes covers and adds no m
     credential: buildMockCredentialRef(),
     toolNames: ['notes_read'],
     memory: {
-      readTurnNote: () => Promise.resolve({ text: null, throughSequence: 4, eventCount: 0 }),
+      readTurnNote: () =>
+        Promise.resolve({ text: null, throughSequence: 4, eventCount: 0, sources: [] }),
     },
   });
 
@@ -3863,4 +3866,29 @@ test('it does not cut a reply for a task message', async () => {
   expect(script.received).toHaveLength(1);
   expect(script.cutting).toStrictEqual([]);
   expect(ended?.payload).not.toHaveProperty('cutCalls');
+});
+
+test('it counts the sources of the events block in the policy frame of the turn that reads it', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: buildMockCredentialRef(),
+    toolNames: ['notes_read'],
+    memory: {
+      readTurnNote: () =>
+        Promise.resolve({
+          text: 'Events.',
+          throughSequence: 4,
+          eventCount: 1,
+          sources: ['outside'],
+        }),
+    },
+  });
+
+  await ctx.sendMessage(runner, 'Hi.');
+
+  expect(ctx.steps.map((step) => step.session?.policy?.sources)).toStrictEqual([['outside']]);
 });

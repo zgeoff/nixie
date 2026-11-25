@@ -50,6 +50,7 @@ async function serveFrame(
       ...privateHeaders,
       'content-type': 'text/html; charset=utf-8',
       'content-security-policy': frame.policy,
+      'x-dns-prefetch-control': 'off',
     },
   });
 }

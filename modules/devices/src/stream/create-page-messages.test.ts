@@ -43,3 +43,12 @@ test('#createPageMessages keeps the messages of one device apart from another', 
 
   expect(messages.readRetained('zz9plural1', new Map([['pond', 'sh1']]))).toStrictEqual([]);
 });
+
+test('#createPageMessages gives a region no message once it was removed', () => {
+  const messages = createPageMessages();
+
+  messages.retain('dk4m7q2w9x', { region: 'pond', shown: 'sh1', data: 'one', retain: true });
+  messages.remove('dk4m7q2w9x', 'pond');
+
+  expect(messages.readRetained('dk4m7q2w9x', new Map([['pond', 'sh1']]))).toStrictEqual([]);
+});

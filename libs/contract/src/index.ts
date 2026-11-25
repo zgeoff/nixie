@@ -56,12 +56,12 @@ export type {
 } from './types';
 
 export type { DeviceEvent, PageData } from './contract/devices-contract';
+export { isJSONWithin } from './contract/is-json-within';
 
 export {
   devicePagePaths,
   pageDataSchema,
   deviceEventSchema,
-  isJSONWithin,
   pageErrorMessageLimit,
   pageEventDataLimitBytes,
   pageEventNameLimit,

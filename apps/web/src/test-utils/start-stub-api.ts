@@ -12,6 +12,7 @@ export function startStubAPI() {
 
   const delaysMs = new Map<string, number>();
   const holds = new Map<string, PromiseWithResolvers<void>>();
+  const frames = new Map<string, string>();
 
   const answerRequest = async (request: Request): Promise<Response> => {
     const path = new URL(request.url).pathname;
@@ -29,6 +30,12 @@ export function startStubAPI() {
     }
 
     await holds.get(path)?.promise;
+
+    const frame = frames.get(path);
+
+    if (frame !== undefined) {
+      return new Response(frame, { headers: { 'content-type': 'text/html; charset=utf-8' } });
+    }
 
     return runMockAPIRequest(request);
   };
@@ -50,6 +57,11 @@ export function startStubAPI() {
   return {
     requests,
     url: `http://127.0.0.1:${server.port}`,
+
+    // Answers a request for this ticket's frame with this document, as the API answers one.
+    serveFrame: (ticket: string, html: string) => {
+      frames.set(`/rpc/device/frames/${ticket}`, html);
+    },
 
     // Holds back each answer to this path, so a test sees the page before the data lands.
     delayPath: (path: string, delayMs: number) => {

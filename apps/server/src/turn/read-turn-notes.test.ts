@@ -65,6 +65,7 @@ test('it lists a memory change beside the other events in one events message, an
     ].join('\n'),
     throughSequence: last.sequence,
     eventCount: 2,
+    sources: [],
   });
 });
 
@@ -150,7 +151,12 @@ test('it renders no note when nothing happened since the last turn', async () =>
 
   invariant(turn);
 
-  expect(note).toStrictEqual({ text: null, throughSequence: turn.sequence, eventCount: 0 });
+  expect(note).toStrictEqual({
+    text: null,
+    throughSequence: turn.sequence,
+    eventCount: 0,
+    sources: [],
+  });
 });
 
 test('it reads the note over a span given, headed as the turns it covers, and leaves out what came after the span', async () => {
@@ -192,5 +198,6 @@ test('it reads the note over a span given, headed as the turns it covers, and le
     ].join('\n'),
     throughSequence: last.sequence,
     eventCount: 1,
+    sources: [],
   });
 });

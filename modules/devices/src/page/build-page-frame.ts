@@ -19,14 +19,17 @@ export interface PageFrameInput {
 }
 
 export interface PageFrame {
+  // the policy as a response header carries it, which also seals the document into an opaque origin
+  // when it opens on its own
   readonly policy: string;
   readonly document: string;
 }
 
-// The sealed page: the document and its content-security policy. The policy opens images only to
-// the declared URLs and `data:`, because the frame's opaque origin can't use `'self'`.
+// The sealed page: the document and its content-security policy. Images open only to the declared
+// URLs and `data:`, because the opaque origin can't use `'self'`. Trusted types route each markup
+// string through the bridge's policy, which keeps out the link elements no directive stops.
 export function buildPageFrame(input: PageFrameInput): PageFrame {
-  const policy = [
+  const directives = [
     "default-src 'none'",
     "script-src 'unsafe-inline'",
     "style-src 'unsafe-inline'",
@@ -35,7 +38,13 @@ export function buildPageFrame(input: PageFrameInput): PageFrame {
     "connect-src 'none'",
     "form-action 'none'",
     "base-uri 'none'",
-  ].join('; ');
+    "require-trusted-types-for 'script'",
+    'trusted-types default',
+  ];
+
+  // a sandbox directive in a meta tag is ignored, and a frame that a file serves has the sandbox
+  // attribute of its host
+  const policy = [...directives, 'sandbox allow-scripts'].join('; ');
 
   const slots = {
     IMAGES: toScriptJSON(Object.fromEntries(input.images)),
@@ -48,7 +57,7 @@ export function buildPageFrame(input: PageFrameInput): PageFrame {
   );
 
   const meta = input.isPolicyInline
-    ? `<meta http-equiv="Content-Security-Policy" content="${policy}">`
+    ? `<meta http-equiv="Content-Security-Policy" content="${directives.join('; ')}">`
     : '';
 
   const document =

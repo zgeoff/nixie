@@ -67,6 +67,20 @@ test('it lists a page event that did not wake the conversation, with the page te
   );
 });
 
+test('it counts the content of a listed page event as from outside', async () => {
+  const ctx = await setupTest();
+
+  await ctx.writeEvent({ name: 'touched', wake: false, data: 7 });
+
+  const block = await readEventsBlock(
+    ctx.registry,
+    { after: 0, through: 100 },
+    { ownerName: 'Avery', timeZone: 'UTC' },
+  );
+
+  expect(block.sources).toStrictEqual(['outside']);
+});
+
 test('it leaves out a page event that woke the conversation, which its inbox shows', async () => {
   const ctx = await setupTest();
 
@@ -78,7 +92,7 @@ test('it leaves out a page event that woke the conversation, which its inbox sho
     { ownerName: 'Avery', timeZone: 'UTC' },
   );
 
-  expect(block).toStrictEqual({ text: null, count: 0 });
+  expect(block).toStrictEqual({ text: null, count: 0, sources: [] });
 });
 
 test('it lists each event once, and no event past the range', async () => {

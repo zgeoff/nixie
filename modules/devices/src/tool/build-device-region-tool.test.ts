@@ -1073,3 +1073,69 @@ test('it shows a permanent value again after 50 timed updates over it expire tog
     markdown: 'base',
   });
 });
+
+test('it keeps the retained message and the tickets of a page away from a temporary markdown update that ends with previous', async () => {
+  const ctx = await setupTest();
+  const device = await ctx.seed.screenOnDevice();
+
+  ctx.streams.open(device.deviceID, { width: 1920, height: 480, pixelRatio: 1 });
+
+  await ctx.seed.layout(device.deviceID);
+
+  await ctx.call('device.region', {
+    device: device.deviceID,
+    region: 'pond',
+    content: { kind: 'html', html: '<p>ripples</p>' },
+  });
+
+  const page = await ctx.readLayout(device.deviceID);
+
+  const shown = page?.regions.find((region) => region.name === 'pond')?.shown?.shownID ?? '';
+  const tickets = ctx.streams.tickets.issue(device.deviceID, 'pond', shown, []);
+
+  ctx.streams.messages.retain(device.deviceID, {
+    region: 'pond',
+    shown,
+    data: { ripples: 3 },
+    retain: true,
+  });
+
+  await ctx.call('device.region', {
+    device: device.deviceID,
+    region: 'pond',
+    content: { kind: 'markdown', markdown: 'Bins go out tonight' },
+    minutes: 10,
+    // oxlint-disable-next-line unicorn/no-thenable -- the tool's input is named then
+    then: 'previous',
+  });
+
+  ctx.clock.advance(11 * 60_000);
+
+  const back = await ctx.readLayout(device.deviceID);
+
+  expect([
+    back?.regions.find((region) => region.name === 'pond')?.shown?.shownID,
+    ctx.streams.messages.readRetained(device.deviceID, new Map([['pond', shown]])),
+    ctx.streams.tickets.read(tickets.frame),
+  ]).toStrictEqual([shown, [], null]);
+});
+
+test('it fails a call for a page that holds a link element, and says why', async () => {
+  const ctx = await setupTest();
+  const device = await ctx.seed.screenOnDevice();
+
+  ctx.streams.open(device.deviceID, { width: 1920, height: 480, pixelRatio: 1 });
+
+  await ctx.seed.layout(device.deviceID);
+
+  const outcome = await ctx.call('device.region', {
+    device: device.deviceID,
+    region: 'pond',
+    content: { kind: 'html', html: '<link rel="preconnect" href="https://tides.example">' },
+  });
+
+  expect(outcome).toMatchObject({
+    status: 'error',
+    message: expect.stringContaining('a page cannot hold a link element'),
+  });
+});

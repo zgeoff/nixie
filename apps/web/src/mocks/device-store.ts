@@ -38,11 +38,17 @@ const layoutHolder: { layout: Extract<DeviceEvent, { kind: 'layout' }>['layout']
   layout: null,
 };
 
+// the messages the stream sends to a device right after its layout, which a test sets
+const messageHolder: { messages: readonly Extract<DeviceEvent, { kind: 'message' }>[] } = {
+  messages: [],
+};
+
 export const deviceStore = {
   resizes,
   pageErrors,
   pageEvents,
   layoutHolder,
+  messageHolder,
   sessionsWithoutDevice,
   hasDevice: (sessionID: string): boolean =>
     sessionsWithoutDevice.findFirst((query) => query.where({ sessionID })) === undefined,
@@ -53,5 +59,6 @@ export const deviceStore = {
     sessionsWithoutDevice.clear();
 
     layoutHolder.layout = null;
+    messageHolder.messages = [];
   },
 };

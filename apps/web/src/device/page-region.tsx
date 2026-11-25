@@ -1,6 +1,6 @@
 import { devicePagePaths } from '@heynixie/contract';
 import type { ReactNode } from 'react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { css } from '../styled-system/css';
 import { parseFrameMessage } from './parse-frame-message';
 import type { PageDelivery } from './use-device-events';
@@ -18,6 +18,9 @@ export interface PageRegionProps {
   // each message that the assistant sent since the stream opened, oldest first
   readonly messages: readonly PageDelivery[];
   readonly onFail: (message: string) => void;
+
+  // called when the page's frame sees a touch or a pointer move, which never reaches this page
+  readonly onTouch: (() => void) | undefined;
 }
 
 const frameStyle = css({ border: '0', display: 'block', height: '100%', width: '100%' });
@@ -33,8 +36,10 @@ export function PageRegion(props: PageRegionProps): ReactNode {
   const region = props.region;
   const shown = props.shown;
   const onFail = props.onFail;
+  const onTouch = props.onTouch;
 
-  useEffect(() => {
+  // a layout effect, so the listener is in place before the frame's first script can post
+  useLayoutEffect(() => {
     const listen = (event: MessageEvent): void => {
       if (event.source === null || event.source !== frame.current?.contentWindow) {
         return;
@@ -54,6 +59,8 @@ export function PageRegion(props: PageRegionProps): ReactNode {
 
       if (message.type === 'ready') {
         setReadyCount((count) => count + 1);
+      } else if (message.type === 'touch') {
+        onTouch?.();
       } else if (message.type === 'error') {
         onFail(message.message);
       } else {
@@ -66,7 +73,7 @@ export function PageRegion(props: PageRegionProps): ReactNode {
     return () => {
       window.removeEventListener('message', listen);
     };
-  }, [region, shown, onFail, sendEvent]);
+  }, [region, shown, onFail, onTouch, sendEvent]);
 
   useEffect(() => {
     const target = frame.current?.contentWindow;
@@ -99,6 +106,7 @@ export function PageRegion(props: PageRegionProps): ReactNode {
     <iframe
       className={frameStyle}
       data-testid={`page-${region}`}
+      ref={frame}
       referrerPolicy="no-referrer"
       sandbox="allow-scripts"
       src={`${devicePagePaths.frames}${props.frame}`}

@@ -41,17 +41,36 @@ const hostScript = `
 // sealed page may cause.
 export function startPageFrameFront(options: PageFrameFrontOptions) {
   const evilRequests: string[] = [];
+  const evilConnections = { count: 0 };
 
-  const answerEvil = (request: Request): Response => {
-    evilRequests.push(new URL(request.url).pathname);
+  // a raw TCP listener, so a connection that sends no request, such as a preconnect, counts too
+  const evil = Bun.listen({
+    hostname: '127.0.0.1',
+    port: 0,
+    socket: {
+      open: () => {
+        evilConnections.count += 1;
+      },
+      data: (socket, data) => {
+        const line = new TextDecoder().decode(data).split('\r\n')[0] ?? '';
 
-    return new Response('evil', { headers: { 'access-control-allow-origin': '*' } });
-  };
+        evilRequests.push(line.split(' ')[1] ?? '');
 
-  const evil = Bun.serve({ fetch: answerEvil, hostname: '127.0.0.1', port: 0 });
+        socket.write(
+          'HTTP/1.1 200 OK\r\nconnection: close\r\ncontent-length: 4\r\naccess-control-allow-origin: *\r\n\r\nevil',
+        );
+
+        socket.end();
+      },
+    },
+  });
 
   const answerFront = (request: Request): Promise<Response> | Response => {
     const url = new URL(request.url);
+
+    if (url.pathname === '/favicon.ico') {
+      return new Response(null, { status: 204 });
+    }
 
     if (url.pathname === '/host') {
       return new Response(
@@ -70,11 +89,14 @@ export function startPageFrameFront(options: PageFrameFrontOptions) {
   const front = Bun.serve({ fetch: answerFront, hostname: '127.0.0.1', port: 0 });
 
   onTestFinished(async () => {
-    await Promise.all([evil.stop(true), front.stop(true)]);
+    evil.stop(true);
+
+    await front.stop(true);
   });
 
   return {
     evilRequests,
+    evilConnections,
     evilOrigin: `http://127.0.0.1:${String(evil.port)}`,
     hostURL: `http://127.0.0.1:${String(front.port)}/host`,
   };

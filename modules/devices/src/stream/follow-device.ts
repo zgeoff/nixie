@@ -79,8 +79,13 @@ export async function* followDevice(
         yield layoutState;
       }
 
+      // the first pass sends each region's retained state, then the messages that queued before it
+      // and that no state keeps
       const messages = sent.isFirst
-        ? options.streams.messages.readRetained(device.deviceID, collectShownIDs(layout))
+        ? [
+            ...options.streams.messages.readRetained(device.deviceID, collectShownIDs(layout)),
+            ...queued.filter((message) => !message.retain),
+          ]
         : queued;
 
       sent.isFirst = false;

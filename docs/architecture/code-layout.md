@@ -163,7 +163,7 @@ Each module package covers one area of the architecture, and its doc covers the 
 | `prompts`     | The built-in [prompts](core/prompts.md), their parts and templates, and the render that applies the overrides                                   |
 | `policy`      | [The decision point](policy/decision-point.md) and its fixed rules                                                                              |
 | `api`         | [The API](channels/api.md): the oRPC router, device sessions and the live stream                                                                |
-| `devices`     | [Devices](channels/devices.md): the device record, the screen state, the open streams and the device tools                                      |
+| `devices`     | [Devices](channels/devices.md): the device record, the screen state, the layouts, the open streams and the device tools                         |
 | `sandbox`     | The [sandbox adapter](connectors/sandboxes.md) interface, sandboxes by kind and the sandbox double                                              |
 | `tools`       | The [tool endpoint](connectors/tool-calls.md) per task run                                                                                      |
 | `credentials` | The [credential store](connectors/credentials.md): the reference resolver, the fetcher, the model grant and the own-value set                   |

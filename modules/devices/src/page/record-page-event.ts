@@ -35,37 +35,37 @@ export interface PageEventReport {
 
 // Keeps an event that a page sent. The event is stale when the screen is off or the region shows
 // no page or other content, and dropped when the region sent too many; neither keeps anything.
-// A wake past the device's hourly limit is written with no wake.
+// A wake past the hourly limit is written with no wake. Every check runs in the write's transaction.
 export async function recordPageEvent(
   sink: PageEventSink,
   device: Device,
   report: PageEventReport,
 ): Promise<'recorded' | 'stale' | 'dropped'> {
-  const nowMs = sink.clock.now();
-
   if (!device.capabilities.screen) {
     return 'stale';
   }
 
-  const layout = await readLayout(sink.log, device.deviceID, nowMs);
+  const outcome = await withWriteTransaction(sink.log.writer, async (tx) => {
+    const inTransaction = { ...sink.log, writer: { ...sink.log.writer, db: tx } };
+    const nowMs = sink.clock.now();
 
-  const region = layout?.regions.find((candidate) => candidate.name === report.region);
+    const layout = await readLayout(inTransaction, device.deviceID, nowMs);
 
-  if (region?.shown?.shownID !== report.shown || region.shown.content.kind !== 'html') {
-    return 'stale';
-  }
+    const region = layout?.regions.find((candidate) => candidate.name === report.region);
 
-  if (!sink.streams.eventLimits.admit(device.deviceID, report.region, nowMs)) {
-    sink.onDrop('region_rate', report.region);
+    if (region?.shown?.shownID !== report.shown || region.shown.content.kind !== 'html') {
+      return 'stale';
+    }
 
-    return 'dropped';
-  }
+    if (!sink.streams.eventLimits.admit(device.deviceID, report.region, nowMs)) {
+      return 'dropped';
+    }
 
-  const hasRoom = report.wake ? await probeWakeRoom(sink.log, device.deviceID, nowMs) : false;
-  const wake = report.wake && hasRoom;
+    const hasRoom = report.wake
+      ? await probeWakeRoom(inTransaction, device.deviceID, nowMs)
+      : false;
 
-  await withWriteTransaction(sink.log.writer, (tx) =>
-    sink.writeEvent(tx, {
+    await sink.writeEvent(tx, {
       kind: devicePageEventCodec.kind,
       definitions: sink.definitions(),
       thread: sink.thread,
@@ -76,11 +76,17 @@ export async function recordPageEvent(
         region: report.region,
         shown: report.shown,
         name: report.name,
-        wake,
+        wake: report.wake && hasRoom,
       }),
       erasable: { data: report.data ?? null },
-    }),
-  );
+    });
 
-  return 'recorded';
+    return 'recorded';
+  });
+
+  if (outcome === 'dropped') {
+    sink.onDrop('region_rate', report.region);
+  }
+
+  return outcome;
 }

@@ -15,6 +15,9 @@ export interface LayoutViewProps {
 
   // each message that the assistant sent into a page since the stream opened
   readonly messages?: readonly PageDelivery[];
+
+  // called when a page's frame sees a touch, which its own window keeps from the device page
+  readonly onTouch?: () => void;
 }
 
 const grid = css({
@@ -64,6 +67,7 @@ export function LayoutView(props: LayoutViewProps): ReactNode {
             <RegionBody
               content={region.content}
               messages={props.messages ?? []}
+              onTouch={props.onTouch}
               onFail={(message) => {
                 if (region.shown !== null) {
                   report({ region: region.name, shown: region.shown, message });
@@ -90,6 +94,7 @@ interface RegionBodyProps {
   readonly shown: string | null;
   readonly messages: readonly PageDelivery[];
   readonly onFail: (message: string) => void;
+  readonly onTouch: (() => void) | undefined;
 }
 
 // the padding scales with the text, so a small region keeps room for its text
@@ -119,8 +124,10 @@ function RegionBody(props: RegionBodyProps): ReactNode {
     return props.shown === null ? null : (
       <PageRegion
         frame={content.frame}
+        key={`${props.shown}/${content.frame}`}
         messages={props.messages}
         onFail={props.onFail}
+        onTouch={props.onTouch}
         region={props.region}
         shown={props.shown}
       />

@@ -833,3 +833,46 @@ test('#followDevice sends no retained message to a page that new content replace
 
   expect(ended).toStrictEqual({ done: true, value: undefined });
 });
+
+test('#followDevice sends a message that arrives while the first events are read', async () => {
+  const ctx = await setupTest();
+  const device = await ctx.seed.screenOnDevice();
+
+  ctx.streams.open(device.deviceID, { width: 1920, height: 480, pixelRatio: 1 });
+
+  await ctx.seed.layout(device.deviceID);
+
+  await ctx.call('device.region', {
+    device: device.deviceID,
+    region: 'pond',
+    content: { kind: 'html', html: '<p>secret-markup</p>' },
+  });
+
+  const events = ctx.follow(device.deviceID);
+  const first = events.next();
+
+  await ctx.call('device.sendToPage', {
+    device: device.deviceID,
+    region: 'pond',
+    data: { ripples: 3 },
+  });
+
+  await first;
+
+  await events.next();
+
+  const message = await events.next();
+
+  ctx.stop();
+
+  expect(message).toStrictEqual({
+    done: false,
+    value: {
+      kind: 'message',
+      region: 'pond',
+      shown: expect.toBeString(),
+      data: { ripples: 3 },
+      retain: false,
+    },
+  });
+});

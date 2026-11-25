@@ -14,6 +14,7 @@ export function buildPageEventKind(
 ): EventKind<RenderedPageEvent> {
   return {
     name: 'page_event',
+    source: 'outside',
     read: async (range) => {
       const records = await readRecords(log, {
         afterSequence: range.after,

@@ -360,3 +360,103 @@ test('it draws no frame for a page region whose content ID is missing', () => {
 
   expect(rendered.queryByTestId('page-pond')).toBeNull();
 });
+
+test('it loads a page that replaces another page in a new frame', () => {
+  const rendered = render(
+    <LayoutView
+      layout={{
+        columns: ['1fr'],
+        rows: ['1fr'],
+        regions: [
+          {
+            name: 'pond',
+            column: 1,
+            row: 1,
+            columnSpan: 1,
+            rowSpan: 1,
+            background: null,
+            content: { kind: 'html', frame: 'f1', images: [] },
+            shown: 'sh1',
+            until: null,
+          },
+        ],
+      }}
+    />,
+  );
+
+  const first = rendered.getByTestId('page-pond');
+
+  rendered.rerender(
+    <LayoutView
+      layout={{
+        columns: ['1fr'],
+        rows: ['1fr'],
+        regions: [
+          {
+            name: 'pond',
+            column: 1,
+            row: 1,
+            columnSpan: 1,
+            rowSpan: 1,
+            background: null,
+            content: { kind: 'html', frame: 'f2', images: [] },
+            shown: 'sh2',
+            until: null,
+          },
+        ],
+      }}
+    />,
+  );
+
+  expect(rendered.getByTestId('page-pond')).not.toBe(first);
+});
+
+test('it keeps the frame of a page while the page stays', () => {
+  const rendered = render(
+    <LayoutView
+      layout={{
+        columns: ['1fr'],
+        rows: ['1fr'],
+        regions: [
+          {
+            name: 'pond',
+            column: 1,
+            row: 1,
+            columnSpan: 1,
+            rowSpan: 1,
+            background: null,
+            content: { kind: 'html', frame: 'f1', images: [] },
+            shown: 'sh1',
+            until: null,
+          },
+        ],
+      }}
+    />,
+  );
+
+  const first = rendered.getByTestId('page-pond');
+
+  rendered.rerender(
+    <LayoutView
+      layout={{
+        columns: ['1fr'],
+        rows: ['1fr'],
+        regions: [
+          {
+            name: 'pond',
+            column: 1,
+            row: 1,
+            columnSpan: 1,
+            rowSpan: 1,
+            background: null,
+            content: { kind: 'html', frame: 'f1', images: [] },
+            shown: 'sh1',
+            until: null,
+          },
+        ],
+      }}
+    />,
+  );
+
+  expect(rendered.getByTestId('page-pond')).toBe(first);
+});

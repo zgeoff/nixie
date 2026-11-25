@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test';
 import { buildMockLogRecord } from '@heynixie/log/test-utils';
 import { buildStepPolicyFrame } from './build-step-policy-frame';
+import { collectRecordSources } from './collect-record-sources';
 
 test('it marks a step that opens with a page event as holding content from outside', () => {
   const pageEvent = buildMockLogRecord({
@@ -11,7 +12,8 @@ test('it marks a step that opens with a page event as holding content from outsi
     payload: { wake: true },
   });
 
-  expect(buildStepPolicyFrame({ kind: 'conversation' }, [pageEvent]).sources).toStrictEqual([
-    'outside',
-  ]);
+  expect(
+    buildStepPolicyFrame({ kind: 'conversation' }, [pageEvent], collectRecordSources([pageEvent]))
+      .sources,
+  ).toStrictEqual(['outside']);
 });

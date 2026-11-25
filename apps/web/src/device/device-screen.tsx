@@ -52,18 +52,18 @@ export function DeviceScreen(props: DeviceScreenProps): ReactNode {
   useWakeLock(events.connection === 'open');
   useScreenResize(true, serverPixels);
 
-  const isRevealed = useRevealOnTouch();
+  const touch = useRevealOnTouch();
   const surface = pickSurface(events.event, events.layout);
 
   return (
     <>
       {events.layout === null ? null : (
         <div className={surface.kind === 'layout' ? undefined : covered}>
-          <LayoutView layout={events.layout} messages={events.messages} />
+          <LayoutView layout={events.layout} messages={events.messages} onTouch={touch.reveal} />
         </div>
       )}
       {surface.kind === 'layout' ? null : <ScreenView blocks={surface.blocks} />}
-      <div className={controls} style={{ visibility: isRevealed ? 'visible' : 'hidden' }}>
+      <div className={controls} style={{ visibility: touch.isRevealed ? 'visible' : 'hidden' }}>
         <button onClick={props.onClose} type="button">
           Close
         </button>

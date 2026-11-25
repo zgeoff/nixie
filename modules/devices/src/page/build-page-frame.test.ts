@@ -26,6 +26,9 @@ test('#buildPageFrame gives the page no network and no outside files', () => {
     "connect-src 'none'",
     "form-action 'none'",
     "base-uri 'none'",
+    "require-trusted-types-for 'script'",
+    'trusted-types default',
+    'sandbox allow-scripts',
   ]);
 });
 
@@ -56,7 +59,7 @@ test('#buildPageFrame keeps a closing script tag in an image ID out of the bridg
   expect(frame.document.split('</script>')).toHaveLength(2);
 });
 
-test('#buildPageFrame puts the policy in a meta tag for a frame that a file serves', () => {
+test('#buildPageFrame puts the policy in a meta tag, with no sandbox directive, for a frame that a file serves', () => {
   const frame = buildPageFrame({
     html: '<p></p>',
     images: new Map(),
@@ -66,7 +69,7 @@ test('#buildPageFrame puts the policy in a meta tag for a frame that a file serv
   });
 
   expect(frame.document).toContain(
-    `<meta http-equiv="Content-Security-Policy" content="${frame.policy}">`,
+    `<meta http-equiv="Content-Security-Policy" content="${frame.policy.replace('; sandbox allow-scripts', '')}">`,
   );
 });
 

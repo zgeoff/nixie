@@ -76,3 +76,31 @@ test('#applyDeviceEvent keeps the screen event that a show sent', () => {
 
   expect(after.event).toStrictEqual({ kind: 'idle', scene: [] });
 });
+
+test('#applyDeviceEvent keeps the newest retained message of a region after 200 newer ones', () => {
+  const ctx = setupTest();
+
+  const withRetained = applyDeviceEvent(ctx.start, {
+    kind: 'message',
+    region: 'pond',
+    shown: 'sh1',
+    data: 'state',
+    retain: true,
+  });
+
+  const after = Array.from({ length: 200 }, (_, index) => index).reduce(
+    (current, index) =>
+      applyDeviceEvent(current, {
+        kind: 'message',
+        region: 'note',
+        shown: 'sh2',
+        data: index,
+        retain: false,
+      }),
+    withRetained,
+  );
+
+  expect([after.messages.length, after.messages[0]?.data, after.messages[0]?.retain]).toStrictEqual(
+    [201, 'state', true],
+  );
+});

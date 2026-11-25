@@ -30,6 +30,10 @@ export interface PageTickets {
     images: readonly string[],
   ) => IssuedTickets;
 
+  // Drops the tickets of a region, for content that replaces the page it showed. Returning to that
+  // page later gets new tickets.
+  readonly remove: (deviceID: string, region: string) => void;
+
   // what the ticket opens, or null for a ticket that nobody issued or that new content replaced
   readonly read: (ticket: string) => PageTicket | null;
 }
@@ -85,6 +89,16 @@ export function createPageTickets(): PageTickets {
         frame: held.frame,
         images: images.map((image) => ({ image, ticket: held.images.get(image) ?? '' })),
       };
+    },
+    remove: (deviceID, region) => {
+      const key = `${deviceID}\u0000${region}`;
+      const earlier = regions.get(key);
+
+      if (earlier !== undefined) {
+        drop(earlier);
+
+        regions.delete(key);
+      }
     },
     read: (ticket) => tickets.get(ticket) ?? null,
   };

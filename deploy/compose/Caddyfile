@@ -1,15 +1,20 @@
 # One origin for nixie: the API and nixie's health endpoint go to nixie, and every other path to the
-# web client, so the browser's session cookie reaches both. HTTPS terminates in front of this origin.
-# Caddy writes the request address into its error log, even with no access log, so the log drops the
-# ticket that the watch socket carries in its query.
+# web client, so the browser's session cookie reaches both. HTTPS terminates in front of this origin,
+# on loopback or a private address, and the proxy keeps the forwarded protocol and host it sends:
+# nixie builds the URLs of a device page's images from them.
+# Caddy writes the request address into its error log, even with no access log, so the log drops
+# each bearer ticket from it: the one in the watch socket's query, and the one that ends the path of
+# a device page's frame or image.
 {
+	servers {
+		trusted_proxies static private_ranges
+	}
+
 	log {
 		format filter {
 			wrap json
 			fields {
-				request>uri query {
-					delete ticket
-				}
+				request>uri regexp `(/rpc/device/(?:frames|images)/|[?&]ticket=)[^/?&#]+` `${1}REDACTED`
 			}
 		}
 	}
