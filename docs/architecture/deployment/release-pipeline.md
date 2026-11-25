@@ -300,9 +300,11 @@ when that release does not start.
 The config schema check lists each change between two copies of `config.schema.json` that can refuse
 a `config.yaml` the older copy accepts: a removed or newly required key, a narrower type, bound or
 value list, or a new pattern. A change it cannot prove harmless counts as breaking, so the list can
-hold a false alarm but never misses a break. The check compares the choices of a `oneOf` one by one
-only when a required string tag, such as a model profile's `harness`, keeps them apart. It counts
-any other `oneOf` change as breaking.
+hold a false alarm but never misses a break. A changed pattern counts as breaking unless it keeps
+the older pattern's literal prefix and opens the one character class after it to `.`, and that class
+can never match a line terminator. The check compares the choices of a `oneOf` one by one only when
+a required string tag, such as a model profile's `harness`, keeps them apart. It counts any other
+`oneOf` change as breaking.
 
 On a pull request, the check compares with the copy on the pull request's base, so each pull request
 answers only for the change it adds. A pull request with a breaking change fails until its title
