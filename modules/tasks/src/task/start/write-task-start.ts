@@ -87,7 +87,10 @@ async function writeStartAttempt(
   request: TaskStartRequest,
   step: StepRunRef,
 ): Promise<TaskStartOutcome | null> {
-  const earlier = await readStartedTask(context, step.stepKey, request.name);
+  const earlier = await readStartedTask(context, step.stepKey, {
+    name: request.name,
+    runner: request.runner,
+  });
 
   return withWriteTransaction(context.log.writer, async (tx) => {
     const hop = await readLeasedStepHop(tx, request.from, step, context.clock.now());
@@ -167,12 +170,18 @@ interface StartedTask {
   readonly stepTaskCount: number;
 }
 
+interface StartIdentity {
+  readonly name: string;
+  readonly runner: string;
+}
+
 // A rerun of a step that crashed after its start committed calls the start again with the same
-// name, and gets the task the first run started.
+// name and runner, and gets the task the first run started. A task of another runner that holds the
+// same name is a different start.
 async function readStartedTask(
   context: Pick<TasksContext, 'log'>,
   stepKey: string,
-  name: string,
+  identity: StartIdentity,
 ): Promise<StartedTask> {
   const rows = await context.log.writer.db
     .$extendTables<TasksTables>()
@@ -193,7 +202,9 @@ async function readStartedTask(
 
   const match = created.find(
     (entry) =>
-      entry.record.erasable.status === 'readable' && entry.record.erasable.fields['name'] === name,
+      entry.record.erasable.status === 'readable' &&
+      entry.record.erasable.fields['name'] === identity.name &&
+      entry.record.payload['runner'] === identity.runner,
   );
 
   return {

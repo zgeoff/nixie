@@ -101,10 +101,14 @@ async function setupTest() {
     tool,
     watcherTool,
     context,
-    callStart: (input: Record<string, string>, rules: readonly { id: string; tools: string[] }[]) =>
+    callStart: (
+      input: Record<string, string>,
+      rules: readonly { id: string; tools: string[] }[],
+      toolName = input['runner'] === 'watcher' ? 'watcher.start' : 'task.start',
+    ) =>
       runToolCall(
         {
-          tool: input['runner'] === 'watcher' ? 'watcher.start' : 'task.start',
+          tool: toolName,
           input,
           toolUseID: null,
         },
@@ -277,12 +281,13 @@ test('it refuses a sandbox start with no persona and memory read before the star
   expect([created, proposals]).toStrictEqual([[], []]);
 });
 
-test('it refuses a task.start input that names another runner, and starts nothing', async () => {
+test('it refuses a task.start input that holds the fields of another registered runner, and starts nothing', async () => {
   const ctx = await setupTest();
 
   const result = await ctx.callStart(
-    { runner: 'watcher-as-sandbox', name: 'Night watch', brief: 'Watch the build.' },
+    { runner: 'watcher', name: 'Night watch', brief: 'Watch the build.', target: 'build' },
     [],
+    'task.start',
   );
 
   expect(result.isError).toBe(true);

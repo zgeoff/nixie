@@ -59,7 +59,7 @@ export async function readBriefStartCalls(
     .select('sequence')
     .where('kind', '=', 'tool_called')
     .where('thread', '=', starter)
-    .where(sql`json_extract(payload, '$.tool')`, '=', 'task.start')
+    .where(sql`json_extract(payload, '$.tool')`, 'in', ['task.start', 'coding.start'])
     .execute();
 
   if (calls.length === 0) {

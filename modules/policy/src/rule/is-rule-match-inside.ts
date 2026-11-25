@@ -40,7 +40,7 @@ function isPatternListInside(
 }
 
 // A tool pattern matches a call by its whole name or by the tool before a variant, so an exact
-// variant such as task.start/atc lies inside a pattern that matches its tool.
+// variant such as task.start/sandbox lies inside a pattern that matches its tool.
 function isToolPatternInside(inner: string, outer: string): boolean {
   const [tool = inner] = inner.split('/', 1);
 

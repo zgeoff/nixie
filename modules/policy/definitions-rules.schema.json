@@ -17,7 +17,7 @@
         ]
       },
       "tools": {
-        "description": "Tool names, such as mail.send, or a tool variant, such as task.start/atc",
+        "description": "Tool names, such as mail.send, or a tool variant, such as task.start/sandbox",
         "minItems": 1,
         "type": "array",
         "items": {

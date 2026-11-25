@@ -6,6 +6,9 @@ import type { APIContext } from '../types';
 interface TaskStartSeed {
   readonly name: string;
   readonly brief: string;
+
+  // the tool of the starter's call; task.start when absent
+  readonly tool?: string;
 }
 
 interface TaskStartCall {
@@ -32,7 +35,12 @@ export async function seedTaskStartCall(
       kind: 'tool_called',
       definitions: context.definitions(),
       thread: 'conversation',
-      payload: { callID: 'call-1', runID: 'conversation', toolUseID: null, tool: 'task.start' },
+      payload: {
+        callID: 'call-1',
+        runID: 'conversation',
+        toolUseID: null,
+        tool: start.tool ?? 'task.start',
+      },
       erasable: { input: { name: start.name, brief: start.brief } },
     },
   ]);
@@ -97,7 +105,12 @@ export async function seedUnansweredStartCall(
       kind: 'tool_called',
       definitions: context.definitions(),
       thread: 'conversation',
-      payload: { callID: 'call-1', runID: 'conversation', toolUseID: null, tool: 'task.start' },
+      payload: {
+        callID: 'call-1',
+        runID: 'conversation',
+        toolUseID: null,
+        tool: start.tool ?? 'task.start',
+      },
       erasable: { input: { name: start.name, brief: start.brief } },
     },
   ]);

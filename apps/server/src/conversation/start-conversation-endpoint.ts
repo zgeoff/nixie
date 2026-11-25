@@ -55,14 +55,13 @@ import {
 import type { ActionQueue, ToolDefinition, ToolEndpoint } from '@heynixie/tools';
 import { buildToolRegistry, findToolDeclaration, startToolEndpoint } from '@heynixie/tools';
 import { buildContactTool } from '../cli/build-contact-tool';
-import type { BuildCodingStart } from '../coding/build-server-coding-tools';
 import { buildForgetRetryTool } from '../forget/build-forget-retry-tool';
 import { buildForgetStuckTool } from '../forget/build-forget-stuck-tool';
 import { buildMandateTool } from '../rule/build-mandate-tool';
 import { buildRulesListTool } from '../rule/build-rules-list-tool';
 import { makeReadZone } from '../server/make-read-zone';
 import { buildTaskStartBounds } from '../task/build-task-start-bounds';
-import type { ServerParts } from '../types';
+import type { BuildCodingStart, ServerParts } from '../types';
 import { buildTaskMessaging } from '../utils/build-task-messaging';
 import type { DecisionPointFactory } from '../utils/make-server-decisions';
 import { buildConversationMemoryTools } from './build-conversation-memory-tools';

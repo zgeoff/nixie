@@ -18,7 +18,8 @@ export type { ReportFieldsRun } from './run-report-fields-probe';
 export { runReportFieldsProbe } from './run-report-fields-probe';
 export { runResumeAtProbe } from './run-resume-at-probe';
 export type { StartToolsRun } from './run-start-tools-probe';
-export { runStartToolsProbe, startToolNames } from './run-start-tools-probe';
+export { runStartToolsProbe } from './run-start-tools-probe';
+export { startToolNames } from './start-tool-names';
 export { runSystemBlocksProbe } from './run-system-blocks-probe';
 
 export {

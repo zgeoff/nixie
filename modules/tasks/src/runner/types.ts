@@ -61,13 +61,13 @@ export type RunnerStartPlan<Options> =
     }
   | { readonly status: 'refused'; readonly sentence: string };
 
-// One variant of the start tool's input, with its own typed input and options.
+// One runner's start, with its own typed input and options.
 export interface RunnerStart<Input extends TaskStartEnvelope, Options> {
-  // a strict object; `runner` is optional only on the default runner's variant
+  // a strict object
   readonly schema: z.ZodType<Input>;
   readonly describeInput: (bounds: TaskStartBounds) => JsonSchema;
 
-  // the declaration of `task.start/<key>`
+  // the declaration of the start tool of this runner
   readonly declaration: StartDeclaration;
   readonly plan: (
     start: Input,

@@ -23,7 +23,7 @@ import { seedConversationStep } from '../test-utils/seed-conversation-step';
 import { seedTask } from '../test-utils/seed-task';
 import { startTestTasks } from '../test-utils/start-test-tasks';
 import type { TasksTables } from '../types';
-import { buildRunnerStartTool, buildTaskStartTool } from './build-task-start-tool';
+import { buildTaskStartTool } from './build-task-start-tool';
 
 async function setupTest() {
   const tasks = await startTestTasks();
@@ -1177,21 +1177,4 @@ test("it advertises only the default runner's input, as a plain object with no o
 
   expect(Object.keys(tool.input)).not.toIncludeAnyMembers(['oneOf', 'anyOf', 'allOf', 'not']);
   expect(Object.keys(tool.variants?.declarations ?? {})).toStrictEqual(['sandbox']);
-});
-
-test("it advertises a second runner's start as a tool of its own under its own name, with that runner's input", async () => {
-  const ctx = await setupTest();
-
-  const tool = buildRunnerStartTool(
-    ctx.twoRunnersContext,
-    { hopLimit: 20, ownerName: null },
-    buildMockTaskStartBounds(),
-    { name: 'atc.start', description: 'Starts an atc task.', runner: 'atc' },
-  );
-
-  expect([tool.name, tool.input, tool.variants]).toStrictEqual([
-    'atc.start',
-    { type: 'object', properties: { runner: { type: 'string', const: 'atc' } } },
-    undefined,
-  ]);
 });

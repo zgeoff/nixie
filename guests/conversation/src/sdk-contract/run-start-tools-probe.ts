@@ -1,11 +1,18 @@
 import { Server, createMcpHandler } from '@modelcontextprotocol/server';
 import type { Server as BunServer } from 'bun';
+import { z } from 'zod';
 import { buildProbeOptions } from './build-probe-options';
 import type { ContractRun } from './run-contract-query';
 import { runContractQuery } from './run-contract-query';
 import type { ProbeTarget } from './types';
 
-export const startToolNames = ['mcp__nixie__task_start', 'mcp__nixie__coding_start'] as const;
+const probeToolSchema = z.looseObject({
+  name: z.string(),
+  description: z.string().optional(),
+  inputSchema: z.looseObject({ type: z.literal('object') }),
+});
+
+const probeToolsSchema = z.array(probeToolSchema);
 
 export interface StartToolsRun {
   readonly run: ContractRun;
@@ -14,10 +21,14 @@ export interface StartToolsRun {
   readonly tools: readonly string[];
 }
 
-// Starts the SDK against an MCP server that lists a sandbox start tool and a coding start tool,
-// each with a plain object root, and reads the tools that the init message reports.
-export async function runStartToolsProbe(target: ProbeTarget): Promise<StartToolsRun> {
-  const handler = createMcpHandler(() => createStartServer());
+// Starts the SDK against an MCP server that lists the given tools, which a test reads from nixie's
+// own endpoint, and reads the tools that the init message reports.
+export async function runStartToolsProbe(
+  target: ProbeTarget,
+  listed: readonly unknown[],
+): Promise<StartToolsRun> {
+  const tools = probeToolsSchema.parse(listed);
+  const handler = createMcpHandler(() => createStartServer(tools));
   const answerRequest = (request: Request): Promise<Response> => handler.fetch(request);
 
   const server: BunServer<undefined> = Bun.serve({
@@ -56,64 +67,12 @@ export async function runStartToolsProbe(target: ProbeTarget): Promise<StartTool
   }
 }
 
-const sandboxStart = {
-  type: 'object' as const,
-  properties: {
-    runner: { type: 'string', const: 'sandbox' },
-    name: { type: 'string', minLength: 1, maxLength: 80 },
-    brief: { type: 'string', minLength: 1, maxLength: 8000 },
-    persona: { type: 'string', enum: ['default', 'none'] },
-    memory: { type: 'string', enum: ['none', 'read'] },
-    report: { type: 'string', enum: ['wake', 'next_turn', 'none'] },
-  },
-  required: ['name', 'brief'],
-  additionalProperties: false,
-};
-
-const codingStart = {
-  type: 'object' as const,
-  properties: {
-    name: { type: 'string', minLength: 1, maxLength: 80 },
-    brief: { type: 'string', minLength: 1, maxLength: 8000 },
-    repo: {
-      type: 'object',
-      properties: { url: { type: 'string' }, ref: { type: 'string' } },
-      required: ['url', 'ref'],
-      additionalProperties: false,
-      description: 'the repository to start a session on; leave it out to join a session',
-    },
-    target: { type: 'string', description: 'only with repo' },
-    agent: { type: 'string', description: 'only with repo' },
-    model: { type: 'string', description: 'only with repo' },
-    session: {
-      type: 'string',
-      description: 'the short ID of the session to join; leave it out with a repo',
-    },
-    wake: { type: 'array', items: { type: 'string', enum: ['waiting', 'idle', 'ended'] } },
-  },
-  required: ['name', 'brief'],
-  additionalProperties: false,
-};
-
-// oxlint-disable-next-line typescript/no-deprecated -- the high-level McpServer needs a zod schema per tool, and the probe lists plain schemas as nixie's endpoint does
-function createStartServer(): Server {
+// oxlint-disable-next-line typescript/no-deprecated -- the high-level McpServer needs a zod schema per tool, and the probe lists nixie's own tools as they are
+function createStartServer(tools: z.infer<typeof probeToolsSchema>): Server {
   // oxlint-disable-next-line typescript/no-deprecated -- as above
   const server = new Server({ name: 'nixie', version: '0.0.0' }, { capabilities: { tools: {} } });
 
-  server.setRequestHandler('tools/list', () => ({
-    tools: [
-      {
-        name: 'task_start',
-        description: 'Starts a new sandbox task.',
-        inputSchema: sandboxStart,
-      },
-      {
-        name: 'coding_start',
-        description: 'Starts a coding task on a repository, or joins a running session.',
-        inputSchema: codingStart,
-      },
-    ],
-  }));
+  server.setRequestHandler('tools/list', () => ({ tools }));
 
   server.setRequestHandler('tools/call', () => ({
     content: [{ type: 'text' as const, text: '{"taskID":"t7k2"}' }],

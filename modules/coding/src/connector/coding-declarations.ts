@@ -87,6 +87,7 @@ export const codingDeclarations = {
 // action's tool.
 export const codingActionDeclarations: ReadonlyMap<string, EffectDeclaration> = new Map([
   ['coding.spawn', codingDeclarations.spawn],
+  ['coding.start', codingDeclarations.spawn],
   ['coding.steer', codingDeclarations.steer],
   ['coding.message', codingDeclarations.message],
   ['coding.stop', codingDeclarations.stop],

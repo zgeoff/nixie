@@ -1,10 +1,8 @@
 import { buildGitHubDefinitionsRepo } from '@heynixie/definitions-repo-github';
 import { buildKagiSearch } from '@heynixie/search-kagi';
 import { addCodingConnectors } from '../coding/add-coding-connectors';
-import {
-  buildServerCodingStart,
-  buildServerCodingTools,
-} from '../coding/build-server-coding-tools';
+import { buildServerCodingStart } from '../coding/build-server-coding-start';
+import { buildServerCodingTools } from '../coding/build-server-coding-tools';
 import { addComputerConnector } from '../computer/add-computer-connector';
 import { startConversationEndpoint } from '../conversation/start-conversation-endpoint';
 import { readDefinitionsContext } from '../definition/read-definitions-context';
