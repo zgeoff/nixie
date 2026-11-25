@@ -19,31 +19,6 @@ test('it calls no gateway when the config sets no spendStop', async () => {
   expect([result, log.mock.calls]).toStrictEqual(['off', []]);
 });
 
-test('it sends the day and month limits of the models config to the gateway', async () => {
-  const gateway = buildStubSpendGateway();
-
-  await startSpendChecks({
-    spend: {
-      control: 'http://127.0.0.1:8790',
-      modelURL: 'http://127.0.0.1:8789',
-      gateway,
-      planLogins: createPlanLoginsHolder(),
-    },
-    config: { models: buildMockModelsConfig(), time: { default_zone: 'UTC' } },
-    secrets: { modelCredentialCount: 0 },
-    log: () => {},
-  });
-
-  expect(gateway.putLimits.mock.calls).toStrictEqual([
-    [
-      {
-        day: { dollars: 60, tokens: 80_000_000 },
-        month: { dollars: 600, tokens: 600_000_000 },
-      },
-    ],
-  ]);
-});
-
 test('it refuses to start with a model credential in the secrets file', () => {
   const gateway = buildStubSpendGateway();
 
@@ -93,7 +68,7 @@ test('it refuses to start when a profile base URL has a path', () => {
   expect(started).rejects.toThrow(new RegExp(`fix ${id}`, 'u'));
 });
 
-test('it says the limits are sent when the gateway takes them', async () => {
+test('it says the gateway answered when it answers', async () => {
   const gateway = buildStubSpendGateway();
 
   const result = await startSpendChecks({
@@ -108,13 +83,13 @@ test('it says the limits are sent when the gateway takes them', async () => {
     log: () => {},
   });
 
-  expect(result).toBe('sent');
+  expect(result).toBe('answered');
 });
 
-test('it says the limits are unsent when the gateway does not answer', async () => {
+test('it says the gateway did not answer when it gives no status', async () => {
   const gateway = buildStubSpendGateway();
 
-  gateway.putLimits.mockResolvedValue({ kind: 'unreachable', reason: 'no answer' });
+  gateway.readStatus.mockResolvedValue({ kind: 'unreachable', reason: 'no answer' });
 
   const result = await startSpendChecks({
     spend: {
@@ -128,5 +103,5 @@ test('it says the limits are unsent when the gateway does not answer', async () 
     log: () => {},
   });
 
-  expect(result).toBe('unsent');
+  expect(result).toBe('unanswered');
 });

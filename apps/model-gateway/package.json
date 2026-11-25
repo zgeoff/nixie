@@ -10,7 +10,6 @@
     "typecheck": "tsrs --fast --noEmit"
   },
   "dependencies": {
-    "@heynixie/clock": "workspace:*",
     "@heynixie/logger": "workspace:*",
     "@heynixie/models": "workspace:*",
     "@heynixie/periods": "workspace:*",

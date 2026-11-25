@@ -526,17 +526,6 @@
             "day": {
               "type": "object",
               "properties": {
-                "dollars": {
-                  "default": 60,
-                  "type": "number",
-                  "exclusiveMinimum": 0
-                },
-                "tokens": {
-                  "default": 80000000,
-                  "type": "integer",
-                  "exclusiveMinimum": 0,
-                  "maximum": 9007199254740991
-                },
                 "turns": {
                   "default": 1000,
                   "type": "integer",
@@ -553,23 +542,10 @@
             },
             "month": {
               "default": {
-                "dollars": 600,
-                "tokens": 600000000,
                 "turns": 20000
               },
               "type": "object",
               "properties": {
-                "dollars": {
-                  "default": 600,
-                  "type": "number",
-                  "exclusiveMinimum": 0
-                },
-                "tokens": {
-                  "default": 600000000,
-                  "type": "integer",
-                  "exclusiveMinimum": 0,
-                  "maximum": 9007199254740991
-                },
                 "turns": {
                   "default": 20000,
                   "type": "integer",

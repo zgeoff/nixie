@@ -8,9 +8,9 @@ const stops = new Collection({ schema: z.object({ stop: spendStopSchema }) });
 const raises = new Collection({
   schema: z.object({
     start: z.string(),
-    dollars: z.number(),
-    tokens: z.number(),
-    turns: z.number(),
+    route: z.string().optional(),
+    dollars: z.number().optional(),
+    turns: z.number().optional(),
   }),
 });
 

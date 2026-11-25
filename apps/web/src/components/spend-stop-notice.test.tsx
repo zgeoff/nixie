@@ -32,13 +32,43 @@ test('it tells the owner that a day limit stopped spending', async () => {
 
   const notice = await rendered.findByRole('region', { name: 'model spending is stopped' });
 
-  expect(notice).toHaveTextContent(/the daily limit of \$60 was reached/u);
+  expect(notice).toHaveTextContent(/the daily limit of 1,000 turns was reached/u);
+});
+
+test('it tells the owner which route waits at its limit, with no raise offered', async () => {
+  await createDeviceSession();
+
+  await spendStore.stops.create({
+    stop: {
+      state: 'clear',
+      routes: [
+        {
+          route: 'plan',
+          period: 'day',
+          start: '2026-11-13',
+          limit: 40,
+          spent: 41.2,
+          at: new Date('2026-11-13T16:42:07Z'),
+          resetsAt: new Date('2026-11-14T00:00:00Z'),
+          canRaise: true,
+          cap: 80,
+        },
+      ],
+    },
+  });
+
+  const rendered = render(<SpendStopNotice />);
+
+  const notice = await rendered.findByRole('region', { name: 'model spending is stopped' });
+
+  expect(notice).toHaveTextContent(/Model spending paused on plan/u);
+  expect(rendered.queryByRole('button', { name: /Raise/u })).toBeNull();
 });
 
 test('it offers no raise to an operator-only stop', async () => {
   await createDeviceSession();
 
-  await spendStore.stops.create({ stop: { state: 'unreachable' } });
+  await spendStore.stops.create({ stop: { state: 'unreachable', routes: [] } });
 
   const rendered = render(<SpendStopNotice />);
 
@@ -62,9 +92,7 @@ test('it raises the limit with one confirm and clears the notice', async () => {
   await ctx.user.click(rendered.getByRole('button', { name: 'Confirm raise' }));
 
   await waitFor(() => {
-    expect(spendStore.raises.all()).toMatchObject([
-      { start: '2026-11-13', dollars: 90, tokens: 80_000_000, turns: 1000 },
-    ]);
+    expect(spendStore.raises.all()).toMatchObject([{ start: '2026-11-13', turns: 1500 }]);
   });
 
   await waitFor(() => {
@@ -90,5 +118,5 @@ test('it shows a stop that the watcher trips while the page is open, with no rel
 
   const notice = await rendered.findByRole('region', { name: 'model spending is stopped' });
 
-  expect(notice).toHaveTextContent(/the daily limit of \$60 was reached/u);
+  expect(notice).toHaveTextContent(/the daily limit of 1,000 turns was reached/u);
 });

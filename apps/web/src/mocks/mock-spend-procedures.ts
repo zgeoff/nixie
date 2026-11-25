@@ -31,13 +31,8 @@ export const mockSpendProcedures = {
       return { error: 'period_ended' };
     }
 
-    const isAbove =
-      input.dollars > stop.cap.dollars ||
-      input.tokens > stop.cap.tokens ||
-      input.turns > stop.cap.turns;
-
-    if (isAbove) {
-      return { error: 'above_cap', cap: stop.cap };
+    if (input.turns !== undefined && input.turns > stop.cap) {
+      return { error: 'above_cap', measure: 'turns', route: null, cap: stop.cap };
     }
 
     await spendStore.raises.create(input);

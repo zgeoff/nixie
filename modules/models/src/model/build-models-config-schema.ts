@@ -76,8 +76,6 @@ const workerRunSchema = z.strictObject({
 
 const daySchema = z
   .strictObject({
-    dollars: dollarsSchema.default(60),
-    tokens: z.int().positive().default(80_000_000),
     turns: turnsSchema.default(1000),
     turnCap: turnsSchema.optional(),
   })
@@ -93,8 +91,6 @@ const daySchema = z
   });
 
 const monthSchema = z.strictObject({
-  dollars: dollarsSchema.default(600),
-  tokens: z.int().positive().default(600_000_000),
   turns: turnsSchema.default(20_000),
 });
 

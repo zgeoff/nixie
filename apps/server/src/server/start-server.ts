@@ -71,7 +71,7 @@ export interface ServerPartsOptions extends ServerOptions {
   readonly spend: SpendInputs | null;
 
   // whether the start checks left the gateway without its limits, because it gave no answer
-  readonly isSpendUnsent: boolean;
+  readonly isSpendUnanswered: boolean;
   readonly writer: Writer;
   readonly cleanup: Cleanup;
 
@@ -103,7 +103,7 @@ export async function startServer(options: ServerOptions): Promise<Server> {
     return await startServerWork({
       ...options,
       ...inputs,
-      isSpendUnsent: spendStart === 'unsent',
+      isSpendUnanswered: spendStart === 'unanswered',
       writer,
       cleanup,
     });

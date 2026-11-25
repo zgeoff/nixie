@@ -2,7 +2,7 @@ import type { RouteLimitsByID } from '../periods/collect-trips';
 import { pickRouteLimit } from '../periods/pick-route-limit';
 import type { Overrides, PeriodName, PeriodStore, PeriodsConfig } from '../types';
 
-export interface PeriodStatus {
+interface PeriodStatus {
   readonly start: string;
   readonly resetsAt: string;
   readonly dollars: number;
@@ -18,7 +18,7 @@ export interface PeriodStatus {
   readonly sinceMs: number | null;
 }
 
-export interface RouteStatus {
+interface RouteStatus {
   readonly day: PeriodStatus;
   readonly month: PeriodStatus;
 }

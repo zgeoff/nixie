@@ -149,7 +149,6 @@
       "name": "@heynixie/model-gateway",
       "version": "0.0.0",
       "dependencies": {
-        "@heynixie/clock": "workspace:*",
         "@heynixie/logger": "workspace:*",
         "@heynixie/models": "workspace:*",
         "@heynixie/periods": "workspace:*",

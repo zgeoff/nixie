@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { useState } from 'react';
-import { formatSpendNotice } from '../spend/format-spend-notice';
+import { formatRouteNotice, formatSpendNotice } from '../spend/format-spend-notice';
 import { pickRaiseOffer } from '../spend/pick-raise-offer';
 import { useSpendRaise } from '../spend/use-spend-raise';
 import { useSpendStop } from '../spend/use-spend-stop';
@@ -24,13 +24,18 @@ export function SpendStopNotice(): ReactNode {
   const read = useSpendStop();
   const stop = read.data;
 
-  if (stop === undefined || stop.state === 'clear') {
+  if (stop === undefined || (stop.state === 'clear' && stop.routes.length === 0)) {
     return null;
   }
 
   return (
     <section aria-label="model spending is stopped" className={notice}>
-      <p role="status">{formatSpendNotice(stop)}</p>
+      {stop.state === 'clear' ? null : <p role="status">{formatSpendNotice(stop)}</p>}
+      {stop.routes.map((trip) => (
+        <p key={`${trip.route}-${trip.period}`} role="status">
+          {formatRouteNotice(trip)}
+        </p>
+      ))}
       {stop.state === 'tripped' && stop.canRaise ? <RaiseLimit stop={stop} /> : null}
     </section>
   );
@@ -76,26 +81,10 @@ function RaiseLimit(props: RaiseLimitProps): ReactNode {
       <fieldset disabled={raise.isPending}>
         <legend>Raise today&apos;s limit to</legend>
         <AmountField
-          cap={stop.cap.dollars}
-          label="Dollars"
-          onChange={(dollars) => {
-            setAmounts({ ...amounts, dollars });
-          }}
-          value={amounts.dollars}
-        />
-        <AmountField
-          cap={stop.cap.tokens}
-          label="Tokens"
-          onChange={(tokens) => {
-            setAmounts({ ...amounts, tokens });
-          }}
-          value={amounts.tokens}
-        />
-        <AmountField
-          cap={stop.cap.turns}
+          cap={stop.cap}
           label="Turns"
           onChange={(turns) => {
-            setAmounts({ ...amounts, turns });
+            setAmounts({ turns });
           }}
           value={amounts.turns}
         />
@@ -141,11 +130,15 @@ type Refusal = Extract<
 
 function describeRefusal(refusal: Refusal): string {
   if (refusal.error === 'above_cap') {
-    return `That is above the cap of $${refusal.cap.dollars.toLocaleString()}, ${refusal.cap.tokens.toLocaleString()} tokens and ${refusal.cap.turns.toLocaleString()} turns for today.`;
+    return `That is above the cap of ${refusal.cap.toLocaleString()} ${refusal.measure} for today.`;
   }
 
   if (refusal.error === 'period_ended') {
     return "The day ended, so today's limit resets on its own.";
+  }
+
+  if (refusal.error === 'unknown_route') {
+    return 'The spending gateway holds no such route.';
   }
 
   return 'nixie could not reach the spending gateway. Your raise is saved, and applies when it answers.';
