@@ -5,7 +5,7 @@ import type { NormalizedSchedule } from '../recurrence/to-normalized-schedule';
 import { toNormalizedSchedule } from '../recurrence/to-normalized-schedule';
 import type { NextFire } from '../time/pick-next-fire';
 import { isWithinHours, pickNextFire, pickScheduleFire } from '../time/pick-next-fire';
-import type { TriggerEvent } from '../types';
+import type { ScheduleTriggerEvent } from '../types';
 import { getIntervalMs } from './get-interval-ms';
 
 export interface ScheduleEventInput {
@@ -22,7 +22,7 @@ export interface ScheduleEventInput {
 // The event of one armed definition at one tick, or null when it has nothing to deliver. The slots
 // from the watermark up to now collapse into one event: the newest is the fire, and the earlier ones
 // are the missed. Pure over the runtime's zone data.
-export function pickScheduleEvent(input: ScheduleEventInput): TriggerEvent | null {
+export function pickScheduleEvent(input: ScheduleEventInput): ScheduleTriggerEvent | null {
   const row = input.row;
   const nowMs = input.nowMs;
 
@@ -58,7 +58,7 @@ export function pickScheduleEvent(input: ScheduleEventInput): TriggerEvent | nul
 }
 
 // A one-shot fires however late it is, and never skips.
-function pickOneShotEvent(input: ScheduleEventInput): TriggerEvent | null {
+function pickOneShotEvent(input: ScheduleEventInput): ScheduleTriggerEvent | null {
   const row = input.row;
   const nowMs = input.nowMs;
   const slot = pickNextFire(row.definitionID, row.trigger, row.after, input.zone);
@@ -126,7 +126,7 @@ function isHeld(hold: ArmedRow['hold'], slot: NextFire, nowMs: number): boolean 
   return hold !== null && slot.scheduledFor === hold.slot && nowMs < hold.until;
 }
 
-type Skip = NonNullable<TriggerEvent['skip']>;
+type Skip = NonNullable<ScheduleTriggerEvent['skip']>;
 
 // What the source does with a slot that is due: fire it, skip it, or wait for a later tick.
 type Decision =

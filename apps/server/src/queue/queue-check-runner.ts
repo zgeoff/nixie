@@ -8,4 +8,7 @@ export const queueCheckRunner: TaskRunnerDefinition = {
   start: null,
   fixedTasks: [queueCheckTaskID],
   keepsSandboxes: false,
+  meters: ['turns', 'dollars'],
+  ended: null,
+  listFields: null,
 };

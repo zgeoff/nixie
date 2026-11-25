@@ -20,7 +20,13 @@ export async function writeInboxRecordsInTransaction(
 }
 
 async function requireInboxTarget(db: Transaction<TasksTables>, input: RecordInput): Promise<void> {
-  if (!isInboxRecord({ kind: input.kind, thread: input.thread ?? null })) {
+  if (
+    !isInboxRecord({
+      kind: input.kind,
+      thread: input.thread ?? null,
+      ...(input.payload ? { payload: input.payload } : {}),
+    })
+  ) {
     throw new Error(`a ${input.kind} record is not an inbox record`);
   }
 

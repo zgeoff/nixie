@@ -24,6 +24,7 @@ import { createPreviewHost } from './preview/create-preview-host';
 import { makeCachedRead } from './preview/make-cached-read';
 import { pickCommitRefusal } from './preview/pick-commit-refusal';
 import { collectExtraPaths, pickSourceRefusal } from './preview/pick-source-refusal';
+import { readIgnoredPaths } from './preview/read-ignored-paths';
 import { readPreviewEndpoints } from './preview/read-preview-endpoints';
 import { readPullRequest } from './preview/read-pull-request';
 import { readServedCommit, servedCommitArgv } from './preview/read-served-commit';
@@ -164,7 +165,7 @@ export function createVerifyRegistry(): Wringer {
     .action({
       name: 'script-reply',
       summary:
-        "Queue the scripted model's next reply. With --memory it first proposes that memory, with --reminder it first sets that reminder and writes a note of the memory that the result names as related, with --export it first asks to export memory, with --task it first starts that task, with --handover it first asks the user to take over the computer, for that reason, with --notebook it first writes 2 notes, one private, and links them, and with --forget-note it first forgets the note with that short ID",
+        "Queue the scripted model's next reply. With --memory it first proposes that memory, with --reminder it first sets that reminder and writes a note of the memory that the result names as related, with --export it first asks to export memory, with --task it first starts that task, with --coding-task it first starts that coding task on atc, with --handover it first asks the user to take over the computer, for that reason, with --notebook it first writes 2 notes, one private, and links them, and with --forget-note it first forgets the note with that short ID",
       effect: 'write',
       targets: ['local'],
       input: controlRoutes.addReply.input,
@@ -431,6 +432,11 @@ export function createVerifyRegistry(): Wringer {
         paths: featurePaths['task-control'],
       },
       {
+        name: 'coding-session',
+        summary: 'Start a coding session from chat',
+        paths: featurePaths['coding-session'],
+      },
+      {
         name: 'drawing',
         summary: 'Draw a picture, edit it, and list both',
         paths: featurePaths.drawing,
@@ -499,22 +505,6 @@ async function checkServedSources(host: PreviewHost, container: ServedContainer)
   if (refusal !== null) {
     throw new WringerError('check-failed', { message: refusal, hint: previewRefusalHint });
   }
-}
-
-// `git check-ignore` exits 1 when it ignores none of the paths, and refuses an empty list.
-async function readIgnoredPaths(paths: readonly string[]): Promise<ReadonlySet<string>> {
-  if (paths.length === 0) {
-    return new Set();
-  }
-
-  const checked = await $`git check-ignore -- ${paths}`.quiet().nothrow();
-
-  return new Set(
-    checked.stdout
-      .toString()
-      .split('\n')
-      .filter((path) => path !== ''),
-  );
 }
 
 async function checkHarness(client: HttpClient): Promise<{ commit: string }> {

@@ -4,6 +4,7 @@ import type { Lease, TasksContext } from '@heynixie/tasks';
 import { LeaseLostError, startLeaseRenewal, waitAtFaultPoint } from '@heynixie/tasks';
 import type { ActionsTables, OutcomeReason } from '../types';
 import type { ActionAttemptOptions } from './action-attempt-options';
+import { buildAttemptKey } from './build-attempt-key';
 import { buildUnknownRecords } from './build-unknown-records';
 import { defaultRetryDelaysMs } from './default-retry-delays-ms';
 import { isKeyExpired } from './is-key-expired';
@@ -242,7 +243,7 @@ async function runConnector(
       tool: attempt.action.tool,
       arguments: call.args,
       attempt: attempt.attempt,
-      idempotencyKey: attempt.action.action_id,
+      idempotencyKey: buildAttemptKey(attempt.action),
       destinations: call.destinations,
       actionHash: attempt.action.action_hash,
       deadlineAt: attempt.action.deadline_at,

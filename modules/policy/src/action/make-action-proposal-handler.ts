@@ -405,7 +405,7 @@ async function queueAction(
   }
 
   const hash = buildActionHash({
-    tool: payload.tool,
+    tool: toCalledTool(payload.tool),
     input: toJSONObject(erasable.input),
     destinations: erasable.destinations.map((destination) => destination.value),
     deadlineAt: payload.deadlineAt ?? null,
@@ -422,7 +422,7 @@ async function queueAction(
     proposalID: row.id,
     taskID: row.thread,
     stepKey: payload.stepKey ?? null,
-    tool: payload.tool,
+    tool: toCalledTool(payload.tool),
     effects: payload.effects,
     actionHash: row.actionHash,
     arguments: toJSONObject(erasable.input),
@@ -433,4 +433,12 @@ async function queueAction(
   });
 
   return { status: 'queued', actionID };
+}
+
+// A proposal names the variant that the call's input picked, as `<tool>/<variant>`. The call, its
+// hash and its action carry the tool's own name.
+function toCalledTool(proposed: string): string {
+  const slash = proposed.indexOf('/');
+
+  return slash === -1 ? proposed : proposed.slice(0, slash);
 }

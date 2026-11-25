@@ -3,6 +3,7 @@ import {
   createFirstEnrolmentCode,
   defaultPolicySettings,
 } from '@heynixie/api';
+import { buildCodingSource, startCodingSweep } from '@heynixie/coding';
 import {
   endTakeoverCutByRestart,
   makeTakeoverRecords,
@@ -148,7 +149,7 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
   },
   {
     name: 'trigger_sources',
-    needs: ['server_parts', 'conversation_task', 'reminder_moves'],
+    needs: ['server_parts', 'context', 'conversation_task', 'reminder_moves'],
     start: async (reader) => {
       const parts = reader.get('server_parts');
       const writer = parts.context.log.writer;
@@ -160,14 +161,22 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
         readLastMessageAt: makeReadLastMessageAt(writer),
       });
 
-      const sources = await startTriggerSources([scheduleSource], {
-        log: parts.context.log,
-        clock: parts.context.clock,
-        definitions: parts.context.definitions,
-        logEvent: parts.log,
-        readDefinitionTask: readDefinitionTaskInTransaction,
-        retireOneShot: makeRetireOneShot(parts.context),
-      });
+      const coding = reader.get('context').coding;
+
+      const sources = await startTriggerSources(
+        [
+          scheduleSource,
+          ...(coding === null ? [] : [buildCodingSource(coding.context, coding.adapter)]),
+        ],
+        {
+          log: parts.context.log,
+          clock: parts.context.clock,
+          definitions: parts.context.definitions,
+          logEvent: parts.log,
+          readDefinitionTask: readDefinitionTaskInTransaction,
+          retireOneShot: makeRetireOneShot(parts.context),
+        },
+      );
 
       await parts.cleanup.defer(() => sources.stop());
     },
@@ -184,6 +193,7 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
     name: 'runners',
     needs: [
       'inputs',
+      'context',
       'server_parts',
       'conversation_task',
       'conversation_imp',
@@ -203,12 +213,17 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
 
       const checkStep = await startQueueCheckTask(parts);
 
+      const coding = reader.get('context').coding;
+
       const runStep = parts.context.runners.bindSteps(
         parts.context,
         [
           { definition: conversationRunner, runStep: reader.get('conversation_imp').runStep },
           { definition: sandboxRunner, runStep: reader.get('sandbox_runner').runStep },
           { definition: queueCheckRunner, runStep: checkStep },
+          ...(coding === null
+            ? []
+            : [{ definition: coding.runner.definition, runStep: coding.runner.runStep }]),
         ],
         otherStep,
       );
@@ -216,6 +231,23 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
       await startRunners(parts, runStep);
 
       parts.state.update({ areRunnersStarted: true });
+    },
+  },
+  {
+    // A stopped, closed or failed coding task that still binds its session lets go of it here, as
+    // after a crash or a failed stop.
+    name: 'coding_sweep',
+    needs: ['server_parts', 'context', 'runners'],
+    start: async (reader) => {
+      const coding = reader.get('context').coding;
+
+      if (coding === null) {
+        return;
+      }
+
+      const sweep = startCodingSweep(coding.context, coding.adapter);
+
+      await reader.get('server_parts').cleanup.defer(() => sweep.stop());
     },
   },
   {

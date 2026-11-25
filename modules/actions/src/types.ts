@@ -126,6 +126,12 @@ interface ActionTable {
   readonly first_attempt_at: number | null;
   readonly last_attempt_at: number | null;
   readonly reconcile_at: number | null;
+
+  // the attempts the provider refused, which each take the action's next attempt a new key
+  readonly refused_count: number;
+
+  // 1 for an action that a runner queued on its task's thread, with no model call behind it
+  readonly is_runner: 0 | 1;
 }
 
 export type ActionRow = ActionTable;

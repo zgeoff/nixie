@@ -1,7 +1,9 @@
-import type { TriggerEvent } from '../types';
+import type { ScheduleTriggerEvent } from '../types';
 
 // A schedule event of the daily tomato watering, over the fields that a test sets.
-export function buildTestTriggerEvent(overrides: Partial<TriggerEvent> = {}): TriggerEvent {
+export function buildTestTriggerEvent(
+  overrides: Partial<ScheduleTriggerEvent> = {},
+): ScheduleTriggerEvent {
   return {
     definitionID: 'water-the-tomatoes',
     definitionHash: 'hash-1',

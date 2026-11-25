@@ -1,4 +1,5 @@
 import { probeInStepActionPending, runInStepActions } from '@heynixie/actions';
+import { codingActionDeclarations } from '@heynixie/coding';
 import type { InStepActions } from '@heynixie/sessions';
 import { buildToolRegistry } from '@heynixie/tools';
 import type { ServerParts } from '../types';
@@ -13,6 +14,7 @@ export function makeInStepActions(parts: ServerParts): InStepActions {
     definitions: parts.apiContext.definitions,
     decisions: parts.decisions,
     registry: buildToolRegistry(parts.tools.definitions),
+    findRunnerDeclaration: (tool) => codingActionDeclarations.get(tool) ?? null,
   });
 
   return {

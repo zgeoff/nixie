@@ -41,9 +41,9 @@ reads `settings`.
   needs no entry.
 - The user's name and pronouns are settings that the prompt needs. `readSetting` returns them, and
   they never reach a fetcher.
-- `impd_token` and the definitions export secrets are the exceptions: they stay top-level fields
-  that the server reads at start, outside the store's resolver, because no tool uses them. Their
-  values still join the own-value set.
+- `impd_token`, `atc_token` and the definitions export secrets are the exceptions: they stay
+  top-level fields that the server reads at start, outside the store's resolver, because no tool
+  uses them. Their values still join the own-value set.
 - A lint rule refuses a read of the secrets file's groups outside the credentials module, so a value
   cannot reach a part that bypasses the store. It also refuses a destructured group and a read
   through a variable that a secrets object was copied to.

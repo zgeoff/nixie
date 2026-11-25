@@ -10,6 +10,8 @@ export { runEndTurnProbe, endTurnProbeToolName } from './run-end-turn-probe';
 export { runMissingSessionProbe } from './run-missing-session-probe';
 export { runModPolicyProbe } from './run-mod-policy-probe';
 export { runOwnerInputProbe } from './run-owner-input-probe';
+export type { OneOfStartRun } from './run-one-of-start-probe';
+export { oneOfStartToolName, runOneOfStartProbe } from './run-one-of-start-probe';
 export { runOverflowForkProbe } from './run-overflow-fork-probe';
 export { runOverflowProbe } from './run-overflow-probe';
 export { runPinnedCoreProbe } from './run-pinned-core-probe';

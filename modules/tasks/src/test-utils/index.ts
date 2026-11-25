@@ -9,6 +9,7 @@ export {
 
 export { buildTestTaskRunners } from './build-test-task-runners';
 export { buildMockTaskStartBounds } from './build-mock-task-start-bounds';
+export { createTestConversationClaim } from './create-test-conversation-claim';
 export type { TestRunSettingsOptions } from './build-test-run-settings';
 export { buildTestRunSettings } from './build-test-run-settings';
 export type { TaskSeederDeps } from './build-task-seeder';

@@ -4,7 +4,7 @@ import type { Kysely } from 'kysely';
 import type { Actor } from 'xstate';
 import { createActor, toPromise } from 'xstate';
 import { readArmedDefinitions } from '../arm/read-armed-definitions';
-import type { ReadZone, TriggerContext, TriggerEvent, TriggerSource } from '../types';
+import type { ReadZone, ScheduleTriggerEvent, TriggerContext, TriggerSource } from '../types';
 import { pickScheduleEvent } from './pick-schedule-event';
 import { scheduleSourceMachine } from './schedule-source-machine';
 
@@ -64,7 +64,7 @@ async function runScheduleTick(input: ScheduleSourceInput, context: TriggerConte
 
   const lastMessageAtMs = await input.readLastMessageAt();
 
-  const events: TriggerEvent[] = [];
+  const events: ScheduleTriggerEvent[] = [];
 
   for (const row of rows) {
     const zoneName = 'at' in row.trigger ? 'owner' : row.trigger.schedule.zone;

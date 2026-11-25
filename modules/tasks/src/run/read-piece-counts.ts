@@ -3,6 +3,7 @@ import type { Transaction } from 'kysely';
 import { taskLimitsRaisedCodec } from '../limit/task-limits-raised-codec';
 import type { TasksContext, TasksTables } from '../types';
 import { collectPieceRuns } from './collect-piece-runs';
+import { readRunMeters } from './read-run-meters';
 import { toTransactionContext } from './to-transaction-context';
 import type { RunMeterName, TaskRun } from './types';
 
@@ -40,8 +41,10 @@ export async function readPieceCounts(
 
   const used = { turns: 0, dollars: 0 };
 
+  const meters = await readRunMeters(inTransaction, last.taskID);
+
   for (const run of piece.sinceRestart) {
-    for (const meter of context.runSettings.meters) {
+    for (const meter of meters) {
       used[meter.name] += await meter.read(inTransaction, run);
     }
   }
