@@ -345,7 +345,7 @@ test('it asks at stage 6 for a lifted purchase that an ask rule matches', async 
   expect(decided.decision).toMatchObject({ outcome: 'ask', stage: 6 });
 });
 
-test.each(['policy_widen', 'budget_raise'] as const)(
+test.each(['policy_widen', 'budget_raise', 'install_package'] as const)(
   'it asks at stage 4 for the effect %s',
   async (effect) => {
     const ctx = buildTestDecisionPoint({
