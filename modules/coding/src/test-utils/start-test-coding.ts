@@ -21,6 +21,8 @@ import type { TriggerCoreContext } from '@heynixie/triggers';
 import { triggersProjections } from '@heynixie/triggers';
 import { buildTestTriggerCore } from '@heynixie/triggers/test-utils';
 import type { FakeClock } from '@zgeoff/testing/clock';
+import invariant from 'tiny-invariant';
+import { z } from 'zod';
 import { buildCodingConnectors } from '../connector/build-coding-connectors';
 import { codingProjections } from '../projection/coding-projections';
 import { buildCodingRunner } from '../runner/build-coding-runner';
@@ -61,7 +63,12 @@ export interface TestCoding {
     tool: string,
     input: object,
   ) => Promise<{ readonly callID: string; readonly outcome: ToolOutcome }>;
+
+  // calls task.start from the conversation's step, and returns the ID of the task it started
+  readonly startTask: (claim: StartedClaim, input: object) => Promise<string>;
 }
+
+const startedTaskSchema = z.object({ taskID: z.string() });
 
 const testSettings: CodingSettings = {
   wake: {
@@ -131,6 +138,25 @@ export async function startTestCoding(): Promise<TestCoding> {
 
   const toolsByName = new Map([...codingTools, startTool].map((tool) => [tool.name, tool]));
 
+  const callTool: TestCoding['callTool'] = async (claim, name, input) => {
+    const tool = toolsByName.get(name);
+
+    if (tool === undefined) {
+      throw new Error(`the test holds no tool ${name}`);
+    }
+
+    const call = buildMockToolCall({ tool: name, input: parseJSONObject(JSON.stringify(input)) });
+
+    const outcome = await tool.run(
+      call,
+      buildMockToolContext({
+        run: { thread: 'conversation', stepRunID: buildStepRunID(claim), tools: [name] },
+      }),
+    );
+
+    return { callID: call.callID, outcome };
+  };
+
   return {
     clock: base.clock,
     log,
@@ -194,23 +220,13 @@ export async function startTestCoding(): Promise<TestCoding> {
       throw new Error(`the actions ran ${String(maxRuns)} attempts and still had work`);
     },
     claimConversation: () => createTestConversationClaim(context, 'Fix the flaky login test.'),
-    callTool: async (claim, name, input) => {
-      const tool = toolsByName.get(name);
+    callTool,
+    startTask: async (claim, input) => {
+      const started = await callTool(claim, 'task.start', input);
 
-      if (tool === undefined) {
-        throw new Error(`the test holds no tool ${name}`);
-      }
+      invariant(started.outcome.status === 'ok', 'the test expected task.start to succeed');
 
-      const call = buildMockToolCall({ tool: name, input: parseJSONObject(JSON.stringify(input)) });
-
-      const outcome = await tool.run(
-        call,
-        buildMockToolContext({
-          run: { thread: 'conversation', stepRunID: buildStepRunID(claim), tools: [name] },
-        }),
-      );
-
-      return { callID: call.callID, outcome };
+      return startedTaskSchema.parse(started.outcome.result).taskID;
     },
   };
 }

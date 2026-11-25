@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test';
 import { readRecords } from '@heynixie/log';
 import { writeTestTaskMessage } from '@heynixie/tasks/test-utils';
+import { z } from 'zod';
 import { readBinding } from '../session/read-binding';
 import { startTestCoding } from '../test-utils/start-test-coding';
 import { readStepFacts } from './read-step-facts';
@@ -11,14 +12,12 @@ async function setupTest() {
   const claim = await ctx.claimConversation();
 
   const startSession = async (): Promise<string> => {
-    const started = await ctx.callTool(claim, 'task.start', {
+    const taskID = await ctx.startTask(claim, {
       runner: 'atc',
       name: 'Fix the flaky login test',
       brief: 'Find why the login test fails.',
       repo: { url: 'https://github.com/example/shop.git', ref: 'main' },
     });
-
-    const taskID = started.outcome.status === 'ok' ? String(started.outcome.result['taskID']) : '';
 
     await ctx.runActions();
     await ctx.runSteps();
@@ -63,7 +62,7 @@ async function setupTest() {
         kinds: ['action.queued'],
       });
 
-      return entries.map((entry) => String(entry.record.payload['actionID']));
+      return entries.map((entry) => z.string().parse(entry.record.payload['actionID']));
     },
     readFacts: async (taskID: string, inbox: readonly InboxItem[]) =>
       readStepFacts(ctx.log, {

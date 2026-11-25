@@ -123,7 +123,7 @@ async function setupTest() {
         }),
       );
 
-      invariant(actionID, 'the queue returns the action it wrote');
+      invariant(actionID !== undefined, 'the queue returns the action it wrote');
 
       return readTestAction(actions.writer, actionID);
     },

@@ -16,15 +16,12 @@ async function setupTest() {
     claim,
     seed: {
       session: async (): Promise<string> => {
-        const started = await ctx.callTool(claim, 'task.start', {
+        const taskID = await ctx.startTask(claim, {
           runner: 'atc',
           name: 'Fix the flaky login test',
           brief: 'Find why the login test fails.',
           repo: { url: 'https://github.com/example/shop.git', ref: 'main' },
         });
-
-        const taskID =
-          started.outcome.status === 'ok' ? String(started.outcome.result['taskID']) : '';
 
         await ctx.runActions();
         await ctx.runSteps();

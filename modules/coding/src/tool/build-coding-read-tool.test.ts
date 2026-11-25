@@ -1,6 +1,5 @@
 import { expect, test } from 'bun:test';
 import type { StartedClaim } from '@heynixie/tasks';
-import invariant from 'tiny-invariant';
 import { startTestCoding } from '../test-utils/start-test-coding';
 
 async function setupTest() {
@@ -13,19 +12,17 @@ async function setupTest() {
 
       const session = /"id":"(?<id>[^"]+)"/u.exec(JSON.stringify(listed.outcome))?.groups?.['id'];
 
-      const joined = await ctx.callTool(claim, 'task.start', {
+      const taskID = await ctx.startTask(claim, {
         runner: 'atc',
         name: 'Your billing refactor',
         brief: 'Watch for a question.',
         session,
       });
 
-      invariant(joined.outcome.status === 'ok');
-
       await ctx.runActions();
       await ctx.runSteps();
 
-      return String(joined.outcome.result['taskID']);
+      return taskID;
     },
   };
 }
@@ -130,16 +127,12 @@ test('it refuses a coding task whose spawn has not run yet', async () => {
   const ctx = await setupTest();
   const claim = await ctx.claimConversation();
 
-  const started = await ctx.callTool(claim, 'task.start', {
+  const taskID = await ctx.startTask(claim, {
     runner: 'atc',
     name: 'Fix the flaky login test',
     brief: 'Find why the login test fails.',
     repo: { url: 'https://github.com/example/shop.git', ref: 'main' },
   });
-
-  invariant(started.outcome.status === 'ok');
-
-  const taskID = String(started.outcome.result['taskID']);
 
   const read = await ctx.callTool(claim, 'coding.read', { task: taskID });
 
@@ -155,16 +148,12 @@ test('it refuses a coding task that is done', async () => {
 
   ctx.adapter.replyNext('start', { status: 'refused', canClear: false, reason: 'bad_args' });
 
-  const started = await ctx.callTool(claim, 'task.start', {
+  const taskID = await ctx.startTask(claim, {
     runner: 'atc',
     name: 'Fix the flaky login test',
     brief: 'Find why the login test fails.',
     repo: { url: 'https://github.com/example/shop.git', ref: 'main' },
   });
-
-  invariant(started.outcome.status === 'ok');
-
-  const taskID = String(started.outcome.result['taskID']);
 
   await ctx.runActions();
   await ctx.runSteps();

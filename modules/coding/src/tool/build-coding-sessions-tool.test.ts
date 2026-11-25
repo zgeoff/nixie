@@ -2,8 +2,8 @@ import { expect, test } from 'bun:test';
 import invariant from 'tiny-invariant';
 import { startTestCoding } from '../test-utils/start-test-coding';
 
-async function setupTest() {
-  return await startTestCoding();
+function setupTest() {
+  return startTestCoding();
 }
 
 test('it lists every session that has not ended, each with a short ID and no task', async () => {
@@ -97,16 +97,14 @@ test('it names the coding task that joined a session in boundTo', async () => {
 
   const shortID = /"id":"(?<id>[^"]+)"/u.exec(JSON.stringify(listed.outcome))?.groups?.['id'];
 
-  invariant(shortID);
+  invariant(shortID !== undefined);
 
-  const joined = await ctx.callTool(claim, 'task.start', {
+  const taskID = await ctx.startTask(claim, {
     runner: 'atc',
     name: 'Your billing refactor',
     brief: 'Watch for a question.',
     session: shortID,
   });
-
-  invariant(joined.outcome.status === 'ok');
 
   await ctx.runActions();
   await ctx.runSteps();
@@ -123,7 +121,7 @@ test('it names the coding task that joined a session in boundTo', async () => {
           state: 'idle',
           target: 'cloud/cloud',
           cwd: '/work/billing refactor',
-          boundTo: String(joined.outcome.result['taskID']),
+          boundTo: taskID,
         },
       ],
     },

@@ -18,15 +18,13 @@ async function setupTest() {
   const claim = await ctx.claimConversation();
 
   const startSession = async (input: object = {}): Promise<string> => {
-    const started = await ctx.callTool(claim, 'task.start', {
+    const taskID = await ctx.startTask(claim, {
       runner: 'atc',
       name: 'Fix the flaky login test',
       brief: 'Find why the login test fails.',
       repo: { url: 'https://github.com/example/shop.git', ref: 'main' },
       ...input,
     });
-
-    const taskID = started.outcome.status === 'ok' ? String(started.outcome.result['taskID']) : '';
 
     await ctx.runActions();
     await ctx.runSteps();
@@ -554,14 +552,12 @@ test('it tells the sender that the session did not get a message sent before the
 
   const claim = ctx.claim;
 
-  const started = await ctx.callTool(claim, 'task.start', {
+  const taskID = await ctx.startTask(claim, {
     runner: 'atc',
     name: 'Fix the flaky login test',
     brief: 'Find why the login test fails.',
     repo: { url: 'https://github.com/example/shop.git', ref: 'main' },
   });
-
-  const taskID = started.outcome.status === 'ok' ? String(started.outcome.result['taskID']) : '';
 
   const sent = await ctx.sendFromConversation(taskID, 'Is the retry count still 3?');
 
@@ -646,27 +642,23 @@ test('it replies once to an answer whose note settles after the step read its in
 test('it ends a started task as done, and binds nothing, when another task joined its session first', async () => {
   const ctx = await setupTest();
 
-  const started = await ctx.callTool(ctx.claim, 'task.start', {
+  const startedID = await ctx.startTask(ctx.claim, {
     runner: 'atc',
     name: 'Fix the flaky login test',
     brief: 'Find why the login test fails.',
     repo: { url: 'https://github.com/example/shop.git', ref: 'main' },
   });
 
-  const startedID = started.outcome.status === 'ok' ? String(started.outcome.result['taskID']) : '';
-
   await ctx.runActions();
 
   const session = await ctx.listSession();
 
-  const joined = await ctx.callTool(ctx.claim, 'task.start', {
+  const joinedID = await ctx.startTask(ctx.claim, {
     runner: 'atc',
     name: 'Watch the login fix',
     brief: 'Watch for a question.',
     session,
   });
-
-  const joinedID = joined.outcome.status === 'ok' ? String(joined.outcome.result['taskID']) : '';
 
   await ctx.runSteps();
 

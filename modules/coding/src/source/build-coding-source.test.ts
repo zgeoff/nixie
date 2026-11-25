@@ -19,7 +19,7 @@ async function setupTest() {
     health,
     seed: {
       session: async (): Promise<string> => {
-        const started = await ctx.callTool(claim, 'task.start', {
+        const taskID = await ctx.startTask(claim, {
           runner: 'atc',
           name: 'Fix the flaky login test',
           brief: 'Find why the login test fails.',
@@ -29,7 +29,7 @@ async function setupTest() {
         await ctx.runActions();
         await ctx.runSteps();
 
-        return started.outcome.status === 'ok' ? String(started.outcome.result['taskID']) : '';
+        return taskID;
       },
     },
     startSource: async (cursor: string | null) => {

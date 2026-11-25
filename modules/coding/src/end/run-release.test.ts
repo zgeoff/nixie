@@ -10,16 +10,13 @@ async function setupTest() {
   const ctx = await startTestCoding();
   const claim = await ctx.claimConversation();
 
-  const startTask = async (): Promise<string> => {
-    const started = await ctx.callTool(claim, 'task.start', {
+  const startTask = (): Promise<string> =>
+    ctx.startTask(claim, {
       runner: 'atc',
       name: 'Fix the flaky login test',
       brief: 'Find why the login test fails.',
       repo: { url: 'https://github.com/example/shop.git', ref: 'main' },
     });
-
-    return started.outcome.status === 'ok' ? String(started.outcome.result['taskID']) : '';
-  };
 
   return {
     ...ctx,
@@ -39,14 +36,12 @@ async function setupTest() {
 
         const shortID = /"id":"(?<id>[^"]+)"/u.exec(JSON.stringify(listed.outcome))?.groups?.['id'];
 
-        const joined = await ctx.callTool(claim, 'task.start', {
+        return ctx.startTask(claim, {
           runner: 'atc',
           name: 'Your billing refactor',
           brief: 'Watch for a question.',
           session: shortID ?? '',
         });
-
-        return joined.outcome.status === 'ok' ? String(joined.outcome.result['taskID']) : '';
       },
       startedTask: startTask,
     },

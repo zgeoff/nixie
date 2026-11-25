@@ -1,6 +1,5 @@
 import { expect, test } from 'bun:test';
 import type { StartedClaim } from '@heynixie/tasks';
-import invariant from 'tiny-invariant';
 import { readBinding } from '../session/read-binding';
 import { startTestCoding } from '../test-utils/start-test-coding';
 
@@ -15,19 +14,17 @@ async function setupTest() {
 
       const session = /"id":"(?<id>[^"]+)"/u.exec(JSON.stringify(listed.outcome))?.groups?.['id'];
 
-      const joined = await ctx.callTool(claim, 'task.start', {
+      const taskID = await ctx.startTask(claim, {
         runner: 'atc',
         name: 'Your billing refactor',
         brief: 'Watch for a question.',
         session,
       });
 
-      invariant(joined.outcome.status === 'ok');
-
       await ctx.runActions();
       await ctx.runSteps();
 
-      return String(joined.outcome.result['taskID']);
+      return taskID;
     },
   };
 }

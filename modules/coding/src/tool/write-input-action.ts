@@ -84,7 +84,7 @@ export function writeInputAction(context: CodingContext, input: InputAction): Pr
       ],
     });
 
-    invariant(actionID, 'the queue returns one ID per action');
+    invariant(actionID !== undefined, 'the queue returns one ID per action');
 
     return { status: 'queued', actionID };
   });

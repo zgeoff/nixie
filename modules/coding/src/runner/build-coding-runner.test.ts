@@ -2,6 +2,8 @@ import { expect, test } from 'bun:test';
 import { readTestActions } from '@heynixie/actions/test-utils';
 import { readRecords } from '@heynixie/log';
 import type { TasksTables } from '@heynixie/tasks';
+import invariant from 'tiny-invariant';
+import { z } from 'zod';
 import { readBinding } from '../session/read-binding';
 import { startTestCoding } from '../test-utils/start-test-coding';
 
@@ -38,14 +40,12 @@ test('it starts a coding task that queues one spawn, sends the brief as the prom
   const ctx = await setupTest();
   const claim = await ctx.claimConversation();
 
-  const started = await ctx.callTool(claim, 'task.start', {
+  const taskID = await ctx.startTask(claim, {
     runner: 'atc',
     name: 'Fix the flaky login test',
     brief: 'The login test fails 1 time in 5 on CI. Find why and open a pull request.',
     repo: { url: 'https://github.com/example/shop.git', ref: 'main' },
   });
-
-  const taskID = started.outcome.status === 'ok' ? String(started.outcome.result['taskID']) : '';
 
   await ctx.runActions();
   await ctx.runSteps();
@@ -99,7 +99,9 @@ test('it joins a running session by its short ID, binds it, and sends it nothing
     session,
   });
 
-  const taskID = joined.outcome.status === 'ok' ? String(joined.outcome.result['taskID']) : '';
+  invariant(joined.outcome.status === 'ok');
+
+  const taskID = z.string().parse(joined.outcome.result['taskID']);
 
   await ctx.runActions();
   await ctx.runSteps();
@@ -108,7 +110,6 @@ test('it joins a running session by its short ID, binds it, and sends it nothing
     methods: ctx.adapter.calls.map((call) => call.method),
     actions: await ctx.readActions(),
     binding: await ctx.readBinding(taskID),
-    result: JSON.stringify(joined.outcome),
   }).toStrictEqual({
     methods: ['list', 'join'],
     actions: [],
@@ -125,8 +126,9 @@ test('it joins a running session by its short ID, binds it, and sends it nothing
       unboundAt: null,
       heldAnswers: [],
     },
-    result: expect.not.stringContaining('7c1d0e55'),
   });
+
+  expect(JSON.stringify(joined.outcome)).not.toContain('7c1d0e55');
 });
 
 test('it refuses a second join of a session that an open coding task binds', async () => {
@@ -144,10 +146,7 @@ test('it refuses a second join of a session that an open coding task binds', asy
   const session = /"id":"(?<id>[^"]+)"/u.exec(JSON.stringify(listed.outcome))?.groups?.['id'] ?? '';
   const join = { runner: 'atc', brief: 'Watch for a question.', session };
 
-  const first = await ctx.callTool(claim, 'task.start', { ...join, name: 'Billing' });
-
-  const taskID = first.outcome.status === 'ok' ? String(first.outcome.result['taskID']) : '';
-
+  const taskID = await ctx.startTask(claim, { ...join, name: 'Billing' });
   const second = await ctx.callTool(claim, 'task.start', { ...join, name: 'Billing again' });
 
   expect(second.outcome).toStrictEqual({
@@ -208,14 +207,12 @@ test('it ends the task as done with a report when the system refuses the spawn',
 
   ctx.adapter.replyNext('start', { status: 'refused', canClear: false, reason: 'bad_args' });
 
-  const started = await ctx.callTool(claim, 'task.start', {
+  const taskID = await ctx.startTask(claim, {
     runner: 'atc',
     name: 'Fix the flaky login test',
     brief: 'Find why the login test fails.',
     repo: { url: 'https://github.com/example/shop.git', ref: 'main' },
   });
-
-  const taskID = started.outcome.status === 'ok' ? String(started.outcome.result['taskID']) : '';
 
   await ctx.runActions();
   await ctx.runSteps();
@@ -246,14 +243,12 @@ test('it lists the session of each coding task for tasks.list, and no meters', a
   const ctx = await setupTest();
   const claim = await ctx.claimConversation();
 
-  const started = await ctx.callTool(claim, 'task.start', {
+  const taskID = await ctx.startTask(claim, {
     runner: 'atc',
     name: 'Fix the flaky login test',
     brief: 'Find why the login test fails.',
     repo: { url: 'https://github.com/example/shop.git', ref: 'main' },
   });
-
-  const taskID = started.outcome.status === 'ok' ? String(started.outcome.result['taskID']) : '';
 
   await ctx.runActions();
   await ctx.runSteps();
