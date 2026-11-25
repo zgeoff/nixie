@@ -4,7 +4,7 @@
 # out. It checks that nixie's health URL answers ready through the recipe's origin, and that the
 # enrol service prints a sign-in code. It runs the backup container built from the checkout, checks
 # that nixie records a shipped set, and checks that the backup passwords and nixie's secrets stay in
-# their own services. The recipe job is a required check, and GitHub counts a
+# their own services, that the proxy keeps the forwarded protocol, and that the proxy's error log holds no bearer ticket. The recipe job is a required check, and GitHub counts a
 # skipped job as a pass, so the job runs on every pull request; on a pull request that changes no
 # file the recipe or the test build reads, each of its steps skips. A pull request runs the digest
 # check only when it changes the recipe or that check. compose-main.yml runs the same jobs on each
@@ -146,6 +146,15 @@ jobs:
       - name: Check the backup credentials stay apart
         if: ${{ env.RECIPE_CHANGED == 'true' }}
         run: bun run --silent ci:compose:check-backup-credentials
+
+      - name: Check that the proxy keeps the forwarded protocol
+        if: ${{ env.RECIPE_CHANGED == 'true' }}
+        run: bun run --silent ci:compose:check-forwarded-proto
+
+      # stops nixie, so it runs after every step that needs nixie
+      - name: Check that the proxy log holds no ticket
+        if: ${{ env.RECIPE_CHANGED == 'true' }}
+        run: bun run --silent ci:compose:check-ticket-log
 
       - name: Show the logs
         if: ${{ failure() && env.RECIPE_CHANGED == 'true' }}

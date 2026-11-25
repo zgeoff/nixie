@@ -54,6 +54,9 @@ export interface APISettings {
     readonly defaultZone: string;
   };
 
+  // what the card of a mail send shows of the reply rule that the send sets; absent without a mailbox
+  readonly mail?: { readonly replyExpiryMs: number };
+
   // the policy settings of proposed rules and mandates
   readonly policy?: {
     readonly proposedRules: {
@@ -113,6 +116,10 @@ export interface APIContext extends TasksContext {
 
   // presence and the open device streams, which a restart drops
   readonly clients: ClientRegistry;
+
+  // the server's own log, which a page event that a limit drops writes a line to; absent, the
+  // server holds none
+  readonly logger?: Logger;
 
   // challenges, registration options and the host code, which a restart drops
   readonly passkeys: PasskeyState;

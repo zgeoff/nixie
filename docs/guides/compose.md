@@ -29,9 +29,9 @@ secret reaches the container's configuration or its disk.
    NIXIE_SECRETS_FILE=<sops_file> NIXIE_AGE_KEY_FILE=<age_key_file> docker compose up --wait
    ```
 
-   Expect every service healthy and `setup` exited 0. The `setup` service copies the sops file and
-   the age key into a volume that only nixie's user reads, so the host's files stay readable by
-   their owner alone.
+   Expect every running service healthy, and `setup` exited 0. The `setup` service copies the sops
+   file and the age key into a volume that only nixie's user reads, so the host's files stay
+   readable by their owner alone.
 
 6. Print a sign-in code, and enter it on the sign-in page:
 
@@ -46,13 +46,16 @@ Put HTTPS for your host name in front of the origin, on loopback or your private
 
 Clients open the watch socket at `/rpc/computer/watch-stream`, with a one-use ticket in the query.
 The recipe's Caddyfile writes no access log, but Caddy writes the request address into its error log
-when nixie is down, so the Caddyfile filters the `ticket` query parameter out of every log line.
-When you add an access log, or put a proxy with its own log in front, drop the query of that path
-from each log line too. The `/rpc*` rule already sends the socket to nixie, and Caddy carries
-WebSocket upgrades without more settings.
+when nixie is down, so the Caddyfile filters each bearer ticket out of every log line: the `ticket`
+query parameter, and the last path segment of a device page's frame and image URLs under
+`/rpc/device/frames/` and `/rpc/device/images/`. When you add an access log, or put a proxy with its
+own log in front, drop those parts of the address from each log line too.
 
-An upgrade changes the tag and the digest of 3 images together: nixie, web, and the backup image
-when the deployment runs one, as a release's notes list them. A rollback reverts that change. The
+The `/rpc*` rule already sends the socket to nixie, and Caddy carries WebSocket upgrades without
+more settings.
+
+An upgrade changes the tag and the digest of nixie and web together, and of the backup image when
+the deployment runs one, as a release's notes list them. A rollback reverts that change. The
 [upgrade runbook](../runbooks/upgrades.md) gives the steps.
 
 ## How CI checks it
@@ -67,3 +70,8 @@ isolation, so the overlay is never a deployment. The workflow checks the health 
 recipe's origin, and that the `enrol` service prints a sign-in code. The overlay adds the
 `nixie-backup` container, built from the checkout, and the workflow checks that nixie records a set
 that the container shipped.
+
+The workflow also checks that the proxy hands on the forwarded protocol and host that the HTTPS
+proxy in front of it sends, because nixie builds the image URLs of a device page from them. Last, it
+stops nixie, sends requests with a fixture ticket through the origin, and checks that the proxy's
+error log holds no ticket.

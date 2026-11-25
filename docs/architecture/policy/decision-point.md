@@ -83,6 +83,10 @@ Stage 5 gives each destination of a call the first permission that holds:
    names one yet.
 5. `rule`: an allow rule that matches the call names the destination.
 
+A pattern with a `*` never gives the `task` or `rule` permission to an email address, so a whole
+domain such as `*@example.org` covers no recipient. Only an exact address holds that trust, and you
+name each one.
+
 A destination with none of them asks at stage 5 unless consent covers it. A call reads the contacts
 of its own snapshot, so a contact unmarked since still covers a replay of an earlier call.
 

@@ -11,6 +11,7 @@ import {
   webFetchConfigSchema,
 } from '@heynixie/connectors';
 import { definitionsConfigSchema } from '@heynixie/definitions';
+import { mailConfigSchema } from '@heynixie/mail';
 import { memoryConfigSchema } from '@heynixie/memory';
 import { notebookConfigSchema } from '@heynixie/notebook';
 import { policyConfigSchema } from '@heynixie/policy';
@@ -18,6 +19,7 @@ import { approvalsConfigSchema, quietHoursSchema } from '@heynixie/proposals';
 import { remindersConfigSchema } from '@heynixie/reminders';
 import { skillsConfigSchema } from '@heynixie/skills';
 import { tasksConfigSchema } from '@heynixie/tasks';
+import { wakeRulesConfigSchema } from '@heynixie/triggers';
 import { turnInputLogConfigSchema } from '@heynixie/turn-inputs';
 import { z } from 'zod';
 import { erasureConfigSchema } from '../config/erasure-config-schema';
@@ -57,6 +59,8 @@ export const deploymentConfigSchema = z
     spendStop: spendStopSchema.optional(),
     coding: codingConfigSchema.optional(),
     voice: voiceConfigSchema.optional(),
+    mail: mailConfigSchema.optional(),
+    wake_rules: wakeRulesConfigSchema.default(wakeRulesConfigSchema.parse({})),
   })
   .superRefine((config, issues) => {
     if (config.sandbox.adapter === 'imp' && config.imp === undefined) {

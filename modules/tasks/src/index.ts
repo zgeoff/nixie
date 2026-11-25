@@ -193,6 +193,7 @@ export {
   triggerFiredKinds,
 } from './task/codec/trigger-fired-codec';
 
+export { mailWokeFieldsSchema, triggerMailWokeCodec } from './task/codec/trigger-mail-woke-codec';
 export { triggerTaskInputCodec } from './task/codec/trigger-task-input-codec';
 export type { DatedFire, TriggerDetails } from './trigger/build-trigger-details';
 export { buildTriggerDetails } from './trigger/build-trigger-details';

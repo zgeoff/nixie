@@ -2131,6 +2131,38 @@
         "credential"
       ],
       "additionalProperties": false
+    },
+    "mail": {
+      "type": "object",
+      "properties": {
+        "address": {
+          "type": "string",
+          "format": "email",
+          "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+        },
+        "host_poll_interval": {
+          "default": "30s",
+          "type": "string"
+        }
+      },
+      "required": [
+        "address"
+      ],
+      "additionalProperties": false
+    },
+    "wake_rules": {
+      "type": "object",
+      "properties": {
+        "window": {
+          "default": "15m",
+          "type": "string"
+        },
+        "reply_expiry": {
+          "default": "7d",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
     }
   },
   "required": [

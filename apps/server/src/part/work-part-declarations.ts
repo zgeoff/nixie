@@ -18,6 +18,7 @@ import {
 } from '@heynixie/definitions';
 import { startDeviceWakes, startWaitingShows } from '@heynixie/devices';
 import { toErrorFields } from '@heynixie/logger';
+import { buildMailSource } from '@heynixie/mail';
 import { startPromptLapseSweep } from '@heynixie/prompts';
 import { startSpendWatcher } from '@heynixie/spend';
 import type { RunStep } from '@heynixie/tasks';
@@ -31,9 +32,10 @@ import {
   sandboxRunner,
   writeThreadRecordInTransaction,
 } from '@heynixie/tasks';
-import { buildScheduleSource, startTriggerSources } from '@heynixie/triggers';
+import { buildScheduleSource, startTriggerSources, startWakeFlush } from '@heynixie/triggers';
 import { runDefinitionsSeed } from '../definition/run-definitions-seed';
 import { startDefinitionsExports } from '../definition/start-definitions-exports';
+import { buildServerMailContext } from '../mail/build-server-mail-context';
 import { queueCheckRunner } from '../queue/queue-check-runner';
 import { startQueueCheckTask } from '../queue/start-queue-check-task';
 import { runServerReminderMoves } from '../reminder/run-server-reminder-moves';
@@ -164,23 +166,35 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
       });
 
       const coding = reader.get('context').coding;
+      const mail = reader.get('context').mail;
+      const mailContext = buildServerMailContext(mail, parts.context, parts.log);
+
+      const core = {
+        log: parts.context.log,
+        clock: parts.context.clock,
+        definitions: parts.context.definitions,
+        logEvent: parts.log,
+        readDefinitionTask: readDefinitionTaskInTransaction,
+        retireOneShot: makeRetireOneShot(parts.context),
+      };
 
       const sources = await startTriggerSources(
         [
           scheduleSource,
           ...(coding === null ? [] : [buildCodingSource(coding.context, coding.adapter)]),
+          ...(mail === null || mailContext === null
+            ? []
+            : [buildMailSource(mailContext, mail.host)]),
         ],
-        {
-          log: parts.context.log,
-          clock: parts.context.clock,
-          definitions: parts.context.definitions,
-          logEvent: parts.log,
-          readDefinitionTask: readDefinitionTaskInTransaction,
-          retireOneShot: makeRetireOneShot(parts.context),
-        },
+        core,
       );
 
       await parts.cleanup.defer(() => sources.stop());
+
+      // the held matches of a wake rule wake their target here, once a rule's window is over
+      const flush = startWakeFlush(core);
+
+      await parts.cleanup.defer(() => flush.stop());
     },
   },
   {
@@ -427,6 +441,7 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
     name: 'ready',
     needs: [
       'inputs',
+      'context',
       'server_parts',
       'seed_poll',
       'notebook',
@@ -451,7 +466,13 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
       const harness = reader.get('inputs').options.harness;
 
       if (NIXIE_TEST_BUILD && harness !== undefined) {
-        registerHarnessOperations(harness.link, parts.context, parts.apiContext.calls);
+        registerHarnessOperations(
+          harness.link,
+          parts.context,
+          parts.apiContext.calls,
+          reader.get('context').mail?.memory ?? null,
+        );
+
         registerCredentialOperations(harness.link, parts.context, reader.get('erasure'));
 
         harness.link.sendReady();

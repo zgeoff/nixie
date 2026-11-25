@@ -296,3 +296,167 @@ test('it reports again for a replacement image that fails with the same reason',
     ]);
   });
 });
+
+test('it frames a page in a sandbox that grants scripts and nothing else', () => {
+  const rendered = render(
+    <LayoutView
+      layout={{
+        columns: ['1fr'],
+        rows: ['1fr'],
+        regions: [
+          {
+            name: 'pond',
+            column: 1,
+            row: 1,
+            columnSpan: 1,
+            rowSpan: 1,
+            background: null,
+            content: { kind: 'html', frame: 'f3a1c2d4-0000-4000-8000-000000000001', images: [] },
+            shown: 'sh3k7m2q9x',
+            until: null,
+          },
+        ],
+      }}
+    />,
+  );
+
+  const frame = rendered.getByTestId('page-pond');
+
+  expect([
+    frame.tagName,
+    frame.getAttribute('sandbox'),
+    frame.getAttribute('src'),
+    frame.getAttribute('referrerpolicy'),
+  ]).toStrictEqual([
+    'IFRAME',
+    'allow-scripts',
+    '/rpc/device/frames/f3a1c2d4-0000-4000-8000-000000000001',
+    'no-referrer',
+  ]);
+});
+
+test('it draws no frame for a page region whose content ID is missing', () => {
+  const rendered = render(
+    <LayoutView
+      layout={{
+        columns: ['1fr'],
+        rows: ['1fr'],
+        regions: [
+          {
+            name: 'pond',
+            column: 1,
+            row: 1,
+            columnSpan: 1,
+            rowSpan: 1,
+            background: null,
+            content: { kind: 'html', frame: 'f3a1c2d4-0000-4000-8000-000000000001', images: [] },
+            shown: null,
+            until: null,
+          },
+        ],
+      }}
+    />,
+  );
+
+  expect(rendered.queryByTestId('page-pond')).toBeNull();
+});
+
+test('it loads a page that replaces another page in a new frame', () => {
+  const rendered = render(
+    <LayoutView
+      layout={{
+        columns: ['1fr'],
+        rows: ['1fr'],
+        regions: [
+          {
+            name: 'pond',
+            column: 1,
+            row: 1,
+            columnSpan: 1,
+            rowSpan: 1,
+            background: null,
+            content: { kind: 'html', frame: 'f1', images: [] },
+            shown: 'sh1',
+            until: null,
+          },
+        ],
+      }}
+    />,
+  );
+
+  const first = rendered.getByTestId('page-pond');
+
+  rendered.rerender(
+    <LayoutView
+      layout={{
+        columns: ['1fr'],
+        rows: ['1fr'],
+        regions: [
+          {
+            name: 'pond',
+            column: 1,
+            row: 1,
+            columnSpan: 1,
+            rowSpan: 1,
+            background: null,
+            content: { kind: 'html', frame: 'f2', images: [] },
+            shown: 'sh2',
+            until: null,
+          },
+        ],
+      }}
+    />,
+  );
+
+  expect(rendered.getByTestId('page-pond')).not.toBe(first);
+});
+
+test('it keeps the frame of a page while the page stays', () => {
+  const rendered = render(
+    <LayoutView
+      layout={{
+        columns: ['1fr'],
+        rows: ['1fr'],
+        regions: [
+          {
+            name: 'pond',
+            column: 1,
+            row: 1,
+            columnSpan: 1,
+            rowSpan: 1,
+            background: null,
+            content: { kind: 'html', frame: 'f1', images: [] },
+            shown: 'sh1',
+            until: null,
+          },
+        ],
+      }}
+    />,
+  );
+
+  const first = rendered.getByTestId('page-pond');
+
+  rendered.rerender(
+    <LayoutView
+      layout={{
+        columns: ['1fr'],
+        rows: ['1fr'],
+        regions: [
+          {
+            name: 'pond',
+            column: 1,
+            row: 1,
+            columnSpan: 1,
+            rowSpan: 1,
+            background: null,
+            content: { kind: 'html', frame: 'f1', images: [] },
+            shown: 'sh1',
+            until: null,
+          },
+        ],
+      }}
+    />,
+  );
+
+  expect(rendered.getByTestId('page-pond')).toBe(first);
+});

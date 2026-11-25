@@ -17,6 +17,8 @@ import type { HeardCut } from './render-call-thread-line';
 import { renderHandoverAsked } from './render-handover-asked';
 import { renderHandoverClosed } from './render-handover-closed';
 import { renderLimitNotice } from './render-limit-notice';
+import { renderMailWoke } from './render-mail-woke';
+import { renderPageEventMessage } from './render-page-event-message';
 import { renderProposalDecline } from './render-proposal-decline';
 import { renderProposalDefer } from './render-proposal-defer';
 import { renderRecoveryNotice } from './render-recovery-notice';
@@ -101,8 +103,16 @@ export function renderInboxMessage(
     return renderCallThreadLine(record, times, extras.cut ?? null, extras.smallTalk ?? []);
   }
 
+  if (record.kind === 'device.page_event') {
+    return renderPageEventMessage(record, times);
+  }
+
   if (record.kind === 'policy.action_answered') {
     return renderApprovalAnswer(record, times);
+  }
+
+  if (record.kind === 'trigger.mail_woke') {
+    return renderMailWoke(record, times);
   }
 
   if (record.kind === 'trigger.fired' && reminder !== null) {

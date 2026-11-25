@@ -21,6 +21,7 @@ export const tasksRecordTopics = {
   'trigger.fired': ['tasks', 'triggers', 'definitions'],
   'trigger.skipped': ['tasks', 'triggers', 'definitions'],
   'trigger.task_input': ['tasks'],
+  'trigger.mail_woke': ['tasks', 'triggers'],
   'task.interrupted': ['tasks'],
   'task.limit_reached': ['tasks'],
   'task.failed_turn_spent': ['tasks'],

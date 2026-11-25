@@ -36,11 +36,12 @@ libs/       shared code that belongs to no domain
   over the sandbox's route back to nixie.
 
 The workspace globs cover those 5 folders, the Pulumi component, the root `verify/`, `integration/`
-and `evals/` packages, and the spikes in `research/`. The spikes join the workspace so that CI
-typechecks them, and they stand outside the package rules here: a spike pins the exact versions it
-ran against, imports product files by path with a `@boundaries-ignore` comment, and has no tests
-that CI runs. A spike whose pins conflict with the workspace stays out of it and installs on its
-own, as do the Agent SDK spikes under `docs/design/`.
+and `evals/` packages, and each spike in `research/` except those the root `workspaces` list
+excludes. The spikes join the workspace so that CI typechecks them, and they stand outside the
+package rules here: a spike pins the exact versions it ran against, imports product files by path
+with a `@boundaries-ignore` comment, and has no tests that CI runs. A spike whose pins conflict with
+the workspace stays out of it and installs on its own, as do the Agent SDK spikes under
+`docs/design/`.
 
 `deploy/` holds the deployment artifacts nixie ships: the Compose recipe in `deploy/compose/`, the
 [reference Kubernetes manifests](deployment/kubernetes.md) in `deploy/kubernetes/`, and the
@@ -132,12 +133,12 @@ code reach test code.
 
 A few imports belong to one package each:
 
-| Import                              | The only package that may import it |
-| ----------------------------------- | ----------------------------------- |
-| The Agent SDK                       | `guests/conversation`               |
-| imp's client                        | `adapters/sandbox-imp`              |
-| `bun:sqlite` and the Kysely dialect | `libs/db`                           |
-| ONNX Runtime and its tokenizer      | `adapters/encoder-onnx`             |
+| Import                              | The packages that may import it    |
+| ----------------------------------- | ---------------------------------- |
+| The Agent SDK                       | `guests/conversation` and `evals/` |
+| imp's client                        | `adapters/sandbox-imp`             |
+| `bun:sqlite` and the Kysely dialect | `libs/db`                          |
+| ONNX Runtime and its tokenizer      | `adapters/encoder-onnx`            |
 
 The `zgeoff/import-zones` lint rule refuses each of these imports outside its one package. The Agent
 SDK has one exception: the SDK contract suite and the memory checker's eval in `evals/` drive the
@@ -151,33 +152,34 @@ import escapes the zones. The zones exist because the Agent SDK runs only inside
 
 Each module package covers one area of the architecture, and its doc covers the package.
 
-| Package       | Area                                                                                                                                            |
-| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `log`         | [The event log](core/event-log.md), keys, projections and the [single writer](core/database.md)                                                 |
-| `tasks`       | [Tasks](core/tasks.md), [leases](core/leases-and-restart-sweep.md), the inbox, waits and timers                                                 |
-| `actions`     | [The action queue](core/actions.md), attempts, outcomes and retries                                                                             |
-| `models`      | [Model profiles](core/model-profiles.md), roles and cost                                                                                        |
-| `sessions`    | The [conversation's turns](core/conversation-turns.md), [session opening](core/session-opening.md) and each system task's own session           |
-| `compaction`  | The [compactor](core/compaction.md) and its summary records                                                                                     |
-| `triggers`    | [Triggers](core/triggers.md): the trigger core, the arming hook, the watermark and the fire times                                               |
-| `definitions` | [The definitions](core/definitions.md) and the path source                                                                                      |
-| `prompts`     | The built-in [prompts](core/prompts.md), their parts and templates, and the render that applies the overrides                                   |
-| `policy`      | [The decision point](policy/decision-point.md) and its fixed rules                                                                              |
-| `api`         | [The API](channels/api.md): the oRPC router, device sessions and the live stream                                                                |
-| `devices`     | [Devices](channels/devices.md): the device record, the screen state, the open streams and the device tools                                      |
-| `calls`       | [Voice calls](channels/calls.md): the call state, its records, its price and budget, and the speech layer interface                             |
-| `sandbox`     | The [sandbox adapter](connectors/sandboxes.md) interface, sandboxes by kind and the sandbox double                                              |
-| `tools`       | The [tool endpoint](connectors/tool-calls.md) per task run                                                                                      |
-| `credentials` | The [credential store](connectors/credentials.md): the reference resolver, the fetcher, the model grant and the own-value set                   |
-| `connections` | The [credential database](connectors/credential-database.md): the database backend for OAuth tokens and the forget of a connection              |
-| `connectors`  | The [web fetch](connectors/web-fetch.md), [time](connectors/time.md) and [search](connectors/search.md) and [image](connectors/images.md) tools |
-| `memory`      | The [memory store](memory/store.md) and its context                                                                                             |
-| `notebook`    | The [notebook](memory/notebook.md): notes, their links, the tools and the forget                                                                |
-| `backup`      | The snapshot sets and receipts of [backups](deployment/backups.md) and their schedule                                                           |
-| `ops`         | The health checks behind [the server's](deployment/server.md) health endpoint                                                                   |
-| `skills`      | [Skills](core/skills.md): the pins, the catalog, the skill tools and the skill proposals                                                        |
-| `proposals`   | The review lifecycle that [skill proposals](core/skills.md#skills-that-nixie-writes) run on: its moves, its lapse time and the lapse sweep      |
-| `turn-inputs` | The [turn-input log](policy/turn-input-log.md): the capture of a step, the intake, the removals and the reading                                 |
+| Package       | Area                                                                                                                                                |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `log`         | [The event log](core/event-log.md), keys, projections and the [single writer](core/database.md)                                                     |
+| `tasks`       | [Tasks](core/tasks.md), [leases](core/leases-and-restart-sweep.md), the inbox, waits and timers                                                     |
+| `actions`     | [The action queue](core/actions.md), attempts, outcomes and retries                                                                                 |
+| `models`      | [Model profiles](core/model-profiles.md), roles and cost                                                                                            |
+| `sessions`    | The [conversation's turns](core/conversation-turns.md), [session opening](core/session-opening.md) and each system task's own session               |
+| `compaction`  | The [compactor](core/compaction.md) and its summary records                                                                                         |
+| `triggers`    | [Triggers](core/triggers.md): the trigger core, the arming hook, the watermark and the fire times                                                   |
+| `mail`        | [The assistant's mailbox](core/mailbox.md): the mail host interface, the stored mail, the mail tools and the send                                   |
+| `definitions` | [The definitions](core/definitions.md) and the path source                                                                                          |
+| `prompts`     | The built-in [prompts](core/prompts.md), their parts and templates, and the render that applies the overrides                                       |
+| `policy`      | [The decision point](policy/decision-point.md) and its fixed rules                                                                                  |
+| `api`         | [The API](channels/api.md): the oRPC router, device sessions and the live stream                                                                    |
+| `devices`     | [Devices](channels/devices.md): the device record, the screen state, the layouts, the pages and their events, the open streams and the device tools |
+| `calls`       | [Voice calls](channels/calls.md): the call state, its records, its price and budget, and the speech layer interface                                 |
+| `sandbox`     | The [sandbox adapter](connectors/sandboxes.md) interface, sandboxes by kind and the sandbox double                                                  |
+| `tools`       | The [tool endpoint](connectors/tool-calls.md) per task run                                                                                          |
+| `credentials` | The [credential store](connectors/credentials.md): the reference resolver, the fetcher, the model grant and the own-value set                       |
+| `connections` | The [credential database](connectors/credential-database.md): the database backend for OAuth tokens and the forget of a connection                  |
+| `connectors`  | The [web fetch](connectors/web-fetch.md), [time](connectors/time.md) and [search](connectors/search.md) and [image](connectors/images.md) tools     |
+| `memory`      | The [memory store](memory/store.md) and its context                                                                                                 |
+| `notebook`    | The [notebook](memory/notebook.md): notes, their links, the tools and the forget                                                                    |
+| `backup`      | The snapshot sets and receipts of [backups](deployment/backups.md) and their schedule                                                               |
+| `ops`         | The health checks behind [the server's](deployment/server.md) health endpoint                                                                       |
+| `skills`      | [Skills](core/skills.md): the pins, the catalog, the skill tools and the skill proposals                                                            |
+| `proposals`   | The review lifecycle that [skill proposals](core/skills.md#skills-that-nixie-writes) run on: its moves, its lapse time and the lapse sweep          |
+| `turn-inputs` | The [turn-input log](policy/turn-input-log.md): the capture of a step, the intake, the removals and the reading                                     |
 
 The other packages each hold one piece the modules and apps share:
 
@@ -199,7 +201,9 @@ The other packages each hold one piece the modules and apps share:
   the schema version from [the database](core/database.md#migrations), tagged `server-only`.
 - `libs/secret-scan` scans a URL for a key or a token, with the pinned public rules and nixie's own
   values, tagged `server-only`. [The secret scan](connectors/secret-scan.md) covers its rules.
-- `libs/wire` holds the message formats that cross a sandbox boundary.
+- `libs/wire` holds the message formats that cross a sandbox boundary, and the frame and bridge of a
+  [device page](channels/devices.md#page-regions), which the server serves and the preview's files
+  and the web client's browser tests share.
 - `libs/egress` holds the address checks and the checking proxy that the guests with public egress
   share.
 - `libs/clock` is the one clock that every time and every wait reads. A test build replaces it with
@@ -219,14 +223,14 @@ The other packages each hold one piece the modules and apps share:
 ## Tests and checks
 
 Tests run on `bun test`, and each unit test sits beside the module it tests, as `x.test.ts` beside
-`x.ts`. A lint rule refuses a test file outside `e2e/` with no module of its name beside it. The
-only test folders at the root are `integration/`, which runs one flow across several packages in one
-process, and `evals/`, which checks committed evaluation reports against the code. Each app that a
-test starts as a program holds its whole-program suites in its own `e2e/` folder, such as the
-[crash tests](core/crash-tests.md) in `apps/server/e2e/`. Their helpers live in packages: the
-spawned-nixie harness in the server's test utilities, the helpers that build the web client and the
-backup job in those apps' test utilities, and the eval helpers in the memory module and the
-conversation guest.
+`x.ts`. A lint rule refuses a test file outside `e2e/` and `integration/` with no module of its name
+beside it. The only test folders at the root are `integration/`, which runs one flow across several
+packages in one process, and `evals/`, which checks committed evaluation reports against the code.
+Each app that a test starts as a program holds its whole-program suites in its own `e2e/` folder,
+such as the [crash tests](core/crash-tests.md) in `apps/server/e2e/`. Their helpers live in
+packages: the spawned-nixie harness in the server's test utilities, the helpers that build the web
+client and the backup job in those apps' test utilities, and the eval helpers in the memory module
+and the conversation guest.
 
 The product tests that run the Agent SDK's `query()` live in `guests/conversation`, the one product
 package that imports the SDK. They run against the guest's own stub model, so none of them needs an

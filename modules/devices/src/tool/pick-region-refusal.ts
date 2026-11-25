@@ -5,7 +5,8 @@ export type RegionRefusal =
   | 'UNKNOWN_DEVICE'
   | 'SCREEN_OFF'
   | 'UNKNOWN_REGION'
-  | 'PAGE_NOT_BUILT'
+  | 'PACKAGES_NOT_BUILT'
+  | 'FETCHES_NOT_BUILT'
   | 'UNKNOWN_IMAGE'
   | 'IMAGE_FORGOTTEN'
   | 'OFFLINE';
@@ -15,7 +16,9 @@ interface RegionFacts {
 
   // whether the device has a layout with a region of this name
   readonly isRegionKnown: boolean;
-  readonly isPage: boolean;
+
+  // the part of a page that is not built yet, when the content names one
+  readonly unbuilt: 'PACKAGES_NOT_BUILT' | 'FETCHES_NOT_BUILT' | null;
 
   // the state of the image the content names, when it names one
   readonly images: readonly ImageState[];
@@ -23,7 +26,7 @@ interface RegionFacts {
 }
 
 // The first refusal of a region call: the device, its screen, the region, the content, then whether
-// the device is online. The content refusals are the ones a show returns, and a page.
+// the device is online. The content refusals are the ones a show returns, and the parts of a page that are not built.
 export function pickRegionRefusal(facts: RegionFacts): RegionRefusal | null {
   if (facts.device === null) {
     return 'UNKNOWN_DEVICE';
@@ -37,8 +40,8 @@ export function pickRegionRefusal(facts: RegionFacts): RegionRefusal | null {
     return 'UNKNOWN_REGION';
   }
 
-  if (facts.isPage) {
-    return 'PAGE_NOT_BUILT';
+  if (facts.unbuilt !== null) {
+    return facts.unbuilt;
   }
 
   if (facts.images.includes('missing')) {

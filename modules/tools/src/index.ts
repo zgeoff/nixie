@@ -40,6 +40,7 @@ export type {
   OpenAsk,
   OpenRepeat,
   DeadlineResolution,
+  DestinationResolution,
   GuestToolRun,
   JsonSchema,
   MemoryWriteVerdict,

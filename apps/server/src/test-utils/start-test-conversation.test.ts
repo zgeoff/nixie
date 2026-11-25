@@ -14,7 +14,8 @@ test('it runs a turn with the note before your message', async () => {
 
   const conversation = await startTestConversation(ctx.server, {
     context: ctx.server.context,
-    readTurnNote: () => Promise.resolve({ text: 'NOTE', throughSequence: 0, eventCount: 0 }),
+    readTurnNote: () =>
+      Promise.resolve({ text: 'NOTE', throughSequence: 0, eventCount: 0, sources: [] }),
   });
 
   const driver = buildConversationDriver({

@@ -21,7 +21,9 @@ export type SystemMessageType =
   | 'reminder'
   | 'restore'
   | 'computer'
-  | 'call';
+  | 'call'
+  | 'page-event'
+  | 'mail';
 
 export interface SystemMessage {
   readonly type: SystemMessageType;

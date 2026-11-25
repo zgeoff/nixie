@@ -9,6 +9,7 @@ import {
   rulesRecordTopics,
 } from '@heynixie/definitions';
 import { devicesRecordTopics } from '@heynixie/devices';
+import { mailRecordTopics } from '@heynixie/mail';
 import { memoryRecordTopics } from '@heynixie/memory';
 import { modelsRecordTopics } from '@heynixie/models';
 import { notebookRecordTopics } from '@heynixie/notebook';
@@ -38,6 +39,7 @@ export function collectModuleRecordTopicMaps() {
     definitionsSeededRecordTopics,
     devicesRecordTopics,
     imagesRecordTopics,
+    mailRecordTopics,
     memoryRecordTopics,
     modelsRecordTopics,
     notebookRecordTopics,

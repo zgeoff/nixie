@@ -1,3 +1,5 @@
+export type { PageFrame, PageFrameInput } from './page/build-page-frame';
+export { buildPageFrame } from './page/build-page-frame';
 export type { CheckReply, CheckRequest } from './fetch/check-request-schema';
 export { checkReplySchema, checkRequestSchema } from './fetch/check-request-schema';
 export { defaultFetchTextBytes } from './fetch/default-fetch-text-bytes';
@@ -20,6 +22,7 @@ export type { FetchReply } from './utils/fetch-reply';
 export type { AskHop } from './fetch/make-hop-asker';
 export { makeHopAsker } from './fetch/make-hop-asker';
 export type { FetchLimits, FetchRequest } from './fetch/fetch-request';
+export { maxFetchHTMLChars, maxFetchRequestBytes } from './fetch/fetch-request';
 export { frameHeaderBytes } from './frame/frame-header-bytes';
 export { FrameTooLargeError } from './frame/frame-too-large-error';
 export type { GuestFrame, ModelAPIErrorKind, TurnOutcome } from './frame/guest-frame';
@@ -147,6 +150,7 @@ export type { RenderFile, RenderReply, RenderRequest } from './render/render-req
 export {
   renderEntryPath,
   renderFrameLimitBytes,
+  renderOrigin,
   renderReplySchema,
   renderRequestSchema,
 } from './render/render-request';

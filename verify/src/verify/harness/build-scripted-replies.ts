@@ -36,6 +36,20 @@ export function buildScriptedReplies(
   const notebook =
     reply.notebook === undefined ? [] : buildNotebookReplies(reply.notebook, forConversation);
 
+  const mailWatch =
+    reply.mailWatch === undefined
+      ? []
+      : [
+          {
+            toolUse: {
+              name: 'mcp__nixie__mail_wake_set',
+              input: { from: [reply.mailWatch.from], window: '1m' },
+            },
+          },
+        ];
+
+  const mailRead = reply.mailRead === undefined ? [] : buildMailReadReplies(reply.mailRead.from);
+
   const forgetNote =
     reply.forgetNote === undefined
       ? []
@@ -80,6 +94,8 @@ export function buildScriptedReplies(
       ...memoryExport,
       ...drawing,
       ...notebook,
+      ...mailWatch,
+      ...mailRead,
       ...forgetNote,
       ...handover,
       ...codingStart,
@@ -95,6 +111,8 @@ export function buildScriptedReplies(
     ...reminder,
     ...memoryExport,
     ...notebook,
+    ...mailWatch,
+    ...mailRead,
     ...forgetNote,
     ...handover,
     { toolUse: { name: 'mcp__nixie__task_start', input: task }, ...forConversation },
@@ -266,4 +284,37 @@ function readWrittenNoteID(body: ScriptedBody, title: string): string {
   invariant(noteID !== undefined, `the write of the note "${title}" returned no note ID`);
 
   return noteID;
+}
+
+// A list of the unread mail from one sender, and the open of the newest mail it lists. The list
+// puts the newest first, in the order the mailbox stored the mail. The open names the mail by the ID
+// that the list's result gave, so a list with no mail fails the request instead.
+function buildMailReadReplies(from: string) {
+  return [
+    { toolUse: { name: 'mcp__nixie__mail_list', input: { unread: true, from } } },
+    {
+      toolUse: {
+        name: 'mcp__nixie__mail_read',
+        input: (body: ScriptedBody) => ({ message: readListedMailID(body) }),
+      },
+    },
+  ];
+}
+
+function readListedMailID(body: ScriptedBody): string {
+  const blocks = (body.messages ?? []).flatMap(
+    (message) => z.array(z.unknown()).safeParse(message.content).data ?? [],
+  );
+
+  const results = blocks
+    .map((block) => toolResultBlockSchema.safeParse(block))
+    .filter((parsed) => parsed.success)
+    .map((parsed) => parsed.data);
+
+  const listed = JSON.stringify(results.at(-1)?.content);
+  const mailID = /mails\\*":\[\{\\*"message\\*":\\*"(?<id>[a-z0-9]+)/u.exec(listed)?.groups?.['id'];
+
+  invariant(mailID !== undefined, 'the result of the list names no mail');
+
+  return mailID;
 }

@@ -76,6 +76,14 @@ export const controlRoutes = {
       // the starter rules hold for your approval; the coding runner calls no model
       codingTask: codingTaskSchema.optional(),
 
+      // a wake rule that the model sets on its own mailbox with the mail tool before its reply, for
+      // mail from this address or `@domain`
+      mailWatch: z.strictObject({ from: z.string().min(1) }).optional(),
+
+      // the model lists its unread mail from this address or `@domain` with the mail tool, then
+      // opens the newest, before its reply
+      mailRead: z.strictObject({ from: z.string().min(1) }).optional(),
+
       // a picture the model draws with the image tool before its reply, the one edit it then makes
       // to that picture, and a list of its pictures
       draw: drawnPictureSchema.optional(),
@@ -103,7 +111,7 @@ export const controlRoutes = {
     method: 'POST',
     path: '/control/layout-on-device',
     input: z.strictObject({
-      step: z.enum(['set', 'update', 'save', 'change', 'restore', 'preview']),
+      step: z.enum(['set', 'update', 'save', 'change', 'restore', 'preview', 'page', 'message']),
       text: z.string().min(1),
     }),
     output: z.strictObject({ replies: z.int().positive() }),
@@ -137,6 +145,19 @@ export const controlRoutes = {
 
     // the call's ID, and each call that nixie made on the fake speech layer, oldest first
     output: z.strictObject({ callID: z.string(), speech: z.array(speechCallSchema) }),
+  },
+  deliverMail: {
+    method: 'POST',
+    path: '/control/deliver-mail',
+    input: z.strictObject({
+      from: z.string().min(1),
+      subject: z.string().min(1),
+      text: z.string(),
+
+      // an HTML body, which the mailbox reads in place of the text
+      html: z.string().min(1).exactOptional(),
+    }),
+    output: z.strictObject({ delivered: z.literal(true) }),
   },
   modelReceived: {
     method: 'POST',

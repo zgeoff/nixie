@@ -9,7 +9,7 @@ export const deviceRegionShownCodec = defineRecordCodec(
 
     // the short ID the assistant reads
     shownID: z.string(),
-    contentKind: z.enum(['markdown', 'image', 'live']),
+    contentKind: z.enum(['markdown', 'image', 'live', 'html']),
 
     // the time the content ends, or null for content that lasts until the next one
     until: z.number().int().nullable(),

@@ -1,6 +1,12 @@
 // oxlint-disable new-cap -- oRPC names a procedure's typed errors by their upper-case codes
-import { readDeviceImage, recordPageError, writeScreenSwitch } from '@heynixie/devices';
+import {
+  readDeviceImage,
+  recordPageError,
+  recordPageEvent,
+  writeScreenSwitch,
+} from '@heynixie/devices';
 import { withWriteTransaction } from '@heynixie/log';
+import { conversationTaskID, writeThreadRecordInTransaction } from '@heynixie/tasks';
 import { requireCaller } from '../memory/require-caller';
 import type { APIContext } from '../types';
 import { apiImplementer } from '../utils/api-implementer';
@@ -51,6 +57,39 @@ export function createDeviceProcedures(context: APIContext) {
         caller.device.deviceID,
         options.input,
         context.clock.now(),
+      );
+
+      if (outcome === 'stale') {
+        throw options.errors.STALE();
+      }
+
+      return {};
+    }),
+
+    pageEvent: apiImplementer.devices.pageEvent.handler(async (options) => {
+      const caller = await requireDevice(context, options.context.sessionToken, {
+        buildUnauthorized: options.errors.UNAUTHORIZED,
+        buildNotADevice: options.errors.NOT_A_DEVICE,
+      });
+
+      const outcome = await recordPageEvent(
+        {
+          log: context.log,
+          definitions: context.definitions,
+          clock: context.clock,
+          streams: context.clients.devices,
+          thread: conversationTaskID,
+          writeEvent: (tx, input) => writeThreadRecordInTransaction(tx, context, input),
+          onDrop: (reason, region) => {
+            context.logger?.('devices.page_event_dropped', {
+              device: caller.device.deviceID,
+              region,
+              reason,
+            });
+          },
+        },
+        caller.device,
+        options.input,
       );
 
       if (outcome === 'stale') {

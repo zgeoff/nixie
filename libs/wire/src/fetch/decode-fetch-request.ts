@@ -15,9 +15,10 @@ export function decodeFetchRequest(bytes: Uint8Array): FetchRequest {
   }
 
   const decoded = decodeLimits(limits);
+  const html = decodeHTML(request['html']);
 
   if (!('hopGate' in request)) {
-    return { url: request['url'], limits: decoded, deniedRanges, hops: 'none' };
+    return { url: request['url'], limits: decoded, deniedRanges, hops: 'none', ...html };
   }
 
   return {
@@ -25,6 +26,7 @@ export function decodeFetchRequest(bytes: Uint8Array): FetchRequest {
     limits: { ...decoded, redirects: decodeHopGateRedirects(request['hopGate']) },
     deniedRanges,
     hops: 'ask',
+    ...html,
   };
 }
 
@@ -56,6 +58,18 @@ function decodeLimits(value: unknown): FetchLimits {
     textBytes: Number(limits.get('textBytes')),
     imageBytes: Number(limits.get('imageBytes')),
   };
+}
+
+function decodeHTML(value: unknown): { readonly html?: string } {
+  if (value === undefined) {
+    return {};
+  }
+
+  if (typeof value !== 'string') {
+    throw new TypeError('a fetch request needs html, a string, when it holds one');
+  }
+
+  return { html: value };
 }
 
 function decodeHopGateRedirects(value: unknown): number {

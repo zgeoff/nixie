@@ -26,6 +26,7 @@
     "@heynixie/devices": "workspace:*",
     "@heynixie/log": "workspace:*",
     "@heynixie/logger": "workspace:*",
+    "@heynixie/mail": "workspace:*",
     "@heynixie/memory": "workspace:*",
     "@heynixie/models": "workspace:*",
     "@heynixie/notebook": "workspace:*",

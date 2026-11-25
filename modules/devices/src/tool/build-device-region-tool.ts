@@ -1,4 +1,9 @@
-import { clockFormats, regionMarkdownLimit } from '@heynixie/contract';
+import {
+  clockFormats,
+  regionHTMLLimit,
+  regionImagesLimit,
+  regionMarkdownLimit,
+} from '@heynixie/contract';
 import type { ToolDefinition } from '@heynixie/tools';
 import type { DeviceToolOptions } from './device-tool-options';
 import { noteDeclaration } from './note-declaration';
@@ -16,8 +21,9 @@ const regionInput = {
       properties: {
         kind: {
           type: 'string',
-          enum: ['markdown', 'image', 'live', 'page'],
-          description: "'page' is refused: a region cannot hold a page yet",
+          enum: ['markdown', 'image', 'live', 'html'],
+          description:
+            "'html' is a page that runs sealed in the region, with no network, as html describes",
         },
         markdown: {
           type: 'string',
@@ -48,7 +54,29 @@ const regionInput = {
           description: 'for a countdown: the ISO 8601 time it counts down to, with its offset',
         },
         label: { type: 'string', description: 'for a countdown: a short label, such as Holiday' },
-        html: { type: 'string', description: 'for a page, which is refused' },
+        html: {
+          type: 'string',
+          minLength: 1,
+          maxLength: regionHTMLLimit,
+          description:
+            'for a page: the markup of its body, with inline script and style. The page has no network and no outside files. It reads `nixie`: nixie.send(name, data, { wake }) sends an event to the conversation, nixie.onMessage(fn) takes each device.sendToPage message, nixie.image(id) gives the URL of a declared image, and nixie.size() gives the region size in CSS pixels',
+        },
+        images: {
+          type: 'array',
+          items: { type: 'string', minLength: 1 },
+          maxItems: regionImagesLimit,
+          description: 'for a page: the image IDs it may show, as nixie.image(id) names them',
+        },
+        packages: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'for a page: not built yet, so a call that names packages is refused',
+        },
+        fetches: {
+          type: 'array',
+          items: { type: 'object' },
+          description: 'for a page: not built yet, so a call that names fetches is refused',
+        },
       },
       required: ['kind'],
       additionalProperties: true,
@@ -90,7 +118,10 @@ export function buildDeviceRegionTool(options: DeviceToolOptions): ToolDefinitio
     description:
       "Puts content in one region of a device's layout, in place of what the region shows, and " +
       'leaves the other regions as they are. The content is markdown, a stored image, or a live ' +
-      'value that the device keeps fresh by itself: a clock, or a countdown to a time. After ' +
+      'value that the device keeps fresh by itself: a clock, or a countdown to a time. A page ' +
+      "(kind html) is the assistant's own markup and script, which runs sealed in the region with " +
+      'no network: device.sendToPage sends it messages, its events come back to the conversation, ' +
+      'and device.preview shows its errors. After ' +
       '`minutes` the region goes blank, or with then: previous shows again the content this call ' +
       'replaced, when its own minutes have not passed. Without `minutes` the region keeps the ' +
       'content until the next call for it. The screen must be on and the device online.',

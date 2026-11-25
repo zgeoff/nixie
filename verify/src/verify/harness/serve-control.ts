@@ -18,6 +18,7 @@ export interface ControlHandlers {
   readonly runCallStep: (
     call: z.output<typeof controlRoutes.callStep.input>,
   ) => Promise<z.input<typeof controlRoutes.callStep.output>>;
+  readonly deliverMail: (mail: z.output<typeof controlRoutes.deliverMail.input>) => Promise<void>;
 
   readonly advanceClock: (minutes: number) => Promise<number>;
 
@@ -73,6 +74,13 @@ export function serveControl(handlers: ControlHandlers): Bun.Server<undefined> {
         POST: makeRouteHandler(controlRoutes.advanceClock, async (advance) => ({
           minutes: await handlers.advanceClock(advance.minutes),
         })),
+      },
+      [controlRoutes.deliverMail.path]: {
+        POST: makeRouteHandler(controlRoutes.deliverMail, async (mail) => {
+          await handlers.deliverMail(mail);
+
+          return { delivered: true as const };
+        }),
       },
       [controlRoutes.useComputer.path]: {
         POST: makeRouteHandler(controlRoutes.useComputer, async (use) => ({

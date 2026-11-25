@@ -1,17 +1,18 @@
 import type { LogRecord } from '@heynixie/log';
 import type { RuleSource } from '@heynixie/policy';
-import { taskMessageCodec } from '@heynixie/tasks';
+import { taskMessageCodec, triggerMailWokeCodec } from '@heynixie/tasks';
 import type { StepPolicyFrame } from '@heynixie/tools';
 import type { SessionFrame } from '../types';
 
 // What a step's tool calls tell the decision point about the turn they belong to: where the call
-// runs, which owner message started it, which messages a task passed on, and where the step's
-// content came from.
+// runs, which owner message started it, which messages a task passed on, which mail woke it, and
+// where its content came from. The caller adds to `sources` as more content reaches the model.
 export function buildStepPolicyFrame(
   frame: SessionFrame,
   records: readonly LogRecord[],
+  sources: readonly RuleSource[],
 ): StepPolicyFrame {
-  const sources = collectSources(records);
+  const arrivedMails = collectArrivedMails(records);
 
   if (frame.kind !== 'task') {
     const turn = records.findLast((record) => record.kind === 'owner_message');
@@ -22,6 +23,7 @@ export function buildStepPolicyFrame(
       turnMessageSequence: turn?.sequence ?? null,
       onBehalfOf: [],
       sources,
+      arrivedMails,
     };
   }
 
@@ -31,27 +33,17 @@ export function buildStepPolicyFrame(
     turnMessageSequence: null,
     onBehalfOf: collectLinkedMessages(records),
     sources,
+    arrivedMails,
   };
 }
 
-function collectSources(records: readonly LogRecord[]): readonly RuleSource[] {
-  const sources = records.flatMap((record): RuleSource[] => {
-    if (record.kind === 'task_message') {
-      return ['task'];
-    }
+function collectArrivedMails(records: readonly LogRecord[]): readonly string[] {
+  const ids = records
+    .filter((record) => record.kind === triggerMailWokeCodec.kind)
+    .flatMap((record) => triggerMailWokeCodec.tryDecodePartial(record.payload)?.mails ?? [])
+    .map((mail) => mail.messageID);
 
-    if (record.contentSource === 'owner') {
-      return ['owner'];
-    }
-
-    if (record.contentSource === 'owner_data') {
-      return ['own_data'];
-    }
-
-    return record.contentSource === 'untrusted' ? ['outside'] : [];
-  });
-
-  return [...new Set(sources)].toSorted();
+  return [...new Set(ids)].toSorted();
 }
 
 function collectLinkedMessages(records: readonly LogRecord[]): readonly number[] {

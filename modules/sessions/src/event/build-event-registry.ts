@@ -21,6 +21,7 @@ function buildRegistryEntry(kind: EventKind<unknown>): EventRegistry[number] {
     name: kind.name,
     isUncapped: kind.isUncapped === true,
     isSessionBound: kind.isSessionBound === true,
+    source: kind.source ?? null,
     read: async (range) => {
       const events = await kind.read(range);
 

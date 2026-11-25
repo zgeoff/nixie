@@ -10,6 +10,7 @@ import { $ } from 'bun';
 import { match } from 'ts-pattern';
 import { z } from 'zod';
 import { buildHostCLIArgv } from './build-host-cli-argv';
+import { callFeatures, callStepSummary } from './call-features';
 import { checkHarness } from './check-harness';
 import { conversationRecordSchema } from './collect-conversation-records';
 import { computerFeatures } from './computer-features';
@@ -165,12 +166,22 @@ export function createVerifyRegistry(): Wringer {
     .action({
       name: 'script-reply',
       summary:
-        "Queue the scripted model's next reply. With --memory it first proposes that memory, with --reminder it first sets that reminder and writes a note of the memory that the result names as related, with --export it first asks to export memory, with --task it first starts that task, with --coding-task it first starts that coding task on atc, with --handover it first asks the user to take over the computer, for that reason, with --notebook it first writes 2 notes, one private, and links them, and with --forget-note it first forgets the note with that short ID",
+        "Queue the scripted model's next reply. With --memory it first proposes that memory, with --reminder it first sets that reminder and writes a note of the memory that the result names as related, with --export it first asks to export memory, with --task it first starts that task, with --coding-task it first starts that coding task on atc, with --mail-watch it first sets a wake rule on the assistant's mailbox for mail from that address, with --mail-read it first lists the unread mail from that address and opens the newest, with --handover it first asks the user to take over the computer, for that reason, with --notebook it first writes 2 notes, one private, and links them, and with --forget-note it first forgets the note with that short ID",
       effect: 'write',
       targets: ['local'],
       input: controlRoutes.addReply.input,
       data: controlRoutes.addReply.output,
       run: (input, ctx) => postControl(ctx.drivers.http, controlRoutes.addReply, input),
+    })
+    .action({
+      name: 'deliver-mail',
+      summary:
+        "Deliver a mail to the assistant's own mailbox, which a start with NIXIE_VERIFY_MAIL=1 gives it, on a host in memory: from --from, with the subject --subject, the text --text, and an HTML body --html in place of the text",
+      effect: 'write',
+      targets: ['local'],
+      input: controlRoutes.deliverMail.input,
+      data: controlRoutes.deliverMail.output,
+      run: (input, ctx) => postControl(ctx.drivers.http, controlRoutes.deliverMail, input),
     })
     .action({
       name: 'show-on-device',
@@ -204,8 +215,7 @@ export function createVerifyRegistry(): Wringer {
     })
     .action({
       name: 'call-step',
-      summary:
-        'Play one step of a call on the fake speech layer: --step start starts a call and connects it, --step hand-off has the speech layer hand off one question, whose model reply waits, --step hold moves the clock past the hold time and waits for the holding line, --step release lets the reply go, --step hang-up hangs the call up, and --step read changes nothing. Each step returns the call ID and every call that nixie made on the speech layer',
+      summary: callStepSummary,
       effect: 'write',
       targets: ['local'],
       input: controlRoutes.callStep.input,
@@ -428,7 +438,7 @@ export function createVerifyRegistry(): Wringer {
       },
       {
         name: 'memory-approval',
-        summary: 'Approve a memory the model proposed, and see it become active',
+        summary: 'Approve a proposed memory',
         paths: featurePaths['memory-approval'],
       },
       {
@@ -446,11 +456,7 @@ export function createVerifyRegistry(): Wringer {
         summary: 'Start a coding session from chat',
         paths: featurePaths['coding-session'],
       },
-      {
-        name: 'call-hand-off',
-        summary: 'Hand one question off in a call, and hear the holding line and the answer',
-        paths: featurePaths['call-hand-off'],
-      },
+      ...callFeatures,
       {
         name: 'drawing',
         summary: 'Draw a picture, edit it, and list both',
