@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.116.0](https://github.com/zgeoff/nixie/compare/v0.115.0...v0.116.0) (2026-11-25)
+
+
+### Features
+
+* **credentials:** resolve every credential through one store ([#1456](https://github.com/zgeoff/nixie/issues/1456)) ([c9e303c](https://github.com/zgeoff/nixie/commit/c9e303c766c4c5ac9575f384ab911a0813374cfb))
+* **devices:** save and restore device layouts on larger grids ([#1465](https://github.com/zgeoff/nixie/issues/1465)) ([478bbca](https://github.com/zgeoff/nixie/commit/478bbca0649209bc21f814c5a39a958b0acb3020))
+
 ## [0.115.0](https://github.com/zgeoff/nixie/compare/v0.114.0...v0.115.0) (2026-11-25)
 
 
