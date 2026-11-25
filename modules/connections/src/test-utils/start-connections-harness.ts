@@ -113,8 +113,7 @@ export async function startConnectionsHarness(
 
   const clock = createFakeClock({ startMs: Date.parse('2026-11-20T09:00:00Z') });
 
-  const testLog =
-    options.sharedLog === undefined ? await startCredentialTestLog({ clock }) : options.sharedLog;
+  const testLog = await (options.sharedLog ?? startCredentialTestLog({ clock }));
 
   const mutable: MutableHooks = {};
 

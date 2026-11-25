@@ -57,5 +57,5 @@ function toReturnErrorResponse(error: unknown): Response {
   const googleError = googleErrorSchema.safeParse(error.data);
   const reported = googleError.success ? googleError.data.googleError : null;
 
-  return renderReturnError(400, error.code, reported);
+  return renderReturnError(400, String(error.code), reported);
 }

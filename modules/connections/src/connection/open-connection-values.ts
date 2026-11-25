@@ -41,9 +41,10 @@ export async function openConnectionValues(
     const parsed = account === null ? null : accountSchema.safeParse(JSON.parse(account));
 
     opened.set(row.connection_id, {
-      account: parsed?.success
-        ? { subject: parsed.data.sub, email: parsed.data.email ?? null }
-        : null,
+      account:
+        parsed !== null && parsed.success
+          ? { subject: parsed.data.sub, email: parsed.data.email ?? null }
+          : null,
       label,
     });
   }
