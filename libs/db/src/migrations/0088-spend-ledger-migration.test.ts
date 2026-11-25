@@ -38,11 +38,11 @@ async function setupTest() {
   };
 }
 
-test('it is the migration of version 85, and the oldest reader moves up to it', async () => {
+test('it is the migration of version 88, and the oldest reader moves up to it', async () => {
   const ctx = await setupTest();
 
-  expect(ctx.version).toBe(85);
-  expect(nixieSchema.oldestReader).toBe(85);
+  expect(ctx.version).toBe(88);
+  expect(nixieSchema.oldestReader).toBe(88);
 });
 
 test('it carries each count over to the row of its ledger key and drops the old ledger', async () => {
