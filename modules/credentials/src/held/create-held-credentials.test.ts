@@ -155,11 +155,11 @@ test('it blocks every handle made before a removal', async () => {
   const ctx = await setupTest();
   const connection = await ctx.connectCredential();
 
-  const send = ctx.store.fetcher(connection.token, [ctx.provider.origin]);
+  const send = ctx.store.fetcher(connection.token, [ctx.provider.apiOrigin]);
 
   await ctx.store.remove(connection.tokenRef);
 
-  expect(send(`${ctx.provider.origin}/data`)).rejects.toBeInstanceOf(CredentialRemovedError);
+  expect(send(`${ctx.provider.apiOrigin}/data`)).rejects.toBeInstanceOf(CredentialRemovedError);
   expect(ctx.store.refresh(connection.token)).rejects.toBeInstanceOf(CredentialRemovedError);
 });
 
@@ -321,8 +321,8 @@ test('it adds the access token as a bearer header on a request', async () => {
 
   ctx.provider.answerToken(() => new Response('ok'));
 
-  const response = await ctx.store.fetcher(connection.token, [ctx.provider.origin])(
-    `${ctx.provider.origin}/data`,
+  const response = await ctx.store.fetcher(connection.token, [ctx.provider.apiOrigin])(
+    `${ctx.provider.apiOrigin}/data`,
   );
 
   expect([response.status, ctx.provider.requests.at(-1)?.authorization]).toStrictEqual([
@@ -347,8 +347,8 @@ test('it refreshes once and retries once on a rejected request', async () => {
     return new Response('data', { status: dataCalls === 1 ? 401 : 200 });
   });
 
-  const response = await ctx.store.fetcher(connection.token, [ctx.provider.origin])(
-    `${ctx.provider.origin}/data`,
+  const response = await ctx.store.fetcher(connection.token, [ctx.provider.apiOrigin])(
+    `${ctx.provider.apiOrigin}/data`,
   );
 
   const authorizations = ctx.provider.requests.map((request) => request.authorization);
@@ -373,8 +373,8 @@ test('it marks the credential failing when the retry is rejected too', async () 
       : new Response('denied', { status: 401 }),
   );
 
-  const response = await ctx.store.fetcher(connection.token, [ctx.provider.origin])(
-    `${ctx.provider.origin}/data`,
+  const response = await ctx.store.fetcher(connection.token, [ctx.provider.apiOrigin])(
+    `${ctx.provider.apiOrigin}/data`,
   );
 
   const status = await ctx.store.readStatus(connection.token);
@@ -475,9 +475,9 @@ test('it refuses a request on a credential that needs consent', async () => {
 
   await ctx.store.refresh(connection.token);
 
-  const send = ctx.store.fetcher(connection.token, [ctx.provider.origin]);
+  const send = ctx.store.fetcher(connection.token, [ctx.provider.apiOrigin]);
 
-  expect(send(`${ctx.provider.origin}/data`)).rejects.toBeInstanceOf(CredentialRefusalError);
+  expect(send(`${ctx.provider.apiOrigin}/data`)).rejects.toBeInstanceOf(CredentialRefusalError);
 });
 
 test('it writes credential.refresh_started naming the new key before the refresh sends', async () => {
@@ -661,7 +661,9 @@ test('it refreshes a token that is about to expire before a request uses it', as
 
   ctx.clock.advance(3600 * 1000 - 60 * 1000);
 
-  await ctx.store.fetcher(connection.token, [ctx.provider.origin])(`${ctx.provider.origin}/data`);
+  await ctx.store.fetcher(connection.token, [ctx.provider.apiOrigin])(
+    `${ctx.provider.apiOrigin}/data`,
+  );
 
   expect(ctx.provider.requests.at(-1)?.authorization).toBe('Bearer fake-access-token-9');
 });
@@ -679,6 +681,7 @@ test('it checks the issuer of an ID token before it reads the claims', async () 
   ctx.provider.answerToken(() =>
     Response.json({
       access_token: 'fake-access-token-9',
+      refresh_token: 'fake-refresh-token-9',
       expires_in: 3600,
       id_token: buildIDToken({
         iss: 'https://other.example',
@@ -761,6 +764,7 @@ test('it reads the subject and email of an ID token that passes every check', as
   ctx.provider.answerToken(() =>
     Response.json({
       access_token: 'fake-access-token-9',
+      refresh_token: 'fake-refresh-token-9',
       expires_in: 3600,
       id_token: buildIDToken({
         iss: 'https://issuer.example',
@@ -789,7 +793,7 @@ test('it puts no token, client secret or key in a record, an error or the log ou
   await ctx.store.refresh(connection.token);
 
   const failure = await ctx.store
-    .fetcher(connection.token, [ctx.provider.origin])(`${ctx.provider.origin}/data`)
+    .fetcher(connection.token, [ctx.provider.apiOrigin])(`${ctx.provider.apiOrigin}/data`)
     .catch(String);
 
   const leaks = await ctx.readLeakFlags(failure);
@@ -872,9 +876,9 @@ test('it stops a request whose credential was removed while its host lookup wait
 
   const requestsBefore = ctx.provider.requests.length;
   const lookupsBefore = ctx.readLookupCount();
-  const send = ctx.store.fetcher(connection.token, [ctx.provider.origin]);
+  const send = ctx.store.fetcher(connection.token, [ctx.provider.apiOrigin]);
   const release = ctx.pauseLookups();
-  const sending = send(`${ctx.provider.origin}/data`);
+  const sending = send(`${ctx.provider.apiOrigin}/data`);
 
   await waitFor(() => {
     expect(ctx.readLookupCount()).toBe(lookupsBefore + 1);
@@ -902,8 +906,8 @@ test('it sends no refresh when the credential was removed while the rejected res
     return new Response('denied', { status: 401 });
   });
 
-  const sending = ctx.store.fetcher(connection.token, [ctx.provider.origin])(
-    `${ctx.provider.origin}/data`,
+  const sending = ctx.store.fetcher(connection.token, [ctx.provider.apiOrigin])(
+    `${ctx.provider.apiOrigin}/data`,
   );
 
   await waitFor(() => {
@@ -932,8 +936,8 @@ test('it refuses the answer to a request whose credential was removed while the 
     return new Response('data');
   });
 
-  const sending = ctx.store.fetcher(connection.token, [ctx.provider.origin])(
-    `${ctx.provider.origin}/data`,
+  const sending = ctx.store.fetcher(connection.token, [ctx.provider.apiOrigin])(
+    `${ctx.provider.apiOrigin}/data`,
   );
 
   await waitFor(() => {
@@ -966,8 +970,8 @@ test('it aborts a request in flight when its credential is removed', async () =>
     return new Response('fine');
   });
 
-  const sending = ctx.store.fetcher(connection.token, [ctx.provider.origin])(
-    `${ctx.provider.origin}/data`,
+  const sending = ctx.store.fetcher(connection.token, [ctx.provider.apiOrigin])(
+    `${ctx.provider.apiOrigin}/data`,
   );
 
   await waitFor(() => {
@@ -991,7 +995,11 @@ test('it leaves the status of a reconnected credential alone when an older handl
 
   ctx.provider.answerToken((request) =>
     request.path === '/token'
-      ? Response.json({ access_token: 'fake-access-token-9', expires_in: 3600 })
+      ? Response.json({
+          access_token: 'fake-access-token-9',
+          refresh_token: 'fake-refresh-token-9',
+          expires_in: 3600,
+        })
       : new Response('denied', { status: 401 }),
   );
 
@@ -1000,8 +1008,8 @@ test('it leaves the status of a reconnected credential alone when an older handl
 
   const newer = await ctx.store.register(connection.tokenRef, ctx.spec('oauth_token'));
 
-  const sending = ctx.store.fetcher(connection.token, [ctx.provider.origin])(
-    `${ctx.provider.origin}/data`,
+  const sending = ctx.store.fetcher(connection.token, [ctx.provider.apiOrigin])(
+    `${ctx.provider.apiOrigin}/data`,
   );
 
   await Promise.allSettled([sending]);
@@ -1054,8 +1062,8 @@ test('it refreshes once, and retries once, when the refreshed token expires with
     return new Response('data', { status: dataCalls === 1 ? 401 : 200 });
   });
 
-  const response = await ctx.store.fetcher(connection.token, [ctx.provider.origin])(
-    `${ctx.provider.origin}/data`,
+  const response = await ctx.store.fetcher(connection.token, [ctx.provider.apiOrigin])(
+    `${ctx.provider.apiOrigin}/data`,
   );
 
   expect([response.status, ctx.countRefreshRequests()]).toStrictEqual([200, 1]);
@@ -1084,8 +1092,8 @@ test('it replays the body of a streamed request on the retry after a rejection',
     },
   });
 
-  const response = await ctx.store.fetcher(connection.token, [ctx.provider.origin])(
-    `${ctx.provider.origin}/data`,
+  const response = await ctx.store.fetcher(connection.token, [ctx.provider.apiOrigin])(
+    `${ctx.provider.apiOrigin}/data`,
     {
       method: 'POST',
       headers: { 'content-type': 'application/x-www-form-urlencoded' },
@@ -1184,6 +1192,7 @@ test('it replaces the token, and deletes the old key, when a second code names t
   ctx.provider.answerToken(() =>
     Response.json({
       access_token: 'fake-access-token-9',
+      refresh_token: 'fake-refresh-token-9',
       expires_in: 3600,
       id_token: buildIDToken({
         iss: 'https://issuer.example',
@@ -1215,10 +1224,10 @@ test('it holds a removal until the counter check before a send has handed the re
 
   ctx.provider.answerToken(() => new Response('data'));
 
-  const send = ctx.store.fetcher(connection.token, [ctx.provider.origin]);
+  const send = ctx.store.fetcher(connection.token, [ctx.provider.apiOrigin]);
   const lookupsBefore = ctx.readLookupCount();
   const release = ctx.pauseLookups();
-  const sending = send(`${ctx.provider.origin}/data`);
+  const sending = send(`${ctx.provider.apiOrigin}/data`);
 
   await waitFor(() => {
     expect(ctx.readLookupCount()).toBe(lookupsBefore + 1);
@@ -1278,8 +1287,8 @@ test.each([
       return Response.json(row.body, { status: row.status });
     });
 
-    const sending = ctx.store.fetcher(connection.token, [ctx.provider.origin])(
-      `${ctx.provider.origin}/data`,
+    const sending = ctx.store.fetcher(connection.token, [ctx.provider.apiOrigin])(
+      `${ctx.provider.apiOrigin}/data`,
     );
 
     await waitFor(() => {
@@ -1488,4 +1497,142 @@ test('it sends nothing and answers not_attempted for a credential that holds no 
   const result = await ctx.store.revoke(token);
 
   expect(result).toStrictEqual({ outcome: 'not_attempted', status: null, providerError: null });
+});
+
+test('it keeps nothing and revokes the access token when an exchange returns no refresh token', async () => {
+  const ctx = await setupTest();
+
+  const clientRef = { backend: 'database', credentialID: crypto.randomUUID() } as const;
+  const tokenID = crypto.randomUUID();
+
+  await ctx.backend.writeClient(clientRef.credentialID, {
+    clientID: 'client-123',
+    clientSecret: 'fake-client-secret-value',
+  });
+
+  ctx.provider.answerToken(() =>
+    Response.json({ access_token: 'fake-access-token-9', expires_in: 3600 }),
+  );
+
+  const client = await ctx.store.register(clientRef, ctx.spec('oauth_client'));
+
+  const exchange = ctx.exchangeCode(client, tokenID);
+  const revoke = () => ctx.provider.requests.find((request) => request.path === '/revoke');
+
+  expect(exchange).rejects.toMatchObject({ code: 'no_refresh_token' });
+
+  await Promise.allSettled([exchange]);
+
+  const kept = await ctx.backend.readToken(tokenID);
+
+  expect(kept).toBeNull();
+  expect(revoke()?.form['token']).toBe('fake-access-token-9');
+});
+
+test('it returns the scopes the provider granted and when a limited grant ends', async () => {
+  const ctx = await setupTest();
+
+  const clientRef = { backend: 'database', credentialID: crypto.randomUUID() } as const;
+
+  await ctx.backend.writeClient(clientRef.credentialID, {
+    clientID: 'client-123',
+    clientSecret: 'fake-client-secret-value',
+  });
+
+  ctx.provider.answerToken(() =>
+    Response.json({
+      access_token: 'fake-access-token-9',
+      refresh_token: 'fake-refresh-token-9',
+      expires_in: 3600,
+      scope: 'openid email https://www.googleapis.com/auth/gmail.modify',
+      refresh_token_expires_in: 604_800,
+    }),
+  );
+
+  const client = await ctx.store.register(clientRef, ctx.spec('oauth_client'));
+  const result = await ctx.exchangeCode(client);
+
+  expect([result.grantedScopes, result.refreshExpiresAtMs]).toStrictEqual([
+    ['openid', 'email', 'https://www.googleapis.com/auth/gmail.modify'],
+    ctx.clock.now() + 604_800_000,
+  ]);
+});
+
+test.each([
+  { title: 'the token endpoint', path: '/token', host: 'origin' as const },
+  { title: 'the revoke endpoint', path: '/revoke', host: 'origin' as const },
+  { title: 'a path under /oauth2/', path: '/oauth2/v1/userinfo', host: 'apiOrigin' as const },
+  {
+    title: 'a path under /oauth2/ in capitals',
+    path: '/OAuth2/v1/userinfo',
+    host: 'apiOrigin' as const,
+  },
+  {
+    title: 'a path under /oauth2/ with an escaped letter',
+    path: '/%6fauth2/v1/userinfo',
+    host: 'apiOrigin' as const,
+  },
+  {
+    title: 'a path under /oauth2/ after a doubled slash',
+    path: '//oauth2/v1/userinfo',
+    host: 'apiOrigin' as const,
+  },
+])('it refuses a request of a connection to $title, and sends none', async (row) => {
+  const ctx = await setupTest();
+  const connection = await ctx.connectCredential();
+
+  const before = ctx.provider.requests.length;
+  const send = ctx.store.fetcher(connection.token, [ctx.provider[row.host]]);
+
+  expect(send(`${ctx.provider[row.host]}${row.path}`)).rejects.toBeInstanceOf(
+    CredentialRefusalError,
+  );
+
+  await Promise.allSettled([send(`${ctx.provider[row.host]}${row.path}`)]);
+
+  expect(ctx.provider.requests).toHaveLength(before);
+});
+
+test('it refuses a request of a connection to the host of the authorize URL', async () => {
+  const ctx = await setupTest();
+  const connection = await ctx.connectCredential();
+
+  const authorizeOrigin = ctx.provider.origin.replace('auth.test', 'other.test');
+  const base = ctx.spec('oauth_token');
+
+  const spec = {
+    ...base,
+    origins: [...base.origins, authorizeOrigin],
+    ...(base.provider === undefined
+      ? {}
+      : { provider: { ...base.provider, authorizeURL: `${authorizeOrigin}/auth` } }),
+  };
+
+  const binding = await ctx.store.register(connection.tokenRef, spec);
+
+  const send = ctx.store.fetcher(binding, [authorizeOrigin]);
+
+  expect(send(`${authorizeOrigin}/data`)).rejects.toBeInstanceOf(CredentialRefusalError);
+});
+
+test('it lets a connection request any other path of its origin', async () => {
+  const ctx = await setupTest();
+  const connection = await ctx.connectCredential();
+
+  const response = await ctx.store.fetcher(connection.token, [ctx.provider.apiOrigin])(
+    `${ctx.provider.apiOrigin}/gmail/v1/users/me/labels`,
+  );
+
+  expect(response.status).toBe(200);
+});
+
+test('it still sends the token and revoke requests of a refresh to the provider', async () => {
+  const ctx = await setupTest();
+  const connection = await ctx.connectCredential();
+
+  await ctx.store.refresh(connection.token);
+
+  const sent = await ctx.store.revoke(connection.token);
+
+  expect([ctx.countRefreshRequests(), sent.outcome]).toStrictEqual([1, 'confirmed']);
 });

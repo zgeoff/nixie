@@ -8,7 +8,8 @@ export type TokenRequestErrorCode =
   | 'id_token_issuer'
   | 'id_token_audience'
   | 'id_token_expired'
-  | 'account_changed';
+  | 'account_changed'
+  | 'no_refresh_token';
 
 // A token exchange that gave no token, or whose ID token failed a check. The message never holds a
 // value, and the code says which check failed.

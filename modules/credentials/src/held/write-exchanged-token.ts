@@ -117,7 +117,16 @@ export async function writeExchangedToken(
 
   return {
     kind: 'saved',
-    result: { credentialID, expiresAtMs: token.expiresAtMs, account: exchanged.account },
+    result: {
+      credentialID,
+      expiresAtMs: token.expiresAtMs,
+      grantedScopes: exchanged.reply.scope === undefined ? [] : exchanged.reply.scope.split(' '),
+      refreshExpiresAtMs:
+        exchanged.reply.refresh_token_expires_in === undefined
+          ? null
+          : nowMs + exchanged.reply.refresh_token_expires_in * 1000,
+      account: exchanged.account,
+    },
   };
 }
 
