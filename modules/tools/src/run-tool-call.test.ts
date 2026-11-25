@@ -4261,3 +4261,47 @@ test('it reads the own values when each result settles, so a value added later i
     { content: [], structuredContent: { text: '[secret removed]' } },
   ]);
 });
+
+test('it fences a result that holds no field, because its source map is empty', async () => {
+  const ctx = await setupTest({
+    tools: [
+      {
+        ...buildMockToolDefinition({
+          name: 'notes_read',
+          run: () => Promise.resolve({ status: 'ok', result: {} }),
+        }),
+        output: { type: 'object' },
+        declaration: {
+          effects: ['read'],
+          destinations: [],
+          amount: null,
+          content: [],
+          results: {},
+        },
+      },
+    ],
+  });
+
+  const result = await runToolCall(
+    { tool: 'notes_read', input: { query: 'milk' }, toolUseID: 'toolu_1' },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      logThread: 'task-1',
+      tools: ['notes_read'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  expect(result).toStrictEqual({
+    content: [
+      {
+        type: 'text',
+        text: expect.stringMatching(
+          /^<tool-result source="untrusted" fence="[0-9a-f]+">\n\{\}\n<\/tool-result fence="[0-9a-f]+">$/u,
+        ),
+      },
+    ],
+  });
+});

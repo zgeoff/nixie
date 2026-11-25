@@ -278,6 +278,7 @@ export { waitAtFaultPoint } from './lease/wait-at-fault-point';
 export { writeInboxRecords } from './task/projection/write-inbox-records';
 export { writeInboxRecordsInTransaction } from './inbox/write-inbox-records-in-transaction';
 export { writeThreadRecordInTransaction } from './inbox/write-thread-record-in-transaction';
+export { readToolHolders } from './inbox/read-tool-holders';
 export { writeStepCommit } from './step/write-step-commit';
 export { writeTaskControl } from './task/write-task-control';
 

@@ -318,7 +318,7 @@ function renderFencedText(text: string): string {
 function isUntrustedResult(settled: Settled): boolean {
   const sources = Object.values(settled.sources);
 
-  return sources.length > 0 && sources.every((source) => source === 'untrusted');
+  return sources.every((source) => source === 'untrusted');
 }
 
 // A result of one text field reads as that text, and any other result as its JSON.
