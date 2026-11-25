@@ -1,5 +1,9 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { makeDeviceToolCaller, seedScreenOnDevice } from '@heynixie/devices/test-utils';
+import {
+  makeDeviceToolCaller,
+  seedDevicePackage,
+  seedScreenOnDevice,
+} from '@heynixie/devices/test-utils';
 import { waitForCondition } from '@heynixie/testing';
 import { z } from 'zod';
 import { startPageFrameFront } from '../test-utils/start-page-frame-front';
@@ -100,12 +104,25 @@ async function setupTest(options: { hasTrustedTypes?: boolean } = {}) {
     front,
     readPosts,
 
+    // an approved package, which a page loads once it names it
+    approvePackage: (spec: string, files: Record<string, string>) =>
+      seedDevicePackage(
+        {
+          log: api.context.log,
+          definitions: api.context.definitions,
+          clock,
+          streams,
+        },
+        spec,
+        files,
+      ),
+
     // fills the region with a page and opens the host page that frames it
-    openPage: async (html: string) => {
+    openPage: async (html: string, packages: readonly string[] = []) => {
       await call('device.region', {
         device: device.deviceID,
         region: 'pond',
-        content: { kind: 'html', html },
+        content: { kind: 'html', html, ...(packages.length === 0 ? {} : { packages }) },
       });
 
       const listed = await call('devices.list', {});
@@ -588,4 +605,61 @@ test('it reports an error that the page raises', async () => {
   const posts = await ctx.readPosts();
 
   expect(posts.find((post) => post.type === 'error')?.message).toContain('x is undefined');
+});
+
+test('it lets a page load the package it names, and still keeps it from the network and from other packages', async () => {
+  const ctx = await setupTest();
+
+  await ctx.approvePackage('chart.js@4.4.6', {
+    'dist/chart.js': 'window.chartLoaded = true;',
+  });
+
+  await ctx.approvePackage('d3@7.9.0', { 'dist/d3.js': 'window.d3Loaded = true;' });
+
+  await ctx.openPage(
+    `<script src="/rpc/device/packages/chart.js@4.4.6/dist/chart.js"></script>
+    <script src="/rpc/device/packages/d3@7.9.0/dist/d3.js"></script>
+    <script>
+      const evil = ${JSON.stringify(ctx.front.evilOrigin)};
+      const results = { chart: window.chartLoaded === true };
+
+      async function attempt(name, run) {
+        try {
+          await run();
+          results[name] = 'allowed';
+        } catch (error) {
+          results[name] = error.code || error.name;
+        }
+      }
+
+      (async () => {
+        results.d3 = window.d3Loaded === true;
+        await attempt('fetch', () => fetch(evil + '/fetch'));
+        await attempt('packageFetch', () => fetch('/rpc/device/packages/chart.js@4.4.6/dist/chart.js'));
+        await attempt('undeclared', () => nixie.data('https://tides.example/today'));
+        nixie.send('probed', results);
+      })();
+    </script>`,
+    ['chart.js@4.4.6'],
+  );
+
+  await ctx.waitForPost('probed');
+
+  const posts = await ctx.readPosts();
+
+  await fetch(`${ctx.front.evilOrigin}/control`);
+
+  expect([
+    posts.find((post) => post.name === 'probed')?.data,
+    ctx.front.evilRequests,
+  ]).toStrictEqual([
+    {
+      chart: true,
+      d3: false,
+      fetch: 'TypeError',
+      packageFetch: 'TypeError',
+      undeclared: 'NOT_DECLARED',
+    },
+    ['/control'],
+  ]);
 });

@@ -5,6 +5,7 @@ import type { APISettings } from '../types';
 import { buildMailFileReader } from './build-mail-file-reader';
 import { readForgetBodyFields } from './read-forget-body-fields';
 import { readImageBodyFields } from './read-image-body-fields';
+import { readPackageBodyFields } from './read-package-body-fields';
 import { readRetopicBodyFields } from './read-retopic-body-fields';
 import { readScreenBodyFields } from './read-screen-body-fields';
 
@@ -34,6 +35,12 @@ export async function readActionBodyFields(
 
   if (retopic.status !== 'none') {
     return retopic;
+  }
+
+  const installs = await readPackageBodyFields(log, request);
+
+  if (installs.status !== 'none') {
+    return installs;
   }
 
   const image = await readImageBodyFields(log, request);
