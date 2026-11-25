@@ -3,10 +3,11 @@ import type { RegisteredTool, ToolSource } from '@heynixie/tools';
 import { runProxiedCall } from '../call/run-proxied-call';
 import type { ProxiedCallResult } from '../call/run-proxied-call';
 import type { ProxyCalls } from '../call/types';
+import { buildToolDeclaration } from '../declaration/build-tool-declaration';
 import { readFormsByHash } from '../rows/read-forms-by-hash';
 import { readServerRows } from '../rows/read-server-rows';
 import { readToolRows } from '../rows/read-tool-rows';
-import type { ToolForm } from '../types';
+import type { ReadOverrides, ToolDeclaration, ToolForm } from '../types';
 import { buildProxiedTool } from './build-proxied-tool';
 
 export interface ToolCatalog extends ToolSource {
@@ -17,6 +18,9 @@ export interface ToolCatalog extends ToolSource {
   // Runs one approved call of a served tool through the same clearance as the model's call, once the
   // current form accepts its arguments. Null when the tool is not served.
   readonly runApproved: (tool: string, input: JSONObject) => Promise<ProxiedCallResult | null>;
+
+  // The declaration in force for a served tool, with where it came from. Null when it is not served.
+  readonly findDeclaration: (tool: string) => ToolDeclaration | null;
 }
 
 // Serves each tool that has a pin and is exposed or stopped, in the form its pin names. A hidden
@@ -26,12 +30,17 @@ interface ServedTool {
   readonly hash: string;
   readonly tool: RegisteredTool;
   readonly form: ToolForm;
+  readonly declared: ToolDeclaration;
+
+  // what the cached definition was built from, so another override or snapshot builds it again
+  readonly key: string;
 }
 
 export function createToolCatalog(
   log: Log,
   calls: ProxyCalls,
   prepareServers: (serverIDs: readonly string[]) => Promise<void>,
+  readOverrides: ReadOverrides,
 ): ToolCatalog {
   const served = { tools: new Map<string, ServedTool>() };
 
@@ -45,6 +54,7 @@ export function createToolCatalog(
       await prepareServers([...new Set(serverIDs)]).catch(() => null);
     },
     findTool: (name) => served.tools.get(name)?.tool ?? null,
+    findDeclaration: (name) => served.tools.get(name)?.declared ?? null,
     runApproved: (tool, input) => {
       const found = served.tools.get(tool);
 
@@ -80,6 +90,8 @@ export function createToolCatalog(
             row.state === 'stopped_unfit'),
       );
 
+      const inForce = await readOverrides(log.writer.db);
+
       const forms = await readFormsByHash(
         log,
         listed.flatMap((row) => row.pinned_hash ?? []),
@@ -97,15 +109,35 @@ export function createToolCatalog(
           continue;
         }
 
-        if (kept?.hash === hash) {
+        // A tool that no longer fits its override runs under what its annotations declare.
+        const override =
+          row.state === 'stopped_unfit'
+            ? null
+            : (inForce.servers[row.server_id]?.[form.name] ?? null);
+
+        const key = JSON.stringify([
+          hash,
+          override,
+          override === null ? null : inForce.definitionsHash,
+        ]);
+
+        if (kept?.key === key) {
           next.set(row.tool, kept);
           continue;
         }
 
-        const built = buildProxiedTool(row.tool, form, calls, hash);
+        const declared = buildToolDeclaration({
+          tool: row.tool,
+          pinned: form,
+          pinnedHash: hash,
+          override,
+          definitionsHash: inForce.definitionsHash,
+        });
 
-        if (built.kind === 'built') {
-          next.set(row.tool, { hash, tool: built.tool, form });
+        const built = buildProxiedTool(row.tool, form, calls, declared);
+
+        if (built.kind === 'built' && declared !== null) {
+          next.set(row.tool, { hash, tool: built.tool, form, declared, key });
         }
       }
 

@@ -81,8 +81,15 @@ async function readBody(
   const allowed =
     operation.fromHash === null ? null : (found.get(operation.fromHash)?.form ?? null);
 
+  const proposed = found.get(operation.hash)?.form ?? null;
+
+  const overrides = await context.readOverrides?.(context.log.writer.db);
+
+  const serverID = operation.tool.split('.')[0] ?? '';
+
   return buildMcpProposalBody(operation, {
     allowed,
-    proposed: found.get(operation.hash)?.form ?? null,
+    proposed,
+    override: proposed === null ? null : (overrides?.servers[serverID]?.[proposed.name] ?? null),
   });
 }

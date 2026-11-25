@@ -1,3 +1,5 @@
+import type { McpToolOverride } from '@heynixie/policy';
+import { pickFitFault } from '../declaration/pick-fit-fault';
 import type { PinMoveCause, PinState, ToolForm } from '../types';
 import { hasAddedProperty } from './has-added-property';
 
@@ -23,6 +25,11 @@ export interface PinInput {
 
   // why the registry refuses the tool's name, or null
   readonly nameRefusal: string | null;
+
+  // The override the definitions give the tool, and the names of the tools the server lists, which
+  // the override's fit is judged against. A form that no longer fits leaves the tool stopped.
+  readonly override?: McpToolOverride | null;
+  readonly serverToolNames?: ReadonlySet<string>;
 }
 
 // A change the owner learns of after the fact: a trusted server's tool changed, or a listing dropped
@@ -57,6 +64,19 @@ export interface PinDecision {
 // allow, which another function applies, and a trusted server's change that adds no input property.
 // A new tool stays hidden on every server until you allow it.
 export function decidePin(input: PinInput): PinDecision {
+  const decision = decideBasePin(input);
+  const override = input.override ?? null;
+
+  if (decision.state !== 'exposed' || override === null) {
+    return decision;
+  }
+
+  const fault = pickFitFault(override, input.form, input.serverToolNames ?? new Set());
+
+  return fault === null ? decision : { ...decision, state: 'stopped_unfit', hiddenReason: fault };
+}
+
+function decideBasePin(input: PinInput): PinDecision {
   const existing = input.existing;
   const hash = input.hash;
 

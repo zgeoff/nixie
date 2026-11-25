@@ -325,8 +325,8 @@ test('it stops listing a server whose refresh the authorization server refused f
   const refused = await ctx.mcp.list('tracker');
   const next = await ctx.mcp.list('tracker');
 
-  expect([refused.status, next]).toStrictEqual([
-    'failed',
+  expect([refused, next]).toStrictEqual([
+    { status: 'skipped', reason: 'needs_sign_in' },
     { status: 'skipped', reason: 'needs_sign_in' },
   ]);
 });

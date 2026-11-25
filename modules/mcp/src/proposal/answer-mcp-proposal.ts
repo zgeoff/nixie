@@ -2,6 +2,7 @@ import type { RecordInput } from '@heynixie/log';
 import { writeRecordsInTransaction } from '@heynixie/log';
 import type { ApplyOutcome, ProposalAnswerInput, SharedProposal } from '@heynixie/proposals';
 import type { Transaction } from 'kysely';
+import { pickFitFault } from '../declaration/pick-fit-fault';
 import { pickNameRefusal } from '../name/pick-name-refusal';
 import { mcpAnsweredCodec } from '../record/mcp-answered-codec';
 import { mcpPinMovedCodec } from '../record/mcp-pin-moved-codec';
@@ -15,10 +16,13 @@ import { readToolRows } from '../rows/read-tool-rows';
 import { toCredentialFields } from '../rows/to-credential-fields';
 import { toFactsInUse } from '../rows/to-facts-in-use';
 import { toRequestedFacts } from '../rows/to-requested-facts';
-import type { McpContext, OnPinMoved, ToolForm } from '../types';
+import type { McpContext, OnPinMoved, ReadOverrides, ToolForm } from '../types';
 
 export interface AnswerContext extends McpContext {
   readonly onPinMoved?: OnPinMoved;
+
+  // the override files of the definitions, which an approved form must still fit
+  readonly readOverrides?: ReadOverrides;
 
   // Forgets the credentials of a server whose URL or client ID changed, once the answer commits.
   readonly forgetCredentials?: (credentialIDs: readonly string[]) => Promise<void>;
@@ -157,16 +161,19 @@ async function answerAllow(
 ): Promise<ApplyOutcome> {
   const tool = request.tool;
   const proposalID = request.proposalID;
+  let fault: string | null = null;
 
   if (request.isApproved) {
     const form = await readPinnedForm(context, tx, tool);
 
-    if (isFormRefused(tool, form)) {
+    if (form === null || isFormRefused(tool, form)) {
       return { status: 'refused', refusal: { error: 'NOT_ALLOWED', reason: 'form_refused' } };
     }
+
+    fault = await readFitFault(context, tx, { tool, form });
   }
 
-  const nextState = tool.state === 'removed' ? 'removed' : 'exposed';
+  const nextState = pickAllowedState(tool, fault);
 
   const changed: RecordInput = {
     kind: mcpToolChangedCodec.kind,
@@ -177,7 +184,7 @@ async function answerAllow(
       pinnedHash: request.isApproved ? tool.latest_hash : tool.pinned_hash,
       latestHash: tool.latest_hash,
       state: request.isApproved ? nextState : tool.state,
-      hiddenReason: tool.hidden_reason,
+      hiddenReason: request.isApproved ? fault : tool.hidden_reason,
       proposalID: null,
     }),
   };
@@ -230,11 +237,7 @@ async function readPinnedForm(
 }
 
 // Whether the registry refuses the form, or no readable form is left to pin.
-function isFormRefused(tool: McpToolRow, form: ToolForm | null): boolean {
-  if (form === null) {
-    return true;
-  }
-
+function isFormRefused(tool: McpToolRow, form: ToolForm): boolean {
   const refusal =
     pickNameRefusal({
       serverID: tool.server_id,
@@ -243,4 +246,43 @@ function isFormRefused(tool: McpToolRow, form: ToolForm | null): boolean {
     }) ?? pickFormRefusal(tool.tool, form);
 
   return refusal !== null;
+}
+
+interface FitRequest {
+  readonly tool: McpToolRow;
+  readonly form: ToolForm;
+}
+
+async function readFitFault(
+  context: AnswerContext,
+  tx: Transaction<unknown>,
+  request: FitRequest,
+): Promise<string | null> {
+  const serverID = request.tool.server_id;
+
+  const inForce = await context.readOverrides?.(tx);
+
+  const override = inForce?.servers[serverID]?.[request.form.name];
+
+  if (override === undefined) {
+    return null;
+  }
+
+  const rows = await readToolRows(tx, serverID);
+
+  const names = new Set(
+    rows.filter((row) => row.state !== 'removed').map((row) => row.tool.slice(serverID.length + 1)),
+  );
+
+  return pickFitFault(override, request.form, names);
+}
+
+// What an allowed form leaves the tool as: removed when the server dropped it, stopped when the
+// override of the definitions no longer fits the form, and exposed otherwise.
+function pickAllowedState(tool: McpToolRow, fault: string | null): McpToolRow['state'] {
+  if (tool.state === 'removed') {
+    return 'removed';
+  }
+
+  return fault === null ? 'exposed' : 'stopped_unfit';
 }

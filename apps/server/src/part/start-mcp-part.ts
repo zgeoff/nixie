@@ -1,7 +1,7 @@
+import { readSnapshotMcpOverrides } from '@heynixie/definitions';
 import { toErrorFields } from '@heynixie/logger';
 import type { Mcp, McpConfig } from '@heynixie/mcp';
-import { buildToolChangeNote, startMcp } from '@heynixie/mcp';
-import { conversationTaskID, writeThreadRecordInTransaction } from '@heynixie/tasks';
+import { makeToolChangeNotifier, startMcp } from '@heynixie/mcp';
 import { toSDKToolName } from '@heynixie/tools';
 import type { PartReader, ServerParts } from '../types';
 import type { ServerPartValues } from './server-part-values';
@@ -22,17 +22,15 @@ export async function startMcpPart(
     backend: parts.heldSlot.read().backend,
     formatTime: (timeMs) => formatClockTime(timeMs, parts.config.time.default_zone),
 
-    // A trusted server's change to a tool reaches the conversation's inbox in the transaction that
-    // moves the pin.
-    onPinMoved: async (tx, move) => {
-      const note = buildToolChangeNote(move, {
-        definitions: parts.context.definitions(),
-        thread: conversationTaskID,
-      });
+    // A trusted server's change to a tool reaches the inbox of the conversation, and of each task
+    // whose open run holds the tool, in the transaction that moves the pin.
+    onPinMoved: makeToolChangeNotifier(parts.context),
 
-      if (note !== null) {
-        await writeThreadRecordInTransaction(tx, parts.context, note);
-      }
+    // the override files of the definitions in force, which declare the tools they name
+    readOverrides: async (db) => {
+      const definitionsHash = parts.context.definitions().snapshotHash;
+
+      return { definitionsHash, servers: await readSnapshotMcpOverrides(db, definitionsHash) };
     },
     servers: config.servers,
     listingTimeoutSeconds: config.listingTimeoutSeconds,

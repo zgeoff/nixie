@@ -1,5 +1,6 @@
 import type { Definitions, JSONObject, Log } from '@heynixie/log';
-import type { Transaction } from 'kysely';
+import type { EffectDeclaration, McpOverrides, McpReconcile } from '@heynixie/policy';
+import type { Kysely, Transaction } from 'kysely';
 
 // The facts in use for one server, folded from records into the mcp_servers projection.
 export interface ServerFacts {
@@ -71,3 +72,30 @@ export interface PinMove {
 
 // Called inside the transaction that moves a pin, so what a move causes commits with it.
 export type OnPinMoved = (tx: Transaction<unknown>, move: PinMove) => Promise<void>;
+
+// The override files of the definitions in force, and the snapshot that held them.
+interface OverridesInForce {
+  readonly definitionsHash: string;
+  readonly servers: McpOverrides;
+}
+
+// Reads through the handle it is given, so a read inside a write transaction stays inside it.
+export type ReadOverrides = (
+  db: Kysely<unknown> | Transaction<unknown>,
+) => Promise<OverridesInForce>;
+
+// The declaration in force for one call of a proxied tool, and where it came from. The records of a
+// call hold the pinned hash and the snapshot, so a replay reads the decision under the form and the
+// declaration it ran under.
+export interface ToolDeclaration {
+  readonly tool: string;
+
+  // the declaration's effects, destinations, amount and content; every result field is untrusted
+  readonly declaration: Omit<EffectDeclaration, 'results'>;
+  readonly reconcile: McpReconcile | null;
+  readonly from: 'annotations' | 'override';
+  readonly pinnedHash: string;
+
+  // the snapshot that held the override; null when the annotations decided
+  readonly definitionsHash: string | null;
+}

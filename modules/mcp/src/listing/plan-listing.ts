@@ -1,3 +1,4 @@
+import type { McpToolOverride } from '@heynixie/policy';
 import { toSDKToolName } from '@heynixie/tools';
 import { buildProxiedToolName, pickNameRefusal } from '../name/pick-name-refusal';
 import { decideMissingPin, decidePin } from '../pin/decide-pin';
@@ -16,6 +17,9 @@ export interface ListingRequest {
 
   // the model names that nixie's own tools hold
   readonly takenModelNames: ReadonlySet<string>;
+
+  // the server's override file, by the tool's own name; absent when the definitions hold none
+  readonly overrides?: Readonly<Record<string, McpToolOverride>>;
 }
 
 // What one listing owes one tool.
@@ -56,7 +60,7 @@ export function planListing(request: ListingRequest, state: ListingState): ToolP
 
   const names = new Set(forms.map((form) => form.name));
 
-  const listed = forms.map((form) => planListedTool(request, state, taken, form));
+  const listed = forms.map((form) => planListedTool(request, state, taken, { form, names }));
 
   const missing = [...state.rows.values()]
     .filter(
@@ -98,12 +102,20 @@ function pickFirstOfEachName(forms: readonly ToolForm[]): ToolForm[] {
   return [...byName.values()].toSorted((first, second) => first.name.localeCompare(second.name));
 }
 
+interface ListedTool {
+  readonly form: ToolForm;
+
+  // the names of every tool the listing holds
+  readonly names: ReadonlySet<string>;
+}
+
 function planListedTool(
   request: ListingRequest,
   state: ListingState,
   taken: Set<string>,
-  form: ToolForm,
+  listed: ListedTool,
 ): ToolPlan {
+  const form = listed.form;
   const tool = buildProxiedToolName(request.serverID, form.name);
   const hash = hashToolForm(form);
   const row = state.rows.get(tool);
@@ -129,6 +141,8 @@ function planListedTool(
     form,
     hash,
     nameRefusal: refusal,
+    override: request.overrides?.[form.name] ?? null,
+    serverToolNames: listed.names,
   });
 
   const isNewForm =

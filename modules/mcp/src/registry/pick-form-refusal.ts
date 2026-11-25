@@ -1,4 +1,5 @@
 import type { ProxyCalls } from '../call/types';
+import { buildToolDeclaration } from '../declaration/build-tool-declaration';
 import type { ToolForm } from '../types';
 import { buildProxiedTool } from './build-proxied-tool';
 
@@ -10,7 +11,15 @@ const checkOnlyCalls: ProxyCalls = {
 
 // Why the registry refuses the form of a tool, or null when it registers.
 export function pickFormRefusal(tool: string, form: ToolForm): string | null {
-  const built = buildProxiedTool(tool, form, checkOnlyCalls, 'check-only');
+  const declared = buildToolDeclaration({
+    tool,
+    pinned: form,
+    pinnedHash: 'check-only',
+    override: null,
+    definitionsHash: '',
+  });
+
+  const built = buildProxiedTool(tool, form, checkOnlyCalls, declared);
 
   return built.kind === 'refused' ? built.reason : null;
 }

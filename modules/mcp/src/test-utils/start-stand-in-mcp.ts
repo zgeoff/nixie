@@ -1,6 +1,7 @@
 import type { CredentialStore } from '@heynixie/credentials';
 import { createHeldTestStore } from '@heynixie/credentials/test-utils';
 import type { HeldTestStore } from '@heynixie/credentials/test-utils';
+import type { McpOverrides } from '@heynixie/policy';
 import invariant from 'tiny-invariant';
 import { readServerRows } from '../rows/read-server-rows';
 import type { FinishResult } from '../signin/create-sign-in';
@@ -34,6 +35,9 @@ export interface StandInMcp {
   // Starts another proxy over the same log, as a restart does: it holds nothing in memory. It uses
   // the same store unless `store` stands in for it.
   readonly restart: (changed?: Partial<ServerFacts>, store?: CredentialStore) => Mcp;
+
+  // Sets the override files of the definitions that the proxy reads, under a snapshot of its own.
+  readonly setOverrides: (servers: McpOverrides) => void;
 
   // approves the server's proposal, so the server joins as added
   readonly approveServer: () => Promise<void>;
@@ -79,6 +83,8 @@ export async function startStandInMcp(options: StandInMcpOptions = {}): Promise<
     ...options.facts,
   });
 
+  const overrides: { servers: McpOverrides } = { servers: {} };
+
   const makeMcp = (changed: Partial<ServerFacts> = {}, store = held.store): Mcp =>
     startMcp({
       log: test.log,
@@ -89,6 +95,8 @@ export async function startStandInMcp(options: StandInMcpOptions = {}): Promise<
       servers: { tracker: { ...facts, ...changed } },
       listingTimeoutSeconds: options.listingTimeoutSeconds ?? 5,
       takenModelNames: () => new Set(),
+      readOverrides: () =>
+        Promise.resolve({ definitionsHash: 'sha256:overrides', servers: overrides.servers }),
       ...(options.onPinMoved === undefined ? {} : { onPinMoved: options.onPinMoved }),
     });
 
@@ -114,6 +122,9 @@ export async function startStandInMcp(options: StandInMcpOptions = {}): Promise<
       holder.mcp = restarted;
 
       return restarted;
+    },
+    setOverrides: (servers) => {
+      overrides.servers = servers;
     },
     approveServer: async () => {
       const rows = await readServerRows(test.log.writer.db);

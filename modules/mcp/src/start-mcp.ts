@@ -8,8 +8,10 @@ import { pickCallGate } from './call/pick-call-gate';
 import { runServerCall } from './call/run-server-call';
 import type { ProxyCalls } from './call/types';
 import { createHealthTracker } from './health/create-health-tracker';
+import type { ServerHealth } from './health/types';
 import { applyListing } from './listing/apply-listing';
 import { listServerTools } from './listing/list-server-tools';
+import { refitTools } from './listing/refit-tools';
 import { readNotices } from './notice/read-notices';
 import type { McpNotice } from './notice/read-notices';
 import { allowTool } from './proposal/allow-tool';
@@ -27,7 +29,7 @@ import { buildFetchOptions, readBindings } from './signin/read-bindings';
 import type { BindingsRuntime } from './signin/read-bindings';
 import type { ServerStartStep } from './start/plan-server-start';
 import { runServerStart } from './start/run-server-start';
-import type { McpContext, OnPinMoved, ServerFacts } from './types';
+import type { McpContext, OnPinMoved, ReadOverrides, ServerFacts } from './types';
 
 export interface McpOptions {
   readonly log: Log;
@@ -43,6 +45,9 @@ export interface McpOptions {
   // the model names that nixie's own tools hold, which a proxied tool may not take
   readonly takenModelNames: () => ReadonlySet<string>;
   readonly onPinMoved?: OnPinMoved;
+
+  // The override files of the definitions in force. Absent, every tool runs under its annotations.
+  readonly readOverrides?: ReadOverrides;
 
   // a time as the owner reads it in an error to the model, such as 14:05; UTC when absent
   readonly formatTime?: (timeMs: number) => string;
@@ -86,6 +91,10 @@ export interface Mcp {
   // removes the credentials of a server that left, so nothing readable stays
   readonly forgetGrants: (credentialIDs: readonly string[]) => Promise<void>;
 
+  // Judges each pinned tool against the override files in force again, and serves each tool under
+  // them, as a new seed of the definitions needs.
+  readonly refit: () => Promise<void>;
+
   // one listing of one server, applied to the pins
   readonly list: (serverID: string) => Promise<ListResult>;
 
@@ -96,6 +105,10 @@ export interface Mcp {
   readonly readNotices: (limit: number) => Promise<McpNotice[]>;
   readonly readServers: () => Promise<McpServerRow[]>;
   readonly readTools: (serverID?: string) => Promise<McpToolRow[]>;
+
+  // what the proxy knows of the newest server listings of one server: how many failed in a row, the
+  // next try and the last error
+  readonly readHealth: (serverID: string) => ServerHealth;
 
   // every server that is not removed, as the model reads it
   readonly readSummaries: () => Promise<McpServerSummary[]>;
@@ -117,6 +130,11 @@ export function startMcp(options: McpOptions): Mcp {
   };
 
   const timeoutMs = options.listingTimeoutSeconds * 1000;
+
+  const readOverrides: ReadOverrides =
+    options.readOverrides ??
+    (() => Promise.resolve({ definitionsHash: options.definitions().snapshotHash, servers: {} }));
+
   const runtime: BindingsRuntime = { store: options.store, timeoutMs, discoveries: new Map() };
 
   // a listing of a server runs one at a time, and a caller that arrives meanwhile awaits it
@@ -204,6 +222,10 @@ export function startMcp(options: McpOptions): Mcp {
     const opened = await openServer(serverID);
 
     if (opened.kind === 'skipped') {
+      if (opened.reason !== 'not_added') {
+        await health.record(serverID, { kind: 'needs_sign_in' });
+      }
+
       return { status: 'skipped', reason: opened.reason };
     }
 
@@ -216,10 +238,22 @@ export function startMcp(options: McpOptions): Mcp {
     const outcome = await listServerTools({ url: opened.url, send: opened.send, timeoutMs });
 
     if (outcome.kind === 'failed') {
+      // The grant decides whether the server needs a sign-in: the store marks it when a refresh is
+      // refused for good, whatever status the listing got.
+      const grant = await openServer(serverID);
+
+      if (grant.kind === 'skipped' && grant.reason !== 'not_added') {
+        await health.record(serverID, { kind: 'needs_sign_in' });
+
+        return { status: 'skipped', reason: grant.reason };
+      }
+
       await health.record(serverID, { kind: 'failed', cause: outcome.cause });
 
       return { status: 'failed', message: outcome.message };
     }
+
+    const inForce = await readOverrides(options.log.writer.db);
 
     const plans = await applyListing(
       { context, ...(options.onPinMoved === undefined ? {} : { onPinMoved: options.onPinMoved }) },
@@ -228,6 +262,7 @@ export function startMcp(options: McpOptions): Mcp {
         isTrusted: opened.isTrusted,
         forms: outcome.forms,
         takenModelNames: options.takenModelNames(),
+        overrides: inForce.servers[serverID] ?? {},
       },
     );
 
@@ -285,10 +320,25 @@ export function startMcp(options: McpOptions): Mcp {
     return { kind: 'refused', text: `${serverID} is unreachable` };
   };
 
+  const refit = async () => {
+    await refitTools(context, readOverrides);
+
+    await tools.refresh();
+  };
+
   const makeApprovedCall = (tool: string) => async (input: JSONObject) => {
     const result = await tools.runApproved(tool, input);
 
     return result ?? { kind: 'refused' as const, text: `${tool} is not available` };
+  };
+
+  // A check reads and never writes, so it runs only a tool that declares nothing but a read.
+  const runCheckTool = (tool: string, input: JSONObject) => {
+    const effects = tools.findDeclaration(tool)?.declaration.effects ?? [];
+
+    return effects.length === 1 && effects[0] === 'read'
+      ? tools.runApproved(tool, input)
+      : Promise.resolve(null);
   };
 
   const calls: ProxyCalls = {
@@ -333,7 +383,7 @@ export function startMcp(options: McpOptions): Mcp {
     await Promise.allSettled(due.map((serverID) => list(serverID)));
   };
 
-  const tools = createToolCatalog(options.log, calls, prepareServers);
+  const tools = createToolCatalog(options.log, calls, prepareServers, readOverrides);
 
   const signIn = createSignIn({
     context,
@@ -351,6 +401,7 @@ export function startMcp(options: McpOptions): Mcp {
       makeMcpProposalHandler({
         ...context,
         forgetCredentials,
+        readOverrides,
         ...(options.onPinMoved === undefined ? {} : { onPinMoved: options.onPinMoved }),
       }),
     start: async () => {
@@ -360,10 +411,15 @@ export function startMcp(options: McpOptions): Mcp {
       });
 
       await health.start();
+
+      await refitTools(context, readOverrides);
+
       await tools.refresh();
 
       subscribeToChanged(options.log.writer, (topics) => {
-        if (topics.includes('mcp')) {
+        if (topics.includes('definitions')) {
+          void refit();
+        } else if (topics.includes('mcp')) {
           void tools.refresh();
         }
       });
@@ -375,9 +431,11 @@ export function startMcp(options: McpOptions): Mcp {
     finishSignIn: signIn.finish,
     forgetGrants: forgetCredentials,
     list,
+    refit,
     allow: (tool) => allowTool(context, tool),
     readNotices: (limit) => readNotices(context, limit),
     readServers: () => readServerRows(options.log.writer.db),
+    readHealth: health.read,
     readTools: (serverID) => readToolRows(options.log.writer.db, serverID),
     readSummaries: async () => {
       const [servers, rows] = await Promise.all([
@@ -404,8 +462,17 @@ export function startMcp(options: McpOptions): Mcp {
             ],
       );
     },
-    findConnector: (tool) =>
-      tools.findTool(tool) === null ? undefined : buildActionConnector(makeApprovedCall(tool)),
+    findConnector: (tool) => {
+      const declared = tools.findDeclaration(tool);
+
+      return declared === null
+        ? undefined
+        : buildActionConnector(makeApprovedCall(tool), {
+            reconcile: declared.reconcile,
+            serverID: tool.split('.')[0] ?? '',
+            runCheck: runCheckTool,
+          });
+    },
   };
 }
 

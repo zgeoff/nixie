@@ -14,7 +14,12 @@ async function setupTest() {
     send: () => Promise.resolve({ kind: 'failed', message: 'was never called' }),
   };
 
-  const catalog = createToolCatalog(mcp.log, calls, () => Promise.resolve());
+  const catalog = createToolCatalog(
+    mcp.log,
+    calls,
+    () => Promise.resolve(),
+    () => Promise.resolve({ definitionsHash: 'sha256:test', servers: {} }),
+  );
 
   return {
     mcp,

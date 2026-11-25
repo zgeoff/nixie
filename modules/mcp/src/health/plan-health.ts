@@ -4,6 +4,10 @@ import type { ListingFailureCause, ServerHealth } from './types';
 
 export type ListingOutcome =
   | { readonly kind: 'passed' }
+
+  // The grant needs a new sign-in, which is no failure of the server: its failed listings and its
+  // next try go, and an unhealthy mark with them.
+  | { readonly kind: 'needs_sign_in' }
   | { readonly kind: 'failed'; readonly cause: ListingFailureCause };
 
 // The one record the outcome owes: written when the server becomes unhealthy and when an unhealthy
@@ -31,6 +35,21 @@ export function planHealth(
         nextTryAtMs: null,
         lastError: null,
         hasPassed: true,
+        isUnhealthy: false,
+      },
+      change: previous.isUnhealthy
+        ? { isUnhealthy: false, lastError: null, nextTryAtMs: null }
+        : null,
+    };
+  }
+
+  if (outcome.kind === 'needs_sign_in') {
+    return {
+      next: {
+        failures: 0,
+        nextTryAtMs: null,
+        lastError: null,
+        hasPassed: previous.hasPassed,
         isUnhealthy: false,
       },
       change: previous.isUnhealthy

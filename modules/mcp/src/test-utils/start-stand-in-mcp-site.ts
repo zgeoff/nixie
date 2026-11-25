@@ -45,6 +45,10 @@ export interface StandInMcpSite {
   // from the next request on, each listing page holds no tool and names another page, after the delay
   readonly serveEndlessPages: (delayMs: number | null) => void;
 
+  // Runs the hook while a call to the tool is in flight, before the site answers it. A test moves
+  // the pin there, as a listing that lands in the middle of a call does.
+  readonly onCall: (hook: (() => Promise<void>) | null) => void;
+
   // every access token issued so far stops working, as an expired one does
   readonly expireAccessTokens: () => void;
   readonly calls: readonly StandInCall[];
@@ -65,6 +69,7 @@ export interface StandInMcpSiteOptions {
 interface SiteState {
   readonly advertisesIssuer: boolean;
   tools: readonly StandInTool[];
+  callHook: (() => Promise<void>) | null;
   isListingFailing: boolean;
   isRefreshRefused: boolean;
   isTokenEndpointMoved: boolean;
@@ -89,6 +94,7 @@ export async function startStandInMcpSite(
   const state: SiteState = {
     advertisesIssuer: options.advertisesIssuer ?? true,
     tools: options.tools ?? [],
+    callHook: null,
     isListingFailing: false,
     isRefreshRefused: false,
     isTokenEndpointMoved: false,
@@ -121,6 +127,9 @@ export async function startStandInMcpSite(
     clientID,
     setTools: (tools) => {
       state.tools = tools;
+    },
+    onCall: (hook) => {
+      state.callHook = hook;
     },
     failListings: (isFailing) => {
       state.isListingFailing = isFailing;
@@ -377,14 +386,16 @@ function answerRPC(
 
     const answer = site.state.tools.find((candidate) => candidate.name === tool)?.answer;
 
-    return Response.json({
-      jsonrpc: '2.0',
-      id,
-      result: answer ?? {
-        content: [{ type: 'text', text: `called ${tool}` }],
-        isError: tool === 'fails',
-      },
-    });
+    return runCallHook(site).then(() =>
+      Response.json({
+        jsonrpc: '2.0',
+        id,
+        result: answer ?? {
+          content: [{ type: 'text', text: `called ${tool}` }],
+          isError: tool === 'fails',
+        },
+      }),
+    );
   }
 
   return Response.json({
@@ -413,4 +424,12 @@ function toListedTool(tool: StandInTool): Omit<StandInTool, 'answer'> {
   const { answer: _answer, ...listed } = tool;
 
   return listed;
+}
+
+async function runCallHook(site: SiteRequest): Promise<void> {
+  const hook = site.state.callHook;
+
+  site.state.callHook = null;
+
+  await hook?.();
 }

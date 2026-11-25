@@ -1,7 +1,7 @@
 import { buildToolRegistry } from '@heynixie/tools';
 import type { RegisteredTool } from '@heynixie/tools';
 import type { ProxyCalls } from '../call/types';
-import type { ToolForm } from '../types';
+import type { ToolDeclaration, ToolForm } from '../types';
 import { buildProxiedDefinition } from './build-proxied-definition';
 
 export type ProxiedToolBuild =
@@ -14,10 +14,17 @@ export function buildProxiedTool(
   tool: string,
   form: ToolForm,
   calls: ProxyCalls,
-  pinHash: string,
+  declared: ToolDeclaration | null,
 ): ProxiedToolBuild {
+  if (declared === null) {
+    return {
+      kind: 'refused',
+      reason: 'the form has no declaration, because its annotations name no effects',
+    };
+  }
+
   try {
-    const found = buildToolRegistry([buildProxiedDefinition(tool, form, calls, pinHash)]).findTool(
+    const found = buildToolRegistry([buildProxiedDefinition(tool, form, calls, declared)]).findTool(
       tool,
     );
 

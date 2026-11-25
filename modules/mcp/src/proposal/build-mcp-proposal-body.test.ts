@@ -29,7 +29,40 @@ test('it shows both forms of an allow in full, with the effects the tool would r
     allowedForm: expect.stringContaining('"description":"Read one item."'),
     newForm: expect.stringContaining('"description":"Read one item, and say who owns it."'),
     effects: 'read',
+    declaredBy: 'the tool annotations',
     contentArguments: 'id',
+  });
+});
+
+test('it shows the declaration of the override that the tool would run under', () => {
+  const proposed = buildToolForm({
+    name: 'item_notify',
+    inputSchema: {
+      type: 'object',
+      properties: { assignee_email: { type: 'string' }, message: { type: 'string' } },
+    },
+  });
+
+  const body = buildMcpProposalBody(
+    { change: 'allow', tool: 'tracker.item_notify', fromHash: null, hash: 'sha256:b' },
+    {
+      allowed: null,
+      proposed,
+      override: {
+        effects: ['send'],
+        destinations: ['assignee_email'],
+        amount: null,
+        content: ['message'],
+        reconcile: null,
+      },
+    },
+  );
+
+  expect(body.fields).toMatchObject({
+    effects: 'send',
+    declaredBy: 'the definitions repo',
+    destinationArguments: 'assignee_email',
+    contentArguments: 'message',
   });
 });
 
