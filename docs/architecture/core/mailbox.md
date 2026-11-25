@@ -61,9 +61,10 @@ joins a thread by the Message-ID headers that it answers. The table stores each 
 a thread lookup needs no text.
 
 The parser reads UTF-8, Latin-1 and Windows-1252 text, quoted-printable and base64 bodies, encoded
-subject words and multipart mail. It prefers the plain part. For an HTML part it drops scripts and
-styles and keeps each link's label. A multipart mail with an HTML part and no plain part keeps its
-body. A mail with attachments lists each by name and size.
+subject words and multipart mail. It prefers the plain part. A mail with an HTML part and no plain
+part keeps the HTML as it came, cut at 1,000,000 characters, and the module never reads it. A mail
+with attachments lists each by name and size, and keeps each name as its last path segment with no
+control character.
 
 `mail.read` numbers each link of the text as a link ID of the session, such as
 `[L1 · example.org/reset]`, and the model opens it with `web_fetch` by that ID. The text the model
@@ -71,28 +72,60 @@ sees never holds the address of a link, so a link with a token stays out of the 
 it opens the link. The numbers belong to the conversation session, or the task run, that reads the
 mail, and the same address keeps its number there.
 
+### HTML mail
+
+A mail with only an HTML part reads in the fetch sandbox, where `web_fetch` reads a page. When the
+model opens such a mail, the mail module sends the HTML to the sandbox in the `html` field of a
+[fetch request](../connectors/web-fetch.md#the-fetch-sandbox), and the fetch guest answers with the
+page reply, whose text holds a mark where each link ends. The module numbers each link in the
+session of the call, as `web_fetch` does, and replaces each mark with its link ID. A mail with a
+plain part never goes to the sandbox, and its addresses take link IDs in the module. When the
+sandbox fails, `mail.read` refuses with `HTML_UNREADABLE` and leaves the mail unread, so the model
+can open it again.
+
 ## The tools
 
-| Tool               | Does                                                                                    |
-| ------------------ | --------------------------------------------------------------------------------------- |
-| `mail.list`        | pages the mail, newest first, filtered by sender address or `@domain`, text, and unread |
-| `mail.read`        | opens one mail by its short ID and marks it read                                        |
-| `mail.send`        | queues a new mail to up to 20 recipients                                                |
-| `mail.reply`       | queues an answer to a mail, in its thread, to its sender                                |
-| `mail.wake_set`    | sets a wake rule, and lists the recent mail that it matches                             |
-| `mail.wake_list`   | lists every live rule, whoever set it                                                   |
-| `mail.wake_cancel` | ends a rule by its short ID                                                             |
+| Tool                   | Does                                                                                    |
+| ---------------------- | --------------------------------------------------------------------------------------- |
+| `mail.list`            | pages the mail, newest first, filtered by sender address or `@domain`, text, and unread |
+| `mail.read`            | opens one mail by its short ID and marks it read                                        |
+| `mail.save_attachment` | keeps one attachment of a received mail as a file of the thread                         |
+| `mail.send`            | queues a new mail to up to 20 recipients                                                |
+| `mail.reply`           | queues an answer to a mail, in its thread, to its sender                                |
+| `mail.wake_set`        | sets a wake rule, and lists the recent mail that it matches                             |
+| `mail.wake_list`       | lists every live rule, whoever set it                                                   |
+| `mail.wake_cancel`     | ends a rule by its short ID                                                             |
 
 Every field of an incoming mail is content from outside. The model sees each sender, subject and
 text of a result fenced as outside text, and the tool result record keeps the plain value with the
 source `untrusted`. Each result field a tool returns has a declared source, which the tool registry
 checks when the server starts.
 
-Tool errors start with a code: `UNKNOWN_MESSAGE`, `UNKNOWN_RULE`, `UNKNOWN_TASK`, `BAD_ADDRESS` or
-`BAD_DURATION`. An address with a character outside ASCII is a `BAD_ADDRESS`, because the header
-cannot carry it. A duration is a number of seconds, minutes, hours or days of at most 7 digits, from
-a minute. A call that sets no window takes the default window, cut to the expiry when the expiry is
-shorter.
+Tool errors start with a code: `UNKNOWN_MESSAGE`, `UNKNOWN_ATTACHMENT`, `UNKNOWN_FILE`,
+`UNKNOWN_RULE`, `UNKNOWN_TASK`, `BAD_ADDRESS`, `BAD_DURATION`, `TOO_BIG` or `HTML_UNREADABLE`. An
+address with a character outside ASCII is a `BAD_ADDRESS`, because the header cannot carry it. A
+duration is a number of seconds, minutes, hours or days of at most 7 digits, from a minute. A call
+that sets no window takes the default window, cut to the expiry when the expiry is shorter.
+
+## Attachments
+
+A received mail keeps the bytes of its attachments as attachments of its `mail.received` record,
+sealed under the record's key, so a forget of the mail destroys them. A mail keeps its first
+attachments up to 25 MiB in all. A later attachment stays in the list without its bytes, and
+`mail.save_attachment` refuses it with `TOO_BIG`.
+
+`mail.save_attachment` takes the mail's short ID and the attachment's number from `mail.read`. It
+keeps the bytes as a file of the calling thread, the way `computer.export_file` keeps a file, and
+returns the file's ID, name, size and media type. The file counts as untrusted, like a download. The
+ID works in the `files` argument of a send, in `file.send` and in a code run's inputs, on that
+thread only.
+
+`mail.send` and `mail.reply` take `files`, up to 10 file IDs of the calling thread, 25 MiB in all.
+The call refuses `UNKNOWN_FILE` for a file that is missing, forgotten or of another thread, and
+`TOO_BIG` for more bytes than a mail carries. The approval card lists each file by name and size.
+When the send runs, it reads each file's bytes from the thread that queued the action, refuses when
+a forget took one, and sends the mail as multipart with each file as an attachment. The `mail.sent`
+record keeps each file's name and size.
 
 ## Sending
 
@@ -171,7 +204,4 @@ The [mail design](../../design/queue/mail/README.md) covers the rest, and
 [the mail issue](https://linear.app/zgeoff/issue/GEO-2816) tracks it.
 
 - A mail host other than the host in memory, so a release build has no mailbox.
-- The `mail.save_attachment` tool and a `files` argument on a send. A mail lists each attachment by
-  name and size and holds no attachment.
-- The fetch sandbox's parse of an HTML mail. The mail module parses HTML in process.
 - The Gmail mailbox.
