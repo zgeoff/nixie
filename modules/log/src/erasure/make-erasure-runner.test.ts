@@ -28,7 +28,17 @@ async function setupTest() {
     kind: ErasableKind,
     childKind: ErasableKind,
     targets: readonly TestErasureTarget[],
-  ) => runner.register(buildTestErasable({ kind, childKind, targets, events }));
+    onRevoke?: (targetID: string) => Promise<void>,
+  ) =>
+    runner.register(
+      buildTestErasable({
+        kind,
+        childKind,
+        targets,
+        events,
+        ...(onRevoke === undefined ? {} : { onRevoke }),
+      }),
+    );
 
   return {
     ...testLog,
@@ -454,4 +464,66 @@ test('it reads the erasures open past the stuck threshold without running any', 
     old: old.map((erasure) => [erasure.kind, erasure.shortID, erasure.openForMs]),
     openAfter,
   }).toStrictEqual({ young: [], old: [['note', 'short-a', 5000]], openAfter: 1 });
+});
+
+test('it runs the revoke step with every key still in place, and deletes the keys after it', async () => {
+  const ctx = await setupTest();
+
+  const keyIDs = [await ctx.createKey(), await ctx.createKey()];
+  const keysAtRevoke: number[] = [];
+
+  const credential = ctx.register(
+    'credential',
+    'image',
+    [{ id: 'a', keyIDs, childIDs: [] }],
+    async () => {
+      const keys = await ctx.readKeyIDs();
+
+      keysAtRevoke.push(keys.length);
+    },
+  );
+
+  await credential.begin({ id: 'a' }, { by: 'user' });
+  await credential.finish('a');
+
+  const keysAfter = await ctx.readKeyIDs();
+
+  expect([keysAtRevoke, keysAfter]).toStrictEqual([[2], []]);
+});
+
+test('it keeps the keys and leaves the forget open when the revoke step fails', async () => {
+  const ctx = await setupTest();
+
+  const keyIDs = [await ctx.createKey()];
+
+  const credential = ctx.register('credential', 'image', [{ id: 'a', keyIDs, childIDs: [] }], () =>
+    Promise.reject(new Error('the record write failed')),
+  );
+
+  await credential.begin({ id: 'a' }, { by: 'user' });
+  await Promise.allSettled([credential.finish('a')]);
+
+  const keysAfter = await ctx.readKeyIDs();
+  const open = await ctx.readOpenCount();
+
+  expect([keysAfter, open]).toStrictEqual([keyIDs, 1]);
+});
+
+test('it reaches the revoked fault point after the revoke step and before the keys go', async () => {
+  const ctx = await setupTest();
+
+  const keyIDs = [await ctx.createKey()];
+
+  const credential = ctx.register('credential', 'image', [{ id: 'a', keyIDs, childIDs: [] }], () =>
+    Promise.resolve(),
+  );
+
+  ctx.crashAt('erasure.revoked');
+
+  await credential.begin({ id: 'a' }, { by: 'user' });
+  await Promise.allSettled([credential.finish('a')]);
+
+  const keysAfter = await ctx.readKeyIDs();
+
+  expect(keysAfter).toStrictEqual(keyIDs);
 });

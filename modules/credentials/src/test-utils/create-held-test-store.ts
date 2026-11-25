@@ -66,7 +66,7 @@ export async function createHeldTestStore(options: HeldTestStoreOptions): Promis
     },
     resolveHost: options.resolveHost ?? (() => Promise.resolve(['127.0.0.1'])),
     denied: [],
-    held: { backend, recorder },
+    held: () => ({ backend, recorder }),
     now: options.now,
     ...(options.tokenRequestTimeoutMs === undefined
       ? {}

@@ -16,6 +16,10 @@ export interface CrashHarness {
   // test can serve; null keeps the fetcher
   readonly fetchArgv: readonly string[] | null;
 
+  // the fake Google site that consents, token requests and scope reads go to; null keeps Google's
+  // own hosts
+  readonly googleURL: string | null;
+
   readonly stopDescendants: () => void;
 }
 
@@ -43,6 +47,7 @@ export function joinCrashHarness(
     link,
     providerURL,
     atcURL: env['NIXIE_TEST_ATC_URL'] ?? null,
+    googleURL: env['NIXIE_TEST_GOOGLE_URL'] ?? null,
     fetchArgv: fetcher === undefined ? null : [process.execPath, fetcher],
 
     // A guest leads its own process group, so it outlives a nixie that exits. A host that loses

@@ -1,4 +1,5 @@
 import type { BackupSchedule, ForgetBackup } from '@heynixie/backup';
+import type { ConnectionsPort } from '@heynixie/connections';
 import type { ComputerTakeover, WatchConnection, WatchSocket } from '@heynixie/connectors';
 import type { DefinitionNotice, ImageMediaType } from '@heynixie/contract';
 import type { CheckedTables } from '@heynixie/db';
@@ -130,6 +131,10 @@ export interface APIContext extends TasksContext {
   // The erasure runner's stuck forgets, which start after the API context. Null before they start,
   // and absent where the server holds none.
   readonly readErasure?: () => ErasureStuckPort | null;
+
+  // The Google connections, which start after the API context. Null before they start, and absent
+  // where the server holds none.
+  readonly readConnections?: () => ConnectionsPort | null;
 
   // The notebook, which starts after the API context. Null before it starts, and absent where the
   // server holds none.

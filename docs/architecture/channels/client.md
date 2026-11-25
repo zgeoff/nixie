@@ -456,11 +456,36 @@ Each link between the pages carries the parameter along.
 - The record forget's confirmation lists the active notes that link to the record, with "A private
   note" in place of a private note's title.
 
+## The connections pages
+
+Settings → Connections is 2 routes: `/settings/connections` lists the connections and the Google
+setup, and `/settings/connections/<connection>` shows one connection. The return route
+`/connections/google/return` redirects to the second. See
+[Google connections](../connectors/google-connections.md) for the procedures the pages call.
+
+- The list page reads `connections.list` before it renders. The setup steps read after hydration,
+  because their placeholders hold the page's own origin, which the server render does not know.
+- The steps come from `connections.readSetup` with their links. The `client` step shows the form
+  that calls `registerClient`: client ID, client secret and the 2 optional picker values. After a
+  registration the step shows the redirect URI, the origin, the secret's fingerprint and the picker
+  values, with a form for `setPicker` and a button for `removeClient`. The secret field empties when
+  the call answers, and no page shows the secret again.
+- Connect calls `startConsent` and sends the browser to the URL it answers. It stays disabled until
+  a client is registered. The connection's page offers the same call to consent again, for a
+  connection that needs consent.
+- Each connection shows its label or account and its status: Active, Failing with its reason, Needs
+  consent, Expiring or Forgotten. A connection with missing scopes also lists them, in the list and
+  on its page. The page names each scope with its reason and the tools it holds back, and holds a
+  button that consents again. The conversation never shows the notice.
+- Forget asks for a confirmation, then calls `forget`. A forgotten connection's page reads
+  `readForgetStatus` and shows the erasure, the revocation and the key backups as 3 lines, and reads
+  again while the erasure or the revocation is pending.
+
 ## The app shell
 
-Every page sits in one shell, which the root route renders. Its bar holds 15 links: Conversation,
+Every page sits in one shell, which the root route renders. Its bar holds 16 links: Conversation,
 Memory, Proposals, Mandates, Moments, Tasks, Ended runs, Files, Images, Computer, Notebook,
-Definitions, Reminders, Passkeys and Add a device. The link of the current page carries
+Definitions, Reminders, Passkeys, Connections and Add a device. The link of the current page carries
 `aria-current="page"`, and a detail page marks its parent, so a task marks Tasks. A page with no
 entry marks nothing. Below 768px the links fold into a menu button that opens a side drawer. The
 drawer is a native modal dialog, so the rest of the page goes inert while it is open. It closes on a

@@ -8,13 +8,14 @@ import { readFingerprint } from './fingerprint/read-fingerprint';
 import { buildHostHeldName } from './grant/build-host-held-name';
 import { modelSecretNameLength, modelSecretPrefix } from './grant/constants';
 import { createHeldCredentials } from './held/create-held-credentials';
-import type { HeldHandle } from './held/create-held-credentials';
+import type { HeldCredentials, HeldHandle } from './held/create-held-credentials';
 import { CredentialRemovedError } from './held/credential-removed-error';
 import type {
   CredentialRecorder,
   HeldBackend,
   HeldState,
   RefreshOutcome,
+  RevokeResult,
   TokenExchange,
   TokenResult,
 } from './held/types';
@@ -31,6 +32,11 @@ import type {
   ResolveCredential,
 } from './types';
 
+export interface HeldWiring {
+  readonly backend: HeldBackend;
+  readonly recorder: CredentialRecorder;
+}
+
 export interface CredentialStoreOptions {
   readonly secrets: Pick<Secrets, 'readFileValue' | 'fingerprintKey' | 'ownValues'>;
   readonly resolveHost: (host: string) => Promise<readonly string[]>;
@@ -39,11 +45,9 @@ export interface CredentialStoreOptions {
   readonly denied: readonly string[];
 
   // The database backend's storage, and the log the store writes its records to. Without it the
-  // store holds file credentials alone.
-  readonly held?: {
-    readonly backend: HeldBackend;
-    readonly recorder: CredentialRecorder;
-  };
+  // store holds file credentials alone. The store calls it at the first database credential, so a
+  // server can build the store before the log it needs has started.
+  readonly held?: () => HeldWiring;
 
   // the time a refresh reads, in ms; the system clock by default
   readonly now?: () => number;
@@ -112,12 +116,24 @@ export interface CredentialStore {
   // null when the credential holds no token yet
   readonly readStatus: (binding: BindingRef<'database'>) => Promise<HeldState | null>;
 
+  // Sends the credential's refresh token to the provider's revoke URL once, and says how it ended.
+  // It still reads a token whose removal began, and its key must not have gone: otherwise it sends
+  // nothing and answers `not_attempted`.
+  readonly revoke: (binding: BindingRef<'database'>) => Promise<RevokeResult>;
+
   // Removes a database credential and advances its removal counter in one transaction. Every
   // handle made before it refuses from then on, and a refresh in flight saves nothing.
   readonly remove: (ref: DatabaseCredentialRef) => Promise<void>;
 
+  // Gives the values that a credential's tokens hold in the live set to another credential that now
+  // holds those tokens, so the second credential's removal clears them.
+  readonly moveOwnValues: (from: DatabaseCredentialRef, to: DatabaseCredentialRef) => Promise<void>;
+
   // At start: a refresh that sent and never saved a result marks its credential `needs_consent`.
   readonly recover: () => Promise<void>;
+
+  // The keyed fingerprint of a value, which shows a rotation without showing the value.
+  readonly readFingerprint: (value: string) => Promise<string>;
 }
 
 // What a part of the server takes to resolve a reference and to fetch or grant with the result.
@@ -147,34 +163,36 @@ export function createCredentialStore(options: CredentialStoreOptions): Credenti
     ...(options.test?.transport === undefined ? {} : { transport: options.test.transport }),
   };
 
-  const held =
-    options.held === undefined
-      ? null
-      : createHeldCredentials({
-          backend: options.held.backend,
-          recorder: options.held.recorder,
-          fingerprintKey: options.secrets.fingerprintKey,
-          ownValues: options.secrets.ownValues,
-          now,
-          requestTimeoutMs: options.tokenRequestTimeoutMs ?? defaultTokenRequestTimeoutMs,
-          makeProviderFetch: (provider, bodyValues) =>
-            createCredentialFetcher(fetcherChecks, {
-              spec: null,
-              readValue: () => null,
-              bodyValues,
-              origins: normalizeOrigins(listProviderURLs(provider)),
-              options: { redirects: 'none' },
-            }),
-        });
+  const heldHolder: { current: HeldCredentials | null } = { current: null };
 
-  const requireHeld = () => {
+  const requireHeld = (): HeldCredentials => {
     invariant(
-      held !== null,
+      options.held !== undefined,
       'a database credential needs the store to be made with a held backend',
     );
 
-    return held;
+    heldHolder.current ??= createHeld(options.held());
+
+    return heldHolder.current;
   };
+
+  const createHeld = (wiring: HeldWiring): HeldCredentials =>
+    createHeldCredentials({
+      backend: wiring.backend,
+      recorder: wiring.recorder,
+      fingerprintKey: options.secrets.fingerprintKey,
+      ownValues: options.secrets.ownValues,
+      now,
+      requestTimeoutMs: options.tokenRequestTimeoutMs ?? defaultTokenRequestTimeoutMs,
+      makeProviderFetch: (provider, bodyValues) =>
+        createCredentialFetcher(fetcherChecks, {
+          spec: null,
+          readValue: () => null,
+          bodyValues,
+          origins: normalizeOrigins(listProviderURLs(provider)),
+          options: { redirects: 'none' },
+        }),
+    });
 
   const getBinding = (ref: BindingRef): Binding => {
     const binding = bindings.get(ref.bindingID);
@@ -275,6 +293,9 @@ export function createCredentialStore(options: CredentialStoreOptions): Credenti
           readValue,
           origins: allowed,
           options: fetchOptions,
+          ...(binding?.spec.provider === undefined
+            ? {}
+            : { oauthHostnames: listOAuthHostnames(binding.spec.provider) }),
           ...(withSendCheck === undefined ? {} : { withSendCheck }),
         });
 
@@ -297,9 +318,8 @@ export function createCredentialStore(options: CredentialStoreOptions): Credenti
       const send = makeSender(() => requireHeld().readAccessToken(handle), withSendCheck);
       const sendRefreshed = makeSender(() => requireHeld().readCurrentToken(handle), withSendCheck);
 
-      return async (input, init) => {
-        const replayable = await readReplayableInit(init);
-        const first = await send(input, replayable);
+      const sendWithRetry: CredentialFetch = async (input, init) => {
+        const first = await send(input, init);
 
         await checkHandle();
 
@@ -319,7 +339,7 @@ export function createCredentialStore(options: CredentialStoreOptions): Credenti
           return first;
         }
 
-        const second = await sendRefreshed(input, replayable);
+        const second = await sendRefreshed(input, init);
 
         await checkHandle();
 
@@ -328,6 +348,43 @@ export function createCredentialStore(options: CredentialStoreOptions): Credenti
         }
 
         return second;
+      };
+
+      // A removal aborts every request in flight on the credential, so a fetch that races it ends
+      // with the removal's error instead of an answer, even while it waits on a refresh.
+      return async (input, init) => {
+        const replayable = await readReplayableInit(init);
+
+        const request = requireHeld().trackRequest(handle.credentialID);
+
+        try {
+          const signal =
+            replayable?.signal === undefined || replayable.signal === null
+              ? request.signal
+              : AbortSignal.any([replayable.signal, request.signal]);
+
+          const sending = Promise.allSettled([sendWithRetry(input, { ...replayable, signal })]);
+
+          // The race reports the outcome. A send that loses it ends in the background.
+          const [outcome] = await Promise.race([
+            sending,
+            waitForAbort(request.signal, new CredentialRemovedError(binding.spec.label)),
+          ]);
+
+          if (outcome.status === 'rejected') {
+            throw outcome.reason;
+          }
+
+          return outcome.value;
+        } catch (error) {
+          if (request.signal.aborted) {
+            throw new CredentialRemovedError(binding.spec.label);
+          }
+
+          throw error;
+        } finally {
+          request.end();
+        }
       };
     },
     grant: async (source, sandboxes, request) => {
@@ -370,8 +427,11 @@ export function createCredentialStore(options: CredentialStoreOptions): Credenti
     refresh: (binding) => requireHeld().refresh(toHandle(binding)),
     refreshIfDue: (binding) => requireHeld().refreshIfDue(toHandle(binding)),
     readStatus: (binding) => requireHeld().readState(toHandle(binding)),
+    revoke: (binding) => requireHeld().revoke(toHandle(binding)),
     remove: (ref) => requireHeld().remove(ref.credentialID),
+    moveOwnValues: (from, to) => requireHeld().moveOwnValues(from.credentialID, to.credentialID),
     recover: () => requireHeld().recover(),
+    readFingerprint: (value) => readFingerprint(value, options.secrets.fingerprintKey),
   };
 }
 
@@ -407,6 +467,12 @@ function requireProviderOrigins(spec: CredentialSpec): void {
   }
 }
 
+function listOAuthHostnames(provider: OAuthProvider): readonly string[] {
+  return [provider.tokenURL, provider.revokeURL, provider.authorizeURL]
+    .filter((url) => url !== undefined)
+    .map((url) => new URL(url).hostname.toLowerCase());
+}
+
 // A request body that is a stream is read once, so the retry after a refresh needs the bytes.
 async function readReplayableInit(init: RequestInit | undefined): Promise<RequestInit | undefined> {
   if (!(init?.body instanceof ReadableStream)) {
@@ -416,6 +482,25 @@ async function readReplayableInit(init: RequestInit | undefined): Promise<Reques
   const buffer = await new Response(init.body).arrayBuffer();
 
   return { ...init, body: new Uint8Array(buffer) };
+}
+
+// A promise that rejects with `error` when the signal aborts, and never settles otherwise.
+function waitForAbort(signal: AbortSignal, error: Error): Promise<never> {
+  const aborted = Promise.withResolvers<never>();
+
+  if (signal.aborted) {
+    aborted.reject(error);
+  } else {
+    signal.addEventListener(
+      'abort',
+      () => {
+        aborted.reject(error);
+      },
+      { once: true },
+    );
+  }
+
+  return aborted.promise;
 }
 
 // A value nixie holds goes into a keyed digest, because the broker keeps a granted secret under its

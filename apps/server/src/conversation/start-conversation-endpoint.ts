@@ -117,6 +117,9 @@ export interface ConversationEndpointTools {
   readonly readStore: () => ConversationMemoryStore | null;
   readonly readNotebook: () => NotebookToolStore | null;
 
+  // the tools that a run leaves out of its list; none before the connections start
+  readonly readHeldBackTools: () => Promise<readonly string[]>;
+
   readonly readInForce: () => DefinitionsInForce | null;
   readonly refreshDefinitions: () => Promise<DefinitionsInForce | null>;
   readonly runInForceSeed: () => Promise<void>;
@@ -342,6 +345,7 @@ export async function startConversationEndpoint(
     definitions: options.context.definitions,
     queue: tools.queue,
     readOwnValues: tools.readOwnValues,
+    readHeldBackTools: tools.readHeldBackTools,
     ...(options.context.budgets === undefined ? {} : { budgets: options.context.budgets }),
   });
 

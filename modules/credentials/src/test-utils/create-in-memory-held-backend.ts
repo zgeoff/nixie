@@ -48,7 +48,7 @@ const stateSchema = z.object({
   retryAtMs: z.number().nullable(),
 });
 
-const clientSchema = z.object({ clientSecret: z.string() });
+const clientSchema = z.object({ clientID: z.string(), clientSecret: z.string() });
 
 const tokenSchema = z.object({
   accessToken: z.string(),
@@ -138,8 +138,11 @@ export function createInMemoryHeldBackend(
       return Promise.resolve();
     },
     readToken: (credentialID) => Promise.resolve(tokens.get(credentialID) ?? null),
-    writeToken: async (credentialID, token, expectedCounter, record) => {
-      if (readCounter(credentialID) !== expectedCounter) {
+    writeToken: async (credentialID, token, guard, record) => {
+      if (
+        readCounter(credentialID) !== guard.expectedCounter ||
+        readCounter(guard.client.credentialID) !== guard.client.expectedCounter
+      ) {
         return 'removed';
       }
 
@@ -164,6 +167,11 @@ export function createInMemoryHeldBackend(
       }
 
       return 'saved';
+    },
+    readTokenForRevocation: (credentialID) => {
+      const token = tokens.get(credentialID);
+
+      return Promise.resolve(token ?? null);
     },
     writeState: (credentialID, state, expectedCounter) => {
       if (readCounter(credentialID) !== expectedCounter) {

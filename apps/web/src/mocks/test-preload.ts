@@ -5,6 +5,7 @@ import { addMockHandlers } from '@heynixie/mock-server';
 import { IDBFactory } from 'fake-indexeddb';
 import { createRoot } from 'react-dom/client';
 import { browserCookies } from './browser-cookies';
+import { connectionStore } from './connection-store';
 import { handlers } from './handlers';
 import { mockLive } from './mock-live';
 import { store } from './store';
@@ -44,6 +45,7 @@ addMockHandlers(...handlers);
 
 afterEach(() => {
   store.reset();
+  connectionStore.reset();
   mockLive.reset();
   browserCookies.clear();
   globalThis.localStorage.clear();
