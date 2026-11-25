@@ -33,6 +33,9 @@ export interface SpeechLayer {
 
   // Sends a line for the speech layer to say now, such as the reconnect line.
   readonly say: (sessionID: string, text: string) => Promise<void>;
+
+  // Ends the session once the speech layer has finished the line it is speaking, so a hang-up
+  // never cuts off nixie's last line.
   readonly close: (sessionID: string) => Promise<void>;
   readonly events: (sessionID: string) => AsyncIterable<SpeechEvent>;
 }
@@ -154,8 +157,8 @@ export interface CallsContext {
   // model call in flight.
   readonly interruptTurn: (taskID: string) => Promise<void>;
 
-  // Writes the call's report to the conversation in the transaction that ends the call, when the
-  // call's task can run no closing turn, and returns whether it wrote one.
+  // Writes the call's report to the conversation, with no summary, when the call's task can run no
+  // closing turn and has sent no report, and returns whether it wrote one.
   readonly writeStrandedReport: (
     tx: Transaction<unknown>,
     call: Pick<Call, 'callID' | 'taskID'>,

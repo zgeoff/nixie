@@ -9,6 +9,7 @@ import { startCall } from '../start/start-call';
 import { probeStubbedCaller, startTestCalls } from '../test-utils';
 import { readCall } from '../utils/read-call';
 import { hangUpCall } from './hang-up-call';
+import { markHangUp } from './mark-hang-up';
 
 async function setupTest() {
   const ctx = await startTestCalls();
@@ -192,4 +193,14 @@ test('it logs a session that fails to close, and forgets the session', async () 
     ],
     sessions: 0,
   });
+});
+
+test('it drops the hang-up a running turn asked for when the user hangs up first', async () => {
+  const ctx = await setupTest();
+
+  markHangUp(ctx.context, ctx.callID);
+
+  await hangUpCall(ctx.context, ctx.callID);
+
+  expect(ctx.context.runtime.hangUps.has(ctx.callID)).toBeFalse();
 });

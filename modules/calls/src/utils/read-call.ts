@@ -41,6 +41,23 @@ export async function readOpenCalls(db: Kysely<unknown>): Promise<readonly Call[
   return rows.map((row) => toCall(row));
 }
 
+// The calls that ended at or after the time, oldest first.
+export async function readEndedCallsSince(
+  db: Kysely<unknown>,
+  sinceMs: number,
+): Promise<readonly Call[]> {
+  const rows = await db
+    .$extendTables<CallsTables>()
+    .selectFrom('calls')
+    .selectAll()
+    .where('state', '=', 'ended')
+    .where('ended_at', '>=', sinceMs)
+    .orderBy('ended_at')
+    .execute();
+
+  return rows.map((row) => toCall(row));
+}
+
 const rowSchema = z.object({
   call_id: z.string(),
   task_id: z.string(),

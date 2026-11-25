@@ -32,14 +32,15 @@ export async function sendTurnAnswer(context: CallsContext, answer: TurnAnswer):
     return;
   }
 
-  handOff.isAnswered = true;
-  handOff.replyRecordID = answer.replyRecordID;
-
   const answerText = pickAnswerText({
     replies: answer.replies,
     isFailed: answer.isFailed,
     lines: context.readVoiceDefinitions().lines,
   });
+
+  // A fixed line speaks none of the turn's reply, so a cut over it marks no reply.
+  handOff.isAnswered = true;
+  handOff.replyRecordID = answerText.isFixedLine ? null : answer.replyRecordID;
 
   try {
     await context.speech.answer(sessionID, answer.handOffID, answerText.text, true);

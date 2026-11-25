@@ -75,6 +75,7 @@ function stopWatch(context: CallsContext, callID: string): void {
   context.runtime.watches.delete(callID);
   context.runtime.handOffs.delete(callID);
   context.runtime.smallTalk.delete(callID);
+  context.runtime.hangUps.delete(callID);
 }
 
 async function closeSession(

@@ -109,7 +109,7 @@ export function buildTestCallsContext(
       return Promise.resolve();
     },
     writeStrandedReport: (_tx, call) => {
-      if (!endedTasks.has(call.taskID)) {
+      if (!endedTasks.has(call.taskID) || strandedReports.includes(call.callID)) {
         return Promise.resolve(false);
       }
 

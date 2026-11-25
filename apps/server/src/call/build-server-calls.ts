@@ -69,8 +69,8 @@ export function buildServerCalls(options: ServerCallsOptions): CallsContext {
 // would wait unread.
 const strandedStates: ReadonlySet<TaskState> = new Set(['failed', 'stopped', 'done', 'closed']);
 
-// A call whose task can run no closing turn gets its report here, with no summary, in the
-// transaction that ends the call.
+// A call whose task can run no closing turn gets its report here, with no summary, once: in the
+// transaction that ends the call, or from the sweep when the task stopped after the call ended.
 async function writeStrandedReport(
   tx: WriteTransaction,
   options: ServerCallsOptions,
@@ -84,6 +84,18 @@ async function writeStrandedReport(
     .executeTakeFirst();
 
   if (task === undefined || !strandedStates.has(task.state)) {
+    return false;
+  }
+
+  const earlier = await tx
+    .$extendTables<TasksTables>()
+    .selectFrom('task_messages')
+    .select('message_id')
+    .where('from_task', '=', call.taskID)
+    .where('kind', '=', 'report')
+    .executeTakeFirst();
+
+  if (earlier !== undefined) {
     return false;
   }
 

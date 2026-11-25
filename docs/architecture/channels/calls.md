@@ -17,8 +17,10 @@ section answers `calls.start` with `SPEECH_UNAVAILABLE`.
   session.
 - `events` takes a session ID and returns the session's stream of `SpeechEvent`s. `open` returns no
   events.
-- `answer` and `say` tell the provider what to speak, and `close` ends the session. The module sends
-  each answer with `final: true`.
+- `answer` and `say` tell the provider what to speak, and `close` ends the session once the speech
+  layer has finished the line it is speaking, so a hang-up never cuts off the last line. The module
+  sends each answer with `final: true`.
+- `model` names the provider's model that speaks the call. Each `call.spoke` record carries it.
 
 The package's `test-utils` holds a fake layer in memory. It records each `open`, `answer`, `say` and
 `close`, an `open` that the layer refused too, and a test emits each `SpeechEvent` into a session by
@@ -35,6 +37,7 @@ A call is `ringing`, `connecting`, `live` or `ended`. An ended call carries who 
 | `calls.start`   | A full-scope session starts a call. One write transaction checks the refusals, creates the call, asks the server to create the call task, and writes `call.started` and `call.answered`. The call is `connecting`, and the starting session carries it. |
 | `calls.connect` | The carrying session sends its SDP offer. The module opens a speech session, and the transaction that makes the call `live` charges its first minute.                                                                                                   |
 | `calls.hangUp`  | Ends the call with `endedBy: 'you'`. A second hang up of an ended call returns the same result.                                                                                                                                                         |
+| `call.hang_up`  | The call's turn asks to end the call. Once the turn's answers have gone to the speech layer, the call ends with `endedBy: 'nixie'`.                                                                                                                     |
 
 `calls.start` refuses with one of these errors, checked in this order:
 
@@ -63,7 +66,8 @@ charged. A budget line that fails to speak never keeps the speech session open.
 
 A sweep closes the gaps that a crash or a silent provider leaves. On a short interval it ends a call
 that stayed `connecting` past its limit, ends a `live` call whose speech session is gone, and
-charges each further started minute of a live call.
+charges each further started minute of a live call. It also writes the report of a call whose task
+stopped before its last turn, as [the call's last turn](#hand-offs) describes.
 
 ## Records
 
@@ -110,7 +114,10 @@ called `seedThrough`. The runner runs the same turn code as a started task, with
   layer's small talk and the replies.
 - The call gets the conversation's tool list with `call.hang_up`, so its connectors answer a request
   such as "what is on today". It never gets `call.ring`, `task.start`, `worker.run` or
-  `task.report`.
+  `task.report`. The server registers `call.hang_up` with every other tool, and only a call's list
+  names it.
+- The session never compacts. A turn that passes the context window fails, and its hand-offs get the
+  `couldnt_finish` line.
 
 ## Hand-offs
 
@@ -129,11 +136,14 @@ small talk beside the hand-off that follows it, so the first reply of the turn i
 call's task runs one turn over what it has not read. When the turn ends, the module sends the text
 of its replies to the speech layer in one `answer` call for each hand-off the turn took: the ones it
 started with and the ones that landed during it, oldest first. A hand-off that already has its
-answer gets no second one. A turn that fails, passes a limit or writes no text sends the
-`couldnt_finish` line instead, so the speech layer never makes up an answer, and the module writes
-that line as a `call.spoke` record. A turn that throws answers every hand-off that landed on the
-call's thread since it started, as one that fails does. A turn that the user cut sends nothing, and
-a hand-off that landed during it stays unread for the next turn to answer.
+answer gets no second one. A turn that fails, passes a limit, ends with a proposal still waiting for
+the user, or writes no text sends the `couldnt_finish` line instead. The line claims no outcome, so
+the speech layer never makes one up, and the module writes it as a `call.spoke` record. A proposal
+counts when the turn's task asked for it or it sits on the call's thread, after the turn began. A
+turn that throws answers every hand-off that landed on the call's thread since it started, as one
+that fails does. A turn that the user cut sends nothing. Each hand-off it started with closes, with
+no answer and no holding line, and a hand-off that landed during it stays unread for the next turn
+to answer. A cut turn also drops a hang-up it asked for.
 
 When no answer has been sent `hold_after_ms` after a hand-off, the module sends the `holding` line
 through `say`. That line is not part of the answer. The module writes it as a `call.spoke` record
@@ -142,14 +152,25 @@ message, and the turn answers it with the same text as the first.
 
 A `cut` event does one of two things:
 
-- Before the module sent an answer, it interrupts the call's turn.
-- After the module sent an answer, it writes `call.heard_cut` with the reply's record and the count
-  of characters heard. The next turn reads the reply split where the user stopped hearing it, both
-  in a session that continues and in one that rebuilds.
+- Before the module sent an answer, it interrupts the call's turn and stops the hand-off's holding
+  line.
+- After the module sent a reply, it writes `call.heard_cut` with the reply's record and the count of
+  characters heard. The next turn reads the reply split where the user stopped hearing it, both in a
+  session that continues and in one that rebuilds.
+
+A cut on a hand-off that got the `couldnt_finish` line, or that a cut turn closed, does nothing: the
+speech layer spoke none of a reply, and the turn has ended.
 
 When the call ends, `call.closing` lands on the call's thread. The task's last turn reads it, writes
-the summary as its reply, and the step reports that reply to the conversation as a `report` message.
-A last turn that fails reports with no summary and names the call's task.
+the summary as its reply, and the step reports that reply to the conversation as a `report` message
+that wakes it, because the `call.ended` notice told the conversation a summary follows. A last turn
+that fails reports with no summary and names the call's task.
+
+A call whose task is `failed`, `stopped`, `done` or `closed` runs no last turn. The transaction that
+ends such a call writes the report itself, with no summary and the call's task named, in place of
+`call.closing`. When the task stops after the call ended and before its last turn ran, the sweep
+writes the same report for a call that ended in the last day. A task that has sent a report gets no
+second one from either place.
 
 ## The conversation's wakes
 

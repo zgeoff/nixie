@@ -50,7 +50,7 @@ export interface CallTurn {
 export async function runCallTurn(turn: CallTurn): Promise<StepResult> {
   const isClosing = turn.input.inbox.some((record) => record.kind === 'call.closing');
 
-  const startSequence = await readNewestSequence(turn);
+  const startSequence = await readStartSequence(turn);
 
   const ended = await turn
     .runTurn()
@@ -107,8 +107,14 @@ export async function runCallTurn(turn: CallTurn): Promise<StepResult> {
   return ended.result;
 }
 
-// The newest record of the call's thread before the turn, after which the turn's own records come.
-async function readNewestSequence(turn: CallTurn): Promise<number> {
+// The sequence after which the turn's own records come: just before its oldest inbox record, so a
+// step that reruns still counts what its first attempt wrote, or the thread's newest record when
+// the inbox is empty.
+async function readStartSequence(turn: CallTurn): Promise<number> {
+  if (turn.input.inbox.length > 0) {
+    return Math.min(...turn.input.inbox.map((record) => record.sequence)) - 1;
+  }
+
   const [newest] = await readRecords(turn.context.log, {
     afterSequence: 0,
     thread: turn.input.taskID,

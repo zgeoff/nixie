@@ -266,6 +266,21 @@ test('it answers the hand-off of a turn that ended on a proposal with the failur
   ]);
 });
 
+test('it answers the hand-off of a rerun turn with the failure when its first attempt made a proposal', async () => {
+  const ctx = await setupTest();
+  const first = await ctx.writeHandOff('h1');
+
+  await ctx.writeProposal();
+
+  await ctx.runTurn(ctx.buildInput([first]), () =>
+    Promise.resolve({ next: 'wait', records: [], acknowledged: [first.sequence] }),
+  );
+
+  expect(ctx.answers.map((answer) => [answer.handOffID, answer.isFailed])).toStrictEqual([
+    ['h1', true],
+  ]);
+});
+
 test('it answers the hand-off of a turn after a proposal an earlier turn made with its reply', async () => {
   const ctx = await setupTest();
 

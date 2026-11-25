@@ -191,3 +191,37 @@ test('it charges nothing to a call that a hang-up ended, whatever the clock says
 
   expect(ledger?.charges).toHaveLength(3);
 });
+
+test('it reports once a call that ended before its task stopped and ran no closing turn', async () => {
+  const ctx = await setupTest();
+
+  const taskID = ctx.createdTasks[0]?.taskID ?? '';
+
+  await ctx.connect();
+
+  await hangUpCall(ctx.context, ctx.callID);
+
+  ctx.endTask(taskID);
+
+  await runCallSweep(ctx.context);
+  await runCallSweep(ctx.context);
+
+  expect(ctx.strandedReports).toStrictEqual([ctx.callID]);
+});
+
+test('it reports no call that ended more than a day before its task stopped', async () => {
+  const ctx = await setupTest();
+
+  const taskID = ctx.createdTasks[0]?.taskID ?? '';
+
+  await ctx.connect();
+
+  await hangUpCall(ctx.context, ctx.callID);
+
+  ctx.clock.advance(24 * 60 * 60 * 1000 + 1);
+  ctx.endTask(taskID);
+
+  await runCallSweep(ctx.context);
+
+  expect(ctx.strandedReports).toStrictEqual([]);
+});

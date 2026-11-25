@@ -319,7 +319,7 @@ test('it says no holding line for a hand-off the user talked over before its ans
   });
 });
 
-test('it interrupts no turn when the user talks over the fixed line of a hand-off', async () => {
+test('it interrupts no turn and marks no reply when the user talks over the fixed line of a hand-off', async () => {
   const ctx = await setupTest();
 
   ctx.speech.emit(ctx.sessionID, {
@@ -338,8 +338,8 @@ test('it interrupts no turn when the user talks over the fixed line of a hand-of
     callID: ctx.callID,
     taskID: ctx.taskID,
     handOffID: 'h1',
-    replies: [],
-    replyRecordID: null,
+    replies: ['I have sent it.'],
+    replyRecordID: '12',
     isFailed: true,
   });
 

@@ -2,12 +2,16 @@ import { withWriteTransaction } from '@heynixie/log';
 import type { CallsContext } from '../types';
 import { chargeOwedMinutes } from '../utils/charge-owed-minutes';
 import { endCall } from '../utils/end-call';
-import { readOpenCalls } from '../utils/read-call';
+import { readEndedCallsSince, readOpenCalls } from '../utils/read-call';
 import { pickCallMoves } from './pick-call-moves';
 import type { CallMove } from './pick-call-moves';
 
+// How far back the sweep looks for an ended call whose task stopped before its last turn
+const strandedReportWindowMs = 24 * 60 * 60 * 1000;
+
 // One pass over the open calls: each charge a call has come due, and each end that the pick
-// names. A call that no budget has room for ends as budget, after the speech layer says so.
+// names. Then a call that ended in the last day, whose task stopped before its last turn, gets
+// its report.
 export async function runCallSweep(context: CallsContext): Promise<void> {
   const calls = await readOpenCalls(context.log.writer.db);
 
@@ -18,6 +22,15 @@ export async function runCallSweep(context: CallsContext): Promise<void> {
 
   for (const move of moves) {
     await runMove(context, move);
+  }
+
+  const ended = await readEndedCallsSince(
+    context.log.writer.db,
+    context.clock.now() - strandedReportWindowMs,
+  );
+
+  for (const call of ended) {
+    await withWriteTransaction(context.log.writer, (tx) => context.writeStrandedReport(tx, call));
   }
 }
 
