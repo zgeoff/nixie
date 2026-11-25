@@ -12,11 +12,12 @@ host. No tool or connector ever holds a value. A credential's value never enters
 prompt, a log line, a record or an error message. [Two secrets](#references-and-the-resolver) stay
 outside the store.
 
-A release server's store has the secrets file, which the
+A release server's store has one backend, the secrets file, which the
 [server](../deployment/server.md#configuration-and-secrets) decrypts at start. It holds the search,
 image and model credentials, the spend gateway's token, and the user's name and pronouns, settings
-the prompt shows by design. [The credential database](credential-database.md) holds the
-[OAuth tokens](#oauth-tokens) that nixie changes at runtime.
+the prompt shows by design. Only the test build adds a held backend, for the
+[OAuth tokens](#oauth-tokens) that nixie changes at runtime. The
+[credential database](credential-database.md) holds those tokens on a release server.
 
 ```mermaid
 flowchart LR
