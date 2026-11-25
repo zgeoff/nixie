@@ -4,6 +4,7 @@ export type {
   CodingAdapter,
   CodingContext,
   CodingSettings,
+  CodingToolContext,
   NoteLabel,
   ReachableSession,
   ReadOptions,
@@ -28,6 +29,7 @@ export { codingActionDeclarations, codingDeclarations } from './connector/coding
 export type { CodingRunner } from './runner/build-coding-runner';
 export { buildCodingRunner } from './runner/build-coding-runner';
 export { buildCodingTools } from './tool/build-coding-tools';
+export { buildCodingActionTools } from './tool/build-coding-action-tools';
 export { buildCodingSource } from './source/build-coding-source';
 export { runCodingSweep } from './end/run-coding-sweep';
 export { startCodingSweep } from './end/start-coding-sweep';

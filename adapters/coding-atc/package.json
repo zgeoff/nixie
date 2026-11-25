@@ -19,7 +19,6 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@modelcontextprotocol/server": "catalog:",
-    "@zgeoff/testing": "catalog:"
+    "@modelcontextprotocol/server": "catalog:"
   }
 }

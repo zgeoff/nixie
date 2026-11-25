@@ -8,11 +8,10 @@ module holds the runner, its tools, the trigger source that reads the session's 
 release of a session when its task ends. It reaches the other program only through the coding
 adapter interface, one adapter per program.
 
-No adapter package exists yet, so the server builds no coding runner, tool or source.
-[The atc runner](https://linear.app/zgeoff/issue/GEO-1843) adds the first adapter and wires the
-module into the server. The
-[coding session runner design](../../design/queue/coding-session-runner/README.md) covers that
-adapter.
+The one adapter is `atc`, which `adapters/coding-atc/` implements over the program's MCP gateway.
+[The wiring section](#the-atc-adapter-and-the-server) covers it. The
+[coding session runner design](../../design/queue/coding-session-runner/README.md) covers the
+choices behind it.
 
 Read this doc before you change the coding module or write an adapter for it. Read
 [tasks](./tasks.md) for the state machine, the inbox and the controls that a coding task shares with
@@ -142,3 +141,41 @@ nixie says that the session may still run, and that the user can find it in the 
 of sessions or join it through `coding.sessions`. A later sweep finds the `coding.session_lost`
 record and does nothing more. When the report target refuses the message, as a finished report
 target does, the record still stands, and the sweep logs `coding.lost_session_unreported` once.
+
+## The atc adapter and the server
+
+The server builds the coding runner, its tools, its source and its sweep only when the deployment's
+config holds a `coding.atc` block. Without the block, no coding tool or runner exists, and a
+deployment that predates the block loads unchanged.
+
+The block names the gateway's URL, the principal nixie acts as, the targets nixie may start sessions
+on, and a default target. Its `token` is always `deployment:atc_token`: the gateway's token lives in
+the `atc_token` entry of the secrets file, like every other secret, and a config that names it with
+no such entry stops the server at start. The secrets file's `atc_token` entry is optional, and the
+secret scan treats its value as one of nixie's own values.
+
+The adapter keeps no state of its own besides a map of the sessions it has seen start or join, which
+it needs to read their state, because the source's `events` call carries no list of bound sessions.
+It calls the gateway only through its documented tools, refuses a gateway whose version it does not
+support, and maps each failure to a value of the adapter interface. A session's own text reaches
+nixie only as untrusted data.
+
+The server wires the module in four places:
+
+- The task runner registry holds the coding runner, so `task.start` can start it and the task steps
+  run.
+- The tool registry declares `coding.start` and `coding.stop`, which the runner queues and no model
+  calls. The conversation holds the other coding tools.
+- The conversation's trigger sources include the coding source, and a sweep runs beside it.
+- The coding context reads the tasks context, whose registry holds the coding runner. The server
+  therefore binds the tasks context to the coding context after it builds the registry.
+
+`task.start` advertises the atc variant only when every harness of the deployment's model profiles
+has passed the probe that checks the harness accepts a start schema with 2 variants. No harness has
+passed it, so a deployment gets no `task.start/atc` variant, and the runner starts a session only
+through a task that already exists. A call that names the variant anyway fails its input check.
+
+A test build can set `NIXIE_TEST_ATC_URL`, which points the adapter at a gateway double in place of
+the configured URL, because the config accepts only an https URL. When the variable is set, the test
+build also makes the coding runner the default one, so the start tool advertises the coding start
+alone. The [crash tests](./crash-tests.md) doc lists the other test-build seams.

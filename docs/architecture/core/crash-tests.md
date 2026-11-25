@@ -41,6 +41,9 @@ CI needs no `/dev/kvm` and no imp. The test-only parts are four:
   stale writer epoch. A guest leads its own process group and would otherwise outlive nixie, which a
   host that loses nixie never allows.
 
+A test can also point the coding runner at a double of atc-gateway, through `NIXIE_TEST_ATC_URL`,
+because the configuration accepts only an `https` URL. The release build drops that read.
+
 The server's action queue bridge, which the test build composes like any other part, maps the thread
 of a running step to that step's claim. It queues each allowed call under that claim with an action
 hash built from the tool and its arguments. The bridge sorts every object's keys before it hashes,

@@ -40,7 +40,6 @@
       },
       "devDependencies": {
         "@modelcontextprotocol/server": "catalog:",
-        "@zgeoff/testing": "catalog:",
       },
     },
     "adapters/definitions-repo-github": {
@@ -187,6 +186,7 @@
         "@heynixie/budgets": "workspace:*",
         "@heynixie/clock": "workspace:*",
         "@heynixie/coding": "workspace:*",
+        "@heynixie/coding-atc": "workspace:*",
         "@heynixie/compaction": "workspace:*",
         "@heynixie/connectors": "workspace:*",
         "@heynixie/contract": "workspace:*",
@@ -1353,6 +1353,7 @@
       "name": "@heynixie/verify",
       "version": "0.0.0",
       "dependencies": {
+        "@heynixie/coding-atc": "workspace:*",
         "@heynixie/contract": "workspace:*",
         "@heynixie/log": "workspace:*",
         "@heynixie/memory": "workspace:*",

@@ -36,7 +36,18 @@ export function buildCodingReadTool(
       required: ['task'],
       additionalProperties: false,
     },
-    output: { type: 'object' },
+    output: {
+      type: 'object',
+      properties: {
+        state: { type: 'string' },
+        question: { type: ['string', 'null'] },
+        lastReply: { type: ['string', 'null'] },
+        prompt: { type: ['string', 'null'] },
+        tail: {},
+      },
+      required: ['state'],
+      additionalProperties: false,
+    },
     declaration: codingDeclarations.read,
     execution: 'direct',
     run: async (call) => {

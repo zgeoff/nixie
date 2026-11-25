@@ -169,13 +169,20 @@ export interface CodingSettings {
   readonly toolWaitMs: number;
 }
 
+// The tasks context without its runner registry, which holds the coding runner and so is built
+// from this context.
 export interface CodingContext {
-  readonly tasks: TasksContext;
+  readonly tasks: Omit<TasksContext, 'runners'>;
   readonly settings: CodingSettings;
   readonly logEvent: Logger;
 
   // how the step's messages name the user: the configured name, or "the user"
   readonly ownerName: string;
+}
+
+// The context of the tools, which run in a server that holds the whole tasks context.
+export interface CodingToolContext extends Omit<CodingContext, 'tasks'> {
+  readonly tasks: TasksContext;
 }
 
 // One row of coding_sessions, parsed.

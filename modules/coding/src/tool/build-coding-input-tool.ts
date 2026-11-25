@@ -6,7 +6,7 @@ import { P, match } from 'ts-pattern';
 import { z } from 'zod';
 import { codingDeclarations } from '../connector/coding-declarations';
 import { codingToolNames } from '../connector/coding-tool-names';
-import type { CodingAdapter, CodingContext } from '../types';
+import type { CodingAdapter, CodingToolContext } from '../types';
 import { readToolBinding } from './read-tool-binding';
 import type { CodingInputKind } from './types';
 import { writeInputAction } from './write-input-action';
@@ -33,7 +33,7 @@ const descriptions: Readonly<Record<CodingInputKind, string>> = {
 // coding.steer and coding.message. Each queues its action on the coding task's thread, caused by
 // the call, so a pause of the task holds it and the user's rules decide each attempt.
 export function buildCodingInputTool(
-  context: CodingContext,
+  context: CodingToolContext,
   adapter: CodingAdapter,
   kind: CodingInputKind,
 ): ToolDefinition {

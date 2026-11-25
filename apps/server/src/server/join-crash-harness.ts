@@ -8,6 +8,10 @@ export interface CrashHarness {
 
   readonly providerURL: string;
 
+  // the atc-gateway double that serves the coding runner in place of the configured gateway; null
+  // keeps the configured one
+  readonly atcURL: string | null;
+
   // the program each fetch sandbox runs in place of the fetcher, which refuses every address a
   // test can serve; null keeps the fetcher
   readonly fetchArgv: readonly string[] | null;
@@ -38,6 +42,7 @@ export function joinCrashHarness(
   return {
     link,
     providerURL,
+    atcURL: env['NIXIE_TEST_ATC_URL'] ?? null,
     fetchArgv: fetcher === undefined ? null : [process.execPath, fetcher],
 
     // A guest leads its own process group, so it outlives a nixie that exits. A host that loses

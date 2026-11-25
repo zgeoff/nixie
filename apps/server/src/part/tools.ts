@@ -1,7 +1,7 @@
 import type { SandboxAdapter } from '@heynixie/sandbox';
 import type { TaskStartBounds } from '@heynixie/tasks';
 import type { ToolDefinition, ToolEndpoint } from '@heynixie/tools';
-import type { ActionsWithForget } from '../forget/add-log-forget';
+import type { ActionsWithCoding } from '../coding/add-coding-connectors';
 import type { WebFetch } from './start-web-fetch';
 
 export interface Tools {
@@ -13,5 +13,5 @@ export interface Tools {
 
   // the bounds of the conversation's task.start, which a task definition meets too
   readonly taskBounds: TaskStartBounds;
-  readonly actions: ActionsWithForget;
+  readonly actions: ActionsWithCoding;
 }

@@ -26,7 +26,12 @@ export function buildCodingSessionsTool(
       properties: { adapter: { type: 'string', const: adapter.id } },
       additionalProperties: false,
     },
-    output: { type: 'object' },
+    output: {
+      type: 'object',
+      properties: { sessions: { type: 'array', items: { type: 'object' } } },
+      required: ['sessions'],
+      additionalProperties: false,
+    },
     declaration: codingDeclarations.sessions,
     execution: 'direct',
     run: async (call) => {
