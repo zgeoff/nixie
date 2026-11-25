@@ -70,3 +70,31 @@ test('it keeps waiting while the expression gives a truthy value other than true
 
   expect(waited).rejects.toThrow('document.title');
 });
+
+test('it keeps waiting while the page has no body, as between two documents', async () => {
+  const ctx = await setupTest();
+
+  await ctx.view.evaluate(
+    "(document.body.remove(), setTimeout(() => { document.documentElement.append(Object.assign(document.createElement('body'), { innerText: 'the kettle boiled' })); }, 200))",
+  );
+
+  const waited = waitForPage(ctx.view, "document.body.innerText.includes('the kettle boiled')");
+
+  await Promise.allSettled([waited]);
+
+  expect(waited).resolves.toBeUndefined();
+});
+
+test('it names the last error the expression threw when the page never makes it true', async () => {
+  const ctx = await setupTest();
+
+  await ctx.view.evaluate('document.body.remove()');
+
+  const waited = waitForPage(ctx.view, "document.body.innerText.includes('kettle')", 200);
+
+  await Promise.allSettled([waited]);
+
+  expect(waited).rejects.toMatchObject({
+    cause: expect.objectContaining({ message: expect.stringContaining('innerText') }),
+  });
+});
