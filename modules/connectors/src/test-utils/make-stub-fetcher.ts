@@ -4,6 +4,7 @@ import {
   encodeFetchMessage,
   encodeFrame,
   makeFrameDecoder,
+  maxFetchRequestBytes,
 } from '@heynixie/wire';
 import type { StubGuest } from './build-stub-sandbox-adapter';
 
@@ -61,7 +62,7 @@ interface FrameReader {
 }
 
 function openFrameReader(stdin: ReadableStream<Uint8Array>, received: string[]): FrameReader {
-  const decode = makeFrameDecoder(65_536);
+  const decode = makeFrameDecoder(maxFetchRequestBytes);
   const reader = stdin.getReader();
   const pending: Uint8Array[] = [];
 

@@ -5,6 +5,7 @@ import {
   encodeFrame,
   makeFrameDecoder,
   makeHopAsker,
+  maxFetchRequestBytes,
 } from '@heynixie/wire';
 
 export interface FetcherIO {
@@ -38,8 +39,6 @@ export async function runFetcher(
   }
 }
 
-const maxFrameBytes = 65_536;
-
 interface FrameReader {
   readonly frames: AsyncIterator<Uint8Array>;
 
@@ -49,7 +48,7 @@ interface FrameReader {
 }
 
 function openFrameReader(input: FetcherIO['input']): FrameReader {
-  const decode = makeFrameDecoder(maxFrameBytes);
+  const decode = makeFrameDecoder(maxFetchRequestBytes);
   const pending: Uint8Array[] = [];
   const chunks = openChunks(input);
 
