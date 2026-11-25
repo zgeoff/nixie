@@ -82,8 +82,10 @@ names as a prompt part. Format 3 therefore refuses a repo whose existing rule fi
 seed applies each folder under `tasks/` as a [task definition](#task-definitions) from format 4, and
 lists the `tasks/` files of an older format as unapplied. From format 5, it applies each
 `budgets/*.yaml` file as [budgets](../policy/budgets.md#the-budget-format), and lists those files of
-an older format as unapplied. The prompt and task exports raise the manifest's `format` line to the
-format they need, as [prompts](prompts.md) and
+an older format as unapplied. From format 5 too, the seed reads `voice/voice.yaml` and
+`voice/lines.yaml` as the [voice settings](../channels/calls.md#configuration), and a fault in
+either leaves it unapplied and never refuses the seed. The prompt and task exports raise the
+manifest's `format` line to the format they need, as [prompts](prompts.md) and
 [the export of task definitions](#the-export-of-task-definitions) describe. The seed applies no
 other file, and lists each one in its record as unapplied. Each unapplied YAML or JSON file must
 still parse.
