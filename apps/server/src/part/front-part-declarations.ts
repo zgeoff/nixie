@@ -1,5 +1,6 @@
 import { createWatchTickets, defaultAPISettings } from '@heynixie/api';
 import { buildRunSettings } from '@heynixie/sessions';
+import { buildServerCoding } from '../coding/build-server-coding';
 import { readDefinitionsContext } from '../definition/read-definitions-context';
 import { makeReadErasureStuckPort } from '../erasure/make-read-erasure-stuck-port';
 import { buildSeedInputs } from '../seed/build-seed-inputs';
@@ -30,6 +31,13 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
     start: async (parts) => {
       const options = parts.get('inputs').options;
 
+      const coding = buildServerCoding({
+        config: options.config,
+        secrets: options.secrets,
+        log: options.log,
+        testGatewayURL: NIXIE_TEST_BUILD ? (options.harness?.atcURL ?? null) : null,
+      });
+
       const context = await createServerContext(
         options.writer,
         options.secrets.deploymentKey,
@@ -40,7 +48,14 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
             credentials: options.credentials,
             hopLimit: options.config.tasks.messaging.hopLimit,
           }),
-          runners: buildServerTaskRunners(),
+          runners: buildServerTaskRunners({
+            coding: coding?.runner.definition ?? null,
+            isCodingDefault:
+              NIXIE_TEST_BUILD &&
+              coding !== null &&
+              options.harness?.atcURL !== undefined &&
+              options.harness.atcURL !== null,
+          }),
           taskRunLimits: options.config.models.limits.taskRun.default,
           defaultZone: options.config.time.default_zone,
           ...(options.spend === null
@@ -60,6 +75,7 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
             ...defaultAPISettings,
             isBackupEnabled: options.config.backup.isEnabled,
             readOnlyTokenHashes: options.config.api.readOnlyTokenHashes,
+            passkeyWindowMs: options.config.approvals.passkey_window_minutes * 60_000,
             taskDirectory: buildTaskMessaging(options.config).directory,
             approvals: {
               defaultMinutes: options.config.approvals.defer.default_minutes,
@@ -76,8 +92,11 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
         },
       );
 
+      coding?.bindTasks(context.apiContext);
+
       return {
         ...context,
+        coding,
         apiContext: {
           ...context.apiContext,
           readCodeCleanup: () => parts.find('code_run')?.cleanup.destroyForRecords ?? null,

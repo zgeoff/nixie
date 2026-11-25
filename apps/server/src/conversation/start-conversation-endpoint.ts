@@ -54,6 +54,7 @@ import {
 } from '@heynixie/tasks';
 import type { ActionQueue, ToolDefinition, ToolEndpoint } from '@heynixie/tools';
 import { buildToolRegistry, findToolDeclaration, startToolEndpoint } from '@heynixie/tools';
+import type { HarnessID } from '@heynixie/wire';
 import { buildContactTool } from '../cli/build-contact-tool';
 import { buildForgetRetryTool } from '../forget/build-forget-retry-tool';
 import { buildForgetStuckTool } from '../forget/build-forget-stuck-tool';
@@ -84,6 +85,13 @@ export interface ConversationEndpointTools {
 
   // null when the sandbox manifest holds no render image, so a preview has no picture
   readonly render: RenderSandbox | null;
+
+  // the tools on coding sessions, none without a coding runner
+  readonly coding: readonly ToolDefinition[];
+
+  // the harnesses of the model profiles in use, which decide the variants that task.start
+  // advertises; absent, it advertises every variant
+  readonly harnesses: readonly HarnessID[] | undefined;
   readonly codeRun: ToolDefinition;
   readonly fileSend: ToolDefinition;
   readonly forget: ToolDefinition;
@@ -236,7 +244,12 @@ export async function startConversationEndpoint(
   const tasks = [
     buildTasksListTool(options.context, messaging),
     buildTaskMessageTool(options.context, messaging),
-    buildTaskStartTool(options.context, messaging, bounds, relatedMemory),
+    buildTaskStartTool(
+      options.context,
+      { ...messaging, ...(tools.harnesses === undefined ? {} : { harnesses: tools.harnesses }) },
+      bounds,
+      relatedMemory,
+    ),
     buildTaskCloseTool(options.context, messaging),
   ];
 
@@ -298,6 +311,7 @@ export async function startConversationEndpoint(
     ),
     ...notebook,
     ...tools.computer,
+    ...tools.coding,
     ...search,
     ...images,
     ...devices,

@@ -94,6 +94,71 @@ test('it calls the provider with the action ID as the idempotency key', async ()
   ]);
 });
 
+test('it calls the provider with the action ID and the count of refused attempts as the key after a refusal', async () => {
+  const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
+
+  const queued = await queueTestAction(ctx.context, {
+    step,
+    tool: 'test.send',
+    actionHash: 'sha256:send-1',
+    arguments: { to: 'team' },
+    decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
+  });
+
+  const stub = buildStubConnector((call) =>
+    call.attempt === 1
+      ? { kind: 'refused_retryable', reason: 'rate limited' }
+      : { kind: 'success', result: { messageID: 'm-1' } },
+  );
+
+  const connectors = new Map([['test.send', stub.connector]]);
+
+  const refusedLease = await claimTestAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  await runActionAttempt(ctx.context, refusedLease, { connectors, leaseMs: 60_000 });
+
+  ctx.clock.advance(30_000);
+
+  const retryLease = await claimTestAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  await runActionAttempt(ctx.context, retryLease, { connectors, leaseMs: 60_000 });
+
+  expect(stub.calls.map((call) => call.idempotencyKey)).toStrictEqual([
+    queued.actionID,
+    `${queued.actionID}.1`,
+  ]);
+});
+
+test('it counts a refused attempt and clears the first attempt time of the spent key', async () => {
+  const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
+
+  const queued = await queueTestAction(ctx.context, {
+    step,
+    tool: 'test.send',
+    actionHash: 'sha256:send-1',
+    arguments: { to: 'team' },
+    decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
+  });
+
+  const lease = await claimTestAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  await runActionAttempt(ctx.context, lease, {
+    connectors: new Map([
+      [
+        'test.send',
+        buildStubConnector(() => ({ kind: 'refused_retryable', reason: 'rate limited' })).connector,
+      ],
+    ]),
+    leaseMs: 60_000,
+  });
+
+  const action = await readTestAction(ctx.writer, queued.actionID);
+
+  expect(action).toMatchObject({ refused_count: 1, first_attempt_at: null });
+});
+
 test.each([['stop'], ['pause'], ['close']] as const)(
   'it calls no provider and frees the lease when a %s lands after the claim',
   async (control) => {

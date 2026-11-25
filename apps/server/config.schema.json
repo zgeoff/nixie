@@ -834,6 +834,7 @@
             "impd_token",
             "definitions_export_token",
             "definitions_export_app_key",
+            "atc_token",
             "model_credentials",
             "connector_credentials"
           ],
@@ -845,6 +846,7 @@
               "impd_token",
               "definitions_export_token",
               "definitions_export_app_key",
+              "atc_token",
               "model_credentials",
               "connector_credentials",
               "settings"
@@ -1753,7 +1755,8 @@
           "default_minutes": 60,
           "evening_at": "18:00",
           "morning_at": "08:00"
-        }
+        },
+        "passkey_window_minutes": 10
       },
       "type": "object",
       "properties": {
@@ -1786,6 +1789,13 @@
             }
           },
           "additionalProperties": false
+        },
+        "passkey_window_minutes": {
+          "default": 10,
+          "description": "Minutes after a passkey tap in which the same signed-in browser skips the passkey. Adding or removing a passkey always asks.",
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
         }
       },
       "additionalProperties": false
@@ -1960,6 +1970,137 @@
         "token",
         "modelURL"
       ],
+      "additionalProperties": false
+    },
+    "coding": {
+      "type": "object",
+      "properties": {
+        "wake": {
+          "default": {
+            "started": [
+              "waiting",
+              "idle",
+              "blocked",
+              "decision",
+              "ended",
+              "gone"
+            ],
+            "joined": [
+              "waiting",
+              "ended",
+              "gone"
+            ]
+          },
+          "type": "object",
+          "properties": {
+            "started": {
+              "default": [
+                "waiting",
+                "idle",
+                "blocked",
+                "decision",
+                "ended",
+                "gone"
+              ],
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "waiting",
+                  "idle",
+                  "ended",
+                  "gone",
+                  "progress",
+                  "blocked",
+                  "decision"
+                ]
+              }
+            },
+            "joined": {
+              "default": [
+                "waiting",
+                "ended",
+                "gone"
+              ],
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "waiting",
+                  "idle",
+                  "ended",
+                  "gone",
+                  "progress",
+                  "blocked",
+                  "decision"
+                ]
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "toolWaitMs": {
+          "default": 5000,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "atc": {
+          "type": "object",
+          "properties": {
+            "url": {
+              "type": "string",
+              "format": "uri"
+            },
+            "principal": {
+              "type": "string",
+              "minLength": 1
+            },
+            "token": {
+              "type": "string",
+              "const": "deployment:atc_token"
+            },
+            "targets": {
+              "minItems": 1,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "daemon": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "target": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "daemon",
+                  "target"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "defaultTarget": {
+              "type": "string",
+              "pattern": "^[^/]+\\/[^/]+$"
+            },
+            "agent": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "url",
+            "principal",
+            "token",
+            "targets",
+            "defaultTarget"
+          ],
+          "additionalProperties": false
+        }
+      },
       "additionalProperties": false
     }
   },

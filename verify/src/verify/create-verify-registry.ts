@@ -12,6 +12,7 @@ import { match } from 'ts-pattern';
 import { z } from 'zod';
 import { buildHostCLIArgv } from './build-host-cli-argv';
 import { conversationRecordSchema } from './collect-conversation-records';
+import { computerFeatures } from './computer-features';
 import { featurePaths, ignoredPaths, sharedPaths } from './feature-paths';
 import { controlRoutes } from './harness/control-routes';
 import { lastFeatures } from './last-features';
@@ -23,6 +24,7 @@ import { createPreviewHost } from './preview/create-preview-host';
 import { makeCachedRead } from './preview/make-cached-read';
 import { pickCommitRefusal } from './preview/pick-commit-refusal';
 import { collectExtraPaths, pickSourceRefusal } from './preview/pick-source-refusal';
+import { readIgnoredPaths } from './preview/read-ignored-paths';
 import { readPreviewEndpoints } from './preview/read-preview-endpoints';
 import { readPullRequest } from './preview/read-pull-request';
 import { readServedCommit, servedCommitArgv } from './preview/read-served-commit';
@@ -33,6 +35,7 @@ import { readProdHealth } from './prod/read-prod-health';
 import { readProdVersion } from './prod/read-prod-version';
 import { readConversationTurn } from './read-conversation-turn';
 import { readLiveOpens } from './read-live-opens';
+import { readModelReceived } from './read-model-received';
 import { readSessionCheck } from './read-session-check';
 import { refuseHarnessless } from './refuse-harnessless';
 import { refuseOffProd } from './refuse-off-prod';
@@ -162,7 +165,7 @@ export function createVerifyRegistry(): Wringer {
     .action({
       name: 'script-reply',
       summary:
-        "Queue the scripted model's next reply. With --memory it first proposes that memory, with --reminder it first sets that reminder and writes a note of the memory that the result names as related, with --export it first asks to export memory, with --task it first starts that task, with --handover it first asks the user to take over the computer, for that reason, with --notebook it first writes 2 notes, one private, and links them, and with --forget-note it first forgets the note with that short ID",
+        "Queue the scripted model's next reply. With --memory it first proposes that memory, with --reminder it first sets that reminder and writes a note of the memory that the result names as related, with --export it first asks to export memory, with --task it first starts that task, with --coding-task it first starts that coding task on atc, with --handover it first asks the user to take over the computer, for that reason, with --notebook it first writes 2 notes, one private, and links them, and with --forget-note it first forgets the note with that short ID",
       effect: 'write',
       targets: ['local'],
       input: controlRoutes.addReply.input,
@@ -202,7 +205,7 @@ export function createVerifyRegistry(): Wringer {
     .action({
       name: 'use-computer',
       summary:
-        "Send the owner message and queue the scripted model turn that uses the assistant's browser (--kind browser: opens the harness page; --kind browser-navigate: sends the open tab to the harness's next page and reloads it), shell (--kind shell: writes a file and reads it back), shell-processes (--kind shell-processes: runs ps -e in the shell, which waits for approval) or screen (--kind screen: takes a screenshot of the desktop and clicks its middle), with the closing reply --text",
+        "Send the owner message and queue the scripted model turn that uses the assistant's browser (--kind browser: opens the harness page; --kind browser-two-tabs: opens it and its next page in 2 tabs; --kind browser-navigate: sends the open tab to the harness's next page and reloads it), shell (--kind shell: writes a file and reads it back), shell-processes (--kind shell-processes: runs ps -e in the shell, which waits for approval) or screen (--kind screen: takes a screenshot of the desktop and clicks its middle), with the closing reply --text",
       effect: 'write',
       targets: ['local'],
       input: controlRoutes.useComputer.input,
@@ -263,6 +266,14 @@ export function createVerifyRegistry(): Wringer {
 
         return listed;
       },
+    })
+    .command({
+      path: ['model', 'received'],
+      summary: 'Check that a request of the scripted model holds --text, waiting up to 10 seconds',
+      effect: 'read',
+      args: z.strictObject({ text: z.string().min(1) }),
+      data: controlRoutes.modelReceived.output,
+      run: (args, ctx) => readModelReceived(ctx, args.text),
     })
     .command({
       path: ['proposals'],
@@ -421,6 +432,11 @@ export function createVerifyRegistry(): Wringer {
         paths: featurePaths['task-control'],
       },
       {
+        name: 'coding-session',
+        summary: 'Start a coding session from chat',
+        paths: featurePaths['coding-session'],
+      },
+      {
         name: 'drawing',
         summary: 'Draw a picture, edit it, and list both',
         paths: featurePaths.drawing,
@@ -435,26 +451,7 @@ export function createVerifyRegistry(): Wringer {
         summary: 'Browse notes, open a private one, forget one',
         paths: featurePaths['notebook-pages'],
       },
-      {
-        name: 'computer-shell',
-        summary: 'Write and read back a shell file',
-        paths: featurePaths['computer-shell'],
-      },
-      {
-        name: 'computer-browser',
-        summary: "Open a page in the assistant's browser",
-        paths: featurePaths['computer-browser'],
-      },
-      {
-        name: 'computer-screen',
-        summary: "Click a point of the assistant's desktop",
-        paths: featurePaths['computer-screen'],
-      },
-      {
-        name: 'computer-watch',
-        summary: "Watch the assistant's desktop",
-        paths: featurePaths['computer-watch'],
-      },
+      ...computerFeatures,
       ...lastFeatures,
     )
     .shared(...sharedPaths)
@@ -508,22 +505,6 @@ async function checkServedSources(host: PreviewHost, container: ServedContainer)
   if (refusal !== null) {
     throw new WringerError('check-failed', { message: refusal, hint: previewRefusalHint });
   }
-}
-
-// `git check-ignore` exits 1 when it ignores none of the paths, and refuses an empty list.
-async function readIgnoredPaths(paths: readonly string[]): Promise<ReadonlySet<string>> {
-  if (paths.length === 0) {
-    return new Set();
-  }
-
-  const checked = await $`git check-ignore -- ${paths}`.quiet().nothrow();
-
-  return new Set(
-    checked.stdout
-      .toString()
-      .split('\n')
-      .filter((path) => path !== ''),
-  );
 }
 
 async function checkHarness(client: HttpClient): Promise<{ commit: string }> {

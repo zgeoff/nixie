@@ -57,7 +57,9 @@ async function setupTest() {
 
       return task.state;
     },
-    readKinds: async (kind: 'task.closed' | 'task_message' | 'task.run_ended') => {
+    readKinds: async (
+      kind: 'task.closed' | 'task_message' | 'task.run_ended' | 'task.message_refused',
+    ) => {
       const entries = await readRecords(tasks.context.log, { afterSequence: 0, kinds: [kind] });
 
       return entries.map((entry) => entry.record);
@@ -207,6 +209,64 @@ test('it writes the step records and the commit record with its step key', async
     ['turn_finished', claim.lease.workID, null],
     ['task.step_committed', claim.lease.workID, `${claim.lease.workID}:1`],
   ]);
+});
+
+test('it commits the result that the step resolves in the commit in place of its own', async () => {
+  const ctx = await setupTest();
+  const claim = await createTestClaim(ctx.context, 'tidy the inbox');
+
+  await writeStepCommit(ctx.context, claim, {
+    next: 'wait',
+    records: [
+      {
+        kind: 'turn_finished',
+        definitions: { snapshotHash: 'sha256:test' },
+        payload: { turns: 1 },
+      },
+    ],
+    acknowledged: [],
+    resolveInCommit: () =>
+      Promise.resolve({
+        next: 'done',
+        records: [
+          {
+            kind: 'turn_finished',
+            definitions: { snapshotHash: 'sha256:test' },
+            payload: { turns: 2 },
+          },
+        ],
+        acknowledged: [],
+      }),
+  });
+
+  const records = await readRecords(ctx.context.log, { afterSequence: 2 });
+
+  expect({
+    state: await ctx.readState(claim.lease.workID),
+    records: records.map((read) => [read.record.kind, read.record.payload]),
+  }).toStrictEqual({
+    state: 'done',
+    records: [
+      ['turn_finished', { turns: 2 }],
+      ['task.step_committed', expect.objectContaining({ nextState: 'done' })],
+    ],
+  });
+});
+
+test('it keeps the step result when the step resolves nothing in the commit', async () => {
+  const ctx = await setupTest();
+  const claim = await createTestClaim(ctx.context, 'tidy the inbox');
+
+  await writeStepCommit(ctx.context, claim, {
+    next: 'continue',
+    records: [],
+    acknowledged: [],
+    resolveInCommit: () => Promise.resolve(null),
+  });
+
+  const state = await ctx.readState(claim.lease.workID);
+
+  expect(state).toBe('ready');
 });
 
 test('it keeps the session boundary the step returned', async () => {
@@ -463,6 +523,25 @@ test('it closes a disposable task whose task run ends reported, and still sends 
   expect(messages.map((record) => record.payload['kind'])).toStrictEqual(['request', 'report']);
 });
 
+test('it marks the report message as outside content when the step reports outside content', async () => {
+  const ctx = await setupTest();
+  const task = await ctx.startTask(false);
+
+  await writeStepCommit(ctx.context, task.claim, {
+    next: 'done',
+    isFinal: true,
+    records: [],
+    acknowledged: task.brief,
+    run: { activity: 'worked', report: { summary: 'High tide is at 06:42.', outside: true } },
+  });
+
+  const messages = await ctx.readKinds('task_message');
+
+  const report = messages.find((record) => record.payload['kind'] === 'report');
+
+  expect(report?.payload['outside']).toBe(true);
+});
+
 test('it closes a disposable task whose first step did no work', async () => {
   const ctx = await setupTest();
   const task = await ctx.startTask(true);
@@ -515,6 +594,136 @@ test('it keeps a disposable task open when the task run ends at a limit', async 
 
   expect(currentState).toBe('paused');
   expect(closed).toStrictEqual([]);
+});
+
+test('it leaves a kept task done after a reported final step', async () => {
+  const ctx = await setupTest();
+  const task = await ctx.startTask(false);
+
+  await writeStepCommit(ctx.context, task.claim, {
+    next: 'done',
+    isFinal: true,
+    records: [],
+    acknowledged: task.brief,
+    run: { activity: 'worked', report: { summary: 'High tide is at 06:42.' } },
+  });
+
+  const currentState = await ctx.readState(task.taskID);
+
+  expect(currentState).toBe('done');
+});
+
+test('it writes the messages of a step result from the stepping task, one hop past the step', async () => {
+  const ctx = await setupTest();
+  const task = await ctx.startTask(false);
+
+  await writeStepCommit(ctx.context, task.claim, {
+    next: 'wait',
+    records: [],
+    acknowledged: task.brief,
+    messages: [
+      {
+        to: 'conversation',
+        kind: 'progress',
+        body: 'The session opened a pull request.',
+        replyTo: null,
+        onBehalfOf: [],
+        wake: true,
+      },
+    ],
+  });
+
+  const sent = await ctx.readKinds('task_message');
+
+  expect(
+    sent
+      .filter((record) => record.payload['from'] === task.taskID)
+      .map((record) => ({ thread: record.thread, payload: record.payload })),
+  ).toStrictEqual([
+    {
+      thread: 'conversation',
+      payload: {
+        messageID: expect.toBeString(),
+        from: task.taskID,
+        to: 'conversation',
+        kind: 'progress',
+        replyTo: null,
+        onBehalfOf: [],
+        hop: 1,
+        hopLimit: 6,
+        wake: true,
+        woke: true,
+        opensWait: false,
+        source: `task:${task.taskID}`,
+      },
+    },
+  ]);
+});
+
+test('it records a step message that the message write refuses, on the stepping task', async () => {
+  const ctx = await setupTest();
+  const task = await ctx.startTask(false);
+
+  await writeStepCommit(ctx.context, task.claim, {
+    next: 'wait',
+    records: [],
+    acknowledged: task.brief,
+    messages: [
+      {
+        to: 'no-such-task',
+        kind: 'progress',
+        body: 'The session opened a pull request.',
+        replyTo: null,
+        onBehalfOf: [],
+        wake: true,
+      },
+    ],
+  });
+
+  const refused = await ctx.readKinds('task.message_refused');
+
+  expect(
+    refused.map((record) => ({ thread: record.thread, payload: record.payload })),
+  ).toStrictEqual([
+    {
+      thread: task.taskID,
+      payload: {
+        from: task.taskID,
+        to: 'no-such-task',
+        kind: 'progress',
+        stepKey: task.claim.stepKey,
+        refusal: { reason: 'unknown_task', taskID: 'no-such-task' },
+      },
+    },
+  ]);
+});
+
+test('it counts the hop of a step message from its sender hop when the step sets one', async () => {
+  const ctx = await setupTest();
+  const task = await ctx.startTask(false);
+
+  await writeStepCommit(ctx.context, task.claim, {
+    next: 'wait',
+    records: [],
+    acknowledged: task.brief,
+    messages: [
+      {
+        to: 'conversation',
+        kind: 'progress',
+        body: 'The session opened a pull request.',
+        replyTo: null,
+        onBehalfOf: [],
+        wake: true,
+        senderHop: 3,
+      },
+    ],
+  });
+
+  const sent = await ctx.readKinds('task_message');
+
+  const message = sent.find((record) => record.payload['from'] === task.taskID);
+
+  expect(message?.payload['hop']).toBe(4);
 });
 
 test('it keeps a disposable task open when input arrived that it did not read', async () => {

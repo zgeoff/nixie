@@ -6,6 +6,7 @@ import type { StartedMemoryStore } from '@heynixie/memory';
 import type { NotebookStore } from '@heynixie/notebook';
 import type { CheckerTask, SandboxRunner, WorkerTool } from '@heynixie/sessions';
 import type { TurnInputs } from '@heynixie/turn-inputs';
+import type { ServerCoding } from '../coding/build-server-coding';
 import type { ConversationImp } from '../conversation/start-conversation-imp';
 import type { ServerResetControl } from '../server/build-server-reset';
 import type { ServerParts } from '../types';
@@ -18,7 +19,9 @@ import type { Tools } from './tools';
 export interface ServerPartValues {
   readonly inputs: ServerInputs;
   readonly state: ServerParts['state'];
-  readonly context: Pick<ServerParts, 'apiContext' | 'inForce'>;
+  readonly context: Pick<ServerParts, 'apiContext' | 'inForce'> & {
+    readonly coding: ServerCoding | null;
+  };
   readonly decisions: DecisionPointFactory;
   readonly sandbox_adapter: Tools['adapter'];
   readonly web_fetch: Tools['webFetch'];
@@ -59,6 +62,7 @@ export interface ServerPartValues {
   readonly trigger_sources: void;
   readonly sandbox_runner: SandboxRunner;
   readonly runners: void;
+  readonly coding_sweep: void;
   readonly seed_poll: void;
   readonly proposal_sweeps: void;
   readonly prompt_lapse_sweep: void;

@@ -1,4 +1,5 @@
 import type { ContractInputs } from '@heynixie/contract';
+import { isMockPasskeyWindowOpen } from './is-mock-passkey-window-open';
 import { pickMockPasskeyChoices } from './pick-mock-passkey-choices';
 import { store } from './store';
 
@@ -128,7 +129,7 @@ async function checkMockPasskey(
   }
 
   if (answer.passkey === undefined) {
-    return 'PASSKEY_REQUIRED';
+    return isMockPasskeyWindowOpen('answer') ? null : 'PASSKEY_REQUIRED';
   }
 
   await store.passkeyChecks.create({

@@ -4,7 +4,8 @@ A passkey check stands between the user and each high-risk approval. The risk cl
 covers a proposal that spends money, raises a budget, or adds a mandate, a proposed rule or a known
 contact. The class `lifting` covers a proposal that creates or widens a rule that lets nixie skip
 those asks. To approve either, the client asks the user's passkey for a WebAuthn assertion with user
-verification, bound to the one answer the user gives, and the API refuses the answer without it.
+verification, bound to the one answer the user gives, and the API refuses the answer without it. One
+tap also opens a [window](#the-window) in which the same browser session skips the passkey.
 
 A passkey here is a WebAuthn discoverable credential, whether one device holds it or a provider
 syncs it between the user's devices. `@simplewebauthn/server` verifies each response and
@@ -36,17 +37,47 @@ directly, as it writes the identity record, and no log record rebuilds it.
   passkey. `defer` and `decline` never do.
 - The server builds each row's `passkeyChoices` from its risk class and its choices, as the choices
   that `approve` or `always_allow` take, and returns them on `approvals.listItems` and
-  `approvals.readProposals`. The client asks the passkey before it sends one of these choices. The
-  server checks the answer against the row, never against what the client sends.
+  `approvals.readProposals`. The client asks the passkey before it sends one of these choices,
+  unless the session's [window](#the-window) covers the check. The server checks the answer against
+  the row, never against what the client sends.
 - Always allow on a routine row takes no passkey, because the answer's rule hash pins the one rule
   it creates. The row offers Always allow only for a routine action, so a high-risk row never
   reaches the check with it. A row of a later kind that offers Always allow on a high-risk proposal
   takes the passkey with no further change.
-- `approvals.answerProposals` has no field for an assertion, so it refuses each answer that takes
-  the passkey with `PASSKEY_REQUIRED`, whether or not a passkey is live.
+- `approvals.answerProposals` has no field for an assertion, so it runs each answer through the same
+  check with no assertion. It refuses each answer that takes the passkey with `PASSKEY_REQUIRED`,
+  unless the session's [window](#the-window) is open.
 - An answer through a [host command](../deployment/host-commands.md) takes no passkey and writes no
   `passkey.used`, because whoever runs a host command can already read the database and the key
   store.
+
+## The window
+
+A passed assertion opens a window for the session that tapped, and the window closes after
+`approvals.passkey_window_minutes` of the deployment config, 10 by default. The window opens once
+the transaction that verified the assertion commits, so a transaction that rolls back, such as an
+approval whose handler fails, leaves it shut. While it is open, every passkey check of that session
+passes with no assertion. A later tap restarts the window, and a check that the window covers leaves
+its close time alone. The window belongs to one session, so another session's check still asks. The
+API keeps each window in memory beside the challenges, with the ID of the passkey that tapped, so a
+restart closes every window.
+
+- Signing the session out, or revoking it, closes its window.
+- A window covers a check only while the passkey that opened it is live. Revoking that passkey, from
+  a client or the host, therefore ends the window, even when another passkey stays live.
+- Adding a passkey and removing one always ask, and an open window never covers them. The one list
+  of these checks is `alwaysAskKinds` in `modules/api/src/passkey/always-ask-kinds.ts`, and
+  `findPasskeyWindow` in the same folder is the one place that reads it. A check kind joins the list
+  there and nowhere else. Registration and revocation call `checkPasskey` with or without an
+  assertion, so the list alone decides whether a window could cover them.
+- `passkeys.window` takes a check and tells whether the window covers it, and reports `false` for an
+  always-ask check or a window whose passkey is revoked. The client calls it before it asks the
+  passkey, and sends the check with no assertion when the window is open. When the window lapses
+  before the answer arrives, the server refuses it with `PASSKEY_REQUIRED`, and the client then asks
+  the passkey and sends the answer once more. A client that sends an assertion anyway has the
+  assertion verified, which restarts the window.
+- A check that the window covers writes no `passkey.used` and moves no counter, because no assertion
+  ran.
 
 ## Unknown outcomes
 
@@ -60,19 +91,24 @@ order as below. A retry of a routine action takes none.
 ## The answer check
 
 The passkey step runs after step 4 and before step 5 of the
-[answer checks](approvals.md#the-answer), in the transaction that applies the answer. It refuses in
-this order:
+[answer checks](approvals.md#the-answer), in the transaction that applies the answer. Every path
+that takes a passkey calls the one function `checkPasskey` in `modules/api/src/passkey/`: the
+answers, the retry of an unknown outcome, the registration options while a passkey is live, and the
+revoke. It refuses in this order:
 
 1. No passkey is live: `NO_PASSKEY`.
-2. The answer carries no assertion: `PASSKEY_REQUIRED`.
+2. The answer carries no assertion and no [window](#the-window) covers it: `PASSKEY_REQUIRED`. A
+   registration with no assertion and no covering window refuses as `CODE_REQUIRED`, because it
+   needs the host code.
 3. The check fails: `PASSKEY_FAILED` with the reason.
 
 A refusal from the step writes nothing under the client action ID, and the hash of a checked
 action's input leaves out `passkey`. A retry with the same ID and a fresh assertion therefore runs
-every check again. A passed check writes `passkey.used` and moves `sign_count`, `backed_up` and
-`last_used_at` in the same transaction, so a handler that then fails rolls them back. A kind that
-opens its own transaction runs the passkey check inside its guard, after the guard repeats the
-checks, and a passkey refusal there skips the second transaction that stores other refusals.
+every check again. A passed assertion opens the window, writes `passkey.used` and moves
+`sign_count`, `backed_up` and `last_used_at` in the same transaction, so a handler that then fails
+rolls them back. A kind that opens its own transaction runs the passkey check inside its guard,
+after the guard repeats the checks, and a passkey refusal there skips the second transaction that
+stores other refusals.
 
 The proposals module takes the gate as a hook. A device route passes a check, a host route passes a
 host marker, and a route that passes neither is refused with `PASSKEY_REQUIRED` on a choice that
@@ -146,8 +182,9 @@ the BE flag.
 ## Revoking
 
 - `passkeys.revoke` from a client needs an assertion on a `revoke` challenge for that passkey, from
-  any live passkey, the one being revoked included. It writes `revoked_at` and `passkey.revoked` in
-  one transaction.
+  any live passkey, the one being revoked included. A call with no assertion is refused with
+  `PASSKEY_REQUIRED`, because no window covers a revoke. It writes `revoked_at` and
+  `passkey.revoked` in one transaction.
 - A revoke through `nixie passkeys revoke` needs no passkey and records `host` as the revoker.
 - A revoke changes no proposal: a waiting approval stays pending, and any live passkey can approve
   it. Revoking the last live passkey leaves the client unable to approve always-ask rows until a

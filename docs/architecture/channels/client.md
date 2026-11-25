@@ -364,8 +364,8 @@ in the browser only, because the library reads the window when it loads.
 
 - The viewer starts with `viewOnly` on, so it sends no keys or pointer, with `scaleViewport` on so
   the picture scales to fit, and with `resizeSession` off so it never resizes the desktop. The
-  server gives no viewer more than that: it passes a viewer's keys and pointer only while the
-  viewer's device holds the desktop, and drops every clipboard change.
+  server gives no viewer more than that: it passes a viewer's keys and pointer, and sends the
+  clipboard text of the desktop, only while the viewer's device holds the desktop.
 - Take over calls `computer.takeOver` and, once it answers, turns `viewOnly` off and focuses the
   viewer, so the user's keys and pointer reach the desktop. The status line then says that the user
   has taken over, and Take over becomes Hand back, which calls `computer.handBack` and turns
@@ -374,6 +374,16 @@ in the browser only, because the library reads the window when it loads.
   by a hand-back from any tab, the idle time or a restart, and a page whose stream ended while it
   held shows "Your hold on the computer ended." and returns to view only. A hand-back that finds the
   hold gone shows the same line.
+- While the user holds the desktop, a paste in the screen reaches the focused field, and text that
+  the desktop copies reaches the user's clipboard. The page holds back the user's paste chord, so
+  the viewer does not send it as a key before the text. The paste event carries the text, and the
+  page hands it to the viewer, which types it as keys. A paste of plain letters, digits and
+  punctuation arrives as typed, and a character outside ASCII is left out until the Chromium release
+  that carries the upstream keymap fix. A paste over 2000 characters types nothing and says so. The
+  page reads the user's clipboard only for that event, never on its own. The page writes the
+  desktop's copied text to the clipboard only while it holds. When the browser refuses the write,
+  the page shows a button, Copy it, whose press writes the text, and drops the text at the
+  hand-back. [Copy and paste](../connectors/computer.md#copy-and-paste) holds the server side.
 - The status line reads "Connecting to the computer." until the ticket comes, then "The computer is
   waking." while the socket is open and no picture has come, and "Your input won't reach the
   computer until you take over." once the viewer has drawn the desktop. The viewer's connect event

@@ -2,7 +2,13 @@ import type { ScriptedReply } from '@heynixie/testing';
 import { match } from 'ts-pattern';
 
 export interface ComputerSessionInput {
-  readonly kind: 'browser' | 'browser-navigate' | 'shell' | 'shell-processes' | 'screen';
+  readonly kind:
+    | 'browser'
+    | 'browser-navigate'
+    | 'browser-two-tabs'
+    | 'shell'
+    | 'shell-processes'
+    | 'screen';
   readonly text: string;
 }
 
@@ -14,6 +20,11 @@ export function buildComputerReplies(
   return match(input.kind)
     .with('browser', (): ScriptedReply[] => [
       { toolUse: { name: 'mcp__nixie__computer_browser_open', input: { url: siteURL } } },
+      { text: input.text },
+    ])
+    .with('browser-two-tabs', (): ScriptedReply[] => [
+      { toolUse: { name: 'mcp__nixie__computer_browser_open', input: { url: siteURL } } },
+      { toolUse: { name: 'mcp__nixie__computer_browser_open', input: { url: `${siteURL}next` } } },
       { text: input.text },
     ])
     .with('browser-navigate', (): ScriptedReply[] => [

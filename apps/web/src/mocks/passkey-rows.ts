@@ -23,6 +23,7 @@ export const passkeyChecks = new Collection({
     challenge: z.string(),
     choice: z.enum(['approve', 'always_allow', 'defer', 'decline']),
     credentialID: z.string(),
+    isCovering: z.boolean().default(true),
     proposalID: z.string(),
   }),
 });

@@ -47,6 +47,7 @@ function setupTest() {
     'task.step_errored': ['message'],
     task_message: ['body'],
     tool_called: ['input', 'destinations'],
+    'trigger.task_input': ['event'],
     'worker.run_ended': ['detail'],
     'worker.turn_ended': ['text'],
 

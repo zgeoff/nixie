@@ -35,6 +35,7 @@ export function makeStubDriver(tabs: ReadonlyMap<string, { readonly page: Page }
         ],
         activeID: stubWindowID,
       }),
+    readTitle: () => Promise.resolve(''),
     capture: () => readPage().screenshot({ type: 'png' }),
     click: (x, y, button) => readPage().mouse.click(x, y, { button }),
     scroll: async (x, y, steps) => {

@@ -1,4 +1,5 @@
 // oxlint-disable new-cap -- oRPC names a procedure's typed errors by their upper-case codes
+import { isMockPasskeyWindowOpen } from './is-mock-passkey-window-open';
 import { mockImplementer } from './mock-implementer';
 import { mockPasskeyCode } from './passkey-rows';
 import { requireMockSession } from './require-mock-session';
@@ -24,6 +25,12 @@ export const mockPasskeyProcedures = {
         timeout: 300_000,
       },
     };
+  }),
+
+  window: passkeys.window.handler((options) => {
+    requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+    return { isOpen: isMockPasskeyWindowOpen(options.input.for.kind) };
   }),
 
   registrationOptions: passkeys.registrationOptions.handler((options) => {

@@ -9,6 +9,8 @@ import { makeActionProposalHandler } from './make-action-proposal-handler';
 async function setupTest() {
   const started = await startTestLog();
 
+  const queuedTools: string[] = [];
+
   const handler = makeActionProposalHandler({
     log: started.log,
     definitions: () => ({ snapshotHash: 'snapshot-1' }),
@@ -25,7 +27,11 @@ async function setupTest() {
     },
     writeThreadRecord: () => Promise.resolve(),
     writeRule: () => Promise.resolve(),
-    queueApproved: () => Promise.resolve('action-1'),
+    queueApproved: (_tx, approved) => {
+      queuedTools.push(approved.tool);
+
+      return Promise.resolve('action-1');
+    },
     failHeld: () => Promise.resolve(),
     runAfterRule: () => Promise.resolve(),
     writeGapDecline: () => Promise.resolve(),
@@ -34,6 +40,42 @@ async function setupTest() {
 
   return {
     ...started,
+    queuedTools,
+    approveVariantCall: async () => {
+      const input = { name: 'Login fix', brief: 'Fix it.', runner: 'atc' };
+
+      // the call hashes by the tool's own name, and the proposal names the variant it picked
+      const actionHash = buildActionHash({ tool: 'task.start', input, destinations: [] });
+
+      const proposed = buildActionProposalInput({
+        definitions: { snapshotHash: 'snapshot-1' },
+        thread: 'conversation',
+        callSequence: 1,
+        tool: 'task.start/atc',
+        actionHash,
+        effects: ['coding_start'],
+        cause: 'ask_rule',
+        input,
+        destinations: [],
+      });
+
+      const [written] = await writeRecords(started.log, [proposed.record]);
+
+      const row = buildMockSharedProposal({
+        thread: 'conversation',
+        createdSequence: written?.sequence ?? 0,
+        actionHash,
+      });
+
+      return withWriteTransaction(started.writer, (tx) =>
+        handler.approve({ tx, guard: () => Promise.resolve() }, row, {
+          proposalID: row.id,
+          actionHash,
+          choice: 'approve',
+          identityID: 'identity-1',
+        }),
+      );
+    },
     approveBoundClick: async () => {
       const input = { x: 10, y: 20 };
       const expectWindow = { id: '0x1', picture: 'sha256:picture-1' };
@@ -163,4 +205,14 @@ test('it queues the approval of a click that its window and picture bind', async
   const outcome = await ctx.approveBoundClick();
 
   expect(outcome.status).toBe('done');
+});
+
+test('it queues the approval of a variant call under the tool that the call named', async () => {
+  const ctx = await setupTest();
+  const outcome = await ctx.approveVariantCall();
+
+  expect({ status: outcome.status, queued: ctx.queuedTools }).toStrictEqual({
+    status: 'done',
+    queued: ['task.start'],
+  });
 });

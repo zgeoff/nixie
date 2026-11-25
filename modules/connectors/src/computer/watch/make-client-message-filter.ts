@@ -1,3 +1,5 @@
+import { framedEncodings, rawEncoding } from './constants';
+
 type Phase = 'version' | 'security' | 'init' | 'messages';
 
 interface ClientFilterResult {
@@ -25,6 +27,9 @@ export interface ClientMessageFilter {
 export interface ClientFilterOptions {
   // whether the viewer holds the desktop now: only then does a key or pointer message pass
   readonly canInput: () => boolean;
+
+  // the bits per pixel that the VNC server announced, or null before it did
+  readonly readPixelBits: () => number | null;
 }
 
 interface FilterState {
@@ -35,6 +40,7 @@ interface FilterState {
   skipBytes: number;
   isMalformed: boolean;
   readonly canInput: () => boolean;
+  readonly readPixelBits: () => number | null;
 
   // the keys passed down and not yet up, and the pointer as it was last passed on
   readonly pressedKeys: Set<number>;
@@ -55,6 +61,7 @@ export function makeClientMessageFilter(options: ClientFilterOptions): ClientMes
     skipBytes: 0,
     isMalformed: false,
     canInput: options.canInput,
+    readPixelBits: options.readPixelBits,
     pressedKeys: new Set(),
     pointer: null,
     inputCount: 0,
@@ -298,9 +305,13 @@ function takePassed(state: FilterState, type: number): Uint8Array | null {
     state.buffer.byteLength,
   ).getUint16(2);
 
-  return count > maxEncodings
-    ? reject(state)
-    : takeBytes(state, setEncodingsHeaderBytes + 4 * count, true);
+  if (count > maxEncodings) {
+    return reject(state);
+  }
+
+  const message = takeBytes(state, setEncodingsHeaderBytes + 4 * count, true);
+
+  return message === null ? null : narrowEncodings(message);
 }
 
 const setPixelFormatBytes = 20;
@@ -312,7 +323,11 @@ function takePixelFormat(state: FilterState): Uint8Array | null {
     return null;
   }
 
-  return isPixelFormat(state.buffer.subarray(pixelFormatOffset, setPixelFormatBytes))
+  const format = state.buffer.subarray(pixelFormatOffset, setPixelFormatBytes);
+
+  // A format with another pixel size than the server announced would change how many bytes the server
+  // filter reads for each rectangle, in the middle of an update that is on its way.
+  return isPixelFormat(format) && format[0] === state.readPixelBits()
     ? takeBytes(state, setPixelFormatBytes, true)
     : reject(state);
 }
@@ -348,6 +363,34 @@ function isPixelFormat(format: Uint8Array): boolean {
         channel.shift + channel.max.toString(2).length <= bitsPerPixel,
     )
   );
+}
+
+// The message with only the encodings that the server's filter can frame, in the order the filter lists them, with
+// Raw added when the viewer left it out, because a VNC server may always fall back to it.
+function narrowEncodings(message: Uint8Array): Uint8Array {
+  const view = new DataView(message.buffer, message.byteOffset, message.byteLength);
+
+  const asked = new Set(
+    Array.from({ length: view.getUint16(2) }, (_, index) =>
+      view.getInt32(setEncodingsHeaderBytes + 4 * index),
+    ),
+  );
+
+  const kept = framedEncodings.filter((encoding) => asked.has(encoding));
+  const listed = kept.includes(rawEncoding) ? kept : [rawEncoding, ...kept];
+
+  const narrowed = new Uint8Array(setEncodingsHeaderBytes + 4 * listed.length);
+  const narrowedView = new DataView(narrowed.buffer);
+
+  narrowed[0] = 2;
+
+  narrowedView.setUint16(2, listed.length);
+
+  for (const [index, encoding] of listed.entries()) {
+    narrowedView.setInt32(setEncodingsHeaderBytes + 4 * index, encoding);
+  }
+
+  return narrowed;
 }
 
 function collectReleases(state: FilterState): Uint8Array[] {

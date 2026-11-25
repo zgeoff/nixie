@@ -1,6 +1,7 @@
 import { withWriteTransaction } from '@heynixie/log';
 import type { TaskControl, TaskControlRefusal, TaskState } from '@heynixie/tasks';
 import {
+  runControlEnded,
   taskStateSchema,
   writeTaskControlInTransaction,
   writeTaskResumeInTransaction,
@@ -31,68 +32,77 @@ export type CheckedTaskControlResult =
   | { readonly status: 'reused' }
   | { readonly status: 'unauthorized' };
 
-export function writeCheckedTaskControl(
+export async function writeCheckedTaskControl(
   context: APIContext,
   caller: Identity,
   input: CheckedTaskControlInput,
 ): Promise<CheckedTaskControlResult> {
   const procedure = `tasks.${input.control}`;
 
-  return withWriteTransaction(context.log.writer, async (tx) => {
-    const [live, earlier] = await Promise.all([
-      probeLiveIdentity(tx, context, caller.identityID),
-      readClientAction(tx, input.clientActionID),
-    ]);
+  const result = await withWriteTransaction<CheckedTaskControlResult>(
+    context.log.writer,
+    async (tx) => {
+      const [live, earlier] = await Promise.all([
+        probeLiveIdentity(tx, context, caller.identityID),
+        readClientAction(tx, input.clientActionID),
+      ]);
 
-    const inputHash = buildInputHash({ taskID: input.taskID });
+      const inputHash = buildInputHash({ taskID: input.taskID });
 
-    const settled = pickSettledControl({
-      live,
-      earlier,
-      procedure,
-      inputHash,
-      callerID: caller.identityID,
-    });
+      const settled = pickSettledControl({
+        live,
+        earlier,
+        procedure,
+        inputHash,
+        callerID: caller.identityID,
+      });
 
-    if (settled !== null) {
-      return settled;
-    }
+      if (settled !== null) {
+        return settled;
+      }
 
-    const outcome =
-      input.control === 'resume'
-        ? await writeTaskResumeInTransaction(tx, context, {
-            taskID: input.taskID,
-            by: caller.identityID,
-          })
-        : await writeTaskControlInTransaction(tx, context, {
-            taskID: input.taskID,
-            control: input.control,
-          });
+      const outcome =
+        input.control === 'resume'
+          ? await writeTaskResumeInTransaction(tx, context, {
+              taskID: input.taskID,
+              by: caller.identityID,
+            })
+          : await writeTaskControlInTransaction(tx, context, {
+              taskID: input.taskID,
+              control: input.control,
+            });
 
-    if (outcome.status === 'refused') {
-      return outcome;
-    }
+      if (outcome.status === 'refused') {
+        return outcome;
+      }
 
-    const controlledAt = context.clock.now();
+      const controlledAt = context.clock.now();
 
-    const result = {
-      taskID: input.taskID,
-      state: outcome.state,
-      isPauseRequested: outcome.isPauseRequested,
-      controlledAt,
-    };
+      const controlled = {
+        taskID: input.taskID,
+        state: outcome.state,
+        isPauseRequested: outcome.isPauseRequested,
+        controlledAt,
+      };
 
-    await writeClientAction(tx, {
-      clientActionID: input.clientActionID,
-      procedure,
-      identityID: caller.identityID,
-      inputHash,
-      result,
-      recordedAt: controlledAt,
-    });
+      await writeClientAction(tx, {
+        clientActionID: input.clientActionID,
+        procedure,
+        identityID: caller.identityID,
+        inputHash,
+        result: controlled,
+        recordedAt: controlledAt,
+      });
 
-    return { status: 'controlled', ...result };
-  });
+      return { status: 'controlled', ...controlled };
+    },
+  );
+
+  if (result.status === 'controlled') {
+    await runControlEnded(context, { taskID: input.taskID, control: input.control });
+  }
+
+  return result;
 }
 
 interface ControlState {

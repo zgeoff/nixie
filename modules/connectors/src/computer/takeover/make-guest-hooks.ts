@@ -10,6 +10,7 @@ export interface GuestHooksHost {
   readonly tabs: {
     readonly findGuest: (guestTab: string) => string | null;
     readonly add: (guestTab: string) => string;
+    readonly clear: () => void;
   };
 }
 
@@ -38,15 +39,27 @@ export function makeGuestHooks(host: GuestHooksHost): GuestHooks {
         return null;
       }
 
-      const now = result.reply.now;
+      const reply = result.reply;
 
-      if (now.kind !== 'browser') {
-        return { origins: result.reply.origins, now };
+      // a restarted browser reuses the guest's tab IDs for new tabs, so no earlier name still holds
+      if (reply.isRestarted) {
+        host.tabs.clear();
       }
 
-      const tab = host.tabs.findGuest(now.tab) ?? host.tabs.add(now.tab);
+      const tabs = reply.tabs.map((open) => ({
+        tab: host.tabs.findGuest(open.tab) ?? host.tabs.add(open.tab),
+        origin: open.origin,
+      }));
 
-      return { origins: result.reply.origins, now: { ...now, tab } };
+      const now =
+        reply.now.kind === 'browser'
+          ? {
+              ...reply.now,
+              tab: host.tabs.findGuest(reply.now.tab) ?? host.tabs.add(reply.now.tab),
+            }
+          : reply.now;
+
+      return { origins: reply.origins, tabs, isRestarted: reply.isRestarted, now };
     },
   };
 }

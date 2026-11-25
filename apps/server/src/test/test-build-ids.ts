@@ -53,6 +53,7 @@ export const testBuildIDs: readonly string[] = [
   'test.swept',
   'nixie runs without the crash harness IPC channel',
   'NIXIE_TEST_PROVIDER_URL',
+  'NIXIE_TEST_ATC_URL',
   'test.inbox_read',
   'runs as an action, never inside the turn',
   'releaseWriterLock',

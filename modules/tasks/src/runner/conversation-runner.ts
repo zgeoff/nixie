@@ -10,4 +10,7 @@ export const conversationRunner: TaskRunnerDefinition = {
   start: null,
   fixedTasks: [conversationTaskID],
   keepsSandboxes: true,
+  meters: ['turns', 'dollars'],
+  ended: null,
+  listFields: null,
 };

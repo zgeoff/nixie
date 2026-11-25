@@ -13,6 +13,7 @@ import {
 import type { TestTasks } from '@heynixie/tasks/test-utils';
 import { createFakeClock } from '@zgeoff/testing/clock';
 import { actionsProjection } from '../action/actions-projection';
+import { makeQueueRunnerActions } from '../action/make-queue-runner-actions';
 
 export async function startTestActions(): Promise<TestTasks> {
   const stack = new AsyncDisposableStack();
@@ -58,6 +59,11 @@ export async function startTestActions(): Promise<TestTasks> {
       readDefinitionRunPolicy: definitionStore.readDefinitionRunPolicy,
       readDefinitionNextFire: definitionStore.readDefinitionNextFire,
       runners: buildTestTaskRunners(),
+      queueRunnerActions: makeQueueRunnerActions({
+        log,
+        clock,
+        definitions: () => ({ snapshotHash: 'sha256:test' }),
+      }),
     },
   };
 }

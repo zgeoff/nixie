@@ -1,6 +1,8 @@
 import { expect, onTestFinished, test } from 'bun:test';
+import { waitFor } from '@zgeoff/testing';
 import { mockComputerStream } from '../mocks/mock-computer-stream';
 import { store } from '../mocks/store';
+import { pasteIntoScreen } from '../test-utils/paste-into-screen';
 import { setupSignedInBrowser } from '../test-utils/setup-signed-in-browser';
 import { startBuiltWeb } from '../test-utils/start-built-web';
 import { startFrontProxy } from '../test-utils/start-front-proxy';
@@ -33,7 +35,24 @@ async function setupTest() {
   await view.navigate('about:blank');
   await view.cdp('Network.clearBrowserCookies');
 
-  return { api, appURL: app.url, view };
+  const takeOver = async (): Promise<void> => {
+    const session = await store.sessions.create({});
+
+    await setupSignedInBrowser(view, { appURL: app.url, token: session.token });
+
+    await view.navigate(`${app.url}/computer`);
+
+    await waitForPage(
+      view,
+      "[...document.querySelectorAll('button:enabled')].some((button) => button.innerText === 'Take over')",
+    );
+
+    await view.click('main button');
+
+    await waitForPage(view, "document.body.innerText.includes('You have taken over the computer')");
+  };
+
+  return { api, appURL: app.url, desktop, takeOver, view };
 }
 
 test('it takes the computer over and hands it back with the buttons of the page', async () => {
@@ -217,4 +236,78 @@ test('it starts no take-over on a refresh of the computer page after a take-over
   const text: unknown = await ctx.view.evaluate('document.querySelector("main").innerText');
 
   expect(text).not.toInclude('You have taken over the computer');
+});
+
+test('it sends text that the user pastes as key presses, with Return for a line break', async () => {
+  const ctx = await setupTest();
+
+  await ctx.takeOver();
+
+  await pasteIntoScreen(ctx.view, 'hi\n');
+
+  await waitFor(() => {
+    expect(ctx.desktop.received.keys).toHaveLength(6);
+  });
+
+  expect(ctx.desktop.received.keys).toStrictEqual([
+    { keysym: 0x68, isDown: true },
+    { keysym: 0x68, isDown: false },
+    { keysym: 0x69, isDown: true },
+    { keysym: 0x69, isDown: false },
+    { keysym: 0xff_0d, isDown: true },
+    { keysym: 0xff_0d, isDown: false },
+  ]);
+});
+
+test('it sends each line break of a multi-line paste as one Return, so a terminal runs the lines as typed', async () => {
+  const ctx = await setupTest();
+
+  await ctx.takeOver();
+
+  await pasteIntoScreen(ctx.view, 'ls\r\npwd\n');
+
+  await waitFor(() => {
+    expect(ctx.desktop.received.keys).toHaveLength(14);
+  });
+
+  expect(ctx.desktop.received.keys).toStrictEqual([
+    { keysym: 0x6c, isDown: true },
+    { keysym: 0x6c, isDown: false },
+    { keysym: 0x73, isDown: true },
+    { keysym: 0x73, isDown: false },
+    { keysym: 0xff_0d, isDown: true },
+    { keysym: 0xff_0d, isDown: false },
+    { keysym: 0x70, isDown: true },
+    { keysym: 0x70, isDown: false },
+    { keysym: 0x77, isDown: true },
+    { keysym: 0x77, isDown: false },
+    { keysym: 0x64, isDown: true },
+    { keysym: 0x64, isDown: false },
+    { keysym: 0xff_0d, isDown: true },
+    { keysym: 0xff_0d, isDown: false },
+  ]);
+});
+
+test('it offers a button for copied text that the browser refuses to write', async () => {
+  const ctx = await setupTest();
+
+  // the app's origin has a port of its own in each test, so the refusal ends with the test
+  await ctx.view.cdp('Browser.setPermission', {
+    permission: { name: 'clipboard-write' },
+    setting: 'denied',
+    origin: ctx.appURL,
+  });
+
+  await ctx.takeOver();
+
+  ctx.desktop.sendCutText('order 4471');
+
+  await waitForPage(
+    ctx.view,
+    "[...document.querySelectorAll('button')].some((button) => button.innerText === 'Copy it')",
+  );
+
+  const text: unknown = await ctx.view.evaluate('document.querySelector("main").innerText');
+
+  expect(text).toInclude('Your browser would not copy the text that the computer copied.');
 });

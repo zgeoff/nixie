@@ -95,6 +95,9 @@ test('it lists the definitions with a start, in the order they were given', () =
     start: null,
     fixedTasks: [],
     keepsSandboxes: false,
+    meters: [],
+    ended: null,
+    listFields: null,
   };
 
   const registry = buildTaskRunnerRegistry({
@@ -181,6 +184,9 @@ test('it resolves a task to the definition that its stored runner names', async 
     start: null,
     fixedTasks: [],
     keepsSandboxes: false,
+    meters: [],
+    ended: null,
+    listFields: null,
   };
 
   const taskID = await ctx.seed.watcherTask(starter.claim);
@@ -401,6 +407,9 @@ test('it keeps the sandboxes of the fixed tasks and the open started tasks of ea
         start: null,
         fixedTasks: ['queue-check'],
         keepsSandboxes: false,
+        meters: [],
+        ended: null,
+        listFields: null,
       },
     ],
     defaultRunner: sandboxRunner,
@@ -423,6 +432,9 @@ test('it keeps no sandbox for an open started task whose runner does not keep th
     start: null,
     fixedTasks: [],
     keepsSandboxes: false,
+    meters: [],
+    ended: null,
+    listFields: null,
   };
 
   const registry = buildTaskRunnerRegistry({

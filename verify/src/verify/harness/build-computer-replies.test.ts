@@ -48,3 +48,26 @@ test('it queues a ps run and the reply for the shell-processes kind', () => {
     { text: 'I listed them.' },
   ]);
 });
+
+test('it queues the 2 opens and the reply for the browser-two-tabs kind', () => {
+  const replies = buildComputerReplies(
+    { kind: 'browser-two-tabs', text: 'I opened 2 tabs.' },
+    'http://pages.test:4000/',
+  );
+
+  expect(replies).toStrictEqual([
+    {
+      toolUse: {
+        name: 'mcp__nixie__computer_browser_open',
+        input: { url: 'http://pages.test:4000/' },
+      },
+    },
+    {
+      toolUse: {
+        name: 'mcp__nixie__computer_browser_open',
+        input: { url: 'http://pages.test:4000/next' },
+      },
+    },
+    { text: 'I opened 2 tabs.' },
+  ]);
+});

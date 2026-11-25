@@ -3,6 +3,7 @@ import { buildGateFilter, claimLease } from '@heynixie/tasks';
 import { sql } from 'kysely';
 import type { ActionsTables } from '../types';
 import { buildCancelledCheck } from './build-cancelled-check';
+import { buildGateWork } from './build-gate-work';
 import { buildHeldCheck } from './build-held-check';
 
 export interface ClaimActionOptions {
@@ -35,7 +36,12 @@ export function claimAction(
             .onRef('leases.work_id', '=', 'actions.action_id'),
         )
         .innerJoin('tasks', 'tasks.task_id', 'actions.task_id')
-        .select(['actions.action_id', 'actions.task_id', 'actions.attempt_count'])
+        .select([
+          'actions.action_id',
+          'actions.task_id',
+          'actions.attempt_count',
+          'actions.step_key',
+        ])
         .where((eb) =>
           eb.or([
             eb.and([
@@ -56,7 +62,9 @@ export function claimAction(
         .where((eb) =>
           buildGateFilter(eb, 'action', {
             taskID: sql.ref('actions.task_id'),
-            isStarted: sql`actions.attempt_count > 0`,
+
+            // an end hook's action counts as started, as the attempt start's gate work counts it
+            isStarted: sql`(actions.attempt_count > 0 or actions.step_key like 'ended:%')`,
           }),
         )
         .where((eb) => eb.not(buildHeldCheck(eb)))
@@ -67,7 +75,7 @@ export function claimAction(
 
       return row === undefined
         ? null
-        : { workID: row.action_id, taskID: row.task_id, isStarted: row.attempt_count > 0 };
+        : { workID: row.action_id, taskID: row.task_id, isStarted: buildGateWork(row).isStarted };
     },
   });
 }

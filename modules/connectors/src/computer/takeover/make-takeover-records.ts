@@ -38,6 +38,8 @@ export function makeTakeoverRecords(options: TakeoverRecordsOptions): TakeoverRe
           }),
           erasable: {
             origins: [...(input.read?.origins ?? [])],
+            tabs: (input.read?.tabs ?? []).map((open) => ({ tab: open.tab, origin: open.origin })),
+            isRestarted: input.read?.isRestarted ?? false,
             now: input.read?.now ?? null,
           },
         },

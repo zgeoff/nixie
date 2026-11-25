@@ -21,6 +21,8 @@ function setupTest(options: SetupOptions = {}) {
 
   const read: HandBackRead = {
     origins: ['https://itch.io'],
+    tabs: [{ tab: 'g1', origin: 'https://itch.io' }],
+    isRestarted: false,
     now: { kind: 'browser', tab: 'g1', text: 'Solve the puzzle' },
   };
 

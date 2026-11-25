@@ -51,6 +51,8 @@ export type {
   TriggerBatch,
   TriggerContext,
   TriggerCoreContext,
+  ScheduleTriggerEvent,
+  TaskInputEvent,
   TriggerEvent,
   TriggerSource,
   TriggersTables,

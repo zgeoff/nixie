@@ -1,6 +1,6 @@
 import { readRecords, withWriteTransaction } from '@heynixie/log';
 import type { TaskLimits, TaskRun, TasksContext } from '@heynixie/tasks';
-import { toTransactionContext } from '@heynixie/tasks';
+import { readRunMeters, toTransactionContext } from '@heynixie/tasks';
 
 export interface RunUsageRead {
   readonly used: TaskLimits;
@@ -28,7 +28,7 @@ export function readRunUsage(
 
     const used = { turns: 0, dollars: 0 };
 
-    for (const meter of context.runSettings.meters) {
+    for (const meter of await readRunMeters(inTransaction, run.taskID)) {
       used[meter.name] = await meter.read(inTransaction, run);
     }
 

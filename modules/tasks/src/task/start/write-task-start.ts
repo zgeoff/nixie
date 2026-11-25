@@ -1,8 +1,10 @@
 import { createShortID } from '@heynixie/db';
 import type { JSONObject } from '@heynixie/log';
 import { readRecords, withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
+import invariant from 'tiny-invariant';
 import { writeBriefMessageInTransaction } from '../../brief/write-brief-message-in-transaction';
 import { taskRunOptionsSchema } from '../../limit/task-run-options-schema';
+import type { RunnerAction, StartTransaction } from '../../runner/types';
 import { readLeasedStepHop } from '../../step/read-leased-step-hop';
 import type { TaskLimits, TaskReport, TasksContext, TasksTables } from '../../types';
 import type { StepRunRef } from '../../utils/parse-step-run-id';
@@ -20,6 +22,12 @@ type StoredStart =
     };
 
 export interface TaskStartRequest {
+  // queued on the new task's thread in the start's transaction; none when absent
+  readonly actions?: readonly RunnerAction[];
+
+  // the runner's own checks and writes in the start's transaction
+  readonly transaction?: StartTransaction | undefined;
+
   readonly from: string;
   readonly name: string;
   readonly brief: string;
@@ -35,14 +43,15 @@ export interface TaskStartRequest {
 export type TaskStartRefusal =
   | { readonly reason: 'empty_name' }
   | { readonly reason: 'empty_brief' }
-  | { readonly reason: 'stale_step' };
+  | { readonly reason: 'stale_step' }
+  | { readonly reason: 'runner_refused'; readonly sentence: string };
 
 export type TaskStartOutcome =
   | { readonly status: 'started'; readonly taskID: string }
   | { readonly status: 'refused'; readonly refusal: TaskStartRefusal };
 
 export async function writeTaskStart(
-  context: Pick<TasksContext, 'clock' | 'definitions' | 'log'>,
+  context: Pick<TasksContext, 'clock' | 'definitions' | 'log' | 'queueRunnerActions'>,
   request: TaskStartRequest,
 ): Promise<TaskStartOutcome> {
   const name = request.name.trim();
@@ -74,7 +83,7 @@ export async function writeTaskStart(
 // before the write transaction. A start in the same step that commits in between changes the step's
 // task count, so the attempt returns null and the caller reads the names again.
 async function writeStartAttempt(
-  context: Pick<TasksContext, 'clock' | 'definitions' | 'log'>,
+  context: Pick<TasksContext, 'clock' | 'definitions' | 'log' | 'queueRunnerActions'>,
   request: TaskStartRequest,
   step: StepRunRef,
 ): Promise<TaskStartOutcome | null> {
@@ -101,6 +110,14 @@ async function writeStartAttempt(
     const taskID = earlier.taskID ?? createShortID();
 
     if (earlier.taskID === null) {
+      const checked = await request.transaction?.check(tx);
+
+      const sentence = checked ?? null;
+
+      if (sentence !== null) {
+        return { status: 'refused', refusal: { reason: 'runner_refused', sentence } };
+      }
+
       const briefMessageID = createShortID();
 
       await writeRecordsInTransaction(tx, context.log, [
@@ -124,6 +141,21 @@ async function writeStartAttempt(
         hopLimit: request.hopLimit,
         body: request.brief,
       });
+
+      await request.transaction?.write(tx, taskID);
+
+      if (request.actions !== undefined && request.actions.length > 0) {
+        invariant(
+          context.queueRunnerActions,
+          'a start that queues actions needs the actions queue',
+        );
+
+        await context.queueRunnerActions(tx, {
+          taskID,
+          stepKey: step.stepKey,
+          actions: request.actions,
+        });
+      }
     }
 
     return { status: 'started', taskID };

@@ -4,6 +4,9 @@ export interface ViewerEvents {
 
   // the viewer lost the desktop, or the server closed the stream
   readonly onDisconnect: () => void;
+
+  // the desktop copied text, which the page passes to the user's clipboard only while the user holds it
+  readonly onCopy: (text: string) => void;
 }
 
 export interface Viewer {
@@ -12,6 +15,9 @@ export interface Viewer {
   // Lets the viewer send the keys and pointer of the person, or stops it. The server passes them
   // only while this device holds the desktop.
   readonly setInput: (isOn: boolean) => void;
+
+  // Types the text as keys, so it lands in the field in focus.
+  readonly paste: (text: string) => void;
 }
 
 // Starts a viewer that draws the socket's desktop into the element, view only until `setInput` turns

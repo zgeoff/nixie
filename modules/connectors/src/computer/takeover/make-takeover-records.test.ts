@@ -37,6 +37,8 @@ test('it writes the sites and the window of a hand-back as erasable fields', asy
     durationSeconds: 63,
     read: {
       origins: ['https://itch.io'],
+      isRestarted: true,
+      tabs: [{ tab: 't1', origin: 'https://itch.io' }],
       now: { kind: 'browser', tab: 't1', text: 'Solve the puzzle' },
     },
   });
@@ -50,6 +52,8 @@ test('it writes the sites and the window of a hand-back as erasable fields', asy
       status: 'readable',
       fields: {
         origins: ['https://itch.io'],
+        isRestarted: true,
+        tabs: [{ tab: 't1', origin: 'https://itch.io' }],
         now: { kind: 'browser', tab: 't1', text: 'Solve the puzzle' },
       },
     },

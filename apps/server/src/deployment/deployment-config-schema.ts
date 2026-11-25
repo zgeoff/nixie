@@ -1,6 +1,7 @@
 import { actionsConfigSchema } from '@heynixie/actions';
 import { apiConfigSchema } from '@heynixie/api';
 import { backupConfigSchema } from '@heynixie/backup';
+import { codingConfigSchema } from '@heynixie/coding';
 import {
   computerConfigSchema,
   imagesConfigSchema,
@@ -53,6 +54,7 @@ export const deploymentConfigSchema = z
     backup: backupConfigSchema.default(backupConfigSchema.parse({})),
     turn_input_log: turnInputLogConfigSchema.optional(),
     spendStop: spendStopSchema.optional(),
+    coding: codingConfigSchema.optional(),
   })
   .superRefine((config, issues) => {
     if (config.sandbox.adapter === 'imp' && config.imp === undefined) {

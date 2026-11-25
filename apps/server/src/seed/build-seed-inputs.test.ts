@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { buildCodingActionTools } from '@heynixie/coding';
 import { buildDefinitionsSnapshot } from '@heynixie/definitions';
 import { buildMockTaskStartBounds } from '@heynixie/tasks/test-utils';
 import type { ToolDefinition } from '@heynixie/tools';
@@ -17,7 +18,7 @@ test("it puts the queue check's tool declaration in the policy, beside the conve
 
   const inputs = buildSeedInputs(config, {
     definitions: [],
-    actions: { logConnector: { tool } },
+    actions: { logConnector: { tool }, queuedTools: [] },
     taskBounds: buildMockTaskStartBounds(),
   });
 
@@ -31,6 +32,30 @@ test("it puts the queue check's tool declaration in the policy, beside the conve
       results: { logged: 'owner_data' },
     },
   ]);
+});
+
+test("it puts the coding runner's queued actions in the policy and the task tool names, and no conversation tool list holds them", () => {
+  const config = {
+    definitions: { source: { kind: 'path', path: '/srv/definitions' }, probeIntervalMs: 300_000 },
+    models: buildTestModelsConfig({ modelURL: 'https://models.example.test' }),
+    owner: { name: 'Marisol', pronouns: { they: 'she', their: 'her' } },
+  } as const;
+
+  const tool = buildLogConnector(() => {}).tool;
+
+  const inputs = buildSeedInputs(config, {
+    definitions: [],
+    actions: { logConnector: { tool }, queuedTools: buildCodingActionTools() },
+    taskBounds: buildMockTaskStartBounds(),
+  });
+
+  expect({
+    policy: inputs.buildPolicy({}).tools.map((declared) => declared.name),
+    taskTools: inputs.tasks.toolNames,
+  }).toStrictEqual({
+    policy: ['actions.log', 'coding.start', 'coding.stop'],
+    taskTools: ['actions.log', 'coding.start', 'coding.stop'],
+  });
 });
 
 test.each([
@@ -54,7 +79,7 @@ test.each([
       persona: '# P\n',
       policy: buildSeedInputs(config, {
         definitions: [],
-        actions: { logConnector: { tool } },
+        actions: { logConnector: { tool }, queuedTools: [] },
         taskBounds: buildMockTaskStartBounds(),
       }).buildPolicy({}),
       prompts: {},
@@ -87,7 +112,7 @@ test("it changes the snapshot hash when the queue check's tool declaration chang
         persona: '# Persona\n',
         policy: buildSeedInputs(config, {
           definitions: [],
-          actions: { logConnector: { tool: logTool } },
+          actions: { logConnector: { tool: logTool }, queuedTools: [] },
           taskBounds: buildMockTaskStartBounds(),
         }).buildPolicy({}),
         prompts: {},
@@ -117,7 +142,7 @@ test.each([
 
   const inputs = buildSeedInputs(config, {
     definitions: [],
-    actions: { logConnector: { tool } },
+    actions: { logConnector: { tool }, queuedTools: [] },
     taskBounds: buildMockTaskStartBounds(),
   });
 
@@ -146,7 +171,7 @@ test('it keeps the policy hash when only a prompt other than the checkers has an
 
   const inputs = buildSeedInputs(config, {
     definitions: [],
-    actions: { logConnector: { tool } },
+    actions: { logConnector: { tool }, queuedTools: [] },
     taskBounds: buildMockTaskStartBounds(),
   });
 
@@ -177,7 +202,7 @@ test('it lets a file definition list a registered tool that a definition from ch
 
   const inputs = buildSeedInputs(config, {
     definitions: [],
-    actions: { logConnector: { tool } },
+    actions: { logConnector: { tool }, queuedTools: [] },
     taskBounds: buildMockTaskStartBounds(),
   });
 

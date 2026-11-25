@@ -1,4 +1,5 @@
 import type { ContractInputs } from '@heynixie/contract';
+import { isMockPasskeyWindowOpen } from './is-mock-passkey-window-open';
 import { store } from './store';
 
 export type MockUnknownAnswer = ContractInputs['approvals']['answerUnknownOutcome'];
@@ -28,7 +29,7 @@ export async function writeMockUnknownOutcomeAnswer(
       return { status: 'passkey_refused', refusal: 'NO_PASSKEY' };
     }
 
-    if (answer.passkey === undefined) {
+    if (answer.passkey === undefined && !isMockPasskeyWindowOpen('unknown_outcome')) {
       return { status: 'passkey_refused', refusal: 'PASSKEY_REQUIRED' };
     }
   }

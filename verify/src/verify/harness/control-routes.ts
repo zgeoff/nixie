@@ -15,6 +15,12 @@ const startedTaskSchema = z.strictObject({
   reply: z.string().min(1),
 });
 
+const codingTaskSchema = z.strictObject({
+  name: z.string().min(1),
+  brief: z.string().min(1),
+  repo: z.strictObject({ url: z.string().min(1), ref: z.string().min(1) }),
+});
+
 const drawnPictureSchema = z.strictObject({
   prompt: z.string().min(1),
   edit: z.string().min(1),
@@ -64,6 +70,10 @@ export const controlRoutes = {
       // a task the model starts with the task tool before its reply, and the task's first reply
       task: startedTaskSchema.optional(),
 
+      // a coding task the model starts on the atc runner with the task tool before its reply, which
+      // the starter rules hold for your approval; the coding runner calls no model
+      codingTask: codingTaskSchema.optional(),
+
       // a picture the model draws with the image tool before its reply, the one edit it then makes
       // to that picture, and a list of its pictures
       draw: drawnPictureSchema.optional(),
@@ -106,10 +116,23 @@ export const controlRoutes = {
     method: 'POST',
     path: '/control/use-computer',
     input: z.strictObject({
-      kind: z.enum(['browser', 'browser-navigate', 'shell', 'shell-processes', 'screen']),
+      kind: z.enum([
+        'browser',
+        'browser-navigate',
+        'browser-two-tabs',
+        'shell',
+        'shell-processes',
+        'screen',
+      ]),
       text: z.string().min(1),
     }),
     output: z.strictObject({ replies: z.int().positive() }),
+  },
+  modelReceived: {
+    method: 'POST',
+    path: '/control/model-received',
+    input: z.strictObject({ text: z.string().min(1) }),
+    output: z.strictObject({ requests: z.int().nonnegative() }),
   },
   tasks: {
     method: 'GET',

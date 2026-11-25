@@ -1,4 +1,5 @@
 import { startActionRunners } from '@heynixie/actions';
+import { codingActionDeclarations } from '@heynixie/coding';
 import { toErrorFields } from '@heynixie/logger';
 import type { RunStep } from '@heynixie/tasks';
 import { startTaskClaimPools } from '@heynixie/tasks';
@@ -49,6 +50,7 @@ export async function startRunners(parts: ServerParts, runStep: RunStep): Promis
       definitions: parts.apiContext.definitions,
       decisions: parts.decisions,
       registry,
+      findRunnerDeclaration: (tool) => codingActionDeclarations.get(tool) ?? null,
     }),
     onError,
     size: parts.config.actions.runners,

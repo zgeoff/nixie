@@ -1,7 +1,9 @@
-import type { JSONObject } from '@heynixie/log';
+import type { JSONObject, RecordInput } from '@heynixie/log';
 import type { TaskControl } from '@heynixie/task-control';
 import type { JsonSchema, ToolDefinition } from '@heynixie/tools';
+import type { Transaction } from 'kysely';
 import type { z } from 'zod';
+import type { RunMeterName } from '../run/types';
 import type { TaskStarter } from '../task/start/plan-task-start';
 import type { RunStep, TaskLimits, TaskReport, TaskStartBounds, TasksContext } from '../types';
 
@@ -19,11 +21,43 @@ export interface TaskStartEnvelope {
     | undefined;
 }
 
+// An action that a runner or a tool queues on a task's thread, such as a spawn. The attempt meets
+// the decision point as every action's attempt does, with the task that owns the thread as its
+// caller. The actions module builds the queue that takes it.
+export interface RunnerAction {
+  // a connector tool that no model's tool list holds, such as 'coding.start'
+  readonly tool: string;
+
+  // erasable, as every action's arguments are
+  readonly args: JSONObject;
+
+  // the action hash: a step that runs again with the same parts queues nothing
+  readonly hashParts: readonly string[];
+
+  readonly causedBy:
+    | { readonly kind: 'tool_call'; readonly callID: string }
+    | { readonly kind: 'record'; readonly sequence: number };
+}
+
+// A runner's own part of its start's transaction. A join uses it to bind its session, which needs
+// the new task's ID and a check that no open task binds the session already.
+export interface StartTransaction {
+  // a sentence that refuses the start, or null; runs before the task is written
+  readonly check: (tx: Transaction<unknown>) => Promise<string | null>;
+
+  // runs after the task is written
+  readonly write: (tx: Transaction<unknown>, taskID: string) => Promise<void>;
+}
+
 export type RunnerStartPlan<Options> =
   | {
       readonly status: 'planned';
       readonly envelope: { readonly report: TaskReport; readonly limits: TaskLimits };
       readonly options: Options;
+
+      // what the start queues on the new task's thread: [] for the sandbox runner and for a join
+      readonly actions: readonly RunnerAction[];
+      readonly transaction?: StartTransaction;
     }
   | { readonly status: 'refused'; readonly sentence: string };
 
@@ -39,7 +73,7 @@ export interface RunnerStart<Input extends TaskStartEnvelope, Options> {
     start: Input,
     starter: TaskStarter,
     bounds: TaskStartBounds,
-  ) => RunnerStartPlan<Options>;
+  ) => Promise<RunnerStartPlan<Options>>;
 
   // true: the start writes the built options; false: it writes the envelope and the runner's options
   readonly storesBuiltOptions: boolean;
@@ -58,7 +92,7 @@ export interface RunnerStartPort {
     input: unknown,
     starter: TaskStarter,
     bounds: TaskStartBounds,
-  ) => RunnerStartPlan<JSONObject>;
+  ) => Promise<RunnerStartPlan<JSONObject>>;
 }
 
 export interface TaskRunnerDefinition {
@@ -72,6 +106,36 @@ export interface TaskRunnerDefinition {
 
   // the restart sweep keeps the sandboxes that the runner's open tasks own
   readonly keepsSandboxes: boolean;
+
+  // the meters that limit this runner's task runs; the sandbox runner and each fixed-task runner
+  // list both
+  readonly meters: readonly RunMeterName[];
+
+  // called after a stop, a close or a failure commits; null: nothing to do
+  readonly ended:
+    | ((context: RunnerEndContext, taskID: string, cause: RunnerEndCause) => Promise<void>)
+    | null;
+
+  // the fields that tasks.list adds to each listed task of this runner; null: none
+  readonly listFields:
+    | ((
+        context: Pick<TasksContext, 'log'>,
+        taskIDs: readonly string[],
+      ) => Promise<ReadonlyMap<string, JSONObject>>)
+    | null;
+}
+
+export type RunnerEndCause = 'stopped' | 'closed' | 'failed';
+
+// What `ended` gets. It runs outside any step, as the task no longer steps.
+export interface RunnerEndContext extends Pick<TasksContext, 'log' | 'clock' | 'definitions'> {
+  // writes the records and queues the actions on the task's thread, in one transaction
+  readonly commit: (input: RunnerEndCommit) => Promise<void>;
+}
+
+export interface RunnerEndCommit {
+  readonly records: readonly RecordInput[];
+  readonly actions: readonly RunnerAction[];
 }
 
 export interface StartableRunner extends TaskRunnerDefinition {
