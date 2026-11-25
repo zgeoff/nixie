@@ -25,8 +25,8 @@ whose record did not finishes the record and answers `ok`.
 ## The consent
 
 1. `startConsent` makes a consent request bound to the device session that called it, with a random
-   `state`, a PKCE verifier sealed under a key of its own, and an expiry of 10 minutes. It answers
-   the authorize URL, which always carries a S256 challenge and `prompt=consent`.
+   `state`, a PKCE verifier sealed under a key of its own, and a short expiry. It answers the
+   authorize URL, which always carries a S256 challenge and `prompt=consent`.
 2. Google sends the browser to `/connections/google/return`, a web server route. The route calls
    `connections.finishConsent` with the browser's session as a bearer token, and never logs the
    query string. A success answers 303 to the connection's page, and a failure renders a page with
@@ -37,8 +37,8 @@ whose record did not finishes the record and answers `ok`.
    write claims nothing. The account comes from the ID token.
 4. The module reads each scope once, then decides and writes under one lock: a new account becomes a
    new connection, an account a live connection reaches moves the new token into that connection,
-   and an account under a Forget waits up to 30 seconds for it, outside the lock. Two consents for
-   one account at once therefore make one connection. A token response with no refresh token keeps
+   and an account under a Forget waits a bounded time for it, outside the lock. Two consents for one
+   account at once therefore make one connection. A token response with no refresh token keeps
    nothing.
 
 A renewal advances the connection's removal counter, so a refresh that began before it saves nothing
