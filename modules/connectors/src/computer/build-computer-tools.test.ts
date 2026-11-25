@@ -2,7 +2,7 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { buildActionHash } from '@heynixie/policy';
 import { buildAllowingDecisionPoint } from '@heynixie/policy/test-utils';
 import { buildSandboxSpec } from '@heynixie/sandbox';
-import type { DirectResult, Prepared, ToolDefinition } from '@heynixie/tools';
+import type { DirectResult, PrepareRefusal, Prepared, ToolDefinition } from '@heynixie/tools';
 import { buildToolRegistry, runToolCall } from '@heynixie/tools';
 import { buildStubActionQueue } from '@heynixie/tools/test-utils';
 import type { ComputerHandler, ComputerReply, ComputerRequest } from '@heynixie/wire';
@@ -268,7 +268,7 @@ async function setupTest(options: SetupOptions) {
       tool: string,
       args: Record<string, string | number>,
       destinations: string[] = [],
-      prepared: DirectResult | Prepared | null = null,
+      prepared: DirectResult | Prepared | PrepareRefusal | null = null,
     ) =>
       built.connector.run({
         actionID: 'action-1',

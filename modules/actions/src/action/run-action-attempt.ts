@@ -178,6 +178,8 @@ async function runAttempt(
         connector,
         args,
         destinations: step.destinations,
+        replyTargets: step.replyTargets,
+        startedAt,
         options,
       }),
     )
@@ -226,6 +228,8 @@ interface ConnectorCall {
   readonly connector: ActionConnector;
   readonly args: JSONObject;
   readonly destinations: readonly string[];
+  readonly replyTargets: readonly string[];
+  readonly startedAt: number;
   readonly options: ActionAttemptOptions;
 }
 
@@ -245,6 +249,8 @@ async function runConnector(
       attempt: attempt.attempt,
       idempotencyKey: buildAttemptKey(attempt.action),
       destinations: call.destinations,
+      replyTargets: call.replyTargets,
+      attemptStartedAt: call.startedAt,
       actionHash: attempt.action.action_hash,
       deadlineAt: attempt.action.deadline_at,
     });
