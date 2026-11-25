@@ -256,6 +256,7 @@ function buildReportRequest(
         runID: run.runID,
         stepKey: claim.stepKey,
         reportID: createShortID(),
+        ...(report.outside === true ? { outside: true } : {}),
       }),
       erasable: {
         summary: report.summary,

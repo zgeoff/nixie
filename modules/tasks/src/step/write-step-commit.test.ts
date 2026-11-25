@@ -463,6 +463,25 @@ test('it closes a disposable task whose task run ends reported, and still sends 
   expect(messages.map((record) => record.payload['kind'])).toStrictEqual(['request', 'report']);
 });
 
+test('it marks the report message as outside content when the step reports outside content', async () => {
+  const ctx = await setupTest();
+  const task = await ctx.startTask(false);
+
+  await writeStepCommit(ctx.context, task.claim, {
+    next: 'done',
+    isFinal: true,
+    records: [],
+    acknowledged: task.brief,
+    run: { activity: 'worked', report: { summary: 'High tide is at 06:42.', outside: true } },
+  });
+
+  const messages = await ctx.readKinds('task_message');
+
+  const report = messages.find((record) => record.payload['kind'] === 'report');
+
+  expect(report?.payload['outside']).toBe(true);
+});
+
 test('it closes a disposable task whose first step did no work', async () => {
   const ctx = await setupTest();
   const task = await ctx.startTask(true);

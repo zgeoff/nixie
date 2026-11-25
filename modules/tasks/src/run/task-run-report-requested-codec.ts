@@ -8,5 +8,8 @@ export const taskRunReportRequestedCodec = defineRecordCodec(
     runID: z.string(),
     stepKey: z.string(),
     reportID: z.string(),
+
+    // true: the summary is outside content
+    outside: z.boolean().exactOptional(),
   }),
 );

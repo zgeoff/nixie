@@ -274,6 +274,9 @@ export interface StepResult {
     readonly report?: {
       readonly summary: string;
       readonly fields?: JSONObject;
+
+      // true: the summary is outside content, and the report message is marked so
+      readonly outside?: true;
     };
   };
   readonly records: readonly RecordInput[];

@@ -91,9 +91,9 @@ export async function writeRunEndInTransaction(
   const detail = buildDetail(run, ending, request, used);
   const reportID = run.reportID ?? createShortID();
 
-  const reportBody = await readReportBody(inTransaction, run, ending, detail);
+  const report = await readReportBody(inTransaction, run, ending, detail);
 
-  const body = renderReportBody(reportBody);
+  const body = renderReportBody(report.body);
   const definitions = context.definitions();
 
   if (ending.cause === 'limit') {
@@ -123,6 +123,7 @@ export async function writeRunEndInTransaction(
           woke: delivery.delivery === 'wake',
           opensWait: false,
           source: `task:${request.taskID}`,
+          ...(report.isOutside ? { outside: true } : {}),
         }),
         erasable: { body },
       },
@@ -218,6 +219,13 @@ function buildDetail(
   return {};
 }
 
+interface RunReport {
+  readonly body: ReportBody;
+
+  // true: the asked-for summary is outside content
+  readonly isOutside: boolean;
+}
+
 // A report that the model or the runner asked for, or the code-made summary of the end. A forget
 // that destroyed the request before the end leaves the code-made summary too.
 async function readReportBody(
@@ -225,26 +233,33 @@ async function readReportBody(
   run: TaskRun,
   ending: RunEnding,
   detail: Readonly<Record<string, string | number>>,
-): Promise<ReportBody> {
+): Promise<RunReport> {
   const shape = run.opened.reportShape;
   const asked = run.reportID === null ? null : await readReportRequest(context, run);
 
   if (asked !== null) {
     return {
-      summary: asked.summary,
-      ...(shape === null || asked.fields === undefined ? {} : { fields: asked.fields }),
+      body: {
+        summary: asked.summary,
+        ...(shape === null || asked.fields === undefined ? {} : { fields: asked.fields }),
+      },
+      isOutside: asked.isOutside,
     };
   }
 
   return {
-    summary: renderCodeMadeSummary(context, run, ending, detail),
-    ...(shape === null ? {} : { missing: Object.keys(shape.properties) }),
+    body: {
+      summary: renderCodeMadeSummary(context, run, ending, detail),
+      ...(shape === null ? {} : { missing: Object.keys(shape.properties) }),
+    },
+    isOutside: false,
   };
 }
 
 interface ReportRequest {
   readonly summary: string;
   readonly fields: JSONObject | undefined;
+  readonly isOutside: boolean;
 }
 
 async function readReportRequest(context: EndContext, run: TaskRun): Promise<ReportRequest | null> {
@@ -261,10 +276,11 @@ async function readReportRequest(context: EndContext, run: TaskRun): Promise<Rep
 
   const erasable = request?.record.erasable;
 
-  if (erasable?.status !== 'readable') {
+  if (request === undefined || erasable?.status !== 'readable') {
     return null;
   }
 
+  const isOutside = taskRunReportRequestedCodec.decode(request.record.payload).outside === true;
   const summary = erasable.fields['summary'];
   const fields = erasable.fields['fields'];
 
@@ -272,7 +288,7 @@ async function readReportRequest(context: EndContext, run: TaskRun): Promise<Rep
     return null;
   }
 
-  return { summary, fields: z.record(z.string(), z.json()).safeParse(fields).data };
+  return { summary, fields: z.record(z.string(), z.json()).safeParse(fields).data, isOutside };
 }
 
 function renderCodeMadeSummary(
