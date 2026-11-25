@@ -125,11 +125,90 @@ without a pin never register. The registry reads the source's names each time it
 allow or a removal changes what the model can call without a restart. nixie's own tool wins a name
 that both hold.
 
-A proxied tool declares the strictest effects, which are write, delete and send, and counts every
-string argument as content, so each call needs an approval until a later change lets a server's
-tools declare less. Every field of a result is outside content. Each valid call of a proxied tool
-ends with an unavailable result before the decision point, so it asks for no approval and queues no
-action, because the call path is not built yet.
+A tool joins the registry only when its pinned form has a declaration, as the next section says. A
+form without one stays hidden with the reason, and a call to it fails at the registry stage of the
+decision point.
+
+Before a task run reads its tool list, the registry asks each source to prepare the run's tools. The
+proxy lists the server of each named `<serverID>.<tool>`, unless that server's backoff is running. A
+failed listing leaves the pinned tools in place, and the preparation never rejects.
+
+## Effect declarations
+
+A tool's declaration comes from the annotations of its pinned form:
+
+| Annotations                                                        | Effects                   |
+| ------------------------------------------------------------------ | ------------------------- |
+| `readOnlyHint: true`                                               | `read`                    |
+| `readOnlyHint` false or missing, `destructiveHint: false`          | `write`, `send`           |
+| `readOnlyHint` false or missing, `destructiveHint` true or missing | `write`, `delete`, `send` |
+
+A missing hint takes the MCP standard's default, so a tool with no annotations declares the
+strictest effects and asks for an approval at each call until an allow rule covers it. A hint that
+is present and not a boolean leaves the tool with no declaration. Every string argument at any depth
+counts as content, no argument is a destination or an amount, and every result field is outside
+content, so its source is `untrusted`. A tool with a read effect runs direct, and a tool with any
+other effect is queued. The definitions repo holds no override for a proxied tool.
+
+## Calls and results
+
+Every call of a proxied tool passes the same steps as a call of any other tool, then reaches the
+server. Before the decision point the tool clears the call. A call reaches the server only when the
+server's newest listing passed and left the tool exposed, so a server cannot skip the hash check by
+failing its listing. A call that cannot go returns plain error text that names the server or the
+tool, and asks for no approval:
+
+- "tracker waits for your approval", for a server that is held;
+- "tracker needs you to sign in again", for a grant that needs consent;
+- "tracker.item_get changed and waits for your review", for a stopped tool;
+- "tracker is unreachable, next try 09:05", for a server whose newest listing failed.
+
+When the newest listing failed and its next try is due, the call lists the server itself before it
+runs. Each call opens one connection to the configured URL through the credential store's fetcher,
+with no redirect, and the MCP client runs with no sampling, roots, logging or input-request
+capability. An input request from a server ends the call as a failure.
+
+The result reads against the pinned form. A tool whose form has no output schema returns `{ text }`:
+the text blocks joined by a blank line, the image blocks as images, and a last line that counts the
+blocks the proxy drops. A tool with an output schema returns the server's structured content, which
+the registry checks against the pinned schema. A server's own error keeps its text and sets the
+call's error flag.
+
+Every field of a proxied result is `untrusted`, so the endpoint sends the whole result as one text
+block inside `tool-result` markers with a random fence, and sends no structured content. This holds
+for every direct tool whose result fields are all `untrusted`. A tool with trusted output keeps its
+structured content. Text that nixie writes itself, such as a refusal, carries no markers.
+
+An approved call of a queued tool reaches the action runners through the connector that
+`findConnector` answers for it. The connector clears the call again before it runs. A refusal or a
+server error settles the action as refused, and a call that fails after it left settles as
+ambiguous. A proxied tool has no idempotency key or check, so an ambiguous action comes to the user.
+
+## Health
+
+The proxy keeps one health state per server in memory, shared by every task run: the failed listings
+in a row, the next try, the last error and whether the newest listing passed. The last error is one
+of `refused`, `error`, `unparsable`, `timeout` or `unauthorised`. Failed listings back off from 1
+minute to 1 hour, doubling at each failure, and the proxy makes each try on that schedule. A task
+run that starts during the backoff skips the listing.
+
+After 3 failed listings in a row the server is unhealthy, and the proxy writes one
+`mcp.health_changed` record with the last error and the next try. The next passed listing writes one
+more, for the recovery. A start resets every state and writes a recovery record for each server
+whose last record said unhealthy. A grant that needs consent is not a failed listing: the proxy
+stops listing the server until the user signs in.
+
+## The model's view
+
+The `mcp.servers` tool lists every server that is not removed, with its state, its sign-in, its
+health and the count of its tools that are exposed, stopped and hidden. The conversation holds it
+beside the proxied tools, and the config load refuses `mcp` as a server ID.
+
+## Notices to the user
+
+A trusted server's change to a tool, and a tool that a listing drops, each write an `mcp.notice`
+record, which marks the `mcp` live topic. `mcp.readNotices` returns the newest notices to a
+signed-in client, and `nixie mcp notices` prints them for the host.
 
 ## Tests
 
