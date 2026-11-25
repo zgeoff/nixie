@@ -1,6 +1,7 @@
 import type { DefinitionsContext } from '@heynixie/definitions';
 import { createApprovalProcedures } from '../approval/create-approval-procedures';
 import { createComputerProcedures } from '../computer/create-computer-procedures';
+import { createConnectionProcedures } from '../connection/create-connection-procedures';
 import { createDefinitionProcedures } from '../definition/create-definition-procedures';
 import { createDeviceProcedures } from '../device/create-device-procedures';
 import { createSignOutProcedure } from '../device/create-sign-out-procedure';
@@ -41,6 +42,7 @@ export function createAPIRouter(
     approvals: createApprovalProcedures(context, { readMemory, runInForceSeed }),
     backups: createBackupProcedures(context),
     computer: createComputerProcedures(context),
+    connections: createConnectionProcedures(context),
     conversation: createConversationProcedures(context),
     definitions: { ...createDefinitionProcedures(context, readDefinitions), ...views.definitions },
     devices: createDeviceProcedures(context),

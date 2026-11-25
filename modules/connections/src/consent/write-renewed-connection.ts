@@ -1,0 +1,154 @@
+import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
+import { removeKey } from '../backend/mint-key';
+import { sealConnectionValues } from '../connection/open-connection-values';
+import { readConnectionRowByID } from '../connection/read-connection-rows';
+import { connectedCodec } from '../record/connected-codec';
+import type { ServiceContext } from '../service-context';
+import type { ConnectionRow, ConnectionTables } from '../types';
+import type { FinishedConsent } from './write-new-connection';
+
+// Moves the consent's token into the live connection that reaches the same account, and deletes the
+// consent's own credential. The connection advances its removal counter, so a refresh that began
+// before saves nothing. Answers `stale` when a forget took the connection first.
+export async function writeRenewedConnection(
+  context: ServiceContext,
+  finished: FinishedConsent,
+  targetID: string,
+): Promise<'written' | 'stale'> {
+  const target = await readConnectionRowByID(context.log, targetID);
+
+  if (target?.binding !== 'enabled') {
+    return 'stale';
+  }
+
+  const sealed = await sealConnectionValues(context.log, target, {
+    account: finished.account,
+    label: null,
+  });
+
+  if (sealed === null) {
+    return 'stale';
+  }
+
+  const written = await withWriteTransaction(context.log.writer, async (tx) => {
+    const tables = tx.$extendTables<ConnectionTables>();
+
+    const credential = await tables
+      .selectFrom('connections')
+      .selectAll()
+      .where('connection_id', '=', finished.credential.connection_id)
+      .executeTakeFirst();
+
+    const current = await tables
+      .selectFrom('connections')
+      .select(['binding', 'removal_counter', 'token_key_id', 'short_id'])
+      .where('connection_id', '=', targetID)
+      .executeTakeFirst();
+
+    if (
+      credential === undefined ||
+      credential.binding !== 'enabled' ||
+      credential.removal_counter !== finished.credential.removal_counter ||
+      current?.binding !== 'enabled' ||
+      current.removal_counter !== target.removal_counter
+    ) {
+      return null;
+    }
+
+    const counter = current.removal_counter + 1;
+
+    await tables
+      .updateTable('connections')
+      .set({
+        account_sealed: sealed.account,
+        token_key_id: credential.token_key_id,
+        refresh_token_sealed: credential.refresh_token_sealed,
+        status: 'active',
+        status_reason: null,
+        status_since: credential.status_since,
+        last_success_at: credential.last_success_at,
+        failures: 0,
+        retry_at: null,
+        removal_counter: counter,
+        granted_scopes: JSON.stringify(finished.scopes),
+        missing_scopes: JSON.stringify(finished.missing),
+        refresh_expires_at: finished.refreshExpiresAtMs,
+        token_fingerprint: finished.fingerprint,
+      })
+      .where('connection_id', '=', targetID)
+      .execute();
+
+    await tables
+      .deleteFrom('connections')
+      .where('connection_id', '=', credential.connection_id)
+      .execute();
+
+    await tables
+      .deleteFrom('consent_requests')
+      .where('consent_id', '=', finished.consentID)
+      .execute();
+
+    // the key of the token this one replaces, and the account key of the credential that is gone
+    const unnamed = [current.token_key_id, credential.key_id].filter((keyID) => keyID !== null);
+
+    for (const keyID of unnamed) {
+      await tables
+        .insertInto('key_marks')
+        .values({ key_id: keyID, marked_at: context.now() })
+        .onConflict((conflict) => conflict.doNothing())
+        .execute();
+    }
+
+    await writeRecordsInTransaction(tx, context.log, [
+      {
+        kind: connectedCodec.kind,
+        definitions: context.definitions(),
+        payload: connectedCodec.encode({
+          connection: targetID,
+          shortID: current.short_id,
+          scopes: [...finished.scopes],
+          missing: [...finished.missing],
+          fingerprint: finished.fingerprint,
+          again: true,
+        }),
+      },
+    ]);
+
+    return { counter, unnamed, credential };
+  });
+
+  if (written === null) {
+    return 'stale';
+  }
+
+  moveAccessToken(context, finished.credential, targetID, written.counter);
+
+  for (const keyID of written.unnamed) {
+    await removeKey(context.backend.shared, keyID);
+  }
+
+  return 'written';
+}
+
+// The access token that the exchange kept in memory follows the token to its connection, under the
+// new counter, so the first call after a consent needs no refresh.
+function moveAccessToken(
+  context: ServiceContext,
+  credential: ConnectionRow,
+  targetID: string,
+  counter: number,
+): void {
+  const tokens = context.backend.shared.accessTokens;
+  const from = `${credential.connection_id}:${String(credential.removal_counter)}`;
+  const kept = tokens.get(from);
+
+  for (const key of tokens.keys()) {
+    if (key.startsWith(`${targetID}:`) || key.startsWith(`${credential.connection_id}:`)) {
+      tokens.delete(key);
+    }
+  }
+
+  if (kept !== undefined) {
+    tokens.set(`${targetID}:${String(counter)}`, kept);
+  }
+}

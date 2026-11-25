@@ -270,7 +270,9 @@ test('it aborts a fetch in flight when a forget begins', async () => {
   });
 
   const fetching = Promise.allSettled([
-    ctx.held.store.fetcher(connection.token, [ctx.provider.origin])(`${ctx.provider.origin}/data`),
+    ctx.held.store.fetcher(connection.token, [ctx.provider.apiOrigin])(
+      `${ctx.provider.apiOrigin}/data`,
+    ),
   ]);
 
   await waitFor(() => {
@@ -497,7 +499,9 @@ test('it ends a fetch that waits on a refresh when a forget begins, before the p
   });
 
   const fetching = Promise.allSettled([
-    ctx.held.store.fetcher(connection.token, [ctx.provider.origin])(`${ctx.provider.origin}/data`),
+    ctx.held.store.fetcher(connection.token, [ctx.provider.apiOrigin])(
+      `${ctx.provider.apiOrigin}/data`,
+    ),
   ]);
 
   await waitFor(() => {

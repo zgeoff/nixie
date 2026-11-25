@@ -127,6 +127,9 @@ export interface CredentialStore {
 
   // At start: a refresh that sent and never saved a result marks its credential `needs_consent`.
   readonly recover: () => Promise<void>;
+
+  // The keyed fingerprint of a value, which shows a rotation without showing the value.
+  readonly readFingerprint: (value: string) => Promise<string>;
 }
 
 // What a part of the server takes to resolve a reference and to fetch or grant with the result.
@@ -423,6 +426,7 @@ export function createCredentialStore(options: CredentialStoreOptions): Credenti
     revoke: (binding) => requireHeld().revoke(toHandle(binding)),
     remove: (ref) => requireHeld().remove(ref.credentialID),
     recover: () => requireHeld().recover(),
+    readFingerprint: (value) => readFingerprint(value, options.secrets.fingerprintKey),
   };
 }
 

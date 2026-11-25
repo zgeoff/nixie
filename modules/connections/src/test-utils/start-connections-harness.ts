@@ -1,17 +1,25 @@
+import { createGoogleConnector } from '@heynixie/connectors';
 import type { FakeOAuthProvider, HeldConnection } from '@heynixie/credentials/test-utils';
 import {
   seedHeldConnection,
   startCredentialTestLog,
   startFakeOAuthProvider,
 } from '@heynixie/credentials/test-utils';
-import type { ErasureRunnerControl, KeyStoreTables, Log } from '@heynixie/log';
-import { makeErasureRunner } from '@heynixie/log';
+import type { ErasureRunnerControl, KeyStoreTables, Log, RecordKind } from '@heynixie/log';
+import { makeErasureRunner, readRecords } from '@heynixie/log';
 import { createFakeClock } from '@zgeoff/testing/clock';
+import type { FakeClock } from '@zgeoff/testing/clock';
 import type { Connections } from '../start-connections';
 import { startConnections } from '../start-connections';
 import type { DatabaseTestStore } from '../test-build/create-database-test-store';
 import { createDatabaseTestStore } from '../test-build/create-database-test-store';
-import type { BackendHooks, ClientRow, ConnectionRow, ConnectionTables } from '../types';
+import type {
+  BackendHooks,
+  ClientRow,
+  ConnectionRow,
+  ConnectionTables,
+  ConsentRow,
+} from '../types';
 import type { HarnessEffects } from './build-harness-effects';
 import { buildHarnessEffects } from './build-harness-effects';
 
@@ -22,6 +30,9 @@ type MutableHooks = {
 export interface ConnectionsHarnessOptions {
   // how long a request to the provider's token endpoint may take, in ms
   readonly tokenRequestTimeoutMs?: number;
+
+  // how long a consent waits for the Forget of its account, in ms; 200 by default
+  readonly forgetWaitMs?: number;
 }
 
 export interface ConnectionsHarness {
@@ -34,7 +45,7 @@ export interface ConnectionsHarness {
   readonly runner: ErasureRunnerControl;
   readonly effects: HarnessEffects;
   readonly connections: Connections;
-  readonly clock: { readonly now: () => number };
+  readonly clock: FakeClock;
 
   // Connects an OAuth client and one connection, as a consent does. The token is
   // fake-access-token-1 and the refresh token fake-refresh-token-1.
@@ -45,6 +56,18 @@ export interface ConnectionsHarness {
 
   // the stored row of a connection, which a test reads to see what a forget left in it
   readonly readRow: (connectionID: string) => Promise<ConnectionRow | null>;
+
+  // the IDs of the stored OAuth clients, in the order they were made
+  readonly readClientIDs: () => Promise<string[]>;
+
+  // the payload of each record of a kind
+  readonly readRecordPayloads: (kind: RecordKind) => Promise<readonly Record<string, unknown>[]>;
+
+  // every stored consent request
+  readonly readConsentRows: () => Promise<ConsentRow[]>;
+
+  // every stored connection row, in the order they were made
+  readonly readRows: () => Promise<ConnectionRow[]>;
 
   // the stored row of an OAuth client, which a test reads to see how its secret is sealed
   readonly readClientRow: (clientID: string) => Promise<ClientRow | null>;
@@ -58,7 +81,16 @@ export interface ConnectionsHarness {
 export async function startConnectionsHarness(
   options: ConnectionsHarnessOptions = {},
 ): Promise<ConnectionsHarness> {
-  const provider = await startFakeOAuthProvider();
+  const provider = await startFakeOAuthProvider({ otherNames: ['accounts.test'] });
+
+  const connector = createGoogleConnector({
+    authorizeURL: `${provider.origin.replace('auth.test', 'accounts.test')}/o/oauth2/v2/auth`,
+    tokenURL: provider.tokenURL,
+    revokeURL: provider.revokeURL,
+    issuer: 'https://issuer.example',
+    gmailOrigin: provider.apiOrigin,
+    apisOrigin: provider.apiOrigin,
+  });
 
   const clock = createFakeClock({ startMs: Date.parse('2026-11-20T09:00:00Z') });
 
@@ -98,12 +130,9 @@ export async function startConnectionsHarness(
     backend: held.backend,
     erasure: runner,
     now: () => clock.now(),
-    endpoints: {
-      tokenURL: provider.tokenURL,
-      revokeURL: provider.revokeURL,
-      issuer: 'https://issuer.example',
-      origins: [provider.origin],
-    },
+    connector,
+    forgetWaitMs: options.forgetWaitMs ?? 200,
+    forgetPollMs: 20,
   });
 
   return {
@@ -135,6 +164,35 @@ export async function startConnectionsHarness(
 
       return row ?? null;
     },
+    readClientIDs: async () => {
+      const rows = await testLog.log.writer.db
+        .$extendTables<ConnectionTables>()
+        .selectFrom('oauth_clients')
+        .select('oauth_client_id')
+        .orderBy('created_at')
+        .execute();
+
+      return rows.map((row) => row.oauth_client_id);
+    },
+    readRecordPayloads: async (kind) => {
+      const records = await readRecords(testLog.log, { afterSequence: 0, kinds: [kind] });
+
+      return records.map((entry) => entry.record.payload);
+    },
+    readConsentRows: () =>
+      testLog.log.writer.db
+        .$extendTables<ConnectionTables>()
+        .selectFrom('consent_requests')
+        .selectAll()
+        .orderBy('created_at')
+        .execute(),
+    readRows: () =>
+      testLog.log.writer.db
+        .$extendTables<ConnectionTables>()
+        .selectFrom('connections')
+        .selectAll()
+        .orderBy('created_at')
+        .execute(),
     readClientRow: async (clientID) => {
       const row = await testLog.log.writer.db
         .$extendTables<ConnectionTables>()

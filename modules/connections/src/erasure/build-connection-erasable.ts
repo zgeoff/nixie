@@ -31,6 +31,7 @@ export function buildConnectionErasable(
           .updateTable('connections')
           .set({
             account_sealed: null,
+            label_sealed: null,
             refresh_token_sealed: null,
             token_key_id: null,
             binding: 'removed',

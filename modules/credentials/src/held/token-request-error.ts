@@ -16,10 +16,14 @@ export type TokenRequestErrorCode =
 export class TokenRequestError extends CredentialRefusalError {
   public readonly code: TokenRequestErrorCode;
 
-  public constructor(code: TokenRequestErrorCode) {
+  // the provider's error code, from the fixed set a refusal for good names; null otherwise
+  public readonly providerError: string | null;
+
+  public constructor(code: TokenRequestErrorCode, providerError: string | null = null) {
     super(`the token request failed: ${code}`);
 
     this.name = 'TokenRequestError';
     this.code = code;
+    this.providerError = providerError;
   }
 }

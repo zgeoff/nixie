@@ -13,7 +13,7 @@ function setupTest() {
     recorder,
   });
 
-  return { slot: createHeldSlot(), buildWiring };
+  return { slot: createHeldSlot<ReturnType<typeof buildWiring>>(), buildWiring };
 }
 
 test('it gives back the wiring that the connections part bound', () => {
