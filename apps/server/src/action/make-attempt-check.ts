@@ -111,13 +111,6 @@ async function decideRunnerAction(
     sources: [...runnerFrame.sources],
     args: input.arguments,
     destinations,
-
-    // An end hook fills each destination from its own task's state, such as the session a coding
-    // task binds, with no model call behind it, so each is an allowed destination of that task. A
-    // step's action follows a model's choice of task, so it meets the destination limits.
-    taskDestinations: input.action.step_key.startsWith('ended:')
-      ? destinations.map((destination) => destination.value)
-      : [],
     at: options.clock.now(),
     turnMessageSequence: null,
     onBehalfOf: [],

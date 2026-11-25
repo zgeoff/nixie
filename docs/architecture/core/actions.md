@@ -98,12 +98,8 @@ under the step key it came from, so a step that runs again queues nothing new.
 A runner action names what caused it: a tool call, or a record on the task's thread, such as the
 message that a note carries. No model call names the action's tool, so the decision point decides
 each attempt under the declaration of the action's own tool, with the task as the caller and its
-sources as `task`. An end hook fills each destination of its action from its own task's state, such
-as the session that a coding task binds, with no model call behind it, so each such destination gets
-the `task` permission at stage 5. The ask and allow rules then decide the attempt. A step's action
-comes from a model's choice of task, so the destination limits apply to its destinations as they do
-to a call's. A proposal for such an action points at the record that caused it, in place of a tool
-call.
+sources as `task`. The destination limits apply to its destinations as they do to a call's. A
+proposal for such an action points at the record that caused it, in place of a tool call.
 
 ## Deadlines
 

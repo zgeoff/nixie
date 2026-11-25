@@ -82,10 +82,6 @@ export interface PolicyCall {
   // names. A call without it takes the effects in force alone.
   readonly effects?: readonly Effect[];
 
-  // The allowed destinations of a task with no definition, such as the session that a coding task
-  // binds, which stage 5 counts beside its definition's.
-  readonly taskDestinations?: readonly string[];
-
   // the sequence of the owner_message that started this turn; null in a task run
   readonly turnMessageSequence: number | null;
 

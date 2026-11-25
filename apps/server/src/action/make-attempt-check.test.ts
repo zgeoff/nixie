@@ -357,11 +357,23 @@ test('it decides a runner action under its own tool with the task as caller, and
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
 
-  ctx.rules.push({
-    id: 'ask-stop-sessions',
-    revision: 1,
-    rule: { id: 'ask-stop-sessions', outcome: 'ask', tools: ['coding.stop'] },
-  });
+  ctx.rules.push(
+    {
+      id: 'allow-stop-destinations',
+      revision: 1,
+      rule: {
+        id: 'allow-stop-destinations',
+        outcome: 'allow',
+        tools: ['coding.stop'],
+        destinations: ['atc:*'],
+      },
+    },
+    {
+      id: 'ask-stop-sessions',
+      revision: 1,
+      rule: { id: 'ask-stop-sessions', outcome: 'ask', tools: ['coding.stop'] },
+    },
+  );
 
   const cause = await ctx.readNewestSequence(step.lease.workID);
 
