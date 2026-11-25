@@ -134,3 +134,20 @@ test('it queues a layout of 2 regions that keeps the note, and fills the new one
     ],
   ]);
 });
+
+test('it queues a preview of the listed device', () => {
+  const body = {
+    messages: [{ role: 'user', content: '{"result":{"devices":[{"shortID":"dk4m7q2w9x"}]}}' }],
+  };
+
+  const calls = buildLayoutReplies('preview').map((reply) => {
+    const input = reply.toolUse.input;
+
+    return [reply.toolUse.name, typeof input === 'function' ? input(body) : input];
+  });
+
+  expect(calls).toStrictEqual([
+    ['mcp__nixie__devices_list', {}],
+    ['mcp__nixie__device_preview', { device: 'dk4m7q2w9x' }],
+  ]);
+});

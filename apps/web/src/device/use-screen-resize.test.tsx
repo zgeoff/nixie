@@ -28,9 +28,12 @@ function setupTest() {
       globalThis.dispatchEvent(new Event('resize'));
     },
     readResizes: () =>
-      deviceStore.resizes
-        .findMany()
-        .map((row) => ({ width: row.width, height: row.height, pixelRatio: row.pixelRatio })),
+      deviceStore.resizes.findMany().map((row) => ({
+        width: row.width,
+        height: row.height,
+        pixelRatio: row.pixelRatio,
+        timeZone: row.timeZone,
+      })),
   };
 }
 
@@ -57,6 +60,7 @@ test('it sends one resize with the latest size after a burst of resize events', 
       width: Math.round(710 * globalThis.devicePixelRatio),
       height: Math.round(510 * globalThis.devicePixelRatio),
       pixelRatio: globalThis.devicePixelRatio,
+      timeZone: new Intl.DateTimeFormat().resolvedOptions().timeZone,
     },
   ]);
 });
@@ -80,7 +84,9 @@ test('it sends the size again when a reconnect left the server with another size
     expect(ctx.readResizes()).toHaveLength(1);
   });
 
-  expect(ctx.readResizes()).toStrictEqual([readScreenPixels()]);
+  expect(ctx.readResizes()).toStrictEqual([
+    { ...readScreenPixels(), timeZone: expect.toBeString() },
+  ]);
 });
 
 test('it sends the size again on the next resize event after a failed resize', async () => {

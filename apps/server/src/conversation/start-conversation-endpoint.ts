@@ -1,6 +1,11 @@
 import { join } from 'node:path';
 import type { ErasureStuckPort } from '@heynixie/api';
-import type { ImageProvider, ImagesConfig, SearchProvider } from '@heynixie/connectors';
+import type {
+  ImageProvider,
+  ImagesConfig,
+  RenderSandbox,
+  SearchProvider,
+} from '@heynixie/connectors';
 import {
   buildImageTools,
   buildSearchTool,
@@ -77,6 +82,9 @@ interface ConversationImages {
 export interface ConversationEndpointTools {
   readonly webFetch: ToolDefinition;
   readonly computer: readonly ToolDefinition[];
+
+  // null when the sandbox manifest holds no render image, so a preview has no picture
+  readonly render: RenderSandbox | null;
 
   // the tools on coding sessions, none without a coding runner
   readonly coding: readonly ToolDefinition[];
@@ -274,6 +282,14 @@ export async function startConversationEndpoint(
     definitions: options.context.definitions,
     clock: options.context.clock,
     streams: tools.deviceStreams,
+    ...(tools.render === null
+      ? {}
+      : {
+          preview: {
+            draw: tools.render.draw,
+            timeZone: options.config.time.default_zone,
+          },
+        }),
   });
 
   const worker = tools.worker === null ? [] : [tools.worker.buildTool(bounds)];

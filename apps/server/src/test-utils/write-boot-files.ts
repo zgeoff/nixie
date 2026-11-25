@@ -152,6 +152,7 @@ async function writeManifest(path: string): Promise<void> {
     code: `ghcr.io/example/nixie-code@sha256:${'d'.repeat(64)}`,
     codex: `ghcr.io/example/nixie-codex@sha256:${'e'.repeat(64)}`,
     computer: `ghcr.io/example/nixie-computer@sha256:${'a'.repeat(64)}`,
+    render: `ghcr.io/example/nixie-render@sha256:${'b'.repeat(64)}`,
   };
 
   await writeFile(path, JSON.stringify(manifest));

@@ -124,6 +124,14 @@ jobs:
           COMPUTER: ${{ env.REGISTRY }}/nixie-computer@${{ steps.computer.outputs.digest }}
         run: bun run --silent ci:images:check-computer-image
 
+      - name: Build the render image
+        id: render
+        uses: ./.github/actions/build-image
+        with:
+          repository: ${{ env.REGISTRY }}/nixie-render
+          dockerfile: guests/render/Dockerfile
+          cache-scope: render
+
       - name: Build the codex image
         id: codex
         uses: ./.github/actions/build-image
@@ -213,6 +221,11 @@ jobs:
         env:
           IMAGE: ${{ env.REGISTRY }}/nixie-computer@${{ steps.computer.outputs.digest }}
         run: bun run --silent ci:images:check-image-size computer
+
+      - name: Check the render image size
+        env:
+          IMAGE: ${{ env.REGISTRY }}/nixie-render@${{ steps.render.outputs.digest }}
+        run: bun run --silent ci:images:check-image-size render
 
       - name: Check the codex image size
         env:

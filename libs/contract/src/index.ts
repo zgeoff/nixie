@@ -56,7 +56,7 @@ export type {
 } from './types';
 
 export type { DeviceEvent } from './contract/devices-contract';
-export { deviceEventSchema } from './contract/devices-contract';
+export { deviceEventSchema, pageErrorMessageLimit } from './contract/devices-contract';
 export type { RegionBackground } from './contract/region-background-schema';
 
 export {

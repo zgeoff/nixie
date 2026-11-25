@@ -1,4 +1,7 @@
 import { expect, test } from 'bun:test';
+import { waitFor } from '@testing-library/react';
+import { deviceStore } from '../mocks/device-store';
+import { missingImage } from '../mocks/mock-device-procedures';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { render } from '../test-utils/render';
 import { LayoutView } from './layout-view';
@@ -18,6 +21,7 @@ test('it places each region in its columns and rows', () => {
             rowSpan: 2,
             background: null,
             content: { kind: 'markdown', markdown: 'ripples' },
+            shown: null,
             until: null,
           },
           {
@@ -28,6 +32,7 @@ test('it places each region in its columns and rows', () => {
             rowSpan: 1,
             background: null,
             content: { kind: 'markdown', markdown: 'Bins go out tonight' },
+            shown: null,
             until: null,
           },
         ],
@@ -67,6 +72,7 @@ test('it renders markdown in a region like a reply', () => {
             rowSpan: 1,
             background: null,
             content: { kind: 'markdown', markdown: '# Bins go out tonight' },
+            shown: null,
             until: null,
           },
         ],
@@ -92,6 +98,7 @@ test('it draws nothing in a blank region', () => {
             rowSpan: 1,
             background: null,
             content: null,
+            shown: null,
             until: null,
           },
         ],
@@ -123,6 +130,7 @@ test.each(['whole', 'fill'] as const)(
               rowSpan: 1,
               background: null,
               content: { kind: 'image', image: 'k3x9m2p7qa', fit },
+              shown: null,
               until: null,
             },
           ],
@@ -153,6 +161,7 @@ test('it leaves the image of one region in place when another region updates', a
             rowSpan: 1,
             background: null,
             content: { kind: 'image', image: 'k3x9m2p7qa', fit: 'whole' },
+            shown: null,
             until: null,
           },
           {
@@ -163,6 +172,7 @@ test('it leaves the image of one region in place when another region updates', a
             rowSpan: 1,
             background: null,
             content: { kind: 'markdown', markdown: 'first' },
+            shown: null,
             until: null,
           },
         ],
@@ -186,6 +196,7 @@ test('it leaves the image of one region in place when another region updates', a
             rowSpan: 1,
             background: null,
             content: { kind: 'image', image: 'k3x9m2p7qa', fit: 'whole' },
+            shown: null,
             until: null,
           },
           {
@@ -196,6 +207,7 @@ test('it leaves the image of one region in place when another region updates', a
             rowSpan: 1,
             background: null,
             content: { kind: 'markdown', markdown: 'second' },
+            shown: null,
             until: null,
           },
         ],
@@ -205,4 +217,82 @@ test('it leaves the image of one region in place when another region updates', a
 
   expect(rendered.getByRole('img')).toBe(before);
   expect(rendered.getByText('second')).toBeVisible();
+});
+
+test('it reports to the server the error of an image that a region cannot read', async () => {
+  await createDeviceSession();
+
+  render(
+    <LayoutView
+      layout={{
+        columns: ['1fr'],
+        rows: ['1fr'],
+        regions: [
+          {
+            name: 'pond',
+            column: 1,
+            row: 1,
+            columnSpan: 1,
+            rowSpan: 1,
+            background: null,
+            content: { kind: 'image', image: missingImage, fit: 'whole' },
+            shown: 'sh3k7m2q9x',
+            until: null,
+          },
+        ],
+      }}
+    />,
+  );
+
+  await waitFor(() => {
+    expect(
+      deviceStore.pageErrors.findMany().map((error) => [error.region, error.shown]),
+    ).toStrictEqual([['pond', 'sh3k7m2q9x']]);
+  });
+});
+
+test('it reports again for a replacement image that fails with the same reason', async () => {
+  await createDeviceSession();
+
+  const first = {
+    columns: ['1fr'],
+    rows: ['1fr'],
+    regions: [
+      {
+        name: 'pond',
+        column: 1,
+        row: 1,
+        columnSpan: 1,
+        rowSpan: 1,
+        background: null,
+        content: { kind: 'image' as const, image: missingImage, fit: 'whole' as const },
+        shown: 'sh3k7m2q9x',
+        until: null,
+      },
+    ],
+  };
+
+  const replaced = {
+    ...first,
+    regions: first.regions.map((region) => ({
+      ...region,
+      content: { kind: 'image' as const, image: `${missingImage}-2`, fit: 'whole' as const },
+      shown: 'sh8d4n6w1z',
+    })),
+  };
+
+  const rendered = render(<LayoutView layout={first} />);
+
+  await waitFor(() => {
+    expect(deviceStore.pageErrors.findMany()).toHaveLength(1);
+  });
+
+  rendered.rerender(<LayoutView layout={replaced} />);
+
+  await waitFor(() => {
+    expect(deviceStore.pageErrors.findMany().map((error) => error.shown)).toStrictEqual([
+      'sh3k7m2q9x',
+      'sh8d4n6w1z',
+    ]);
+  });
 });

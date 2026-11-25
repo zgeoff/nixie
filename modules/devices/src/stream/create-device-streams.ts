@@ -1,5 +1,7 @@
 import type { Clock } from '@heynixie/clock';
 import type { ScreenPixels } from '../types';
+import type { PageErrors } from './create-page-errors';
+import { createPageErrors } from './create-page-errors';
 
 // How long a device keeps its online state after its last stream closes, so a reconnect never
 // reads as offline.
@@ -30,6 +32,9 @@ export interface DeviceStreams {
 
   // gives every open stream of the device a new size, and does nothing while it is offline
   readonly resize: (deviceID: string, pixels: ScreenPixels) => void;
+
+  // the last errors that each device's regions reported
+  readonly errors: PageErrors;
 
   // calls back on each change of a device to online or offline
   readonly subscribeToStatus: (onChange: (change: DeviceStatusChange) => void) => () => void;
@@ -115,6 +120,7 @@ export function createDeviceStreams(options: DeviceStreamsOptions): DeviceStream
   };
 
   return {
+    errors: createPageErrors(),
     open: (deviceID, pixels) => {
       const held = hold(deviceID);
       const stream: HeldStream = { pixels };

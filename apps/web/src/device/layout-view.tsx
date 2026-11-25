@@ -7,6 +7,7 @@ import { FitBox } from './fit-box';
 import { LiveValue } from './live-value';
 import { pickRegionTextColour } from './pick-region-text-colour';
 import type { DeviceLayout } from './use-device-events';
+import { useReportRegionError } from './use-report-region-error';
 
 export interface LayoutViewProps {
   readonly layout: NonNullable<DeviceLayout>;
@@ -28,6 +29,7 @@ const cell = css({ minHeight: '0', minWidth: '0', overflow: 'hidden', position: 
 // one region leaves the others as they are, and a blank region draws nothing.
 export function LayoutView(props: LayoutViewProps): ReactNode {
   const layout = props.layout;
+  const report = useReportRegionError();
 
   return (
     <div
@@ -54,7 +56,16 @@ export function LayoutView(props: LayoutViewProps): ReactNode {
             gridRow: `${String(region.row)} / span ${String(region.rowSpan)}`,
           }}
         >
-          {region.content === null ? null : <RegionBody content={region.content} />}
+          {region.content === null ? null : (
+            <RegionBody
+              content={region.content}
+              onFail={(message) => {
+                if (region.shown !== null) {
+                  report({ region: region.name, shown: region.shown, message });
+                }
+              }}
+            />
+          )}
         </div>
       ))}
     </div>
@@ -68,6 +79,7 @@ function toTrack(track: string): string {
 
 interface RegionBodyProps {
   readonly content: RegionContent;
+  readonly onFail: (message: string) => void;
 }
 
 // the padding scales with the text, so a small region keeps room for its text
@@ -90,7 +102,7 @@ function RegionBody(props: RegionBodyProps): ReactNode {
   }
 
   if (content.kind === 'image') {
-    return <DeviceImage fit={content.fit} image={content.image} />;
+    return <DeviceImage fit={content.fit} image={content.image} onFail={props.onFail} />;
   }
 
   return <LiveValue content={content} />;

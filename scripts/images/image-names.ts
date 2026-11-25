@@ -4,6 +4,7 @@ export const imageNames = [
   'fetch',
   'code',
   'computer',
+  'render',
   'codex',
   'backup',
   'web',

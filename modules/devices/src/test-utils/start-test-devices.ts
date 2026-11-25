@@ -5,6 +5,7 @@ import { readDeviceByIdentity } from '../device/read-device-by-identity';
 import { readLayout } from '../layout/read-layout';
 import type { OpenDeviceStream } from '../stream/create-device-streams';
 import { createDeviceStreams, deviceOfflineGraceMs } from '../stream/create-device-streams';
+import type { DevicePreviewOptions } from '../tool/device-tool-options';
 import { forgetTestRecord } from './forget-test-record';
 import { makeDeviceToolCaller } from './make-device-tool-caller';
 import { makeDeviceToolPreparer } from './make-device-tool-preparer';
@@ -16,15 +17,21 @@ import { seedLayout } from './seed-layout';
 import { seedScreenOnDevice } from './seed-screen-on-device';
 import { startTestLog } from './start-test-log';
 
+export interface StartTestDevicesOptions {
+  // the render of the preview tool; absent leaves the tool with no render sandbox
+  readonly preview?: DevicePreviewOptions;
+}
+
 // Starts a log with the device tools over it, so a test calls a tool and reads what the log and the
 // streams hold after it.
-export async function startTestDevices() {
+export async function startTestDevices(options: StartTestDevicesOptions = {}) {
   const clock = createFakeClock({ startMs: Date.parse('2026-11-21T08:00:00.000Z') });
 
   const log = await startTestLog(clock);
 
   const streams = createDeviceStreams({ clock });
   const deps = { log, clock };
+  const preview = options.preview === undefined ? {} : { preview: options.preview };
 
   return {
     log,
@@ -69,8 +76,8 @@ export async function startTestDevices() {
       };
     },
     readDevice: (identityID: string) => readDeviceByIdentity(log.writer.db, identityID),
-    call: makeDeviceToolCaller({ log, definitions, clock, streams }),
-    prepare: makeDeviceToolPreparer({ log, definitions, clock, streams }),
+    call: makeDeviceToolCaller({ log, definitions, clock, streams, ...preview }),
+    prepare: makeDeviceToolPreparer({ log, definitions, clock, streams, ...preview }),
   };
 }
 

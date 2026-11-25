@@ -1,0 +1,13 @@
+{
+  "name": "@heynixie/render",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsrs --fast --noEmit"
+  },
+  "dependencies": {
+    "@heynixie/wire": "workspace:*",
+    "playwright-core": "catalog:"
+  }
+}
