@@ -29,9 +29,10 @@ async function setupTest() {
   };
 }
 
-test('it lists the 2 projections by their tables', () => {
+test('it lists the 3 projections by their tables', () => {
   expect(spendProjections.map((projection) => projection.table)).toStrictEqual([
     'spend_raises',
+    'spend_route_raises',
     'spend_turns',
   ]);
 });
@@ -65,8 +66,40 @@ test('it keeps the later raise of a day in place of the earlier one', async () =
 
   const rows = await ctx.readRows('spend_raises');
 
-  expect(rows).toMatchObject([
-    { start: '2026-10-16', dollars: 100, tokens: 130_000_000, turns: 3000, raised_by: 'host' },
+  expect(rows).toMatchObject([{ start: '2026-10-16', turns: 3000, raised_by: 'host' }]);
+});
+
+test('it keeps the latest raise of a route in one row and leaves the turns alone', async () => {
+  const ctx = await setupTest();
+
+  await ctx.writeRecord({
+    kind: 'spend.limit_raised',
+    definitions: ctx.definitions,
+    payload: spendLimitRaisedCodec.encode({
+      start: '2026-10-16',
+      route: 'plan',
+      dollars: 50,
+      by: 'session-a',
+    }),
+  });
+
+  await ctx.writeRecord({
+    kind: 'spend.limit_raised',
+    definitions: ctx.definitions,
+    payload: spendLimitRaisedCodec.encode({
+      start: '2026-10-17',
+      route: 'plan',
+      dollars: 60,
+      by: 'session-a',
+    }),
+  });
+
+  const routes = await ctx.readRows('spend_route_raises');
+  const turns = await ctx.readRows('spend_raises');
+
+  expect([routes, turns]).toMatchObject([
+    [{ route_id: 'plan', start: '2026-10-17', dollars: 60 }],
+    [],
   ]);
 });
 

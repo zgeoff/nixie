@@ -2,39 +2,43 @@ import { rename } from 'node:fs/promises';
 import type { Logger } from '@heynixie/logger';
 import type {
   Measures,
-  Override,
+  Overrides,
   PeriodChange,
   PeriodRead,
   PeriodStore,
   PeriodStoreHandle,
+  Refusal,
 } from '../types';
-import { buildFreshStore } from './build-fresh-store';
+import { buildEmptyRoute, buildFreshStore } from './build-fresh-store';
 import { buildResetStore } from './build-reset-store';
 import { buildTrippedStore } from './build-tripped-store';
-import { getLocalDate } from './get-local-date';
+import type { RouteLimitsByID } from './collect-trips';
 import { parsePeriodStore } from './parse-period-store';
 import { parseStartStore } from './parse-start-store';
+import { toMicros } from './to-micros';
 
 export interface PeriodStoreOptions {
   readonly path: string;
   readonly zone: string;
+
+  // the limits of each configured route, which the store stamps a trip against
+  readonly limits: RouteLimitsByID;
   readonly now: () => number;
-  readonly readOverride: () => Promise<Override | null>;
+  readonly readOverrides: () => Promise<Overrides>;
   readonly log: Logger;
 }
 
 export async function createPeriodStore(options: PeriodStoreOptions): Promise<PeriodStoreHandle> {
   const path = options.path;
+  const routeIDs = Object.keys(options.limits);
 
   const exists = await Bun.file(path).exists();
-
-  const today = getLocalDate(options.now(), options.zone);
 
   if (exists) {
     const stored: unknown = await Bun.file(path).json();
 
-    // the count of a limits config moves to the periods form in one write; any other shape throws
-    const start = parseStartStore(stored, today);
+    // the count of an earlier store moves to the route form in one write; any other shape throws
+    const start = parseStartStore(stored, options.now(), options.zone, routeIDs);
 
     if (start.kind === 'moved') {
       await writeStore(path, start.store);
@@ -42,7 +46,7 @@ export async function createPeriodStore(options: PeriodStoreOptions): Promise<Pe
       options.log('store.moved', { ...start.old, lost: start.store.lost }, 'warn');
     }
   } else {
-    await writeStore(path, buildFreshStore(today));
+    await writeStore(path, buildFreshStore(options.now(), options.zone, routeIDs));
   }
 
   // one change at a time, so two replies that end together never write over each other's count,
@@ -64,18 +68,33 @@ export async function createPeriodStore(options: PeriodStoreOptions): Promise<Pe
     }
   };
 
-  // the reset reaches the file before any caller sees it, so a read after midnight needs no reply
-  const readReset = async (): Promise<{ store: PeriodStore; didReset: boolean }> => {
+  // the reset reaches the file before any caller sees it, so a read after midnight needs no reply.
+  // A route that the config gained since the last write starts at zero.
+  const readReset = async (): Promise<{ store: PeriodStore; didChange: boolean }> => {
     const stored = await readStore(path);
 
-    const currentDay = getLocalDate(options.now(), options.zone);
-    const store = buildResetStore(stored, currentDay);
+    const added = routeIDs.filter((id) => !Object.hasOwn(stored.routes, id));
 
-    return { store, didReset: store !== stored };
+    const complete =
+      added.length === 0
+        ? stored
+        : {
+            ...stored,
+            routes: {
+              ...stored.routes,
+              ...Object.fromEntries(
+                added.map((id) => [id, buildEmptyRoute(options.now(), options.zone)]),
+              ),
+            },
+          };
+
+    const store = buildResetStore(complete, options.now(), options.zone);
+
+    return { store, didChange: store !== stored };
   };
 
-  // each change also stamps the instant a period first reaches its limit in force, so a later read
-  // reports when the limit was reached rather than when it was read
+  // each change also stamps the instant a route period first reaches its limit in force, so a later
+  // read reports when the limit was reached rather than when it was read
   const changeAndRead = <T>(
     decide: (store: PeriodStore) => PeriodChange<T>,
   ): Promise<{ result: T; read: PeriodRead }> =>
@@ -85,17 +104,17 @@ export async function createPeriodStore(options: PeriodStoreOptions): Promise<Pe
       const decided = decide(read.store);
       const decidedStore = decided.store ?? read.store;
 
-      const override = await options.readOverride();
+      const overrides = await options.readOverrides();
 
       const at = new Date(options.now()).toISOString();
 
-      const next = buildTrippedStore(decidedStore, override, at);
+      const next = buildTrippedStore(decidedStore, options.limits, overrides, at);
 
-      if (decided.store !== null || read.didReset || next !== decidedStore) {
+      if (decided.store !== null || read.didChange || next !== decidedStore) {
         await writeStore(path, next);
       }
 
-      return { result: decided.result, read: { store: next, override } };
+      return { result: decided.result, read: { store: next, overrides } };
     });
 
   const change = async <T>(decide: (store: PeriodStore) => PeriodChange<T>): Promise<T> => {
@@ -116,13 +135,37 @@ export async function createPeriodStore(options: PeriodStoreOptions): Promise<Pe
     return held.store;
   };
 
-  const addSpend = async (sandbox: string | null, spend: Measures): Promise<PeriodRead> => {
+  const addSpend = async (
+    route: string,
+    sandbox: string | null,
+    spend: Measures,
+  ): Promise<PeriodRead> => {
     const changed = await changeAndRead((store) => ({
-      store: buildSpentStore(store, sandbox, spend),
+      store: buildSpentStore(store, route, sandbox, spend),
       result: undefined,
     }));
 
     return changed.read;
+  };
+
+  const writeRefusal = async (sandbox: string, refusal: Refusal): Promise<void> => {
+    await change((store) => {
+      if (!Object.hasOwn(store.sandboxes, sandbox)) {
+        return { store: null, result: undefined };
+      }
+
+      const held = store.sandboxes[sandbox];
+
+      return held === undefined
+        ? { store: null, result: undefined }
+        : {
+            store: {
+              ...store,
+              sandboxes: { ...store.sandboxes, [sandbox]: { ...held, lastRefusal: refusal } },
+            },
+            result: undefined,
+          };
+    });
   };
 
   const markLost = (): Promise<void> =>
@@ -138,7 +181,7 @@ export async function createPeriodStore(options: PeriodStoreOptions): Promise<Pe
     } while (awaited !== tail);
   };
 
-  return { read, readInForce, change, addSpend, markLost, settle };
+  return { read, readInForce, change, addSpend, writeRefusal, markLost, settle };
 }
 
 // a crash between the write and the rename leaves the last whole store in place; the file holds the
@@ -159,25 +202,35 @@ async function readStore(path: string): Promise<PeriodStore> {
   return parsePeriodStore(stored);
 }
 
-function buildSpentStore(store: PeriodStore, sandbox: string | null, spend: Measures): PeriodStore {
+function buildSpentStore(
+  store: PeriodStore,
+  route: string,
+  sandbox: string | null,
+  spend: Measures,
+): PeriodStore {
   const held =
     sandbox !== null && Object.hasOwn(store.sandboxes, sandbox)
       ? store.sandboxes[sandbox]
       : undefined;
 
-  const day = store.periods.day;
-  const month = store.periods.month;
+  const periods = Object.hasOwn(store.routes, route) ? store.routes[route] : undefined;
+  const micros = toMicros(spend.dollars);
 
   return {
     ...store,
-    periods: {
-      day: { ...day, dollars: day.dollars + spend.dollars, tokens: day.tokens + spend.tokens },
-      month: {
-        ...month,
-        dollars: month.dollars + spend.dollars,
-        tokens: month.tokens + spend.tokens,
-      },
-    },
+    routes:
+      periods === undefined
+        ? store.routes
+        : {
+            ...store.routes,
+            [route]: {
+              day: { ...periods.day, micros: periods.day.micros + micros },
+              month: {
+                ...periods.month,
+                micros: periods.month.micros + micros,
+              },
+            },
+          },
     sandboxes:
       sandbox === null || held === undefined
         ? store.sandboxes
@@ -185,7 +238,7 @@ function buildSpentStore(store: PeriodStore, sandbox: string | null, spend: Meas
             ...store.sandboxes,
             [sandbox]: {
               ...held,
-              dollars: held.dollars + spend.dollars,
+              micros: held.micros + micros,
               tokens: held.tokens + spend.tokens,
             },
           },

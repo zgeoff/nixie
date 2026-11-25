@@ -30,30 +30,20 @@ test('it lifts the turns above the day turn cap and clears a turn stop', async (
   const paused = await withWriteTransaction(ctx.writer, (tx) => readPause(tx));
   const stored = await readSpendRaise(ctx.writer.db, '2026-10-16');
 
-  expect(raised).toStrictEqual({ start: '2026-10-16', dollars: 60, tokens: 80_000_000, turns: 9 });
+  expect(raised).toStrictEqual({ start: '2026-10-16', turns: 9 });
   expect([row, paused]).toStrictEqual([null, null]);
-  expect(stored).toStrictEqual({ dollars: 60, tokens: 80_000_000, turns: 9, by: 'host' });
+  expect(stored).toStrictEqual({ turns: 9, by: 'host' });
 });
 
-test('it keeps the dollars and the tokens that an earlier raise set', async () => {
+test('it keeps the larger turns when a later raise holds fewer', async () => {
   const ctx = await setupTest();
 
-  await ctx.raise(4);
   await ctx.raise(9);
+  await ctx.raise(4);
 
   const stored = await readSpendRaise(ctx.writer.db, '2026-10-16');
 
-  expect(stored).toMatchObject({ dollars: 60, tokens: 80_000_000, turns: 9 });
-});
-
-test('it writes zero dollars and tokens when the gateway gives no limit', async () => {
-  const ctx = await setupTest();
-
-  ctx.gateway.readStatus.mockResolvedValue({ kind: 'unreachable', reason: 'no answer' });
-
-  const raised = await ctx.raise(9);
-
-  expect(raised).toStrictEqual({ start: '2026-10-16', dollars: 0, tokens: 0, turns: 9 });
+  expect(stored).toStrictEqual({ turns: 9, by: 'host' });
 });
 
 test('it holds the plan logins that the gateway reports', async () => {

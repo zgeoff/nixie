@@ -1,6 +1,5 @@
 import { setTimeout as sleepFor } from 'node:timers/promises';
 import type { Logger } from '@heynixie/logger';
-import invariant from 'tiny-invariant';
 import type { ControlHandlerDeps } from '../control/make-control-handler';
 import { makeControlHandler } from '../control/make-control-handler';
 import type { AuthFetch } from '../login/chatgpt-auth';
@@ -8,9 +7,8 @@ import type { PlanLogin } from '../login/create-plan-login';
 import { createPlanLogin } from '../login/create-plan-login';
 import { makeOverrideReader } from '../override/make-override-reader';
 import { createPeriodStore } from '../periods/create-period-store';
-import type { CounterStore, PeriodsConfig, ProxyConfig, ProxyLimits } from '../types';
+import type { PeriodsConfig, ProxyConfig } from '../types';
 import { createCaptureSpool } from '../usage/create-capture-spool';
-import { createCounterStore } from '../usage/create-counter-store';
 import { loadProxyConfig } from './load-proxy-config';
 import { makeOpenReplies } from './make-open-replies';
 import type { PeriodsAccountingDeps } from './make-periods-accounting';
@@ -19,8 +17,8 @@ import { makeProxyHandler } from './make-proxy-handler';
 export interface ModelGateway {
   readonly url: string;
 
-  // the control listener's origin, null for a limits config
-  readonly controlURL: string | null;
+  // the control listener's origin
+  readonly controlURL: string;
   readonly stop: () => Promise<void>;
 }
 
@@ -54,10 +52,11 @@ export async function startModelGateway(options: ModelGatewayOptions): Promise<M
     log: options.log,
   });
 
-  const counting =
-    config.periods === null
-      ? await startLimitsCounting(config)
-      : await startPeriodsCounting(config, config.periods, { now, log: options.log, logins });
+  const counting = await startPeriodsCounting(config, config.periods, {
+    now,
+    log: options.log,
+    logins,
+  });
 
   const capture =
     config.capture === null
@@ -86,16 +85,11 @@ export async function startModelGateway(options: ModelGatewayOptions): Promise<M
     fetch: answerRequest,
   });
 
-  const answerControl = counting.control === null ? null : makeControlHandler(counting.control);
-
-  const control =
-    answerControl === null || counting.controlListen === null
-      ? null
-      : Bun.serve({
-          hostname: counting.controlListen.hostname,
-          port: counting.controlListen.port,
-          fetch: answerControl,
-        });
+  const control = Bun.serve({
+    hostname: counting.controlListen.hostname,
+    port: counting.controlListen.port,
+    fetch: makeControlHandler(counting.control),
+  });
 
   for (const login of Object.values(logins)) {
     login.start();
@@ -105,20 +99,19 @@ export async function startModelGateway(options: ModelGatewayOptions): Promise<M
     port: server.port ?? config.listen.port,
     routes: Object.keys(config.routes).join(','),
     capture: capture !== null,
-    periods: config.periods !== null,
   });
 
   return {
     url: `http://${config.listen.hostname}:${String(server.port)}`,
-    controlURL: control === null ? null : `http://${control.hostname}:${String(control.port)}`,
+    controlURL: `http://${control.hostname}:${String(control.port)}`,
     stop: async () => {
       // Bun's graceful stop refuses new connections and waits for each streamed reply to end, so
       // the spend of a call under way reaches the count before the process exits
       const drained = server.stop();
 
-      // the control listener drains the same way, so a limits, raise or sandbox reply under way
+      // the control listener drains the same way, so a raise or sandbox reply under way
       // reaches its caller before the process exits
-      const controlDrained = control?.stop();
+      const controlDrained = control.stop();
 
       await Promise.race([Promise.all([drained, controlDrained]), options.waitForDrainDeadline()]);
 
@@ -131,7 +124,7 @@ export async function startModelGateway(options: ModelGatewayOptions): Promise<M
       }
 
       await server.stop(true);
-      await control?.stop(true);
+      await control.stop(true);
       await Promise.all(Object.values(logins).map((login) => login.stop()));
       await capture?.settle();
       await counting.settle();
@@ -168,28 +161,11 @@ async function waitUnlessAborted(delayMs: number, signal: AbortSignal): Promise<
   }
 }
 
-type CountingDeps =
-  | { readonly limits: ProxyLimits; readonly store: CounterStore }
-  | { readonly periods: PeriodsAccountingDeps };
-
 interface Counting {
-  readonly deps: CountingDeps;
-  readonly control: ControlHandlerDeps | null;
-  readonly controlListen: { readonly hostname: string; readonly port: number } | null;
+  readonly deps: { readonly periods: PeriodsAccountingDeps };
+  readonly control: ControlHandlerDeps;
+  readonly controlListen: { readonly hostname: string; readonly port: number };
   readonly settle: () => Promise<void>;
-}
-
-async function startLimitsCounting(config: ProxyConfig): Promise<Counting> {
-  invariant(config.limits !== null, 'a config with no periods sets limits');
-
-  const store = await createCounterStore(config.store);
-
-  return {
-    deps: { limits: config.limits, store },
-    control: null,
-    controlListen: null,
-    settle: store.settle,
-  };
 }
 
 interface PeriodsCountingDeps {
@@ -203,11 +179,16 @@ async function startPeriodsCounting(
   periods: PeriodsConfig,
   deps: PeriodsCountingDeps,
 ): Promise<Counting> {
+  const limits = Object.fromEntries(
+    Object.entries(config.routes).map(([id, route]) => [id, route.limits]),
+  );
+
   const store = await createPeriodStore({
     path: config.store,
     zone: periods.zone,
+    limits,
     now: deps.now,
-    readOverride: makeOverrideReader(periods.override, deps.log),
+    readOverrides: makeOverrideReader(periods.override, deps.log),
     log: deps.log,
   });
 
@@ -223,13 +204,16 @@ async function startPeriodsCounting(
     deps: {
       periods: {
         store,
+        limits,
         countBySandbox: periods.countBySandbox,
+        now: deps.now,
         log: deps.log,
       },
     },
     control: {
       store,
       config: periods,
+      limits,
       logins: deps.logins,
       token,
       now: deps.now,

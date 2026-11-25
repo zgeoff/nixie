@@ -1,11 +1,15 @@
 import type { ReactNode } from 'react';
 import { useState } from 'react';
-import { formatSpendNotice } from '../spend/format-spend-notice';
+import { formatSpendAmount } from '../spend/format-spend-amount';
+import type { SpendDisplay } from '../spend/format-spend-amount';
+import { formatRouteNotice, formatSpendNotice } from '../spend/format-spend-notice';
 import { pickRaiseOffer } from '../spend/pick-raise-offer';
+import { pickRouteRaiseOffer } from '../spend/pick-route-raise-offer';
+import { useSpendCounts } from '../spend/use-spend-counts';
 import { useSpendRaise } from '../spend/use-spend-raise';
 import { useSpendStop } from '../spend/use-spend-stop';
 import { css } from '../styled-system/css';
-import type { SpendTrip } from '../types';
+import type { SpendRouteTrip, SpendTrip } from '../types';
 
 const notice = css({
   borderBlockEnd: '1px solid',
@@ -22,18 +26,138 @@ const notice = css({
 
 export function SpendStopNotice(): ReactNode {
   const read = useSpendStop();
+  const display = useSpendCounts().data?.display ?? null;
   const stop = read.data;
 
-  if (stop === undefined || stop.state === 'clear') {
+  if (stop === undefined || (stop.state === 'clear' && stop.routes.length === 0)) {
     return null;
   }
 
   return (
     <section aria-label="model spending is stopped" className={notice}>
-      <p role="status">{formatSpendNotice(stop)}</p>
+      {stop.state === 'clear' ? null : <p role="status">{formatSpendNotice(stop)}</p>}
+      {stop.routes.map((trip) => (
+        <div key={`${trip.route}-${trip.period}`}>
+          <p role="status">{formatRouteNotice(trip, display)}</p>
+          {trip.canRaise ? <RaiseRouteLimit display={display} trip={trip} /> : null}
+        </div>
+      ))}
       {stop.state === 'tripped' && stop.canRaise ? <RaiseLimit stop={stop} /> : null}
     </section>
   );
+}
+
+interface RaiseRouteLimitProps {
+  readonly trip: SpendRouteTrip;
+  readonly display: SpendDisplay | null;
+}
+
+// The raise of a route's day limit in dollars. One confirm is the whole approval, and the amount
+// stays editable until it.
+function RaiseRouteLimit(props: RaiseRouteLimitProps): ReactNode {
+  const trip = props.trip;
+  const offer = pickRouteRaiseOffer(trip);
+  const raise = useSpendRaise();
+  const [isOpen, setIsOpen] = useState(false);
+  const [dollars, setDollars] = useState(offer.dollars);
+
+  if (!isOpen) {
+    return (
+      <div>
+        <button
+          onClick={() => {
+            setDollars(offer.dollars);
+            setIsOpen(true);
+          }}
+          type="button"
+        >
+          Raise the day limit of {trip.route}
+        </button>
+      </div>
+    );
+  }
+
+  const answer = raise.data;
+
+  return (
+    <form
+      onSubmit={(event) => {
+        event.preventDefault();
+        raise.mutate({ start: trip.start, route: trip.route, dollars });
+      }}
+    >
+      <fieldset disabled={raise.isPending}>
+        <legend>Raise the day limit of {trip.route} to</legend>
+        <AmountField
+          cap={trip.cap ?? trip.limit}
+          label="US dollars"
+          onChange={setDollars}
+          value={dollars}
+        />
+        {Number.isNaN(dollars) ? null : <p>{formatSpendAmount(dollars, props.display)}</p>}
+        <button type="submit">Confirm raise of {trip.route}</button>
+      </fieldset>
+      {raise.isError ? <p role="alert">The raise did not finish. Try again.</p> : null}
+      {answer !== undefined && 'error' in answer ? (
+        <p role="alert">{describeRefusal(answer, props.display)}</p>
+      ) : null}
+    </form>
+  );
+}
+
+interface AmountFieldProps {
+  readonly cap: number;
+  readonly label: string;
+  readonly onChange: (value: number) => void;
+  readonly value: number;
+}
+
+function AmountField(props: AmountFieldProps): ReactNode {
+  return (
+    <label>
+      {props.label}
+      <input
+        max={props.cap}
+        min={0}
+        onChange={(event) => {
+          props.onChange(event.currentTarget.valueAsNumber);
+        }}
+        step="any"
+        type="number"
+        value={Number.isNaN(props.value) ? '' : props.value}
+      />
+    </label>
+  );
+}
+
+type Refusal = Extract<
+  NonNullable<ReturnType<typeof useSpendRaise>['data']>,
+  { readonly error: string }
+>;
+
+function describeRefusal(refusal: Refusal, display: SpendDisplay | null): string {
+  if (refusal.error === 'above_cap') {
+    const cap =
+      refusal.measure === 'dollars'
+        ? formatSpendAmount(refusal.cap, display)
+        : `${refusal.cap.toLocaleString()} turns`;
+
+    return `That is above the cap of ${cap} for today.`;
+  }
+
+  if (refusal.error === 'period_ended') {
+    return "The day ended, so today's limit resets on its own.";
+  }
+
+  if (refusal.error === 'unknown_route') {
+    return 'The spending gateway holds no such route.';
+  }
+
+  if (refusal.error === 'unanswered') {
+    return 'nixie could not reach the spending gateway. Your raise is saved, and applies when it answers.';
+  }
+
+  return 'nixie could not reach the spending gateway, so your raise was not saved. Try again when it answers.';
 }
 
 interface RaiseLimitProps {
@@ -76,26 +200,10 @@ function RaiseLimit(props: RaiseLimitProps): ReactNode {
       <fieldset disabled={raise.isPending}>
         <legend>Raise today&apos;s limit to</legend>
         <AmountField
-          cap={stop.cap.dollars}
-          label="Dollars"
-          onChange={(dollars) => {
-            setAmounts({ ...amounts, dollars });
-          }}
-          value={amounts.dollars}
-        />
-        <AmountField
-          cap={stop.cap.tokens}
-          label="Tokens"
-          onChange={(tokens) => {
-            setAmounts({ ...amounts, tokens });
-          }}
-          value={amounts.tokens}
-        />
-        <AmountField
-          cap={stop.cap.turns}
+          cap={stop.cap}
           label="Turns"
           onChange={(turns) => {
-            setAmounts({ ...amounts, turns });
+            setAmounts({ turns });
           }}
           value={amounts.turns}
         />
@@ -103,50 +211,8 @@ function RaiseLimit(props: RaiseLimitProps): ReactNode {
       </fieldset>
       {raise.isError ? <p role="alert">The raise did not finish. Try again.</p> : null}
       {answer !== undefined && 'error' in answer ? (
-        <p role="alert">{describeRefusal(answer)}</p>
+        <p role="alert">{describeRefusal(answer, null)}</p>
       ) : null}
     </form>
   );
-}
-
-interface AmountFieldProps {
-  readonly cap: number;
-  readonly label: string;
-  readonly onChange: (value: number) => void;
-  readonly value: number;
-}
-
-function AmountField(props: AmountFieldProps): ReactNode {
-  return (
-    <label>
-      {props.label}
-      <input
-        max={props.cap}
-        min={0}
-        onChange={(event) => {
-          props.onChange(event.currentTarget.valueAsNumber);
-        }}
-        step="any"
-        type="number"
-        value={Number.isNaN(props.value) ? '' : props.value}
-      />
-    </label>
-  );
-}
-
-type Refusal = Extract<
-  NonNullable<ReturnType<typeof useSpendRaise>['data']>,
-  { readonly error: string }
->;
-
-function describeRefusal(refusal: Refusal): string {
-  if (refusal.error === 'above_cap') {
-    return `That is above the cap of $${refusal.cap.dollars.toLocaleString()}, ${refusal.cap.tokens.toLocaleString()} tokens and ${refusal.cap.turns.toLocaleString()} turns for today.`;
-  }
-
-  if (refusal.error === 'period_ended') {
-    return "The day ended, so today's limit resets on its own.";
-  }
-
-  return 'nixie could not reach the spending gateway. Your raise is saved, and applies when it answers.';
 }

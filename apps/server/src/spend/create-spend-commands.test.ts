@@ -45,16 +45,14 @@ async function setupTest(options: TestOptions) {
   };
 }
 
-test('it raises the turns of today over the host transport and prints the totals in force', async () => {
+test('it raises the turns of today over the host transport and prints the turns in force', async () => {
   const ctx = await setupTest({ isSpendOn: true });
   const run = await ctx.runCommand(['spend', 'raise', '--turns', '9']);
 
   expect(run.exitCode).toBe(0);
 
   expect(run.io.print).toHaveBeenCalledExactlyOnceWith(
-    expect.stringMatching(
-      /^\{"start":"\d{4}-\d{2}-\d{2}","dollars":60,"tokens":80000000,"turns":9\}$/u,
-    ),
+    expect.stringMatching(/^\{"start":"\d{4}-\d{2}-\d{2}","turns":9\}$/u),
   );
 });
 

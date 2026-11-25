@@ -39,6 +39,7 @@ function setupTest() {
     prices: { input: 1, cacheWrite: 1, cacheWrite1h: 1, cachedInput: 1, output: 1 },
     maxOutputTokens: 1000,
     login: null,
+    limits: null,
   };
 
   return { base };

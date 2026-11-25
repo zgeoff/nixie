@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import { logProjections, withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
+import type { TriggersRecordKind } from '@heynixie/triggers';
 import { sql } from 'kysely';
 import { startTestSpend } from '../test-utils';
 import { writeMissedTurns } from './write-missed-turns';
@@ -12,7 +13,9 @@ async function setupTest() {
 
   return {
     ...spend,
-    writeOlderRecord: (kind: 'model.turn_ended' | 'worker.turn_ended' | 'task.created') =>
+    writeOlderRecord: (
+      kind: 'model.turn_ended' | 'worker.turn_ended' | 'task.created' | TriggersRecordKind,
+    ) =>
       withWriteTransaction(spend.writer, (tx) =>
         writeRecordsInTransaction(tx, olderLog, [
           { kind, definitions: { snapshotHash: 'sha256:aa11' }, thread: 'task-a', payload: {} },

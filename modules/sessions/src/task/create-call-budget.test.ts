@@ -1,4 +1,4 @@
-import { expect, mock, test } from 'bun:test';
+import { expect, test } from 'bun:test';
 import { createCallBudget } from './create-call-budget';
 
 test('it aborts its signal on the call that reaches the dollars left', async () => {
@@ -51,25 +51,6 @@ test('it keeps its signal open while the calls cost less than the dollars left',
   }).toStrictEqual({ isReached: false, spentDollars: 0.015 });
 });
 
-test('it never reaches the budget of a profile that sets no prices, and reads no late spend', async () => {
-  const readLateDollars = mock(() => Promise.resolve(0));
-  const budget = createCallBudget(null, 0.02, readLateDollars);
-
-  await budget.onCall({
-    uncachedInputTokens: 10_000_000,
-    cacheReadTokens: 0,
-    cacheWrite5mTokens: 0,
-    cacheWrite1hTokens: 0,
-    outputTokens: 10_000_000,
-  });
-
-  expect({
-    isReached: budget.signal.aborted,
-    spentDollars: budget.getSpentDollars(),
-    readCount: readLateDollars.mock.calls.length,
-  }).toStrictEqual({ isReached: false, spentDollars: 0, readCount: 0 });
-});
-
 test('it lowers the dollars left by a late spend, so a call reaches the budget sooner', async () => {
   const budget = createCallBudget(
     { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
@@ -114,7 +95,11 @@ test('it rejects a call when the read of late spend fails, and keeps the call in
 });
 
 test('it aborts its signal when the spend of a worker reaches the dollars left', () => {
-  const budget = createCallBudget(null, 0.02, () => Promise.resolve(0));
+  const budget = createCallBudget(
+    { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
+    0.02,
+    () => Promise.resolve(0),
+  );
 
   budget.onSpend(0.01);
 
@@ -152,7 +137,11 @@ test('it lowers the dollars left by the calls, the late spend and the spend of a
 });
 
 test('it never reports fewer than no dollars left', () => {
-  const budget = createCallBudget(null, 0.5, () => Promise.resolve(0));
+  const budget = createCallBudget(
+    { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
+    0.5,
+    () => Promise.resolve(0),
+  );
 
   budget.onSpend(2);
 

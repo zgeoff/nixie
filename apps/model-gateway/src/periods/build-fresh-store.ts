@@ -1,18 +1,20 @@
-import type { PeriodCount, PeriodStore } from '../types';
-import { getPeriodStart } from './get-period-start';
+import type { PeriodStore, RoutePeriods } from '../types';
+import { buildEmptyCount } from './build-empty-count';
 
-export function buildFreshStore(today: string): PeriodStore {
-  return {
-    version: 2,
-    lost: false,
-    periods: {
-      day: buildEmptyCount(getPeriodStart('day', today)),
-      month: buildEmptyCount(getPeriodStart('month', today)),
-    },
-    sandboxes: {},
-  };
+export function buildEmptyRoute(nowMs: number, zone: string): RoutePeriods {
+  return { day: buildEmptyCount('day', nowMs, zone), month: buildEmptyCount('month', nowMs, zone) };
 }
 
-function buildEmptyCount(start: string): PeriodCount {
-  return { start, dollars: 0, tokens: 0, limit: null, raise: null, trippedAt: null };
+// every route starts at zero
+export function buildFreshStore(
+  nowMs: number,
+  zone: string,
+  routeIDs: readonly string[],
+): PeriodStore {
+  return {
+    version: 3,
+    lost: false,
+    routes: Object.fromEntries(routeIDs.map((id) => [id, buildEmptyRoute(nowMs, zone)])),
+    sandboxes: {},
+  };
 }

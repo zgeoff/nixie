@@ -18,5 +18,9 @@ export const modelSessionSummarizedCodec = defineRecordCodec(
 
     // A record from before the summary kept its calls' usage holds none.
     usage: summaryUsageSchema.exactOptional(),
+
+    // The dollars of the tokens at the prices in force when the record was written, so a later
+    // change of prices never reprices it. Absent for a profile with no prices.
+    dollars: z.number().nonnegative().exactOptional(),
   }),
 );

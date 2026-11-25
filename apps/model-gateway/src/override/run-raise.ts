@@ -1,26 +1,22 @@
-import { getLocalDate } from '../periods/get-local-date';
-import { getPeriodStart } from '../periods/get-period-start';
+import { periodOf } from '@heynixie/periods';
 import { loadProxyConfig } from '../proxy/load-proxy-config';
-import type { Override, PeriodName } from '../types';
-import { overrideSchema } from './override-schema';
+import type { DayOverride } from '../types';
+import { readOverride } from './read-override';
+import { withOverrideLock } from './with-override-lock';
 import { writeOverride } from './write-override';
 
 export interface RaiseOptions {
   readonly configPath: string;
-  readonly period: PeriodName;
+  readonly route: string;
   readonly dollars: number;
-  readonly tokens: number;
   readonly now: () => number;
 }
 
-// The host command: writes the override for the period in force in the config's zone, and returns
-// what it wrote. The override may pass the cap, because only a host command writes it.
-export async function runRaise(options: RaiseOptions): Promise<Override> {
+// The host command: writes the route's day limit for the day in force in the config's zone, keeps
+// the other routes' overrides, and returns what it wrote. The limit may pass the cap, because only
+// a host command writes it.
+export async function runRaise(options: RaiseOptions): Promise<DayOverride> {
   const config = await loadProxyConfig(options.configPath);
-
-  if (config.periods === null) {
-    throw new Error('the config sets no periods, so there is no limit to raise');
-  }
 
   if (config.periods.override === null) {
     throw new Error(
@@ -28,15 +24,34 @@ export async function runRaise(options: RaiseOptions): Promise<Override> {
     );
   }
 
-  const today = getLocalDate(options.now(), config.periods.zone);
+  if (
+    !Object.hasOwn(config.routes, options.route) ||
+    config.routes[options.route]?.limits === null
+  ) {
+    throw new Error(`the config names no limits for the route ${options.route}`);
+  }
 
-  const override: Override = overrideSchema.parse({
-    period: options.period,
-    start: getPeriodStart(options.period, today),
-    limit: { dollars: options.dollars, tokens: options.tokens },
+  if (!Number.isFinite(options.dollars) || options.dollars <= 0) {
+    throw new Error('the dollar limit is a positive number');
+  }
+
+  const override: DayOverride = {
+    start: periodOf('day', options.now(), config.periods.zone).start,
+    dollars: options.dollars,
+  };
+
+  const path = config.periods.override;
+
+  // two raises of different routes each read the file, add their route and replace it, so the lock
+  // spans the read and the write and neither loses the other's route
+  await withOverrideLock(path, async () => {
+    const earlier = await readOverride(path);
+
+    await writeOverride(path, {
+      ...(earlier.kind === 'found' ? earlier.overrides : {}),
+      [options.route]: override,
+    });
   });
-
-  await writeOverride(config.periods.override, override);
 
   return override;
 }

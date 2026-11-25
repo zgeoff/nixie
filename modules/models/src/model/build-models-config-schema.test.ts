@@ -97,64 +97,6 @@ test('it refuses the checker role on a profile whose harness lacks structured ou
   ]);
 });
 
-test("it refuses an unset task role when the conversation's profile, which tasks then run on, sets no prices", () => {
-  const ctx = setupTest();
-
-  const result = ctx.schema.safeParse({
-    profiles: {
-      'chat-direct': {
-        harness: 'agent-sdk',
-        base_url: 'https://api.anthropic.com',
-        credential: 'deployment:anthropic',
-        auth_header: 'x-api-key',
-        model: 'claude-test-1',
-        effort: 'medium',
-      },
-    },
-    roles: { conversation: 'chat-direct' },
-  });
-
-  expect(result.error?.issues).toStrictEqual([
-    expect.objectContaining({
-      path: ['roles', 'task'],
-      message:
-        "the task role is unset, so tasks run on the conversation's profile chat-direct, which sets no prices",
-    }),
-  ]);
-});
-
-test('it refuses a task role whose profile sets no prices, though its harness fits a task', () => {
-  const ctx = setupTest();
-
-  const result = ctx.schema.safeParse({
-    profiles: {
-      'chat-direct': {
-        harness: 'agent-sdk',
-        base_url: 'https://api.anthropic.com',
-        credential: 'deployment:anthropic',
-        auth_header: 'x-api-key',
-        model: 'claude-test-1',
-        effort: 'medium',
-      },
-      'task-codex': {
-        harness: 'codex',
-        effort: 'medium',
-        base_url: 'https://models.example.test',
-        credential: 'deployment:openai',
-        model: 'gpt-test-1',
-      },
-    },
-    roles: { conversation: 'chat-direct', task: 'task-codex' },
-  });
-
-  expect(result.error?.issues).toStrictEqual([
-    expect.objectContaining({
-      path: ['roles', 'task'],
-      message: 'the task role names the profile task-codex, which sets no prices',
-    }),
-  ]);
-});
-
 test('it accepts a selectable model on a profile whose harness has everything a task needs', () => {
   const ctx = setupTest();
 
@@ -499,41 +441,6 @@ test('it accepts a null tool call wait when no worker role is set', () => {
   });
 
   expect(result.error).toBeUndefined();
-});
-
-test('it refuses the worker role on a profile with no price table', () => {
-  const ctx = setupTest();
-
-  const result = ctx.schema.safeParse({
-    profiles: {
-      'chat-direct': {
-        harness: 'agent-sdk',
-        base_url: 'https://api.anthropic.com',
-        credential: 'deployment:anthropic',
-        auth_header: 'x-api-key',
-        model: 'claude-test-1',
-        effort: 'medium',
-        prices: { input: 3, cache_write: 3.75, cache_write_1h: 6, cached_input: 0.3, output: 15 },
-      },
-      'worker-bare': {
-        harness: 'agent-sdk',
-        base_url: 'https://api.anthropic.com',
-        credential: 'deployment:anthropic',
-        auth_header: 'x-api-key',
-        model: 'claude-test-1',
-        effort: 'medium',
-      },
-    },
-    roles: { conversation: 'chat-direct', worker: 'worker-bare' },
-  });
-
-  expect(result.error?.issues).toStrictEqual([
-    expect.objectContaining({
-      path: ['roles', 'worker'],
-      message:
-        'the worker role names the profile worker-bare, which sets no prices, and a worker run counts its cost against its dollar limit',
-    }),
-  ]);
 });
 
 test('it refuses a selectable model whose harness has no tool call wait while the worker role is set', () => {

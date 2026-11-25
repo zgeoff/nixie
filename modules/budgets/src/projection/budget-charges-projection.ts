@@ -1,4 +1,5 @@
 import type { Projection } from '@heynixie/log';
+import { readChargeLedgerKey } from '../ledger/read-charge-ledger-key';
 import { budgetChargedCodec } from '../record/budget-charged-codec';
 import { budgetCreditedCodec } from '../record/budget-credited-codec';
 import type { BudgetsTables } from '../types';
@@ -17,6 +18,8 @@ export const budgetChargesProjection: Projection = {
     if (record.kind === budgetChargedCodec.kind) {
       const payload = budgetChargedCodec.decode(record.payload);
 
+      const ledgerKey = await readChargeLedgerKey(tx, payload);
+
       await tables
         .insertInto('budget_charges')
         .values({
@@ -27,6 +30,7 @@ export const budgetChargesProjection: Projection = {
           for_kind: payload.for.kind,
           for_id: payload.for.id,
           credited: 0,
+          ledger_key: ledgerKey,
         })
         .onConflict((conflict) => conflict.doNothing())
         .execute();

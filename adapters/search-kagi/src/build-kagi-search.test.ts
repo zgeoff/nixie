@@ -58,7 +58,6 @@ test("it returns the hits Kagi holds for the query, each dated by the day of Kag
         date: null,
       },
     ],
-    costUSD: 0.012,
   });
 });
 
@@ -91,7 +90,6 @@ test('it returns the title and the snippet of a hit as plain text, with no tags 
         date: null,
       },
     ],
-    costUSD: 0.012,
   });
 });
 
@@ -174,7 +172,6 @@ test('it returns only the hits from the sites the search names', async () => {
   expect(reply).toStrictEqual({
     kind: 'hits',
     hits: [{ title: 'Manly ferry', url: 'https://ferries.test/manly', snippet: null, date: null }],
-    costUSD: 0.012,
   });
 });
 
@@ -217,7 +214,6 @@ test('it returns only the hits published within the freshness the search sets', 
         date: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/u),
       },
     ],
-    costUSD: 0.012,
   });
 });
 

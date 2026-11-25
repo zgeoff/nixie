@@ -1,6 +1,4 @@
-import { readPlanLogins } from '../login/read-plan-logins';
 import { readSpendFacts } from '../stop/read-spend-facts';
-import { readSpendRaise } from '../stop/read-spend-raise';
 import { settleSpendStop } from '../stop/settle-spend-stop';
 import { buildSpendPeriods } from '../time/build-spend-periods';
 import type { SpendContext } from '../types';
@@ -12,35 +10,22 @@ export interface HostRaiseRequest {
 
 export interface HostSpendRaise {
   readonly start: string;
-  readonly dollars: number;
-  readonly tokens: number;
   readonly turns: number;
 }
 
-// The operator's raise of today's turns, which may pass the day's turn cap. The dollars and the
-// tokens keep the totals in force, so the raise changes the turns alone.
+// The operator's raise of today's turns, which may pass the day's turn cap. A route's dollars rise
+// only through the gateway's own host command.
 export async function writeHostSpendRaise(
   context: SpendContext,
   request: HostRaiseRequest,
 ): Promise<HostSpendRaise> {
   const start = buildSpendPeriods(context.clock.now(), context.zone).day.start;
 
-  const earlier = await readSpendRaise(context.log.writer.db, start);
-  const [status] = await Promise.all([context.gateway.readStatus(), readPlanLogins(context)]);
+  await writeSpendRaiseRecord(context, { start, turns: request.turns, by: 'host' });
 
-  const limit = status.kind === 'ok' ? status.value.periods.day.limit : null;
-
-  const raise = {
-    start,
-    dollars: earlier?.dollars ?? limit?.dollars ?? 0,
-    tokens: earlier?.tokens ?? limit?.tokens ?? 0,
-    turns: request.turns,
-  };
-
-  const written = await writeSpendRaiseRecord(context, { ...raise, by: 'host' });
   const facts = await readSpendFacts(context);
 
   await settleSpendStop(context, facts);
 
-  return written;
+  return { start, turns: request.turns };
 }

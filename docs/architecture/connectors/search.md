@@ -58,11 +58,12 @@ search spend from the log reads both places.
 
 ## The budgets
 
-Search is a [paid tool](../policy/budgets.md#paid-tools). The provider sets the price of one search
-in micros, which is 12,000 ($0.012) for Kagi, and the reply's `costUSD` comes from the same number.
+Search is a [paid tool](../policy/budgets.md#paid-tools). Set the price of one search, in micros,
+with `search.price_micros` in the server config. The default is 12,000 ($0.012), the price on Kagi's
+[price list](https://kagi.com/api/pricing). The tool's hidden `costUSD` comes from the same number.
 Each search charges that price to the built-in budgets `search-day` ($5) and `search-month` ($50)
 before the provider sees it. At a limit, the model reads
-`budget reached: search-day ($5.00 of $5.00). Resets at midnight.` and the provider gets nothing.
+`budget reached: search-day. Resets at midnight.` and the provider gets nothing.
 
 A search that fails at the provider credits both charges, because the provider did not bill. A
 search that the tool refuses because a forget ended the session keeps both charges, because the
@@ -87,23 +88,23 @@ in place.
 ## Providers
 
 The connectors module holds the tool and the provider interface. A provider takes the query, the
-limit, the sites and the freshness, and returns the hits with the search's cost, or a reason for the
-failure. The tool calls nothing else of the provider, so another provider can replace Kagi without a
-change to the tool. The provider holds its own key, and its failure reason must never hold that key,
-because the tool passes the reason to the model as it is.
+limit, the sites and the freshness, and returns the hits, or a reason for the failure. The tool
+calls nothing else of the provider, so another provider can replace Kagi without a change to the
+tool. The provider holds its own key, and its failure reason must never hold that key, because the
+tool passes the reason to the model as it is.
 
 Kagi is the one provider, in the `search-kagi` adapter. The adapter sends the sites and the
-freshness in Kagi's lens, the set of filters Kagi applies to one search. Kagi's answer holds no
-cost, so the adapter gives each search the price on Kagi's
-[price list](https://kagi.com/api/pricing). The adapter removes the key from every failure reason,
-so an error in which Kagi repeats the key still reaches the model without it.
+freshness in Kagi's lens, the set of filters Kagi applies to one search. The adapter sets no price:
+[the search budgets](#the-budgets) charge the configured price. The fetcher that adds the key, as
+[settings and the key](#settings-and-the-key) says, removes it from every failure, so an error in
+which Kagi repeats the key still reaches the model without it.
 
 Kagi marks the query's words in a title or a snippet with tags such as `<strong>`, and escapes
 characters as entities such as `&#39;`, so the adapter strips the tags and decodes the entities. The
 adapter takes each hit's date from the day of the `time` Kagi gives the hit, which Kagi's
 [Search API docs](https://kagi.com/api/docs/openapi/search) call the date when the resource was
-created or last updated. Kagi can set the time of day to the moment of the search, so the time of
-day holds no fact about the page, and the adapter drops it.
+created or last updated. Kagi can set the time of day to the moment of the search, so the adapter
+drops the time of day.
 
 ## Settings and the key
 
@@ -113,15 +114,16 @@ The deployment config's `search` section holds the tool's settings:
 | ---------------- | ------------------------- | ------------------------------------------------------- |
 | `daily_call_cap` | 200                       | the most searches in one day                            |
 | `credential`     | none                      | the key, as a reference of the form `deployment:<name>` |
+| `price_micros`   | 12,000                    | what one search costs, in millionths of a dollar        |
 | `api_url`        | `https://kagi.com/api/v1` | the base URL of Kagi's API                              |
 
-The [secrets file](../deployment/server.md#configuration-and-secrets) holds the key under
-`connector_credentials`, with the name the reference gives. After the secrets load at start, the
+Put the key in the [secrets file](../deployment/server.md#configuration-and-secrets) under
+`connector_credentials`, with the name the reference uses. After the secrets load at start, the
 server resolves the reference, and refuses to start when the secrets file lacks the entry. A
 deployment whose config sets no credential gets no search tool.
 
 The key stays in the server's memory. The adapter holds no key: it calls the API URL through a
 [credential store](credentials.md#the-fetcher) fetcher, which adds the key in the `Authorization`
 header on the host and removes it from every response and error, so the key reaches no record, log
-event or sandbox. The server reads the secrets file only at start, so a new key takes effect at the
-next restart, which a deploy causes.
+event or sandbox. The server reads the secrets file only at start, so restart the server to load a
+new key. A deploy restarts it.

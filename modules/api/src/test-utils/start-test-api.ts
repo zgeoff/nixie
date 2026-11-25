@@ -6,6 +6,7 @@ import { budgetProjections } from '@heynixie/budgets';
 import { callsProjection } from '@heynixie/calls';
 import type { TestCallsContext, TestCallsOptions } from '@heynixie/calls/test-utils';
 import { buildTestCallsContext } from '@heynixie/calls/test-utils';
+import type { Clock } from '@heynixie/clock';
 import type { ConnectionsPort } from '@heynixie/connections';
 import { readDefinitionNotices, readDefinitionVersion } from '@heynixie/definitions';
 import { definitionTaskProjections } from '@heynixie/definitions/test-utils';
@@ -93,6 +94,9 @@ interface TestAPIOptions {
   // gives the context a spending stop on a stub gateway, with turn limits of 3 a day (cap 5) and 4 a month
   readonly isSpendOn?: boolean;
 
+  // the clock that the log's writer and the spending stop read, the system's when unset
+  readonly writerClock?: Clock;
+
   // gives the context a calls module on a fake speech layer, set up as the options say
   readonly calls?: TestCallsOptions;
 }
@@ -109,7 +113,10 @@ export async function startTestAPI(
 
   stack.defer(() => rm(dataDir, { recursive: true, force: true }));
 
-  const writer = await startWriter({ dataDir });
+  const writer = await startWriter({
+    dataDir,
+    ...(options.writerClock === undefined ? {} : { clock: options.writerClock }),
+  });
 
   for (const topics of collectModuleRecordTopicMaps()) {
     registerRecordTopics(writer, topics);
@@ -265,6 +272,7 @@ async function createTestContext(
             limits: { dayTurns: 3, dayTurnCap: 5, monthTurns: 4 },
             definitions: readTestDefinitions,
             planLogins: createPlanLoginsHolder(),
+            display: { currency: 'AUD', readRate: () => Promise.resolve(1.52) },
           },
         }),
     runSettings: buildTestRunSettings(),

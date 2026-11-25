@@ -21,6 +21,17 @@ export interface ProxyRoute {
 
   // null on a route that holds no plan login
   readonly login: PlanLoginConfig | null;
+
+  // the day and month limits in US dollars, null on a route with none, which refuses every request
+  readonly limits: RouteLimits | null;
+}
+
+export interface RouteLimits {
+  readonly day: number;
+  readonly month: number;
+
+  // the most a raise of the day reaches without the host command
+  readonly dayCap: number;
 }
 
 export interface ProxyLimits {
@@ -45,8 +56,6 @@ export interface PeriodsConfig {
   // an IANA zone, the one the day and the month reset in
   readonly zone: string;
 
-  // the most each period's limit reaches without the host command
-  readonly caps: Readonly<Record<PeriodName, Measures>>;
   readonly control: {
     readonly listen: { readonly hostname: string; readonly port: number };
     readonly tokenFile: string;
@@ -61,9 +70,7 @@ export interface ProxyConfig {
   readonly listen: { readonly hostname: string; readonly port: number };
   readonly store: string;
 
-  // exactly one of limits and periods is set
-  readonly limits: ProxyLimits | null;
-  readonly periods: PeriodsConfig | null;
+  readonly periods: PeriodsConfig;
   readonly capture: CaptureConfig | null;
   readonly routes: Readonly<Record<string, ProxyRoute>>;
 }
@@ -87,38 +94,61 @@ export interface CounterStore {
   readonly settle: () => Promise<void>;
 }
 
-export interface PeriodCount extends Measures {
+// One route's count of one period, in whole micros of a US dollar
+export interface RouteCount {
   // the ISO date of the period's first day, in the periods zone
   readonly start: string;
 
-  // the base limit the server set, null until it sets one
-  readonly limit: Measures | null;
+  // the ISO instant the period ends and its count resets. Stamped with the zone the period began
+  // in, so a changed zone takes effect at the next reset.
+  readonly resetsAt: string;
+  readonly micros: number;
 
-  // the day's raise, always null on the month
-  readonly raise: Measures | null;
+  // the day's raise of the limit, always null on the month
+  readonly raise: number | null;
 
   // the ISO instant the count first reached its limit in force, null while it is under it
   readonly trippedAt: string | null;
 }
 
-interface SandboxCount extends Measures {
+export interface RoutePeriods {
+  readonly day: RouteCount;
+  readonly month: RouteCount;
+}
+
+export type RefusalCounter = 'route_day' | 'route_month' | 'sandbox';
+
+// the last request a sandbox's count refused
+export interface Refusal {
+  readonly counter: RefusalCounter;
+  readonly route: string;
+  readonly atMs: number;
+}
+
+interface SandboxCount {
+  // whole micros of a US dollar
+  readonly micros: number;
+  readonly tokens: number;
+
   // null counts only
   readonly limit: Measures | null;
+  readonly lastRefusal: Refusal | null;
 }
 
 export interface PeriodStore {
-  readonly version: 2;
+  readonly version: 3;
   readonly lost: boolean;
-  readonly periods: Readonly<Record<PeriodName, PeriodCount>>;
+  readonly routes: Readonly<Record<string, RoutePeriods>>;
   readonly sandboxes: Readonly<Record<string, SandboxCount>>;
 }
 
-// the host command writes it, and it may pass the cap
-export interface Override {
-  readonly period: PeriodName;
+// A route's day limit, which the host command writes and which may pass the cap
+export interface DayOverride {
   readonly start: string;
-  readonly limit: Measures;
+  readonly dollars: number;
 }
+
+export type Overrides = Readonly<Record<string, DayOverride>>;
 
 export interface PeriodChange<T> {
   // null writes nothing, for a refused change
@@ -126,10 +156,10 @@ export interface PeriodChange<T> {
   readonly result: T;
 }
 
-// the store and the override that one read found, so a caller judges both as of the same moment
+// the store and the overrides that one read found, so a caller judges both as of the same moment
 export interface PeriodRead {
   readonly store: PeriodStore;
-  readonly override: Override | null;
+  readonly overrides: Overrides;
 }
 
 export interface PeriodStoreHandle {
@@ -140,9 +170,16 @@ export interface PeriodStoreHandle {
   // reads, resets, decides and writes in one turn
   readonly change: <T>(decide: (store: PeriodStore) => PeriodChange<T>) => Promise<T>;
 
-  // adds the spend to the day, the month and the sandbox in one write; a sandbox the store lacks,
-  // or null, counts on the periods only
-  readonly addSpend: (sandbox: string | null, spend: Measures) => Promise<PeriodRead>;
+  // adds the spend's dollars, in whole micros, to the route's day and month, and the spend to the sandbox, in one write; a
+  // sandbox the store lacks, or null, counts on the route only
+  readonly addSpend: (
+    route: string,
+    sandbox: string | null,
+    spend: Measures,
+  ) => Promise<PeriodRead>;
+
+  // writes the refusal on the sandbox's count; a sandbox the store lacks keeps none
+  readonly writeRefusal: (sandbox: string, refusal: Refusal) => Promise<void>;
   readonly markLost: () => Promise<void>;
 
   // resolves once every change made so far has written or failed
