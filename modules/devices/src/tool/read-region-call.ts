@@ -3,6 +3,7 @@ import type { ImageState } from '@heynixie/connectors';
 import { regionContentSchema } from '@heynixie/contract';
 import type { RegionContent } from '@heynixie/contract';
 import type { JSONObject } from '@heynixie/log';
+import { match } from 'ts-pattern';
 import { z } from 'zod';
 import { readDeviceByShortID } from '../device/read-device-by-short-id';
 import { readLayout } from '../layout/read-layout';
@@ -48,10 +49,10 @@ export async function readRegionCall(
   }
 
   const args = parsed.data;
-  const isPage = args.content.kind === 'page';
+  const unbuilt = pickUnbuiltPart(args.content);
   const content = regionContentSchema.safeParse(args.content);
 
-  if (!isPage && !content.success) {
+  if (!content.success) {
     return { status: 'invalid', message: z.prettifyError(content.error) };
   }
 
@@ -61,13 +62,14 @@ export async function readRegionCall(
     device === null ? null : await readLayout(options.log, device.deviceID, options.clock.now());
 
   const region = layout?.regions.find((candidate) => candidate.name === args.region);
-  const named = content.success ? await nameImage(options, content.data) : null;
+
+  const states = await readImageStates(options, content.data);
 
   const refusal = pickRegionRefusal({
     device,
     isRegionKnown: region !== undefined,
-    isPage,
-    images: named === null ? [] : [named.state],
+    unbuilt,
+    images: states,
     isOnline: options.streams.isOnline(args.device),
   });
 
@@ -75,31 +77,63 @@ export async function readRegionCall(
     return { status: 'refused', refusal: refusal ?? 'UNKNOWN_REGION' };
   }
 
-  if (named === null) {
-    return { status: 'refused', refusal: 'PAGE_NOT_BUILT' };
+  return {
+    status: 'ready',
+    arguments: args,
+    device,
+    layout,
+    region,
+    content: await nameImage(options, content.data),
+  };
+}
+
+// The part of a page that a later release builds, when the call names it. The content schema
+// strips a key it does not know, so this reads the keys before the parse.
+function pickUnbuiltPart(
+  content: Readonly<Record<string, unknown>>,
+): 'PACKAGES_NOT_BUILT' | 'FETCHES_NOT_BUILT' | null {
+  if (content['kind'] !== 'html') {
+    return null;
   }
 
-  return { status: 'ready', arguments: args, device, layout, region, content: named.content };
+  if (content['packages'] !== undefined) {
+    return 'PACKAGES_NOT_BUILT';
+  }
+
+  return content['fetches'] === undefined ? null : 'FETCHES_NOT_BUILT';
 }
 
-interface NamedContent {
-  readonly content: RegionContent;
-  readonly state: ImageState;
+// The state of each image that the content names: the one image of an image region, or each image
+// that a page declares.
+function readImageStates(
+  options: DeviceToolOptions,
+  content: RegionContent,
+): Promise<readonly ImageState[]> {
+  const images = match(content)
+    .with({ kind: 'image' }, (image) => [image.image])
+    .with({ kind: 'html' }, (page) => page.images ?? [])
+    .otherwise(() => []);
+
+  return Promise.all(images.map((image) => readOneImageState(options, image)));
 }
 
-// The content with its image named by its short ID, and the state of that image.
+async function readOneImageState(options: DeviceToolOptions, image: string): Promise<ImageState> {
+  const found = await readImageState(options.log, image);
+
+  return found.state;
+}
+
+// The content with an image region's image named by its short ID. A page keeps each declared ID as
+// written, because its script names the image by that ID.
 async function nameImage(
   options: DeviceToolOptions,
   content: RegionContent,
-): Promise<NamedContent> {
+): Promise<RegionContent> {
   if (content.kind !== 'image') {
-    return { content, state: 'ok' };
+    return content;
   }
 
   const found = await readImageState(options.log, content.image);
 
-  return {
-    content: { ...content, image: found.image ?? content.image },
-    state: found.state,
-  };
+  return { ...content, image: found.image ?? content.image };
 }

@@ -8,6 +8,9 @@ import { renderPreviewMarkdown } from './render-preview-markdown';
 
 export interface PreviewRegionContext {
   readonly images: ReadonlyMap<string, RenderFile>;
+
+  // the file of the region's page, which a page region frames; null for any other region
+  readonly pagePath: string | null;
   readonly nowMs: number;
   readonly timeZone: string;
 }
@@ -22,6 +25,11 @@ export function renderPreviewRegion(content: RegionContent, context: PreviewRegi
         `<div class="box" data-fit><div class="pad reply">${renderPreviewMarkdown(markdown.markdown)}</div></div>`,
     )
     .with({ kind: 'image' }, (image) => renderPreviewImage(image.image, image.fit, context.images))
+    .with({ kind: 'html' }, () =>
+      context.pagePath === null
+        ? ''
+        : `<iframe class="page" sandbox="allow-scripts" src="${Bun.escapeHTML(context.pagePath)}"></iframe>`,
+    )
     .with(
       { kind: 'live', live: 'clock' },
       (clock) =>

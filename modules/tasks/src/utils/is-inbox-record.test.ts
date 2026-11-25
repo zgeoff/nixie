@@ -31,3 +31,18 @@ test('it reads a record of a kind no module registered as outside the inbox', ()
     }),
   ).toBe(false);
 });
+
+test.each([
+  { title: 'with its wake kept', payload: { wake: true }, expected: true },
+  { title: 'with no wake', payload: { wake: false }, expected: false },
+  { title: 'with no payload', payload: undefined, expected: false },
+])('it reads a page event $title as inbox: $expected', (row) => {
+  expect(
+    isInboxRecord({
+      // @ts-expect-error -- tasks depends on no device, so it does not see the kind that devices registers
+      kind: 'device.page_event',
+      thread: 'conversation',
+      ...(row.payload === undefined ? {} : { payload: row.payload }),
+    }),
+  ).toBe(row.expected);
+});

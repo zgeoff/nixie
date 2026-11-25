@@ -8,7 +8,7 @@ interface Row {
   readonly title: string;
   readonly device: Device | null;
   readonly isRegionKnown: boolean;
-  readonly isPage: boolean;
+  readonly unbuilt: 'PACKAGES_NOT_BUILT' | 'FETCHES_NOT_BUILT' | null;
   readonly images: ImageState[];
   readonly isOnline: boolean;
   readonly expected: RegionRefusal | null;
@@ -19,7 +19,7 @@ test.each<Row>([
     title: 'an unknown device before anything else',
     device: null,
     isRegionKnown: false,
-    isPage: true,
+    unbuilt: 'PACKAGES_NOT_BUILT',
     images: ['missing'],
     isOnline: false,
     expected: 'UNKNOWN_DEVICE',
@@ -35,13 +35,13 @@ test.each<Row>([
       idleSequence: null,
     },
     isRegionKnown: false,
-    isPage: false,
+    unbuilt: null,
     images: [],
     isOnline: false,
     expected: 'SCREEN_OFF',
   },
   {
-    title: 'an unknown region before a page',
+    title: 'an unknown region before packages that are not built',
     device: {
       deviceID: 'dk4m7q2w9x',
       identityID: 'an-identity',
@@ -51,13 +51,13 @@ test.each<Row>([
       idleSequence: null,
     },
     isRegionKnown: false,
-    isPage: true,
+    unbuilt: 'PACKAGES_NOT_BUILT',
     images: [],
     isOnline: false,
     expected: 'UNKNOWN_REGION',
   },
   {
-    title: 'a page before an image refusal',
+    title: 'packages that are not built before an image refusal',
     device: {
       deviceID: 'dk4m7q2w9x',
       identityID: 'an-identity',
@@ -67,10 +67,26 @@ test.each<Row>([
       idleSequence: null,
     },
     isRegionKnown: true,
-    isPage: true,
+    unbuilt: 'PACKAGES_NOT_BUILT',
     images: ['missing'],
     isOnline: false,
-    expected: 'PAGE_NOT_BUILT',
+    expected: 'PACKAGES_NOT_BUILT',
+  },
+  {
+    title: 'fetches that are not built',
+    device: {
+      deviceID: 'dk4m7q2w9x',
+      identityID: 'an-identity',
+      name: 'desk panel',
+      capabilities: { screen: true, camera: false, speaker: false, microphone: false },
+      shownSequence: null,
+      idleSequence: null,
+    },
+    isRegionKnown: true,
+    unbuilt: 'FETCHES_NOT_BUILT',
+    images: [],
+    isOnline: true,
+    expected: 'FETCHES_NOT_BUILT',
   },
   {
     title: 'a missing image before a forgotten one',
@@ -83,7 +99,7 @@ test.each<Row>([
       idleSequence: null,
     },
     isRegionKnown: true,
-    isPage: false,
+    unbuilt: null,
     images: ['forgotten', 'missing'],
     isOnline: false,
     expected: 'UNKNOWN_IMAGE',
@@ -99,7 +115,7 @@ test.each<Row>([
       idleSequence: null,
     },
     isRegionKnown: true,
-    isPage: false,
+    unbuilt: null,
     images: ['forgotten'],
     isOnline: false,
     expected: 'IMAGE_FORGOTTEN',
@@ -115,7 +131,7 @@ test.each<Row>([
       idleSequence: null,
     },
     isRegionKnown: true,
-    isPage: false,
+    unbuilt: null,
     images: ['ok'],
     isOnline: false,
     expected: 'OFFLINE',
@@ -131,7 +147,7 @@ test.each<Row>([
       idleSequence: null,
     },
     isRegionKnown: true,
-    isPage: false,
+    unbuilt: null,
     images: ['ok'],
     isOnline: true,
     expected: null,
@@ -141,7 +157,7 @@ test.each<Row>([
     pickRegionRefusal({
       device: row.device,
       isRegionKnown: row.isRegionKnown,
-      isPage: row.isPage,
+      unbuilt: row.unbuilt,
       images: row.images,
       isOnline: row.isOnline,
     }),

@@ -2,9 +2,9 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { RenderReply, RenderRequest } from '@heynixie/wire';
-import { renderEntryPath } from '@heynixie/wire';
+import { renderEntryPath, renderOrigin } from '@heynixie/wire';
 import { chromium } from 'playwright-core';
-import { readPageFile, renderOrigin } from './read-page-file';
+import { readPageFile } from './read-page-file';
 
 // the page sets this flag on `window` once its text has fitted its regions
 const readyFlag = '__nixieReady';
@@ -58,6 +58,11 @@ export async function drawPicture(request: RenderRequest): Promise<RenderReply> 
       await page.waitForFunction(`window.${readyFlag} === true`, undefined, {
         timeout: readyTimeoutMs,
       });
+
+      // A page's script may draw on the frame after the load, so the picture waits for 2 frames
+      await page.evaluate(
+        'new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))',
+      );
 
       // The viewport takes whole CSS pixels, so a width that the ratio does not divide leaves it a
       // pixel wider than the picture. A clip cuts the picture to the exact size. Its scale is

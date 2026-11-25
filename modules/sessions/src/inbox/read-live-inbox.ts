@@ -1,10 +1,13 @@
 import type { LogRecord } from '@heynixie/log';
 import { subscribeToRecords } from '@heynixie/log';
 import type { Logger } from '@heynixie/logger';
+import type { RuleSource } from '@heynixie/policy';
 import type { TasksContext } from '@heynixie/tasks';
 import { isInboxRecord } from '@heynixie/tasks';
 import type { InboxMessage } from '@heynixie/wire';
 import invariant from 'tiny-invariant';
+import { collectRecordSources } from '../step/collect-record-sources';
+import { takeSources } from '../step/take-sources';
 import type { TaskMessageView } from '../task/render-task-message';
 import type { GapReader, ImageTally, LiveInboxMessage, MessageTimeOptions } from '../types';
 import type { TurnSilence } from '../utils/build-turn-silence';
@@ -37,6 +40,9 @@ export interface LiveInbox {
   readonly view: TaskMessageView;
   readonly images: LiveImages;
   readonly silence: TurnSilence;
+
+  // the sources that the step's policy frame holds, which each message the turn takes adds to
+  readonly sources: RuleSource[];
 
   // reads the gaps that a message cutting into the turn shows
   readonly gaps?: GapReader;
@@ -94,6 +100,9 @@ export async function* readLiveInbox(
 
       live.sent.add(entry.record.sequence);
       live.silence.take(entry.record);
+
+      // before the message reaches the model, so no call it influences sees fewer sources
+      takeSources(live.sources, collectRecordSources([entry.record]));
 
       live.images.spent = mergeImageTallies(live.images.spent, countImages(message));
       yield { message, cutsCall: live.canCut && entry.record.kind === 'owner_message' };

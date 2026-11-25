@@ -105,14 +105,15 @@ async function readAsset(path: string, cacheControl: string): Promise<Response |
 }
 
 // The device page runs on a screen in a shared room: it loads its own files only, talks to nixie
-// alone, and no other page may frame it. The page's inline scripts are Start's hydration data and
-// the theme, so a script source of its own origin cannot do without them.
+// alone, and no other page may frame it. Its frames hold pages of its own origin only, so a page
+// cannot navigate itself elsewhere. Its inline scripts are Start's hydration data and the theme.
 const deviceContentSecurityPolicy = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline'",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' blob:",
   "connect-src 'self'",
+  "frame-src 'self'",
   "object-src 'none'",
   "base-uri 'none'",
   "form-action 'self'",

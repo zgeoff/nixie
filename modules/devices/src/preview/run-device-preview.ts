@@ -1,5 +1,6 @@
 import { imageLimits } from '@heynixie/contract';
 import type { ToolImage } from '@heynixie/tools';
+import { collectShownIDs } from '../layout/collect-shown-ids';
 import { readLayout } from '../layout/read-layout';
 import { readScreenState } from '../screen/read-screen-state';
 import type { PageError } from '../stream/create-page-errors';
@@ -44,15 +45,6 @@ export async function runDevicePreview(
   };
 }
 
-// the content each region shows now, by the region's name
-function collectShownIDs(layout: LayoutView | null): ReadonlyMap<string, string> {
-  return new Map(
-    (layout?.regions ?? []).flatMap((region) =>
-      region.shown === null ? [] : [[region.name, region.shown.shownID] as const],
-    ),
-  );
-}
-
 interface PictureInputs {
   readonly layout: LayoutView | null;
   readonly pixels: ScreenPixels;
@@ -71,6 +63,13 @@ async function drawPicture(
 
   const images = await readPreviewImages(options.log, collectSurfaceImages(surface));
 
+  const retainedMessages = options.streams.messages.readRetained(
+    device.deviceID,
+    collectShownIDs(inputs.layout),
+  );
+
+  const retained = new Map(retainedMessages.map((message) => [message.region, message.data]));
+
   const outcome = await preview.draw({
     width: inputs.pixels.width,
     height: inputs.pixels.height,
@@ -78,6 +77,7 @@ async function drawPicture(
     files: buildPreviewPage({
       surface,
       images,
+      retained,
       nowMs: inputs.nowMs,
       timeZone: inputs.pixels.timeZone ?? preview.timeZone,
     }),

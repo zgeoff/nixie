@@ -14,6 +14,7 @@ function setupTest() {
     'computer.takeover_ended': ['origins', 'now'],
     'definition.changed': ['version'],
     'device.idle_set': ['scene'],
+    'device.page_event': ['data'],
     'device.region_shown': ['content'],
     'device.shown': ['content'],
     'image.named': ['name'],

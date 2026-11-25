@@ -46,6 +46,7 @@ export async function readTurnNotes(
       events.text === null ? null : renderSystemMessage({ type: 'events', at, body: events.text }),
     throughSequence: range.through,
     eventCount: events.count,
+    sources: events.sources,
   };
 }
 

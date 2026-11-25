@@ -134,6 +134,7 @@ test('it heads a replay with the turns it covers, not the time since the last tu
       '- Tue 14 Oct, 09:30, Sydney · The doorbell rang.',
     ].join('\n'),
     count: 1,
+    sources: [],
   });
 });
 
@@ -148,5 +149,32 @@ test('it renders no block and counts none when no kind read an event', async () 
     { ownerName: 'Avery', timeZone: 'UTC' },
   );
 
-  expect(block).toStrictEqual({ text: null, count: 0 });
+  expect(block).toStrictEqual({ text: null, count: 0, sources: [] });
+});
+
+test('it reports the source of each kind that has a listed event', async () => {
+  const registry = buildEventRegistry([
+    {
+      name: 'page_event',
+      source: 'outside',
+      read: () =>
+        Promise.resolve([{ sequence: 5, at: Date.UTC(2025, 9, 13, 22, 30), detail: null }]),
+      render: () => 'A page sent touched.',
+    },
+    {
+      name: 'doorbell',
+      read: () =>
+        Promise.resolve([{ sequence: 6, at: Date.UTC(2025, 9, 13, 22, 31), detail: null }]),
+      render: () => 'The doorbell rang.',
+    },
+    { name: 'quiet', source: 'own_data', read: () => Promise.resolve([]), render: () => 'x' },
+  ]);
+
+  const block = await readEventsBlock(
+    registry,
+    { after: 0, through: 6 },
+    { ownerName: 'Avery', timeZone: 'UTC' },
+  );
+
+  expect(block.sources).toStrictEqual(['outside']);
 });

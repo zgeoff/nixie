@@ -1,11 +1,29 @@
 import { z } from 'zod';
+import { isJSONWithin } from './is-json-within';
 import { layoutLimits, regionBackgroundSchema } from './region-background-schema';
-import { regionContentSchema } from './region-content-schema';
+import { regionEventContentSchema } from './region-content-schema';
 import { reusedIDErrors } from './reused-id-errors';
 import { screenContentSchema } from './screen-content-schema';
 import { signedIn } from './signed-in';
 
 export const pageErrorMessageLimit = 2000;
+
+// the JSON that a page event or a message to a page carries
+export const pageDataSchema = z.json();
+
+export type PageData = z.output<typeof pageDataSchema>;
+
+export const pageEventNameLimit = 64;
+
+// The paths that serve a page's frame and its images. A frame's opaque origin sends no session
+// cookie, so a ticket in the path is the whole check.
+export const devicePagePaths = {
+  frames: '/rpc/device/frames/',
+  images: '/rpc/device/images/',
+} as const;
+
+export const pageEventDataLimitBytes = 2048;
+export const pageMessageLimitBytes = 16 * 1024;
 
 export const pixelsSchema = z.object({
   width: z.int().min(1).max(20_000),
@@ -30,7 +48,7 @@ const layoutRegionSchema = z.object({
   background: regionBackgroundSchema.nullable(),
 
   // null while the region is blank
-  content: regionContentSchema.nullable(),
+  content: regionEventContentSchema.nullable(),
 
   // the short ID of the record that holds the content, which an error the region reports names
   shown: z.string().nullable(),
@@ -54,6 +72,18 @@ export const deviceEventSchema = z.discriminatedUnion('kind', [
   }),
   z.object({ kind: z.literal('idle'), scene: z.array(screenContentSchema) }),
   z.object({ kind: z.literal('layout'), layout: layoutSchema.nullable() }),
+
+  // A message that the assistant sent into a page region, which the device hands to the page. The
+  // server sends each region's retained message again when a stream opens.
+  z.object({
+    kind: z.literal('message'),
+    region: z.string(),
+    shown: z.string(),
+    data: pageDataSchema,
+
+    // true for the page's state, which the device hands to the page again each time it loads
+    retain: z.boolean(),
+  }),
 ]);
 
 export type DeviceEvent = z.output<typeof deviceEventSchema>;
@@ -86,6 +116,26 @@ export const devicesContract = {
         region: z.string().min(1).max(32),
         shown: z.string().min(1).max(100),
         message: z.string().min(1).max(pageErrorMessageLimit),
+      }),
+    )
+    .output(z.object({})),
+
+  // An event that a page sent with nixie.send. It carries no authority: the assistant reads it as
+  // text from the page. The call returns STALE with no change when the region shows other content
+  // by now or the screen is off, and returns with nothing kept when a limit drops the event.
+  pageEvent: ownDevice
+    .errors({
+      STALE: { message: 'The region no longer shows that content', status: 409 },
+    })
+    .input(
+      z.object({
+        region: z.string().min(1).max(32),
+        shown: z.string().min(1).max(100),
+        name: z.string().min(1).max(pageEventNameLimit),
+        data: pageDataSchema
+          .refine((data) => isJSONWithin(data, pageEventDataLimitBytes), 'at most 2 KiB')
+          .exactOptional(),
+        wake: z.boolean().default(false),
       }),
     )
     .output(z.object({})),
