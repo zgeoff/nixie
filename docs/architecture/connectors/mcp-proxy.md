@@ -112,9 +112,9 @@ together, so a server that keeps returning a page cursor cannot hold a sign-in o
 declines an allow proposal or it lapses, `nixie mcp allow <tool>` writes a new one, because an
 unchanged listing proposes nothing.
 
-The model sees each tool under the Agent SDK's name for it: `mcp__nixie__` and the registry name,
-with each character outside letters, digits, `_` and `-` turned into `_`, so `tracker.item_get`
-reaches the model as `mcp__nixie__tracker_item_get`. nixie hides a tool, with the reason, when the
+The model sees each tool under the Agent SDK's name for it: `mcp__nixie__` and then the registry
+name, with each character other than a letter, a digit, `_` or `-` turned into `_`. The model sees
+`tracker.item_get` as `mcp__nixie__tracker_item_get`. nixie hides a tool, with the reason, when the
 model cannot read its name. The server's tool name must use only letters, digits, `_` and `-`, and
 the model's name for the tool must fit 64 characters and differ from the model name of every other
 tool. The config load checks each server ID against a list of the first segments of nixie's own

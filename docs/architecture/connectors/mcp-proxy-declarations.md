@@ -3,10 +3,11 @@
 A tool's declaration comes from the override file of its server in the definitions repo, and from
 the annotations of its pinned form when the file has no entry for the tool. A tool's record of its
 declaration holds which source applied (`annotations` or `override`), the pinned hash and, for an
-override, the snapshot hash of the definitions that held it. [The MCP proxy](mcp-proxy.md) covers
-pins, the registry and calls,
-[the definitions format](../core/definitions.md#the-definitions-format) covers the repo that holds
-the override files, and [actions](../core/actions.md) covers queued calls and the action runners.
+override, the snapshot hash of the definitions that held it.
+
+For pins, the registry and calls, read [the MCP proxy](mcp-proxy.md). For the repo that holds the
+override files, read [the definitions format](../core/definitions.md#the-definitions-format). For
+queued calls and the action runners, read [actions](../core/actions.md).
 
 nixie maps the annotations to effects like this:
 
