@@ -100,8 +100,13 @@ A step of a runner that calls no model, such as the [coding runner](./coding-tas
 work it wants done in its result, and the step's commit does that work in the same transaction. The
 commit queues each [action](./actions.md#actions-a-runner-queues) the step returned, and writes each
 [task message](./task-messages.md) the step returned with the waits, the hop-limit hold and the wake
-that every task message gets. A step marks its result final when the task is over, so a report from
-it leaves a started task done in place of waiting for its starter's next message.
+that every task message gets. When the message write refuses a message, such as one to a finished
+task, the commit writes a `task.message_refused` record on the step's thread with the receiver and
+the reason, and keeps no body. A step marks its result final when the task is over, so a report from
+it leaves a started task done in place of waiting for its starter's next message. A step can also
+check again, inside the commit's transaction and after the lease check, a fact it read before the
+commit: its result then carries a check that returns another result for the commit to write in its
+place.
 
 A runner can also act when its task ends, through an end hook that runs after a stop, a close or a
 failure commits. The hook writes its records and queues its actions in one transaction of its own,
@@ -204,16 +209,19 @@ with a cursor. Its `taskID` input gives one task's whole brief. The
 `/tasks/ended` page reads, and needs no approval. It covers the task runs of started tasks and of
 definitions, including a definition whose target is the conversation. Each entry gives the task, its
 name, a source (`started`, `schedule` or `one-off`), the start and end times, an outcome and the
-first line of the report, clipped to 200 characters. The outcome groups the stored end cause: `done`
-for `reported`, `no_report` and `no_work`, `closed` for `closed` and `stopped`, and `failed` for
-`failed`, `limit` and any cause no release knows. The ID of a task run is its report ID, the short
-ID that the delivered report message carries, because the model never sees the UUID. A task that
-left the definitions list keeps its name from the version its newest ended task run pinned. The
-filters are `definition`, `outcome` and `since`, and `cursor` pages by the sequence of the end
-through a page that fills to the byte budget of a recall page. Its `run` input gives one task run
-with the whole report, its fields, the stored cause, the reason a failed task run failed, and its
-steps, turns and dollars. Only the conversation holds the tool: a started task and a worker never
-hold it.
+first line of the report, clipped to 200 characters. An entry whose report request marked the report
+as outside content, such as a coding session's final reply, carries `reportSource: 'outside'`,
+because the tool's reply holds no other mark of the source.
+
+The outcome of a `tasks.runs` entry groups the stored end cause: `done` for `reported`, `no_report`
+and `no_work`, `closed` for `closed` and `stopped`, and `failed` for `failed`, `limit` and any cause
+no release knows. The ID of a task run is its report ID, the short ID that the delivered report
+message carries, because the model never sees the UUID. A task that left the definitions list keeps
+its name from the version its newest ended task run pinned. The filters are `definition`, `outcome`
+and `since`, and `cursor` pages by the sequence of the end through a page that fills to the byte
+budget of a recall page. Its `run` input gives one task run with the whole report, its fields, the
+stored cause, the reason a failed task run failed, and its steps, turns and dollars. Only the
+conversation holds the tool: a started task and a worker never hold it.
 
 While a task is paused or closed, nixie claims none of its [actions](./actions.md) that have not
 started an attempt, so a pause keeps the queued actions with the task. A stop
