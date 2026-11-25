@@ -71,6 +71,7 @@ export type { TaskStarter } from './task/start/plan-task-start';
 export { selfNoteToolNames } from './task/start/self-note-tool-names';
 export { buildStepRunID } from './step/build-step-run-id';
 export { readLeasedStepHop } from './step/read-leased-step-hop';
+export { readStepMessaging } from './step/read-step-messaging';
 export type { StepRunRef } from './utils/parse-step-run-id';
 export { parseStepRunID } from './utils/parse-step-run-id';
 export { buildTaskMessageTool } from './task/projection/build-task-message-tool';

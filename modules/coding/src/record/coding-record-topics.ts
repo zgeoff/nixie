@@ -11,4 +11,5 @@ export const codingRecordTopics = {
   'coding.answer_held': ['tasks'],
   'coding.wake_set': ['tasks'],
   'coding.session_unbound': ['tasks'],
+  'coding.session_lost': ['tasks'],
 } as const satisfies Record<CodingRecordKind, readonly LiveTopic[]>;

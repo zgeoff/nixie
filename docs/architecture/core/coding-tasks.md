@@ -50,6 +50,9 @@ user's own message asked for, because a session runs code under the user's accou
   The action carries the brief as the session's first prompt, and each attempt sends the action's
   [idempotency key](./actions.md#attempts), so a spawn that runs again after a crash gets the
   adapter's first answer. When the spawn's outcome lands as done, the next step binds the session.
+  The step's commit checks the binding again in its transaction, so when a join bound the session
+  after the step read it, the step binds nothing and ends with a report that the other task joined
+  first.
 - **A join** asks the adapter to join the session, then binds it in the start's own transaction. A
   join sends the session nothing, because the session belongs to the user until a steer or a note
   reaches it. The transaction refuses a session that another open coding task binds, so two tasks
@@ -119,8 +122,9 @@ The runner's end hook releases a task's session after the task's stop, close or 
 
 - **A stop** lets go of the session and queues a `coding.stop` action with the session and its
   origin. The action names the newest record on the task's thread as its cause. The starter rule
-  `allow-stop-started-sessions` allows the stop of a started session. The stop of a joined session
-  asks, because the user may still want that session.
+  `allow-stop-started-sessions` allows the stop of a started session. The starter rule
+  `ask-stop-joined-sessions` asks before the stop of a joined session, because the user may still
+  want that session.
 - **A close or a failure** lets go of a joined session without calling the adapter, so the session
   runs on as the user's. It stops a started session through the adapter at once, then lets go of it.
   When that stop fails, the binding stays, and the server logs `coding.stop_failed`.
@@ -128,4 +132,15 @@ The runner's end hook releases a task's session after the task's stop, close or 
 A spawn can finish after its task stopped, a stop can fail, and a crash can come between a control
 and its release, so a sweep runs when the server starts and on an interval after. It binds each
 session that a done spawn of a stopped, closed or failed task created, then releases every session
-that such a task still binds.
+that such a task still binds. The sweep binds only a spawn whose outcome no step of the task read. A
+step that read it already settled the session, for example by letting it go to a task that joined it
+first.
+
+A done spawn's outcome that no step read can lack the session's ID: a forget erased its result, or
+the user answered that an unknown spawn happened. The sweep then cannot stop the session, so it
+writes one `coding.session_lost` record on the task's thread, with no free text, and in the same
+commit sends the task's report target one waking `progress` message from the task. In that message,
+nixie says that the session may still run, and that the user can find it in the adapter's own list
+of sessions or join it through `coding.sessions`. A later sweep finds the `coding.session_lost`
+record and does nothing more. When the report target refuses the message, such as a report target
+that finished, the record still stands, and the sweep logs `coding.lost_session_unreported` once.

@@ -60,14 +60,14 @@ export interface TestCoding {
   // a step of the conversation that holds its lease, as a turn that calls tools does
   readonly claimConversation: () => Promise<StartedClaim>;
 
-  // calls task.start or a coding tool from the conversation's step, with a call ID of its own
+  // calls task.start or a coding tool from the step that the claim holds, with a call ID of its own
   readonly callTool: (
     claim: StartedClaim,
     tool: string,
     input: object,
   ) => Promise<{ readonly callID: string; readonly outcome: ToolOutcome }>;
 
-  // calls task.start from the conversation's step, and returns the ID of the task it started
+  // calls task.start from the step that the claim holds, and returns the ID of the task it started
   readonly startTask: (claim: StartedClaim, input: object) => Promise<string>;
 }
 
@@ -153,7 +153,7 @@ export async function startTestCoding(): Promise<TestCoding> {
     const outcome = await tool.run(
       call,
       buildMockToolContext({
-        run: { thread: 'conversation', stepRunID: buildStepRunID(claim), tools: [name] },
+        run: { thread: claim.lease.workID, stepRunID: buildStepRunID(claim), tools: [name] },
       }),
     );
 

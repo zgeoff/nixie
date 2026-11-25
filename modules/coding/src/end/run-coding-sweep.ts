@@ -9,12 +9,13 @@ import { sessionStateSchema } from '../record/session-state-schema';
 import { codingOptionsSchema } from '../start/coding-options-schema';
 import type { CodingAdapter, CodingContext, CodingTables } from '../types';
 import { runRelease } from './run-release';
+import { writeLostSessionReport } from './write-lost-session-report';
 
 const endedStates = ['stopped', 'closed', 'failed'] as const;
 
 // Does what `ended` left undone, for a crash or a stop call that failed: for each coding task that
-// is stopped, closed or failed and still binds its session, it lets go of the session. A spawn that
-// finished after its task stopped binds its session first, from the spawn's outcome.
+// is stopped, closed or failed and still binds its session, it lets go of the session. A spawn whose
+// outcome no step read, because its task stopped first, binds its session first from that outcome.
 export async function runCodingSweep(
   context: CodingContext,
   adapter: CodingAdapter,
@@ -61,6 +62,7 @@ async function runLateSpawnBinds(context: CodingContext, adapter: CodingAdapter)
     .where('actions.outcome_sequence', 'is not', null)
     .where('tasks.state', 'in', [...endedStates])
     .where('coding_sessions.task_id', 'is', null)
+    .whereRef('tasks.read_cursor', '<', 'actions.outcome_sequence')
     .execute();
 
   for (const spawn of spawns) {
@@ -74,6 +76,13 @@ async function runLateSpawnBinds(context: CodingContext, adapter: CodingAdapter)
     const record = outcome[0]?.record;
     const fields = record?.erasable.status === 'readable' ? record.erasable.fields : {};
     const spawned = spawnResultSchema.safeParse(fields);
+
+    if (!spawned.success) {
+      await writeLostSessionReport(context, adapter, {
+        taskID: spawn.task_id,
+        actionID: spawn.action_id,
+      });
+    }
 
     if (spawned.success && created !== null) {
       await withWriteTransaction(log.writer, (tx) =>
