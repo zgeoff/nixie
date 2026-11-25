@@ -5,20 +5,19 @@ import type { ContractRun } from './run-contract-query';
 import { runContractQuery } from './run-contract-query';
 import type { ProbeTarget } from './types';
 
-export const oneOfStartToolName = 'mcp__nixie__task_start';
+export const startToolNames = ['mcp__nixie__task_start', 'mcp__nixie__coding_start'] as const;
 
-export interface OneOfStartRun {
+export interface StartToolsRun {
   readonly run: ContractRun;
 
-  // the arguments of each call the model made to the start tool
-  readonly calls: readonly Readonly<Record<string, unknown>>[];
+  // the tool names that the SDK's init message reports, as the model sees them
+  readonly tools: readonly string[];
 }
 
-// Calls the model with a start tool whose input schema is a `oneOf` under the object root, with the
-// sandbox variant and a coding variant, and asks it to start a coding task.
-export async function runOneOfStartProbe(target: ProbeTarget): Promise<OneOfStartRun> {
-  const calls: Record<string, unknown>[] = [];
-  const handler = createMcpHandler(() => createStartServer(calls));
+// Starts the SDK against an MCP server that lists a sandbox start tool and a coding start tool,
+// each with a plain object root, and reads the tools that the init message reports.
+export async function runStartToolsProbe(target: ProbeTarget): Promise<StartToolsRun> {
+  const handler = createMcpHandler(() => createStartServer());
   const answerRequest = (request: Request): Promise<Response> => handler.fetch(request);
 
   const server: BunServer<undefined> = Bun.serve({
@@ -29,17 +28,13 @@ export async function runOneOfStartProbe(target: ProbeTarget): Promise<OneOfStar
 
   try {
     const run = await runContractQuery({
-      prompt:
-        'Start a coding task named "Fix the flaky login test" on the repository ' +
-        'https://github.com/example/shop.git at the ref main. Its brief is: "The login test ' +
-        'fails 1 time in 5 on CI. Find why and open a pull request with the fix." Call the ' +
-        'task_start tool once, then reply DONE.',
+      prompt: 'Reply DONE.',
       options: {
         ...buildProbeOptions(target),
         allowedTools: ['mcp__nixie'],
         permissionMode: 'dontAsk',
         strictMcpConfig: true,
-        maxTurns: 3,
+        maxTurns: 1,
         systemPrompt: 'You are a terse assistant in a test. Follow the instructions exactly.',
         mcpServers: {
           nixie: { type: 'http', url: `http://127.0.0.1:${server.port}/mcp`, alwaysLoad: true },
@@ -47,15 +42,22 @@ export async function runOneOfStartProbe(target: ProbeTarget): Promise<OneOfStar
       },
     });
 
-    return { run, calls };
+    const init = run.messages.find(
+      (message) => message.type === 'system' && message.subtype === 'init',
+    );
+
+    return {
+      run,
+      tools: init?.type === 'system' && init.subtype === 'init' ? init.tools : [],
+    };
   } finally {
     await handler.close();
     await server.stop(true);
   }
 }
 
-const sandboxVariant = {
-  type: 'object',
+const sandboxStart = {
+  type: 'object' as const,
   properties: {
     runner: { type: 'string', const: 'sandbox' },
     name: { type: 'string', minLength: 1, maxLength: 80 },
@@ -68,14 +70,9 @@ const sandboxVariant = {
   additionalProperties: false,
 };
 
-const codingVariant = {
-  type: 'object',
+const codingStart = {
+  type: 'object' as const,
   properties: {
-    runner: {
-      type: 'string',
-      const: 'atc',
-      description: 'atc starts a coding agent on a repository, or joins a coding session',
-    },
     name: { type: 'string', minLength: 1, maxLength: 80 },
     brief: { type: 'string', minLength: 1, maxLength: 8000 },
     repo: {
@@ -94,13 +91,12 @@ const codingVariant = {
     },
     wake: { type: 'array', items: { type: 'string', enum: ['waiting', 'idle', 'ended'] } },
   },
-  required: ['runner', 'name', 'brief'],
-  oneOf: [{ required: ['repo'] }, { required: ['session'] }],
+  required: ['name', 'brief'],
   additionalProperties: false,
 };
 
-// oxlint-disable-next-line typescript/no-deprecated -- the high-level McpServer needs a zod schema per tool, and the probe lists one plain schema as nixie's endpoint does
-function createStartServer(calls: Record<string, unknown>[]): Server {
+// oxlint-disable-next-line typescript/no-deprecated -- the high-level McpServer needs a zod schema per tool, and the probe lists plain schemas as nixie's endpoint does
+function createStartServer(): Server {
   // oxlint-disable-next-line typescript/no-deprecated -- as above
   const server = new Server({ name: 'nixie', version: '0.0.0' }, { capabilities: { tools: {} } });
 
@@ -108,17 +104,20 @@ function createStartServer(calls: Record<string, unknown>[]): Server {
     tools: [
       {
         name: 'task_start',
-        description: 'Starts a new task: a sandbox task, or a coding task on a repository.',
-        inputSchema: { type: 'object' as const, oneOf: [sandboxVariant, codingVariant] },
+        description: 'Starts a new sandbox task.',
+        inputSchema: sandboxStart,
+      },
+      {
+        name: 'coding_start',
+        description: 'Starts a coding task on a repository, or joins a running session.',
+        inputSchema: codingStart,
       },
     ],
   }));
 
-  server.setRequestHandler('tools/call', (request) => {
-    calls.push(request.params.arguments ?? {});
-
-    return { content: [{ type: 'text' as const, text: '{"taskID":"t7k2"}' }] };
-  });
+  server.setRequestHandler('tools/call', () => ({
+    content: [{ type: 'text' as const, text: '{"taskID":"t7k2"}' }],
+  }));
 
   return server;
 }

@@ -48,14 +48,7 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
             credentials: options.credentials,
             hopLimit: options.config.tasks.messaging.hopLimit,
           }),
-          runners: buildServerTaskRunners({
-            coding: coding?.runner.definition ?? null,
-            isCodingDefault:
-              NIXIE_TEST_BUILD &&
-              coding !== null &&
-              options.harness?.atcURL !== undefined &&
-              options.harness.atcURL !== null,
-          }),
+          runners: buildServerTaskRunners({ coding: coding?.runner.definition ?? null }),
           taskRunLimits: options.config.models.limits.taskRun.default,
           defaultZone: options.config.time.default_zone,
           ...(options.spend === null

@@ -3,6 +3,7 @@ import { readRecords } from '@heynixie/log';
 import { readStarterDecisionPoint } from '@heynixie/policy/test-utils';
 import type { TaskRunnerDefinition } from '@heynixie/tasks';
 import {
+  buildRunnerStartTool,
   buildStepRunID,
   buildTaskRunnerRegistry,
   buildTaskStartTool,
@@ -85,25 +86,33 @@ async function setupTest() {
     }),
   };
 
-  const tool = buildTaskStartTool(
-    context,
-    { hopLimit: 20, ownerName: null },
-    buildMockTaskStartBounds(),
-  );
+  const messaging = { hopLimit: 20, ownerName: null };
+  const tool = buildTaskStartTool(context, messaging, buildMockTaskStartBounds());
 
-  const registry = buildToolRegistry([tool]);
+  const watcherTool = buildRunnerStartTool(context, messaging, buildMockTaskStartBounds(), {
+    name: 'watcher.start',
+    description: 'Starts a watcher.',
+    runner: 'watcher',
+  });
+
+  const registry = buildToolRegistry([tool, watcherTool]);
 
   return {
     tool,
+    watcherTool,
     context,
     callStart: (input: Record<string, string>, rules: readonly { id: string; tools: string[] }[]) =>
       runToolCall(
-        { tool: 'task.start', input, toolUseID: null },
+        {
+          tool: input['runner'] === 'watcher' ? 'watcher.start' : 'task.start',
+          input,
+          toolUseID: null,
+        },
         {
           runID: 'run-1',
           thread: 'conversation',
           logThread: 'conversation',
-          tools: ['tasks.list', 'task.message', 'task.start', 'time.now'],
+          tools: ['tasks.list', 'task.message', 'task.start', 'watcher.start', 'time.now'],
           stepRunID: buildStepRunID(step.claim),
           model: { model: 'model-a', profile: 'chat-direct' },
         },
@@ -142,16 +151,14 @@ async function setupTest() {
   };
 }
 
-test('it adds the variant of a second runner to the input of the tool, beside the default one', async () => {
+test('it keeps the input of task.start to the default runner, with a second runner in its own tool', async () => {
   const ctx = await setupTest();
 
   expect([
     ctx.tool.input['oneOf'],
     Object.keys(ctx.tool.variants?.declarations ?? {}),
-  ]).toStrictEqual([
-    [expect.toBeObject(), expect.toBeObject()],
-    ['sandbox', 'watcher'],
-  ]);
+    ctx.watcherTool.name,
+  ]).toStrictEqual([undefined, ['sandbox'], 'watcher.start']);
 });
 
 test('it starts the default runner for an input with no runner', async () => {
@@ -209,7 +216,7 @@ test('it returns the sentence of the plan of a second runner as the error, and w
 
   const result = await ctx.callStart(
     { runner: 'watcher', name: 'Night watch', brief: 'Watch the build.', target: '' },
-    [{ id: 'ask-watchers', tools: ['task.start/watcher'] }],
+    [{ id: 'ask-watchers', tools: ['watcher.start'] }],
   );
 
   expect(result).toStrictEqual({
@@ -226,7 +233,7 @@ test('it returns the sentence of the plan of a second runner as the error, and w
 test('it asks about a start under a rule on the second variant only, and starts nothing until it is approved', async () => {
   const ctx = await setupTest();
 
-  const rules = [{ id: 'ask-watchers', tools: ['task.start/watcher'] }];
+  const rules = [{ id: 'ask-watchers', tools: ['watcher.start'] }];
 
   const watched = await ctx.callStart(
     { runner: 'watcher', name: 'Night watch', brief: 'Watch the build.', target: 'main' },
@@ -243,10 +250,7 @@ test('it asks about a start under a rule on the second variant only, and starts 
 
   expect(planned.isError).toBeUndefined();
   expect(created.map((payload) => payload['runner'])).toStrictEqual(['sandbox']);
-
-  expect(proposals.map((entry) => entry.record.payload['tool'])).toStrictEqual([
-    'task.start/watcher',
-  ]);
+  expect(proposals.map((entry) => entry.record.payload['tool'])).toStrictEqual(['watcher.start']);
 });
 
 test('it refuses a sandbox start with no persona and memory read before the starter rule can ask, and writes no proposal', async () => {
@@ -271,4 +275,19 @@ test('it refuses a sandbox start with no persona and memory read before the star
   const proposals = await ctx.readProposals();
 
   expect([created, proposals]).toStrictEqual([[], []]);
+});
+
+test('it refuses a task.start input that names another runner, and starts nothing', async () => {
+  const ctx = await setupTest();
+
+  const result = await ctx.callStart(
+    { runner: 'watcher-as-sandbox', name: 'Night watch', brief: 'Watch the build.' },
+    [],
+  );
+
+  expect(result.isError).toBe(true);
+
+  const created = await ctx.readCreated();
+
+  expect(created).toStrictEqual([]);
 });

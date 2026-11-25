@@ -23,7 +23,7 @@ const queueDeclaration: EffectDeclaration = {
 // The effect declaration of each tool of the coding module, of each action that the coding runner
 // queues, and of the start variant.
 export const codingDeclarations = {
-  // `task.start/<key>`, for a start and a join alike
+  // `coding.start`, for a start and a join alike
   start: {
     effects: ['coding_start'],
     destinations: [],
@@ -32,7 +32,7 @@ export const codingDeclarations = {
     results: { taskID: 'owner_data', name: 'owner_data', note: 'owner_data' },
   },
 
-  // `coding.start`: the spawn that a start queues
+  // `coding.spawn`: the spawn that a start queues
   spawn: {
     effects: ['coding_start'],
     destinations: [],
@@ -86,7 +86,7 @@ export const codingDeclarations = {
 // The declarations that each attempt of a coding action meets the decision point under, by the
 // action's tool.
 export const codingActionDeclarations: ReadonlyMap<string, EffectDeclaration> = new Map([
-  ['coding.start', codingDeclarations.spawn],
+  ['coding.spawn', codingDeclarations.spawn],
   ['coding.steer', codingDeclarations.steer],
   ['coding.message', codingDeclarations.message],
   ['coding.stop', codingDeclarations.stop],

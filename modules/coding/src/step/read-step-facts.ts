@@ -241,7 +241,7 @@ function readSessionOwners(
   outcomes: readonly InboxItem[],
 ): Promise<ReadonlyMap<string, string>> {
   const sessionIDs = outcomes.flatMap((item) => {
-    if (item.kind !== 'outcome' || item.tool !== codingToolNames.start || item.status !== 'done') {
+    if (item.kind !== 'outcome' || item.tool !== codingToolNames.spawn || item.status !== 'done') {
       return [];
     }
 

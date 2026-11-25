@@ -25,7 +25,7 @@ export interface TaskStartEnvelope {
 // the decision point as every action's attempt does, with the task that owns the thread as its
 // caller. The actions module builds the queue that takes it.
 export interface RunnerAction {
-  // a connector tool that no model's tool list holds, such as 'coding.start'
+  // a connector tool that no model's tool list holds, such as 'coding.spawn'
   readonly tool: string;
 
   // erasable, as every action's arguments are

@@ -34,9 +34,8 @@ export async function runVerifyHarness(): Promise<void> {
     stopped.abort();
   });
 
-  // A start with NIXIE_VERIFY_CODING=1 runs the coding runner on a gateway double, and makes it
-  // the runner that task.start advertises: the start tool cannot advertise 2 variants yet, so
-  // that start has no sandbox tasks.
+  // A start with NIXIE_VERIFY_CODING=1 runs the coding runner on a gateway double, so the
+  // conversation's coding.start tool starts a session on it.
   const gateway = process.env['NIXIE_VERIFY_CODING'] === '1' ? startFakeATCGateway() : null;
 
   if (gateway !== null) {

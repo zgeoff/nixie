@@ -6,12 +6,8 @@ import type {
   ToolResolveContext,
 } from '@heynixie/tools';
 import { addRelatedMemory, relatedMemoryOutput } from '@heynixie/tools';
-import type { HarnessID } from '@heynixie/wire';
 import invariant from 'tiny-invariant';
 import { match } from 'ts-pattern';
-import { oneOfStartHarnesses } from '../runner/one-of-start-harnesses';
-import { parseTaskStartInput } from '../runner/parse-task-start-input';
-import { pickStartRunner } from '../runner/pick-start-runner';
 import type { StartDeclaration, StartableRunner } from '../runner/types';
 import { readTaskSetup } from '../task/read-task-setup';
 import type { TaskStartRefusal } from '../task/start/write-task-start';
@@ -29,12 +25,23 @@ import { conversationTaskID } from '../utils/conversation-task-id';
 
 type StartToolContext = Pick<TasksContext, 'clock' | 'definitions' | 'log' | 'runners'>;
 
-interface StartMessaging extends Pick<TaskMessaging, 'hopLimit' | 'ownerName'> {
-  // the harnesses of the model profiles in use. The variants past the default runner's are left out
-  // unless every one of them is in `oneOfStartHarnesses`; absent, none is left out.
-  readonly harnesses?: readonly HarnessID[];
+type StartMessaging = Pick<TaskMessaging, 'hopLimit' | 'ownerName'>;
+
+// The tool of one runner's start, other than the default runner's.
+export interface RunnerStartSpec {
+  // the tool's name, which the policy rules match, such as `coding.start`
+  readonly name: string;
+  readonly description: string;
+
+  // the key of the runner that the tool starts; it names a runner of the registry with a start
+  readonly runner: string;
+
+  // what the tool looks up in memory after it applies, for a starter that reads memory
+  readonly relatedMemory?: RelatedMemoryLookup | undefined;
 }
 
+// `task.start`, which starts the default runner's task. Every other runner that a model can start
+// has a tool of its own, from `buildRunnerStartTool`.
 export function buildTaskStartTool(
   context: StartToolContext,
   messaging: StartMessaging,
@@ -45,21 +52,9 @@ export function buildTaskStartTool(
   relatedMemory?: RelatedMemoryLookup,
 ): ToolDefinition {
   const owner = messaging.ownerName ?? 'the owner';
-  const registry = context.runners;
+  const runner = context.runners.defaultRunner.key;
 
-  const startable = pickAdvertisedStarts(
-    registry.startable,
-    registry.defaultRunner.key,
-    messaging.harnesses,
-  );
-
-  const defaultStart = startable.find((runner) => runner.key === registry.defaultRunner.key)?.start;
-
-  invariant(defaultStart, 'the task.start tool needs the default runner to have a start');
-
-  const inputs = startable.map((runner) => runner.start.describeInput(bounds));
-
-  return {
+  const tool = buildRunnerStartTool(context, messaging, bounds, {
     name: 'task.start',
     description:
       'Starts a new task for work that needs its own context, can wait, or lasts beyond this ' +
@@ -72,10 +67,36 @@ export function buildTaskStartTool(
       'It always holds tasks.list and task.message, and time.now unless you list its tools, ' +
       'which must be tools you hold yourself. A memory read tool also needs memory set to read. ' +
       "Set log to conversation to let the task read the conversation's log.",
-    input:
-      inputs.length === 1 && inputs[0] !== undefined
-        ? inputs[0]
-        : { type: 'object', oneOf: inputs },
+    runner,
+    relatedMemory,
+  });
+
+  // a rule matches the default runner's start as `task.start/<runner>`
+  return {
+    ...tool,
+    variants: {
+      pick: () => runner,
+      declarations: { [runner]: tool.declaration },
+    },
+  };
+}
+
+// The tool that starts one runner's task, such as `coding.start`. It takes the runner's own input
+// and nothing of the sandbox task's, and a rule matches it by its own name.
+export function buildRunnerStartTool(
+  context: StartToolContext,
+  messaging: StartMessaging,
+  bounds: TaskStartBounds,
+  spec: RunnerStartSpec,
+): ToolDefinition {
+  const runner = context.runners.startable.find((candidate) => candidate.key === spec.runner);
+
+  invariant(runner, `the ${spec.name} tool needs the runner ${spec.runner} to have a start`);
+
+  return {
+    name: spec.name,
+    description: spec.description,
+    input: runner.start.describeInput(bounds),
     output: {
       type: 'object',
       properties: {
@@ -87,16 +108,10 @@ export function buildTaskStartTool(
       required: ['taskID', 'name', 'note'],
       additionalProperties: false,
     },
-    declaration: addRelatedResult(defaultStart.declaration),
-    variants: {
-      pick: (input) => pickStartRunner(input, registry).key,
-      declarations: Object.fromEntries(
-        startable.map((runner) => [runner.key, addRelatedResult(runner.start.declaration)]),
-      ),
-    },
+    declaration: addRelatedResult(runner.start.declaration),
     execution: 'direct',
     resolvePolicyFacts: async (input, tool) => {
-      const planned = await planStart(context, bounds, input, tool);
+      const planned = await planStart(context, { runner, bounds }, input, tool);
 
       return planned.status === 'refused'
         ? { status: 'error', message: planned.sentence }
@@ -107,15 +122,14 @@ export function buildTaskStartTool(
           };
     },
     run: async (call, tool): Promise<ToolOutcome> => {
-      const planned = await planStart(context, bounds, call.input, tool);
+      const planned = await planStart(context, { runner, bounds }, call.input, tool);
 
       if (planned.status === 'refused') {
         return { status: 'error', message: planned.sentence };
       }
 
-      const runner = planned.runner;
       const plan = planned.plan;
-      const envelope = parseTaskStartInput(call.input, registry);
+      const envelope = runner.start.schema.parse(call.input);
       const disposable = envelope.disposable ?? true;
 
       const outcome = await writeTaskStart(context, {
@@ -159,7 +173,7 @@ export function buildTaskStartTool(
       };
 
       // A task that holds no memory never reads what the starter's memory holds.
-      const lookup = planned.memory === 'none' ? undefined : relatedMemory;
+      const lookup = planned.memory === 'none' ? undefined : spec.relatedMemory;
 
       return addRelatedMemory(started, lookup, {
         callID: call.callID,
@@ -169,27 +183,19 @@ export function buildTaskStartTool(
   };
 }
 
-function pickAdvertisedStarts(
-  startable: readonly StartableRunner[],
-  defaultKey: string,
-  harnesses: readonly HarnessID[] | undefined,
-): readonly StartableRunner[] {
-  const isOneOfSafe =
-    harnesses === undefined ||
-    harnesses.every((harness) => oneOfStartHarnesses.some((passed) => passed === harness));
-
-  return isOneOfSafe ? startable : startable.filter((runner) => runner.key === defaultKey);
-}
-
 // Memory text can hold outside content, so a runner's declaration gains a source for `related`.
 function addRelatedResult(declaration: StartDeclaration): StartDeclaration {
   return { ...declaration, results: { ...declaration.results, related: 'untrusted' } };
 }
 
+interface StartPlanner {
+  readonly runner: StartableRunner;
+  readonly bounds: TaskStartBounds;
+}
+
 type PlannedStart =
   | {
       readonly status: 'planned';
-      readonly runner: StartableRunner;
       readonly memory: TaskMemory;
       readonly plan: Extract<
         Awaited<ReturnType<StartableRunner['start']['plan']>>,
@@ -198,22 +204,23 @@ type PlannedStart =
     }
   | { readonly status: 'refused'; readonly sentence: string };
 
-// The runner that the input picks plans the start for its starter, so a refusal reaches the model
-// before the decision point and an approval never queues a start that nixie then refuses.
+// The runner plans the start for its starter, so a refusal reaches the model before the decision
+// point and an approval never queues a start that nixie then refuses.
 async function planStart(
   context: StartToolContext,
-  bounds: TaskStartBounds,
+  start: StartPlanner,
   input: JSONObject,
   tool: ToolResolveContext,
 ): Promise<PlannedStart> {
-  const runner = pickStartRunner(input, context.runners);
-
   const access = await readStarterAccess(context, tool.run.thread);
-  const plan = await runner.start.plan(input, { tools: tool.run.tools, ...access }, bounds);
 
-  return plan.status === 'refused'
-    ? plan
-    : { status: 'planned', runner, memory: access.memory, plan };
+  const plan = await start.runner.start.plan(
+    input,
+    { tools: tool.run.tools, ...access },
+    start.bounds,
+  );
+
+  return plan.status === 'refused' ? plan : { status: 'planned', memory: access.memory, plan };
 }
 
 // The conversation reads memory. Any other starter reads it only when its own start said so.

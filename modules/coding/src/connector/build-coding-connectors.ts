@@ -28,7 +28,7 @@ export function buildCodingConnectors(
 ): ReadonlyMap<string, ActionConnector> {
   return new Map<string, ActionConnector>([
     [
-      codingToolNames.start,
+      codingToolNames.spawn,
       {
         reconcile: { kind: 'idempotency_key', where: adapter.id, keptForMs },
         run: async (attempt) => {

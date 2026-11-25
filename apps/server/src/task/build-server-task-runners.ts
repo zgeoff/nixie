@@ -5,10 +5,6 @@ import { defaultTaskRunner, taskRunnerDefinitions } from './task-runner-definiti
 interface ServerTaskRunnersOptions {
   // the coding runner, when the deployment sets one
   readonly coding: TaskRunnerDefinition | null;
-
-  // a test build makes the coding runner the default, so a start tool that advertises only the
-  // default start offers the coding start
-  readonly isCodingDefault: boolean;
 }
 
 // The registry of the server's runners.
@@ -17,6 +13,6 @@ export function buildServerTaskRunners(options: ServerTaskRunnersOptions): TaskR
 
   return buildTaskRunnerRegistry({
     definitions: coding === null ? taskRunnerDefinitions : [...taskRunnerDefinitions, coding],
-    defaultRunner: coding !== null && options.isCodingDefault ? coding : defaultTaskRunner,
+    defaultRunner: defaultTaskRunner,
   });
 }

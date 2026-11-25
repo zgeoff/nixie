@@ -113,7 +113,7 @@ export function collectCodingStep(facts: CodingStepFacts): CodingStepPlan {
 type Outcome = Extract<InboxItem, { readonly kind: 'outcome' }>;
 
 function collectOutcome(facts: CodingStepFacts, state: StepState, outcome: Outcome): void {
-  if (outcome.tool === codingToolNames.start) {
+  if (outcome.tool === codingToolNames.spawn) {
     collectSpawnOutcome(facts, state, outcome);
   }
 

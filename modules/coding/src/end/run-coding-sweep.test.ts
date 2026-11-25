@@ -20,7 +20,6 @@ async function setupTest() {
     seed: {
       startedTask: (): Promise<string> =>
         ctx.startTask(claim, {
-          runner: 'atc',
           name: 'Fix the flaky login test',
           brief: 'Find why the login test fails.',
           repo: { url: 'https://github.com/example/shop.git', ref: 'main' },
@@ -28,7 +27,7 @@ async function setupTest() {
 
       // a task the conversation started, which starts the coding task from its own step
       startedByTask: async (): Promise<{ starterID: string; taskID: string }> => {
-        const starterID = await ctx.startTask(claim, {
+        const starterID = await ctx.startSandboxTask(claim, {
           name: 'Tidy the login code',
           brief: 'Start a coding task for the login test.',
         });
@@ -42,7 +41,6 @@ async function setupTest() {
         invariant(starterClaim, 'the started task is ready to claim');
 
         const taskID = await ctx.startTask(starterClaim, {
-          runner: 'atc',
           name: 'Fix the flaky login test',
           brief: 'Find why the login test fails.',
           repo: { url: 'https://github.com/example/shop.git', ref: 'main' },
@@ -58,7 +56,6 @@ async function setupTest() {
         const shortID = /"id":"(?<id>[^"]+)"/u.exec(JSON.stringify(listed.outcome))?.groups?.['id'];
 
         return ctx.startTask(claim, {
-          runner: 'atc',
           name: 'Your billing refactor',
           brief: 'Watch for a question.',
           session: shortID ?? '',

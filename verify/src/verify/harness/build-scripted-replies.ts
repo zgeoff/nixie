@@ -66,8 +66,8 @@ export function buildScriptedReplies(
       : [
           {
             toolUse: {
-              name: 'mcp__nixie__task_start',
-              input: { ...reply.codingTask, runner: 'atc' },
+              name: 'mcp__nixie__coding_start',
+              input: reply.codingTask,
             },
             ...forConversation,
           },

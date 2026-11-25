@@ -3,11 +3,11 @@ import invariant from 'tiny-invariant';
 import { codingActionDeclarations } from '../connector/coding-declarations';
 import { codingToolNames } from '../connector/coding-tool-names';
 
-// The actions that the runner queues and no model calls: `coding.start` and `coding.stop`. The
+// The actions that the runner queues and no model calls: `coding.spawn` and `coding.stop`. The
 // tool registry declares them, so the snapshot's rules and effects cover them. `coding.steer` and
 // `coding.message` are model tools that queue an action under their own name.
 export function buildCodingActionTools(): ToolDefinition[] {
-  return [codingToolNames.start, codingToolNames.stop].map((name) => {
+  return [codingToolNames.spawn, codingToolNames.stop].map((name) => {
     const declaration = codingActionDeclarations.get(name);
 
     invariant(declaration, `${name} has a declaration`);
