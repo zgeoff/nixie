@@ -264,6 +264,51 @@ test('it saves the earlier content that shows when a newer overlay ran out, and 
   expect(after?.regions[1]?.shown?.content).toStrictEqual({ kind: 'markdown', markdown: 'base' });
 });
 
+test('it leaves a region blank and names it when the overlay it saved ran out', async () => {
+  const ctx = await setupTest();
+
+  await ctx.seed.layout(ctx.device.deviceID);
+
+  await ctx.call('device.region', {
+    device: ctx.device.deviceID,
+    region: 'note',
+    content: { kind: 'markdown', markdown: 'base' },
+  });
+
+  await ctx.call('device.region', {
+    device: ctx.device.deviceID,
+    region: 'note',
+    content: { kind: 'markdown', markdown: 'overlay' },
+    minutes: 10,
+    // oxlint-disable-next-line unicorn/no-thenable -- the tool's input is named then
+    then: 'previous',
+  });
+
+  await ctx.call('device.layout_save', { device: ctx.device.deviceID, name: 'evening' });
+
+  ctx.clock.advance(11 * 60_000);
+
+  const outcome = await ctx.call('device.layout_restore', {
+    device: ctx.device.deviceID,
+    name: 'evening',
+  });
+
+  const after = await ctx.readLayout(ctx.device.deviceID);
+
+  expect([outcome, after?.regions[1]?.shown]).toStrictEqual([
+    {
+      status: 'ok',
+      result: {
+        device: ctx.device.deviceID,
+        name: 'evening',
+        regions: ['pond', 'note', 'clock'],
+        emptied: ['note'],
+      },
+    },
+    null,
+  ]);
+});
+
 test('it names a region emptied when the content under an expired overlay was forgotten', async () => {
   const ctx = await setupTest();
 

@@ -54,6 +54,13 @@ test('it replaces a saved layout when a save reuses its name', async () => {
   ctx.streams.open(device.deviceID, { width: 1920, height: 480, pixelRatio: 1 });
 
   await ctx.seed.layout(device.deviceID);
+
+  await ctx.call('device.region', {
+    device: device.deviceID,
+    region: 'note',
+    content: { kind: 'markdown', markdown: 'first' },
+  });
+
   await ctx.call('device.layout_save', { device: device.deviceID, name: 'evening' });
 
   await ctx.call('device.layout', {
@@ -61,6 +68,12 @@ test('it replaces a saved layout when a save reuses its name', async () => {
     columns: ['1fr'],
     rows: ['1fr'],
     regions: [{ name: 'garden', column: 1, row: 1 }],
+  });
+
+  await ctx.call('device.region', {
+    device: device.deviceID,
+    region: 'garden',
+    content: { kind: 'markdown', markdown: 'second' },
   });
 
   ctx.clock.advance(60_000);
@@ -83,7 +96,9 @@ test('it replaces a saved layout when a save reuses its name', async () => {
 
   const restored = await ctx.readLayout(device.deviceID);
 
-  expect(restored?.regions.map((region) => region.name)).toStrictEqual(['garden']);
+  expect(
+    restored?.regions.map((region) => [region.name, region.shown?.content ?? null]),
+  ).toStrictEqual([['garden', { kind: 'markdown', markdown: 'second' }]]);
 
   expect([replaced, listed]).toStrictEqual([
     { status: 'ok', result: { device: device.deviceID, name: 'evening', replaced: true } },

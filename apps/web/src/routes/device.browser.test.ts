@@ -45,6 +45,12 @@ async function setupTest() {
 
   return {
     appURL: proxy.url,
+
+    // a finger that taps once, as the touchscreen of a device sends it
+    tap: async (x: number, y: number) => {
+      await view.cdp('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
+      await view.cdp('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    },
     shownButtons: `[...document.querySelectorAll('button')].filter((button) => getComputedStyle(button).visibility === 'visible').map((button) => button.innerText)`,
     view,
     readResizes: () =>
@@ -326,7 +332,7 @@ test('it hides the screen buttons until a touch', async () => {
 
   const hidden = await ctx.view.evaluate(ctx.shownButtons);
 
-  await ctx.view.click('[data-testid="screen"]');
+  await ctx.tap(20, 20);
   await ctx.waitForPage(`${ctx.shownButtons}.length === 3`);
 
   const touched = await ctx.view.evaluate(ctx.shownButtons);
@@ -363,7 +369,7 @@ test('it hides the screen buttons 4 seconds after the latest touch', async () =>
   const ctx = await setupTest();
 
   await ctx.switchScreenOn();
-  await ctx.view.click('[data-testid="screen"]');
+  await ctx.tap(20, 20);
   await ctx.waitForPage(`${ctx.shownButtons}.length === 3`);
   await ctx.pausePageClock();
   await ctx.advancePageClock(3500);

@@ -2,11 +2,9 @@ import { createShortID } from '@heynixie/db';
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import invariant from 'tiny-invariant';
 import { pickLayoutRestore } from '../layout/pick-layout-restore';
-import { readRegionState } from '../layout/read-region-state';
-import { readSavedLayouts } from '../layout/read-saved-layouts';
+import { readLayoutRestoreInput } from '../layout/read-layout-restore-input';
 import { deviceLayoutRestoredCodec } from '../record/device-layout-restored-codec';
 import { deviceLayoutSetCodec } from '../record/device-layout-set-codec';
-import { readScreenRecord } from '../screen/read-screen-record';
 import type { DeviceTables } from '../types';
 import type { DeviceToolOptions } from './device-tool-options';
 
@@ -22,7 +20,7 @@ export type LayoutRestoreOutcome =
       readonly layoutID: string;
       readonly regions: readonly string[];
 
-      // the regions that come back blank, because their content was forgotten
+      // the regions that come back blank, because their content was forgotten or ran out
       readonly emptied: readonly string[];
     }
   | { readonly status: 'unknown'; readonly names: readonly string[] };
@@ -35,50 +33,29 @@ export function writeLayoutRestore(
   write: LayoutRestoreWrite,
 ): Promise<LayoutRestoreOutcome> {
   return withWriteTransaction(options.log.writer, async (tx) => {
-    const saved = await readSavedLayouts(tx, write.deviceID);
-
-    const layout = saved.find((candidate) => candidate.name === write.name);
-
-    if (layout === undefined) {
-      return { status: 'unknown', names: saved.map((candidate) => candidate.name) };
-    }
-
     const inTransaction = { ...options.log, writer: { ...options.log.writer, db: tx } };
-
-    const layoutRecord = await readScreenRecord(inTransaction, layout.layoutSequence);
-
-    invariant(layoutRecord, 'a saved layout names a layout record that is gone');
-
-    const grid = deviceLayoutSetCodec.decode(layoutRecord.payload).layout;
-
-    invariant(grid, 'a saved layout names a layout record with no grid');
-
-    const layoutID = createShortID();
     const nowMs = options.clock.now();
 
-    const states = await Promise.all(
-      layout.regions.map(async (region) => {
-        const shown = await readRegionState(inTransaction, region.shownSequence, nowMs);
+    const input = await readLayoutRestoreInput(inTransaction, write.deviceID, write.name, nowMs);
 
-        return {
-          region: region.region,
-          shownSequence: region.shownSequence,
-          isShown: shown !== null,
-        };
-      }),
-    );
+    const plan = pickLayoutRestore(input);
 
-    const plan = pickLayoutRestore(
-      grid.regions.map((region) => region.name),
-      states,
-    );
+    if (plan.status === 'unknown') {
+      return plan;
+    }
+
+    const layoutID = createShortID();
 
     const [layoutSet, restored] = await writeRecordsInTransaction(tx, options.log, [
       {
         kind: deviceLayoutSetCodec.kind,
         definitions: options.definitions(),
         thread: write.thread,
-        payload: deviceLayoutSetCodec.encode({ device: write.deviceID, layoutID, layout: grid }),
+        payload: deviceLayoutSetCodec.encode({
+          device: write.deviceID,
+          layoutID,
+          layout: plan.grid,
+        }),
       },
       {
         kind: deviceLayoutRestoredCodec.kind,
@@ -133,7 +110,7 @@ export function writeLayoutRestore(
     return {
       status: 'restored',
       layoutID,
-      regions: grid.regions.map((region) => region.name),
+      regions: plan.regions,
       emptied: plan.emptied,
     };
   });
