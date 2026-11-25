@@ -1,4 +1,5 @@
 import { writeRecordsInTransaction } from '@heynixie/log';
+import { findMcpToolOverride } from '@heynixie/policy';
 import type { ProposalBody, ProposalKindHandler } from '@heynixie/proposals';
 import { proposalLapseMs } from '@heynixie/proposals';
 import invariant from 'tiny-invariant';
@@ -87,9 +88,10 @@ async function readBody(
 
   const serverID = operation.tool.split('.')[0] ?? '';
 
-  return buildMcpProposalBody(operation, {
-    allowed,
-    proposed,
-    override: proposed === null ? null : (overrides?.servers[serverID]?.[proposed.name] ?? null),
-  });
+  const override =
+    proposed === null || overrides === undefined
+      ? null
+      : findMcpToolOverride(overrides.servers, serverID, proposed.name);
+
+  return buildMcpProposalBody(operation, { allowed, proposed, override });
 }

@@ -1,5 +1,6 @@
 import type { RecordInput } from '@heynixie/log';
 import { writeRecordsInTransaction } from '@heynixie/log';
+import { findMcpToolOverride } from '@heynixie/policy';
 import type { ApplyOutcome, ProposalAnswerInput, SharedProposal } from '@heynixie/proposals';
 import type { Transaction } from 'kysely';
 import { pickFitFault } from '../declaration/pick-fit-fault';
@@ -262,9 +263,12 @@ async function readFitFault(
 
   const inForce = await context.readOverrides?.(tx);
 
-  const override = inForce?.servers[serverID]?.[request.form.name];
+  const override =
+    inForce === undefined
+      ? null
+      : findMcpToolOverride(inForce.servers, serverID, request.form.name);
 
-  if (override === undefined) {
+  if (override === null) {
     return null;
   }
 

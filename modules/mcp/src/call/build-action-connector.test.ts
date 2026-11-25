@@ -45,6 +45,25 @@ test("it answers a server's own error as refused, with the server's text", async
   expect(response).toStrictEqual({ kind: 'refused', reason: 'no such item' });
 });
 
+test('it answers a server answer that nixie cannot read as ambiguous', async () => {
+  const connector = buildActionConnector(() =>
+    Promise.resolve({
+      kind: 'answered',
+      outcome: {
+        status: 'error',
+        message: 'tracker.item_create answered outside its output schema',
+      },
+    }),
+  );
+
+  const response = await connector.run(buildActionAttempt());
+
+  expect(response).toStrictEqual({
+    kind: 'ambiguous',
+    reason: 'tracker.item_create answered outside its output schema',
+  });
+});
+
 test('it passes the approved arguments to the call', async () => {
   const seen: unknown[] = [];
 

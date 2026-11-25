@@ -77,6 +77,16 @@ export async function runApprovedCall(
     return { status: 'unavailable' };
   }
 
+  // the snapshot the call records is the one that supplied the declaration it runs under
+  const definitions = options.definitions();
+
+  if (
+    found.definition.definitionsHash !== undefined &&
+    found.definition.definitionsHash !== definitions.snapshotHash
+  ) {
+    return { status: 'changed' };
+  }
+
   const stored = await readApprovedCall(options.log, request);
 
   if (stored === null) {
@@ -115,7 +125,7 @@ export async function runApprovedCall(
   });
 
   const recorder = makeCallRecorder(call, run, options, {
-    definitions: options.definitions(),
+    definitions,
     parent: undefined,
     pinHash: found.definition.pinHash,
   });

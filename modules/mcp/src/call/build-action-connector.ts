@@ -1,4 +1,9 @@
-import type { ActionConnector, ProviderResponse, Reconcile } from '@heynixie/connectors';
+import type {
+  ActionAttempt,
+  ActionConnector,
+  ProviderResponse,
+  Reconcile,
+} from '@heynixie/connectors';
 import type { JSONObject } from '@heynixie/log';
 import type { McpReconcile } from '@heynixie/policy';
 import { pickCheckResponse } from './pick-check-response';
@@ -11,6 +16,9 @@ export interface ConnectorReconcile {
   readonly reconcile: McpReconcile | null;
   readonly serverID: string;
 
+  // the definitions snapshot that held the declaration, or null for a declaration by annotations
+  readonly definitionsHash: string | null;
+
   // runs the read tool of a check, named as `<serverID>.<tool>`, with the call's input
   readonly runCheck: (tool: string, input: JSONObject) => Promise<ProxiedCallResult | null>;
 }
@@ -18,12 +26,13 @@ export interface ConnectorReconcile {
 const noReconcile: ConnectorReconcile = {
   reconcile: null,
   serverID: '',
+  definitionsHash: null,
   runCheck: () => Promise.resolve(null),
 };
 
 // The connector that runs an approved, queued call of a proxied tool. An idempotency key carries the
 // action ID, and a check settles an interrupted call by what its read tool finds. Without either, a
-// call whose outcome is unknown comes to you.
+// call whose outcome is unknown comes to you. A recovery needs the snapshot the call was recorded under.
 export function buildActionConnector(
   call: (input: JSONObject) => Promise<ProxiedCallResult>,
   reconcile: ConnectorReconcile = noReconcile,
@@ -41,6 +50,10 @@ export function buildActionConnector(
       },
       reconcile: { kind: 'check', tool, onNotFound: 'retry' },
       check: async (attempt) => {
+        if (isRecoveryMoved(reconcile, attempt)) {
+          return { kind: 'inconclusive' };
+        }
+
         const result = await reconcile.runCheck(tool, attempt.arguments);
 
         return pickCheckResponse(result);
@@ -63,6 +76,13 @@ export function buildActionConnector(
 
   return {
     run: async (attempt) => {
+      if (attempt.attempt > 1 && isRecoveryMoved(reconcile, attempt)) {
+        return {
+          kind: 'ambiguous',
+          reason: `${attempt.tool} changed its declaration after the first attempt, so nothing was retried`,
+        };
+      }
+
       const result = await call({ ...attempt.arguments, [key]: attempt.actionID });
 
       return toProviderResponse(result);
@@ -82,8 +102,9 @@ function toProviderResponse(result: ProxiedCallResult): ProviderResponse {
 
   const outcome = result.outcome;
 
+  // the server answered, so the call may have changed something that nixie cannot read back
   if (outcome.status === 'error') {
-    return { kind: 'refused', reason: outcome.message };
+    return { kind: 'ambiguous', reason: outcome.message };
   }
 
   if (outcome.isError === true) {
@@ -95,4 +116,8 @@ function toProviderResponse(result: ProxiedCallResult): ProviderResponse {
     result: outcome.result,
     ...(outcome.images === undefined ? {} : { images: outcome.images }),
   };
+}
+
+function isRecoveryMoved(reconcile: ConnectorReconcile, attempt: ActionAttempt): boolean {
+  return reconcile.definitionsHash !== null && reconcile.definitionsHash !== attempt.snapshotHash;
 }

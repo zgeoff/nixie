@@ -12,7 +12,7 @@ import { buildServerFacts } from './build-server-facts';
 import { startStandInMcpSite } from './start-stand-in-mcp-site';
 import type { StandInMcpSite, StandInTool } from './start-stand-in-mcp-site';
 import { startTestMcp } from './start-test-mcp';
-import type { TestMcp } from './start-test-mcp';
+import type { TestMcp, TestMcpOptions } from './start-test-mcp';
 
 export const standInNixieOrigin = 'https://nixie.example.org';
 
@@ -22,12 +22,16 @@ export interface StandInMcpOptions {
   readonly listingTimeoutSeconds?: number;
   readonly advertisesIssuer?: boolean;
   readonly onPinMoved?: OnPinMoved;
+  readonly extraProjections?: TestMcpOptions['extraProjections'];
 }
 
 export interface StandInMcp {
   readonly site: StandInMcpSite;
   readonly test: TestMcp;
   readonly held: HeldTestStore;
+
+  // the facts of the server `tracker` as the proxy's config holds them
+  readonly facts: ServerFacts;
 
   // the proxy over the real store, started with the server `tracker` in its config
   readonly mcp: Mcp;
@@ -36,8 +40,9 @@ export interface StandInMcp {
   // the same store unless `store` stands in for it.
   readonly restart: (changed?: Partial<ServerFacts>, store?: CredentialStore) => Mcp;
 
-  // Sets the override files of the definitions that the proxy reads, under a snapshot of its own.
-  readonly setOverrides: (servers: McpOverrides) => void;
+  // Sets the override files of the definitions that the proxy reads, and moves the definitions to
+  // the snapshot that held them. The proxy reads them again at its next refresh or refit.
+  readonly setOverrides: (servers: McpOverrides, snapshotHash?: string) => void;
 
   // approves the server's proposal, so the server joins as added
   readonly approveServer: () => Promise<void>;
@@ -61,6 +66,9 @@ export async function startStandInMcp(options: StandInMcpOptions = {}): Promise<
   const holder: { mcp: Mcp | null } = { mcp: null };
 
   const test = await startTestMcp({
+    ...(options.extraProjections === undefined
+      ? {}
+      : { extraProjections: options.extraProjections }),
     readHandler: () => {
       invariant(holder.mcp, 'the proxy starts before the first answer');
 
@@ -96,7 +104,10 @@ export async function startStandInMcp(options: StandInMcpOptions = {}): Promise<
       listingTimeoutSeconds: options.listingTimeoutSeconds ?? 5,
       takenModelNames: () => new Set(),
       readOverrides: () =>
-        Promise.resolve({ definitionsHash: 'sha256:overrides', servers: overrides.servers }),
+        Promise.resolve({
+          definitionsHash: test.context.definitions().snapshotHash,
+          servers: overrides.servers,
+        }),
       ...(options.onPinMoved === undefined ? {} : { onPinMoved: options.onPinMoved }),
     });
 
@@ -115,6 +126,7 @@ export async function startStandInMcp(options: StandInMcpOptions = {}): Promise<
     site,
     test,
     held,
+    facts,
     mcp,
     restart: (changed, store) => {
       const restarted = makeMcp(changed, store);
@@ -123,8 +135,10 @@ export async function startStandInMcp(options: StandInMcpOptions = {}): Promise<
 
       return restarted;
     },
-    setOverrides: (servers) => {
+    setOverrides: (servers, snapshotHash = 'sha256:overrides') => {
       overrides.servers = servers;
+
+      test.moveSnapshot(snapshotHash);
     },
     approveServer: async () => {
       const rows = await readServerRows(test.log.writer.db);

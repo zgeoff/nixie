@@ -1,3 +1,4 @@
+import { buildSchemaParser } from '@heynixie/tools';
 import type { ToolImage, ToolOutcome } from '@heynixie/tools';
 import { z } from 'zod';
 import type { ToolForm } from '../types';
@@ -49,9 +50,15 @@ export function buildCallOutcome(tool: string, form: ToolForm, answer: unknown):
   }
 
   if (form.outputSchema !== null) {
-    return structuredContent === undefined
-      ? { status: 'error', message: `${tool} answered with no structured content` }
-      : { status: 'ok', result: structuredContent, ...(images.length === 0 ? {} : { images }) };
+    if (structuredContent === undefined) {
+      return { status: 'error', message: `${tool} answered with no structured content` };
+    }
+
+    if (!buildSchemaParser(form.outputSchema)(structuredContent).isValid) {
+      return { status: 'error', message: `${tool} answered outside its output schema` };
+    }
+
+    return { status: 'ok', result: structuredContent, ...(images.length === 0 ? {} : { images }) };
   }
 
   const lines = [

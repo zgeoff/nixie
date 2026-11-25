@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Log } from '@heynixie/log';
 import { logProjections, readRecords, startWriter, writeRecordsInTransaction } from '@heynixie/log';
+import type { McpToolOverride } from '@heynixie/policy';
 import type { AnswerOutcome, ProposalKindHandler } from '@heynixie/proposals';
 import { answerProposal, buildProposalsProjection, readProposal } from '@heynixie/proposals';
 import { createFakeClock } from '@zgeoff/testing/clock';
@@ -23,11 +24,17 @@ export interface ListInput {
   readonly forms: readonly ToolForm[];
   readonly isTrusted?: boolean;
 
+  // the server's override file, by the tool's own name
+  readonly overrides?: Readonly<Record<string, McpToolOverride>>;
+
   // runs after the listing read what it compares with and before it writes
   readonly afterRead?: () => Promise<void>;
 }
 
 export interface TestMcpOptions {
+  // projections of other modules that the log also holds, for a test that writes their records
+  readonly extraProjections?: Log['projections'];
+
   // the handler of the mcp family, read at each answer; the default forgets nothing in a store
   readonly readHandler?: () => ProposalKindHandler;
 }
@@ -36,6 +43,9 @@ export interface TestMcp {
   readonly log: Log;
   readonly clock: ReturnType<typeof createFakeClock>;
   readonly context: McpContext;
+
+  // Moves the definitions snapshot that every later write and read names, as a seed does.
+  readonly moveSnapshot: (snapshotHash: string) => void;
 
   // the credential IDs that a removal asked the store to forget
   readonly forgotten: string[];
@@ -84,11 +94,17 @@ export async function startTestMcp(options: TestMcpOptions = {}): Promise<TestMc
   const log: Log = {
     writer,
     deploymentKey,
-    projections: [...logProjections, ...mcpProjections, projection],
+    projections: [
+      ...logProjections,
+      ...mcpProjections,
+      projection,
+      ...(options.extraProjections ?? []),
+    ],
   };
 
   const clock = createFakeClock({ startMs: Date.parse('2026-11-02T09:00:00Z') });
-  const definitions = readDefinitions;
+  const snapshot = { hash: 'sha256:test' };
+  const definitions = () => ({ snapshotHash: snapshot.hash });
   const context: McpContext = { log, definitions, now: () => clock.now() };
   const forgotten: string[] = [];
 
@@ -134,6 +150,9 @@ export async function startTestMcp(options: TestMcpOptions = {}): Promise<TestMc
     log,
     clock,
     context,
+    moveSnapshot: (snapshotHash) => {
+      snapshot.hash = snapshotHash;
+    },
     forgotten,
     answer,
     addServer: async (serverID, facts) => {
@@ -168,6 +187,7 @@ export async function startTestMcp(options: TestMcpOptions = {}): Promise<TestMc
           isTrusted: input.isTrusted ?? false,
           forms: input.forms,
           takenModelNames: new Set(),
+          ...(input.overrides === undefined ? {} : { overrides: input.overrides }),
         },
       );
 
@@ -194,8 +214,4 @@ export async function startTestMcp(options: TestMcpOptions = {}): Promise<TestMc
       return records.map((entry) => mcpHealthChangedCodec.decode(entry.record.payload));
     },
   };
-}
-
-function readDefinitions() {
-  return { snapshotHash: 'sha256:test' };
 }

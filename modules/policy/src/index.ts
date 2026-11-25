@@ -47,6 +47,7 @@ export { policyConfigSchema } from './policy/policy-config-schema';
 export type { EffectOverrideProblem, ParsedEffectOverrides } from './effect/parse-effect-overrides';
 export { parseEffectOverrides } from './effect/parse-effect-overrides';
 export type { McpOverrideProblem, ParsedMcpOverrides } from './mcp/parse-mcp-overrides';
+export { findMcpToolOverride } from './mcp/find-mcp-tool-override';
 export { parseMcpOverrides } from './mcp/parse-mcp-overrides';
 
 export {

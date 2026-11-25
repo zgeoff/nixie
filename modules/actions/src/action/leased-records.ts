@@ -85,14 +85,23 @@ export function writeLeasedRecords(
   });
 }
 
-export async function readArguments(
+// What the record that queued an action holds: the arguments, and the definitions snapshot the call
+// was recorded under, which a connector with more than one version of its declaration reads.
+export interface QueuedCall {
+  readonly arguments: JSONObject;
+  readonly snapshotHash: string;
+}
+
+export async function readQueuedCall(
   context: TasksContext,
   sequence: number,
-): Promise<JSONObject | null> {
+): Promise<QueuedCall | null> {
   const [entry] = await readRecords(context.log, { afterSequence: sequence - 1, limit: 1 });
 
   const erasable = entry?.record.erasable;
   const args = erasable?.status === 'readable' ? erasable.fields['arguments'] : undefined;
 
-  return isJSONObject(args) ? args : null;
+  return entry !== undefined && isJSONObject(args)
+    ? { arguments: args, snapshotHash: entry.record.definitions.snapshotHash }
+    : null;
 }

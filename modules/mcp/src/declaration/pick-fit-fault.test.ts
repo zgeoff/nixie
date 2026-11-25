@@ -76,3 +76,46 @@ test('it accepts a check tool the server lists', () => {
 
   expect(ctx.judge({ reconcile: { check: 'item_get' } })).toBeNull();
 });
+
+test('it accepts a destination that a member of the root anyOf holds', () => {
+  const form = buildToolForm({
+    name: 'item_notify',
+    inputSchema: {
+      type: 'object',
+      anyOf: [
+        { type: 'object', properties: { assignee_email: { type: 'string' } } },
+        { type: 'object', properties: { team_email: { type: 'string' } } },
+      ],
+    },
+  });
+
+  const override: McpToolOverride = {
+    effects: ['send'],
+    destinations: ['team_email'],
+    amount: null,
+    content: null,
+    reconcile: null,
+  };
+
+  expect(pickFitFault(override, form, new Set(['item_notify']))).toBeNull();
+});
+
+test('it accepts a destination that the root names through a local ref', () => {
+  const form = buildToolForm({
+    name: 'item_notify',
+    inputSchema: {
+      $ref: '#/$defs/args',
+      $defs: { args: { type: 'object', properties: { assignee_email: { type: 'string' } } } },
+    },
+  });
+
+  const override: McpToolOverride = {
+    effects: ['send'],
+    destinations: ['assignee_email'],
+    amount: null,
+    content: ['assignee_email'],
+    reconcile: null,
+  };
+
+  expect(pickFitFault(override, form, new Set(['item_notify']))).toBeNull();
+});

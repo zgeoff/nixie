@@ -26,3 +26,16 @@ test.each([
 ] as const)('it counts %s as inconclusive', (_name, result) => {
   expect(pickCheckResponse(result)).toStrictEqual({ kind: 'inconclusive' });
 });
+
+test('it counts a result of pictures alone as inconclusive', () => {
+  const response = pickCheckResponse({
+    kind: 'answered',
+    outcome: {
+      status: 'ok',
+      result: { text: '' },
+      images: [{ mediaType: 'image/png', bytes: Buffer.from([1]) }],
+    },
+  });
+
+  expect(response).toStrictEqual({ kind: 'inconclusive' });
+});

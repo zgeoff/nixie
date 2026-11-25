@@ -1,18 +1,32 @@
+import type { HeldWiring } from '@heynixie/credentials';
 import { readSnapshotMcpOverrides } from '@heynixie/definitions';
 import { toErrorFields } from '@heynixie/logger';
+import type { Logger } from '@heynixie/logger';
 import type { Mcp, McpConfig } from '@heynixie/mcp';
 import { makeToolChangeNotifier, startMcp } from '@heynixie/mcp';
+import type { ModelCredentials } from '@heynixie/models';
+import type { TasksContext } from '@heynixie/tasks';
 import { toSDKToolName } from '@heynixie/tools';
-import type { PartReader, ServerParts } from '../types';
+import type { Cleanup, PartReader } from '../types';
 import type { ServerPartValues } from './server-part-values';
+
+// What the part reads of the server's parts, which a test supplies without starting the server.
+export interface McpPartParts {
+  readonly context: TasksContext;
+  readonly credentials: Pick<ModelCredentials, 'store'>;
+  readonly heldSlot: { readonly read: () => Pick<HeldWiring, 'backend'> };
+  readonly config: { readonly time: { readonly default_zone: string } };
+  readonly cleanup: Pick<Cleanup, 'defer'>;
+  readonly log: Logger;
+}
 
 // Starts the MCP proxy on the credential store and its database backend, which the connections part
 // binds first. A start compares the config with the facts in use, holds a widened server for its
 // proposal, and lists the tools of each signed-in server.
 export async function startMcpPart(
-  parts: ServerParts,
+  parts: McpPartParts,
   config: McpConfig,
-  reader: PartReader<ServerPartValues>,
+  reader: Pick<PartReader<ServerPartValues>, 'find'>,
 ): Promise<Mcp> {
   const mcp = startMcp({
     log: parts.context.log,
@@ -64,7 +78,7 @@ function formatClockTime(timeMs: number, zone: string): string {
   }).format(timeMs);
 }
 
-async function listOne(parts: ServerParts, mcp: Mcp, serverID: string): Promise<void> {
+async function listOne(parts: McpPartParts, mcp: Mcp, serverID: string): Promise<void> {
   try {
     await mcp.list(serverID);
   } catch (error) {

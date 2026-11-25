@@ -21,6 +21,10 @@ export interface ActionAttempt {
   readonly actionID: string;
   readonly tool: string;
   readonly arguments: JSONObject;
+
+  // the definitions snapshot the queued call was recorded under, which a connector whose declaration
+  // comes from the definitions compares with the snapshot of its own
+  readonly snapshotHash: string;
   readonly attempt: number;
   readonly idempotencyKey: string;
 

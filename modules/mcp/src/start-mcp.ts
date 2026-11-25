@@ -262,7 +262,9 @@ export function startMcp(options: McpOptions): Mcp {
         isTrusted: opened.isTrusted,
         forms: outcome.forms,
         takenModelNames: options.takenModelNames(),
-        overrides: inForce.servers[serverID] ?? {},
+        overrides: Object.hasOwn(inForce.servers, serverID)
+          ? (inForce.servers[serverID] ?? {})
+          : {},
       },
     );
 
@@ -297,7 +299,10 @@ export function startMcp(options: McpOptions): Mcp {
       });
 
       if (gate.kind === 'open') {
-        return { kind: 'cleared' };
+        return {
+          kind: 'cleared',
+          pinnedHash: rows.find((row) => row.tool === tool)?.pinned_hash ?? null,
+        };
       }
 
       if (gate.kind === 'refused') {
@@ -470,6 +475,7 @@ export function startMcp(options: McpOptions): Mcp {
         : buildActionConnector(makeApprovedCall(tool), {
             reconcile: declared.reconcile,
             serverID: tool.split('.')[0] ?? '',
+            definitionsHash: declared.definitionsHash,
             runCheck: runCheckTool,
           });
     },

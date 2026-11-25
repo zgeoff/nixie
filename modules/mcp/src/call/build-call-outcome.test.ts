@@ -99,3 +99,21 @@ test('it returns an error for an answer that is no result', () => {
     message: 'tracker.item_get answered in a form that nixie cannot read',
   });
 });
+
+test('it returns an error when structured content breaks the output schema', () => {
+  const form = buildToolForm({
+    name: 'item_get',
+    outputSchema: {
+      type: 'object',
+      properties: { count: { type: 'integer' } },
+      required: ['count'],
+    },
+  });
+
+  const answer = { content: [], structuredContent: { count: 'three' } };
+
+  expect(buildCallOutcome('tracker.item_get', form, answer)).toStrictEqual({
+    status: 'error',
+    message: 'tracker.item_get answered outside its output schema',
+  });
+});

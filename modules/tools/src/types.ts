@@ -131,6 +131,11 @@ export interface ToolDefinition {
   // run, or when its approval runs, ends with nothing run.
   readonly pinHash?: string;
 
+  // The definitions snapshot that supplied the tool's declaration, for a tool declared by the
+  // definitions. A call that would record another snapshot ends with nothing run, because the
+  // declaration it decided under is no longer the one in force.
+  readonly definitionsHash?: string;
+
   // The tool's errors and the reasons of its failed actions carry what an outside service said, so
   // they reach the model fenced as untrusted text.
   readonly outsideErrors?: true;

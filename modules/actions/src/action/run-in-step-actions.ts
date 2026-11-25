@@ -9,7 +9,7 @@ import { buildHeldCheck } from './build-held-check';
 import { buildRefusalRecords } from './build-refusal-records';
 import { buildUnknownRecords } from './build-unknown-records';
 import type { Attempt, Settlement } from './leased-records';
-import { buildOutcomeRecord, readArguments, writeLeasedRecords } from './leased-records';
+import { buildOutcomeRecord, readQueuedCall, writeLeasedRecords } from './leased-records';
 import { readAttemptStep } from './read-attempt-step';
 import { isPastDeadline, writeAttemptStarted } from './write-attempt-started';
 
@@ -113,7 +113,9 @@ async function runInStepAction(
 
   const attempt = { ...claimed, attempt: action.attempt_count + 1 };
 
-  const args = await readArguments(context, action.queued_sequence);
+  const queued = await readQueuedCall(context, action.queued_sequence);
+
+  const args = queued?.arguments ?? null;
 
   if (args === null || action.call_sequence === null) {
     return writeFailure(context, attempt, 'arguments_unreadable', {});

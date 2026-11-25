@@ -1,9 +1,10 @@
 import type { JSONObject } from '@heynixie/log';
 import type { ServerCallOutcome } from './run-server-call';
 
-// A refusal is nixie's own sentence, which names the server and says what to do.
+// A refusal is nixie's own sentence, which names the server and says what to do. A call that is
+// cleared carries the hash its tool's pin holds after any listing the clearance made.
 type CallClearance =
-  | { readonly kind: 'cleared' }
+  | { readonly kind: 'cleared'; readonly pinnedHash: string | null }
   | { readonly kind: 'refused'; readonly text: string };
 
 // What a send came to: the server's answer or failure, or a refusal that never reached the server.

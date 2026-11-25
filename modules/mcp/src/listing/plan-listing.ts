@@ -1,10 +1,12 @@
 import type { McpToolOverride } from '@heynixie/policy';
 import { toSDKToolName } from '@heynixie/tools';
+import { buildMissingToolFault } from '../declaration/build-missing-tool-fault';
 import { buildProxiedToolName, pickNameRefusal } from '../name/pick-name-refusal';
 import { decideMissingPin, decidePin } from '../pin/decide-pin';
 import type { PinDecision } from '../pin/decide-pin';
 import { hashToolForm } from '../pin/hash-tool-form';
 import { pickFormRefusal } from '../registry/pick-form-refusal';
+import type { McpToolRow } from '../rows/mcp-tables';
 import type { ToolForm } from '../types';
 import type { ListingState } from './types';
 
@@ -62,31 +64,51 @@ export function planListing(request: ListingRequest, state: ListingState): ToolP
 
   const listed = forms.map((form) => planListedTool(request, state, taken, { form, names }));
 
+  const isOverridden = (name: string): boolean =>
+    request.overrides !== undefined && Object.hasOwn(request.overrides, name);
+
   const missing = [...state.rows.values()]
-    .filter(
-      (row) => !names.has(row.tool.slice(request.serverID.length + 1)) && row.state !== 'removed',
-    )
-    .map((row): ToolPlan => {
+    .filter((row) => !names.has(toServerName(request, row.tool)))
+    .flatMap((row): ToolPlan[] => {
+      const name = toServerName(request, row.tool);
+
+      // a file that names a tool the server lacks stops it, whether or not it was pinned
+      if (isOverridden(name)) {
+        return [planUnfitMissing(request, name, row)];
+      }
+
+      if (row.state === 'removed') {
+        return [];
+      }
+
       const decision = decideMissingPin({
         pinnedHash: row.pinned_hash,
         latestHash: row.latest_hash,
         state: row.state,
       });
 
-      return {
-        tool: row.tool,
-        serverID: request.serverID,
-        form: null,
-        decision,
-        isListed: false,
-        proposeAllow: null,
-        withdrawProposalID: row.proposal_id,
-        keptProposalID: null,
-        isChanged: true,
-      };
+      return [
+        {
+          tool: row.tool,
+          serverID: request.serverID,
+          form: null,
+          decision,
+          isListed: false,
+          proposeAllow: null,
+          withdrawProposalID: row.proposal_id,
+          keptProposalID: null,
+          isChanged: true,
+        },
+      ];
     });
 
-  return [...listed, ...missing];
+  const unheld = Object.keys(request.overrides ?? {})
+    .filter(
+      (name) => !names.has(name) && !state.rows.has(buildProxiedToolName(request.serverID, name)),
+    )
+    .map((name) => planUnfitMissing(request, name, undefined));
+
+  return [...listed, ...missing, ...unheld];
 }
 
 // The tools in the order of their names, with one tool for each name: the first one a server lists.
@@ -141,7 +163,7 @@ function planListedTool(
     form,
     hash,
     nameRefusal: refusal,
-    override: request.overrides?.[form.name] ?? null,
+    override: findOwnOverride(request.overrides, form.name),
     serverToolNames: listed.names,
   });
 
@@ -178,5 +200,56 @@ function planListedTool(
       row.hidden_reason !== decision.hiddenReason ||
       proposeAllow !== null ||
       withdrawProposalID !== null,
+  };
+}
+
+function findOwnOverride(
+  overrides: Readonly<Record<string, McpToolOverride>> | undefined,
+  name: string,
+): McpToolOverride | null {
+  return overrides !== undefined && Object.hasOwn(overrides, name)
+    ? (overrides[name] ?? null)
+    : null;
+}
+
+function toServerName(request: ListingRequest, tool: string): string {
+  return tool.slice(request.serverID.length + 1);
+}
+
+// The plan for a tool that the override names and the listing lacks. The tool keeps its pin, if it
+// had one, and waits stopped until the override or the server changes.
+function planUnfitMissing(
+  request: ListingRequest,
+  name: string,
+  row: McpToolRow | undefined,
+): ToolPlan {
+  const hiddenReason = buildMissingToolFault(name);
+
+  const decision: PinDecision = {
+    state: 'stopped_unfit',
+    pinnedHash: row?.pinned_hash ?? null,
+    latestHash: row?.latest_hash ?? '',
+    move: null,
+    propose: null,
+    notice: null,
+    hiddenReason,
+  };
+
+  const isMoot = (row?.proposal_id ?? null) !== null;
+
+  return {
+    tool: buildProxiedToolName(request.serverID, name),
+    serverID: request.serverID,
+    form: null,
+    decision,
+    isListed: false,
+    proposeAllow: null,
+    withdrawProposalID: row?.proposal_id ?? null,
+    keptProposalID: null,
+    isChanged:
+      row === undefined ||
+      row.state !== 'stopped_unfit' ||
+      row.hidden_reason !== hiddenReason ||
+      isMoot,
   };
 }

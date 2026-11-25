@@ -1,6 +1,8 @@
 import type { McpToolOverride } from '@heynixie/policy';
 import { collectArgumentPaths } from '../registry/collect-argument-paths';
+import { collectTopLevelArguments } from '../registry/collect-top-level-arguments';
 import type { ToolForm } from '../types';
+import { pickIdempotencyKey } from './pick-idempotency-key';
 
 // Why an override no longer fits the tool's pinned form, or null when it does. A destination, an
 // amount and an idempotency key name a top-level argument, a content entry names an argument at any
@@ -14,11 +16,8 @@ export function pickFitFault(
 
   const paths = new Set(collectArgumentPaths(pinned.inputSchema));
 
-  const key =
-    override.reconcile !== null && 'idempotencyKey' in override.reconcile
-      ? [override.reconcile.idempotencyKey]
-      : [];
-
+  const idempotencyKey = pickIdempotencyKey(override.reconcile);
+  const key = idempotencyKey === null ? [] : [idempotencyKey];
   const amount = override.amount === null ? [] : [override.amount];
 
   const missing = [
@@ -30,6 +29,15 @@ export function pickFitFault(
     return `the override names ${[...new Set(missing)].join(', ')}, which the input schema lacks`;
   }
 
+  // the proxy fills the key after the owner approves, so no argument that decides anything may be it
+  const overlap = [...override.destinations, ...(override.content ?? []), ...amount].filter(
+    (name) => name === idempotencyKey,
+  );
+
+  if (overlap.length > 0) {
+    return `the override names ${overlap[0] ?? ''} as the idempotency key and as an argument the call is judged by`;
+  }
+
   if (
     override.reconcile !== null &&
     'check' in override.reconcile &&
@@ -39,18 +47,4 @@ export function pickFitFault(
   }
 
   return null;
-}
-
-function collectTopLevelArguments(inputSchema: unknown): ReadonlySet<string> {
-  const properties: unknown =
-    typeof inputSchema === 'object' && inputSchema !== null
-      ? Reflect.get(inputSchema, 'properties')
-      : undefined;
-
-  const hasProperties =
-    typeof properties === 'object' && properties !== null && !Array.isArray(properties);
-
-  const names = hasProperties ? Object.keys(properties) : [];
-
-  return new Set(names);
 }

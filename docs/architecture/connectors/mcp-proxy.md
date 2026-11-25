@@ -99,15 +99,16 @@ listing record keeps it in an erasable field, and a forget of the record leaves 
 the form. A tool whose form can no longer be read stays stopped.
 
 A listing that omits a tool closes the tool's open allow proposal, so a withdrawn form cannot be
-approved. A form that the registry refuses stays hidden with the reason and writes no proposal, and
-an approval of a waiting proposal for such a form, or for a form that a forget erased, is refused.
-When a trusted server's change applies, or a listing drops a tool, nixie writes an `mcp.notice`
-record that names the tool and its old and new hash. `nixie mcp notices` prints the newest ones, one
-JSON line each, newest first, and takes `--limit`. The tool rows are decided inside the write
-transaction, so an allow that commits while a listing runs is never overwritten with an older pin. A
-server listing has one timeout for every page together, so a server that keeps returning a page
-cursor cannot hold a sign-in open. After the user declines an allow proposal or it lapses,
-`nixie mcp allow <tool>` writes a new one, because an unchanged listing proposes nothing.
+approved. A form that the registry refuses stays hidden with the reason and writes no proposal. That
+includes a form whose input or output schema cannot compile, such as one with a `$ref` that names
+nothing, and an approval of a waiting proposal for such a form, or for a form that a forget erased,
+is refused. When a trusted server's change applies, or a listing drops a tool, nixie writes an
+`mcp.notice` record that names the tool and its old and new hash. `nixie mcp notices` prints the
+newest ones, one JSON line each, newest first, and takes `--limit`. The tool rows are decided inside
+the write transaction, so an allow that commits while a listing runs is never overwritten with an
+older pin. A server listing has one timeout for every page together, so a server that keeps
+returning a page cursor cannot hold a sign-in open. After the user declines an allow proposal or it
+lapses, `nixie mcp allow <tool>` writes a new one, because an unchanged listing proposes nothing.
 
 A name that the model cannot read stays hidden, with the reason: the server's tool name must use
 only letters, digits, `_` and `-`, and the model's name for the tool must fit 64 characters and must
@@ -164,15 +165,19 @@ capability. An input request from a server ends the call as a failure.
 The result reads against the pinned form. A tool whose form has no output schema returns `{ text }`:
 the text blocks joined by a blank line, the image blocks as images, and a last line that counts the
 blocks the proxy drops. A tool with an output schema returns the server's structured content, which
-the registry checks against the pinned schema. A server's own error keeps its text and sets the
-call's error flag.
+the connector and the registry check against the pinned schema, so an answer outside it is never a
+done action. A server's own error keeps its text and sets the call's error flag.
 
 The tool's definition names its pinned hash, and the call record keeps it. A call runs only under
 the form it loaded. When a listing moves the pin after the call loaded the tool, nothing runs and
 the call returns an error that asks the model to call again. A call checks its input and its result
-against the pin hash it loaded, never the newest one. An approved call of a direct tool runs only
-when the pin is still the one the call record names. An approved call of a queued tool runs only
-when the current form accepts its saved arguments, and otherwise settles as refused.
+against the pin hash it loaded, never the newest one, and the listing that a call's clearance makes
+cannot move the pin between that check and the send. A tool declared by an override names the
+snapshot that held the override, and a call that would record another snapshot runs nothing and asks
+the model to call again, because the declaration it decided under is no longer in force. An approved
+call of a direct tool runs only when the pin is still the one the call record names. An approved
+call of a queued tool runs only when the current form accepts its saved arguments, and otherwise
+settles as refused.
 
 Every field of a proxied result is `untrusted`, so the endpoint sends the whole result as one text
 block inside `tool-result` markers with a random fence, and sends no structured content. This holds
@@ -186,9 +191,10 @@ markers.
 An approved call of a queued tool reaches the action runners through the connector that
 `findConnector` answers for it. The connector clears the call again before it runs. A refusal or a
 server error settles the action as refused, and a call that fails after it left settles as
-ambiguous. Unless the tool's override sets a reconcile, an ambiguous action comes to the user. The
-reason of a refused action holds the server's own words, so a call that waits for it, and a queued
-or approved call that ends in a server error, gets the reason fenced, as an error.
+ambiguous, as does an answer that nixie cannot read or that breaks the output schema. Unless the
+tool's override sets a reconcile, an ambiguous action comes to the user. The reason of a refused
+action holds the server's own words, so a call that waits for it, and a queued or approved call that
+ends in a server error, gets the reason fenced, as an error.
 
 ## Health
 

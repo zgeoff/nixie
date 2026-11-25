@@ -1,4 +1,5 @@
 import type { JSONObject, Log } from '@heynixie/log';
+import { findMcpToolOverride } from '@heynixie/policy';
 import type { RegisteredTool, ToolSource } from '@heynixie/tools';
 import { runProxiedCall } from '../call/run-proxied-call';
 import type { ProxiedCallResult } from '../call/run-proxied-call';
@@ -71,7 +72,7 @@ export function createToolCatalog(
         });
       }
 
-      return runProxiedCall({ tool, form: found.form, input }, calls);
+      return runProxiedCall({ tool, form: found.form, pinnedHash: found.hash, input }, calls);
     },
     refresh: async () => {
       const servers = await readServerRows(log.writer.db);
@@ -113,7 +114,7 @@ export function createToolCatalog(
         const override =
           row.state === 'stopped_unfit'
             ? null
-            : (inForce.servers[row.server_id]?.[form.name] ?? null);
+            : findMcpToolOverride(inForce.servers, row.server_id, form.name);
 
         const key = JSON.stringify([
           hash,

@@ -9,7 +9,10 @@ import { startTestMcp } from '../test-utils/start-test-mcp';
 async function setupTest() {
   const mcp = await startTestMcp();
 
-  return { mcp, readTool: (tool: string) => readToolRow(mcp.log.writer.db, tool) };
+  return {
+    mcp,
+    readTool: (tool: string) => readToolRow(mcp.log.writer.db, tool),
+  };
 }
 
 test('it stops a changed tool of an untrusted server until you allow it', async () => {
@@ -171,4 +174,79 @@ test('it keeps a tool whose form the registry refuses hidden, with the reason an
     proposal_id: null,
     hidden_reason: expect.stringContaining('needs an object input schema'),
   });
+});
+
+test('it stops a tool that an override names and the server never listed', async () => {
+  const ctx = await setupTest();
+
+  await ctx.mcp.addServer('tracker', buildServerFacts());
+
+  await ctx.mcp.list('tracker', {
+    forms: [buildToolForm()],
+    overrides: {
+      item_notify: {
+        effects: ['send'],
+        destinations: [],
+        amount: null,
+        content: null,
+        reconcile: null,
+      },
+    },
+  });
+
+  const tool = await ctx.readTool('tracker.item_notify');
+
+  expect(tool).toMatchObject({
+    state: 'stopped_unfit',
+    pinned_hash: null,
+    hidden_reason: 'the override names item_notify, which the server does not list',
+  });
+});
+
+test('it stops a pinned tool that the listing drops while an override names it', async () => {
+  const ctx = await setupTest();
+
+  await ctx.mcp.addServer('tracker', buildServerFacts());
+  await ctx.mcp.list('tracker', { forms: [buildToolForm()] });
+  await ctx.mcp.allow('tracker.item_get');
+
+  await ctx.mcp.list('tracker', {
+    forms: [],
+    overrides: {
+      item_get: {
+        effects: ['send'],
+        destinations: [],
+        amount: null,
+        content: null,
+        reconcile: null,
+      },
+    },
+  });
+
+  const tool = await ctx.readTool('tracker.item_get');
+
+  expect(tool).toMatchObject({
+    state: 'stopped_unfit',
+    pinned_hash: hashToolForm(buildToolForm()),
+    hidden_reason: 'the override names item_get, which the server does not list',
+  });
+});
+
+test('it applies no override to a pinned tool named like an inherited member', async () => {
+  const ctx = await setupTest();
+
+  const forms = [buildToolForm({ name: 'constructor' }), buildToolForm({ name: 'toString' })];
+
+  await ctx.mcp.addServer('tracker', buildServerFacts());
+  await ctx.mcp.list('tracker', { forms, overrides: {} });
+  await ctx.mcp.allow('tracker.constructor');
+  await ctx.mcp.allow('tracker.toString');
+  await ctx.mcp.list('tracker', { forms, overrides: {} });
+
+  const tools = await Promise.all([
+    ctx.readTool('tracker.constructor'),
+    ctx.readTool('tracker.toString'),
+  ]);
+
+  expect(tools.map((tool) => tool?.state)).toStrictEqual(['exposed', 'exposed']);
 });

@@ -275,6 +275,7 @@ async function setupTest(options: SetupOptions) {
         tool,
         arguments: args,
         attempt: 1,
+        snapshotHash: 'sha256:test',
         idempotencyKey: 'key',
         destinations,
         actionHash: buildActionHash({

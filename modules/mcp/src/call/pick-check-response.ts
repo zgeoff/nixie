@@ -3,8 +3,8 @@ import type { JSONValue } from '@heynixie/log';
 import type { ProxiedCallResult } from './run-proxied-call';
 
 // What the read tool of a check found. A result with content counts as done and an empty one as not
-// done. A call that never reached the server, failed, or ended in an error of the server's says
-// nothing either way.
+// done, unless it holds pictures, which prove nothing. A call that never reached the server, failed,
+// or ended in an error of the server's says nothing either way.
 export function pickCheckResponse(result: ProxiedCallResult | null): CheckResponse {
   if (result?.kind !== 'answered') {
     return { kind: 'inconclusive' };
@@ -16,9 +16,12 @@ export function pickCheckResponse(result: ProxiedCallResult | null): CheckRespon
     return { kind: 'inconclusive' };
   }
 
-  return Object.values(outcome.result).every((value) => isEmpty(value))
-    ? { kind: 'not_found' }
-    : { kind: 'found', result: outcome.result };
+  if (Object.values(outcome.result).every((value) => isEmpty(value))) {
+    // a result of pictures alone holds nothing the proxy can read, so it proves no absence
+    return (outcome.images?.length ?? 0) > 0 ? { kind: 'inconclusive' } : { kind: 'not_found' };
+  }
+
+  return { kind: 'found', result: outcome.result };
 }
 
 function isEmpty(value: JSONValue): boolean {

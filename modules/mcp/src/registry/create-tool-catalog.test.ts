@@ -10,7 +10,7 @@ async function setupTest() {
   const mcp = await startTestMcp();
 
   const calls: ProxyCalls = {
-    clear: () => Promise.resolve({ kind: 'cleared' }),
+    clear: () => Promise.resolve({ kind: 'cleared', pinnedHash: null }),
     send: () => Promise.resolve({ kind: 'failed', message: 'was never called' }),
   };
 

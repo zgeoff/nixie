@@ -6,6 +6,7 @@ export function buildActionAttempt(overrides: Partial<ActionAttempt> = {}): Acti
     actionID: 'action-1',
     tool: 'tracker.item_create',
     arguments: { title: 'water the plants' },
+    snapshotHash: 'sha256:test',
     attempt: 1,
     idempotencyKey: 'key-1',
     destinations: [],

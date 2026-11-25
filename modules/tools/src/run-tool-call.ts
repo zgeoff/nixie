@@ -14,6 +14,7 @@ import type { CallToolResult } from '@modelcontextprotocol/server';
 import invariant from 'tiny-invariant';
 import { makeCallRecorder } from './call-record/make-call-recorder';
 import type { CallRecorder } from './call-record/make-call-recorder';
+import { renderChangedSentence } from './call-record/render-changed-sentence';
 import { callCapRefusal } from './cap/call-cap-refusal';
 import { runPaidCall } from './paid/run-paid-call';
 import { buildMemoryVerdict, isMemoryRuleAsk } from './policy-call/build-memory-verdict';
@@ -88,6 +89,18 @@ export async function runToolCall(
   const found = options.registry.findTool(call.tool);
   const pinHash = found?.definition.pinHash;
   const recorder = makeCallRecorder(call, run, options, { definitions, parent, pinHash });
+
+  // The declaration came from one snapshot, and the call records the snapshot it started under, so
+  // a call records the snapshot that supplied the declaration it ran under.
+  if (
+    found !== null &&
+    run.tools.includes(call.tool) &&
+    found.definition.definitionsHash !== undefined &&
+    found.definition.definitionsHash !== definitions.snapshotHash
+  ) {
+    return writeRefusedCall(recorder, renderChangedSentence(call.tool));
+  }
+
   const inputCheck = checkListedInput(found, call, run);
 
   if (!inputCheck.isValid) {
@@ -241,28 +254,16 @@ export async function runToolCall(
   return toCallToolResult(recorded.settled);
 }
 
-// A tool missing from the run's list skips the schema, so its errors never show the tool to the
-// model, and the decision point denies the call.
-function checkListedInput(
-  registered: RegisteredTool | null,
-  call: ToolCall,
-  run: ToolRun,
-): SchemaCheck {
-  return registered !== null && run.tools.includes(call.tool)
-    ? registered.parseInput(call.input)
-    : { isValid: true };
-}
-
-async function writeInvalidCall(recorder: CallRecorder, errors: string): Promise<CallToolResult> {
+// A refusal is nixie's own sentence, so it reaches the model as plain error text.
+async function writeRefusedCall(recorder: CallRecorder, refusal: string): Promise<CallToolResult> {
   const written = await recorder.writeCall(null);
 
-  // the errors repeat the input's own keys, which the model chose
-  const invalid = await recorder.writeSettled(
+  const refused = await recorder.writeSettled(
     written.sequence,
-    buildMessage('invalid', errors, { source: 'untrusted' }),
+    buildMessage('error', refusal, { source: 'owner_data' }),
   );
 
-  return toCallToolResult(invalid.settled);
+  return toCallToolResult(refused.settled);
 }
 
 function toCallToolResult(settled: Settled): CallToolResult {
@@ -338,16 +339,28 @@ function toImageBlock(image: ToolImage) {
   };
 }
 
-// A refusal is nixie's own sentence, so it reaches the model as plain error text.
-async function writeRefusedCall(recorder: CallRecorder, refusal: string): Promise<CallToolResult> {
+// A tool missing from the run's list skips the schema, so its errors never show the tool to the
+// model, and the decision point denies the call.
+function checkListedInput(
+  registered: RegisteredTool | null,
+  call: ToolCall,
+  run: ToolRun,
+): SchemaCheck {
+  return registered !== null && run.tools.includes(call.tool)
+    ? registered.parseInput(call.input)
+    : { isValid: true };
+}
+
+async function writeInvalidCall(recorder: CallRecorder, errors: string): Promise<CallToolResult> {
   const written = await recorder.writeCall(null);
 
-  const refused = await recorder.writeSettled(
+  // the errors repeat the input's own keys, which the model chose
+  const invalid = await recorder.writeSettled(
     written.sequence,
-    buildMessage('error', refusal, { source: 'owner_data' }),
+    buildMessage('invalid', errors, { source: 'untrusted' }),
   );
 
-  return toCallToolResult(refused.settled);
+  return toCallToolResult(invalid.settled);
 }
 
 function isPrepared(value: Prepared | DirectResult): value is Prepared {
@@ -494,11 +507,9 @@ async function tryRunAllowedCall(allowed: AllowedCall): Promise<Settled> {
   const current = allowed.options.registry.findTool(allowed.call.tool);
 
   if (current?.definition.pinHash !== allowed.pinHash) {
-    return buildMessage(
-      'error',
-      `${allowed.call.tool} changed while this call was starting, so nothing ran; call it again`,
-      { source: 'owner_data' },
-    );
+    return buildMessage('error', renderChangedSentence(allowed.call.tool), {
+      source: 'owner_data',
+    });
   }
 
   try {

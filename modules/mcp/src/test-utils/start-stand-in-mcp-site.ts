@@ -49,6 +49,9 @@ export interface StandInMcpSite {
   // the pin there, as a listing that lands in the middle of a call does.
   readonly onCall: (hook: (() => Promise<void>) | null) => void;
 
+  // from the next request on, the MCP endpoint answers 401 to every token, fresh ones included
+  readonly rejectTokens: (isRejecting: boolean) => void;
+
   // every access token issued so far stops working, as an expired one does
   readonly expireAccessTokens: () => void;
   readonly calls: readonly StandInCall[];
@@ -71,6 +74,7 @@ interface SiteState {
   tools: readonly StandInTool[];
   callHook: (() => Promise<void>) | null;
   isListingFailing: boolean;
+  isRejectingTokens: boolean;
   isRefreshRefused: boolean;
   isTokenEndpointMoved: boolean;
   endlessPageDelayMs: number | null;
@@ -96,6 +100,7 @@ export async function startStandInMcpSite(
     tools: options.tools ?? [],
     callHook: null,
     isListingFailing: false,
+    isRejectingTokens: false,
     isRefreshRefused: false,
     isTokenEndpointMoved: false,
     endlessPageDelayMs: null,
@@ -133,6 +138,9 @@ export async function startStandInMcpSite(
     },
     failListings: (isFailing) => {
       state.isListingFailing = isFailing;
+    },
+    rejectTokens: (isRejecting) => {
+      state.isRejectingTokens = isRejecting;
     },
     refuseRefresh: (isRefusing) => {
       state.isRefreshRefused = isRefusing;
@@ -316,7 +324,7 @@ async function answerMcp(site: SiteRequest): Promise<Response> {
   const authorization = site.request.headers.get('authorization');
   const token = authorization?.replace(/^Bearer /u, '') ?? '';
 
-  if (!site.state.accessTokens.has(token)) {
+  if (site.state.isRejectingTokens || !site.state.accessTokens.has(token)) {
     return new Response('unauthorised', {
       status: 401,
       headers: {

@@ -14,6 +14,9 @@ export type ProxiedCallResult =
 export interface ProxiedCallRequest {
   readonly tool: string;
   readonly form: ToolForm;
+
+  // the hash of the pin whose form the input was checked against
+  readonly pinnedHash: string;
   readonly input: JSONObject;
 }
 
@@ -26,6 +29,15 @@ export async function runProxiedCall(
 
   if (clearance.kind === 'refused') {
     return { kind: 'refused', text: clearance.text };
+  }
+
+  // A listing that the clearance made may have moved the pin, and the input was checked against the
+  // form of the old one.
+  if (clearance.pinnedHash !== request.pinnedHash) {
+    return {
+      kind: 'refused',
+      text: `${request.tool} changed while this call was starting, so nothing ran; call it again`,
+    };
   }
 
   const sent = await calls.send(request.tool, request.form.name, request.input);

@@ -16,10 +16,10 @@ The annotations give these effects:
 A missing hint takes the MCP standard's default, so a tool with no annotations declares the
 strictest effects and asks for an approval at each call until an allow rule covers it. A hint that
 is present and not a boolean leaves the tool with no declaration. By default, every string argument
-at any depth counts as content, including the items of an array, each member of a `anyOf` or `oneOf`
-union and the free keys of an object. No argument is a destination or an amount, and every result
-field is outside content, so its source is `untrusted`. A tool with a read effect runs direct, and a
-tool with any other effect is queued.
+at any depth counts as content: the items of an array or a tuple, each member of an `anyOf`, `oneOf`
+or `allOf` union, the free keys of an object, a string enum, and the target of a local `$ref`. No
+argument is a destination or an amount, and every result field is outside content, so its source is
+`untrusted`. A tool with a read effect runs direct, and a tool with any other effect is queued.
 
 ## Override files
 
@@ -38,22 +38,33 @@ A file that does not parse, names an unknown field or effect, or sits in a subfo
 whole seed, and so do 2 files for one server. The error lists each file with its fault.
 
 An override fits only while the tool's pinned form and the server's listing hold everything it
-names: each destination, the amount and the idempotency key must be a top-level input property, each
-`content` entry must be an argument path of the input schema, and a `check` tool must be in the
-server's listing. A tool whose override does not fit is `stopped_unfit` with the fault as its
-reason, so no call runs under a declaration that names what the tool lacks. nixie judges the fit at
-each listing, at each allow and at each seed that changes the overrides, and a tool whose override
-fits again is exposed again with no new approval, because its pin never moved. The allow proposal's
-body shows which declaration the tool would run under.
+names: each destination, the amount and the idempotency key must be a top-level input property,
+which includes a property of a member of a root `anyOf`, `oneOf` or `allOf` and of a local `$ref`.
+Each `content` entry must be an argument path of the input schema, a `check` tool must be in the
+server's listing, and the idempotency key must be no destination, amount or content entry, because
+the proxy fills it only after the user approves. A file that names a tool the server's listing lacks
+leaves that tool `stopped_unfit`, whether or not the tool had a pin. A tool whose override does not
+fit is `stopped_unfit` with the fault as its reason, so no call runs under a declaration that names
+what the tool lacks. nixie judges the fit at each listing, at each allow and at each seed that
+changes the overrides, and a tool whose override fits again is exposed again with no new approval,
+because its pin never moved. The allow proposal's body shows which declaration the tool would run
+under.
 
 ## Reconcile
 
 An override's `reconcile` becomes the reconcile of the tool's connector, which `findConnector`
 answers. With `idempotencyKey`, the connector fills that argument with the action's ID at each run,
 so a retry of an interrupted call is the same call to the server, and the action runners keep the
-key for 24 hours. With `check`, the connector calls the named read tool with the call's arguments
-after an interruption, and a result with content counts as found, and an empty one as not found, so
-the action runs again. The check runs only when that tool is itself declared as a read and is
-exposed. A check that does not run, fails or ends in a server error is inconclusive, and the action
-comes to the user. A tool with no `reconcile` has neither, and an ambiguous action comes to the
-user.
+key for 24 hours. The argument is no part of the input schema the model sees, so a call needs no
+value for it, even when the server's schema requires one. With `check`, the connector calls the
+named read tool with the call's arguments after an interruption, and a result with content counts as
+found, and an empty one as not found, so the action runs again. The check runs only when that tool
+is itself declared as a read and is exposed. A check that does not run, fails or ends in a server
+error is inconclusive, and the action comes to the user. A tool with no `reconcile` has neither, and
+an ambiguous action comes to the user.
+
+A recovery runs only under the definitions snapshot that the queued call was recorded under. A later
+snapshot may name another key argument or another check tool, and the earlier attempt went out under
+the first. After a snapshot change, a retry of an earlier attempt ends as ambiguous with nothing
+sent, and a check is inconclusive, so the action comes to the user. A result of images alone is
+inconclusive too, because it proves no absence.

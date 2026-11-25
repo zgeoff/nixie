@@ -134,3 +134,21 @@ test('it counts no failed listing for a server whose grant ended, so no backoff 
     changes,
   ]).toStrictEqual([[['needs_sign_in', 'healthy']], 0, []]);
 });
+
+test('it keeps the grant signed in and backs off when a listing gets 401 after a refresh that worked', async () => {
+  const ctx = await setupTest();
+
+  ctx.site.rejectTokens(true);
+
+  const listed = await ctx.mcp.list('tracker');
+  const summaries = await ctx.mcp.readSummaries();
+
+  const health = ctx.mcp.readHealth('tracker');
+
+  expect([
+    listed.status,
+    summaries.map((summary) => summary.signIn),
+    health.failures,
+    health.nextTryAtMs === null,
+  ]).toStrictEqual(['failed', ['ok'], 1, false]);
+});

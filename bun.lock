@@ -869,6 +869,7 @@
         "zod": "catalog:",
       },
       "devDependencies": {
+        "@heynixie/actions": "workspace:*",
         "@heynixie/budgets": "workspace:*",
         "@heynixie/testing": "workspace:*",
         "@zgeoff/testing": "catalog:",

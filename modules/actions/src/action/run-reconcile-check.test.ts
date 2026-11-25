@@ -227,6 +227,23 @@ test('it checks for an unknown outcome after a refusal under the key of the refu
   expect(stub.checks.map((check) => check.idempotencyKey)).toStrictEqual([`${ctx.actionID}.1`]);
 });
 
+test('it hands the check the snapshot that the queued call was recorded under', async () => {
+  const ctx = await setupTest();
+
+  const stub = buildStubConnector(() => ({ kind: 'ambiguous', reason: 'timed out' }), {
+    reconcile: { kind: 'check', tool: 'test.send' },
+    answerCheck: () => ({ kind: 'inconclusive' }),
+  });
+
+  await ctx.runNext(stub.connector);
+
+  ctx.clock.advance(60_000);
+
+  await ctx.runNext(stub.connector);
+
+  expect(stub.checks.map((check) => check.snapshotHash)).toStrictEqual(['sha256:test']);
+});
+
 test('it retries the send when the check does not find it', async () => {
   const ctx = await setupTest();
 

@@ -58,9 +58,7 @@ function collectScalars(call: ProposedRuleCall): ReadonlyMap<string, Scalar> {
   const found = new Map<string, Scalar>();
 
   for (const [name, value] of Object.entries(call.input)) {
-    if (!call.content.includes(name)) {
-      addScalars(found, name, value);
-    }
+    addScalars(found, call.content, name, value);
   }
 
   return found;
@@ -68,8 +66,15 @@ function collectScalars(call: ProposedRuleCall): ReadonlyMap<string, Scalar> {
 
 const argumentPath = /^[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*$/u;
 
-function addScalars(found: Map<string, Scalar>, path: string, value: unknown): void {
-  if (!argumentPath.test(path)) {
+// An argument of free text is left out at every depth, by the path the declaration names it with:
+// `details.body` for a nested one, and `labels.*` for any key of an object.
+function addScalars(
+  found: Map<string, Scalar>,
+  content: readonly string[],
+  path: string,
+  value: unknown,
+): void {
+  if (!argumentPath.test(path) || isContentPath(content, path)) {
     return;
   }
 
@@ -77,7 +82,20 @@ function addScalars(found: Map<string, Scalar>, path: string, value: unknown): v
     found.set(path, value);
   } else if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
     for (const [name, inner] of Object.entries(value)) {
-      addScalars(found, `${path}.${name}`, inner);
+      addScalars(found, content, `${path}.${name}`, inner);
     }
   }
+}
+
+function isContentPath(content: readonly string[], path: string): boolean {
+  const segments = path.split('.');
+
+  return content.some((entry) => {
+    const named = entry.split('.');
+
+    return (
+      named.length === segments.length &&
+      named.every((segment, index) => segment === '*' || segment === segments[index])
+    );
+  });
 }

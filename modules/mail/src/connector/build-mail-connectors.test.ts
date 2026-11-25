@@ -34,6 +34,7 @@ async function setupTest() {
         tool,
         arguments: args,
         attempt: 1,
+        snapshotHash: 'sha256:test',
         idempotencyKey: `key-${action.action_id}`,
         destinations: [],
         actionHash: action.action_hash,

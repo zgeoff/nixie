@@ -291,6 +291,7 @@ test('it settles an interrupted call by what the check tool finds, with the inpu
   const attempt = buildActionAttempt({
     tool: 'tracker.item_notify',
     arguments: { request_id: 'r-1' },
+    snapshotHash: 'sha256:overrides',
   });
 
   const found = await connector?.check?.(attempt);
@@ -335,6 +336,7 @@ test('it counts a check that finds nothing as not done', async () => {
   const attempt = buildActionAttempt({
     tool: 'tracker.item_notify',
     arguments: { request_id: 'r-1' },
+    snapshotHash: 'sha256:overrides',
   });
 
   const found = await connector?.check?.(attempt);
@@ -373,9 +375,142 @@ test('it runs no check tool that declares more than a read', async () => {
   const attempt = buildActionAttempt({
     tool: 'tracker.item_notify',
     arguments: { request_id: 'r-1' },
+    snapshotHash: 'sha256:overrides',
   });
 
   const found = await connector?.check?.(attempt);
 
   expect([found, ctx.site.calls.length]).toStrictEqual([{ kind: 'inconclusive' }, 0]);
+});
+
+test('it settles no interrupted call by a check that a later snapshot declares', async () => {
+  const ctx = await setupTest();
+
+  ctx.setOverrides({
+    tracker: {
+      item_notify: {
+        effects: ['send'],
+        destinations: [],
+        amount: null,
+        content: null,
+        reconcile: { check: 'item_find' },
+      },
+    },
+  });
+
+  await ctx.mcp.list('tracker');
+  await ctx.allow('tracker.item_find');
+  await ctx.allow('tracker.item_notify');
+
+  const connector = ctx.mcp.findConnector('tracker.item_notify');
+
+  const attempt = buildActionAttempt({
+    tool: 'tracker.item_notify',
+    arguments: { request_id: 'r-1' },
+    snapshotHash: 'sha256:earlier',
+  });
+
+  const found = await connector?.check?.(attempt);
+
+  expect([found, ctx.site.calls.length]).toStrictEqual([{ kind: 'inconclusive' }, 0]);
+});
+
+test('it retries no earlier attempt under a key argument that a later snapshot declares', async () => {
+  const ctx = await setupTest();
+
+  ctx.setOverrides({
+    tracker: {
+      item_notify: {
+        effects: ['send'],
+        destinations: [],
+        amount: null,
+        content: null,
+        reconcile: { idempotencyKey: 'request_id' },
+      },
+    },
+  });
+
+  await ctx.mcp.list('tracker');
+  await ctx.allow('tracker.item_notify');
+
+  const connector = ctx.mcp.findConnector('tracker.item_notify');
+
+  const attempt = buildActionAttempt({
+    tool: 'tracker.item_notify',
+    arguments: { message: 'hi' },
+    attempt: 2,
+    snapshotHash: 'sha256:earlier',
+  });
+
+  const response = await connector?.run(attempt);
+
+  expect([response, ctx.site.calls.length]).toStrictEqual([
+    {
+      kind: 'ambiguous',
+      reason:
+        'tracker.item_notify changed its declaration after the first attempt, so nothing was retried',
+    },
+    0,
+  ]);
+});
+
+test('it accepts a call that leaves out a required argument which the idempotency key fills', async () => {
+  const ctx = await setupTest();
+
+  ctx.setOverrides({
+    tracker: {
+      item_notify: {
+        effects: ['send'],
+        destinations: [],
+        amount: null,
+        content: null,
+        reconcile: { idempotencyKey: 'request_id' },
+      },
+    },
+  });
+
+  ctx.site.setTools([
+    ctx.itemFind,
+    {
+      ...ctx.itemNotify,
+      inputSchema: {
+        type: 'object',
+        properties: { message: { type: 'string' }, request_id: { type: 'string' } },
+        required: ['message', 'request_id'],
+      },
+    },
+  ]);
+
+  await ctx.mcp.list('tracker');
+  await ctx.allow('tracker.item_notify');
+
+  const tool = ctx.mcp.tools.findTool('tracker.item_notify');
+
+  expect([
+    tool?.parseInput({ message: 'hi' }),
+    ctx.mcp.tools.findDeclaration('tracker.item_notify')?.declaration.content,
+  ]).toStrictEqual([{ isValid: true }, ['message']]);
+});
+
+test('it leaves a tool stopped as unfit when its override names the idempotency key as a destination', async () => {
+  const ctx = await setupTest();
+
+  ctx.setOverrides({
+    tracker: {
+      item_notify: {
+        effects: ['send'],
+        destinations: ['request_id'],
+        amount: null,
+        content: null,
+        reconcile: { idempotencyKey: 'request_id' },
+      },
+    },
+  });
+
+  await ctx.mcp.list('tracker');
+  await ctx.allow('tracker.item_notify');
+
+  const state = await ctx.readState('tracker.item_notify');
+
+  expect(state).toBe('stopped_unfit');
 });

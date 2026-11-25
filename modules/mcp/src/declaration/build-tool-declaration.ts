@@ -2,6 +2,7 @@ import type { McpToolOverride } from '@heynixie/policy';
 import { collectStringArguments } from '../registry/collect-string-arguments';
 import type { ToolDeclaration, ToolForm } from '../types';
 import { pickAnnotationEffects } from './pick-annotation-effects';
+import { pickIdempotencyKey } from './pick-idempotency-key';
 
 export interface ToolDeclarationInput {
   readonly tool: string;
@@ -25,7 +26,11 @@ export function buildToolDeclaration(input: ToolDeclarationInput): ToolDeclarati
         effects: override.effects,
         destinations: override.destinations,
         amount: override.amount,
-        content: override.content ?? collectStringArguments(input.pinned.inputSchema),
+        content:
+          override.content ??
+          collectStringArguments(input.pinned.inputSchema).filter(
+            (name) => name !== pickIdempotencyKey(override.reconcile),
+          ),
       },
       reconcile: override.reconcile,
       from: 'override',

@@ -71,3 +71,49 @@ test('it lists a string argument of an object schema that has no type', () => {
 
   expect(collectStringArguments(schema)).toStrictEqual(['title']);
 });
+
+test('it lists a string argument that a local ref names', () => {
+  const schema = {
+    type: 'object',
+    properties: { owner: { $ref: '#/$defs/name' }, team: { $ref: '#/$defs/team' } },
+    $defs: {
+      name: { type: 'string' },
+      team: { type: 'object', properties: { lead: { $ref: '#/$defs/name' } } },
+    },
+  };
+
+  expect(collectStringArguments(schema)).toStrictEqual(['owner', 'team.lead']);
+});
+
+test('it ends the walk of a schema that refers to itself', () => {
+  const schema = {
+    type: 'object',
+    properties: { node: { $ref: '#/$defs/node' } },
+    $defs: {
+      node: {
+        type: 'object',
+        properties: { label: { type: 'string' }, next: { $ref: '#/$defs/node' } },
+      },
+    },
+  };
+
+  expect(collectStringArguments(schema)).toStrictEqual(['node.label']);
+});
+
+test('it lists each string of a tuple', () => {
+  const schema = {
+    type: 'object',
+    properties: { pair: { type: 'array', prefixItems: [{ type: 'string' }, { type: 'integer' }] } },
+  };
+
+  expect(collectStringArguments(schema)).toStrictEqual(['pair[]']);
+});
+
+test('it lists an argument that is a string enum with no type', () => {
+  const schema = {
+    type: 'object',
+    properties: { color: { enum: ['red', 'blue'] }, count: { enum: [1] } },
+  };
+
+  expect(collectStringArguments(schema)).toStrictEqual(['color']);
+});
