@@ -20,9 +20,9 @@ belong to the assistant's own mailbox.
 | `gmail.send_draft`      | `send`  | queued | the draft's recipients, in `prepare`  | check `gmail.find_sent`   |
 
 Every Gmail tool needs the scope `gmail.modify`. Each tool is one entry of the connector's
-`actions`, so the tool filter that leaves out a tool whose scope is missing, and the notice about
-fewer scopes, cover them without a list of their own. The three checks are read-only and run only
-from the action queue, so no tool list holds them.
+`actions`, so the tool filter and the notice about fewer scopes cover them with no list of their
+own. The filter leaves out a tool whose scope is missing. The three checks are read-only and run
+only from the action queue, so no tool list holds them.
 
 The server builds the tools in the `google_tools` part, which needs only its inputs. The tool list
 and the action queue hold the tools before the connections and the fetch sandbox start, so the part
@@ -40,7 +40,7 @@ call before then finds no connection, and a mail's HTML reads as unsupported.
   call that names items of 2 connections fails with `mixed_connections`, and a call with no
   connection to choose fails with `CONNECTION_REQUIRED`.
 - A job's pins and the model's status line are not built. A tool resolves a call against every live
-  Google connection, whatever job the run belongs to.
+  Google connection, whatever job run the call belongs to.
 - An attempt or a check whose connection is forgotten answers `refused` with `connection_forgotten`.
 
 ## Reads
@@ -48,11 +48,12 @@ call before then finds no connection, and a mail's HTML reads as unsupported.
 Each read asks Gmail at the time of the call, and nixie keeps no index or cache of mail.
 
 - A text part is at most the `web_fetch` text limit, cut as
-  [pages and parts](web-fetch.md#pages-and-parts) sets. `part` names the part, counted from 1, and
-  `parts` gives the count. The tool reads the message again for each part.
-- A mail with only an HTML part goes to the [fetch sandbox](web-fetch.md#the-fetch-sandbox), which
-  opens no connection, so nixie never parses mail HTML on the host and no tracking pixel loads. Each
-  link in a body, plain text or HTML, becomes a [link ID](web-fetch.md#link-ids) of the session.
+  [pages and parts](web-fetch.md#pages-and-parts) sets. The model picks a part with `part`, counted
+  from 1, and reads the count in `parts`. The tool reads the message again for each part.
+- A mail with only an HTML part goes to the [fetch sandbox](web-fetch.md#the-fetch-sandbox), so
+  nixie never parses mail HTML on the host. The sandbox opens no connection, so no tracking pixel
+  loads. Each link in a body, plain text or HTML, becomes a [link ID](web-fetch.md#link-ids) of the
+  session.
 - `gmail.read_attachment` reads `text/*` and `application/json` as UTF-8 text in parts and an image
   as [web fetch images](web-fetch-images.md) does. Every other type answers `unsupported`, and a
   file over the reader's size limit answers `too_large`. The reader is a shared function, so Drive
@@ -97,9 +98,9 @@ the decision point, and the action queue runs the attempt after the decision.
   content headers. `Message-ID` is `<action ID@domain of the account>` and the only header that
   names the action. No header names nixie, so a recipient cannot tell that you use an assistant.
 - **Errors.** A Gmail 429, or a 403 that names `rateLimitExceeded` or `userRateLimitExceeded`, is
-  `refused_retryable` and honours `Retry-After`. A 5xx, whatever its body says, a failed network
-  call and an answer with no message are `ambiguous`, so a send that Gmail may have taken never
-  repeats on its own. Any other refusal ends the action.
+  `refused_retryable` and honours `Retry-After`. A 5xx with any body, a failed network call and an
+  answer with no message are `ambiguous`, so a send that Gmail may have taken never repeats on its
+  own. Any other refusal ends the action.
 
 ### The card
 
@@ -125,11 +126,11 @@ permissions from the call's own record when the card is read.
 ## Sent-folder check
 
 An attempt that may have sent leaves its outcome unknown. No sooner than the connector's
-`trustNegativeAfterMs` after the start of the attempt, the queue runs `gmail.find_sent`, which asks
-Gmail 2 ways: a search for `rfc822msgid:` with the action's `Message-ID`, and a list of the `SENT`
-label from a short window before the attempt, read to its last page, with the `Message-ID` and
+`trustNegativeAfterMs` after the start of the attempt, the queue runs `gmail.find_sent`. It searches
+Gmail for `rfc822msgid:` with the action's `Message-ID`, and it lists the `SENT` label from a short
+window before the attempt, read to its last page, with the `Message-ID` and
 `X-Google-Original-Message-ID` headers of each message. Gmail can replace a `Message-ID` that a
-client set and keep the old one in the second header.
+client set and keep the old one in `X-Google-Original-Message-ID`.
 
 | What the check sees                                             | It answers                           |
 | --------------------------------------------------------------- | ------------------------------------ |
@@ -144,11 +145,11 @@ inconclusive bring the action to the user on a card, and nothing sends again unt
 as [reconciliation](../core/actions.md#reconciling-an-unknown-outcome) sets. Gmail keeps no other
 trace of a sent mail, so a Sent copy deleted for good looks the same as a mail that never went out.
 
-`gmail.find_labels` answers found when every message of each thread holds every label in `add` and
-none in `remove`, and inconclusive otherwise, because a thread-wide change leaves no message out. A
-label change that it finds done answers `created: null`, because the check cannot tell which labels
-the action made. `gmail.find_draft` answers found when the account holds a draft whose `Message-ID`
-header holds the action's ID.
+A label change applies to every message of a thread, so `gmail.find_labels` answers found only when
+every message of each thread holds every label in `add` and none in `remove`, and inconclusive
+otherwise. A label change that it finds done answers `created: null`, because the check cannot tell
+which labels the action made. `gmail.find_draft` answers found when the account holds a draft whose
+`Message-ID` header holds the action's ID.
 
 ## Labels and drafts
 
@@ -162,6 +163,6 @@ rule that asks, or a call that follows outside content, can still hold one on a 
 ## Testing
 
 The connector's `test-utils` folder holds a fake Gmail that serves the REST paths the tools use. It
-seeds mail, records each request, sends and fails on demand, and `startGmailTools` builds the tools
+seeds mail, records each request, and sends or fails on demand. `startGmailTools` builds the tools
 on a loopback HTTPS site of it, whose certificate the tools' fetcher trusts. The test build's fake
 Google site serves the same fake Gmail on its Gmail paths over HTTPS, with one mail in the mailbox.

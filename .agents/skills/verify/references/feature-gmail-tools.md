@@ -4,17 +4,17 @@ Contents: [Journey](#journey), [End state](#end-state).
 
 With a connected Google account, the assistant searches and reads its mail with the `gmail` tools.
 Each result that holds a mail's words counts as outside content. A reply takes its recipients from
-the mail it answers, and the send passes the decision point like any other: a recipient with no
-permission holds the call on a card, and the mail goes out once you approve. The mail carries the
-action's ID in its `Message-ID` and in no other header.
+the mail it answers. The send passes the decision point like any other: when a recipient has no
+permission, nixie holds the call on a card, and the mail goes out once you approve. The mail carries
+the action's ID in its `Message-ID` and in no other header.
 
 Follow the steps in [Check a change](../SKILL.md#check-a-change) for this journey. Read that section
 for the commands `up` and `done`, and for the `data` field of each command's JSON output.
 
 Run this journey on `local` only. There, the test build reaches Google's endpoints at a fake Google
 that the harness serves. The fake holds one mail from `Sam Lee <sam@example.org>`, subject "Q3
-numbers", whose `Reply-To` is `reports@example.org`, so the reply goes to an address with no
-permission. `preview` and `prod` reach the real Google. On them, skip this journey and run no
+numbers", whose `Reply-To` is `reports@example.org`, so the reply goes to that address. That address
+has no permission. `preview` and `prod` reach the real Google. On them, skip this journey and run no
 `done`. In your reply, list the feature as not verified there.
 
 Before you start:
@@ -27,7 +27,8 @@ Before you start:
 ## Journey
 
 1. Record every later command of this journey under this feature. Then register the OAuth client and
-   connect the account, as steps 1 to 3 of [google-connections](feature-google-connections.md) do:
+   connect the account with the commands of steps 1 to 3 of
+   [google-connections](feature-google-connections.md):
 
    ```bash
    bun verify use --feature gmail-tools

@@ -49,10 +49,10 @@ The release build also drops these test-only paths:
 
 - `NIXIE_TEST_ATC_URL` points the coding runner at a double of atc-gateway, because the
   configuration accepts only an `https` URL.
-- `NIXIE_TEST_GOOGLE_URL` points the browser at the authorize page of a fake Google, a plain HTTP
-  loopback site. `NIXIE_TEST_GOOGLE_API_URL` and `NIXIE_TEST_GOOGLE_API_CA` name the fake's HTTPS
-  site and the certificate authority it signs with, and the credential store sends each token,
-  revoke and API request for a `.google.test` host there.
+- `NIXIE_TEST_GOOGLE_URL` points the browser at the authorize page of a fake Google, which the fake
+  serves on a plain HTTP loopback site. `NIXIE_TEST_GOOGLE_API_URL` holds the URL of the fake's
+  HTTPS site, and `NIXIE_TEST_GOOGLE_API_CA` holds the self-signed certificate that site serves. The
+  credential store sends each token, revoke and API request for a `.google.test` host to that site.
 - The OAuth client accepts an `http` loopback origin, so a local run can register one.
 
 The server's action queue bridge, which the test build composes like any other part, maps the thread
