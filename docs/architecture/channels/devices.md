@@ -204,15 +204,16 @@ names. The response carries `no-store`, `nosniff` and `no-referrer`. The frame's
 `default-src 'none'`, scripts and styles inline, `connect-src 'none'`, `form-action 'none'`,
 `base-uri 'none'`, and images only from that page's image URLs and `data:`. Scripts and styles may
 also load from the file paths of the [packages](#packages) that the page names, and fonts from those
-paths and `data:`. So a page can't fetch, open a socket, submit a form or load anything else, and a
-page that names a package still can't reach the network. The device page's own policy adds
-`frame-src 'self'`, which keeps a page from framing another site. A page can still navigate its own
-frame. Each test of the policy runs in a real browser, in `answer-page-request.browser.test.ts`.
+paths and `data:`. So the policy keeps a page from fetching, opening a socket, submitting a form or
+loading anything else, and the bridge closes the ways out it leaves open, as below. The device
+page's own policy adds `frame-src 'self'`, which keeps a page from framing another site. A page can
+still navigate its own frame. Each test of the policy runs in a real browser, in
+`answer-page-request.browser.test.ts`.
 
 The policy also sets `sandbox allow-scripts`. A person who opens the frame's address in a tab gets
 the same opaque origin, and the page reads none of the app's storage.
 
-The policy leaves open these ways out of the frame. A peer connection reaches any server its page
+The policy leaves these ways out of the frame open. A peer connection reaches any server its page
 names. A link element opens a connection from a resource hint such as `preconnect`, and no directive
 closes it: Chrome opens a preconnect's connection under `connect-src 'none'`, and blocks only a
 prefetch. A frame, object or embed element gives the page a second window, where the bridge's guards

@@ -196,7 +196,8 @@ under a name, lay the screen out again, and restore the saved layout in one call
     fetch of `https://tides.test/today`, which the test site serves. nixie holds the model's
     `device.region` call, because no rule allows the host `tides.test`. The approvals page refuses
     the browser's device session, so give the user's answer with the action `--step approve`. Script
-    the model's text for the turn that the approval starts with `action script-reply` first:
+    the model's text for the turn that the approval starts with `action script-reply`, before the
+    approve action:
 
     ```bash
     bun verify action layout-on-device --step package --text 'The tide page is up.'
