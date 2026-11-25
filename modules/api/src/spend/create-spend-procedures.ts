@@ -1,4 +1,4 @@
-import { readSpendRoutes, readSpendStop, writeSpendRaise } from '@heynixie/spend';
+import { readSpendCounts, readSpendRoutes, readSpendStop, writeSpendRaise } from '@heynixie/spend';
 import { requireCaller } from '../memory/require-caller';
 import type { APIContext } from '../types';
 import { apiImplementer } from '../utils/api-implementer';
@@ -21,6 +21,16 @@ export function createSpendProcedures(context: APIContext) {
       const routes = await readSpendRoutes(context.spend);
 
       return toSpendStopResponse(stop, routes);
+    }),
+
+    counts: spend.counts.handler(async (options) => {
+      await requireCaller(context, options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+      if (context.spend === undefined) {
+        return { routes: [], display: null };
+      }
+
+      return readSpendCounts(context.spend);
     }),
 
     raise: spend.raise.handler(async (options) => {

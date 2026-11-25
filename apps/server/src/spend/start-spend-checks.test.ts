@@ -28,6 +28,7 @@ test('it refuses to start with a model credential in the secrets file', () => {
       modelURL: 'http://127.0.0.1:8789',
       gateway,
       planLogins: createPlanLoginsHolder(),
+      display: null,
     },
     config: { models: buildMockModelsConfig(), time: { default_zone: 'UTC' } },
     secrets: { modelCredentialCount: 1 },
@@ -50,6 +51,7 @@ test('it refuses to start when a profile base URL has a path', () => {
       modelURL: 'http://127.0.0.1:8789',
       gateway,
       planLogins: createPlanLoginsHolder(),
+      display: null,
     },
     config: {
       models: {
@@ -77,6 +79,7 @@ test('it says the gateway answered when it answers', async () => {
       modelURL: 'http://127.0.0.1:8789',
       gateway,
       planLogins: createPlanLoginsHolder(),
+      display: null,
     },
     config: { models: buildMockModelsConfig(), time: { default_zone: 'UTC' } },
     secrets: { modelCredentialCount: 0 },
@@ -97,6 +100,7 @@ test('it says the gateway did not answer when it gives no status', async () => {
       modelURL: 'http://127.0.0.1:8789',
       gateway,
       planLogins: createPlanLoginsHolder(),
+      display: null,
     },
     config: { models: buildMockModelsConfig(), time: { default_zone: 'UTC' } },
     secrets: { modelCredentialCount: 0 },

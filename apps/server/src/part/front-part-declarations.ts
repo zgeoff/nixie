@@ -64,6 +64,7 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
                 spend: {
                   gateway: options.spend.gateway,
                   planLogins: options.spend.planLogins,
+                  display: options.spend.display,
                   limits: {
                     dayTurns: options.config.models.limits.day.turns,
                     dayTurnCap: options.config.models.limits.day.turnCap,

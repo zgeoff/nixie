@@ -1955,6 +1955,24 @@
       ],
       "additionalProperties": false
     },
+    "display": {
+      "type": "object",
+      "properties": {
+        "currency": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$"
+        },
+        "rates_url": {
+          "default": "https://api.frankfurter.dev/v1",
+          "type": "string",
+          "format": "uri"
+        }
+      },
+      "required": [
+        "currency"
+      ],
+      "additionalProperties": false
+    },
     "coding": {
       "type": "object",
       "properties": {

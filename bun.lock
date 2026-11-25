@@ -97,6 +97,18 @@
         "msw": "catalog:",
       },
     },
+    "adapters/rates-frankfurter": {
+      "name": "@heynixie/rates-frankfurter",
+      "version": "0.0.0",
+      "dependencies": {
+        "@heynixie/spend": "workspace:*",
+        "zod": "catalog:",
+      },
+      "devDependencies": {
+        "@heynixie/mock-server": "workspace:*",
+        "msw": "catalog:",
+      },
+    },
     "adapters/sandbox-imp": {
       "name": "@heynixie/sandbox-imp",
       "version": "0.0.0",
@@ -211,6 +223,7 @@
         "@heynixie/policy": "workspace:*",
         "@heynixie/prompts": "workspace:*",
         "@heynixie/proposals": "workspace:*",
+        "@heynixie/rates-frankfurter": "workspace:*",
         "@heynixie/reminders": "workspace:*",
         "@heynixie/retry": "workspace:*",
         "@heynixie/sandbox": "workspace:*",
@@ -1746,6 +1759,8 @@
     "@heynixie/proposals": ["@heynixie/proposals@workspace:modules/proposals"],
 
     "@heynixie/pulumi-k8s": ["@heynixie/pulumi-k8s@workspace:deploy/pulumi-k8s"],
+
+    "@heynixie/rates-frankfurter": ["@heynixie/rates-frankfurter@workspace:adapters/rates-frankfurter"],
 
     "@heynixie/reminders": ["@heynixie/reminders@workspace:modules/reminders"],
 

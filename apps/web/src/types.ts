@@ -47,6 +47,10 @@ export type SpendTrip = Extract<SpendStop, { readonly state: 'tripped' }>;
 
 export type SpendRouteTrip = SpendStop['routes'][number];
 
+export type SpendCounts = ContractOutputs['spend']['counts'];
+
+export type SpendPeriodCount = SpendCounts['routes'][number]['day'];
+
 export type SpendRaiseInput = ContractInputs['spend']['raise'];
 
 export type MemoryItem = ContractOutputs['memory']['listItems']['items'][number];

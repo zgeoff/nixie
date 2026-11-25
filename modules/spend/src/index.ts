@@ -61,6 +61,8 @@ export type {
   PlanLoginStatus,
   PlanLogins,
   PlanLoginsHolder,
+  DisplayRates,
+  RateSource,
   SandboxCount,
   SandboxLimit,
   SpendContext,
@@ -73,3 +75,6 @@ export type {
 } from './types';
 
 export { spendRecordTopics } from './record/spend-record-topics';
+export { readSpendCounts, collectRouteCounts } from './counts/read-spend-counts';
+export type { PeriodCount, RouteCounts, SpendCounts } from './counts/read-spend-counts';
+export { createDisplayRates } from './rate/create-display-rates';

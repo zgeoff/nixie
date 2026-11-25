@@ -559,7 +559,7 @@ test("it serves search to the conversation with the key from the secrets file, s
   });
 });
 
-test("it records the search price that the config sets as the search's cost", async () => {
+test('it charges and records the one search price that the config sets, and the ledger row holds it', async () => {
   const nixie = await startInProcessNixie({
     extraConfig: [
       'search:',
@@ -595,7 +595,10 @@ test("it records the search price that the config sets as the search's cost", as
 
   const result = records.find((record) => record.kind === 'tool_result');
 
+  const day = await readHostLedger(nixie.configPath, 'search-day');
+
   expect(result?.toolCall).toMatchObject({ content: { hidden: { costUSD: 0.015 } } });
+  expect(day.spentMicros).toBe(15_000);
 });
 
 test('it serves the image tools to the conversation when the config sets an images block', async () => {

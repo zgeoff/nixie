@@ -39,6 +39,30 @@ export const spendStopSchema = z.discriminatedUnion('state', [
   }),
 ]);
 
+const periodCountSchema = z.object({
+  dollars: z.number(),
+
+  // the limit in force in US dollars, null on a route with none
+  limit: z.number().nullable(),
+  tripped: z.boolean(),
+});
+
+// Each route's day and month count in US dollars. The display holds the currency that the client
+// shows beside each figure, with the rate of one US dollar in it, and is null when the config sets
+// none or no read has given a rate yet.
+const routeCountsSchema = z.object({
+  route: z.string(),
+  day: periodCountSchema,
+  month: periodCountSchema,
+});
+
+const displaySchema = z.object({ currency: z.string(), rate: z.number().positive() });
+
+export const spendCountsSchema = z.object({
+  routes: z.array(routeCountsSchema),
+  display: displaySchema.nullable(),
+});
+
 export const spendRaiseInputSchema = z.object({
   // the ISO date of the day, in the default zone, that the raise is for
   start: z.string().regex(/^\d{4}-\d{2}-\d{2}$/u),

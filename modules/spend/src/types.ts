@@ -26,6 +26,23 @@ export interface SpendContext {
 
   // the last answer of the gateway's plan logins, which a step on a plan profile reads
   readonly planLogins: PlanLoginsHolder;
+
+  // the currency that the client shows beside each dollar figure, absent when the config sets none
+  readonly display?: DisplayRates;
+}
+
+// The rate of one US dollar in another currency, from the outside
+export interface RateSource {
+  // null when the source gives no rate for the currency
+  readonly readRate: (currency: string) => Promise<number | null>;
+}
+
+// The last rate that the source gave, which the client shows beside each US dollar figure
+export interface DisplayRates {
+  readonly currency: string;
+
+  // the rate now, or null while no read has given one
+  readonly readRate: () => Promise<number | null>;
 }
 
 // What the stop is now, for the whole of nixie: the gateway does not answer, it lost its count, or

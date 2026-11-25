@@ -249,6 +249,7 @@ async function createTestContext(
             limits: { dayTurns: 3, dayTurnCap: 5, monthTurns: 4 },
             definitions: readTestDefinitions,
             planLogins: createPlanLoginsHolder(),
+            display: { currency: 'AUD', readRate: () => Promise.resolve(1.52) },
           },
         }),
     runSettings: buildTestRunSettings(),

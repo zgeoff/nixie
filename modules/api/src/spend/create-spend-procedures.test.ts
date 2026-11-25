@@ -50,6 +50,50 @@ test('#spend.read gives clear with no route and calls no gateway when the config
   ]);
 });
 
+test('#spend.counts gives no route and no display, and calls no gateway when the config sets no spendStop', async () => {
+  const ctx = await setupTest({ isSpendOn: false });
+  const counts = await ctx.client.spend.counts({});
+
+  expect([counts, ctx.spendGateway.readStatus.mock.calls]).toStrictEqual([
+    { routes: [], display: null },
+    [],
+  ]);
+});
+
+test('#spend.counts gives each route its day and month count in US dollars, with the display rate', async () => {
+  const ctx = await setupTest({ isSpendOn: true });
+
+  ctx.spendGateway.readStatus.mockResolvedValue({ kind: 'ok', value: buildTrippedGatewayStatus() });
+
+  const counts = await ctx.client.spend.counts({});
+
+  expect(counts).toStrictEqual({
+    routes: [
+      {
+        route: 'plan',
+        day: { dollars: 41.2, limit: 40, tripped: true },
+        month: { dollars: 0, limit: 600, tripped: false },
+      },
+      {
+        route: 'metered',
+        day: { dollars: 0, limit: 5, tripped: false },
+        month: { dollars: 0, limit: 600, tripped: false },
+      },
+    ],
+    display: { currency: 'AUD', rate: 1.52 },
+  });
+});
+
+test('#spend.counts refuses a caller with no session', async () => {
+  const ctx = await setupTest({ isSpendOn: true });
+
+  const counts = buildTestClient(ctx.url).spend.counts({});
+
+  await Promise.allSettled([counts]);
+
+  expect(counts).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
+});
+
 test('#spend.read refuses a caller with no session', async () => {
   const ctx = await setupTest({ isSpendOn: true });
 

@@ -13,6 +13,14 @@ export const mockSpendProcedures = {
     return readMockSpendStop();
   }),
 
+  counts: os.spend.counts.handler((options) => {
+    requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+    const held = spendStore.counts.all().findLast(() => true);
+
+    return held === undefined ? { routes: [], display: null } : held.counts;
+  }),
+
   raise: os.spend.raise.handler(async (options): Promise<SpendRaiseOutput> => {
     requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
 

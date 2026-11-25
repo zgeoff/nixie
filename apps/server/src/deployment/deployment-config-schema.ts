@@ -24,6 +24,7 @@ import { erasureConfigSchema } from '../config/erasure-config-schema';
 import { forgetNoticesConfigSchema } from '../config/forget-notices-config-schema';
 import { serverConfigSchema } from '../config/server-config-schema';
 import { sandboxSections } from '../sandbox/sandbox-sections';
+import { displayConfigSchema } from '../spend/display-config-schema';
 import { spendStopSchema } from '../spend/spend-stop-schema';
 import { ownerConfigSchema } from '../utils/owner-config-schema';
 import { modelSections } from './model-sections';
@@ -55,6 +56,7 @@ export const deploymentConfigSchema = z
     backup: backupConfigSchema.default(backupConfigSchema.parse({})),
     turn_input_log: turnInputLogConfigSchema.optional(),
     spendStop: spendStopSchema.optional(),
+    display: displayConfigSchema.optional(),
     coding: codingConfigSchema.optional(),
   })
   .superRefine((config, issues) => {
