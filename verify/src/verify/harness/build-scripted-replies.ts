@@ -11,7 +11,8 @@ type ScriptedBody = NonNullable<ScriptedModelRequest['body']>;
 export function buildScriptedReplies(
   reply: z.output<typeof controlRoutes.addReply.input>,
 ): ScriptedReply[] {
-  const forConversation = reply.task === undefined ? {} : { when: isConversationTurn };
+  const forConversation =
+    reply.task === undefined && reply.codingTask === undefined ? {} : { when: isConversationTurn };
 
   const memory =
     reply.memory === undefined
@@ -59,6 +60,19 @@ export function buildScriptedReplies(
       ? []
       : [{ text: 'I will wait for you to take over.', ...forConversation }];
 
+  const codingStart =
+    reply.codingTask === undefined
+      ? []
+      : [
+          {
+            toolUse: {
+              name: 'mcp__nixie__task_start',
+              input: { ...reply.codingTask, runner: 'atc' },
+            },
+            ...forConversation,
+          },
+        ];
+
   if (reply.task === undefined) {
     return [
       ...memory,
@@ -68,7 +82,8 @@ export function buildScriptedReplies(
       ...notebook,
       ...forgetNote,
       ...handover,
-      { text: reply.text },
+      ...codingStart,
+      { text: reply.text, ...forConversation },
       ...handoverAnswer,
     ];
   }

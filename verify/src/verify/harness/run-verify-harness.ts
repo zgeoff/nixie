@@ -1,3 +1,4 @@
+import { startFakeATCGateway } from '@heynixie/coding-atc/test-utils';
 import type { ContractClient } from '@heynixie/contract';
 import { getDataFilePath } from '@heynixie/log';
 import { createSpawnedNixie, createTestClient, readTestBundle } from '@heynixie/server/test-utils';
@@ -28,8 +29,18 @@ export async function runVerifyHarness(): Promise<void> {
     stopped.abort();
   });
 
+  // A start with NIXIE_VERIFY_CODING=1 runs the coding runner on a gateway double, and makes it
+  // the runner that task.start advertises: the start tool cannot advertise 2 variants yet, so
+  // that start has no sandbox tasks.
+  const gateway = process.env['NIXIE_VERIFY_CODING'] === '1' ? startFakeATCGateway() : null;
+
+  if (gateway !== null) {
+    stack.defer(() => gateway.stop());
+  }
+
   // the test build answers each image call with a stub, so the key is a placeholder
   const nixie = await createSpawnedNixie(stack, {
+    ...(gateway === null ? {} : { atcURL: gateway.url }),
     memoryConfig: localMemoryConfig,
     extraConfig: [
       'images:',
@@ -40,8 +51,13 @@ export async function runVerifyHarness(): Promise<void> {
       '      model: image-test-1',
       '      credential: deployment:images',
       '      prices: { 1024x1024: 40000, 1536x1024: 60000, 1024x1536: 60000 }',
+      ...(gateway === null ? [] : buildCodingConfigLines()),
     ],
-    extraSecrets: ['connector_credentials:', '  images: stub-image-key'],
+    extraSecrets: [
+      'connector_credentials:',
+      '  images: stub-image-key',
+      ...(gateway === null ? [] : [`atc_token: ${gateway.token}`]),
+    ],
   });
 
   const server = nixie.harness.start();
@@ -167,6 +183,19 @@ export async function runVerifyHarness(): Promise<void> {
       throw error;
     }
   }
+}
+
+function buildCodingConfigLines(): string[] {
+  return [
+    'coding:',
+    '  atc:',
+    '    url: https://atc.example.test/mcp',
+    '    principal: service:nixie',
+    '    token: deployment:atc_token',
+    '    targets:',
+    '      - { daemon: cloud, target: cloud }',
+    '    defaultTarget: cloud/cloud',
+  ];
 }
 
 async function watchExit(exited: Promise<unknown>, running: RunningState): Promise<void> {

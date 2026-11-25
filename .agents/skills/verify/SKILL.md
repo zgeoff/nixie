@@ -21,10 +21,10 @@ description.
 The mistakes that cost the most time:
 
 - **Using the app before `doctor` passes.** `bun verify doctor` checks that the app answers and that
-  the browser and terminal drivers work. Until it passes after `bun verify up` or
-  `bun verify attach`, any command that touches the app fails with exit code 3.
+  the browser and terminal drivers work. Until it passes, any command that touches the app fails
+  with exit code 3.
 - **Editing the app's code while `up` runs it.** The next command that touches the app fails with
-  `doctor-required`. Run `bun verify up --restart` and `bun verify doctor`, then the journey again.
+  `doctor-required`. Run `bun verify up --restart` and `bun verify doctor` again.
 
 ## Key rules
 
@@ -54,6 +54,7 @@ The mistakes that cost the most time:
 | memory-approval   | Approve a memory the model proposed, and see it become active | [references/feature-memory-approval.md](references/feature-memory-approval.md)     |
 | policy-proposal   | Approve a call that an ask rule held unrun                    | [references/feature-policy-proposal.md](references/feature-policy-proposal.md)     |
 | task-control      | Pause and resume a task, and see its records agree            | [references/feature-task-control.md](references/feature-task-control.md)           |
+| coding-session    | Start a coding session from chat                              | [references/feature-coding-session.md](references/feature-coding-session.md)       |
 | drawing           | Draw a picture, edit it, and list both                        | [references/feature-drawing.md](references/feature-drawing.md)                     |
 | images-page       | Browse and forget images                                      | [references/feature-images-page.md](references/feature-images-page.md)             |
 | notebook-pages    | Browse notes, open a private one, forget one                  | [references/feature-notebook-pages.md](references/feature-notebook-pages.md)       |
@@ -73,10 +74,9 @@ The mistakes that cost the most time:
 1. Run `bun verify report`. In `data.report.features`, a feature shows `changed: true` when a file
    that matches its `paths` in the [registry](#edit-the-skill-and-the-registry) differs from the
    default branch, committed or not.
-2. Pick the target your task names. When it names none, take the first launch target in the
-   [Targets](#targets) table. Run the commands in its row. `up` or `attach` starts a run, which
-   lasts until `down` or `detach`. Expect from `up` or `attach`: `ok: true`, and the app's endpoints
-   in `data.endpoints`.
+2. Pick the target your task names, or the first launch target in the [Targets](#targets) table. Run
+   the commands in its row. `up` or `attach` starts a run, which lasts until `down` or `detach`.
+   Expect from `up` or `attach`: `ok: true`, and the app's endpoints in `data.endpoints`.
 3. Run `bun verify doctor`. Expect: `data.passed: true`. When a check fails, fix its cause, and run
    `doctor` again.
 4. Run the journey from the feature's file in [References](#references). Its first line,
