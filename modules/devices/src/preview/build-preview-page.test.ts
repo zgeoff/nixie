@@ -67,7 +67,7 @@ test('it gives a region on a pale background black text', () => {
   expect(page).toContain('background-color:yellow;color:black;');
 });
 
-test('it keeps raw HTML in markdown as text and turns a link into its words', () => {
+test('it keeps raw HTML in markdown as text and a link as underlined words with no address', () => {
   const page = readPreviewPage(
     buildPreviewPage({
       surface: {
@@ -85,8 +85,41 @@ test('it keeps raw HTML in markdown as text and turns a link into its words', ()
   expect([
     page.includes('&lt;img src=x onerror=alert(1)&gt;'),
     page.includes('href='),
-    page.includes('<span>docs</span>'),
+    page.includes('<a>docs</a>'),
   ]).toStrictEqual([true, false, true]);
+});
+
+test.each([
+  {
+    title: 'an image as a labelled link',
+    markdown: '![weather chart](https://example.com/c.png)',
+    expected: '<a>image: weather chart</a>',
+  },
+  {
+    title: 'an image with no alt text as untitled',
+    markdown: '![](https://example.com/c.png)',
+    expected: '<a>image: untitled</a>',
+  },
+  {
+    title: 'an image inside a link as its label alone',
+    markdown: '[![weather chart](https://example.com/c.png)](https://example.com)',
+    expected: '<a>image: weather chart</a>',
+  },
+])('it shows $title', (row) => {
+  const page = readPreviewPage(
+    buildPreviewPage({
+      surface: { kind: 'blocks', blocks: [{ kind: 'markdown', text: row.markdown }] },
+      images: new Map(),
+      nowMs: Date.parse('2026-11-21T08:05:09.000Z'),
+      timeZone: 'UTC',
+    }),
+  );
+
+  expect([
+    page.includes(row.expected),
+    page.includes('<img'),
+    page.includes('<a><a>'),
+  ]).toStrictEqual([true, false, false]);
 });
 
 test.each([

@@ -254,10 +254,11 @@ The `devices` module builds the page that the sandbox opens. It picks what the s
 device page does: a show, then the layout while a region shows content or has a background, then the
 idle scene. `buildPreviewPage` turns that choice into `index.html` and one file for each image that
 the screen draws, so an image that a show covers is never sent. A markdown region keeps raw HTML as
-text and shows a link as its words. A clock or a countdown shows the time of the render, in the time
-zone that the device's browser sent beside its size, or in the deployment's default time zone when
-the device sent none. A script in the page grows the text of each region to the largest size that
-fits, as the device page does.
+text, shows a link as underlined words with no address, and shows an image as the device does, a
+link labelled `image: <alt>`. A clock or a countdown shows the time of the render, in the time zone
+that the device's browser sent beside its size, or in the deployment's default time zone when the
+device sent none. A script in the page grows the text of each region to the largest size that fits,
+as the device page does.
 
 The server sends the files, the screen's size in device pixels and the pixel ratio. The render guest
 in `guests/render` starts Chromium on an empty profile in a folder that it removes after the render.

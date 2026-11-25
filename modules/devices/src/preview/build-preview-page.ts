@@ -20,6 +20,7 @@ html, body { margin: 0; background: black; color: white; font-family: system-ui,
 .pad { padding: 0.25em; }
 .reply { overflow-wrap: anywhere; }
 .reply > * { margin: 0 0 0.5em; }
+.reply a { color: #93c5fd; text-decoration: underline; }
 .reply ul { list-style: disc; padding-inline-start: 1.5em; }
 .reply ol { list-style: decimal; padding-inline-start: 1.5em; }
 .reply code, .reply pre { font-family: ui-monospace, monospace; }

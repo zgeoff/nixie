@@ -60,7 +60,8 @@ export async function drawPicture(request: RenderRequest): Promise<RenderReply> 
       });
 
       // The viewport takes whole CSS pixels, so a width that the ratio does not divide leaves it a
-      // pixel wider than the picture. A clip with a scale cuts the picture to the exact size.
+      // pixel wider than the picture. A clip cuts the picture to the exact size. Its scale is
+      // required, and the picture comes out at CSS size times the scale, so it takes the ratio.
       const session = await context.newCDPSession(page);
 
       const shot = await session.send('Page.captureScreenshot', {
