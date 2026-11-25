@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.117.0](https://github.com/zgeoff/nixie/compare/v0.116.0...v0.117.0) (2026-11-25)
+
+
+### Features
+
+* **credentials:** add credential bindings, token exchange and refresh ([#1468](https://github.com/zgeoff/nixie/issues/1468)) ([9575109](https://github.com/zgeoff/nixie/commit/9575109a6d4f55db13e6bbad15993d8b7350cc5f))
+
+
+### Bug Fixes
+
+* **web:** disable the menu button until the page hydrates ([#1464](https://github.com/zgeoff/nixie/issues/1464)) ([583d659](https://github.com/zgeoff/nixie/commit/583d659d1059c0eedeeeed20c7ff1ccbeac1bf28))
+
 ## [0.116.0](https://github.com/zgeoff/nixie/compare/v0.115.0...v0.116.0) (2026-11-25)
 
 
