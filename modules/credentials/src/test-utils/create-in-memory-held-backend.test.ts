@@ -165,7 +165,7 @@ test('it holds in a new backend on the same file what an earlier one saved', asy
   const first = createInMemoryHeldBackend({ recorder: ctx.recorder, file });
 
   await first.writeToken('credential', ctx.token, { expectedCounter: 0, client: ctx.client }, null);
-  await first.writeClient('client', { clientSecret: 'fake-client-secret' });
+  await first.writeClient('client', { clientID: 'client-123', clientSecret: 'fake-client-secret' });
   await first.remove('other');
 
   const second = createInMemoryHeldBackend({ recorder: ctx.recorder, file });
@@ -174,7 +174,7 @@ test('it holds in a new backend on the same file what an earlier one saved', asy
     await second.readToken('credential'),
     await second.readClient('client'),
     await second.readRemovalCounter('other'),
-  ]).toStrictEqual([ctx.token, { clientSecret: 'fake-client-secret' }, 1]);
+  ]).toStrictEqual([ctx.token, { clientID: 'client-123', clientSecret: 'fake-client-secret' }, 1]);
 });
 
 test('it writes the record that a crash left owed when the backend settles', async () => {

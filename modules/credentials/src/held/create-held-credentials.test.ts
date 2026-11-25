@@ -249,6 +249,7 @@ test('it sends the code, the client secret and the verifier in the exchange body
   const clientRef = { backend: 'database', credentialID: crypto.randomUUID() } as const;
 
   await ctx.backend.writeClient(clientRef.credentialID, {
+    clientID: 'client-123',
     clientSecret: 'fake-client-secret-value',
   });
 
@@ -284,6 +285,7 @@ test('it returns an exchange result that holds no token', async () => {
   const clientRef = { backend: 'database', credentialID: crypto.randomUUID() } as const;
 
   await ctx.backend.writeClient(clientRef.credentialID, {
+    clientID: 'client-123',
     clientSecret: 'fake-client-secret-value',
   });
 
@@ -670,6 +672,7 @@ test('it checks the issuer of an ID token before it reads the claims', async () 
   const clientRef = { backend: 'database', credentialID: crypto.randomUUID() } as const;
 
   await ctx.backend.writeClient(clientRef.credentialID, {
+    clientID: 'client-123',
     clientSecret: 'fake-client-secret-value',
   });
 
@@ -704,6 +707,7 @@ test.each([
   const tokenID = crypto.randomUUID();
 
   await ctx.backend.writeClient(clientRef.credentialID, {
+    clientID: 'client-123',
     clientSecret: 'fake-client-secret-value',
   });
 
@@ -750,6 +754,7 @@ test('it reads the subject and email of an ID token that passes every check', as
   const clientRef = { backend: 'database', credentialID: crypto.randomUUID() } as const;
 
   await ctx.backend.writeClient(clientRef.credentialID, {
+    clientID: 'client-123',
     clientSecret: 'fake-client-secret-value',
   });
 
@@ -942,25 +947,23 @@ test('it refuses the answer to a request whose credential was removed while the 
   expect(sending).rejects.toBeInstanceOf(CredentialRemovedError);
 });
 
-test('it leaves the status of a reconnected credential alone when an older handle is rejected twice', async () => {
+test('it aborts a request in flight when its credential is removed', async () => {
   const ctx = await setupTest();
   const connection = await ctx.connectCredential();
 
   const gate = Promise.withResolvers<void>();
-  let dataCalls = 0;
+  let isData = false;
 
   ctx.provider.answerToken(async (request) => {
     if (request.path === '/token') {
       return Response.json({ access_token: 'fake-access-token-9', expires_in: 3600 });
     }
 
-    dataCalls += 1;
+    isData = true;
 
-    if (dataCalls === 2) {
-      await gate.promise;
-    }
+    await gate.promise;
 
-    return new Response('denied', { status: 401 });
+    return new Response('fine');
   });
 
   const sending = ctx.store.fetcher(connection.token, [ctx.provider.origin])(
@@ -968,15 +971,34 @@ test('it leaves the status of a reconnected credential alone when an older handl
   );
 
   await waitFor(() => {
-    expect(dataCalls).toBe(2);
+    expect(isData).toBeTrue();
   });
+
+  onTestFinished(() => gate.resolve());
+
+  await ctx.store.remove(connection.tokenRef);
+
+  await expect(sending).rejects.toBeInstanceOf(CredentialRemovedError);
+});
+
+test('it leaves the status of a reconnected credential alone when an older handle is rejected', async () => {
+  const ctx = await setupTest();
+  const connection = await ctx.connectCredential();
+
+  ctx.provider.answerToken((request) =>
+    request.path === '/token'
+      ? Response.json({ access_token: 'fake-access-token-9', expires_in: 3600 })
+      : new Response('denied', { status: 401 }),
+  );
 
   await ctx.store.remove(connection.tokenRef);
   await ctx.exchangeCode(connection.client, connection.tokenRef.credentialID);
 
   const newer = await ctx.store.register(connection.tokenRef, ctx.spec('oauth_token'));
 
-  gate.resolve();
+  const sending = ctx.store.fetcher(connection.token, [ctx.provider.origin])(
+    `${ctx.provider.origin}/data`,
+  );
 
   await Promise.allSettled([sending]);
 
@@ -1407,4 +1429,59 @@ test('it revokes the tokens of an exchange whose save failed before it kept them
   const revoked = ctx.provider.requests.filter((request) => request.path === '/revoke');
 
   expect(revoked).toHaveLength(1);
+});
+
+test('it revokes the refresh token once with the client secret in the body and no header', async () => {
+  const ctx = await setupTest();
+  const connection = await ctx.connectCredential();
+  const result = await ctx.store.revoke(connection.token);
+
+  const sent = ctx.provider.requests.filter((request) => request.path === '/revoke');
+
+  expect(result).toStrictEqual({ outcome: 'confirmed', status: 200, providerError: null });
+
+  expect(
+    sent.map((request) => [
+      request.form['token'] === 'fake-refresh-token-1',
+      request.form['client_secret'] === 'fake-client-secret-value',
+      request.authorization,
+    ]),
+  ).toStrictEqual([[true, true, null]]);
+});
+
+test('it answers refused with the provider error when the revoke endpoint answers 400', async () => {
+  const ctx = await setupTest();
+  const connection = await ctx.connectCredential();
+
+  ctx.provider.answerRevoke(() =>
+    Response.json({ error: 'invalid_token', error_description: 'free text' }, { status: 400 }),
+  );
+
+  const result = await ctx.store.revoke(connection.token);
+
+  expect(result).toStrictEqual({ outcome: 'refused', status: 400, providerError: 'invalid_token' });
+});
+
+test('it answers unknown when the revoke endpoint answers with a server error', async () => {
+  const ctx = await setupTest();
+  const connection = await ctx.connectCredential();
+
+  ctx.provider.answerRevoke(() => new Response(null, { status: 503 }));
+
+  const result = await ctx.store.revoke(connection.token);
+
+  expect(result).toStrictEqual({ outcome: 'unknown', status: 503, providerError: null });
+});
+
+test('it sends nothing and answers not_attempted for a credential that holds no token', async () => {
+  const ctx = await setupTest();
+  const connection = await ctx.connectCredential();
+
+  await ctx.store.remove(connection.tokenRef);
+  await ctx.backend.remove(connection.tokenRef.credentialID);
+
+  const token = await ctx.store.register(connection.tokenRef, ctx.spec('oauth_token'));
+  const result = await ctx.store.revoke(token);
+
+  expect(result).toStrictEqual({ outcome: 'not_attempted', status: null, providerError: null });
 });

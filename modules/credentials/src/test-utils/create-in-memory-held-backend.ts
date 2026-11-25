@@ -48,7 +48,7 @@ const stateSchema = z.object({
   retryAtMs: z.number().nullable(),
 });
 
-const clientSchema = z.object({ clientSecret: z.string() });
+const clientSchema = z.object({ clientID: z.string(), clientSecret: z.string() });
 
 const tokenSchema = z.object({
   accessToken: z.string(),

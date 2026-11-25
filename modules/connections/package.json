@@ -1,0 +1,25 @@
+{
+  "name": "@heynixie/connections",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./test-build": "./src/test-build/index.ts",
+    "./test-utils": "./src/test-utils/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsrs --fast --noEmit"
+  },
+  "dependencies": {
+    "@heynixie/credentials": "workspace:*",
+    "@heynixie/db": "workspace:*",
+    "@heynixie/log": "workspace:*",
+    "kysely": "catalog:",
+    "tiny-invariant": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@zgeoff/testing": "catalog:"
+  }
+}
