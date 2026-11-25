@@ -443,7 +443,7 @@ test.each([
         return link.localName;
       },
       'an XSLT transform': () => {
-        if (window.startingXSLT !== 'function') {
+        if (window.startingXSLT === 'undefined') {
           return 'no XSLTProcessor before the bridge ran';
         }
         const sheet = '<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">' +
