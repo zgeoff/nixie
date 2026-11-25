@@ -148,3 +148,61 @@ test('it refuses a log without the sandboxes projection', async () => {
     }),
   ).toThrow('the log passed to the sandbox recorder lacks the sandboxes projection');
 });
+
+test('it writes a started grant with the reference and fingerprint of a credential nixie holds, and never a value', async () => {
+  const ctx = await setupTest();
+
+  await ctx.writeEvents([
+    {
+      event: 'grant_started',
+      secret: 'model',
+      host: 'api.anthropic.com',
+      reference: 'deployment:anthropic',
+      fingerprint: 'a3f09c1e',
+    },
+    {
+      event: 'granted',
+      sandboxID: 'nixie-a',
+      secret: 'model',
+      host: 'api.anthropic.com',
+      reference: 'deployment:anthropic',
+      fingerprint: 'a3f09c1e',
+    },
+  ]);
+
+  const records = await ctx.readSandboxRecords();
+
+  expect(records.map((record): unknown => [record.kind, record.payload])).toStrictEqual([
+    [
+      'sandbox.grant_started',
+      {
+        secret: 'model',
+        host: 'api.anthropic.com',
+        reference: 'deployment:anthropic',
+        fingerprint: 'a3f09c1e',
+      },
+    ],
+    [
+      'sandbox.granted',
+      {
+        sandboxID: 'nixie-a',
+        secret: 'model',
+        host: 'api.anthropic.com',
+        reference: 'deployment:anthropic',
+        fingerprint: 'a3f09c1e',
+      },
+    ],
+  ]);
+});
+
+test('it writes a started grant of a host-held credential with no reference and no fingerprint', async () => {
+  const ctx = await setupTest();
+
+  await ctx.writeEvents([{ event: 'grant_started', secret: 'model', host: 'api.anthropic.com' }]);
+
+  const records = await ctx.readSandboxRecords();
+
+  expect(records.map((record): unknown => record.payload)).toStrictEqual([
+    { secret: 'model', host: 'api.anthropic.com' },
+  ]);
+});

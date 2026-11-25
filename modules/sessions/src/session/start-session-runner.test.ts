@@ -1,4 +1,6 @@
 import { expect, test } from 'bun:test';
+import type { FileCredentialRef } from '@heynixie/credentials';
+import { buildMockCredentialRef, createTestCredentials } from '@heynixie/credentials/test-utils';
 import { resolveRoleProfile } from '@heynixie/models';
 import { buildMockModelsConfig } from '@heynixie/models/test-utils';
 import { buildStubSandboxes } from '@heynixie/sandbox/test-utils';
@@ -9,13 +11,18 @@ import { startSessionRunner } from './start-session-runner';
 
 interface RunnerConfig {
   readonly models: ReturnType<typeof buildMockModelsConfig>;
-  readonly credential: string;
+  readonly credential: FileCredentialRef;
 }
 
 async function setupTest() {
   const tasks = await startTestTasks();
 
   const sandboxes = buildStubSandboxes();
+
+  const credentials = await createTestCredentials({
+    model_credentials: { anthropic: 'not-a-real-key' },
+  });
+
   const tools = buildStubToolEndpoint();
 
   return {
@@ -44,6 +51,7 @@ async function setupTest() {
           profile: resolveRoleProfile(config.models, 'conversation'),
           credential: config.credential,
         },
+        store: credentials.store,
         sandboxes: sandboxes.adapter,
         tools: tools.endpoint,
         toolNames: ['memory_write'],
@@ -61,7 +69,7 @@ test('it sums the token counts over every model turn the session ended', async (
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
   });
 
   ctx.sandboxes.setGuestScript(() => [
@@ -112,7 +120,7 @@ test("it gives the session's tools a token for the step that runs it, and stops 
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
   });
 
   await runner.runSession({
@@ -139,7 +147,7 @@ test('it starts each session fresh with the prompt as its one message', async ()
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
   });
 
   await runner.runSession({
@@ -164,7 +172,7 @@ test('it keeps 5-minute cache entries on a profile that sets a 1-hour lifetime',
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig({ profiles: { 'chat-direct': { cacheTTL: '1h' } } }),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
   });
 
   await runner.runSession({
@@ -184,7 +192,7 @@ test('it throws when the guest fails the session', async () => {
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
   });
 
   ctx.sandboxes.setGuestScript(() => [
@@ -209,7 +217,7 @@ test('it throws when a model turn of the session ended at a model API error', as
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
   });
 
   ctx.sandboxes.setGuestScript(() => [
@@ -244,7 +252,7 @@ test('it throws an overflow apart from an API error when the session ends at pro
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
   });
 
   ctx.sandboxes.setGuestScript(() => [
@@ -279,7 +287,7 @@ test('it throws an overflow apart from an API error when the session ends at blo
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
   });
 
   ctx.sandboxes.setGuestScript(() => [
@@ -314,7 +322,7 @@ test('it opens the tool run for the system task on the profile model', async () 
 
   await ctx.startRunner({
     models: buildMockModelsConfig({ profiles: { 'chat-direct': { model: 'claude-test-1' } } }),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
   });
 
   expect(ctx.runs).toStrictEqual([
@@ -334,8 +342,8 @@ test('it keeps the worker sandbox across restarts while its spec matches', async
 
   const models = buildMockModelsConfig();
 
-  await ctx.startRunner({ models, credential: 'not-a-real-key' });
-  await ctx.startRunner({ models, credential: 'not-a-real-key' });
+  await ctx.startRunner({ models, credential: buildMockCredentialRef() });
+  await ctx.startRunner({ models, credential: buildMockCredentialRef() });
 
   expect(ctx.sandboxes.created).toMatchObject([{ kind: 'worker', owner: 'sweeper' }]);
   expect(ctx.sandboxes.destroyed).toStrictEqual([]);
@@ -351,12 +359,12 @@ test('it replaces the worker sandbox when its spec no longer matches', async () 
 
   await ctx.startRunner({
     models: buildMockModelsConfig({ profiles }),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
   });
 
   await ctx.startRunner({
     models: buildMockModelsConfig({ profiles, roles: { conversation: 'chat-aggregator' } }),
-    credential: 'not-a-real-key',
+    credential: buildMockCredentialRef(),
   });
 
   expect(ctx.sandboxes.created.map((spec) => spec.grants[0]?.host)).toStrictEqual([
@@ -373,7 +381,7 @@ test('it opens a capture for the sweeper role and gives the turn its base URL', 
   const opened: StepCaptureInput[] = [];
 
   const runner = await ctx.startRunner(
-    { models: buildMockModelsConfig(), credential: 'not-a-real-key' },
+    { models: buildMockModelsConfig(), credential: buildMockCredentialRef() },
     opened,
   );
 
@@ -405,7 +413,7 @@ test('it marks the capture of a step on a profile outside Claude as rewritten', 
       models: buildMockModelsConfig({
         profiles: { router: { model: 'glm-test-1', outsideClaude: true } },
       }),
-      credential: 'not-a-real-key',
+      credential: buildMockCredentialRef(),
     },
     opened,
   );

@@ -1,12 +1,11 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { gzipSync } from 'node:zlib';
 import { makeAddressCheck } from '@heynixie/egress';
+import { buildStubResolver, startTestSite } from '@heynixie/egress/test-utils';
 import { defaultFetchTextBytes } from '@heynixie/wire';
-import { buildStubResolver } from '../test-utils/build-stub-resolver';
 import { readClosedPort } from '../test-utils/read-closed-port';
 import { startResettingSite } from '../test-utils/start-resetting-site';
 import { startSilentListener } from '../test-utils/start-silent-listener';
-import { startTestSite } from '../test-utils/start-test-site';
 import { buildReadableText } from '../utils/build-readable-text';
 import { createWebTransports } from './create-web-transports';
 import { readPage } from './read-page';

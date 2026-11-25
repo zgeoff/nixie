@@ -1,7 +1,7 @@
 import type {
   HarnessEntry,
+  ModelCredentials,
   ModelRole,
-  ModelSecrets,
   ModelsConfig,
   ResolvedProfile,
 } from '@heynixie/models';
@@ -21,7 +21,7 @@ import { getHarnessImage } from './get-harness-image';
 
 export interface SystemTaskOptions {
   readonly models: ModelsConfig;
-  readonly secrets: ModelSecrets;
+  readonly credentials: ModelCredentials;
   readonly sandboxes: SandboxAdapter;
 
   // each harness's image, under the key its record names
@@ -85,7 +85,11 @@ export function makeSystemTaskRunner<Options extends SystemTaskOptions, Task ext
 }
 
 function resolveRoleCredential(options: SystemTaskOptions, role: ModelRole): ResolvedProfile {
-  const credentials = resolveModelCredentials(options.models, options.secrets);
+  const credentials = resolveModelCredentials(
+    options.models,
+    options.credentials.resolveCredential,
+  );
+
   const profile = resolveRoleProfile(options.models, role);
   const resolved = credentials[profile.id];
 

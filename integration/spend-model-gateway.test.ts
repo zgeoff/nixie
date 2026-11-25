@@ -1,4 +1,5 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
+import { makeKeyedFetch } from '@heynixie/egress/test-utils';
 import { startTestModelGateway } from '@heynixie/model-gateway/test-utils';
 import { createSpendGateway } from '@heynixie/spend-model-gateway';
 import { startScriptedModel } from '@heynixie/testing';
@@ -33,7 +34,10 @@ async function setupTest() {
 
   return {
     control: gateway.control,
-    spend: createSpendGateway({ url: gateway.control.url, token: gateway.control.token }),
+    spend: createSpendGateway({
+      url: gateway.control.url,
+      fetch: makeKeyedFetch('authorization', `Bearer ${gateway.control.token}`),
+    }),
   };
 }
 
@@ -178,7 +182,10 @@ test('it removes a sandbox that the gateway lacks', async () => {
 test('it returns unreachable with the status for a wrong token', async () => {
   const ctx = await setupTest();
 
-  const spend = createSpendGateway({ url: ctx.control.url, token: 'wrong' });
+  const spend = createSpendGateway({
+    url: ctx.control.url,
+    fetch: makeKeyedFetch('authorization', 'Bearer wrong'),
+  });
 
   const answer = await spend.readStatus();
 
@@ -191,7 +198,10 @@ test('it returns unreachable with the status for a wrong token', async () => {
 test('it returns unreachable for a sandbox call with a wrong token', async () => {
   const ctx = await setupTest();
 
-  const spend = createSpendGateway({ url: ctx.control.url, token: 'wrong' });
+  const spend = createSpendGateway({
+    url: ctx.control.url,
+    fetch: makeKeyedFetch('authorization', 'Bearer wrong'),
+  });
 
   const answer = await spend.putSandbox('nixie-abc', null);
 
@@ -208,7 +218,11 @@ test('it returns unreachable when nothing listens at the address', async () => {
 
   await closed.stop(true);
 
-  const spend = createSpendGateway({ url, token: 'any', timeoutMs: 1000 });
+  const spend = createSpendGateway({
+    url,
+    fetch: makeKeyedFetch('authorization', 'Bearer any'),
+    timeoutMs: 1000,
+  });
 
   const answer = await spend.readStatus();
 
@@ -224,7 +238,10 @@ test('it returns unreachable when the listener sends a reply that is not the gat
 
   onTestFinished(() => other.stop(true));
 
-  const spend = createSpendGateway({ url: `http://127.0.0.1:${String(other.port)}`, token: 'any' });
+  const spend = createSpendGateway({
+    url: `http://127.0.0.1:${String(other.port)}`,
+    fetch: makeKeyedFetch('authorization', 'Bearer any'),
+  });
 
   const answer = await spend.readStatus();
 
@@ -247,7 +264,10 @@ test('it reads the plan logins of the gateway without a token or an email', asyn
 test('it reads the plan logins as unreachable when the token is wrong', async () => {
   const ctx = await setupTest();
 
-  const spend = createSpendGateway({ url: ctx.control.url, token: 'wrong' });
+  const spend = createSpendGateway({
+    url: ctx.control.url,
+    fetch: makeKeyedFetch('authorization', 'Bearer wrong'),
+  });
 
   const logins = await spend.readChatGPTLogins();
 

@@ -2,6 +2,7 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { createOwnValueSet } from '@heynixie/credentials';
 import { buildStubSandboxes, setupTestRecorder } from '@heynixie/sandbox/test-utils';
 import { waitForCondition } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
@@ -50,7 +51,7 @@ async function setupTest() {
         images: pickNeededImages(images, listImageNeeds(config, declarations)),
         cleanup,
         log: () => {},
-        secrets: { collectOwnValues: () => [] },
+        secrets: { ownValues: createOwnValueSet() },
       },
       adapter: sandboxes.adapter,
       log: testRecorder.log,

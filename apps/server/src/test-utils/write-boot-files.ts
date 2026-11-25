@@ -1,5 +1,6 @@
 import { chmod, mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { stubSopsPath } from '@heynixie/credentials/test-utils';
 import type { LogLevel } from '@heynixie/logger';
 import { readStarterRulesText } from '@heynixie/policy/test-utils';
 
@@ -157,9 +158,7 @@ async function writeManifest(path: string): Promise<void> {
 }
 
 async function writeStubSops(path: string): Promise<void> {
-  const stub = join(import.meta.dir, 'run-stub-sops.ts');
-
-  await writeFile(path, `#!/bin/sh\nexec "${process.execPath}" "${stub}" "$@"\n`);
+  await writeFile(path, `#!/bin/sh\nexec "${process.execPath}" "${stubSopsPath}" "$@"\n`);
   await chmod(path, 0o755);
 }
 

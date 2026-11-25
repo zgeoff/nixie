@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { createTestCredentials } from '@heynixie/credentials/test-utils';
 import type { JSONObject, RecordKinds } from '@heynixie/log';
 import { readRecords, writeRecords } from '@heynixie/log';
 import { buildLogSeeder } from '@heynixie/log/test-utils';
@@ -165,7 +166,9 @@ async function setupTest(config: SetupConfig = {}) {
 
   const worker = await startWorkerTool({
     models,
-    secrets: { model_credentials: { anthropic: 'not-a-real-key' } },
+    credentials: await createTestCredentials({
+      model_credentials: { anthropic: 'not-a-real-key' },
+    }),
     sandboxes,
     images: {
       conversation: 'nixie-conversation-0123456789ab',

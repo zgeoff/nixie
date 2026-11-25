@@ -18,7 +18,6 @@ async function setupTest(header: 'bearer' | 'x-api-key') {
 
   const grant = bindHarness(buildMockModelProfile({ authHeader: header })).buildGrant({
     name: 'model-chat-1',
-    value: 'not-a-real-key',
     host: 'api.anthropic.com',
     header,
   });

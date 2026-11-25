@@ -355,7 +355,7 @@ test.each([
   const ctx = setupTest();
 
   const scanHop = makeHopScan({
-    findSecret: makeSecretFinder([buildKey('alphanumeric', 20, 9)]),
+    findSecret: makeSecretFinder(() => [buildKey('alphanumeric', 20, 9)]),
     isExempt: () => Promise.resolve(false),
     logger: () => {},
   });

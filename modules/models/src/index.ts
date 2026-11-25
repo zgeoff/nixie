@@ -3,7 +3,8 @@ export type { ModelRecordSource } from './model/build-model-record';
 export { buildModelEventRecord, buildModelRecord } from './model/build-model-record';
 export type { HarnessFit } from './model/check-harness-fit';
 export { checkHarnessFit } from './model/check-harness-fit';
-export { deriveModelSecret } from './model/derive-model-secret';
+export type { ModelGrantSecret } from './model/grant-model-secret';
+export { grantModelSecret } from './model/grant-model-secret';
 export { modelPricesSchema } from './agent/model-prices-schema';
 export { memoryRefsSchema } from './session/memory-refs-schema';
 export { modelCompactedCodec } from './session/model-compacted-codec';
@@ -34,7 +35,7 @@ export type {
   ModelPrices,
   ModelProfile,
   ModelRole,
-  ModelSecrets,
+  ModelCredentials,
   ModelsConfig,
   ReasoningEffort,
   ResolvedProfile,

@@ -98,6 +98,11 @@ test.each([
       ],
     },
   ],
+  [
+    'a pattern whose class after a kept prefix opens to any character',
+    { type: 'string', pattern: String.raw`^deployment:[\w-]+$` },
+    { type: 'string', pattern: '^deployment:.+$' },
+  ],
 ])('it finds no breaking change in %s', (_label, released, current) => {
   expect(collectBreakingConfigChanges(released, current)).toStrictEqual([]);
 });
@@ -163,6 +168,36 @@ test.each([
     expected: ['(root): adds pattern'],
   },
   {
+    label: 'a pattern narrowed from any character to a class',
+    released: { pattern: '^deployment:.+$' },
+    current: { pattern: String.raw`^deployment:[\w-]+$` },
+    expected: ['(root): changes pattern'],
+  },
+  {
+    label: 'a widened pattern with a different prefix',
+    released: { pattern: String.raw`^deployment:[\w-]+$` },
+    current: { pattern: '^secret:.+$' },
+    expected: ['(root): changes pattern'],
+  },
+  {
+    label: 'a widened pattern whose released class holds a whitespace escape',
+    released: { pattern: String.raw`^deployment:[\w\s]+$` },
+    current: { pattern: '^deployment:.+$' },
+    expected: ['(root): changes pattern'],
+  },
+  {
+    label: 'a widened pattern whose released class is negated',
+    released: { pattern: '^deployment:[^:]+$' },
+    current: { pattern: '^deployment:.+$' },
+    expected: ['(root): changes pattern'],
+  },
+  {
+    label: 'an unrelated pattern edit',
+    released: { pattern: '^[a-z]+$' },
+    current: { pattern: '^[a-z0-9]{2,}$' },
+    expected: ['(root): changes pattern'],
+  },
+  {
     label: 'a changed format',
     released: { format: 'uri' },
     current: { format: 'email' },
@@ -191,6 +226,18 @@ test.each([
     released: { items: { type: 'string' } },
     current: { items: { type: 'string', minLength: 1 } },
     expected: ['[]: adds minLength'],
+  },
+  {
+    label: 'a widened pattern that a not reaches through $ref',
+    released: {
+      properties: { token: { pattern: '^[a]+$' } },
+      not: { properties: { other: { $ref: '#/properties/token' } }, required: ['other'] },
+    },
+    current: {
+      properties: { token: { pattern: '^.+$' } },
+      not: { properties: { other: { $ref: '#/properties/token' } }, required: ['other'] },
+    },
+    expected: ['(root): changes a schema that uses $ref'],
   },
   {
     label: 'a narrower key name',

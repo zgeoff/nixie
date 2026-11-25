@@ -1,6 +1,11 @@
 # The credential store
 
-- **Status:** agreed
+- **Status:** agreed. The first slice is built and described in
+  [the credential store](../../../architecture/connectors/credentials.md): the file backend, the
+  resolver, the fetcher, the model grant, the fingerprint and the own-value set, with the search,
+  image, spend, owner and model credentials on them. The rest is not built: bindings with a removal
+  counter, `exchange`, `refresh`, the database and vault backends, Disconnect, the statuses,
+  `pairing`, `stream` and the mail and phone entries.
 - Decisions: [0003](../../../decisions/0003-sdk-placement.md), which puts the model loop in a
   sandbox, so its model credential reaches it through a grant
 
@@ -13,13 +18,12 @@ the vault, and each kind of credential has one backend. One resolver turns every
 credential. A tool or a connector uses a credential on the host, and a value never enters a tool
 result, a prompt, a log or a record in clear.
 
-Once the owner approves this design, build its work items from it and the built
-[configuration and secrets](../../../architecture/deployment/configuration.md) it replaces. The file
-backend, the resolver, the fetcher, the model grant, the fingerprint and the own-value set come
-first, with the search, image, spend, owner and model credentials moved onto them. Disconnect, the
-statuses, `pairing`, `stream` and a fetcher with no credential come with their first callers; the
-database backend comes with the [Google connections](../../queue/google-connections.md), and the
-vault backend with the [vault](../../queue/accounts.md).
+Build the rest of this design's work items from it and the built
+[configuration and secrets](../../../architecture/deployment/configuration.md) it replaces.
+Disconnect, the statuses, `pairing`, `stream` and a fetcher with no credential come with their first
+callers; the database backend comes with the
+[Google connections](../../queue/google-connections.md), and the vault backend with the
+[vault](../../queue/accounts.md).
 
 ## Shape
 
@@ -57,7 +61,7 @@ turns a reference and a spec into a binding, which every other call takes.
 
 ```ts
 // credentials module. createResolver binds the resolver to the loaded secrets file; it throws
-// MissingCredential at start for a missing entry, except a model entry.
+// MissingCredentialError at start for a missing entry, except a model entry.
 const resolveCredential = createResolver(secretsFile);
 const ref = resolveCredential({ class: 'connector', reference: 'deployment:kagi' });
 // → { backend: 'file', group: 'connector_credentials', name: 'kagi' }
@@ -160,7 +164,7 @@ interface VaultCredentials {
 
 // libs/egress, so an adapter can tell it apart without importing the credentials module. A tool
 // call that meets it fails with an error, never a reply.
-class CredentialRefusal extends Error {}
+class CredentialRefusalError extends Error {}
 
 interface CredentialSpec {
   kind: 'oauth_client' | 'oauth_token' | 'static' | 'model' | 'password' | 'card';
@@ -255,9 +259,9 @@ host, such as "this key works on all of github.com".
   the name keeps today's unkeyed digest of the first three, since no value goes in. A rotation gives
   a new name, and a sandbox keeps the value it was granted until it is replaced.
 - nixie removes a broker secret it added once no live sandbox holds a grant of it, at start and
-  after each sandbox destroy. It finds the names it added in the `sandbox.grant_started` and
-  `sandbox.granted` records, today's names included, and never removes a name the config's host-held
-  profiles give.
+  after each sandbox destroy. It finds the names it added in the `sandbox.grant_started` records and
+  in the `sandbox.granted` records that carry a reference, and never removes a name the config's
+  host-held profiles give or a name this process added.
 - The store refuses a grant on a token endpoint and a grant of an OAuth client's secret, whatever a
   rule says. imp's broker returns the response body unchanged, so a guest that calls a granted token
   endpoint receives live tokens, as the
@@ -273,7 +277,7 @@ host, such as "this key works on all of github.com".
 // uses today, and as a non-extractable HKDF key with only deriveBits. The fingerprint key is
 // HKDF-SHA-256 of it with an empty salt and the info 'nixie fingerprint', imported as a
 // non-extractable HMAC key, so the secrets file gains no entry.
-await formatFingerprint(value, fingerprintKey); // → 'a3f09c1e'
+await readFingerprint(value, fingerprintKey); // → 'a3f09c1e'
 ```
 
 - A record, a column or the client shows a credential by its reference and fingerprint, never by the
@@ -400,8 +404,8 @@ await formatFingerprint(value, fingerprintKey); // → 'a3f09c1e'
 - A removal ends only when every sandbox that held a grant of the credential is destroyed. A failed
   destroy keeps the removal open and retried, across restarts, and the client shows it as pending.
 - Every tool result passes a scan of every value in the live set, with no filter but the minimum
-  length, before it reaches the model. A connector that returns another credential's value has it
-  cut, as the fetcher cuts its own.
+  length and the exclusion of the user's name and pronouns, before it reaches the model. A connector
+  that returns another credential's value has it cut, as the fetcher cuts its own.
 - A secret you enter for a service, such as a mail account's app password, lives in the database
   backend with its connection. The vault holds only your own logins and cards.
 - Each backend keeps its own storage shape. The database backend keeps values in plain tables, so no

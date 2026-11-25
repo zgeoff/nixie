@@ -229,6 +229,24 @@ test('it creates a worker imp from the real spec builder with policy none and no
   ]);
 });
 
+test('it limits a grant with paths and no gateway to those paths on its host', async () => {
+  const ctx = await setupTest();
+
+  const grant = buildMockGrantSpec({ paths: ['/v1/messages', '/v1/models/*'] });
+
+  await seedSecret(ctx.impd, grant.secret, [grant.host]);
+
+  const sandbox = await ctx.adapter.create(buildMockSandboxSpec({ grants: [grant] }));
+
+  expect(ctx.readInputs('grants/add')).toStrictEqual([
+    {
+      name: sandbox.id,
+      secret: grant.secret,
+      filter: { paths: ['/v1/messages', '/v1/models/*'] },
+    },
+  ]);
+});
+
 test.each([
   ['a worker', { kind: 'worker', egress: { kind: 'none' } }],
   ['a coding session', { kind: 'coding', egress: { kind: 'allow', hosts: ['github.com'] } }],
@@ -944,6 +962,63 @@ test.each([
       rules: [{ host: 'gateway.example', header: impdHeader, scheme }],
     },
   ]);
+});
+
+test('it writes the started grant before it installs a secret, with no value in the record', async () => {
+  const ctx = await setupTest();
+
+  await ctx.adapter.addSecret({
+    name: 'model-chat-2',
+    value: 'not-a-real-key',
+    host: 'gateway.example',
+    header: 'bearer',
+    reference: 'deployment:anthropic',
+    fingerprint: 'a3f09c1e',
+  });
+
+  const records = await ctx.readSandboxRecords();
+
+  expect(records.map((record): unknown => [record.kind, record.payload])).toStrictEqual([
+    [
+      'sandbox.grant_started',
+      {
+        secret: 'model-chat-2',
+        host: 'gateway.example',
+        reference: 'deployment:anthropic',
+        fingerprint: 'a3f09c1e',
+      },
+    ],
+  ]);
+
+  expect(ctx.readInputs('secrets/add')).toHaveLength(1);
+});
+
+test('it writes no started grant when the broker already holds the name', async () => {
+  const ctx = await setupTest();
+
+  await seedSecret(ctx.impd, 'model-default', ['api.anthropic.com']);
+
+  await ctx.adapter.addSecret({
+    name: 'model-default',
+    value: null,
+    host: 'api.anthropic.com',
+    header: 'bearer',
+  });
+
+  const records = await ctx.readSandboxRecords();
+
+  expect(records).toStrictEqual([]);
+});
+
+test('it removes a secret by name, and a name the broker lacks is no error', async () => {
+  const ctx = await setupTest();
+
+  await seedSecret(ctx.impd, 'model-old', ['api.anthropic.com']);
+
+  await ctx.adapter.removeSecret('model-old');
+  await ctx.adapter.removeSecret('model-old');
+
+  expect(ctx.readInputs('secrets/delete')).toStrictEqual([{ name: 'model-old' }]);
 });
 
 test('it stores no secret when one already has the name', async () => {

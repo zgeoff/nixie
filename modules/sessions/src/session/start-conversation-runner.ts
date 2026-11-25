@@ -1,5 +1,6 @@
 import type { CompactionSettings } from '@heynixie/compaction';
-import { bindHarness, deriveModelSecret } from '@heynixie/models';
+import type { CredentialStore } from '@heynixie/credentials';
+import { bindHarness, grantModelSecret } from '@heynixie/models';
 import type { Harness, ResolvedProfile } from '@heynixie/models';
 import type { SpendGateway } from '@heynixie/spend';
 import type { RunStep, TaskMessaging, TasksContext } from '@heynixie/tasks';
@@ -26,6 +27,7 @@ export interface ConversationRunnerOptions {
   readonly context: TasksContext;
 
   readonly profile: ResolvedProfile;
+  readonly store: CredentialStore;
 
   // the profile's harness record; a test passes a stand-in for a harness with no session
   readonly harness?: Harness;
@@ -100,10 +102,8 @@ export async function startConversationRunner(
   options: ConversationRunnerOptions,
 ): Promise<ConversationRunner> {
   const harness = options.harness ?? bindHarness(options.profile.profile);
-  const secret = deriveModelSecret(options.profile, harness);
 
-  await options.sandboxes.addSecret(secret);
-
+  const secret = await grantModelSecret(options.profile, harness, options);
   const sandbox = await setupConversationSandbox({ ...options, harness }, secret);
 
   const model: ToolRunModel = {

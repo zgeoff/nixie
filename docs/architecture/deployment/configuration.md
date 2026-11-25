@@ -67,11 +67,14 @@ still refuses the file. The cost: a mistyped key passes with the default of the 
 and only the warning shows it. The error lists the path of each other fault it refuses.
 
 A setting that names a secret holds a reference of the form `deployment:<name>`, which names an
-entry in the secrets file. A model profile's credential and the search key accept only that form.
-The user's name and each pronoun accept either a reference or the value, so a deployment whose
-configuration lives in a public repo keeps them in the secrets file. The server resolves each
-reference once the secrets load, and refuses to start when the secrets file lacks the entry, so
-nixie never shows the model a reference in place of a name or a pronoun.
+entry in the secrets file. One schema validates every such key: a model profile's credential, the
+search and image keys, the spend gateway's token and the user's name and pronouns. The user's name
+and each pronoun accept either a reference or the value, so a deployment whose configuration lives
+in a public repo keeps them in the secrets file. The
+[credential store](../connectors/credentials.md) resolves each reference once the secrets load, and
+the server refuses to start when the secrets file lacks an entry, except a model profile's, which
+the sandbox host may hold. nixie therefore never shows the model a reference in place of a name or a
+pronoun.
 
 The server generates a JSON Schema from the zod schema and commits it as `config.schema.json`, and a
 test fails when the committed file differs. Each release publishes that file

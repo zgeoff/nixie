@@ -1,4 +1,5 @@
 import { expect, onTestFinished, test } from 'bun:test';
+import { makeKeyedFetch } from '@heynixie/egress/test-utils';
 import { startTestModelGateway } from '@heynixie/model-gateway/test-utils';
 import { createPlanLoginsHolder, startSpendLimits } from '@heynixie/spend';
 import { createSpendGateway } from '@heynixie/spend-model-gateway';
@@ -26,7 +27,10 @@ async function setupTest() {
 
   invariant(gateway.control);
 
-  const spend = createSpendGateway({ url: gateway.control.url, token: gateway.control.token });
+  const spend = createSpendGateway({
+    url: gateway.control.url,
+    fetch: makeKeyedFetch('authorization', `Bearer ${gateway.control.token}`),
+  });
 
   const options = {
     gateway: spend,

@@ -1,8 +1,28 @@
+import { isWidenedPattern } from './is-widened-pattern';
+
 export function collectBreakingConfigChanges(
   released: unknown,
   current: unknown,
 ): readonly string[] {
-  return collectNodeChanges(toNode(released), toNode(current), []);
+  // A reference can reuse a subschema where a wider value refuses more, such as under not, and the
+  // check compares each subschema only where it sits, so any change to a schema with one counts.
+  const isReferenced =
+    !Bun.deepEquals(released, current) && (hasReference(released) || hasReference(current));
+
+  return [
+    ...(isReferenced ? ['(root): changes a schema that uses $ref'] : []),
+    ...collectNodeChanges(toNode(released), toNode(current), []),
+  ];
+}
+
+function hasReference(value: unknown): boolean {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+
+  return Object.entries(value).some(
+    ([key, entry]) => key === '$ref' || key === '$dynamicRef' || hasReference(entry),
+  );
 }
 
 type SchemaNode = Readonly<Record<string, unknown>>;
@@ -69,6 +89,7 @@ const narrowingCollectors: Readonly<Record<string, (change: KeywordChange) => re
     additionalProperties: (change) => collectSubschemaChanges(change, '*'),
     items: (change) => collectSubschemaChanges(change, '[]'),
     propertyNames: (change) => collectSubschemaChanges(change, '(key)'),
+    pattern: collectPatternChange,
     anyOf: collectChoiceChanges,
     oneOf: collectChoiceChanges,
   };
@@ -221,6 +242,20 @@ function collectSubschemaChanges(change: KeywordChange, segment: string): readon
   return collectNodeChanges(toNode(change.before), toNode(change.after), path);
 }
 
+// A changed pattern counts as breaking unless it provably accepts every string the released one did.
+function collectPatternChange(change: KeywordChange): readonly string[] {
+  const isWidened =
+    typeof change.before === 'string' &&
+    typeof change.after === 'string' &&
+    isWidenedPattern(change.before, change.after);
+
+  return isWidened ? [] : collectAnyChange(change);
+}
+
+function collectAnyChange(change: KeywordChange): readonly string[] {
+  return [`${formatPath(change.path)}: changes ${change.keyword}`];
+}
+
 // oneOf refuses a value that matches two choices, so any change to a choice counts, except where a
 // required string tag keeps the choices apart: a value then matches only the choice with its tag,
 // so each kept choice is checked on its own and an added tag refuses nothing
@@ -304,8 +339,4 @@ function pickRequiredConst(choice: SchemaNode, key: string): unknown {
     typeof property['const'] === 'string';
 
   return isTagged ? property['const'] : undefined;
-}
-
-function collectAnyChange(change: KeywordChange): readonly string[] {
-  return [`${formatPath(change.path)}: changes ${change.keyword}`];
 }

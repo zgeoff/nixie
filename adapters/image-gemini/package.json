@@ -13,11 +13,11 @@
   },
   "dependencies": {
     "@heynixie/connectors": "workspace:*",
+    "@heynixie/egress": "workspace:*",
     "@heynixie/wire": "workspace:*",
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@heynixie/log": "workspace:*",
     "@heynixie/mock-server": "workspace:*",
     "msw": "catalog:"
   }

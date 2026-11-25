@@ -2,7 +2,7 @@ import { onTestFinished } from 'bun:test';
 import { once } from 'node:events';
 import type { AddressInfo } from 'node:net';
 import { createServer } from 'node:tls';
-import { createTestCertificate } from './create-test-certificate';
+import { createTestCertificate } from '@heynixie/egress/test-utils';
 
 export interface ResettingSite {
   readonly port: number;

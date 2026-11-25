@@ -1,4 +1,5 @@
 import { expect, mock, test } from 'bun:test';
+import { buildMockCredentialRef, createTestCredentials } from '@heynixie/credentials/test-utils';
 import type { RecordKind } from '@heynixie/log';
 import { readRecords, writeRecords } from '@heynixie/log';
 import type { Harness } from '@heynixie/models';
@@ -56,6 +57,11 @@ async function setupTest() {
   const tasks = await startTestTasks();
 
   const sandboxes = buildStubSandboxes();
+
+  const credentials = await createTestCredentials({
+    model_credentials: { anthropic: 'not-a-real-key' },
+  });
+
   const tools = buildStubToolEndpoint();
   const profile = buildMockModelProfile();
 
@@ -119,7 +125,8 @@ async function setupTest() {
       startConversationRunner({
         context: tasks.context,
         ...(extra.harness === undefined ? {} : { harness: extra.harness }),
-        profile: { profile, credential: 'not-a-real-key' },
+        profile: { profile, credential: buildMockCredentialRef() },
+        store: credentials.store,
         sandboxes: sandboxes.adapter,
         tools: tools.endpoint,
         toolNames: ['notes_read'],
@@ -993,7 +1000,7 @@ test('it fails a step on a plan profile whose login is not active, with no captu
   const runner = await ctx.startRunner(2000, undefined, ctx.port, {
     harness: bindHarness(planProfile),
     overrides: {
-      profile: { profile: planProfile, credential: 'not-a-real-key' },
+      profile: { profile: planProfile, credential: buildMockCredentialRef() },
       spend: spend.context,
     },
   });
@@ -1022,7 +1029,7 @@ test('it sends the account and plan of an active login in the turn profile of a 
   const runner = await ctx.startRunner(2000, undefined, undefined, {
     harness: bindHarness(planProfile),
     overrides: {
-      profile: { profile: planProfile, credential: 'not-a-real-key' },
+      profile: { profile: planProfile, credential: buildMockCredentialRef() },
       spend: spend.context,
     },
   });

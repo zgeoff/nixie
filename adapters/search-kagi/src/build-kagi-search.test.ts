@@ -1,4 +1,6 @@
 import { expect, mock, test } from 'bun:test';
+import { CredentialRefusalError } from '@heynixie/egress';
+import { makeKeyedFetch } from '@heynixie/egress/test-utils';
 import { network } from '@heynixie/mock-server';
 import { HttpResponse, http } from 'msw';
 import { buildKagiSearch } from './build-kagi-search';
@@ -6,7 +8,12 @@ import { kagiAPIURL } from './mocks/kagi-api-url';
 import { kagiStore } from './mocks/kagi-store';
 
 function setupTest() {
-  return { provider: buildKagiSearch({ apiKey: 'kagi-key-a', apiURL: kagiAPIURL }) };
+  return {
+    provider: buildKagiSearch({
+      fetch: makeKeyedFetch('authorization', 'Bearer kagi-key-a'),
+      apiURL: kagiAPIURL,
+    }),
+  };
 }
 
 test("it returns the hits Kagi holds for the query, each dated by the day of Kagi's time, at $0.012", async () => {
@@ -214,31 +221,6 @@ test('it returns only the hits published within the freshness the search sets', 
   });
 });
 
-test('it fails with a reason that never holds the key when the error Kagi sends repeats the key', async () => {
-  const ctx = setupTest();
-
-  network.use(
-    http.post(`${kagiAPIURL}/search`, () =>
-      HttpResponse.json(
-        { error: [{ code: '2', message: 'Unknown key kagi-key-a' }] },
-        { status: 401 },
-      ),
-    ),
-  );
-
-  const reply = await ctx.provider.readHits({
-    query: 'tide times',
-    limit: 10,
-    sites: [],
-    freshness: null,
-  });
-
-  expect(reply).toStrictEqual({
-    kind: 'failed',
-    reason: 'Kagi answered 401: Unknown key <the API key>',
-  });
-});
-
 test("it fails with Kagi's error, which never quotes the key, when Kagi refuses the key", async () => {
   const ctx = setupTest();
 
@@ -305,4 +287,19 @@ test('it fails when Kagi cannot be reached', async () => {
     kind: 'failed',
     reason: expect.toStartWith('Kagi could not be reached: '),
   });
+});
+
+test('it throws a refusal of the fetcher, so the call fails with an error and no reply', () => {
+  const refusal = new CredentialRefusalError('the request sets the cookie header');
+
+  const refuse = () => Promise.reject(refusal);
+
+  const provider = buildKagiSearch({
+    fetch: refuse,
+    apiURL: kagiAPIURL,
+  });
+
+  expect(
+    provider.readHits({ query: 'tide times', limit: 10, sites: [], freshness: null }),
+  ).rejects.toBe(refusal);
 });

@@ -1,4 +1,5 @@
 import { onTestFinished } from 'bun:test';
+import { createTestCredentials } from '@heynixie/credentials/test-utils';
 import { modelsConfigSchema } from '@heynixie/models';
 import type { ConversationRunner, ConversationRunnerOptions } from '@heynixie/sessions';
 import type { TasksContext } from '@heynixie/tasks';
@@ -50,7 +51,9 @@ export async function startTestConversation(
       },
       roles: { conversation: 'chat-direct' },
     }),
-    secrets: { model_credentials: { anthropic: 'not-a-real-key' } },
+    credentials: await createTestCredentials({
+      model_credentials: { anthropic: 'not-a-real-key' },
+    }),
     sandboxes: server.sandboxes,
     tools: server.endpoint,
     toolNames: options.toolNames ?? [],

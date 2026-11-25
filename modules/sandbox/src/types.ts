@@ -29,6 +29,14 @@ export interface GrantSpec {
   // grant that an adapter replaces.
   readonly route?: string | null;
   readonly env: Readonly<Record<string, string>>;
+
+  // what the records show of a credential nixie holds: its reference and keyed fingerprint
+  readonly reference?: string;
+  readonly fingerprint?: string;
+
+  // the only paths on the secret's host that the grant reaches, as globs. A grant with a route
+  // takes the gateway's path in their place.
+  readonly paths?: readonly string[];
 }
 
 export interface SecretSpec {
@@ -37,6 +45,10 @@ export interface SecretSpec {
   readonly value: string | null;
   readonly host: string;
   readonly header: 'bearer' | 'x-api-key';
+
+  // what the records show of a value nixie holds, never the value
+  readonly reference?: string;
+  readonly fingerprint?: string;
 }
 
 export interface SandboxLimits {
@@ -68,6 +80,9 @@ export interface SandboxAdapter {
 
   readonly addSecret: (secret: SecretSpec) => Promise<void>;
 
+  // takes a name out of the broker; a name the broker lacks is no error
+  readonly removeSecret: (name: string) => Promise<void>;
+
   readonly addImage: (image: SandboxImage) => Promise<void>;
 
   readonly checkRuntime: (signal?: AbortSignal) => Promise<RuntimeReport>;
@@ -86,6 +101,10 @@ export interface RuntimeReport {
 export interface GuestCommand {
   readonly argv: readonly string[];
   readonly env: Readonly<Record<string, string>>;
+
+  // what the records show of a credential nixie holds: its reference and keyed fingerprint
+  readonly reference?: string;
+  readonly fingerprint?: string;
 }
 
 export interface ExecSpec {
@@ -212,10 +231,19 @@ export type SandboxEvent =
       readonly spec: SandboxSpec;
     }
   | {
+      readonly event: 'grant_started';
+      readonly secret: string;
+      readonly host: string;
+      readonly reference?: string;
+      readonly fingerprint?: string;
+    }
+  | {
       readonly event: 'granted';
       readonly sandboxID: string;
       readonly secret: string;
       readonly host: string;
+      readonly reference?: string;
+      readonly fingerprint?: string;
     }
   | { readonly event: 'slept' | 'woken'; readonly sandboxID: string }
   | {

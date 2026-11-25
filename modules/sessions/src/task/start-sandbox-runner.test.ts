@@ -1,5 +1,6 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
 import { readLinkTarget } from '@heynixie/connectors';
+import { createTestCredentials } from '@heynixie/credentials/test-utils';
 import type { Definitions, RecordInput } from '@heynixie/log';
 import { writeRecords } from '@heynixie/log';
 import { modelsConfigSchema } from '@heynixie/models';
@@ -80,13 +81,13 @@ async function setupTest() {
     },
   });
 
-  const secrets = {
+  const credentials = await createTestCredentials({
     model_credentials: { anthropic: 'not-a-real-key', router: 'not-a-real-token' },
-  };
+  });
 
   const host = await startTestSessionHost({
     clock,
-    runSettings: buildRunSettings({ models, secrets, hopLimit: 20 }),
+    runSettings: buildRunSettings({ models, credentials, hopLimit: 20 }),
   });
 
   const tools = buildStubToolEndpoint();
@@ -106,7 +107,7 @@ async function setupTest() {
     const runner = await startSandboxRunner({
       context: host.context,
       models,
-      secrets,
+      credentials,
       sandboxes: host.sandboxes,
       images: { conversation: 'nixie-conversation-0123456789ab' },
       tools: parts.tools ?? tools.endpoint,

@@ -1,4 +1,5 @@
 import { expect, mock, test } from 'bun:test';
+import { buildStubResolver, startTestSite } from '@heynixie/egress/test-utils';
 import type { FetchRequest } from '@heynixie/wire';
 import {
   decodeFetchGuestFrame,
@@ -7,8 +8,6 @@ import {
   encodeFrame,
   makeFrameDecoder,
 } from '@heynixie/wire';
-import { buildStubResolver } from '../test-utils/build-stub-resolver';
-import { startTestSite } from '../test-utils/start-test-site';
 import { createWebTransports } from './create-web-transports';
 import { readPage } from './read-page';
 import { runFetcher } from './run-fetcher';

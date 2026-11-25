@@ -76,6 +76,7 @@ export function watchMemoryKills(
       return sandboxes.map((sandbox) => watch(sandbox, false));
     },
     addSecret: adapter.addSecret,
+    removeSecret: adapter.removeSecret,
     addImage: adapter.addImage,
     checkRuntime: adapter.checkRuntime,
   };

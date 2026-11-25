@@ -2,7 +2,7 @@ import type { Clock } from '@heynixie/clock';
 import type { Definitions, Log } from '@heynixie/log';
 import type { Logger } from '@heynixie/logger';
 import type { ResolvedProfile } from '@heynixie/models';
-import { bindHarness, deriveModelSecret, resolveModelCredentials } from '@heynixie/models';
+import { bindHarness, grantModelSecret, resolveModelCredentials } from '@heynixie/models';
 import { sandboxSizes } from '@heynixie/sandbox';
 import type { SpendContext } from '@heynixie/spend';
 import type { TaskStartBounds, WorkerRunsConfig } from '@heynixie/tasks';
@@ -45,7 +45,10 @@ export const startWorkerTool = makeSystemTaskRunner<WorkerToolOptions, WorkerToo
   role: 'worker',
   entry: 'turn',
   start: async (options, session) => {
-    const credentials = resolveModelCredentials(options.models, options.secrets);
+    const credentials = resolveModelCredentials(
+      options.models,
+      options.credentials.resolveCredential,
+    );
 
     const targets = new Map<string, WorkerTarget>();
 
@@ -58,9 +61,11 @@ export const startWorkerTool = makeSystemTaskRunner<WorkerToolOptions, WorkerToo
       }
 
       const harness = bindHarness(profile.profile);
-      const secret = deriveModelSecret(profile, harness);
 
-      await options.sandboxes.addSecret(secret);
+      const secret = await grantModelSecret(profile, harness, {
+        store: options.credentials.store,
+        sandboxes: options.sandboxes,
+      });
 
       const target: WorkerTarget = {
         profile,

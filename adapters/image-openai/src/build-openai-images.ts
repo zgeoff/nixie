@@ -1,9 +1,17 @@
-import type { DrawImage, DrawReply, DrawRequest, ImageProvider } from '@heynixie/connectors';
+import type {
+  DrawImage,
+  DrawReply,
+  DrawRequest,
+  ImageProvider,
+  ProviderFetch,
+} from '@heynixie/connectors';
+import { CredentialRefusalError } from '@heynixie/egress';
 import { parseJSONOrNull } from '@heynixie/wire';
 import { openaiImagesSchema } from './openai-images-schema';
 
 export interface OpenAIImagesOptions {
-  readonly apiKey: string;
+  // adds the API key on the host, so the adapter holds none
+  readonly fetch: ProviderFetch;
 
   // the API's base URL, such as https://api.openai.com/v1
   readonly apiURL: string;
@@ -12,11 +20,7 @@ export interface OpenAIImagesOptions {
 export function buildOpenAIImages(options: OpenAIImagesOptions): ImageProvider {
   return {
     takes: { source: true, references: true },
-    draw: async (request) => {
-      const reply = await readOpenAIReply(options, request);
-
-      return maskReply(reply, options.apiKey);
-    },
+    draw: (request) => readOpenAIReply(options, request),
   };
 }
 
@@ -27,16 +31,18 @@ async function readOpenAIReply(
   const hasImages = request.source !== undefined || request.references.length > 0;
   const endpoint = hasImages ? 'edits' : 'generations';
 
-  // the key goes in a header, never in the URL, so no error text can quote it
-  const response = await fetch(`${options.apiURL}/images/${endpoint}`, {
-    method: 'POST',
-    headers: {
-      authorization: `Bearer ${options.apiKey}`,
-      ...(hasImages ? {} : { 'content-type': 'application/json' }),
-    },
-    body: hasImages ? buildEditForm(request) : JSON.stringify(buildGenerationBody(request)),
-    signal: request.signal,
-  }).catch((error: unknown) => error);
+  const response = await options
+    .fetch(`${options.apiURL}/images/${endpoint}`, {
+      method: 'POST',
+      headers: hasImages ? {} : { 'content-type': 'application/json' },
+      body: hasImages ? buildEditForm(request) : JSON.stringify(buildGenerationBody(request)),
+      signal: request.signal,
+    })
+    .catch((error: unknown) => error);
+
+  if (response instanceof CredentialRefusalError) {
+    throw response;
+  }
 
   if (!(response instanceof Response)) {
     // an abort is the call's own time limit, which the tool reads
@@ -126,16 +132,4 @@ function parseOpenAIError(status: number, body: unknown): DrawReply {
     reason: `OpenAI answered ${String(status)}: ${message}`,
     isBilled: false,
   };
-}
-
-const keyMask = '<the API key>';
-
-function maskReply(reply: DrawReply, apiKey: string): DrawReply {
-  if (reply.kind === 'refused') {
-    return { ...reply, message: reply.message.replaceAll(apiKey, keyMask) };
-  }
-
-  return reply.kind === 'failed'
-    ? { ...reply, reason: reply.reason.replaceAll(apiKey, keyMask) }
-    : reply;
 }

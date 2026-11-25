@@ -7,13 +7,13 @@ import {
   makeUnexemptScans,
   startComputer,
 } from '@heynixie/connectors';
+import type { Secrets } from '@heynixie/credentials';
 import type { Definitions, Log } from '@heynixie/log';
 import { makeOwnerTypedCheck } from '@heynixie/memory';
 import type { SandboxAdapter } from '@heynixie/sandbox';
 import { isTestSandbox } from '@heynixie/sandbox';
 import { makeSecretFinder } from '@heynixie/secret-scan';
 import { getSandboxImage } from '../sandbox/get-sandbox-image';
-import type { Secrets } from '../server/load-secrets';
 import type { ServerPartsOptions } from '../server/start-server';
 
 export interface ComputerPartInputs {
@@ -21,7 +21,7 @@ export interface ComputerPartInputs {
     ServerPartsOptions,
     'sandbox' | 'images' | 'config' | 'cleanup' | 'log' | 'harness'
   > & {
-    readonly secrets: Pick<Secrets, 'collectOwnValues'>;
+    readonly secrets: Pick<Secrets, 'ownValues'>;
   };
   readonly adapter: SandboxAdapter;
   readonly log: Log;
@@ -51,8 +51,8 @@ export async function startComputerPart(inputs: ComputerPartInputs): Promise<Com
     ...(publicEgress?.egressDeny ?? []),
   ];
 
-  const findSecret = makeSecretFinder(
-    options.secrets.collectOwnValues({
+  const findSecret = makeSecretFinder(() =>
+    options.secrets.ownValues.read({
       entries: webFetch.secretOwnValues,
       minChars: webFetch.secretOwnValueMinChars,
     }),

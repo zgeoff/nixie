@@ -911,7 +911,7 @@ test('it refuses to start when a pronoun names a settings entry the secrets file
   expect(failure).toMatchObject({
     command: 'serve',
     message: expect.toInclude(
-      "the owner's pronoun they is deployment:owner_they, and the secrets file has no settings entry owner_they",
+      'deployment:owner_they names a setting, and the secrets file has no settings entry owner_they',
     ),
   });
 });

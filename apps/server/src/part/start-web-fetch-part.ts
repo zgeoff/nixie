@@ -1,9 +1,9 @@
+import type { Secrets } from '@heynixie/credentials';
 import type { Log } from '@heynixie/log';
 import { makeOwnerTypedCheck } from '@heynixie/memory';
 import type { SandboxAdapter } from '@heynixie/sandbox';
 import { makeSecretFinder } from '@heynixie/secret-scan';
 import { getSandboxImage } from '../sandbox/get-sandbox-image';
-import type { Secrets } from '../server/load-secrets';
 import type { ServerPartsOptions } from '../server/start-server';
 import type { WebFetch } from './start-web-fetch';
 import { startWebFetch } from './start-web-fetch';
@@ -12,7 +12,7 @@ export interface WebFetchPartInputs {
   readonly options: Pick<
     ServerPartsOptions,
     'sandbox' | 'images' | 'config' | 'cleanup' | 'harness' | 'log'
-  > & { readonly secrets: Pick<Secrets, 'collectOwnValues'> };
+  > & { readonly secrets: Pick<Secrets, 'ownValues'> };
   readonly adapter: SandboxAdapter;
   readonly log: Pick<Log, 'deploymentKey' | 'writer'>;
 }
@@ -30,8 +30,8 @@ export async function startWebFetchPart(inputs: WebFetchPartInputs): Promise<Web
     deniedRanges: [...(publicEgress?.hostAddresses ?? []), ...(publicEgress?.egressDeny ?? [])],
     config: options.config.web_fetch,
     log: inputs.log,
-    findSecret: makeSecretFinder(
-      options.secrets.collectOwnValues({
+    findSecret: makeSecretFinder(() =>
+      options.secrets.ownValues.read({
         entries: options.config.web_fetch.secretOwnValues,
         minChars: options.config.web_fetch.secretOwnValueMinChars,
       }),

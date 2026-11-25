@@ -1,4 +1,5 @@
 import { expect, mock, onTestFinished, setSystemTime, test } from 'bun:test';
+import { createTestCredentials } from '@heynixie/credentials/test-utils';
 import { readRecords, writeRecords } from '@heynixie/log';
 import { createMemoryItem, startTestMemoryStore } from '@heynixie/memory/test-utils';
 import {
@@ -52,11 +53,15 @@ async function setupTest() {
 
   onTestFinished(() => notebook.stop());
 
+  const credentials = await createTestCredentials({
+    model_credentials: { anthropic: 'not-a-real-key' },
+  });
+
   const startRunner = (image: string, isNoteNoticeOn = true) =>
     startConversation({
       context: server.context,
       models: buildTestModelsConfig({ modelURL: 'http://127.0.0.1:1' }),
-      secrets: { model_credentials: { anthropic: 'not-a-real-key' } },
+      credentials,
       sandboxes: server.sandboxes,
       tools: server.endpoint,
       toolNames: [],

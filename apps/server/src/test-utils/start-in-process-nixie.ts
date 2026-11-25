@@ -19,6 +19,7 @@ import {
 import invariant from 'tiny-invariant';
 import { runCLI } from '../cli/run-cli';
 import type { SandboxAdapterOptions } from '../sandbox/create-sandbox-adapter';
+import type { TestCredentialSite } from '../server/build-test-credential-checks';
 import type { FetchPage } from './build-fetch-page-sandboxes';
 import { buildFetchPageSandboxes } from './build-fetch-page-sandboxes';
 import type { BootSeeder } from './build-seeder';
@@ -52,6 +53,10 @@ export interface InProcessNixieOptions {
   // Pages that web_fetch serves, because the fetch guest refuses every address a test can serve.
   // With none, a fetch sandbox goes to the stub guest like any other.
   readonly fetchPages?: readonly FetchPage[];
+
+  // A loopback site that every credential request goes to, over the connection a release build
+  // opens, in place of the mock network.
+  readonly credentialSite?: TestCredentialSite;
 
   // Runs on the migrated data before the first start, so a test seeds state without a restart.
   readonly beforeStart?: (files: BootFiles, seed: BootSeeder) => Promise<void>;
@@ -219,6 +224,7 @@ async function startFirstRun(
     toolResults,
     host,
     fetchPages: options.fetchPages ?? [],
+    credentialSite: options.credentialSite ?? null,
     stack,
     runBeforeCleanup,
     runs: [],
@@ -264,6 +270,7 @@ interface InProcessNixieFiles {
   readonly toolResults: readonly TestToolResult[];
   readonly host: RunHost;
   readonly fetchPages: readonly FetchPage[];
+  readonly credentialSite: TestCredentialSite | null;
 
   readonly stack: AsyncDisposableStack;
   readonly runBeforeCleanup: RunBeforeCleanup;
@@ -286,6 +293,7 @@ function startNixieRun(start: InProcessNixieFiles): InProcessNixie {
         log,
         print: () => {},
         waitForSignal: () => stopSignal.promise,
+        ...(start.credentialSite === null ? {} : { credentialSite: start.credentialSite }),
         createSandboxAdapter: (options) => {
           start.host.attach(options);
 

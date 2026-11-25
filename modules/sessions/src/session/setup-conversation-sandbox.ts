@@ -1,12 +1,6 @@
 import type { Logger } from '@heynixie/logger';
-import type { Harness } from '@heynixie/models';
-import type {
-  GuestCommand,
-  Sandbox,
-  SandboxAdapter,
-  SandboxLimits,
-  SecretSpec,
-} from '@heynixie/sandbox';
+import type { Harness, ModelGrantSecret } from '@heynixie/models';
+import type { GuestCommand, Sandbox, SandboxAdapter, SandboxLimits } from '@heynixie/sandbox';
 import { buildSandboxSpec, findKeptSandbox, removeSandboxes } from '@heynixie/sandbox';
 import type { TasksContext } from '@heynixie/tasks';
 import { conversationTaskID } from '@heynixie/tasks';
@@ -25,7 +19,7 @@ export interface ConversationSandboxSpec {
 
 export async function setupConversationSandbox(
   options: ConversationSandboxSpec,
-  secret: SecretSpec,
+  secret: ModelGrantSecret,
 ): Promise<Sandbox> {
   const spec = buildSandboxSpec({
     kind: 'conversation',

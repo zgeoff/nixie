@@ -13,6 +13,7 @@ import { buildStubImageProviders } from '../test/build-stub-image-providers';
 import type { AnyPartDeclaration } from '../types';
 import { buildTestSendTool, testSendKinds } from '../utils/build-test-send-tool';
 import { buildImageProviders } from './build-image-providers';
+import { collectHostHeldNames } from './collect-host-held-names';
 import type { ServerPartValues } from './server-part-values';
 import { startCodeRunPart } from './start-code-run-part';
 import { startComputerPart } from './start-computer-part';
@@ -37,6 +38,7 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
           sandbox: options.sandbox,
           spend: options.spend,
           dataDir: options.config.server.dataDir,
+          hostHeldNames: collectHostHeldNames(options.config.models, options.credentials),
           log: options.log,
           recorder: { log: apiContext.log, definitions: apiContext.definitions },
           toolTarget: (sandbox) => parts.get('tool_endpoint').endpoint.getToolTarget(sandbox),
@@ -153,7 +155,7 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
               ? null
               : {
                   provider: buildKagiSearch({
-                    apiKey: options.search.apiKey,
+                    fetch: options.search.fetch,
                     apiURL: options.search.apiURL,
                   }),
                   dailyCallCap: options.search.dailyCallCap,
@@ -168,6 +170,7 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
                       ? buildStubImageProviders(options.imageSettings.config)
                       : buildImageProviders(options.imageSettings),
                 },
+          readOwnValues: () => options.secrets.ownValues.read({ minChars: 1 }),
           testTools:
             NIXIE_TEST_BUILD && options.harness !== undefined
               ? testSendKinds.map((kind) =>

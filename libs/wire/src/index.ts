@@ -28,6 +28,7 @@ export type { HarnessCapability, HarnessID, HasSession } from './host/harness-id
 export { harnessCapabilities, harnessCapabilityLists, harnessIDs } from './host/harness-ids';
 export { buildProviderOrder } from './spool/build-provider-order';
 export { findModelAPIEndpoint } from './spool/find-model-api-endpoint';
+export { listModelAPIGlobs } from './spool/list-model-api-globs';
 export type { ModelAPI, ModelAPIEndpointName } from './spool/model-api';
 export { modelAPIs } from './spool/model-api';
 

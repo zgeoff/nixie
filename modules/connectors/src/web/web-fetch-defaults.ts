@@ -1,9 +1,9 @@
 import { imageLimits } from '@heynixie/contract';
+import type { SecretsEntryName } from '@heynixie/credentials';
 import type { SandboxLimits } from '@heynixie/sandbox';
 import { sandboxSizes } from '@heynixie/sandbox';
 import type { FetchLimits } from '@heynixie/wire';
 import { defaultFetchTextBytes } from '@heynixie/wire';
-import type { SecretsEntryName } from './secrets-entry-names';
 
 export interface WebFetchConfig {
   readonly limits: FetchLimits;

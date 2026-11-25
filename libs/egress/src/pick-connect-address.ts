@@ -12,6 +12,7 @@ export function pickConnectAddress(
   host: string,
   addresses: readonly string[],
   checkAddress: AddressCheck,
+  options: { readonly allowIPv6Only?: boolean } = {},
 ): ConnectAddress {
   const [first] = addresses;
   const refused = addresses.find((address) => !checkAddress(address));
@@ -27,7 +28,7 @@ export function pickConnectAddress(
     };
   }
 
-  if (isIPv6Only(addresses)) {
+  if (options.allowIPv6Only !== true && isIPv6Only(addresses)) {
     return { kind: 'ipv4-only', reason: formatIPv4OnlyReason(host) };
   }
 

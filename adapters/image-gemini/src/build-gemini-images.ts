@@ -4,12 +4,15 @@ import type {
   DrawRequest,
   ImageProvider,
   ImageSize,
+  ProviderFetch,
 } from '@heynixie/connectors';
+import { CredentialRefusalError } from '@heynixie/egress';
 import { parseJSONOrNull } from '@heynixie/wire';
 import { geminiImagesSchema } from './gemini-images-schema';
 
 export interface GeminiImagesOptions {
-  readonly apiKey: string;
+  // adds the API key on the host, so the adapter holds none
+  readonly fetch: ProviderFetch;
 
   // the API's base URL, such as https://generativelanguage.googleapis.com/v1beta
   readonly apiURL: string;
@@ -18,11 +21,7 @@ export interface GeminiImagesOptions {
 export function buildGeminiImages(options: GeminiImagesOptions): ImageProvider {
   return {
     takes: { source: true, references: true },
-    draw: async (request) => {
-      const reply = await readGeminiReply(options, request);
-
-      return maskReply(reply, options.apiKey);
-    },
+    draw: (request) => readGeminiReply(options, request),
   };
 }
 
@@ -33,17 +32,21 @@ async function readGeminiReply(
   options: GeminiImagesOptions,
   request: DrawRequest,
 ): Promise<DrawReply> {
-  // the key goes in a header, never in the URL, so no error text can quote it
-  const response = await fetch(`${options.apiURL}/interactions`, {
-    method: 'POST',
-    headers: {
-      'x-goog-api-key': options.apiKey,
-      'content-type': 'application/json',
-      'api-revision': apiRevision,
-    },
-    body: JSON.stringify(buildInteraction(request)),
-    signal: request.signal,
-  }).catch((error: unknown) => error);
+  const response = await options
+    .fetch(`${options.apiURL}/interactions`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'api-revision': apiRevision,
+      },
+      body: JSON.stringify(buildInteraction(request)),
+      signal: request.signal,
+    })
+    .catch((error: unknown) => error);
+
+  if (response instanceof CredentialRefusalError) {
+    throw response;
+  }
 
   if (!(response instanceof Response)) {
     // an abort is the call's own time limit, which the tool reads
@@ -151,16 +154,4 @@ function parseGeminiError(status: number, body: unknown): DrawReply {
     reason: `Gemini answered ${String(status)}: ${message}`,
     isBilled: false,
   };
-}
-
-const keyMask = '<the API key>';
-
-function maskReply(reply: DrawReply, apiKey: string): DrawReply {
-  if (reply.kind === 'refused') {
-    return { ...reply, message: reply.message.replaceAll(apiKey, keyMask) };
-  }
-
-  return reply.kind === 'failed'
-    ? { ...reply, reason: reply.reason.replaceAll(apiKey, keyMask) }
-    : reply;
 }

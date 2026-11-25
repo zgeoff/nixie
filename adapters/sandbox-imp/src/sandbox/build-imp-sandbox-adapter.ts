@@ -87,7 +87,8 @@ export function buildImpSandboxAdapter(options: ImpSandboxOptions): SandboxAdapt
 
       return sandboxes.filter((sandbox) => sandbox !== null);
     },
-    addSecret: makeSecretAdder(options.port),
+    addSecret: makeSecretAdder(options.port, options.recorder),
+    removeSecret: makeSecretRemover(options.port),
     addImage,
     checkRuntime: makeRuntimeChecker(options.port),
   };
@@ -247,9 +248,11 @@ async function setupImp(options: ImpSandboxOptions, sandbox: Sandbox): Promise<S
       'the spec check refuses a grant with no route when the gateway counts',
     );
 
+    const hostFilter = grant.paths === undefined ? undefined : { paths: grant.paths };
+
     const filter =
       options.modelGateway === undefined || route === null
-        ? undefined
+        ? hostFilter
         : { paths: [buildGrantPath(sandbox.id, route)] };
 
     await options.port.addGrant(sandbox.id, grant.secret, filter);
@@ -259,6 +262,8 @@ async function setupImp(options: ImpSandboxOptions, sandbox: Sandbox): Promise<S
       sandboxID: sandbox.id,
       secret: grant.secret,
       host: grant.host,
+      ...(grant.reference === undefined ? {} : { reference: grant.reference }),
+      ...(grant.fingerprint === undefined ? {} : { fingerprint: grant.fingerprint }),
     });
   }
 
@@ -267,7 +272,7 @@ async function setupImp(options: ImpSandboxOptions, sandbox: Sandbox): Promise<S
   return sandbox;
 }
 
-function makeSecretAdder(port: ImpPort): SandboxAdapter['addSecret'] {
+function makeSecretAdder(port: ImpPort, recorder: SandboxRecorder): SandboxAdapter['addSecret'] {
   return async (secret) => {
     if ((await port.readSecretHosts(secret.name)) !== null) {
       return;
@@ -279,6 +284,14 @@ function makeSecretAdder(port: ImpPort): SandboxAdapter['addSecret'] {
       );
     }
 
+    await recorder.write({
+      event: 'grant_started',
+      secret: secret.name,
+      host: secret.host,
+      ...(secret.reference === undefined ? {} : { reference: secret.reference }),
+      ...(secret.fingerprint === undefined ? {} : { fingerprint: secret.fingerprint }),
+    });
+
     await port.addSecret({
       name: secret.name,
       value: secret.value,
@@ -287,6 +300,14 @@ function makeSecretAdder(port: ImpPort): SandboxAdapter['addSecret'] {
         ? { header: 'authorization', scheme: 'bearer' }
         : { header: 'x-api-key', scheme: 'raw' }),
     });
+  };
+}
+
+function makeSecretRemover(port: ImpPort): SandboxAdapter['removeSecret'] {
+  return async (name) => {
+    if ((await port.readSecretHosts(name)) !== null) {
+      await port.removeSecret(name);
+    }
   };
 }
 

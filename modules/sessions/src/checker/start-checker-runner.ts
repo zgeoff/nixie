@@ -1,6 +1,7 @@
 import type { Clock } from '@heynixie/clock';
+import type { CredentialStore } from '@heynixie/credentials';
 import type { Logger } from '@heynixie/logger';
-import { bindHarness, deriveModelSecret } from '@heynixie/models';
+import { bindHarness, grantModelSecret } from '@heynixie/models';
 import type { ResolvedProfile } from '@heynixie/models';
 import type {
   GuestCommand,
@@ -19,6 +20,7 @@ import { makeChecker } from './make-checker';
 
 export interface CheckerRunnerOptions {
   readonly profile: ResolvedProfile;
+  readonly store: CredentialStore;
   readonly sandboxes: SandboxAdapter;
   readonly image: string;
   readonly limits: SandboxLimits;
@@ -37,9 +39,8 @@ export const checkerOwner = 'checker';
 
 export async function startCheckerRunner(options: CheckerRunnerOptions): Promise<RunCheck> {
   const harness = bindHarness(options.profile.profile);
-  const secret = deriveModelSecret(options.profile, harness);
 
-  await options.sandboxes.addSecret(secret);
+  const secret = await grantModelSecret(options.profile, harness, options);
 
   const spec = buildSandboxSpec({
     kind: 'checker',

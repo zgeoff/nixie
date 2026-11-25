@@ -37,7 +37,7 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
         {
           runSettings: buildRunSettings({
             models: options.config.models,
-            secrets: options.secrets.models,
+            credentials: options.credentials,
             hopLimit: options.config.tasks.messaging.hopLimit,
           }),
           runners: buildServerTaskRunners(),
@@ -162,7 +162,7 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
         tools,
         decisions: parts.get('decisions'),
         cleanup: inputs.work,
-        modelSecrets: inputs.options.secrets.models,
+        credentials: inputs.options.credentials,
         turnInputs: parts.get('turn_inputs'),
         onFailure: inputs.onFailure,
       });

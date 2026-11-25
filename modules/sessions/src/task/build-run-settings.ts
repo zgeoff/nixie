@@ -1,4 +1,4 @@
-import type { ModelPrices, ModelSecrets, ModelsConfig } from '@heynixie/models';
+import type { ModelCredentials, ModelPrices, ModelsConfig } from '@heynixie/models';
 import { resolveModelCredentials, resolveRoleProfile } from '@heynixie/models';
 import type { RunSettings } from '@heynixie/tasks';
 import { buildDollarsMeter } from './build-dollars-meter';
@@ -6,7 +6,7 @@ import { buildTurnsMeter } from './build-turns-meter';
 
 export interface RunSettingsOptions {
   readonly models: ModelsConfig;
-  readonly secrets: ModelSecrets;
+  readonly credentials: ModelCredentials;
   readonly hopLimit: number;
 }
 
@@ -14,7 +14,7 @@ export interface RunSettingsOptions {
 // them. A started task reports with wake, and a definition's task run with next_turn, because a
 // scheduled task run with wake would spend a conversation turn on each fire.
 export function buildRunSettings(options: RunSettingsOptions): RunSettings {
-  const profiles = resolveModelCredentials(options.models, options.secrets);
+  const profiles = resolveModelCredentials(options.models, options.credentials.resolveCredential);
   const fallback = resolveRoleProfile(options.models, 'task');
 
   const readPrices = (profile: string | null): ModelPrices | null =>

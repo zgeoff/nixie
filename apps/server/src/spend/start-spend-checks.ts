@@ -1,5 +1,5 @@
 import type { Logger } from '@heynixie/logger';
-import type { ModelSecrets, ModelsConfig } from '@heynixie/models';
+import type { ModelsConfig } from '@heynixie/models';
 import { startSpendLimits } from '@heynixie/spend';
 import type { SpendInputs } from './create-spend-inputs';
 
@@ -9,7 +9,7 @@ export interface SpendChecksInputs {
     readonly models: Pick<ModelsConfig, 'limits' | 'profiles'>;
     readonly time: { readonly default_zone: string };
   };
-  readonly secrets: { readonly models: ModelSecrets };
+  readonly secrets: { readonly modelCredentialCount: number };
   readonly log: Logger;
 }
 
@@ -30,7 +30,7 @@ export function startSpendChecks(inputs: SpendChecksInputs): Promise<'off' | 'se
       month: { dollars: limits.month.dollars, tokens: limits.month.tokens },
     },
     defaultZone: inputs.config.time.default_zone,
-    credentialCount: Object.keys(inputs.secrets.models.model_credentials ?? {}).length,
+    credentialCount: inputs.secrets.modelCredentialCount,
     pathProfileIDs: collectPathProfileIDs(inputs.config.models.profiles),
     log: inputs.log,
   });

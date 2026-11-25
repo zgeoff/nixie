@@ -1,5 +1,6 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { join } from 'node:path';
+import { buildMockCredentialRef, createTestCredentials } from '@heynixie/credentials/test-utils';
 import { parseJSONObject, readRecords } from '@heynixie/log';
 import { modelsConfigSchema, resolveRoleProfile } from '@heynixie/models';
 import type { EffectDeclaration } from '@heynixie/policy';
@@ -85,12 +86,14 @@ async function setupTest() {
     roles: { conversation: 'chat-direct', task: 'errands' },
   });
 
-  const secrets = { model_credentials: { anthropic: 'not-a-real-key' } };
+  const credentials = await createTestCredentials({
+    model_credentials: { anthropic: 'not-a-real-key' },
+  });
 
   const host = await startTestSessionHost({
     clock,
     projections: [...triggersProjections, ...remindersProjections],
-    runSettings: buildRunSettings({ models, secrets, hopLimit: 20 }),
+    runSettings: buildRunSettings({ models, credentials, hopLimit: 20 }),
   });
 
   const tools = buildStubToolEndpoint();
@@ -218,7 +221,7 @@ async function setupTest() {
       startSandboxRunner({
         context: host.context,
         models,
-        secrets,
+        credentials,
         sandboxes: route?.sandboxes ?? host.sandboxes,
         images: { conversation: 'nixie-conversation-0123456789ab' },
         tools: route?.tools ?? tools.endpoint,
@@ -247,8 +250,9 @@ async function setupTest() {
         context: host.context,
         profile: {
           profile: resolveRoleProfile(models, 'conversation'),
-          credential: 'not-a-real-key',
+          credential: buildMockCredentialRef(),
         },
+        store: credentials.store,
         sandboxes: sandboxes.adapter,
         tools: tools.endpoint,
         toolNames: [],

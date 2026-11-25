@@ -11,6 +11,7 @@ type SummarizeFrame = Extract<HostFrame, { type: 'summarize' }>;
 export interface StubSandboxes {
   readonly adapter: SandboxAdapter;
   readonly secrets: readonly SecretSpec[];
+  readonly removedSecrets: readonly string[];
   readonly created: readonly SandboxSpec[];
   readonly destroyed: readonly string[];
 
@@ -32,6 +33,7 @@ export interface StubSandboxes {
 
 interface StubState {
   readonly secrets: SecretSpec[];
+  readonly removedSecrets: string[];
   readonly created: SandboxSpec[];
   readonly destroyed: string[];
   readonly turns: TurnFrame[];
@@ -47,6 +49,7 @@ interface StubState {
 export function buildStubSandboxes(): StubSandboxes {
   const state: StubState = {
     secrets: [],
+    removedSecrets: [],
     created: [],
     destroyed: [],
     turns: [],
@@ -79,10 +82,16 @@ export function buildStubSandboxes(): StubSandboxes {
 
         return Promise.resolve();
       },
+      removeSecret: (name) => {
+        state.removedSecrets.push(name);
+
+        return Promise.resolve();
+      },
       addImage: () => Promise.resolve(),
       checkRuntime: () => Promise.resolve({ isReady: true, reason: null }),
     },
     secrets: state.secrets,
+    removedSecrets: state.removedSecrets,
     created: state.created,
     destroyed: state.destroyed,
     turns: state.turns,

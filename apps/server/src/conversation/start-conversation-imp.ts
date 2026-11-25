@@ -37,7 +37,7 @@ export async function startConversationImp(
   const conversation = await startConversation({
     context: parts.context,
     models: parts.config.models,
-    secrets: parts.modelSecrets,
+    credentials: parts.credentials,
     sandboxes: parts.tools.adapter,
     tools: parts.tools.endpoint,
     toolNames: parts.tools.definitions.map((definition) => definition.name),

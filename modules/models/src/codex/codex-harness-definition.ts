@@ -1,6 +1,6 @@
 import type { GrantSpec } from '@heynixie/sandbox';
 import type { codexEfforts } from '@heynixie/wire';
-import { harnessCapabilities } from '@heynixie/wire';
+import { harnessCapabilities, listModelAPIGlobs } from '@heynixie/wire';
 import type { HarnessDefinition } from '../model/harness';
 import type { ModelProfile } from '../types';
 import { codexProfileSchema } from './codex-profile-schema';
@@ -26,6 +26,10 @@ export const codexHarnessDefinition: HarnessDefinition<'codex', CodexProfile> = 
       secret: secret.name,
       host: secret.host,
       route: profile.id,
+      paths: listModelAPIGlobs('openai-responses', new URL(profile.baseURL).pathname),
+      ...(secret.reference === undefined
+        ? {}
+        : { reference: secret.reference, fingerprint: secret.fingerprint }),
       env: { OPENAI_API_KEY: nixieBrokerPlaceholder },
     }),
     guest: { package: 'codex', entries: { turn: 'main', check: null } },

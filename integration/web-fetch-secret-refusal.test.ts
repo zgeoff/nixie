@@ -62,7 +62,7 @@ async function setupTest() {
         deniedRanges: [],
         log,
         config: { ...webFetchDefaults, secretTypedURLCovers: options.covers ?? 'redirects' },
-        findSecret: makeSecretFinder([ownValue]),
+        findSecret: makeSecretFinder(() => [ownValue]),
         isOwnerTyped: (askedRun, askedURL) => {
           typedChecks.push(askedURL);
 

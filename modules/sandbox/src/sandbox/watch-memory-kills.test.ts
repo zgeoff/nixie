@@ -157,6 +157,7 @@ function setupTest(config: WatchConfig = {}) {
       read: () => Promise.resolve(sandbox),
       list: () => Promise.resolve([sandbox]),
       addSecret: () => Promise.resolve(),
+      removeSecret: () => Promise.resolve(),
       addImage: () => Promise.resolve(),
       checkRuntime: () => Promise.resolve({ isReady: true, reason: null }),
     });

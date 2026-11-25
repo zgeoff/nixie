@@ -18,7 +18,9 @@ import { sandboxCountSchema } from './sandbox-count-schema';
 export interface SpendGatewayOptions {
   // the origin of the gateway's control listener
   readonly url: string;
-  readonly token: string;
+
+  // adds the control token on the host, so the adapter holds none
+  readonly fetch: (input: string, init?: RequestInit) => Promise<Response>;
   readonly timeoutMs?: number;
 }
 
@@ -38,12 +40,9 @@ export function createSpendGateway(options: SpendGatewayOptions): SpendGateway {
     body?: unknown,
   ): Promise<Answer | Unreachable> => {
     try {
-      const response = await fetch(`${origin}${path}`, {
+      const response = await options.fetch(`${origin}${path}`, {
         method,
-        headers: {
-          authorization: `Bearer ${options.token}`,
-          ...(body === undefined ? {} : { 'content-type': 'application/json' }),
-        },
+        headers: body === undefined ? {} : { 'content-type': 'application/json' },
         ...(body === undefined ? {} : { body: JSON.stringify(body) }),
         signal: AbortSignal.timeout(options.timeoutMs ?? defaultTimeoutMs),
       });

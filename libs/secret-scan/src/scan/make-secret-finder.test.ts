@@ -4,7 +4,7 @@ import { makeSecretFinder } from './make-secret-finder';
 
 test('it reports the own-value rule for a URL that holds an own value as given', () => {
   const ownValue = buildKey('alphanumeric', 20, 9);
-  const find = makeSecretFinder([ownValue]);
+  const find = makeSecretFinder(() => [ownValue]);
 
   expect(find(`https://host.test/items?ref=${ownValue}&page=2`)).toStrictEqual({
     rule: 'nixie-secret',
@@ -15,27 +15,27 @@ test.each([
   ['upper-case', 'p%40ss%20w%2Frd%26%2B%3D'],
   ['lower-case', 'p%40ss%20w%2frd%26%2b%3d'],
 ])('it reports the own-value rule for a value encoded with %s hex', (_name, encoded) => {
-  const find = makeSecretFinder(['p@ss w/rd&+=']);
+  const find = makeSecretFinder(() => ['p@ss w/rd&+=']);
 
   expect(find(`https://host.test/items?ref=${encoded}`)).toStrictEqual({ rule: 'nixie-secret' });
 });
 
 test('it reports the own-value rule for a value that holds a byte order mark', () => {
-  const find = makeSecretFinder(['a\uFEFFb']);
+  const find = makeSecretFinder(() => ['a\uFEFFb']);
 
   expect(find('https://host.test/?ref=a%EF%BB%BF%62')).toStrictEqual({ rule: 'nixie-secret' });
 });
 
 test('it reports the own-value rule for a URL that holds the value only once decoded', () => {
   const rest = buildKey('alphanumeric', 15, 9);
-  const find = makeSecretFinder([`q${rest}`]);
+  const find = makeSecretFinder(() => [`q${rest}`]);
 
   expect(find(`https://host.test/items?ref=%71${rest}`)).toStrictEqual({ rule: 'nixie-secret' });
 });
 
 test('it reports the own-value rule for a URL that holds an own value and a public key', () => {
   const ownValue = buildKey('alphanumeric', 20, 9);
-  const find = makeSecretFinder([ownValue]);
+  const find = makeSecretFinder(() => [ownValue]);
   const publicKey = `ghp_${buildKey('alphanumeric', 36)}`;
 
   expect(find(`https://host.test/items?ref=${ownValue}&id=${publicKey}`)).toStrictEqual({
@@ -44,7 +44,7 @@ test('it reports the own-value rule for a URL that holds an own value and a publ
 });
 
 test('it reports a public rule for a URL that holds no own value', () => {
-  const find = makeSecretFinder([buildKey('alphanumeric', 20, 9)]);
+  const find = makeSecretFinder(() => [buildKey('alphanumeric', 20, 9)]);
 
   expect(find(`https://host.test/items?id=ghp_${buildKey('alphanumeric', 36)}`)).toStrictEqual({
     rule: 'github-pat',
@@ -52,7 +52,7 @@ test('it reports a public rule for a URL that holds no own value', () => {
 });
 
 test('it behaves as the public scan when it holds no own value', () => {
-  const find = makeSecretFinder([]);
+  const find = makeSecretFinder(() => []);
 
   expect([
     find(`https://host.test/items?id=ghp_${buildKey('alphanumeric', 36)}`),
@@ -61,5 +61,18 @@ test('it behaves as the public scan when it holds no own value', () => {
 });
 
 test('it ignores an empty own value', () => {
-  expect(makeSecretFinder([''])('https://host.test/items?page=2')).toBeNull();
+  expect(makeSecretFinder(() => [''])('https://host.test/items?page=2')).toBeNull();
+});
+
+test('it reads the own values at each scan, so a value added later is found', () => {
+  const values: string[] = [];
+  const find = makeSecretFinder(() => values);
+  const before = find('https://host.test/items?q=late-own-value-9');
+
+  values.push('late-own-value-9');
+
+  expect([before, find('https://host.test/items?q=late-own-value-9')]).toStrictEqual([
+    null,
+    { rule: 'nixie-secret' },
+  ]);
 });

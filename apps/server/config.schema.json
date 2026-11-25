@@ -130,7 +130,7 @@
                   },
                   "credential": {
                     "type": "string",
-                    "pattern": "^deployment:[\\w-]+$"
+                    "pattern": "^deployment:.+$"
                   },
                   "auth_header": {
                     "type": "string",
@@ -268,7 +268,7 @@
                   },
                   "credential": {
                     "type": "string",
-                    "pattern": "^deployment:[\\w-]+$"
+                    "pattern": "^deployment:.+$"
                   },
                   "model": {
                     "type": "string",

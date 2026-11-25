@@ -2,9 +2,9 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { loadSecrets } from '@heynixie/credentials';
 import { loadDeploymentConfig } from '../deployment/load-deployment-config';
 import { loadSandboxManifest } from '../sandbox/load-sandbox-manifest';
-import { loadSecrets } from '../server/load-secrets';
 import { writeBootFiles } from './write-boot-files';
 
 async function setupTest() {
@@ -108,7 +108,14 @@ test('it writes secrets that its sops stand-in decrypts, with the key it returns
 
   const text = await readFile(join(ctx.directory, 'secrets.yaml'), 'utf8');
 
-  expect(secrets.models).toStrictEqual({ model_credentials: { scripted: 'scripted-model-key' } });
+  expect(
+    secrets.resolveCredential({ class: 'model', reference: 'deployment:scripted' }),
+  ).toStrictEqual({
+    backend: 'file',
+    group: 'model_credentials',
+    name: 'scripted',
+  });
+
   expect(text).toInclude(`deployment_key: ${files.deploymentKey}`);
 });
 
@@ -126,7 +133,7 @@ test('it leaves the model credential out of the secrets file when the sandbox ba
     sopsArgv: [files.sopsPath],
   });
 
-  expect(secrets.models).toStrictEqual({ model_credentials: {} });
+  expect(secrets.modelCredentialCount).toBe(0);
 });
 
 test('it writes a sandbox manifest that loads', async () => {
@@ -261,7 +268,7 @@ test('it appends the extra lines to the secrets file', async () => {
     sopsArgv: [files.sopsPath],
   });
 
-  expect(secrets.settings).toStrictEqual({ owner_name: 'Wren Halloway' });
+  expect(secrets.readSetting('deployment:owner_name')).toBe('Wren Halloway');
 });
 
 test('it writes the definitions at format 2 with no task folder when no task definition is given', async () => {

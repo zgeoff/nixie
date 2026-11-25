@@ -1,6 +1,6 @@
 import type { CompactionSettings } from '@heynixie/compaction';
 import type { Logger } from '@heynixie/logger';
-import type { ModelSecrets, ModelsConfig } from '@heynixie/models';
+import type { ModelCredentials, ModelsConfig } from '@heynixie/models';
 import { bindHarness, resolveModelCredentials, resolveRoleProfile } from '@heynixie/models';
 import type { SandboxAdapter, SandboxImageKey } from '@heynixie/sandbox';
 import { sandboxSizes } from '@heynixie/sandbox';
@@ -18,7 +18,7 @@ import invariant from 'tiny-invariant';
 export interface ConversationOptions {
   readonly context: TasksContext;
   readonly models: ModelsConfig;
-  readonly secrets: ModelSecrets;
+  readonly credentials: ModelCredentials;
   readonly sandboxes: SandboxAdapter;
   readonly tools: Pick<ToolEndpoint, 'startRun'>;
   readonly toolNames: readonly string[];
@@ -54,7 +54,11 @@ export interface ConversationOptions {
 }
 
 export function startConversation(options: ConversationOptions): Promise<ConversationRunner> {
-  const credentials = resolveModelCredentials(options.models, options.secrets);
+  const credentials = resolveModelCredentials(
+    options.models,
+    options.credentials.resolveCredential,
+  );
+
   const profile = resolveRoleProfile(options.models, 'conversation');
   const resolved = credentials[profile.id];
 
@@ -69,6 +73,7 @@ export function startConversation(options: ConversationOptions): Promise<Convers
   return startConversationRunner({
     context: options.context,
     profile: resolved,
+    store: options.credentials.store,
     harness,
     sandboxes: options.sandboxes,
     tools: options.tools,
