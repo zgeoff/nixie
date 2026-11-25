@@ -131,7 +131,7 @@ export function registerCredentialOperations(
     return keys.has(args.keyID);
   });
 
-  link.registerOperation('forgetConnection', schemas.forgetConnection, async (args) => {
+  link.registerOperation('forgetCredential', schemas.forgetCredential, async (args) => {
     const held = await createTestCredentialStore(context, args.ca);
 
     const connections = startConnections({

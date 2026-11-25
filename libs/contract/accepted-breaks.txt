@@ -85,3 +85,5 @@ GEO-2853: POST /devices/follow api path removed without deprecation
 GEO-2853: POST /records/follow api path removed without deprecation
 # GEO-2867: a client of the last release still works, because it always sends an assertion with a revoke, and the new PASSKEY_REQUIRED refusal answers only a revoke that carries none. The new error only adds to the union.
 GEO-2867: POST /passkeys/revoke added `subschema #2` to the response body `oneOf` list for the response status `403`
+# GEO-1824: a client of the last release still works, because the stream sends the connections topic only after a Google connection changes, and no release before this one can connect an account. The web client comes from the same build as the API, so it never follows a stream that is newer than itself. The new topic only adds to the enum.
+GEO-1824: POST /live/follow added the new `connections` enum value to the `oneOf[subschema #1]/data/anyOf[subschema #3]/topics/items/` response property for the response status `200`

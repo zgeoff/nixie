@@ -48,7 +48,7 @@ test('it sends the revocation once and finishes the forget on the start after a 
 
   await first.request('arm', { point: 'erasure.revoked' });
 
-  const forgetting = Promise.allSettled([first.request('forgetConnection', ctx.config)]);
+  const forgetting = Promise.allSettled([first.request('forgetCredential', ctx.config)]);
 
   await first.waitForArrival('erasure.revoked');
 
@@ -99,7 +99,7 @@ test('it records an unknown outcome and sends nothing for a forget that a crash 
   await first.request('connectCredential', ctx.config);
   await first.request('arm', { point: 'erasure.begun' });
 
-  const forgetting = Promise.allSettled([first.request('forgetConnection', ctx.config)]);
+  const forgetting = Promise.allSettled([first.request('forgetCredential', ctx.config)]);
 
   await first.waitForArrival('erasure.begun');
   await first.kill();
@@ -137,7 +137,7 @@ test('it never sends a second revocation however many times nixie restarts', asy
   await first.request('connectCredential', ctx.config);
   await first.request('arm', { point: 'erasure.revoked' });
 
-  const forgetting = Promise.allSettled([first.request('forgetConnection', ctx.config)]);
+  const forgetting = Promise.allSettled([first.request('forgetCredential', ctx.config)]);
 
   await first.waitForArrival('erasure.revoked');
   await first.kill();
@@ -168,7 +168,7 @@ test('it records an unknown outcome and sends nothing more when a crash cut the 
   // the provider takes the request and never answers it
   ctx.provider.answerRevoke(() => new Promise<Response>(() => {}));
 
-  const forgetting = Promise.allSettled([first.request('forgetConnection', ctx.config)]);
+  const forgetting = Promise.allSettled([first.request('forgetCredential', ctx.config)]);
 
   await waitFor(() => {
     expect(ctx.countRevokes()).toBe(1);

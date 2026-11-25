@@ -31,7 +31,7 @@ export function buildNixieOperationSchemas() {
     readCredentialKeys: z.null(),
     readCredentialMarks: z.null(),
     hasCredentialKey: z.object({ keyID: z.string() }),
-    forgetConnection: credentialProviderSchema,
+    forgetCredential: credentialProviderSchema,
   };
 }
 
