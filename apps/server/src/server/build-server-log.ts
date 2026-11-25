@@ -11,6 +11,7 @@ import {
 } from '@heynixie/definitions';
 import type { Log, Writer } from '@heynixie/log';
 import { logProjections } from '@heynixie/log';
+import { mailMessagesProjection } from '@heynixie/mail';
 import { memoryProjections } from '@heynixie/memory';
 import { notebookProjections } from '@heynixie/notebook';
 import { knownContactsProjection } from '@heynixie/policy';
@@ -29,6 +30,7 @@ export function buildServerLog(writer: Writer, deploymentKey: CryptoKey): Log {
       ...tasksProjections,
       ...triggersProjections,
       ...codingProjections,
+      mailMessagesProjection,
       ...remindersProjections,
       actionsProjection,
       sandboxesProjection,

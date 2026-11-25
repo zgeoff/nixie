@@ -284,6 +284,12 @@ only over that process's stdin and stdout, each frame holding one line of JSON i
 fetch limits and the ranges the deployment lists as internal; nothing else nixie holds reaches the
 sandbox.
 
+A request may also carry an `html` field, a document that nixie already holds, such as a mail's HTML
+body. The fetcher then makes no request. It reads the document's text and links as it reads a page,
+takes `about:blank` from the request's URL as the base that links resolve against, and answers with
+a page reply. The frame size limit of a request and a character limit of the field apply. The
+[mailbox](../core/mailbox.md#html-mail) reads each HTML mail this way.
+
 A page or image reply also carries `retryAfterMs`, the wait in milliseconds that the site's headers
 ask for. The fetcher takes it from `Retry-After` on a 429, 503 or 403 reply, and from
 `x-ratelimit-reset` on any reply whose `x-ratelimit-remaining` is `0`. When both headers give a

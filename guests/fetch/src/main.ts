@@ -1,6 +1,7 @@
 import { tmpdir } from 'node:os';
 import { makeAddressCheck, resolveHostAddresses } from '@heynixie/egress';
 import { createWebTransports } from './page/create-web-transports';
+import { readHTML } from './page/read-html';
 import { readPage } from './page/read-page';
 import { runFetcher } from './page/run-fetcher';
 import { withFetchDirectory } from './page/with-fetch-directory';
@@ -20,12 +21,14 @@ await withFetchDirectory(tmpdir(), async (directory) => {
       },
     },
     (request, askHop) =>
-      readPage(request.url, {
-        ...(askHop === undefined ? {} : { askHop }),
-        limits: request.limits,
-        checkAddress: makeAddressCheck(request.deniedRanges),
-        resolveHost: resolveHostAddresses,
-        transports,
-      }),
+      request.html === undefined
+        ? readPage(request.url, {
+            ...(askHop === undefined ? {} : { askHop }),
+            limits: request.limits,
+            checkAddress: makeAddressCheck(request.deniedRanges),
+            resolveHost: resolveHostAddresses,
+            transports,
+          })
+        : Promise.resolve(readHTML(request.html, request.url, request.limits)),
   );
 });

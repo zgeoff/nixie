@@ -3,6 +3,7 @@ import { buildRunSettings } from '@heynixie/sessions';
 import { buildServerCoding } from '../coding/build-server-coding';
 import { readDefinitionsContext } from '../definition/read-definitions-context';
 import { makeReadErasureStuckPort } from '../erasure/make-read-erasure-stuck-port';
+import { createServerMail } from '../mail/create-server-mail';
 import { buildSeedInputs } from '../seed/build-seed-inputs';
 import { runInForceSeedAndWake } from '../seed/run-in-force-seed-and-wake';
 import { buildServerReset } from '../server/build-server-reset';
@@ -84,6 +85,9 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
               quietHours: options.config.quiet_hours ?? null,
               defaultZone: options.config.time.default_zone,
             },
+            ...(options.config.mail === undefined
+              ? {}
+              : { mail: { replyExpiryMs: options.config.wake_rules.reply_expiry } }),
             policy: {
               proposedRules: options.config.policy.proposedRules,
               mandates: options.config.policy.mandates,
@@ -94,9 +98,16 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
 
       coding?.bindTasks(context.apiContext);
 
+      const mail = createServerMail({
+        config: options.config,
+        now: () => context.apiContext.clock.now(),
+        dataDir: options.config.server.dataDir,
+      });
+
       return {
         ...context,
         coding,
+        mail,
         apiContext: {
           ...context.apiContext,
           logger: options.log,

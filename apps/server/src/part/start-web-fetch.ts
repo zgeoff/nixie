@@ -1,7 +1,7 @@
 import { join } from 'node:path';
 import type { Clock } from '@heynixie/clock';
 import { systemClock } from '@heynixie/clock';
-import type { IsOwnerTyped, WebFetchConfig } from '@heynixie/connectors';
+import type { FetchSandbox, IsOwnerTyped, WebFetchConfig } from '@heynixie/connectors';
 import {
   buildWebFetchTool,
   makeFetchBackoff,
@@ -45,6 +45,9 @@ export interface WebFetch {
   readonly tool: ToolDefinition;
 
   readonly readSkillPage: ReadPage;
+
+  // reads the text and the links of an HTML document, such as a mail's, in a fetch sandbox
+  readonly readHTML: FetchSandbox['readHTML'];
 
   // empties the pause of every host, for the cleanup of a forgotten session
   readonly clearPauses: () => void;
@@ -120,6 +123,7 @@ export function startWebFetch(options: WebFetchOptions): WebFetch {
       secretTypedURLCovers: config.secretTypedURLCovers,
     }),
     readSkillPage: skillSandbox.readPage,
+    readHTML: fetchSandbox.readHTML,
     clearPauses: backoff.clear,
     stop: async () => {
       await Promise.all([fetchSandbox.stop(), skillSandbox.stop()]);

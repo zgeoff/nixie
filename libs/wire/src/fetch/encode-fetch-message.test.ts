@@ -66,3 +66,19 @@ test.each([
 ])('it writes the frame %j', (frame, json) => {
   expect(new TextDecoder().decode(encodeFetchMessage(frame))).toBe(json);
 });
+
+test('it writes the HTML of a request after its other fields', () => {
+  const limits = { bodyBytes: 100, timeoutMs: 1000, redirects: 3, textBytes: 50, imageBytes: 100 };
+
+  const bytes = encodeFetchMessage({
+    url: 'about:blank',
+    limits,
+    deniedRanges: [],
+    hops: 'none',
+    html: '<p>Hi</p>',
+  });
+
+  expect(new TextDecoder().decode(bytes)).toBe(
+    JSON.stringify({ url: 'about:blank', limits, deniedRanges: [], html: '<p>Hi</p>' }),
+  );
+});

@@ -24,6 +24,16 @@ export function buildNixieOperationSchemas() {
     }),
     releaseWriterLock: z.null(),
 
+    // a mail that arrives at the assistant's own mailbox, on the in-memory host of a test build
+    deliverMail: z.object({
+      from: z.string(),
+      subject: z.string(),
+      text: z.string(),
+      html: z.string().exactOptional(),
+      messageID: z.string().exactOptional(),
+      references: z.array(z.string()).exactOptional(),
+    }),
+
     connectCredential: credentialProviderSchema,
     refreshCredential: credentialProviderSchema,
     readCredentialStatus: credentialProviderSchema,

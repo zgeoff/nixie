@@ -203,6 +203,7 @@
         "@heynixie/image-openai": "workspace:*",
         "@heynixie/log": "workspace:*",
         "@heynixie/logger": "workspace:*",
+        "@heynixie/mail": "workspace:*",
         "@heynixie/memory": "workspace:*",
         "@heynixie/models": "workspace:*",
         "@heynixie/notebook": "workspace:*",
@@ -402,6 +403,7 @@
         "@heynixie/egress": "workspace:*",
         "@heynixie/log": "workspace:*",
         "@heynixie/logger": "workspace:*",
+        "@heynixie/mail": "workspace:*",
         "@heynixie/memory": "workspace:*",
         "@heynixie/model-gateway": "workspace:*",
         "@heynixie/models": "workspace:*",
@@ -584,6 +586,7 @@
         "@heynixie/devices": "workspace:*",
         "@heynixie/log": "workspace:*",
         "@heynixie/logger": "workspace:*",
+        "@heynixie/mail": "workspace:*",
         "@heynixie/memory": "workspace:*",
         "@heynixie/models": "workspace:*",
         "@heynixie/notebook": "workspace:*",
@@ -814,6 +817,28 @@
       "devDependencies": {
         "@faker-js/faker": "catalog:",
         "@heynixie/testing": "workspace:*",
+        "@zgeoff/testing": "catalog:",
+      },
+    },
+    "modules/mail": {
+      "name": "@heynixie/mail",
+      "version": "0.0.0",
+      "dependencies": {
+        "@heynixie/actions": "workspace:*",
+        "@heynixie/clock": "workspace:*",
+        "@heynixie/db": "workspace:*",
+        "@heynixie/log": "workspace:*",
+        "@heynixie/logger": "workspace:*",
+        "@heynixie/policy": "workspace:*",
+        "@heynixie/tasks": "workspace:*",
+        "@heynixie/tools": "workspace:*",
+        "@heynixie/triggers": "workspace:*",
+        "@heynixie/wire": "workspace:*",
+        "kysely": "catalog:",
+        "tiny-invariant": "catalog:",
+        "zod": "catalog:",
+      },
+      "devDependencies": {
         "@zgeoff/testing": "catalog:",
       },
     },
@@ -1711,6 +1736,8 @@
     "@heynixie/log": ["@heynixie/log@workspace:modules/log"],
 
     "@heynixie/logger": ["@heynixie/logger@workspace:libs/logger"],
+
+    "@heynixie/mail": ["@heynixie/mail@workspace:modules/mail"],
 
     "@heynixie/memory": ["@heynixie/memory@workspace:modules/memory"],
 
