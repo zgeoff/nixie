@@ -30,8 +30,6 @@ async function setupTest() {
     },
   });
 
-  invariant(gateway.control);
-
   return {
     control: gateway.control,
     spend: createSpendGateway({

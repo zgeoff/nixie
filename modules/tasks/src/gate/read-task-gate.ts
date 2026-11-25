@@ -52,7 +52,7 @@ function readSince(
 async function readSpendSince(db: Kysely<unknown>, taskID: string): Promise<number | null> {
   const global = await readSpendStopSince(db);
 
-  return global === null ? readSpendHoldSince(db, taskID) : global;
+  return global ?? readSpendHoldSince(db, taskID);
 }
 
 async function readPauseTime(db: Kysely<unknown>): Promise<number | null> {

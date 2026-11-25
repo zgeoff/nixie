@@ -515,7 +515,7 @@ test('it charges the estimate of a reply a stop cut off at the drain deadline, a
   });
 
   // the stream's body of 69 bytes and 4,096 allowance tokens in, and 1,000 tokens out
-  expect(JSON.parse(stored).routes.preview.day.micros).toBe(13_330);
+  expect(JSON.parse(stored)).toMatchObject({ routes: { preview: { day: { micros: 13_330 } } } });
   expect(response.status).toBe(200);
   expect(ctx.model.requests).toHaveLength(2);
 

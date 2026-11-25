@@ -19,8 +19,6 @@ async function setupTest() {
     },
   });
 
-  invariant(gateway.control);
-
   const spend = createSpendGateway({
     url: gateway.control.url,
     fetch: makeKeyedFetch('authorization', `Bearer ${gateway.control.token}`),
