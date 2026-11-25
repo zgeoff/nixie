@@ -333,7 +333,8 @@ test('it runs nothing for a call whose declaration moved to another snapshot whi
     },
   );
 
-  await decisionStarted.promise;
+  // a call that settles before its decision starts ends the wait too, and fails the outcomes below
+  await Promise.race([decisionStarted.promise, pending]);
 
   // a seed that changes only an override lands while the decision is pending
   snapshot.current = 'sha256:seeded';

@@ -220,13 +220,13 @@ at each failure between the first and the longest wait that `healthDefaults` in
 [`types.ts`](../../../modules/mcp/src/health/types.ts) sets, and the proxy makes each try on that
 schedule. A task run that starts during the backoff skips the listing.
 
-After 3 failed listings in a row the server is unhealthy, and the proxy writes one
-`mcp.health_changed` record with the last error and the next try. The next passed listing writes one
-more, for the recovery. A start resets every state and writes a recovery record for each server
-whose last record said unhealthy. A grant that needs consent is not a failed listing: the proxy
-reads the need from the grant's state, never from the HTTP status, marks the server's cached health
-as healthy and writes a recovery record when it was unhealthy, and stops listing the server until
-the user signs in.
+After the number of failed listings in a row that `unhealthyAfter` in `healthDefaults` sets, the
+server is unhealthy, and the proxy writes one `mcp.health_changed` record with the last error and
+the next try. The next passed listing writes one more, for the recovery. A start resets every state
+and writes a recovery record for each server whose last record said unhealthy. A grant that needs
+consent is not a failed listing: the proxy reads the need from the grant's state, never from the
+HTTP status, marks the server's cached health as healthy and writes a recovery record when it was
+unhealthy, and stops listing the server until the user signs in.
 
 ## The model's view
 
