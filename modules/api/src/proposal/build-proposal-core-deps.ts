@@ -25,7 +25,7 @@ import { proposalsProjection } from './proposals-projection';
 import { readActionBodyFields } from './read-action-body-fields';
 
 export type ProposalAPIContext = ProposalContext & {
-  readonly settings?: Pick<APISettings, 'approvals' | 'policy'>;
+  readonly settings?: Pick<APISettings, 'approvals' | 'mail' | 'policy'>;
 
   // Null before the MCP proxy starts. A server's removal waits for it.
   readonly readMcp?: () => McpPort | null;
@@ -55,7 +55,8 @@ export function buildProposalCoreDeps(
     makeActionProposalHandler({
       log: context.log,
       definitions: context.definitions,
-      readBodyFields: (_db, request) => readActionBodyFields(context.log, request),
+      readBodyFields: (_db, request) =>
+        readActionBodyFields(context.log, request, context.settings?.mail),
       writeThreadRecord,
       queueApproved: (tx, approved) => createApprovedAction(tx, context, approved),
       failHeld: (tx, row, reason) => failHeldAction(tx, context, { proposalID: row.id, reason }),

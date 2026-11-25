@@ -56,6 +56,7 @@ test('it reads every section, with the default of each setting the file leaves o
       url: 'http://127.0.0.1:7070',
       publicEgress: { hostAddresses: ['192.0.2.10/32'], egressDeny: [] },
     },
+    wake_rules: { window: 900_000, reply_expiry: 604_800_000 },
     definitions: {
       source: { kind: 'path', path: '/etc/nixie/definitions' },
       probeIntervalMs: 300_000,

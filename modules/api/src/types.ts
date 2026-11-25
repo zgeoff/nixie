@@ -54,6 +54,9 @@ export interface APISettings {
     readonly defaultZone: string;
   };
 
+  // what the card of a mail send shows of the reply rule that the send sets; absent without a mailbox
+  readonly mail?: { readonly replyExpiryMs: number };
+
   // the policy settings of proposed rules and mandates
   readonly policy?: {
     readonly proposedRules: {

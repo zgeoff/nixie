@@ -131,7 +131,7 @@ test('it passes stage 4 for a purchase within the lift, and carries the lift', a
       buildRuleEntry('allow-groceries', {
         outcome: 'allow',
         tools: ['shop.order'],
-        destinations: ['*@grocer.example'],
+        destinations: ['orders@grocer.example'],
         lift: { perAction: 20, budget: 'shopping-month' },
       }),
     ],
@@ -167,7 +167,7 @@ test('it asks at stage 4 for a purchase over the cap of the lift', async () => {
       buildRuleEntry('allow-groceries', {
         outcome: 'allow',
         tools: ['shop.order'],
-        destinations: ['*@grocer.example'],
+        destinations: ['orders@grocer.example'],
         lift: { perAction: 20, budget: 'shopping-month' },
       }),
     ],
@@ -326,7 +326,7 @@ test('it asks at stage 6 for a lifted purchase that an ask rule matches', async 
       buildRuleEntry('allow-groceries', {
         outcome: 'allow',
         tools: ['shop.order'],
-        destinations: ['*@grocer.example'],
+        destinations: ['orders@grocer.example'],
         lift: { perAction: 20, budget: 'shopping-month' },
       }),
       buildRuleEntry('ask-orders', { outcome: 'ask', tools: ['shop.order'] }),
@@ -502,7 +502,7 @@ test('it grants a destination the rule permission without letting the rule decid
       buildRuleEntry('allow-example', {
         outcome: 'allow',
         effects: ['send'],
-        destinations: ['*@example.org'],
+        destinations: ['sam@example.org'],
       }),
     ],
   });
@@ -520,7 +520,7 @@ test('it grants a destination the rule permission without letting the rule decid
 
 test('it grants a destination the task permission from the definition that runs the call', async () => {
   const ctx = buildTestDecisionPoint({
-    taskDestinations: ['*@example.org'],
+    taskDestinations: ['sam@example.org'],
     rules: [buildRuleEntry('allow-sends', { outcome: 'allow', effects: ['send'] })],
   });
 
@@ -538,7 +538,7 @@ test('it grants a destination the task permission from the definition that runs 
 
 test('it grants no task permission to a call with no definition', async () => {
   const ctx = buildTestDecisionPoint({
-    taskDestinations: ['*@example.org'],
+    taskDestinations: ['sam@example.org'],
     rules: [buildRuleEntry('allow-sends', { outcome: 'allow', effects: ['send'] })],
   });
 

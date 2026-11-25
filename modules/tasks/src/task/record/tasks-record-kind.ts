@@ -17,6 +17,7 @@ export type TasksRecordKind =
   | 'trigger.fired'
   | 'trigger.skipped'
   | 'trigger.task_input'
+  | 'trigger.mail_woke'
   | 'task.interrupted'
   | 'task.limit_reached'
   | 'task.failed_turn_spent'
@@ -42,6 +43,7 @@ type TasksErasableRecordKind =
   | 'task.run_report_requested'
   | 'task.step_errored'
   | 'task_message'
+  | 'trigger.mail_woke'
   | 'trigger.task_input';
 
 declare module '@heynixie/log' {

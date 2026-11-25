@@ -51,11 +51,30 @@ export type {
   TriggerBatch,
   TriggerContext,
   TriggerCoreContext,
+  MailArrival,
+  MailArrivalEvent,
+  Mailbox,
   ScheduleTriggerEvent,
   TaskInputEvent,
   TriggerEvent,
   TriggerSource,
   TriggersTables,
+  WakeMatch,
+  WakeRule,
+  WakeRuleEndReason,
+  WakeRuleInput,
+  WakeTarget,
 } from './types';
 
 export { triggersRecordTopics } from './record/triggers-record-topics';
+export type { SetWakeRule, WakeRuleContext } from './wake/set-wake-rule-in-transaction';
+export { setWakeRuleInTransaction } from './wake/set-wake-rule-in-transaction';
+export { endWakeRuleInTransaction } from './wake/end-wake-rule-in-transaction';
+export type { ReadWakeRulesOptions } from './wake/read-wake-rules';
+export { readWakeRules } from './wake/read-wake-rules';
+export { isWakeMatch } from './wake/is-wake-match';
+export { runWakeFlush } from './wake/run-wake-flush';
+export { startWakeFlush } from './wake/start-wake-flush';
+export type { WakeRulesConfig } from './wake/wake-rules-config-schema';
+export { maxWakeDurationMs, minWakeDurationMs } from './wake/constants';
+export { wakeRulesConfigSchema } from './wake/wake-rules-config-schema';

@@ -11,12 +11,15 @@ export function encodeFetchMessage(
     return encoder.encode(JSON.stringify(message));
   }
 
+  const html = message.html === undefined ? {} : { html: message.html };
+
   if (message.hops === 'none') {
     return encoder.encode(
       JSON.stringify({
         url: message.url,
         limits: message.limits,
         deniedRanges: message.deniedRanges,
+        ...html,
       }),
     );
   }
@@ -27,6 +30,7 @@ export function encodeFetchMessage(
       limits: { ...message.limits, redirects: 0 },
       deniedRanges: message.deniedRanges,
       hopGate: { redirects: message.limits.redirects },
+      ...html,
     }),
   );
 }
