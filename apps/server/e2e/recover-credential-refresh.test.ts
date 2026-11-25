@@ -127,7 +127,7 @@ test('it finds nothing to recover on the start after the one that marked the cre
   ]);
 });
 
-test('it keeps a credential active when the process dies after its refresh saved', async () => {
+test('it keeps the saved token and its record together when the process dies between them', async () => {
   const ctx = await setupTest();
 
   const first = ctx.nixie.harness.start();
@@ -135,10 +135,11 @@ test('it keeps a credential active when the process dies after its refresh saved
   await first.ready;
 
   await first.request('connectCredential', ctx.config);
+  await first.request('arm', { point: 'credential.refresh.token_saved' });
 
   const refreshing = Promise.allSettled([first.request('refreshCredential', ctx.config)]);
 
-  await ctx.nixie.waitForRecord((record) => record.kind === 'credential.refresh_saved');
+  await first.waitForArrival('credential.refresh.token_saved');
   await first.kill();
 
   await refreshing;

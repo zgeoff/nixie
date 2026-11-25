@@ -139,6 +139,14 @@ target remains and `erasure.finished` follows `erasure.started`.
 | `erasure.cleaned`             | after the session cleanup, before the turn inputs                                                          |
 | `erasure.turn_inputs_removed` | after the turn inputs, before `erasure.finished`                                                           |
 
+## Fault point of a credential refresh
+
+`credential.refresh.token_saved` sits behind the test-build flag, in the in-memory held backend of
+the test build, after a refreshed token saves and before its `credential.refresh_saved` record goes
+to the log. `recover-credential-refresh.test.ts` arms it, kills nixie there, and checks that the
+restart writes the owed record and leaves the credential active. See
+[credentials](../connectors/credentials.md#refresh).
+
 ## Fault point of a live reply
 
 `turn.reply.after` sits behind the test-build flag, after the transaction that writes a live

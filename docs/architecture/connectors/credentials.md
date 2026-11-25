@@ -110,8 +110,9 @@ the credential and advances the counter in one transaction. `writeState` takes t
 late result of an older binding never changes the status of a credential that was removed and
 connected again. `writeToken` also takes the record of a refresh, `credential.refresh_saved`, and
 commits it with the token, so a crash leaves both or neither. An in-memory backend in the module's
-`test-utils` implements the interface for tests; it writes the record and then the token, which a
-double cannot do atomically.
+`test-utils` implements the interface for tests. It saves the token and the record it owes to its
+file in one write, then writes the record to the log, and `settle` writes a record that a crash left
+owed, so a restart finds both or neither.
 
 A token records the `sub` of the account its ID token named at the credential's first use. A second
 code exchanged into the same credential that names another account, or none, marks the credential
@@ -230,7 +231,9 @@ HTTPS site on the loopback address, and a test reaches it through the pinned con
 transport stand-in. The crash suite `recover-credential-refresh.test.ts` in the server's `e2e/`
 folder starts nixie through `startE2ENixie`, begins a refresh against a provider that never answers,
 kills the process with `SIGKILL`, starts it again on the same data directory, and checks that the
-credential is `needs_consent`.
+credential is `needs_consent`. A second test holds the process at the fault point
+`credential.refresh.token_saved`, after the token saved and before its record, kills it there, and
+checks that the restart leaves the credential `active` with `credential.refresh_saved` written.
 
 A test that plants a fake value in the secrets file asserts that the value appears in no tool
 result, no log line, no record and no error. `createTestCredentials` in the module's `test-utils`

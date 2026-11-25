@@ -19,6 +19,9 @@ export interface HeldTestStoreOptions {
   // the lookup of a host name; every name goes to the loopback address by default
   readonly resolveHost?: (host: string) => Promise<readonly string[]>;
   readonly tokenRequestTimeoutMs?: number;
+
+  // runs after a token saves and before its record is written
+  readonly afterTokenSaved?: () => Promise<void>;
 }
 
 export interface HeldTestStore {
@@ -38,6 +41,7 @@ export async function createHeldTestStore(options: HeldTestStoreOptions): Promis
   const backend = createInMemoryHeldBackend({
     recorder,
     ...(options.backendFile === undefined ? {} : { file: options.backendFile }),
+    ...(options.afterTokenSaved === undefined ? {} : { afterTokenSaved: options.afterTokenSaved }),
   });
 
   const ownValues = createOwnValueSet();

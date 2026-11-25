@@ -296,6 +296,8 @@ export function createCredentialStore(options: CredentialStoreOptions): Credenti
         const replayable = await readReplayableInit(init);
         const first = await send(input, replayable);
 
+        await checkHandle();
+
         if (first.status !== 401) {
           return first;
         }
@@ -307,6 +309,8 @@ export function createCredentialStore(options: CredentialStoreOptions): Credenti
         }
 
         const second = await sendRefreshed(input, replayable);
+
+        await checkHandle();
 
         if (second.status === 401) {
           await requireHeld().markFailing(handle, 'unauthorised');

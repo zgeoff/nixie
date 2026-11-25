@@ -827,7 +827,9 @@ test('it sends no refresh when the credential was removed while the rejected res
     `${ctx.provider.origin}/data`,
   );
 
-  await waitFor(() => expect(ctx.provider.requests.some((request) => request.path === '/data')));
+  await waitFor(() =>
+    expect(ctx.provider.requests.some((request) => request.path === '/data')).toBe(true),
+  );
 
   await ctx.store.remove(connection.tokenRef);
 
@@ -836,6 +838,33 @@ test('it sends no refresh when the credential was removed while the rejected res
   await expect(sending).rejects.toBeInstanceOf(CredentialRemovedError);
 
   expect(ctx.countRefreshRequests()).toBe(0);
+});
+
+test('it refuses the answer to a request whose credential was removed while the answer waited', async () => {
+  const ctx = await setupTest();
+  const connection = await ctx.connectCredential();
+
+  const gate = Promise.withResolvers<void>();
+
+  ctx.provider.answerToken(async () => {
+    await gate.promise;
+
+    return new Response('data');
+  });
+
+  const sending = ctx.store.fetcher(connection.token, [ctx.provider.origin])(
+    `${ctx.provider.origin}/data`,
+  );
+
+  await waitFor(() =>
+    expect(ctx.provider.requests.some((request) => request.path === '/data')).toBe(true),
+  );
+
+  await ctx.store.remove(connection.tokenRef);
+
+  gate.resolve();
+
+  await expect(sending).rejects.toBeInstanceOf(CredentialRemovedError);
 });
 
 test('it leaves the status of a reconnected credential alone when an older handle is rejected twice', async () => {
@@ -872,10 +901,10 @@ test('it leaves the status of a reconnected credential alone when an older handl
 
   gate.resolve();
 
-  const response = await sending;
+  await expect(sending).rejects.toBeInstanceOf(CredentialRemovedError);
+
   const status = await ctx.store.readStatus(newer);
 
-  expect(response.status).toBe(401);
   expect(status).toMatchObject({ status: 'active' });
 });
 

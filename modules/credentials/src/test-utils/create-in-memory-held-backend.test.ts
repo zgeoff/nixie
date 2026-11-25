@@ -137,3 +137,49 @@ test('it holds in a new backend on the same file what an earlier one saved', asy
     await second.readRemovalCounter('other'),
   ]).toStrictEqual([ctx.token, { clientSecret: 'fake-client-secret' }, 1]);
 });
+
+test('it writes the record that a crash left owed when the backend settles', async () => {
+  const ctx = await setupTest();
+
+  const file = ctx.file;
+
+  const first = createInMemoryHeldBackend({
+    recorder: ctx.recorder,
+    file,
+    afterTokenSaved: () => new Promise<void>(() => {}),
+  });
+
+  void first.writeToken('credential', ctx.token, 0, ctx.savedRecord);
+  const open = [{ credentialID: 'credential', attemptID: 'attempt' }];
+
+  const second = createInMemoryHeldBackend({
+    recorder: { ...ctx.recorder, readOpenRefreshes: () => Promise.resolve(open) },
+    file,
+  });
+
+  await second.settle();
+
+  const saved = await second.readToken('credential');
+
+  expect(ctx.written).toStrictEqual([ctx.savedRecord]);
+  expect(saved).toStrictEqual(ctx.token);
+});
+
+test('it writes no record at settle for a refresh the log already closed', async () => {
+  const ctx = await setupTest();
+
+  const file = ctx.file;
+
+  const first = createInMemoryHeldBackend({
+    recorder: ctx.recorder,
+    file,
+    afterTokenSaved: () => new Promise<void>(() => {}),
+  });
+
+  void first.writeToken('credential', ctx.token, 0, ctx.savedRecord);
+  const second = createInMemoryHeldBackend({ recorder: ctx.recorder, file });
+
+  await second.settle();
+
+  expect(ctx.written).toStrictEqual([]);
+});

@@ -29,7 +29,12 @@ export function registerCredentialOperations(link: HarnessLink, context: TasksCo
   });
 
   link.registerOperation('refreshCredential', schemas.refreshCredential, async (args) => {
-    const held = await createTestCredentialStore(context, args.ca);
+    const held = await createTestCredentialStore(context, args.ca, () =>
+      link.waitAtFaultPoint('credential.refresh.token_saved', {
+        kind: 'credential',
+        id: args.tokenCredentialID,
+      }),
+    );
 
     const token = await held.store.register(
       { backend: 'database', credentialID: args.tokenCredentialID },

@@ -8,11 +8,13 @@ import type { TasksContext } from '@heynixie/tasks';
 export function createTestCredentialStore(
   context: TasksContext,
   ca: string,
+  afterTokenSaved?: () => Promise<void>,
 ): Promise<HeldTestStore> {
   return createHeldTestStore({
     log: context.log,
     ca,
     now: () => Date.now(),
     backendFile: join(context.log.writer.dataDir, 'test-credentials.json'),
+    ...(afterTokenSaved === undefined ? {} : { afterTokenSaved }),
   });
 }
