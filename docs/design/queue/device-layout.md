@@ -24,6 +24,7 @@ flowchart LR
   server -->|"device.page_event record"| model
   server -->|"declared fetches, packages"| fetch[fetch sandbox]
   fetch -->|"checking proxy"| web[the web]
+  server -->|"layout files, for device.preview"| render[render sandbox]
 ```
 
 ## Contracts
@@ -68,17 +69,18 @@ device.sendToPage({ device: 'tb8r3k6m1q', region: 'pond', data: { ripples: 3 }, 
 device.preview({ device: 'tb8r3k6m1q' });
 // → { width: 1280, height: 276, pixelRatio: 2, errors: [{ region: 'pond', at, message: 'TypeError: …' }],
 //     picture: 'shown' } with the picture beside it,
-//   or picture: 'busy' | 'unavailable' with no picture when the computer is busy or not set up
+//   or picture: 'unavailable' with no picture when the render sandbox is not set up or fails
 //   UNKNOWN_DEVICE | SCREEN_OFF; a device that is offline still returns its last errors.
-// The tool's description says the picture is a render in the computer's browser, not a capture of
-// the device: fonts and drawing can differ, so it is no proof of what the device shows.
+// The tool's description says the picture is a render in Chromium, not a capture of the device:
+// fonts and drawing can differ, so it is no proof of what the device shows.
 ```
 
-The server sends the layout to the computer sandbox over the wire as files: the device page's grid,
+The server sends the layout to the render sandbox over the wire as files: the device page's grid,
 each region's content, the package files the pages name, the images they declare, and the last body
-of each declared fetch. The computer's browser opens them as a local page at the device's CSS size
-and pixel ratio, takes the picture, and fetches nothing. The preview takes the computer's busy slot,
-as a browser tool does.
+of each declared fetch. The render sandbox runs headless Chromium and nothing else. It opens the
+files as a local page at the device's CSS size and pixel ratio, takes the picture, and fetches
+nothing. It holds no files, browser or session of the assistant's computer, so a preview never waits
+for the computer or changes what its browser shows.
 
 The errors come from the device: the last 20 uncaught errors and console errors of each page region
 since its content last changed, which the server keeps in memory.
@@ -244,8 +246,10 @@ Regions:
 
 The preview:
 
-- In the computer's local render, the bridge serves `nixie.data` and `nixie.image` from the bundled
-  files, and the render runs with the computer's network off.
+- In the render sandbox, the bridge serves `nixie.data` and `nixie.image` from the bundled files,
+  and the sandbox has no network.
+- The render sandbox keeps nothing between previews: each preview starts from an empty profile.
+- One preview renders at a time; a second waits for the first.
 
 ## Decisions
 
@@ -260,9 +264,11 @@ The preview:
 - **A page reads only the URLs declared with it.** The decision point judges the URLs when the page
   is sent, and the page's script can't build new ones, so it can't leak what it holds to an allowed
   host.
-- **The preview renders in the computer sandbox.** A web page can't take a picture of its own screen
-  without a prompt on the device, so the assistant sees a render of the same layout at the same
-  size, and the real device's errors beside it.
+- **The preview renders in a render sandbox of its own.** A web page can't take a picture of its own
+  screen without a prompt on the device, so the assistant sees a render of the same layout at the
+  same size, and the real device's errors beside it. The page is the assistant's own code, so it
+  renders in a sandbox, never in the server. A sandbox apart from the assistant's computer leaves
+  that computer's browser and busy slot alone, as the fetch sandbox does for fetches.
 
 ## Builder decides
 
