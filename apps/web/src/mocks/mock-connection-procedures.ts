@@ -71,7 +71,7 @@ export const mockConnectionProcedures = {
     return {};
   }),
 
-  removeClient: mockImplementer.connections.removeClient.handler(async (options) => {
+  removeClient: mockImplementer.connections.removeClient.handler((options) => {
     requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
 
     const client = connectionStore.clients.findFirst((query) =>
@@ -90,7 +90,7 @@ export const mockConnectionProcedures = {
       throw options.errors.CLIENT_IN_USE();
     }
 
-    await connectionStore.clients.delete(client);
+    connectionStore.clients.delete(client);
 
     return {};
   }),
@@ -138,7 +138,7 @@ export const mockConnectionProcedures = {
       throw options.errors.CONSENT_NOT_FOUND();
     }
 
-    await connectionStore.consents.delete(consent);
+    connectionStore.consents.delete(consent);
 
     if (input.error !== null || input.code === null) {
       throw options.errors.CONSENT_REFUSED();
