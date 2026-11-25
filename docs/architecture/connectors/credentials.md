@@ -78,17 +78,21 @@ call fails with an error and no reply. The checks live in `libs/egress`, so web 
 ## Bindings and the removal counter
 
 `register` turns a reference and a spec into a binding. A file reference registers at once. A
-database reference registers through `registerHeld`, which reads the reference's removal counter
+database reference returns a promise, because `register` reads the reference's removal counter
 first. Each binding carries the counter's value at the moment it was made. Registering the same
-reference and spec again returns the same binding ID with the counter's current value.
+reference and spec again returns the same binding ID with the counter's current value. The store
+keeps a frozen copy of the spec, so a caller that changes the object it passed in afterwards cannot
+move the origins or provider endpoints the credential reaches.
 
 A removal of a database credential advances its counter in the same transaction as the removal.
 Every handle that the store hands out from a binding, such as a fetcher or a refresh, compares its
 binding's counter with the current one before it reads a value, and fails with
-`CredentialRemovedError` when they differ. The error is a `CredentialRefusalError`, so a tool call
-that meets it fails with an error and no reply. A binding registered after the removal carries the
-new counter and works. A file binding always carries counter 0, because nothing removes a file
-credential yet.
+`CredentialRemovedError` when they differ. That covers `refresh`, `refreshIfDue` and `readStatus`
+too. A fetcher checks the counter again after its address checks and just before the request leaves,
+so a removal during a host lookup stops the request. The error is a `CredentialRefusalError`, so a
+tool call that meets it fails with an error and no reply. A binding registered after the removal
+carries the new counter and works. A file binding always carries counter 0, because nothing removes
+a file credential yet.
 
 ## OAuth tokens
 
@@ -102,8 +106,17 @@ fetcher cuts the client secret from the reply and from any error.
 The held backend interface is `HeldBackend`. It stores a client's secret, a token with its state,
 and the removal counter, and it keeps each token's key under a random UUID. `writeToken` saves a
 token only when the credential's counter still equals the one the caller read, and `remove` deletes
-the credential and advances the counter in one transaction. An in-memory backend in the module's
-`test-utils` implements the interface for tests.
+the credential and advances the counter in one transaction. `writeState` takes the counter too, so a
+late result of an older binding never changes the status of a credential that was removed and
+connected again. `writeToken` also takes the record of a refresh, `credential.refresh_saved`, and
+commits it with the token, so a crash leaves both or neither. An in-memory backend in the module's
+`test-utils` implements the interface for tests; it writes the record and then the token, which a
+double cannot do atomically.
+
+A token records the `sub` of the account its ID token named at the credential's first use. A second
+code exchanged into the same credential that names another account, or none, marks the credential
+`needs_consent`, revokes the new tokens, saves nothing and throws `TokenRequestError` with the code
+`account_changed`. A second code for the same account replaces the token and removes the old key.
 
 ### Exchange
 
@@ -117,32 +130,40 @@ the provider's token URL over the checked connection.
 
 ### Refresh
 
-- One refresh runs per credential at a time. A caller that arrives during one waits for its result.
-- A fetcher on a database binding refreshes a token that expires within 5 minutes before it sends. A
+- One refresh runs per credential and binding generation at a time. A caller that arrives during one
+  waits for its result. A handle made before a removal never joins the refresh of a credential that
+  was connected again.
+- A fetcher on a database binding refreshes a token that is about to expire before it sends. A
   request that the service rejects with 401 gets one refresh and one retry. A second 401 marks the
-  credential `failing` with the reason `unauthorised`.
-- `refreshIfDue` refreshes a token that expires within 5 minutes, or that went 7 days since its last
-  success, once the backoff after a failure has run out. The backoff starts at 30 seconds and caps
-  at 5 minutes, as web fetch's host backoff does.
+  credential `failing` with the reason `unauthorised`. The retry reads the token as the refresh
+  saved it, so a token that is about to expire does not start a second refresh. A streamed request
+  body is read into bytes before the first send, so the retry sends it again.
+- A request to the provider's token or revoke URL has a deadline, which the store's
+  `tokenRequestTimeoutMs` option sets. A request that has no answer by then counts as `no_answer`,
+  so a provider that leaves a request open stalls no later refresh.
+- `refreshIfDue` refreshes a token that is about to expire, or that went a week since its last
+  success, once the backoff after a failure has run out. The backoff grows with each failure and has
+  a cap, as web fetch's host backoff does.
 - 3 failed refreshes in a row mark the credential `failing`, with the reason `service_error` or
   `no_answer`. A refusal for good, such as `invalid_grant`, marks it `needs_consent`. A successful
   refresh returns the credential to `active`.
 - Each refresh creates a new key and seals its result under it. After the save, the refresh removes
   the old key. After a failure, it removes the new one.
 - A refresh that finishes after a removal advanced the counter revokes the token it received at the
-  provider, saves nothing and removes its new key. The revocation skips the counter check, which
+  provider, which is the new refresh token, or the new access token when the reply holds no refresh
+  token. It saves nothing and removes its new key. The revocation skips the counter check, which
   would refuse it.
 
 ### Records
 
-| Record                         | Written                                                            |
-| ------------------------------ | ------------------------------------------------------------------ |
-| `credential.refresh_started`   | before the request leaves; it names the credential and the new key |
-| `credential.refresh_saved`     | after the save; it holds the new access token's fingerprint        |
-| `credential.refresh_failed`    | after a refresh that gave no token                                 |
-| `credential.refresh_discarded` | after a removal moved the counter; it says whether revoking worked |
-| `credential.refresh_lost`      | at start, for a refresh that sent and never saved                  |
-| `credential.status_changed`    | when a credential's status or reason changes                       |
+| Record                         | Written                                                               |
+| ------------------------------ | --------------------------------------------------------------------- |
+| `credential.refresh_started`   | before the request leaves; it names the credential and the new key    |
+| `credential.refresh_saved`     | with the save; it holds the new access token's fingerprint            |
+| `credential.refresh_failed`    | after a refresh that gave no token                                    |
+| `credential.refresh_discarded` | after a removal moved the counter; it records whether revoking worked |
+| `credential.refresh_lost`      | at start, for a refresh that sent and never saved                     |
+| `credential.status_changed`    | when a credential's status or reason changes                          |
 
 A record holds a credential's ID and a fingerprint, never a token, a client secret or a key. Every
 kind has an entry, with no live topic, in `credentialRecordTopics`, which the server registers.
@@ -151,7 +172,10 @@ At start, `recover` reads the log for each `credential.refresh_started` that no 
 discarded or lost record closes. The provider may hold a token nixie never saved, and revoking the
 spent one may not end it, so `recover` marks the credential `needs_consent` and writes
 `credential.refresh_lost` for the refresh. The next start finds nothing. The check reads the log
-alone, so it holds after a crash that loses the held backend's memory.
+alone, so it holds after a crash that loses the held backend's memory. A test build of the server
+runs `recover` at each start, over a backend in a file of the data directory, and the crash suite
+`recover-credential-refresh.test.ts` kills the process during a refresh and checks the status after
+the restart.
 
 ## Grants
 
@@ -203,9 +227,10 @@ holds as its own. Each scan reads the set when it runs and keeps its own filter:
 
 `startFakeOAuthProvider` in `test-utils` runs a provider's token and revoke endpoints as a real
 HTTPS site on the loopback address, and a test reaches it through the pinned connection with no
-transport stand-in. The crash test in `recover-lost-refreshes.test.ts` starts a child process that
-begins a refresh against a provider that never answers, kills it with `SIGKILL`, and opens the same
-data directory in the test process, as the next start does.
+transport stand-in. The crash suite `recover-credential-refresh.test.ts` in the server's `e2e/`
+folder starts nixie through `startE2ENixie`, begins a refresh against a provider that never answers,
+kills the process with `SIGKILL`, starts it again on the same data directory, and checks that the
+credential is `needs_consent`.
 
 A test that plants a fake value in the secrets file asserts that the value appears in no tool
 result, no log line, no record and no error. `createTestCredentials` in the module's `test-utils`

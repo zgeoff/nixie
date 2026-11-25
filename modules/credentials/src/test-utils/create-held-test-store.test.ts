@@ -11,7 +11,7 @@ test('it builds a store whose database credentials register against its backend'
 
   await held.backend.remove('credential');
 
-  const binding = await held.store.registerHeld(
+  const binding = await held.store.register(
     { backend: 'database', credentialID: 'credential' },
     { kind: 'oauth_token', label: 'Example account', origins: [] },
   );

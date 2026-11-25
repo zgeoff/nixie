@@ -19,7 +19,7 @@
   "workspaces": {
     // a test spawns the stub program as its own process, so no import reaches it
     "modules/log": { "entry": ["src/test-utils/run-stub-*.ts"] },
-    "modules/credentials": { "entry": ["src/test-utils/run-*.ts"] },
+    "modules/credentials": { "entry": ["src/test-utils/run-stub-*.ts"] },
     // the task.yaml format check runs the samples script by its path, so no import reaches it
     "modules/definitions": { "entry": ["src/run-task-yaml-samples.ts"] },
     // the backup image runs the bundle of main.ts, and tests spawn the restic stand-in, so no

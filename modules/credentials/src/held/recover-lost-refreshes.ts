@@ -10,6 +10,7 @@ export interface RecoveryOptions {
     credentialID: string,
     previous: HeldState,
     next: HeldState,
+    expectedCounter: number,
   ) => Promise<void>;
 }
 
@@ -18,14 +19,16 @@ export interface RecoveryOptions {
 // needs the owner's consent. The refresh is then closed, so the next start finds nothing.
 export async function recoverLostRefreshes(options: RecoveryOptions): Promise<void> {
   for (const open of await options.recorder.readOpenRefreshes()) {
+    const counter = await options.backend.readRemovalCounter(open.credentialID);
     const token = await options.backend.readToken(open.credentialID);
 
     if (token !== null) {
-      await options.writeState(open.credentialID, token.state, {
-        ...token.state,
-        status: 'needs_consent',
-        sinceMs: options.now(),
-      });
+      await options.writeState(
+        open.credentialID,
+        token.state,
+        { ...token.state, status: 'needs_consent', sinceMs: options.now() },
+        counter,
+      );
     }
 
     await options.recorder.write({

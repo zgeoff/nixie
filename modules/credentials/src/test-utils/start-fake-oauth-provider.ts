@@ -1,6 +1,8 @@
 import { startTestSite } from '@heynixie/egress/test-utils';
 
 export interface FakeProviderRequest {
+  // the host name the request asked for
+  readonly host: string;
   readonly path: string;
   readonly form: Readonly<Record<string, string>>;
   readonly authorization: string | null;
@@ -24,7 +26,9 @@ export interface FakeOAuthProvider {
 // A real HTTPS site on the loopback address that plays an OAuth provider's token and revoke
 // endpoints. The credentials module reaches it through its pinned connection, as in a release build.
 // By default each token request gets a fresh access and refresh token.
-export async function startFakeOAuthProvider(): Promise<FakeOAuthProvider> {
+export async function startFakeOAuthProvider(
+  options: { readonly otherNames?: readonly string[] } = {},
+): Promise<FakeOAuthProvider> {
   const requests: FakeProviderRequest[] = [];
   const host = 'auth.test';
   let issued = 0;
@@ -43,9 +47,11 @@ export async function startFakeOAuthProvider(): Promise<FakeOAuthProvider> {
   };
 
   const site = await startTestSite({
-    names: [host],
+    names: [host, ...(options.otherNames ?? [])],
     respond: async (request) => {
-      const path = new URL(request.url).pathname;
+      const url = new URL(request.url);
+
+      const path = url.pathname;
 
       const isForm =
         request.headers.get('content-type')?.startsWith('application/x-www-form') ?? false;
@@ -53,7 +59,13 @@ export async function startFakeOAuthProvider(): Promise<FakeOAuthProvider> {
       const data = isForm ? await request.formData() : new FormData();
       const entries = [...data.entries()];
       const form = Object.fromEntries(entries.map(([name, entry]) => [name, String(entry)]));
-      const received = { path, form, authorization: request.headers.get('authorization') };
+
+      const received = {
+        host: url.hostname,
+        path,
+        form,
+        authorization: request.headers.get('authorization'),
+      };
 
       requests.push(received);
 

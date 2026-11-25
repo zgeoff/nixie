@@ -27,6 +27,10 @@ export interface HeldToken {
 
   // the OAuth client that issued the token
   readonly clientCredentialID: string;
+
+  // the `sub` of the account the ID token named at the credential's first use, or null when no
+  // token named one
+  readonly accountSubject: string | null;
   readonly state: HeldState;
 }
 
@@ -44,16 +48,23 @@ export interface HeldBackend {
   readonly writeClient: (credentialID: string, client: HeldClient) => Promise<void>;
   readonly readToken: (credentialID: string) => Promise<HeldToken | null>;
 
-  // Saves the token and its state in one transaction, and only when the credential's removal
-  // counter still equals the expected one. A token that arrives after a removal is never saved.
+  // Saves the token and its state, and the record when one is given, in one transaction, and only
+  // when the credential's removal counter still equals the expected one. A crash leaves both or
+  // neither, so a start never finds a saved token whose refresh reads as lost.
   readonly writeToken: (
     credentialID: string,
     token: HeldToken,
     expectedCounter: number,
+    record: CredentialEvent | null,
   ) => Promise<WriteTokenResult>;
 
-  // changes the state of a credential that is held, and does nothing for one that is not
-  readonly writeState: (credentialID: string, state: HeldState) => Promise<void>;
+  // Changes the state of a credential that is held, only when its removal counter still equals the
+  // expected one, and does nothing for one that is not held.
+  readonly writeState: (
+    credentialID: string,
+    state: HeldState,
+    expectedCounter: number,
+  ) => Promise<WriteTokenResult>;
   readonly createKey: () => Promise<string>;
   readonly removeKey: (keyID: string) => Promise<void>;
 

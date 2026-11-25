@@ -2,6 +2,16 @@ import { z } from 'zod';
 
 // The bundler keeps a schema built at module level, so a release bundle would hold these names.
 export function buildNixieOperationSchemas() {
+  // the fake provider a credential test reaches, and the credentials it connects
+  const credentialProviderSchema = z.object({
+    ca: z.string(),
+    origin: z.string(),
+    tokenURL: z.string(),
+    revokeURL: z.string(),
+    clientCredentialID: z.string(),
+    tokenCredentialID: z.string(),
+  });
+
   return {
     sendMessage: z.object({ thread: z.string(), text: z.string() }),
 
@@ -13,6 +23,10 @@ export function buildNixieOperationSchemas() {
       control: z.enum(['pause', 'resume', 'stop', 'restart', 'close', 'interrupt']),
     }),
     releaseWriterLock: z.null(),
+
+    connectCredential: credentialProviderSchema,
+    refreshCredential: credentialProviderSchema,
+    readCredentialStatus: credentialProviderSchema,
   };
 }
 

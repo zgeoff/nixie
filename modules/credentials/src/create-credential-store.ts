@@ -47,6 +47,10 @@ export interface CredentialStoreOptions {
   // the time a refresh reads, in ms; the system clock by default
   readonly now?: () => number;
 
+  // how long a request to an OAuth provider's token or revoke endpoint may take, in ms; 30 seconds
+  // by default
+  readonly tokenRequestTimeoutMs?: number;
+
   // what a test replaces to reach a loopback site
   readonly test?: {
     readonly checkAddress?: AddressCheck;
@@ -69,13 +73,11 @@ interface GrantSandboxes {
 type GrantSource = BindingRef<'file'> | { readonly hostHeld: true };
 
 export interface CredentialStore {
-  readonly register: (ref: FileCredentialRef, spec: CredentialSpec) => BindingRef<'file'>;
-
   // A database reference reads its removal counter, so its binding carries the counter's value.
-  readonly registerHeld: (
-    ref: DatabaseCredentialRef,
-    spec: CredentialSpec,
-  ) => Promise<BindingRef<'database'>>;
+  readonly register: {
+    (ref: FileCredentialRef, spec: CredentialSpec): BindingRef<'file'>;
+    (ref: DatabaseCredentialRef, spec: CredentialSpec): Promise<BindingRef<'database'>>;
+  };
 
   // null: no credential, the same checks. A database binding takes an OAuth token: the fetcher
   // refreshes it before it expires, and refreshes once and retries once on a 401.
@@ -105,6 +107,8 @@ export interface CredentialStore {
   // refreshes when the token expires within 5 minutes or 7 days passed since the last success, and
   // the backoff after a failure has run out; null when it did not send
   readonly refreshIfDue: (binding: BindingRef<'database'>) => Promise<RefreshOutcome | null>;
+
+  // null when the credential holds no token yet
   readonly readStatus: (binding: BindingRef<'database'>) => Promise<HeldState | null>;
 
   // Removes a database credential and advances its removal counter in one transaction. Every
@@ -125,6 +129,8 @@ interface Binding {
   readonly ref: CredentialRef;
   readonly spec: CredentialSpec;
 }
+
+const defaultTokenRequestTimeoutMs = 30_000;
 
 export function createCredentialStore(options: CredentialStoreOptions): CredentialStore {
   const bindings = new Map<string, Binding>();
@@ -149,6 +155,7 @@ export function createCredentialStore(options: CredentialStoreOptions): Credenti
           fingerprintKey: options.secrets.fingerprintKey,
           ownValues: options.secrets.ownValues,
           now,
+          requestTimeoutMs: options.tokenRequestTimeoutMs ?? defaultTokenRequestTimeoutMs,
           makeProviderFetch: (provider, bodyValues) =>
             createCredentialFetcher(fetcherChecks, {
               spec: null,
@@ -196,7 +203,7 @@ export function createCredentialStore(options: CredentialStoreOptions): Credenti
     const bindingID = known ?? crypto.randomUUID();
 
     if (known === undefined) {
-      const normalized = { ...spec, origins: normalizeOrigins(spec.origins) };
+      const normalized = freezeSpec(spec);
 
       requireProviderOrigins(normalized);
 
@@ -207,26 +214,47 @@ export function createCredentialStore(options: CredentialStoreOptions): Credenti
     return bindingID;
   };
 
+  const registerDatabase = async (
+    ref: DatabaseCredentialRef,
+    spec: CredentialSpec,
+  ): Promise<BindingRef<'database'>> => {
+    const bindingID = addBinding(ref, spec);
+
+    const removalCounter = await requireHeld().readCounter(ref.credentialID);
+
+    return { bindingID, backend: 'database', removalCounter };
+  };
+
+  function register(ref: FileCredentialRef, spec: CredentialSpec): BindingRef<'file'>;
+
+  function register(
+    ref: DatabaseCredentialRef,
+    spec: CredentialSpec,
+  ): Promise<BindingRef<'database'>>;
+
+  // oxlint-disable-next-line zgeoff/no-nested-function-declaration -- overloads need the function keyword
+  function register(
+    ref: CredentialRef,
+    spec: CredentialSpec,
+  ): BindingRef<'file'> | Promise<BindingRef<'database'>> {
+    if (ref.backend === 'database') {
+      return registerDatabase(ref, spec);
+    }
+
+    const bindingID = addBinding(ref, spec);
+
+    options.secrets.ownValues.add({
+      group: ref.group,
+      name: ref.name,
+      value: options.secrets.readFileValue(ref),
+      isAlways: ref.group === 'settings',
+    });
+
+    return { bindingID, backend: 'file', removalCounter: 0 };
+  }
+
   return {
-    register: (ref, spec) => {
-      const bindingID = addBinding(ref, spec);
-
-      options.secrets.ownValues.add({
-        group: ref.group,
-        name: ref.name,
-        value: options.secrets.readFileValue(ref),
-        isAlways: ref.group === 'settings',
-      });
-
-      return { bindingID, backend: 'file', removalCounter: 0 };
-    },
-    registerHeld: async (ref, spec) => {
-      const bindingID = addBinding(ref, spec);
-
-      const removalCounter = await requireHeld().readCounter(ref.credentialID);
-
-      return { bindingID, backend: 'database', removalCounter };
-    },
+    register,
     fetcher: (ref, origins, fetchOptions = {}) => {
       const binding = ref === null ? null : getBinding(ref);
       const allowed = normalizeOrigins(origins);
@@ -237,37 +265,36 @@ export function createCredentialStore(options: CredentialStoreOptions): Credenti
         }
       }
 
-      const readValue = ((): (() => string | null | Promise<string | null>) => {
-        if (ref === null || binding === null) {
-          return () => null;
-        }
+      const makeSender = (
+        readValue: () => string | null | Promise<string | null>,
+        checkBeforeSend?: () => Promise<void>,
+      ) =>
+        createCredentialFetcher(fetcherChecks, {
+          spec: binding?.spec ?? null,
+          readValue,
+          origins: allowed,
+          options: fetchOptions,
+          ...(checkBeforeSend === undefined ? {} : { checkBeforeSend }),
+        });
 
-        if (binding.ref.backend === 'database') {
-          const handle = toHandle({ ...ref, backend: 'database' });
+      if (ref === null || binding === null) {
+        return makeSender(() => null);
+      }
 
-          return () => requireHeld().readAccessToken(handle);
-        }
-
+      if (binding.ref.backend === 'file') {
         const fileRef = binding.ref;
 
-        return () => options.secrets.readFileValue(fileRef);
-      })();
-
-      const send = createCredentialFetcher(fetcherChecks, {
-        spec: binding?.spec ?? null,
-        readValue,
-        origins: allowed,
-        options: fetchOptions,
-      });
-
-      if (ref === null || ref.backend !== 'database') {
-        return send;
+        return makeSender(() => options.secrets.readFileValue(fileRef));
       }
 
       const handle = toHandle({ ...ref, backend: 'database' });
+      const checkHandle = () => requireHeld().checkCounter(handle);
+      const send = makeSender(() => requireHeld().readAccessToken(handle), checkHandle);
+      const sendRefreshed = makeSender(() => requireHeld().readCurrentToken(handle), checkHandle);
 
       return async (input, init) => {
-        const first = await send(input, init);
+        const replayable = await readReplayableInit(init);
+        const first = await send(input, replayable);
 
         if (first.status !== 401) {
           return first;
@@ -279,7 +306,7 @@ export function createCredentialStore(options: CredentialStoreOptions): Credenti
           return first;
         }
 
-        const second = await send(input, init);
+        const second = await sendRefreshed(input, replayable);
 
         if (second.status === 401) {
           await requireHeld().markFailing(handle, 'unauthorised');
@@ -327,7 +354,7 @@ export function createCredentialStore(options: CredentialStoreOptions): Credenti
     exchange: (client, request) => requireHeld().exchange(toHandle(client), request),
     refresh: (binding) => requireHeld().refresh(toHandle(binding)),
     refreshIfDue: (binding) => requireHeld().refreshIfDue(toHandle(binding)),
-    readStatus: (binding) => requireHeld().readState(toHandle(binding).credentialID),
+    readStatus: (binding) => requireHeld().readState(toHandle(binding)),
     remove: (ref) => requireHeld().remove(ref.credentialID),
     recover: () => requireHeld().recover(),
   };
@@ -341,6 +368,17 @@ function listProviderURLs(provider: OAuthProvider): readonly string[] {
   return [provider.tokenURL, ...(provider.revokeURL === undefined ? [] : [provider.revokeURL])];
 }
 
+// A handle keeps a copy of the spec, so a caller that changes the object it passed in afterwards
+// cannot move the origins the credential may reach.
+function freezeSpec(spec: CredentialSpec): CredentialSpec {
+  return Object.freeze({
+    ...spec,
+    origins: Object.freeze(normalizeOrigins(spec.origins)),
+    ...(spec.placement === undefined ? {} : { placement: Object.freeze({ ...spec.placement }) }),
+    ...(spec.provider === undefined ? {} : { provider: Object.freeze({ ...spec.provider }) }),
+  });
+}
+
 // A provider's endpoints go through the fetcher, whose origins the credential's spec must name.
 function requireProviderOrigins(spec: CredentialSpec): void {
   if (spec.provider === undefined) {
@@ -352,6 +390,17 @@ function requireProviderOrigins(spec: CredentialSpec): void {
       throw new Error(`${origin} is not an origin of the credential ${spec.label}`);
     }
   }
+}
+
+// A request body that is a stream is read once, so the retry after a refresh needs the bytes.
+async function readReplayableInit(init: RequestInit | undefined): Promise<RequestInit | undefined> {
+  if (!(init?.body instanceof ReadableStream)) {
+    return init;
+  }
+
+  const buffer = await new Response(init.body).arrayBuffer();
+
+  return { ...init, body: new Uint8Array(buffer) };
 }
 
 // A value nixie holds goes into a keyed digest, because the broker keeps a granted secret under its

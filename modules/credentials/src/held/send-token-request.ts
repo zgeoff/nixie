@@ -26,11 +26,13 @@ const refusalErrors: ReadonlySet<string> = new Set([
 const errorReplySchema = z.object({ error: z.string() });
 
 // Sends a form to the provider's token endpoint through the credential fetcher, so the pinned
-// connection, the body cap and the scrub apply, and sorts the answer.
+// connection, the body cap and the scrub apply, and sorts the answer. A provider that has not
+// answered after the deadline counts as no answer.
 export async function sendTokenRequest(
   send: CredentialFetch,
   tokenURL: string,
   form: Readonly<Record<string, string>>,
+  timeoutMs: number,
 ): Promise<TokenRequestResult> {
   let response: Response;
 
@@ -38,6 +40,7 @@ export async function sendTokenRequest(
     response = await send(tokenURL, {
       method: 'POST',
       body: new URLSearchParams(form),
+      signal: AbortSignal.timeout(timeoutMs),
     });
   } catch {
     return { kind: 'no_answer' };

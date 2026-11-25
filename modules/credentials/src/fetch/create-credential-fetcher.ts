@@ -9,6 +9,7 @@ import {
   scrubText,
   toCaseInsensitiveForms,
 } from '@heynixie/egress';
+import { CredentialRemovedError } from '../held/credential-removed-error';
 import type { CredentialFetch, CredentialSpec, FetchOptions } from '../types';
 import { findCredentialHeader, placeCredential } from './place-credential';
 import type { PlacedCredential } from './place-credential';
@@ -36,6 +37,10 @@ export interface FetcherTarget {
   // values that go in the request body, and that the response never shows: cut from the response
   // and from an error, though never placed
   readonly bodyValues?: readonly string[];
+
+  // Runs after the checks of each hop and just before the request leaves, so a credential removed
+  // while the request waited on a lookup never sends. An error it throws reaches the caller as it is.
+  readonly checkBeforeSend?: () => Promise<void>;
 
   // the origins the caller passed, all inside the spec's
   readonly origins: readonly string[];
@@ -236,6 +241,8 @@ async function sendHop(
     throw new CredentialRefusalError(planned.reason);
   }
 
+  await target.checkBeforeSend?.();
+
   if (checks.transport !== undefined) {
     return sendThroughTransport(checks.transport, signal, hop);
   }
@@ -331,6 +338,10 @@ async function readResponse(reply: HopReply, forms: readonly ValueForm[]): Promi
 // The cleaned error keeps the name and the cleaned message and drops the cause, which may hold the
 // value: a caller's abort reason reaches here too.
 function cleanError(error: unknown, forms: readonly ValueForm[]): unknown {
+  if (error instanceof CredentialRemovedError) {
+    return error;
+  }
+
   if (error instanceof CredentialRefusalError) {
     return new CredentialRefusalError(scrubText(error.message, forms));
   }

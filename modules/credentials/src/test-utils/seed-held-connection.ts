@@ -24,7 +24,7 @@ export async function seedHeldConnection(
     clientSecret: 'fake-client-secret-value',
   });
 
-  const client = await held.store.registerHeld(clientRef, buildHeldSpec(provider, 'oauth_client'));
+  const client = await held.store.register(clientRef, buildHeldSpec(provider, 'oauth_client'));
 
   await held.store.exchange(client, {
     code: 'fake-code',
@@ -32,7 +32,7 @@ export async function seedHeldConnection(
     credentialID: tokenRef.credentialID,
   });
 
-  const token = await held.store.registerHeld(tokenRef, buildHeldSpec(provider, 'oauth_token'));
+  const token = await held.store.register(tokenRef, buildHeldSpec(provider, 'oauth_token'));
 
   return { clientRef, tokenRef, client, token };
 }

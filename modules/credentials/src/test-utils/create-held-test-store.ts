@@ -13,8 +13,12 @@ export interface HeldTestStoreOptions {
   readonly ca: string;
   readonly now: () => number;
 
-  // a backend a test keeps across stores; a new one by default
-  readonly backend?: InMemoryHeldBackend;
+  // a JSON file that keeps the backend's data across processes
+  readonly backendFile?: string;
+
+  // the lookup of a host name; every name goes to the loopback address by default
+  readonly resolveHost?: (host: string) => Promise<readonly string[]>;
+  readonly tokenRequestTimeoutMs?: number;
 }
 
 export interface HeldTestStore {
@@ -26,7 +30,16 @@ export interface HeldTestStore {
 // A store with the in-memory held backend and a recorder over a real log. Every request goes over
 // the pinned connection to a loopback HTTPS site that signs with `ca`.
 export async function createHeldTestStore(options: HeldTestStoreOptions): Promise<HeldTestStore> {
-  const backend = options.backend ?? createInMemoryHeldBackend();
+  const recorder = createCredentialRecorder({
+    log: options.log,
+    definitions: () => ({ snapshotHash: 'test-snapshot' }),
+  });
+
+  const backend = createInMemoryHeldBackend({
+    recorder,
+    ...(options.backendFile === undefined ? {} : { file: options.backendFile }),
+  });
+
   const ownValues = createOwnValueSet();
 
   const store = createCredentialStore({
@@ -35,16 +48,13 @@ export async function createHeldTestStore(options: HeldTestStoreOptions): Promis
       fingerprintKey: await deriveFingerprintKey(Buffer.alloc(32, 7)),
       ownValues,
     },
-    resolveHost: () => Promise.resolve(['127.0.0.1']),
+    resolveHost: options.resolveHost ?? (() => Promise.resolve(['127.0.0.1'])),
     denied: [],
-    held: {
-      backend,
-      recorder: createCredentialRecorder({
-        log: options.log,
-        definitions: () => ({ snapshotHash: 'test-snapshot' }),
-      }),
-    },
+    held: { backend, recorder },
     now: options.now,
+    ...(options.tokenRequestTimeoutMs === undefined
+      ? {}
+      : { tokenRequestTimeoutMs: options.tokenRequestTimeoutMs }),
     test: { checkAddress: (address) => address === '127.0.0.1', ca: options.ca },
   });
 

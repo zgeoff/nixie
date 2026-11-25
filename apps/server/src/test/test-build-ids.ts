@@ -56,5 +56,10 @@ export const testBuildIDs: readonly string[] = [
   'test.inbox_read',
   'runs as an action, never inside the turn',
   'releaseWriterLock',
+  'connectCredential',
+  'refreshCredential',
+  'readCredentialStatus',
+  'test-credentials.json',
+  'test-snapshot',
   'the tool relay has no TCP address',
 ];

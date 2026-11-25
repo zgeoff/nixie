@@ -61,3 +61,33 @@ test('it answers with what the test sets', async () => {
 
   expect(response.status).toBe(503);
 });
+
+test('it records the host name each request asked for, and answers a second name it was given', async () => {
+  const provider = await startFakeOAuthProvider({ otherNames: ['other.test'] });
+
+  const send = createCredentialFetcher(
+    {
+      resolveHost: () => Promise.resolve(['127.0.0.1']),
+      checkAddress: () => true,
+      ca: provider.ca,
+    },
+    {
+      spec: null,
+      readValue: () => null,
+      origins: [provider.origin, provider.origin.replace('auth.test', 'other.test')],
+      options: {},
+    },
+  );
+
+  await send(provider.tokenURL, { method: 'POST', body: new URLSearchParams({ field: 'value' }) });
+
+  await send(provider.tokenURL.replace('auth.test', 'other.test'), {
+    method: 'POST',
+    body: new URLSearchParams({ field: 'value' }),
+  });
+
+  expect(provider.requests.map((request) => request.host)).toStrictEqual([
+    'auth.test',
+    'other.test',
+  ]);
+});
