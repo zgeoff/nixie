@@ -151,10 +151,3 @@ allow-stop-started-sessions:
   checks:
     - { arg: origin, op: eq, value: started }
   note: Stopping a session that nixie started needs no ask.
-
-ask-stop-joined-sessions:
-  outcome: ask
-  tools: [coding.stop]
-  checks:
-    - { arg: origin, op: eq, value: joined }
-  note: Stopping a session of yours asks you first.

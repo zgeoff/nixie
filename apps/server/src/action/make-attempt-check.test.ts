@@ -353,27 +353,31 @@ test('it fails an approved in-step call rule_denied, and runs no call, when a ru
   expect(action).toMatchObject({ status: 'failed', reason: 'rule_denied', attempt_count: 0 });
 });
 
-test('it decides a runner action under its own tool with the task as caller, and asks under an ask rule before a stop of a joined session with the record that caused it', async () => {
+test('it decides a runner action under its own tool with the task as caller, and asks under an ask rule with the record that caused it', async () => {
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
 
-  ctx.rules.push(...readStarterRules());
+  ctx.rules.push({
+    id: 'ask-stop-sessions',
+    revision: 1,
+    rule: { id: 'ask-stop-sessions', outcome: 'ask', tools: ['coding.stop'] },
+  });
 
   const cause = await ctx.readNewestSequence(step.lease.workID);
 
   const action = await ctx.queueRunnerAction(step.lease.workID, {
     tool: 'coding.stop',
-    args: { session: 'atc:cloud.3f9a1c2e.7c1d0e55', origin: 'joined' },
+    args: { session: 'atc:cloud.3f9a1c2e.7c1d0e55', origin: 'started' },
     sequence: cause,
   });
 
   const verdict = await ctx.check({
     action,
-    arguments: { session: 'atc:cloud.3f9a1c2e.7c1d0e55', origin: 'joined' },
+    arguments: { session: 'atc:cloud.3f9a1c2e.7c1d0e55', origin: 'started' },
     proposalID: action.action_id,
   });
 
-  invariant(verdict.kind === 'ask' && verdict.record.payload, 'the stop of a joined session asks');
+  invariant(verdict.kind === 'ask' && verdict.record.payload, 'the stop asks under the ask rule');
 
   const proposed = actionProposedCodec.decode(verdict.record.payload);
 

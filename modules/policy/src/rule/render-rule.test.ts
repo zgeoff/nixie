@@ -169,7 +169,6 @@ test('it renders every rule of the starter template as one sentence', async () =
     ['ask-coding-sessions', '**Ask** before starting a task in atc.'],
     ['ask-exports', '**Ask** before a call when it has the effect `export`.'],
     ['ask-permanent-deletes', '**Ask** before a call when it has the effect `delete`.'],
-    ['ask-stop-joined-sessions', '**Ask** before `coding.stop` when `origin` is `joined`.'],
     [
       'ask-stranger-with-memory',
       '**Ask** before starting a task in sandbox when `memory` is `read` and `persona` is `none`.',

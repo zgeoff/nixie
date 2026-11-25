@@ -41,8 +41,8 @@ export const codingDeclarations = {
     results: {},
   },
 
-  // `coding.stop`: the stop that a stop of the task queues. `origin` is 'started' or 'joined', which
-  // the starter rules match.
+  // `coding.stop`: the stop that a stop of the task queues for a session it started. `origin`, which
+  // the starter rules match, is 'started'.
   stop: {
     effects: ['coding_start'],
     destinations: ['session'],

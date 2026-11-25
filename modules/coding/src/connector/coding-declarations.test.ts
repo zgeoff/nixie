@@ -85,16 +85,6 @@ test.each([
     rule: 'allow-stop-started-sessions',
   },
   {
-    label: 'a stop of a session that the task joined',
-    tool: 'coding.stop',
-    toolList: ['coding.stop'],
-    args: { session: 'atc:cloud.3f9a1c2e.1', origin: 'joined' },
-    destinations: ['atc:cloud.3f9a1c2e.1'],
-    taskDestinations: ['atc:cloud.3f9a1c2e.1'],
-    outcome: 'ask',
-    rule: 'ask-stop-joined-sessions',
-  },
-  {
     label: 'a stop of a session that its task does not hold',
     tool: 'coding.stop',
     toolList: ['coding.stop'],

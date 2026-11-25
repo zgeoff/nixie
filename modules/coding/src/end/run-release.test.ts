@@ -106,23 +106,18 @@ test('it stops a started session through a coding.stop action when the task stop
   });
 });
 
-test('it queues a coding.stop with the joined origin when a task that joined its session stops', async () => {
+test('it lets go of a joined session at a stop, and queues no coding.stop', async () => {
   const ctx = await setupTest();
   const taskID = await ctx.seed.joinedSession();
 
   await ctx.control(taskID, 'stop');
+  await ctx.runActions();
 
-  const stops = await ctx.readStops();
-
-  expect(stops).toStrictEqual([
-    {
-      status: 'pending',
-      arguments: {
-        status: 'readable',
-        fields: { arguments: { session: 'atc:cloud.3f9a1c2e.7c1d0e55', origin: 'joined' } },
-      },
-    },
-  ]);
+  expect({
+    stops: await ctx.readStops(),
+    calls: ctx.readStopCalls(),
+    unboundAt: await ctx.readUnboundAt(taskID),
+  }).toStrictEqual({ stops: [], calls: [], unboundAt: expect.any(Number) });
 });
 
 test('it lets go of a joined session at a close, and calls no stop', async () => {

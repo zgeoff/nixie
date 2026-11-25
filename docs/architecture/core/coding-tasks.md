@@ -119,13 +119,12 @@ doubling its wait up to a cap, and it reports itself unhealthy after several fai
 
 The runner's end hook releases a task's session after the task's stop, close or failure commits:
 
-- **A stop** lets go of the session and queues a `coding.stop` action with the session and its
+- **A joined session**, at a stop, a close or a failure, is let go of at once, with no action and no
+  adapter call. nixie never stops a session it joined, so the session runs on as the user's.
+- **A stop** lets go of a started session and queues a `coding.stop` action with the session and its
   origin. The action names the newest record on the task's thread as its cause. The starter rule
-  `allow-stop-started-sessions` allows the stop of a started session. The starter rule
-  `ask-stop-joined-sessions` asks before the stop of a joined session, because the user may still
-  want that session.
-- **A close or a failure** lets go of a joined session without calling the adapter, so the session
-  runs on as the user's. It stops a started session through the adapter at once, then lets go of it.
+  `allow-stop-started-sessions` allows it.
+- **A close or a failure** stops a started session through the adapter at once, then lets go of it.
   When that stop fails, the binding stays, and the server logs `coding.stop_failed`.
 
 A spawn can finish after its task stopped, a stop can fail, and a crash can come between a control

@@ -75,14 +75,7 @@ test.each<[SessionOrigin, RunnerEndCause, Release]>([
           payload: { taskID: 'task-1', adapter: 'atc', sessionID: 'session-1', cause: 'stopped' },
         },
       ],
-      actions: [
-        {
-          tool: 'coding.stop',
-          args: { session: 'atc:session-1', origin: 'joined' },
-          hashParts: ['stop'],
-          causedBy: { kind: 'record', sequence: 40 },
-        },
-      ],
+      actions: [],
     },
   ],
   [

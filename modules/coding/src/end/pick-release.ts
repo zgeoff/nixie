@@ -26,9 +26,9 @@ export interface ReleaseFacts {
   readonly causeSequence: number;
 }
 
-// What the end of a coding task does with its session. A stop stops the session through a
-// coding.stop action, which the user's rules decide. A close or a failure stops a started session
-// and lets go of a joined one, which runs on as the user's.
+// What the end of a coding task does with its session. Every end lets go of a joined session, which
+// runs on as the user's. A stop stops a started session through a coding.stop action, which the
+// user's rules decide, and a close or a failure stops it through the adapter first.
 export function pickRelease(facts: ReleaseFacts): Release {
   const binding = facts.binding;
 
@@ -50,6 +50,10 @@ export function pickRelease(facts: ReleaseFacts): Release {
     },
   ];
 
+  if (binding.origin === 'joined') {
+    return { kind: 'commit', records, actions: [] };
+  }
+
   if (facts.cause === 'stopped') {
     return {
       kind: 'commit',
@@ -65,7 +69,5 @@ export function pickRelease(facts: ReleaseFacts): Release {
     };
   }
 
-  return binding.origin === 'joined'
-    ? { kind: 'commit', records, actions: [] }
-    : { kind: 'stop_first', records };
+  return { kind: 'stop_first', records };
 }
