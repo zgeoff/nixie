@@ -1,5 +1,11 @@
 export { buildMockCredentialRef } from './build-mock-credential-ref';
-export type { TestCredentialGroups, TestCredentials } from './create-test-credentials';
+
+export type {
+  TestCredentialGroups,
+  TestCredentialSite,
+  TestCredentials,
+} from './create-test-credentials';
+
 export { createTestCredentials } from './create-test-credentials';
 export { stubSopsPath } from './stub-sops-path';
 export { buildHeldSpec } from './build-held-spec';

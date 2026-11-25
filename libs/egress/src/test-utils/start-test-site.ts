@@ -14,6 +14,8 @@ export interface TestSocketConnection {
 }
 
 export interface TestSiteSocket {
+  // false answers the upgrade request as a failure; true when left out
+  readonly shouldUpgrade?: (request: Request) => boolean;
   readonly onOpen?: (connection: TestSocketConnection) => void;
   readonly onMessage?: (connection: TestSocketConnection, text: string) => void;
 }
@@ -65,7 +67,9 @@ export async function startTestSite(options: TestSiteOptions): Promise<TestSite>
     requests.push(copy);
 
     if (options.socket !== undefined && request.headers.get('upgrade') === 'websocket') {
-      return upgrading.upgrade(request, { data: copy })
+      const shouldUpgrade = options.socket.shouldUpgrade?.(request) ?? true;
+
+      return shouldUpgrade && upgrading.upgrade(request, { data: copy })
         ? undefined
         : new Response('not upgraded', { status: 400 });
     }
