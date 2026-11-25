@@ -1,9 +1,9 @@
 # device-layout
 
-- [Journey](#journey): enrol a browser as a device, switch its screen on, and have the model lay it
-  out in 3 regions, update one, let another time out, then save the layout, change it and restore
-  it, then have the model preview the screen, show a page in a region, and send the page a message,
-  then install an approved package, and show a page that loads it and reads a declared fetch.
+- [Journey](#journey): enrol a browser as a device and switch its screen on. Have the model lay the
+  screen out in 3 regions, update one and let another time out. Have it save the layout, change it
+  and restore it. Have it preview the screen, show a page in a region and send the page a message.
+  Then install an approved package, and show a page that loads it and reads a declared fetch.
 - [End state](#end-state): what the page and the records show.
 
 Run this journey on `local` only. It needs the scripted model and the `layout-on-device` action,
@@ -175,10 +175,10 @@ under a name, lay the screen out again, and restore the saved layout in one call
     frame, take a screenshot and read the page from it.
 
 11. Have the model ask for the package `ripple-count` 1.0.0, and approve it as the user would. The
-    install is real: nixie reads the registry's document, the owner approves the card, and the fetch
-    sandbox downloads the tarball, checks its hash and unpacks it. The registry is a test site on a
-    loopback address, and the approval takes a passkey, which a journey cannot give, so the action
-    `--step approve-install` answers as nixie's host command does:
+    install runs in full: nixie reads the registry's document, the user approves the card, and the
+    fetch sandbox downloads the tarball, checks its hash and unpacks it. The registry is a test site
+    on a loopback address. The approval takes a passkey, which a journey cannot give, so approve
+    with the action `--step approve-install`, which answers as nixie's host command does:
 
     ```bash
     bun verify action layout-on-device --step install --text 'The package is asked for.'
@@ -193,10 +193,9 @@ under a name, lay the screen out again, and restore the saved layout in one call
     returns one row: `ripple-count` and `1.0.0`.
 
 12. Have the model show a page in `pond` that loads the approved package and reads the declared
-    fetch of `https://tides.test/today`, which the test site serves. The call is held, because no
-    rule allows the host `tides.test`. The browser holds a device session, which the approvals page
-    refuses, so the action `--step approve` gives the user's answer. Then open the device page
-    again:
+    fetch of `https://tides.test/today`, which the test site serves. nixie holds the model's
+    `device.region` call, because no rule allows the host `tides.test`. The approvals page refuses
+    the browser's device session, so give the user's answer with the action `--step approve`:
 
     ```bash
     bun verify action layout-on-device --step package --text 'The tide page is up.'
@@ -225,9 +224,9 @@ under a name, lay the screen out again, and restore the saved layout in one call
 - In step 9, the model's one call of `device.preview` returned a result with `picture` `shown`.
 - In step 10, the page in `pond` shows "Got hello", and `records` holds one `device.page_event`
   named `echo`.
-- In step 11, `device_packages` holds one row, `ripple-count`. In step 12, the page in `pond` shows
-  "Tide 14:05 ripples 7".
-- The screenshots are evidence for the reviewer. Check nothing in them. When the snapshot in step 10
-  does not list the page's text, read that text from the screenshot.
+- After step 11, `device_packages` holds one row, `ripple-count`. In step 12, the page in `pond`
+  shows "Tide 14:05 ripples 7".
+- Take the screenshots for the reviewer, and check nothing in them, except to read the page's text
+  in step 10 or 12 when its snapshot does not list it.
 
 Once the end state matches, run `bun verify done`.
