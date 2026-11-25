@@ -45,6 +45,7 @@ async function setupTest() {
 
   return {
     appURL: proxy.url,
+    shownButtons: `[...document.querySelectorAll('button')].filter((button) => getComputedStyle(button).visibility === 'visible').map((button) => button.innerText)`,
     view,
     readResizes: () =>
       deviceStore.resizes
@@ -219,6 +220,68 @@ test('it scales a live value and markdown to fill their regions', async () => {
   );
 });
 
+test('it fits markdown inside a region only 30 px tall', async () => {
+  const ctx = await setupTest();
+
+  deviceStore.layoutHolder.layout = {
+    columns: ['1fr'],
+    rows: Array.from({ length: 12 }, () => '1fr'),
+    regions: [
+      {
+        name: 'note',
+        column: 1,
+        row: 1,
+        columnSpan: 1,
+        rowSpan: 1,
+        background: null,
+        content: { kind: 'markdown', markdown: 'Bins go out tonight' },
+        until: null,
+      },
+    ],
+  };
+
+  await ctx.setViewport({ width: 1000, height: 360 });
+  await ctx.switchScreenOn();
+
+  await ctx.waitForPage(
+    `(() => {
+      const region = document.querySelector('[data-region="note"]');
+      const box = region?.querySelector('[data-fit="box"]');
+      const text = box?.firstElementChild;
+      if (!region || !box || !text) return false;
+      const size = parseFloat(getComputedStyle(text).fontSize);
+      return region.clientHeight === 30 && size < 30 && size > 8 && text.scrollHeight <= box.clientHeight && box.scrollHeight <= region.clientHeight;
+    })()`,
+  );
+});
+
+test('it draws a layout whose only visible feature is a region background', async () => {
+  const ctx = await setupTest();
+
+  deviceStore.layoutHolder.layout = {
+    columns: ['1fr'],
+    rows: ['1fr'],
+    regions: [
+      {
+        name: 'pond',
+        column: 1,
+        row: 1,
+        columnSpan: 1,
+        rowSpan: 1,
+        background: 'teal',
+        content: null,
+        until: null,
+      },
+    ],
+  };
+
+  await ctx.switchScreenOn();
+
+  await ctx.waitForPage(
+    `getComputedStyle(document.querySelector('[data-region="pond"]')).backgroundColor === 'rgb(0, 128, 128)'`,
+  );
+});
+
 test('it shows the background of a region', async () => {
   const ctx = await setupTest();
 
@@ -256,20 +319,60 @@ test('it shows the background of a region', async () => {
   );
 });
 
-test('it hides the screen buttons until a touch, and hides them again after a few seconds', async () => {
+test('it hides the screen buttons until a touch', async () => {
   const ctx = await setupTest();
 
   await ctx.switchScreenOn();
 
-  const isShown = `[...document.querySelectorAll('button')].filter((button) => getComputedStyle(button).visibility === 'visible').map((button) => button.innerText)`;
-
-  const hidden = await ctx.view.evaluate(isShown);
+  const hidden = await ctx.view.evaluate(ctx.shownButtons);
 
   await ctx.view.click('[data-testid="screen"]');
+  await ctx.waitForPage(`${ctx.shownButtons}.length === 3`);
 
-  const touched = await ctx.view.evaluate(isShown);
-
-  await ctx.waitForPage(`${isShown}.length === 0`);
+  const touched = await ctx.view.evaluate(ctx.shownButtons);
 
   expect([hidden, touched]).toStrictEqual([[], ['Full screen', 'Switch off screen', 'Sign out']]);
+});
+
+test('it shows the screen buttons on a pointer move', async () => {
+  const ctx = await setupTest();
+
+  await ctx.switchScreenOn();
+  await ctx.view.cdp('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 20, y: 20 });
+  await ctx.waitForPage(`${ctx.shownButtons}.length === 3`);
+});
+
+test('it keeps the screen buttons hidden on a key press', async () => {
+  const ctx = await setupTest();
+
+  await ctx.switchScreenOn();
+  await ctx.view.cdp('Input.dispatchKeyEvent', { type: 'keyDown', key: 'a', text: 'a' });
+
+  await ctx.view.evaluate(
+    `(globalThis.painted = false, requestAnimationFrame(() => requestAnimationFrame(() => { painted = true })), true)`,
+  );
+
+  await ctx.waitForPage('painted === true');
+
+  const shown = await ctx.view.evaluate(ctx.shownButtons);
+
+  expect(shown).toStrictEqual([]);
+});
+
+test('it hides the screen buttons 4 seconds after the latest touch', async () => {
+  const ctx = await setupTest();
+
+  await ctx.switchScreenOn();
+  await ctx.view.click('[data-testid="screen"]');
+  await ctx.waitForPage(`${ctx.shownButtons}.length === 3`);
+  await ctx.pausePageClock();
+  await ctx.advancePageClock(3500);
+
+  const before = await ctx.view.evaluate(ctx.shownButtons);
+
+  await ctx.advancePageClock(1000);
+
+  const after = await ctx.view.evaluate(ctx.shownButtons);
+
+  expect([before, after]).toStrictEqual([['Full screen', 'Switch off screen', 'Sign out'], []]);
 });

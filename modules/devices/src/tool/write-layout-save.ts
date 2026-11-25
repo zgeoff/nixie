@@ -1,5 +1,6 @@
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import invariant from 'tiny-invariant';
+import { pickLayoutSave } from '../layout/pick-layout-save';
 import { readLayout } from '../layout/read-layout';
 import { deviceLayoutSavedCodec } from '../record/device-layout-saved-codec';
 import type { DeviceTables } from '../types';
@@ -19,10 +20,9 @@ export function writeLayoutSave(
 ): Promise<'saved' | 'replaced' | null> {
   return withWriteTransaction(options.log.writer, async (tx) => {
     const inTransaction = { ...options.log, writer: { ...options.log.writer, db: tx } };
+    const db = tx.$extendTables<DeviceTables>();
 
     const layout = await readLayout(inTransaction, write.deviceID, options.clock.now());
-
-    const db = tx.$extendTables<DeviceTables>();
 
     const current = await db
       .selectFrom('device_layouts')
@@ -30,28 +30,22 @@ export function writeLayoutSave(
       .where('device_id', '=', write.deviceID)
       .executeTakeFirst();
 
-    if (layout === null || current === undefined) {
-      return null;
-    }
-
-    const pointers = await db
-      .selectFrom('device_regions')
-      .select(['region', 'shown_sequence'])
-      .where('device_id', '=', write.deviceID)
-      .execute();
-
-    const regionNames = new Set(layout.regions.map((region) => region.name));
-
-    const regions = pointers
-      .filter((pointer) => regionNames.has(pointer.region))
-      .map((pointer) => ({ region: pointer.region, shownSequence: pointer.shown_sequence }));
-
     const existing = await db
       .selectFrom('device_saved_layouts')
       .select('saved_id')
       .where('device_id', '=', write.deviceID)
       .where('name', '=', write.name)
       .executeTakeFirst();
+
+    const plan = pickLayoutSave({
+      layout,
+      layoutSequence: current?.layout_sequence ?? null,
+      isNameTaken: existing !== undefined,
+    });
+
+    if (plan.status === 'none') {
+      return null;
+    }
 
     const [record] = await writeRecordsInTransaction(tx, options.log, [
       {
@@ -61,12 +55,15 @@ export function writeLayoutSave(
         payload: deviceLayoutSavedCodec.encode({
           device: write.deviceID,
           name: write.name,
-          isReplaced: existing !== undefined,
+          isReplaced: plan.isReplaced,
         }),
       },
     ]);
 
     invariant(record, 'the log wrote no device.layout_saved record');
+
+    const regions = JSON.stringify(plan.regions);
+    const savedAtMs = options.clock.now();
 
     await db
       .insertInto('device_saved_layouts')
@@ -74,19 +71,19 @@ export function writeLayoutSave(
         saved_id: crypto.randomUUID(),
         device_id: write.deviceID,
         name: write.name,
-        layout_sequence: current.layout_sequence,
-        regions: JSON.stringify(regions),
-        saved_at: options.clock.now(),
+        layout_sequence: plan.layoutSequence,
+        regions,
+        saved_at: savedAtMs,
       })
       .onConflict((conflict) =>
         conflict.columns(['device_id', 'name']).doUpdateSet({
-          layout_sequence: current.layout_sequence,
-          regions: JSON.stringify(regions),
-          saved_at: options.clock.now(),
+          layout_sequence: plan.layoutSequence,
+          regions,
+          saved_at: savedAtMs,
         }),
       )
       .execute();
 
-    return existing === undefined ? 'saved' : 'replaced';
+    return plan.isReplaced ? 'replaced' : 'saved';
   });
 }

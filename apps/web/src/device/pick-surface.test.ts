@@ -91,7 +91,46 @@ test.each<Row>([
     },
   },
   {
-    title: 'the idle scene when every region is blank',
+    title: 'the layout over the idle scene when a blank region has a background',
+    event: { kind: 'idle', scene: [{ kind: 'markdown', text: '# Saturday' }] },
+    layout: {
+      columns: ['1fr'],
+      rows: ['1fr'],
+      regions: [
+        {
+          name: 'pond',
+          column: 1,
+          row: 1,
+          columnSpan: 1,
+          rowSpan: 1,
+          background: 'teal',
+          content: null,
+          until: null,
+        },
+      ],
+    },
+    expected: {
+      kind: 'layout',
+      layout: {
+        columns: ['1fr'],
+        rows: ['1fr'],
+        regions: [
+          {
+            name: 'pond',
+            column: 1,
+            row: 1,
+            columnSpan: 1,
+            rowSpan: 1,
+            background: 'teal',
+            content: null,
+            until: null,
+          },
+        ],
+      },
+    },
+  },
+  {
+    title: 'the idle scene when every region is blank and has no background',
     event: { kind: 'idle', scene: [{ kind: 'markdown', text: '# Saturday' }] },
     layout: {
       columns: ['1fr'],

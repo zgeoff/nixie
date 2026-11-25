@@ -127,7 +127,7 @@ delete the layout and region pointers.
 
 A show covers the layout without touching it, so a region's minutes keep counting under a show. The
 screen draws, in order, an unexpired `device.show`, the layout while at least one region shows
-content, then the idle scene.
+content or has a background, then the idle scene.
 
 `device.region` reads the layout when its call runs, so a call that waited for approval fails with
 `UNKNOWN_REGION` when a clear or a new layout removed its region in the meantime. A layout set after
@@ -226,7 +226,7 @@ covers the screen and crops evenly. The page sends `devices.resize` after the wi
 most once per debounce window and only when the size differs from the one the server has, which each
 stream connect and each answered resize set, so the assistant reads the new size within a second.
 While the screen is on, the page hides its full-screen, screen-off and sign-out buttons until a
-touch, a pointer move or a key press, and shows them for a few seconds after the latest one.
+touch or a pointer move, and shows them for 4 seconds after the latest one.
 
 A button toggles full screen on the page's root element with the Fullscreen API. Its label reads
 Full screen or Leave full screen, and follows `fullscreenchange`, so Escape updates it. The page

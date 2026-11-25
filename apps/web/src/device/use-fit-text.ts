@@ -32,7 +32,7 @@ export function useFitText(
   }, [container, content]);
 }
 
-const minFontPx = 8;
+const minFontPx = 1;
 const searchSteps = 12;
 
 function fitText(container: HTMLElement | null, content: HTMLElement | null): void {

@@ -175,7 +175,7 @@ test('it leaves a region empty and names it when a forget erased its content', a
   const saved = await ctx.readLayout(ctx.device.deviceID);
 
   await ctx.call('device.layout_save', { device: ctx.device.deviceID, name: 'evening' });
-  await ctx.removeKey(saved?.regions[1]?.shown?.sequence ?? 0);
+  await ctx.forget(saved?.regions[1]?.shown?.sequence ?? 0);
 
   const outcome = await ctx.call('device.layout_restore', {
     device: ctx.device.deviceID,
@@ -225,4 +225,76 @@ test('it restores a layout over a layout that holds the same region names', asyn
   const after = await ctx.readLayout(ctx.device.deviceID);
 
   expect(after?.regions[1]?.shown?.content).toStrictEqual({ kind: 'markdown', markdown: 'first' });
+});
+
+test('it saves the earlier content that shows when a newer overlay ran out, and restores it', async () => {
+  const ctx = await setupTest();
+
+  await ctx.seed.layout(ctx.device.deviceID);
+
+  await ctx.call('device.region', {
+    device: ctx.device.deviceID,
+    region: 'note',
+    content: { kind: 'markdown', markdown: 'base' },
+  });
+
+  await ctx.call('device.region', {
+    device: ctx.device.deviceID,
+    region: 'note',
+    content: { kind: 'markdown', markdown: 'overlay' },
+    minutes: 10,
+    // oxlint-disable-next-line unicorn/no-thenable -- the tool's input is named then
+    then: 'previous',
+  });
+
+  ctx.clock.advance(11 * 60_000);
+
+  await ctx.call('device.layout_save', { device: ctx.device.deviceID, name: 'evening' });
+
+  await ctx.call('device.region', {
+    device: ctx.device.deviceID,
+    region: 'note',
+    content: { kind: 'markdown', markdown: 'later' },
+  });
+
+  await ctx.call('device.layout_restore', { device: ctx.device.deviceID, name: 'evening' });
+
+  const after = await ctx.readLayout(ctx.device.deviceID);
+
+  expect(after?.regions[1]?.shown?.content).toStrictEqual({ kind: 'markdown', markdown: 'base' });
+});
+
+test('it names a region emptied when the content under an expired overlay was forgotten', async () => {
+  const ctx = await setupTest();
+
+  await ctx.seed.layout(ctx.device.deviceID);
+
+  await ctx.call('device.region', {
+    device: ctx.device.deviceID,
+    region: 'note',
+    content: { kind: 'markdown', markdown: 'base' },
+  });
+
+  const base = await ctx.readLayout(ctx.device.deviceID);
+
+  await ctx.call('device.region', {
+    device: ctx.device.deviceID,
+    region: 'note',
+    content: { kind: 'markdown', markdown: 'overlay' },
+    minutes: 10,
+    // oxlint-disable-next-line unicorn/no-thenable -- the tool's input is named then
+    then: 'previous',
+  });
+
+  await ctx.call('device.layout_save', { device: ctx.device.deviceID, name: 'evening' });
+  await ctx.forget(base?.regions[1]?.shown?.sequence ?? 0);
+
+  ctx.clock.advance(11 * 60_000);
+
+  const outcome = await ctx.call('device.layout_restore', {
+    device: ctx.device.deviceID,
+    name: 'evening',
+  });
+
+  expect(outcome).toMatchObject({ status: 'ok', result: { emptied: ['note'] } });
 });

@@ -72,6 +72,19 @@ test('it replaces a saved layout when a save reuses its name', async () => {
 
   const listed = await ctx.call('device.layouts', { device: device.deviceID });
 
+  await ctx.call('device.layout', {
+    device: device.deviceID,
+    columns: ['1fr'],
+    rows: ['1fr'],
+    regions: [{ name: 'orchard', column: 1, row: 1 }],
+  });
+
+  await ctx.call('device.layout_restore', { device: device.deviceID, name: 'evening' });
+
+  const restored = await ctx.readLayout(device.deviceID);
+
+  expect(restored?.regions.map((region) => region.name)).toStrictEqual(['garden']);
+
   expect([replaced, listed]).toStrictEqual([
     { status: 'ok', result: { device: device.deviceID, name: 'evening', replaced: true } },
     {

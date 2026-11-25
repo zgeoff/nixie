@@ -3,7 +3,7 @@ import { startPlatformTimer } from '../utils/start-platform-timer';
 
 const revealMs = 4000;
 
-// Whether the screen's buttons show: false until a touch, a pointer move or a key press, then true
+// Whether the screen's buttons show: false until a touch or a pointer move, then true
 // for `revealMs` after the latest one.
 export function useRevealOnTouch(): boolean {
   const [isRevealed, setIsRevealed] = useState(false);
@@ -23,13 +23,11 @@ export function useRevealOnTouch(): boolean {
 
     globalThis.addEventListener('pointerdown', reveal);
     globalThis.addEventListener('pointermove', reveal);
-    globalThis.addEventListener('keydown', reveal);
 
     return () => {
       timer.stop();
       globalThis.removeEventListener('pointerdown', reveal);
       globalThis.removeEventListener('pointermove', reveal);
-      globalThis.removeEventListener('keydown', reveal);
     };
   }, []);
 

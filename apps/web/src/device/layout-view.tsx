@@ -70,7 +70,9 @@ interface RegionBodyProps {
   readonly content: RegionContent;
 }
 
-const text = css({ height: '100%', padding: '4' });
+// the padding scales with the text, so a small region keeps room for its text
+const text = css({ height: '100%' });
+const padded = css({ padding: '0.25em' });
 
 function RegionBody(props: RegionBodyProps): ReactNode {
   const content = props.content;
@@ -79,7 +81,9 @@ function RegionBody(props: RegionBodyProps): ReactNode {
     return (
       <div className={text}>
         <FitBox fitKey={content.markdown} isCentred={false}>
-          <ReplyText text={content.markdown} />
+          <div className={padded}>
+            <ReplyText text={content.markdown} />
+          </div>
         </FitBox>
       </div>
     );

@@ -42,10 +42,11 @@ under a name, lay the screen out again, and restore the saved layout in one call
    bun verify browser type --role textbox --name 'Device name' --value 'hall display'
    bun verify browser click --role button --name Enrol
    bun verify browser click --role button --name 'Switch on screen'
-   bun verify browser snapshot --until-text 'Switch off screen'
+   bun verify browser snapshot
    ```
 
-   Expect: the buttons "Switch off screen" and "Sign out".
+   Expect: no button "Switch on screen", and no button "Switch off screen" or "Sign out", because
+   the page hides them until a touch.
 
 3. Have the model lay out the screen in 3 regions and fill each one. The region `pond` holds the
    text "Ripples" for 1 minute, `note` holds "Bins go out tonight", and `clock` holds a clock. Copy
@@ -56,10 +57,14 @@ under a name, lay the screen out again, and restore the saved layout in one call
    bun verify conversation turn --message 'Lay out the screen in the hall.' --reply 'The screen is laid out.'
    bun verify browser snapshot --until-text 'Bins go out tonight'
    bun verify browser screenshot
+   bun verify browser click --text 'Bins go out tonight'
+   bun verify browser snapshot
    ```
 
    Expect: `layout-on-device` returns `data.replies` of 6, and `conversation turn` exits 0. The
-   snapshot shows "Ripples", "Bins go out tonight" and a time such as `14:05`.
+   first snapshot shows "Ripples", "Bins go out tonight" and a time such as `14:05`, and no buttons.
+   The click is a touch, which shows the buttons for 4 seconds, so the last snapshot, run straight
+   after it, shows "Switch off screen", "Full screen" and "Sign out".
 
 4. Have the model replace the text of `note` with "Dentist at 3", and check that the other two keep
    their content:

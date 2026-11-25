@@ -1,6 +1,8 @@
 import { createShortID } from '@heynixie/db';
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import invariant from 'tiny-invariant';
+import { pickLayoutRestore } from '../layout/pick-layout-restore';
+import { readRegionState } from '../layout/read-region-state';
 import { readSavedLayouts } from '../layout/read-saved-layouts';
 import { deviceLayoutRestoredCodec } from '../record/device-layout-restored-codec';
 import { deviceLayoutSetCodec } from '../record/device-layout-set-codec';
@@ -52,25 +54,24 @@ export function writeLayoutRestore(
     invariant(grid, 'a saved layout names a layout record with no grid');
 
     const layoutID = createShortID();
+    const nowMs = options.clock.now();
 
-    const names = new Set(grid.regions.map((region) => region.name));
+    const states = await Promise.all(
+      layout.regions.map(async (region) => {
+        const shown = await readRegionState(inTransaction, region.shownSequence, nowMs);
 
-    const kept: { region: string; shownSequence: number }[] = [];
-    const emptied: string[] = [];
+        return {
+          region: region.region,
+          shownSequence: region.shownSequence,
+          isShown: shown !== null,
+        };
+      }),
+    );
 
-    for (const region of layout.regions) {
-      if (!names.has(region.region)) {
-        continue;
-      }
-
-      const content = await readScreenRecord(inTransaction, region.shownSequence);
-
-      if (content === null || content.fields === null) {
-        emptied.push(region.region);
-      } else {
-        kept.push(region);
-      }
-    }
+    const plan = pickLayoutRestore(
+      grid.regions.map((region) => region.name),
+      states,
+    );
 
     const [layoutSet, restored] = await writeRecordsInTransaction(tx, options.log, [
       {
@@ -87,7 +88,7 @@ export function writeLayoutRestore(
           device: write.deviceID,
           name: write.name,
           layoutID,
-          emptied,
+          emptied: plan.emptied,
         }),
       },
     ]);
@@ -95,11 +96,10 @@ export function writeLayoutRestore(
     invariant(layoutSet && restored, 'the log wrote no records for the restore');
 
     const db = tx.$extendTables<DeviceTables>();
-    const nowMs = options.clock.now();
 
     await db.deleteFrom('device_regions').where('device_id', '=', write.deviceID).execute();
 
-    for (const region of kept) {
+    for (const region of plan.kept) {
       await db
         .insertInto('device_regions')
         .values({
@@ -134,7 +134,7 @@ export function writeLayoutRestore(
       status: 'restored',
       layoutID,
       regions: grid.regions.map((region) => region.name),
-      emptied,
+      emptied: plan.emptied,
     };
   });
 }

@@ -32911,18 +32911,21 @@
                                               "properties": {
                                                 "columns": {
                                                   "type": "array",
+                                                  "maxItems": 12,
                                                   "items": {
                                                     "type": "string"
                                                   }
                                                 },
                                                 "rows": {
                                                   "type": "array",
+                                                  "maxItems": 12,
                                                   "items": {
                                                     "type": "string"
                                                   }
                                                 },
                                                 "regions": {
                                                   "type": "array",
+                                                  "maxItems": 36,
                                                   "items": {
                                                     "type": "object",
                                                     "properties": {

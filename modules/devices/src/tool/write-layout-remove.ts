@@ -1,5 +1,6 @@
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import invariant from 'tiny-invariant';
+import { pickLayoutRemoval } from '../layout/pick-layout-removal';
 import { readSavedLayouts } from '../layout/read-saved-layouts';
 import { deviceLayoutRemovedCodec } from '../record/device-layout-removed-codec';
 import type { DeviceTables } from '../types';
@@ -20,8 +21,13 @@ export function writeLayoutRemove(
   return withWriteTransaction(options.log.writer, async (tx) => {
     const saved = await readSavedLayouts(tx, write.deviceID);
 
-    if (!saved.some((layout) => layout.name === write.name)) {
-      return { removed: false, names: saved.map((layout) => layout.name) };
+    const outcome = pickLayoutRemoval(
+      saved.map((layout) => layout.name),
+      write.name,
+    );
+
+    if (!outcome.removed) {
+      return outcome;
     }
 
     const [record] = await writeRecordsInTransaction(tx, options.log, [
@@ -42,9 +48,6 @@ export function writeLayoutRemove(
       .where('name', '=', write.name)
       .execute();
 
-    return {
-      removed: true,
-      names: saved.filter((layout) => layout.name !== write.name).map((layout) => layout.name),
-    };
+    return outcome;
   });
 }
