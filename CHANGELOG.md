@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.119.0](https://github.com/zgeoff/nixie/compare/v0.118.0...v0.119.0) (2026-11-25)
+
+
+### Features
+
+* **connections:** add credential storage and the google connector ([#1472](https://github.com/zgeoff/nixie/issues/1472)) ([8a09522](https://github.com/zgeoff/nixie/commit/8a09522ec0dc100b36dbd9a302aca6f98c8445cc))
+* **devices:** show a sealed page in a device region ([#1485](https://github.com/zgeoff/nixie/issues/1485)) ([a65696a](https://github.com/zgeoff/nixie/commit/a65696a7657cb351d45234be0d16612b4871de9e))
+* **mail:** add the assistant's own mailbox and mail wake rules ([#1486](https://github.com/zgeoff/nixie/issues/1486)) ([4439545](https://github.com/zgeoff/nixie/commit/44395450d111e1caedadc26e26131e5d9b252ad7))
+
 ## [0.118.0](https://github.com/zgeoff/nixie/compare/v0.117.0...v0.118.0) (2026-11-25)
 
 
