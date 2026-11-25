@@ -89,7 +89,7 @@ test('it needs the one scope gmail.modify for every Gmail tool', async () => {
   const ctx = await startGmailTools();
 
   expect(ctx.actions.map((action) => action.scopes)).toSatisfyAll(
-    (scopes) => scopes.length === 1 && scopes[0] === 'gmail.modify',
+    (scopes: readonly string[]) => scopes.length === 1 && scopes[0] === 'gmail.modify',
   );
 });
 

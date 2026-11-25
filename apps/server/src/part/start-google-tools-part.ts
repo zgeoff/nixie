@@ -60,10 +60,10 @@ export function startGoogleToolsPart(inputs: ServerInputs): GoogleToolsPart {
   const actions = buildGmailActions({
     hosts,
     access: {
-      readLiveContexts: async (connection) => {
+      readLiveContexts: (connection) => {
         const runtime = bound.runtime;
 
-        return runtime === null ? [] : await runtime.readLiveContexts(connection);
+        return runtime === null ? Promise.resolve([]) : runtime.readLiveContexts(connection);
       },
     },
     log: {

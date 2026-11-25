@@ -37,7 +37,11 @@ async function setupTest() {
 
     invariant(resolved?.status === 'ok', 'the draft resolves');
 
-    return { draft, digest: String(resolved.input['digest']) };
+    const digest = resolved.input['digest'];
+
+    invariant(typeof digest === 'string', 'the digest is text');
+
+    return { draft, digest };
   };
 
   return { ...ctx, attempt, mail, resolveDraft };
@@ -170,7 +174,9 @@ test('it sends a draft under the action ID and removes the draft', async () => {
 
   invariant(written.kind === 'success', 'the draft is written');
 
-  const draft = String(written.result['draft']);
+  const draft = written.result['draft'];
+
+  invariant(typeof draft === 'string', 'the draft ID is text');
 
   const approved = await ctx.resolveDraft(draft);
   const response = await ctx.attempt('gmail.send_draft', approved, ['sam@example.org']);
@@ -188,7 +194,11 @@ test('it sends none of a draft whose recipients changed since the approval', asy
 
   invariant(written.kind === 'success', 'the draft is written');
 
-  const approved = await ctx.resolveDraft(String(written.result['draft']));
+  const draftID = written.result['draft'];
+
+  invariant(typeof draftID === 'string', 'the draft ID is text');
+
+  const approved = await ctx.resolveDraft(draftID);
   const response = await ctx.attempt('gmail.send_draft', approved, ['someone-else@example.net']);
 
   expect([response.kind, ctx.site.gmail.sent]).toStrictEqual(['destinations_changed', []]);
@@ -218,7 +228,9 @@ test.each([
 
   invariant(written.kind === 'success', 'the draft is written');
 
-  const draft = String(written.result['draft']);
+  const draft = written.result['draft'];
+
+  invariant(typeof draft === 'string', 'the draft ID is text');
 
   const approved = await ctx.resolveDraft(draft);
 

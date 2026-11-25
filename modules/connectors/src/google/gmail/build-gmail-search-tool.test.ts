@@ -65,7 +65,11 @@ test('it passes the token of the next page back as after', async () => {
 
   expect(next).toBe('k3x9m2p7qa.1');
 
-  const second = await ctx.runSearch({ query: 'note', limit: 1, after: String(next) });
+  const second = await ctx.runSearch({
+    query: 'note',
+    limit: 1,
+    after: typeof next === 'string' ? next : '',
+  });
 
   expect(second).toMatchObject({
     status: 'ok',

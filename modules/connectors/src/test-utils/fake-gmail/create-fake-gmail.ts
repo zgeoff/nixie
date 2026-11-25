@@ -360,7 +360,7 @@ function sendMessage(gmail: FakeGmail, state: Counters, body: Record<string, unk
 
   const id = nextID(state, 's');
   const threadID = typeof body['threadId'] === 'string' ? body['threadId'] : id;
-  const stored = buildStoredMail(String(body['raw'] ?? ''), id, threadID, ['SENT']);
+  const stored = buildStoredMail(readText(body['raw']), id, threadID, ['SENT']);
 
   gmail.messages.set(id, stored);
   gmail.sent.push(stored);
@@ -381,6 +381,10 @@ function buildStoredMail(raw: string, id: string, threadID: string, labels: stri
     headers: parsed.headers,
     root: parsed.root,
   };
+}
+
+function readText(value: unknown): string {
+  return typeof value === 'string' ? value : '';
 }
 
 function readAttachment(gmail: FakeGmail, messageID: string, attachmentID: string): Response {
@@ -476,7 +480,7 @@ function toPayload(stored: StoredMail, part: FakePart): Record<string, unknown> 
     headers: [
       ...(isRoot ? stored.headers : []),
       ...part.headers.map(([name, value]) => ({ name, value })),
-    ].map((entry) => (Array.isArray(entry) ? { name: entry[0], value: entry[1] } : entry)),
+    ].map((entry) => ('name' in entry ? entry : { name: entry[0], value: entry[1] })),
     body: isFile
       ? { attachmentId: `att-${part.partID}`, size: part.bytes.byteLength }
       : {
@@ -539,7 +543,7 @@ function answerLabels(
   body: Record<string, unknown>,
 ): Response {
   if (method === 'POST') {
-    const name = String(body['name'] ?? '');
+    const name = readText(body['name']);
 
     if (gmail.labels.has(name)) {
       return new Response('{"error":{"errors":[{"reason":"duplicate"}]}}', { status: 409 });

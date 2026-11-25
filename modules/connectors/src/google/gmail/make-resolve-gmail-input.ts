@@ -73,7 +73,7 @@ function collectPrefixes(input: JSONObject): string[] | 'bad_id' {
   const threads = input['threads'];
 
   if (Array.isArray(threads)) {
-    texts.push(...threads);
+    texts.push(...[...threads]);
   }
 
   const prefixes: string[] = [];
