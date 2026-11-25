@@ -6,8 +6,8 @@ import { readClientAction } from '../utils/read-client-action';
 import { writeClientAction } from '../utils/write-client-action';
 import type { Assertion } from './challenge-for';
 import { checkPasskey } from './check-passkey';
-import type { PasskeyOutcome } from './check-passkey';
 import type { PasskeyVerdict } from './create-passkey-check';
+import { toRevocationVerdict } from './to-revocation-verdict';
 import { updatePasskeyRevoked } from './update-passkey-revoked';
 
 interface RevocationRequest {
@@ -73,7 +73,7 @@ export function writePasskeyRevocation(
     if ('error' in outcome) {
       return outcome.error === 'PASSKEY_REQUIRED'
         ? { status: 'passkey_required' }
-        : { status: 'failed', verdict: toVerdict(outcome) };
+        : { status: 'failed', verdict: toRevocationVerdict(outcome) };
     }
 
     const revokedAt = await updatePasskeyRevoked(tx, context, {
@@ -92,13 +92,4 @@ export function writePasskeyRevocation(
 
     return { status: 'revoked', revokedAt };
   });
-}
-
-// A revoke with no live passkey fails as the unknown passkey it would have named.
-function toVerdict(
-  outcome: Exclude<Extract<PasskeyOutcome, { error: string }>, { error: 'PASSKEY_REQUIRED' }>,
-): FailedVerdict {
-  return outcome.error === 'PASSKEY_FAILED'
-    ? outcome
-    : { error: 'PASSKEY_FAILED', reason: 'unknown_passkey' };
 }

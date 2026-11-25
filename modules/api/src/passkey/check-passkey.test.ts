@@ -103,6 +103,7 @@ async function setupTest() {
     phoneClient,
     createAlwaysAskUnknown,
     createAlwaysAskRow,
+    assertFor,
     readUsed: () => readRecords(api.context.log, { afterSequence: 0, kinds: ['passkey.used'] }),
     tap: async (actionID: string) => {
       await client.approvals.answerUnknownOutcome({
@@ -422,6 +423,23 @@ test('#passkeys.revoke refuses a revoke that carries no assertion for it, even i
   });
 
   expect(revocation).rejects.toMatchObject({ code: 'PASSKEY_FAILED', data: { reason: 'binding' } });
+});
+
+test('#checkPasskey refuses an assertion issued for another action even in an open window', async () => {
+  const ctx = await setupTest();
+  const first = await ctx.createAlwaysAskUnknown();
+  const second = await ctx.createAlwaysAskUnknown();
+
+  await ctx.tap(first);
+
+  const retry = ctx.client.approvals.answerUnknownOutcome({
+    actionID: second,
+    choice: 'retry',
+    clientActionID: crypto.randomUUID(),
+    passkey: await ctx.assertFor({ kind: 'unknown_outcome', actionID: first, choice: 'retry' }),
+  });
+
+  expect(retry).rejects.toMatchObject({ code: 'PASSKEY_FAILED', data: { reason: 'binding' } });
 });
 
 test('#sessions.signOut ends the window of the session', async () => {

@@ -5,8 +5,6 @@ interface WindowOpening {
   readonly passkeyID: string;
 }
 
-// Opens the window of the session that just tapped, for the length that the settings give. A later
-// tap restarts it.
 export function openPasskeyWindow(
   context: Pick<APIContext, 'clock' | 'passkeys' | 'settings'>,
   opening: WindowOpening,
