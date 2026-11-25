@@ -177,6 +177,8 @@ holds the design for a piece of work that is not built yet, with its spikes in
   that merges, rewrites or retires memory items, from an example folder
 - [Taking notes with a task](guides/taking-notes-with-a-task.md) — add a daily task that saves the
   facts in your messages as memories, from an example folder
+- [Connect a Google account](guides/google.md) — make a Google Cloud OAuth client, register it,
+  connect an account, and forget it
 - [Run nixie with Docker Compose](guides/compose.md) — the reference recipe, its placeholders and
   secrets, signing in, and how CI checks it
 - [Run nixie on Kubernetes](guides/kubernetes.md) — the reference manifests, their placeholders and

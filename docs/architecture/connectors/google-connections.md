@@ -69,8 +69,18 @@ The fetcher the store hands to tools refuses the token, revoke and authorize hos
 `/oauth2/` path, so a tool never reaches an endpoint that issues or ends a grant. The store's own
 token requests are not affected.
 
+## The web client
+
+[The connections pages](../channels/client.md#the-connections-pages) call these procedures: the
+setup steps, the client form, Connect, the connections list with its states, the missing-scope
+notice and Forget with its status.
+
 ## Tests
 
 The suites run against a fake Google from `@heynixie/connections/test-utils`. The suite in
 `integration/google-consent.test.ts` runs the web return route, the API, the connections module and
 the fake Google together.
+
+The verify journey `google-connections` runs the same flow in a local test build. The harness serves
+a fake Google, and [the test build](../core/crash-tests.md#the-test-build) reaches Google's
+endpoints there.

@@ -453,7 +453,7 @@ export function createVerifyRegistry(): Wringer {
       },
       {
         name: 'google-connections',
-        summary: 'Register an OAuth client, connect a Google account, and forget it',
+        summary: 'Connect a Google account and forget it',
         paths: featurePaths['google-connections'],
       },
       ...computerFeatures,
