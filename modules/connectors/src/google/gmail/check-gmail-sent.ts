@@ -71,7 +71,16 @@ async function lookBySearch(
     return { kind: 'failed' };
   }
 
-  return readHeaders(deps, context, { ids: readIDs(listed.body), messageID });
+  const ids = readIDs(listed.body);
+
+  return ids === null ? { kind: 'failed' } : readHeaders(deps, context, { ids, messageID });
+}
+
+// A list that Gmail answered in a shape the check cannot read is null, which is no empty list.
+function readIDs(body: unknown): string[] | null {
+  const parsed = listMessagesSchema.safeParse(body);
+
+  return parsed.success ? (parsed.data.messages ?? []).map((entry) => entry.id) : null;
 }
 
 interface HeaderRead {
@@ -89,7 +98,7 @@ async function readHeaders(
   for (const id of request.ids) {
     const read = await readGmailMessage(deps.hosts, context, { id, format: 'metadata' });
 
-    if (read.kind === 'failed') {
+    if (read.kind !== 'message') {
       isFailed = true;
     }
 
@@ -108,12 +117,6 @@ function hasMessageID(message: GmailMessage, messageID: string): boolean {
   return ['message-id', 'x-google-original-message-id'].some(
     (name) => stripAngleBrackets(headers.get(name)) === messageID,
   );
-}
-
-function readIDs(body: unknown): string[] {
-  const parsed = listMessagesSchema.safeParse(body);
-
-  return parsed.success ? (parsed.data.messages ?? []).map((entry) => entry.id) : [];
 }
 
 interface SentWindow {
@@ -151,7 +154,13 @@ async function lookInSent(
       return { kind: 'failed' };
     }
 
-    ids.push(...readIDs(listed.body));
+    const page = readIDs(listed.body);
+
+    if (page === null) {
+      return { kind: 'failed' };
+    }
+
+    ids.push(...page);
 
     pageToken = listMessagesSchema.safeParse(listed.body).data?.nextPageToken;
   } while (pageToken !== undefined && ids.length <= maxListed);

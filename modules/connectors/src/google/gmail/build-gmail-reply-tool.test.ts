@@ -175,7 +175,7 @@ test('it seals the card of a reply so the card reads back its sentence and field
 
   invariant(card !== null, 'the sealed card parses');
 
-  expect(buildGmailSendFields('gmail.reply', card)).toMatchObject({
+  expect(buildGmailSendFields('gmail.reply', card, new Map())).toMatchObject({
     status: 'fields',
     sentence: expect.stringContaining('Reply to sam@example.org'),
     approveLabel: 'Send reply',

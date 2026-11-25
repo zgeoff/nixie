@@ -12,8 +12,8 @@ const labelIDsSchema = z.array(z.string()).exactOptional();
 const threadMessageSchema = z.object({ labelIds: labelIDsSchema });
 const threadSchema = z.object({ messages: z.array(threadMessageSchema).exactOptional() });
 
-// The read-only check of a label change: found when each thread holds every label of `add` and none
-// of `remove`. Anything else is inconclusive, because a later change can have replaced the labels.
+// The read-only check of a label change: found when every message of each thread holds every label
+// of `add` and none of `remove`, as a thread-wide change leaves it. Anything else is inconclusive, because a later change can have replaced the labels.
 // The check cannot tell which labels the action made, so a found change answers `created: null`.
 export async function checkGmailLabels(
   deps: GmailDeps,
@@ -57,11 +57,11 @@ export async function checkGmailLabels(
       return { kind: 'inconclusive' };
     }
 
-    const labels = new Set((held.data.messages ?? []).flatMap((message) => message.labelIds ?? []));
+    const messages = held.data.messages ?? [];
 
     if (
-      !add.every((id) => id !== undefined && labels.has(id)) ||
-      remove.some((id) => labels.has(id))
+      messages.length === 0 ||
+      !messages.every((message) => isChanged(message, { add, remove }))
     ) {
       return { kind: 'inconclusive' };
     }
@@ -76,4 +76,18 @@ export async function checkGmailLabels(
       created: null,
     },
   };
+}
+
+interface LabelChange {
+  readonly add: readonly (string | undefined)[];
+  readonly remove: readonly string[];
+}
+
+function isChanged(message: z.output<typeof threadMessageSchema>, change: LabelChange): boolean {
+  const labels = new Set(message.labelIds);
+
+  return (
+    change.add.every((id) => id !== undefined && labels.has(id)) &&
+    !change.remove.some((id) => labels.has(id))
+  );
 }

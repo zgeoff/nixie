@@ -29,8 +29,7 @@ export interface GmailTools {
 
 // The Gmail tools over a fake Gmail account on a loopback port, with a real log for the link IDs.
 export async function startGmailTools(options: GmailToolsOptions = {}): Promise<GmailTools> {
-  const site = startFakeGmailSite();
-
+  const site = await startFakeGmailSite();
   const log = await startTestLog();
 
   const clock = createFakeClock({ startMs: Date.parse('2026-11-20T09:00:00Z') });

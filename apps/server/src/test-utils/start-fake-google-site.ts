@@ -1,11 +1,16 @@
 import { createFakeGmail } from '@heynixie/connectors/test-utils';
 import type { FakeGmail } from '@heynixie/connectors/test-utils';
 import { buildIDToken } from '@heynixie/credentials/test-utils';
+import { createTestCertificate } from '@heynixie/egress/test-utils';
 import { buildTestGoogleHosts } from '../test/build-test-google-hosts';
+import type { GoogleAPISite } from '../test/types';
 
 export interface FakeGoogleSite {
-  // the loopback address a test build reaches Google's endpoints at
+  // the loopback address of the consent page, which the browser follows
   readonly url: string;
+
+  // the HTTPS site that token, Gmail and every other API request goes to
+  readonly api: GoogleAPISite;
 
   // the mailbox behind Gmail's paths, for a test to read what the assistant sent
   readonly gmail: FakeGmail;
@@ -13,10 +18,10 @@ export interface FakeGoogleSite {
   readonly stop: () => Promise<void>;
 }
 
-// A Google that grants every scope to one account. Its authorize page sends the browser back with a
-// code, its token endpoint answers a code with tokens, its Gmail paths answer from a mailbox with
-// one mail, and every other path answers 200 with an empty body.
-export function startFakeGoogleSite(): FakeGoogleSite {
+// A Google that grants every scope to one account, on 2 loopback sites. The consent site is plain
+// HTTP, for the browser, and sends it back with a code. The HTTPS API site answers tokens, Gmail's
+// paths from a mailbox with one mail, and every other path with 200 and an empty body.
+export async function startFakeGoogleSite(): Promise<FakeGoogleSite> {
   const gmail = createFakeGmail('verify@example.test');
 
   gmail.seed({
@@ -27,27 +32,40 @@ export function startFakeGoogleSite(): FakeGoogleSite {
     text: 'Hi, the Q3 numbers are in the shared sheet.',
   });
 
-  const answerRequest = async (request: Request): Promise<Response> => {
+  const certificate = await createTestCertificate(['localhost']);
+
+  const answerAPIRequest = async (request: Request): Promise<Response> => {
     const answered = await gmail.serve(request);
 
     return answered ?? answerGoogle(request);
   };
 
-  const site = Bun.serve({
+  const consent = Bun.serve({
     port: 0,
     hostname: '127.0.0.1',
-    fetch: answerRequest,
+    fetch: answerConsentRequest,
   });
 
-  return { url: `http://127.0.0.1:${String(site.port)}`, gmail, stop: () => site.stop(true) };
+  const api = Bun.serve({
+    port: 0,
+    hostname: '127.0.0.1',
+    tls: { cert: certificate.cert, key: certificate.key },
+    fetch: answerAPIRequest,
+  });
+
+  return {
+    url: `http://127.0.0.1:${String(consent.port)}`,
+    api: { url: `https://localhost:${String(api.port)}`, ca: certificate.cert },
+    gmail,
+    stop: async () => {
+      await consent.stop(true);
+      await api.stop(true);
+    },
+  };
 }
 
 async function answerGoogle(request: Request): Promise<Response> {
   const url = new URL(request.url);
-
-  if (request.method === 'GET' && url.pathname === '/authorize') {
-    return answerAuthorize(url);
-  }
 
   if (request.method === 'POST' && url.pathname === '/token') {
     const body = await request.text();
@@ -56,22 +74,6 @@ async function answerGoogle(request: Request): Promise<Response> {
   }
 
   return Response.json({});
-}
-
-function answerAuthorize(url: URL): Response {
-  const redirectURI = url.searchParams.get('redirect_uri');
-  const state = url.searchParams.get('state');
-
-  if (redirectURI === null || state === null) {
-    return new Response('The authorize request names no redirect URI or state', { status: 400 });
-  }
-
-  const back = new URL(redirectURI);
-
-  back.searchParams.set('state', state);
-  back.searchParams.set('code', 'verify-code');
-
-  return new Response(null, { status: 302, headers: { location: back.href } });
 }
 
 const scopePrefix = 'https://www.googleapis.com/auth/';
@@ -106,4 +108,28 @@ function answerToken(form: URLSearchParams, siteURL: string): Response {
       email: 'verify@example.test',
     }),
   });
+}
+
+function answerConsentRequest(request: Request): Response {
+  const url = new URL(request.url);
+
+  return request.method === 'GET' && url.pathname === '/authorize'
+    ? answerAuthorize(url)
+    : new Response('Not found.', { status: 404 });
+}
+
+function answerAuthorize(url: URL): Response {
+  const redirectURI = url.searchParams.get('redirect_uri');
+  const state = url.searchParams.get('state');
+
+  if (redirectURI === null || state === null) {
+    return new Response('The authorize request names no redirect URI or state', { status: 400 });
+  }
+
+  const back = new URL(redirectURI);
+
+  back.searchParams.set('state', state);
+  back.searchParams.set('code', 'verify-code');
+
+  return new Response(null, { status: 302, headers: { location: back.href } });
 }

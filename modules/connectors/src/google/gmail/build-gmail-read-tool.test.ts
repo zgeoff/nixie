@@ -189,3 +189,22 @@ test('it refuses a message that does not exist', async () => {
     message: 'UNKNOWN_MESSAGE: no message has the ID k3x9m2p7qa.nope',
   });
 });
+
+test('it ends with an error when the plain-text body of a mail fails to load', async () => {
+  const ctx = await setupTest();
+
+  const seeded = ctx.site.gmail.seed({
+    from: 'sam@example.org',
+    subject: 'Long',
+    text: 'x'.repeat(60_000),
+  });
+
+  ctx.site.gmail.failures.push({ line: `GET /messages/${seeded.id}/attachments`, status: 500 });
+
+  const outcome = await ctx.read({ message: `k3x9m2p7qa.${seeded.id}` });
+
+  expect(outcome).toStrictEqual({
+    status: 'error',
+    message: 'GMAIL_FAILED: Gmail answered backendError',
+  });
+});

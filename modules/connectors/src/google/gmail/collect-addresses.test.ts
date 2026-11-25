@@ -11,6 +11,16 @@ test.each([
   },
   { title: 'a repeat', header: 'a@example.org, A@example.org', expected: ['a@example.org'] },
   { title: 'a group with no address', header: 'undisclosed-recipients:;', expected: [] },
+  {
+    title: 'a group with members',
+    header: 'Team: Sam <sam@example.org>, kim@example.org;',
+    expected: ['sam@example.org', 'kim@example.org'],
+  },
+  {
+    title: 'a group between 2 addresses',
+    header: 'a@example.org, Team: b@example.org;, c@example.org',
+    expected: ['a@example.org', 'b@example.org', 'c@example.org'],
+  },
   { title: 'an empty header', header: '', expected: [] },
 ])('it collects the bare addresses of $title', (row) => {
   expect(collectAddresses(row.header)).toStrictEqual([...row.expected]);

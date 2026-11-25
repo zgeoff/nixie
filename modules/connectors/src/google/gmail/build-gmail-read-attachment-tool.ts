@@ -113,7 +113,7 @@ export function buildGmailReadAttachmentTool(deps: GmailDeps): ToolDefinition {
       if (part.size > maxAttachmentBytes) {
         return {
           status: 'error',
-          message: `TOO_LARGE: ${name} holds more than 25 MiB`,
+          message: `TOO_LARGE: attachment ${parsed.data.attachment} holds more than 25 MiB`,
         };
       }
 
@@ -132,13 +132,16 @@ export function buildGmailReadAttachmentTool(deps: GmailDeps): ToolDefinition {
       const record = { name, type, bytes: part.size };
 
       if (fileContent.kind === 'too_large') {
-        return { status: 'error', message: `TOO_LARGE: ${name} holds more than 25 MiB` };
+        return {
+          status: 'error',
+          message: `TOO_LARGE: attachment ${parsed.data.attachment} holds more than 25 MiB`,
+        };
       }
 
       if (fileContent.kind === 'unreadable') {
         return {
           status: 'error',
-          message: `UNREADABLE: ${name} is no ${type} that can be read: ${fileContent.reason}`,
+          message: `UNREADABLE: attachment ${parsed.data.attachment} cannot be read: ${fenceOutsideText(fileContent.reason)}`,
         };
       }
 

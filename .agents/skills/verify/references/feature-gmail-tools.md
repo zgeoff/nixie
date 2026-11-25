@@ -93,9 +93,9 @@ Before you start:
    bun verify browser click --role button --name 'Send reply'
    ```
 
-   Expect: the card shows the fields `from` `verify@example.test`, `to` `reports@example.org`,
-   `subject` "Re: Q3 numbers" and `text`, the text of the reply. The approve button reads "Send
-   reply". Both clicks exit 0.
+   Expect: the card shows the fields `from` `verify@example.test`, `to`
+   `reports@example.org (no permission)`, `subject` "Re: Q3 numbers" and `text`, the text of the
+   reply. The approve button reads "Send reply". Both clicks exit 0.
 
 7. Check that the mail went out once:
 
@@ -103,14 +103,18 @@ Before you start:
    bun verify proposals --tool gmail.reply --waiting none
    bun verify db query "select state from proposals where family = 'action'"
    bun verify db query "select json_extract(payload, '$.status') as status from records where kind = 'action.outcome' and json_extract(payload, '$.tool') = 'gmail.reply'"
+   bun verify gmail sent --count 1 --to reports@example.org
    ```
 
    Expect: `proposals` exits 0. The first query returns one row with `state` `approved`. The second
-   returns one row with `status` `done`.
+   returns one row with `status` `done`. `gmail sent` exits 0: the fake Gmail took exactly one sent
+   mail, addressed to `reports@example.org`. It fails with `check-failed` for a double send, for no
+   send, and for a mail to any other address.
 
 ## End state
 
 - Step 4: the model searched, read and replied. The reply was held, with no action.
 - Step 6: the card shows the whole text of the reply and its recipient, the `Reply-To` address of
   the mail.
-- Step 7: the reply is approved and its action is done.
+- Step 7: the reply is approved and its action is done, and the fake Gmail holds one sent mail, to
+  `reports@example.org`.

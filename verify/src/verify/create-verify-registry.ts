@@ -15,8 +15,10 @@ import { checkHarness } from './check-harness';
 import { conversationRecordSchema } from './collect-conversation-records';
 import { computerFeatures } from './computer-features';
 import { featurePaths, ignoredPaths, sharedPaths } from './feature-paths';
+import { gmailSentCommand } from './gmail-sent-command';
 import { controlRoutes } from './harness/control-routes';
 import { lastFeatures } from './last-features';
+import { liveOpensCommand } from './live-opens-command';
 import { pickTaskRefusal } from './pick-task-refusal';
 import { postControl } from './post-control';
 import { buildServedBlobsArgv, servedSourceFolders } from './preview/build-served-blobs-argv';
@@ -35,7 +37,6 @@ import { readProdErrors } from './prod/read-prod-errors';
 import { readProdHealth } from './prod/read-prod-health';
 import { readProdVersion } from './prod/read-prod-version';
 import { readConversationTurn } from './read-conversation-turn';
-import { readLiveOpens } from './read-live-opens';
 import { readModelReceived } from './read-model-received';
 import { readSessionCheck } from './read-session-check';
 import { refuseHarnessless } from './refuse-harnessless';
@@ -331,14 +332,8 @@ export function createVerifyRegistry(): Wringer {
         );
       },
     })
-    .command({
-      path: ['live', 'opens'],
-      summary: 'Count the live streams the browser opened since `up`; --opened checks the count',
-      effect: 'read',
-      args: z.strictObject({ opened: z.int().nonnegative().optional() }),
-      data: controlRoutes.liveOpens.output,
-      run: (args, ctx) => readLiveOpens(ctx, args.opened),
-    })
+    .command(gmailSentCommand)
+    .command(liveOpensCommand)
     .command({
       path: ['prod', 'conversation'],
       summary:

@@ -1,4 +1,4 @@
-import { onTestFinished } from 'bun:test';
+import { startTestSite } from '@heynixie/egress/test-utils';
 import type { GmailAccess, GmailDeps } from '../../google/gmail/types';
 import type { ConnectorContext } from '../../types';
 import type { FakeGmail } from './create-fake-gmail';
@@ -14,26 +14,25 @@ export interface FakeGmailSite {
   readonly hosts: GmailDeps['hosts'];
 }
 
-// A fake Gmail account on a loopback port, stopped when the test ends. The context's fetcher sends
-// each request to it with no credential, as the credential store's fetcher does for Google's host.
-export function startFakeGmailSite(connection = 'k3x9m2p7qa'): FakeGmailSite {
+// A fake Gmail account on a loopback HTTPS site, stopped when the test ends. The context's fetcher
+// trusts the site's certificate and sends each request to it with no credential, as the credential
+// store's fetcher does for Google's host.
+export async function startFakeGmailSite(connection = 'k3x9m2p7qa'): Promise<FakeGmailSite> {
   const gmail = createFakeGmail();
 
-  const answerRequest = async (request: Request): Promise<Response> => {
-    const answered = await gmail.serve(request);
+  const site = await startTestSite({
+    names: ['localhost'],
+    respond: async (request) => {
+      const answered = await gmail.serve(request);
 
-    return answered ?? new Response('Not found.', { status: 404 });
-  };
-
-  const server = Bun.serve({
-    hostname: '127.0.0.1',
-    port: 0,
-    fetch: answerRequest,
+      return answered ?? new Response('Not found.', { status: 404 });
+    },
   });
 
-  onTestFinished(() => server.stop(true));
+  const origin = `https://localhost:${String(site.port)}`;
 
-  const origin = `http://127.0.0.1:${String(server.port)}`;
+  const sendRequest = (input: string | URL | Request, init?: RequestInit): Promise<Response> =>
+    fetch(input, { ...init, tls: { ca: site.ca } });
 
   const context: ConnectorContext = {
     connectionID: `${connection}-id`,
@@ -62,8 +61,4 @@ export function startFakeGmailSite(connection = 'k3x9m2p7qa'): FakeGmailSite {
       apisOrigin: origin,
     },
   };
-}
-
-function sendRequest(input: string | URL | Request, init?: RequestInit): Promise<Response> {
-  return fetch(input, init);
 }

@@ -1,11 +1,16 @@
+import type { DestinationPermission } from '@heynixie/log';
 import type { BodyFields } from '@heynixie/policy';
 import type { GmailCard } from './gmail-card';
 import { gmailToolNames } from './gmail-tool-names';
 
-// The card of a send, from the facts that `prepare` read: its sentence and approve button by the
-// table of cards, and a field for the account, each recipient, the subject, the message answered, the
-// text and the files. An empty field leaves the card.
-export function buildGmailSendFields(tool: string, card: GmailCard): BodyFields {
+// The card of a send, from the facts that `prepare` read: its sentence, approve button and fields,
+// with each recipient beside the permission the decision gave it, or "no permission". An empty
+// field leaves the card.
+export function buildGmailSendFields(
+  tool: string,
+  card: GmailCard,
+  permissions: ReadonlyMap<string, DestinationPermission | null>,
+): BodyFields {
   const everyone = [card['to'], card['cc'], card['bcc']].filter(
     (list): list is string => list !== undefined && list !== '',
   );
@@ -13,9 +18,9 @@ export function buildGmailSendFields(tool: string, card: GmailCard): BodyFields 
   const fields = Object.fromEntries(
     [
       ['from', card['from']],
-      ['to', card['to']],
-      ['cc', card['cc']],
-      ['bcc', card['bcc']],
+      ['to', annotateRecipients(card['to'], permissions)],
+      ['cc', annotateRecipients(card['cc'], permissions)],
+      ['bcc', annotateRecipients(card['bcc'], permissions)],
       ['subject', card['subject']],
       ['inReplyTo', card['inReplyTo']],
       ['text', card['text']],
@@ -44,4 +49,34 @@ export function buildGmailSendFields(tool: string, card: GmailCard): BodyFields 
         : `Send an email from ${from} to ${everyone.join(', ')}: "${subject}"`,
     approveLabel: 'Send email',
   };
+}
+
+const permissionWords: Readonly<Record<DestinationPermission, string>> = {
+  owner: 'you',
+  reply_target: 'reply target',
+  known_contact: 'known contact',
+  task: 'task',
+  rule: 'allow rule',
+};
+
+function annotateRecipients(
+  list: string | undefined,
+  permissions: ReadonlyMap<string, DestinationPermission | null>,
+): string | undefined {
+  if (list === undefined || list === '') {
+    return list;
+  }
+
+  return list
+    .split(', ')
+    .map((address) => {
+      const permission = permissions.get(address);
+
+      if (permission === undefined) {
+        return address;
+      }
+
+      return `${address} (${permission === null ? 'no permission' : permissionWords[permission]})`;
+    })
+    .join(', ');
 }

@@ -89,3 +89,63 @@ test('it refuses an answer from Gmail that is an error', async () => {
     message: 'GMAIL_FAILED: Gmail answered insufficientPermissions',
   });
 });
+
+test('it ends the search with an error when a listed hit fails to read', async () => {
+  const ctx = await setupTest();
+
+  const seeded = ctx.site.gmail.seed({ from: 'sam@example.org', subject: 'Q3', text: 'figures' });
+
+  ctx.site.gmail.failures.push({ line: `GET /messages/${seeded.id}`, status: 500 });
+
+  const outcome = await ctx.runSearch({ query: 'figures' });
+
+  expect(outcome).toStrictEqual({
+    status: 'error',
+    message: 'GMAIL_FAILED: Gmail answered backendError',
+  });
+});
+
+test('it ends the search with an error when Gmail answers a list it cannot read', async () => {
+  const ctx = await setupTest();
+
+  ctx.site.gmail.failures.push({ line: 'GET /messages?', status: 200, body: '{"messages":"x"}' });
+
+  const outcome = await ctx.runSearch({ query: 'figures' });
+
+  expect(outcome).toStrictEqual({
+    status: 'error',
+    message: 'GMAIL_FAILED: Gmail answered with no list of messages',
+  });
+});
+
+test('it drops a hit that vanished between the list and its read', async () => {
+  const ctx = await setupTest();
+
+  const seeded = ctx.site.gmail.seed({ from: 'sam@example.org', subject: 'Q3', text: 'figures' });
+
+  ctx.site.gmail.failures.push({ line: `GET /messages/${seeded.id}`, status: 404 });
+
+  const outcome = await ctx.runSearch({ query: 'figures' });
+
+  expect(outcome).toMatchObject({ status: 'ok', result: { messages: [], next: null } });
+});
+
+test('it marks the date, the unread flag and the attachment flag of a hit as endorsed', async () => {
+  const ctx = await setupTest();
+
+  const schema = ctx.findAction('gmail.search').tool.output;
+
+  expect(schema).toMatchObject({
+    properties: {
+      messages: {
+        items: {
+          properties: {
+            date: { 'x-endorsed': true },
+            isUnread: { 'x-endorsed': true },
+            hasAttachments: { 'x-endorsed': true },
+          },
+        },
+      },
+    },
+  });
+});

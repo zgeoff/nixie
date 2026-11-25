@@ -70,7 +70,8 @@ the decision point, and the action queue runs the attempt after the decision.
   one of the assistant's own files on the thread. `gmail.reply` takes its recipients from the
   message, never from the model: `Reply-To`, else `From`, and with `replyAll` the message's `To` and
   `Cc` too, without the account's own address. A reply to the account's own message goes to its
-  `To`. `gmail.send_draft` reads the draft's recipients.
+  `To`. `gmail.send_draft` reads the draft's recipients. A header that holds an address group, such
+  as `Team: a@example.org, b@example.org;`, counts each member as a recipient.
 - **Reply target.** The sender of the message is the reply target of a reply. A reply has no reply
   target when the message sits in Spam or Trash or came from the account itself, and a `Reply-To`
   address that differs from `From` is a destination with no reply target. A sender therefore cannot
@@ -79,19 +80,24 @@ the decision point, and the action queue runs the attempt after the decision.
 - **Decision.** Destinations are bare addresses in lowercase NFC. An exact address can hold act
   trust, and a domain pattern never covers an address, as
   [destinations](../policy/decision-point.md#destinations) sets. The action hash covers the
-  destinations and their reply targets.
+  destinations and their reply targets. The address of each live Google connection is one of your
+  own, so a mail to it needs no card, and forgetting the connection takes that address away.
 - **Attempt.** The attempt reads the message or draft again and compares the recipients and the
   reply target. When either differs, such as after the message moved to Spam, it answers
-  `destinations_changed`, and the action fails and sends to none. `gmail.send_draft` sends the
-  draft's current message with the action's `Message-ID` in place of its own, then deletes the
-  draft, and compares recipients only, not the body.
+  `destinations_changed`, and the action fails and sends to none. Before the decision,
+  `gmail.send_draft` adds a `digest` of the draft's whole raw message to the call's arguments, so
+  the decision, the action hash and the queued action cover its recipients, subject, body and files.
+  The attempt reads the draft again, and when its digest differs it refuses and sends nothing.
+  Otherwise it sends the draft's message with the action's `Message-ID` in place of its own, then
+  deletes the draft.
 - **Message.** nixie builds the MIME message itself. Its headers are `Date`, `From`, `To`, `Cc`,
   `Bcc`, `Subject`, `Message-ID`, `In-Reply-To` and `References` for a reply, `MIME-Version` and the
   content headers. `Message-ID` is `<action ID@domain of the account>` and the only header that
   names the action. No header names nixie, so a recipient cannot tell that you use an assistant.
 - **Errors.** A Gmail 429, or a 403 that names `rateLimitExceeded` or `userRateLimitExceeded`, is
-  `refused_retryable` and honours `Retry-After`. A 5xx, a failed network call and an answer with no
-  message are `ambiguous`. Any other refusal ends the action.
+  `refused_retryable` and honours `Retry-After`. A 5xx, whatever its body says, a failed network
+  call and an answer with no message are `ambiguous`, so a send that Gmail may have taken never
+  repeats on its own. Any other refusal ends the action.
 
 ### The card
 
@@ -109,7 +115,10 @@ attachment is gone reads as unreadable and shows no body.
 
 A mail card shows the account it leaves from, each recipient, the subject, the message answered
 (`gmail.reply`), the whole text body and each file by name and size. It leaves out an empty field.
-`{to}` lists every destination, `bcc` included.
+`{to}` lists every destination, `bcc` included. Each recipient in `to`, `cc` and `bcc` stands beside
+the permission that the decision gave it, such as `sam@example.org (reply target)`, and one that no
+permission covered reads `kirk@example.org (no permission)`. `readGmailBodyFields` reads those
+permissions from the call's own record when the card is read.
 
 ## Sent-folder check
 
@@ -126,16 +135,18 @@ client set and keep the old one in the second header.
 | Both ways finish and find none                                  | not found                            |
 | The list holds more than 200 messages                           | inconclusive                         |
 | Any call fails, or Gmail answers in a way the check cannot read | inconclusive                         |
+| A listed message is gone when the check reads it                | inconclusive                         |
 
 Found makes the action done, with the found message and thread as its result. Not found and
 inconclusive bring the action to the user on a card, and nothing sends again until the user answers,
 as [reconciliation](../core/actions.md#reconciling-an-unknown-outcome) sets. Gmail keeps no other
 trace of a sent mail, so a Sent copy deleted for good looks the same as a mail that never went out.
 
-`gmail.find_labels` answers found when each thread holds every label in `add` and none in `remove`,
-and inconclusive otherwise. A label change that it finds done answers `created: null`, because the
-check cannot tell which labels the action made. `gmail.find_draft` answers found when the account
-holds a draft whose `Message-ID` header holds the action's ID.
+`gmail.find_labels` answers found when every message of each thread holds every label in `add` and
+none in `remove`, and inconclusive otherwise, because a thread-wide change leaves no message out. A
+label change that it finds done answers `created: null`, because the check cannot tell which labels
+the action made. `gmail.find_draft` answers found when the account holds a draft whose `Message-ID`
+header holds the action's ID.
 
 ## Labels and drafts
 
@@ -150,5 +161,5 @@ rule that asks, or a call that follows outside content, can still hold one on a 
 
 The connector's `test-utils` folder holds a fake Gmail that serves the REST paths the tools use. It
 seeds mail, records each request, sends and fails on demand, and `startGmailTools` builds the tools
-on it. The test build's fake Google site serves the same fake Gmail on its Gmail paths, with one
-mail in the mailbox.
+on a loopback HTTPS site of it, whose certificate the tools' fetcher trusts. The test build's fake
+Google site serves the same fake Gmail on its Gmail paths over HTTPS, with one mail in the mailbox.

@@ -1,5 +1,6 @@
 // The bare addresses of an address header, in lowercase NFC, in order and with no repeat. A name
-// that holds a comma or an angle bracket stays inside its quotes.
+// that holds a comma or an angle bracket stays inside its quotes, and the members of a group such as
+// `Team: a@example.org, b@example.org;` count one by one.
 export function collectAddresses(header: string | null | undefined): string[] {
   const found: string[] = [];
 
@@ -29,9 +30,11 @@ function splitEntries(header: string): string[] {
       depth = Math.max(0, depth - 1);
     }
 
-    if (character === ',' && !isQuoted && depth === 0) {
+    if ((character === ',' || character === ';') && !isQuoted && depth === 0) {
       entries.push(current);
 
+      current = '';
+    } else if (character === ':' && !isQuoted && depth === 0) {
       current = '';
     } else {
       current += character;

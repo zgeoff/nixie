@@ -2,6 +2,7 @@ import { setWorkTracker } from '@heynixie/clock';
 import { setFaultPointHandler } from '@heynixie/tasks';
 import type { HarnessLink } from '@heynixie/testing';
 import { readDescendants, startHarnessLink, stopProcesses } from '@heynixie/testing';
+import type { GoogleAPISite } from '../test/types';
 
 export interface CrashHarness {
   readonly link: HarnessLink;
@@ -19,6 +20,10 @@ export interface CrashHarness {
   // the fake Google site that consents, token requests and scope reads go to; null keeps Google's
   // own hosts
   readonly googleURL: string | null;
+
+  // the HTTPS site that token, Gmail and every other API request of a `.google.test` host goes to;
+  // null keeps Google's own hosts
+  readonly googleAPI: GoogleAPISite | null;
 
   readonly stopDescendants: () => void;
 }
@@ -48,6 +53,7 @@ export function joinCrashHarness(
     providerURL,
     atcURL: env['NIXIE_TEST_ATC_URL'] ?? null,
     googleURL: env['NIXIE_TEST_GOOGLE_URL'] ?? null,
+    googleAPI: readGoogleAPI(env),
     fetchArgv: fetcher === undefined ? null : [process.execPath, fetcher],
 
     // A guest leads its own process group, so it outlives a nixie that exits. A host that loses
@@ -56,4 +62,11 @@ export function joinCrashHarness(
       stopProcesses(readDescendants(process.pid));
     },
   };
+}
+
+function readGoogleAPI(env: Readonly<Record<string, string | undefined>>): GoogleAPISite | null {
+  const url = env['NIXIE_TEST_GOOGLE_API_URL'];
+  const ca = env['NIXIE_TEST_GOOGLE_API_CA'];
+
+  return url === undefined || ca === undefined ? null : { url, ca };
 }

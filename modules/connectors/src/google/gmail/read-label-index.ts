@@ -25,9 +25,13 @@ export async function readLabelIndex(
 
   const listed = listSchema.safeParse(reply.body);
 
+  if (!listed.success) {
+    return { kind: 'failed', reason: 'Gmail answered with no list of labels', status: 502 };
+  }
+
   const idByName = new Map<string, string>(systemLabels.map((name) => [name, name]));
 
-  for (const label of listed.success ? (listed.data.labels ?? []) : []) {
+  for (const label of listed.data.labels ?? []) {
     if (!systemLabels.includes(label.name.toUpperCase())) {
       idByName.set(label.name, label.id);
     }

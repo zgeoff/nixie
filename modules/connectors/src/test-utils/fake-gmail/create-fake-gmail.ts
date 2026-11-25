@@ -396,7 +396,7 @@ function readAttachment(gmail: FakeGmail, messageID: string, attachmentID: strin
 }
 
 function findAttachment(part: FakePart, attachmentID: string): FakePart | undefined {
-  if (`att-${part.partID}` === attachmentID && part.filename !== '') {
+  if (`att-${part.partID}` === attachmentID && isKeptApart(part)) {
     return part;
   }
 
@@ -409,6 +409,13 @@ function findAttachment(part: FakePart, attachmentID: string): FakePart | undefi
   }
 
   return undefined;
+}
+
+// Gmail answers a file, and a body past this many bytes, by attachment ID.
+const inlineBodyBytes = 50_000;
+
+function isKeptApart(part: FakePart): boolean {
+  return part.filename !== '' || part.bytes.byteLength > inlineBodyBytes;
 }
 
 function notFound(): Response {
@@ -460,7 +467,7 @@ function buildRaw(stored: StoredMail): string {
 
 function toPayload(stored: StoredMail, part: FakePart): Record<string, unknown> {
   const isRoot = part.partID === '' || part === stored.root;
-  const isFile = part.filename !== '';
+  const isFile = isKeptApart(part);
 
   return {
     partId: part.partID,

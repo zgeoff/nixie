@@ -143,6 +143,10 @@ async function readMessageResult(
     return { status: 'error', message: 'SESSION_ENDED: the session ended before the mail opened' };
   }
 
+  if (body.kind === 'failed') {
+    return { status: 'error', message: `GMAIL_FAILED: ${body.reason}` };
+  }
+
   const parts = body.kind === 'text' ? collectPageParts(body.linked, deps.textBytes) : [];
 
   if (body.kind === 'text' && view.part > parts.length) {
@@ -211,6 +215,7 @@ async function readMessageResult(
 
 type Body =
   | { readonly kind: 'text'; readonly linked: LinkedText }
+  | { readonly kind: 'failed'; readonly reason: string }
   | { readonly kind: 'unsupported' }
   | { readonly kind: 'ended' };
 
@@ -229,6 +234,10 @@ async function readBody(
     content.textPart === null
       ? null
       : await readPartBytes(deps.hosts, context, { message: message.id, part: content.textPart });
+
+  if (plain?.kind === 'failed') {
+    return plain;
+  }
 
   if (content.textPart !== null && plain?.kind === 'bytes') {
     const text = decodePartText(plain.bytes, content.textPart.headers.get('content-type'));
@@ -249,8 +258,8 @@ async function readBody(
     part: content.htmlPart,
   });
 
-  if (html.kind !== 'bytes') {
-    return { kind: 'unsupported' };
+  if (html.kind === 'failed') {
+    return html;
   }
 
   const reply = await deps.readHTML(

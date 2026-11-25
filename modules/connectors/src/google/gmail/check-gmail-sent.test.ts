@@ -147,3 +147,34 @@ test('it answers inconclusive when the Sent list holds more than 200 messages', 
 
   expect(outcome).toStrictEqual({ kind: 'inconclusive' });
 });
+
+test('it answers inconclusive when Gmail answers a list the check cannot read', async () => {
+  const ctx = await setupTest();
+
+  ctx.site.gmail.failures.push(
+    { line: 'GET /messages?q=rfc822msgid', status: 200, body: '{"messages":"invalid"}' },
+    { line: 'GET /messages?q=after', status: 200, body: '{"messages":"invalid"}' },
+  );
+
+  const outcome = await ctx.check();
+
+  expect(outcome).toStrictEqual({ kind: 'inconclusive' });
+});
+
+test('it answers inconclusive when a listed message is gone by the time the check reads it', async () => {
+  const ctx = await setupTest();
+
+  const seeded = ctx.site.gmail.seed({
+    from: 'me@example.test',
+    subject: 'Other',
+    text: 'x',
+    labels: ['SENT'],
+    sentAtMs: ctx.clock.now(),
+  });
+
+  ctx.site.gmail.failures.push({ line: `GET /messages/${seeded.id}`, status: 404 });
+
+  const outcome = await ctx.check();
+
+  expect(outcome).toStrictEqual({ kind: 'inconclusive' });
+});

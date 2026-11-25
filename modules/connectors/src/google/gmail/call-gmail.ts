@@ -60,7 +60,9 @@ export async function callGmail(
     kind: 'error',
     status: response.status,
     reason: readReason(text, response.status),
-    isRateLimit: response.status === 429 || /(?:user)?rateLimitExceeded/iu.test(text),
+    isRateLimit:
+      response.status === 429 ||
+      (response.status === 403 && /(?:user)?rateLimitExceeded/iu.test(text)),
     retryAfterMs: readRetryAfterMs(response.headers.get('retry-after')),
   };
 }

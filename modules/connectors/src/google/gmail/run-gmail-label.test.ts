@@ -101,3 +101,36 @@ test('it answers inconclusive when a label change does not hold', async () => {
     kind: 'inconclusive',
   });
 });
+
+test('it answers inconclusive when only one message of a thread holds the label', async () => {
+  const ctx = await setupTest();
+
+  const first = ctx.site.gmail.seed({
+    from: 'sam@example.org',
+    subject: 'Q3',
+    text: 'x',
+    threadID: 'thread-1',
+  });
+
+  ctx.site.gmail.seed({
+    from: 'sam@example.org',
+    subject: 'Re: Q3',
+    text: 'y',
+    threadID: 'thread-1',
+    labels: ['INBOX'],
+  });
+
+  const stored = ctx.site.gmail.messages.get(first.id);
+
+  invariant(stored, 'the message is seeded');
+
+  stored.labels.push('STARRED');
+
+  const outcome = await ctx.check({
+    threads: ['k3x9m2p7qa.thread-1'],
+    add: ['STARRED'],
+    remove: [],
+  });
+
+  expect(outcome).toStrictEqual({ kind: 'inconclusive' });
+});

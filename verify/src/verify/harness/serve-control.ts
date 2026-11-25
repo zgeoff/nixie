@@ -34,6 +34,8 @@ export interface ControlHandlers {
   readonly readModelInput: () => z.input<typeof controlRoutes.modelInput.output>;
 
   readonly readLiveOpens: () => number;
+
+  readonly readGmailSent: () => z.input<typeof controlRoutes.gmailSent.output>;
 }
 
 export function serveControl(handlers: ControlHandlers): Bun.Server<undefined> {
@@ -54,6 +56,9 @@ export function serveControl(handlers: ControlHandlers): Bun.Server<undefined> {
       },
       [controlRoutes.modelInput.path]: {
         GET: makeRouteHandler(controlRoutes.modelInput, handlers.readModelInput),
+      },
+      [controlRoutes.gmailSent.path]: {
+        GET: makeRouteHandler(controlRoutes.gmailSent, handlers.readGmailSent),
       },
       [controlRoutes.liveOpens.path]: {
         GET: makeRouteHandler(controlRoutes.liveOpens, () => ({

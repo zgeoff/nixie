@@ -42,8 +42,11 @@ export const replyArgumentsSchema = z.strictObject({
   ...bodyFields,
 });
 
+// `digest` is the fingerprint of the draft that the endpoint added before the decision; the model
+// never passes it.
 export const sendDraftArgumentsSchema = z.strictObject({
   draft: z.string(),
+  digest: z.string(),
   connection: z.string().exactOptional(),
 });
 

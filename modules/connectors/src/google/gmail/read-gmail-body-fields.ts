@@ -4,6 +4,7 @@ import type { BodyFields, BodyFieldsRequest } from '@heynixie/policy';
 import { buildGmailSendFields } from './build-gmail-send-fields';
 import { parseCardAttachment } from './gmail-card';
 import { gmailToolNames } from './gmail-tool-names';
+import { readDestinationPermissions } from './read-destination-permissions';
 
 const sendTools: ReadonlySet<string> = new Set([
   gmailToolNames.send,
@@ -32,7 +33,13 @@ export async function readGmailBodyFields(
   const bytes = stored?.status === 'readable' ? stored.attachments[0] : undefined;
   const card = bytes === undefined ? null : parseCardAttachment(bytes);
 
-  return card === null ? { status: 'unreadable' } : buildGmailSendFields(request.tool, card);
+  if (card === null) {
+    return { status: 'unreadable' };
+  }
+
+  const permissions = await readDestinationPermissions(log, request.callSequence);
+
+  return buildGmailSendFields(request.tool, card, permissions);
 }
 
 function buildLabelFields(input: JSONObject): BodyFields {

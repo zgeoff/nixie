@@ -22,6 +22,8 @@ const codingTaskSchema = z.strictObject({
   repo: z.strictObject({ url: z.string().min(1), ref: z.string().min(1) }),
 });
 
+const sentMailSchema = z.strictObject({ to: z.string(), messageID: z.string() });
+
 const drawnPictureSchema = z.strictObject({
   prompt: z.string().min(1),
   edit: z.string().min(1),
@@ -190,6 +192,14 @@ export const controlRoutes = {
     path: '/control/model-input',
     input: z.strictObject({}),
     output: z.strictObject({ text: z.string() }),
+  },
+  gmailSent: {
+    method: 'GET',
+    path: '/control/gmail-sent',
+    input: z.strictObject({}),
+
+    // each mail that the fake Gmail took through its send call, oldest first
+    output: z.strictObject({ sent: z.array(sentMailSchema) }),
   },
   liveOpens: {
     method: 'GET',

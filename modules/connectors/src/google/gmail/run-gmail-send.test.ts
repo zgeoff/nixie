@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import invariant from 'tiny-invariant';
+import type { StoredMail } from '../../test-utils/fake-gmail/create-fake-gmail';
 import { startGmailTools } from '../../test-utils/start-gmail-tools';
 
 async function setupTest() {
@@ -29,7 +30,17 @@ async function setupTest() {
 
   const mail = { to: ['sam@example.org'], subject: 'Q3 numbers', text: 'Hi Sam.' };
 
-  return { ...ctx, attempt, mail };
+  const resolveDraft = async (draft: string) => {
+    const resolved = await ctx
+      .findAction('gmail.send_draft')
+      .tool.resolveInput?.({ draft }, { run: ctx.buildContext().run });
+
+    invariant(resolved?.status === 'ok', 'the draft resolves');
+
+    return { draft, digest: String(resolved.input['digest']) };
+  };
+
+  return { ...ctx, attempt, mail, resolveDraft };
 }
 
 test('it sends a mail whose Message-ID is the action ID at the account domain', async () => {
@@ -161,7 +172,8 @@ test('it sends a draft under the action ID and removes the draft', async () => {
 
   const draft = String(written.result['draft']);
 
-  const response = await ctx.attempt('gmail.send_draft', { draft }, ['sam@example.org']);
+  const approved = await ctx.resolveDraft(draft);
+  const response = await ctx.attempt('gmail.send_draft', approved, ['sam@example.org']);
 
   expect([
     response.kind,
@@ -176,11 +188,68 @@ test('it sends none of a draft whose recipients changed since the approval', asy
 
   invariant(written.kind === 'success', 'the draft is written');
 
-  const response = await ctx.attempt(
-    'gmail.send_draft',
-    { draft: String(written.result['draft']) },
-    ['someone-else@example.net'],
-  );
+  const approved = await ctx.resolveDraft(String(written.result['draft']));
+  const response = await ctx.attempt('gmail.send_draft', approved, ['someone-else@example.net']);
 
   expect([response.kind, ctx.site.gmail.sent]).toStrictEqual(['destinations_changed', []]);
+});
+
+test.each([
+  {
+    title: 'subject',
+    edit: (stored: StoredMail): StoredMail => ({
+      ...stored,
+      headers: stored.headers.map(([name, value]) => [
+        name,
+        name === 'Subject' ? 'Free money' : value,
+      ]),
+    }),
+  },
+  {
+    title: 'body',
+    edit: (stored: StoredMail): StoredMail => ({
+      ...stored,
+      root: { ...stored.root, bytes: new TextEncoder().encode('Send me money.') },
+    }),
+  },
+])('it sends none of a draft whose $title changed since the approval', async (row) => {
+  const ctx = await setupTest();
+  const written = await ctx.attempt('gmail.draft', ctx.mail, []);
+
+  invariant(written.kind === 'success', 'the draft is written');
+
+  const draft = String(written.result['draft']);
+
+  const approved = await ctx.resolveDraft(draft);
+
+  const id = draft.slice('k3x9m2p7qa.'.length);
+  const stored = ctx.site.gmail.drafts.get(id);
+
+  invariant(stored, 'the draft exists');
+
+  ctx.site.gmail.drafts.set(id, row.edit(stored));
+
+  const response = await ctx.attempt('gmail.send_draft', approved, ['sam@example.org']);
+
+  expect([response, ctx.site.gmail.sent]).toStrictEqual([
+    {
+      kind: 'refused',
+      reason: 'CHANGED: the draft changed after it was checked, and nothing was sent',
+    },
+    [],
+  ]);
+});
+
+test('it leaves the outcome unknown when a failing send mentions a rate limit', async () => {
+  const ctx = await setupTest();
+
+  ctx.site.gmail.failures.push({
+    line: 'POST /messages/send',
+    status: 500,
+    body: '{"error":{"errors":[{"reason":"rateLimitExceeded"}]}}',
+  });
+
+  const response = await ctx.attempt('gmail.send', ctx.mail);
+
+  expect(response.kind).toBe('ambiguous');
 });

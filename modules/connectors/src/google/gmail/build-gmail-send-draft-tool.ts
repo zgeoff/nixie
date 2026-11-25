@@ -7,7 +7,7 @@ import { decodePartText } from './decode-part-text';
 import { buildCardAttachment, formatCardFiles, joinCardList } from './gmail-card';
 import { gmailDeclarations } from './gmail-declarations';
 import { gmailToolNames } from './gmail-tool-names';
-import { makeResolveGmailInput } from './make-resolve-gmail-input';
+import { makeResolveGmailDraftInput } from './make-resolve-gmail-draft-input';
 import { parseItemID } from './parse-item-id';
 import { readCallContext } from './read-call-context';
 import { readGmailDraft } from './read-gmail-draft';
@@ -33,7 +33,7 @@ export function buildGmailSendDraftTool(deps: GmailDeps): ToolDefinition {
     },
     declaration: gmailDeclarations.sendDraft,
     execution: 'queued',
-    resolveInput: makeResolveGmailInput(deps.access),
+    resolveInput: makeResolveGmailDraftInput(deps),
     prepare: async (input): Promise<Prepared | PrepareRefusal> => {
       const parsed = sendDraftArgumentsSchema.safeParse(input);
       const itemText = input['draft'];
@@ -79,6 +79,10 @@ export function buildGmailSendDraftTool(deps: GmailDeps): ToolDefinition {
               message: read.message.id,
               part: content.textPart,
             });
+
+      if (text?.kind === 'failed') {
+        return { status: 'error', message: `GMAIL_FAILED: ${text.reason}` };
+      }
 
       return {
         destinations: [...new Set([...to, ...cc, ...bcc])],

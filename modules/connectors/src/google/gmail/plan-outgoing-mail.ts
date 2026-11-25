@@ -1,8 +1,8 @@
 import type { ActionAttempt, ConnectorContext, ProviderResponse } from '../../types';
+import { buildDraftDigest } from './build-draft-digest';
 import { buildRawMail } from './build-raw-mail';
 import type { RawMailFile } from './build-raw-mail';
 import { buildSendMessageID } from './build-send-message-id';
-import { callGmail } from './call-gmail';
 import { collectAddresses } from './collect-addresses';
 import { gmailToolNames } from './gmail-tool-names';
 import { normalizeAddresses } from './normalize-addresses';
@@ -11,6 +11,7 @@ import { planReply } from './plan-reply';
 import { readActionFacts } from './read-action-facts';
 import { readGmailDraft } from './read-gmail-draft';
 import { readGmailMessage } from './read-gmail-message';
+import { readGmailRaw } from './read-gmail-raw';
 import { readSendFiles } from './read-send-files';
 import {
   replyArgumentsSchema,
@@ -148,25 +149,19 @@ async function planSentDraft(
     };
   }
 
-  const raw = await callGmail(deps.hosts, context, {
-    path: `/messages/${encodeURIComponent(read.message.id)}`,
-    query: { format: 'raw' },
-  });
+  const raw = await readGmailRaw(deps.hosts, context, read.message.id);
 
-  const text =
-    raw.kind === 'ok' && typeof raw.body === 'object' && raw.body !== null && 'raw' in raw.body
-      ? raw.body.raw
-      : null;
+  if (raw.kind === 'failed') {
+    return failRead(raw.reason);
+  }
 
-  if (typeof text !== 'string') {
-    const reason = raw.kind === 'error' ? raw.reason : 'Gmail answered with no raw message';
-
-    return failRead(reason);
+  if (buildDraftDigest(raw.text) !== parsed.data.digest) {
+    return refuse('CHANGED: the draft changed after it was checked, and nothing was sent');
   }
 
   return {
     kind: 'ready',
-    raw: replaceMessageID(Buffer.from(text, 'base64url').toString('utf8'), request.messageID),
+    raw: replaceMessageID(Buffer.from(raw.text, 'base64url').toString('utf8'), request.messageID),
     threadID: read.message.threadID,
     draftID: item.id,
   };

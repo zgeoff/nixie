@@ -75,20 +75,11 @@ The Gmail tools leave these to build:
 - The connection argument's job pins and the model's status line, as the connector design and
   [serving nixie's tools](../platform/connectors/tools.md#what-the-model-learns-about-a-connection)
   set them out.
-- `policy.action_proposed` gains an optional field with each destination's permission from the
-  decision, and `libs/contract` passes it to the card. The card lists each destination beside its
-  permission, and marks one that no permission covers with "no permission". A browser test covers
-  it.
 - You can edit the subject and the text body on a mail card before you approve it. nixie sends
   exactly what you approved, and the result's `edited` gives the model the final subject and text,
   or `null`. An edit of the text body of a mail with an HTML body drops the HTML body.
-- `gmail.send_draft`'s attempt reads the draft again and answers `changed` when the draft differs
-  from what `prepare` read, its subject, body and files too. The attempt now compares recipients
-  only.
 - An HTML body of a mail card shows rendered in a sandboxed frame that runs no script and loads
   nothing remote.
-- Connecting a Google account adds its address to your own places at `self`, so a mail or an
-  invitation to it runs without a card. Forgetting the connection removes that place.
 
 ## Constraints
 
