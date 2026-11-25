@@ -234,11 +234,16 @@ test('it waits a minute after a first failed read that names no retry time, then
 test('it keeps the wait that a failed read set, though the host gives hints during it', async () => {
   const ctx = await setupTest();
 
-  const handled = { hints: 0 };
+  const handled = { hints: 0, reads: 0 };
 
   // the generator resumes after the source has handled the hint it was given
   const host: MailHost = {
     ...ctx.host,
+    readChanges: (cursor) => {
+      handled.reads += 1;
+
+      return ctx.host.readChanges(cursor);
+    },
     watch: async function* watch(signal: AbortSignal) {
       for await (const hint of ctx.host.watch?.(signal) ?? []) {
         yield hint;
@@ -271,6 +276,8 @@ test('it keeps the wait that a failed read set, though the host gives hints duri
   await waitFor(() => {
     expect(handled.hints).toBe(1);
   });
+
+  expect(handled.reads).toBe(1);
 
   ctx.clock.advance(1000);
 

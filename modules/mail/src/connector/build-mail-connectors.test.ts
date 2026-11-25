@@ -1,17 +1,20 @@
-import { expect, test } from 'bun:test';
+import { expect, onTestFinished, test } from 'bun:test';
 import { buildActionSeeder } from '@heynixie/actions/test-utils';
 import type { JSONObject, LogTables } from '@heynixie/log';
 import { readRecords, removeRecordKey } from '@heynixie/log';
 import { buildTaskSeeder } from '@heynixie/tasks/test-utils';
-import { readWakeRules } from '@heynixie/triggers';
+import { readWakeRules, startTriggerSources } from '@heynixie/triggers';
 import { waitFor } from '@zgeoff/testing';
 import invariant from 'tiny-invariant';
 import { buildOutgoingMail } from '../parse/build-outgoing-mail';
 import { parseMail } from '../parse/parse-mail';
+import { buildMailSource } from '../source/build-mail-source';
 import { readMailPage } from '../store/read-mail-page';
 import { readMailRow } from '../store/read-mail-row';
 import type { MemoryMail } from '../test-utils';
-import { seedReceivedMail, startTestMail, startTestMailSource } from '../test-utils';
+import { seedReceivedMail, startTestMail } from '../test-utils';
+import type { MailHost } from '../types';
+import { buildMailConnectors } from './build-mail-connectors';
 
 async function setupTest() {
   const mail = await startTestMail();
@@ -320,7 +323,29 @@ test('it refuses a reply to a mail whose sender address cannot go in a header', 
 test('it joins a reply that reaches the host during the send to the sent mail, and wakes its sender once', async () => {
   const ctx = await setupTest();
 
-  await startTestMailSource(ctx);
+  const seen = { hints: 0, reads: 0 };
+
+  // the generator resumes after the source has handled the hint that the reply gave it
+  const host: MailHost = {
+    ...ctx.host,
+    readChanges: (cursor) => {
+      seen.reads += 1;
+
+      return ctx.host.readChanges(cursor);
+    },
+    watch: async function* watch(signal: AbortSignal) {
+      for await (const hint of ctx.host.watch?.(signal) ?? []) {
+        yield hint;
+        seen.hints += 1;
+      }
+    },
+  };
+
+  const sources = await startTriggerSources([buildMailSource(ctx.context, host)], ctx.core);
+
+  onTestFinished(() => sources.stop());
+
+  const connectors = buildMailConnectors(ctx.context, host);
 
   const received = await ctx.receive({
     from: 'hello@library.example.org',
@@ -346,11 +371,15 @@ test('it joins a reply that reaches the host during the send to the sent mail, a
     expect(ctx.clock.countPending()).toBe(1);
   });
 
-  const running = ctx.connectors.get('mail.reply')?.run(attempt);
+  const readsBeforeSend = seen.reads;
+  const running = connectors.get('mail.reply')?.run(attempt);
 
+  // the source has handled the hint of the reply, so it is asking to read while the send holds the host
   await waitFor(() => {
-    expect(ctx.clock.countPending()).toBe(0);
+    expect(seen.hints).toBe(1);
   });
+
+  expect(seen.reads).toBe(readsBeforeSend);
 
   barrier.release();
 
@@ -380,7 +409,29 @@ test('it joins a reply that reaches the host during the send to the sent mail, a
 test('it stores the sent mail and its reply rule before the source reads a reply, when the host takes the mail and then throws', async () => {
   const ctx = await setupTest();
 
-  await startTestMailSource(ctx);
+  const seen = { hints: 0, reads: 0 };
+
+  // the generator resumes after the source has handled the hint that the reply gave it
+  const host: MailHost = {
+    ...ctx.host,
+    readChanges: (cursor) => {
+      seen.reads += 1;
+
+      return ctx.host.readChanges(cursor);
+    },
+    watch: async function* watch(signal: AbortSignal) {
+      for await (const hint of ctx.host.watch?.(signal) ?? []) {
+        yield hint;
+        seen.hints += 1;
+      }
+    },
+  };
+
+  const sources = await startTriggerSources([buildMailSource(ctx.context, host)], ctx.core);
+
+  onTestFinished(() => sources.stop());
+
+  const connectors = buildMailConnectors(ctx.context, host);
 
   const received = await ctx.receive({
     from: 'hello@library.example.org',
@@ -406,11 +457,15 @@ test('it stores the sent mail and its reply rule before the source reads a reply
     expect(ctx.clock.countPending()).toBe(1);
   });
 
-  const running = ctx.connectors.get('mail.reply')?.run(attempt);
+  const readsBeforeSend = seen.reads;
+  const running = connectors.get('mail.reply')?.run(attempt);
 
+  // the source has handled the hint of the reply, so it is asking to read while the send holds the host
   await waitFor(() => {
-    expect(ctx.clock.countPending()).toBe(0);
+    expect(seen.hints).toBe(1);
   });
+
+  expect(seen.reads).toBe(readsBeforeSend);
 
   barrier.release(new Error('the host dropped the connection'));
 
