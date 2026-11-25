@@ -111,6 +111,12 @@ export interface NixieTables {
     readonly updated_sequence: number;
     readonly held_answers: string;
   };
+  readonly coding_start_cursors: {
+    readonly adapter: string;
+    readonly idempotency_key: string;
+    readonly cursor: string;
+    readonly written_at: number;
+  };
   readonly definition_rules: {
     readonly rule_id: string;
     readonly rule_hash: string;

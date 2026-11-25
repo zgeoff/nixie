@@ -1,5 +1,5 @@
 import type { CodingAdapter, CodingContext, CodingRunner } from '@heynixie/coding';
-import { buildCodingRunner, buildCodingSettings } from '@heynixie/coding';
+import { buildCodingRunner, buildCodingSettings, buildStartCursorStore } from '@heynixie/coding';
 import { buildATCAdapter } from '@heynixie/coding-atc';
 import type { Secrets } from '@heynixie/credentials';
 import type { Logger } from '@heynixie/logger';
@@ -45,14 +45,6 @@ export function buildServerCoding(options: ServerCodingOptions): ServerCoding | 
   }
 
   const settings = buildCodingSettings(coding, atc);
-
-  const adapter = buildATCAdapter({
-    url: options.testGatewayURL ?? atc.url,
-    token: options.secrets.atcToken,
-    targets: settings.targets,
-    log: options.log,
-  });
-
   const bound: { tasks: BoundTasks | null } = { tasks: null };
 
   const context: CodingContext = {
@@ -65,6 +57,14 @@ export function buildServerCoding(options: ServerCodingOptions): ServerCoding | 
     logEvent: options.log,
     ownerName: options.config.owner.name ?? 'the user',
   };
+
+  const adapter = buildATCAdapter({
+    url: options.testGatewayURL ?? atc.url,
+    token: options.secrets.atcToken,
+    targets: settings.targets,
+    log: options.log,
+    cursors: buildStartCursorStore(context, 'atc', Date.now),
+  });
 
   options.log('coding.configured', { adapter: adapter.id, principal: atc.principal });
 

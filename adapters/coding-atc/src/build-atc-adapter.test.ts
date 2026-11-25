@@ -1,7 +1,7 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import type { BoundSession, SessionEvent } from '@heynixie/coding';
 import { buildATCAdapter } from './build-atc-adapter';
-import { startFakeATCGateway } from './test-utils';
+import { buildMemoryCursorStore, startFakeATCGateway } from './test-utils';
 import type { FakeATCGatewayOptions } from './test-utils';
 
 async function setupTest(options: FakeATCGatewayOptions & { adapterToken?: string } = {}) {
@@ -10,18 +10,23 @@ async function setupTest(options: FakeATCGatewayOptions & { adapterToken?: strin
   onTestFinished(() => gateway.stop());
 
   const logged: { event: string; fields: unknown }[] = [];
+  const cursors = buildMemoryCursorStore();
 
-  const adapter = buildATCAdapter({
-    url: gateway.url,
-    token: options.adapterToken ?? gateway.token,
-    ...(options.now === undefined ? {} : { now: options.now }),
-    targets: [{ daemon: 'cloud', target: 'cloud' }],
-    log: (event, fields) => {
-      logged.push({ event, fields });
-    },
-    waitMs: 50,
-    stateReadMs: 20,
-  });
+  const buildAdapter = () =>
+    buildATCAdapter({
+      url: gateway.url,
+      token: options.adapterToken ?? gateway.token,
+      cursors,
+      ...(options.now === undefined ? {} : { now: options.now }),
+      targets: [{ daemon: 'cloud', target: 'cloud' }],
+      log: (event, fields) => {
+        logged.push({ event, fields });
+      },
+      waitMs: 50,
+      stateReadMs: 20,
+    });
+
+  const adapter = buildAdapter();
 
   const readPages = async (
     cursor: string | null,
@@ -45,7 +50,7 @@ async function setupTest(options: FakeATCGatewayOptions & { adapterToken?: strin
     return collected;
   };
 
-  return { gateway, adapter, logged, readPages };
+  return { gateway, adapter, buildAdapter, logged, readPages };
 }
 
 test('it spawns a session with the brief, the target and the key, after it reads the trail cursor', async () => {
@@ -133,6 +138,71 @@ test('it keeps the cursor of a start whose spawn answer was lost, so the replay 
   expect([lost.status, replay.status === 'ok' ? replay.value.fromCursor : null]).toStrictEqual([
     'unknown',
     'g0',
+  ]);
+});
+
+test('it replays a start on an adapter built again from the cursor of the first, so the catch-up skips no note', async () => {
+  const ctx = await setupTest();
+
+  const brief = {
+    name: 'Login fix',
+    prompt: 'Fix the login test.',
+    repo: { url: 'https://example.net/acme/app.git', ref: 'main' },
+    target: { daemon: 'cloud', target: 'cloud' },
+  };
+
+  ctx.gateway.failNext('atc_session_spawn', { kind: 'lost' });
+
+  const lost = await ctx.adapter.start(brief, 'action-1');
+
+  const [sessionID] = [...ctx.gateway.sessions.keys()];
+
+  ctx.gateway.emit({
+    session: sessionID ?? '',
+    kind: 'note',
+    at: 1,
+    detail: 'x',
+    label: 'progress',
+    text: 'Early.',
+  });
+
+  const restarted = ctx.buildAdapter();
+
+  const replay = await restarted.start(brief, 'action-1');
+
+  const fromCursor = replay.status === 'ok' ? replay.value.fromCursor : null;
+
+  const pages = await ctx.readPages(fromCursor, 1);
+
+  expect([
+    lost.status,
+    ctx.gateway.sessions.size,
+    fromCursor,
+    pages[0]?.events.map((event) => event.kind),
+  ]).toStrictEqual(['unknown', 1, 'g0', ['note']]);
+});
+
+test('it reads a new cursor for the next key after a refused spawn', async () => {
+  const ctx = await setupTest();
+
+  const brief = {
+    name: 'Login fix',
+    prompt: 'Fix the login test.',
+    repo: { url: 'https://example.net/acme/app.git', ref: 'main' },
+    target: { daemon: 'cloud', target: 'cloud' },
+  };
+
+  ctx.gateway.failNext('atc_session_spawn', { kind: 'code', code: 'bad_args' });
+
+  const refused = await ctx.adapter.start(brief, 'action-1');
+
+  ctx.gateway.emit({ session: 'cloud.3f9a1c2e.a', kind: 'note', at: 1, detail: 'x' });
+
+  const next = await ctx.buildAdapter().start(brief, 'action-1');
+
+  expect([refused.status, next.status === 'ok' ? next.value.fromCursor : null]).toStrictEqual([
+    'refused',
+    'g1',
   ]);
 });
 

@@ -37,9 +37,11 @@ export interface FakeATCCall {
   readonly args: Readonly<Record<string, unknown>>;
 }
 
-// A failure that the fake answers in place of a tool's next call.
+// A failure that the fake answers in place of a tool's next call. A `lost` call runs, and its
+// answer never arrives: the caller sees `outcome_unknown`.
 export type FakeATCFailure =
   | { readonly kind: 'code'; readonly code: string }
+  | { readonly kind: 'lost' }
   | { readonly kind: 'http'; readonly status: number };
 
 export interface FakeATCState {

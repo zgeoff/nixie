@@ -5,6 +5,7 @@ import type {
   SessionRead,
   SessionRef,
   SessionState,
+  StartCursorStore,
   TargetRef,
 } from '@heynixie/coding';
 import type { Logger } from '@heynixie/logger';
@@ -24,6 +25,9 @@ export interface ATCAdapterOptions extends ATCConnection {
   readonly targets: readonly TargetRef[];
   readonly log: Logger;
 
+  // keeps the cursor of each start across a restart
+  readonly cursors: StartCursorStore;
+
   // milliseconds since the epoch
   readonly now?: () => number;
   readonly waitMs?: number;
@@ -40,9 +44,6 @@ export function buildATCAdapter(options: ATCAdapterOptions): CodingAdapter {
   const now = options.now ?? Date.now;
 
   const known = new Map<string, KnownSession>();
-
-  // the cursor each unfinished start read before its spawn, so a replay of the spawn keeps it
-  const startCursors = new Map<string, string>();
 
   const run = async <Value>(
     tool: string,
@@ -77,26 +78,42 @@ export function buildATCAdapter(options: ATCAdapterOptions): CodingAdapter {
     return state ?? known.get(id)?.state ?? 'running';
   };
 
-  // A replay that read the cursor again would skip the events since the first spawn. A cursor that
-  // cannot be read may hide a spawn that ran, so it gives the unknown outcome, which keeps the key.
+  // A replay that read the cursor again would skip the events since the first spawn, so the cursor
+  // is stored before the spawn leaves. A cursor that cannot be read or stored may hide a spawn that
+  // ran, so it gives the unknown outcome, which keeps the key.
   const readStartCursor = async (idempotencyKey: string): Promise<AdapterReply<string>> => {
-    const kept = startCursors.get(idempotencyKey);
+    try {
+      const kept = await options.cursors.read(idempotencyKey);
 
-    if (kept !== undefined) {
-      return { status: 'ok', value: kept };
-    }
+      if (kept !== null) {
+        return { status: 'ok', value: kept };
+      }
 
-    const cursor = await readCursor();
+      const cursor = await readCursor();
 
-    if (cursor.status === 'ok') {
-      startCursors.set(idempotencyKey, cursor.value);
+      if (cursor.status !== 'ok') {
+        return cursor.status === 'refused' && cursor.canClear
+          ? { status: 'unknown', reason: cursor.reason }
+          : cursor;
+      }
+
+      await options.cursors.write(idempotencyKey, cursor.value);
 
       return cursor;
-    }
+    } catch (error) {
+      options.log('coding.atc_cursor_store_failed', { error: String(error) }, 'error');
 
-    return cursor.status === 'refused' && cursor.canClear
-      ? { status: 'unknown', reason: cursor.reason }
-      : cursor;
+      return { status: 'unknown', reason: 'cursor_store_failed' };
+    }
+  };
+
+  // A refused spawn spends its key, so the next attempt reads a cursor of its own.
+  const removeStartCursor = async (idempotencyKey: string): Promise<void> => {
+    try {
+      await options.cursors.remove(idempotencyKey);
+    } catch (error) {
+      options.log('coding.atc_cursor_store_failed', { error: String(error) }, 'error');
+    }
   };
 
   const readSession = async (session: SessionRef) => {
@@ -134,8 +151,8 @@ export function buildATCAdapter(options: ATCAdapterOptions): CodingAdapter {
         idempotencyKey,
       );
 
-      if (spawned.status !== 'unknown') {
-        startCursors.delete(idempotencyKey);
+      if (spawned.status === 'refused') {
+        await removeStartCursor(idempotencyKey);
       }
 
       if (spawned.status !== 'ok') {

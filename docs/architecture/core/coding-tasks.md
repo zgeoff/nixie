@@ -154,15 +154,19 @@ the `atc_token` entry of the secrets file, like every other secret, and a config
 no such entry stops the server at start. The secrets file's `atc_token` entry is optional, and the
 secret scan treats its value as one of nixie's own values.
 
-The adapter keeps 2 maps in memory: the state of each session it has seen, and the trail cursor of
-each start that may have spawned. The source's `events` call carries a read of the bound sessions,
-and the adapter reads the state of each bound session that has not ended every minute, and at once
-for a session it has not seen since it started. A state read that fails still counts as a read, so a
-failing session never makes the adapter poll without waiting. A start whose cursor read fails, or
-whose spawn gives no answer, returns the unknown outcome, so the queue keeps the attempt's key and a
-replay finds the first session. The replay reuses the first attempt's cursor, so the catch-up from
-it skips no event. After a server restart the replay reads a fresh cursor, so the catch-up can miss
-events that the session wrote between the first spawn and the replay.
+The adapter keeps the state of each session it has seen in memory. The source's `events` call
+carries a read of the bound sessions, and the adapter reads the state of each bound session that has
+not ended every minute, and at once for a session it has not seen since it started. A state read
+that fails still counts as a read, so a failing session never makes the adapter poll without
+waiting.
+
+A start stores the trail cursor it read in the `coding_start_cursors` table, under the action's
+idempotency key, before it sends the spawn. A replay of the key reads that cursor again, also after
+a server restart, so the catch-up from it skips no event that the session wrote after the first
+spawn. A start whose cursor read or store fails, or whose spawn gives no answer, returns the unknown
+outcome, so the queue keeps the key and a replay finds the first session. A refused spawn removes
+its cursor, because the key is spent. A cursor that a start kept stays for a day, the time after
+which the queue sends no replay, and the next store write drops it.
 
 A join refuses a session whose target the config does not list, even when a saved short ID names it.
 The adapter yields a page of the trail only when the page holds an event or the read caught up, so

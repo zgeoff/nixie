@@ -36,6 +36,17 @@ export interface CodingAdapter {
   ) => AsyncIterable<{ readonly cursor: string; readonly events: readonly SessionEvent[] }>;
 }
 
+// Where an adapter keeps the trail cursor that each of its starts read before the spawn, so a
+// replay of the spawn after a restart reads the first one again. One store serves one adapter.
+export interface StartCursorStore {
+  // null when the key has no cursor
+  readonly read: (idempotencyKey: string) => Promise<string | null>;
+
+  // keeps the first cursor written under the key
+  readonly write: (idempotencyKey: string, cursor: string) => Promise<void>;
+  readonly remove: (idempotencyKey: string) => Promise<void>;
+}
+
 // A session that an open coding task binds, with the state its task last saw.
 export interface BoundSession {
   readonly id: string;
@@ -253,6 +264,19 @@ interface CodingSessionIDTable {
   readonly named_sequence: number;
 }
 
+interface CodingStartCursorTable {
+  readonly adapter: string;
+  readonly idempotency_key: string;
+  readonly cursor: string;
+
+  // epoch ms
+  readonly written_at: number;
+}
+
 export type CodingTables = CheckedTables<
-  Readonly<{ coding_sessions: CodingSessionTable; coding_session_ids: CodingSessionIDTable }>
+  Readonly<{
+    coding_sessions: CodingSessionTable;
+    coding_session_ids: CodingSessionIDTable;
+    coding_start_cursors: CodingStartCursorTable;
+  }>
 >;

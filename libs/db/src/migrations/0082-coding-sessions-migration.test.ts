@@ -70,6 +70,20 @@ test('it creates the table of short IDs with one ID for each session', async () 
   ]);
 });
 
+test('it creates the table of the cursors that starts read, one for each key of an adapter', async () => {
+  const ctx = await setupTest();
+
+  const columns = await sql`
+    select name from pragma_table_info('coding_start_cursors') order by cid`.execute(ctx.db);
+
+  expect(columns.rows).toStrictEqual([
+    { name: 'adapter' },
+    { name: 'idempotency_key' },
+    { name: 'cursor' },
+    { name: 'written_at' },
+  ]);
+});
+
 test('it keeps each short ID when it runs again', async () => {
   const ctx = await setupTest();
 

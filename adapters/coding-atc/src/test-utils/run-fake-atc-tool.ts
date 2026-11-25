@@ -20,7 +20,7 @@ const handlers = new Map<string, Handler>([
 ]);
 
 // What atc-gateway answers to one tool call, for the tools the adapter uses.
-export function runFakeATCTool(
+export async function runFakeATCTool(
   state: FakeATCState,
   tool: string,
   args: Args,
@@ -30,12 +30,13 @@ export function runFakeATCTool(
   const failure = state.failures.get(tool)?.shift();
 
   if (failure?.kind === 'code') {
-    return Promise.resolve({ code: failure.code });
+    return { code: failure.code };
   }
 
   const handler = handlers.get(tool);
+  const result = handler === undefined ? { code: 'unknown_tool' } : await handler(state, args);
 
-  return handler === undefined ? Promise.resolve({ code: 'unknown_tool' }) : handler(state, args);
+  return failure?.kind === 'lost' ? { code: 'outcome_unknown' } : result;
 }
 
 const incarnation = '3f9a1c2e';
