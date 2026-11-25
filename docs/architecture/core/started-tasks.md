@@ -123,11 +123,10 @@ its summary. nixie checks that the fields match the shape and never that they ar
 
 A task runner is one definition in the server's list of task runners. The tasks module holds the
 list in a registry on its context, and each definition gives the registry its key, the
-[controls](./tasks.md#pause-stop-and-close) it offers, the variant of the start tool that picks it
-(or none), the fixed tasks it owns, and whether the restart sweep keeps the sandboxes of its open
-tasks.
+[controls](./tasks.md#pause-stop-and-close) it offers, the start tool that picks it (or none), the
+fixed tasks it owns, and whether the restart sweep keeps the sandboxes of its open tasks.
 
-| Key            | Controls | Start variant        | Fixed task   | Keeps sandboxes |
+| Key            | Controls | Start tool           | Fixed task   | Keeps sandboxes |
 | -------------- | -------- | -------------------- | ------------ | --------------- |
 | `conversation` | all 6    | none                 | conversation | yes             |
 | `sandbox`      | all 6    | `task.start/sandbox` | none         | yes             |
@@ -143,15 +142,17 @@ in this order:
    earlier records never named one.
 4. Any other task has no runner. It keeps all 6 controls, and the server's fallback step runs it.
 
-The start tool has one variant per runner that a start can pick. The input holds a `runner` field
-that picks the variant, and a start that leaves it out takes the sandbox variant. Each variant plans
-its own start. A refusal comes back as the tool's error before the policy decision, so a refused
-start writes no proposal. A rule matches a variant by the tool name `task.start/<key>`, and the name
-`task.start` matches every variant, as [rules](../policy/rules.md) describes.
+`task.start` starts the default runner, the sandbox runner, and its input is a plain object. Every
+other runner that a model can start has a start tool of its own, such as `coding.start` for the
+[coding runner](./coding-tasks.md#starting-and-joining), with that runner's input. Each runner's
+start plans itself. A refusal comes back as the tool's error before the policy decision, so a
+refused start writes no proposal. A rule matches the sandbox start by the tool name
+`task.start/sandbox`, and the other starts by their own tool names, as [rules](../policy/rules.md)
+describes.
 
 A control that the task's runner does not offer gets `runner_lacks_control`, which the API returns
-as `RUNNER_LACKS_CONTROL`. A runner that starts from the sandbox variant stores its built options in
-the creation record. Any other runner stores the shared envelope, with the report mode and limits,
+as `RUNNER_LACKS_CONTROL`. A runner that starts through `task.start` stores its built options in the
+creation record. Any other runner stores the shared envelope, with the report mode and limits,
 beside `runnerOptions` of its own.
 
 ## The sandbox runner

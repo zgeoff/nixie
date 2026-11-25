@@ -24,7 +24,7 @@ field but the outcome is optional, and a field that is missing matches every cal
 | Field          | Holds                                                                                                     |
 | -------------- | --------------------------------------------------------------------------------------------------------- |
 | `outcome`      | `allow`, `ask` or `deny`                                                                                  |
-| `tools`        | Tool names or patterns, such as `mail.*`, or a tool variant such as `task.start/atc`                      |
+| `tools`        | Tool names or patterns, such as `mail.*`, or a tool variant such as `task.start/sandbox`                  |
 | `effects`      | Declared effects                                                                                          |
 | `contexts`     | `conversation`, `task` or `coding`; `task` covers a task that nixie starts and a task run of a definition |
 | `definitions`  | Task definition IDs; the rule matches a task run of one of them                                           |
@@ -78,9 +78,9 @@ while an ask or a deny guards access and catches any part of it:
 | `sources`      | the call has sources, and the rule lists each one     | the rule lists one of the call's sources |
 
 A check on an argument that the call lacks fails, whatever the rule's outcome. A tool name matches
-the tool and each of its variants, so `task.start` matches `task.start/atc`, while `task.start/atc`
-matches only that variant. A rule stops matching at its expiry, compared with the time of the call,
-so a replay agrees.
+the tool and each of its variants, so `task.start` matches `task.start/sandbox`, while
+`task.start/sandbox` matches only that variant. A rule stops matching at its expiry, compared with
+the time of the call, so a replay agrees.
 
 nixie evaluates no CEL, so a rule with a CEL condition fails closed: an allow with one covers no
 call, and an ask or a deny with one catches on its other fields alone.
@@ -98,10 +98,10 @@ verdict.
 Each rule renders as one sentence from a fixed template per field, such as "**Allow** `mail.send`
 when every destination matches `*@example.com`." The outcome leads the sentence, the tools or "a
 call" follow it, and each other field adds a condition after "when". A `task.start` variant renders
-in words, so `task.start/atc` reads "starting a task in atc". The sentence for a rule with a CEL
-condition says how the rule fails closed: an allow reads "**Allow** no call", and an ask or a deny
-ends "whatever the CEL condition". The note stays out of the sentence, so the user's words never mix
-with the rule's.
+in words, so `task.start/sandbox` reads "starting a task in sandbox". The sentence for a rule with a
+CEL condition says how the rule fails closed: an allow reads "**Allow** no call", and an ask or a
+deny ends "whatever the CEL condition". The note stays out of the sentence, so the user's words
+never mix with the rule's.
 
 ## The widening check
 

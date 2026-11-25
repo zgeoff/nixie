@@ -90,7 +90,7 @@ Every tool declares its effects in nixie's tool registry, and rules match on the
 
 A tool's effects are fixed per tool and never depend on its arguments, except through a declared
 discriminator that picks a registered variant, such as `runner` on `task.start`. Each variant has a
-fixed declaration and a rule name of its own, such as `task.start/atc`, as
+fixed declaration and a rule name of its own, such as `task.start/sandbox`, as
 [the coding session runner](../../queue/coding-session-runner/runner.md#the-start-the-join-and-the-policy)
 sets out. Any other capability whose effects differ by argument splits into tools: moving an email
 to the trash is a `write`, and purging it is a `delete`. **Why:** a rule then reads the same for

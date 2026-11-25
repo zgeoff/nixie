@@ -35,17 +35,18 @@ result holds the session's short ID and never the adapter's ID.
 
 ## Starting and joining
 
-The conversation starts a coding task with `task.start`, its `runner` set to the adapter's ID. A
-start names a repo and an optional target; a join names a session by its short ID. The start checks
-the input in code and writes nothing when a check fails. The input must hold exactly one of a repo
-and a session, a repo URL must use https or ssh, a target must be one that the settings list, and a
-join must name no target, agent or model.
+The conversation starts a coding task with `coding.start`, a tool of its own. `task.start` starts
+only sandbox tasks, because the Agent SDK's harness drops a tool whose input schema has a `oneOf` at
+its root, so the conversation's model never sees it. A start names a repo and an optional target; a
+join names a session by its short ID. The start checks the input in code and writes nothing when a
+check fails. The input must hold exactly one of a repo and a session, a repo URL must use https or
+ssh, a target must be one that the settings list, and a join must name no target, agent or model.
 
-Each start and each join is the call variant `task.start/<adapter ID>`, with the effect
-`coding_start`. The starter rule `ask-coding-sessions` asks before every one, even one that the
-user's own message asked for, because a session runs code under the user's accounts.
+Each start and each join is a call of `coding.start`, with the effect `coding_start`. The starter
+rule `ask-coding-sessions` asks before every one, even one that the user's own message asked for,
+because a session runs code under the user's accounts.
 
-- **A start** writes the task and queues one `coding.start` action, which the adapter calls a spawn.
+- **A start** writes the task and queues one `coding.spawn` action, which the adapter calls a spawn.
   The action carries the brief as the session's first prompt, and each attempt sends the action's
   [idempotency key](./actions.md#attempts), so a spawn that runs again after a crash gets the
   adapter's first answer. When the spawn's outcome lands as done, the next step binds the session.
@@ -178,20 +179,14 @@ reaches nixie only as untrusted data.
 
 The server wires the module in four places:
 
-- The task runner registry holds the coding runner, so `task.start` can start it and the task steps
-  run.
-- The tool registry declares `coding.start` and `coding.stop`, which the runner queues and no model
-  calls. The conversation holds the other coding tools.
+- The task runner registry holds the coding runner, so `coding.start` can start it and the task
+  steps run.
+- The tool registry declares `coding.spawn` and `coding.stop`, which the runner queues and no model
+  calls. The conversation holds `coding.start` and the other coding tools.
 - The conversation's trigger sources include the coding source, and a sweep runs beside it.
 - The coding context reads the tasks context, whose registry holds the coding runner. The server
   therefore binds the tasks context to the coding context after it builds the registry.
 
-`task.start` advertises the atc variant only when every harness of the deployment's model profiles
-has passed the probe that checks the harness accepts a start schema with 2 variants. No harness has
-passed it, so a deployment gets no `task.start/atc` variant, and the runner starts a session only
-through a task that already exists. A call that names the variant anyway fails its input check.
-
 A test build can set `NIXIE_TEST_ATC_URL`, which points the adapter at a gateway double in place of
-the configured URL, because the config accepts only an https URL. When the variable is set, the test
-build also makes the coding runner the default one, so the start tool advertises only the coding
-start. The [crash tests](./crash-tests.md) doc lists the other test-build switches.
+the configured URL, because the config accepts only an https URL. The
+[crash tests](./crash-tests.md) doc lists the other test-build switches.

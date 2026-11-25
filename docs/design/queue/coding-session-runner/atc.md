@@ -272,7 +272,7 @@ HTTP refusal carries none:
   reconciliation sends it to you, because the line may have reached the terminal.
 - The start's plan resolves `agent` and `target` from the config into the action's args, so every
   attempt sends the same spawn.
-- `coding.start` and `coding.message` declare `idempotency_key` reconciliation with `keptForMs` 23
+- `coding.spawn` and `coding.message` declare `idempotency_key` reconciliation with `keptForMs` 23
   h. A daemon forgets a completed key 24 h after its call, and the gateway keeps its own binding of
   the key for 48 h, so in the first 23 h a resend never runs the call twice. After 23 h, the queue's
   own key expires, and the queue sends the unknown outcome to you.

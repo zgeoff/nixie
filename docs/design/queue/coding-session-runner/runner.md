@@ -9,15 +9,15 @@ between the task and the bound session: it forwards the events in the wake set t
 and ends the task with a report when the session ends. Below are the start and the join of a coding
 task, the runner's definition, its records, what one step does, and how the task ends. The tools
 nixie calls on a coding task are in [the tools](tools.md), and the adapter that the step calls is in
-[the atc adapter](atc.md). The terms, such as a bound session, a joined session, a hop and a
-variant, are in the [README](README.md#terms). Once the owner approves the design, build this part
-in [the atc runner](https://linear.app/zgeoff/issue/GEO-1843).
+[the atc adapter](atc.md). The terms, such as a bound session, a joined session, a hop and a report
+target, are in the [README](README.md#terms). Once the owner approves the design, build this part in
+[the atc runner](https://linear.app/zgeoff/issue/GEO-1843).
 
 ## Shape
 
 ```mermaid
 flowchart LR
-  start[task.start/atc] -->|"task.created, coding.start action or join"| thread[coding task's thread]
+  start[coding.start] -->|"task.created, coding.spawn action or join"| thread[coding task's thread]
   thread -->|inbox| step[coding runner step]
   step -->|"coding.message action"| queue[action queue]
   step -->|"task_message for the wake set, StepResult.run.report"| target[report target]
@@ -28,8 +28,7 @@ flowchart LR
 ### The start and the join
 
 ```ts
-task.start({
-  runner: 'atc',
+coding.start({
   name: 'Fix the flaky login test',
   brief: 'The login test fails 1 time in 5 on CI. Find why and open a pull request with the fix.',
   repo: { url: 'https://github.com/example/shop.git', ref: 'main' },
@@ -40,20 +39,18 @@ task.start({
 });
 // → { taskID: 't7k2' }
 
-task.start({
-  runner: 'atc',
+coding.start({
   name: 'Your billing refactor',
   brief: 'Watch for a question, and check the migration once the work is done.',
   session: 'cs4k', // join: the session's short ID from coding.sessions
   wake: ['waiting', 'idle', 'ended'], // optional: omitted: coding.wake.joined
 });
 // → { taskID: 't7k3' }
-//   or the refusal sentence that the variant's plan returned
+//   or the refusal sentence that the runner's plan returned
 
-// coding module. A strict object, so its schema refuses `report`, `limits`, `reportShape`,
+// coding module. A strict object, so its schema refuses `runner`, `report`, `limits`, `reportShape`,
 // `persona`, `memory` and `tools`. Exactly one of `repo` and `session`.
 interface CodingStart extends TaskStartEnvelope {
-  runner: string; // the adapter's ID, as a constant
   repo?: { url: string; ref: string }; // url: https:// or ssh form, never starting with '-'
   target?: string; // only with repo
   agent?: string; // only with repo
@@ -67,7 +64,7 @@ interface CodingStart extends TaskStartEnvelope {
   spawn's idempotency key, so it reaches the agent once.
 - A join's brief is nixie's own note on the task, and a join sends the session nothing.
 
-Each start variant has a `plan` function, which checks the input and returns what the start writes.
+Each runner's start has a `plan` function, which checks the input and returns what the start writes.
 A plan returns actions beside its envelope:
 
 ```ts
@@ -86,7 +83,7 @@ type RunnerStartPlan<Options> =
 // the decision point, as every action's attempt does, with the task that owns the thread as its
 // caller.
 interface RunnerAction {
-  tool: string; // a connector tool that no model's tool list holds, such as 'coding.start'
+  tool: string; // a connector tool that no model's tool list holds, such as 'coding.spawn'
   args: JSONObject; // erasable, as every action's arguments are
   hashParts: readonly string[]; // the action hash; a step that runs again with the same parts queues nothing
   causedBy: { kind: 'tool_call'; callID: string } | { kind: 'record'; sequence: number };
@@ -96,7 +93,7 @@ interface RunnerAction {
 A join's plan reads the session through the adapter's `join` before it returns. It refuses a session
 that is out of reach, has ended, or is bound to an open coding task. The join's transaction checks
 the binding again, so of two joins of one session, the second gets the same refusal. The coding
-variant's plan sets the envelope's report mode to `next_turn`, because the step wakes the report
+runner's plan sets the envelope's report mode to `next_turn`, because the step wakes the report
 target itself when the wake set lists `ended`.
 
 ### The runner definition
@@ -139,7 +136,7 @@ interface RunnerEndContext extends Pick<TasksContext, 'log' | 'clock'> {
 const codingDefinition = {
   key: adapter.id,
   controls: ['pause', 'resume', 'stop', 'close'],
-  start: defineRunnerStart(codingStart), // declares `task.start/<key>`
+  start: defineRunnerStart(codingStart), // declares `coding.start`
   fixedTasks: [],
   keepsSandboxes: false,
   meters: [],
@@ -147,7 +144,7 @@ const codingDefinition = {
   listFields: readSessionFields, // `session`, from coding_sessions
 } satisfies TaskRunnerDefinition;
 
-// `task.start/atc`, for a start and a join alike
+// `coding.start`, for a start and a join alike
 const codingStartDeclaration: EffectDeclaration = {
   effects: ['coding_start'],
   destinations: [],
@@ -156,7 +153,7 @@ const codingStartDeclaration: EffectDeclaration = {
   results: {},
 };
 
-// `coding.start`: the spawn action that a start queues
+// `coding.spawn`: the spawn action that a start queues
 const codingSpawnDeclaration: EffectDeclaration = {
   effects: ['coding_start'],
   destinations: [],
@@ -258,10 +255,10 @@ no state returns `wait`.
 | Inbox record                                                                          | The step                                                                                                                                              |
 | ------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
 | the brief of a start or a join                                                        | nothing: the start queued the spawn, and a join sends nothing                                                                                         |
-| `coding.start` done, with a result                                                    | writes `coding.session_bound`                                                                                                                         |
-| `coding.start` done with no result, after you answered that an unknown spawn happened | ends the task run with a report that says nixie cannot find the session and you can join it by its ID, and returns `done`                             |
-| `coding.start` failed                                                                 | ends the task run with a report that says atc refused the start, and returns `done`                                                                   |
-| `coding.start` unknown, sent to you                                                   | sends the report target a waking `task_message` that says nixie asked you whether the session started; your answer lands as the action's next outcome |
+| `coding.spawn` done, with a result                                                    | writes `coding.session_bound`                                                                                                                         |
+| `coding.spawn` done with no result, after you answered that an unknown spawn happened | ends the task run with a report that says nixie cannot find the session and you can join it by its ID, and returns `done`                             |
+| `coding.spawn` failed                                                                 | ends the task run with a report that says atc refused the start, and returns `done`                                                                   |
+| `coding.spawn` unknown, sent to you                                                   | sends the report target a waking `task_message` that says nixie asked you whether the session started; your answer lands as the action's next outcome |
 | `coding.steer` done                                                                   | writes `coding.steered`                                                                                                                               |
 | `coding.steer` failed, or unknown sent to you                                         | sends the report target a waking `task_message` that says the session did not get the steer, or may have, with the reason                             |
 | a `task_message` or `owner_message` to the task                                       | queues a `coding.message` action, caused by that record                                                                                               |
@@ -330,16 +327,20 @@ tasks.list({ runner: 'atc', state: 'waiting', limit: 20 });
 ### The start, the join and the policy
 
 - The composition root builds a coding runner only when the `coding.atc` config section is set, so
-  `task.start/atc` is on the tool list only then.
-- The `task.start` tool runs inside the model's turn, unqueued. In one transaction, a start writes
+  `coding.start` is on the tool list only then.
+- `coding.start` is a tool of its own because the Agent SDK's harness drops a tool whose input
+  schema has a root `oneOf`, so a second variant of `task.start` never reaches the model.
+  `task.start` keeps a plain object root with the sandbox task's input only, and `coding.start`
+  takes the coding input only. Both create their task through the same path.
+- The `coding.start` tool runs inside the model's turn, unqueued. In one transaction, a start writes
   `task.created` with `runner: 'atc'`, then queues the spawn as a `RunnerAction` on the new task's
   thread, caused by the start's tool call. The commit checks the lease of the step that called
-  `task.start`; the new task holds no lease yet.
-- The coding module registers `coding.start`, `coding.steer`, `coding.message` and `coding.stop`
+  `coding.start`; the new task holds no lease yet.
+- The coding module registers `coding.spawn`, `coding.steer`, `coding.message` and `coding.stop`
   with the action queue as connector actions that no model's tool list holds, each with its
   declaration, its reconciliation and the adapter call its attempt makes. Each coding task's tool
   list holds these 4, so stage 2 of the decision point passes their attempts.
-- This work adds the starter rule `allow-coding-spawns`, which allows `coding.start`, because the
+- This work adds the starter rule `allow-coding-spawns`, which allows `coding.spawn`, because the
   start call already met your rules. nixie therefore asks you at most once per start.
 - The queue writes the outcome of every attempt that started, as it does for every action, so a
   spawn that finishes after its task stopped still leaves its outcome on the task's thread.
@@ -348,17 +349,16 @@ tasks.list({ runner: 'atc', state: 'waiting', limit: 20 });
 - The spawn action sits on the coding task's thread. A pause of the task therefore holds the spawn,
   and a stop cancels it before its first attempt, as the action queue does for every action.
 - The [decision point](../../platform/policy/decision-point.md) checks your ask rules at stage 6 and
-  consent at stage 8, the check that your own message asked for the call. A rule on `task.start/atc`
-  matches only the coding variant, a start and a join alike. This work adds the starter rule
-  `ask-coding-sessions`, which asks on it, so nixie asks you before every start and every join, even
-  one you asked for.
+  consent at stage 8, the check that your own message asked for the call. A rule on `coding.start`
+  matches a start and a join alike. This work adds the starter rule `ask-coding-sessions`, which
+  asks on it, so nixie asks you before every start and every join, even one you asked for.
 - Each `coding.stop` attempt meets the decision point under the tool name `coding.stop`. This work
   adds the starter rule `allow-stop-started-sessions`, which allows a `coding.stop` whose `origin`
   is `started`.
 - [The tools](tools.md#policy) hold the policy of a steer and a note.
 - This work builds on the [decision point cutover](../decision-point-cutover.md), whose stages these
   rules need, and adds `coding_start` to the policy module's effect names.
-- Only a task's turn calls `task.start`, so every coding task has a report target.
+- Only a task's turn calls `coding.start`, so every coding task has a report target.
 
 ### Task runs
 
@@ -401,7 +401,7 @@ tasks.list({ runner: 'atc', state: 'waiting', limit: 20 });
 
 - Before each step, the task's claim reads only the meters in the task's runner definition. A coding
   runner lists none, so its task runs never end with `limit`.
-- The coding variant's plan still fills the envelope's limits with the `models.limits.taskRun`
+- The coding runner's plan still fills the envelope's limits with the `models.limits.taskRun`
   defaults, because the envelope's type needs them. The claim never reads them for a coding task.
 - The only limits nixie puts on a coding task are your rule on each start, join, steer and note, the
   hop limit on a loop of messages, and your stop. The coding agent's spend and wall time sit in atc,
