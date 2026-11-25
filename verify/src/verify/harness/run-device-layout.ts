@@ -17,6 +17,7 @@ const layoutMessages = {
   preview: 'Show me what the screen in the hall looks like.',
   page: 'Put a page in the pond of the screen in the hall.',
   message: 'Send the page in the pond of the screen in the hall a message.',
+  install: 'Get the ripple counter package approved for the pages.',
   package: 'Put the tide page in the pond of the screen in the hall.',
 } as const satisfies Record<LayoutStep, string>;
 

@@ -249,3 +249,32 @@ test('it binds the registry hash into the action hash, so another hash is anothe
 
   expect(first.hash()).not.toBe(second.hash());
 });
+
+test('it refuses to read the registry document through a redirect to http', async () => {
+  const ctx = await setupTest();
+
+  ctx.site.addPackage('chart.js@4.4.6', { files: { 'dist/chart.js': 'var Chart = 1;' } });
+  ctx.site.addRedirect(`${testRegistry}/chart.js/4.4.6`, 'http://registry.test/chart.js/4.4.6');
+
+  const prepared = await ctx.prepare('device.addPackage', { name: 'chart.js', version: '4.4.6' });
+
+  expect(prepared).toMatchObject({
+    result: { refused: 'REGISTRY_UNAVAILABLE', message: expect.stringContaining('not https') },
+  });
+});
+
+test('it answers a known package, and keeps the files, when an install runs for a version that a racing call stored first', async () => {
+  const ctx = await setupTest();
+
+  ctx.site.addPackage('chart.js@4.4.6', { files: { 'dist/chart.js': 'var Chart = 1;' } });
+
+  const first = await ctx.ask({ name: 'chart.js', version: '4.4.6' });
+  const second = await ctx.ask({ name: 'chart.js', version: '4.4.6' });
+  const [firstRun, secondRun] = await Promise.all([first.approve(), second.approve()]);
+
+  expect([firstRun, secondRun].map((run) => run.status)).toStrictEqual(['ok', 'ok']);
+
+  expect([firstRun, secondRun]).toContainEqual(
+    expect.objectContaining({ result: expect.objectContaining({ refused: 'PACKAGE_KNOWN' }) }),
+  );
+});

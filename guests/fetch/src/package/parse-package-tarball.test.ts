@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
 import { gzipSync } from 'node:zlib';
-import { buildPackageTarball } from '../test-utils/build-package-tarball';
+import { buildPackageTarball } from '@heynixie/testing';
 import { parsePackageTarball } from './parse-package-tarball';
 
 test('it returns each file with the package folder removed', () => {
@@ -20,6 +20,19 @@ test('it returns each file with the package folder removed', () => {
   });
 });
 
+test('it skips the directory entries inside the package folder', () => {
+  const tarball = buildPackageTarball([
+    { path: 'package/', type: '5' },
+    { path: 'package/dist/', type: '5' },
+    { path: 'package/dist/a.js', content: 'a' },
+  ]);
+
+  expect(parsePackageTarball(tarball, 1000)).toStrictEqual({
+    kind: 'files',
+    files: [{ path: 'dist/a.js', bytes: new TextEncoder().encode('a') }],
+  });
+});
+
 test.each([
   ['a symlink', { path: 'package/link', type: '2' }],
   ['a hard link', { path: 'package/link', type: '1' }],
@@ -27,6 +40,10 @@ test.each([
   ['an absolute path', { path: '/etc/outside.js', content: 'x' }],
   ['a path outside the package folder', { path: 'other/file.js', content: 'x' }],
   ['a backslash', { path: String.raw`package/a\b.js`, content: 'x' }],
+  ['an absolute directory', { path: '/outside', type: '5' }],
+  ['a directory with a .. segment', { path: 'package/../outside', type: '5' }],
+  ['a directory outside the package folder', { path: 'other/dir', type: '5' }],
+  ['a directory path that ends in a slash outside the folder', { path: 'other/dir/', type: '5' }],
 ])('it refuses a tarball that holds %s', (_name, entry) => {
   const tarball = buildPackageTarball([{ path: 'package/ok.js', content: 'ok' }, entry]);
 

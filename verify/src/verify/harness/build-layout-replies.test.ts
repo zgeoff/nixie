@@ -209,3 +209,15 @@ test('it queues a page for the pond that names the approved package and the decl
     ],
   ]);
 });
+
+test('it queues the install of the ripple-count package', () => {
+  const calls = buildLayoutReplies('install').map((reply) => {
+    const input = reply.toolUse.input;
+
+    return [reply.toolUse.name, typeof input === 'function' ? input({ messages: [] }) : input];
+  });
+
+  expect(calls).toStrictEqual([
+    ['mcp__nixie__device_addPackage', { name: 'ripple-count', version: '1.0.0' }],
+  ]);
+});

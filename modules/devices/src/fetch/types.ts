@@ -1,7 +1,9 @@
 import type { Clock } from '@heynixie/clock';
+import type { RegionContent } from '@heynixie/contract';
 import type { Log } from '@heynixie/log';
 import type { DeviceStreams } from '../stream/create-device-streams';
 import type { DeviceFetching } from '../tool/device-tool-options';
+import type { ShownRegion } from '../types';
 
 export interface PageFetchesOptions {
   readonly log: Log;
@@ -39,3 +41,11 @@ export type FetchOutcome =
   | { readonly kind: 'failed' }
   | { readonly kind: 'refused' }
   | { readonly kind: 'paused'; readonly leftMs: number };
+
+// The fetches that the page of one region declares, and the content that declared them.
+export interface RegionTarget {
+  readonly deviceID: string;
+  readonly region: string;
+  readonly shown: ShownRegion;
+  readonly fetches: NonNullable<Extract<RegionContent, { kind: 'html' }>['fetches']>;
+}

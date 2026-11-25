@@ -16,6 +16,7 @@
     "@heynixie/credentials": "workspace:*",
     "@heynixie/db": "workspace:*",
     "@heynixie/definitions": "workspace:*",
+    "@heynixie/devices": "workspace:*",
     "@heynixie/egress": "workspace:*",
     "@heynixie/log": "workspace:*",
     "@heynixie/logger": "workspace:*",

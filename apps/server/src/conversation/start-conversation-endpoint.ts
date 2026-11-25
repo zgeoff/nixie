@@ -112,7 +112,7 @@ export interface ConversationEndpointTools {
   // the fetch sandbox, backoff and registry that device pages reach the web through
   readonly deviceFetch: Pick<
     DeviceFetchingOptions,
-    'fetch' | 'registry' | 'backoff' | 'checkAddress'
+    'fetch' | 'registry' | 'backoff' | 'checkAddress' | 'findSecret' | 'logger'
   >;
 
   // absent when the deployment sets no worker role

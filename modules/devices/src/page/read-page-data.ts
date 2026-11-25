@@ -30,8 +30,8 @@ export type PageDataRead =
     };
 
 // What a page's nixie.data gets for a URL: the last response of the fetch the page declared, or why
-// there is none. The call is stale when the region shows other content by now, so a page that was
-// replaced reads nothing of the page after it.
+// there is none. The layout decides whether the call is current and which URLs the page declared,
+// so a page that was replaced reads nothing of the page after it.
 export async function readPageData(
   source: PageDataSource,
   deviceID: string,
@@ -45,17 +45,20 @@ export async function readPageData(
     return { status: 'stale' };
   }
 
-  const read = source.streams.fetches.read({ deviceID, ...request });
+  const content = region.shown.content;
 
-  if (read.status === 'stale') {
-    return { status: 'stale' };
-  }
+  const isDeclared =
+    content.kind === 'html' && content.fetches?.some((fetch) => fetch.url === request.url) === true;
 
-  if (read.status === 'not_declared') {
+  if (!isDeclared) {
     return { status: 'not_declared' };
   }
 
-  if (read.status === 'pending') {
+  const read = source.streams.fetches.read({ deviceID, ...request });
+
+  // the layout says the page is current, so a held declaration of other content or none is one that
+  // the runner has not registered yet
+  if (read.status !== 'done') {
     return { status: 'not_ready' };
   }
 

@@ -17,6 +17,9 @@ export interface TestFetchingOptions {
 
   // the hosts that the decision point allows; every other host is asked about and answers no
   readonly allowedHosts: readonly string[];
+
+  // texts that the scan of a URL finds as secrets
+  readonly secrets?: readonly string[];
 }
 
 export const testRegistry = 'https://registry.test';
@@ -47,6 +50,8 @@ export function buildTestFetching(options: TestFetchingOptions) {
 
   const requests: string[] = [];
 
+  const whenRequested = new Map<string, () => Promise<void>>();
+
   const backoff = makeFetchBackoff({
     backoffMs: 30_000,
     backoffCapMs: 300_000,
@@ -57,9 +62,15 @@ export function buildTestFetching(options: TestFetchingOptions) {
     registry,
     backoff,
     checkAddress: makeAddressCheck(['10.0.0.0/8', '127.0.0.0/8', '192.168.0.0/16']),
+    scanURL: (url) =>
+      (options.secrets ?? []).some((secret) => url.includes(secret))
+        ? 'the URL holds a secret (rule test), so it was not fetched'
+        : null,
     checkHosts: (_callSequence, hosts) => Promise.resolve(hosts.every((host) => allowed.has(host))),
     readBody: async (url, readOptions) => {
       requests.push(url);
+
+      await whenRequested.get(url)?.();
 
       const target = redirects.get(url);
 
@@ -133,6 +144,11 @@ export function buildTestFetching(options: TestFetchingOptions) {
     },
     addRedirect: (url: string, target: string) => {
       redirects.set(url, target);
+    },
+
+    // runs the hold while the sandbox keeps the request of the URL, before it answers
+    holdRequest: (url: string, hold: () => Promise<void>) => {
+      whenRequested.set(url, hold);
     },
     allowHost: (host: string) => {
       allowed.add(host);

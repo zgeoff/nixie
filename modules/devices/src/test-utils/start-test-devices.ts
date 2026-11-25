@@ -1,3 +1,4 @@
+import { onTestFinished } from 'bun:test';
 import { seedImage } from '@heynixie/connectors/test-utils';
 import { waitForCondition } from '@heynixie/testing';
 import { createFakeClock } from '@zgeoff/testing/clock';
@@ -25,7 +26,10 @@ export interface StartTestDevicesOptions {
 
   // set to give the page tools a fake fetch sandbox, with the hosts the rules allow; absent leaves
   // a page no packages and no fetches
-  readonly fetching?: { readonly allowedHosts: readonly string[] };
+  readonly fetching?: {
+    readonly allowedHosts: readonly string[];
+    readonly secrets?: readonly string[];
+  };
 }
 
 // Starts a log with the device tools over it, so a test calls a tool and reads what the log and the
@@ -33,11 +37,22 @@ export interface StartTestDevicesOptions {
 export async function startTestDevices(options: StartTestDevicesOptions = {}) {
   const clock = createFakeClock({ startMs: Date.parse('2026-11-21T08:00:00.000Z') });
 
+  // registered before the log's own cleanup, so a runner that a test defers here stops while the
+  // log still runs
+  const stack = new AsyncDisposableStack();
+
+  onTestFinished(() => stack.disposeAsync());
+
   const log = await startTestLog(clock);
 
   const streams = createDeviceStreams({ clock });
   const deps = { log, clock };
-  const site = buildTestFetching({ clock, allowedHosts: options.fetching?.allowedHosts ?? [] });
+
+  const site = buildTestFetching({
+    clock,
+    allowedHosts: options.fetching?.allowedHosts ?? [],
+    secrets: options.fetching?.secrets ?? [],
+  });
 
   const preview = {
     ...(options.preview === undefined ? {} : { preview: options.preview }),
@@ -47,6 +62,9 @@ export async function startTestDevices(options: StartTestDevicesOptions = {}) {
   return {
     log,
     clock,
+
+    // what a test defers here is disposed before the log stops
+    stack,
     streams,
     definitions,
 

@@ -1,9 +1,9 @@
 import { expect, test } from 'bun:test';
 import { buildStubResolver, startTestSite } from '@heynixie/egress/test-utils';
+import { buildIntegrity, buildPackageTarball } from '@heynixie/testing';
 import type { FetchMode } from '@heynixie/wire';
 import { createWebTransports } from '../page/create-web-transports';
 import { readPage } from '../page/read-page';
-import { buildIntegrity, buildPackageTarball } from '../test-utils/build-package-tarball';
 
 async function setupTest(respond: (request: Request) => Response) {
   const site = await startTestSite({ names: ['registry.test'], respond });

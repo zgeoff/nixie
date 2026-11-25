@@ -71,3 +71,31 @@ test('#readPageData answers not ready until the fetch returned', async () => {
 
   expect(read).toStrictEqual({ status: 'not_ready' });
 });
+
+test('#readPageData answers not ready for a restored page whose fetches the runner has not registered', async () => {
+  const ctx = await setupTest();
+
+  ctx.streams.fetches.remove(ctx.device.deviceID, 'pond');
+
+  const read = await ctx.read('https://tides.example/today');
+
+  expect(read).toStrictEqual({ status: 'not_ready' });
+});
+
+test('#readPageData answers not declared, not stale, for a page that declared no fetch', async () => {
+  const ctx = await setupTest();
+
+  await ctx.call('device.region', {
+    device: ctx.device.deviceID,
+    region: 'pond',
+    content: { kind: 'html', html: '<p>plain</p>' },
+  });
+
+  const layout = await ctx.readLayout(ctx.device.deviceID);
+
+  const shown = layout?.regions.find((region) => region.name === 'pond')?.shown?.shownID ?? '';
+
+  const read = await ctx.read('https://tides.example/today', shown);
+
+  expect(read).toStrictEqual({ status: 'not_declared' });
+});

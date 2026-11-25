@@ -1,7 +1,17 @@
 import { z } from 'zod';
 
 const nameSource = String.raw`(?:@[a-z0-9~-][a-z0-9._~-]*/)?[a-z0-9~-][a-z0-9._~-]*`;
-const versionSource = String.raw`\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?`;
+
+// SemVer 2.0.0: no leading zero in a number or a numeric pre-release identifier, and no empty
+// identifier
+const numberSource = String.raw`(?:0|[1-9]\d*)`;
+const preReleaseIdentifierSource = String.raw`(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*)`;
+const buildIdentifierSource = String.raw`[0-9A-Za-z-]+`;
+
+const versionSource =
+  `${numberSource}\\.${numberSource}\\.${numberSource}` +
+  `(?:-${preReleaseIdentifierSource}(?:\\.${preReleaseIdentifierSource})*)?` +
+  `(?:\\+${buildIdentifierSource}(?:\\.${buildIdentifierSource})*)?`;
 
 const nameSchema = z
   .string()

@@ -10,5 +10,8 @@
     "@heynixie/egress": "workspace:*",
     "@heynixie/wire": "workspace:*",
     "entities": "catalog:"
+  },
+  "devDependencies": {
+    "@heynixie/testing": "workspace:*"
   }
 }

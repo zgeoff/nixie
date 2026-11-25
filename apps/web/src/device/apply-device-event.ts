@@ -19,15 +19,23 @@ export function applyDeviceEvent(current: DeviceEvents, event: DeviceEvent): Dev
   }
 
   if (event.kind === 'message') {
-    const id = (current.messages.at(-1)?.id ?? 0) + 1;
+    const id = current.lastMessageID + 1;
 
-    return { ...current, messages: trimMessages([...current.messages, { ...event, id }]) };
+    return {
+      ...current,
+      lastMessageID: id,
+      messages: trimMessages([...current.messages, { ...event, id }]),
+    };
   }
 
   if (event.kind === 'data') {
-    const id = (current.notices.at(-1)?.id ?? 0) + 1;
+    const id = current.lastNoticeID + 1;
 
-    return { ...current, notices: [...current.notices, { ...event, id }].slice(-noticeLimit) };
+    return {
+      ...current,
+      lastNoticeID: id,
+      notices: [...current.notices, { ...event, id }].slice(-noticeLimit),
+    };
   }
 
   return { ...current, event };

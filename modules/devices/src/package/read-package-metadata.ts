@@ -1,7 +1,7 @@
+import { scanSameHostHop } from '../fetch/scan-same-host-hop';
 import type { DeviceFetching } from '../tool/device-tool-options';
 import { buildMetadataURL } from './build-metadata-url';
 import { parsePackageMetadata } from './parse-package-metadata';
-import { scanRegistryHop } from './scan-registry-hop';
 import type { PackageMetadata } from './types';
 
 export type PackageMetadataRead =
@@ -21,7 +21,7 @@ export async function readPackageMetadata(
   const host = new URL(url).host;
 
   const reply = await fetching.readBody(url, {
-    scanHop: (hop) => Promise.resolve(scanRegistryHop(hop.url, host)),
+    scanHop: (hop) => Promise.resolve(scanSameHostHop({ url: hop.url, host }, fetching.scanURL)),
   });
 
   if (reply.kind === 'refused' || reply.kind === 'failed') {

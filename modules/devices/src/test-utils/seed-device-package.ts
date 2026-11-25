@@ -12,14 +12,14 @@ export interface DevicePackageSeedDeps {
 }
 
 // Stores an approved package as an install leaves it, with the text of each file by path.
-export function seedDevicePackage(
+export async function seedDevicePackage(
   deps: DevicePackageSeedDeps,
   spec: string,
   files: Readonly<Record<string, string>>,
 ): Promise<void> {
   const at = spec.lastIndexOf('@');
 
-  return writeDevicePackage(deps, {
+  await writeDevicePackage(deps, {
     name: spec.slice(0, at),
     version: spec.slice(at + 1),
     integrity: toTestIntegrity(files),

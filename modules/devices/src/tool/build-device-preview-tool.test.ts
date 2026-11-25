@@ -447,7 +447,7 @@ test('it draws a page with the files of the approved packages it names, and no o
     region: 'pond',
     content: {
       kind: 'html',
-      html: '<script src="http://nixie-render.invalid/packages/chart.js@4.4.6/dist/chart.js"></script>',
+      html: '<script src="/rpc/device/packages/chart.js@4.4.6/dist/chart.js"></script>',
       packages: ['chart.js@4.4.6'],
     },
   });
@@ -455,9 +455,13 @@ test('it draws a page with the files of the approved packages it names, and no o
   await ctx.call('device.preview', { device: ctx.device.deviceID });
 
   const paths = ctx.draw.mock.calls[0]?.[0].files.map((file) => file.path) ?? [];
+  const page = ctx.draw.mock.calls[0]?.[0].files.find((file) => file.path.startsWith('pages/'));
+  const html = Buffer.from(page?.base64 ?? '', 'base64').toString();
 
   expect(paths).toContain('packages/chart.js@4.4.6/dist/chart.js');
   expect(paths).not.toContain('packages/d3@7.9.0/dist/d3.js');
+  expect(html).toContain('src="http://nixie-render.invalid/packages/chart.js@4.4.6/dist/chart.js"');
+  expect(html).not.toContain('/rpc/device/packages/');
 });
 
 test('it draws a page with what its declared fetches returned, and with their refusals', async () => {
@@ -541,4 +545,27 @@ test('it marks the picture and the errors as outside content, because a page can
   expect([tool?.declaration.results['picture'], tool?.declaration.results['errors']]).toStrictEqual(
     ['untrusted', 'untrusted'],
   );
+});
+
+test('it draws a page whose approved package holds a file named after an inherited property', async () => {
+  const ctx = await setupTest({ allowedHosts: [] });
+
+  await ctx.seed.package('chart.js@4.4.6', { 'file.constructor': 'x' });
+
+  await ctx.call('device.layout', {
+    device: ctx.device.deviceID,
+    columns: ['1fr'],
+    rows: ['1fr'],
+    regions: [{ name: 'pond', column: 1, row: 1 }],
+  });
+
+  await ctx.call('device.region', {
+    device: ctx.device.deviceID,
+    region: 'pond',
+    content: { kind: 'html', html: '<p>x</p>', packages: ['chart.js@4.4.6'] },
+  });
+
+  const outcome = await ctx.call('device.preview', { device: ctx.device.deviceID });
+
+  expect(outcome).toMatchObject({ result: { errors: [] } });
 });

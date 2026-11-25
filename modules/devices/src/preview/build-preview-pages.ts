@@ -1,3 +1,4 @@
+import { devicePagePaths } from '@heynixie/contract';
 import type { RenderFile } from '@heynixie/wire';
 import { buildPageFrame, renderOrigin } from '@heynixie/wire';
 import type { PreviewPageInput } from './types';
@@ -30,7 +31,9 @@ export function buildPreviewPages(input: PreviewPageInput): ReadonlyMap<string, 
     );
 
     const frame = buildPageFrame({
-      html: content.html,
+      // the page names a package file by the path the device serves it at, and the render serves
+      // it under its own origin
+      html: content.html.replaceAll(devicePagePaths.packages, `${renderOrigin}packages/`),
       images: new Map(
         (content.images ?? []).map((image) => [
           image,

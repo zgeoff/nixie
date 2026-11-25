@@ -20,5 +20,7 @@ const mediaTypes: Readonly<Record<string, string>> = {
 export function pickMediaType(path: string): string {
   const extension = path.split('.').pop()?.toLowerCase() ?? '';
 
-  return mediaTypes[extension] ?? 'application/octet-stream';
+  return Object.hasOwn(mediaTypes, extension)
+    ? (mediaTypes[extension] ?? 'application/octet-stream')
+    : 'application/octet-stream';
 }

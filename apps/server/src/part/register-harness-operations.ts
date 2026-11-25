@@ -1,12 +1,14 @@
-import { createHash } from 'node:crypto';
 import { closeSync, readdirSync, readlinkSync, realpathSync } from 'node:fs';
+import { runActionProposalAnswer } from '@heynixie/api';
 import type { CallsContext } from '@heynixie/calls';
 import { connectCall, startCall } from '@heynixie/calls';
-import { writeDevicePackage } from '@heynixie/devices';
+import { readDevicePackages } from '@heynixie/devices';
 import type { MemoryMailHost } from '@heynixie/mail/memory-host';
+import { readPendingActionProposals } from '@heynixie/policy';
 import type { TasksContext } from '@heynixie/tasks';
 import { createTask, writeInboxRecords, writeTaskControl } from '@heynixie/tasks';
 import type { HarnessLink } from '@heynixie/testing';
+import { waitForCondition } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import { buildNixieOperationSchemas } from './build-nixie-operation-schemas';
 import { harnessSpeech } from './harness-speech';
@@ -68,19 +70,31 @@ export function registerHarnessOperations(
     return mail.deliver(incoming).hostMessageID;
   });
 
+  // The owner's approval of each pending device.addPackage call, which a journey cannot give with a
+  // passkey: it answers as the host command does, which needs none, and the action queue then runs
+  // the install as it runs any approved call. It returns once each package is stored.
   link.registerOperation('approvePackage', schemas.approvePackage, async () => {
-    const bytes = new TextEncoder().encode('window.rippleCount = 7;');
+    const pending = await readPendingActionProposals(context.log, context.clock.now());
 
-    await writeDevicePackage(context, {
-      name: 'ripple-count',
-      version: '1.0.0',
-      integrity: `sha512-${createHash('sha512').update(bytes).digest('base64')}`,
-      publisher: 'a-publisher',
-      files: [{ path: 'ripples.js', bytes }],
-      thread: 'conversation',
+    const installs = pending.filter((proposal) => proposal.tool === 'device.addPackage');
+
+    if (installs.length === 0) {
+      throw new Error('no call of device.addPackage waits for an answer');
+    }
+
+    const before = await readDevicePackages(context.log.writer.db);
+
+    for (const install of installs) {
+      await runActionProposalAnswer(context, { answer: 'approve', proposalID: install.shortID });
+    }
+
+    await waitForCondition(async () => {
+      const stored = await readDevicePackages(context.log.writer.db);
+
+      return stored.length >= before.length + installs.length;
     });
 
-    return null;
+    return installs.length;
   });
 
   link.registerOperation('releaseWriterLock', schemas.releaseWriterLock, () => {

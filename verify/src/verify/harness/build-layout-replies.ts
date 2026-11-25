@@ -21,6 +21,7 @@ export type LayoutStep =
   | 'preview'
   | 'page'
   | 'message'
+  | 'install'
   | 'package';
 
 // The calls of each step of the device-layout journey. Each call names the device by the ID that
@@ -47,6 +48,17 @@ export function buildLayoutReplies(step: LayoutStep): readonly LayoutReply[] {
         kind: 'html',
         html: "<p id=\"seen\">Waiting</p><script>nixie.onMessage((data) => { document.getElementById('seen').textContent = 'Got ' + data.text; nixie.send('echo', data); });</script>",
       }),
+    ];
+  }
+
+  if (step === 'install') {
+    return [
+      {
+        toolUse: {
+          name: 'mcp__nixie__device_addPackage',
+          input: { name: 'ripple-count', version: '1.0.0' },
+        },
+      },
     ];
   }
 

@@ -1,4 +1,4 @@
-import type { HopVerdict } from '@heynixie/connectors';
+import { scanSameHostHop } from './scan-same-host-hop';
 import type { FetchOutcome, FetchTarget, PageFetchesOptions } from './types';
 
 // Runs one declared fetch, and keeps what came back for the page. A refusal and a failure are kept
@@ -19,6 +19,14 @@ export async function runDeclaredFetch(
     return { kind: 'refused' };
   }
 
+  const secretRefusal = options.fetching.scanURL(target.url);
+
+  if (secretRefusal !== null) {
+    reportRefusal(options, target, secretRefusal);
+
+    return { kind: 'refused' };
+  }
+
   const leftMs = options.fetching.backoff.readPause(host);
 
   if (leftMs > 0) {
@@ -26,7 +34,8 @@ export async function runDeclaredFetch(
   }
 
   const reply = await options.fetching.readBody(target.url, {
-    scanHop: (hop) => Promise.resolve(scanSameHost(hop.url, host)),
+    scanHop: (hop) =>
+      Promise.resolve(scanSameHostHop({ url: hop.url, host }, options.fetching.scanURL)),
   });
 
   if (reply.kind === 'refused' || reply.kind === 'failed') {
@@ -91,10 +100,4 @@ function reportRefusal(options: PageFetchesOptions, target: FetchTarget, reason:
     shown: target.shown,
     url: target.url,
   });
-}
-
-function scanSameHost(url: string, host: string): HopVerdict {
-  return new URL(url).host === host
-    ? { kind: 'pass' }
-    : { kind: 'refuse', reason: `the fetch of ${host} redirected to another host` };
 }

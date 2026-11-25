@@ -23,3 +23,9 @@ export interface PackageMetadata {
   readonly publisher: string;
   readonly description: string;
 }
+
+// One file of an unpacked package: its path inside the package folder, and its bytes.
+export interface UnpackedFile {
+  readonly path: string;
+  readonly bytes: Uint8Array;
+}

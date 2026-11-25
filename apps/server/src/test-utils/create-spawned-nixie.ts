@@ -154,6 +154,11 @@ export interface SpawnedNixieOptions {
   // the address of a fake Google, which a test build reaches Google's endpoints at
   readonly googleURL?: string;
 
+  // the URL of a plain-http site on a loopback address, which the fetch sandbox's stand-in reads the
+  // body and the package of a device page's declared fetch and approved package from, in place of
+  // the web
+  readonly fetchSiteURL?: string;
+
   // the URL of a double of atc-gateway that the coding runner calls in place of the configured one
   readonly atcURL?: string;
 
@@ -232,6 +237,9 @@ export async function createSpawnedNixie(
       NIXIE_TEST_FETCHER: join(import.meta.dir, 'run-stub-fetcher.ts'),
       ...(options.atcURL === undefined ? {} : { NIXIE_TEST_ATC_URL: options.atcURL }),
       ...(options.googleURL === undefined ? {} : { NIXIE_TEST_GOOGLE_URL: options.googleURL }),
+      ...(options.fetchSiteURL === undefined
+        ? {}
+        : { NIXIE_TEST_FETCH_SITE_URL: options.fetchSiteURL }),
     },
     files,
   };

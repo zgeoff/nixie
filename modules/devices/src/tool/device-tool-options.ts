@@ -28,6 +28,10 @@ export interface DeviceFetching {
   // whether an address is public, which a declared fetch that names an address must pass
   readonly checkAddress: AddressCheck;
 
+  // The sentence that refuses a URL that holds a secret, which the web fetch would refuse too, or
+  // null for a URL that holds none. A page's URL is never one the owner typed, so none is exempt.
+  readonly scanURL: (url: string) => string | null;
+
   // the pauses of the hosts that answered a fetch with a rate limit
   readonly backoff: FetchBackoff;
 

@@ -4,8 +4,8 @@ import type { FetchSchedule, PageFetchesOptions } from './types';
 
 // Runs the fetches that the pages of the online devices declare: each when its region shows, and
 // again every `refreshMinutes`. A fetch stops when its region shows other content. It returns the
-// function that stops the runner.
-export function startPageFetches(options: PageFetchesOptions): () => void {
+// function that stops the runner, which settles once the pass in progress has ended.
+export function startPageFetches(options: PageFetchesOptions): () => Promise<void> {
   const stopping = new AbortController();
 
   const nudge = { current: Promise.withResolvers<void>() };
@@ -19,15 +19,17 @@ export function startPageFetches(options: PageFetchesOptions): () => void {
     signal: stopping.signal,
   });
 
-  void runLoop(options, { signal: stopping.signal, wake, nudge });
+  const running = runLoop(options, { signal: stopping.signal, wake, nudge });
 
-  return () => {
+  return async () => {
     stopping.abort();
 
     unsubscribe();
 
     wake.stop();
     nudge.current.resolve();
+
+    await running;
   };
 }
 

@@ -196,6 +196,8 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
             registry: parts.get('web_fetch').packageRegistry,
             backoff: parts.get('web_fetch').backoff,
             checkAddress: parts.get('web_fetch').checkAddress,
+            findSecret: parts.get('web_fetch').findSecret,
+            logger: parts.get('web_fetch').logger,
           },
           worker: parts.get('worker'),
           search:

@@ -1,7 +1,7 @@
+import { scanSameHostHop } from '../fetch/scan-same-host-hop';
 import type { DeviceFetching } from '../tool/device-tool-options';
 import { buildTarballURL } from './build-tarball-url';
-import { scanRegistryHop } from './scan-registry-hop';
-import type { UnpackedFile } from './write-package-files';
+import type { UnpackedFile } from './types';
 
 // the most bytes that a package holds once unpacked
 export const maxPackageBytes = 5 * 1024 * 1024;
@@ -19,7 +19,7 @@ export type PackageDownload =
 
 // Has the fetch sandbox download the tarball and unpack it, once its hash matches the integrity
 // that was approved. The sandbox refuses the whole package for a link, an unsafe path or a size
-// past 5 MiB, and returns no file of it. A redirect to another host fails the download.
+// past 5 MiB, and returns no file of it. A redirect that leaves the registry host or https fails the download.
 export async function downloadPackage(
   fetching: DeviceFetching,
   request: PackageDownloadRequest,
@@ -31,7 +31,9 @@ export async function downloadPackage(
   const reply = await fetching.readPackage(
     url,
     { kind: 'package', integrity: request.integrity, unpackedBytes: maxPackageBytes },
-    { scanHop: (hop) => Promise.resolve(scanRegistryHop(hop.url, host)) },
+    {
+      scanHop: (hop) => Promise.resolve(scanSameHostHop({ url: hop.url, host }, fetching.scanURL)),
+    },
   );
 
   if (reply.kind === 'refused') {

@@ -1,5 +1,6 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { join } from 'node:path';
+import { buildStubSandboxAdapter, makeStubFetcher } from '@heynixie/connectors/test-utils';
 import { createTestCredentials } from '@heynixie/credentials/test-utils';
 import { modelsConfigSchema } from '@heynixie/models';
 import { sandboxCreatedCodec } from '@heynixie/sandbox';
@@ -8,6 +9,7 @@ import { startWorkerTool } from '@heynixie/sessions';
 import { startTestSessionHost } from '@heynixie/sessions/test-utils';
 import { waitForCondition } from '@heynixie/testing';
 import { buildMockToolContext } from '@heynixie/tools/test-utils';
+import { decodeFetchRequest } from '@heynixie/wire';
 import invariant from 'tiny-invariant';
 import { createSandboxAdapter } from '../sandbox/create-sandbox-adapter';
 import { startWebFetch } from './start-web-fetch';
@@ -495,4 +497,47 @@ test('it gives a worker the page that its web fetch call reads in the fetch sand
       .filter((record) => record.kind === 'sandbox.created')
       .map((record) => sandboxCreatedCodec.decode(record.payload).spec.kind),
   ).toStrictEqual(['fetch']);
+});
+
+test('it sends a declared fetch with a limit of 3 redirects', async () => {
+  const ctx = await setupTest();
+
+  const received: string[] = [];
+
+  const adapter = buildStubSandboxAdapter(
+    makeStubFetcher(
+      (request) => ({
+        kind: 'body',
+        url: request.url,
+        status: 200,
+        contentType: 'text/plain',
+        text: 'ok',
+        isTruncated: false,
+        retryAfterMs: null,
+        isGated: false,
+      }),
+      { received },
+    ),
+  );
+
+  const webFetch = startWebFetch({
+    adapter,
+    image: 'fetch',
+    argv: ['bun', '/app/fetch.js'],
+    deniedRanges: [],
+    log: ctx.log,
+    findSecret: () => null,
+    isOwnerTyped: () => Promise.resolve(false),
+    logger: () => {},
+  });
+
+  ctx.stack.defer(() => webFetch.stop());
+
+  await webFetch.deviceFetch.readBody('https://tides.test/today');
+
+  const [frame] = received;
+
+  invariant(frame, 'the fetcher read the request');
+
+  expect(decodeFetchRequest(new TextEncoder().encode(frame)).limits.redirects).toBe(3);
 });

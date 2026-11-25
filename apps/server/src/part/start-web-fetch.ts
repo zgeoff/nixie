@@ -66,6 +66,12 @@ export interface WebFetch {
   // whether an address is public, which a page's declared fetch must pass when it names one
   readonly checkAddress: AddressCheck;
 
+  // the scan that refuses a declared URL that holds a secret, as the tool's own scan does
+  readonly findSecret: SecretFinder;
+
+  // the server log
+  readonly logger: Logger;
+
   // the address of the npm registry that approved packages come from
   readonly packageRegistry: string;
 
@@ -121,11 +127,15 @@ export function startWebFetch(options: WebFetchOptions): WebFetch {
   // a declared fetch reads at most 1 MiB of body as text, which no page of the web fetch shares
   const deviceFetchBytes = 1_048_576;
 
+  // a declared fetch follows at most 3 redirects, within its own host
+  const deviceFetchRedirects = 3;
+
   const deviceSandbox = startFetchSandbox({
     ...sandbox,
     limits: {
       ...config.limits,
       bodyBytes: deviceFetchBytes,
+      redirects: deviceFetchRedirects,
       textBytes: deviceFetchBytes * textBytesPerBodyByte,
       imageBytes: 0,
     },
@@ -160,6 +170,8 @@ export function startWebFetch(options: WebFetchOptions): WebFetch {
     readHTML: fetchSandbox.readHTML,
     deviceFetch: { readBody: deviceSandbox.readBody, readPackage: deviceSandbox.readPackage },
     backoff,
+    findSecret: options.findSecret,
+    logger: options.logger,
     checkAddress: makeAddressCheck(options.deniedRanges),
     packageRegistry: config.packageRegistry,
     clearPauses: backoff.clear,

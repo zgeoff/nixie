@@ -126,7 +126,7 @@ export function buildDeviceAddPackageTool(options: DeviceToolOptions): ToolDefin
         return { status: 'ok', ...refuseDevice('BAD_PACKAGE', download.reason) };
       }
 
-      await writeDevicePackage(options, {
+      const outcome = await writeDevicePackage(options, {
         name: approved.name,
         version: approved.version,
         integrity: approved.integrity,
@@ -134,6 +134,10 @@ export function buildDeviceAddPackageTool(options: DeviceToolOptions): ToolDefin
         files: download.files,
         thread: context.run.thread,
       });
+
+      if (outcome === 'known') {
+        return { status: 'ok', ...refuseDevice('PACKAGE_KNOWN') };
+      }
 
       const paths = download.files.map((file) => file.path).toSorted();
 

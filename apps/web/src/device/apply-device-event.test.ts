@@ -8,6 +8,8 @@ function setupTest() {
     layout: null,
     messages: [],
     notices: [],
+    lastMessageID: 0,
+    lastNoticeID: 0,
     connection: 'open',
   };
 
@@ -207,4 +209,71 @@ test('#applyDeviceEvent drops the refreshes of a region that shows other content
   });
 
   expect(replaced.notices).toStrictEqual([]);
+});
+
+test('#applyDeviceEvent gives the next refresh a new number after a layout removed the newest one', () => {
+  const ctx = setupTest();
+
+  const first = applyDeviceEvent(ctx.start, {
+    kind: 'data',
+    region: 'pond',
+    shown: 'sh1',
+    url: 'https://tides.example/today',
+  });
+
+  const second = applyDeviceEvent(first, {
+    kind: 'data',
+    region: 'gone',
+    shown: 'sh9',
+    url: 'https://tides.example/today',
+  });
+
+  const removed = applyDeviceEvent(second, {
+    kind: 'layout',
+    layout: { columns: ['1fr'], rows: ['1fr'], regions: [ctx.buildRegion('sh1')] },
+  });
+
+  const next = applyDeviceEvent(removed, {
+    kind: 'data',
+    region: 'pond',
+    shown: 'sh1',
+    url: 'https://tides.example/today',
+  });
+
+  expect(next.notices.map((notice) => notice.id)).toStrictEqual([1, 3]);
+});
+
+test('#applyDeviceEvent gives the next message a new number after a layout removed the newest one', () => {
+  const ctx = setupTest();
+
+  const first = applyDeviceEvent(ctx.start, {
+    kind: 'message',
+    region: 'pond',
+    shown: 'sh1',
+    data: 'a',
+    retain: false,
+  });
+
+  const second = applyDeviceEvent(first, {
+    kind: 'message',
+    region: 'gone',
+    shown: 'sh9',
+    data: 'b',
+    retain: false,
+  });
+
+  const removed = applyDeviceEvent(second, {
+    kind: 'layout',
+    layout: { columns: ['1fr'], rows: ['1fr'], regions: [ctx.buildRegion('sh1')] },
+  });
+
+  const next = applyDeviceEvent(removed, {
+    kind: 'message',
+    region: 'pond',
+    shown: 'sh1',
+    data: 'c',
+    retain: false,
+  });
+
+  expect(next.messages.map((message) => message.id)).toStrictEqual([1, 3]);
 });

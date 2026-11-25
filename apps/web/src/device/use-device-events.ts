@@ -30,6 +30,11 @@ export interface DeviceEvents {
 
   // each refresh of a declared fetch since the stream opened, which a page hears as onData
   readonly notices: readonly PageDataNotice[];
+
+  // the numbers of the newest message and refresh the stream sent, which survive the removal of
+  // that message or refresh, so the next one never takes a number that a frame already heard
+  readonly lastMessageID: number;
+  readonly lastNoticeID: number;
   readonly connection: 'connecting' | 'open' | 'lost' | 'refused';
 }
 
@@ -46,6 +51,8 @@ export function useDeviceEvents(
     layout: null,
     messages: [],
     notices: [],
+    lastMessageID: 0,
+    lastNoticeID: 0,
     connection: 'connecting',
   });
 
@@ -56,7 +63,15 @@ export function useDeviceEvents(
 
     const controller = new AbortController();
 
-    setEvents({ event: null, layout: null, messages: [], notices: [], connection: 'connecting' });
+    setEvents({
+      event: null,
+      layout: null,
+      messages: [],
+      notices: [],
+      lastMessageID: 0,
+      lastNoticeID: 0,
+      connection: 'connecting',
+    });
 
     void subscribeToDeviceEvents({
       client: nixie.client,

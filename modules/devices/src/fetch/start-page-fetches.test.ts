@@ -1,11 +1,14 @@
-import { expect, onTestFinished, test } from 'bun:test';
+import { expect, test } from 'bun:test';
 import { waitForCondition } from '@heynixie/testing';
 import { readPageData } from '../page/read-page-data';
 import { startTestDevices } from '../test-utils';
 import { startPageFetches } from './start-page-fetches';
 
 async function setupTest() {
-  const ctx = await startTestDevices({ fetching: { allowedHosts: ['tides.example'] } });
+  const ctx = await startTestDevices({
+    fetching: { allowedHosts: ['tides.example'], secrets: ['sk-test-secret'] },
+  });
+
   const device = await ctx.seed.screenOnDevice();
 
   const url = 'https://tides.example/today';
@@ -26,7 +29,7 @@ async function setupTest() {
       },
     });
 
-    onTestFinished(stop);
+    ctx.stack.defer(stop);
   };
 
   const readShown = async () => {
@@ -57,6 +60,9 @@ async function setupTest() {
     url,
     readShown,
     readData,
+
+    // the runner sleeps once its pass is done, and a clock that moves before that never wakes it
+    waitForSleep: () => waitForCondition(() => ctx.clock.countPending() > 0),
     readDataStatus,
     start,
     showPage: (refreshMinutes: number) =>
@@ -109,6 +115,9 @@ test('it fetches again after the refresh minutes, and tells the open stream', as
   await waitForCondition(() => ctx.site.requests.length === 1);
 
   ctx.site.addPage(ctx.url, '{"high":"15:40"}');
+
+  await ctx.waitForSleep();
+
   ctx.clock.advance(10 * 60_000);
 
   await waitForCondition(() => ctx.site.requests.length === 2);
@@ -130,6 +139,9 @@ test('it never runs a refresh once the rules stopped allowing the host', async (
   await waitForCondition(() => ctx.site.requests.length === 1);
 
   ctx.site.forbidHost('tides.example');
+
+  await ctx.waitForSleep();
+
   ctx.clock.advance(10 * 60_000);
 
   await waitForCondition(async () => (await ctx.readDataStatus()) === 'refused');
@@ -148,6 +160,9 @@ test('it reports the refusal of a fetch as a page error, so device.preview shows
   await waitForCondition(() => ctx.site.requests.length === 1);
 
   ctx.site.forbidHost('tides.example');
+
+  await ctx.waitForSleep();
+
   ctx.clock.advance(10 * 60_000);
 
   await waitForCondition(async () => (await ctx.readDataStatus()) === 'refused');
@@ -191,4 +206,66 @@ test('it ends a fetch that redirects to another host', async () => {
   const data = await ctx.readData();
 
   expect(data).toStrictEqual({ status: 'refused' });
+});
+
+test('it ends a fetch that redirects to http on the same host', async () => {
+  const ctx = await setupTest();
+
+  ctx.start();
+  ctx.site.addRedirect(ctx.url, 'http://tides.example/today');
+
+  await ctx.showPage(10);
+
+  await waitForCondition(async () => (await ctx.readDataStatus()) === 'refused');
+
+  const shown = await ctx.readShown();
+
+  const errors = ctx.streams.errors.read(ctx.device.deviceID, new Map([['pond', shown]]));
+
+  expect(errors).toMatchObject([{ message: expect.stringContaining('is not https') }]);
+});
+
+test('it ends a fetch that redirects within its host to a URL that holds a secret', async () => {
+  const ctx = await setupTest();
+
+  ctx.start();
+  ctx.site.addRedirect(ctx.url, 'https://tides.example/today?key=sk-test-secret');
+
+  await ctx.showPage(10);
+
+  await waitForCondition(async () => (await ctx.readDataStatus()) === 'refused');
+
+  const shown = await ctx.readShown();
+
+  const errors = ctx.streams.errors.read(ctx.device.deviceID, new Map([['pond', shown]]));
+
+  expect(errors).toMatchObject([{ message: expect.stringContaining('holds a secret') }]);
+});
+
+test('it never sends a declared URL that holds a secret', async () => {
+  const ctx = await setupTest();
+
+  const secretURL = 'https://tides.example/today?key=sk-test-secret';
+
+  ctx.start();
+
+  await ctx.call('device.region', {
+    device: ctx.device.deviceID,
+    region: 'pond',
+    content: { kind: 'html', html: '<p>tides</p>', fetches: [{ url: secretURL }] },
+  });
+
+  await waitForCondition(async () => {
+    const shown = await ctx.readShown();
+
+    const read = await readPageData(
+      { log: ctx.log, streams: ctx.streams, nowMs: ctx.clock.now() },
+      ctx.device.deviceID,
+      { region: 'pond', shown, url: secretURL },
+    );
+
+    return read.status === 'refused';
+  });
+
+  expect(ctx.site.requests).toStrictEqual([]);
 });

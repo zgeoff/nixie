@@ -1,7 +1,7 @@
 import { gunzipSync } from 'node:zlib';
 import { maxPackageFiles } from '@heynixie/wire';
 
-export interface PackageFile {
+interface PackageFile {
   readonly path: string;
   readonly bytes: Uint8Array;
 }
@@ -63,7 +63,19 @@ export function parsePackageTarball(tarball: Uint8Array, maxBytes: number): Pars
       continue;
     }
 
-    if (type === 'g' || type === '5') {
+    if (type === 'g') {
+      continue;
+    }
+
+    if (type === '5') {
+      const directory = checkDirectory(state.name ?? pickEntryName(header));
+
+      state.name = null;
+
+      if (directory.kind === 'refused') {
+        return directory;
+      }
+
       continue;
     }
 
@@ -140,20 +152,18 @@ function pickLongName(type: string, body: Uint8Array): string | null {
   return /(?:^|\n)\d+ path=(?<path>[^\n]*)\n/u.exec(text)?.groups?.['path'] ?? null;
 }
 
-// the ustar prefix and the name, which together are the path
-function pickEntryName(header: Uint8Array): string {
-  const prefix = toText(header, 345, 155);
-  const name = toText(header, 0, 100);
+// A directory entry holds no file, but one that lies outside the package folder refuses the whole
+// archive as a file there does.
+function checkDirectory(entryPath: string): { readonly kind: 'ok' } | ParsedPackage {
+  const path = entryPath.endsWith('/') ? entryPath.slice(0, -1) : entryPath;
 
-  return prefix === '' ? name : `${prefix}/${name}`;
-}
+  if (path === 'package') {
+    return { kind: 'ok' };
+  }
 
-function toText(header: Uint8Array, from: number, length: number): string {
-  const field = header.subarray(from, from + length);
-  const end = field.indexOf(0);
-  const text = end === -1 ? field : field.subarray(0, end);
+  const relative = pickPackagePath(path);
 
-  return new TextDecoder().decode(text);
+  return relative.kind === 'refused' ? relative : { kind: 'ok' };
 }
 
 // the longest path inside a package, which leaves room for the folder that a preview puts it under
@@ -193,4 +203,20 @@ function pickPackagePath(
         reason: `the tarball holds a path of over ${String(maxPathChars)} characters`,
       }
     : { kind: 'path', path };
+}
+
+// the ustar prefix and the name, which together are the path
+function pickEntryName(header: Uint8Array): string {
+  const prefix = toText(header, 345, 155);
+  const name = toText(header, 0, 100);
+
+  return prefix === '' ? name : `${prefix}/${name}`;
+}
+
+function toText(header: Uint8Array, from: number, length: number): string {
+  const field = header.subarray(from, from + length);
+  const end = field.indexOf(0);
+  const text = end === -1 ? field : field.subarray(0, end);
+
+  return new TextDecoder().decode(text);
 }

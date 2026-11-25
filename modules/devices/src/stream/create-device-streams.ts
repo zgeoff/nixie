@@ -16,7 +16,7 @@ import { createPageTickets } from './create-page-tickets';
 export const deviceOfflineGraceMs = 60_000;
 
 // A refresh of a declared fetch, which the device hands to the page that declared it.
-export interface DataNotice {
+interface DataNotice {
   readonly region: string;
 
   // the short ID of the content that declared the fetch

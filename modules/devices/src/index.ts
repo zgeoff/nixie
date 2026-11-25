@@ -61,4 +61,3 @@ export { restoreDevicePackages } from './package/restore-device-packages';
 export type { PackageCard } from './package/package-card';
 export { readPackageCard, toPackageCardBytes } from './package/package-card';
 export { devicePackageAddedCodec } from './record/device-package-added-codec';
-export { writeDevicePackage } from './package/write-device-package';

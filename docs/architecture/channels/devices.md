@@ -275,10 +275,10 @@ the document of the old one.
 
 ### Packages
 
-`device.addPackage({ name, version })` asks the user to approve one npm package at an exact version,
-with no range and no tag. The call declares `install_package`, an effect of the always-ask risk
-class, so the card needs the passkey and offers no always-allow, and each new version is a new
-approval. The call runs queued.
+`device.addPackage({ name, version })` asks the user to approve one npm package at an exact SemVer
+version, with no range, no tag and no leading zero in a number. The call declares `install_package`,
+an effect of the always-ask risk class, so the card needs the passkey and offers no always-allow,
+and each new version is a new approval. The call runs queued.
 
 1. The call reads the registry's document for that version through the fetch sandbox. The registry's
    address is the `web_fetch.package_registry` config key, `https://registry.npmjs.org` by default.
@@ -292,9 +292,14 @@ approval. The call runs queued.
    card returns `INTEGRITY_CHANGED` and stores nothing.
 5. The fetch sandbox downloads the tarball from the registry's own host, checks it against the
    approved hash, and unpacks it. It refuses the whole package for a link, an absolute path, a `..`
-   segment, a path outside the package folder or a size past that limit.
-6. The server writes the files under `device-packages/<name>@<version>/` in its data folder, then a
-   `device.package_added` record and a `device_packages` row in one transaction.
+   segment, a path outside the package folder or a size past that limit. A directory entry outside
+   the package folder refuses the package too. A redirect of the registry's host to http or to
+   another host fails the read and the download.
+6. The server writes the files to a staging folder, then writes a `device.package_added` record and
+   a `device_packages` row in one transaction, and only then moves the files to
+   `device-packages/<name>@<version>/` in its data folder. A call that finds the row already there,
+   as a racing install of the same version does, returns `PACKAGE_KNOWN` and leaves the files of the
+   first call, so the files served always match the hash that the row holds.
 
 A page names an approved package as `name@version` in `packages`. `device.region` returns
 `UNKNOWN_PACKAGE`, and leaves the region as it was, for a package that nobody approved. The frame's
@@ -320,20 +325,28 @@ a URL of its own, so it can't put what it holds into a query string.
   from showing.
 - The `devices` module runs each fetch when the region shows, and every `refreshMinutes` after,
   while the device is online. The fetch sandbox reads the response as text, up to a size limit, with
-  GET alone. A redirect to another host fails the fetch. A host that answers with a rate limit
+  GET alone. The fetch follows at most 3 redirects, each on the declared host and on `https`. A
+  redirect to another host or to `http` fails the fetch. A host that answers with a rate limit
   pauses every fetch of that host, as the web fetch's pauses do.
+- A declared URL, and each redirect, that holds a secret the web fetch's own scan refuses is refused
+  as well, and `nixie.data` rejects with `REFUSED` for it.
 - The first fetch right after the call needs no second decision. Every later fetch, and every fetch
   of a page that came back from a restart or a restore, asks the decision point again with the
   stored call and no card. A fetch that the rules no longer allow never runs, and `nixie.data`
   rejects with `REFUSED` for it.
-- The server keeps the last response of each fetch in memory, and fetches again after a restart. A
-  refresh stops when the region's content changes.
+- The server keeps the last response of each fetch in memory, and fetches again after a restart.
+  Before each fetch, the runner reads the layout again, so a page that a call replaced, that a
+  temporary replacement's expiry ended, or that a forget erased, starts no further fetch, and the
+  runner drops what a gone page held. A device that is offline or has its screen off keeps the
+  schedules of its pages, so a fetch that ran does not run again, with no second decision, when the
+  device is back.
 - A refresh sends the page's open stream a `data` event with the region, the content's short ID and
   the URL. The device page then posts `data-changed` into the frame, and the page's `nixie.onData`
   handlers run.
 - The page's `nixie.data(url)` posts a `data` message to the device page, which calls
-  `devices.pageData({ region, shown, url })` and posts the answer back. The call returns `STALE`,
-  `NOT_DECLARED`, `REFUSED` or `NOT_READY`, or the response.
+  `devices.pageData({ region, shown, url })` and posts the answer back. The layout decides the
+  answer: the call returns `STALE` for content that the region no longer shows, `NOT_DECLARED` for a
+  URL that the shown page did not declare, then `REFUSED` or `NOT_READY` or the response.
 
 A fetched response is outside content. It reaches the assistant only when the page sends it in a
 page event, which arrives inside an untrusted block, and a refused fetch reaches the assistant as a
@@ -499,9 +512,10 @@ sends the PNG on at that exact size, so a large screen is not shrunk, and the pi
 A page region draws as a sealed frame of its own, one of the preview's files, which holds the same
 document and policy as the device's frame, with its images by path and its retained message already
 in place. The files also hold each approved package that the pages name, under `packages/`, and the
-bridge answers `nixie.data` from what each declared fetch last returned, or with `REFUSED` for a
-fetch that was refused. A fetch that has returned nothing yet answers `NOT_READY`. The guest renders
-it with scripts on, and the frame has the same sandbox as on the device.
+preview rewrites the device's package path in a page to that folder. The bridge answers `nixie.data`
+from what each declared fetch last returned, or with `REFUSED` for a fetch that was refused. A fetch
+that has returned nothing yet answers `NOT_READY`. The guest renders it with scripts on, and the
+frame has the same sandbox as on the device.
 
 `buildPreviewPage` matches each kind of region content with no fallback, so a new kind fails the
 type check until `buildPreviewPage` has a branch for it.

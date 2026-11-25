@@ -1,5 +1,5 @@
 // What one declared fetch last returned, as a page's nixie.data reads it.
-export type FetchResult =
+type FetchResult =
   | {
       readonly kind: 'body';
       readonly status: number;
@@ -9,7 +9,7 @@ export type FetchResult =
     }
   | { readonly kind: 'refused'; readonly reason: string };
 
-export type FetchRead =
+type FetchRead =
   | { readonly status: 'stale' }
   | { readonly status: 'not_declared' }
   | { readonly status: 'pending' }
@@ -21,21 +21,25 @@ export interface DeclaredFetch {
 }
 
 // the region of a device that declares fetches
-export interface RegionKey {
+interface RegionKey {
   readonly deviceID: string;
   readonly region: string;
 }
 
 // one declared fetch of the content a region shows
-export interface FetchKey extends RegionKey {
+interface FetchKey extends RegionKey {
   readonly shown: string;
   readonly url: string;
 }
 
-export interface HeldFetches {
+interface HeldFetches {
   readonly shown: string;
   readonly fetches: readonly DeclaredFetch[];
   readonly isCovered: boolean;
+}
+
+interface HeldRegionKey extends RegionKey {
+  readonly shown: string;
 }
 
 export interface HeldResult {
@@ -65,6 +69,9 @@ export interface PageFetches {
     deviceID: string,
     current: ReadonlyMap<string, string>,
   ) => readonly HeldResult[];
+
+  // The regions that hold a declaration, with the content each declared for.
+  readonly readRegions: () => readonly HeldRegionKey[];
 
   // forgets the declaration of a region, because its content changed
   readonly remove: (deviceID: string, region: string) => void;
@@ -123,6 +130,10 @@ export function createPageFetches(): PageFetches {
               result,
             }))
           : [],
+      ),
+    readRegions: () =>
+      [...held].flatMap(([deviceID, regions]) =>
+        [...regions].map(([region, entry]) => ({ deviceID, region, shown: entry.shown })),
       ),
     remove: (deviceID, region) => {
       held.get(deviceID)?.delete(region);
