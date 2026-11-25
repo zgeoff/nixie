@@ -11,7 +11,8 @@ same call.
 Does a delegation event carry the request's text, can nixie send one answer in several parts with
 the last one closing it, which event reports a cut and how does it map to the characters of the
 answer, which session fields turn delegation on and does `store: false` apply, and can the server
-open a new session for the same call without a new offer from the device?
+open a new session for the same call without a new offer from the device? And under the design's
+hold, does GPT-Live speak a lead-in sentence part and wait for the next part?
 
 ## Answer
 
@@ -20,6 +21,9 @@ open a new session for the same call without a new offer from the device?
 - GPT-Live takes several `session.commentary.append` parts on one delegation ID, and nothing closes
   a delegation. A lead-in part and an empty part each made GPT-Live invent facts in 3 of 3 sessions,
   and an acknowledged part can go unspoken.
+- Under the acknowledgement delay and an empty thinking part, a lead-in sentence part is safe only
+  when the next part arrives while GPT-Live still speaks it. With parts 3 s apart, GPT-Live invented
+  facts after "You have two new messages." and the like in 4 of 8 trials.
 - No event reports a cut. In 6 of 6 trials, output stopped where your speech started on the session
   timeline, and word alignment maps the paraphrase onto the sent text.
 - `delegation: { type: 'client' }` and `store: false` apply, and `client.data_channel` keeps the
@@ -39,9 +43,11 @@ Run from this directory, with the OpenAI key read straight into the command.
 OPENAI_API_KEY=$(op read 'op://nixie/voice-openai/credential') bun run-probe.ts delegation --model gpt-live-1
 bun print-timeline.ts results/<label>.jsonl
 bun report-cuts.ts results/cut-<label>.jsonl
+OPENAI_API_KEY=$(op read 'op://nixie/voice-openai/credential') bun run-probe.ts parts --trials 8
+bun report-parts.ts results/parts-*.jsonl
 ```
 
-The [setup](results.md#setup) gives the versions, the 4 probes and the cost.
+The [setup](results.md#setup) gives the versions, the 5 probes and the cost.
 
 ## Results
 

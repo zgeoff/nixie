@@ -1,5 +1,7 @@
 // Runs one probe of GPT-Live over WebRTC with a server sideband, and logs every event to results/.
-// Usage: OPENAI_API_KEY=… bun run-probe.ts <delegation|cut|reconnect|quiet> [--model gpt-live-1]
+// Usage: OPENAI_API_KEY=… bun run-probe.ts <delegation|cut|reconnect|quiet|parts> [--model gpt-live-1]
+//   parts only: [--trials 8] [--shapes a,b,c] [--gap 3000]: trials of each shape, each in a session
+//   of its own, with the gap between parts fixed instead of taking turns at 300, 550 and 800 ms
 import { parseArgs } from 'node:util';
 import { match } from 'ts-pattern';
 import { z } from 'zod';
@@ -23,9 +25,14 @@ const delegationTimeoutMs = 12_000;
 
 const { positionals, values } = parseArgs({
   allowPositionals: true,
-  options: { model: { default: 'gpt-live-1', type: 'string' } },
+  options: {
+    gap: { type: 'string' },
+    model: { default: 'gpt-live-1', type: 'string' },
+    shapes: { default: 'a,b,c', type: 'string' },
+    trials: { default: '8', type: 'string' },
+  },
 });
-const scenario = z.enum(['delegation', 'cut', 'reconnect', 'quiet']).parse(positionals[0]);
+const scenario = z.enum(['delegation', 'cut', 'reconnect', 'quiet', 'parts']).parse(positionals[0]);
 const key = z.string().min(1).parse(process.env.OPENAI_API_KEY);
 const label = `${scenario}-${values.model}-${new Date().toISOString().replaceAll(':', '-').slice(0, 19)}`;
 const session = { delegation: { type: 'client' }, instructions: voicePrompt, model: values.model, store: false };
@@ -246,6 +253,108 @@ async function runQuietProbe(call: Call): Promise<void> {
   await waitForQuiet(call.sideband, 3000, 10_000);
 }
 
+// The same facts in each shape: (a) the whole answer as one part, (b) a lead-in sentence and then
+// one statement per part, (c) the statements alone, each a full statement.
+const partsAnswers = [
+  {
+    leadIn: 'Tomorrow morning you have two things.',
+    request: "What's on my calendar tomorrow morning?",
+    statements: [
+      'At nine tomorrow, you have a dentist check-up on Elm Street.',
+      'At eleven, you have a call with the garden centre about the new fence.',
+    ],
+  },
+  {
+    leadIn: 'You have two new messages.',
+    request: 'Read me my new messages.',
+    statements: [
+      'The school says the museum trip moved to next Thursday.',
+      'The bike shop says your repair is ready, and they close at five.',
+    ],
+  },
+  {
+    leadIn: 'The weekend splits in two.',
+    request: "What's the weather doing this weekend?",
+    statements: ['Saturday is cool and windy, around twelve degrees.', 'Sunday is bright and calm, with a high of fifteen.'],
+  },
+];
+const partsShapes = ['a', 'b', 'c'] as const;
+const partsGapsMs = [300, 550, 800];
+// The design sends the holding line 1500 ms after a hand-off, so the first part lands before it.
+const firstPartAfterMs = 1200;
+// About $1.50 of sessions at $0.05 a minute, and a trial that runs this long has gone wrong.
+const partsBudgetMs = 1_800_000;
+const partsTrialLimitMs = 90_000;
+
+function pickParts(shape: (typeof partsShapes)[number], answer: (typeof partsAnswers)[number]): string[] {
+  return match(shape)
+    .with('a', () => [[answer.leadIn, ...answer.statements].join(' ')])
+    .with('b', () => [answer.leadIn, ...answer.statements])
+    .with('c', () => answer.statements)
+    .exhaustive();
+}
+
+// The design's hold and sentence parts: each trial is a session of its own, so no earlier answer
+// sits in GPT-Live's context. Shapes take turns, and a trial without a delegation runs again.
+async function runPartsProbe(): Promise<void> {
+  const trials = z.coerce.number().int().positive().parse(values.trials);
+  const shapes = z.array(z.enum(partsShapes)).parse(values.shapes.split(','));
+  const fixedGapMs = values.gap === undefined ? undefined : z.coerce.number().int().positive().parse(values.gap);
+  const valid = new Map<string, number>(shapes.map((shape) => [shape, 0]));
+  let spentMs = 0;
+  for (let attempt = 0; attempt < trials * shapes.length + 6; attempt++) {
+    const shape = shapes[attempt % shapes.length];
+    const round = valid.get(shape) ?? 0;
+    if (round >= trials) {
+      continue;
+    }
+    const answer = partsAnswers[round % partsAnswers.length];
+    const gapMs = fixedGapMs ?? partsGapsMs[round % partsGapsMs.length];
+    const trialLabel = `parts-${values.model}-${shape}-${round}-${new Date().toISOString().replaceAll(':', '-').slice(0, 19)}`;
+    const startedAtMs = Date.now();
+    let delegated = false;
+    await withCall(
+      { key, label: trialLabel, session: { ...session, delegation: { acknowledgement_delay_ms: 800, type: 'client' } } },
+      async (call) => {
+        call.mark('parts_trial', { answerSet: round % partsAnswers.length, gapMs, shape });
+        delegated = await runPartsTrial(call, answer.request, pickParts(shape, answer), gapMs);
+      },
+    );
+    const trialMs = Date.now() - startedAtMs;
+    spentMs += trialMs;
+    console.log(`${trialLabel}: ${delegated ? 'delegated' : 'no delegation'}, ${Math.round(trialMs / 1000)} s`);
+    if (delegated) {
+      valid.set(shape, round + 1);
+    }
+    if (trialMs > partsTrialLimitMs || spentMs > partsBudgetMs) {
+      console.log(`stopped: trial took ${trialMs} ms, all trials ${spentMs} ms`);
+      return;
+    }
+  }
+}
+
+async function runPartsTrial(call: Call, request: string, parts: readonly string[], gapMs: number): Promise<boolean> {
+  await Bun.sleep(1500);
+  const delegationID = await waitForDelegation(call, await say(call, request));
+  if (!delegationID) {
+    call.mark('no_delegation');
+    return false;
+  }
+  call.sideband.send({ content: '', delegation_id: delegationID, event_id: 'hold', type: 'session.thinking.append' });
+  await Bun.sleep(firstPartAfterMs);
+  const firstPartIndex = call.sideband.log.length;
+  for (const [index, part] of parts.entries()) {
+    if (index > 0) {
+      await Bun.sleep(gapMs);
+    }
+    appendCommentary(call, delegationID, `part_${index + 1}`, part);
+  }
+  await call.sideband.waitFor((event) => event.type === 'session.output_transcript.delta', 10_000, firstPartIndex);
+  await waitForQuiet(call.sideband, 3000, 25_000);
+  await Bun.sleep(2000);
+  return true;
+}
+
 // Runs last, so every constant above is initialised before a probe reads it.
 await match(scenario)
   .with('delegation', () => withCall({ key, label, session }, runDelegationProbe))
@@ -257,6 +366,9 @@ await match(scenario)
       runQuietProbe,
     ),
   )
+  .with('parts', () => runPartsProbe())
   .exhaustive();
-console.log(`logged results/${label}.jsonl`);
+if (scenario !== 'parts') {
+  console.log(`logged results/${label}.jsonl`);
+}
 process.exit(0);
