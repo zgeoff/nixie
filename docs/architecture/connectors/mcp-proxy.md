@@ -132,8 +132,9 @@ name that both hold.
 A tool joins the registry only when its pinned form has a declaration (see
 [Effect declarations](#effect-declarations)). A form without one stays hidden with the reason, and a
 call to it fails at the registry stage of the decision point. A tool whose override does not fit its
-pinned form stays `stopped_unfit` until the override or the form changes. Like any stopped tool, it
-stays in the registry in its pinned form, and nixie refuses each call to it.
+pinned form stays `stopped_unfit` until the override or the form changes. It stays in the registry
+in its pinned form while that form can still be read, as a `stopped_changed` tool does, and nixie
+refuses each call to it.
 
 Before a task run reads its tool list, the registry asks each source to prepare the run's tools. The
 proxy lists the server of each named `<serverID>.<tool>`, unless that server's backoff is running. A

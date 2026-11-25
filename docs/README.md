@@ -218,7 +218,7 @@ rests on.
 
 ### Core
 
-- [Core design index](design/platform/core/README.md) — the 6 core docs
+- [Core design index](design/platform/core/README.md) — the core docs
 - [The event log and records](design/platform/core/event-log.md) — what a record holds, append-only
   semantics, projections, the data behind the dashboard and the live view, export and retention
 - [Tasks](design/platform/core/tasks.md) — tasks as state machines with leases and an inbox, waits,

@@ -85,7 +85,9 @@ these files, and the seed lists as unapplied each file from a format later than 
   the `prompts:` map lists as a prompt part. From format 3, the seed therefore refuses a repo whose
   existing rule files fail the [rule format](../policy/rules.md#the-rule-format), and the error
   lists each file with its fault.
-- Format 4: each folder under `tasks/` as a [task definition](#task-definitions).
+- Format 4: each folder under `tasks/` as a [task definition](#task-definitions), and each file in
+  `effects/` as a change to a tool's effects, as [the decision point](../policy/decision-point.md)
+  describes.
 - Format 5: each `budgets/*.yaml` file as [budgets](../policy/budgets.md#the-budget-format), and
   `voice/voice.yaml` and `voice/lines.yaml` as the
   [voice settings](../channels/calls.md#configuration). The seed leaves a voice file with a fault
