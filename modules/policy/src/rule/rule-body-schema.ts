@@ -47,7 +47,7 @@ export const ruleObjectSchema = z.strictObject({
     .array(destinationPatternSchema)
     .min(1)
     .optional()
-    .describe('Tool names, such as mail.send, or a tool variant, such as task.start/atc'),
+    .describe('Tool names, such as mail.send, or a tool variant, such as task.start/sandbox'),
   effects: z.array(z.enum(effectNames)).min(1).optional(),
   contexts: z.array(z.enum(ruleContexts)).min(1).optional(),
   definitions: definitionIDsSchema

@@ -181,6 +181,9 @@ export interface SpawnedNixieOptions {
 
   readonly backups?: boolean;
 
+  // turns calls on, with the harness's fake speech layer and this price in dollars per minute
+  readonly voicePricePerMinute?: number;
+
   // task definitions that the boot files hold, so the first seed arms their triggers
   readonly taskDefinitions?: BootFileExtras['taskDefinitions'];
 }
@@ -313,9 +316,20 @@ function buildBootExtras(options: SpawnedNixieOptions, doubles: TestDoubles) {
       ...Object.entries(options.memoryConfig ?? {}).map(
         ([name, value]) => `  ${name}: ${String(value)}`,
       ),
+      ...(options.voicePricePerMinute === undefined
+        ? []
+        : ['voice:', '  provider: gpt-live', '  credential: deployment:speech']),
       ...(options.extraConfig ?? []),
     ],
-    secrets: options.extraSecrets ?? [],
+    secrets: [
+      ...(options.voicePricePerMinute === undefined
+        ? []
+        : ['connector_credentials:', '  speech: speech-key-a']),
+      ...(options.extraSecrets ?? []),
+    ],
+    ...(options.voicePricePerMinute === undefined
+      ? {}
+      : { voiceYaml: `price_per_minute: ${String(options.voicePricePerMinute)}\n` }),
     definitions: [],
     hasStarterRules: true,
     ...(options.logLevel === undefined ? {} : { logLevel: options.logLevel }),

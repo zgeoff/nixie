@@ -13,6 +13,9 @@ export type ComputerActionRun =
 export interface ComputerActionInput {
   readonly procedure: string;
   readonly clientActionID: string;
+
+  // what the action acts on besides its action ID, so the ID of one action never answers another
+  readonly input: JSONObject;
 }
 
 // the last try of each action ID that has not finished, so a second try waits for the first

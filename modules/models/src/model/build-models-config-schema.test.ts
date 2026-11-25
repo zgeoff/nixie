@@ -547,3 +547,56 @@ test('it does not check the tool call wait of a selectable model that asks', () 
 
   expect(result.error).toBeUndefined();
 });
+
+test('it accepts a call role that names a profile of a harness that fits a call', () => {
+  const ctx = setupTest();
+
+  const profile = {
+    harness: 'agent-sdk',
+    base_url: 'https://api.anthropic.com',
+    credential: 'deployment:anthropic',
+    auth_header: 'x-api-key',
+    model: 'claude-test-1',
+    effort: 'medium',
+    prices: { input: 3, cache_write: 3.75, cache_write_1h: 6, cached_input: 0.3, output: 15 },
+  };
+
+  const result = ctx.schema.safeParse({
+    profiles: { 'chat-direct': profile, 'call-fast': { ...profile, model: 'claude-test-2' } },
+    roles: { conversation: 'chat-direct', call: 'call-fast' },
+  });
+
+  expect(result.data?.roles).toStrictEqual({ conversation: 'chat-direct', call: 'call-fast' });
+});
+
+test('it refuses the call role on a profile whose harness lacks resume at an entry', () => {
+  const ctx = setupTest();
+
+  const result = ctx.schema.safeParse({
+    profiles: {
+      'chat-direct': {
+        harness: 'agent-sdk',
+        base_url: 'https://api.anthropic.com',
+        credential: 'deployment:anthropic',
+        auth_header: 'x-api-key',
+        model: 'claude-test-1',
+        effort: 'medium',
+        prices: { input: 3, cache_write: 3.75, cache_write_1h: 6, cached_input: 0.3, output: 15 },
+      },
+      'chat-codex': {
+        harness: 'codex',
+        effort: 'medium',
+        base_url: 'https://models.example.test',
+        credential: 'deployment:openai',
+        model: 'gpt-test-1',
+      },
+    },
+    roles: { conversation: 'chat-direct', call: 'chat-codex' },
+  });
+
+  expect(result.error?.issues).toPartiallyContain({
+    path: ['roles', 'call'],
+    message:
+      'the call role runs on the profile chat-codex, whose codex harness lacks resume, resume-at-entry, live-messages',
+  });
+});

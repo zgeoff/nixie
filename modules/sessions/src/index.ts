@@ -1,6 +1,7 @@
 export { buildEventRegistry } from './event/build-event-registry';
 export { buildModelStatus } from './session/build-model-status';
 export { buildSilentEndTool } from './turn/build-silent-end-tool';
+export { buildHangUpTool, hangUpToolName } from './call/build-hang-up-tool';
 export { buildStartStatus } from './session/build-start-status';
 export { buildStartTimeStatus } from './session/build-start-time-status';
 

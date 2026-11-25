@@ -1,5 +1,6 @@
 import type { DefinitionsContext } from '@heynixie/definitions';
 import { createApprovalProcedures } from '../approval/create-approval-procedures';
+import { createCallsProcedures } from '../calls/create-calls-procedures';
 import { createComputerProcedures } from '../computer/create-computer-procedures';
 import { createConnectionProcedures } from '../connection/create-connection-procedures';
 import { createDefinitionProcedures } from '../definition/create-definition-procedures';
@@ -41,6 +42,7 @@ export function createAPIRouter(
   return apiImplementer.router({
     approvals: createApprovalProcedures(context, { readMemory, runInForceSeed }),
     backups: createBackupProcedures(context),
+    calls: createCallsProcedures(context),
     computer: createComputerProcedures(context),
     connections: createConnectionProcedures(context),
     conversation: createConversationProcedures(context),

@@ -24,6 +24,10 @@ export async function startRunners(parts: ServerParts, runStep: RunStep): Promis
       runStep: parts.tools.actions.trackSteps(runStep),
       size: parts.config.tasks.startedClaimLoops,
     },
+    call: {
+      runStep: parts.tools.actions.trackSteps(runStep),
+      size: parts.config.tasks.callClaimLoops,
+    },
     onStepErrored: (errored) => {
       logStepError(errored);
       markConversationFailure(errored);

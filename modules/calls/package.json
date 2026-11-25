@@ -1,0 +1,29 @@
+{
+  "name": "@heynixie/calls",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./test-utils": "./src/test-utils/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsrs --fast --noEmit"
+  },
+  "dependencies": {
+    "@heynixie/budgets": "workspace:*",
+    "@heynixie/clock": "workspace:*",
+    "@heynixie/credentials": "workspace:*",
+    "@heynixie/db": "workspace:*",
+    "@heynixie/log": "workspace:*",
+    "@heynixie/logger": "workspace:*",
+    "@heynixie/tasks": "workspace:*",
+    "kysely": "catalog:",
+    "tiny-invariant": "catalog:",
+    "ts-pattern": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@zgeoff/testing": "catalog:"
+  }
+}

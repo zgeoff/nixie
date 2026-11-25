@@ -42,6 +42,9 @@ export interface BootFileExtras {
 
   readonly isBackupOn?: boolean;
 
+  // the text of voice/voice.yaml, which puts the definitions at format 5
+  readonly voiceYaml?: string;
+
   readonly modelCredential?: 'secrets-file' | 'sandbox-backend';
 
   readonly roleModelURLs?: Readonly<Partial<Record<'checker' | 'task' | 'worker', string>>>;
@@ -63,6 +66,7 @@ export async function writeBootFiles(
     join(directory, 'definitions'),
     extras.hasStarterRules ?? false,
     extras.taskDefinitions ?? [],
+    extras.voiceYaml ?? null,
   );
 
   await writeSecrets(join(directory, 'secrets.yaml'), deploymentKey, extras);
@@ -95,8 +99,9 @@ async function writeDefinitions(
   definitionsDir: string,
   hasStarterRules: boolean,
   taskDefinitions: readonly BootTaskDefinition[],
+  voiceYaml: string | null,
 ): Promise<void> {
-  const format = pickDefinitionsFormat(hasStarterRules, taskDefinitions);
+  const format = voiceYaml === null ? pickDefinitionsFormat(hasStarterRules, taskDefinitions) : 5;
 
   await mkdir(definitionsDir);
   await writeFile(join(definitionsDir, 'nixie.yaml'), `format: ${String(format)}\n`);
@@ -105,6 +110,11 @@ async function writeDefinitions(
   if (hasStarterRules) {
     await mkdir(join(definitionsDir, 'rules'));
     await writeFile(join(definitionsDir, 'rules', 'starter.yaml'), readStarterRulesText());
+  }
+
+  if (voiceYaml !== null) {
+    await mkdir(join(definitionsDir, 'voice'));
+    await writeFile(join(definitionsDir, 'voice', 'voice.yaml'), voiceYaml);
   }
 
   for (const definition of taskDefinitions) {

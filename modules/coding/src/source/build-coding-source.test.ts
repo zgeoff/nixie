@@ -27,7 +27,6 @@ async function setupTest() {
         const shortID = /"id":"(?<id>[^"]+)"/u.exec(JSON.stringify(listed.outcome))?.groups?.['id'];
 
         return ctx.startTask(claim, {
-          runner: 'atc',
           name: 'Fix the flaky login test',
           brief: 'Watch the login fix.',
           session: shortID ?? '',

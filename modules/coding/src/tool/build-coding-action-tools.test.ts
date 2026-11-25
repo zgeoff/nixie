@@ -3,7 +3,7 @@ import { buildMockToolCall, buildMockToolContext } from '@heynixie/tools/test-ut
 import { codingDeclarations } from '../connector/coding-declarations';
 import { buildCodingActionTools } from './build-coding-action-tools';
 
-test('it declares coding.start and coding.stop as queued tools under the declarations of their attempts', () => {
+test('it declares coding.spawn and coding.stop as queued tools under the declarations of their attempts', () => {
   const tools = buildCodingActionTools();
 
   expect(
@@ -13,7 +13,7 @@ test('it declares coding.start and coding.stop as queued tools under the declara
       declaration: tool.declaration,
     })),
   ).toStrictEqual([
-    { name: 'coding.start', execution: 'queued', declaration: codingDeclarations.spawn },
+    { name: 'coding.spawn', execution: 'queued', declaration: codingDeclarations.spawn },
     { name: 'coding.stop', execution: 'queued', declaration: codingDeclarations.stop },
   ]);
 });
@@ -22,9 +22,9 @@ test('it refuses to run a coding action as a call', async () => {
   const [start] = buildCodingActionTools();
 
   const outcome = await start?.run(
-    buildMockToolCall({ tool: 'coding.start' }),
+    buildMockToolCall({ tool: 'coding.spawn' }),
     buildMockToolContext(),
   );
 
-  expect(outcome).toStrictEqual({ status: 'error', message: 'coding.start runs only queued' });
+  expect(outcome).toStrictEqual({ status: 'error', message: 'coding.spawn runs only queued' });
 });

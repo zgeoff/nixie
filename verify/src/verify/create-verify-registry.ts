@@ -1,16 +1,16 @@
 import { join } from 'node:path';
 import { browser } from '@wringer/browser';
-import { WringerError, createHostUploader, createWringer, local } from '@wringer/core';
+import { createHostUploader, createWringer, local } from '@wringer/core';
 import type { Wringer } from '@wringer/core';
 import { db } from '@wringer/db';
 import { http } from '@wringer/http';
-import type { HttpClient } from '@wringer/http';
 import { stream } from '@wringer/stream';
 import { terminal } from '@wringer/terminal';
-import { $ } from 'bun';
 import { match } from 'ts-pattern';
 import { z } from 'zod';
 import { buildHostCLIArgv } from './build-host-cli-argv';
+import { callFeatures, callStepSummary } from './call-features';
+import { checkHarness } from './check-harness';
 import { conversationRecordSchema } from './collect-conversation-records';
 import { computerFeatures } from './computer-features';
 import { featurePaths, ignoredPaths, sharedPaths } from './feature-paths';
@@ -18,16 +18,12 @@ import { controlRoutes } from './harness/control-routes';
 import { lastFeatures } from './last-features';
 import { pickTaskRefusal } from './pick-task-refusal';
 import { postControl } from './post-control';
-import { buildServedBlobsArgv, servedSourceFolders } from './preview/build-served-blobs-argv';
-import type { ServedContainer } from './preview/build-served-blobs-argv';
+import { checkPreviewCommit } from './preview/check-preview-commit';
 import { createPreviewHost } from './preview/create-preview-host';
 import { makeCachedRead } from './preview/make-cached-read';
-import { pickCommitRefusal } from './preview/pick-commit-refusal';
-import { collectExtraPaths, pickSourceRefusal } from './preview/pick-source-refusal';
-import { readIgnoredPaths } from './preview/read-ignored-paths';
 import { readPreviewEndpoints } from './preview/read-preview-endpoints';
 import { readPullRequest } from './preview/read-pull-request';
-import { readServedCommit, servedCommitArgv } from './preview/read-served-commit';
+import { readServedCommit } from './preview/read-served-commit';
 import { buildProdEndpoints } from './prod/build-prod-endpoints';
 import { readProdCall } from './prod/read-prod-call';
 import { readProdErrors } from './prod/read-prod-errors';
@@ -212,6 +208,15 @@ export function createVerifyRegistry(): Wringer {
       input: controlRoutes.advanceClock.input,
       data: controlRoutes.advanceClock.output,
       run: (input, ctx) => postControl(ctx.drivers.http, controlRoutes.advanceClock, input),
+    })
+    .action({
+      name: 'call-step',
+      summary: callStepSummary,
+      effect: 'write',
+      targets: ['local'],
+      input: controlRoutes.callStep.input,
+      data: controlRoutes.callStep.output,
+      run: (input, ctx) => postControl(ctx.drivers.http, controlRoutes.callStep, input),
     })
     .action({
       name: 'use-computer',
@@ -447,6 +452,7 @@ export function createVerifyRegistry(): Wringer {
         summary: 'Start a coding session from chat',
         paths: featurePaths['coding-session'],
       },
+      ...callFeatures,
       {
         name: 'drawing',
         summary: 'Draw a picture, edit it, and list both',
@@ -473,65 +479,4 @@ export function createVerifyRegistry(): Wringer {
     .shared(...sharedPaths)
     .ignore(...ignoredPaths)
     .build();
-}
-
-const previewRefusalHint =
-  'Push this commit, open the preview link on the pull request to rebuild the preview, then run `bun verify attach` and `bun verify doctor` again.';
-
-type PreviewHost = ReturnType<typeof createPreviewHost>;
-
-// The checkout can move on while a container from an older build still serves, so the doctor also
-// compares the container's files with this tree. A doctor check's exec refuses every raw command,
-// so the check runs its reads on the preview's host itself.
-async function checkPreviewCommit(host: PreviewHost): Promise<{ commit: string }> {
-  const served = await host.run({ argv: servedCommitArgv, access: 'read-only' });
-  const head = await $`git rev-parse HEAD`.quiet().text();
-
-  const commitRefusal = pickCommitRefusal(served.stdout, head);
-
-  if (commitRefusal !== null) {
-    throw new WringerError('check-failed', { message: commitRefusal, hint: previewRefusalHint });
-  }
-
-  for (const container of ['nixie', 'web'] as const) {
-    await checkServedSources(host, container);
-  }
-
-  return { commit: served.stdout.trim() };
-}
-
-async function checkServedSources(host: PreviewHost, container: ServedContainer): Promise<void> {
-  const listed = await host.run({ argv: buildServedBlobsArgv(container), access: 'read-only' });
-
-  if (listed.exitCode !== 0) {
-    throw new WringerError('environment', {
-      message: `the preview's ${container} container could not list its sources: ${listed.stderr.trim()}`,
-      hint: 'Open the preview link on the pull request, wait for the preview to serve, then run `bun verify doctor` again.',
-    });
-  }
-
-  const committed = await $`git ls-tree -r HEAD -- ${servedSourceFolders}`.quiet().text();
-
-  const extras = collectExtraPaths(committed, listed.stdout);
-
-  const ignored = await readIgnoredPaths(extras);
-
-  const refusal = pickSourceRefusal({ container, committed, served: listed.stdout, ignored });
-
-  if (refusal !== null) {
-    throw new WringerError('check-failed', { message: refusal, hint: previewRefusalHint });
-  }
-}
-
-async function checkHarness(client: HttpClient): Promise<{ commit: string }> {
-  const health = await postControl(client, controlRoutes.health, {});
-
-  if (!health.isNixieRunning) {
-    throw new WringerError('check-failed', {
-      message: 'nixie exited inside the harness',
-      hint: 'Run `bun verify up --restart`, then `bun verify doctor`.',
-    });
-  }
-
-  return { commit: 'worktree' };
 }

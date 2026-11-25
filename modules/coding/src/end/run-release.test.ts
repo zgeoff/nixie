@@ -13,7 +13,6 @@ async function setupTest() {
 
   const startTask = (): Promise<string> =>
     ctx.startTask(claim, {
-      runner: 'atc',
       name: 'Fix the flaky login test',
       brief: 'Find why the login test fails.',
       repo: { url: 'https://github.com/example/shop.git', ref: 'main' },
@@ -38,7 +37,6 @@ async function setupTest() {
         const shortID = /"id":"(?<id>[^"]+)"/u.exec(JSON.stringify(listed.outcome))?.groups?.['id'];
 
         return ctx.startTask(claim, {
-          runner: 'atc',
           name: 'Your billing refactor',
           brief: 'Watch for a question.',
           session: shortID ?? '',

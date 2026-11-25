@@ -26,24 +26,17 @@ function setupTest() {
 }
 
 test('it holds no coding runner when the deployment sets none', () => {
-  const registry = buildServerTaskRunners({ coding: null, isCodingDefault: false });
+  const registry = buildServerTaskRunners({ coding: null });
 
   expect(registry.startable.map((runner) => runner.key)).not.toContain('atc');
 });
 
-test('it adds the coding runner to the startable runners, behind the default one', () => {
+test('it adds the coding runner to the startable runners, behind the default one, which stays the sandbox runner', () => {
   const ctx = setupTest();
-  const registry = buildServerTaskRunners({ coding: ctx.coding, isCodingDefault: false });
+  const registry = buildServerTaskRunners({ coding: ctx.coding });
 
   expect({
     keys: registry.startable.map((runner) => runner.key),
     defaultKey: registry.defaultRunner.key,
   }).toStrictEqual({ keys: ['sandbox', 'atc'], defaultKey: 'sandbox' });
-});
-
-test('it makes the coding runner the default one for a test build with a gateway double', () => {
-  const ctx = setupTest();
-  const registry = buildServerTaskRunners({ coding: ctx.coding, isCodingDefault: true });
-
-  expect(registry.defaultRunner.key).toBe('atc');
 });

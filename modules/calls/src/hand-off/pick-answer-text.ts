@@ -1,0 +1,31 @@
+import type { VoiceLines } from '../types';
+
+export interface AnswerParts {
+  // the text of each reply record that the turn wrote, in order
+  readonly replies: readonly string[];
+
+  // true when the turn failed, ended on a proposal or passed a limit
+  readonly isFailed: boolean;
+  readonly lines: Pick<VoiceLines, 'couldntFinish'>;
+}
+
+export interface AnswerText {
+  readonly text: string;
+
+  // true when the text is the fixed line in place of the turn's reply
+  readonly isFixedLine: boolean;
+}
+
+// The whole text that the speech layer gets for a hand-off. A turn that failed, ended on a proposal,
+// passed a limit or wrote no text gets the fixed line instead, which claims no outcome: an empty
+// answer makes the speech layer invent one.
+export function pickAnswerText(parts: AnswerParts): AnswerText {
+  const text = parts.replies
+    .map((reply) => reply.trim())
+    .filter((reply) => reply !== '')
+    .join('\n\n');
+
+  return parts.isFailed || text === ''
+    ? { text: parts.lines.couldntFinish, isFixedLine: true }
+    : { text, isFixedLine: false };
+}

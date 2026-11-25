@@ -25,7 +25,7 @@ export interface TaskStartEnvelope {
 // the decision point as every action's attempt does, with the task that owns the thread as its
 // caller. The actions module builds the queue that takes it.
 export interface RunnerAction {
-  // a connector tool that no model's tool list holds, such as 'coding.start'
+  // a connector tool that no model's tool list holds, such as 'coding.spawn'
   readonly tool: string;
 
   // erasable, as every action's arguments are
@@ -61,13 +61,13 @@ export type RunnerStartPlan<Options> =
     }
   | { readonly status: 'refused'; readonly sentence: string };
 
-// One variant of the start tool's input, with its own typed input and options.
+// One runner's start, with its own typed input and options.
 export interface RunnerStart<Input extends TaskStartEnvelope, Options> {
-  // a strict object; `runner` is optional only on the default runner's variant
+  // a strict object
   readonly schema: z.ZodType<Input>;
   readonly describeInput: (bounds: TaskStartBounds) => JsonSchema;
 
-  // the declaration of `task.start/<key>`
+  // the declaration of the start tool of this runner
   readonly declaration: StartDeclaration;
   readonly plan: (
     start: Input,

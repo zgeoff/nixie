@@ -7,9 +7,9 @@ rule `ask-coding-sessions` makes nixie ask before every `coding.start`. After yo
 starts one session on the coding gateway, binds the session to a task of its own, and the task waits
 for the session's events:
 
-- The model's `task.start` call has the policy name `task.start/atc`. You find it under "Routine" on
+- The model's `coding_start` call has the policy name `coding.start`. You find it under "Routine" on
   the approvals page, `/proposals`.
-- When you approve it, nixie adds an `action.queued` record for `coding.start`, a `task.created`
+- When you approve it, nixie adds an `action.queued` record for `coding.spawn`, a `task.created`
   record whose `runner` is `atc`, and a `coding.session_bound` record whose `origin` is `started`.
 - The `coding_sessions` table holds one row for the session, with `adapter` `atc`.
 - The task reads as "Idle" on its page, like any waiting task.
@@ -21,8 +21,9 @@ command's JSON output.
 Run this journey on `local` only, on an `up` of its own:
 
 - On `local`, `NIXIE_VERIFY_CODING=1 bun verify up` runs a test build of nixie with a scripted model
-  and a double of the coding gateway. On that `up`, the start tool offers only the coding runner, so
-  the model can start no sandbox task. Run only sign-in-enrol and then this journey on it.
+  and a double of the coding gateway. On that `up`, the conversation holds the `coding_start` tool
+  beside `task_start`, and the scripted model calls `coding_start`. Run only sign-in-enrol and then
+  this journey on it.
 - On `preview`, skip this journey, and list the feature as not verified there in your reply.
 
 Before you start:
@@ -30,12 +31,12 @@ Before you start:
 - Run `NIXIE_VERIFY_CODING=1 bun verify up --restart` and `bun verify doctor`, then
   [sign-in-enrol](feature-sign-in-enrol.md).
 - Run this journey once per `up`, because in step 4 nixie must hold exactly one call of
-  `task.start/atc`.
+  `coding.start`.
 
 ## Journey
 
 1. Record every later command of this journey under this feature. Then script the model's next turn:
-   it starts a coding task on `atc`, then replies.
+   it starts a coding task with `coding_start`, then replies.
 
    ```bash
    bun verify use --feature coding-session
@@ -66,21 +67,21 @@ Before you start:
 4. Check that nixie holds the start, then open the approvals page:
 
    ```bash
-   bun verify proposals --tool task.start/atc --waiting pending
+   bun verify proposals --tool coding.start --waiting pending
    bun verify browser goto /proposals
    bun verify browser snapshot
    ```
 
    Expect: `proposals` exits 0. The "Routine" list holds one collapsed item, which reads "Run
-   task.start/atc (coding_start).".
+   coding.start (coding_start).".
 
 5. Expand the item, then approve it. Take the `ref` from the snapshot of step 4, and take no other
-   snapshot before the first click. In that snapshot, find the line that holds "Run task.start/atc
+   snapshot before the first click. In that snapshot, find the line that holds "Run coding.start
    (coding_start)." and `[cursor=pointer]`, and pass its `ref` as `<item_ref>`.
 
    ```bash
    bun verify browser click --ref '<item_ref>'
-   bun verify browser click --role button --name 'Run task.start/atc'
+   bun verify browser click --role button --name 'Run coding.start'
    ```
 
    Expect: both clicks exit 0.
@@ -109,7 +110,7 @@ Before you start:
 
 ## End state
 
-- Step 4: nixie held one call of `task.start/atc`.
+- Step 4: nixie held one call of `coding.start`.
 - Step 6: the task "Login fix" waits, its session is bound with the origin `started`, and the task's
   runner is `atc`.
 - Step 7: the task's page shows it as idle, with its controls.

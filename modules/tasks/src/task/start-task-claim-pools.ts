@@ -19,6 +19,9 @@ export interface TaskClaimPoolsOptions {
 
   readonly started?: StartedTaskPool;
 
+  // a pool of its own for the calls, so a call's turn never waits behind a conversation turn
+  readonly call?: StartedTaskPool;
+
   readonly onStepErrored: (errored: StepErrored) => void;
   readonly onError: (error: unknown) => void;
   readonly logger: Logger;
@@ -123,5 +126,14 @@ function buildStepPools(options: TaskClaimPoolsOptions): readonly StepPool[] {
   return [
     { runStep: options.runStep, size, claimed: { tasks: 'unstarted' } },
     { runStep: options.started.runStep, size: options.started.size, claimed: { tasks: 'started' } },
+    ...(options.call === undefined
+      ? []
+      : [
+          {
+            runStep: options.call.runStep,
+            size: options.call.size,
+            claimed: { tasks: 'call' as const },
+          },
+        ]),
   ];
 }

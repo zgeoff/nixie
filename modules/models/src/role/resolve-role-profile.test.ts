@@ -5,10 +5,11 @@ import { resolveRoleProfile } from './resolve-role-profile';
 test.each([
   ['the role map names', 'checker', 'background'],
   ['the conversation has, for a role left unset,', 'worker', 'chat'],
+  ['the role map names for a call', 'call', 'background'],
 ] as const)('it picks the profile %s', (_label, role, expected) => {
   const config = buildMockModelsConfig({
     profiles: { chat: {}, background: {} },
-    roles: { conversation: 'chat', checker: 'background' },
+    roles: { conversation: 'chat', checker: 'background', call: 'background' },
   });
 
   const profile = resolveRoleProfile(config, role);

@@ -59,7 +59,7 @@ export function makeDecisionPoint(options: DecisionPointOptions): DecisionPoint 
 
     progress.stage = 2;
 
-    // a variant such as task.start/atc is on the list when its tool is
+    // a variant such as task.start/sandbox is on the list when its tool is
     const [listed = call.tool] = call.tool.split('/', 1);
 
     if (!call.toolList.includes(call.tool) && !call.toolList.includes(listed)) {

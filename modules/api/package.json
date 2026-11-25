@@ -15,6 +15,7 @@
     "@heynixie/async": "workspace:*",
     "@heynixie/backup": "workspace:*",
     "@heynixie/budgets": "workspace:*",
+    "@heynixie/calls": "workspace:*",
     "@heynixie/clock": "workspace:*",
     "@heynixie/coding": "workspace:*",
     "@heynixie/connections": "workspace:*",

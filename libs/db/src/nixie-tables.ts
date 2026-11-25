@@ -63,6 +63,19 @@ export interface NixieTables {
     readonly hash: string;
     readonly updated_sequence: number;
   };
+  readonly calls: {
+    readonly call_id: string;
+    readonly task_id: string;
+    readonly state: string;
+    readonly started_by: string;
+    readonly carrying_session: string;
+    readonly started_at: number;
+    readonly connected_at: number | null;
+    readonly ended_at: number | null;
+    readonly ended_by: string | null;
+    readonly minutes: number;
+    readonly updated_sequence: number;
+  };
   readonly client_actions: {
     readonly client_action_id: string;
     readonly procedure: string;

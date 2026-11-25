@@ -98,6 +98,7 @@ async function readOpening(
       ...turn.input.inbox.map((record) => record.sequence),
     ),
     ...(turn.run.sinceSequence === undefined ? {} : { afterSequence: turn.run.sinceSequence }),
+    ...(turn.run.frame.kind === 'call' ? { seedThrough: turn.run.frame.seedThrough } : {}),
     rebuildTokens: turn.run.memorySettings.rebuildTokens,
     times,
     zone: findNewestZone(turn.input.inbox),

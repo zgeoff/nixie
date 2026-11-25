@@ -24,6 +24,7 @@ import {
 import invariant from 'tiny-invariant';
 import type { Actor } from 'xstate';
 import { createActor } from 'xstate';
+import { runCallStep } from '../call/run-call-turn';
 import type { TaskImp, TaskImpParts } from '../sandbox/task-imp-machine';
 import { taskImpMachine } from '../sandbox/task-imp-machine';
 import { runConversationStep } from '../step/run-conversation-step';
@@ -57,6 +58,9 @@ import { writeTaskTurnSpend } from './write-task-turn-spend';
 
 export interface SandboxRunner {
   readonly runStep: RunStep;
+
+  // the step of a call's thread, which the call runner binds
+  readonly runCallStep: RunStep;
 
   readonly cleanupSessions: (cause: SessionCleanupCause) => Promise<void>;
 }
@@ -102,6 +106,7 @@ export const startSandboxRunner = makeSystemTaskRunner<SandboxRunnerOptions, San
 
     return {
       runStep: (input) => runStartedStep(runner, input),
+      runCallStep: (input) => runCallTask(runner, input),
       cleanupSessions: (cause) => runTaskSessionCleanup(runner, cause),
     };
   },
@@ -260,7 +265,13 @@ function buildTaskImpParts(runner: TaskRunner, taskID: string): TaskImpParts {
         runID: taskID,
         thread: taskID,
         logThread: run.options.log === 'conversation' ? conversationTaskID : taskID,
-        tools: [...new Set([...run.options.tools, silentEndToolName, taskReportToolName])],
+        tools: [
+          ...new Set([
+            ...run.options.tools,
+            silentEndToolName,
+            ...(run.call === null ? [taskReportToolName] : []),
+          ]),
+        ],
         model: run.model,
         ...(run.hasSelfNoteGrant
           ? { hasSelfNoteGrant: true, selfNoteOnlyTools: run.selfNoteOnlyTools }
@@ -390,10 +401,7 @@ async function runTaskTurn(
 ): Promise<StepResult> {
   const prices = parts.run.profile.profile.prices;
 
-  invariant(
-    prices !== null,
-    `the profile ${parts.run.profile.profile.id} of task ${input.taskID} sets no prices, so its dollar limit cannot count`,
-  );
+  invariant(prices !== null, `the profile of task ${input.taskID} sets no prices`);
 
   await renewStaleImp(runner, input.taskID, parts.run.definitionHash);
 
@@ -499,6 +507,19 @@ async function renewStaleImp(
   held.stop();
 
   await held.getSnapshot().context.endpoint?.stop();
+}
+
+function runCallTask(runner: TaskRunner, input: StepInput): Promise<StepResult> {
+  return resolveTaskGuard(runner, input.taskID).withTurn(
+    (invalidated) =>
+      runCallStep({
+        context: runner.options.context,
+        hooks: runner.options.calls,
+        input,
+        runTurn: () => runGuardedStep(runner, input, invalidated),
+      }),
+    { stepKey: input.stepKey, generation: input.lease.generation },
+  );
 }
 
 async function runTaskSessionCleanup(

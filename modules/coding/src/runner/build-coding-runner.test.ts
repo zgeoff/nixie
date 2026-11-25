@@ -2,6 +2,8 @@ import { expect, test } from 'bun:test';
 import { readTestActions } from '@heynixie/actions/test-utils';
 import { readRecords } from '@heynixie/log';
 import type { TasksTables } from '@heynixie/tasks';
+import { buildTasksListTool, writeTaskControl } from '@heynixie/tasks';
+import { buildMockToolCall, buildMockToolContext } from '@heynixie/tools/test-utils';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
 import { readBinding } from '../session/read-binding';
@@ -41,7 +43,6 @@ test('it starts a coding task that queues one spawn, sends the brief as the prom
   const claim = await ctx.claimConversation();
 
   const taskID = await ctx.startTask(claim, {
-    runner: 'atc',
     name: 'Fix the flaky login test',
     brief: 'The login test fails 1 time in 5 on CI. Find why and open a pull request.',
     repo: { url: 'https://github.com/example/shop.git', ref: 'main' },
@@ -92,8 +93,7 @@ test('it joins a running session by its short ID, binds it, and sends it nothing
   const shortID = listed.outcome.status === 'ok' ? JSON.stringify(listed.outcome.result) : '';
   const session = /"id":"(?<id>[^"]+)"/u.exec(shortID)?.groups?.['id'] ?? '';
 
-  const joined = await ctx.callTool(claim, 'task.start', {
-    runner: 'atc',
+  const joined = await ctx.callTool(claim, 'coding.start', {
     name: 'Your billing refactor',
     brief: 'Watch for a question, and check the migration once the work is done.',
     session,
@@ -144,10 +144,10 @@ test('it refuses a second join of a session that an open coding task binds', asy
   const listed = await ctx.callTool(claim, 'coding.sessions', {});
 
   const session = /"id":"(?<id>[^"]+)"/u.exec(JSON.stringify(listed.outcome))?.groups?.['id'] ?? '';
-  const join = { runner: 'atc', brief: 'Watch for a question.', session };
+  const join = { brief: 'Watch for a question.', session };
 
   const taskID = await ctx.startTask(claim, { ...join, name: 'Billing' });
-  const second = await ctx.callTool(claim, 'task.start', { ...join, name: 'Billing again' });
+  const second = await ctx.callTool(claim, 'coding.start', { ...join, name: 'Billing again' });
 
   expect(second.outcome).toStrictEqual({
     status: 'error',
@@ -174,8 +174,7 @@ test.each([
 
   ctx.adapter.addSession({ id: 'cloud.3f9a1c2e.7c1d0e55', name: 'billing refactor', state });
 
-  const joined = await ctx.callTool(claim, 'task.start', {
-    runner: 'atc',
+  const joined = await ctx.callTool(claim, 'coding.start', {
     name: 'Billing',
     brief: 'Watch for a question.',
     session,
@@ -188,8 +187,7 @@ test('it refuses to join a short ID that names no session', async () => {
   const ctx = await setupTest();
   const claim = await ctx.claimConversation();
 
-  const joined = await ctx.callTool(claim, 'task.start', {
-    runner: 'atc',
+  const joined = await ctx.callTool(claim, 'coding.start', {
     name: 'Billing',
     brief: 'Watch for a question.',
     session: 'cs4k',
@@ -208,7 +206,6 @@ test('it ends the task as done with a report when the system refuses the spawn',
   ctx.adapter.replyNext('start', { status: 'refused', canClear: false, reason: 'bad_args' });
 
   const taskID = await ctx.startTask(claim, {
-    runner: 'atc',
     name: 'Fix the flaky login test',
     brief: 'Find why the login test fails.',
     repo: { url: 'https://github.com/example/shop.git', ref: 'main' },
@@ -244,7 +241,6 @@ test('it lists the session of each coding task for tasks.list, and no meters', a
   const claim = await ctx.claimConversation();
 
   const taskID = await ctx.startTask(claim, {
-    runner: 'atc',
     name: 'Fix the flaky login test',
     brief: 'Find why the login test fails.',
     repo: { url: 'https://github.com/example/shop.git', ref: 'main' },
@@ -261,4 +257,53 @@ test('it lists the session of each coding task for tasks.list, and no meters', a
       [taskID, { session: { origin: 'started', state: 'running', lastEventAt: null } }],
     ]),
   });
+});
+
+test('it shows a task that coding.start started in tasks.list under the runner atc', async () => {
+  const ctx = await setupTest();
+  const claim = await ctx.claimConversation();
+
+  const taskID = await ctx.startTask(claim, {
+    name: 'Fix the flaky login test',
+    brief: 'Find why the login test fails.',
+    repo: { url: 'https://github.com/example/shop.git', ref: 'main' },
+  });
+
+  const outcome = await buildTasksListTool(ctx.context, { directory: [] }).run(
+    buildMockToolCall({ tool: 'tasks.list', input: { runner: 'atc' } }),
+    buildMockToolContext({ run: { thread: 'conversation' } }),
+  );
+
+  expect(outcome).toStrictEqual({
+    status: 'ok',
+    result: {
+      tasks: [
+        expect.objectContaining({ id: taskID, name: 'Fix the flaky login test', runner: 'atc' }),
+      ],
+    },
+  });
+});
+
+test('it cancels the spawn of a coding task that stops before the spawn runs, and starts no session', async () => {
+  const ctx = await setupTest();
+  const claim = await ctx.claimConversation();
+
+  const taskID = await ctx.startTask(claim, {
+    name: 'Fix the flaky login test',
+    brief: 'Find why the login test fails.',
+    repo: { url: 'https://github.com/example/shop.git', ref: 'main' },
+  });
+
+  await writeTaskControl(ctx.context, { taskID, control: 'stop' });
+
+  const attempts = await ctx.runActions();
+  const actions = await ctx.readActions();
+
+  const spawns = actions.filter((action) => action.tool === 'coding.spawn');
+
+  expect({
+    attempts,
+    spawnAttempts: spawns.map((action) => action.attemptCount),
+    calls: ctx.adapter.calls,
+  }).toStrictEqual({ attempts: 0, spawnAttempts: [0], calls: [] });
 });

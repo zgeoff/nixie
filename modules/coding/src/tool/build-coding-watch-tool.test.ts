@@ -15,7 +15,6 @@ async function setupTest() {
       const session = /"id":"(?<id>[^"]+)"/u.exec(JSON.stringify(listed.outcome))?.groups?.['id'];
 
       const taskID = await ctx.startTask(claim, {
-        runner: 'atc',
         name: 'Your billing refactor',
         brief: 'Watch for a question.',
         session,

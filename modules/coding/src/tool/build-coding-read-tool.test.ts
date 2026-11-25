@@ -13,7 +13,6 @@ async function setupTest() {
       const session = /"id":"(?<id>[^"]+)"/u.exec(JSON.stringify(listed.outcome))?.groups?.['id'];
 
       const taskID = await ctx.startTask(claim, {
-        runner: 'atc',
         name: 'Your billing refactor',
         brief: 'Watch for a question.',
         session,
@@ -128,7 +127,6 @@ test('it refuses a coding task whose spawn has not run yet', async () => {
   const claim = await ctx.claimConversation();
 
   const taskID = await ctx.startTask(claim, {
-    runner: 'atc',
     name: 'Fix the flaky login test',
     brief: 'Find why the login test fails.',
     repo: { url: 'https://github.com/example/shop.git', ref: 'main' },
@@ -149,7 +147,6 @@ test('it refuses a coding task that is done', async () => {
   ctx.adapter.replyNext('start', { status: 'refused', canClear: false, reason: 'bad_args' });
 
   const taskID = await ctx.startTask(claim, {
-    runner: 'atc',
     name: 'Fix the flaky login test',
     brief: 'Find why the login test fails.',
     repo: { url: 'https://github.com/example/shop.git', ref: 'main' },

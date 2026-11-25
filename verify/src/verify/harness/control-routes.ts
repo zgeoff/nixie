@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { callStepSchema } from './run-call-step';
 
 const listedTaskSchema = z.strictObject({
   taskID: z.string(),
@@ -38,6 +39,7 @@ const writtenNotesSchema = z.strictObject({
   privateBody: z.string().min(1),
 });
 
+const speechCallSchema = z.strictObject({ method: z.string(), text: z.string().nullable() });
 const actionProposalSchema = z.strictObject({ proposalID: z.string(), tool: z.string() });
 
 // The harness's control routes, which the verify CLI's actions and checks call through the http
@@ -71,10 +73,10 @@ export const controlRoutes = {
       // for your approval
       export: z.boolean().optional(),
 
-      // a task the model starts with the task tool before its reply, and the task's first reply
+      // a task the model starts with the task start tool before its reply, and the task's first reply
       task: startedTaskSchema.optional(),
 
-      // a coding task the model starts on the atc runner with the task tool before its reply, which
+      // a coding task the model starts on the atc runner with the coding start tool before its reply, which
       // the starter rules hold for your approval; the coding runner calls no model
       codingTask: codingTaskSchema.optional(),
 
@@ -156,6 +158,14 @@ export const controlRoutes = {
         })
         .nullable(),
     }),
+  },
+  callStep: {
+    method: 'POST',
+    path: '/control/call-step',
+    input: z.strictObject({ step: callStepSchema }),
+
+    // the call's ID, and each call that nixie made on the fake speech layer, oldest first
+    output: z.strictObject({ callID: z.string(), speech: z.array(speechCallSchema) }),
   },
   deliverMail: {
     method: 'POST',

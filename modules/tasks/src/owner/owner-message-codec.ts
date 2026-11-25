@@ -17,5 +17,8 @@ export const ownerMessageCodec = defineRecordCodec(
     timeZone: z.string().exactOptional(),
     writtenAt: z.string().exactOptional(),
     images: imageSchema.array().exactOptional(),
+
+    // set on a line of a voice call that the speech layer heard: it waits for the hand-off
+    isDictated: z.boolean().exactOptional(),
   }),
 );

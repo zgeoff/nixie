@@ -2,6 +2,7 @@ import type { ActionConnector, CheckResponse } from '@heynixie/connectors';
 import { z } from 'zod';
 import type { CodingAdapter, SessionRef } from '../types';
 import { codingToolNames } from './coding-tool-names';
+import { spawnToolNames } from './spawn-tool-names';
 import { toProviderResponse } from './to-provider-response';
 
 // A system that runs coding sessions forgets a completed key 24 h after its call, so the queue
@@ -26,24 +27,23 @@ const textArgumentsSchema = sessionArgumentsSchema.extend({ text: z.string() });
 export function buildCodingConnectors(
   adapter: CodingAdapter,
 ): ReadonlyMap<string, ActionConnector> {
+  const spawn: ActionConnector = {
+    reconcile: { kind: 'idempotency_key', where: adapter.id, keptForMs },
+    run: async (attempt) => {
+      const brief = startArgumentsSchema.parse(attempt.arguments);
+
+      const reply = await adapter.start(brief, attempt.idempotencyKey);
+
+      return toProviderResponse(reply, (started) => ({
+        sessionID: started.session.id,
+        state: started.state,
+        fromCursor: started.fromCursor,
+      }));
+    },
+  };
+
   return new Map<string, ActionConnector>([
-    [
-      codingToolNames.start,
-      {
-        reconcile: { kind: 'idempotency_key', where: adapter.id, keptForMs },
-        run: async (attempt) => {
-          const brief = startArgumentsSchema.parse(attempt.arguments);
-
-          const reply = await adapter.start(brief, attempt.idempotencyKey);
-
-          return toProviderResponse(reply, (started) => ({
-            sessionID: started.session.id,
-            state: started.state,
-            fromCursor: started.fromCursor,
-          }));
-        },
-      },
-    ],
+    ...spawnToolNames.map((tool): [string, ActionConnector] => [tool, spawn]),
     [
       codingToolNames.steer,
       {

@@ -1,5 +1,6 @@
 import { join } from 'node:path';
 import type { ErasureStuckPort } from '@heynixie/api';
+import type { CallsContext } from '@heynixie/calls';
 import type {
   ImageProvider,
   ImagesConfig,
@@ -39,7 +40,7 @@ import {
   buildReminderUpdateTool,
   buildRemindersListTool,
 } from '@heynixie/reminders';
-import { buildSilentEndTool } from '@heynixie/sessions';
+import { buildHangUpTool, buildSilentEndTool } from '@heynixie/sessions';
 import type { WorkerTool } from '@heynixie/sessions';
 import type { SkillVendorContext } from '@heynixie/skills';
 import type { TaskStartBounds } from '@heynixie/tasks';
@@ -54,7 +55,6 @@ import {
 } from '@heynixie/tasks';
 import type { ActionQueue, ToolDefinition, ToolEndpoint } from '@heynixie/tools';
 import { buildToolRegistry, findToolDeclaration, startToolEndpoint } from '@heynixie/tools';
-import type { HarnessID } from '@heynixie/wire';
 import { buildContactTool } from '../cli/build-contact-tool';
 import { buildForgetRetryTool } from '../forget/build-forget-retry-tool';
 import { buildForgetStuckTool } from '../forget/build-forget-stuck-tool';
@@ -62,7 +62,7 @@ import { buildMandateTool } from '../rule/build-mandate-tool';
 import { buildRulesListTool } from '../rule/build-rules-list-tool';
 import { makeReadZone } from '../server/make-read-zone';
 import { buildTaskStartBounds } from '../task/build-task-start-bounds';
-import type { ServerParts } from '../types';
+import type { BuildCodingStart, ServerParts } from '../types';
 import { buildTaskMessaging } from '../utils/build-task-messaging';
 import type { DecisionPointFactory } from '../utils/make-server-decisions';
 import { buildConversationMemoryTools } from './build-conversation-memory-tools';
@@ -90,12 +90,11 @@ export interface ConversationEndpointTools {
   // the tools on coding sessions, none without a coding runner
   readonly coding: readonly ToolDefinition[];
 
+  // builds coding.start, which starts a coding task; null without a coding runner
+  readonly buildCodingStart: BuildCodingStart | null;
+
   // the tools on the assistant's own mailbox, none without a mailbox
   readonly mail: readonly ToolDefinition[];
-
-  // the harnesses of the model profiles in use, which decide the variants that task.start
-  // advertises; absent, it advertises every variant
-  readonly harnesses: readonly HarnessID[] | undefined;
   readonly codeRun: ToolDefinition;
   readonly fileSend: ToolDefinition;
   readonly forget: ToolDefinition;
@@ -134,6 +133,9 @@ export interface ConversationEndpointTools {
   readonly vendor: SkillVendorContext | null;
 
   readonly isPromptExported: boolean;
+
+  // the calls module, whose running call the hang-up tool ends
+  readonly calls: CallsContext | undefined;
 }
 
 export interface ConversationEndpoint {
@@ -251,12 +253,7 @@ export async function startConversationEndpoint(
   const tasks = [
     buildTasksListTool(options.context, messaging),
     buildTaskMessageTool(options.context, messaging),
-    buildTaskStartTool(
-      options.context,
-      { ...messaging, ...(tools.harnesses === undefined ? {} : { harnesses: tools.harnesses }) },
-      bounds,
-      relatedMemory,
-    ),
+    buildTaskStartTool(options.context, messaging, bounds, relatedMemory),
     buildTaskCloseTool(options.context, messaging),
   ];
 
@@ -320,6 +317,9 @@ export async function startConversationEndpoint(
     ...notebook,
     ...tools.computer,
     ...tools.coding,
+    ...(tools.buildCodingStart === null
+      ? []
+      : [tools.buildCodingStart({ messaging, bounds, relatedMemory })]),
     ...tools.mail,
     ...search,
     ...images,
@@ -340,7 +340,9 @@ export async function startConversationEndpoint(
     buildTaskReportTool(options.context),
   ];
 
-  const registry = buildToolRegistry([...definitions, ...tools.testTools]);
+  // Only a call's thread holds the hang-up, so it stays out of the conversation's own list.
+  const hangUp = buildHangUpTool(() => tools.calls, options.context);
+  const registry = buildToolRegistry([...definitions, hangUp, ...tools.testTools]);
 
   const endpoint = await startToolEndpoint({
     socketDir: join(options.config.server.dataDir, 'run', 'tools'),

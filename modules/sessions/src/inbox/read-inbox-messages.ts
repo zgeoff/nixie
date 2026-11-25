@@ -13,7 +13,9 @@ import { isSilentRecord } from './is-silent-record';
 import { isToldWaitNotice } from './is-told-wait-notice';
 import { readActionResult } from './read-action-result';
 import { readApprovalTime } from './read-approval-time';
+import { readHeardCut } from './read-heard-cut';
 import { readReminder } from './read-reminder';
+import { readSmallTalk } from './read-small-talk';
 import { toInboxMessage } from './to-inbox-message';
 
 // What reading a record needs: the log, and the reader of the version that a fire pins.
@@ -103,6 +105,8 @@ async function readInboxMessage(
   );
 
   const approvedAt = await readApprovalTime(context, record);
+  const cut = await readHeardCut(context, record);
+  const smallTalk = await readSmallTalk(context, record);
 
   if (ownerMessageCodec.tryDecodePartial(record.payload)?.images === undefined) {
     return toInboxMessage(record, read.times, read.view, {
@@ -110,6 +114,8 @@ async function readInboxMessage(
       reminder,
       result,
       approvedAt,
+      cut,
+      smallTalk,
       ...(gaps === undefined ? {} : { gaps }),
     });
   }
@@ -124,6 +130,7 @@ async function readInboxMessage(
     reminder,
     result,
     approvedAt,
+    cut,
     ...(gaps === undefined ? {} : { gaps }),
   });
 }

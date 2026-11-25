@@ -107,6 +107,7 @@ export async function seedInForceInTransaction(
     conversationSkills: overlay.conversationSkills,
     tasks: taskPlan.tasks,
     budgets: budgets.inForce,
+    voice: inForce.voice,
   });
 
   await writeAdoptedSkills(tx, {

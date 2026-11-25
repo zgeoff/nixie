@@ -160,6 +160,15 @@ export interface SessionDefinitions {
 
 export type SessionFrame =
   | { readonly kind: 'conversation' }
+
+  // A voice call's thread. It runs the conversation's turn code under the voice-call prompt, and
+  // its session opens with the conversation through `seedThrough` and then the call's own thread.
+  | {
+      readonly kind: 'call';
+      readonly callID: string;
+      readonly seedThrough: number;
+      readonly voicePrompt: string;
+    }
   | { readonly kind: 'task'; readonly startedBy: string; readonly report: TaskReport };
 
 interface TurnBudget {

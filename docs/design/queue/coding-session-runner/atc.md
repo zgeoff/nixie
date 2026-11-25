@@ -12,8 +12,8 @@ release pairs. The step that calls the adapter is in [the runner](runner.md), an
 call it are in [the tools](tools.md). The terms, such as reach, a target, a steer and a bound
 session, are in the [README](README.md#terms). The action queue is in
 [actions](../../../architecture/core/actions.md), and the trigger core in
-[the trigger core](../../../architecture/core/triggers.md). Once the owner approves the design,
-build the adapter and the source in [the atc runner](https://linear.app/zgeoff/issue/GEO-1843).
+[the trigger core](../../../architecture/core/triggers.md). Build the adapter and the source in
+[the atc runner](https://linear.app/zgeoff/issue/GEO-1843).
 
 ## Shape
 
@@ -76,7 +76,7 @@ interface TargetRef {
 interface StartedSession {
   session: SessionRef;
   state: SessionState;
-  fromCursor: string; // the event trail's cursor, read just before the spawn or the join
+  fromCursor: string; // the event trail's cursor, read just before the spawn, or just after the join's session read
 }
 
 interface SessionRef {
@@ -148,7 +148,7 @@ interface TaskInputEvent {
   dedupeKey: string; // the SessionEvent's eventKey
   occurredAt: string; // ISO
   hop: number; // coding_sessions.hop of the session
-  wake: boolean; // true: the event is `ended`, or in the session's wake set
+  wake: boolean; // true: the event is `ended`, `answered` or `unanswered`, or in the session's wake set
   payload: JSONObject; // the SessionEvent, kept in the record's erasable fields, which a forget destroys
 }
 
@@ -166,7 +166,7 @@ The record is an inbox record when `wake` is true. `buildStepWake` reads the `ho
   triggers module already depends on tasks. The triggers core writes the record, and the coding
   module folds it.
 - The coding module is a new package, `modules/coding`. It depends on tasks, triggers, actions,
-  connectors and policy, and `coding-atc` depends only on it.
+  connectors and policy, and `coding-atc` depends on no other nixie module.
 
 ### The atc adapter
 
@@ -272,7 +272,7 @@ HTTP refusal carries none:
   reconciliation sends it to you, because the line may have reached the terminal.
 - The start's plan resolves `agent` and `target` from the config into the action's args, so every
   attempt sends the same spawn.
-- `coding.start` and `coding.message` declare `idempotency_key` reconciliation with `keptForMs` 23
+- `coding.spawn` and `coding.message` declare `idempotency_key` reconciliation with `keptForMs` 23
   h. A daemon forgets a completed key 24 h after its call, and the gateway keeps its own binding of
   the key for 48 h, so in the first 23 h a resend never runs the call twice. After 23 h, the queue's
   own key expires, and the queue sends the unknown outcome to you.
@@ -339,10 +339,11 @@ service tokens and every tool this adapter calls.
 - A page that lists a daemon under `unavailable` keeps that daemon's place in the cursor, and the
   source reads that daemon again on the next call. When a page lists a daemon under `truncated`,
   that daemon's older events are lost, and the source logs the loss with the daemon's name.
-- The source writes an event with `wake: true` when the event is `ended`, or when the session's wake
-  set holds the event's state, for a `state` event, or its label, for a `note`. Every other event
-  gets `wake: false`, and its record wakes no step: only the coding module's fold of it updates
-  `coding_sessions`.
+- The source writes an event with `wake: true` when the event is `ended`, `answered` or
+  `unanswered`, or when the session's wake set holds the event's state, for a `state` event, or its
+  label, for a `note`. An answer always wakes the step, so the step can reply to the note's sender
+  with the answer's hop. Every other event gets `wake: false`, and its record wakes no step: only
+  the coding module's fold of it updates `coding_sessions`.
 - The source drops an event of a task that is stopped, done, failed or closed, and of a session
   whose row has `unbound_at` set, and still moves its cursor.
 - After a failed read, the source waits from 1 s, doubling to 5 min, and reports itself unhealthy
