@@ -326,6 +326,7 @@ test.each([
         cacheWriteTokens: 0,
         contextSize: expect.any(Number),
         contextWindow: 200_000,
+        dollars: 0,
         pinnedCore: [],
         retrieved: [],
         invalidatedThrough: 0,

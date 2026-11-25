@@ -25,6 +25,7 @@ export async function runOpenedTurn(turn: SessionTurn, opening: Opening): Promis
   const completed = {
     ...opened.completed,
     harness: turn.run.harness,
+    prices: turn.run.profile.profile.prices,
     memory: { ...turn.context, invalidatedThrough: turn.invalidatedThrough },
   };
 

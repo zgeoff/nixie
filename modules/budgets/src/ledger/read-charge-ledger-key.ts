@@ -1,6 +1,7 @@
 import type { Transaction } from 'kysely';
 import type { BudgetsTables } from '../types';
 import { buildBudgetLedgerKey } from './build-budget-ledger-key';
+import { pickLedgerPeriodKind } from './pick-ledger-period-kind';
 
 export interface ChargedPayload {
   readonly budgetID: string;
@@ -9,12 +10,11 @@ export interface ChargedPayload {
 }
 
 // The ledger key of a charge. A charge from before the ledger names none, so its key takes the
-// period kind that the budget in force has when it changed no later than the charge, and the kind
-// that the budget's ID ends with otherwise, as every built-in budget's ID does.
+// period kind of the budget in force, the same rule that the migration applies to the stored
+// charges.
 export async function readChargeLedgerKey(
   tx: Transaction<unknown>,
   payload: ChargedPayload,
-  sequence: number,
 ): Promise<string> {
   if (payload.ledgerKey !== undefined) {
     return payload.ledgerKey;
@@ -23,26 +23,11 @@ export async function readChargeLedgerKey(
   const row = await tx
     .$extendTables<BudgetsTables>()
     .selectFrom('budgets_in_force')
-    .select(['period', 'updated_sequence'])
+    .select('period')
     .where('budget_id', '=', payload.budgetID)
     .executeTakeFirst();
 
-  const kind =
-    row !== undefined && row.updated_sequence <= sequence
-      ? row.period
-      : pickKindFromID(payload.budgetID);
+  const kind = pickLedgerPeriodKind(row?.period, payload.budgetID);
 
-  return buildBudgetLedgerKey(payload.budgetID, { kind: toKind(kind), start: payload.periodStart });
-}
-
-function pickKindFromID(budgetID: string): string {
-  if (budgetID.endsWith('-month')) {
-    return 'month';
-  }
-
-  return budgetID.endsWith('-week') ? 'week' : 'day';
-}
-
-function toKind(kind: string): 'day' | 'week' | 'month' {
-  return kind === 'week' || kind === 'month' ? kind : 'day';
+  return buildBudgetLedgerKey(payload.budgetID, { kind, start: payload.periodStart });
 }

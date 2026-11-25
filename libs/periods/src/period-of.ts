@@ -1,4 +1,5 @@
 import { buildDayStart, buildZoneOffsetMs } from '@heynixie/clock';
+import { pickPeriodDates } from './pick-period-dates';
 import type { Period, PeriodKind } from './types';
 
 // The period of the kind that an instant falls in. A day starts at local midnight in the zone, a
@@ -26,37 +27,4 @@ export function periodOf(kind: PeriodKind, nowMs: number, zone: string): Period 
     startsAtMs: buildDayStart(start, zone),
     endsAtMs: buildDayStart(next.toISOString().slice(0, 10), zone),
   };
-}
-
-interface LocalDate {
-  readonly year: number;
-  readonly month: number;
-  readonly day: number;
-  readonly weekday: number;
-}
-
-function pickPeriodDates(
-  kind: Exclude<PeriodKind, 'none'>,
-  local: LocalDate,
-): readonly [Date, Date] {
-  if (kind === 'day') {
-    return [
-      new Date(Date.UTC(local.year, local.month, local.day)),
-      new Date(Date.UTC(local.year, local.month, local.day + 1)),
-    ];
-  }
-
-  if (kind === 'week') {
-    const sinceMonday = (local.weekday + 6) % 7;
-
-    return [
-      new Date(Date.UTC(local.year, local.month, local.day - sinceMonday)),
-      new Date(Date.UTC(local.year, local.month, local.day - sinceMonday + 7)),
-    ];
-  }
-
-  return [
-    new Date(Date.UTC(local.year, local.month, 1)),
-    new Date(Date.UTC(local.year, local.month + 1, 1)),
-  ];
 }

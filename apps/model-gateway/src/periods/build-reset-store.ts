@@ -1,18 +1,16 @@
-import { periodOf } from '@heynixie/periods';
 import type { PeriodName, PeriodStore } from '../types';
+import { buildEmptyCount } from './build-empty-count';
+import { buildResetMs } from './build-reset-ms';
 
 const periodNames: readonly PeriodName[] = ['day', 'month'];
 
-// Each period whose current start has passed in the zone resets: its count goes to zero, its start
-// moves, and its raise drops. The limit and the lost mark stay. Returns the same store when no
-// period has ended, so a caller can tell a reset from a plain read.
+// Each period whose end has passed resets: its count goes to zero, its start and end move to the
+// zone's current ones, and its raise drops. The limit and the lost mark stay. Returns the same
+// store when no period has ended, so a caller can tell a reset from a plain read.
 export function buildResetStore(store: PeriodStore, nowMs: number, zone: string): PeriodStore {
-  const starts = {
-    day: periodOf('day', nowMs, zone).start,
-    month: periodOf('month', nowMs, zone).start,
-  };
-
-  const ended = periodNames.filter((name) => starts[name] > store.periods[name].start);
+  const ended = periodNames.filter(
+    (name) => nowMs >= buildResetMs(name, store.periods[name], zone),
+  );
 
   if (ended.length === 0) {
     return store;
@@ -20,14 +18,7 @@ export function buildResetStore(store: PeriodStore, nowMs: number, zone: string)
 
   const reset = (name: PeriodName) =>
     ended.includes(name)
-      ? {
-          start: starts[name],
-          dollars: 0,
-          tokens: 0,
-          limit: store.periods[name].limit,
-          raise: null,
-          trippedAt: null,
-        }
+      ? buildEmptyCount(name, nowMs, zone, store.periods[name].limit)
       : store.periods[name];
 
   return { ...store, periods: { day: reset('day'), month: reset('month') } };

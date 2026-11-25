@@ -453,10 +453,12 @@ A started task has a limit of turns and of dollars, which its start set or took 
 `models.limits.taskRun`. The limits belong to the task run, and 2 meters count a task run's use:
 
 - The turns meter counts the `model.turn_ended` records of the task run.
-- The dollars meter prices those records' token counts with the task's profile, adds each summary of
-  the task's session, which records the token counts of its calls too, and adds each
-  `task.failed_turn_spent` record of the task run, which holds the dollars of a turn that left no
-  turn record. A summary counts as dollars and as no turn.
+- The dollars meter adds the dollars that each of those records holds, which the turn's profile
+  priced when the record was written, adds each summary of the task's session, which holds its
+  dollars too, and adds each `task.failed_turn_spent` record of the task run, which holds the
+  dollars of a turn that left no turn record. A summary counts as dollars and as no turn. A record
+  that holds no dollars is priced from its token counts with the task's profile when the meter reads
+  it.
 
 The config schema refuses a profile with no price table for any profile a task can run on, as
 [selectable models](./model-profiles.md#selectable-models) describes. A record sums its calls, and

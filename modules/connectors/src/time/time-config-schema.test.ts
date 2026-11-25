@@ -20,3 +20,11 @@ test('it takes a zone whose offset is 45 minutes past the hour', () => {
     default_zone: 'Asia/Kathmandu',
   });
 });
+
+test('it refuses a zone whose offset is not a whole number of 15 minutes', () => {
+  const result = timeConfigSchema.safeParse({ default_zone: '+00:01' });
+
+  expect(result.error?.issues.map((issue) => issue.message)).toStrictEqual([
+    'expected a zone whose offset from UTC is a whole number of 15 minutes',
+  ]);
+});

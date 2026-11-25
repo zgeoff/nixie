@@ -1,5 +1,6 @@
 import type { Clock } from '@heynixie/clock';
 import type { JSONObject, Log } from '@heynixie/log';
+import { periodOf } from '@heynixie/periods';
 import type { ToolDefinition } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
@@ -105,10 +106,12 @@ export function buildSearchTool(
       priceMicros: options.priceMicros,
       callCap: {
         openCall: () => {
-          const call = {
-            day: formatLocalDay(options.clock.now(), options.timeZone),
-            cap: options.dailyCallCap,
-          };
+          const today = periodOf('day', options.clock.now(), options.timeZone);
+
+          invariant(today.endsAtMs !== null, 'a day ends');
+
+          const call = { day: today.start, cap: options.dailyCallCap };
+          const nextDay = periodOf('day', today.endsAtMs, options.timeZone).start;
 
           return {
             checkInTransaction: async (tx) => {
@@ -121,7 +124,7 @@ export function buildSearchTool(
                     message:
                       `the search cap of ${String(options.dailyCallCap)} calls a day is reached, ` +
                       `and it resets at midnight ${options.timeZone} time, when ` +
-                      `${formatNextDay(call.day)} starts`,
+                      `${nextDay} starts`,
                   };
             },
             countInTransaction: (tx) => writeSearchCall(tx, call),
@@ -166,24 +169,6 @@ export function buildSearchTool(
       };
     },
   };
-}
-
-function formatLocalDay(atMs: number, timeZone: string): string {
-  // en-CA writes a date as YYYY-MM-DD
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(atMs);
-}
-
-function formatNextDay(day: string): string {
-  const next = new Date(`${day}T00:00:00.000Z`);
-
-  next.setUTCDate(next.getUTCDate() + 1);
-
-  return next.toISOString().slice(0, 10);
 }
 
 const dateSchema = z.iso.date();

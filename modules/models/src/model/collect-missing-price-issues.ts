@@ -1,4 +1,4 @@
-import type { ModelPrices, ProfileFields } from '../types';
+import type { ProfileFields } from '../types';
 
 export interface PriceIssue {
   readonly path: readonly string[];
@@ -15,14 +15,19 @@ export interface PricedModelsConfig {
   readonly selectable: readonly { readonly name: string; readonly profile: string }[];
 }
 
-// Without a gateway, nixie prices each model call itself, so each profile that a task, a selectable
-// model or a worker runs on needs a price table. With a gateway, the route's prices are the one
-// source and a profile sets none, so the caller skips this check.
+// A task counts each model call against its dollar limit by the profile's prices, so each profile
+// that a task, a selectable model or a worker runs on needs a price table.
 export function collectMissingPriceIssues(config: PricedModelsConfig): PriceIssue[] {
   const issues: PriceIssue[] = [];
 
+  const unpriced = new Set(
+    Object.entries(config.profiles)
+      .filter(([, profile]) => profile.prices === null)
+      .map(([profileID]) => profileID),
+  );
+
   for (const entry of config.selectable) {
-    if (hasNoPrices(config, entry.profile)) {
+    if (unpriced.has(entry.profile)) {
       issues.push({
         path: ['models', 'selectable', entry.name, 'profile'],
         message: `the selectable model ${entry.name} names the profile ${entry.profile}, which sets no prices`,
@@ -33,7 +38,7 @@ export function collectMissingPriceIssues(config: PricedModelsConfig): PriceIssu
   // an unset task role runs tasks on the conversation's profile
   const taskProfileID = config.roles.task ?? config.roles.conversation;
 
-  if (taskProfileID !== undefined && hasNoPrices(config, taskProfileID)) {
+  if (taskProfileID !== undefined && unpriced.has(taskProfileID)) {
     issues.push({
       path: ['models', 'roles', 'task'],
       message:
@@ -43,7 +48,7 @@ export function collectMissingPriceIssues(config: PricedModelsConfig): PriceIssu
     });
   }
 
-  if (config.roles.worker !== undefined && hasNoPrices(config, config.roles.worker)) {
+  if (config.roles.worker !== undefined && unpriced.has(config.roles.worker)) {
     issues.push({
       path: ['models', 'roles', 'worker'],
       message: `the worker role names the profile ${config.roles.worker}, which sets no prices, and a worker run counts its cost against its dollar limit`,
@@ -51,10 +56,4 @@ export function collectMissingPriceIssues(config: PricedModelsConfig): PriceIssu
   }
 
   return issues;
-}
-
-function hasNoPrices(config: PricedModelsConfig, profileID: string): boolean {
-  const prices: ModelPrices | null | undefined = config.profiles[profileID]?.prices;
-
-  return prices === null;
 }

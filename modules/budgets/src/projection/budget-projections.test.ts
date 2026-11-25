@@ -2,6 +2,7 @@ import { expect, test } from 'bun:test';
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import { readTestProjectionDrift } from '@heynixie/log/test-utils';
 import { sql } from 'kysely';
+import { chargeBudgetsInTransaction } from '../charge/charge-budgets-in-transaction';
 import { budgetChargedCodec } from '../record/budget-charged-codec';
 import { startTestBudgets } from '../test-utils';
 import { budgetProjections } from './budget-projections';
@@ -132,15 +133,25 @@ test('it credits the row its charge added to after the budget changes its period
   ]);
 });
 
-test('it keys a charge that names no ledger key by the period kind of its budget', async () => {
+test.each([
+  {
+    title: 'the period kind of its budget in force',
+    budgetID: 'groceries',
+    inForce: [{ id: 'groceries', counts: 'spend', limitMicros: 100_000_000, period: 'week' }],
+    ledgerKey: 'budget:groceries|micros:USD|week|2026-10-12',
+  },
+  {
+    title: 'the period kind that its ID ends with when no budget is in force',
+    budgetID: 'shopping-week',
+    inForce: [],
+    ledgerKey: 'budget:shopping-week|micros:USD|week|2026-10-12',
+  },
+] as const)('it keys a charge that names no ledger key by $title', async (row) => {
   const ctx = await startTestBudgets();
 
-  await ctx.seedBudgetInForce({
-    id: 'shopping-week',
-    counts: 'spend',
-    limitMicros: 100_000_000,
-    period: 'week',
-  });
+  for (const budget of row.inForce) {
+    await ctx.seedBudgetInForce(budget);
+  }
 
   await withWriteTransaction(ctx.writer, (tx) =>
     writeRecordsInTransaction(tx, ctx.log, [
@@ -149,7 +160,7 @@ test('it keys a charge that names no ledger key by the period kind of its budget
         definitions: ctx.context.definitions(),
         payload: budgetChargedCodec.encode({
           chargeID: 'old-charge',
-          budgetID: 'shopping-week',
+          budgetID: row.budgetID,
           periodStart: '2026-10-12',
           amountMicros: 4_000_000,
           for: { kind: 'action', id: 'action-1' },
@@ -160,7 +171,31 @@ test('it keys a charge that names no ledger key by the period kind of its budget
 
   const ledger = await sql`select ledger_key, amount from spend_ledger`.execute(ctx.writer.db);
 
-  expect(ledger.rows).toStrictEqual([
-    { ledger_key: 'budget:shopping-week|micros:USD|week|2026-10-12', amount: 4_000_000 },
-  ]);
+  expect(ledger.rows).toStrictEqual([{ ledger_key: row.ledgerKey, amount: 4_000_000 }]);
+});
+
+test('it rolls back the ledger change with the record that caused it', async () => {
+  const ctx = await startTestBudgets();
+
+  const attempt = withWriteTransaction(ctx.writer, async (tx) => {
+    await chargeBudgetsInTransaction(tx, ctx.context, {
+      budgetIDs: ['search-day'],
+      amountMicros: 25_000,
+      for: { kind: 'tool_call', id: 'call-1' },
+    });
+
+    throw new Error('the write fails after the ledger folds');
+  });
+
+  await expect(attempt).rejects.toThrow('the write fails after the ledger folds');
+
+  const records =
+    await sql`select kind from records where kind = ${budgetChargedCodec.kind}`.execute(
+      ctx.writer.db,
+    );
+
+  const ledger = await sql`select * from spend_ledger`.execute(ctx.writer.db);
+  const charges = await sql`select * from budget_charges`.execute(ctx.writer.db);
+
+  expect([records.rows, ledger.rows, charges.rows]).toStrictEqual([[], [], []]);
 });

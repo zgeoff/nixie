@@ -54,6 +54,7 @@ export async function seedTurnEnded(context: TasksContext): Promise<LogRecord> {
     isSilent: false,
     runID: 'seed-step@1',
     harness: bindHarness(buildMockModelProfile()),
+    prices: null,
     memory: { pinnedCore: [], retrieved: [], invalidatedThrough: 0 },
   };
 

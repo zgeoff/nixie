@@ -47,7 +47,7 @@ function setupTest() {
 
     buildBareConfig: (codex: Record<string, unknown>) => buildConfig({}, {}, codex),
 
-    // a deployment with a gateway takes each model's prices from the route
+    // a deployment with a gateway still prices each task call by the profile
     buildGatewayConfig: (chosen: Record<string, unknown> = {}) =>
       buildConfig(
         {
@@ -72,9 +72,9 @@ test('it rejects a plan profile when the config has no spendStop section, and na
   ]);
 });
 
-test('it reads a plan profile when the config has a spendStop section and the profiles set no prices', () => {
+test('it reads a plan profile when the config has a spendStop section', () => {
   const ctx = setupTest();
-  const result = deploymentConfigSchema.safeParse(ctx.buildGatewayConfig());
+  const result = deploymentConfigSchema.safeParse(ctx.buildGatewayConfig({ prices: ctx.prices }));
 
   expect(result.success).toBeTrue();
 });
@@ -89,21 +89,12 @@ test('it reads a codex API key profile when the config has no spendStop section'
   expect(result.success).toBeTrue();
 });
 
-test('it rejects a profile that sets prices beside a spendStop section, and names the route prices', () => {
+test('it rejects a task role whose profile sets no prices beside a spendStop section', () => {
   const ctx = setupTest();
-  const result = deploymentConfigSchema.safeParse(ctx.buildGatewayConfig({ prices: ctx.prices }));
+  const result = deploymentConfigSchema.safeParse(ctx.buildGatewayConfig());
 
-  expect(
-    result.error?.issues.map((issue) => ({ path: issue.path.join('.'), message: issue.message })),
-  ).toStrictEqual([
-    {
-      path: 'models.profiles.chat-direct.prices',
-      message: expect.stringContaining("the gateway route's prices"),
-    },
-    {
-      path: 'models.profiles.codex-plan.prices',
-      message: expect.stringContaining("the gateway route's prices"),
-    },
+  expect(result.error?.issues.map((issue) => issue.path.join('.'))).toStrictEqual([
+    'models.roles.task',
   ]);
 });
 

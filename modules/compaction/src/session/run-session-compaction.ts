@@ -1,8 +1,9 @@
 import type { Definitions, RecordInput } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
-import type { Harness, ModelRecordSource } from '@heynixie/models';
+import type { Harness, ModelPrices, ModelRecordSource } from '@heynixie/models';
 import {
   buildModelRecord,
+  buildTokensCost,
   modelCompactionFailedCodec,
   modelSessionSummarizedCodec,
 } from '@heynixie/models';
@@ -19,6 +20,9 @@ import { countTextTokens } from './count-text-tokens';
 export interface CompactionRun {
   readonly context: LogContext & { readonly definitions: () => Definitions };
   readonly model: ModelRecordSource['model'];
+
+  // the prices of the profile that summarizes, null when it sets none
+  readonly profile: { readonly profile: { readonly prices: ModelPrices | null } };
 
   readonly harness: Harness;
   readonly turnProfile: TurnProfile;
@@ -73,6 +77,9 @@ export async function runSessionCompaction(
           summaryTokens: summary.tokens,
           isCut: summary.isCut,
           usage: summary.usage,
+          ...(run.profile.profile.prices === null
+            ? {}
+            : { dollars: buildTokensCost(summary.usage, run.profile.profile.prices) }),
         },
         text: summary.text,
       }),

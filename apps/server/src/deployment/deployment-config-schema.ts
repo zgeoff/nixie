@@ -64,22 +64,10 @@ export const deploymentConfigSchema = z
       });
     }
 
-    // with a gateway, each route's prices are the one source of a model's prices
-    if (config.spendStop !== undefined) {
-      for (const [id, profile] of Object.entries(config.models.profiles)) {
-        if (profile.prices !== null) {
-          issues.addIssue({
-            code: 'custom',
-            path: ['models', 'profiles', id, 'prices'],
-            message: `the profile ${id} sets prices, and the spendStop section is set, so the gateway route's prices are the one source of the model's prices: remove the profile's prices and set the route's prices`,
-          });
-        }
-      }
-    }
-
-    // Without a gateway, nixie prices each call itself. A models section that failed its own checks
-    // is not yet in its final shape, so the price check waits for it.
-    if (config.spendStop === undefined && issues.issues.length === 0) {
+    // A task counts its model calls against its dollar limit by the profile's prices, with a
+    // gateway or without. A models section that failed its own checks is not yet in its final
+    // shape, so the price check waits for it.
+    if (issues.issues.length === 0) {
       for (const issue of collectMissingPriceIssues(config.models)) {
         issues.addIssue({ code: 'custom', path: [...issue.path], message: issue.message });
       }

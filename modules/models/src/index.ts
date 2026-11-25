@@ -1,4 +1,6 @@
 export { buildCallCost } from './session/build-call-cost';
+export type { TokenCounts } from './session/build-tokens-cost';
+export { buildTokensCost } from './session/build-tokens-cost';
 export type { ModelRecordSource } from './model/build-model-record';
 export { buildModelEventRecord, buildModelRecord } from './model/build-model-record';
 export type { HarnessFit } from './model/check-harness-fit';

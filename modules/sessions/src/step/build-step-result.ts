@@ -1,8 +1,9 @@
 import type { RecordInput } from '@heynixie/log';
-import type { Harness, ModelRecordSource } from '@heynixie/models';
+import type { Harness, ModelPrices, ModelRecordSource } from '@heynixie/models';
 import {
   buildModelEventRecord,
   buildModelRecord,
+  buildTokensCost,
   modelReplyCodec,
   modelTurnEndedCodec,
 } from '@heynixie/models';
@@ -46,6 +47,9 @@ interface TurnMemoryRefs {
 
 export interface StepTurn extends CompletedTurn {
   readonly harness: Harness;
+
+  // the prices of the profile the turn ran on, null when it sets none
+  readonly prices: ModelPrices | null;
   readonly memory: TurnMemoryRefs;
 }
 
@@ -96,10 +100,13 @@ export function buildStepResult(
 }
 
 function buildTurnRecords(source: ModelRecordSource, completed: StepTurn): readonly RecordInput[] {
+  const summary = buildTurnSummary(completed.turn);
+
   return [
     ...buildReplyRecords(source, completed),
     buildModelEventRecord(source, modelTurnEndedCodec, {
-      ...buildTurnSummary(completed.turn),
+      ...summary,
+      ...buildTurnDollars(summary, completed.prices),
       ...(buildThinkingTokens(completed.turn) > 0
         ? { thinkingTokens: buildThinkingTokens(completed.turn) }
         : {}),
@@ -114,33 +121,6 @@ function buildTurnRecords(source: ModelRecordSource, completed: StepTurn): reado
         ? {}
         : { recalledThrough: completed.turn.endedMark }),
       ...(completed.notedThrough === null ? {} : { memoryNotedThrough: completed.notedThrough }),
-    }),
-  ];
-}
-
-// The turn wrote each reply as the model sent it. The commit writes only the error texts the turn
-// held, and voids the replies after the last result, which no resumed session holds.
-function buildReplyRecords(
-  source: ModelRecordSource,
-  completed: Pick<CompletedTurn, 'turn' | 'runID'>,
-): readonly RecordInput[] {
-  const turn = completed.turn;
-
-  const errors = turn.assistants
-    .filter((assistant) => assistant.isError === true && assistant.text !== '')
-    .map((assistant) =>
-      buildModelRecord(source, modelReplyCodec, {
-        payload: { messageID: assistant.messageID },
-        text: assistant.text,
-      }),
-    );
-
-  return [
-    ...errors,
-    ...buildReplyVoids(source, {
-      sequences: turn.written.slice(turn.settledWritten),
-      runID: completed.runID,
-      reason: 'turn_dropped',
     }),
   ];
 }
@@ -180,6 +160,40 @@ function buildTurnSummary(turn: GuestTurn): TurnSummary {
     cacheWriteTokens: buildTotal((frame) => frame.usage.cacheWriteTokens),
     ...(context === undefined ? {} : { contextSize: context.size, contextWindow: context.window }),
   };
+}
+
+// The turn wrote each reply as the model sent it. The commit writes only the error texts the turn
+// held, and voids the replies after the last result, which no resumed session holds.
+function buildReplyRecords(
+  source: ModelRecordSource,
+  completed: Pick<CompletedTurn, 'turn' | 'runID'>,
+): readonly RecordInput[] {
+  const turn = completed.turn;
+
+  const errors = turn.assistants
+    .filter((assistant) => assistant.isError === true && assistant.text !== '')
+    .map((assistant) =>
+      buildModelRecord(source, modelReplyCodec, {
+        payload: { messageID: assistant.messageID },
+        text: assistant.text,
+      }),
+    );
+
+  return [
+    ...errors,
+    ...buildReplyVoids(source, {
+      sequences: turn.written.slice(turn.settledWritten),
+      runID: completed.runID,
+      reason: 'turn_dropped',
+    }),
+  ];
+}
+
+function buildTurnDollars(
+  summary: TurnSummary,
+  prices: ModelPrices | null,
+): { readonly dollars?: number } {
+  return prices === null ? {} : { dollars: buildTokensCost(summary, prices) };
 }
 
 function buildThinkingTokens(turn: GuestTurn): number {

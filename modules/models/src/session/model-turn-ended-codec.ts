@@ -18,6 +18,11 @@ export const modelTurnEndedCodec = defineRecordCodec(
     outputTokens: z.int(),
     cacheReadTokens: z.int(),
     cacheWriteTokens: z.int(),
+
+    // The dollars of the tokens at the prices in force when the record was written, so a later
+    // change of prices never reprices it. Absent for a profile with no prices.
+    dollars: z.number().nonnegative().exactOptional(),
+
     thinkingTokens: z.int().nonnegative().exactOptional(),
     cutCalls: z.int().positive().exactOptional(),
     contextSize: z.int().nonnegative().exactOptional(),

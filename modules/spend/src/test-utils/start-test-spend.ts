@@ -1,5 +1,3 @@
-// oxlint-disable-next-line import/no-unassigned-import -- the import brings in the record kinds that the triggers module's dependencies register, which the test log's types need
-import '@heynixie/triggers';
 import type { Log, Writer } from '@heynixie/log';
 import { logProjections, withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import { startTestLog } from '@heynixie/log/test-utils';
@@ -8,6 +6,10 @@ import { createPlanLoginsHolder } from '../login/create-plan-logins-holder';
 import { spendProjections } from '../projection/spend-projections';
 import type { SpendContext, SpendTurnLimits } from '../types';
 import { buildStubSpendGateway } from './build-stub-spend-gateway';
+
+// The re-export loads the record kinds that the triggers module's dependencies register, which the
+// test log's types need.
+export type { TriggersRecordKind } from '@heynixie/triggers';
 
 export interface TestSpend {
   readonly writer: Writer;

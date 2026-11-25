@@ -1,6 +1,10 @@
 import type { LogRecord } from '@heynixie/log';
-import type { ModelPrices } from '@heynixie/models';
-import { buildCallCost, modelSessionSummarizedCodec, modelTurnEndedCodec } from '@heynixie/models';
+import type { ModelPrices, TokenCounts } from '@heynixie/models';
+import {
+  buildTokensCost,
+  modelSessionSummarizedCodec,
+  modelTurnEndedCodec,
+} from '@heynixie/models';
 import type { RunMeter } from '@heynixie/tasks';
 import { readRunRecords, readTaskSetup, taskFailedTurnSpentCodec } from '@heynixie/tasks';
 import { workerGatewayChargedCodec } from '../worker/worker-gateway-charged-codec';
@@ -54,11 +58,14 @@ export function buildDollarsMeter(readPrices: ReadRunPrices): RunMeter {
   };
 }
 
-// A record from an earlier release can lack a field that a later one added, so each read takes
-// only the token counts, and a count the record lacks prices as nothing.
+// A turn and a summary hold the dollars of their tokens at the prices when they were written, so a
+// changed price table never reprices them. A record with none prices through the table now, and a
+// token count it lacks prices as nothing.
 function buildRecordDollars(record: LogRecord, prices: ModelPrices | null): number {
   if (record.kind === modelTurnEndedCodec.kind) {
-    return buildTokensCost(modelTurnEndedCodec.tryDecodePartial(record.payload) ?? {}, prices);
+    const ended = modelTurnEndedCodec.tryDecodePartial(record.payload) ?? {};
+
+    return ended.dollars ?? buildPricedCost(ended, prices);
   }
 
   if (record.kind === taskFailedTurnSpentCodec.kind) {
@@ -73,36 +80,13 @@ function buildRecordDollars(record: LogRecord, prices: ModelPrices | null): numb
     return workerGatewayChargedCodec.decode(record.payload).dollars;
   }
 
-  return buildTokensCost(
-    modelSessionSummarizedCodec.tryDecodePartial(record.payload)?.usage ?? {},
-    prices,
-  );
+  const summarized = modelSessionSummarizedCodec.tryDecodePartial(record.payload);
+
+  return summarized?.dollars ?? buildPricedCost(summarized?.usage ?? {}, prices);
 }
 
-interface CallTokens {
-  readonly inputTokens?: number | undefined;
-  readonly outputTokens?: number | undefined;
-  readonly cacheReadTokens?: number | undefined;
-  readonly cacheWriteTokens?: number | undefined;
-}
-
-// The records sum their calls and leave out the split of cache writes by lifetime, so the cost
-// prices every cache write at the longer lifetime's price and never undercounts.
-function buildTokensCost(tokens: CallTokens, prices: ModelPrices | null): number {
-  if (prices === null) {
-    return 0;
-  }
-
-  return buildCallCost(
-    {
-      uncachedInputTokens: tokens.inputTokens ?? 0,
-      cacheReadTokens: tokens.cacheReadTokens ?? 0,
-      cacheWrite5mTokens: 0,
-      cacheWrite1hTokens: tokens.cacheWriteTokens ?? 0,
-      outputTokens: tokens.outputTokens ?? 0,
-    },
-    prices,
-  );
+function buildPricedCost(tokens: TokenCounts, prices: ModelPrices | null): number {
+  return prices === null ? 0 : buildTokensCost(tokens, prices);
 }
 
 function isTallyBesideTurn(record: LogRecord): boolean {

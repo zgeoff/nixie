@@ -68,6 +68,7 @@ test('it starts a store with no limit, a zero count and the day and month in for
     periods: {
       day: {
         start: '2026-11-13',
+        resetsAt: '2026-11-14T00:00:00.000Z',
         dollars: 0,
         tokens: 0,
         limit: null,
@@ -76,6 +77,7 @@ test('it starts a store with no limit, a zero count and the day and month in for
       },
       month: {
         start: '2026-11-01',
+        resetsAt: '2026-12-01T00:00:00.000Z',
         dollars: 0,
         tokens: 0,
         limit: null,
@@ -105,6 +107,7 @@ test('it rewrites a limits count file as a fresh periods store at start', async 
     periods: {
       day: {
         start: '2026-11-13',
+        resetsAt: '2026-11-14T00:00:00.000Z',
         dollars: 0,
         tokens: 0,
         limit: null,
@@ -113,6 +116,7 @@ test('it rewrites a limits count file as a fresh periods store at start', async 
       },
       month: {
         start: '2026-11-01',
+        resetsAt: '2026-12-01T00:00:00.000Z',
         dollars: 0,
         tokens: 0,
         limit: null,

@@ -387,9 +387,9 @@ override: /var/lib/model-gateway/override.json # no path, no override
 A config with `periods` needs `control`, and the schema refuses a config that sets both `periods`
 and `limits`, or neither. It also refuses `caps`, `control`, `countBySandbox` and `override` in a
 config with `limits`. The store of a `periods` config is a file of its own, in version 2: the start,
-the count, the base limit, the raise and the trip time of each period, and a count and a limit per
-sandbox. A period's trip time is the instant the gateway first found its count at its limit in
-force, and a reset or a raise that lifts the limit clears it.
+the instant it ends, the count, the base limit, the raise and the trip time of each period, and a
+count and a limit per sandbox. A period's trip time is the instant the gateway first found its count
+at its limit in force, and a reset or a raise that lifts the limit clears it.
 
 At start, the gateway rewrites a store file in the shape of a `limits` count as a version 2 store,
 in one write. The periods start at zero, because a total that never reset says nothing of today's
@@ -409,11 +409,13 @@ Before each admission the gateway reads the store and the override file, and ans
 - the limit 403 when a sandbox's count has reached its own limit.
 
 Each read of the store, for an admission, a reply or a control call, first resets each period whose
-next start in the zone has passed: the count goes to zero, the start moves, and the raise drops. The
-base limit and the lost mark stay. A reset therefore needs no model request, and a `/status` read
-after midnight shows the new day. The store runs one change at a time, so a reply counted after
-midnight lands in the new day and the month once. A reply adds its dollars and tokens to the day,
-the month and its sandbox in one write.
+end has passed: the count goes to zero, the start and the end move to the zone's current ones, and
+the raise drops. A period keeps the end that the zone gave it when it started, so a changed
+`periods.zone` takes effect at the next reset. A period with no stored end ends at the next start in
+the zone. The base limit and the lost mark stay. A reset therefore needs no model request, and a
+`/status` read after midnight shows the new day. The store runs one change at a time, so a reply
+counted after midnight lands in the new day and the month once. A reply adds its dollars and tokens
+to the day, the month and its sandbox in one write.
 
 ### Count by sandbox
 

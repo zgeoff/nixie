@@ -17,6 +17,7 @@ function setupTest() {
           periods: {
             day: {
               start: row.day,
+              resetsAt: null,
               dollars: 1,
               tokens: 10,
               limit: null,
@@ -25,6 +26,7 @@ function setupTest() {
             },
             month: {
               start: row.month,
+              resetsAt: null,
               dollars: 1,
               tokens: 10,
               limit: null,
@@ -71,6 +73,13 @@ test.each([
     month: '2026-12-01',
     dayResets: '2026-12-01T15:00:00Z',
     monthResets: '2026-12-31T15:00:00Z',
+  },
+  {
+    zone: 'Pacific/Apia',
+    day: '2011-12-30',
+    month: '2011-12-01',
+    dayResets: '2011-12-31T10:00:00Z',
+    monthResets: '2011-12-31T10:00:00Z',
   },
 ])('#buildStatus resets the day of $zone that starts $day at $dayResets', (row) => {
   const ctx = setupTest();

@@ -7,6 +7,7 @@ const isoDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/u);
 
 const periodCountSchema = z.strictObject({
   start: isoDateSchema,
+  resetsAt: z.iso.datetime().nullable().default(null),
   dollars: z.number().nonnegative(),
   tokens: z.number().nonnegative(),
   limit: measuresSchema.nullable(),

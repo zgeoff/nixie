@@ -18,6 +18,7 @@ function setupTest() {
     periods: {
       day: {
         start: '2026-11-13',
+        resetsAt: null,
         dollars: parts.day?.spent?.dollars ?? 0,
         tokens: parts.day?.spent?.tokens ?? 0,
         limit: parts.day?.limit === undefined ? fallback : parts.day.limit,
@@ -26,6 +27,7 @@ function setupTest() {
       },
       month: {
         start: '2026-11-01',
+        resetsAt: null,
         dollars: parts.month?.spent?.dollars ?? 0,
         tokens: parts.month?.spent?.tokens ?? 0,
         limit:

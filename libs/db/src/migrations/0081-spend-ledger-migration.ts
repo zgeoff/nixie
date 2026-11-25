@@ -3,7 +3,7 @@ import type { Migration } from '../types';
 
 // The ledger key joins the counter, the unit, the period kind and the period start. A charge from
 // before the key names none, so the key takes the kind from the budget in force, and from the
-// budget's ID suffix for a built-in budget, which no row of budgets_in_force holds.
+// budget's ID suffix for a built-in budget. The replay applies the same rule.
 const kindOfBudget = sql`coalesce(
   (select period from budgets_in_force where budgets_in_force.budget_id = budget_charges.budget_id),
   case

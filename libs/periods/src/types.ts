@@ -10,3 +10,10 @@ export interface Period {
   // when the next period starts, which is when this one resets; null for a period that never resets
   readonly endsAtMs: number | null;
 }
+
+export interface LocalDate {
+  readonly year: number;
+  readonly month: number;
+  readonly day: number;
+  readonly weekday: number;
+}

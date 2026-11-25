@@ -569,6 +569,36 @@ test('it reports the cap as full before local midnight under a cap of 1', async 
   });
 });
 
+test('it names the day that starts next when the zone skips a local date', async () => {
+  const ctx = await setupTest();
+
+  // Pacific/Apia skipped 2011-12-30, so the day after the 29th starts on the 31st
+  const tool = buildSearchTool(buildStubSearchProvider(), {
+    log: ctx.log,
+    clock: createFakeClock({ startMs: Date.parse('2011-12-29T12:00:00.000Z') }),
+    dailyCallCap: 1,
+    priceMicros: 12_000,
+    timeZone: 'Pacific/Apia',
+  });
+
+  const callCap = tool.paid?.callCap;
+
+  invariant(callCap);
+
+  await withWriteTransaction(ctx.log.writer, (tx) => callCap.openCall().countInTransaction(tx));
+
+  const check = await withWriteTransaction(ctx.log.writer, (tx) =>
+    callCap.openCall().checkInTransaction(tx),
+  );
+
+  expect(check).toStrictEqual({
+    status: 'capped',
+    message:
+      'the search cap of 1 calls a day is reached, and it resets at midnight ' +
+      'Pacific/Apia time, when 2011-12-31 starts',
+  });
+});
+
 test("it returns the provider's failure as an error the model reads", async () => {
   const ctx = await setupTest();
 

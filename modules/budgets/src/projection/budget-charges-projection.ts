@@ -18,7 +18,7 @@ export const budgetChargesProjection: Projection = {
     if (record.kind === budgetChargedCodec.kind) {
       const payload = budgetChargedCodec.decode(record.payload);
 
-      const ledgerKey = await readChargeLedgerKey(tx, payload, record.sequence);
+      const ledgerKey = await readChargeLedgerKey(tx, payload);
 
       await tables
         .insertInto('budget_charges')

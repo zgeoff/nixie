@@ -91,6 +91,11 @@ export interface PeriodCount extends Measures {
   // the ISO date of the period's first day, in the periods zone
   readonly start: string;
 
+  // the ISO instant the period ends and its count resets. Stamped with the zone the period began
+  // in, so a changed zone takes effect at the next reset. Null in a store from before the stamp,
+  // which ends the period at the next start in the current zone.
+  readonly resetsAt: string | null;
+
   // the base limit the server set, null until it sets one
   readonly limit: Measures | null;
 

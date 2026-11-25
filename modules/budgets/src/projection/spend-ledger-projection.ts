@@ -21,9 +21,9 @@ export const spendLedgerProjection: Projection = {
     if (record.kind === budgetChargedCodec.kind) {
       const payload = budgetChargedCodec.decode(record.payload);
 
-      const key = await readChargeLedgerKey(tx, payload, record.sequence);
+      const key = await readChargeLedgerKey(tx, payload);
 
-      await addToLedger(tx, key, payload.amountMicros);
+      await writeLedgerDelta(tx, key, payload.amountMicros);
 
       return [key];
     }
@@ -41,7 +41,7 @@ export const spendLedgerProjection: Projection = {
         return [];
       }
 
-      await addToLedger(tx, charge.ledger_key, -charge.amount_micros);
+      await writeLedgerDelta(tx, charge.ledger_key, -charge.amount_micros);
 
       return [charge.ledger_key];
     }
@@ -50,7 +50,7 @@ export const spendLedgerProjection: Projection = {
   },
 };
 
-async function addToLedger(
+async function writeLedgerDelta(
   tx: Transaction<unknown>,
   ledgerKey: string,
   delta: number,

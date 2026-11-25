@@ -85,7 +85,13 @@ async function runBoundaryTurn(step: SessionStep, session: ResumedSession): Prom
   }
 
   const memory = { ...turn.context, invalidatedThrough: turn.invalidatedThrough };
-  const completed = { ...resumed.completed, harness: step.run.harness, memory };
+
+  const completed = {
+    ...resumed.completed,
+    harness: step.run.harness,
+    prices: step.run.profile.profile.prices,
+    memory,
+  };
 
   return runStepCommit(step, completed, () =>
     buildStepResult(source, completed, session.plan.before),

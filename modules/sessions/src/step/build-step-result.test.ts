@@ -49,6 +49,7 @@ test('it throws a model API refusal that carries no reply record', () => {
         runID: 'step-1@1',
         silent: new Set(),
         harness: ctx.agentSDK,
+        prices: null,
         memory: { pinnedCore: [], retrieved: [], invalidatedThrough: 0 },
       },
       [],
@@ -99,6 +100,7 @@ test('it sums the thinking tokens of every ended frame onto the turn end, and wr
       runID: 'step-1@1',
       silent: new Set(),
       harness: ctx.agentSDK,
+      prices: null,
       memory: { pinnedCore: [], retrieved: [], invalidatedThrough: 0 },
     },
     [],
@@ -148,6 +150,7 @@ test('it commits the text of a held error frame as a reply', () => {
       runID: 'step-1@1',
       silent: new Set(),
       harness: ctx.agentSDK,
+      prices: null,
       memory: { pinnedCore: [], retrieved: [], invalidatedThrough: 0 },
     },
     [],
@@ -192,6 +195,7 @@ test('it voids each reply the turn wrote after its last result, and no earlier o
       runID: 'step-1@1',
       silent: new Set(),
       harness: ctx.agentSDK,
+      prices: null,
       memory: { pinnedCore: [], retrieved: [], invalidatedThrough: 0 },
     },
     [],
@@ -238,6 +242,7 @@ test('it keeps the text a silent turn wrote, and marks its turn end silent', () 
       runID: 'step-1@1',
       silent: new Set(),
       harness: ctx.agentSDK,
+      prices: null,
       memory: { pinnedCore: [], retrieved: [], invalidatedThrough: 0 },
     },
     [],
@@ -281,6 +286,7 @@ test('it stores no session point for a step on a harness with no session, and re
       runID: 'step-1@1',
       silent: new Set(),
       harness: ctx.codex,
+      prices: null,
       memory: { pinnedCore: [], retrieved: [], invalidatedThrough: 0 },
     },
     [],
@@ -325,6 +331,7 @@ test('it fails a step whose turn overflowed', () => {
         runID: 'step-1@1',
         silent: new Set(),
         harness: ctx.codex,
+        prices: null,
         memory: { pinnedCore: [], retrieved: [], invalidatedThrough: 0 },
       },
       [],
@@ -366,6 +373,7 @@ test('it fails a step whose guest broke the contract of its harness', () => {
         runID: 'step-1@1',
         silent: new Set(),
         harness: ctx.agentSDK,
+        prices: null,
         memory: { pinnedCore: [], retrieved: [], invalidatedThrough: 0 },
       },
       [],
@@ -415,6 +423,7 @@ test('it fails a step whose earlier ended frame broke the contract, though its l
         runID: 'step-1@1',
         silent: new Set(),
         harness: ctx.codex,
+        prices: null,
         memory: { pinnedCore: [], retrieved: [], invalidatedThrough: 0 },
       },
       [],
@@ -456,6 +465,7 @@ test('it acknowledges a silent record that the guest never reports read, and a r
       isSilent: false,
       runID: 'step-1@1',
       harness: ctx.agentSDK,
+      prices: null,
       memory: { pinnedCore: [], retrieved: [], invalidatedThrough: 0 },
     },
     [],
@@ -490,9 +500,60 @@ test('it acknowledges no silent record for a turn that failed', () => {
         isSilent: false,
         runID: 'step-1@1',
         harness: ctx.agentSDK,
+        prices: null,
         memory: { pinnedCore: [], retrieved: [], invalidatedThrough: 0 },
       },
       [],
     ),
   ).toThrow('the conversation turn failed');
+});
+
+test.each([
+  {
+    prices: { input: 3, cacheWrite: 3.75, cacheWrite1h: 6, cachedInput: 0.3, output: 15 },
+    dollars: 0.000105,
+  },
+  {
+    prices: { input: 6, cacheWrite: 3.75, cacheWrite1h: 6, cachedInput: 0.3, output: 15 },
+    dollars: 0.000135,
+  },
+  { prices: null, dollars: undefined },
+])('it records $dollars dollars on the turn end of a profile with prices $prices', (row) => {
+  const ctx = setupTest();
+
+  const result = buildStepResult(
+    ctx.source,
+    {
+      turn: {
+        assistants: [],
+        read: [],
+        ended: [
+          {
+            type: 'ended',
+            boundary: ctx.boundary,
+            outcome: 'finished',
+            stopReason: 'end_turn',
+            turns: 1,
+            usage: ctx.usage,
+          },
+        ],
+        failure: null,
+        written: [],
+        settledWritten: 0,
+      },
+      sent: new Set<number>(),
+      hasMore: false,
+      notedThrough: null,
+      images: { bytes: 0, count: 0 },
+      isSilent: false,
+      runID: 'step-1@1',
+      silent: new Set(),
+      harness: ctx.agentSDK,
+      prices: row.prices,
+      memory: { pinnedCore: [], retrieved: [], invalidatedThrough: 0 },
+    },
+    [],
+  );
+
+  expect(result.records.map((record) => record.payload?.['dollars'])).toStrictEqual([row.dollars]);
 });

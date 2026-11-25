@@ -36,20 +36,21 @@ Each price has one source, and a recorded call keeps the price it was charged:
 
 | Price                  | Source                                                        | Unit                         |
 | ---------------------- | ------------------------------------------------------------- | ---------------------------- |
-| a model's tokens       | the profile's `prices`, when no gateway runs                  | dollars per million tokens   |
+| a model's tokens       | the profile's `prices`                                        | dollars per million tokens   |
 | a search               | `search.price_micros` in the server config, 12,000 by default | micros of a dollar per call  |
 | a picture of each size | `images.profiles.<id>.prices`                                 | micros of a dollar per image |
 
 A search provider sets no price. The search tool charges `search.price_micros` to its budgets and
 records the same value as the call's cost, so the charge and the record never differ. A changed
-price applies to the calls after the process that holds it reads it.
+price applies to the calls after the process that holds it reads it. A turn record and a session
+summary record hold the dollars of their tokens at the profile's prices when the record was written,
+and the task's dollar meter sums those dollars, so a changed price never reprices them. A record
+without dollars prices through the profile's table when the meter reads it.
 
-When a gateway runs, which is when the config has a `spendStop` section, each route's `prices` in
-the gateway's config is the one source of a model's prices, and a profile sets none. The config
-fails to load when a profile sets `prices` beside a gateway, and the error names the route's
-`prices`. Without a gateway, a profile that a task, a selectable model or the worker role runs on
-needs `prices`, because nixie then prices each call itself and counts it against the task's dollar
-limit.
+A profile that a task, a selectable model or the worker role runs on needs `prices`, with a gateway
+or without. The task's dollar limit counts each call by the profile's prices, because the task
+runner stops a task at its limit itself. The gateway's own count of a route uses the prices in the
+gateway's config.
 
 ## The spend ledger
 
@@ -61,8 +62,9 @@ write the ledger, through a projection, so a rebuild from the records reproduces
 A budget charge adds its amount to the row of its key, and a credit subtracts from the row its
 charge added to. The charge record names its `ledgerKey`, and the `budget_charges` projection keeps
 it, so a credit lands on the charge's row even when the budget's period has changed since. A charge
-recorded before the ledger names no key, so its key takes the period kind of the budget in force at
-the charge's sequence, or the kind its ID ends with for a built-in budget.
+recorded before the ledger names no key, so its key takes the period kind of the budget in force, or
+the kind its ID ends with for a built-in budget that no row holds. The migration applies the same
+rule to the charges it stores.
 
 A charge reads the budget's row, compares it with the limit, and writes its record in one
 transaction, so the ledger row and the record that causes it commit together or not at all. Only the
@@ -73,12 +75,11 @@ with its key, and gives each earlier charge its key.
 
 ## What counts where
 
-| Spend           | The gateway's count       | The ledger                                         |
-| --------------- | ------------------------- | -------------------------------------------------- |
-| a model call    | its route's day and month | no                                                 |
-| a search        | no                        | `budget:search-day`, `budget:search-month`         |
-| a picture       | no                        | `budget:image.draw-day`, `budget:image.draw-month` |
-| a card purchase | no                        | `budget:card-<account>`                            |
+| Spend        | The gateway's count   | The ledger                                         |
+| ------------ | --------------------- | -------------------------------------------------- |
+| a model call | the day and the month | no                                                 |
+| a search     | no                    | `budget:search-day`, `budget:search-month`         |
+| a picture    | no                    | `budget:image.draw-day`, `budget:image.draw-month` |
 
 The spending stop reads the gateway's counts and the turn count. A paid tool counts against its
 budget and never against the stop, so model dollars on a plan stay notional while tool dollars are
