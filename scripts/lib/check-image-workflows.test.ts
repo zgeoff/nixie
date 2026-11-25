@@ -57,8 +57,8 @@ test('it names the key that the sandbox-manifest job does not need', () => {
   const ctx = setupTest();
 
   const release = ctx.release.replace(
-    'needs: [resolve, conversation, fetch, code, codex, computer]',
-    'needs: [resolve, conversation, code, codex, computer]',
+    'needs: [resolve, conversation, fetch, code, codex, computer, render]',
+    'needs: [resolve, conversation, code, codex, computer, render]',
   );
 
   expect(checkImageWorkflows(release, ctx.images)).toStrictEqual([

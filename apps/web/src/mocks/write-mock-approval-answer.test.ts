@@ -244,6 +244,37 @@ test('it keeps the assertion that approves an always-ask row', async () => {
   ]);
 });
 
+test('it takes the approval of an always-ask row with no assertion once an earlier answer tapped', async () => {
+  const ctx = await setupTest();
+  const passkey = await store.passkeyRows.create({ credentialID: 'cred-1' });
+  const tapped = await store.approvalRows.create({ riskClass: 'always_ask' });
+  const covered = await store.approvalRows.create({ riskClass: 'always_ask' });
+
+  const clientData = Buffer.from(JSON.stringify({ challenge: 'chal-1' })).toString('base64url');
+
+  await writeMockApprovalAnswer(
+    {
+      ...ctx.buildAnswer(tapped),
+      choice: 'approve',
+      passkey: {
+        id: passkey.credentialID,
+        rawId: passkey.credentialID,
+        type: 'public-key',
+        clientExtensionResults: {},
+        response: { clientDataJSON: clientData, authenticatorData: 'ad', signature: 'sig' },
+      },
+    },
+    ctx.sessionID,
+  );
+
+  const outcome = await writeMockApprovalAnswer(
+    { ...ctx.buildAnswer(covered), choice: 'approve' },
+    ctx.sessionID,
+  );
+
+  expect(outcome.status).toBe('answered');
+});
+
 test('it takes a decline of an always-ask row with no passkey', async () => {
   const ctx = await setupTest();
   const row = await store.approvalRows.create({ riskClass: 'always_ask' });

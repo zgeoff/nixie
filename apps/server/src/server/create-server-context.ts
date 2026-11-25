@@ -1,3 +1,4 @@
+import { makeQueueRunnerActions } from '@heynixie/actions';
 import type { APIContext, APISettings, CleanupRecordSessions } from '@heynixie/api';
 import { createClientRegistry, createPasskeyState, defaultAPISettings } from '@heynixie/api';
 import { buildBuiltInBudgets } from '@heynixie/budgets';
@@ -86,6 +87,7 @@ export async function createServerContext(
           }),
       runSettings: options.runSettings,
       runners: options.runners,
+      queueRunnerActions: makeQueueRunnerActions({ log, clock: writer.clock, definitions }),
       readDefinitionVersion,
       readDefinitionRunPolicy: makeReadDefinitionRunPolicy(options.taskRunLimits),
       readDefinitionNextFire: (db, definitionID) =>

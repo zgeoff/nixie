@@ -128,3 +128,27 @@ ask-stranger-with-memory:
     - { arg: persona, op: eq, value: none }
     - { arg: memory, op: eq, value: read }
   note: A task without the persona reads your memory only with your approval.
+
+ask-coding-sessions:
+  outcome: ask
+  tools: [task.start/atc]
+  note: A coding session starts or joins only with your approval, even one you asked for.
+
+allow-coding-spawns:
+  outcome: allow
+  tools: [coding.start]
+  note: The start call already met your rules, so its spawn needs no second ask.
+
+allow-coding-input:
+  outcome: allow
+  tools: [coding.steer, coding.message]
+  destinations: ['atc:*']
+  note: A bound coding session takes input without a new ask.
+
+allow-stop-started-sessions:
+  outcome: allow
+  tools: [coding.stop]
+  destinations: ['atc:*']
+  checks:
+    - { arg: origin, op: eq, value: started }
+  note: Stopping a session that nixie started needs no ask.

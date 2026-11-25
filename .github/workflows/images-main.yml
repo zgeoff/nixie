@@ -22,7 +22,7 @@ defaults:
 
 jobs:
   changes:
-    uses: zgeoff/tools/.github/workflows/paths-changed.yml@b09202a144e97e98b9aeeb457452fd2f4e703123 # main
+    uses: zgeoff/tools/.github/workflows/paths-changed.yml@05782f705f2aa63e6cfa58a4e66e9b72147d77d4 # main
     with:
       paths: |
         .github/workflows/images-main.yml
@@ -122,6 +122,14 @@ jobs:
           COMPUTER: ${{ env.REGISTRY }}/nixie-computer@${{ steps.computer.outputs.digest }}
         run: bun run --silent ci:images:check-computer-image
 
+      - name: Build the render image
+        id: render
+        uses: ./.github/actions/build-image
+        with:
+          repository: ${{ env.REGISTRY }}/nixie-render
+          dockerfile: guests/render/Dockerfile
+          cache-scope: render
+
       - name: Build the codex image
         id: codex
         uses: ./.github/actions/build-image
@@ -211,6 +219,11 @@ jobs:
         env:
           IMAGE: ${{ env.REGISTRY }}/nixie-computer@${{ steps.computer.outputs.digest }}
         run: bun run --silent ci:images:check-image-size computer
+
+      - name: Check the render image size
+        env:
+          IMAGE: ${{ env.REGISTRY }}/nixie-render@${{ steps.render.outputs.digest }}
+        run: bun run --silent ci:images:check-image-size render
 
       - name: Check the codex image size
         env:

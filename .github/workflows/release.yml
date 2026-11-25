@@ -185,6 +185,23 @@ jobs:
       dockerfile: guests/computer/Dockerfile
       sha: ${{ needs.resolve.outputs.sha }}
 
+  render:
+    name: Release the render image
+    needs: resolve
+    concurrency:
+      group: release-render
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    uses: ./.github/workflows/release-image.yml
+    with:
+      image: nixie-render
+      dockerfile: guests/render/Dockerfile
+      sha: ${{ needs.resolve.outputs.sha }}
+
   codex:
     name: Release the codex image
     needs: resolve
@@ -221,7 +238,7 @@ jobs:
 
   sandbox-manifest:
     name: Release the sandbox manifest
-    needs: [resolve, conversation, fetch, code, codex, computer]
+    needs: [resolve, conversation, fetch, code, codex, computer, render]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     concurrency:

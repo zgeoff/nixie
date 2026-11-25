@@ -7,6 +7,8 @@ import { clipBrief } from '../utils/clip-brief';
 import type { ListedTaskState } from './pick-listed-task-state';
 import { pickListedTaskState } from './pick-listed-task-state';
 import { readListedNextRun } from './read-listed-next-run';
+import type { ListedRunnerView } from './read-listed-runner-fields';
+import { readListedRunnerFields } from './read-listed-runner-fields';
 import { readTaskDirectory } from './read-task-directory';
 import type { ListedTask } from './read-task-list';
 import { readTaskList } from './read-task-list';
@@ -16,6 +18,7 @@ const listArguments = z.object({
   limit: z.int().min(1).max(200).optional(),
   cursor: z.string().optional(),
   taskID: z.string().optional(),
+  runner: z.string().optional(),
 });
 
 type TaskListFilter = NonNullable<z.infer<typeof listArguments>['state']>;
@@ -40,7 +43,10 @@ const listedStates: Readonly<Record<TaskListFilter, readonly ListedTaskState[]>>
 };
 
 export function buildTasksListTool(
-  context: Pick<TasksContext, 'log' | 'readDefinitionNextFire' | 'readDefinitionVersion'>,
+  context: Pick<
+    TasksContext,
+    'log' | 'readDefinitionNextFire' | 'readDefinitionVersion' | 'runners'
+  >,
   messaging: Pick<TaskMessaging, 'directory'>,
 ): ToolDefinition {
   return {
@@ -68,6 +74,7 @@ export function buildTasksListTool(
         limit: { type: 'integer', minimum: 1, maximum: 200 },
         cursor: { type: 'string', description: 'the nextCursor of the page before' },
         taskID: { type: 'string', description: 'the one task to show with its whole brief' },
+        runner: { type: 'string', description: 'list only the tasks that this runner runs' },
       },
       additionalProperties: false,
     },
@@ -99,6 +106,15 @@ export function buildTasksListTool(
                   'the next scheduled run, in UTC; only on an asleep task with a schedule',
               },
               waitingOn: { type: 'string', description: 'the task this one waits on' },
+              runner: { type: 'string', description: 'the key of the runner that runs the task' },
+              limits: {
+                type: 'null',
+                description: 'null on a task whose runner sets no turn or dollar limit',
+              },
+              session: {
+                type: 'object',
+                description: 'a coding task: the state of its session',
+              },
             },
             required: [
               'id',
@@ -109,6 +125,7 @@ export function buildTasksListTool(
               'isBriefClipped',
               'lastActivityAt',
               'wakeable',
+              'runner',
             ],
             additionalProperties: false,
           },
@@ -150,6 +167,7 @@ export function buildTasksListTool(
         const state = pickListedTaskState(task);
 
         const nextRunAt = await readListedNextRun(context, task, state);
+        const views = await readListedRunnerFields(context, [task.id]);
 
         return {
           status: 'ok',
@@ -158,6 +176,7 @@ export function buildTasksListTool(
               toTaskJSON(task, state, nextRunAt, {
                 brief: task.brief,
                 isBriefClipped: false,
+                runnerView: views.get(task.id),
               }),
             ],
           },
@@ -179,12 +198,21 @@ export function buildTasksListTool(
 
       const states = listedStates[input.state ?? 'all'];
 
-      const candidates = tasks
+      const inStates = tasks
         .filter((task) => after === null || isAfterCursor(task, after))
         .map((task) => ({ task, state: pickListedTaskState(task) }))
         .filter((entry) => states.includes(entry.state));
 
-      const page = await fillPage(context, candidates, input.limit ?? candidates.length);
+      const views = await readListedRunnerFields(
+        context,
+        inStates.map((entry) => entry.task.id),
+      );
+
+      const candidates = inStates.filter(
+        (entry) => input.runner === undefined || views.get(entry.task.id)?.runner === input.runner,
+      );
+
+      const page = await fillPage(context, views, candidates, input.limit ?? candidates.length);
 
       const last = page.entries.at(-1);
 
@@ -208,7 +236,7 @@ function toTaskJSON(
   task: ListedTask,
   state: ListedTaskState,
   nextRunAt: string | null,
-  view: BriefView,
+  view: BriefView & { readonly runnerView: ListedRunnerView | undefined },
 ): JSONObject {
   return {
     id: task.id,
@@ -221,6 +249,8 @@ function toTaskJSON(
     wakeable: task.wakeable,
     ...(nextRunAt === null ? {} : { nextRunAt }),
     ...(task.waitingOn === undefined ? {} : { waitingOn: task.waitingOn }),
+    runner: view.runnerView?.runner ?? '',
+    ...view.runnerView?.fields,
   };
 }
 
@@ -269,6 +299,7 @@ const listPageBudgetBytes = recallPageLimitBytes;
 // always holds one entry, and reads the next run of the entries it shows only.
 async function fillPage(
   context: Pick<TasksContext, 'log' | 'readDefinitionNextFire'>,
+  views: ReadonlyMap<string, ListedRunnerView>,
   candidates: readonly Candidate[],
   cap: number,
 ): Promise<{ readonly entries: readonly PageEntry[]; readonly hasMore: boolean }> {
@@ -287,6 +318,7 @@ async function fillPage(
     const json = toTaskJSON(candidate.task, candidate.state, nextRunAt, {
       brief: clipped.text,
       isBriefClipped: clipped.isClipped,
+      runnerView: views.get(candidate.task.id),
     });
 
     const size = Buffer.byteLength(JSON.stringify(json)) + 1;

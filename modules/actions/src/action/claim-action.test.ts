@@ -14,16 +14,33 @@ import { queueTestAction } from '../test-utils/queue-test-action';
 import { startTestActions } from '../test-utils/start-test-actions';
 import type { ActionsTables } from '../types';
 import { claimAction } from './claim-action';
+import { makeQueueRunnerActions } from './make-queue-runner-actions';
 import { waitForActionOutcome } from './wait-for-action-outcome';
 
 async function setupTest() {
   const actions = await startTestActions();
 
   const definitions = { snapshotHash: 'sha256:test' };
+  const queue = makeQueueRunnerActions(actions.context);
 
   return {
     ...actions,
     db: actions.writer.db.$extendTables<ActionsTables>(),
+    queueRunnerAction: (taskID: string, stepKey: string) =>
+      withWriteTransaction(actions.writer, (tx) =>
+        queue(tx, {
+          taskID,
+          stepKey,
+          actions: [
+            {
+              tool: 'coding.stop',
+              args: { session: 'atc:cloud.3f9a1c2e.00000001', origin: 'started' },
+              hashParts: ['stop'],
+              causedBy: { kind: 'record', sequence: 1 },
+            },
+          ],
+        }),
+      ),
     seed: buildActionSeeder({ context: actions.context }),
     taskSeed: buildTaskSeeder({ context: actions.context }),
     definitions,
@@ -432,4 +449,57 @@ test('it claims an action with a started attempt of a task at its limit', async 
   const lease = await claimAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
 
   expect(lease?.workID).toBe(queued.action_id);
+});
+
+test('it claims the unstarted action of an end hook of a task that stopped at its limit', async () => {
+  const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
+
+  const taskID = step.lease.workID;
+
+  await writeStepCommit(ctx.context, step, { next: 'wait', records: [], acknowledged: [] });
+
+  await ctx.taskSeed.limitReached({ taskID, stepKey: step.stepKey });
+
+  await writeTaskControl(ctx.context, { taskID, control: 'stop' });
+
+  await ctx.queueRunnerAction(taskID, `ended:stopped:${taskID}`);
+
+  const lease = await claimAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  expect(lease?.holder).toBe('runner-a');
+});
+
+test('it claims no unstarted runner action of a task at its limit when a step queued it', async () => {
+  const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
+
+  const taskID = step.lease.workID;
+
+  await ctx.queueRunnerAction(taskID, step.stepKey);
+
+  await writeStepCommit(ctx.context, step, { next: 'wait', records: [], acknowledged: [] });
+
+  await ctx.taskSeed.limitReached({ taskID, stepKey: step.stepKey });
+
+  const lease = await claimAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  expect(lease).toBeNull();
+});
+
+test('it claims no action of an end hook while nixie is paused', async () => {
+  const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
+
+  const taskID = step.lease.workID;
+
+  await writeStepCommit(ctx.context, step, { next: 'wait', records: [], acknowledged: [] });
+  await writeTaskControl(ctx.context, { taskID, control: 'stop' });
+
+  await ctx.queueRunnerAction(taskID, `ended:stopped:${taskID}`);
+  await ctx.pauseNixie();
+
+  const lease = await claimAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  expect(lease).toBeNull();
 });

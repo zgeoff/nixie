@@ -28,6 +28,20 @@
         "typescript": "7.0.2",
       },
     },
+    "adapters/coding-atc": {
+      "name": "@heynixie/coding-atc",
+      "version": "0.0.0",
+      "dependencies": {
+        "@heynixie/coding": "workspace:*",
+        "@heynixie/logger": "workspace:*",
+        "@modelcontextprotocol/client": "catalog:",
+        "ts-pattern": "catalog:",
+        "zod": "catalog:",
+      },
+      "devDependencies": {
+        "@modelcontextprotocol/server": "catalog:",
+      },
+    },
     "adapters/definitions-repo-github": {
       "name": "@heynixie/definitions-repo-github",
       "version": "0.0.0",
@@ -172,6 +186,8 @@
         "@heynixie/backup": "workspace:*",
         "@heynixie/budgets": "workspace:*",
         "@heynixie/clock": "workspace:*",
+        "@heynixie/coding": "workspace:*",
+        "@heynixie/coding-atc": "workspace:*",
         "@heynixie/compaction": "workspace:*",
         "@heynixie/connectors": "workspace:*",
         "@heynixie/contract": "workspace:*",
@@ -358,6 +374,14 @@
         "@heynixie/egress": "workspace:*",
         "@heynixie/wire": "workspace:*",
         "entities": "catalog:",
+      },
+    },
+    "guests/render": {
+      "name": "@heynixie/render",
+      "version": "0.0.0",
+      "dependencies": {
+        "@heynixie/wire": "workspace:*",
+        "playwright-core": "catalog:",
       },
     },
     "integration": {
@@ -554,6 +578,7 @@
         "@heynixie/backup": "workspace:*",
         "@heynixie/budgets": "workspace:*",
         "@heynixie/clock": "workspace:*",
+        "@heynixie/coding": "workspace:*",
         "@heynixie/connectors": "workspace:*",
         "@heynixie/contract": "workspace:*",
         "@heynixie/db": "workspace:*",
@@ -619,6 +644,29 @@
         "@heynixie/policy": "workspace:*",
         "kysely": "catalog:",
         "tiny-invariant": "catalog:",
+        "zod": "catalog:",
+      },
+      "devDependencies": {
+        "@zgeoff/testing": "catalog:",
+      },
+    },
+    "modules/coding": {
+      "name": "@heynixie/coding",
+      "version": "0.0.0",
+      "dependencies": {
+        "@heynixie/actions": "workspace:*",
+        "@heynixie/clock": "workspace:*",
+        "@heynixie/connectors": "workspace:*",
+        "@heynixie/db": "workspace:*",
+        "@heynixie/log": "workspace:*",
+        "@heynixie/logger": "workspace:*",
+        "@heynixie/policy": "workspace:*",
+        "@heynixie/tasks": "workspace:*",
+        "@heynixie/tools": "workspace:*",
+        "@heynixie/triggers": "workspace:*",
+        "kysely": "catalog:",
+        "tiny-invariant": "catalog:",
+        "ts-pattern": "catalog:",
         "zod": "catalog:",
       },
       "devDependencies": {
@@ -720,8 +768,10 @@
         "@heynixie/db": "workspace:*",
         "@heynixie/log": "workspace:*",
         "@heynixie/tools": "workspace:*",
+        "@heynixie/wire": "workspace:*",
         "kysely": "catalog:",
         "tiny-invariant": "catalog:",
+        "ts-pattern": "catalog:",
         "zod": "catalog:",
       },
       "devDependencies": {
@@ -1325,6 +1375,7 @@
       "name": "@heynixie/verify",
       "version": "0.0.0",
       "dependencies": {
+        "@heynixie/coding-atc": "workspace:*",
         "@heynixie/contract": "workspace:*",
         "@heynixie/log": "workspace:*",
         "@heynixie/memory": "workspace:*",
@@ -1605,6 +1656,10 @@
 
     "@heynixie/codex": ["@heynixie/codex@workspace:guests/codex"],
 
+    "@heynixie/coding": ["@heynixie/coding@workspace:modules/coding"],
+
+    "@heynixie/coding-atc": ["@heynixie/coding-atc@workspace:adapters/coding-atc"],
+
     "@heynixie/compaction": ["@heynixie/compaction@workspace:modules/compaction"],
 
     "@heynixie/computer": ["@heynixie/computer@workspace:guests/computer"],
@@ -1666,6 +1721,8 @@
     "@heynixie/pulumi-k8s": ["@heynixie/pulumi-k8s@workspace:deploy/pulumi-k8s"],
 
     "@heynixie/reminders": ["@heynixie/reminders@workspace:modules/reminders"],
+
+    "@heynixie/render": ["@heynixie/render@workspace:guests/render"],
 
     "@heynixie/retry": ["@heynixie/retry@workspace:libs/retry"],
 

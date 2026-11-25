@@ -20,6 +20,8 @@
     "@heynixie/backup": "workspace:*",
     "@heynixie/budgets": "workspace:*",
     "@heynixie/clock": "workspace:*",
+    "@heynixie/coding": "workspace:*",
+    "@heynixie/coding-atc": "workspace:*",
     "@heynixie/compaction": "workspace:*",
     "@heynixie/connectors": "workspace:*",
     "@heynixie/contract": "workspace:*",

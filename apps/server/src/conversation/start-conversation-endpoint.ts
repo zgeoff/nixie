@@ -1,6 +1,11 @@
 import { join } from 'node:path';
 import type { ErasureStuckPort } from '@heynixie/api';
-import type { ImageProvider, ImagesConfig, SearchProvider } from '@heynixie/connectors';
+import type {
+  ImageProvider,
+  ImagesConfig,
+  RenderSandbox,
+  SearchProvider,
+} from '@heynixie/connectors';
 import {
   buildImageTools,
   buildSearchTool,
@@ -49,6 +54,7 @@ import {
 } from '@heynixie/tasks';
 import type { ActionQueue, ToolDefinition, ToolEndpoint } from '@heynixie/tools';
 import { buildToolRegistry, findToolDeclaration, startToolEndpoint } from '@heynixie/tools';
+import type { HarnessID } from '@heynixie/wire';
 import { buildContactTool } from '../cli/build-contact-tool';
 import { buildForgetRetryTool } from '../forget/build-forget-retry-tool';
 import { buildForgetStuckTool } from '../forget/build-forget-stuck-tool';
@@ -77,6 +83,16 @@ interface ConversationImages {
 export interface ConversationEndpointTools {
   readonly webFetch: ToolDefinition;
   readonly computer: readonly ToolDefinition[];
+
+  // null when the sandbox manifest holds no render image, so a preview has no picture
+  readonly render: RenderSandbox | null;
+
+  // the tools on coding sessions, none without a coding runner
+  readonly coding: readonly ToolDefinition[];
+
+  // the harnesses of the model profiles in use, which decide the variants that task.start
+  // advertises; absent, it advertises every variant
+  readonly harnesses: readonly HarnessID[] | undefined;
   readonly codeRun: ToolDefinition;
   readonly fileSend: ToolDefinition;
   readonly forget: ToolDefinition;
@@ -229,7 +245,12 @@ export async function startConversationEndpoint(
   const tasks = [
     buildTasksListTool(options.context, messaging),
     buildTaskMessageTool(options.context, messaging),
-    buildTaskStartTool(options.context, messaging, bounds, relatedMemory),
+    buildTaskStartTool(
+      options.context,
+      { ...messaging, ...(tools.harnesses === undefined ? {} : { harnesses: tools.harnesses }) },
+      bounds,
+      relatedMemory,
+    ),
     buildTaskCloseTool(options.context, messaging),
   ];
 
@@ -263,6 +284,14 @@ export async function startConversationEndpoint(
     definitions: options.context.definitions,
     clock: options.context.clock,
     streams: tools.deviceStreams,
+    ...(tools.render === null
+      ? {}
+      : {
+          preview: {
+            draw: tools.render.draw,
+            timeZone: options.config.time.default_zone,
+          },
+        }),
   });
 
   const worker = tools.worker === null ? [] : [tools.worker.buildTool(bounds)];
@@ -284,6 +313,7 @@ export async function startConversationEndpoint(
     ),
     ...notebook,
     ...tools.computer,
+    ...tools.coding,
     ...search,
     ...images,
     ...devices,

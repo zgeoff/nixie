@@ -17,5 +17,6 @@ export const taskMessageCodec = defineRecordCodec(
     woke: z.boolean(),
     opensWait: z.boolean().nullable().default(null),
     source: z.string(),
+    outside: z.boolean().exactOptional(),
   }),
 );

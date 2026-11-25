@@ -18,7 +18,10 @@ export interface SeedInputs {
 
 export interface SeedTools {
   readonly definitions: readonly ToolDefinition[];
-  readonly actions: { readonly logConnector: { readonly tool: ToolDefinition } };
+  readonly actions: {
+    readonly logConnector: { readonly tool: ToolDefinition };
+    readonly queuedTools: readonly ToolDefinition[];
+  };
   readonly taskBounds: TaskStartBounds;
 }
 
@@ -28,7 +31,7 @@ export function buildSeedInputs(
 ): SeedInputs {
   const policy = buildSnapshotPolicy(
     getFixedRules(),
-    [...tools.definitions, tools.actions.logConnector.tool],
+    [...tools.definitions, tools.actions.logConnector.tool, ...tools.actions.queuedTools],
     {
       prompt: `sha256:${createHash('sha256').update(consentCheckerPrompt).digest('hex')}`,
       profile: resolveRoleProfile(config.models, 'checker').id,
@@ -36,7 +39,12 @@ export function buildSeedInputs(
   );
 
   const conversationTools = tools.definitions.map((tool) => tool.name);
-  const toolNames = [...conversationTools, tools.actions.logConnector.tool.name];
+
+  const toolNames = [
+    ...conversationTools,
+    tools.actions.logConnector.tool.name,
+    ...tools.actions.queuedTools.map((tool) => tool.name),
+  ];
 
   return {
     source: createPathSource({ directory: config.definitions.source.path }),

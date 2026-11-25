@@ -88,6 +88,8 @@ async function applyActionRecord(
         first_attempt_at: null,
         last_attempt_at: null,
         reconcile_at: null,
+        refused_count: 0,
+        is_runner: parsed.isRunner ? 1 : 0,
       })
       .execute();
 
@@ -129,6 +131,10 @@ function buildActionUpdate(
       next_attempt_at: record.nextAttemptAt,
       reason: record.reason,
       unknown_streak: 0,
+
+      // the refused attempt spent its key, so the count starts again under the next one
+      refused_count: eb('refused_count', '+', 1),
+      first_attempt_at: null,
     }))
     .with({ kind: 'action.reconcile_scheduled', step: 'retry' }, (record) => ({
       status: 'pending' as const,

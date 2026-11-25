@@ -1,3 +1,4 @@
+import { triggerTaskInputCodec } from '../task/codec/trigger-task-input-codec';
 import type { StepWake } from '../types';
 import { isWakingRecord } from '../utils/is-waking-record';
 import { taskMessageCodec } from '../utils/task-message-codec';
@@ -46,6 +47,11 @@ function toWake(record: WakeRecord): StepWake {
     const message = taskMessageCodec.decode(record.payload);
 
     return { hop: message.hop, cause: { kind: 'task', taskID: message.from } };
+  }
+
+  // an event that a session raised keeps the hop of the exchange it belongs to
+  if (record.kind === 'trigger.task_input') {
+    return { hop: triggerTaskInputCodec.decode(record.payload).hop, cause: { kind: 'event' } };
   }
 
   return { hop: 0, cause: { kind: 'event' } };

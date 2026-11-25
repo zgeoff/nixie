@@ -11,6 +11,7 @@ export const effectNames = [
   'code_run',
   'computer_run',
   'computer_take_back',
+  'coding_start',
   'device',
   'policy_widen',
   'policy_narrow',

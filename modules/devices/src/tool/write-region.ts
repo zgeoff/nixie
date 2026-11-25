@@ -24,11 +24,11 @@ interface RegionWrite {
 // Records a region's content sealed under the record's own key, and points the region at it. The
 // layout and the content it covers are read in the write's own transaction, so null comes back,
 // with nothing written, for a layout set after the call or a region it lacks.
-export function writeRegion(
+export async function writeRegion(
   options: DeviceToolOptions,
   write: RegionWrite,
 ): Promise<'written' | null> {
-  return withWriteTransaction(options.log.writer, async (tx) => {
+  const outcome = await withWriteTransaction(options.log.writer, async (tx) => {
     const inTransaction = { ...options.log, writer: { ...options.log.writer, db: tx } };
 
     const layout = await readLayout(inTransaction, write.deviceID, options.clock.now());
@@ -90,6 +90,12 @@ export function writeRegion(
 
     return 'written';
   });
+
+  if (outcome === 'written') {
+    options.streams.errors.remove(write.deviceID, write.region);
+  }
+
+  return outcome;
 }
 
 // The content as a JSON object, which leaves out a label that the call left out.

@@ -1,5 +1,5 @@
 // oxlint-disable new-cap -- oRPC names a procedure's typed errors by their upper-case codes
-import { readDeviceImage, writeScreenSwitch } from '@heynixie/devices';
+import { readDeviceImage, recordPageError, writeScreenSwitch } from '@heynixie/devices';
 import { withWriteTransaction } from '@heynixie/log';
 import { requireCaller } from '../memory/require-caller';
 import type { APIContext } from '../types';
@@ -36,6 +36,26 @@ export function createDeviceProcedures(context: APIContext) {
       });
 
       context.clients.devices.resize(caller.device.deviceID, options.input);
+
+      return {};
+    }),
+
+    pageError: apiImplementer.devices.pageError.handler(async (options) => {
+      const caller = await requireDevice(context, options.context.sessionToken, {
+        buildUnauthorized: options.errors.UNAUTHORIZED,
+        buildNotADevice: options.errors.NOT_A_DEVICE,
+      });
+
+      const outcome = await recordPageError(
+        { log: context.log, streams: context.clients.devices },
+        caller.device.deviceID,
+        options.input,
+        context.clock.now(),
+      );
+
+      if (outcome === 'stale') {
+        throw options.errors.STALE();
+      }
 
       return {};
     }),

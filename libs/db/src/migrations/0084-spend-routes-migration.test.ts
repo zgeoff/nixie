@@ -7,7 +7,7 @@ import { runMigrations } from '../migration/run-migrations';
 import { nixieSchema } from '../schema/nixie-schema';
 import { buildSqliteWorkerDialect } from '../sqlite/build-sqlite-worker-dialect';
 import { readRunPrefix } from '../test-utils/read-run-prefix';
-import { spendRoutesMigration } from './0082-spend-routes-migration';
+import { spendRoutesMigration } from './0084-spend-routes-migration';
 
 async function setupTest() {
   const stack = new AsyncDisposableStack();
@@ -30,11 +30,11 @@ async function setupTest() {
   return { db };
 }
 
-test('it moves the schema to version 82 and leaves the oldest reader below it', () => {
+test('it moves the schema to version 84 and leaves the oldest reader below it', () => {
   expect([
     nixieSchema.migrations.indexOf(spendRoutesMigration) + 1,
-    nixieSchema.oldestReader < 82,
-  ]).toStrictEqual([82, true]);
+    nixieSchema.oldestReader < 84,
+  ]).toStrictEqual([84, true]);
 });
 
 test.each([

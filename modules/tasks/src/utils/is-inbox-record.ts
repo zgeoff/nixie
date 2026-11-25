@@ -30,9 +30,17 @@ const declineKinds: ReadonlySet<string> = new Set([
   'skills.write_rejected',
 ]);
 
-export function isInboxRecord(record: Pick<EnvelopeRecord, 'kind' | 'thread'>): boolean {
+export function isInboxRecord(
+  record: Pick<EnvelopeRecord, 'kind' | 'thread'> & Partial<Pick<EnvelopeRecord, 'payload'>>,
+): boolean {
   if (record.thread === conversationTaskID && declineKinds.has(record.kind)) {
     return false;
+  }
+
+  // An event of a source that names its task is in the inbox only when it wakes the task, and a
+  // record that arrives without its payload is no such event.
+  if (record.kind === 'trigger.task_input') {
+    return record.thread !== null && record.payload?.['wake'] === true;
   }
 
   return record.thread !== null && inboxKinds.has(record.kind);

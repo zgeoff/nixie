@@ -1,17 +1,19 @@
 # Sandboxes
 
 nixie runs untrusted work in sandboxes: the conversation's model loop, the memory checker, each
-worker, each code run, the fetch sandbox and each coding session. A sandbox gets only the network
-and the credentials its kind of work needs, and the caller names only that kind. nixie reaches
-sandboxes through its own sandbox interface, `Sandbox` in `modules/sandbox`. The reference adapter
-runs each sandbox as an [imp](../../glossary.md), a microVM that impd, imp's host daemon, runs. The
-test sandbox runs each guest as a local process, so any module's tests can run a real guest.
+worker, each code run, the fetch sandbox, the render sandbox and each coding session. A sandbox gets
+only the network and the credentials its kind of work needs, and the caller names only that kind.
+nixie reaches sandboxes through its own sandbox interface, `Sandbox` in `modules/sandbox`. The
+reference adapter runs each sandbox as an [imp](../../glossary.md), a microVM that impd, imp's host
+daemon, runs. The test sandbox runs each guest as a local process, so any module's tests can run a
+real guest.
 
 [Tool calls](./tool-calls.md) covers the endpoint a sandbox's tool route reaches.
 [The code tool](./code-tool.md) covers the code run's sandbox. [Web fetch](./web-fetch.md) covers
-the fetch sandbox's lifetime and the fetcher that runs in it. `modules/sandbox` holds the interface,
-the kinds, the sandbox records and the test sandbox, and `adapters/sandbox-imp` is the one package
-that imports imp's client.
+the fetch sandbox's lifetime and the fetcher that runs in it.
+[The device preview](../channels/devices.md#the-preview) covers the render sandbox.
+`modules/sandbox` holds the interface, the kinds, the sandbox records and the test sandbox, and
+`adapters/sandbox-imp` is the one package that imports imp's client.
 
 ## Kinds of work
 
@@ -61,6 +63,7 @@ to a role. A sandbox kind or an image never picks a row.
 | fetch        | web fetch and skill fetch                           | 1     | 192 MiB | 4096 MiB |
 | code run     | each `code.run` call                                | 1     | 512 MiB | 4096 MiB |
 | computer     | the assistant's [computer](computer.md)             | 2     | 1536 MiB | 24576 MiB |
+| render       | the [device preview](../channels/devices.md#the-preview) | 2 | 1024 MiB | 4096 MiB |
 ```
 
 A size is a constant with no config key, and a release changes it. Each row's memory is an even

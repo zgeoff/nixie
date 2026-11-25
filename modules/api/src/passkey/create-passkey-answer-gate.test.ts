@@ -690,6 +690,56 @@ test('#runApprovalAnswer rolls back the passkey use and the counter with a handl
   ]);
 });
 
+test('#runApprovalAnswer leaves the window shut when the handler fails after a passed assertion', async () => {
+  const ctx = await setupTest();
+  const seeded = await seedPasskey(ctx.api.context, { caller: ctx.laptop.caller });
+  const row = await ctx.createAlwaysAskRow();
+  const other = await ctx.createAlwaysAskRow();
+
+  const real = buildProposalCoreDeps(ctx.api.context, {
+    readMemory: () => null,
+    runInForceSeed: () => Promise.resolve(),
+  });
+
+  const action = real.handlers.get('action');
+
+  invariant(action, 'the server wires an action handler');
+
+  const failing: ProposalKindHandler = {
+    ...action,
+    approve: () => Promise.reject(new Error('the tool endpoint is gone')),
+  };
+
+  const assertion = await ctx.assertionFor(seeded, { ...row, choice: 'approve' });
+
+  await Promise.allSettled([
+    runApprovalAnswer(
+      ctx.api.context,
+      { ...real, handlers: new Map([['action' as const, failing]]) },
+      ctx.laptop.caller,
+      {
+        answer: {
+          ...row,
+          choice: 'approve',
+          clientActionID: crypto.randomUUID(),
+          passkey: assertion,
+        },
+        passkey: createPasskeyAnswerGate(ctx.api.context, { caller: ctx.laptop.caller, assertion }),
+      },
+    ),
+  ]);
+
+  const run = await runApprovalAnswer(ctx.api.context, real, ctx.laptop.caller, {
+    answer: { ...other, choice: 'approve', clientActionID: crypto.randomUUID() },
+    passkey: createPasskeyAnswerGate(ctx.api.context, {
+      caller: ctx.laptop.caller,
+      assertion: undefined,
+    }),
+  });
+
+  expect(run).toStrictEqual({ status: 'passkey_refused', refusal: { error: 'PASSKEY_REQUIRED' } });
+});
+
 test('#runApprovalAnswer checks the passkey inside the guard of a kind that owns its transaction', async () => {
   const ctx = await setupTest();
   const seeded = await seedPasskey(ctx.api.context, { caller: ctx.laptop.caller });

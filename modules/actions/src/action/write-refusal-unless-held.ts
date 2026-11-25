@@ -1,6 +1,7 @@
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import type { TasksContext } from '@heynixie/tasks';
 import { isGateBarring, readTaskGate, requireLease, resetLease } from '@heynixie/tasks';
+import { buildGateWork } from './build-gate-work';
 import { buildRefusalRecords } from './build-refusal-records';
 import { creditFailedActions } from './credit-failed-actions';
 import type { Attempt } from './leased-records';
@@ -19,9 +20,7 @@ export function writeRefusalUnlessHeld(
 
     const gate = await readTaskGate(tx, attempt.action.task_id, 'action');
 
-    const isHeld = isGateBarring('action', gate, {
-      isStarted: attempt.action.attempt_count > 0,
-    });
+    const isHeld = isGateBarring('action', gate, buildGateWork(attempt.action));
 
     if (isHeld) {
       await resetLease(tx, attempt.lease);

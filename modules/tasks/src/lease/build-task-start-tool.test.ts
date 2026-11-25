@@ -9,6 +9,11 @@ import {
   buildStubActionQueue,
 } from '@heynixie/tools/test-utils';
 import invariant from 'tiny-invariant';
+import { z } from 'zod';
+import { buildTaskRunnerRegistry } from '../runner/build-task-runner-registry';
+import { defineRunnerStart } from '../runner/define-runner-start';
+import { sandboxRunner } from '../runner/sandbox-runner';
+import type { TaskRunnerDefinition } from '../runner/types';
 import { buildStepRunID } from '../step/build-step-run-id';
 import { claimTask } from '../task/projection/claim-task';
 import { readTaskSetup } from '../task/read-task-setup';
@@ -23,7 +28,41 @@ import { buildTaskStartTool } from './build-task-start-tool';
 async function setupTest() {
   const tasks = await startTestTasks();
 
-  return { ...tasks, db: tasks.writer.db.$extendTables<TasksTables>() };
+  const secondRunner: TaskRunnerDefinition = {
+    ...sandboxRunner,
+    key: 'atc',
+    start: defineRunnerStart({
+      schema: z.strictObject({ runner: z.literal('atc'), name: z.string(), brief: z.string() }),
+      describeInput: () => ({
+        type: 'object',
+        properties: { runner: { type: 'string', const: 'atc' } },
+      }),
+      declaration: {
+        effects: ['note'],
+        destinations: [],
+        amount: null,
+        content: ['name', 'brief'],
+        results: {},
+      },
+      storesBuiltOptions: false,
+      plan: () => Promise.resolve({ status: 'refused', sentence: 'not planned in this test' }),
+      encodeOptions: () => ({}),
+    }),
+  };
+
+  return {
+    ...tasks,
+    db: tasks.writer.db.$extendTables<TasksTables>(),
+
+    // the default sandbox runner and a second runner that a start can pick
+    twoRunnersContext: {
+      ...tasks.context,
+      runners: buildTaskRunnerRegistry({
+        definitions: [sandboxRunner, secondRunner],
+        defaultRunner: sandboxRunner,
+      }),
+    },
+  };
 }
 
 test('it starts a task with its name and brief, and tells the model how its report comes back', async () => {
@@ -1120,4 +1159,44 @@ test('it refuses a start with self notes through the public tool path, with the 
   });
 
   expect(tasks).toStrictEqual([]);
+});
+
+test.each(['agent-sdk', 'codex'] as const)(
+  "it advertises only the default runner's start, with no oneOf, to a deployment on the %s harness",
+  async (harness) => {
+    const ctx = await setupTest();
+
+    const tool = buildTaskStartTool(
+      ctx.twoRunnersContext,
+      { hopLimit: 20, ownerName: null, harnesses: [harness] },
+      buildMockTaskStartBounds(),
+    );
+
+    expect(tool.input).toMatchObject({
+      type: 'object',
+      properties: { runner: { type: 'string', const: 'sandbox' } },
+    });
+
+    expect(tool.input).not.toContainKey('oneOf');
+  },
+);
+
+test('it advertises every startable runner under a oneOf when the deployment names no harness', async () => {
+  const ctx = await setupTest();
+
+  const tool = buildTaskStartTool(
+    ctx.twoRunnersContext,
+    { hopLimit: 20, ownerName: null },
+    buildMockTaskStartBounds(),
+  );
+
+  expect(tool.input).toStrictEqual({
+    type: 'object',
+    oneOf: [
+      expect.objectContaining({
+        properties: expect.objectContaining({ runner: { type: 'string', const: 'sandbox' } }),
+      }),
+      { type: 'object', properties: { runner: { type: 'string', const: 'atc' } } },
+    ],
+  });
 });

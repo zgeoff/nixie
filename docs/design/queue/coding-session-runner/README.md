@@ -127,9 +127,9 @@ This work changes these modules that every runner or connector uses:
   spawn and each note declare `idempotency_key` reconciliation, so a crash never spawns a second
   session or sends a note twice. A steer declares `none`, because atc's typing call takes no key and
   a retry types the line again.
-- **A stop of a coding task stops its session, joined or started, through a `coding.stop` action.**
-  Under the starter rules, nixie asks you before it stops a session it joined. A close or a failure
-  of the task only unbinds a joined session, which runs on in atc as yours.
+- **A stop of a coding task stops a session that nixie started, through a `coding.stop` action.** A
+  stop, a close or a failure of the task only unbinds a session that nixie joined, which runs on in
+  atc as yours.
 - **A steer checks the session's state first, and accepts the race that remains.** The adapter
   refuses a steer to a session in `waiting` with `menu_open`. A menu that opens between that check
   and the keystrokes takes the line's Enter as a pick of its highlighted option. atc has no call

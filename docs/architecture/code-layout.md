@@ -180,6 +180,7 @@ The other packages each hold one piece the modules and apps share:
 
 - `guests/conversation` runs the conversation's turns through the Agent SDK.
 - `guests/fetch` runs the web fetch inside the fetch sandbox.
+- `guests/render` runs headless Chromium inside the render sandbox, to draw the device preview.
 - `guests/computer` runs the assistant's virtual desktop, with its browser and its shell, inside the
   computer sandbox.
 - `adapters/definitions-repo-github` is the definitions repo on GitHub's API.

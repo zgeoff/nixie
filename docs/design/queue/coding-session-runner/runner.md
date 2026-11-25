@@ -165,12 +165,12 @@ const codingSpawnDeclaration: EffectDeclaration = {
   results: {},
 };
 
-// `coding.stop`: the action a stop of the task queues, for a started and a joined session alike
+// `coding.stop`: the action a stop of the task queues, for a started session only
 const codingStopDeclaration: EffectDeclaration = {
   effects: ['coding_start'],
   destinations: ['session'], // the action's arg: '<adapter ID>:<session ID>', 'atc:cloud.3f9a1c2e…'
   amount: null,
-  content: ['origin'], // 'started' | 'joined', which the starter rules match on
+  content: ['origin'], // 'started', which the starter rule matches on
   results: {},
 };
 // coding.stop reconciles by `check` with the tool `coding.stop`: the connector's own check calls the
@@ -353,9 +353,8 @@ tasks.list({ runner: 'atc', state: 'waiting', limit: 20 });
   `ask-coding-sessions`, which asks on it, so nixie asks you before every start and every join, even
   one you asked for.
 - Each `coding.stop` attempt meets the decision point under the tool name `coding.stop`. This work
-  adds 2 starter rules on it. `allow-stop-started-sessions` allows a `coding.stop` whose `origin` is
-  `started`. `ask-stop-joined-sessions` asks on one whose `origin` is `joined`, so nixie asks you
-  before it stops a session of yours.
+  adds the starter rule `allow-stop-started-sessions`, which allows a `coding.stop` whose `origin`
+  is `started`.
 - [The tools](tools.md#policy) hold the policy of a steer and a note.
 - This work builds on the [decision point cutover](../decision-point-cutover.md), whose stages these
   rules need, and adds `coding_start` to the policy module's effect names.
@@ -374,14 +373,15 @@ tasks.list({ runner: 'atc', state: 'waiting', limit: 20 });
   `gone`, because a session out of sight can come back when its daemon comes back up or its host
   wakes.
 - A stop, a close or a failure calls the definition's `ended` after its transaction commits.
-- After a stop, `ended` queues a `coding.stop` action for the bound session, started or joined, and
-  writes `coding.session_unbound` in the same commit. A stop cancels only the actions queued before
-  it commits, so the queue runs this one although the task is stopped, and no step reads its
-  outcome. When you deny a joined session's stop, the session runs on in atc. A failed `coding.stop`
-  leaves the session running, and nixie logs it.
+- After a stop, `ended` queues a `coding.stop` action for a started session, and writes
+  `coding.session_unbound` in the same commit. A stop cancels only the actions queued before it
+  commits, so the queue runs this one although the task is stopped, and no step reads its outcome. A
+  failed `coding.stop` leaves the session running, and nixie logs it.
+- For a joined session, `ended` writes `coding.session_unbound` at once after a stop, a close or a
+  failure, with no action and no adapter call. nixie never stops a session it joined, so the session
+  runs on in atc as yours.
 - After a close or a failure, `ended` calls `stop` on a started session, and writes
-  `coding.session_unbound` once the call answers `ok` or `no_such_session`. For a joined session it
-  writes `coding.session_unbound` at once and calls no adapter.
+  `coding.session_unbound` once the call answers `ok` or `no_such_session`.
 - The coding module sweeps when the server starts and every 10 min after, to catch an `ended` call
   that a crash or a failed `stop` cut short. For each coding task that is stopped, closed or failed
   and whose `coding_sessions` row has no `unbound_at`, the sweep does what `ended` does.
@@ -409,8 +409,9 @@ tasks.list({ runner: 'atc', state: 'waiting', limit: 20 });
 
 ## Decisions
 
-- **A stop of the task stops its session, joined or started, as a `coding.stop` action.** Your rules
-  decide each one, so a joined session stops only when they allow it.
+- **A stop of the task stops a started session as a `coding.stop` action, and only unbinds a joined
+  one.** Your rules decide each `coding.stop`. nixie never stops a session it joined, whether the
+  task stops, closes or fails, because a joined session ran before the task and stays yours.
 - **Every stop keeps atc's record of the session.** atc's record is outside data, and nixie deletes
   outside data only through a tool that declares `delete`.
 - **A start, a join and a stop declare `coding_start`.** Each acts on a coding session outside
