@@ -237,9 +237,9 @@ HTTPS site on the loopback address, which a test reaches through the pinned conn
 suite `recover-credential-refresh.test.ts` in the server's `e2e/` folder starts nixie, begins a
 refresh against a provider that never answers, kills the process with `SIGKILL`, starts it again on
 the same data directory, and checks that the credential is `needs_consent`. A second test holds the
-process at the fault point `credential.refresh.token_saved`, after the token saved and before its
-record, kills it there, and checks that the restart leaves the credential `active` with
-`credential.refresh_saved` written.
+process at the fault point `credential.refresh.token_saved`, after the transaction that commits the
+token and its `credential.refresh_saved` record, kills it there, and checks that the restart finds
+both and leaves the credential `active`.
 
 Plant a fake value in the secrets file and assert that it appears in no tool result, no log line, no
 record and no error. `createTestCredentials` in the module's `test-utils` builds a resolver and a
