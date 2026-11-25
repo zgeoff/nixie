@@ -58,8 +58,8 @@ each week.
 3. Add your nixie address as the authorised JavaScript origin, such as `https://nixie.example.org`.
 4. Copy the client ID and the client secret.
 5. For the Drive picker, open [Credentials](https://console.cloud.google.com/apis/credentials) and
-   create an API key. Restrict it to the Google Picker API, and to the websites your nixie address
-   and `https://docs.google.com/*`.
+   create an API key. Restrict it to the Google Picker API and to 2 websites: your nixie address and
+   `https://docs.google.com/*`.
 6. Open Settings → Connections in nixie. In the step "Create a web client", enter the client ID and
    the client secret. Enter the API key and the project number if you made them.
 7. Select Register the client.
@@ -102,6 +102,5 @@ Using the account again takes a fresh consent.
 
 ## Revoke a grant by hand
 
-Open your Google Account's third-party access page, find the app by the name you gave it, and select
-Delete all connections. Do this after a Forget whose revocation reads "refused" or "unknown", or
-when you removed the OAuth client before forgetting its connections.
+After a Forget whose revocation reads "refused" or "unknown", open your Google Account's third-party
+access page, find the app by the name you gave it, and remove its access.

@@ -45,7 +45,7 @@ test('it answers a page with the error code when the API refuses, with no store 
     response.status,
     response.headers.get('cache-control'),
     response.headers.get('referrer-policy'),
-    page.includes('CONNECTIONS_NOT_STARTED'),
+    page.includes('CONSENT_NOT_FOUND'),
     page.includes('4/0Ab'),
   ]).toStrictEqual([400, 'no-store', 'no-referrer', true, false]);
 });
