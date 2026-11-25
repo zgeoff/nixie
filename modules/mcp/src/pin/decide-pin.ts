@@ -27,7 +27,7 @@ export interface PinInput {
 
 // A change the owner learns of after the fact: a trusted server's tool changed, or a listing dropped
 // a tool.
-export interface PinNotice {
+interface PinNotice {
   readonly kind: 'tool_changed' | 'tool_removed';
   readonly fromHash: string | null;
   readonly toHash: string | null;

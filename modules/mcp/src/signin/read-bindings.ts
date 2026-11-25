@@ -91,25 +91,6 @@ export async function readBindings(
   };
 }
 
-// The fetcher for a request to the server's URL: its host may sit on a private network when the
-// config pairs the host with a range, and a redirect is never followed.
-export function buildFetchOptions(facts: ServerFacts): FetchOptions {
-  return {
-    redirects: 'none',
-    stream: true,
-    ...(facts.privateRange === null
-      ? {}
-      : { pairing: { host: new URL(facts.url).hostname, range: facts.privateRange } }),
-  };
-}
-
-export function makeDiscoveryFetch(
-  store: CredentialStore,
-  facts: ServerFacts,
-): (origins: readonly string[]) => CredentialFetch {
-  return (origins) => store.fetcher(null, origins, buildFetchOptions(facts));
-}
-
 async function readDiscovery(
   runtime: BindingsRuntime,
   serverID: string,
@@ -139,6 +120,25 @@ async function readDiscovery(
   } catch (error) {
     return { failure: error instanceof Error ? error.message : 'the discovery failed' };
   }
+}
+
+// The fetcher for a request to the server's URL: its host may sit on a private network when the
+// config pairs the host with a range, and a redirect is never followed.
+export function buildFetchOptions(facts: ServerFacts): FetchOptions {
+  return {
+    redirects: 'none',
+    stream: true,
+    ...(facts.privateRange === null
+      ? {}
+      : { pairing: { host: new URL(facts.url).hostname, range: facts.privateRange } }),
+  };
+}
+
+function makeDiscoveryFetch(
+  store: CredentialStore,
+  facts: ServerFacts,
+): (origins: readonly string[]) => CredentialFetch {
+  return (origins) => store.fetcher(null, origins, buildFetchOptions(facts));
 }
 
 function buildSpec(

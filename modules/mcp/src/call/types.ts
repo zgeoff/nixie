@@ -2,7 +2,7 @@ import type { JSONObject } from '@heynixie/log';
 import type { ServerCallOutcome } from './run-server-call';
 
 // A refusal is nixie's own sentence, which names the server and says what to do.
-export type CallClearance =
+type CallClearance =
   | { readonly kind: 'cleared' }
   | { readonly kind: 'refused'; readonly text: string };
 

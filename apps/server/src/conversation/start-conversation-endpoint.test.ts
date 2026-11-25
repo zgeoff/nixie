@@ -547,8 +547,14 @@ test("it serves search to the conversation with the key from the secrets file, s
 
   expect(answer).toStrictEqual({
     _meta: expect.any(Object),
-    content: [],
-    structuredContent: { hits },
+    content: [
+      {
+        type: 'text',
+        text: expect.stringMatching(
+          /^<tool-result source="untrusted" fence="[0-9a-f]+">\n.*\n<\/tool-result fence="[0-9a-f]+">$/u,
+        ),
+      },
+    ],
   });
 
   expect(records.find((record) => record.kind === 'tool_result')?.toolCall).toStrictEqual({
