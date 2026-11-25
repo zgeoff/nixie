@@ -9,15 +9,15 @@ A part of nixie names a credential by a reference, a resolver turns the referenc
 the store serves the entry: a fetcher makes a request to an outside service with the value added on
 the host, and a grant passes the value through the sandbox adapter to a sandbox's broker for one
 host. No tool or connector ever holds a value. A credential's value never enters a tool result, a
-prompt, a log line, a record or an error message. [Two secrets](#references-and-the-resolver) stay
+prompt, a log line, a record or an error message. [A few secrets](#references-and-the-resolver) stay
 outside the store.
 
-A release server's store has one backend, the secrets file, which the
+A release server's store has 2 backends. The first is the secrets file, which the
 [server](../deployment/server.md#configuration-and-secrets) decrypts at start. It holds the search,
 image and model credentials, the spend gateway's token, and the user's name and pronouns, settings
-the prompt shows by design. A held backend adds the [OAuth tokens](#oauth-tokens) that nixie changes
-at runtime. Every build of the server runs a held backend over
-[the credential database](credential-database.md).
+the prompt shows by design. The second is a held backend over
+[the credential database](credential-database.md), for the [OAuth tokens](#oauth-tokens) that nixie
+changes at runtime. Every build of the server runs both.
 
 ```mermaid
 flowchart LR
@@ -184,11 +184,11 @@ At start, `recover` reads the log for each `credential.refresh_started` that no 
 discarded or lost record closes. The provider may hold a token nixie never saved, and revoking the
 spent one may not end it, so `recover` marks the credential `needs_consent` and writes
 `credential.refresh_lost` for the refresh. When a credential's removal counter moved since the
-refresh began, a consent connected it again, so `recover` only closes the refresh and leaves the
-status. The next start finds nothing. The check reads the log alone, so it holds after a crash that
-loses the held backend's memory. The server runs `recover` at each start, over the credential
-database, and the crash suite `recover-credential-refresh.test.ts` kills the process during a
-refresh and checks the status after the restart.
+refresh began, a removal or a new consent replaced what the refresh could touch, so `recover` only
+closes the refresh and leaves the status. The next start finds nothing. The check reads the log
+alone, so it holds after a crash that loses the held backend's memory. The server runs `recover` at
+each start, over the credential database, and the crash suite `recover-credential-refresh.test.ts`
+kills the process during a refresh and checks the status after the restart.
 
 ## Grants
 

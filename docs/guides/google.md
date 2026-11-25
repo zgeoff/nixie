@@ -8,8 +8,9 @@ The tools that read [Gmail](https://linear.app/zgeoff/issue/GEO-1825),
 Google tool yet. The [Google connections](../architecture/connectors/google-connections.md) doc
 covers how consent, refresh and Forget work.
 
-Settings → Connections shows the same 6 steps as this guide, with the same titles, and fills in your
-page's address where a step names it.
+Settings → Connections shows 6 steps with the same titles as the sections of this guide from "Create
+a Google Cloud project" to "Connect an account". It fills in your page's address where a step names
+it.
 
 ## Before you start
 
@@ -63,11 +64,12 @@ each week.
    such as `https://nixie.example.org/connections/google/return`.
 3. Add your nixie address as the authorised JavaScript origin, such as `https://nixie.example.org`.
 4. Copy the client ID and the client secret.
-5. For the Drive picker, open [Credentials](https://console.cloud.google.com/apis/credentials) and
-   create an API key. Restrict it to the Google Picker API and to 2 websites: your nixie address and
+5. When you want the Drive picker, open
+   [Credentials](https://console.cloud.google.com/apis/credentials) and create an API key. Restrict
+   it to the Google Picker API and to 2 websites: your nixie address and
    `https://docs.google.com/*`.
 6. Open Settings → Connections in nixie. In the step "Create a web client", enter the client ID and
-   the client secret. Enter the API key and the project number if you made them.
+   the client secret. When you made the API key, enter it and the project number too.
 7. Select Register the client.
 
 Expect: the page shows the redirect URI, the origin, a fingerprint of the secret and the picker
@@ -78,7 +80,8 @@ another one. nixie refuses while a connection that is not forgotten uses the cli
 
 1. In the step "Connect an account", select Connect a Google account.
 2. On Google's page, choose the account and allow every scope it asks for.
-3. Expect: Google sends you back to nixie, on the page of the new connection. Its status is Active.
+
+Expect: Google sends you back to nixie, on the page of the new connection. Its status is Active.
 
 When you untick a scope on Google's page, the connection still works. Its page lists each missing
 scope with the tools it holds back, and a button to ask Google again. The conversation never shows

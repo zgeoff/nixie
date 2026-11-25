@@ -40,8 +40,8 @@ read: the credential's own, and its OAuth client's. A client removed after the c
 therefore never gets a token saved, and the save answers `removed`. A refresh that finishes after a
 removal revokes the token it received.
 
-The transaction writes `credential.refresh_saved` with the token, so a crash leaves both or neither.
-A start never finds a saved token whose refresh reads as lost.
+The same transaction writes the `credential.refresh_saved` record, so a crash leaves both the token
+and the record or neither. A start never finds a saved token whose refresh reads as lost.
 
 ## Rotation and the key sweep
 

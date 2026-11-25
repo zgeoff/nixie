@@ -55,12 +55,13 @@ Every package name is `@heynixie/` plus its folder name, and every package is pr
 Pulumi component and the API contract, which each release
 [publishes to npm](deployment/release-pipeline.md#build-settings-and-publishing). A deployment's own
 Pulumi program installs the component, so its package declares the Pulumi SDKs as peer dependencies
-with a range, and the catalog pins the versions its tests run against. A library package is consumed
-as source: its `exports` map points at `./src/index.ts`, and nothing builds it before use. A package
-whose helpers other packages' tests use exports them as a second entry, `./test-utils`. A package
-that nothing imports, such as `apps/web`, the fetch guest or the root suites, has no `exports` map.
-An `exports` map refuses every subpath it does not list, and `turbo boundaries` refuses a relative
-path into another package, so no package imports another package's internal files.
+with a range, the one exception to the catalog rule below, and the catalog pins the versions its
+tests run against. A library package is consumed as source: its `exports` map points at
+`./src/index.ts`, and nothing builds it before use. A package whose helpers other packages' tests
+use exports them as a second entry, `./test-utils`. A package that nothing imports, such as the
+fetch guest or the root suites, has no `exports` map. An `exports` map refuses every subpath it does
+not list, and `turbo boundaries` refuses a relative path into another package, so no package imports
+another package's internal files.
 
 Every external version lives once, in the root `workspaces.catalog`. A package writes `"catalog:"`
 for an external dependency and `"workspace:*"` for an internal one, and pins no version itself. The
@@ -218,7 +219,7 @@ The other packages each hold one piece the modules and apps share:
 
 Tests run on `bun test`, and each test sits beside the module it tests, as `x.test.ts` beside
 `x.ts`. A lint rule refuses a test file with no module of its name beside it. The only test folders
-are 2 at the root, `integration/`, which runs one flow across several packages in one process, and
+at the root are 2, `integration/`, which runs one flow across several packages in one process, and
 `evals/`, which checks committed evaluation reports against the code. Each app that a test starts as
 a program holds its whole-program suites in its own `e2e/` folder, such as the
 [crash tests](core/crash-tests.md) in `apps/server/e2e/`. Their helpers live in packages: the

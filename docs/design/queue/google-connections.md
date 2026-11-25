@@ -13,7 +13,7 @@ lives only in that call's record. The connection itself is built:
 [Google connections](../../architecture/connectors/google-connections.md) covers the client, the
 consent, the fewer-scopes check and the fetcher, and [the setup guide](../../guides/google.md)
 covers the steps you take. The rest of this page covers what the Google tools need from the
-connection.
+connection. Build each tool work item on these contracts, starting with Gmail.
 
 | Part                                                                            | What it holds                                                                        |
 | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |

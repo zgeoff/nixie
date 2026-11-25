@@ -29,7 +29,8 @@ start pays for no transpile. The bundle keeps each module's source folder, so it
 their source as they do in an unbundled run. It writes the real event log, runs the real restart
 sweep, task runners, action runners and tool endpoint, and runs each conversation turn through the
 real Agent SDK. The SDK runs in a guest that the process sandbox adapter starts as a local child, so
-CI needs no `/dev/kvm` and no imp. The test-only parts are four:
+CI needs no `/dev/kvm` and no imp. Beside the fault points that later sections list, the test build
+adds four test-only parts:
 
 - The test connector declares one queued action, `test.send`, which the test rule allows. The
   release build's rules in code hold no such rule, so no release build can queue it.
@@ -41,12 +42,14 @@ CI needs no `/dev/kvm` and no imp. The test-only parts are four:
   stale writer epoch. A guest leads its own process group and would otherwise outlive nixie, which a
   host that loses nixie never allows.
 
-A test can also point the coding runner at a double of atc-gateway, through `NIXIE_TEST_ATC_URL`,
-because the configuration accepts only an `https` URL. `NIXIE_TEST_GOOGLE_URL` points Google's
-endpoints at a fake Google. The connector then sends the browser to that site's authorize page, and
-the credential store sends each token, revoke and API request for a `.google.test` host to the same
-site. The test build also accepts an `http` loopback origin for the OAuth client, so a local run can
-register one. The release build drops all 3 reads.
+The release build drops 3 more reads that only the test build makes:
+
+- `NIXIE_TEST_ATC_URL` points the coding runner at a double of atc-gateway, because the
+  configuration accepts only an `https` URL.
+- `NIXIE_TEST_GOOGLE_URL` points Google's endpoints at a fake Google. The connector then sends the
+  browser to that site's authorize page, and the credential store sends each token, revoke and API
+  request for a `.google.test` host to the same site.
+- The OAuth client accepts an `http` loopback origin, so a local run can register one.
 
 The server's action queue bridge, which the test build composes like any other part, maps the thread
 of a running step to that step's claim. It queues each allowed call under that claim with an action
