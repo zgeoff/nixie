@@ -23,30 +23,32 @@ Before you start:
 
 ## Journey
 
-1. Record every later command of this journey under this feature. Then run a turn on the route
-   `scripted`:
+1. Record every later command of this journey under this feature. Then send a request to the route
+   `second` twice. The first reply costs 2 dollars, which passes the route's day limit of 1.50
+   dollars:
 
    ```bash
    bun verify use --feature spend-routes
-   bun verify action script-reply --text 'The heron left the pond at dawn.'
-   bun verify browser goto /
-   bun verify browser type --role textbox --name Message --value 'Where did the heron go?'
-   bun verify browser click --role button --name Send
-   bun verify conversation turn --message 'Where did the heron go?' --reply 'The heron left the pond at dawn.'
-   ```
-
-   Expect: `conversation turn` exits 0, so the turn completed on `scripted`.
-
-2. Send a request to the route `second` twice. The first reply costs 2 dollars, which passes the
-   route's day limit of 1.50 dollars:
-
-   ```bash
    bun verify action probe-route --route second
    bun verify action probe-route --route second
    ```
 
    Expect: the first `data` is `{"status":200,"error":null}`. The second `data` is
    `{"status":403,"error":{"type":"limit_reached","counter":"route_day","route":"second"}}`.
+
+2. With the route `second` at its limit, run a turn on the route `scripted`. Its reply reports
+   125,000 output tokens, which the gateway prices at 0.50 dollars:
+
+   ```bash
+   bun verify action script-reply --text 'The heron left the pond at dawn.' --output-tokens 125000
+   bun verify browser goto /
+   bun verify browser type --role textbox --name Message --value 'Where did the heron go?'
+   bun verify browser click --role button --name Send
+   bun verify conversation turn --message 'Where did the heron go?' --reply 'The heron left the pond at dawn.'
+   ```
+
+   Expect: `conversation turn` exits 0, so the turn completed on `scripted` while `second` was
+   stopped.
 
 3. Read the spending page:
 
@@ -57,8 +59,9 @@ Before you start:
 
 ## End state
 
-- Under the heading "scripted", the page reads "Today: $0.00 (about A$0.00) of $100.00 (about
-  A$152)" and "This month: $0.00 (about A$0.00) of $1,000.00 (about A$1,520)".
+- Under the heading "scripted", the page reads "Today: $0.50 (about A$0.76) of $100.00 (about
+  A$152)" and "This month: $0.50 (about A$0.76) of $1,000.00 (about A$1,520)". A count of $0.00
+  means the reply was not counted, so the journey failed.
 - Under the heading "second", the page reads "Today: $2.00 (about A$3.04) of $1.50 (about A$2.28)
   (limit reached)" and "This month: $2.00 (about A$3.04) of $50.00 (about A$76)".
 - The page says that the figures in Australian dollars are approximate.

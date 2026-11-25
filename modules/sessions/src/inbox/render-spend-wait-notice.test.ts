@@ -64,6 +64,9 @@ test('it tells the model its next wake that it waited about so many minutes for 
 
   // the message's id is random hex, so a figure counts only as a whole word
   expect(message).not.toMatch(/\$|dollar|\bplan\b|\b41(?:\.2)?\b/u);
+
+  // a row number is no ID for the model to read
+  expect(message).not.toInclude(`[#${String(notices[0]?.record.sequence)}]`);
 });
 
 test("it takes a notice that a turn's opening told with no text, so the read cursor passes it", async () => {

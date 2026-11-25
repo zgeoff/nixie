@@ -8,6 +8,6 @@ export function renderSpendWaitNotice(record: LogRecord, times: MessageTimeOptio
   return renderSystemMessage({
     type: 'status',
     at: formatMessageTime(record.recordedAt, null, times),
-    body: `[#${record.sequence}] ${formatSpendWait(record)}`,
+    body: formatSpendWait(record),
   });
 }

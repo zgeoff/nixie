@@ -14,6 +14,11 @@ export function buildScriptedReplies(
   const forConversation =
     reply.task === undefined && reply.codingTask === undefined ? {} : { when: isConversationTurn };
 
+  const forCost =
+    reply.outputTokens === undefined
+      ? {}
+      : { usage: { input_tokens: 10, output_tokens: reply.outputTokens } };
+
   const memory =
     reply.memory === undefined
       ? []
@@ -99,7 +104,7 @@ export function buildScriptedReplies(
       ...forgetNote,
       ...handover,
       ...codingStart,
-      { text: reply.text, ...forConversation },
+      { text: reply.text, ...forCost, ...forConversation },
       ...handoverAnswer,
     ];
   }
@@ -116,7 +121,7 @@ export function buildScriptedReplies(
     ...forgetNote,
     ...handover,
     { toolUse: { name: 'mcp__nixie__task_start', input: task }, ...forConversation },
-    { text: reply.text, ...forConversation },
+    { text: reply.text, ...forCost, ...forConversation },
     ...handoverAnswer,
     { text: taskReply, when: (body: ScriptedBody) => !isConversationTurn(body) },
   ];

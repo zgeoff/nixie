@@ -55,6 +55,10 @@ export const controlRoutes = {
     input: z.strictObject({
       text: z.string().min(1),
 
+      // the output tokens that the closing reply reports, which a spending gateway prices at 4
+      // dollars per million
+      outputTokens: z.int().positive().optional(),
+
       // a memory the model proposes with the memory tool before its reply
       memory: z.string().min(1).optional(),
 
