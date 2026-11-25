@@ -4,15 +4,16 @@ The model gateway is a process of its own on the host that sits between a deploy
 API. Every model request the deployment sends passes through it. The gateway prices each reply from
 the reply's own token counts, adds the price to its route's count, and refuses every request on a
 route once that route's count reaches the route's own limit. It fails closed: when it cannot read or
-write its count, it refuses every request instead of letting one through uncounted. Because the
-gateway runs outside the deployment, code that the deployment runs cannot raise or skip its limit.
-The gateway is the first part of the hard spending stop that the
+write its count, it refuses every request, so none passes uncounted. Because the gateway runs
+outside the deployment, code that the deployment runs cannot raise or skip its limit. The gateway is
+the first part of the hard spending stop that the
 [budgets design](../../design/platform/policy/budgets.md#the-hard-spending-stop) describes, and a
 preview host runs one per preview with a small limit.
 
 A sandbox reaches the model API only through its credential broker, so every model call from a
 worker's sandbox passes through the gateway.
-[The imp adapter](../connectors/sandboxes.md#the-imp-adapter) gives the sandbox no other route.
+[The imp adapter](../connectors/sandboxes.md#the-imp-adapter) sets up the sandbox with no other
+route.
 
 ```mermaid
 flowchart LR
@@ -254,10 +255,10 @@ login file shows `needs_login` with a null reason. The model listener serves no 
 
 The count is dollars and tokens, kept in a counter store on the host's disk. It keeps the dollars of
 each route's day and month, and the dollars and tokens of each sandbox. The gateway reads the count
-from the store before it admits a request, and adds a reply's price once the reply ends. The models
-module's call pricing sets the price, the same pricing that the deployment's own records use, so a
-cache write for the long lifetime takes the profile's price for that lifetime, and a reply to a long
-prompt takes the profile's
+from the store before it admits a request, and adds a reply's price once the reply ends. The gateway
+takes the price from the models module's call pricing, the same pricing that the deployment's own
+records use, so a cache write for the long lifetime takes the profile's price for that lifetime, and
+a reply to a long prompt takes the profile's
 [long-prompt prices](../core/model-profiles.md#prices-and-the-provider-pin) when it has them.
 
 The tokens are the input, the cache writes, the cache reads and the output. Where a reply's cache
@@ -305,8 +306,8 @@ A reply that spent, or may have, with no whole usage the gateway can read adds
 The gateway logs each reply it counts from its whole usage as `count.charged`, at the info level,
 with the route, the sandbox, the usage's 5 token counts (uncached input, cache reads, the 2 cache
 writes and output), its reasoning tokens or `null` when the reply reported none, and the dollars and
-tokens it added. The reasoning tokens are a part of the output tokens. The line holds counts only,
-so it never copies a key, a prompt or a reply.
+tokens it added. The reasoning tokens are a part of the output tokens. The line holds counts only
+and never copies a key, a prompt or a reply.
 
 ### The estimate
 

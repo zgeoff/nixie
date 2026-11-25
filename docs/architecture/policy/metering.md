@@ -2,8 +2,8 @@
 
 nixie counts what it spends against a day, a month, a week or a budget, in three kinds of count: the
 model gateway's count of model dollars on each route, the ledger of every other money count, and the
-turn count. Three parts keep those counts agreeing with each other: one helper that says when each
-period starts, one source for each price, and one table that holds the money counts nixie writes.
+turn count. Three parts keep those counts agreeing with each other: one helper that gives the start
+of each period, one source for each price, and one table that holds the money counts nixie writes.
 [The model gateway](model-gateway.md) and [the spending stop](spending-stop.md) cover the gateway's
 own count and the limit of each route, and [budgets](budgets.md) covers what a budget charge
 refuses.
@@ -23,9 +23,9 @@ holds the instant:
 
 A period holds its `start` as a local date, its `startsAtMs` and its `endsAtMs`, which is `null` for
 `none`. A clock change makes a day shorter or longer by its shift, because the next period starts at
-the next local midnight, however far on that is. A counter that reads a zone reads the time tool's
-`default_zone`, so the gateway's day, a budget's day and the turn count's day start at the same
-instant. The server checks at start that `periods.zone` of a gateway equals that zone.
+the next local midnight. A counter that reads a zone reads the time tool's `default_zone`, so the
+gateway's day, a budget's day and the turn count's day start at the same instant. The server checks
+at start that `periods.zone` of a gateway equals that zone.
 
 The turn count keeps its turns in buckets of a fixed length, and a day in a zone adds up from whole
 buckets only when the zone's offset from UTC is a multiple of that length. The time tool's config
@@ -63,13 +63,13 @@ The row's `amount` is an integer. The `budget.charged` and `budget.credited` rec
 write the ledger, through a projection, so a rebuild from the records reproduces every row.
 
 A budget charge adds its amount to the row of its key, and a credit subtracts from the row its
-charge added to. The charge record names its `ledgerKey`, and the `budget_charges` projection keeps
+charge added to. The charge record holds its `ledgerKey`, and the `budget_charges` projection keeps
 it, so a credit lands on the charge's row even when the budget's period has changed since. A charge
-recorded before the ledger names no key, so its key takes the period kind that the migration kept
+recorded before the ledger holds no key, so its key takes the period kind that the migration kept
 for it in `legacy_charge_kinds`. The migration keeps a kind only when the old rows prove it:
 
 - The charge's record comes after the last change of its budget in force, which
-  `budgets_in_force.updated_sequence` names, so the charge took the period now in force.
+  `budgets_in_force.updated_sequence` holds, so the charge took the period now in force.
 - The budget is a built-in one, `<tool>-day` or `<tool>-month`, that no seed record ever named, so
   the charge took the period its ID ends with.
 - The charge's period start is neither a Monday nor the 1st, so only a day can start there.
@@ -103,7 +103,7 @@ With `display.currency` in the server config, such as `AUD`, the server reads th
 dollar in that currency once a day and keeps the last rate it read. `display.rates_url` sets the
 rate source's base URL, which is the Frankfurter API by default. A read that fails or gives no rate
 keeps the last rate, and logs `spend.rate_read_failed`. Until a read gives a rate, `spend.counts`
-names no display, and the client shows US dollars alone. Counts and limits stay in US dollars, and
+carries no display, and the client shows US dollars alone. Counts and limits stay in US dollars, and
 the model never reads a rate or a dollar figure.
 
 ## What counts where

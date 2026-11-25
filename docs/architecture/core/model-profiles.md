@@ -37,10 +37,10 @@ point can ask before such a start
 
 The `worker.run` tool offers the same choices as its own `model` option, with the same names and
 descriptions. A worker that names a selectable model runs on that entry's profile, and one that
-names none runs on the `worker` role's profile ([workers](./tasks.md#workers)). Such a profile can
-run a worker and can call one, so while the `worker` role is set, the schema checks the tool call
-wait of each entry that has no `ask: true`: the harness must have one, and the worker run limit's
-minutes must fit inside it. The error names the selectable model.
+names none runs on the `worker` role's profile ([workers](./tasks.md#workers)). A selectable model's
+profile can run a worker and can call one. While the `worker` role is set, the schema checks the
+tool call wait of each entry that has no `ask: true`: the harness must have one, and the worker run
+limit's minutes must fit inside it. The error names the selectable model.
 
 The schema refuses an entry whose profile the file does not define. The deployment config also
 refuses an entry whose profile has no price table, because a task counts the cost of its turns

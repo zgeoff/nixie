@@ -46,12 +46,12 @@ keeps the rule store.
 
 ## The ledger
 
-Two record kinds on no thread write the ledger: `budget.charged` names the budget, the start of its
-period, the amount in micros and what the charge is for, and `budget.credited` gives one charge
-back. A charge is for a tool call or for an action. The `budget_charges` projection keeps one row
-per charge and marks a credited one, and the `spend_ledger` projection keeps the spent micros of
-each budget in each period, as [metering](metering.md#the-spend-ledger) describes. A credit changes
-the ledger once, so a retried transaction never gives the money back twice.
+The ledger comes from two record kinds, neither on a thread. `budget.charged` names the budget, the
+start of its period, the amount in micros and what the charge is for, and `budget.credited` gives
+one charge back. A charge is for a tool call or for an action. The `budget_charges` projection keeps
+one row per charge and marks a credited one, and the `spend_ledger` projection keeps the spent
+micros of each budget in each period, as [metering](metering.md#the-spend-ledger) describes. A
+credit changes the ledger once, so a retried transaction never gives the money back twice.
 
 A charge names every budget it touches and lands in one transaction, or does not land. The writer is
 the only writer, so two charges at the same moment never both fit in the last of a budget. A charge
@@ -80,8 +80,8 @@ together or not at all:
 - A call that the owner approved from a held action has its call record from earlier. Before the
   provider sees the call, the cap and the budgets are checked and nothing is written. The charge
   then commits in the transaction of the result record, so the result and its charge commit
-  together, and a call that errors with no bill charges nothing. The charge takes the budgets past
-  their room when another call filled them since the check, because the provider has billed already.
+  together, and a call that errors with no bill charges nothing. The charge can take a budget past
+  its room when another call filled it since the check, because the provider has already billed.
 
 A paid tool can also set a call cap, a limit on the count of its calls, such as the search tool's
 [daily call cap](../connectors/search.md#the-daily-call-cap). The charge's write transaction first

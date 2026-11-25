@@ -18,7 +18,7 @@ the gateway's `/status` and the turn count:
 | `lost`        | the gateway's count is lost: a count failed to write, or a reply with an input the estimate cannot bound had no usage | when an operator removes the lost mark from the store      |
 | `clear`       | none of the above                                                                                                     |                                                            |
 
-A route that reached its day or month limit in dollars stops no state of nixie.
+A route that reaches its day or month limit in dollars never stops nixie as a whole.
 [The stop of a route](#the-stop-of-a-route) holds only the work on that route, and every other route
 goes on.
 
@@ -38,8 +38,8 @@ The gateway counts each route's day and month in dollars and limits each route o
 route's stop beside the stop of nixie, in the same transaction. A route whose day or month shows
 `tripped` has a row in `spend_route_stops`. When both periods tripped, the row holds the day.
 
-- A new trip writes `spend.route_stopped`, which names the route, its period and its limit. That
-  record is the one notice to the user, and a later poll that finds the same stop writes none.
+- A new trip writes `spend.route_stopped`, with the route, its period and its limit. That record is
+  the one notice to the user, and a later poll that finds the same stop writes none.
 - A route that is no longer tripped writes `spend.route_cleared` with the reason `reset` or
   `raised`. A route that stays tripped at another limit or period, such as when a raise leaves it
   over its day limit, or when the day ends and the month still binds, writes `spend.route_restated`
@@ -158,13 +158,13 @@ command, and the month's limits move only in the gateway's config.
 
 `spend.counts` gives each route's day and month count and limit in US dollars, and the display
 currency with the rate of one US dollar in it. It reads the gateway's status, so a gateway that does
-not answer gives no route. The [metering doc](metering.md#the-display-currency) says where the rate
-comes from.
+not answer gives no route. See the [metering doc](metering.md#the-display-currency) for where the
+rate comes from.
 
 The web client shows the notice under the pause banner. A turn trip of the day offers "Raise today's
 limit" with today's limit plus half, up to the cap, and the amount stays editable until the one
-confirm. Each stopped route shows a line that names the route, gives its limit in US dollars with
-the approximate amount in the display currency, and says its work waits. A route that tripped its
+confirm. Each stopped route shows a line with the route's name, its limit in US dollars with the
+approximate amount in the display currency, and a note that its work waits. A route that tripped its
 day limit, below its cap, also offers "Raise the day limit of" the route, with the day's limit plus
 half in US dollars, up to the route's cap, and the amount in the display currency beside the field,
 and one confirm sends `spend.raise` with the route and the dollars. A month trip, `unreachable` and
@@ -174,4 +174,4 @@ The spending page, at `/spend`, lists each route with its day and month count ag
 Each figure is in US dollars with the approximate amount in the display currency beside it, such as
 "$12.40 (about A$19)". A route with no limit set says that it refuses requests, and a route at a
 limit says so. The page reads `spend.counts` on a short interval, because the gateway counts each
-reply as it arrives and no live topic says so.
+reply as it arrives and no live topic reports it.

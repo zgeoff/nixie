@@ -11,7 +11,7 @@ digests.
 ## What the file holds
 
 The file holds every setting that a part of nixie leaves to the deployment, in one section per part.
-Each part's doc owns the meaning of its own settings, and the file only carries them:
+Each setting means what its part's doc says it means:
 
 - where the server keeps its data, listens and finds the secrets file, and the lowest level of event
   it logs
