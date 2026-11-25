@@ -16,7 +16,7 @@ A release server's store has one backend, the secrets file, which the
 [server](../deployment/server.md#configuration-and-secrets) decrypts at start. It holds the search,
 image and model credentials, the spend gateway's token, and the user's name and pronouns, settings
 the prompt shows by design. A held backend adds the [OAuth tokens](#oauth-tokens) that nixie changes
-at runtime. Every build of the server runs it over
+at runtime. Every build of the server runs a held backend over
 [the credential database](credential-database.md).
 
 ```mermaid
@@ -170,7 +170,7 @@ from the provider's token URL over the checked connection.
 
 | Record                         | Written                                                                                 |
 | ------------------------------ | --------------------------------------------------------------------------------------- |
-| `credential.refresh_started`   | before the request leaves; it names the credential, the new key and the removal counter |
+| `credential.refresh_started`   | before the request leaves; it holds the credential, the new key and the removal counter |
 | `credential.refresh_saved`     | with the save; it holds the new access token's fingerprint                              |
 | `credential.refresh_failed`    | after a refresh that gave no token                                                      |
 | `credential.refresh_discarded` | after a removal moved the counter; it records whether revoking worked                   |

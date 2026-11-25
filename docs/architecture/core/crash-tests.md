@@ -42,11 +42,11 @@ CI needs no `/dev/kvm` and no imp. The test-only parts are four:
   host that loses nixie never allows.
 
 A test can also point the coding runner at a double of atc-gateway, through `NIXIE_TEST_ATC_URL`,
-because the configuration accepts only an `https` URL. It can also point Google's endpoints at a
-fake Google through `NIXIE_TEST_GOOGLE_URL`. The connector then sends the browser to that site's
-authorize page, and the credential store sends each token, revoke and API request for a
-`.google.test` host to the same site. The test build also accepts an `http` loopback origin for the
-OAuth client, so a local run can register one. The release build drops all 3 reads.
+because the configuration accepts only an `https` URL. `NIXIE_TEST_GOOGLE_URL` points Google's
+endpoints at a fake Google. The connector then sends the browser to that site's authorize page, and
+the credential store sends each token, revoke and API request for a `.google.test` host to the same
+site. The test build also accepts an `http` loopback origin for the OAuth client, so a local run can
+register one. The release build drops all 3 reads.
 
 The server's action queue bridge, which the test build composes like any other part, maps the thread
 of a running step to that step's claim. It queues each allowed call under that claim with an action

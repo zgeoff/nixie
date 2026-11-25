@@ -12,19 +12,20 @@ that connection. nixie keeps no copy of your mail, events or files, and the text
 lives only in that call's record. The connection itself is built:
 [Google connections](../../architecture/connectors/google-connections.md) covers the client, the
 consent, the fewer-scopes check and the fetcher, and [the setup guide](../../guides/google.md)
-covers the steps you take. This page holds what the Google tools still need from the connection.
+covers the steps you take. The rest of this page covers what the Google tools need from the
+connection.
 
 | Part                                                                            | What it holds                                                                        |
 | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| this page                                                                       | what a tool gets from a connection, the scope each tool needs, runs already going    |
+| this page                                                                       | what a tool gets from a connection, the scope each tool needs, runs in flight        |
 | [the credential database](../../architecture/connectors/credential-database.md) | the tables, the records, refresh, Forget and resets                                  |
 | [the Google tools](gmail-calendar-drive-tools.md)                               | the rules every Google tool keeps, and the `gmail.*` tools                           |
 | [Calendar and Drive tools](google-calendar-drive-tools.md)                      | the `calendar.*` and `drive.*` tools, their checks and the Drive picker              |
 | [Gmail arrivals](https://github.com/zgeoff/nixie/pull/1420)                     | the Gmail source that wakes a task, and the `gmail.wake_*` tools, in the mail design |
 | [the calendar poll](mail-and-calendar-polls.md)                                 | calendar changes that wake a task                                                    |
 
-The tools leave the connection argument, job pins and the model's status line to the first Google
-tools, in [Gmail](https://linear.app/zgeoff/issue/GEO-1825).
+The first Google tools, in [Gmail](https://linear.app/zgeoff/issue/GEO-1825), build the connection
+argument, job pins and the model's status line.
 
 ## Contracts
 
@@ -72,7 +73,7 @@ The default label of a Google connection is the ID token's `email`.
 - Each action lists its scopes in `ConnectorAction.scopes`, and the filter holds back an action
   whose scope is missing.
 
-### Tasks that already run
+### Tasks in flight
 
 - The conversation's endpoint builds its tool list at each turn from the live connections, so a new
   connection, a Forget or a change in `missing` reaches the conversation at its next turn. A worker

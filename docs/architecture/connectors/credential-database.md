@@ -3,12 +3,12 @@
 A Google connection holds a refresh token that nixie changes at runtime: each refresh can replace
 it. The credential store's database backend keeps these values in `nixie.db`, sealed under keys of
 the key store, so that forgetting a connection deletes its keys and leaves nothing readable in the
-database or in any backup. [The credential store](credentials.md) defines the backend's interface,
-the removal counter and the refresh. The sections below cover where the database backend keeps each
-value, how a rotated token survives a crash, and how a connection is forgotten.
+database or in any backup. For the backend's interface, the removal counter and the refresh, see
+[the credential store](credentials.md). Read on for where the database backend keeps each value, how
+a rotated token survives a crash, and how a connection is forgotten.
 
-[Erasable fields](../core/erasable-fields.md) covers the key store, and
-[the database](../core/database.md#key-store-ids) covers why every key ID is random.
+For the key store, see [erasable fields](../core/erasable-fields.md). For why every key ID is
+random, see [the database](../core/database.md#key-store-ids).
 
 ## Tables and keys
 
@@ -91,7 +91,7 @@ The revocation is sent at most once, because a second request could revoke a gra
 consent made. At start, before the runner's catch-up runs, nixie writes `unknown` for each forget
 that began and has no outcome record, because its request may have left before the crash. A retry in
 the same process finds the outcome recorded, or finds that this process already sent the request,
-and sends nothing. Every outcome lets the forget finish, so a revocation that fails still ends with
+and sends nothing. The forget finishes on every outcome, so a revocation that fails still ends with
 the keys deleted.
 
 A backup that holds `nixie.db` from before the forget holds the sealed values and no key. The backup

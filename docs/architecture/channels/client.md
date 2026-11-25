@@ -460,8 +460,8 @@ Each link between the pages carries the parameter along.
 
 Settings → Connections is 2 routes: `/settings/connections` lists the connections and the Google
 setup, and `/settings/connections/<connection>` shows one connection. The return route
-`/connections/google/return` redirects to the second.
-[Google connections](../connectors/google-connections.md) covers the procedures the pages call.
+`/connections/google/return` redirects to the second. See
+[Google connections](../connectors/google-connections.md) for the procedures the pages call.
 
 - The list page reads `connections.list` before it renders. The setup steps read after hydration,
   because their placeholders hold the page's own origin, which the server render does not know.

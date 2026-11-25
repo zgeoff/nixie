@@ -10,7 +10,7 @@ sealed value, and [the credential store](credentials.md) covers the token exchan
 The user registers one client per connector with `connections.registerClient`. The call passes the
 `Origin` header of the request beside the origin it registers, and the module refuses an origin that
 is not https, carries a path, query or user name, or differs from the header. The redirect URI is
-that origin plus the connector's return path, so Google checks it against the client exactly. The
+that origin plus the connector's return path, and Google checks it against the client exactly. The
 client secret is sealed at once and never read back.
 
 `removeClient` refuses while a connection or an unlapsed consent uses the client. The API's checked
@@ -42,10 +42,10 @@ not, a retry finishes the record and answers `ok`.
    response with no refresh token keeps nothing.
 
 The request asks for the identity scopes `openid` and `email` beside the 4 tool scopes. Google
-grants the identity scopes with no checkbox, so nixie knows the account when you untick every tool
-scope, and the ID token's `sub` survives an address change. The return route lives on the
+grants the identity scopes with no checkbox, so nixie knows the account when the user unticks every
+tool scope, and the ID token's `sub` survives an address change. The return route lives on the
 deployment's own https name, even one that resolves only inside its private network, because the
-browser and not Google follows the redirect.
+browser, not Google, follows the redirect.
 
 A renewal advances the connection's removal counter, so a refresh that began before it saves nothing
 and revokes nothing, and a check that began before it keeps the scopes the consent found. The
