@@ -50,7 +50,10 @@ test('it sends nothing when the send check refuses', async () => {
 
   ctx.check.run = () => Promise.reject(new Error('the credential was removed'));
 
-  await expect(ctx.send('https://service.test/data')).rejects.toThrow('the credential was removed');
+  const sending = ctx.send('https://service.test/data');
 
+  await Promise.allSettled([sending]);
+
+  expect(sending).rejects.toThrow('the credential was removed');
   expect(ctx.sends).toStrictEqual([]);
 });

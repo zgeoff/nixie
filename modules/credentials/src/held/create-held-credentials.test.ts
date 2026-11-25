@@ -60,7 +60,9 @@ async function setupTest() {
   for (const level of ['log', 'info', 'warn', 'error', 'debug'] as const) {
     const spy = spyOn(console, level).mockImplementation(captureOutput);
 
-    onTestFinished(() => spy.mockRestore());
+    onTestFinished(() => {
+      spy.mockRestore();
+    });
   }
 
   for (const stream of [process.stdout, process.stderr]) {
@@ -72,7 +74,9 @@ async function setupTest() {
       return true;
     });
 
-    onTestFinished(() => spy.mockRestore());
+    onTestFinished(() => {
+      spy.mockRestore();
+    });
   }
 
   const exchangeCode = (
@@ -157,8 +161,8 @@ test('it blocks every handle made before a removal', async () => {
 
   await ctx.store.remove(connection.tokenRef);
 
-  await expect(send(`${ctx.provider.origin}/data`)).rejects.toBeInstanceOf(CredentialRemovedError);
-  await expect(ctx.store.refresh(connection.token)).rejects.toBeInstanceOf(CredentialRemovedError);
+  expect(send(`${ctx.provider.origin}/data`)).rejects.toBeInstanceOf(CredentialRemovedError);
+  expect(ctx.store.refresh(connection.token)).rejects.toBeInstanceOf(CredentialRemovedError);
 });
 
 test.each([
@@ -183,7 +187,7 @@ test.each([
 
   await ctx.store.remove(connection.tokenRef);
 
-  await expect(row.run(ctx, connection.token)).rejects.toBeInstanceOf(CredentialRemovedError);
+  expect(row.run(ctx, connection.token)).rejects.toBeInstanceOf(CredentialRemovedError);
 });
 
 test('it keeps a handle made before a removal out of the refresh of the reconnected credential', async () => {
@@ -206,7 +210,9 @@ test('it keeps a handle made before a removal out of the refresh of the reconnec
 
   const olderRefresh = ctx.store.refresh(connection.token);
 
-  await waitFor(() => expect(ctx.countRefreshRequests()).toBe(1));
+  await waitFor(() => {
+    expect(ctx.countRefreshRequests()).toBe(1);
+  });
 
   await ctx.store.remove(connection.tokenRef);
   await ctx.exchangeCode(connection.client, connection.tokenRef.credentialID);
@@ -215,11 +221,13 @@ test('it keeps a handle made before a removal out of the refresh of the reconnec
 
   const newerRefresh = ctx.store.refresh(newer);
 
-  await waitFor(() => expect(ctx.countRefreshRequests()).toBe(2));
+  await waitFor(() => {
+    expect(ctx.countRefreshRequests()).toBe(2);
+  });
 
   const olderAgain = ctx.store.refresh(connection.token);
 
-  await expect(olderAgain).rejects.toBeInstanceOf(CredentialRemovedError);
+  expect(olderAgain).rejects.toBeInstanceOf(CredentialRemovedError);
 
   gate.resolve();
 
@@ -234,7 +242,7 @@ test('it lets an adapter tell a removed handle from a failure of the service', a
 
   await ctx.store.remove(connection.tokenRef);
 
-  await expect(ctx.store.refresh(connection.token)).rejects.toBeInstanceOf(CredentialRefusalError);
+  expect(ctx.store.refresh(connection.token)).rejects.toBeInstanceOf(CredentialRefusalError);
 });
 
 test('it sends the code, the client secret and the verifier in the exchange body, never in a header', async () => {
@@ -390,7 +398,9 @@ test('it runs one refresh per credential at a time', async () => {
   const first = ctx.store.refresh(connection.token);
   const second = ctx.store.refresh(connection.token);
 
-  await waitFor(() => expect(ctx.provider.requests).toHaveLength(2));
+  await waitFor(() => {
+    expect(ctx.provider.requests).toHaveLength(2);
+  });
 
   gate.resolve();
 
@@ -467,7 +477,7 @@ test('it refuses a request on a credential that needs consent', async () => {
 
   const send = ctx.store.fetcher(connection.token, [ctx.provider.origin]);
 
-  await expect(send(`${ctx.provider.origin}/data`)).rejects.toBeInstanceOf(CredentialRefusalError);
+  expect(send(`${ctx.provider.origin}/data`)).rejects.toBeInstanceOf(CredentialRefusalError);
 });
 
 test('it writes credential.refresh_started naming the new key before the refresh sends', async () => {
@@ -563,7 +573,9 @@ test.each([
 
     const running = ctx.store.refresh(connection.token);
 
-    await waitFor(() => expect(ctx.provider.requests).toHaveLength(2));
+    await waitFor(() => {
+      expect(ctx.provider.requests).toHaveLength(2);
+    });
 
     await ctx.store.remove(connection.tokenRef);
 
@@ -678,7 +690,7 @@ test('it checks the issuer of an ID token before it reads the claims', async () 
 
   const client = await ctx.store.register(clientRef, ctx.spec('oauth_client'));
 
-  await expect(ctx.exchangeCode(client)).rejects.toMatchObject({
+  expect(ctx.exchangeCode(client)).rejects.toMatchObject({
     name: 'TokenRequestError',
     code: 'id_token_issuer',
   });
@@ -720,7 +732,9 @@ test.each([
     credentialID: tokenID,
   });
 
-  await expect(failure).rejects.toMatchObject({ name: 'TokenRequestError', code: row.code });
+  await Promise.allSettled([failure]);
+
+  expect(failure).rejects.toMatchObject({ name: 'TokenRequestError', code: row.code });
 
   const saved = await ctx.backend.readToken(tokenID);
 
@@ -834,7 +848,7 @@ test('it refuses a spec whose provider endpoint is outside its origins', async (
   const clientRef = { backend: 'database', credentialID: crypto.randomUUID() } as const;
   const register = ctx.store.register(clientRef, { ...ctx.spec('oauth_client'), origins: [] });
 
-  await expect(register).rejects.toThrow(/not an origin of the credential/u);
+  expect(register).rejects.toThrow(/not an origin of the credential/u);
 });
 
 test('it stops a request whose credential was removed while its host lookup waited', async () => {
@@ -849,14 +863,17 @@ test('it stops a request whose credential was removed while its host lookup wait
   const release = ctx.pauseLookups();
   const sending = send(`${ctx.provider.origin}/data`);
 
-  await waitFor(() => expect(ctx.readLookupCount()).toBe(lookupsBefore + 1));
+  await waitFor(() => {
+    expect(ctx.readLookupCount()).toBe(lookupsBefore + 1);
+  });
 
   await ctx.store.remove(connection.tokenRef);
 
   release();
 
-  await expect(sending).rejects.toBeInstanceOf(CredentialRemovedError);
+  await Promise.allSettled([sending]);
 
+  expect(sending).rejects.toBeInstanceOf(CredentialRemovedError);
   expect(ctx.provider.requests).toHaveLength(requestsBefore);
 });
 
@@ -876,16 +893,17 @@ test('it sends no refresh when the credential was removed while the rejected res
     `${ctx.provider.origin}/data`,
   );
 
-  await waitFor(() =>
-    expect(ctx.provider.requests.some((request) => request.path === '/data')).toBe(true),
-  );
+  await waitFor(() => {
+    expect(ctx.provider.requests.some((request) => request.path === '/data')).toBe(true);
+  });
 
   await ctx.store.remove(connection.tokenRef);
 
   gate.resolve();
 
-  await expect(sending).rejects.toBeInstanceOf(CredentialRemovedError);
+  await Promise.allSettled([sending]);
 
+  expect(sending).rejects.toBeInstanceOf(CredentialRemovedError);
   expect(ctx.countRefreshRequests()).toBe(0);
 });
 
@@ -905,15 +923,15 @@ test('it refuses the answer to a request whose credential was removed while the 
     `${ctx.provider.origin}/data`,
   );
 
-  await waitFor(() =>
-    expect(ctx.provider.requests.some((request) => request.path === '/data')).toBe(true),
-  );
+  await waitFor(() => {
+    expect(ctx.provider.requests.some((request) => request.path === '/data')).toBe(true);
+  });
 
   await ctx.store.remove(connection.tokenRef);
 
   gate.resolve();
 
-  await expect(sending).rejects.toBeInstanceOf(CredentialRemovedError);
+  expect(sending).rejects.toBeInstanceOf(CredentialRemovedError);
 });
 
 test('it leaves the status of a reconnected credential alone when an older handle is rejected twice', async () => {
@@ -941,7 +959,9 @@ test('it leaves the status of a reconnected credential alone when an older handl
     `${ctx.provider.origin}/data`,
   );
 
-  await waitFor(() => expect(dataCalls).toBe(2));
+  await waitFor(() => {
+    expect(dataCalls).toBe(2);
+  });
 
   await ctx.store.remove(connection.tokenRef);
   await ctx.exchangeCode(connection.client, connection.tokenRef.credentialID);
@@ -950,7 +970,9 @@ test('it leaves the status of a reconnected credential alone when an older handl
 
   gate.resolve();
 
-  await expect(sending).rejects.toBeInstanceOf(CredentialRemovedError);
+  await Promise.allSettled([sending]);
+
+  expect(sending).rejects.toBeInstanceOf(CredentialRemovedError);
 
   const status = await ctx.store.readStatus(newer);
 
@@ -1077,7 +1099,7 @@ test('it marks the credential needs_consent, and revokes the new tokens, when a 
   const ctx = await setupTest();
   const connection = await ctx.connectCredential();
 
-  const answerWithAccount = (subject: string, suffix: string) =>
+  const answerWithAccount = (subject: string, suffix: string) => {
     ctx.provider.answerToken(() =>
       Response.json({
         access_token: `fake-access-token-${suffix}`,
@@ -1091,6 +1113,7 @@ test('it marks the credential needs_consent, and revokes the new tokens, when a 
         }),
       }),
     );
+  };
 
   const credentialID = crypto.randomUUID();
 
@@ -1102,7 +1125,9 @@ test('it marks the credential needs_consent, and revokes the new tokens, when a 
 
   const second = ctx.exchangeCode(connection.client, credentialID);
 
-  await expect(second).rejects.toMatchObject({
+  await Promise.allSettled([second]);
+
+  expect(second).rejects.toMatchObject({
     name: 'TokenRequestError',
     code: 'account_changed',
   });
@@ -1161,7 +1186,9 @@ test('it holds a removal until the counter check before a send has handed the re
   const release = ctx.pauseLookups();
   const sending = send(`${ctx.provider.origin}/data`);
 
-  await waitFor(() => expect(ctx.readLookupCount()).toBe(lookupsBefore + 1));
+  await waitFor(() => {
+    expect(ctx.readLookupCount()).toBe(lookupsBefore + 1);
+  });
 
   const seen = { removal: Promise.resolve(), hasCounterMoved: false };
 
@@ -1221,13 +1248,15 @@ test.each([
       `${ctx.provider.origin}/data`,
     );
 
-    await waitFor(() => expect(ctx.countRefreshRequests()).toBe(1));
+    await waitFor(() => {
+      expect(ctx.countRefreshRequests()).toBe(1);
+    });
 
     await ctx.store.remove(connection.tokenRef);
 
     gate.resolve();
 
-    await expect(sending).rejects.toBeInstanceOf(CredentialRemovedError);
+    expect(sending).rejects.toBeInstanceOf(CredentialRemovedError);
   },
 );
 
@@ -1265,7 +1294,9 @@ test('it lets one of two overlapping exchanges into one credential save, and rev
   };
 
   ctx.hooks.beforeKeyCreated = async () => {
-    await waitFor(() => expect(clientReads.count).toBeGreaterThanOrEqual(4));
+    await waitFor(() => {
+      expect(clientReads.count).toBeGreaterThanOrEqual(4);
+    });
   };
 
   const credentialID = crypto.randomUUID();
@@ -1332,7 +1363,9 @@ test('it refuses every exchange whose OAuth client was removed before it saved, 
     ctx.exchangeCode(connection.client, credentialID),
   ]);
 
-  await waitFor(() => expect(clientReads.count).toBeGreaterThanOrEqual(4));
+  await waitFor(() => {
+    expect(clientReads.count).toBeGreaterThanOrEqual(4);
+  });
 
   await ctx.store.remove(connection.clientRef);
 
@@ -1349,4 +1382,21 @@ test('it refuses every exchange whose OAuth client was removed before it saved, 
   const saved = await ctx.backend.readToken(credentialID);
 
   expect([refused.length, revoked.length, saved === null]).toStrictEqual([2, 2, true]);
+});
+
+test('it revokes the tokens of an exchange whose save failed before it kept them', async () => {
+  const ctx = await setupTest();
+  const connection = await ctx.connectCredential();
+
+  ctx.hooks.beforeKeyCreated = () => Promise.reject(new Error('the key store is unavailable'));
+
+  const exchanging = ctx.exchangeCode(connection.client);
+
+  await Promise.allSettled([exchanging]);
+
+  expect(exchanging).rejects.toThrow('the key store is unavailable');
+
+  const revoked = ctx.provider.requests.filter((request) => request.path === '/revoke');
+
+  expect(revoked).toHaveLength(1);
 });

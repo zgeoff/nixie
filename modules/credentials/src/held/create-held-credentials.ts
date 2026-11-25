@@ -436,17 +436,30 @@ export function createHeldCredentials(options: HeldOptions): HeldCredentials {
         throw error;
       }
 
-      const written = await slotLock.withLock(request.credentialID, () =>
-        writeExchangedToken(exchangeWriter, {
-          clientCredentialID: client.credentialID,
-          request,
-          reply: result.reply,
-          account,
-          tokenCounter,
-          probeClient: async () =>
-            (await backend.readRemovalCounter(client.credentialID)) === client.removalCounter,
-        }),
-      );
+      const kept = { isKept: false };
+
+      const written = await slotLock
+        .withLock(request.credentialID, () =>
+          writeExchangedToken(exchangeWriter, {
+            clientCredentialID: client.credentialID,
+            request,
+            reply: result.reply,
+            account,
+            tokenCounter,
+            probeClient: async () =>
+              (await backend.readRemovalCounter(client.credentialID)) === client.removalCounter,
+            onKept: () => {
+              kept.isKept = true;
+            },
+          }),
+        )
+        .catch(async (error: unknown) => {
+          if (!kept.isKept) {
+            await dropTokens();
+          }
+
+          throw error;
+        });
 
       if (written.kind === 'saved') {
         return written.result;

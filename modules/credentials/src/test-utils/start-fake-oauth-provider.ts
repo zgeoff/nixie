@@ -56,9 +56,8 @@ export async function startFakeOAuthProvider(
       const isForm =
         request.headers.get('content-type')?.startsWith('application/x-www-form') ?? false;
 
-      const data = isForm ? await request.formData() : new FormData();
-      const entries = [...data.entries()];
-      const form = Object.fromEntries(entries.map(([name, entry]) => [name, String(entry)]));
+      const body = isForm ? await request.text() : '';
+      const form = Object.fromEntries(new URLSearchParams(body));
 
       const received = {
         host: url.hostname,

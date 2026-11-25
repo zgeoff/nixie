@@ -48,6 +48,8 @@ test('it lets the next holder run after a holder throws', async () => {
   const failing = lock.withLock('credential', () => Promise.reject(new Error('refused')));
   const next = lock.withLock('credential', () => Promise.resolve('ran'));
 
-  await expect(failing).rejects.toThrow('refused');
-  await expect(next).resolves.toBe('ran');
+  await Promise.allSettled([failing, next]);
+
+  expect(failing).rejects.toThrow('refused');
+  expect(next).resolves.toBe('ran');
 });

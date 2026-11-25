@@ -28,6 +28,9 @@ export interface ExchangedTokens {
 
   // whether the OAuth client that issued the tokens is still the one the exchange began with
   readonly probeClient: () => Promise<boolean>;
+
+  // runs once the token is kept, so a caller that meets a later throw knows not to revoke it
+  readonly onKept: () => void;
 }
 
 // What a write did. Only `saved` keeps the tokens: the caller revokes them on any other outcome,
@@ -90,6 +93,8 @@ export async function writeExchangedToken(
 
     return { kind: 'removed' };
   }
+
+  exchanged.onKept();
 
   if (existing !== null) {
     await writer.backend.removeKey(existing.keyID);

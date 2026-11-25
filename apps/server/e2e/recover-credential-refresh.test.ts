@@ -47,11 +47,11 @@ test('it marks the credential needs_consent when a start finds a refresh with no
 
   const refreshing = Promise.allSettled([first.request('refreshCredential', ctx.config)]);
 
-  await waitFor(() =>
+  await waitFor(() => {
     expect(
       ctx.provider.requests.filter((request) => request.form['grant_type'] === 'refresh_token'),
-    ).toHaveLength(1),
-  );
+    ).toHaveLength(1);
+  });
 
   await first.kill();
 
