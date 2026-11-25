@@ -377,9 +377,9 @@ tasks.list({ runner: 'atc', state: 'waiting', limit: 20 });
   `coding.session_unbound` in the same commit. A stop cancels only the actions queued before it
   commits, so the queue runs this one although the task is stopped, and no step reads its outcome. A
   failed `coding.stop` leaves the session running, and nixie logs it.
-- After any stop, close or failure, `ended` writes `coding.session_unbound` for a joined session at
-  once, and queues no action and calls no adapter. nixie never stops a session it joined, so the
-  session runs on in atc as yours.
+- For a joined session, `ended` writes `coding.session_unbound` at once after a stop, a close or a
+  failure, with no action and no adapter call. nixie never stops a session it joined, so the session
+  runs on in atc as yours.
 - After a close or a failure, `ended` calls `stop` on a started session, and writes
   `coding.session_unbound` once the call answers `ok` or `no_such_session`.
 - The coding module sweeps when the server starts and every 10 min after, to catch an `ended` call
