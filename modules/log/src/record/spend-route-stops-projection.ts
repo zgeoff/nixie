@@ -1,9 +1,10 @@
 import { spendRouteClearedCodec } from '../pause/spend-route-cleared-codec';
+import { spendRouteRestatedCodec } from '../pause/spend-route-restated-codec';
 import { spendRouteStoppedCodec } from '../pause/spend-route-stopped-codec';
 import type { LogTables, Projection } from '../types';
 
-// One row for each route whose stop stands. A trip of a route replaces its row, and a clear removes
-// the row and the holds of that route.
+// One row for each route whose stop stands. A trip or a restatement of a route replaces its row and
+// leaves the holds of that route, and a clear removes the row and the holds.
 export const spendRouteStopsProjection: Projection = {
   table: 'spend_route_stops',
   keyColumn: 'route_id',
@@ -23,11 +24,17 @@ export const spendRouteStopsProjection: Projection = {
       return [payload.route];
     }
 
-    if (record.kind !== spendRouteStoppedCodec.kind) {
+    if (
+      record.kind !== spendRouteStoppedCodec.kind &&
+      record.kind !== spendRouteRestatedCodec.kind
+    ) {
       return [];
     }
 
-    const payload = spendRouteStoppedCodec.decode(record.payload);
+    const payload =
+      record.kind === spendRouteStoppedCodec.kind
+        ? spendRouteStoppedCodec.decode(record.payload)
+        : spendRouteRestatedCodec.decode(record.payload);
 
     const values = {
       route_id: payload.route,

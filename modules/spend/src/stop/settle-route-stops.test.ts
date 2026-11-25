@@ -1,8 +1,10 @@
 import { expect, test } from 'bun:test';
 import { sql } from 'kysely';
+import invariant from 'tiny-invariant';
 import { holdTaskOnRoute } from '../route/hold-task-on-route';
 import { buildMockGatewayStatus, buildTrippedGatewayStatus, startTestSpend } from '../test-utils';
 import { readSpendFacts } from './read-spend-facts';
+import { readSpendRouteHolds } from './read-spend-route-holds';
 import { readSpendRouteStops } from './read-spend-route-stops';
 import { settleRouteStops } from './settle-route-stops';
 
@@ -14,6 +16,17 @@ async function setupTest() {
 
   return {
     ...spend,
+    buildStatusRaisedTo: (limit: number, dollars: number) => {
+      const tripped = buildTrippedGatewayStatus();
+      const plan = tripped.routes['plan'];
+
+      invariant(plan !== undefined, 'the mock status holds the route plan');
+
+      return {
+        ...tripped,
+        routes: { ...tripped.routes, plan: { ...plan, day: { ...plan.day, limit, dollars } } },
+      };
+    },
     settle: async () => {
       const facts = await readSpendFacts(spend.context);
 
@@ -114,4 +127,50 @@ test('it changes no route stop while the gateway does not answer', async () => {
   const stops = await readSpendRouteStops(ctx.writer.db);
 
   expect(stops).toHaveLength(1);
+});
+
+test('it keeps the holds, tells no one and restates the stop when a raise leaves the route over its day limit', async () => {
+  const ctx = await setupTest();
+
+  ctx.gateway.readStatus.mockResolvedValue({ kind: 'ok', value: buildTrippedGatewayStatus() });
+
+  await ctx.settle();
+
+  await holdTaskOnRoute(ctx.context, 'task-a', 'plan');
+
+  ctx.clock.advance(60_000);
+  ctx.gateway.readStatus.mockResolvedValue({ kind: 'ok', value: ctx.buildStatusRaisedTo(60, 61) });
+
+  await ctx.settle();
+
+  const stops = await readSpendRouteStops(ctx.writer.db);
+  const holds = await readSpendRouteHolds(ctx.writer.db, 'plan');
+  const stopped = await ctx.readRecords('spend.route_stopped');
+  const cleared = await ctx.readRecords('spend.route_cleared');
+  const waitNotices = await ctx.readRecords('spend.wait_notice');
+
+  expect(stopped).toHaveLength(1);
+  expect(cleared).toStrictEqual([]);
+  expect(waitNotices).toStrictEqual([]);
+  expect(stops.map((stop) => stop.limit)).toStrictEqual([60]);
+  expect(holds.map((hold) => hold.taskID)).toStrictEqual(['task-a']);
+});
+
+test('it puts back no stop that a newer settle cleared, when a poll that read the gateway earlier settles late', async () => {
+  const ctx = await setupTest();
+
+  ctx.gateway.readStatus.mockResolvedValue({ kind: 'ok', value: buildTrippedGatewayStatus() });
+
+  const staleFacts = await readSpendFacts(ctx.context);
+
+  ctx.clock.advance(1000);
+  ctx.gateway.readStatus.mockResolvedValue({ kind: 'ok', value: buildMockGatewayStatus() });
+
+  await ctx.settle();
+
+  await settleRouteStops(ctx.context, staleFacts);
+
+  const stops = await readSpendRouteStops(ctx.writer.db);
+
+  expect(stops).toStrictEqual([]);
 });

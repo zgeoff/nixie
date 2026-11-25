@@ -148,6 +148,7 @@ export type { RestartSweepDependencies } from './lease/run-restart-sweep';
 export { runRestartSweep } from './lease/run-restart-sweep';
 export { isBeforeTurnFailure } from './step/is-before-turn-failure';
 export { markBeforeTurnFailure } from './step/mark-before-turn-failure';
+export { markSpendRefusal } from './step/mark-spend-refusal';
 export type { TaskStepOptions } from './task/run-task-step';
 export { runTaskStep } from './task/run-task-step';
 export { setFaultPointHandler } from './lease/set-fault-point-handler';

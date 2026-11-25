@@ -21,6 +21,8 @@ async function setupTest() {
 
   onTestFinished(() => model.stop());
 
+  await writeFile(join(directory, 'token'), 'control-secret\n');
+
   const log = mock<Logger>(() => {});
   let current = Date.parse('2026-11-13T10:00:00Z');
 
@@ -28,6 +30,12 @@ async function setupTest() {
     directory,
     model,
     log,
+
+    // the keys that every periods config sets before its routes
+    periodsHeader: [
+      'periods: { zone: Europe/London }',
+      `control: { listen: { port: 0 }, tokenFile: ${join(directory, 'token')} }`,
+    ],
     moveTo: (instant: string) => {
       current = Date.parse(instant);
     },
@@ -167,7 +175,7 @@ async function setupTest() {
   };
 }
 
-test('it serves its routes from a config file and writes each count to its store', async () => {
+test('it serves its routes from a config file and writes the count of each route to its store', async () => {
   const ctx = await setupTest();
 
   ctx.model.addReplies({ text: 'counted', usage: { input_tokens: 600, output_tokens: 400 } });
@@ -177,12 +185,13 @@ test('it serves its routes from a config file and writes each count to its store
     [
       'listen: { port: 0 }',
       `store: ${join(ctx.directory, 'counter.json')}`,
-      'limits: { dollars: 1 }',
+      ...ctx.periodsHeader,
       'routes:',
       '  preview:',
       `    upstream: ${ctx.model.url}`,
       '    model: model-small',
       '    prices: { input: 1, cache_write: 1.25, cache_write_1h: 2, cached_input: 0.1, output: 5 }',
+      '    limits: { day: 60, month: 600 }',
     ].join('\n'),
   );
 
@@ -203,10 +212,13 @@ test('it serves its routes from a config file and writes each count to its store
   const stored = await readFile(join(ctx.directory, 'counter.json'), 'utf8');
 
   expect(body).toMatchObject({ content: [{ type: 'text', text: 'counted' }] });
-  expect(stored).toBe('{"dollars":0.0026,"tokens":1000}');
+
+  expect(JSON.parse(stored)).toMatchObject({
+    routes: { preview: { day: { dollars: 0.0026 }, month: { dollars: 0.0026 } } },
+  });
 });
 
-test('it refuses every request once long prompts priced at their long-prompt rates reach the dollar limit', async () => {
+test('it refuses every request on the route once long prompts priced at their long-prompt rates reach its day limit', async () => {
   const ctx = await setupTest();
 
   // at the base rates two of these replies would count $0.0210 and leave the limit unreached
@@ -221,7 +233,7 @@ test('it refuses every request once long prompts priced at their long-prompt rat
     [
       'listen: { port: 0 }',
       `store: ${join(ctx.directory, 'counter.json')}`,
-      'limits: { dollars: 0.1 }',
+      ...ctx.periodsHeader,
       'routes:',
       '  preview:',
       `    upstream: ${ctx.model.url}`,
@@ -239,6 +251,7 @@ test('it refuses every request once long prompts priced at their long-prompt rat
       '        cache_write_1h: 1',
       '        cached_input: 0.05',
       '        output: 2.5',
+      '    limits: { day: 0.1, month: 600 }',
     ].join('\n'),
   );
 
@@ -270,13 +283,13 @@ test('it refuses every request once long prompts priced at their long-prompt rat
   expect(refused.status).toBe(403);
 
   expect(body).toMatchObject({
-    error: { message: expect.toInclude('($0.1050 of $0.1)') },
+    error: { type: 'limit_reached', counter: 'route_day', route: 'preview' },
   });
 
   expect(ctx.model.requests).toHaveLength(2);
 });
 
-test('it refuses to start from a config with no limit', async () => {
+test('it refuses to start from a config with a limit that spans routes', async () => {
   const ctx = await setupTest();
 
   await writeFile(
@@ -284,12 +297,14 @@ test('it refuses to start from a config with no limit', async () => {
     [
       'listen: { port: 0 }',
       `store: ${join(ctx.directory, 'counter.json')}`,
-      'limits: {}',
+      'limits: { dollars: 1 }',
+      ...ctx.periodsHeader,
       'routes:',
       '  preview:',
       `    upstream: ${ctx.model.url}`,
       '    model: model-small',
       '    prices: { input: 1, cache_write: 1.25, cache_write_1h: 2, cached_input: 0.1, output: 5 }',
+      '    limits: { day: 60, month: 600 }',
     ].join('\n'),
   );
 
@@ -299,7 +314,7 @@ test('it refuses to start from a config with no limit', async () => {
       log: ctx.log,
       waitForDrainDeadline: () => Promise.resolve(),
     }),
-  ).rejects.toThrow('the limits name no dollar or token limit');
+  ).rejects.toThrow('no limit spans routes');
 });
 
 test('it lets a streamed reply under way finish and counts it before a stop resolves', async () => {
@@ -318,12 +333,13 @@ test('it lets a streamed reply under way finish and counts it before a stop reso
     [
       'listen: { port: 0 }',
       `store: ${join(ctx.directory, 'counter.json')}`,
-      'limits: { dollars: 1 }',
+      ...ctx.periodsHeader,
       'routes:',
       '  preview:',
       `    upstream: ${ctx.model.url}`,
       '    model: model-small',
       '    prices: { input: 1, cache_write: 1.25, cache_write_1h: 2, cached_input: 0.1, output: 5 }',
+      '    limits: { day: 60, month: 600 }',
     ].join('\n'),
   );
 
@@ -362,7 +378,10 @@ test('it lets a streamed reply under way finish and counts it before a stop reso
 
   expect(response.status).toBe(200);
   expect(body).toInclude('event: message_stop');
-  expect(stored).toBe('{"dollars":0.0026,"tokens":1000}');
+
+  expect(JSON.parse(stored)).toMatchObject({
+    routes: { preview: { day: { dollars: 0.0026 } } },
+  });
 });
 
 test('it closes a reply that outlasts the drain deadline and resolves the stop', async () => {
@@ -382,12 +401,13 @@ test('it closes a reply that outlasts the drain deadline and resolves the stop',
     [
       'listen: { port: 0 }',
       `store: ${join(ctx.directory, 'counter.json')}`,
-      'limits: { dollars: 1 }',
+      ...ctx.periodsHeader,
       'routes:',
       '  preview:',
       `    upstream: ${ctx.model.url}`,
       '    model: model-small',
       '    prices: { input: 1, cache_write: 1.25, cache_write_1h: 2, cached_input: 0.1, output: 5 }',
+      '    limits: { day: 60, month: 600 }',
     ].join('\n'),
   );
 
@@ -443,12 +463,13 @@ test('it charges the estimate of a reply a stop cut off at the drain deadline, a
     [
       'listen: { port: 0 }',
       `store: ${join(ctx.directory, 'counter.json')}`,
-      'limits: { dollars: 1 }',
+      ...ctx.periodsHeader,
       'routes:',
       '  preview:',
       `    upstream: ${ctx.model.url}`,
       '    model: model-small',
       '    prices: { input: 1, cache_write: 1.25, cache_write_1h: 2, cached_input: 0.1, output: 5 }',
+      '    limits: { day: 60, month: 600 }',
     ].join('\n'),
   );
 
@@ -494,7 +515,7 @@ test('it charges the estimate of a reply a stop cut off at the drain deadline, a
   });
 
   // the stream's body of 69 bytes and 4,096 allowance tokens in, and 1,000 tokens out
-  expect(stored).toMatch(/^\{"dollars":0\.0133\d*,"tokens":5165\}$/u);
+  expect(JSON.parse(stored).routes.preview.day.dollars).toBeCloseTo(0.01333, 9);
   expect(response.status).toBe(200);
   expect(ctx.model.requests).toHaveLength(2);
 
@@ -517,12 +538,13 @@ test('it leaves the count unmarked when a stop finds no reply under way', async 
     [
       'listen: { port: 0 }',
       `store: ${join(ctx.directory, 'counter.json')}`,
-      'limits: { dollars: 1 }',
+      ...ctx.periodsHeader,
       'routes:',
       '  preview:',
       `    upstream: ${ctx.model.url}`,
       '    model: model-small',
       '    prices: { input: 1, cache_write: 1.25, cache_write_1h: 2, cached_input: 0.1, output: 5 }',
+      '    limits: { day: 60, month: 600 }',
     ].join('\n'),
   );
 
@@ -536,7 +558,13 @@ test('it leaves the count unmarked when a stop finds no reply under way', async 
 
   const stored = await readFile(join(ctx.directory, 'counter.json'), 'utf8');
 
-  expect(stored).toBe('{"dollars":0,"tokens":0}');
+  expect(JSON.parse(stored)).toMatchObject({
+    version: 3,
+    routes: { preview: { day: { dollars: 0 }, month: { dollars: 0 } } },
+    sandboxes: {},
+  });
+
+  expect(JSON.parse(stored)).not.toHaveProperty('lost');
 });
 
 test('it captures a tagged request to its spool, answers the capture ask, and logs that it captures', async () => {
@@ -553,7 +581,7 @@ test('it captures a tagged request to its spool, answers the capture ask, and lo
     [
       'listen: { port: 0 }',
       `store: ${join(ctx.directory, 'counter.json')}`,
-      'limits: { dollars: 1 }',
+      ...ctx.periodsHeader,
       'capture:',
       `  spool: ${spool}`,
       'routes:',
@@ -561,6 +589,7 @@ test('it captures a tagged request to its spool, answers the capture ask, and lo
       `    upstream: ${ctx.model.url}`,
       '    model: model-small',
       '    prices: { input: 1, cache_write: 1.25, cache_write_1h: 2, cached_input: 0.1, output: 5 }',
+      '    limits: { day: 60, month: 600 }',
     ].join('\n'),
   );
 
@@ -601,7 +630,7 @@ test('it refuses to start when its capture spool is not a folder it can write', 
     [
       'listen: { port: 0 }',
       `store: ${join(ctx.directory, 'counter.json')}`,
-      'limits: { dollars: 1 }',
+      ...ctx.periodsHeader,
       'capture:',
       `  spool: ${join(ctx.directory, 'missing')}`,
       'routes:',
@@ -609,6 +638,7 @@ test('it refuses to start when its capture spool is not a folder it can write', 
       `    upstream: ${ctx.model.url}`,
       '    model: model-small',
       '    prices: { input: 1, cache_write: 1.25, cache_write_1h: 2, cached_input: 0.1, output: 5 }',
+      '    limits: { day: 60, month: 600 }',
     ].join('\n'),
   );
 

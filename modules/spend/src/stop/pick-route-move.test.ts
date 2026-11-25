@@ -31,13 +31,21 @@ function setupTest() {
 test('it trips a route that no stop stands for', () => {
   const ctx = setupTest();
 
-  expect(pickRouteMove([], [ctx.trip], 10)).toStrictEqual({ clears: [], trips: [ctx.trip] });
+  expect(pickRouteMove([], [ctx.trip], 10)).toStrictEqual({
+    clears: [],
+    trips: [ctx.trip],
+    restates: [],
+  });
 });
 
 test('it moves nothing when the same stop stands, so a trip sends one notice', () => {
   const ctx = setupTest();
 
-  expect(pickRouteMove([ctx.row], [ctx.trip], 10)).toStrictEqual({ clears: [], trips: [] });
+  expect(pickRouteMove([ctx.row], [ctx.trip], 10)).toStrictEqual({
+    clears: [],
+    trips: [],
+    restates: [],
+  });
 });
 
 test.each([
@@ -49,16 +57,32 @@ test.each([
   expect(pickRouteMove([ctx.row], [], row.now)).toStrictEqual({
     clears: [{ route: 'plan', reason: row.reason }],
     trips: [],
+    restates: [],
   });
 });
 
-test('it clears and trips again when the limit of the stop differs', () => {
+test.each([
+  { name: 'limit differs', changed: { limit: 60 } },
+  { name: 'period differs', changed: { period: 'month' as const } },
+  { name: 'reset differs', changed: { resetsAt: 2000 } },
+])('it restates a stop whose $name, and clears nothing, so the route keeps its holds', (row) => {
   const ctx = setupTest();
-  const raised = { ...ctx.trip, limit: 60 };
+  const changed = { ...ctx.trip, ...row.changed };
 
-  expect(pickRouteMove([ctx.row], [raised], 10)).toStrictEqual({
-    clears: [{ route: 'plan', reason: 'raised' }],
-    trips: [raised],
+  expect(pickRouteMove([ctx.row], [changed], 10)).toStrictEqual({
+    clears: [],
+    trips: [],
+    restates: [changed],
+  });
+});
+
+test('it writes no trip for a route whose period has ended', () => {
+  const ctx = setupTest();
+
+  expect(pickRouteMove([], [ctx.trip], 1000)).toStrictEqual({
+    clears: [],
+    trips: [],
+    restates: [],
   });
 });
 
@@ -69,5 +93,6 @@ test('it leaves the stop of another route alone', () => {
   expect(pickRouteMove([ctx.row], [ctx.trip, other], 10)).toStrictEqual({
     clears: [],
     trips: [other],
+    restates: [],
   });
 });

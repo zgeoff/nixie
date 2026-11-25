@@ -9,6 +9,7 @@ import type {
   PeriodStoreHandle,
   Refusal,
 } from '../types';
+import { addDollars } from './add-dollars';
 import { buildEmptyRoute, buildFreshStore } from './build-fresh-store';
 import { buildResetStore } from './build-reset-store';
 import { buildTrippedStore } from './build-tripped-store';
@@ -222,8 +223,11 @@ function buildSpentStore(
         : {
             ...store.routes,
             [route]: {
-              day: { ...periods.day, dollars: periods.day.dollars + spend.dollars },
-              month: { ...periods.month, dollars: periods.month.dollars + spend.dollars },
+              day: { ...periods.day, dollars: addDollars(periods.day.dollars, spend.dollars) },
+              month: {
+                ...periods.month,
+                dollars: addDollars(periods.month.dollars, spend.dollars),
+              },
             },
           },
     sandboxes:
@@ -233,7 +237,7 @@ function buildSpentStore(
             ...store.sandboxes,
             [sandbox]: {
               ...held,
-              dollars: held.dollars + spend.dollars,
+              dollars: addDollars(held.dollars, spend.dollars),
               tokens: held.tokens + spend.tokens,
             },
           },

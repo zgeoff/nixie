@@ -78,3 +78,27 @@ test('it holds the plan logins that the gateway reports at start', async () => {
     routes: { 'codex-plan': { status: 'needs_login', accountID: null, planType: null } },
   });
 });
+
+test('it logs the lost mark of a gateway that answers with it standing, and starts', async () => {
+  const ctx = setupTest();
+
+  ctx.gateway.readStatus.mockResolvedValue({
+    kind: 'ok',
+    value: buildMockGatewayStatus({ lost: true }),
+  });
+
+  const result = await checkSpendStart(ctx.options);
+
+  expect([result, ctx.log.mock.calls]).toStrictEqual([
+    'answered',
+    [['spend.gateway_lost', {}, 'warn']],
+  ]);
+});
+
+test('it logs nothing of a gateway that answers with no lost mark', async () => {
+  const ctx = setupTest();
+
+  await checkSpendStart(ctx.options);
+
+  expect(ctx.log.mock.calls).toStrictEqual([]);
+});

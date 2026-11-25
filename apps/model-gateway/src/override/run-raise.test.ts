@@ -84,6 +84,47 @@ test('it keeps the override of another route when it writes one', async () => {
   expect(read).toStrictEqual({ kind: 'found', overrides: { preview: first, other: second } });
 });
 
+test('it keeps both overrides when two processes raise different routes at once', async () => {
+  const ctx = await setupTest();
+
+  await ctx.writeConfig(ctx.periodsLines(ctx.overridePath));
+
+  const script = [
+    "const { runRaise } = await import(Bun.env['RAISE_MODULE'] ?? '');",
+    "await runRaise({ configPath: Bun.env['RAISE_CONFIG'] ?? '', route: Bun.env['RAISE_ROUTE'] ?? '', dollars: 9, now: () => Number(Bun.env['RAISE_NOW']) });",
+  ].join('\n');
+
+  const spawnRaise = (route: string) =>
+    Bun.spawn(['bun', '-e', script], {
+      env: {
+        ...Bun.env,
+        RAISE_MODULE: join(import.meta.dir, 'run-raise.ts'),
+        RAISE_CONFIG: ctx.configPath,
+        RAISE_ROUTE: route,
+        RAISE_NOW: String(ctx.nowMs),
+      },
+      stderr: 'pipe',
+    });
+
+  const kept: string[] = [];
+
+  for (let trial = 0; trial < 6; trial += 1) {
+    await rm(ctx.overridePath, { force: true });
+
+    const exits = await Promise.all(
+      [spawnRaise('preview'), spawnRaise('other')].map((child) => child.exited),
+    );
+
+    const read = await readOverride(ctx.overridePath);
+
+    kept.push(
+      `${exits.join('')}:${read.kind === 'found' ? Object.keys(read.overrides).toSorted().join(',') : ''}`,
+    );
+  }
+
+  expect(kept).toSatisfyAll((trial) => trial === '00:other,preview');
+});
+
 test('it leaves no part file behind', async () => {
   const ctx = await setupTest();
 
@@ -111,14 +152,14 @@ test('it refuses a config that names no override file', async () => {
   ).rejects.toThrow(/override/u);
 });
 
-test('it refuses a config with limits, which has no period to raise', async () => {
+test('it refuses a config with a limit that spans routes, which has no route to raise', async () => {
   const ctx = await setupTest();
 
-  await ctx.writeConfig(['limits: { dollars: 5 }']);
+  await ctx.writeConfig(['limits: { dollars: 5 }', ...ctx.periodsLines(ctx.overridePath)]);
 
   expect(
     runRaise({ configPath: ctx.configPath, route: 'preview', dollars: 1, now: Date.now }),
-  ).rejects.toThrow(/periods/u);
+  ).rejects.toThrow(/no limit spans routes/u);
 });
 
 test.each([

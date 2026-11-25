@@ -1,11 +1,13 @@
 import {
   spendRouteClearedCodec,
+  spendRouteRestatedCodec,
   spendRouteStoppedCodec,
   spendWaitNoticeCodec,
   withWriteTransaction,
   writeRecordsInTransaction,
 } from '@heynixie/log';
-import type { SpendContext } from '../types';
+import type { RouteTrip, SpendContext } from '../types';
+import { claimSettleOrder } from './claim-settle-order';
 import { collectRouteTrips } from './collect-route-trips';
 import { pickRouteMove } from './pick-route-move';
 import type { SpendFacts } from './pick-spend-stop';
@@ -13,8 +15,8 @@ import { readSpendRouteHolds } from './read-spend-route-holds';
 import { readSpendRouteStops } from './read-spend-route-stops';
 
 // Brings the log's route stops in line with the gateway's routes. A trip writes the notice to the
-// owner once, and a clear writes a wait notice on the thread of each task that waited. A gateway
-// that did not answer changes no route's stop.
+// owner once, and a clear writes a wait notice for each task that waited. A restated stop sends no
+// notice and keeps its holds. Facts of a gateway that did not answer, or older than a settle's, move nothing.
 export async function settleRouteStops(context: SpendContext, facts: SpendFacts): Promise<void> {
   if (facts.status === null) {
     return;
@@ -23,6 +25,10 @@ export async function settleRouteStops(context: SpendContext, facts: SpendFacts)
   const trips = collectRouteTrips(facts.status, facts.now);
 
   await withWriteTransaction(context.log.writer, async (tx) => {
+    if (!claimSettleOrder(context, facts.now)) {
+      return;
+    }
+
     const standing = await readSpendRouteStops(tx);
 
     const move = pickRouteMove(standing, trips, facts.now);
@@ -50,21 +56,28 @@ export async function settleRouteStops(context: SpendContext, facts: SpendFacts)
       ]);
     }
 
-    await writeRecordsInTransaction(
-      tx,
-      context.log,
-      move.trips.map((trip) => ({
+    await writeRecordsInTransaction(tx, context.log, [
+      ...move.trips.map((trip) => ({
         kind: spendRouteStoppedCodec.kind,
         definitions,
-        payload: spendRouteStoppedCodec.encode({
-          route: trip.route,
-          period: trip.period,
-          limit: trip.limit,
-          spent: trip.spent,
-          at: trip.at,
-          resetsAt: trip.resetsAt,
-        }),
+        payload: spendRouteStoppedCodec.encode(toStopPayload(trip)),
       })),
-    );
+      ...move.restates.map((trip) => ({
+        kind: spendRouteRestatedCodec.kind,
+        definitions,
+        payload: spendRouteRestatedCodec.encode(toStopPayload(trip)),
+      })),
+    ]);
   });
+}
+
+function toStopPayload(trip: RouteTrip) {
+  return {
+    route: trip.route,
+    period: trip.period,
+    limit: trip.limit,
+    spent: trip.spent,
+    at: trip.at,
+    resetsAt: trip.resetsAt,
+  };
 }

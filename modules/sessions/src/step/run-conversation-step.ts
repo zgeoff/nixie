@@ -3,6 +3,7 @@ import { checkSpendTurns, holdTaskOnRefusal, holdTaskOnRoute } from '@heynixie/s
 import type { StepInput, StepResult } from '@heynixie/tasks';
 import {
   buildStepRunID,
+  markSpendRefusal,
   readTaskDirectory,
   readTaskGateSnapshot,
   readUnlistedProfiles,
@@ -52,6 +53,7 @@ export async function runConversationStep(
   });
 
   const calls = { count: 0 };
+  const startedAtMs = conversation.spend?.clock.now() ?? 0;
 
   const captured: ConversationRun = {
     ...conversation,
@@ -66,7 +68,11 @@ export async function runConversationStep(
   try {
     return await runSessionTurn(captured, input);
   } catch (error) {
-    await holdTaskAfterFailure(conversation, input.taskID);
+    const isRefused = await holdTaskAfterFailure(conversation, input.taskID, startedAtMs);
+
+    if (isRefused) {
+      markSpendRefusal(error);
+    }
 
     throw error;
   } finally {
@@ -224,12 +230,21 @@ async function keepApprovedCallsReady(
   return { ...result, next: 'continue' };
 }
 
-// A failed step may be the gateway's refusal at its route's limit. A route at its limit holds the
-// task, so the failure counts no step error and the task retries when the route clears.
-async function holdTaskAfterFailure(conversation: ConversationRun, taskID: string): Promise<void> {
+// A failed step may be the gateway's refusal at its route's limit. It holds the task on a route at
+// its limit, and answers whether the gateway refused the step, so the failure counts no step error.
+function holdTaskAfterFailure(
+  conversation: ConversationRun,
+  taskID: string,
+  startedAtMs: number,
+): Promise<boolean> {
   if (conversation.spend === undefined) {
-    return;
+    return Promise.resolve(false);
   }
 
-  await holdTaskOnRefusal(conversation.spend, taskID, conversation.profile.profile.id);
+  return holdTaskOnRefusal(conversation.spend, {
+    taskID,
+    route: conversation.profile.profile.id,
+    sandboxName: conversation.sandbox.id,
+    startedAtMs,
+  });
 }

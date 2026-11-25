@@ -238,29 +238,19 @@ async function setupTest() {
     return { frames, sandbox };
   };
 
-  // What the gateway counted, once it has counted at least the tokens that the call frames report.
+  // What the gateway counted, once it has counted the dollars that the call frames report.
   const readCounted = async (frames: readonly GuestFrame[]) => {
     const prices = modelPricesSchema.parse(testGatewayPrices);
     const calls = frames.flatMap((frame) => (frame.type === 'call' ? [frame.usage] : []));
 
     const expected = {
-      tokens: calls.reduce(
-        (sum, usage) =>
-          sum +
-          usage.uncachedInputTokens +
-          usage.cacheReadTokens +
-          usage.cacheWrite5mTokens +
-          usage.cacheWrite1hTokens +
-          usage.outputTokens,
-        0,
-      ),
       dollars: calls.reduce((sum, usage) => sum + buildCallCost(usage, prices), 0),
     };
 
     const probeCounted = async () => {
       const counted = await gateway.readCount();
 
-      return counted.tokens === expected.tokens;
+      return Math.abs(counted.dollars - expected.dollars) < 1e-9;
     };
 
     try {
@@ -367,7 +357,6 @@ test.skipIf(!hasRelay)(
     ]);
 
     expect(first.headers['authorization']).toBe(`Bearer ${ctx.secretValue}`);
-    expect(counts.counted.tokens).toBe(counts.expected.tokens);
     expect(counts.counted.dollars).toBeCloseTo(counts.expected.dollars, 9);
   },
 );
@@ -391,7 +380,6 @@ test.skipIf(!hasRelay)(
     expect(turn.frames.at(-1)).toMatchObject({ type: 'ended', outcome: 'finished' });
     expect(outputs).toInclude('function_call_output');
     expect(outputs).toInclude('pong');
-    expect(counts.counted.tokens).toBe(counts.expected.tokens);
     expect(counts.counted.dollars).toBeCloseTo(counts.expected.dollars, 9);
   },
 );
@@ -464,7 +452,7 @@ test.skipIf(!hasRelay)('it fails a turn whose model call the API refuses with a 
 
   expect(turn.frames.filter((frame) => frame.type === 'call')).toHaveLength(0);
   expect(turn.frames.at(-1)).toMatchObject({ type: 'failed', reason: 'model_api' });
-  expect(counted.tokens).toBe(0);
+  expect(counted.dollars).toBe(0);
 });
 
 test.skipIf(!hasRelay)('it retries a model call that the API answers with a 500', async () => {
@@ -477,7 +465,6 @@ test.skipIf(!hasRelay)('it retries a model call that the API answers with a 500'
 
   expect(turn.frames.filter((frame) => frame.type === 'call')).toHaveLength(1);
   expect(turn.frames.at(-1)).toMatchObject({ type: 'ended', outcome: 'finished' });
-  expect(counts.counted.tokens).toBe(counts.expected.tokens);
   expect(counts.counted.dollars).toBeCloseTo(counts.expected.dollars, 9);
 });
 
@@ -491,7 +478,7 @@ test.skipIf(!hasRelay)('it fails a turn whose required tool server is down', asy
 
   expect(turn.frames.filter((frame) => frame.type === 'call')).toHaveLength(0);
   expect(turn.frames.at(-1)).toMatchObject({ type: 'failed', reason: 'tools_not_connected' });
-  expect(counted.tokens).toBe(0);
+  expect(counted.dollars).toBe(0);
 });
 
 test.skipIf(!hasRelay)(
@@ -523,7 +510,6 @@ test.skipIf(!hasRelay)(
 
     expect(compactions).toHaveLength(1);
     expect(turn.frames.at(-1)).toMatchObject({ type: 'ended', outcome: 'finished' });
-    expect(counts.counted.tokens).toBe(counts.expected.tokens);
     expect(counts.counted.dollars).toBeCloseTo(counts.expected.dollars, 9);
   },
 );
@@ -544,10 +530,10 @@ test.skipIf(!hasRelay)('it passes a recall result of the page limit whole', asyn
 
   const second = ctx.readRequestText(1);
 
+  expect(counts.counted.dollars).toBeCloseTo(counts.expected.dollars, 9);
   expect(Buffer.byteLength(result)).toBe(recallPageLimitBytes);
   expect(turn.frames.at(-1)).toMatchObject({ type: 'ended', outcome: 'finished' });
   expect(second).toInclude(JSON.stringify(lastBytes).slice(1, -1));
-  expect(counts.counted.tokens).toBe(counts.expected.tokens);
 });
 
 test.skipIf(!hasRelay)(
@@ -570,9 +556,9 @@ test.skipIf(!hasRelay)(
     const file = await readFile(join(ctx.gateway.spoolDir, kept[0] ?? ''));
     const opened = await openSpoolFile(new Uint8Array(file), recipient.privateKey);
 
+    expect(counts.counted.dollars).toBeCloseTo(counts.expected.dollars, 9);
     expect(turn.frames.at(-1)).toMatchObject({ type: 'ended', outcome: 'finished' });
     expect(ctx.model.requests.map((request) => request.path)).toStrictEqual(['/v1/responses']);
-    expect(counts.counted.tokens).toBe(counts.expected.tokens);
     expect(kept).toHaveLength(1);
     expect(new TextDecoder().decode(opened?.body)).toInclude('USER INPUT MARKER');
   },
@@ -616,8 +602,8 @@ test.skipIf(!hasRelay)(
 
     console.log(`codexTask probe at ${String(memoryMiB)} MiB: ${line}`);
 
+    expect(counts.counted.dollars).toBeCloseTo(counts.expected.dollars, 9);
     expect(turn.frames.at(-1)).toMatchObject({ type: 'ended' });
-    expect(counts.counted.tokens).toBe(counts.expected.tokens);
     expect(line).toStartWith('oom_kill=0 ');
     expect(line).not.toMatch(/oom_kill [1-9]/u);
   },

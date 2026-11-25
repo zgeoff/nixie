@@ -1,4 +1,5 @@
 import type { Overrides, PeriodName, PeriodStore, RouteLimits } from '../types';
+import { isDollarLimitReached } from './is-dollar-limit-reached';
 import { pickRouteLimit } from './pick-route-limit';
 
 export interface RouteTrip {
@@ -20,7 +21,7 @@ export function collectTrips(
     for (const period of ['day', 'month'] as const) {
       const limit = pickRouteLimit({ store, limits, overrides, route, period });
 
-      if (limit !== null && periods[period].dollars >= limit) {
+      if (limit !== null && isDollarLimitReached(periods[period].dollars, limit)) {
         trips.push({ route, period });
       }
     }

@@ -111,6 +111,7 @@ export { readSpendStopSince } from './pause/read-spend-stop-since';
 export { spendStopClearedCodec } from './pause/spend-stop-cleared-codec';
 export { spendStopTrippedCodec } from './pause/spend-stop-tripped-codec';
 export { spendRouteStoppedCodec } from './pause/spend-route-stopped-codec';
+export { spendRouteRestatedCodec } from './pause/spend-route-restated-codec';
 export { spendRouteClearedCodec } from './pause/spend-route-cleared-codec';
 export { spendRouteHeldCodec } from './pause/spend-route-held-codec';
 export { spendWaitNoticeCodec } from './pause/spend-wait-notice-codec';

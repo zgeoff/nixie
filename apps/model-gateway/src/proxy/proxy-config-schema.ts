@@ -51,15 +51,6 @@ const routeSchema = z.strictObject({
   limits: routeLimitsSchema.optional(),
 });
 
-const limitsSchema = z
-  .strictObject({
-    dollars: z.number().positive().optional(),
-    tokens: z.int().positive().optional(),
-  })
-  .refine((limits) => limits.dollars !== undefined || limits.tokens !== undefined, {
-    message: 'the limits name no dollar or token limit, and the proxy needs one to count against',
-  });
-
 const captureSchema = z.strictObject({
   spool: z.string().refine((spool) => isAbsolute(spool), {
     message: 'the capture spool is an absolute path',
@@ -75,9 +66,14 @@ export const proxyConfigSchema = z
       port: z.int().min(0).max(65_535),
     }),
     store: z.string().min(1),
-    limits: limitsSchema.optional(),
-    periods: periodsSchema.optional(),
-    control: controlSchema.optional(),
+    limits: z
+      .never({
+        error:
+          'the config sets limits for all routes, and no limit spans routes: set limits under routes.<id>.limits',
+      })
+      .optional(),
+    periods: periodsSchema,
+    control: controlSchema,
     countBySandbox: z.boolean().optional(),
     override: z
       .string()
@@ -100,79 +96,16 @@ export const proxyConfigSchema = z
         });
       }
     }
-
-    for (const [id, route] of Object.entries(config.routes)) {
-      if (route.login !== undefined && config.periods === undefined) {
-        ctx.addIssue({
-          code: 'custom',
-          path: ['routes', id, 'login'],
-          message: `the route ${id} holds a plan login, which needs a periods config, because the server reads the login from the control listener`,
-        });
-      }
-    }
-
-    for (const [id, route] of Object.entries(config.routes)) {
-      if (route.limits !== undefined && config.periods === undefined) {
-        ctx.addIssue({
-          code: 'custom',
-          path: ['routes', id, 'limits'],
-          message: `the route ${id} sets limits, which need periods, and a limits config counts one total`,
-        });
-      }
-    }
-
-    if (config.limits !== undefined && config.periods !== undefined) {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['periods'],
-        message: 'the config sets both limits and periods, and it sets exactly one',
-      });
-    }
-
-    if (config.limits === undefined && config.periods === undefined) {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['periods'],
-        message: 'the config sets neither limits nor periods, and it sets exactly one',
-      });
-    }
-
-    if (config.periods !== undefined && config.control === undefined) {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['control'],
-        message: 'a config with periods needs a control listener',
-      });
-    }
-
-    if (config.periods === undefined) {
-      for (const key of ['control', 'countBySandbox', 'override'] as const) {
-        if (config[key] !== undefined) {
-          ctx.addIssue({
-            code: 'custom',
-            path: [key],
-            message: `${key} needs periods, and a limits config sets none of these keys`,
-          });
-        }
-      }
-    }
   })
   .transform((config): ProxyConfig => ({
     listen: config.listen,
     store: config.store,
-    limits:
-      config.limits === undefined
-        ? null
-        : { dollars: config.limits.dollars ?? null, tokens: config.limits.tokens ?? null },
-    periods:
-      config.periods === undefined || config.control === undefined
-        ? null
-        : {
-            zone: config.periods.zone,
-            control: config.control,
-            countBySandbox: config.countBySandbox ?? false,
-            override: config.override ?? null,
-          },
+    periods: {
+      zone: config.periods.zone,
+      control: config.control,
+      countBySandbox: config.countBySandbox ?? false,
+      override: config.override ?? null,
+    },
     capture:
       config.capture === undefined
         ? null

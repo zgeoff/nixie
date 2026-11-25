@@ -15,8 +15,8 @@ export interface SpendStartOptions {
 }
 
 // Checks the gateway before any work starts. A refusal throws and the server does not start. A
-// gateway that does not answer lets the server start, and the result says so: the watcher pauses
-// nixie until the gateway answers.
+// gateway that does not answer, or that answers with its lost mark standing, lets it start, and the
+// watcher stops nixie until the gateway answers or an operator clears the mark.
 export async function checkSpendStart(
   options: SpendStartOptions,
 ): Promise<'answered' | 'unanswered'> {
@@ -48,6 +48,10 @@ export async function checkSpendStart(
 
   if (zoneRefusal !== null) {
     throw new Error(zoneRefusal);
+  }
+
+  if (status.value.lost) {
+    options.log('spend.gateway_lost', {}, 'warn');
   }
 
   return 'answered';

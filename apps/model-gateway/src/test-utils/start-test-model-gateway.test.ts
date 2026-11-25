@@ -3,7 +3,7 @@ import { startScriptedModel, waitForCondition } from '@heynixie/testing';
 import { capturePath } from '@heynixie/wire';
 import { startTestModelGateway } from './start-test-model-gateway';
 
-test('it counts the tokens of a Responses reply on a route that names its API and model', async () => {
+test('it counts the dollars of a Responses reply on a route that names its API and model', async () => {
   const model = startScriptedModel();
 
   onTestFinished(() => model.stop());
@@ -26,14 +26,14 @@ test('it counts the tokens of a Responses reply on a route that names its API an
   const probeCounted = async () => {
     const counted = await gateway.readCount();
 
-    return counted.tokens === 107;
+    return counted.dollars > 0;
   };
 
   await waitForCondition(probeCounted);
 
   const count = await gateway.readCount();
 
-  expect(count).toStrictEqual({ dollars: expect.toBeNumber(), tokens: 107 });
+  expect(count).toStrictEqual({ dollars: 1.28e-4 });
 });
 
 test('it listens on the port it is given', async () => {
@@ -52,7 +52,7 @@ test('it listens on the port it is given', async () => {
   expect(gateway.url).toBe(`http://127.0.0.1:${String(port)}`);
 });
 
-test('it refuses a request once the tokens counted reach the limit it is given', async () => {
+test('it refuses a request once the dollars counted reach the day limit it is given', async () => {
   const model = startScriptedModel();
 
   onTestFinished(() => model.stop());
@@ -62,7 +62,7 @@ test('it refuses a request once the tokens counted reach the limit it is given',
   const gateway = await startTestModelGateway({
     upstreamURL: model.url,
     api: 'openai-responses',
-    limits: { tokens: 15 },
+    periods: { zone: 'UTC', limits: { day: 1e-5, month: 100 } },
   });
 
   const ask = () =>
@@ -78,14 +78,17 @@ test('it refuses a request once the tokens counted reach the limit it is given',
   const probeCounted = async () => {
     const counted = await gateway.readCount();
 
-    return counted.tokens === 15;
+    return counted.dollars >= 1e-5;
   };
 
   await waitForCondition(probeCounted);
 
   const refused = await ask();
 
-  expect(refused.status).toBe(403);
+  expect([refused.status, await refused.json()]).toMatchObject([
+    403,
+    { error: { type: 'limit_reached', counter: 'route_day', route: 'scripted' } },
+  ]);
 });
 
 test('it answers the capture ask with no when capture is off', async () => {
@@ -104,7 +107,7 @@ test('it answers the capture ask with no when capture is off', async () => {
   expect(body).toStrictEqual({ canCapture: false });
 });
 
-test('it serves a control listener with the token it is given when it counts periods', async () => {
+test('it serves a control listener with the token it is given', async () => {
   const model = startScriptedModel();
 
   onTestFinished(() => model.stop());
@@ -126,7 +129,7 @@ test('it serves a control listener with the token it is given when it counts per
   });
 });
 
-test('it reads the day count of a gateway with periods', async () => {
+test('it reads the day count of the route it counts', async () => {
   const model = startScriptedModel();
 
   onTestFinished(() => model.stop());
@@ -156,15 +159,5 @@ test('it reads the day count of a gateway with periods', async () => {
 
   const count = await gateway.readCount();
 
-  expect(count).toStrictEqual({ dollars: 0.0022, tokens: 0 });
-});
-
-test('it has no control listener when it counts limits', async () => {
-  const model = startScriptedModel();
-
-  onTestFinished(() => model.stop());
-
-  const gateway = await startTestModelGateway({ upstreamURL: model.url });
-
-  expect(gateway.control).toBeNull();
+  expect(count).toStrictEqual({ dollars: 0.0022 });
 });

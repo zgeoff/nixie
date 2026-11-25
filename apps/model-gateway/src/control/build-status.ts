@@ -1,4 +1,5 @@
 import type { RouteLimitsByID } from '../periods/collect-trips';
+import { isDollarLimitReached } from '../periods/is-dollar-limit-reached';
 import { pickRouteLimit } from '../periods/pick-route-limit';
 import type { Overrides, PeriodName, PeriodStore, PeriodsConfig } from '../types';
 
@@ -46,7 +47,7 @@ export function buildStatus(
 
     const limit = pickRouteLimit({ store, limits, overrides, route, period: name });
     const configured = Object.hasOwn(limits, route) ? limits[route] : null;
-    const isTripped = limit !== null && count.dollars >= limit;
+    const isTripped = limit !== null && isDollarLimitReached(count.dollars, limit);
 
     return {
       start: count.start,

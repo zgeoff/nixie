@@ -2,6 +2,7 @@ import { periodOf } from '@heynixie/periods';
 import { loadProxyConfig } from '../proxy/load-proxy-config';
 import type { DayOverride } from '../types';
 import { readOverride } from './read-override';
+import { withOverrideLock } from './with-override-lock';
 import { writeOverride } from './write-override';
 
 export interface RaiseOptions {
@@ -16,10 +17,6 @@ export interface RaiseOptions {
 // a host command writes it.
 export async function runRaise(options: RaiseOptions): Promise<DayOverride> {
   const config = await loadProxyConfig(options.configPath);
-
-  if (config.periods === null) {
-    throw new Error('the config sets no periods, so there is no limit to raise');
-  }
 
   if (config.periods.override === null) {
     throw new Error(
@@ -43,11 +40,17 @@ export async function runRaise(options: RaiseOptions): Promise<DayOverride> {
     dollars: options.dollars,
   };
 
-  const earlier = await readOverride(config.periods.override);
+  const path = config.periods.override;
 
-  await writeOverride(config.periods.override, {
-    ...(earlier.kind === 'found' ? earlier.overrides : {}),
-    [options.route]: override,
+  // two raises of different routes each read the file, add their route and replace it, so the lock
+  // spans the read and the write and neither loses the other's route
+  await withOverrideLock(path, async () => {
+    const earlier = await readOverride(path);
+
+    await writeOverride(path, {
+      ...(earlier.kind === 'found' ? earlier.overrides : {}),
+      [options.route]: override,
+    });
   });
 
   return override;

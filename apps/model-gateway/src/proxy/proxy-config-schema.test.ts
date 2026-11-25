@@ -5,7 +5,8 @@ test('it reads a route that names the Responses API', () => {
   const result = proxyConfigSchema.safeParse({
     listen: { port: 18_090 },
     store: '/var/lib/model-gateway/counter.json',
-    limits: { dollars: 5 },
+    periods: { zone: 'Europe/London' },
+    control: { listen: { port: 18_091 }, tokenFile: '/run/secrets/gateway-control-token' },
     routes: {
       review: {
         api: 'openai-responses',
@@ -52,7 +53,8 @@ test('it rejects a route that names an API the proxy does not count', () => {
   const result = proxyConfigSchema.safeParse({
     listen: { port: 18_090 },
     store: '/var/lib/model-gateway/counter.json',
-    limits: { dollars: 5 },
+    periods: { zone: 'Europe/London' },
+    control: { listen: { port: 18_091 }, tokenFile: '/run/secrets/gateway-control-token' },
     routes: {
       review: {
         api: 'chat-completions',
@@ -70,7 +72,8 @@ test('it reads a config into its typed shape, with a trailing slash cut from the
   const result = proxyConfigSchema.safeParse({
     listen: { hostname: '0.0.0.0', port: 18_090 },
     store: '/var/lib/model-gateway/counter.json',
-    limits: { dollars: 5 },
+    periods: { zone: 'Europe/London' },
+    control: { listen: { port: 18_091 }, tokenFile: '/run/secrets/gateway-control-token' },
     routes: {
       preview: {
         upstream: 'https://models.example.com/',
@@ -83,8 +86,15 @@ test('it reads a config into its typed shape, with a trailing slash cut from the
   expect(result.data).toStrictEqual({
     listen: { hostname: '0.0.0.0', port: 18_090 },
     store: '/var/lib/model-gateway/counter.json',
-    limits: { dollars: 5, tokens: null },
-    periods: null,
+    periods: {
+      zone: 'Europe/London',
+      control: {
+        listen: { hostname: '127.0.0.1', port: 18_091 },
+        tokenFile: '/run/secrets/gateway-control-token',
+      },
+      countBySandbox: false,
+      override: null,
+    },
     capture: null,
     routes: {
       preview: {
@@ -105,7 +115,8 @@ test('it listens on the loopback when the config names no host', () => {
   const result = proxyConfigSchema.safeParse({
     listen: { port: 18_090 },
     store: '/var/lib/model-gateway/counter.json',
-    limits: { tokens: 1000 },
+    periods: { zone: 'Europe/London' },
+    control: { listen: { port: 18_091 }, tokenFile: '/run/secrets/gateway-control-token' },
     routes: {
       preview: {
         upstream: 'https://models.example.com',
@@ -118,28 +129,12 @@ test('it listens on the loopback when the config names no host', () => {
   expect(result.data?.listen).toStrictEqual({ hostname: '127.0.0.1', port: 18_090 });
 });
 
-test('it rejects limits that name neither dollars nor tokens', () => {
-  const result = proxyConfigSchema.safeParse({
-    listen: { port: 18_090 },
-    store: '/var/lib/model-gateway/counter.json',
-    limits: {},
-    routes: {
-      preview: {
-        upstream: 'https://models.example.com',
-        model: 'model-small',
-        prices: { input: 1, cache_write: 1.25, cache_write_1h: 2, cached_input: 0.1, output: 5 },
-      },
-    },
-  });
-
-  expect(result.error?.issues).toPartiallyContain({ path: ['limits'] });
-});
-
 test('it rejects a config with no route', () => {
   const result = proxyConfigSchema.safeParse({
     listen: { port: 18_090 },
     store: '/var/lib/model-gateway/counter.json',
-    limits: { dollars: 5 },
+    periods: { zone: 'Europe/London' },
+    control: { listen: { port: 18_091 }, tokenFile: '/run/secrets/gateway-control-token' },
     routes: {},
   });
 
@@ -150,7 +145,8 @@ test('it rejects a route with no 1-hour cache write price', () => {
   const result = proxyConfigSchema.safeParse({
     listen: { port: 18_090 },
     store: '/var/lib/model-gateway/counter.json',
-    limits: { dollars: 5 },
+    periods: { zone: 'Europe/London' },
+    control: { listen: { port: 18_091 }, tokenFile: '/run/secrets/gateway-control-token' },
     routes: {
       preview: {
         upstream: 'https://models.example.com',
@@ -169,7 +165,8 @@ test('it rejects a route ID that is not a lowercase slug', () => {
   const result = proxyConfigSchema.safeParse({
     listen: { port: 18_090 },
     store: '/var/lib/model-gateway/counter.json',
-    limits: { dollars: 5 },
+    periods: { zone: 'Europe/London' },
+    control: { listen: { port: 18_091 }, tokenFile: '/run/secrets/gateway-control-token' },
     routes: {
       'Preview/A': {
         upstream: 'https://models.example.com',
@@ -186,7 +183,8 @@ test('it reads a capture key with its defaults for the byte and pending limits',
   const result = proxyConfigSchema.safeParse({
     listen: { port: 18_090 },
     store: '/var/lib/model-gateway/counter.json',
-    limits: { dollars: 5 },
+    periods: { zone: 'Europe/London' },
+    control: { listen: { port: 18_091 }, tokenFile: '/run/secrets/gateway-control-token' },
     capture: { spool: '/var/lib/nixie/spool' },
     routes: {
       preview: {
@@ -208,7 +206,8 @@ test('it reads a capture key with its own byte and pending limits', () => {
   const result = proxyConfigSchema.safeParse({
     listen: { port: 18_090 },
     store: '/var/lib/model-gateway/counter.json',
-    limits: { dollars: 5 },
+    periods: { zone: 'Europe/London' },
+    control: { listen: { port: 18_091 }, tokenFile: '/run/secrets/gateway-control-token' },
     capture: { spool: '/var/lib/nixie/spool', max_bytes: 1000, max_pending: 2 },
     routes: {
       preview: {
@@ -231,7 +230,8 @@ test('it reads a config with no capture key as a capture of null', () => {
     proxyConfigSchema.safeParse({
       listen: { port: 18_090 },
       store: '/var/lib/model-gateway/counter.json',
-      limits: { dollars: 5 },
+      periods: { zone: 'Europe/London' },
+      control: { listen: { port: 18_091 }, tokenFile: '/run/secrets/gateway-control-token' },
       routes: {
         preview: {
           upstream: 'https://models.example.com',
@@ -247,7 +247,8 @@ test('it rejects a relative capture spool', () => {
   const result = proxyConfigSchema.safeParse({
     listen: { port: 18_090 },
     store: '/var/lib/model-gateway/counter.json',
-    limits: { dollars: 5 },
+    periods: { zone: 'Europe/London' },
+    control: { listen: { port: 18_091 }, tokenFile: '/run/secrets/gateway-control-token' },
     capture: { spool: 'relative/spool' },
     routes: {
       preview: {
@@ -265,7 +266,8 @@ test('it rejects a max_pending of 0', () => {
   const result = proxyConfigSchema.safeParse({
     listen: { port: 18_090 },
     store: '/var/lib/model-gateway/counter.json',
-    limits: { dollars: 5 },
+    periods: { zone: 'Europe/London' },
+    control: { listen: { port: 18_091 }, tokenFile: '/run/secrets/gateway-control-token' },
     capture: { spool: '/var/lib/nixie/spool', max_pending: 0 },
     routes: {
       preview: {
@@ -284,7 +286,8 @@ test('it rejects a capture key it does not know', () => {
     proxyConfigSchema.safeParse({
       listen: { port: 18_090 },
       store: '/var/lib/model-gateway/counter.json',
-      limits: { dollars: 5 },
+      periods: { zone: 'Europe/London' },
+      control: { listen: { port: 18_091 }, tokenFile: '/run/secrets/gateway-control-token' },
       capture: { spool: '/var/lib/nixie/spool', extra: 1 },
       routes: {
         preview: {
@@ -320,22 +323,6 @@ test('it reads the login block of a route on a periods config', () => {
   });
 });
 
-test('it rejects a route with a login on a limits config', () => {
-  const ctx = setupTest();
-
-  const result = proxyConfigSchema.safeParse(
-    ctx.buildRouteConfig({
-      api: 'openai-responses',
-      maxOutputTokens: 32_000,
-      login: { file: '/var/lib/model-gateway/plan.json', routeKeyFile: '/run/secrets/plan-key' },
-    }),
-  );
-
-  expect(result.error?.issues.map((issue) => issue.path.join('.'))).toStrictEqual([
-    'routes.review.login',
-  ]);
-});
-
 test.each([
   { file: 'plan.json', routeKeyFile: '/run/secrets/plan-key' },
   { file: '/var/lib/model-gateway/plan.json', routeKeyFile: 'plan-key' },
@@ -363,7 +350,8 @@ function setupTest() {
     buildRouteConfig: (route: Record<string, unknown>) => ({
       listen: { port: 18_090 },
       store: '/var/lib/model-gateway/counter.json',
-      limits: { dollars: 5 },
+      periods: { zone: 'Europe/London' },
+      control: { listen: { port: 18_091 }, tokenFile: '/run/secrets/gateway-control-token' },
       routes: {
         review: {
           upstream: 'https://models.example.com',
@@ -410,7 +398,6 @@ test('it reads periods with a loopback control listener, no override and the lim
   });
 
   expect(result.data).toMatchObject({
-    limits: null,
     periods: {
       zone: 'Europe/London',
       control: {
@@ -460,21 +447,6 @@ test.each([
   });
 });
 
-test('it rejects route limits in a limits config, which counts one total', () => {
-  const ctx = setupTest();
-
-  const result = proxyConfigSchema.safeParse({
-    listen: { port: 18_090 },
-    store: '/var/lib/model-gateway/counter.json',
-    limits: { dollars: 5 },
-    routes: {
-      preview: { ...ctx.periodsConfig.routes.preview, limits: { day: 1, month: 2 } },
-    },
-  });
-
-  expect(result.error?.issues).toPartiallyContain({ path: ['routes', 'preview', 'limits'] });
-});
-
 test('it reads each periods key the config names', () => {
   const ctx = setupTest();
 
@@ -490,18 +462,25 @@ test('it reads each periods key the config names', () => {
   });
 });
 
-test('it rejects a config that sets both limits and periods', () => {
+test.each([{ dollars: 5 }, { tokens: 1000 }, {}])(
+  'it rejects a limits key of %j, because no limit spans routes',
+  (limits) => {
+    const ctx = setupTest();
+    const result = proxyConfigSchema.safeParse({ ...ctx.periodsConfig, limits });
+
+    expect(result.error?.issues).toPartiallyContain({
+      path: ['limits'],
+      message: expect.stringContaining('no limit spans routes'),
+    });
+  },
+);
+
+test('it rejects a config with no periods', () => {
   const ctx = setupTest();
-  const result = proxyConfigSchema.safeParse({ ...ctx.periodsConfig, limits: { dollars: 5 } });
+  const { periods: _periods, ...noPeriods } = ctx.periodsConfig;
+  const result = proxyConfigSchema.safeParse(noPeriods);
 
-  expect(result.success).toBeFalse();
-});
-
-test('it rejects a config that sets neither limits nor periods', () => {
-  const ctx = setupTest();
-  const { periods: _periods, control: _control, ...neither } = ctx.periodsConfig;
-
-  expect(proxyConfigSchema.safeParse(neither).success).toBeFalse();
+  expect(result.error?.issues).toPartiallyContain({ path: ['periods'] });
 });
 
 test('it rejects periods with no control listener', () => {
@@ -521,23 +500,6 @@ test('it rejects a zone that is not an IANA zone', () => {
   });
 
   expect(result.error?.issues).toPartiallyContain({ path: ['periods', 'zone'] });
-});
-
-test.each([
-  ['countBySandbox', true],
-  ['override', '/var/lib/model-gateway/override.json'],
-])('it rejects %s in a limits config, which sets none of the periods keys', (key, value) => {
-  const ctx = setupTest();
-
-  const result = proxyConfigSchema.safeParse({
-    listen: { port: 18_090 },
-    store: '/var/lib/model-gateway/counter.json',
-    limits: { dollars: 5 },
-    [key]: value,
-    routes: ctx.periodsConfig.routes,
-  });
-
-  expect(result.error?.issues).toPartiallyContain({ path: [key] });
 });
 
 test('it rejects a relative override path', () => {
@@ -562,7 +524,8 @@ test('it reads the provider pin of a route', () => {
   const result = proxyConfigSchema.safeParse({
     listen: { port: 18_090 },
     store: '/var/lib/model-gateway/counter.json',
-    limits: { dollars: 5 },
+    periods: { zone: 'Europe/London' },
+    control: { listen: { port: 18_091 }, tokenFile: '/run/secrets/gateway-control-token' },
     routes: {
       review: {
         upstream: 'https://models.example.com',
@@ -580,7 +543,8 @@ test('it rejects an empty provider pin', () => {
   const result = proxyConfigSchema.safeParse({
     listen: { port: 18_090 },
     store: '/var/lib/model-gateway/counter.json',
-    limits: { dollars: 5 },
+    periods: { zone: 'Europe/London' },
+    control: { listen: { port: 18_091 }, tokenFile: '/run/secrets/gateway-control-token' },
     routes: {
       review: {
         upstream: 'https://models.example.com',

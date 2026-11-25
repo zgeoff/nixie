@@ -25,11 +25,11 @@ flowchart LR
 
 The gateway holds one route per model profile. A route has an ID, the model API it speaks, the
 upstream origin it sends to, the model it allows, the profile's price table and, in a config with
-`periods`, its own dollar [limits](#the-periods). The API is Anthropic's Messages API,
-`anthropic-messages`, unless the route names OpenAI's Responses API, `openai-responses`. A request
-names its route in the first segment of its path, and the gateway sends the rest of the path, with
-the query, to the route's upstream. A deployment therefore points a profile's base URL at the
-gateway with the route ID on the end, and the model client adds the API path after it.
+its own dollar [limits](#the-periods). The API is Anthropic's Messages API, `anthropic-messages`,
+unless the route names OpenAI's Responses API, `openai-responses`. A request names its route in the
+first segment of its path, and the gateway sends the rest of the path, with the query, to the
+route's upstream. A deployment therefore points a profile's base URL at the gateway with the route
+ID on the end, and the model client adds the API path after it.
 
 The gateway prices every reply on a route with that route's table, so a request for another model
 would be priced wrong. The gateway refuses a request to a spending or token count endpoint whose
@@ -120,9 +120,7 @@ plan request itself. The nixie server and each sandbox hold only stand-in values
 token, so every plan request passes through the count.
 
 A route holds a plan login when its config has a `login` block. The nixie server reads each login's
-status from the [control listener](#the-control-listener), and only a config with
-[periods](#the-periods) has a control listener, so the schema refuses a `login` block in a `limits`
-config:
+status from the [control listener](#the-control-listener), which every config has:
 
 ```yaml
 routes:
@@ -254,14 +252,13 @@ login file shows `needs_login` with a null reason. The model listener serves no 
 
 ## The count
 
-The count is dollars and tokens, kept in a counter store on the host's disk. A config with `limits`
-keeps one total of each. A config with `periods` keeps the dollars of each route's day and month,
-and the dollars and tokens of each sandbox. The gateway reads the count from the store before it
-admits a request, and adds a reply's price once the reply ends. The models module's call pricing
-sets the price, the same pricing that the deployment's own records use, so a cache write for the
-long lifetime takes the profile's price for that lifetime, and a reply to a long prompt takes the
-profile's [long-prompt prices](../core/model-profiles.md#prices-and-the-provider-pin) when it has
-them.
+The count is dollars and tokens, kept in a counter store on the host's disk. It keeps the dollars of
+each route's day and month, and the dollars and tokens of each sandbox. The gateway reads the count
+from the store before it admits a request, and adds a reply's price once the reply ends. The models
+module's call pricing sets the price, the same pricing that the deployment's own records use, so a
+cache write for the long lifetime takes the profile's price for that lifetime, and a reply to a long
+prompt takes the profile's
+[long-prompt prices](../core/model-profiles.md#prices-and-the-provider-pin) when it has them.
 
 The tokens are the input, the cache writes, the cache reads and the output. Where a reply's cache
 write total and its split by cache lifetime disagree, the larger figure counts for both. A Responses
@@ -357,25 +354,13 @@ the reason and the dollars and tokens it added.
 The store writes each count to a new file and renames it over the old one, so a crash leaves the
 last whole count. It adds one reply at a time, so two replies that end together each count once.
 
-## The limit
-
-A config sets either `limits`, which this section describes, or `periods`, which
-[the periods](#the-periods) describes. A preview's config sets `limits`.
-
-The configured limit names dollars, tokens or both, and the gateway refuses a request once either
-total reaches its limit. The refusal is a 403 in the model API's error shape, with a message that
-names the totals and the limit, so the model client stops instead of retrying. Requests already in
-flight when the count crosses the limit finish and count, so the totals can pass the limit by the
-replies that were running at that moment.
-
 ## The periods
 
-A config with `periods` counts the day and the month of each route in US dollars, and limits each
-route on its own. No limit spans routes, and the gateway holds no limit in tokens. Each period
-resets at local midnight in `periods.zone`, an IANA zone that equals the deployment's default time
-zone, and [`periodOf`](metering.md#periods) works out each start. The route's limits and the cap
-above its day limit sit in the gateway's own config, so code in the deployment cannot move a limit
-or a cap.
+The gateway counts the day and the month of each route in US dollars, and limits each route on its
+own. No limit spans routes, and the gateway holds no limit in tokens. Each period resets at local
+midnight in `periods.zone`, an IANA zone that equals the deployment's default time zone, and
+[`periodOf`](metering.md#periods) works out each start. The route's limits and the cap above its day
+limit sit in the gateway's own config, so code in the deployment cannot move a limit or a cap.
 
 ```yaml
 periods:
@@ -391,15 +376,14 @@ countBySandbox: true # default false
 override: /var/lib/model-gateway/override.json # no path, no override
 ```
 
-A config with `periods` needs `control`, and the schema refuses a config that sets both `periods`
-and `limits`, or neither. The schema refuses a `dayCap` below its route's `day`. It also refuses
-route `limits`, `control`, `countBySandbox` and `override` in a config with `limits`. The store of a
-`periods` config is a file of its own, in version 3: the lost mark, for each route its day and its
-month, and a count and a limit per sandbox. A period holds its start, the instant it ends, its
-dollars, the raise and the trip time. A period's trip time is the instant the gateway first found
-its count at the limit in force, and a reset or a raise that lifts the limit clears it.
+The schema requires `periods` and `control`, and refuses a top-level `limits` key, because no limit
+spans routes. It refuses a `dayCap` below its route's `day`. The store is a file of its own, in
+version 3: the lost mark, for each route its day and its month, and a count and a limit per sandbox.
+A period holds its start, the instant it ends, its dollars, the raise and the trip time. A period's
+trip time is the instant the gateway first found its count at the limit in force, and a reset or a
+raise that lifts the limit clears it.
 
-At start, the gateway rewrites a store file of an earlier shape, a `limits` count or a version 2
+At start, the gateway rewrites a store file of an earlier shape, a count of one total or a version 2
 store, as a version 3 store in one write. Every route starts at zero, because a total that spans
 routes says nothing of one route's spend. The lost mark and the sandboxes carry over, and the
 gateway logs the old totals. The gateway refuses to start on a store file in any other shape, and a
@@ -455,17 +439,21 @@ listener serves no control path.
 A refused call changes nothing. A raise body is `{ route, start, dollars }`, and the raise is for
 the day only: the month's limit moves only in the gateway's config. A period's `tripped` is true
 while its dollars are at its limit in force, and its `sinceMs` is the period's trip time. The status
-holds the lost mark apart from the routes, and a lost gateway answers its routes as they stand.
+holds the lost mark apart from the routes, and a lost gateway answers its routes as they stand. A
+count reaches a limit in whole micros of a dollar, so ten replies of 0.1 dollars reach a limit of 1
+dollar.
 
 ### The override
 
 `model-gateway raise --config <file> --route <id> --dollars <n>` is the only way past a route's cap.
 It writes the route's entry in the override file for the day now in force in the config's zone,
-through a second file and a rename, and keeps the entries of the other routes. The dollars it names
-may pass the cap, and the command refuses a route that has no `limits`. The gateway ignores an entry
-whose start is not the day's current start, and an override file that it cannot read. The control
-listener has no call that writes the override, and the server has no path to the override, the store
-or the config. A config with no `override` path makes the command refuse to run.
+through a second file and a rename, and keeps the entries of the other routes. A lock on the file
+spans the command's read and its write, so 2 raises of different routes at once keep both entries.
+The dollars it names may pass the cap, and the command refuses a route that has no `limits`. The
+gateway ignores an entry whose start is not the day's current start, and an override file that it
+cannot read. The control listener has no call that writes the override, and the server has no path
+to the override, the store or the config. A config with no `override` path makes the command refuse
+to run.
 
 ## How nixie uses the gateway
 

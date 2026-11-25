@@ -1054,6 +1054,39 @@ test('it holds a step on a route that stands stopped, with no capture and no tur
   expect([errored, held.length, ctx.opened, ctx.sandboxes.turns]).toStrictEqual([[], 1, [], []]);
 });
 
+test('it counts no step error for a step that the gateway refused on its route, though the route has cleared since', async () => {
+  const ctx = await setupTest();
+  const spend = await startTestSpend();
+
+  await createConversationTask(ctx.context);
+
+  ctx.readTurnMemory.mockRejectedValue(new Error('the model API refused the request'));
+
+  spend.gateway.readSandbox.mockResolvedValue({
+    kind: 'ok',
+    value: {
+      dollars: 0,
+      tokens: 0,
+      tripped: false,
+      lastRefusal: {
+        counter: 'route_day',
+        route: ctx.profile.id,
+        atMs: spend.clock.now() + 60_000,
+      },
+    },
+  });
+
+  const runner = await ctx.startRunner(2000, undefined, undefined, {
+    overrides: { spend: { ...spend.context, log: ctx.context.log } },
+  });
+
+  await ctx.sendMessage(runner, 'What does the tide gauge read?');
+
+  const errored = await ctx.readKinds('task.step_errored');
+
+  expect(errored).toStrictEqual([]);
+});
+
 test('it sends the account and plan of an active login in the turn profile of a plan profile', async () => {
   const ctx = await setupTest();
   const spend = await startTestSpend();

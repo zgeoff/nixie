@@ -137,6 +137,7 @@ export interface RecordKinds {
   'spend.stop_tripped': true;
   'spend.stop_cleared': true;
   'spend.route_stopped': true;
+  'spend.route_restated': true;
   'spend.route_cleared': true;
   'spend.route_held': true;
   'spend.wait_notice': true;

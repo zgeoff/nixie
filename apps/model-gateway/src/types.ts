@@ -70,9 +70,7 @@ export interface ProxyConfig {
   readonly listen: { readonly hostname: string; readonly port: number };
   readonly store: string;
 
-  // exactly one of limits and periods is set
-  readonly limits: ProxyLimits | null;
-  readonly periods: PeriodsConfig | null;
+  readonly periods: PeriodsConfig;
   readonly capture: CaptureConfig | null;
   readonly routes: Readonly<Record<string, ProxyRoute>>;
 }

@@ -165,3 +165,14 @@ test('it names no dollar figure in a limit message', () => {
 
   expect(refusal?.message).not.toMatch(/\$|\d/u);
 });
+
+test('it refuses a route whose floating-point sum falls a hair under its day limit', () => {
+  const ctx = setupTest();
+
+  expect(ctx.ask(ctx.buildStore({ plan: { day: 40 - 1e-9 } }), 'plan')).toMatchObject({
+    status: 403,
+    type: 'limit_reached',
+    counter: 'route_day',
+    route: 'plan',
+  });
+});

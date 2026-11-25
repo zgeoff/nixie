@@ -40,8 +40,13 @@ route's stop beside the stop of nixie, in the same transaction. A route whose da
 
 - A new trip writes `spend.route_stopped`, which names the route, its period and its limit. That
   record is the one notice to the user, and a later poll that finds the same stop writes none.
-- A route that is no longer tripped, or whose limit or reset changed, writes `spend.route_cleared`
-  with the reason `reset` or `raised`.
+- A route that is no longer tripped writes `spend.route_cleared` with the reason `reset` or
+  `raised`. A route that stays tripped at another limit or period, such as when a raise leaves it
+  over its day limit, or when the day ends and the month still binds, writes `spend.route_restated`
+  instead. That record replaces the row, sends no notice, and keeps the holds.
+- A poll that read the gateway before a settle that a later read made writes nothing, so a poll that
+  settles late never puts back a stop that a raise cleared. A trip whose period has ended is no
+  trip.
 - A gateway that did not answer changes no route's stop. The stop of nixie covers it.
 
 A task that a refusal or a stopped route held has a row in `spend_route_holds`. A step holds its
@@ -49,10 +54,11 @@ task on the route of its profile in 2 places: before its model turn, when the ro
 and after a failed step, after it reads the gateway and settles the route stops. The
 [task gate](../core/pause.md#the-task-gate) reports `spend` for a held task while its route's stop
 stands, and the claim filter leaves the task's work unclaimed, so a task on another route runs. A
-held step ends at once with no step commit, and a failed step that a route's stop explains counts no
-step error. A clear writes `spend.wait_notice` on the thread of each task that waited, and the
-model's next wake reads that it waited about so many minutes. The notice holds no dollar figure and
-no route.
+held step ends at once with no step commit. A failed step counts no step error when a route's stop
+explains it, or when the gateway recorded a refusal of the step's sandbox on the step's route after
+the step began, which the sandbox's `lastRefusal` holds, though the route has since reset or risen.
+A clear writes `spend.wait_notice` on the thread of each task that waited, and the model's next wake
+reads that it waited about so many minutes. The notice holds no dollar figure and no route.
 
 ## The watcher
 
@@ -68,7 +74,8 @@ transaction:
   calls `publishChanged` with the `spend` topic, so an open client reads `spend.read` again. The
   [live stream](../channels/live-updates.md#topics) carries it, because no write makes that change.
 - When the gateway did not answer at the start, the watcher trips on its first poll that finds no
-  answer, and clears when the gateway answers.
+  answer, and clears when the gateway answers. A start that finds the gateway's lost mark standing
+  logs `spend.gateway_lost`, and the first poll trips the stop.
 
 The spending pause raises the database's reader gate to the spend migration, so the release before
 refuses to open the database while the pause stands. When the pause takes another cause, the gate
@@ -125,6 +132,8 @@ limits move only in the gateway's config.
 
 The web client shows the notice under the pause banner. A turn trip of the day offers "Raise today's
 limit" with today's limit plus half, up to the cap, and the amount stays editable until the one
-confirm. Each stopped route shows a line that names the route and says its work waits. A month trip,
-`unreachable` and `lost` show no button, and the pause banner offers no resume for the cause
-`spending`.
+confirm. Each stopped route shows a line that names the route and says its work waits. A route that
+tripped its day limit, below its cap, also offers "Raise the day limit of" the route, with the day's
+limit plus half in dollars, up to the route's cap, and one confirm sends `spend.raise` with the
+route and the dollars. A month trip, `unreachable` and `lost` show no button, and the pause banner
+offers no resume for the cause `spending`.
