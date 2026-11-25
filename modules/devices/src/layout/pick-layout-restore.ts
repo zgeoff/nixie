@@ -7,17 +7,10 @@ export interface SavedRegionState {
   readonly isShown: boolean;
 }
 
-export interface FoundSavedLayout<Grid> {
+export interface SavedLayoutState<Grid> {
+  readonly name: string;
   readonly grid: Grid;
   readonly states: readonly SavedRegionState[];
-}
-
-export interface LayoutRestoreInput<Grid> {
-  // every name the device saved a layout under
-  readonly names: readonly string[];
-
-  // the layout under the asked name, or null when no layout has it
-  readonly found: FoundSavedLayout<Grid> | null;
 }
 
 export type LayoutRestorePlan<Grid> =
@@ -38,18 +31,21 @@ export type LayoutRestorePlan<Grid> =
 // back at its content. A region that the saved grid does not hold is dropped, and one whose content
 // no longer shows comes back blank and is named.
 export function pickLayoutRestore<Grid extends { readonly regions: readonly { name: string }[] }>(
-  input: LayoutRestoreInput<Grid>,
+  layouts: readonly SavedLayoutState<Grid>[],
+  name: string,
 ): LayoutRestorePlan<Grid> {
-  if (input.found === null) {
-    return { status: 'unknown', names: input.names };
+  const found = layouts.find((layout) => layout.name === name);
+
+  if (found === undefined) {
+    return { status: 'unknown', names: layouts.map((layout) => layout.name) };
   }
 
-  const regions = input.found.grid.regions.map((region) => region.name);
-  const inGrid = input.found.states.filter((state) => regions.includes(state.region));
+  const regions = found.grid.regions.map((region) => region.name);
+  const inGrid = found.states.filter((state) => regions.includes(state.region));
 
   return {
     status: 'restore',
-    grid: input.found.grid,
+    grid: found.grid,
     regions,
     kept: inGrid
       .filter((state) => state.isShown)

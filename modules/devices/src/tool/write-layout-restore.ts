@@ -36,9 +36,9 @@ export function writeLayoutRestore(
     const inTransaction = { ...options.log, writer: { ...options.log.writer, db: tx } };
     const nowMs = options.clock.now();
 
-    const input = await readLayoutRestoreInput(inTransaction, write.deviceID, write.name, nowMs);
+    const layouts = await readLayoutRestoreInput(inTransaction, write.deviceID, nowMs);
 
-    const plan = pickLayoutRestore(input);
+    const plan = pickLayoutRestore(layouts, write.name);
 
     if (plan.status === 'unknown') {
       return plan;
