@@ -4,6 +4,7 @@ import type { SandboxRecordKind } from './sandbox-record-kind';
 // The topics each record kind changes, which the server registers with the log.
 export const sandboxRecordTopics = {
   'sandbox.created': [],
+  'sandbox.grant_started': [],
   'sandbox.granted': [],
   'sandbox.slept': [],
   'sandbox.woken': [],
