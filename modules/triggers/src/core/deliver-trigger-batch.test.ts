@@ -1088,8 +1088,8 @@ test('it writes nothing for a task input whose task does not exist', async () =>
   expect(records).toStrictEqual([]);
 });
 
-test.each([['doneTask'], ['closedTask'], ['failedTask']] as const)(
-  'it writes nothing for a task input whose task the %s seed finished',
+test.each([['doneTask'], ['closedTask'], ['failedTask'], ['stoppedTask']] as const)(
+  'it writes nothing for a task input whose task the %s seed ended',
   async (seedName) => {
     const ctx = await setupTest();
     const starter = await ctx.taskSeed.conversationStep();
@@ -1119,3 +1119,53 @@ test.each([['doneTask'], ['closedTask'], ['failedTask']] as const)(
     expect(records).toStrictEqual([]);
   },
 );
+
+test('it leaves the key of a task input for a stopped task free, so the same event lands on the next task', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.taskSeed.conversationStep();
+
+  const stoppedTaskID = await ctx.taskSeed.stoppedTask({
+    starter: starter.claim,
+    name: 'Garden planner',
+    brief: 'Add a frost warning to the planner.',
+  });
+
+  const nextTaskID = await ctx.taskSeed.waitingTask({
+    starter: starter.claim,
+    name: 'Garden planner, again',
+    brief: 'Watch the frost warning work.',
+  });
+
+  const event = {
+    kind: 'task_input',
+    dedupeKey: 'session-1|event-4',
+    occurredAt: '2027-03-09T00:00:00.000Z',
+    hop: 2,
+    wake: false,
+    facts: { event: 'pull_request_opened' },
+    payload: { title: 'Add a frost warning' },
+  } as const;
+
+  await ctx.deliverTaskInputs([{ ...event, taskID: stoppedTaskID }]);
+
+  const result = await ctx.deliverTaskInputs([{ ...event, taskID: nextTaskID }]);
+  const records = await ctx.readTaskInputs();
+
+  expect(result).toStrictEqual({ delivered: 1 });
+
+  expect(records).toStrictEqual([
+    {
+      thread: nextTaskID,
+      payload: {
+        taskID: nextTaskID,
+        source: 'coding',
+        dedupeKey: 'session-1|event-4',
+        occurredAt: '2027-03-09T00:00:00.000Z',
+        hop: 2,
+        wake: false,
+        facts: { event: 'pull_request_opened' },
+      },
+      erasable: { status: 'readable', fields: { event: { title: 'Add a frost warning' } } },
+    },
+  ]);
+});

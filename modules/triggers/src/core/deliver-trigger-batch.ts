@@ -87,7 +87,7 @@ async function writeTaskInput(
     .where('task_id', '=', event.taskID)
     .executeTakeFirst();
 
-  if (key !== undefined || task === undefined || isFinishedState(task.state)) {
+  if (key !== undefined || task === undefined || isTaskInputEnded(task.state)) {
     return false;
   }
 
@@ -112,6 +112,12 @@ async function writeTaskInput(
     : writeRecordsInTransaction(tx, core.log, [input]));
 
   return true;
+}
+
+// Only a coding task takes task inputs, and a stopped coding task never steps again, so its input
+// is dropped and its key stays free for the task that takes the session next.
+function isTaskInputEnded(state: string): boolean {
+  return state === 'stopped' || isFinishedState(state);
 }
 
 async function writeEvent(
