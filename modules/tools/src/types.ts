@@ -370,6 +370,10 @@ export interface StepPolicyFrame {
   // owner messages that a task message carried to the task
   readonly onBehalfOf: readonly number[];
   readonly sources: readonly RuleSource[];
+
+  // the short IDs of the mail whose arrival woke this turn, so only the sender of one of them is a
+  // reply target
+  readonly arrivedMails: readonly string[];
 }
 
 export type SilentEnd = 'ended' | 'refused';

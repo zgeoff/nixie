@@ -8,6 +8,7 @@ const defaultFrame: StepPolicyFrame = {
   turnMessageSequence: null,
   onBehalfOf: [],
   sources: [],
+  arrivedMails: [],
 };
 
 export interface ToolPolicyFacts {

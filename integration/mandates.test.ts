@@ -30,7 +30,7 @@ async function setupTest() {
   const startMandate = async (expires?: string) => {
     const proposed = await rules.proposeMandate({
       title: 'Full authority over my test sends',
-      rules: [{ outcome: 'allow', tools: ['test.send'], destinations: ['*@example.org'] }],
+      rules: [{ outcome: 'allow', tools: ['test.send'], destinations: ['sam@example.org'] }],
       ...(expires === undefined ? {} : { expires }),
     });
 
