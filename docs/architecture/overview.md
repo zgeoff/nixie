@@ -44,12 +44,16 @@ rules: a deny rule beats an ask rule, an ask rule beats an allow rule, and a cal
 covers asks the user ([the decision point](./policy/decision-point.md)).
 
 A tool with effects outside nixie, such as a send or a write, never runs inside the turn. The call
-becomes an action whose ID is also the idempotency key the connector sends to its provider, and a
-pool of action runners attempts it apart from the task runners ([actions](./core/actions.md)). The
-turn waits a bounded time for the outcome. The outcome reaches the task's inbox either way, so the
-task's next step reads it. Besides the calls that a rule or the user's approval allows, the queue
-carries the action that the queue check queues at each start, and the crash tests' send tool in a
-test build.
+becomes an action whose ID keys each attempt that the connector sends to its provider, and a pool of
+action runners attempts it apart from the task runners ([actions](./core/actions.md)). The turn
+waits a bounded time for the outcome. The outcome reaches the task's inbox either way, so the task's
+next step reads it. Besides the calls that a rule or the user's approval allows, the queue carries
+the action that the queue check queues at each start, and the crash tests' send tool in a test
+build.
+
+A task runner can queue actions of its own too. A [coding task](./core/coding-tasks.md) steers a
+coding session that runs in another program, and each spawn, steer, note and stop of that session is
+such an action, which the decision point decides before each attempt as it decides a tool call.
 
 ## The client path
 

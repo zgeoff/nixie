@@ -24,6 +24,13 @@ An event names one definition, the hash of the version the source computed it fr
 of its slot, the slots that were missed before it, and an optional `skip` reason when the source has
 already decided to skip.
 
+A source can hand over a task input instead, an event for one task's thread that names no
+definition. The [coding source](./coding-tasks.md#the-coding-source) hands over each session event
+this way. The core writes a task input as a `trigger.task_input` record, with the event's own text
+in its erasable fields, and drops one whose dedupe key the source already delivered or whose task is
+missing or ended. The input carries a `wake` flag: with it, the record joins the task's inbox and
+wakes the task; without it, the record lands on the thread and no step reads it.
+
 ## Which definitions can fire
 
 The seed calls `writeArmedDefinitions` at every accepted seed, right after the hook that binds each

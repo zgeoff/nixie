@@ -69,10 +69,10 @@ queue's transaction checks that step's lease first, so a runner that lost its le
 A guest can outlive its step's lease, so the queue also refuses a call whose step run identity is
 not the task's current claim. Without that check, a call from the guest of a step that lost its
 lease would queue under the claim of the runner that took the task over and pass its lease check.
-Each action gets a random ID, which is both its queue key and the idempotency key the connector
-sends to the provider. An action that your approval queues takes the proposal's ID, so the approval
-and the action name each other. The call's arguments sit in the record's erasable fields, and the
-decision sits on its envelope.
+Each action gets a random ID, which is its queue key and the base of the idempotency key the
+connector sends to the provider, as [attempts](#attempts) says. An action that your approval queues
+takes the proposal's ID, so the approval and the action name each other. The call's arguments sit in
+the record's erasable fields, and the decision sits on its envelope.
 
 A step that crashed is run again from its start, and the rerun makes the same tool calls. Each call
 arrives with an action hash that its caller builds from the call, and the queue compares calls by
@@ -85,6 +85,21 @@ however many times its step reruns.
 The action hash covers the tool, the arguments, the destinations and the deadline, and is the same
 hash that the approval binds. A repeat of a call whose action is pending or unknown returns that
 action's status and never queues, so a model that asks again cannot start a second send.
+
+## Actions a runner queues
+
+A task runner can queue actions of its own, with no model call behind them: a
+[coding task](./coding-tasks.md) queues the spawn of its session from its start, a steer or a note
+from a step, and the stop of its session when the task stops. Each action commits in the same
+transaction as the start, the step or the end hook that queues it, so a crash leaves both or
+neither. The queue keys such an action by a hash of its tool and the parts that the runner names,
+under the step key it came from, so a step that runs again queues nothing new.
+
+A runner action names what caused it: a tool call, or a record on the task's thread, such as the
+message that a note carries. No model listed the action's tool, so the decision point decides each
+attempt under the declaration of the action's own tool, with the task as the caller and its sources
+as `task`. A proposal for such an action points at the record that caused it, in place of a tool
+call.
 
 ## Deadlines
 
@@ -156,8 +171,8 @@ now and at the attempt's time. This is the same decision point the call went thr
 An attempt runs in three stages, each committed under the action's lease:
 
 1. The runner records the attempt's start.
-2. It calls the connector, with the action ID as the idempotency key, and renews the lease while the
-   call runs.
+2. It calls the connector with the attempt's idempotency key, and renews the lease while the call
+   runs.
 3. It records the result and the outcome together, and frees the lease.
 
 A claim that finds an attempt started with no result recorded marks the action unknown and calls no
@@ -186,6 +201,12 @@ The connector's reply picks the outcome:
 
 A thrown call counts as ambiguous, because a timeout or a dropped connection may have come after the
 provider acted.
+
+The idempotency key is the action ID until an attempt is refused, and the ID with the count of
+refused attempts after that, such as `<action ID>.2`. A provider that refuses a call can keep its
+key and answer every retry with the same refusal, so each retry after a refusal takes a key of its
+own. An attempt after an unknown outcome keeps the last key, so a provider that acted on it answers
+with that first result.
 
 ## Retries
 
