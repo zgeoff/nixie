@@ -14,8 +14,8 @@ test('#describeConnectionError words an unknown code as a refusal', () => {
   );
 });
 
-test('#describeConnectionError words a failure that is no typed error as an unfinished call', () => {
+test('#describeConnectionError words a failure that is no typed error as an unknown result', () => {
   expect(describeConnectionError(new Error('network down'))).toBe(
-    'The call did not finish, so nothing changed. Try again.',
+    'nixie did not answer, so this may or may not have changed. Reload the page before you try again.',
   );
 });

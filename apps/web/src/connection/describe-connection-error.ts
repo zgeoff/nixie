@@ -23,5 +23,5 @@ export function describeConnectionError(error: unknown): string {
     );
   }
 
-  return 'The call did not finish, so nothing changed. Try again.';
+  return 'nixie did not answer, so this may or may not have changed. Reload the page before you try again.';
 }
