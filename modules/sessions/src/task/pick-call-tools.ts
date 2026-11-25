@@ -9,7 +9,15 @@ const callExcludedTools: ReadonlySet<string> = new Set([
   taskReportToolName,
 ]);
 
-// A call holds the conversation's tool list, less the tools that start work, ring or end a run.
+const hangUpToolName = 'call.hang_up';
+
+// A call holds the conversation's tool list, less the tools that start work, ring or end a run,
+// and it adds the tool that ends the call.
 export function pickCallTools(conversationToolNames: readonly string[]): readonly string[] {
-  return conversationToolNames.filter((tool) => !callExcludedTools.has(tool));
+  return [
+    ...conversationToolNames.filter(
+      (tool) => !callExcludedTools.has(tool) && tool !== hangUpToolName,
+    ),
+    hangUpToolName,
+  ];
 }

@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import { pickCallTools } from './pick-call-tools';
 
-test('it keeps the conversation connectors and drops the tools that start work, ring or report', () => {
+test('it keeps the conversation connectors, drops the tools that start work, ring or report, and adds hang up', () => {
   const tools = pickCallTools([
     'calendar.list_events',
     'web.search',
@@ -13,5 +13,11 @@ test('it keeps the conversation connectors and drops the tools that start work, 
     'time.now',
   ]);
 
-  expect(tools).toStrictEqual(['calendar.list_events', 'web.search', 'task.message', 'time.now']);
+  expect(tools).toStrictEqual([
+    'calendar.list_events',
+    'web.search',
+    'task.message',
+    'time.now',
+    'call.hang_up',
+  ]);
 });

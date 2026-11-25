@@ -108,8 +108,9 @@ called `seedThrough`. The runner runs the same turn code as a started task, with
 - A new session opens with two threads: the conversation's summary and recent turns through
   `seedThrough`, then the call's own thread. The call's thread shows the user's speech, the speech
   layer's small talk and the replies.
-- The call gets the conversation's tool list, so its connectors answer a request such as "what is on
-  today". It never gets `call.ring`, `task.start`, `worker.run` or `task.report`.
+- The call gets the conversation's tool list with `call.hang_up`, so its connectors answer a request
+  such as "what is on today". It never gets `call.ring`, `task.start`, `worker.run` or
+  `task.report`.
 
 ## Hand-offs
 
@@ -130,7 +131,9 @@ of its replies to the speech layer in one `answer` call for each hand-off the tu
 started with and the ones that landed during it, oldest first. A hand-off that already has its
 answer gets no second one. A turn that fails, passes a limit or writes no text sends the
 `couldnt_finish` line instead, so the speech layer never makes up an answer, and the module writes
-that line as a `call.spoke` record. A turn that the user cut sends nothing.
+that line as a `call.spoke` record. A turn that throws answers every hand-off that landed on the
+call's thread since it started, as one that fails does. A turn that the user cut sends nothing, and
+a hand-off that landed during it stays unread for the next turn to answer.
 
 When no answer has been sent `hold_after_ms` after a hand-off, the module sends the `holding` line
 through `say`. That line is not part of the answer. The module writes it as a `call.spoke` record

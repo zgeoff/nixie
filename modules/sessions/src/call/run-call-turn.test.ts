@@ -65,7 +65,9 @@ async function setupTest() {
     interrupt: interrupt.signal,
   });
 
-  return { answers, writeHandOff, runTurn, buildInput };
+  const cut = () => interrupt.abort();
+
+  return { answers, writeHandOff, runTurn, buildInput, cut };
 }
 
 test('it answers each hand-off of the turn once, oldest first, when two are in its inbox', async () => {
@@ -121,9 +123,9 @@ test('it answers each hand-off of a failed turn with the failure and rethrows', 
     Promise.reject(new Error('the model failed')),
   );
 
-  expect(ended).rejects.toThrow('the model failed');
-
   await ended.catch(() => null);
+
+  expect(ended).rejects.toThrow('the model failed');
 
   expect(ctx.answers.map((answer) => [answer.handOffID, answer.isFailed])).toStrictEqual([
     ['h1', true],
@@ -149,4 +151,45 @@ test('it answers each hand-off of a turn that stopped at a limit with the failur
     ['h1', true],
     ['h2', true],
   ]);
+});
+
+test('it answers a hand-off that landed during a failed turn with the failure', async () => {
+  const ctx = await setupTest();
+  const first = await ctx.writeHandOff('h1');
+
+  const ended = ctx.runTurn(ctx.buildInput([first]), async () => {
+    await ctx.writeHandOff('h2');
+
+    throw new Error('the model failed');
+  });
+
+  await ended.catch(() => null);
+
+  expect(ended).rejects.toThrow('the model failed');
+
+  expect(ctx.answers.map((answer) => [answer.handOffID, answer.isFailed])).toStrictEqual([
+    ['h1', true],
+    ['h2', true],
+  ]);
+});
+
+test('it leaves a hand-off that landed during a cut turn unread for the next turn', async () => {
+  const ctx = await setupTest();
+  const first = await ctx.writeHandOff('h1');
+
+  ctx.cut();
+
+  const result = await ctx.runTurn(ctx.buildInput([first]), async () => {
+    const live = await ctx.writeHandOff('h2');
+
+    return { next: 'wait', records: [], acknowledged: [first.sequence, live.sequence] };
+  });
+
+  expect(result).toStrictEqual({
+    next: 'continue',
+    records: [],
+    acknowledged: [first.sequence],
+  });
+
+  expect(ctx.answers).toStrictEqual([]);
 });
