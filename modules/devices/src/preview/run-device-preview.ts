@@ -6,10 +6,13 @@ import { readScreenState } from '../screen/read-screen-state';
 import type { PageError } from '../stream/create-page-errors';
 import type { DevicePreviewOptions, DeviceToolOptions } from '../tool/device-tool-options';
 import type { Device, LayoutView, ScreenPixels } from '../types';
+import { buildFetchReplies } from './build-fetch-replies';
 import { buildPreviewPage } from './build-preview-page';
+import { collectPagePackages } from './collect-page-packages';
 import { collectSurfaceImages } from './collect-surface-images';
 import { pickPreviewSurface } from './pick-preview-surface';
 import { readPreviewImages } from './read-preview-images';
+import { readPreviewPackages } from './read-preview-packages';
 
 export interface DevicePreview {
   // null while the device is offline, which holds no size
@@ -70,6 +73,12 @@ async function drawPicture(
 
   const retained = new Map(retainedMessages.map((message) => [message.region, message.data]));
 
+  const packages = await readPreviewPackages(options.log, collectPagePackages(inputs.layout));
+
+  const fetchReplies = buildFetchReplies(
+    options.streams.fetches.readAll(device.deviceID, collectShownIDs(inputs.layout)),
+  );
+
   const outcome = await preview.draw({
     width: inputs.pixels.width,
     height: inputs.pixels.height,
@@ -78,6 +87,8 @@ async function drawPicture(
       surface,
       images,
       retained,
+      packages,
+      fetchReplies,
       nowMs: inputs.nowMs,
       timeZone: inputs.pixels.timeZone ?? preview.timeZone,
     }),

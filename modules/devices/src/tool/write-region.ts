@@ -5,6 +5,7 @@ import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import invariant from 'tiny-invariant';
 import { readLayout } from '../layout/read-layout';
 import { deviceRegionShownCodec } from '../record/device-region-shown-codec';
+import type { DeclaredFetch } from '../stream/create-page-fetches';
 import type { DeviceTables } from '../types';
 import type { DeviceToolOptions } from './device-tool-options';
 
@@ -17,8 +18,16 @@ interface RegionWrite {
   readonly callSequence: number;
   readonly region: string;
   readonly content: RegionContent;
+
+  // the fetches that the content declares, which the page's nixie.data reads once they ran
+  readonly fetches: readonly DeclaredFetch[];
   readonly untilMs: number | null;
   readonly onEnd: 'blank' | 'previous';
+}
+
+// What a written region shows: the short ID of its content.
+export interface WrittenRegion {
+  readonly shownID: string;
 }
 
 // Records a region's content sealed under the record's own key, and points the region at it. The
@@ -27,7 +36,7 @@ interface RegionWrite {
 export async function writeRegion(
   options: DeviceToolOptions,
   write: RegionWrite,
-): Promise<'written' | null> {
+): Promise<WrittenRegion | null> {
   const outcome = await withWriteTransaction(options.log.writer, async (tx) => {
     const inTransaction = { ...options.log, writer: { ...options.log.writer, db: tx } };
 
@@ -61,6 +70,7 @@ export async function writeRegion(
           until: write.untilMs,
           onEnd: write.onEnd,
           previous: write.onEnd === 'previous' ? (region.shown?.sequence ?? null) : null,
+          call: write.callSequence,
         }),
         erasable: { content: toStoredContent(write.content) },
       },
@@ -88,13 +98,21 @@ export async function writeRegion(
       .where('device_id', '=', write.deviceID)
       .execute();
 
-    return 'written';
+    return { shownID };
   });
 
-  if (outcome === 'written') {
+  if (outcome !== null) {
     options.streams.errors.remove(write.deviceID, write.region);
     options.streams.messages.remove(write.deviceID, write.region);
     options.streams.tickets.remove(write.deviceID, write.region);
+    options.streams.fetches.remove(write.deviceID, write.region);
+
+    if (write.fetches.length > 0) {
+      options.streams.fetches.declare(
+        { deviceID: write.deviceID, region: write.region },
+        { shown: outcome.shownID, fetches: write.fetches, isCovered: true },
+      );
+    }
   }
 
   return outcome;
@@ -109,10 +127,25 @@ function toStoredContent(content: RegionContent): JSONObject {
   }
 
   if (content.kind === 'html') {
-    const page = { kind: content.kind, html: content.html };
-
-    return content.images === undefined ? page : { ...page, images: content.images };
+    return {
+      kind: content.kind,
+      html: content.html,
+      ...(content.images === undefined ? {} : { images: content.images }),
+      ...(content.packages === undefined ? {} : { packages: content.packages }),
+      ...(content.fetches === undefined ? {} : { fetches: toStoredFetches(content.fetches) }),
+    };
   }
 
   return content;
+}
+
+// A fetch as the stored JSON holds it, which leaves out a refresh that the call left out.
+function toStoredFetches(
+  fetches: NonNullable<Extract<RegionContent, { kind: 'html' }>['fetches']>,
+): JSONObject[] {
+  return fetches.map((fetch): JSONObject =>
+    fetch.refreshMinutes === undefined
+      ? { url: fetch.url }
+      : { url: fetch.url, refreshMinutes: fetch.refreshMinutes },
+  );
 }

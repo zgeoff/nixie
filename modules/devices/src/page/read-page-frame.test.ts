@@ -157,3 +157,30 @@ test('#readPageImage serves nothing once a forget removed the image', async () =
 
   expect(served).toBeNull();
 });
+
+test('#readPageFrame opens script loading to the packages the page names and to no other approved one', async () => {
+  const ctx = await setupTest();
+
+  await ctx.seed.package('chart.js@4.4.6', { 'dist/chart.js': 'var Chart = 1;' });
+  await ctx.seed.package('d3@7.9.0', { 'dist/d3.js': 'var d3 = 1;' });
+  await ctx.fillPage({ html: '<p>x</p>', packages: ['chart.js@4.4.6'] });
+
+  const tickets = await ctx.issue();
+  const frame = await ctx.readFrame(tickets.frame);
+
+  expect(frame?.policy).toContain('https://nixie.test/rpc/device/packages/chart.js@4.4.6/');
+  expect(frame?.policy).not.toContain('d3@7.9.0');
+  expect(frame?.policy).toContain("connect-src 'none'");
+});
+
+test('#readPageFrame opens nothing for a page that names no package', async () => {
+  const ctx = await setupTest();
+
+  await ctx.seed.package('chart.js@4.4.6', { 'dist/chart.js': 'var Chart = 1;' });
+  await ctx.fillPage({ html: '<p>x</p>' });
+
+  const tickets = await ctx.issue();
+  const frame = await ctx.readFrame(tickets.frame);
+
+  expect(frame?.policy).not.toContain('/rpc/device/packages/');
+});

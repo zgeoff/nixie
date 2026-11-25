@@ -1,16 +1,22 @@
 import { expect, mock, test } from 'bun:test';
 import { encodeTestImage } from '@heynixie/connectors/test-utils';
 import { readPreviewPage, startTestDevices } from '../test-utils';
+import { buildDeviceTools } from './build-device-tools';
 import type { DevicePreviewOptions } from './device-tool-options';
 
 type Render = DevicePreviewOptions['draw'];
 
-async function setupTest() {
+interface TestFetching {
+  readonly allowedHosts: readonly string[];
+}
+
+async function setupTest(fetching?: TestFetching) {
   // each test that needs a picture sets the render's outcome itself
   const draw = mock<Render>(() => Promise.resolve({ kind: 'failed' as const, reason: 'not set' }));
 
   const ctx = await startTestDevices({
     preview: { draw, timeZone: 'UTC' },
+    ...(fetching === undefined ? {} : { fetching }),
   });
 
   const device = await ctx.seed.screenOnDevice();
@@ -421,4 +427,118 @@ test('it returns no error for a region that a new layout cleared', async () => {
   const outcome = await ctx.call('device.preview', { device: ctx.device.deviceID });
 
   expect(outcome).toMatchObject({ result: { errors: [] } });
+});
+
+test('it draws a page with the files of the approved packages it names, and no others', async () => {
+  const ctx = await setupTest({ allowedHosts: [] });
+
+  await ctx.seed.package('chart.js@4.4.6', { 'dist/chart.js': 'var Chart = 1;' });
+  await ctx.seed.package('d3@7.9.0', { 'dist/d3.js': 'var d3 = 1;' });
+
+  await ctx.call('device.layout', {
+    device: ctx.device.deviceID,
+    columns: ['1fr'],
+    rows: ['1fr'],
+    regions: [{ name: 'pond', column: 1, row: 1 }],
+  });
+
+  await ctx.call('device.region', {
+    device: ctx.device.deviceID,
+    region: 'pond',
+    content: {
+      kind: 'html',
+      html: '<script src="http://nixie-render.invalid/packages/chart.js@4.4.6/dist/chart.js"></script>',
+      packages: ['chart.js@4.4.6'],
+    },
+  });
+
+  await ctx.call('device.preview', { device: ctx.device.deviceID });
+
+  const paths = ctx.draw.mock.calls[0]?.[0].files.map((file) => file.path) ?? [];
+
+  expect(paths).toContain('packages/chart.js@4.4.6/dist/chart.js');
+  expect(paths).not.toContain('packages/d3@7.9.0/dist/d3.js');
+});
+
+test('it draws a page with what its declared fetches returned, and with their refusals', async () => {
+  const ctx = await setupTest({ allowedHosts: [] });
+
+  await ctx.call('device.layout', {
+    device: ctx.device.deviceID,
+    columns: ['1fr', '1fr'],
+    rows: ['1fr'],
+    regions: [
+      { name: 'pond', column: 1, row: 1 },
+      { name: 'note', column: 2, row: 1 },
+    ],
+  });
+
+  await ctx.call('device.region', {
+    device: ctx.device.deviceID,
+    region: 'pond',
+    content: { kind: 'html', html: '<p>x</p>', fetches: [{ url: 'https://tides.example/today' }] },
+  });
+
+  await ctx.call('device.region', {
+    device: ctx.device.deviceID,
+    region: 'note',
+    content: { kind: 'html', html: '<p>x</p>', fetches: [{ url: 'https://weather.example/now' }] },
+  });
+
+  const layout = await ctx.readLayout(ctx.device.deviceID);
+
+  const shownOf = (name: string) =>
+    layout?.regions.find((candidate) => candidate.name === name)?.shown?.shownID ?? '';
+
+  ctx.streams.fetches.record(
+    {
+      deviceID: ctx.device.deviceID,
+      region: 'pond',
+      shown: shownOf('pond'),
+      url: 'https://tides.example/today',
+    },
+    {
+      kind: 'body',
+      status: 200,
+      type: 'application/json',
+      body: '{"high":"14:05"}',
+      fetchedAtMs: ctx.clock.now(),
+    },
+  );
+
+  ctx.streams.fetches.record(
+    {
+      deviceID: ctx.device.deviceID,
+      region: 'note',
+      shown: shownOf('note'),
+      url: 'https://weather.example/now',
+    },
+    {
+      kind: 'refused',
+      reason: 'the rules no longer allow it',
+    },
+  );
+
+  await ctx.call('device.preview', { device: ctx.device.deviceID });
+
+  const files = ctx.draw.mock.calls[0]?.[0].files ?? [];
+  const pages = files.map((file) => Buffer.from(file.base64, 'base64').toString('utf8')).join('\n');
+
+  expect(pages).toContain('14:05');
+  expect(pages).toContain('REFUSED');
+});
+
+test('it marks the picture and the errors as outside content, because a page can show fetched text', async () => {
+  const ctx = await setupTest();
+
+  const tool = buildDeviceTools({
+    log: ctx.log,
+    definitions: ctx.definitions,
+    clock: ctx.clock,
+    streams: ctx.streams,
+  }).find((candidate) => candidate.name === 'device.preview');
+
+  expect([tool?.declaration.results['picture'], tool?.declaration.results['errors']]).toStrictEqual(
+    ['untrusted', 'untrusted'],
+  );
 });

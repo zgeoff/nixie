@@ -25,6 +25,10 @@ export function buildPreviewPages(input: PreviewPageInput): ReadonlyMap<string, 
 
     const retained = input.retained?.get(region.name);
 
+    const packageBases = (content.packages ?? []).flatMap((spec) =>
+      input.packages?.has(spec) === true ? [`${renderOrigin}packages/${spec}/`] : [],
+    );
+
     const frame = buildPageFrame({
       html: content.html,
       images: new Map(
@@ -36,6 +40,11 @@ export function buildPreviewPages(input: PreviewPageInput): ReadonlyMap<string, 
       imageBase: `${renderOrigin}images/`,
       initialMessages: retained === undefined ? [] : [retained],
       isPolicyInline: true,
+      packageBases,
+      fetches: {
+        declared: (content.fetches ?? []).map((fetch) => fetch.url),
+        replies: input.fetchReplies?.get(region.name) ?? {},
+      },
     });
 
     pages.set(region.name, {

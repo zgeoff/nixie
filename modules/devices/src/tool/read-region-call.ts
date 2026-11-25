@@ -1,16 +1,19 @@
 import { readImageState } from '@heynixie/connectors';
 import type { ImageState } from '@heynixie/connectors';
-import { regionContentSchema } from '@heynixie/contract';
+import { parsePackageSpec, regionContentSchema } from '@heynixie/contract';
 import type { RegionContent } from '@heynixie/contract';
 import type { JSONObject } from '@heynixie/log';
 import { match } from 'ts-pattern';
 import { z } from 'zod';
 import { readDeviceByShortID } from '../device/read-device-by-short-id';
+import { pickDeclaredFetches } from '../fetch/pick-declared-fetches';
 import { readLayout } from '../layout/read-layout';
+import { readDevicePackage } from '../package/read-device-packages';
+import type { DeclaredFetch } from '../stream/create-page-fetches';
 import type { Device, LayoutView, RegionView } from '../types';
 import type { DeviceToolOptions } from './device-tool-options';
 import { pickRegionRefusal } from './pick-region-refusal';
-import type { RegionRefusal } from './pick-region-refusal';
+import type { PageFault, RegionRefusal } from './pick-region-refusal';
 
 const regionArguments = z.object({
   device: z.string(),
@@ -33,6 +36,10 @@ export type RegionCall =
 
       // the content, with an image named by its short ID
       readonly content: RegionContent;
+
+      // the declared fetches of a page, and the host of each; empty for any other content
+      readonly fetches: readonly DeclaredFetch[];
+      readonly hosts: readonly string[];
     };
 
 // Reads what a device.region call needs as of now: the device, its layout and the region the call
@@ -49,7 +56,6 @@ export async function readRegionCall(
   }
 
   const args = parsed.data;
-  const unbuilt = pickUnbuiltPart(args.content);
   const content = regionContentSchema.safeParse(args.content);
 
   if (!content.success) {
@@ -64,11 +70,12 @@ export async function readRegionCall(
   const region = layout?.regions.find((candidate) => candidate.name === args.region);
 
   const states = await readImageStates(options, content.data);
+  const page = await readPage(options, content.data);
 
   const refusal = pickRegionRefusal({
     device,
     isRegionKnown: region !== undefined,
-    unbuilt,
+    pageFault: page.fault,
     images: states,
     isOnline: options.streams.isOnline(args.device),
   });
@@ -84,23 +91,9 @@ export async function readRegionCall(
     layout,
     region,
     content: await nameImage(options, content.data),
+    fetches: page.fetches,
+    hosts: page.hosts,
   };
-}
-
-// The part of a page that a later release builds, when the call names it. The content schema
-// strips a key it does not know, so this reads the keys before the parse.
-function pickUnbuiltPart(
-  content: Readonly<Record<string, unknown>>,
-): 'PACKAGES_NOT_BUILT' | 'FETCHES_NOT_BUILT' | null {
-  if (content['kind'] !== 'html') {
-    return null;
-  }
-
-  if (content['packages'] !== undefined) {
-    return 'PACKAGES_NOT_BUILT';
-  }
-
-  return content['fetches'] === undefined ? null : 'FETCHES_NOT_BUILT';
 }
 
 // The state of each image that the content names: the one image of an image region, or each image
@@ -121,6 +114,50 @@ async function readOneImageState(options: DeviceToolOptions, image: string): Pro
   const found = await readImageState(options.log, image);
 
   return found.state;
+}
+
+interface PickedPage {
+  readonly fault: PageFault | null;
+  readonly fetches: readonly DeclaredFetch[];
+  readonly hosts: readonly string[];
+}
+
+// The first fault of the packages and fetches that a page names, and its fetches. A package that
+// no approval covers, a fetch that is no public https URL, and a fetch with no fetch sandbox each
+// refuse the call, so a page that names one never reaches a device.
+async function readPage(options: DeviceToolOptions, content: RegionContent): Promise<PickedPage> {
+  const none: PickedPage = { fault: null, fetches: [], hosts: [] };
+
+  if (content.kind !== 'html') {
+    return none;
+  }
+
+  for (const spec of content.packages ?? []) {
+    const parsed = parsePackageSpec(spec);
+
+    const found =
+      parsed === null
+        ? null
+        : await readDevicePackage(options.log.writer.db, parsed.name, parsed.version);
+
+    if (found === null) {
+      return { ...none, fault: 'UNKNOWN_PACKAGE' };
+    }
+  }
+
+  if (content.fetches === undefined || content.fetches.length === 0) {
+    return none;
+  }
+
+  if (options.fetching === undefined) {
+    return { ...none, fault: 'FETCHES_UNAVAILABLE' };
+  }
+
+  const picked = pickDeclaredFetches(content.fetches, options.fetching.checkAddress);
+
+  return picked.status === 'refused'
+    ? { ...none, fault: 'BAD_FETCH' }
+    : { fault: null, fetches: picked.fetches, hosts: picked.hosts };
 }
 
 // The content with an image region's image named by its short ID. A page keeps each declared ID as

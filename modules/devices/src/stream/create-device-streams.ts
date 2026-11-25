@@ -4,6 +4,8 @@ import type { PageErrors } from './create-page-errors';
 import { createPageErrors } from './create-page-errors';
 import type { PageEventLimits } from './create-page-event-limits';
 import { createPageEventLimits } from './create-page-event-limits';
+import type { PageFetches } from './create-page-fetches';
+import { createPageFetches } from './create-page-fetches';
 import type { PageMessage, PageMessages } from './create-page-messages';
 import { createPageMessages } from './create-page-messages';
 import type { PageTickets } from './create-page-tickets';
@@ -13,8 +15,20 @@ import { createPageTickets } from './create-page-tickets';
 // reads as offline.
 export const deviceOfflineGraceMs = 60_000;
 
+// A refresh of a declared fetch, which the device hands to the page that declared it.
+export interface DataNotice {
+  readonly region: string;
+
+  // the short ID of the content that declared the fetch
+  readonly shown: string;
+  readonly url: string;
+}
+
 export interface OpenDeviceStream {
   readonly close: () => void;
+
+  // the refreshes that arrived since the last read, oldest first
+  readonly readNotices: () => readonly DataNotice[];
 
   // the messages that arrived since the last read, oldest first
   readonly readMessages: () => readonly PageMessage[];
@@ -57,6 +71,13 @@ export interface DeviceStreams {
   // the limits on the events of each page region
   readonly eventLimits: PageEventLimits;
 
+  // the fetches that each page region declares, and what they returned
+  readonly fetches: PageFetches;
+
+  // Tells each open stream of the device that a declared fetch refreshed, and does nothing while
+  // the device is offline.
+  readonly sendNotice: (deviceID: string, notice: DataNotice) => void;
+
   // Hands a message to each open stream of the device, and returns whether it has one. A message to
   // an offline device reaches no stream.
   readonly sendMessage: (deviceID: string, message: PageMessage) => boolean;
@@ -68,6 +89,7 @@ export interface DeviceStreams {
 interface HeldStream {
   pixels: ScreenPixels;
   queue: PageMessage[];
+  notices: DataNotice[];
   wakers: Set<() => void>;
 }
 
@@ -151,6 +173,16 @@ export function createDeviceStreams(options: DeviceStreamsOptions): DeviceStream
     tickets: createPageTickets(),
     messages: createPageMessages(),
     eventLimits: createPageEventLimits(),
+    fetches: createPageFetches(),
+    sendNotice: (deviceID, notice) => {
+      for (const stream of devices.get(deviceID)?.streams ?? []) {
+        stream.notices.push(notice);
+
+        for (const wake of stream.wakers) {
+          wake();
+        }
+      }
+    },
     sendMessage: (deviceID, message) => {
       const streams = devices.get(deviceID)?.streams ?? [];
 
@@ -166,7 +198,7 @@ export function createDeviceStreams(options: DeviceStreamsOptions): DeviceStream
     },
     open: (deviceID, pixels) => {
       const held = hold(deviceID);
-      const stream: HeldStream = { pixels, queue: [], wakers: new Set() };
+      const stream: HeldStream = { pixels, queue: [], notices: [], wakers: new Set() };
 
       held.grace?.abort();
       held.grace = null;
@@ -184,9 +216,10 @@ export function createDeviceStreams(options: DeviceStreamsOptions): DeviceStream
           close(deviceID, stream);
         },
         readMessages: () => stream.queue.splice(0),
+        readNotices: () => stream.notices.splice(0),
         waitForMessage: (signal) =>
           new Promise<void>((resolve) => {
-            if (stream.queue.length > 0 || signal.aborted) {
+            if (stream.queue.length > 0 || stream.notices.length > 0 || signal.aborted) {
               resolve();
 
               return;
