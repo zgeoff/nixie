@@ -107,6 +107,7 @@ export const ignoredPaths = [
   '**/package.json',
   'bun.lock',
   '.bun-version',
+  'chrome-pin.json',
   '.release-please-manifest.json',
   'release-please-config.json',
 

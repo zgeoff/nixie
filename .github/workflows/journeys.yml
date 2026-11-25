@@ -20,6 +20,7 @@ jobs:
     with:
       paths: |
         .github/workflows/journeys.yml
+        chrome-pin.json
         .bun-version
         bun.lock
         bunfig.toml
