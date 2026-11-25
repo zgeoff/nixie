@@ -77,6 +77,7 @@ test('it finds a sent mail by its Message-ID', async () => {
     subject: 'Hello',
     text: 'Hello.',
     references: [],
+    files: [],
     sentAt: 5000,
   });
 

@@ -31,7 +31,9 @@ test('#parseMail reads the headers and the text of a plain mail', () => {
     cc: ['pat@home.example.org', 'lee@home.example.org'],
     subject: 'Your sign-in code',
     text: 'Your code is 482913.',
+    html: '',
     attachments: [],
+    attachmentContents: [],
   });
 });
 
@@ -121,7 +123,7 @@ test('#parseMail prefers the plain part of a multipart mail and lists its attach
 test.each([
   ['nothing after the closing boundary', ['--b1--', '']],
   ['text after the closing boundary', ['--b1--', 'Sent from my phone.']],
-])('#parseMail reads the HTML part of a multipart mail with %s', (_name, ending) => {
+])('#parseMail keeps the HTML part of a multipart mail with %s', (_name, ending) => {
   const ctx = setupTest();
 
   const parsed = parseMail(
@@ -138,10 +140,13 @@ test.each([
     ]),
   );
 
-  expect(parsed.text).toBe('Tap Reset password (https://library.example.org/reset?token=t0k3n).');
+  expect([parsed.text, parsed.html]).toStrictEqual([
+    '',
+    '<p>Tap <a href="https://library.example.org/reset?token=t0k3n">Reset password</a>.</p>',
+  ]);
 });
 
-test('#parseMail prefers the HTML part over a plain part with no text', () => {
+test('#parseMail keeps the HTML of a part when the plain part has no text', () => {
   const ctx = setupTest();
 
   const parsed = parseMail(
@@ -162,10 +167,10 @@ test('#parseMail prefers the HTML part over a plain part with no text', () => {
     ]),
   );
 
-  expect(parsed.text).toBe('Your code is 482913.');
+  expect([parsed.text, parsed.html]).toStrictEqual(['', '<p>Your code is <b>482913</b>.</p>']);
 });
 
-test('#parseMail shows each link of an HTML mail beside its label', () => {
+test('#parseMail keeps the HTML of an HTML mail as it came, for the sandbox to read', () => {
   const ctx = setupTest();
 
   const parsed = parseMail(
@@ -179,7 +184,62 @@ test('#parseMail shows each link of an HTML mail beside its label', () => {
     ]),
   );
 
-  expect(parsed.text).toBe('Tap Reset password (https://library.example.org/reset?token=t0k3n).');
+  expect([parsed.text, parsed.html]).toStrictEqual([
+    '',
+    '<p>Tap <a href="https://library.example.org/reset?token=t0k3n">Reset password</a>.</p>\r\n<style>p { color: red }</style>',
+  ]);
+});
+
+test('#parseMail keeps no HTML for a mail that has a plain part', () => {
+  const ctx = setupTest();
+
+  const parsed = parseMail(
+    ctx.buildRaw([
+      'From: a@x.example.org',
+      'Subject: Board',
+      'Content-Type: multipart/alternative; boundary="b2"',
+      '',
+      '--b2',
+      'Content-Type: text/plain; charset=utf-8',
+      '',
+      'See the board.',
+      '--b2',
+      'Content-Type: text/html; charset=utf-8',
+      '',
+      '<p>See the <b>board</b>.</p>',
+      '--b2--',
+    ]),
+  );
+
+  expect([parsed.text, parsed.html]).toStrictEqual(['See the board.', '']);
+});
+
+test('#parseMail returns the bytes of each attachment beside its name', () => {
+  const ctx = setupTest();
+
+  const parsed = parseMail(
+    ctx.buildRaw([
+      'From: a@x.example.org',
+      'Subject: Board',
+      'Content-Type: multipart/mixed; boundary="b1"',
+      '',
+      '--b1',
+      'Content-Type: text/plain',
+      '',
+      'See the board.',
+      '--b1',
+      'Content-Disposition: attachment; filename="../board.png"',
+      'Content-Transfer-Encoding: base64',
+      '',
+      Buffer.from([1, 2, 3]).toString('base64'),
+      '--b1--',
+    ]),
+  );
+
+  expect([parsed.attachments, parsed.attachmentContents]).toStrictEqual([
+    [{ name: 'board.png', bytes: 3 }],
+    [new Uint8Array([1, 2, 3])],
+  ]);
 });
 
 test('#parseMail reads a mail with no Message-ID header as one with none', () => {

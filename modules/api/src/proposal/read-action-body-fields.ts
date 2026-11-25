@@ -1,5 +1,5 @@
 import type { Log } from '@heynixie/log';
-import { buildMailBodyFields } from '@heynixie/mail';
+import { readMailBodyFields } from '@heynixie/mail';
 import type { BodyFields, BodyFieldsRequest } from '@heynixie/policy';
 import type { APISettings } from '../types';
 import { readForgetBodyFields } from './read-forget-body-fields';
@@ -14,7 +14,8 @@ export async function readActionBodyFields(
   request: BodyFieldsRequest,
   mail: APISettings['mail'],
 ): Promise<BodyFields> {
-  const sends = mail === undefined ? null : buildMailBodyFields(request, mail.replyExpiryMs);
+  const sends =
+    mail === undefined ? null : await readMailBodyFields(log, request, mail.replyExpiryMs);
 
   if (sends !== null && sends.status !== 'none') {
     return sends;

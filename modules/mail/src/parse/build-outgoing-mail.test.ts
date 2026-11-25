@@ -14,6 +14,7 @@ function setupTest() {
     subject: 'A question',
     text: 'Could you extend my loan by a week?',
     references,
+    files: [],
     sentAt: Date.parse('2027-03-09T00:00:00Z'),
   };
 
@@ -40,7 +41,9 @@ test('#buildOutgoingMail builds a message that reads back as it was written', ()
     cc: [],
     subject: 'A question',
     text: 'Could you extend my loan by a week?',
+    html: '',
     attachments: [],
+    attachmentContents: [],
   });
 });
 
@@ -80,4 +83,26 @@ test.each([
   const ctx = setupTest();
 
   expect(buildOutgoingMail({ ...ctx.draft, ...overrides })).toBeNull();
+});
+
+test('#buildOutgoingMail carries each file as an attachment that reads back with its bytes', () => {
+  const ctx = setupTest();
+
+  const board = new Uint8Array([1, 2, 3, 4, 5]);
+
+  const parsed = ctx.build({
+    files: [
+      { name: 'board.png', mediaType: 'image/png', content: board },
+      { name: 'plan café.txt', mediaType: 'text/plain', content: new Uint8Array([104, 105]) },
+    ],
+  });
+
+  expect([parsed.text, parsed.attachments, parsed.attachmentContents]).toStrictEqual([
+    'Could you extend my loan by a week?',
+    [
+      { name: 'board.png', bytes: 5 },
+      { name: 'plan café.txt', bytes: 2 },
+    ],
+    [board, new Uint8Array([104, 105])],
+  ]);
 });

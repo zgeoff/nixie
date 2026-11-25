@@ -1,6 +1,11 @@
 import { expect, test } from 'bun:test';
+import { seedCodeRunFiles } from '@heynixie/connectors/test-utils';
 import { buildTaskSeeder } from '@heynixie/tasks/test-utils';
 import { buildToolRegistry } from '@heynixie/tools';
+import { formatLinkMark } from '@heynixie/wire';
+import { z } from 'zod';
+import { parseMail } from '../parse/parse-mail';
+import { writeReceivedMail } from '../store/write-received-mail';
 import { matchOutsideText, seedReceivedMail, startTestMail } from '../test-utils';
 import { buildMailTools } from './build-mail-tools';
 
@@ -34,7 +39,7 @@ async function setupTest() {
               },
             },
           },
-    declarations: buildMailTools(mail.context).map((tool) => tool.declaration),
+    declarations: buildMailTools(mail.context, mail.html).map((tool) => tool.declaration),
   };
 }
 
@@ -399,15 +404,261 @@ test('#mail.read numbers each link of the text as an ID of the session, and numb
 test('it registers every tool of the module, so each result field has a source', async () => {
   const ctx = await setupTest();
 
-  const registry = buildToolRegistry(buildMailTools(ctx.context));
+  const registry = buildToolRegistry(buildMailTools(ctx.context, ctx.html));
 
   expect(registry.toolNames).toStrictEqual([
     'mail.list',
     'mail.read',
+    'mail.save_attachment',
     'mail.send',
     'mail.reply',
     'mail.wake_set',
     'mail.wake_list',
     'mail.wake_cancel',
   ]);
+});
+
+test('#mail.save_attachment keeps an attachment as a file of the thread, with its bytes beside the result', async () => {
+  const ctx = await setupTest();
+
+  const board = new Uint8Array([37, 80, 68, 70, 1, 2, 3]);
+
+  const received = await seedReceivedMail(ctx, {
+    from: 'hello@library.example.org',
+    subject: 'Board',
+    text: 'See the board.',
+    attachments: [{ name: 'plan.pdf', content: board }],
+  });
+
+  const saved = await ctx.callTool('mail.save_attachment', {
+    message: received.shortID,
+    attachment: 1,
+  });
+
+  expect(saved).toMatchObject({
+    status: 'ok',
+    result: {
+      file: expect.stringMatching(/^[a-z0-9]+$/u),
+      name: 'plan.pdf',
+      bytes: 7,
+      mediaType: 'application/pdf',
+      files: [{ path: 'plan.pdf', bytes: 7 }],
+    },
+    attachments: [board],
+  });
+});
+
+test.each([
+  [
+    'an attachment number past the list',
+    (message: string) => ({ message, attachment: 2 }),
+    'UNKNOWN_ATTACHMENT',
+  ],
+  [
+    'a mail that does not exist',
+    () => ({ message: 'mnotamail00', attachment: 1 }),
+    'UNKNOWN_MESSAGE',
+  ],
+])('#mail.save_attachment refuses %s', async (_name, buildInput, code) => {
+  const ctx = await setupTest();
+
+  const received = await seedReceivedMail(ctx, {
+    from: 'hello@library.example.org',
+    subject: 'Board',
+    text: 'See the board.',
+    attachments: [{ name: 'board.png', content: new Uint8Array([1]) }],
+  });
+
+  const saved = await ctx.callTool('mail.save_attachment', buildInput(received.shortID));
+
+  expect(saved).toMatchObject({ status: 'error', message: expect.stringContaining(code) });
+});
+
+test('#mail.save_attachment refuses an attachment that the mailbox held too much to keep', async () => {
+  const ctx = await setupTest();
+
+  const hostMail = ctx.host.deliver({
+    from: 'hello@library.example.org',
+    subject: 'Big',
+    text: 'x',
+  });
+
+  const parsed = parseMail(hostMail.raw);
+
+  const received = await writeReceivedMail(ctx.context, hostMail, {
+    ...parsed,
+    attachments: [{ name: 'huge.bin', bytes: 30_000_000 }],
+    attachmentContents: [new Uint8Array()],
+  });
+
+  const saved = await ctx.callTool('mail.save_attachment', {
+    message: received.shortID,
+    attachment: 1,
+  });
+
+  expect(saved).toMatchObject({ status: 'error', message: expect.stringContaining('TOO_BIG') });
+});
+
+test('#mail.read lists each attachment by its number, name and size', async () => {
+  const ctx = await setupTest();
+
+  const received = await seedReceivedMail(ctx, {
+    from: 'hello@library.example.org',
+    subject: 'Board',
+    text: 'See the board.',
+    attachments: [{ name: 'board.png', content: new Uint8Array(30) }],
+  });
+
+  const opened = await ctx.callTool('mail.read', { message: received.shortID });
+
+  expect(opened).toMatchObject({
+    status: 'ok',
+    record: { attachments: [{ attachment: 1, name: 'board.png', bytes: 30 }] },
+  });
+});
+
+test('#mail.read reads the HTML of a mail in the fetch sandbox, and numbers each link of it', async () => {
+  const ctx = await setupTest();
+
+  const html = '<p>Code <a href="https://library.example.org/code?t=1">here</a></p>';
+
+  ctx.html.answer(html, {
+    kind: 'page',
+    url: 'about:blank',
+    status: 200,
+    contentType: 'text/html',
+    text: `Code here ${formatLinkMark(0)}`,
+    links: ['https://library.example.org/code?t=1'],
+    isTruncated: false,
+    blocked: null,
+    retryAfterMs: null,
+    isGated: false,
+  });
+
+  const received = await seedReceivedMail(ctx, {
+    from: 'hello@library.example.org',
+    subject: 'Code',
+    text: '',
+    html,
+  });
+
+  const opened = await ctx.callTool('mail.read', { message: received.shortID });
+
+  expect(opened).toMatchObject({
+    status: 'ok',
+    record: { text: 'Code here [L1 · library.example.org/code]' },
+  });
+});
+
+test('#mail.read leaves a mail unread when the sandbox cannot read its HTML', async () => {
+  const ctx = await setupTest();
+
+  const received = await seedReceivedMail(ctx, {
+    from: 'hello@library.example.org',
+    subject: 'Code',
+    text: '',
+    html: '<p>Unknown to the stand-in.</p>',
+  });
+
+  const opened = await ctx.callTool('mail.read', { message: received.shortID });
+  const listed = await ctx.callTool('mail.list', { unread: true });
+
+  expect(opened).toMatchObject({
+    status: 'error',
+    message: expect.stringContaining('HTML_UNREADABLE'),
+  });
+
+  expect(listed).toMatchObject({ result: { mails: [{ unread: true }] } });
+});
+
+test.each([
+  ['a file of no thread', { files: ['fnotafile00'] }, 'UNKNOWN_FILE'],
+  ['too many files', { files: Array.from({ length: 11 }, () => 'f') }, 'files'],
+])('#mail.send refuses %s', async (_name, extra, message) => {
+  const ctx = await setupTest();
+
+  const resolved = await ctx.resolveDestinations('mail.send', {
+    to: ['hello@library.example.org'],
+    subject: 'Plan',
+    text: 'See attached.',
+    ...extra,
+  });
+
+  expect(resolved).toMatchObject({ status: 'error', message: expect.stringContaining(message) });
+});
+
+test('#mail.send names each recipient as a destination, and accepts a file of the thread', async () => {
+  const ctx = await setupTest();
+
+  const seeded = await seedCodeRunFiles(ctx.context.log, {
+    thread: 'conversation',
+    writes: { 'out/plan.txt': 'Plan.' },
+  });
+
+  const resolved = await ctx.resolveDestinations('mail.send', {
+    to: ['hello@library.example.org'],
+    subject: 'Plan',
+    text: 'See attached.',
+    files: seeded.files.map((file) => file.file),
+  });
+
+  expect(resolved).toStrictEqual({
+    status: 'ok',
+    destinations: [{ value: 'hello@library.example.org', replyTarget: false }],
+  });
+});
+
+test('#mail.send refuses the file of another thread', async () => {
+  const ctx = await setupTest();
+
+  const seeded = await seedCodeRunFiles(ctx.context.log, {
+    thread: 'task-9',
+    writes: { 'out/plan.txt': 'Plan.' },
+  });
+
+  const resolved = await ctx.resolveDestinations('mail.send', {
+    to: ['hello@library.example.org'],
+    subject: 'Plan',
+    text: 'See attached.',
+    files: seeded.files.map((file) => file.file),
+  });
+
+  expect(resolved).toMatchObject({
+    status: 'error',
+    message: expect.stringContaining('UNKNOWN_FILE'),
+  });
+});
+
+test.each([
+  ['5ms', false],
+  ['30s', false],
+  ['1m', true],
+  ['7d', true],
+  ['off', true],
+])('#mail.send takes a reply wake of %s: %s', async (replyWake, isAllowed) => {
+  const ctx = await setupTest();
+
+  const tool = buildMailTools(ctx.context, ctx.html).find((entry) => entry.name === 'mail.send');
+  const replyWakeSchema = z.object({ pattern: z.string() });
+  const schema = z.object({ properties: z.object({ replyWake: replyWakeSchema }) });
+  const source = schema.parse(tool?.input).properties.replyWake.pattern;
+
+  const pattern = new RegExp(source, 'u');
+
+  expect(pattern.test(replyWake)).toBe(isAllowed);
+});
+
+test('#mail.list finds an HTML-only mail by a word of its HTML', async () => {
+  const ctx = await setupTest();
+
+  await seedReceivedMail(ctx, {
+    from: 'hello@library.example.org',
+    subject: 'Sign in',
+    text: '',
+    html: '<p>Your code is 482913.</p>',
+  });
+
+  const listed = await ctx.callTool('mail.list', { text: '482913' });
+
+  expect(listed).toMatchObject({ status: 'ok', result: { mails: [{ unread: true }] } });
 });

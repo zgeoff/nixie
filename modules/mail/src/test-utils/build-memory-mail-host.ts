@@ -18,6 +18,9 @@ export interface MemoryMail {
 
   // replaces the plain text body with an HTML body
   readonly html?: string;
+
+  // the files the mail carries
+  readonly attachments?: readonly { readonly name: string; readonly content: Uint8Array }[];
 }
 
 export interface SentMemoryMail {
@@ -169,5 +172,32 @@ function buildRaw(address: string, mail: MemoryMail): Uint8Array {
     `Content-Type: ${mail.html === undefined ? 'text/plain' : 'text/html'}; charset=utf-8`,
   ];
 
-  return Buffer.from(`${headers.join('\r\n')}\r\n\r\n${mail.html ?? mail.text}\r\n`, 'utf8');
+  const body = mail.html ?? mail.text;
+  const files = mail.attachments ?? [];
+
+  if (files.length === 0) {
+    return Buffer.from(`${headers.join('\r\n')}\r\n\r\n${body}\r\n`, 'utf8');
+  }
+
+  const parts = files.flatMap((file) => [
+    '--memory-boundary',
+    `Content-Disposition: attachment; filename="${file.name}"`,
+    'Content-Transfer-Encoding: base64',
+    '',
+    Buffer.from(file.content).toString('base64'),
+  ]);
+
+  const lines = [
+    ...headers.slice(0, -1),
+    `Content-Type: multipart/mixed; boundary="memory-boundary"`,
+    '',
+    '--memory-boundary',
+    headers.at(-1) ?? '',
+    '',
+    body,
+    ...parts,
+    '--memory-boundary--',
+  ];
+
+  return Buffer.from(`${lines.join('\r\n')}\r\n`, 'utf8');
 }

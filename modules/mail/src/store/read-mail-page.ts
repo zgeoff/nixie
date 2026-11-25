@@ -7,7 +7,7 @@ export interface MailQuery {
   // an address, or '@domain'
   readonly from?: string;
 
-  // a substring of the subject or the text
+  // a substring of the subject, the text or the source of an HTML body
   readonly text?: string;
   readonly isUnread?: boolean;
 
@@ -123,7 +123,8 @@ function isWanted(
     (query.from === undefined || isWakeMatch({ from: [query.from] }, mail)) &&
     (text === undefined ||
       fields.subject.toLowerCase().includes(text) ||
-      fields.text.toLowerCase().includes(text)) &&
+      fields.text.toLowerCase().includes(text) ||
+      fields.html.toLowerCase().includes(text)) &&
     (query.match === undefined || isWakeMatch(query.match, mail))
   );
 }

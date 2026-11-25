@@ -4,6 +4,7 @@ export type {
   HostMail,
   MailContext,
   MailHost,
+  MailHTMLReader,
   MailSettings,
   MailToolContext,
   OutgoingMail,
@@ -17,7 +18,7 @@ export type { MailConfig } from './config/mail-config-schema';
 export { mailConfigSchema } from './config/mail-config-schema';
 export { buildMailSettings } from './config/build-mail-settings';
 export { buildMailSource } from './source/build-mail-source';
-export { buildMailBodyFields } from './connector/build-mail-body-fields';
+export { readMailBodyFields } from './connector/read-mail-body-fields';
 export { buildMailConnectors } from './connector/build-mail-connectors';
 export { mailToolNames } from './connector/mail-tool-names';
 export { buildMailTools } from './tool/build-mail-tools';

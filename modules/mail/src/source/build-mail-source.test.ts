@@ -5,6 +5,7 @@ import { buildTaskSeeder } from '@heynixie/tasks/test-utils';
 import { buildMockToolCall, buildMockToolContext } from '@heynixie/tools/test-utils';
 import { startTriggerSources } from '@heynixie/triggers';
 import { readTestTriggerRows } from '@heynixie/triggers/test-utils';
+import { formatLinkMark } from '@heynixie/wire';
 import { waitFor } from '@zgeoff/testing';
 import { z } from 'zod';
 import { readMailPage } from '../store/read-mail-page';
@@ -14,6 +15,7 @@ import {
   matchOutsideText,
   startTestMail,
   startTestMailSource,
+  startTestSite,
   testMailAddress,
 } from '../test-utils';
 import { buildMailSource } from './build-mail-source';
@@ -177,6 +179,23 @@ test('it wakes the conversation with a mail that a rule matches, and the assista
 test('it lets the assistant open the reset link of a mail that a rule woke it for', async () => {
   const ctx = await setupTest();
 
+  const site = startTestSite({ '/reset': 'Choose a new password.' });
+  const resetURL = `${site.origin}/reset?token=t0k3n`;
+  const html = `<p>Tap <a href="${resetURL}">Reset password</a>.</p>`;
+
+  ctx.html.answer(html, {
+    kind: 'page',
+    url: 'about:blank',
+    status: 200,
+    contentType: 'text/html',
+    text: `Tap Reset password ${formatLinkMark(0)}.`,
+    links: [resetURL],
+    isTruncated: false,
+    blocked: null,
+    retryAfterMs: null,
+    isGated: false,
+  });
+
   await ctx.startSource();
   await ctx.callTool('mail.wake_set', { from: ['@library.example.org'], window: '1m' });
 
@@ -186,7 +205,7 @@ test('it lets the assistant open the reset link of a mail that a rule woke it fo
     from: 'hello@library.example.org',
     subject: 'Reset your password',
     text: '',
-    html: '<p>Tap <a href="https://library.example.org/reset?token=t0k3n">Reset password</a>.</p>',
+    html,
   });
 
   ctx.poll();
@@ -200,12 +219,7 @@ test('it lets the assistant open the reset link of a mail that a rule woke it fo
   const stored = await ctx.readStored();
   const opened = await ctx.callTool('mail.read', { message: stored.mails[0]?.message });
 
-  const webFetch = buildTestWebFetch(
-    ctx,
-    new Map([['https://library.example.org/reset?token=t0k3n', 'Choose a new password.']]),
-  );
-
-  const fetched = await webFetch.run(
+  const fetched = await buildTestWebFetch(ctx).run(
     buildMockToolCall({ tool: 'web_fetch', input: { link: 'L1' } }),
     buildMockToolContext({
       run: { tools: ['web_fetch'], session: { key: 'test-session', invalidatedThrough: 0 } },
@@ -214,19 +228,15 @@ test('it lets the assistant open the reset link of a mail that a rule woke it fo
 
   expect(opened).toMatchObject({
     status: 'ok',
-    result: {
-      text: matchOutsideText('Tap Reset password ([L1 · library.example.org/reset]).'),
-    },
+    result: { text: matchOutsideText('Tap Reset password [L1 · 127.0.0.1/reset].') },
   });
 
   expect(fetched).toMatchObject({
     status: 'ok',
-    result: {
-      url: 'https://library.example.org/reset?token=t0k3n',
-      status: 200,
-      text: 'Choose a new password.',
-    },
+    result: { url: resetURL, status: 200, text: 'Choose a new password.' },
   });
+
+  expect(site.requests).toStrictEqual(['/reset?token=t0k3n']);
 });
 
 test('it stores the mail of a host that started again, which the earlier cursor does not cover', async () => {

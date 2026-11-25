@@ -159,7 +159,7 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
           webFetch: parts.get('web_fetch').tool,
           computer: parts.get('computer').tools,
           coding: buildServerCodingTools(parts.get('context')),
-          mail: buildServerMailTools(mailContext),
+          mail: buildServerMailTools(mailContext, parts.get('web_fetch')),
 
           harnesses: collectProfileHarnesses(options.config.models),
           codeRun: parts.get('code_run').tool,

@@ -41,7 +41,8 @@ export async function readMailFields(
         cc: [],
         subject: sent.subject,
         text: sent.text,
-        attachments: [],
+        html: '',
+        attachments: sent.attachments.map((attachment) => ({ ...attachment, isStored: false })),
         messageIDHeader: sent.messageIDHeader,
         references: sent.references,
       });

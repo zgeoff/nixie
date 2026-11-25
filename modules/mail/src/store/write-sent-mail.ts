@@ -24,6 +24,9 @@ export interface SentMailInput {
   readonly to: readonly string[];
   readonly subject: string;
   readonly text: string;
+
+  // the files that the mail carries, by name and size
+  readonly attachments: readonly { readonly name: string; readonly bytes: number }[];
   readonly sentAt: number;
 
   // the task that made the call: the conversation's or a task's ID
@@ -102,6 +105,7 @@ export function writeSentMail(context: MailContext, input: SentMailInput): Promi
           to: input.to,
           subject: input.subject,
           text: input.text,
+          attachments: input.attachments,
           messageIDHeader: input.messageIDHeader,
           references: input.references,
         }),

@@ -1,5 +1,5 @@
-import { writeLinkTags } from '@heynixie/connectors';
-import type { ToolDefinition } from '@heynixie/tools';
+import { writeLinkTags, writeLinkedText } from '@heynixie/connectors';
+import type { ToolDefinition, ToolRun } from '@heynixie/tools';
 import { z } from 'zod';
 import { mailDeclarations } from '../connector/mail-declarations';
 import { mailToolNames } from '../connector/mail-tool-names';
@@ -8,15 +8,15 @@ import { renderLinkedMailText } from '../parse/render-linked-mail-text';
 import { readMailFields } from '../store/read-mail-fields';
 import { readMailRow } from '../store/read-mail-row';
 import { writeMailMarkedRead } from '../store/write-mail-marked-read';
-import type { MailContext } from '../types';
+import type { MailContext, MailHTMLReader, StoredMailFields } from '../types';
 import { renderOutsideText } from './render-outside-text';
 
 const inputSchema = z.strictObject({ message: z.string() });
 
 // mail.read: opens one stored mail and marks it read. Its sender, subject and text are outside
 // content, sealed in the result as a page is. Each link in the text reads as a link ID of the
-// session, which web_fetch opens.
-export function buildMailReadTool(context: MailContext): ToolDefinition {
+// session, which web_fetch opens, and a mail with only an HTML part reads in the fetch sandbox.
+export function buildMailReadTool(context: MailContext, reader: MailHTMLReader): ToolDefinition {
   return {
     name: mailToolNames.read,
     description:
@@ -73,8 +73,14 @@ export function buildMailReadTool(context: MailContext): ToolDefinition {
         };
       }
 
+      const body = await readBodyText(context, reader, toolContext.run, fields);
+
+      if (body.status === 'error') {
+        return body;
+      }
+
       const tags = await writeLinkTags(context.log, toolContext.run, {
-        urls: collectMailURLs(fields.text),
+        urls: collectMailURLs(body.text),
         linkPathChars: context.settings.linkPathChars,
       });
 
@@ -89,7 +95,7 @@ export function buildMailReadTool(context: MailContext): ToolDefinition {
         await writeMailMarkedRead(context, row.short_id);
       }
 
-      const text = renderLinkedMailText(fields.text, tags);
+      const text = renderLinkedMailText(body.text, tags);
 
       const attachments = fields.attachments.map((attachment, index) => ({
         attachment: index + 1,
@@ -123,4 +129,49 @@ export function buildMailReadTool(context: MailContext): ToolDefinition {
       };
     },
   };
+}
+
+// room beside the text for any link tag, which a text part never holds less than
+const linkTagHeadroomBytes = 1024;
+
+type BodyText =
+  | { readonly status: 'ok'; readonly text: string }
+  | { readonly status: 'error'; readonly message: string };
+
+// The text of a mail's body. A mail that holds HTML and no plain text has the sandbox read its HTML,
+// and each link of it takes a link ID of the session, so no address of a link reaches the model.
+async function readBodyText(
+  context: MailContext,
+  reader: MailHTMLReader,
+  run: ToolRun,
+  fields: StoredMailFields,
+): Promise<BodyText> {
+  if (fields.text !== '' || fields.html === '') {
+    return { status: 'ok', text: fields.text };
+  }
+
+  const reply = await reader.readHTML(fields.html);
+
+  if (reply.kind !== 'page' || reply.text === null) {
+    const reason = reply.kind === 'failed' || reply.kind === 'refused' ? reply.reason : 'no text';
+
+    context.logEvent('mail.html_unreadable', { reason });
+
+    return {
+      status: 'error',
+      message:
+        'HTML_UNREADABLE: the mail has only an HTML body, and reading it failed. Try again later.',
+    };
+  }
+
+  const linked = await writeLinkedText(context.log, run, {
+    text: reply.text,
+    links: reply.links,
+    textBytes: Buffer.byteLength(reply.text) + linkTagHeadroomBytes,
+    linkPathChars: context.settings.linkPathChars,
+  });
+
+  return linked === null
+    ? { status: 'error', message: 'SESSION_ENDED: the session ended before the mail opened' }
+    : { status: 'ok', text: linked };
 }

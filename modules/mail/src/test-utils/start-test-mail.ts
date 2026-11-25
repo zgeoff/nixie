@@ -26,6 +26,8 @@ import { buildMailTools } from '../tool/build-mail-tools';
 import type { MailToolContext } from '../types';
 import type { MemoryMailHost } from './build-memory-mail-host';
 import { buildMemoryMailHost } from './build-memory-mail-host';
+import type { TestHTMLReader } from './build-test-html-reader';
+import { buildTestHTMLReader } from './build-test-html-reader';
 
 export interface TestMail {
   readonly writer: Writer;
@@ -34,6 +36,9 @@ export interface TestMail {
   readonly core: TriggerCoreContext;
   readonly context: MailToolContext;
   readonly host: MemoryMailHost;
+
+  // the fetch sandbox that reads the HTML of a mail, which a test tells what each HTML reads as
+  readonly html: TestHTMLReader;
   readonly source: TriggerSource;
 
   // calls a mail tool as the conversation, or as the task whose ID the thread names, in one session
@@ -127,7 +132,11 @@ export async function startTestMail(): Promise<TestMail> {
     },
   };
 
-  const toolsByName = new Map(buildMailTools(context).map((tool) => [tool.name, tool]));
+  const html = buildTestHTMLReader();
+
+  stack.defer(() => html.stop());
+
+  const toolsByName = new Map(buildMailTools(context, html).map((tool) => [tool.name, tool]));
 
   return {
     writer,
@@ -136,6 +145,7 @@ export async function startTestMail(): Promise<TestMail> {
     core: buildTestTriggerCore(tasks, logEvent),
     context,
     host,
+    html,
     source: buildMailSource(context, host),
     callTool: (name, input, thread = 'conversation') => {
       const tool = toolsByName.get(name);

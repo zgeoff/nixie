@@ -1,7 +1,9 @@
+import type { JSONObject } from '@heynixie/log';
 import type { DestinationResolution, ToolDefinition } from '@heynixie/tools';
 import { z } from 'zod';
 import { mailDeclarations } from '../connector/mail-declarations';
 import { mailToolNames } from '../connector/mail-tool-names';
+import { readSendFiles } from '../connector/read-send-files';
 import { isMailAddress } from '../parse/is-mail-address';
 import { mailAddressPattern } from '../parse/mail-address-pattern';
 import { readMailFields } from '../store/read-mail-fields';
@@ -11,7 +13,7 @@ import type { MailContext } from '../types';
 export type MailSendKind = 'send' | 'reply';
 
 const maxTextLength = 100_000;
-const durationPattern = '^([1-9][0-9]{0,6}(ms|s|m|h|d)|off)$';
+const durationPattern = '^([1-9][0-9]{0,6}(m|h|d)|off)$';
 
 const replyWakeSchema = {
   type: 'string',
@@ -19,6 +21,15 @@ const replyWakeSchema = {
   description:
     'how long a reply to this mail wakes you, such as 30m or 7d; off for no reply rule. It ' +
     "defaults to the deployment's reply expiry, and the approval card shows it.",
+} as const;
+
+const filesSchema = {
+  type: 'array',
+  items: { type: 'string' },
+  maxItems: 10,
+  description:
+    'file IDs of this thread to attach, up to 10 and 25 MiB in all, such as one that ' +
+    'mail.save_attachment or a code run made',
 } as const;
 
 const replyInputSchema = z.strictObject({ message: z.string() });
@@ -51,6 +62,7 @@ export function buildMailSendTool(context: MailContext, kind: MailSendKind): Too
               },
               subject: { type: 'string', minLength: 1, maxLength: 998 },
               text: { type: 'string', minLength: 1, maxLength: maxTextLength },
+              files: filesSchema,
               replyWake: replyWakeSchema,
             },
             required: ['to', 'subject', 'text'],
@@ -61,6 +73,7 @@ export function buildMailSendTool(context: MailContext, kind: MailSendKind): Too
             properties: {
               message: { type: 'string', description: 'the ID of the mail you answer' },
               text: { type: 'string', minLength: 1, maxLength: maxTextLength },
+              files: filesSchema,
               replyWake: replyWakeSchema,
             },
             required: ['message', 'text'],
@@ -69,24 +82,62 @@ export function buildMailSendTool(context: MailContext, kind: MailSendKind): Too
     output: { type: 'object' },
     declaration: kind === 'send' ? mailDeclarations.send : mailDeclarations.reply,
     execution: 'queued',
-    ...(kind === 'reply'
-      ? {
-          resolveDestinations: (input, toolContext): Promise<DestinationResolution> => {
-            const parsed = replyInputSchema.safeParse({ message: input['message'] });
+    resolveDestinations: async (input, toolContext): Promise<DestinationResolution> => {
+      const files = await readFilesOfCall(context, input, toolContext.run.thread);
 
-            if (!parsed.success) {
-              return Promise.resolve({ status: 'error', message: z.prettifyError(parsed.error) });
-            }
+      if (files !== null) {
+        return files;
+      }
 
-            return resolveReplyDestination(context, {
-              message: parsed.data.message,
-              arrivedMails: toolContext.run.session?.policy?.arrivedMails ?? [],
-            });
-          },
-        }
-      : {}),
+      if (kind === 'send') {
+        return {
+          status: 'ok',
+          destinations: collectRecipients(input['to']).map((value) => ({
+            value: value.normalize('NFC'),
+            replyTarget: false,
+          })),
+        };
+      }
+
+      const parsed = replyInputSchema.safeParse({ message: input['message'] });
+
+      if (!parsed.success) {
+        return { status: 'error', message: z.prettifyError(parsed.error) };
+      }
+
+      return resolveReplyDestination(context, {
+        message: parsed.data.message,
+        arrivedMails: toolContext.run.session?.policy?.arrivedMails ?? [],
+      });
+    },
     run: () => Promise.resolve({ status: 'error', message: `${name} runs only queued` }),
   };
+}
+
+const filesInputSchema = z.strictObject({ files: z.array(z.string()).max(10).exactOptional() });
+
+// Refuses a call whose files cannot go, with the code of the reason, or null when each one can.
+async function readFilesOfCall(
+  context: MailContext,
+  input: JSONObject,
+  thread: string,
+): Promise<DestinationResolution | null> {
+  const named = input['files'] === undefined ? {} : { files: input['files'] };
+  const parsed = filesInputSchema.safeParse(named);
+
+  if (!parsed.success) {
+    return { status: 'error', message: z.prettifyError(parsed.error) };
+  }
+
+  const files = await readSendFiles(context.log, thread, parsed.data.files ?? []);
+
+  return files.status === 'ok' ? null : { status: 'error', message: files.message };
+}
+
+function collectRecipients(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === 'string')
+    : [];
 }
 
 interface ReplyRequest {

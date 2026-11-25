@@ -16,11 +16,15 @@ const mailSentSchema = z.object({
 // One mail that the assistant sent, written by the outcome of its send. The recipients, the subject
 // and the text sit in the erasable fields.
 export const mailSentCodec = defineRecordCodec('mail.sent', mailSentSchema);
+const sentAttachmentSchema = z.object({ name: z.string(), bytes: z.int() });
 
 export const mailSentFieldsSchema = z.object({
   to: z.array(z.string()),
   subject: z.string(),
   text: z.string(),
+
+  // the files that the mail carried, by name and size
+  attachments: z.array(sentAttachmentSchema),
   messageIDHeader: z.string(),
   references: z.array(z.string()),
 });

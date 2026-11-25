@@ -2,6 +2,7 @@
 export const mailToolNames = {
   list: 'mail.list',
   read: 'mail.read',
+  saveAttachment: 'mail.save_attachment',
   send: 'mail.send',
   reply: 'mail.reply',
   wakeSet: 'mail.wake_set',

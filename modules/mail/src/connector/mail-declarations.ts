@@ -26,6 +26,21 @@ export const mailDeclarations = {
       attachments: 'untrusted',
     },
   },
+  saveAttachment: {
+    effects: ['read'],
+    destinations: [],
+    amount: null,
+    content: [],
+    results: {
+      file: 'untrusted',
+      name: 'untrusted',
+      bytes: 'untrusted',
+      mediaType: 'untrusted',
+      files: 'untrusted',
+      stdout: 'owner_data',
+      stderr: 'owner_data',
+    },
+  },
   send: {
     effects: ['send'],
     destinations: ['to'],

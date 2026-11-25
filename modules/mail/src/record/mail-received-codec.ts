@@ -18,7 +18,9 @@ const mailReceivedSchema = z.object({
 // One stored mail that the assistant received. Its sender, recipients, subject, text and attachment
 // names sit in the erasable fields.
 export const mailReceivedCodec = defineRecordCodec('mail.received', mailReceivedSchema);
-const attachmentSchema = z.object({ name: z.string(), bytes: z.int() });
+
+// isStored: the mail's record holds the attachment's bytes
+const attachmentSchema = z.object({ name: z.string(), bytes: z.int(), isStored: z.boolean() });
 
 export const mailReceivedFieldsSchema = z.object({
   from: z.string(),
@@ -26,6 +28,7 @@ export const mailReceivedFieldsSchema = z.object({
   cc: z.array(z.string()),
   subject: z.string(),
   text: z.string(),
+  html: z.string(),
   attachments: z.array(attachmentSchema),
 
   // the Message-ID header, empty when the mail has none, and the IDs it answers: a reply needs them

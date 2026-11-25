@@ -4,6 +4,7 @@ import type { Definitions, JSONValue, Log } from '@heynixie/log';
 import type { Logger } from '@heynixie/logger';
 import type { TasksContext } from '@heynixie/tasks';
 import type { WakeRulesConfig } from '@heynixie/triggers';
+import type { FetchReply } from '@heynixie/wire';
 
 // The one interface through which nixie reaches the mail host. An adapter per host implements it;
 // the in-memory host stands in for tests and the test build.
@@ -68,7 +69,18 @@ export interface ParsedMail {
   readonly cc: readonly string[];
   readonly subject: string;
   readonly text: string;
+
+  // the HTML of a mail with no plain part, as it came; empty otherwise
+  readonly html: string;
   readonly attachments: readonly MailAttachment[];
+
+  // the bytes of each attachment, in the order of the list
+  readonly attachmentContents: readonly Uint8Array<ArrayBuffer>[];
+}
+
+// An attachment of a stored mail. The mail keeps the bytes of the first attachments, up to a limit.
+export interface StoredAttachment extends MailAttachment {
+  readonly isStored: boolean;
 }
 
 // The text of a stored mail, read from its record's erasable fields.
@@ -78,13 +90,22 @@ export interface StoredMailFields {
   readonly cc: readonly string[];
   readonly subject: string;
   readonly text: string;
-  readonly attachments: readonly MailAttachment[];
+
+  // the HTML of a mail with no plain part, as it came; empty otherwise
+  readonly html: string;
+  readonly attachments: readonly StoredAttachment[];
 
   // the Message-ID header, empty when the mail has none
   readonly messageIDHeader: string;
 
   // the IDs that the mail answers, nearest first
   readonly references: readonly string[];
+}
+
+// Reads the text and the links of a mail's HTML where the web fetch tool reads a page: in the fetch
+// sandbox, which makes no request.
+export interface MailHTMLReader {
+  readonly readHTML: (html: string) => Promise<FetchReply>;
 }
 
 export interface MailSettings {

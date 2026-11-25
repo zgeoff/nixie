@@ -3,6 +3,7 @@ import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import { hashMessageID } from '../parse/hash-message-id';
 import { mailReceivedCodec, mailReceivedFieldsSchema } from '../record/mail-received-codec';
 import type { HostMail, MailContext, MailTables, ParsedMail } from '../types';
+import { countStoredAttachments } from './count-stored-attachments';
 import { readThreadShortID } from './read-thread-short-id';
 
 export interface ReceivedMail {
@@ -33,6 +34,10 @@ export function writeReceivedMail(
 
     const threadShortID = await readThreadShortID(tx, referenceHashes);
 
+    const storedCount = countStoredAttachments(
+      parsed.attachments.map((attachment) => attachment.bytes),
+    );
+
     const shortID = createShortID();
     const headerHash = hashMessageID(parsed.messageID ?? `host:${host.hostMessageID}`);
 
@@ -55,10 +60,15 @@ export function writeReceivedMail(
           cc: parsed.cc,
           subject: parsed.subject,
           text: parsed.text,
-          attachments: parsed.attachments,
+          html: parsed.html,
+          attachments: parsed.attachments.map((attachment, index) => ({
+            ...attachment,
+            isStored: index < storedCount,
+          })),
           messageIDHeader: parsed.messageID ?? '',
           references: parsed.references,
         }),
+        attachments: parsed.attachmentContents.slice(0, storedCount),
       },
     ]);
 

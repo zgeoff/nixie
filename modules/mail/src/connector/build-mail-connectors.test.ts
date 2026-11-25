@@ -1,17 +1,22 @@
 import { expect, test } from 'bun:test';
 import { buildActionSeeder } from '@heynixie/actions/test-utils';
+import { readToolResult, seedCodeRunFiles } from '@heynixie/connectors/test-utils';
 import type { JSONObject, LogTables } from '@heynixie/log';
 import { readRecords, removeRecordKey } from '@heynixie/log';
+import { buildAllowingDecisionPoint } from '@heynixie/policy/test-utils';
 import { buildTaskSeeder } from '@heynixie/tasks/test-utils';
+import { buildToolRegistry, runToolCall } from '@heynixie/tools';
 import { readWakeRules } from '@heynixie/triggers';
 import { waitFor } from '@zgeoff/testing';
 import invariant from 'tiny-invariant';
+import { z } from 'zod';
 import { buildOutgoingMail } from '../parse/build-outgoing-mail';
 import { parseMail } from '../parse/parse-mail';
 import { readMailPage } from '../store/read-mail-page';
 import { readMailRow } from '../store/read-mail-row';
 import type { MemoryMail } from '../test-utils';
 import { seedReceivedMail, startTestMail, startTestMailSource } from '../test-utils';
+import { buildMailTools } from '../tool/build-mail-tools';
 
 async function setupTest() {
   const mail = await startTestMail();
@@ -185,6 +190,7 @@ test('it finds a send at the host by its Message-ID, and writes its record and r
     subject: 'A question',
     text: 'Could you help?',
     references: [],
+    files: [],
     sentAt: ctx.clock.now(),
   });
 
@@ -237,6 +243,7 @@ test('it records a send that the host holds, though the mail it answered was for
     subject: 'Re: Your loan',
     text: 'Thank you, I will return it.',
     references: ['loan-1@library.example.org'],
+    files: [],
     sentAt: ctx.clock.now(),
   });
 
@@ -322,4 +329,128 @@ test('it joins a reply that reaches the host during the send to the sent mail, a
   ]);
 
   expect(wakes[0]?.record.thread).toBe('conversation');
+});
+
+test('it sends the files of the thread as attachments, and records each by name and size', async () => {
+  const ctx = await setupTest();
+
+  const seeded = await seedCodeRunFiles(ctx.context.log, {
+    thread: 'conversation',
+    writes: { 'out/plan.txt': 'The plan.' },
+  });
+
+  const attempt = await ctx.queueSend('mail.send', {
+    to: ['hello@library.example.org'],
+    subject: 'Plan',
+    text: 'See the plan.',
+    files: seeded.files.map((file) => file.file),
+  });
+
+  const response = await ctx.connectors.get('mail.send')?.run(attempt);
+
+  const [sent] = ctx.host.readSent();
+  const parsed = parseMail(sent?.raw ?? new Uint8Array());
+
+  const opened = await ctx.callTool('mail.read', {
+    message: response?.kind === 'success' ? response.result['message'] : '',
+  });
+
+  expect(response).toMatchObject({ kind: 'success' });
+  expect(parsed.text).toBe('See the plan.');
+  expect(parsed.attachments).toStrictEqual([{ name: 'plan.txt', bytes: 9 }]);
+  expect(Buffer.from(parsed.attachmentContents[0] ?? []).toString('utf8')).toBe('The plan.');
+
+  expect(opened).toMatchObject({
+    status: 'ok',
+    record: { attachments: [{ attachment: 1, name: 'plan.txt', bytes: 9 }] },
+  });
+});
+
+test('it refuses a send whose file belongs to another thread, and sends nothing', async () => {
+  const ctx = await setupTest();
+
+  const seeded = await seedCodeRunFiles(ctx.context.log, {
+    thread: 'task-9',
+    writes: { 'out/plan.txt': 'The plan.' },
+  });
+
+  const attempt = await ctx.queueSend('mail.send', {
+    to: ['hello@library.example.org'],
+    subject: 'Plan',
+    text: 'See the plan.',
+    files: seeded.files.map((file) => file.file),
+  });
+
+  const response = await ctx.connectors.get('mail.send')?.run(attempt);
+
+  expect(response).toMatchObject({
+    kind: 'refused',
+    reason: expect.stringContaining('UNKNOWN_FILE'),
+  });
+
+  expect(ctx.host.readSent()).toStrictEqual([]);
+});
+
+test('it sends an attachment that mail.save_attachment kept as a file of the thread', async () => {
+  const ctx = await setupTest();
+
+  const bytes = new Uint8Array([37, 80, 68, 70, 9, 8, 7]);
+
+  const received = await ctx.receive({
+    from: 'hello@library.example.org',
+    subject: 'Receipt',
+    text: 'Your receipt.',
+    attachments: [{ name: 'receipt.pdf', content: bytes }],
+  });
+
+  const tool = buildMailTools(ctx.context, ctx.html).find(
+    (candidate) => candidate.name === 'mail.save_attachment',
+  );
+
+  invariant(tool !== undefined, 'the module has the save tool');
+
+  const saved = await runToolCall(
+    {
+      tool: 'mail.save_attachment',
+      input: { message: received.shortID, attachment: 1 },
+      toolUseID: null,
+    },
+    {
+      runID: 'run-1',
+      thread: 'conversation',
+      logThread: 'conversation',
+      tools: ['mail.save_attachment'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    {
+      registry: buildToolRegistry([tool]),
+      decide: buildAllowingDecisionPoint(),
+      log: ctx.context.log,
+      definitions: ctx.context.definitions,
+      queue: {
+        enqueue: () => Promise.reject(new Error('mail.save_attachment runs direct')),
+        readOpenRepeat: () => Promise.resolve(null),
+        readOpenAsk: () => Promise.resolve(null),
+        waitForOutcome: () => Promise.resolve(null),
+      },
+      queuedWaitMs: 1000,
+    },
+  );
+
+  const fileID = z.object({ file: z.string() }).parse(readToolResult(saved)).file;
+
+  const attempt = await ctx.queueSend('mail.reply', {
+    message: received.shortID,
+    text: 'Thanks, here it is again.',
+    files: [fileID],
+  });
+
+  const response = await ctx.connectors.get('mail.reply')?.run(attempt);
+
+  const [sent] = ctx.host.readSent();
+  const parsed = parseMail(sent?.raw ?? new Uint8Array());
+
+  expect(response).toMatchObject({ kind: 'success' });
+  expect(parsed.attachments).toStrictEqual([{ name: 'receipt.pdf', bytes: 7 }]);
+  expect(parsed.attachmentContents).toStrictEqual([bytes]);
 });

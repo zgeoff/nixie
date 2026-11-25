@@ -8,6 +8,8 @@ import type { MailToolContext, OutgoingMail } from '../types';
 import { buildSendMessageID } from './build-send-message-id';
 import type { SendArguments } from './parse-send-arguments';
 import { readActionFacts } from './read-action-facts';
+import type { SendFile, SendFileContent } from './read-send-files';
+import { readSendFileContents, readSendFiles } from './read-send-files';
 
 export type SendPlan =
   | {
@@ -49,6 +51,12 @@ export async function planSend(context: MailToolContext, request: SendRequest): 
     return answer;
   }
 
+  const files = await readFiles(context, request, facts.thread);
+
+  if (files.status === 'refused') {
+    return files;
+  }
+
   const sentAt = facts.firstAttemptAt ?? context.clock.now();
   const messageIDHeader = buildSendMessageID(context.settings, request.actionID);
   const to = request.arguments.kind === 'send' ? request.arguments.to : [answer.replyTo];
@@ -60,6 +68,7 @@ export async function planSend(context: MailToolContext, request: SendRequest): 
     subject: answer.subject,
     text: request.arguments.text,
     references: answer.references,
+    files: files.contents,
     sentAt,
   };
 
@@ -94,6 +103,7 @@ export async function planSend(context: MailToolContext, request: SendRequest): 
       to,
       subject: answer.subject,
       text: request.arguments.text,
+      attachments: files.listed.map((file) => ({ name: file.name, bytes: file.bytes })),
       sentAt,
       senderTaskID: facts.taskID,
       replyExpiryMs,
@@ -165,4 +175,35 @@ async function readAnswer(context: MailToolContext, request: SendRequest): Promi
     threadShortID: row.thread_short_id,
     replyTo: row.direction === 'in' ? fields.from : (fields.to[0] ?? ''),
   };
+}
+
+type Files =
+  | {
+      readonly status: 'read';
+      readonly listed: readonly SendFile[];
+
+      // the bytes of each file, none in a reconcile, which sends nothing
+      readonly contents: readonly SendFileContent[];
+    }
+  | { readonly status: 'refused'; readonly reason: string };
+
+// The files of a send. A send that runs needs each one's bytes, and refuses when one is gone. A
+// reconcile of a send that went out only lists the files it can still name, because the mail is
+// already out.
+async function readFiles(
+  context: MailToolContext,
+  request: SendRequest,
+  thread: string,
+): Promise<Files> {
+  if (request.isReconcile) {
+    const named = await readSendFiles(context.log, thread, request.arguments.files);
+
+    return { status: 'read', listed: named.status === 'ok' ? named.files : [], contents: [] };
+  }
+
+  const read = await readSendFileContents(context.log, thread, request.arguments.files);
+
+  return read.status === 'ok'
+    ? { status: 'read', listed: read.files, contents: read.files }
+    : { status: 'refused', reason: read.message };
 }

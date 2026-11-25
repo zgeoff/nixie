@@ -1,15 +1,22 @@
 import type { MailAttachment } from '../types';
+import { cleanAttachmentName } from './clean-attachment-name';
 import { decodeBodyBytes } from './decode-body-bytes';
 import { decodeBodyText } from './decode-body-text';
+import { decodeHeaderWords } from './decode-header-words';
 import { parseContentType } from './parse-content-type';
 import { parseHeaders } from './parse-headers';
-import { renderHtmlText } from './render-html-text';
 import { splitMessage } from './split-message';
+
+export interface PartAttachment extends MailAttachment {
+  readonly content: Uint8Array<ArrayBuffer>;
+}
 
 export interface MailParts {
   readonly texts: readonly string[];
+
+  // the HTML of each HTML part as it came, which the fetch sandbox reads
   readonly htmls: readonly string[];
-  readonly attachments: readonly MailAttachment[];
+  readonly attachments: readonly PartAttachment[];
 }
 
 // Walks a message or a part of one, and gathers its plain texts, its HTML texts and its
@@ -29,11 +36,17 @@ export function collectParts(raw: string): MailParts {
   const encoding = headers.get('content-transfer-encoding')?.[0] ?? '7bit';
 
   if (name !== null || disposition.type === 'attachment') {
+    const content = new Uint8Array(decodeBodyBytes(split.body, encoding));
+
     return {
       texts: [],
       htmls: [],
       attachments: [
-        { name: name ?? 'attachment', bytes: decodeBodyBytes(split.body, encoding).length },
+        {
+          name: cleanAttachmentName(decodeHeaderWords(name ?? '')),
+          bytes: content.byteLength,
+          content,
+        },
       ],
     };
   }
@@ -42,7 +55,7 @@ export function collectParts(raw: string): MailParts {
   const text = decodeBodyText(split.body, encoding, charset);
 
   if (contentType.type === 'text/html') {
-    return { texts: [], htmls: [renderHtmlText(text)], attachments: [] };
+    return { texts: [], htmls: [text], attachments: [] };
   }
 
   return {
@@ -60,7 +73,7 @@ function collectMultipart(body: string, boundary: string): MailParts {
   const pieces = body.split(new RegExp(`(?:^|\\r?\\n)--${escaped}(--)?[ \\t]*(?:\\r?\\n|$)`, 'u'));
   const texts: string[] = [];
   const htmls: string[] = [];
-  const attachments: MailAttachment[] = [];
+  const attachments: PartAttachment[] = [];
 
   // the first piece is the preamble, and each boundary line gives a closing mark and a piece
   for (let index = 1; index < pieces.length; index += 2) {

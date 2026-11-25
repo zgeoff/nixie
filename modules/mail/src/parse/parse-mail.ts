@@ -1,3 +1,4 @@
+import { maxFetchHTMLChars } from '@heynixie/wire';
 import type { ParsedMail } from '../types';
 import { collectAddresses } from './collect-addresses';
 import { collectParts } from './collect-parts';
@@ -6,7 +7,8 @@ import { parseHeaders } from './parse-headers';
 import { splitMessage } from './split-message';
 
 // Reads a raw RFC 5322 message. Only the mail module reads mail, and every text it returns came from
-// outside nixie.
+// outside nixie. A mail with a plain part keeps that text. A mail with an HTML part alone keeps the
+// HTML as it came, which the fetch sandbox reads when the assistant opens the mail.
 export function parseMail(raw: Uint8Array): ParsedMail {
   const latin1 = Buffer.from(raw).toString('latin1');
   const split = splitMessage(latin1);
@@ -15,7 +17,7 @@ export function parseMail(raw: Uint8Array): ParsedMail {
   const headers = parseHeaders(Buffer.from(split.head, 'latin1').toString('utf8'));
   const parts = collectParts(latin1);
   const plain = parts.texts.filter((part) => part.trim() !== '');
-  const text = plain.length > 0 ? plain.join('\n') : parts.htmls.join('\n');
+  const html = plain.length > 0 ? '' : parts.htmls.join('\n').trim();
   const answered = [...(headers.get('in-reply-to') ?? []), ...(headers.get('references') ?? [])];
 
   return {
@@ -25,8 +27,13 @@ export function parseMail(raw: Uint8Array): ParsedMail {
     to: collectAddresses(headers.get('to') ?? []),
     cc: collectAddresses(headers.get('cc') ?? []),
     subject: decodeHeaderWords(headers.get('subject')?.[0] ?? ''),
-    text: text.trim(),
-    attachments: parts.attachments,
+    text: plain.join('\n').trim(),
+    html: html.slice(0, maxFetchHTMLChars),
+    attachments: parts.attachments.map((attachment) => ({
+      name: attachment.name,
+      bytes: attachment.bytes,
+    })),
+    attachmentContents: parts.attachments.map((attachment) => attachment.content),
   };
 }
 

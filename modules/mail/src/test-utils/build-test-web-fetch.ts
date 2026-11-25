@@ -4,12 +4,10 @@ import type { FetchReply } from '@heynixie/wire';
 import type { TestMail } from './start-test-mail';
 
 // The web_fetch tool of a test mailbox: it shares the mailbox's log, so it opens the links that
-// mail.read numbered, and it answers each page from the pages the test gives, by URL.
-export function buildTestWebFetch(
-  mail: Pick<TestMail, 'context' | 'clock'>,
-  pages: ReadonlyMap<string, string>,
-): ToolDefinition {
-  return buildWebFetchTool((url) => Promise.resolve(buildPageReply(url, pages.get(url))), {
+// mail.read numbered, and it reaches the site a test started on a loopback port with a real
+// request, as the fetch sandbox would reach a site.
+export function buildTestWebFetch(mail: Pick<TestMail, 'context' | 'clock'>): ToolDefinition {
+  return buildWebFetchTool(readTestPage, {
     log: mail.context.log,
     textBytes: 20_000,
     linkPathChars: 24,
@@ -30,15 +28,17 @@ export function buildTestWebFetch(
   });
 }
 
-function buildPageReply(url: string, text: string | undefined): FetchReply {
+async function readTestPage(url: string): Promise<FetchReply> {
+  const response = await fetch(url);
+
   return {
     kind: 'page',
     retryAfterMs: null,
     isGated: true,
     url,
-    status: text === undefined ? 404 : 200,
-    contentType: 'text/html',
-    text: text ?? 'Not found.',
+    status: response.status,
+    contentType: response.headers.get('content-type'),
+    text: await response.text(),
     links: [],
     isTruncated: false,
     blocked: null,
