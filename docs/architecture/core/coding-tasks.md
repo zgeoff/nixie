@@ -193,5 +193,5 @@ through a task that already exists. A call that names the variant anyway fails i
 
 A test build can set `NIXIE_TEST_ATC_URL`, which points the adapter at a gateway double in place of
 the configured URL, because the config accepts only an https URL. When the variable is set, the test
-build also makes the coding runner the default one, so the start tool advertises the coding start
-alone. The [crash tests](./crash-tests.md) doc lists the other test-build seams.
+build also makes the coding runner the default one, so the start tool advertises only the coding
+start. The [crash tests](./crash-tests.md) doc lists the other test-build seams.
