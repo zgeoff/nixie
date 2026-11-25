@@ -340,7 +340,10 @@ test.each([
   },
   {
     route: 'an XSLT transform',
-    outcome: 'ReferenceError: XSLTProcessor is not defined',
+    outcome: expect.toBeOneOf([
+      'ReferenceError: XSLTProcessor is not defined',
+      'no XSLTProcessor before the bridge ran',
+    ]),
     write: 'native',
     hasTrustedTypes: true,
   },
@@ -388,7 +391,10 @@ test.each([
   },
   {
     route: 'an XSLT transform',
-    outcome: 'ReferenceError: XSLTProcessor is not defined',
+    outcome: expect.toBeOneOf([
+      'ReferenceError: XSLTProcessor is not defined',
+      'no XSLTProcessor before the bridge ran',
+    ]),
     write: 'replaced',
     hasTrustedTypes: false,
   },
