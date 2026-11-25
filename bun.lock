@@ -847,6 +847,7 @@
       "name": "@heynixie/mcp",
       "version": "0.0.0",
       "dependencies": {
+        "@heynixie/connectors": "workspace:*",
         "@heynixie/contract": "workspace:*",
         "@heynixie/credentials": "workspace:*",
         "@heynixie/db": "workspace:*",
@@ -854,6 +855,7 @@
         "@heynixie/log": "workspace:*",
         "@heynixie/policy": "workspace:*",
         "@heynixie/proposals": "workspace:*",
+        "@heynixie/retry": "workspace:*",
         "@heynixie/tools": "workspace:*",
         "@modelcontextprotocol/client": "catalog:",
         "kysely": "catalog:",
@@ -1151,6 +1153,7 @@
         "@heynixie/logger": "workspace:*",
         "@heynixie/policy": "workspace:*",
         "@heynixie/sandbox": "workspace:*",
+        "@heynixie/wire": "workspace:*",
         "@modelcontextprotocol/server": "catalog:",
         "ajv": "catalog:",
         "kysely": "catalog:",

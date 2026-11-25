@@ -76,6 +76,10 @@ export interface DirectResult extends TypedResult {
   // whose result ends the turn for good sets it.
   readonly endsTurn?: true;
 
+  // The tool's own service reported a failure, and the result says what. The reply carries
+  // isError, and the result stays the tool's own result.
+  readonly isError?: true;
+
   // The code of a refusal: the tool changed nothing, and the result says why. An approved action of
   // the call settles failed, with the code in its outcome.
   readonly refusalCode?: string;
@@ -138,6 +142,10 @@ export interface ToolDefinition {
     input: JSONObject,
     context: ToolResolveContext,
   ) => Promise<Prepared | DirectResult>;
+
+  // Runs before prepare and the decision point. A sentence it returns ends the call as plain error
+  // text, so a call that cannot run asks for no approval. Null lets the call go on.
+  readonly clear?: (input: JSONObject, context: ToolResolveContext) => Promise<string | null>;
 
   // Resolves the destinations of a call on the host, for a tool whose destinations are not plain
   // arguments, such as a reply that names a message. A tool without it takes each argument its
@@ -271,6 +279,10 @@ export interface ToolRegistry {
   // the name of each registered tool, which a source's tools join at each read
   readonly toolNames: readonly string[];
   readonly findTool: (name: string) => RegisteredTool | null;
+
+  // Lets each source ready the named tools before a task run's first step reads its tool list. It
+  // never rejects.
+  readonly prepareTaskRun: (tools: readonly string[]) => Promise<void>;
 }
 
 // A second source of tool definitions, which the composition root passes in. The MCP proxy provides
@@ -282,6 +294,10 @@ export interface ToolSource {
   // Built from the tool's current pin, and cached for its hash. A definition that fails the
   // registry's checks is not served.
   readonly findTool: (name: string) => RegisteredTool | null;
+
+  // Lists the server of each named tool, unless that server's backoff is running, so the run's tool
+  // list reads the newest pins. A failed listing leaves the pinned tools in place and never rejects.
+  readonly prepareTaskRun?: (tools: readonly string[]) => Promise<void>;
 }
 
 export interface ToolRun {

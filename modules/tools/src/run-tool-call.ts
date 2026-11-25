@@ -9,6 +9,7 @@ import type {
   PolicyDecision,
 } from '@heynixie/policy';
 import { buildActionHash, makeFaultSafeDecisionPoint, toStoredDecision } from '@heynixie/policy';
+import { mintBlockID, renderFenced } from '@heynixie/wire';
 import type { CallToolResult } from '@modelcontextprotocol/server';
 import invariant from 'tiny-invariant';
 import { makeCallRecorder } from './call-record/make-call-recorder';
@@ -35,6 +36,7 @@ import type {
   RegisteredTool,
   SchemaCheck,
   ToolCall,
+  ToolImage,
   ToolRegistry,
   ToolRun,
 } from './types';
@@ -108,6 +110,15 @@ export async function runToolCall(
 
   if (resolution.status === 'error') {
     return writeInvalidCall(recorder, resolution.message);
+  }
+
+  const refusal =
+    registered !== null && isListed
+      ? await registered.definition.clear?.(call.input, { run })
+      : null;
+
+  if (refusal !== null && refusal !== undefined) {
+    return writeRefusedCall(recorder, refusal);
   }
 
   const prepare = registered !== null && isListed ? registered.definition.prepare : undefined;
@@ -261,22 +272,74 @@ function toCallToolResult(settled: Settled): CallToolResult {
 
   // The Claude Code CLI ends its turn after a result with this key and makes no further model call.
   const endTurn = settled.endsTurn === true ? { _meta: { 'claude/endTurn': true } } : {};
+  const isError = reply.isError === true ? { isError: true } : {};
+
+  // Outside text reaches the model inside the one fence, and never as structured content.
+  if (isUntrustedResult(settled)) {
+    return {
+      content: [
+        { type: 'text', text: renderFencedResult(reply.result) },
+        ...reply.images.map(toImageBlock),
+      ],
+      ...isError,
+      ...endTurn,
+    };
+  }
 
   if (reply.images.length === 0) {
-    return { content: [], structuredContent: reply.result, ...endTurn };
+    return { content: [], structuredContent: reply.result, ...isError, ...endTurn };
   }
 
   return {
     content: [
       { type: 'text', text: JSON.stringify(reply.result) },
-      ...reply.images.map((image) => ({
-        type: 'image' as const,
-        data: Buffer.from(image.bytes).toString('base64'),
-        mimeType: image.mediaType,
-      })),
+      ...reply.images.map(toImageBlock),
     ],
+    ...isError,
     ...endTurn,
   };
+}
+
+// A result is outside text when every one of its fields is untrusted. A result that mixes sources
+// reaches the model as it is, and its tool marks its own outside fields.
+function isUntrustedResult(settled: Settled): boolean {
+  const sources = Object.values(settled.sources);
+
+  return sources.length > 0 && sources.every((source) => source === 'untrusted');
+}
+
+// A result of one text field reads as that text, and any other result as its JSON.
+function renderFencedResult(result: JSONObject): string {
+  const keys = Object.keys(result);
+  const text = result['text'];
+  const body = keys.length === 1 && typeof text === 'string' ? text : JSON.stringify(result);
+
+  return renderFenced({
+    tag: 'tool-result',
+    attributes: { source: 'untrusted' },
+    text: body,
+    fence: mintBlockID(),
+  });
+}
+
+function toImageBlock(image: ToolImage) {
+  return {
+    type: 'image' as const,
+    data: Buffer.from(image.bytes).toString('base64'),
+    mimeType: image.mediaType,
+  };
+}
+
+// A refusal is nixie's own sentence, so it reaches the model as plain error text.
+async function writeRefusedCall(recorder: CallRecorder, refusal: string): Promise<CallToolResult> {
+  const written = await recorder.writeCall(null);
+
+  const refused = await recorder.writeSettled(
+    written.sequence,
+    buildMessage('error', refusal, { source: 'owner_data' }),
+  );
+
+  return toCallToolResult(refused.settled);
 }
 
 function isPrepared(value: Prepared | DirectResult): value is Prepared {

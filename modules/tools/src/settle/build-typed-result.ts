@@ -11,7 +11,8 @@ export function buildTypedResult(
 ): Settled {
   const result = typed.result;
 
-  if (!registered.parseOutput(result).isValid) {
+  // a result that reports its service's own failure holds that service's text, whatever the schema
+  if (typed.isError !== true && !registered.parseOutput(result).isValid) {
     const messageOptions = actionID === null ? {} : { actionID };
 
     return buildMessage(
@@ -26,7 +27,12 @@ export function buildTypedResult(
     actionID,
     sources: registered.definition.declaration.results,
     content: buildResultFields(typed, result),
-    reply: { kind: 'typed', result, images: typed.images ?? [] },
+    reply: {
+      kind: 'typed',
+      result,
+      images: typed.images ?? [],
+      ...(typed.isError === undefined ? {} : { isError: true as const }),
+    },
     ...(typed.endsTurn === undefined ? {} : { endsTurn: true as const }),
     ...(typed.refusalCode === undefined ? {} : { refusalCode: typed.refusalCode }),
     ...(typed.attachments === undefined ? {} : { attachments: typed.attachments }),

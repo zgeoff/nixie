@@ -37,6 +37,9 @@ export function buildToolRegistry(
       ];
     },
     findTool: (name) => tools.get(name) ?? findInSources(sources, name),
+    prepareTaskRun: async (names) => {
+      await Promise.all(sources.map((source) => source.prepareTaskRun?.(names)));
+    },
   };
 }
 
