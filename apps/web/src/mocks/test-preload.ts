@@ -21,7 +21,6 @@ globalThis.happyDOM.setURL(`${webOrigin}/`);
 
 // A frame of the device page loads a document with no script, which the interceptor answers.
 globalThis.happyDOM.settings.enableIframePageLoading = true;
-globalThis.happyDOM.settings.disableIframePageLoading = false;
 
 globalThis.happyDOM.settings.fetch.interceptor = {
   beforeAsyncRequest: (context) => {

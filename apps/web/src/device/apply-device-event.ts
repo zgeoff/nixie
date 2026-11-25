@@ -22,10 +22,11 @@ function keepShownMessages(
   current: DeviceEvents,
   layout: DeviceEvents['layout'],
 ): readonly PageDelivery[] {
-  return current.messages.filter((message) =>
-    layout?.regions.some(
-      (region) => region.name === message.region && region.shown === message.shown,
-    ),
+  return current.messages.filter(
+    (message) =>
+      layout?.regions.some(
+        (region) => region.name === message.region && region.shown === message.shown,
+      ) === true,
   );
 }
 

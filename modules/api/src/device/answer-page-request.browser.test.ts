@@ -1,15 +1,9 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { makeDeviceToolCaller, seedScreenOnDevice } from '@heynixie/devices/test-utils';
 import { waitForCondition } from '@heynixie/testing';
+import { z } from 'zod';
 import { startPageFrameFront } from '../test-utils/start-page-frame-front';
 import { startTestAPI } from '../test-utils/start-test-api';
-
-interface PagePosts {
-  readonly name?: string;
-  readonly data?: unknown;
-  readonly type?: string;
-  readonly message?: string;
-}
 
 // The page runs in a real Chrome, in the frame that the API serves, under the policy it sends.
 async function setupTest(options: { hasTrustedTypes?: boolean } = {}) {
@@ -50,10 +44,19 @@ async function setupTest(options: { hasTrustedTypes?: boolean } = {}) {
     view.close();
   });
 
-  const readPosts = async (): Promise<readonly PagePosts[]> => {
+  const readPosts = async () => {
     const read = await view.evaluate('JSON.stringify(window.events)');
 
-    return JSON.parse(String(read));
+    const postsSchema = z.array(
+      z.object({
+        name: z.string().optional(),
+        data: z.json().optional(),
+        type: z.string().optional(),
+        message: z.string().optional(),
+      }),
+    );
+
+    return postsSchema.parse(JSON.parse(String(read)));
   };
 
   return {
