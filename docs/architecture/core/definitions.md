@@ -42,12 +42,12 @@ to the content hash, so a new commit or a new origin over the same files seeds a
 a branch, or a directory with no git file, keeps the content hash as its revision and names no repo.
 
 A source reads only the known definitions paths: the manifest, `nixie.yaml`, and the persona at the
-root, and the `budgets`, `effects`, `prompts`, `rules`, `skills` and `tasks` folders. It skips every
-other entry at the root by name, without reading or entering it, so that entry never enters the
-content hash, never has to parse, and never counts towards the size limits. A definitions repo can
-then hold its own docs and scripts, and editing a readme never makes a new definitions version. The
-snapshot still lists every skipped root entry, so a misnamed folder such as `rule/` shows in the
-seed's record instead of its rules going unread without a trace.
+root, and the `budgets`, `effects`, `prompts`, `rules`, `skills`, `tasks` and `voice` folders. It
+skips every other entry at the root by name, without reading or entering it, so that entry never
+enters the content hash, never has to parse, and never counts towards the size limits. A definitions
+repo can then hold its own docs and scripts, and editing a readme never makes a new definitions
+version. The snapshot still lists every skipped root entry, so a misnamed folder such as `rule/`
+shows in the seed's record instead of its rules going unread without a trace.
 
 Within the known paths, every source applies one filter. It skips every path with a part that starts
 with a dot, such as `.git`. It keeps every file under `skills/`, whatever its extension, because a

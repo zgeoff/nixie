@@ -20,8 +20,8 @@ Before you start:
 - Run this journey last, after every other feature's journey, because it needs an `up` with
   `NIXIE_VERIFY_CALLS=1`.
 - Run `NIXIE_VERIFY_CALLS=1 bun verify up --restart` and `bun verify doctor`.
-- Run this journey once per `up`, because each step expects the first call of the run. To run it
-  again, run the `up --restart` and `doctor` above first.
+- Run this journey once per `up`, because each step expects the first call since that `up`. To run
+  it again, run the `up --restart` and `doctor` above first.
 
 When a step exits with a code other than 0, do what its row in [Exit codes](exit-codes.md) says.
 When a step exits 0 and its `data` differs from the Expect line, compare the app with the end state
@@ -56,7 +56,7 @@ below, as step 5 of Check a change in the [verify skill](../SKILL.md#check-a-cha
 
    Expect: `data.speech` holds a `say` call whose `text` is "One moment.", and no `answer` call.
 
-4. Release the reply, then read the speech layer's calls again.
+4. Release the reply.
 
    ```bash
    bun verify action call-step --step release

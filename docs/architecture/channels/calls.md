@@ -103,8 +103,9 @@ list.
 ## The call thread
 
 A call is a task of the `call` runner, which no start tool picks. `calls.start` creates the task in
-its own transaction, with the call's short ID and the conversation's newest sequence at that moment,
-called `seedThrough`. The runner runs the same turn code as a started task, with these differences:
+the transaction that creates the call, with the call's short ID and the conversation's newest
+sequence at that moment, called `seedThrough`. The runner runs the same turn code as a started task,
+with these differences:
 
 - The task claims from a pool of its own, so a call's turn never waits behind a conversation turn.
   One loop claims by default, and `tasks.callClaimLoops` sets another count.
@@ -203,8 +204,8 @@ Both places that hold settings are optional.
   in the `voice` section of the deployment config. Without the section, calls are off.
 - The `voice/` folder of the [definitions](../core/definitions.md) holds `voice.yaml`, with `voice`,
   `hold_after_ms` and `price_per_minute`, and `lines.yaml`, with the fixed lines `holding`,
-  `reconnect`, `couldnt_finish` and `budget`. Every key is optional, and a missing key takes the
-  default in the module.
+  `reconnect`, `couldnt_finish` and `budget`. Every key is optional. A missing key takes the default
+  in the module, except `price_per_minute`, which has none.
 
 A voice file that fails to parse never stops the server or the seed. The seed leaves the file
 unapplied and logs `definitions.voice_file_skipped` with the file and its fault. Calls then use the
