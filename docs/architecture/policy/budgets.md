@@ -22,10 +22,11 @@ seed and names both files. The definitions read budgets from format 5, as
 | `period` | `day`, `week` or `month`                                      |
 
 The parser converts the limit to whole micros (millionths of a dollar) once, with
-`Math.round(dollars * 1_000_000)`, and the ledger holds integers only. Each release publishes the
-format as the JSON Schema `definitions-budgets.schema.json`, generated from the schema the parser
-uses. `bun run --cwd modules/policy rules-schema` rewrites it with the rules schema, and a test
-fails while the committed file differs. The release assets do not include it yet.
+`Math.round(dollars * 1_000_000)`, and the ledger holds integers only. The format is committed as
+the JSON Schema `definitions-budgets.schema.json`, generated from the schema the parser uses.
+`bun run --cwd modules/policy rules-schema` rewrites this file and the rules schema, and a test
+fails while the committed file differs. A release uploads the rules schema and leaves this one in
+the repo.
 
 A period starts at local midnight in the time tool's default zone: a day at each midnight, a week on
 Monday and a month on the first. The refusal text and the client show the next start as the reset.
@@ -113,13 +114,14 @@ approval.
 
 A charge goes back in the transaction that settles the action without a purchase:
 
-- A failed action credits it, whatever wrote the failure: a refusal, a rule deny, a held action the
-  user declined or let lapse, or an unknown outcome the user dropped.
-- A Stop that cancels the action before an attempt credits it in the Stop's transaction.
+- A failed action gets its charge back, whatever wrote the failure: a refusal, a rule deny, a held
+  action the user declined, let lapse or approved after its deadline, or an unknown outcome the user
+  dropped. A held action that the user approves in time is released and keeps its charge.
+- A Stop that cancels the action before an attempt credits the charge in the Stop's transaction.
 - An unknown outcome stays charged until the user settles it.
 
-A purchase that the user approved is not charged, because the approval already answered the
-question.
+A purchase that the user approves from an ask is not charged, because no lift allowed it and only a
+lift charges at the queue.
 
 ## Changing a lift or a budget
 
