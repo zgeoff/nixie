@@ -41,3 +41,23 @@ test('it lets you decline a waiting allow for a form the registry refuses', asyn
 
   expect(answered.status).toBe('answered');
 });
+
+test('it refuses to approve a waiting allow for a form whose input schema holds an unresolved ref', async () => {
+  const ctx = await setupTest();
+
+  const proposalID = await ctx.seed.oldAllow(
+    buildToolForm({
+      annotations: { readOnlyHint: true },
+      inputSchema: { type: 'object', properties: { owner: { $ref: '#/$defs/missing' } } },
+    }),
+  );
+
+  const answered = await ctx.mcp.answer(proposalID, 'approve');
+  const tool = await ctx.readTool('tracker.item_get');
+
+  expect([answered, tool?.state, tool?.pinned_hash]).toStrictEqual([
+    { status: 'refused', refusal: { error: 'NOT_ALLOWED', reason: 'form_refused' } },
+    'hidden_new',
+    null,
+  ]);
+});

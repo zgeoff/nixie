@@ -49,6 +49,10 @@ export interface StandInMcpSite {
   // the pin there, as a listing that lands in the middle of a call does.
   readonly onCall: (hook: (() => Promise<void>) | null) => void;
 
+  // Runs the hook while the next session opens, before the site answers its initialize request. A
+  // test moves the pin there, as a listing that lands while a call opens its session does.
+  readonly onInitialize: (hook: (() => Promise<void>) | null) => void;
+
   // from the next request on, the MCP endpoint answers 401 to every token, fresh ones included
   readonly rejectTokens: (isRejecting: boolean) => void;
 
@@ -73,6 +77,7 @@ interface SiteState {
   readonly advertisesIssuer: boolean;
   tools: readonly StandInTool[];
   callHook: (() => Promise<void>) | null;
+  initializeHook: (() => Promise<void>) | null;
   isListingFailing: boolean;
   isRejectingTokens: boolean;
   isRefreshRefused: boolean;
@@ -99,6 +104,7 @@ export async function startStandInMcpSite(
     advertisesIssuer: options.advertisesIssuer ?? true,
     tools: options.tools ?? [],
     callHook: null,
+    initializeHook: null,
     isListingFailing: false,
     isRejectingTokens: false,
     isRefreshRefused: false,
@@ -135,6 +141,9 @@ export async function startStandInMcpSite(
     },
     onCall: (hook) => {
       state.callHook = hook;
+    },
+    onInitialize: (hook) => {
+      state.initializeHook = hook;
     },
     failListings: (isFailing) => {
       state.isListingFailing = isFailing;
@@ -360,15 +369,17 @@ function answerRPC(
   if (message.method === 'initialize') {
     const asked = message.params?.protocolVersion;
 
-    return Response.json({
-      jsonrpc: '2.0',
-      id,
-      result: {
-        protocolVersion: typeof asked === 'string' ? asked : '2025-03-26',
-        capabilities: { tools: {} },
-        serverInfo: { name: 'stand-in', version: '1.0.0' },
-      },
-    });
+    return runInitializeHook(site).then(() =>
+      Response.json({
+        jsonrpc: '2.0',
+        id,
+        result: {
+          protocolVersion: typeof asked === 'string' ? asked : '2025-03-26',
+          capabilities: { tools: {} },
+          serverInfo: { name: 'stand-in', version: '1.0.0' },
+        },
+      }),
+    );
   }
 
   if (message.method === 'tools/list') {
@@ -411,6 +422,14 @@ function answerRPC(
     id,
     error: { code: -32_601, message: 'method not found' },
   });
+}
+
+async function runInitializeHook(site: SiteRequest): Promise<void> {
+  const hook = site.state.initializeHook;
+
+  site.state.initializeHook = null;
+
+  await hook?.();
 }
 
 async function answerEndlessPage(

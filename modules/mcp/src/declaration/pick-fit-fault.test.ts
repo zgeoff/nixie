@@ -119,3 +119,29 @@ test('it accepts a destination that the root names through a local ref', () => {
 
   expect(pickFitFault(override, form, new Set(['item_notify']))).toBeNull();
 });
+
+test('it accepts an override that names a string argument beside a local ref', () => {
+  const form = buildToolForm({
+    name: 'item_notify',
+    inputSchema: {
+      type: 'object',
+      $defs: { base: { type: 'object', properties: { name: { type: 'string' } } } },
+      $ref: '#/$defs/base',
+      properties: { note: { type: 'string' } },
+    },
+  });
+
+  const fault = pickFitFault(
+    {
+      effects: ['send'],
+      destinations: ['note'],
+      amount: null,
+      content: ['name', 'note'],
+      reconcile: null,
+    },
+    form,
+    new Set(['item_notify']),
+  );
+
+  expect(fault).toBeNull();
+});

@@ -7,15 +7,18 @@ type CallClearance =
   | { readonly kind: 'cleared'; readonly pinnedHash: string | null }
   | { readonly kind: 'refused'; readonly text: string };
 
-// What a send came to: the server's answer or failure, or a refusal that never reached the server.
-type SendOutcome = ServerCallOutcome | { readonly kind: 'refused'; readonly text: string };
-
 // What a proxied tool reaches the server through. Every call passes `clear` first, so a call
 // reaches the server only when the newest server listing passed and left the tool exposed.
 export interface ProxyCalls {
   // may list the server first, when its next try is due
   readonly clear: (tool: string) => Promise<CallClearance>;
 
-  // sends the call with the server's own name for the tool
-  readonly send: (tool: string, serverName: string, input: JSONObject) => Promise<SendOutcome>;
+  // Sends the call with the server's own name for the tool, once the session is open and the tool
+  // still holds the pin whose form the input was checked against.
+  readonly send: (
+    tool: string,
+    serverName: string,
+    input: JSONObject,
+    pinnedHash: string,
+  ) => Promise<ServerCallOutcome>;
 }

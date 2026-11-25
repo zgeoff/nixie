@@ -2,6 +2,7 @@ import type { JSONObject, Log } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
 import { buildActionHash } from '@heynixie/policy';
 import { z } from 'zod';
+import { isDefinitionMoved } from '../call-record/is-definition-moved';
 import { makeCallRecorder } from '../call-record/make-call-recorder';
 import { runPaidCall } from '../paid/run-paid-call';
 import { pickVariant } from '../policy-call/pick-variant';
@@ -115,6 +116,22 @@ export async function runApprovedCall(
   const registered = variant === null ? found : variant.registered;
 
   if (!(await probePreparedAsApproved(registered, request.input, stored.destinations, { run }))) {
+    return { status: 'changed' };
+  }
+
+  // The reads above wait, and a relist or a seed can move the pin or the declaration meanwhile.
+  const current = options.registry.findTool(request.tool);
+
+  if (
+    isDefinitionMoved(
+      { pinHash: found.definition.pinHash, definitionsHash: found.definition.definitionsHash },
+      {
+        pinHash: current?.definition.pinHash,
+        definitionsHash: current?.definition.definitionsHash,
+      },
+      options.definitions().snapshotHash,
+    )
+  ) {
     return { status: 'changed' };
   }
 

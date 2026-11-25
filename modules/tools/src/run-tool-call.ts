@@ -12,6 +12,8 @@ import { buildActionHash, makeFaultSafeDecisionPoint, toStoredDecision } from '@
 import { mintBlockID, renderFenced } from '@heynixie/wire';
 import type { CallToolResult } from '@modelcontextprotocol/server';
 import invariant from 'tiny-invariant';
+import { isDefinitionMoved } from './call-record/is-definition-moved';
+import type { DefinitionVersion } from './call-record/is-definition-moved';
 import { makeCallRecorder } from './call-record/make-call-recorder';
 import type { CallRecorder } from './call-record/make-call-recorder';
 import { renderChangedSentence } from './call-record/render-changed-sentence';
@@ -89,6 +91,7 @@ export async function runToolCall(
   const found = options.registry.findTool(call.tool);
   const pinHash = found?.definition.pinHash;
   const recorder = makeCallRecorder(call, run, options, { definitions, parent, pinHash });
+  const loaded = { pinHash, definitionsHash: found?.definition.definitionsHash };
 
   // The declaration came from one snapshot, and the call records the snapshot it started under, so
   // a call records the snapshot that supplied the declaration it ran under.
@@ -245,7 +248,7 @@ export async function runToolCall(
         destinations,
         deadlineAt,
         prepared,
-        pinHash,
+        loaded,
         options,
       });
 
@@ -429,7 +432,7 @@ interface DecidedCall {
   readonly destinations: readonly CallDestination[];
   readonly deadlineAt: number | null;
   readonly prepared: Prepared | null;
-  readonly pinHash: string | undefined;
+  readonly loaded: DefinitionVersion;
   readonly options: ToolCallOptions;
 }
 
@@ -494,7 +497,7 @@ interface AllowedCall {
   readonly destinations: readonly CallDestination[];
   readonly deadlineAt: number | null;
   readonly prepared: Prepared | null;
-  readonly pinHash: string | undefined;
+  readonly loaded: DefinitionVersion;
   readonly options: ToolCallOptions;
 
   readonly verdict?: MemoryWriteVerdict;
@@ -502,11 +505,21 @@ interface AllowedCall {
 }
 
 async function tryRunAllowedCall(allowed: AllowedCall): Promise<Settled> {
-  // A relist can move the pin after the call loaded the tool, and the call's input and result were
-  // read against the old form, so the call runs only under the form it loaded.
+  // A relist can move the pin, and a seed can move the declaration, while the decision was pending.
+  // The call's input was read against the form and the declaration it loaded, so it runs only under
+  // those.
   const current = allowed.options.registry.findTool(allowed.call.tool);
 
-  if (current?.definition.pinHash !== allowed.pinHash) {
+  if (
+    isDefinitionMoved(
+      allowed.loaded,
+      {
+        pinHash: current?.definition.pinHash,
+        definitionsHash: current?.definition.definitionsHash,
+      },
+      allowed.options.definitions().snapshotHash,
+    )
+  ) {
     return buildMessage('error', renderChangedSentence(allowed.call.tool), {
       source: 'owner_data',
     });

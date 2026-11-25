@@ -250,3 +250,28 @@ test('it applies no override to a pinned tool named like an inherited member', a
 
   expect(tools.map((tool) => tool?.state)).toStrictEqual(['exposed', 'exposed']);
 });
+
+test('it hides a tool whose input schema holds an unresolved ref, and proposes nothing for it', async () => {
+  const ctx = await setupTest();
+
+  await ctx.mcp.addServer('tracker', buildServerFacts());
+
+  await ctx.mcp.list('tracker', {
+    forms: [
+      buildToolForm({
+        annotations: { readOnlyHint: true },
+        inputSchema: { type: 'object', properties: { owner: { $ref: '#/$defs/missing' } } },
+      }),
+    ],
+  });
+
+  const tool = await ctx.readTool('tracker.item_get');
+  const open = await readOpenProposals(ctx.mcp.log.writer.db, ctx.mcp.context.now());
+
+  expect([tool?.state, tool?.proposal_id, tool?.hidden_reason, open]).toStrictEqual([
+    'hidden_new',
+    null,
+    expect.stringContaining('does not compile'),
+    [],
+  ]);
+});

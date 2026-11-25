@@ -22,8 +22,9 @@ export interface ActionAttempt {
   readonly tool: string;
   readonly arguments: JSONObject;
 
-  // the definitions snapshot the queued call was recorded under, which a connector whose declaration
-  // comes from the definitions compares with the snapshot of its own
+  // The definitions snapshot the action's first attempt ran under, or the one the queued call was
+  // recorded under before an attempt has started. A connector whose declaration comes from the
+  // definitions compares it with the snapshot of its own.
   readonly snapshotHash: string;
   readonly attempt: number;
   readonly idempotencyKey: string;

@@ -1,6 +1,7 @@
 import type { JSONObject, Log } from '@heynixie/log';
 import { findMcpToolOverride } from '@heynixie/policy';
-import type { RegisteredTool, ToolSource } from '@heynixie/tools';
+import { buildSchemaParser } from '@heynixie/tools';
+import type { RegisteredTool, SchemaCheck, ToolSource } from '@heynixie/tools';
 import { runProxiedCall } from '../call/run-proxied-call';
 import type { ProxiedCallResult } from '../call/run-proxied-call';
 import type { ProxyCalls } from '../call/types';
@@ -32,6 +33,7 @@ interface ServedTool {
   readonly tool: RegisteredTool;
   readonly form: ToolForm;
   readonly declared: ToolDeclaration;
+  readonly parsePinned: (input: JSONObject) => SchemaCheck;
 
   // what the cached definition was built from, so another override or snapshot builds it again
   readonly key: string;
@@ -63,9 +65,10 @@ export function createToolCatalog(
         return Promise.resolve(null);
       }
 
-      // The owner approved the arguments under the form the call loaded, and the pin may have moved
-      // since, so they go to the server only when the current form still accepts them.
-      if (!found.tool.parseInput(input).isValid) {
+      // The pin may have moved since the owner approved the arguments, so they go to the server only
+      // when the current pin accepts them. The pin's own schema reads them, because the served one
+      // leaves out the argument that an idempotency key fills.
+      if (!found.parsePinned(input).isValid) {
         return Promise.resolve({
           kind: 'refused',
           text: `${tool} changed after you approved this call, and its new form no longer accepts the arguments`,
@@ -138,7 +141,14 @@ export function createToolCatalog(
         const built = buildProxiedTool(row.tool, form, calls, declared);
 
         if (built.kind === 'built' && declared !== null) {
-          next.set(row.tool, { hash, tool: built.tool, form, declared, key });
+          next.set(row.tool, {
+            hash,
+            tool: built.tool,
+            form,
+            declared,
+            parsePinned: buildSchemaParser(form.inputSchema),
+            key,
+          });
         }
       }
 

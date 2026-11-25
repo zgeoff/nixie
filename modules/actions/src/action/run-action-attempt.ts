@@ -105,7 +105,7 @@ async function runAttempt(
   const attempt = { ...claimed, attempt: claimed.action.attempt_count + 1 };
   const connector = options.connectors.get(claimed.action.tool);
 
-  const queued = await readQueuedCall(context, claimed.action.queued_sequence);
+  const queued = await readQueuedCall(context, claimed.action);
 
   if (connector === undefined || queued === null) {
     const reason = connector === undefined ? 'unknown_tool' : 'arguments_unreadable';

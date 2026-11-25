@@ -32,7 +32,7 @@ const noReconcile: ConnectorReconcile = {
 
 // The connector that runs an approved, queued call of a proxied tool. An idempotency key carries the
 // action ID, and a check settles an interrupted call by what its read tool finds. Without either, a
-// call whose outcome is unknown comes to you. A recovery needs the snapshot the call was recorded under.
+// call whose outcome is unknown comes to you. A recovery runs only under the first attempt's snapshot.
 export function buildActionConnector(
   call: (input: JSONObject) => Promise<ProxiedCallResult>,
   reconcile: ConnectorReconcile = noReconcile,
@@ -64,6 +64,15 @@ export function buildActionConnector(
   if (declared === null) {
     return {
       run: async (attempt) => {
+        // A call that declares nothing to settle an unknown outcome is never tried again, so a
+        // second attempt means an earlier version of the declaration scheduled it.
+        if (attempt.attempt > 1) {
+          return {
+            kind: 'ambiguous',
+            reason: `${attempt.tool} no longer declares how to retry, so nothing was sent again`,
+          };
+        }
+
         const result = await call(attempt.arguments);
 
         return toProviderResponse(result);

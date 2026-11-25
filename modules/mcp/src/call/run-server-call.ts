@@ -13,11 +13,18 @@ export interface ServerCallRequest {
   readonly name: string;
   readonly input: JSONObject;
   readonly timeoutMs: number;
+
+  // Runs once the session is open and before the call leaves, so what the session took the time to
+  // open cannot change under the call. A sentence it returns refuses the call.
+  readonly readRefusal: () => Promise<string | null>;
 }
 
 export type ServerCallOutcome =
   | { readonly kind: 'answered'; readonly answer: unknown }
-  | { readonly kind: 'failed'; readonly message: string };
+  | { readonly kind: 'failed'; readonly message: string }
+
+  // the call never left, and the sentence says why
+  | { readonly kind: 'refused'; readonly text: string };
 
 // One MCP tools/call of one server, over Streamable HTTP, through the credential store's fetcher.
 // A call that fails is a value, never a throw, and its message never holds the server's text.
@@ -33,6 +40,12 @@ export async function runServerCall(request: ServerCallRequest): Promise<ServerC
 
   try {
     await client.connect(transport, { signal });
+
+    const refusal = await request.readRefusal();
+
+    if (refusal !== null) {
+      return { kind: 'refused', text: refusal };
+    }
 
     const answer = await client.callTool(
       { name: request.name, arguments: request.input },

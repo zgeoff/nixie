@@ -85,8 +85,9 @@ export function writeLeasedRecords(
   });
 }
 
-// What the record that queued an action holds: the arguments, and the definitions snapshot the call
-// was recorded under, which a connector with more than one version of its declaration reads.
+// What the record that queued an action holds: the arguments, and the snapshot that a connector with
+// more than one version of its declaration reads. That is the first attempt's snapshot once an
+// attempt has started, and the queued call's before.
 export interface QueuedCall {
   readonly arguments: JSONObject;
   readonly snapshotHash: string;
@@ -94,14 +95,60 @@ export interface QueuedCall {
 
 export async function readQueuedCall(
   context: TasksContext,
-  sequence: number,
+  action: Pick<ActionRow, 'action_id' | 'task_id' | 'queued_sequence' | 'attempt_count'>,
 ): Promise<QueuedCall | null> {
-  const [entry] = await readRecords(context.log, { afterSequence: sequence - 1, limit: 1 });
+  const [entry] = await readRecords(context.log, {
+    afterSequence: action.queued_sequence - 1,
+    limit: 1,
+  });
 
   const erasable = entry?.record.erasable;
   const args = erasable?.status === 'readable' ? erasable.fields['arguments'] : undefined;
 
-  return entry !== undefined && isJSONObject(args)
-    ? { arguments: args, snapshotHash: entry.record.definitions.snapshotHash }
-    : null;
+  if (entry === undefined || !isJSONObject(args)) {
+    return null;
+  }
+
+  const firstAttempt =
+    action.attempt_count === 0 ? null : await readFirstAttemptSnapshot(context, action);
+
+  return {
+    arguments: args,
+    snapshotHash: firstAttempt ?? entry.record.definitions.snapshotHash,
+  };
+}
+
+// The snapshot the record of the action's first attempt holds, which names the declaration that the
+// attempt sent under. Null when no such record exists.
+async function readFirstAttemptSnapshot(
+  context: TasksContext,
+  action: Pick<ActionRow, 'action_id' | 'task_id' | 'queued_sequence'>,
+): Promise<string | null> {
+  let afterSequence = action.queued_sequence;
+
+  for (;;) {
+    const entries = await readRecords(context.log, {
+      afterSequence,
+      thread: action.task_id,
+      kinds: ['action.attempt_started'],
+    });
+
+    const first = entries.find(
+      (entry) =>
+        entry.record.payload['actionID'] === action.action_id &&
+        entry.record.payload['attempt'] === 1,
+    );
+
+    if (first !== undefined) {
+      return first.record.definitions.snapshotHash;
+    }
+
+    const last = entries.at(-1);
+
+    if (last === undefined) {
+      return null;
+    }
+
+    afterSequence = last.record.sequence;
+  }
 }

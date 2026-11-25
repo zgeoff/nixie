@@ -26,7 +26,7 @@ export async function runReconcileCheck(
   const action = claimed.action;
   const connector = options.connectors.get(action.tool);
 
-  const queued = await readQueuedCall(context, action.queued_sequence);
+  const queued = await readQueuedCall(context, action);
 
   const response = await runCheck(context, claimed, {
     connector,

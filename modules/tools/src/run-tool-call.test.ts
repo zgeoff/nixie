@@ -280,6 +280,63 @@ test('it runs nothing for a call whose tool changed its pin after the call loade
   ]);
 });
 
+test('it runs nothing for a call whose declaration moved to another snapshot while its decision was pending', async () => {
+  const runs: string[] = [];
+  const snapshot = { current: 'sha256:test' };
+
+  const tool = buildToolRegistry([
+    {
+      ...buildMockToolDefinition({
+        name: 'notes_read',
+        run: () => {
+          runs.push('ran');
+
+          return Promise.resolve({ status: 'ok' as const, result: { text: 'a note' } });
+        },
+      }),
+      pinHash: 'pin-a',
+      definitionsHash: 'sha256:test',
+
+      // a seed that changes only an override lands once the call has loaded its tool
+      clear: () => {
+        snapshot.current = 'sha256:seeded';
+
+        return Promise.resolve(null);
+      },
+    },
+  ]).findTool('notes_read');
+
+  const ctx = await setupTest({
+    tools: [],
+    sources: [{ toolNames: () => ['notes_read'], findTool: () => tool }],
+  });
+
+  const result = await runToolCall(
+    { tool: 'notes_read', input: { query: 'milk' }, toolUseID: 'toolu_1' },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      logThread: 'task-1',
+      tools: ['notes_read'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    { ...ctx.options, definitions: () => ({ snapshotHash: snapshot.current }) },
+  );
+
+  expect([result, runs]).toStrictEqual([
+    {
+      content: [
+        {
+          type: 'text',
+          text: 'notes_read changed while this call was starting, so nothing ran; call it again',
+        },
+      ],
+      isError: true,
+    },
+    [],
+  ]);
+});
+
 test('it keeps structured content for a result that mixes untrusted and trusted fields', async () => {
   const ctx = await setupTest({
     tools: [

@@ -1,5 +1,6 @@
 import type { JSONObject } from '@heynixie/log';
 import type { ToolOutcome } from '@heynixie/tools';
+import { renderChangedSentence } from '@heynixie/tools';
 import type { ToolForm } from '../types';
 import { buildCallOutcome } from './build-call-outcome';
 import type { ProxyCalls } from './types';
@@ -34,13 +35,10 @@ export async function runProxiedCall(
   // A listing that the clearance made may have moved the pin, and the input was checked against the
   // form of the old one.
   if (clearance.pinnedHash !== request.pinnedHash) {
-    return {
-      kind: 'refused',
-      text: `${request.tool} changed while this call was starting, so nothing ran; call it again`,
-    };
+    return { kind: 'refused', text: renderChangedSentence(request.tool) };
   }
 
-  const sent = await calls.send(request.tool, request.form.name, request.input);
+  const sent = await calls.send(request.tool, request.form.name, request.input, request.pinnedHash);
 
   if (sent.kind === 'refused') {
     return { kind: 'refused', text: sent.text };

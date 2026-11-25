@@ -3,6 +3,7 @@ import type { CredentialStore, HeldBackend } from '@heynixie/credentials';
 import type { Definitions, JSONObject, Log } from '@heynixie/log';
 import { subscribeToChanged } from '@heynixie/log';
 import type { ProposalKindHandler } from '@heynixie/proposals';
+import { renderChangedSentence } from '@heynixie/tools';
 import { buildActionConnector } from './call/build-action-connector';
 import { pickCallGate } from './call/pick-call-gate';
 import { runServerCall } from './call/run-server-call';
@@ -277,36 +278,57 @@ export function startMcp(options: McpOptions): Mcp {
     };
   };
 
+  const readGate = async (tool: string) => {
+    const serverID = tool.split('.')[0] ?? '';
+
+    const [servers, rows] = await Promise.all([
+      readServerRows(options.log.writer.db),
+      readToolRows(options.log.writer.db, serverID),
+    ]);
+
+    const toolRow = rows.find((row) => row.tool === tool) ?? null;
+
+    const gate = pickCallGate({
+      serverID,
+      tool,
+      server: servers.find((row) => row.server_id === serverID) ?? null,
+      toolRow,
+      health: health.read(serverID),
+      signIn: signIns.get(serverID) ?? 'ok',
+      nowMs: options.now(),
+      formatTime,
+    });
+
+    return { gate, pinnedHash: toolRow?.pinned_hash ?? null };
+  };
+
+  // The sentence that refuses a call once its session is open, or null when the tool is still open
+  // under the pin the call was checked against. A listing may have moved either while it opened.
+  const readPinRefusal = async (tool: string, pinnedHash: string): Promise<string | null> => {
+    const read = await readGate(tool);
+
+    if (read.gate.kind === 'refused') {
+      return read.gate.text;
+    }
+
+    return read.gate.kind === 'open' && read.pinnedHash === pinnedHash
+      ? null
+      : renderChangedSentence(tool);
+  };
+
   const clear: ProxyCalls['clear'] = async (tool) => {
     const serverID = tool.split('.')[0] ?? '';
 
     // a listing the call makes may change the gate once, and a second listing never follows it
     for (let attempt = 0; attempt < 2; attempt += 1) {
-      const [servers, rows] = await Promise.all([
-        readServerRows(options.log.writer.db),
-        readToolRows(options.log.writer.db, serverID),
-      ]);
+      const read = await readGate(tool);
 
-      const gate = pickCallGate({
-        serverID,
-        tool,
-        server: servers.find((row) => row.server_id === serverID) ?? null,
-        toolRow: rows.find((row) => row.tool === tool) ?? null,
-        health: health.read(serverID),
-        signIn: signIns.get(serverID) ?? 'ok',
-        nowMs: options.now(),
-        formatTime,
-      });
-
-      if (gate.kind === 'open') {
-        return {
-          kind: 'cleared',
-          pinnedHash: rows.find((row) => row.tool === tool)?.pinned_hash ?? null,
-        };
+      if (read.gate.kind === 'open') {
+        return { kind: 'cleared', pinnedHash: read.pinnedHash };
       }
 
-      if (gate.kind === 'refused') {
-        return { kind: 'refused', text: gate.text };
+      if (read.gate.kind === 'refused') {
+        return { kind: 'refused', text: read.gate.text };
       }
 
       const listed = await list(serverID);
@@ -348,7 +370,7 @@ export function startMcp(options: McpOptions): Mcp {
 
   const calls: ProxyCalls = {
     clear,
-    send: async (tool, serverName, input) => {
+    send: async (tool, serverName, input, pinnedHash) => {
       const serverID = tool.split('.')[0] ?? '';
 
       const opened = await openServer(serverID);
@@ -360,6 +382,7 @@ export function startMcp(options: McpOptions): Mcp {
           name: serverName,
           input,
           timeoutMs: callTimeoutMs,
+          readRefusal: () => readPinRefusal(tool, pinnedHash),
         });
 
         // A refresh that the authorization server refused for good ends the grant during the call.

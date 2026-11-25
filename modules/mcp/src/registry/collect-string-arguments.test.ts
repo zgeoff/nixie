@@ -117,3 +117,14 @@ test('it lists an argument that is a string enum with no type', () => {
 
   expect(collectStringArguments(schema)).toStrictEqual(['color']);
 });
+
+test('it lists a string argument that a schema holds beside a local ref', () => {
+  const schema = {
+    type: 'object',
+    $defs: { base: { type: 'object', properties: { name: { type: 'string' } } } },
+    $ref: '#/$defs/base',
+    properties: { note: { type: 'string' } },
+  };
+
+  expect(collectStringArguments(schema)).toStrictEqual(['name', 'note']);
+});

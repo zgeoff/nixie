@@ -1,8 +1,9 @@
 import { findSchemaRef } from './find-schema-ref';
+import { omitSchemaRef } from './omit-schema-ref';
 
 // The path of every schema of an input schema that the filter accepts, at any depth: `filter.owner`
 // for a nested property, `tags[]` for an array's or a tuple's items, `labels.*` for the free keys of
-// an object, and the path of the union for a member of a union. A local `$ref` reads as its target.
+// an object, and the path of the union for a member of a union. A local `$ref` reads as its target, beside the keywords the schema holds with it.
 export function collectSchemaPaths(
   schema: unknown,
   accepts: (schema: object) => boolean,
@@ -30,13 +31,15 @@ function collectPaths(
   const ref: unknown = Reflect.get(schema, '$ref');
 
   if (typeof ref === 'string') {
-    return walk.refs.includes(ref)
+    const target = walk.refs.includes(ref)
       ? []
       : collectPaths(
           findSchemaRef(walk.root, ref),
           { ...walk, refs: [...walk.refs, ref] },
           accepts,
         );
+
+    return [...target, ...collectPaths(omitSchemaRef(schema), walk, accepts)];
   }
 
   const path = walk.path;

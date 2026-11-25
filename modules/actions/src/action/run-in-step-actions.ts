@@ -113,7 +113,7 @@ async function runInStepAction(
 
   const attempt = { ...claimed, attempt: action.attempt_count + 1 };
 
-  const queued = await readQueuedCall(context, action.queued_sequence);
+  const queued = await readQueuedCall(context, action);
 
   const args = queued?.arguments ?? null;
 

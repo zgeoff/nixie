@@ -171,38 +171,53 @@ done action. A server's own error keeps its text and sets the call's error flag.
 The tool's definition names its pinned hash, and the call record keeps it. A call runs only under
 the form it loaded. When a listing moves the pin after the call loaded the tool, nothing runs and
 the call returns an error that asks the model to call again. A call checks its input and its result
-against the pin hash it loaded, never the newest one, and the listing that a call's clearance makes
-cannot move the pin between that check and the send. A tool declared by an override names the
-snapshot that held the override, and a call that would record another snapshot runs nothing and asks
-the model to call again, because the declaration it decided under is no longer in force. An approved
-call of a direct tool runs only when the pin is still the one the call record names. An approved
-call of a queued tool runs only when the current form accepts its saved arguments, and otherwise
-settles as refused.
+against the pin hash it loaded, never the newest one. The proxy reads the pin again once the call's
+session is open and before `tools/call` leaves, so a listing that lands while the session opens
+cannot move it between the check and the send.
+
+A tool declared by an override names the snapshot that held the override, and a call that would
+record another snapshot runs nothing and asks the model to call again, because the declaration it
+decided under is no longer in force. A direct call reads both the pin and the snapshot again after
+its clearance and its policy decision, right before it runs. An approved call of a direct tool does
+so after its stored call and its prepared facts are read, and it runs only when the pin is still the
+one the call record names. A seed that changes only an override cannot let a call run under the old
+declaration.
+
+An approved call of a queued tool runs only when the current pin accepts its saved arguments, the
+argument that an idempotency key fills included, and otherwise settles as refused.
 
 Every field of a proxied result is `untrusted`, so the endpoint sends the whole result as one text
-block inside `tool-result` markers with a random fence, and sends no structured content. This holds
-for every direct tool whose result fields are all `untrusted`. A field that the declaration names no
+block inside `tool-result` markers with a random ID, and sends no structured content. This holds for
+every direct tool whose result fields are all `untrusted`. A field that the declaration names no
 source for counts as `untrusted`, so a tool whose output schema names no field, or whose source map
-is empty, is fenced too. A tool with trusted output keeps its structured content. The pictures of a
-result go to the model only when the turn's image budget has room for all of them, and a proxied
-call reserves them from that budget. Text that nixie writes itself, such as a refusal, carries no
-markers.
+is empty, is wrapped in the markers too. A tool with trusted output keeps its structured content.
+The pictures of a result go to the model only when the turn's image budget has room for all of them,
+and a proxied call reserves them from that budget. Text that nixie writes itself, such as a refusal,
+carries no markers.
 
 An approved call of a queued tool reaches the action runners through the connector that
 `findConnector` answers for it. The connector clears the call again before it runs. A refusal or a
 server error settles the action as refused, and a call that fails after it left settles as
 ambiguous, as does an answer that nixie cannot read or that breaks the output schema. Unless the
-tool's override sets a reconcile, an ambiguous action comes to the user. The reason of a refused
-action holds the server's own words, so a call that waits for it, and a queued or approved call that
-ends in a server error, gets the reason fenced, as an error.
+tool's override sets a reconcile, an ambiguous action comes to the user.
+
+A retry of a keyed call runs only under the declaration its first attempt ran under. The action
+runner hands the connector the snapshot of that first attempt, and a connector whose declaration
+came from another snapshot, or that declares no key any more, sends nothing and leaves the action
+ambiguous. A check whose read tool answers only with pictures, or outside its output schema, is
+inconclusive and never schedules a retry.
+
+The reason of a refused action holds the server's own words, so a call that waits for it, and a
+queued or approved call that ends in a server error, gets the reason inside the markers, as an
+error.
 
 ## Health
 
 The proxy keeps one health state per server in memory, shared by every task run: the failed listings
 in a row, the next try, the last error and whether the newest listing passed. The last error is one
-of `refused`, `error`, `unparsable`, `timeout` or `unauthorised`. Failed listings back off from 1
-minute to 1 hour, doubling at each failure, and the proxy makes each try on that schedule. A task
-run that starts during the backoff skips the listing.
+of `refused`, `error`, `unparsable`, `timeout` or `unauthorised`. Failed listings back off, doubling
+at each failure up to a limit, and the proxy makes each try on that schedule. A task run that starts
+during the backoff skips the listing.
 
 After 3 failed listings in a row the server is unhealthy, and the proxy writes one
 `mcp.health_changed` record with the last error and the next try. The next passed listing writes one
