@@ -30,3 +30,7 @@ export type PaidGate =
 
 // Runs in the transaction of the result record, so a credit and its result commit together.
 export type CreditBeside = (tx: WriteTransaction) => Promise<number>;
+
+// Runs in the transaction of the result record, so the charge of an approved call and its result
+// commit together.
+export type ChargeBeside = (tx: WriteTransaction) => Promise<void>;

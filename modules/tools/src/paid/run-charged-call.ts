@@ -49,7 +49,7 @@ export function withCreditBeside(settled: Settled, credit: CreditBeside | null):
   };
 }
 
-function isUnbilledFailure(outcome: ToolOutcome): boolean {
+export function isUnbilledFailure(outcome: ToolOutcome): boolean {
   if (outcome.status === 'error') {
     return outcome.billed !== true;
   }

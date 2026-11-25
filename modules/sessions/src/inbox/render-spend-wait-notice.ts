@@ -1,4 +1,5 @@
 import type { LogRecord } from '@heynixie/log';
+import { spendWaitNoticeCodec } from '@heynixie/log';
 import { renderSystemMessage } from '@heynixie/wire';
 import { formatMessageTime } from '../message/format-message-time';
 import type { MessageTimeOptions } from '../types';
@@ -8,6 +9,6 @@ export function renderSpendWaitNotice(record: LogRecord, times: MessageTimeOptio
   return renderSystemMessage({
     type: 'status',
     at: formatMessageTime(record.recordedAt, null, times),
-    body: formatSpendWait(record),
+    body: `[${spendWaitNoticeCodec.decode(record.payload).shortID}] ${formatSpendWait(record)}`,
   });
 }

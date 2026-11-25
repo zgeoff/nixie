@@ -3,7 +3,6 @@ import { readRecords } from '@heynixie/log';
 import { buildActionHash } from '@heynixie/policy';
 import { z } from 'zod';
 import { makeCallRecorder } from '../call-record/make-call-recorder';
-import { withCreditBeside } from '../paid/run-charged-call';
 import { runPaidCall } from '../paid/run-paid-call';
 import { pickVariant } from '../policy-call/pick-variant';
 import { omitRelatedMemory } from '../related/omit-related-memory';
@@ -206,7 +205,7 @@ async function tryRunApproved(
             facts.actionID,
           );
 
-    return withCreditBeside(settled, paid.credit);
+    return paid.charge === null ? settled : { ...settled, writeCharge: paid.charge };
   } catch (error) {
     return buildMessage(
       'error',

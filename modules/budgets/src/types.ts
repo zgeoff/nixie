@@ -33,6 +33,9 @@ export interface ChargeRequest {
   readonly budgetIDs: readonly string[];
   readonly amountMicros: number;
   readonly for: ChargeFor;
+
+  // charges though a budget lacks room, for a call that has run and billed already
+  readonly overdraw?: true;
 }
 
 export interface BudgetReached {

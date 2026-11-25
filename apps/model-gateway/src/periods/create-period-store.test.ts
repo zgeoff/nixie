@@ -97,7 +97,7 @@ test('it rewrites a limits count file with every route at zero and logs the old 
   ]);
 });
 
-test('it rewrites a version 2 store with every route at zero, keeps its sandboxes and logs the old totals', async () => {
+test('it gives every route the whole count of a version 2 store, keeps its sandboxes and logs the old totals', async () => {
   const ctx = await setupTest('2026-11-13T10:00:00Z');
 
   const count = { dollars: 7, tokens: 70 };
@@ -127,8 +127,14 @@ test('it rewrites a version 2 store with every route at zero, keeps its sandboxe
     {
       version: 3,
       routes: {
-        plan: { day: ctx.emptyDay, month: ctx.emptyMonth },
-        metered: { day: ctx.emptyDay, month: ctx.emptyMonth },
+        plan: {
+          day: { ...ctx.emptyDay, micros: 7_000_000 },
+          month: { ...ctx.emptyMonth, micros: 9_000_000 },
+        },
+        metered: {
+          day: { ...ctx.emptyDay, micros: 7_000_000 },
+          month: { ...ctx.emptyMonth, micros: 9_000_000 },
+        },
       },
       sandboxes: { alpha: { micros: 1_000_000, tokens: 2, limit: null, lastRefusal: null } },
     },

@@ -15,6 +15,7 @@ async function setupTest() {
           definitions: { snapshotHash: 'sha256:test' },
           thread: 'conversation',
           payload: spendWaitNoticeCodec.encode({
+            shortID: 'k3vq8m2xpa',
             taskID: 'conversation',
             sinceMs: 0,
             untilMs: 60_000,

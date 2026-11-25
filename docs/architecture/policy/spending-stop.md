@@ -68,16 +68,16 @@ held step ends at once with no step commit. A failed step counts no step error w
 explains it, or when the gateway recorded a refusal of the step's sandbox on the step's route after
 the step began, which the sandbox's `lastRefusal` holds, though the route has since reset or risen.
 
-A clear writes `spend.wait_notice` on the thread of each task that waited. On its next wake, the
-model reads about how many minutes the task waited. The wait notice holds no dollar figure and no
-route. The read cursor moves only through an unbroken run of read records, so a notice that falls
-past the wake's batch, at the
-[batch limit or an image cap](../core/conversation-turns.md#inbox-records-as-messages), can't join
-that batch. Instead, the turn's opening message carries the notice, with no inbox ID. Once the model
-reads the opening message, the turn end lists each notice that message carried in `waitNoticesTold`.
-A later batch that reaches a told notice marks it read and sends the model no text for it, and the
-image check before a resumed turn passes over it. A step whose inbox holds only told notices marks
-them read and runs no turn, even when the session's summary fails.
+A clear writes `spend.wait_notice` on the thread of each task that waited, with a short ID from
+`createShortID` in its payload. On its next wake, the model reads about how many minutes the task
+waited, under that short ID. The wait notice holds no dollar figure and no route. The read cursor
+moves only through an unbroken run of read records, so a notice that falls past the wake's batch, at
+the [batch limit or an image cap](../core/conversation-turns.md#inbox-records-as-messages), can't
+join that batch. Instead, the turn's opening message carries the notice, with no inbox ID. Once the
+model reads the opening message, the turn end lists each notice that message carried in
+`waitNoticesTold`. A later batch that reaches a told notice marks it read and sends the model no
+text for it, and the image check before a resumed turn passes over it. A step whose inbox holds only
+told notices marks them read and runs no turn, even when the session's summary fails.
 
 ## The watcher
 

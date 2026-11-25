@@ -75,9 +75,11 @@ sees the call, so the record and its charge commit together or not at all:
   credited in the transaction that writes the call's `tool_result` record. An error that sets
   `billed`, because the provider answered before the error, keeps its charges.
 - A tool that throws leaves an unknown outcome, so its charges stand.
-- A call that the owner approved from a held action has its call record from earlier, so its charge
-  commits in a transaction of its own before the provider sees the call, and its credit commits with
-  its result record.
+- A call that the owner approved from a held action has its call record from earlier. Before the
+  provider sees the call, the cap and the budgets are checked and nothing is written. The charge
+  then commits in the transaction of the result record, so the result and its charge commit
+  together, and a call that errors with no bill charges nothing. The charge takes the budgets past
+  their room when another call filled them since the check, because the provider has billed already.
 
 A paid tool can also set a call cap, a limit on the count of its calls, such as the search tool's
 [daily call cap](../connectors/search.md#the-daily-call-cap). The charge's write transaction first

@@ -6,6 +6,7 @@ export type { PaidToolLimits } from './limit/build-built-in-budgets';
 export { buildBuiltInBudgets } from './limit/build-built-in-budgets';
 export { pickBudgetLimit } from './limit/pick-budget-limit';
 export { readBudgetsInForce } from './limit/read-budgets-in-force';
+export { checkBudgetRoom } from './charge/check-budget-room';
 export { chargeBudgetsInTransaction } from './charge/charge-budgets-in-transaction';
 export { creditBudgetChargesInTransaction } from './charge/credit-budget-charges-in-transaction';
 export type { CreditTarget } from './charge/credit-budget-charges-in-transaction';

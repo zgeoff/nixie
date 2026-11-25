@@ -34,4 +34,8 @@ export interface Settled {
 
   // runs in the transaction that writes the result record
   readonly writeBeside?: (tx: WriteTransaction, resultSequence: number) => Promise<void>;
+
+  // runs in the transaction of every attempt to write the result record, the one that replaces a
+  // refused result too, because the call has run and billed whatever the record holds
+  readonly writeCharge?: (tx: WriteTransaction) => Promise<void>;
 }

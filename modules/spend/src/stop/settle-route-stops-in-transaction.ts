@@ -1,3 +1,4 @@
+import { createShortID } from '@heynixie/db';
 import type { WriteTransaction } from '@heynixie/log';
 import {
   spendRouteClearedCodec,
@@ -48,6 +49,7 @@ export async function settleRouteStopsInTransaction(
         definitions,
         thread: hold.taskID,
         payload: spendWaitNoticeCodec.encode({
+          shortID: createShortID(),
           taskID: hold.taskID,
           sinceMs: hold.sinceMs,
           untilMs: Math.max(facts.now, hold.sinceMs),

@@ -407,7 +407,7 @@ test('it ends a wait notice no earlier than the hold began, when a task is held 
   });
 
   expect(notices.map((entry) => spendWaitNoticeCodec.decode(entry.record.payload))).toStrictEqual([
-    { taskID: 'task-a', sinceMs: heldAtMs, untilMs: heldAtMs },
+    { shortID: expect.any(String), taskID: 'task-a', sinceMs: heldAtMs, untilMs: heldAtMs },
   ]);
 });
 

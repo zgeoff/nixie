@@ -2896,6 +2896,7 @@ test("it tells a wait notice past a full batch in the first turn's opening, with
       definitions: { snapshotHash: 'sha256:test' },
       thread: 'conversation',
       payload: spendWaitNoticeCodec.encode({
+        shortID: 'k3vq8m2xpa',
         taskID: 'conversation',
         sinceMs: 0,
         untilMs: 5 * 60_000,
@@ -2939,6 +2940,7 @@ test('it tells a wait notice once, and takes it with no turn when it is all the 
       definitions: { snapshotHash: 'sha256:test' },
       thread: 'conversation',
       payload: spendWaitNoticeCodec.encode({
+        shortID: 'k3vq8m2xpa',
         taskID: 'conversation',
         sinceMs: 0,
         untilMs: 5 * 60_000,
@@ -2980,6 +2982,7 @@ test('it tells a wait notice in no later turn, while later batches still fall sh
       definitions: { snapshotHash: 'sha256:test' },
       thread: 'conversation',
       payload: spendWaitNoticeCodec.encode({
+        shortID: 'k3vq8m2xpa',
         taskID: 'conversation',
         sinceMs: 0,
         untilMs: 5 * 60_000,
@@ -3028,6 +3031,7 @@ test("it tells a wait notice that sits behind more images than a turn takes in t
       definitions: { snapshotHash: 'sha256:test' },
       thread: 'conversation',
       payload: spendWaitNoticeCodec.encode({
+        shortID: 'k3vq8m2xpa',
         taskID: 'conversation',
         sinceMs: 0,
         untilMs: 5 * 60_000,
@@ -3068,6 +3072,7 @@ test('it tells a wait notice again when the turn whose opening told it read none
       definitions: { snapshotHash: 'sha256:test' },
       thread: 'conversation',
       payload: spendWaitNoticeCodec.encode({
+        shortID: 'k3vq8m2xpa',
         taskID: 'conversation',
         sinceMs: 0,
         untilMs: 5 * 60_000,
@@ -3111,6 +3116,7 @@ test('it tells a wait notice in the batch again when the turn read only the open
       definitions: { snapshotHash: 'sha256:test' },
       thread: 'conversation',
       payload: spendWaitNoticeCodec.encode({
+        shortID: 'k3vq8m2xpa',
         taskID: 'conversation',
         sinceMs: 0,
         untilMs: minutes * 60_000,
@@ -3155,6 +3161,7 @@ test('it tells a wait notice once though a message before it stays unread across
       definitions: { snapshotHash: 'sha256:test' },
       thread: 'conversation',
       payload: spendWaitNoticeCodec.encode({
+        shortID: 'k3vq8m2xpa',
         taskID: 'conversation',
         sinceMs: 0,
         untilMs: 5 * 60_000,
@@ -3220,6 +3227,7 @@ test('it rebuilds a full session for an image that sits behind a told wait notic
       definitions: { snapshotHash: 'sha256:test' },
       thread: 'conversation',
       payload: spendWaitNoticeCodec.encode({
+        shortID: 'k3vq8m2xpa',
         taskID: 'conversation',
         sinceMs: 0,
         untilMs: 5 * 60_000,
@@ -3259,6 +3267,7 @@ test('it runs no model turn for a wake of told wait notices alone when the summa
       definitions: { snapshotHash: 'sha256:test' },
       thread: 'conversation',
       payload: spendWaitNoticeCodec.encode({
+        shortID: 'k3vq8m2xpa',
         taskID: 'conversation',
         sinceMs: 0,
         untilMs: 5 * 60_000,

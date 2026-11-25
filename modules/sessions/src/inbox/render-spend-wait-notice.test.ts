@@ -1,11 +1,12 @@
 import { expect, test } from 'bun:test';
-import { readRecords } from '@heynixie/log';
+import { readRecords, spendWaitNoticeCodec } from '@heynixie/log';
 import { holdTaskOnRoute, readSpendFacts, settleRouteStops } from '@heynixie/spend';
 import {
   buildMockGatewayStatus,
   buildTrippedGatewayStatus,
   startTestSpend,
 } from '@heynixie/spend/test-utils';
+import invariant from 'tiny-invariant';
 import { buildMockTaskMessageView } from '../test-utils/build-mock-task-message-view';
 import { readTurnBatch } from '../turn/read-turn-batch';
 
@@ -65,8 +66,18 @@ test('it tells the model its next wake that it waited about so many minutes for 
   // the message's id is random hex, so a figure counts only as a whole word
   expect(message).not.toMatch(/\$|dollar|\bplan\b|\b41(?:\.2)?\b/u);
 
-  // a row number is no ID for the model to read
+  // a row number is no ID for the model to read; the notice's short ID is, and it stays the same
   expect(message).not.toInclude(`[#${String(notices[0]?.record.sequence)}]`);
+
+  invariant(notices[0] !== undefined, 'the notice was written');
+
+  const shortID = spendWaitNoticeCodec.decode(notices[0].record.payload).shortID;
+
+  const again = await ctx.readInbox(notices.map((notice) => notice.record));
+
+  expect([message, again.messages.map((entry) => entry.text).join('\n')]).toSatisfyAll(
+    (text: string) => text.includes(`[${shortID}] This task waited`),
+  );
 });
 
 test("it takes a notice that a turn's opening told with no text, so the read cursor passes it", async () => {

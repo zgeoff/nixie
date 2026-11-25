@@ -21,7 +21,7 @@ export async function chargeBudgetsInTransaction(
     return facts;
   }
 
-  const refusal = pickChargeRefusal(facts, request.amountMicros);
+  const refusal = request.overdraw === true ? null : pickChargeRefusal(facts, request.amountMicros);
 
   if (refusal !== null) {
     return refusal;

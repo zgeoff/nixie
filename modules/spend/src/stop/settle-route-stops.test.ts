@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { readRecords, spendWaitNoticeCodec } from '@heynixie/log';
 import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
 import { holdTaskOnRoute } from '../route/hold-task-on-route';
@@ -96,17 +97,23 @@ test('it writes a wait notice on the thread of each task that waited when the ro
 
   await ctx.settle();
 
-  const notices = await ctx.readRecords('spend.wait_notice');
+  const notices = await readRecords(ctx.log, { afterSequence: 0, kinds: ['spend.wait_notice'] });
   const stops = await readSpendRouteStops(ctx.writer.db);
 
-  expect(notices).toStrictEqual([
+  expect(
+    notices.map((notice) => ({
+      thread: notice.record.thread,
+      payload: spendWaitNoticeCodec.decode(notice.record.payload),
+    })),
+  ).toStrictEqual([
     {
       thread: 'task-a',
-      payload: JSON.stringify({
+      payload: {
+        shortID: expect.any(String),
         taskID: 'task-a',
         sinceMs: heldAt,
         untilMs: ctx.clock.now(),
-      }),
+      },
     },
   ]);
 

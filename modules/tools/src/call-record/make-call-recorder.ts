@@ -266,6 +266,7 @@ export function makeCallRecorder(
       const writeSettled = (toWrite: Settled): Promise<number> => {
         const contentSource = pickLeastTrusted(Object.values(toWrite.sources));
         const writeBeside = toWrite.writeBeside;
+        const writeCharge = toWrite.writeCharge;
 
         return withWriteTransaction(options.log.writer, async (tx) => {
           const [written] = await writeRecordsInTransaction(tx, options.log, [
@@ -289,6 +290,7 @@ export function makeCallRecorder(
           invariant(written, 'the log wrote no record for the tool result');
 
           await writeBeside?.(tx, written.sequence);
+          await writeCharge?.(tx);
 
           return written.sequence;
         });
@@ -301,7 +303,10 @@ export function makeCallRecorder(
           throw error;
         }
 
-        const refused = buildMessage('error', error.message, { source: 'untrusted' });
+        const refused: Settled = {
+          ...buildMessage('error', error.message, { source: 'untrusted' }),
+          ...(settled.writeCharge === undefined ? {} : { writeCharge: settled.writeCharge }),
+        };
 
         return { sequence: await writeSettled(refused), settled: refused };
       }

@@ -1,19 +1,27 @@
 import { sql } from 'kysely';
 import type { Migration } from '../types';
 
-// A charge from before the key names no period kind. The budget in force may have changed its
-// period since, so its kind or a built-in budget's ID suffix counts only when the charge's period
-// start is a start of that kind, a Monday for a week or the 1st for a month. Else it is a day's.
+// A charge from before the key names no period kind. The kind in force or a built-in ID suffix
+// counts only when the charge's period start is a start of that kind, a Monday or the 1st, and no
+// later charge of the budget starts off that kind. Else it is a day's.
 const isMonthStart = sql`substr(budget_charges.period_start, 9, 2) = '01'`;
 const isWeekStart = sql`strftime('%w', budget_charges.period_start) = '1'`;
 
 const inForcePeriod = sql`(select period from budgets_in_force
   where budgets_in_force.budget_id = budget_charges.budget_id)`;
 
+const laterOffMonth = sql`exists (select 1 from budget_charges as later
+  where later.budget_id = budget_charges.budget_id and later.rowid > budget_charges.rowid
+    and substr(later.period_start, 9, 2) <> '01')`;
+
+const laterOffWeek = sql`exists (select 1 from budget_charges as later
+  where later.budget_id = budget_charges.budget_id and later.rowid > budget_charges.rowid
+    and strftime('%w', later.period_start) <> '1')`;
+
 const kindOfBudget = sql`(
   case
-    when ${inForcePeriod} = 'month' and ${isMonthStart} then 'month'
-    when ${inForcePeriod} = 'week' and ${isWeekStart} then 'week'
+    when ${inForcePeriod} = 'month' and ${isMonthStart} and not ${laterOffMonth} then 'month'
+    when ${inForcePeriod} = 'week' and ${isWeekStart} and not ${laterOffWeek} then 'week'
     when budget_charges.budget_id like '%-month' and ${isMonthStart} then 'month'
     when budget_charges.budget_id like '%-week' and ${isWeekStart} then 'week'
     else 'day'

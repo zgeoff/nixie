@@ -388,11 +388,11 @@ force, and a reset or a raise that lifts the limit clears it.
 
 At start, the gateway rewrites a store file of an earlier shape, a count of one total or a version 2
 store, as a version 3 store in one write. A count of one total says nothing of a route's spend, so
-every route starts at zero. A version 2 store counts the day and the month of a single-route
-gateway's one route, so that route keeps each period still under way, with its raise and its trip,
-and a restart never reopens a limit. A gateway with several routes starts each at zero. The lost
-mark and the sandboxes carry over, and the gateway logs the old totals. The gateway refuses to start
-on a store file in any other shape, and a route that the config gained starts at zero.
+every route starts at zero. A version 2 store did not split its count by route, so each route takes
+the whole count of each period still under way, with its raise and its trip. The count of a route is
+then an upper bound, and a restart never reopens a limit. The lost mark and the sandboxes carry
+over, and the gateway logs the old totals. The gateway refuses to start on a store file in any other
+shape, and a route that the config gained starts at zero.
 
 ### Admission and the reset
 

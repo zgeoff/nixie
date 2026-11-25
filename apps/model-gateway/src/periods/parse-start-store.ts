@@ -45,9 +45,9 @@ const periodsCountSchema = z.looseObject({
   sandboxes: z.record(sandboxNameSchema, legacySandboxSchema),
 });
 
-// A count of one total starts every route at zero, and the gateway logs the old totals. A version 2
-// store counts the one route of a single-route gateway, which keeps each period under way. The lost
-// mark and the sandboxes carry over. Any other shape throws.
+// A count of one total starts every route at zero. A version 2 store did not split its count by
+// route, so every route takes the whole count of each period under way, which never reopens a
+// limit. The lost mark and the sandboxes carry over. Any other shape throws.
 export function parseStartStore(
   stored: unknown,
   nowMs: number,
@@ -70,17 +70,16 @@ export function parseStartStore(
   if (earlier.success) {
     const periods = earlier.data.periods;
     const sandboxes = earlier.data.sandboxes;
-    const [onlyRoute] = routeIDs;
 
-    const routes =
-      routeIDs.length === 1 && onlyRoute !== undefined
-        ? {
-            [onlyRoute]: {
-              day: carryCount(fresh.routes[onlyRoute]?.day, periods.day),
-              month: carryCount(fresh.routes[onlyRoute]?.month, periods.month),
-            },
-          }
-        : fresh.routes;
+    const routes = Object.fromEntries(
+      routeIDs.map((routeID) => [
+        routeID,
+        {
+          day: carryCount(fresh.routes[routeID]?.day, periods.day),
+          month: carryCount(fresh.routes[routeID]?.month, periods.month),
+        },
+      ]),
+    );
 
     return {
       kind: 'moved',
