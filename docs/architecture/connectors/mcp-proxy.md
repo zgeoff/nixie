@@ -111,12 +111,14 @@ together, so a server that keeps returning a page cursor cannot hold a sign-in o
 declines an allow proposal or it lapses, `nixie mcp allow <tool>` writes a new one, because an
 unchanged listing proposes nothing.
 
-nixie hides a tool, with the reason, when the model cannot read its name. The server's tool name
-must use only letters, digits, `_` and `-`, and the model's name for the tool must fit 64 characters
-and differ from the model name of every other tool. The config load checks each server ID against a
-list of the first segments of nixie's own tools, such as `web` for `web_fetch`, and refuses a match.
-The conversation endpoint checks the registry itself at its start, which catches a tool that a
-release adds and the list lacks.
+The model sees each tool under the Agent SDK's name for it: `mcp__nixie__` and the registry name,
+with each character outside letters, digits, `_` and `-` turned into `_`, so `tracker.item_get`
+reaches the model as `mcp__nixie__tracker_item_get`. nixie hides a tool, with the reason, when the
+model cannot read its name. The server's tool name must use only letters, digits, `_` and `-`, and
+the model's name for the tool must fit 64 characters and differ from the model name of every other
+tool. The config load checks each server ID against a list of the first segments of nixie's own
+tools, such as `web` for `web_fetch`, and refuses a match. The conversation endpoint checks the
+registry itself at its start, which catches a tool that a release adds and the list lacks.
 
 ## The registry
 
@@ -130,7 +132,8 @@ name that both hold.
 A tool joins the registry only when its pinned form has a declaration (see
 [Effect declarations](#effect-declarations)). A form without one stays hidden with the reason, and a
 call to it fails at the registry stage of the decision point. A tool whose override does not fit its
-pinned form stays `stopped_unfit` and out of the registry until the override or the form changes.
+pinned form stays `stopped_unfit` until the override or the form changes. Like any stopped tool, it
+stays in the registry in its pinned form, and nixie refuses each call to it.
 
 Before a task run reads its tool list, the registry asks each source to prepare the run's tools. The
 proxy lists the server of each named `<serverID>.<tool>`, unless that server's backoff is running. A

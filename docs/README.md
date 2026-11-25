@@ -27,9 +27,9 @@
   Linear: the slice plan, choices that need you, spikes, design tasks and later stages
 
 `architecture/` holds what is built, with the rules and contracts each part keeps. `design/<work>/`
-holds the design for a piece of work that is not built yet, with its spikes in
-`design/<work>/spikes/`: `design/platform/` is the first. `decisions/` holds the few
-[decision records](#decisions). Planned work lives in Linear.
+holds the design for a piece of work that is not built yet, and `research/<name>/` holds its spikes,
+as the [spikes index](../research/README.md) lists: `design/platform/` is the first. `decisions/`
+holds the few [decision records](#decisions). Planned work lives in Linear.
 
 ## Architecture
 

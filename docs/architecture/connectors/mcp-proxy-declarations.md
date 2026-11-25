@@ -3,7 +3,10 @@
 A tool's declaration comes from the override file of its server in the definitions repo, and from
 the annotations of its pinned form when the file has no entry for the tool. A tool's record of its
 declaration holds which source applied (`annotations` or `override`), the pinned hash and, for an
-override, the snapshot hash of the definitions that held it.
+override, the snapshot hash of the definitions that held it. [The MCP proxy](mcp-proxy.md) covers
+pins, the registry and calls,
+[the definitions format](../core/definitions.md#the-definitions-format) covers the repo that holds
+the override files, and [actions](../core/actions.md) covers queued calls and the action runners.
 
 nixie maps the annotations to effects like this:
 
@@ -55,15 +58,16 @@ would run under.
 ## Reconcile
 
 An override's `reconcile` becomes the reconcile of the tool's connector, which `findConnector`
-returns. With `idempotencyKey`, the connector fills that argument with the action's ID at each run,
-so a retry of an interrupted call is the same call to the server. The action runners keep the key
-for the time that `keyKeptForMs` in
+returns. With `idempotencyKey`, the connector fills that argument with the action's ID at each
+attempt, so a retry of an interrupted call is the same call to the server. The action runners keep
+the key for the time that `keyKeptForMs` in
 [`build-action-connector.ts`](../../../modules/mcp/src/call/build-action-connector.ts) sets. The
 input schema the model sees leaves the argument out, so a call needs no value for it, even when the
 server's schema requires one. With `check`, the connector calls the named read tool with the call's
 arguments after an interruption. A result with content counts as found. An empty result counts as
 not found, and the action runs again. The check runs only when that tool is itself declared as a
-read and is exposed.
+read and is exposed, so a check changes nothing on the server and calls only a form the user
+allowed.
 
 A check that does not run, fails or ends in a server error is inconclusive, and the action comes to
 the user. A result of images alone is inconclusive too, because nixie cannot read in the pictures
