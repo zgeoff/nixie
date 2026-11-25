@@ -3,7 +3,13 @@ import { applyDeviceEvent } from './apply-device-event';
 import type { DeviceEvents } from './use-device-events';
 
 function setupTest() {
-  const start: DeviceEvents = { event: null, layout: null, messages: [], connection: 'open' };
+  const start: DeviceEvents = {
+    event: null,
+    layout: null,
+    messages: [],
+    notices: [],
+    connection: 'open',
+  };
 
   return {
     start,
@@ -159,4 +165,46 @@ test('#applyDeviceEvent keeps the newest retained message of a region after 200 
   expect([after.messages.length, after.messages[0]?.data, after.messages[0]?.retain]).toStrictEqual(
     [201, 'state', true],
   );
+});
+
+test('#applyDeviceEvent numbers each refresh of a declared fetch in the order the stream sent it', () => {
+  const ctx = setupTest();
+
+  const first = applyDeviceEvent(ctx.start, {
+    kind: 'data',
+    region: 'pond',
+    shown: 'sh1',
+    url: 'https://tides.example/today',
+  });
+
+  const second = applyDeviceEvent(first, {
+    kind: 'data',
+    region: 'pond',
+    shown: 'sh1',
+    url: 'https://tides.example/today',
+  });
+
+  expect(second.notices.map((notice) => notice.id)).toStrictEqual([1, 2]);
+});
+
+test('#applyDeviceEvent drops the refreshes of a region that shows other content by now', () => {
+  const ctx = setupTest();
+
+  const noticed = applyDeviceEvent(ctx.start, {
+    kind: 'data',
+    region: 'pond',
+    shown: 'sh1',
+    url: 'https://tides.example/today',
+  });
+
+  const replaced = applyDeviceEvent(noticed, {
+    kind: 'layout',
+    layout: {
+      columns: ['1fr'],
+      rows: ['1fr'],
+      regions: [ctx.buildRegion('sh2')],
+    },
+  });
+
+  expect(replaced.notices).toStrictEqual([]);
 });
