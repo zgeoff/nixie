@@ -39,6 +39,8 @@ call before then finds no connection, and a mail's HTML reads as unsupported.
   and writes it into the input. A queued action's arguments therefore always name its connection. A
   call that names items of 2 connections fails with `mixed_connections`, and a call with no
   connection to choose fails with `CONNECTION_REQUIRED`.
+- A job's pins and the model's status line are not built. A tool resolves a call against every live
+  Google connection, whatever job the run belongs to.
 - An attempt or a check whose connection is forgotten answers `refused` with `connection_forgotten`.
 
 ## Reads

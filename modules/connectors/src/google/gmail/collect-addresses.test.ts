@@ -21,6 +21,21 @@ test.each([
     header: 'a@example.org, Team: b@example.org;, c@example.org',
     expected: ['a@example.org', 'b@example.org', 'c@example.org'],
   },
+  {
+    title: 'a group member with a comment after it',
+    header: 'Team: a@example.org (on call), b@example.org;',
+    expected: ['a@example.org', 'b@example.org'],
+  },
+  {
+    title: 'a comment with a comma, a nested comment and a bracket in it',
+    header: 'Sam (lee, (the <boss>)) <sam@example.org>, kim@example.org (a)',
+    expected: ['sam@example.org', 'kim@example.org'],
+  },
+  {
+    title: 'a parenthesis inside a quoted name',
+    header: '"Lee (Sam" <sam@example.org>, kim@example.org',
+    expected: ['sam@example.org', 'kim@example.org'],
+  },
   { title: 'an empty header', header: '', expected: [] },
 ])('it collects the bare addresses of $title', (row) => {
   expect(collectAddresses(row.header)).toStrictEqual([...row.expected]);

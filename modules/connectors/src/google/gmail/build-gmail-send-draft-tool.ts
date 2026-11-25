@@ -1,5 +1,6 @@
 import type { PrepareRefusal, Prepared, ToolDefinition } from '@heynixie/tools';
 import { z } from 'zod';
+import { buildDraftDigest } from './build-draft-digest';
 import { collectAddresses } from './collect-addresses';
 import { collectMessageContent } from './collect-message-content';
 import { decodeHeaderWords } from './decode-header-words';
@@ -11,6 +12,7 @@ import { makeResolveGmailDraftInput } from './make-resolve-gmail-draft-input';
 import { parseItemID } from './parse-item-id';
 import { readCallContext } from './read-call-context';
 import { readGmailDraft } from './read-gmail-draft';
+import { readGmailRaw } from './read-gmail-raw';
 import { readPartBytes } from './read-part-bytes';
 import { sendDraftArgumentsSchema, sendDraftInputSchema } from './send-arguments-schema';
 import type { GmailDeps } from './types';
@@ -59,6 +61,22 @@ export function buildGmailSendDraftTool(deps: GmailDeps): ToolDefinition {
             read.kind === 'missing'
               ? `UNKNOWN_DRAFT: no draft has the ID ${parsed.data.draft}`
               : `GMAIL_FAILED: ${read.reason}`,
+        };
+      }
+
+      // The card shows this message, so the digest the queued send carries must be this message's.
+      // A draft that changed since the endpoint took its digest never reaches the owner's card.
+      const raw = await readGmailRaw(deps.hosts, account, read.message.id);
+
+      if (raw.kind === 'failed') {
+        return { status: 'error', message: `GMAIL_FAILED: ${raw.reason}` };
+      }
+
+      if (buildDraftDigest(raw.text) !== parsed.data.digest) {
+        return {
+          status: 'error',
+          message:
+            'CHANGED: the draft changed while the send was being checked, and nothing was queued',
         };
       }
 
