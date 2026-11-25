@@ -46,11 +46,12 @@ export function ClientForm(): ReactNode {
       }),
     onSuccess: () => {
       setClientSecret('');
-
-      action.renew();
     },
-    onSettled: () =>
-      queryClient.invalidateQueries({ queryKey: nixie.queryUtils.connections.key() }),
+    onSettled: (_result, error) => {
+      action.settle(error);
+
+      return queryClient.invalidateQueries({ queryKey: nixie.queryUtils.connections.key() });
+    },
   });
 
   return (

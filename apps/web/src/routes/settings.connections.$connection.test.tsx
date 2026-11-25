@@ -159,3 +159,59 @@ test('it shows a missing connection as such', async () => {
 
   expect(found1).toHaveTextContent('No connection has this ID.');
 });
+
+test('it offers one button to consent again for a connection that needs consent and lacks a scope', async () => {
+  await createDeviceSession();
+
+  const connection = await connectionStore.connections.create({
+    label: 'Work',
+    status: 'needs_consent',
+    missing: [{ scope: 'gmail.modify', reason: 'not_granted' }],
+  });
+
+  const rendered = renderRoute(`/settings/connections/${connection.connection}`);
+
+  await rendered.findByRole('button', { name: 'Ask Google for them again' });
+
+  expect(rendered.queryByRole('button', { name: 'Consent again' })).toBeNull();
+});
+
+test('it offers Consent again for a connection that needs consent and lacks no scope', async () => {
+  await createDeviceSession();
+
+  const connection = await connectionStore.connections.create({
+    label: 'Work',
+    status: 'needs_consent',
+  });
+
+  const rendered = renderRoute(`/settings/connections/${connection.connection}`);
+
+  const found2 = await rendered.findByRole('button', { name: 'Consent again' });
+
+  expect(found2).toBeVisible();
+});
+
+test('it shows the key backups as complete once a backup covers the forget', async () => {
+  await createDeviceSession();
+
+  const connection = await connectionStore.connections.create({
+    status: 'forgotten',
+    label: null,
+    account: null,
+    forget: { erasure: 'done', revocation: 'confirmed', backup: { state: 'pending' } },
+  });
+
+  const rendered = renderRoute(`/settings/connections/${connection.connection}`);
+
+  await rendered.findByText(/^Key backups: pending/u);
+
+  await connectionStore.connections.update(connection, {
+    data(draft) {
+      draft.forget = { erasure: 'done', revocation: 'confirmed', backup: { state: 'complete' } };
+    },
+  });
+
+  const found3 = await rendered.findByText(/^Key backups: complete/u, {}, { timeout: 4000 });
+
+  expect(found3).toBeVisible();
+});

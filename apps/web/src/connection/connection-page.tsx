@@ -63,7 +63,7 @@ export function ConnectionPage(props: ConnectionPageProps): ReactNode {
           </dl>
           <MissingScopesNotice connection={connection} />
           <div className={section}>
-            {connection.status === 'needs_consent' ? (
+            {connection.status === 'needs_consent' && connection.missing.length === 0 ? (
               <ConnectButton connection={connection.connection} label="Consent again" />
             ) : null}
             <ConnectionForget

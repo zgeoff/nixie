@@ -29,7 +29,14 @@ async function setupTest() {
 
   const waitOnPage = (expression: string) => waitForPage(view, expression, 8000);
 
+  // a click on a control below the fold hangs, so the page scrolls to the control first
+  const clickAt = async (selector: string): Promise<void> => {
+    await view.evaluate(`document.querySelector(${JSON.stringify(selector)}).scrollIntoView()`);
+    await view.click(selector);
+  };
+
   return {
+    clickAt,
     appURL: app.url,
     view,
     waitForPage: waitOnPage,
@@ -65,10 +72,7 @@ async function setupTest() {
         "[...document.querySelectorAll('button')].some((button) => button.innerText === 'Connect a Google account' && !button.disabled)",
       );
 
-      await view.evaluate(
-        "[...document.querySelectorAll('button')].find((button) => button.innerText === 'Connect a Google account').click()",
-      );
-
+      await clickAt('li[aria-label="Connect an account"] button');
       await waitOnPage("location.pathname.startsWith('/settings/connections/')");
     },
   };
@@ -140,18 +144,13 @@ test('it forgets a connection and shows the erasure, the revocation and the key 
     "[...document.querySelectorAll('button')].some((button) => button.innerText === 'Forget this connection' && !button.disabled)",
   );
 
-  await ctx.view.evaluate(
-    "[...document.querySelectorAll('button')].find((button) => button.innerText === 'Forget this connection').click()",
-  );
+  await ctx.clickAt('main button');
 
   await ctx.waitForPage(
     "[...document.querySelectorAll('button')].some((button) => button.innerText === 'Forget for good')",
   );
 
-  await ctx.view.evaluate(
-    "[...document.querySelectorAll('button')].find((button) => button.innerText === 'Forget for good').click()",
-  );
-
+  await ctx.clickAt('[role=group][aria-label="Forget this connection"] button:first-of-type');
   await ctx.waitForPage('document.querySelector(\'section[aria-label="Forget status"]\') !== null');
 
   const statusText = await ctx.readText();

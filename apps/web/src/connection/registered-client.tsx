@@ -58,11 +58,11 @@ function PickerForm(props: RegisteredClientProps): ReactNode {
         pickerKey: isRemoval ? null : pickerKey.trim(),
         projectNumber: isRemoval ? null : projectNumber.trim(),
       }),
-    onSuccess: () => {
-      action.renew();
+    onSettled: (_result, error) => {
+      action.settle(error);
+
+      return queryClient.invalidateQueries({ queryKey: nixie.queryUtils.connections.key() });
     },
-    onSettled: () =>
-      queryClient.invalidateQueries({ queryKey: nixie.queryUtils.connections.key() }),
   });
 
   return (
@@ -133,11 +133,11 @@ function RemoveClient(props: RemoveClientProps): ReactNode {
   const remove = useMutation({
     mutationFn: () =>
       nixie.client.connections.removeClient({ clientActionID: action.id, client: props.client }),
-    onSuccess: () => {
-      action.renew();
+    onSettled: (_result, error) => {
+      action.settle(error);
+
+      return queryClient.invalidateQueries({ queryKey: nixie.queryUtils.connections.key() });
     },
-    onSettled: () =>
-      queryClient.invalidateQueries({ queryKey: nixie.queryUtils.connections.key() }),
   });
 
   return (

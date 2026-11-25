@@ -26,8 +26,10 @@ export function ConnectButton(props: ConnectButtonProps): ReactNode {
         connector: 'google',
         connection: props.connection,
       }),
+    onSettled: (_result, error) => {
+      action.settle(error);
+    },
     onSuccess: (started) => {
-      action.renew();
       globalThis.location.assign(started.consentURL);
     },
   });

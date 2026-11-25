@@ -1,4 +1,4 @@
-import { withWriteTransaction } from '@heynixie/log';
+import { markChanged, withWriteTransaction } from '@heynixie/log';
 import { readClientByID } from '../client/read-client-by-id';
 import type { ServiceContext } from '../service-context';
 import type { ConnectionTables } from '../types';
@@ -30,8 +30,8 @@ export async function runConnectionCheck(
       connectionContext,
     );
 
-    await withWriteTransaction(context.log.writer, (tx) =>
-      tx
+    await withWriteTransaction(context.log.writer, async (tx) => {
+      await tx
         .$extendTables<ConnectionTables>()
         .updateTable('connections')
         .set({
@@ -41,8 +41,10 @@ export async function runConnectionCheck(
         .where('connection_id', '=', connectionID)
         .where('binding', '=', 'enabled')
         .where('removal_counter', '=', row.removal_counter)
-        .execute(),
-    );
+        .execute();
+
+      markChanged(tx, ['connections']);
+    });
 
     return 'checked';
   } catch {

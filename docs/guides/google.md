@@ -28,8 +28,12 @@ nixie in the same project would lose its grant when you forget a connection here
 
 ## Turn on the APIs
 
-1. Open the API library for the project.
-2. Enable the Gmail API, the Google Calendar API, the Google Drive API and the Google Picker API.
+1. Open each API in the library for the project: the
+   [Gmail API](https://console.cloud.google.com/apis/library/gmail.googleapis.com), the
+   [Google Calendar API](https://console.cloud.google.com/apis/library/calendar-json.googleapis.com),
+   the [Google Drive API](https://console.cloud.google.com/apis/library/drive.googleapis.com) and
+   the [Google Picker API](https://console.cloud.google.com/apis/library/picker.googleapis.com).
+2. Enable each one.
 
 Expect: all 4 show as enabled under APIs & Services. A scope whose API stays off shows in nixie as
 missing, with the reason "its API is off in your Google Cloud project".

@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { subscribeToChanged } from '@heynixie/log';
 import invariant from 'tiny-invariant';
 import type { ConnectionsHarnessOptions } from '../test-utils/start-connections-harness';
 import { startGoogleConnections } from '../test-utils/start-google-connections';
@@ -35,6 +36,20 @@ test('it clears a scope that was missing once the API is on again', async () => 
     after?.missing,
     after?.scopes.includes('drive.file'),
   ]).toStrictEqual([[{ scope: 'drive.file', reason: 'api_disabled' }], 1, [], true]);
+});
+
+test('it announces a change of the connections when a check saves its result', async () => {
+  const ctx = await setupTest();
+
+  const changes: (readonly string[])[] = [];
+
+  subscribeToChanged(ctx.log.writer, (topics) => {
+    changes.push(topics);
+  });
+
+  await ctx.connections.runCheck(ctx.connectionID);
+
+  expect(changes).toStrictEqual([['connections']]);
 });
 
 test('it keeps what the last check found when Google answers with a server error', async () => {

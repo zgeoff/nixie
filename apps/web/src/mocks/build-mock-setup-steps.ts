@@ -21,7 +21,12 @@ const steps: readonly MockSetupStep[] = [
     body: 'Enable the Gmail, Google Calendar, Google Drive and Google Picker APIs.',
     links: [
       { label: 'Gmail API', url: `${consoleURL}/apis/library/gmail.googleapis.com` },
+      {
+        label: 'Google Calendar API',
+        url: `${consoleURL}/apis/library/calendar-json.googleapis.com`,
+      },
       { label: 'Google Drive API', url: `${consoleURL}/apis/library/drive.googleapis.com` },
+      { label: 'Google Picker API', url: `${consoleURL}/apis/library/picker.googleapis.com` },
     ],
   },
   {
@@ -39,8 +44,11 @@ const steps: readonly MockSetupStep[] = [
   {
     id: 'client',
     title: 'Create a web client',
-    body: 'Create a Web application client with {redirectURI} as its only redirect URI and {origin} as its JavaScript origin. Paste the client ID, the secret, the key and the project number here.',
-    links: [{ label: 'Clients', url: `${consoleURL}/auth/clients` }],
+    body: 'Create a Web application client with {redirectURI} as its only redirect URI and {origin} as its JavaScript origin. Create an API key restricted to the Picker API, with {origin} and https://docs.google.com/* as its websites. Paste the client ID, the secret, the key and the project number here.',
+    links: [
+      { label: 'Clients', url: `${consoleURL}/auth/clients` },
+      { label: 'API keys', url: `${consoleURL}/apis/credentials` },
+    ],
     input: 'oauth_client',
   },
   {

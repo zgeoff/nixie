@@ -40,7 +40,10 @@ function ForgetStatusView(props: ForgetStatusViewProps): ReactNode {
     refetchInterval: (query) => {
       const first = query.state.data?.[0];
 
-      return first === undefined || first.erasure === 'pending' || first.revocation === 'pending'
+      return first === undefined ||
+        first.erasure === 'pending' ||
+        first.revocation === 'pending' ||
+        first.backup.state === 'pending'
         ? pollMs
         : false;
     },
@@ -84,11 +87,11 @@ function ForgetAsk(props: ForgetAskProps): ReactNode {
   const forget = useMutation({
     mutationFn: () =>
       nixie.client.connections.forget({ clientActionID: action.id, connection: props.connection }),
-    onSuccess: () => {
-      action.renew();
+    onSettled: (_result, error) => {
+      action.settle(error);
+
+      return queryClient.invalidateQueries({ queryKey: nixie.queryUtils.connections.key() });
     },
-    onSettled: () =>
-      queryClient.invalidateQueries({ queryKey: nixie.queryUtils.connections.key() }),
   });
 
   if (!isAsking) {

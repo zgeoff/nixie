@@ -226,3 +226,57 @@ test('it marks a connection that lacks a scope in the list', async () => {
 
   expect(found5).toBeVisible();
 });
+
+test('it links each setup step to the Google Cloud pages it names', async () => {
+  await createDeviceSession();
+
+  const rendered = renderRoute('/settings/connections');
+
+  const steps = await rendered.findByRole('list', { name: 'Setup steps' });
+
+  const links = [...steps.querySelectorAll('a')].map((anchor) => [
+    anchor.textContent,
+    anchor.getAttribute('href'),
+  ]);
+
+  expect(links).toStrictEqual([
+    ['Create a project', 'https://console.cloud.google.com/projectcreate'],
+    ['Gmail API', 'https://console.cloud.google.com/apis/library/gmail.googleapis.com'],
+    [
+      'Google Calendar API',
+      'https://console.cloud.google.com/apis/library/calendar-json.googleapis.com',
+    ],
+    ['Google Drive API', 'https://console.cloud.google.com/apis/library/drive.googleapis.com'],
+    ['Google Picker API', 'https://console.cloud.google.com/apis/library/picker.googleapis.com'],
+    ['Branding', 'https://console.cloud.google.com/auth/branding'],
+    ['Audience', 'https://console.cloud.google.com/auth/audience'],
+    ['Clients', 'https://console.cloud.google.com/auth/clients'],
+    ['API keys', 'https://console.cloud.google.com/apis/credentials'],
+  ]);
+});
+
+test('it clears both picker values when you remove the picker settings', async () => {
+  const user = userEvent.setup();
+
+  await createDeviceSession();
+
+  await connectionStore.clients.create({
+    clientID: 'client-123.apps.test',
+    origin: 'https://nixie.test',
+    redirectURI: 'https://nixie.test/connections/google/return',
+    pickerKey: 'AIza-key',
+    projectNumber: '123456789012',
+  });
+
+  const rendered = renderRoute('/settings/connections');
+
+  const target4 = await rendered.findByRole('button', { name: 'Remove the picker settings' });
+
+  await user.click(target4);
+
+  await waitFor(() => {
+    expect(
+      connectionStore.clients.all().map((client) => [client.pickerKey, client.projectNumber]),
+    ).toStrictEqual([[null, null]]);
+  });
+});

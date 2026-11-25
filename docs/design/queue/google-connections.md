@@ -14,14 +14,14 @@ lives only in that call's record. The connection itself is built:
 consent, the fewer-scopes check and the fetcher, and [the setup guide](../../guides/google.md)
 covers the steps you take. This page holds what the Google tools still need from the connection.
 
-| Part                                                        | What it holds                                                                        |
-| ----------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| this page                                                   | what a tool gets from a connection, the scope each tool needs, runs already going    |
-| [the connection store](google-connection-store.md)          | the tables, the records, refresh, Forget and resets                                  |
-| [the Google tools](gmail-calendar-drive-tools.md)           | the rules every Google tool keeps, and the `gmail.*` tools                           |
-| [Calendar and Drive tools](google-calendar-drive-tools.md)  | the `calendar.*` and `drive.*` tools, their checks and the Drive picker              |
-| [Gmail arrivals](https://github.com/zgeoff/nixie/pull/1420) | the Gmail source that wakes a task, and the `gmail.wake_*` tools, in the mail design |
-| [the calendar poll](mail-and-calendar-polls.md)             | calendar changes that wake a task                                                    |
+| Part                                                                            | What it holds                                                                        |
+| ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| this page                                                                       | what a tool gets from a connection, the scope each tool needs, runs already going    |
+| [the credential database](../../architecture/connectors/credential-database.md) | the tables, the records, refresh, Forget and resets                                  |
+| [the Google tools](gmail-calendar-drive-tools.md)                               | the rules every Google tool keeps, and the `gmail.*` tools                           |
+| [Calendar and Drive tools](google-calendar-drive-tools.md)                      | the `calendar.*` and `drive.*` tools, their checks and the Drive picker              |
+| [Gmail arrivals](https://github.com/zgeoff/nixie/pull/1420)                     | the Gmail source that wakes a task, and the `gmail.wake_*` tools, in the mail design |
+| [the calendar poll](mail-and-calendar-polls.md)                                 | calendar changes that wake a task                                                    |
 
 The tools leave the connection argument, job pins and the model's status line to the first Google
 tools, in [Gmail](https://linear.app/zgeoff/issue/GEO-1825).
@@ -81,6 +81,9 @@ The default label of a Google connection is the ID token's `email`.
 - Every call checks the connection at the time of the call. A call to a forgotten connection fails
   with the error for a `forgotten` credential, which never holds the connection's label or status.
 - A job whose pins all name forgotten connections lists none of the connector's tools.
+- Forget erases a connection's Gmail wake rules and held arrivals as children of the connection,
+  through the `readChildren` of its erasable, which returns none until the
+  [mail design](https://github.com/zgeoff/nixie/pull/1420) is built.
 
 ## Out of scope
 

@@ -42,7 +42,7 @@ Before you start:
 
    ```bash
    bun verify browser type --role textbox --name 'Client ID' --value 'verify-client.apps.test'
-   bun verify browser type --role textbox --name 'Client secret' --value 'verify-secret-value'
+   bun verify browser type --label 'Client secret' --value 'verify-secret-value'
    bun verify browser click --role button --name 'Register the client'
    bun verify browser snapshot --until-text 'Secret fingerprint'
    ```
