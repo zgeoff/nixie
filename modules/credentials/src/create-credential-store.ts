@@ -23,6 +23,7 @@ import { createCredentialSocketOpener } from './socket/create-credential-socket-
 import type {
   BindingRef,
   CredentialFetch,
+  CredentialFetcher,
   CredentialRef,
   CredentialSocketOpener,
   CredentialSpec,
@@ -86,21 +87,14 @@ export interface CredentialStore {
     (ref: DatabaseCredentialRef, spec: CredentialSpec): Promise<BindingRef<'database'>>;
   };
 
+  // `openSocket` takes a file credential alone, and a `wss` URL matches the https origin of its host.
   // null: no credential, the same checks. A database binding takes an OAuth token: the fetcher
   // refreshes it before it expires, and refreshes once and retries once on a 401.
   readonly fetcher: (
     binding: BindingRef | null,
     origins: readonly string[],
     options?: FetchOptions,
-  ) => CredentialFetch;
-
-  // The fetcher's checks, for a WebSocket: the opener adds the credential to the handshake. It takes
-  // a file credential alone, and its origins are https origins, which a `wss` URL of the same host
-  // matches.
-  readonly makeSocketOpener: (
-    binding: BindingRef<'file'>,
-    origins: readonly string[],
-  ) => CredentialSocketOpener;
+  ) => CredentialFetcher;
 
   // A model credential the sandbox host holds has no binding. The broker secret goes in through the
   // sandbox adapter, which records the grant.
@@ -282,142 +276,150 @@ export function createCredentialStore(options: CredentialStoreOptions): Credenti
     return { bindingID, backend: 'file', removalCounter: 0 };
   }
 
-  return {
-    register,
-    fetcher: (ref, origins, fetchOptions = {}) => {
-      const binding = ref === null ? null : getBinding(ref);
-      const allowed = normalizeOrigins(origins);
+  const createFetch = (
+    ref: BindingRef | null,
+    origins: readonly string[],
+    fetchOptions: FetchOptions = {},
+  ): CredentialFetch => {
+    const binding = ref === null ? null : getBinding(ref);
+    const allowed = normalizeOrigins(origins);
 
-      for (const origin of allowed) {
-        if (binding !== null && !binding.spec.origins.includes(origin)) {
-          throw new Error(`${origin} is not an origin of the credential ${binding.spec.label}`);
-        }
+    for (const origin of allowed) {
+      if (binding !== null && !binding.spec.origins.includes(origin)) {
+        throw new Error(`${origin} is not an origin of the credential ${binding.spec.label}`);
+      }
+    }
+
+    const makeSender = (
+      readValue: () => string | null | Promise<string | null>,
+      withSendCheck?: <T>(start: () => T) => Promise<T>,
+    ) =>
+      createCredentialFetcher(fetcherChecks, {
+        spec: binding?.spec ?? null,
+        readValue,
+        origins: allowed,
+        options: fetchOptions,
+        ...(binding?.spec.provider === undefined
+          ? {}
+          : { oauthHostnames: listOAuthHostnames(binding.spec.provider) }),
+        ...(withSendCheck === undefined ? {} : { withSendCheck }),
+      });
+
+    if (ref === null || binding === null) {
+      return makeSender(() => null);
+    }
+
+    if (binding.ref.backend === 'file') {
+      const fileRef = binding.ref;
+
+      return makeSender(() => options.secrets.readFileValue(fileRef));
+    }
+
+    const handle = toHandle({ ...ref, backend: 'database' });
+    const checkHandle = () => requireHeld().checkCounter(handle);
+
+    const withSendCheck = <T>(start: () => T): Promise<T> =>
+      requireHeld().withSendCheck(handle, start);
+
+    const send = makeSender(() => requireHeld().readAccessToken(handle), withSendCheck);
+    const sendRefreshed = makeSender(() => requireHeld().readCurrentToken(handle), withSendCheck);
+
+    const sendWithRetry: CredentialFetch = async (input, init) => {
+      const first = await send(input, init);
+
+      await checkHandle();
+
+      if (first.status !== 401) {
+        return first;
       }
 
-      const makeSender = (
-        readValue: () => string | null | Promise<string | null>,
-        withSendCheck?: <T>(start: () => T) => Promise<T>,
-      ) =>
-        createCredentialFetcher(fetcherChecks, {
-          spec: binding?.spec ?? null,
-          readValue,
-          origins: allowed,
-          options: fetchOptions,
-          ...(binding?.spec.provider === undefined
-            ? {}
-            : { oauthHostnames: listOAuthHostnames(binding.spec.provider) }),
-          ...(withSendCheck === undefined ? {} : { withSendCheck }),
-        });
+      const outcome = await requireHeld().refresh(handle);
 
-      if (ref === null || binding === null) {
-        return makeSender(() => null);
+      if (outcome === 'removed') {
+        throw new CredentialRemovedError(binding.spec.label);
       }
 
-      if (binding.ref.backend === 'file') {
-        const fileRef = binding.ref;
-
-        return makeSender(() => options.secrets.readFileValue(fileRef));
-      }
-
-      const handle = toHandle({ ...ref, backend: 'database' });
-      const checkHandle = () => requireHeld().checkCounter(handle);
-
-      const withSendCheck = <T>(start: () => T): Promise<T> =>
-        requireHeld().withSendCheck(handle, start);
-
-      const send = makeSender(() => requireHeld().readAccessToken(handle), withSendCheck);
-      const sendRefreshed = makeSender(() => requireHeld().readCurrentToken(handle), withSendCheck);
-
-      const sendWithRetry: CredentialFetch = async (input, init) => {
-        const first = await send(input, init);
-
+      if (outcome !== 'saved') {
         await checkHandle();
 
-        if (first.status !== 401) {
-          return first;
+        return first;
+      }
+
+      const second = await sendRefreshed(input, init);
+
+      await checkHandle();
+
+      if (second.status === 401) {
+        await requireHeld().markFailing(handle, 'unauthorised');
+      }
+
+      return second;
+    };
+
+    // A removal aborts every request in flight on the credential, so a fetch that races it ends
+    // with the removal's error instead of an answer, even while it waits on a refresh.
+    return async (input, init) => {
+      const replayable = await readReplayableInit(init);
+
+      const request = requireHeld().trackRequest(handle.credentialID);
+
+      try {
+        const signal =
+          replayable?.signal === undefined || replayable.signal === null
+            ? request.signal
+            : AbortSignal.any([replayable.signal, request.signal]);
+
+        const sending = Promise.allSettled([sendWithRetry(input, { ...replayable, signal })]);
+
+        // The race reports the outcome. A send that loses it ends in the background.
+        const [outcome] = await Promise.race([
+          sending,
+          waitForAbort(request.signal, new CredentialRemovedError(binding.spec.label)),
+        ]);
+
+        if (outcome.status === 'rejected') {
+          throw outcome.reason;
         }
 
-        const outcome = await requireHeld().refresh(handle);
-
-        if (outcome === 'removed') {
+        return outcome.value;
+      } catch (error) {
+        if (request.signal.aborted) {
           throw new CredentialRemovedError(binding.spec.label);
         }
 
-        if (outcome !== 'saved') {
-          await checkHandle();
-
-          return first;
-        }
-
-        const second = await sendRefreshed(input, init);
-
-        await checkHandle();
-
-        if (second.status === 401) {
-          await requireHeld().markFailing(handle, 'unauthorised');
-        }
-
-        return second;
-      };
-
-      // A removal aborts every request in flight on the credential, so a fetch that races it ends
-      // with the removal's error instead of an answer, even while it waits on a refresh.
-      return async (input, init) => {
-        const replayable = await readReplayableInit(init);
-
-        const request = requireHeld().trackRequest(handle.credentialID);
-
-        try {
-          const signal =
-            replayable?.signal === undefined || replayable.signal === null
-              ? request.signal
-              : AbortSignal.any([replayable.signal, request.signal]);
-
-          const sending = Promise.allSettled([sendWithRetry(input, { ...replayable, signal })]);
-
-          // The race reports the outcome. A send that loses it ends in the background.
-          const [outcome] = await Promise.race([
-            sending,
-            waitForAbort(request.signal, new CredentialRemovedError(binding.spec.label)),
-          ]);
-
-          if (outcome.status === 'rejected') {
-            throw outcome.reason;
-          }
-
-          return outcome.value;
-        } catch (error) {
-          if (request.signal.aborted) {
-            throw new CredentialRemovedError(binding.spec.label);
-          }
-
-          throw error;
-        } finally {
-          request.end();
-        }
-      };
-    },
-    makeSocketOpener: (ref, origins) => {
-      const binding = getBinding(ref);
-
-      invariant(binding.ref.backend === 'file', 'a socket takes a file credential');
-
-      const fileRef = binding.ref;
-      const allowed = normalizeOrigins(origins);
-
-      for (const origin of allowed) {
-        if (!binding.spec.origins.includes(origin)) {
-          throw new Error(`${origin} is not an origin of the credential ${binding.spec.label}`);
-        }
+        throw error;
+      } finally {
+        request.end();
       }
+    };
+  };
 
-      return createCredentialSocketOpener(fetcherChecks, {
-        spec: binding.spec,
-        readValue: () => options.secrets.readFileValue(fileRef),
-        origins: allowed,
-        options: {},
-      });
-    },
+  const createSocketOpener = (
+    ref: BindingRef | null,
+    origins: readonly string[],
+  ): CredentialSocketOpener => {
+    const binding = ref === null ? null : getBinding(ref);
+
+    if (binding === null || binding.ref.backend !== 'file') {
+      return () => Promise.reject(new Error('a socket takes a file credential'));
+    }
+
+    const fileRef = binding.ref;
+
+    return createCredentialSocketOpener(fetcherChecks, {
+      spec: binding.spec,
+      readValue: () => options.secrets.readFileValue(fileRef),
+      origins: normalizeOrigins(origins),
+      options: {},
+    });
+  };
+
+  return {
+    register,
+    fetcher: (ref, origins, fetchOptions) =>
+      Object.assign(createFetch(ref, origins, fetchOptions), {
+        openSocket: createSocketOpener(ref, origins),
+      }),
     grant: async (source, sandboxes, request) => {
       if ('hostHeld' in source) {
         const name = buildHostHeldName(request);

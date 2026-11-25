@@ -8,9 +8,13 @@ import type { CredentialSocketOpener } from '../types';
 import { createCredentialSocket } from './create-credential-socket';
 import { sendPinnedUpgrade } from './send-pinned-upgrade';
 
+// How long the handshake may take when the caller sets no limit. A site that accepts the connection
+// and never answers the upgrade then fails the open, and never leaves it waiting.
+const defaultHandshakeMs = 30_000;
+
 // Opens a WebSocket with the credential added on the host, under the checks of the fetcher: the
 // connection goes to the address the check passed. A redirect fails, as does every answer but the
-// upgrade.
+// upgrade, and a handshake that outlasts its limit.
 export function createCredentialSocketOpener(
   checks: FetcherChecks,
   target: FetcherTarget,
@@ -32,7 +36,12 @@ export function createCredentialSocketOpener(
           ? { url, headers: new Headers() }
           : placeCredential(target.spec, value, { url, headers: new Headers() });
 
-      const signal = init?.signal ?? new AbortController().signal;
+      const handshake = new AbortController();
+
+      const signal =
+        init?.signal === undefined
+          ? handshake.signal
+          : AbortSignal.any([init.signal, handshake.signal]);
 
       const planned = await planHop(placed.url.href, {
         checkAddress: checks.checkAddress,
@@ -44,12 +53,19 @@ export function createCredentialSocketOpener(
         throw new CredentialRefusalError(planned.reason);
       }
 
+      // The limit covers the handshake alone: an open socket outlives it.
+      const limit = setTimeout(() => {
+        handshake.abort(new Error('the server did not answer the upgrade in time'));
+      }, init?.timeoutMs ?? defaultHandshakeMs);
+
       const connection = await sendPinnedUpgrade({
         url: planned.url,
         address: planned.address,
         headers: Object.fromEntries(placed.headers),
         signal,
         ...(checks.ca === undefined ? {} : { ca: checks.ca }),
+      }).finally(() => {
+        clearTimeout(limit);
       });
 
       return createCredentialSocket(connection, forms);

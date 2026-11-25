@@ -20,6 +20,7 @@ export type {
   FileGroup,
   BindingRef,
   CredentialFetch,
+  CredentialFetcher,
   CredentialSocket,
   CredentialSocketOpener,
   CredentialSpec,

@@ -79,15 +79,16 @@ call fails with an error and no reply. The checks live in `libs/egress`, so web 
 
 ## The socket opener
 
-A connector that needs a WebSocket calls `store.makeSocketOpener`, which takes a file credential and
-the origins it may reach, and returns a function that opens a `wss` URL. The URL's host must match
-an origin that the caller passed, as an `https` origin. The opener adds the credential to the
-handshake's header, under the fetcher's checks: it refuses a URL with a user name or a password, it
-checks every address the host resolves to, and it connects to the address that passed. A redirect or
-any answer but the upgrade fails, with the credential cut from the error. The socket it returns
-carries text messages only, cuts the credential from each message it reads, and ends its stream when
-the connection closes. **Why:** the sideband of a voice call must carry the key as the fetcher does,
-and a WebSocket cannot pass through a request-and-response fetcher.
+Every fetcher carries an `openSocket` that opens a `wss` URL, so a connector reaches its provider
+through one object, the fetcher. It takes a file credential, and the URL's host must match an origin
+that the fetcher was made for, as an `https` origin. It adds the credential to the handshake's
+header under the fetcher's checks: it refuses a URL with a user name or a password, it checks every
+address the host resolves to, and it connects to the address that passed. A redirect, any answer but
+the upgrade, or a handshake that outlasts its limit, 30 s unless the caller sets one, fails with the
+credential cut from the error. The socket it returns carries text messages only, cuts the credential
+from each message it reads, and ends its stream when the connection closes or when one message,
+fragments together, passes 16 MiB. **Why:** the sideband of a voice call must carry the key as the
+fetcher does, and a WebSocket cannot pass through a request-and-response fetcher.
 
 ## Bindings and the removal counter
 

@@ -6,7 +6,7 @@ import { encodeClientFrame } from './encode-client-frame';
 import { makeFrameReader } from './make-frame-reader';
 import type { UpgradedConnection } from './send-pinned-upgrade';
 
-const maxMessageBytes = 16 * 1024 * 1024;
+const defaultMaxMessageBytes = 16 * 1024 * 1024;
 
 interface Inbox {
   readonly texts: string[];
@@ -15,15 +15,17 @@ interface Inbox {
 }
 
 // Reads text messages from an upgraded connection, answers its pings, and ends the stream when the
-// server closes or the connection drops.
+// server closes, the connection drops, or one message, frames together, grows past the limit.
 export function createCredentialSocket(
   connection: UpgradedConnection,
   forms: readonly ValueForm[],
+  maxMessageBytes = defaultMaxMessageBytes,
 ): CredentialSocket {
   const socket = connection.socket;
   const inbox: Inbox = { texts: [], waiters: [], isEnded: false };
   const readFrames = makeFrameReader(maxMessageBytes);
   let fragments: Buffer[] = [];
+  let fragmentBytes = 0;
 
   const end = (): void => {
     inbox.isEnded = true;
@@ -61,12 +63,19 @@ export function createCredentialSocket(
 
         return;
       } else if (frame.opcode === 0x1 || frame.opcode === 0x0) {
+        fragmentBytes += frame.payload.length;
+
+        if (fragmentBytes > maxMessageBytes) {
+          throw new Error(`the server sent a message past ${String(maxMessageBytes)} bytes`);
+        }
+
         fragments.push(frame.payload);
 
         if (frame.isFinal) {
           push(scrubText(Buffer.concat(fragments).toString('utf8'), forms));
 
           fragments = [];
+          fragmentBytes = 0;
         }
       }
     }

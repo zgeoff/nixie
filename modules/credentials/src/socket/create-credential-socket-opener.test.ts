@@ -1,6 +1,8 @@
-import { expect, test } from 'bun:test';
+import { expect, onTestFinished, test } from 'bun:test';
+import { createServer } from 'node:net';
 import { CredentialRefusalError } from '@heynixie/egress';
 import { startTestSite } from '@heynixie/egress/test-utils';
+import invariant from 'tiny-invariant';
 import type { CredentialSpec } from '../types';
 import { createCredentialSocketOpener } from './create-credential-socket-opener';
 
@@ -158,4 +160,40 @@ test('it refuses a host that resolves to an address the check denies', async () 
   );
 
   expect(open(ctx.wssURL)).rejects.toThrow(CredentialRefusalError);
+});
+
+test('it rejects a handshake that the server never answers once its limit passes', async () => {
+  const ctx = await setupTest();
+
+  const silent = createServer();
+
+  onTestFinished(() => {
+    silent.close();
+  });
+
+  await new Promise<void>((resolve) => {
+    silent.listen(0, '127.0.0.1', resolve);
+  });
+
+  const address = silent.address();
+
+  invariant(address !== null && typeof address !== 'string', 'the silent server has a port');
+
+  const origin = `https://live.test:${String(address.port)}`;
+
+  const open = createCredentialSocketOpener(
+    {
+      resolveHost: () => Promise.resolve(['127.0.0.1']),
+      checkAddress: () => true,
+      ca: ctx.site.ca,
+    },
+    {
+      spec: { kind: 'static', label: 'Live', origins: [origin] },
+      readValue: () => ctx.key,
+      origins: [origin],
+      options: {},
+    },
+  );
+
+  expect(open(`wss://live.test:${String(address.port)}/x`, { timeoutMs: 100 })).rejects.toThrow();
 });

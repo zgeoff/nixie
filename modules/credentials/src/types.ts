@@ -108,9 +108,16 @@ export type CredentialSocketOpener = (
   init?: CredentialSocketInit,
 ) => Promise<CredentialSocket>;
 
-interface CredentialSocketInit {
+export interface CredentialSocketInit {
   readonly signal?: AbortSignal;
+
+  // how long the handshake may take; 30 s when left out
+  readonly timeoutMs?: number;
 }
+
+// The fetcher of one binding, which also opens a WebSocket under the same checks, because a
+// WebSocket cannot pass through a request and a response.
+export type CredentialFetcher = CredentialFetch & { readonly openSocket: CredentialSocketOpener };
 
 export interface GrantRequest {
   readonly profileID: string;
