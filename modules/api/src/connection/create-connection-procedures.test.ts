@@ -11,7 +11,7 @@ async function setupTest() {
   const api = await startTestAPI();
   const laptop = await createDeviceSession(api.context, 'laptop');
 
-  const calls: unknown[] = [];
+  const calls: (readonly unknown[])[] = [];
 
   const state: {
     registered: 'registered' | 'invalid_origin' | 'client_exists';
@@ -483,7 +483,7 @@ test('#connections.startConsent gives a retry a fresh consent URL of the same co
   expect([
     retried.consentURL === first.consentURL,
     retried.expiresAt,
-    ctx.calls.map((call) => (Array.isArray(call) ? call[0] : null)),
+    ctx.calls.map((call) => call[0]),
     ctx.calls[1],
   ]).toStrictEqual([
     false,
@@ -619,7 +619,7 @@ test('#connections.forget answers erasure, revocation and backup apart, and a re
   expect([
     forgotten,
     retried,
-    ctx.calls.filter((call) => Array.isArray(call) && call[0] === 'forgetConnection').length,
+    ctx.calls.filter((call) => call[0] === 'forgetConnection').length,
   ]).toStrictEqual([
     { erasure: 'pending', revocation: 'confirmed', backup: { state: 'pending' } },
     { erasure: 'pending', revocation: 'confirmed', backup: { state: 'pending' } },

@@ -107,7 +107,7 @@ export async function finishConsent(
 
   const token = await context.backend.readToken(credentialID);
 
-  invariant(token?.refreshToken, 'an exchange keeps a refresh token');
+  invariant(token !== null && token.refreshToken !== null, 'an exchange keeps a refresh token');
 
   const finished: FinishedConsent = {
     credential,
