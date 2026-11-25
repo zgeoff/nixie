@@ -9,6 +9,7 @@ import { makeRetriedStart } from './make-retried-start';
 import type { ServerPartValues } from './server-part-values';
 import { startChecker } from './start-checker';
 import { startConnectionsPart } from './start-connections-part';
+import { startMcpPart } from './start-mcp-part';
 import { startNotebookPart } from './start-notebook-part';
 
 export const memoryPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>[] = [
@@ -33,6 +34,14 @@ export const memoryPartDeclarations: readonly AnyPartDeclaration<ServerPartValue
         reader.get('erasure'),
         reader.get('inputs').options.harness?.googleURL ?? null,
       ),
+    ),
+  },
+  {
+    // The MCP proxy: the servers of the config, their sign-ins and the tools their pins allow.
+    name: 'mcp',
+    needs: ['inputs', 'server_parts', 'connections'],
+    start: makeRetriedStart('mcp', (parts, reader) =>
+      startMcpPart(parts, reader.get('inputs').options.config.mcp, reader),
     ),
   },
   {

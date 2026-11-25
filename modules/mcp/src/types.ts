@@ -1,4 +1,5 @@
-import type { JSONObject } from '@heynixie/log';
+import type { Definitions, JSONObject, Log } from '@heynixie/log';
+import type { Transaction } from 'kysely';
 
 // The facts in use for one server, folded from records into the mcp_servers projection.
 export interface ServerFacts {
@@ -44,3 +45,21 @@ export interface ToolForm {
 export type PinState = 'exposed' | 'stopped_changed' | 'stopped_unfit' | 'hidden_new' | 'removed';
 
 export type PinMoveCause = 'allowed' | 'trusted_change' | 'forgotten';
+
+// What the module's writes need: the log, the snapshot the records name, and the clock.
+export interface McpContext {
+  readonly log: Log;
+  readonly definitions: () => Definitions;
+  readonly now: () => number;
+}
+
+// One move of a pin, which the 2 items that build on the proxy listen to.
+export interface PinMove {
+  readonly tool: string;
+  readonly fromHash: string | null;
+  readonly toHash: string | null;
+  readonly cause: PinMoveCause;
+}
+
+// Called inside the transaction that moves a pin. The proxy ships it with no listener.
+export type OnPinMoved = (tx: Transaction<unknown>, move: PinMove) => Promise<void>;

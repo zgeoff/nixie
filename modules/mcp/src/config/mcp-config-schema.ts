@@ -1,6 +1,6 @@
+import { parseCIDR } from '@heynixie/egress';
 import { z } from 'zod';
 import { isRefusedRange } from '../facts/is-refused-range';
-import { parseCIDR } from '../facts/parse-cidr';
 
 export const serverIDPattern = /^[a-z][a-z0-9]{1,15}$/u;
 const defaultListingTimeoutSeconds = 10;

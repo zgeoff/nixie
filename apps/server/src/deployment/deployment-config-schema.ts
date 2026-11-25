@@ -10,6 +10,7 @@ import {
   webFetchConfigSchema,
 } from '@heynixie/connectors';
 import { definitionsConfigSchema } from '@heynixie/definitions';
+import { mcpConfigSchema } from '@heynixie/mcp';
 import { memoryConfigSchema } from '@heynixie/memory';
 import { notebookConfigSchema } from '@heynixie/notebook';
 import { policyConfigSchema } from '@heynixie/policy';
@@ -47,6 +48,7 @@ export const deploymentConfigSchema = z
     notebook: notebookConfigSchema.default(notebookConfigSchema.parse({})),
     forget_notices: forgetNoticesConfigSchema.default(forgetNoticesConfigSchema.parse({})),
     erasure: erasureConfigSchema.default(erasureConfigSchema.parse({})),
+    mcp: mcpConfigSchema.default(mcpConfigSchema.parse({})),
     policy: policyConfigSchema.default(policyConfigSchema.parse({})),
     approvals: approvalsConfigSchema.default(approvalsConfigSchema.parse({})),
     quiet_hours: quietHoursSchema.optional(),

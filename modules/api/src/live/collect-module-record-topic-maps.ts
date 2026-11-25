@@ -8,6 +8,7 @@ import {
   rulesRecordTopics,
 } from '@heynixie/definitions';
 import { devicesRecordTopics } from '@heynixie/devices';
+import { mcpRecordTopics } from '@heynixie/mcp';
 import { memoryRecordTopics } from '@heynixie/memory';
 import { modelsRecordTopics } from '@heynixie/models';
 import { notebookRecordTopics } from '@heynixie/notebook';
@@ -36,6 +37,7 @@ export function collectModuleRecordTopicMaps() {
     definitionsSeededRecordTopics,
     devicesRecordTopics,
     imagesRecordTopics,
+    mcpRecordTopics,
     memoryRecordTopics,
     modelsRecordTopics,
     notebookRecordTopics,

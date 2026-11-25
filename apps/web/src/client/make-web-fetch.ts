@@ -4,6 +4,7 @@ import { clientHeaderName } from '@heynixie/contract';
 import { ORPCError, createORPCClient } from '@orpc/client';
 import { RPCLink } from '@orpc/client/fetch';
 import { googleReturnPath, handleGoogleReturn } from './handle-google-return';
+import { handleMcpReturn, mcpReturnPath } from './handle-mcp-return';
 
 export interface WebFetchOptions {
   readonly apiURL: string;
@@ -28,6 +29,10 @@ export function makeWebFetch(options: WebFetchOptions) {
 
     if (pathname === googleReturnPath && request.method === 'GET') {
       return handleGoogleReturn(options.apiURL, request);
+    }
+
+    if (pathname === mcpReturnPath && request.method === 'GET') {
+      return handleMcpReturn(options.apiURL, request);
     }
 
     const asset = await readBrowserAsset(options.clientDir, pathname);

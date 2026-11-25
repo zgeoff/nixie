@@ -1,6 +1,6 @@
 import type { CheckedTables } from '@heynixie/db';
 
-export type ProposalFamily = 'action' | 'memory' | 'skill' | 'rule_change';
+export type ProposalFamily = 'action' | 'memory' | 'skill' | 'rule_change' | 'mcp';
 
 export type ProposalKind = 'action' | 'memory_write' | 'internal_change';
 

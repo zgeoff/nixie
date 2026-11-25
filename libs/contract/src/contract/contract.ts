@@ -19,6 +19,7 @@ import {
   listedTaskSchema,
   taskStateSchema,
 } from './listed-task-schema';
+import { mcpContract } from './mcp-contract';
 import { memoryViewContract } from './memory-view-contract';
 import { notebookContract } from './notebook-contract';
 import { passkeyContract } from './passkey-contract';
@@ -306,6 +307,7 @@ export const contract = {
   },
   notebook: notebookContract,
   connections: connectionsContract,
+  mcp: mcpContract,
   images: imagesContract,
   computer: computerContract,
   files: {

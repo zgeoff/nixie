@@ -3,6 +3,7 @@ import type { Connections } from '@heynixie/connections';
 import type { ComputerTools, RenderSandbox } from '@heynixie/connectors';
 import type { DefinitionsExportSweep, SeedResult } from '@heynixie/definitions';
 import type { ErasureRunnerControl } from '@heynixie/log';
+import type { Mcp } from '@heynixie/mcp';
 import type { StartedMemoryStore } from '@heynixie/memory';
 import type { NotebookStore } from '@heynixie/notebook';
 import type { CheckerTask, SandboxRunner, WorkerTool } from '@heynixie/sessions';
@@ -47,6 +48,7 @@ export interface ServerPartValues {
   readonly checker: CheckerTask;
   readonly erasure: ErasureRunnerControl;
   readonly connections: Connections;
+  readonly mcp: Mcp;
   readonly erasure_catch_up: void;
   readonly erasure_watch: void;
   readonly turn_input_work: void;

@@ -22,6 +22,7 @@ import {
 } from '@heynixie/definitions';
 import type { DeviceStreams } from '@heynixie/devices';
 import { buildDeviceTools } from '@heynixie/devices';
+import { findServerIDClash } from '@heynixie/mcp';
 import type { ConversationMemoryStore } from '@heynixie/memory';
 import {
   buildLogReadImageTool,
@@ -52,7 +53,7 @@ import {
   buildTasksRunsTool,
   readTaskNames,
 } from '@heynixie/tasks';
-import type { ActionQueue, ToolDefinition, ToolEndpoint } from '@heynixie/tools';
+import type { ActionQueue, ToolDefinition, ToolEndpoint, ToolSource } from '@heynixie/tools';
 import { buildToolRegistry, findToolDeclaration, startToolEndpoint } from '@heynixie/tools';
 import type { HarnessID } from '@heynixie/wire';
 import { buildContactTool } from '../cli/build-contact-tool';
@@ -108,6 +109,9 @@ export interface ConversationEndpointTools {
   readonly worker: WorkerTool | null;
 
   readonly testTools: readonly ToolDefinition[];
+
+  // sources of more tools, which join the registry as they start
+  readonly toolSources: readonly ToolSource[];
 
   // the values nixie holds as its own, which every tool result is scanned for
   readonly readOwnValues: () => readonly string[];
@@ -334,7 +338,18 @@ export async function startConversationEndpoint(
     buildTaskReportTool(options.context),
   ];
 
-  const registry = buildToolRegistry([...definitions, ...tools.testTools]);
+  const clash = findServerIDClash(
+    Object.keys(options.config.mcp.servers),
+    [...definitions, ...tools.testTools].map((definition) => definition.name),
+  );
+
+  if (clash !== null) {
+    throw new Error(
+      `the mcp server ID ${clash.serverID} is the first segment of the tool ${clash.tool}; rename the server`,
+    );
+  }
+
+  const registry = buildToolRegistry([...definitions, ...tools.testTools], tools.toolSources);
 
   const endpoint = await startToolEndpoint({
     socketDir: join(options.config.server.dataDir, 'run', 'tools'),
