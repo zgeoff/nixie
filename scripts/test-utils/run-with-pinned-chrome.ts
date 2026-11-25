@@ -52,11 +52,9 @@ async function installPinnedChrome(chrome: ChromePin, cacheDir: string): Promise
 
   // The marker holds the checksum the install was checked against, so a new pin never reuses an
   // install that the old pin checked.
-  const markerFile = Bun.file(join(installDir, 'pin-sha256'));
+  const isInstalled = await probePinnedInstall(installDir, chrome.sha256);
 
-  const isInstalled = await markerFile.exists();
-
-  if (isInstalled && (await markerFile.text()) === chrome.sha256) {
+  if (isInstalled) {
     return chromePath;
   }
 
@@ -94,8 +92,28 @@ async function installPinnedChrome(chrome: ChromePin, cacheDir: string): Promise
 
   await Bun.write(join(partDir, 'pin-sha256'), chrome.sha256);
 
-  await rm(installDir, { recursive: true, force: true });
-  await rename(partDir, installDir);
+  try {
+    await rm(installDir, { recursive: true, force: true });
+    await rename(partDir, installDir);
+  } catch (error) {
+    // A second run in the same worktree may have put the same install in place first.
+    await rm(partDir, { recursive: true, force: true });
+
+    const isPutInPlace = await probePinnedInstall(installDir, chrome.sha256);
+
+    if (!isPutInPlace) {
+      throw error;
+    }
+  }
 
   return chromePath;
+}
+
+async function probePinnedInstall(installDir: string, sha256: string): Promise<boolean> {
+  const markerFile = Bun.file(join(installDir, 'pin-sha256'));
+
+  const hasMarker = await markerFile.exists();
+  const hasChrome = await Bun.file(join(installDir, 'chrome-linux64', 'chrome')).exists();
+
+  return hasMarker && hasChrome && (await markerFile.text()) === sha256;
 }
