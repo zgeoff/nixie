@@ -66,15 +66,13 @@ export function makeResolveGmailInput(
 const itemKeys = ['message', 'draft', 'after'] as const;
 
 function collectPrefixes(input: JSONObject): string[] | 'bad_id' {
-  const texts: unknown[] = itemKeys
-    .map((key) => input[key])
-    .filter((value) => value !== undefined && value !== null);
+  const threads: unknown = input['threads'];
+  const threadTexts: readonly unknown[] = Array.isArray(threads) ? threads : [];
 
-  const threads = input['threads'];
-
-  if (Array.isArray(threads)) {
-    texts.push(...[...threads]);
-  }
+  const texts: readonly unknown[] = [
+    ...itemKeys.map((key) => input[key]).filter((value) => value !== undefined && value !== null),
+    ...threadTexts,
+  ];
 
   const prefixes: string[] = [];
 
