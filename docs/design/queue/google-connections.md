@@ -25,9 +25,10 @@ starting with Gmail.
 | [Gmail arrivals](https://github.com/zgeoff/nixie/pull/1420)                     | the Gmail source that wakes a task, and the `gmail.wake_*` tools, in the mail design |
 | [the calendar poll](mail-and-calendar-polls.md)                                 | calendar changes that wake a task                                                    |
 
-The [Gmail](https://linear.app/zgeoff/issue/GEO-1825) work item builds the connection argument along
-with the Gmail tools. Job pins and the model's status line are not built. With no pin on a job run,
-a tool resolves each call against every live Google connection.
+The connection argument shipped with the Gmail tools, in the
+[Gmail](https://linear.app/zgeoff/issue/GEO-1825) work item. Job pins, the model's status line and
+the pin rules in [Tasks in flight](#tasks-in-flight) are not built yet. With no pin on a job run, a
+tool resolves each call against every live Google connection.
 
 ## Contracts
 

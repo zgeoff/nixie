@@ -27,8 +27,7 @@ Before you start:
 ## Journey
 
 1. Record every later command of this journey under this feature. Then register the OAuth client and
-   connect the account with the commands of steps 1 to 3 of
-   [google-connections](feature-google-connections.md):
+   connect the account, as in steps 1 to 3 of [google-connections](feature-google-connections.md):
 
    ```bash
    bun verify use --feature gmail-tools
@@ -84,9 +83,9 @@ Before you start:
    Expect: one collapsed item, which reads
    `Reply to reports@example.org from verify@example.test: "Re: Q3 numbers"`, with no buttons.
 
-6. Expand the item, check its card, and approve it. Take the `ref` from the snapshot of step 5, and
-   take no other snapshot before the first click. Pass the `ref` of the line that holds the item's
-   text and `[cursor=pointer]` as `<item_ref>`.
+6. Expand the item, check its card, and approve it. For `<item_ref>`, pass the `ref` of the line in
+   the step 5 snapshot that holds the item's text and `[cursor=pointer]`. Take no other snapshot
+   before the first click, because each snapshot gives every element a new `ref`.
 
    ```bash
    bun verify browser click --ref '<item_ref>'

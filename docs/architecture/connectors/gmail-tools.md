@@ -41,7 +41,8 @@ call before then finds no connection, and a mail's HTML reads as unsupported.
   connection to choose fails with `CONNECTION_REQUIRED`.
 - A job's pins and the model's status line are not built. A tool resolves a call against every live
   Google connection, whatever job run the call belongs to.
-- An attempt or a check whose connection is forgotten answers `refused` with `connection_forgotten`.
+- An attempt whose connection is forgotten answers `refused` with `connection_forgotten`. A check
+  whose connection is forgotten answers inconclusive.
 
 ## Reads
 

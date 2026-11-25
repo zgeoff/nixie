@@ -4,9 +4,9 @@ Make an OAuth client in your own Google Cloud project, register it in nixie, and
 account from Settings → Connections. nixie keeps the account's refresh token sealed in its database.
 Once you connect an account, the model can use the
 [Gmail tools](../architecture/connectors/gmail-tools.md) to search, read and label your mail, write
-drafts and send mail. The tools for [Calendar](https://linear.app/zgeoff/issue/GEO-1826) and Drive
-come later. To learn how consent, refresh and Forget work, read the
-[Google connections](../architecture/connectors/google-connections.md) doc.
+drafts and send mail. The tools for [Calendar](https://linear.app/zgeoff/issue/GEO-1826) and
+[Drive](https://linear.app/zgeoff/issue/GEO-1827) come later. To learn how consent, refresh and
+Forget work, read the [Google connections](../architecture/connectors/google-connections.md) doc.
 
 Settings → Connections lists 6 steps, titled like the sections of this guide from "Create a Google
 Cloud project" to "Connect an account", and fills in your page's address where a step names it.

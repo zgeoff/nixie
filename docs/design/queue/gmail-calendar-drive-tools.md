@@ -23,8 +23,8 @@ The `mail.*` tools belong to the assistant's own mailbox, in the
 belong to the [Google connection](google-connections.md). How a call and its errors reach the model
 is in [tool calls](../../architecture/connectors/tool-calls.md).
 
-Read this page to build the [Calendar and Drive](https://linear.app/zgeoff/issue/GEO-1826) work
-item. The owner settles its open questions.
+Build the [Calendar and Drive](https://linear.app/zgeoff/issue/GEO-1826) work item from this page,
+and leave the open questions in that issue to the owner.
 
 ## Shape
 
