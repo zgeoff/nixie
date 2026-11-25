@@ -77,6 +77,18 @@ to an abort or timeout reason a caller passes, which loses its cause. A header w
 value is dropped. The refusals are `CredentialRefusalError`, which an adapter lets pass, so the tool
 call fails with an error and no reply. The checks live in `libs/egress`, so web fetch shares them.
 
+## The socket opener
+
+A connector that needs a WebSocket calls `store.makeSocketOpener`, which takes a file credential and
+the origins it may reach, and returns a function that opens a `wss` URL. The URL's host must match
+an origin that the caller passed, as an `https` origin. The opener adds the credential to the
+handshake's header, under the fetcher's checks: it refuses a URL with a user name or a password, it
+checks every address the host resolves to, and it connects to the address that passed. A redirect or
+any answer but the upgrade fails, with the credential cut from the error. The socket it returns
+carries text messages only, cuts the credential from each message it reads, and ends its stream when
+the connection closes. **Why:** the sideband of a voice call must carry the key as the fetcher does,
+and a WebSocket cannot pass through a request-and-response fetcher.
+
 ## Bindings and the removal counter
 
 `register` turns a reference and a spec into a binding. A file reference registers at once. A

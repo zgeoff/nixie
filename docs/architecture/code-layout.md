@@ -193,6 +193,7 @@ The other packages each hold one piece the modules and apps share:
 - `adapters/search-kagi` is the search tool's provider on Kagi's search API.
 - `adapters/image-openai` and `adapters/image-gemini` are the image provider on OpenAI's images API
   and on the Gemini API.
+- `adapters/speech-gpt-live` is the calls module's speech layer on OpenAI's GPT-Live.
 - `adapters/encoder-onnx` is the memory module's text encoder, which runs a pinned embedding model
   on ONNX Runtime.
 - `libs/contract` holds the oRPC contracts of the API and the host commands, with the client code
