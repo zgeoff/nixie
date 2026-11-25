@@ -8,6 +8,10 @@ export async function readCleanedTaskIDs(
   context: TasksContext,
   cause: SessionCleanupCause,
 ): Promise<readonly string[]> {
+  if ('connectionID' in cause) {
+    return [];
+  }
+
   const open = await readStartedTaskIDs(context, { end: 'open' });
 
   const candidates = await Promise.all(

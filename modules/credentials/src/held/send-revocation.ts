@@ -34,7 +34,7 @@ export async function sendRevocation(
       signal: AbortSignal.timeout(sender.requestTimeoutMs),
     });
 
-    if (response.ok) {
+    if (response.status === 200) {
       return { outcome: 'confirmed', status: response.status, providerError: null };
     }
 

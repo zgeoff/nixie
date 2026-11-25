@@ -8,17 +8,27 @@ function setupTest() {
     readOpenRefreshes: () => Promise.resolve([]),
   };
 
-  const wiring = { backend: createInMemoryHeldBackend({ recorder }), recorder };
+  const buildWiring = () => ({
+    backend: { ...createInMemoryHeldBackend({ recorder }), sweepKeys: () => Promise.resolve([]) },
+    recorder,
+  });
 
-  return { slot: createHeldSlot(), wiring };
+  return { slot: createHeldSlot(), buildWiring };
 }
 
 test('it gives back the wiring that the connections part bound', () => {
   const ctx = setupTest();
+  const bound = ctx.slot.bind(ctx.buildWiring);
 
-  ctx.slot.bind(ctx.wiring);
+  expect(ctx.slot.read()).toBe(bound);
+});
 
-  expect(ctx.slot.read()).toBe(ctx.wiring);
+test('it gives a second bind the wiring of the first, so a retried start shares its backend', () => {
+  const ctx = setupTest();
+  const first = ctx.slot.bind(ctx.buildWiring);
+  const second = ctx.slot.bind(ctx.buildWiring);
+
+  expect([second === first, ctx.slot.read() === first]).toStrictEqual([true, true]);
 });
 
 test('it refuses a read before the wiring is bound', () => {

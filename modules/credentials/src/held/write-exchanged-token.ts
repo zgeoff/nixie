@@ -20,8 +20,13 @@ export interface ExchangeWriter {
     expectedCounter: number,
   ) => Promise<void>;
 
-  // puts the token's values in the own-value set
-  readonly addOwnValues: (credentialID: string, token: HeldToken) => void;
+  // puts the token's values in the own-value set, unless the credential's counter has moved from
+  // the one given
+  readonly addOwnValues: (
+    credentialID: string,
+    token: HeldToken,
+    expectedCounter: number,
+  ) => Promise<void>;
 }
 
 export interface ExchangedTokens {
@@ -108,7 +113,7 @@ export async function writeExchangedToken(
     await writer.backend.removeKey(existing.keyID);
   }
 
-  writer.addOwnValues(credentialID, token);
+  await writer.addOwnValues(credentialID, token, exchanged.tokenCounter);
 
   return {
     kind: 'saved',

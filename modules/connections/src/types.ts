@@ -41,6 +41,8 @@ interface KeyMarkRow {
 
 export type ConnectionRow = Selectable<ConnectionTableRow>;
 
+export type ClientRow = Selectable<OAuthClientRow>;
+
 // mapped types, because Kysely's table map needs the index signature an interface lacks
 export type ConnectionTables = CheckedTables<
   Readonly<{
@@ -58,6 +60,9 @@ export interface BackendHooks {
 
   // after the save commits, before the caller removes the key the save replaced
   readonly afterTokenSaved?: (credentialID: string) => Promise<void>;
+
+  // after a refresh's new key is made and marked, before the refresh's start record commits
+  readonly afterKeyCreated?: (keyID: string) => Promise<void>;
 }
 
 export interface BackendOptions {

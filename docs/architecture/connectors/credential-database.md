@@ -54,11 +54,12 @@ for the key it replaced. After the commit, the refresh deletes the old key and i
 A crash at any point then leaves one whole token in the row, and a mark for each key that may be
 left over:
 
-| The process dies                              | The row holds | The start does                                            |
-| --------------------------------------------- | ------------- | --------------------------------------------------------- |
-| after the new key, before the request answers | the old token | marks the credential `needs_consent`, deletes the new key |
-| after the provider answers, before the commit | the old token | the same: the provider may have spent the old token       |
-| after the commit, before the old key goes     | the new token | deletes the old key                                       |
+| The process dies                              | The row holds | The start does                                               |
+| --------------------------------------------- | ------------- | ------------------------------------------------------------ |
+| after the new key, before its start is logged | the old token | deletes the new key: no refresh is open, so the token stands |
+| after the new key, before the request answers | the old token | marks the credential `needs_consent`, deletes the new key    |
+| after the provider answers, before the commit | the old token | the same: the provider may have spent the old token          |
+| after the commit, before the old key goes     | the new token | deletes the old key                                          |
 
 A sweep deletes each marked key that no row, no unfinished `credential.refresh_started` and no save
 in flight names. It runs at each start, after the lost refreshes are closed, and every hour. The
@@ -73,13 +74,15 @@ removal counter, sets the binding to `removing`, and captures the account key an
 store refuses every fetch and refresh from then on, and a fetch in flight is aborted with the
 removal's error.
 
+The forget cleans no session and removes no logged request, because no token enters either.
+
 The runner then calls the connection's revoke step, after the sandboxes are destroyed and before any
 key is deleted:
 
 1. The step reads the token, which only a revocation can still read, and sends the refresh token to
-   the provider's revoke URL once. Status 200 is `confirmed`, 400 is `refused` with an error code
-   from a fixed set, and any other answer or none is `unknown`. A connection with no token or no
-   client secret is `not_attempted`.
+   the provider's revoke URL once. Status 200 alone is `confirmed`, 400 is `refused` with an error
+   code from a fixed set, and any other answer or none is `unknown`. A connection with no token or
+   no client secret is `not_attempted`.
 2. The step writes `connection.revocation_recorded` with the outcome. The runner deletes the keys
    only after this record commits.
 3. The runner deletes the keys, and the connection's sealed columns are cleared and its binding is
@@ -93,13 +96,14 @@ nothing. Every outcome lets the forget finish, so a revocation that fails still 
 deleted.
 
 A backup that holds `nixie.db` from before the forget holds the sealed values and no key. The backup
-job prunes the key repository after the forget, so no backup holds a key that opens them.
+job prunes the key repository after the forget, so no backup holds a key that opens them. A restic
+suite of the backup job checks this against the repositories.
 
 ## Tests
 
 The credential crash suites in the server's `e2e/` folder kill the process at each point of the
-table above and at two points of the forget: after the forget's start commits and before its
-revocation, and after the revocation is recorded and before the keys go. They check the row, the
-keys that remain, the number of revoke requests and the outcome record after the restart. The
-connections module's own tests run the same cases in process, with the runner's `erasure.revoked`
-fault point.
+table above and at three points of the forget: after the forget's start commits and before its
+revocation, after the provider receives the revocation and before its outcome is recorded, and after
+the outcome is recorded and before the keys go. They check the row, the exact keys that remain, the
+number of revoke requests and the outcome record after the restart. The connections module's own
+tests run the same cases in process, with the runner's `erasure.revoked` fault point.

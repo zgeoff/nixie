@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test';
 import { startFakeOAuthProvider } from '@heynixie/credentials/test-utils';
 import { runOracle, startE2ENixie } from '@heynixie/server/test-utils';
+import { waitFor } from '@zgeoff/testing';
 import { z } from 'zod';
 
 async function setupTest() {
@@ -153,4 +154,48 @@ test('it never sends a second revocation however many times nixie restarts', asy
   }
 
   expect(ctx.countRevokes()).toBe(1);
+});
+
+test('it records an unknown outcome and sends nothing more when a crash cut the revocation after the provider received it', async () => {
+  const ctx = await setupTest();
+
+  const first = ctx.nixie.harness.start();
+
+  await first.ready;
+
+  await first.request('connectCredential', ctx.config);
+
+  // the provider takes the request and never answers it
+  ctx.provider.answerRevoke(() => new Promise<Response>(() => {}));
+
+  const forgetting = Promise.allSettled([first.request('forgetConnection', ctx.config)]);
+
+  await waitFor(() => {
+    expect(ctx.countRevokes()).toBe(1);
+  });
+
+  const recordedBeforeKill = await ctx.readKinds('connection.');
+
+  await first.kill();
+
+  await forgetting;
+
+  const second = ctx.nixie.harness.start();
+
+  await second.ready;
+
+  await ctx.nixie.waitForRecord((record) => record.kind === 'erasure.finished');
+
+  const status = await second.request('readCredentialStatus', ctx.config);
+
+  await second.kill();
+
+  const records = await ctx.nixie.readRecords();
+
+  const revocations = records.filter((record) => record.kind === 'connection.revocation_recorded');
+
+  expect(recordedBeforeKill).toStrictEqual([]);
+  expect(ctx.countRevokes()).toBe(1);
+  expect(revocations.map((record) => record.payload['outcome'])).toStrictEqual(['unknown']);
+  expect(status).toBeNull();
 });

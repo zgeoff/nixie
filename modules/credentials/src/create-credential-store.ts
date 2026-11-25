@@ -341,20 +341,31 @@ export function createCredentialStore(options: CredentialStoreOptions): Credenti
       };
 
       // A removal aborts every request in flight on the credential, so a fetch that races it ends
-      // with the removal's error instead of an answer.
+      // with the removal's error instead of an answer, even while it waits on a refresh.
       return async (input, init) => {
         const replayable = await readReplayableInit(init);
 
         const request = requireHeld().trackRequest(handle.credentialID);
 
         try {
-          return await sendWithRetry(input, {
-            ...replayable,
-            signal:
-              replayable?.signal === undefined || replayable.signal === null
-                ? request.signal
-                : AbortSignal.any([replayable.signal, request.signal]),
-          });
+          const signal =
+            replayable?.signal === undefined || replayable.signal === null
+              ? request.signal
+              : AbortSignal.any([replayable.signal, request.signal]);
+
+          const sending = Promise.allSettled([sendWithRetry(input, { ...replayable, signal })]);
+
+          // The race reports the outcome. A send that loses it ends in the background.
+          const [outcome] = await Promise.race([
+            sending,
+            waitForAbort(request.signal, new CredentialRemovedError(binding.spec.label)),
+          ]);
+
+          if (outcome.status === 'rejected') {
+            throw outcome.reason;
+          }
+
+          return outcome.value;
         } catch (error) {
           if (request.signal.aborted) {
             throw new CredentialRemovedError(binding.spec.label);
@@ -453,6 +464,19 @@ async function readReplayableInit(init: RequestInit | undefined): Promise<Reques
   const buffer = await new Response(init.body).arrayBuffer();
 
   return { ...init, body: new Uint8Array(buffer) };
+}
+
+// A promise that rejects with `error` when the signal aborts, and never settles otherwise.
+function waitForAbort(signal: AbortSignal, error: Error): Promise<never> {
+  const aborted = Promise.withResolvers<never>();
+
+  if (signal.aborted) {
+    aborted.reject(error);
+  } else {
+    signal.addEventListener('abort', () => aborted.reject(error), { once: true });
+  }
+
+  return aborted.promise;
 }
 
 // A value nixie holds goes into a keyed digest, because the broker keeps a granted secret under its

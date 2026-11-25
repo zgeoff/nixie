@@ -59,6 +59,10 @@ export function createDatabaseHeldBackend(options: BackendOptions): DatabaseHeld
     createKey: async () => {
       const minted = await mintKey(context);
 
+      if (NIXIE_TEST_BUILD) {
+        await context.hooks?.afterKeyCreated?.(minted.keyID);
+      }
+
       return minted.keyID;
     },
     removeKey: (keyID) => removeKey(context, keyID),

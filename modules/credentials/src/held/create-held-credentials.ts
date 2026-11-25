@@ -5,6 +5,7 @@ import type { OwnValueSet } from '../own-values/create-own-value-set';
 import type { CredentialFetch, OAuthProvider } from '../types';
 import { createKeyedLock } from './create-keyed-lock';
 import { CredentialRemovedError } from './credential-removed-error';
+import { isDue } from './is-due';
 import { parseIDToken } from './parse-id-token';
 import { pickFailureState } from './pick-failure-state';
 import type { RefreshFailureKind } from './pick-failure-state';
@@ -133,6 +134,21 @@ export function createHeldCredentials(options: HeldOptions): HeldCredentials {
       });
     }
   };
+
+  // A removal clears the values under the removal lock, so a value added under that lock after a
+  // counter check either meets the clear or finds the counter moved.
+  const addCurrentOwnValues = (
+    credentialID: string,
+    token: HeldToken,
+    expectedCounter: number,
+  ): Promise<void> =>
+    removalLock.withLock(credentialID, async () => {
+      const current = await backend.readRemovalCounter(credentialID);
+
+      if (current === expectedCounter) {
+        addOwnValues(credentialID, token);
+      }
+    });
 
   const writeState = async (
     credentialID: string,
@@ -286,7 +302,7 @@ export function createHeldCredentials(options: HeldOptions): HeldCredentials {
       return 'removed';
     }
 
-    addOwnValues(handle.credentialID, renewed);
+    await addCurrentOwnValues(handle.credentialID, renewed, handle.removalCounter);
 
     if (token.state.status !== 'active') {
       await options.recorder.write({
@@ -386,7 +402,12 @@ export function createHeldCredentials(options: HeldOptions): HeldCredentials {
     return token.accessToken;
   };
 
-  const exchangeWriter = { backend, now: options.now, writeState, addOwnValues };
+  const exchangeWriter = {
+    backend,
+    now: options.now,
+    writeState,
+    addOwnValues: addCurrentOwnValues,
+  };
 
   return {
     readCounter: backend.readRemovalCounter,
@@ -562,20 +583,6 @@ export function createHeldCredentials(options: HeldOptions): HeldCredentials {
 
 function pickRevocable(reply: TokenReply): string {
   return reply.refresh_token ?? reply.access_token;
-}
-
-// The refresh timings: a token refreshes 5 minutes before it expires, and at least every 7 days.
-const refreshLeadMs = 5 * 60 * 1000;
-const refreshEveryMs = 7 * 24 * 60 * 60 * 1000;
-
-function isDue(token: HeldToken, nowMs: number): boolean {
-  if (token.state.retryAtMs !== null && nowMs < token.state.retryAtMs) {
-    return false;
-  }
-
-  const lastSuccessAtMs = token.state.lastSuccessAtMs ?? 0;
-
-  return token.expiresAtMs - nowMs <= refreshLeadMs || nowMs - lastSuccessAtMs >= refreshEveryMs;
 }
 
 async function readAccount(

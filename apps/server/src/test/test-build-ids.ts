@@ -62,8 +62,11 @@ export const testBuildIDs: readonly string[] = [
   'readCredentialStatus',
   'readCredentialToken',
   'readCredentialKeys',
+  'readCredentialMarks',
+  'hasCredentialKey',
   'forgetConnection',
   'credential.refresh.before_save',
+  'credential.refresh.key_created',
   'test-snapshot',
   'the tool relay has no TCP address',
 ];

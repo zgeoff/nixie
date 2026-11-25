@@ -263,7 +263,9 @@ async function cleanErasure(context: ErasureRunContext, erasure: OpenErasure): P
 
   await getEntry(context, erasure.started.kind).cleanIndexes(toTarget(erasure));
 
-  await context.effects.cleanupSessions(capture.sessionCause);
+  if (!('connectionID' in capture.sessionCause)) {
+    await context.effects.cleanupSessions(capture.sessionCause);
+  }
 
   for (const purge of capture.purges) {
     await context.effects.finishPurges(purge.recordSequence);
@@ -273,6 +275,10 @@ async function cleanErasure(context: ErasureRunContext, erasure: OpenErasure): P
 async function removeTurnInputs(effects: ErasureEffects, erasure: OpenErasure): Promise<void> {
   const capture = erasure.started.capture;
   const turnInputs = capture.turnInputs;
+
+  if (turnInputs.threads === 'none') {
+    return;
+  }
 
   if (turnInputs.threads === 'all') {
     await effects.removeTurnInputs({ threads: [], fromSequence: null });

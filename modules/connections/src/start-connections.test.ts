@@ -1,12 +1,14 @@
-import { expect, test } from 'bun:test';
+import { expect, onTestFinished, test } from 'bun:test';
 import { CredentialRemovedError } from '@heynixie/credentials';
+import { buildIDToken } from '@heynixie/credentials/test-utils';
 import { readErasureFinishedSequence, readRecordKeys, readRecords } from '@heynixie/log';
 import { waitFor } from '@zgeoff/testing';
 import { revocationRecordedCodec } from './record/revocation-recorded-codec';
+import type { ConnectionsHarnessOptions } from './test-utils/start-connections-harness';
 import { startConnectionsHarness } from './test-utils/start-connections-harness';
 
-async function setupTest() {
-  const harness = await startConnectionsHarness();
+async function setupTest(options: ConnectionsHarnessOptions = {}) {
+  const harness = await startConnectionsHarness(options);
 
   const readRevocations = async () => {
     const records = await readRecords(harness.log, {
@@ -164,6 +166,7 @@ test.each([
   { name: 'confirmed', status: 200, outcome: 'confirmed', googleError: null },
   { name: 'refused', status: 400, outcome: 'refused', googleError: 'invalid_token' },
   { name: 'unknown', status: 503, outcome: 'unknown', googleError: null },
+  { name: 'unconfirmed', status: 202, outcome: 'unknown', googleError: null },
 ])('it records a $name revocation when the provider answers $status', async (row) => {
   const ctx = await setupTest();
   const connection = await ctx.seedConnection();
@@ -211,7 +214,7 @@ test('it records not_attempted when the connection has no client to revoke with'
   expect([ctx.countRevokes(), outcomes]).toStrictEqual([0, ['not_attempted']]);
 });
 
-test('it asks the sessions to clean up after the connection', async () => {
+test('it asks no session to clean up after a forgotten connection', async () => {
   const ctx = await setupTest();
   const connection = await ctx.seedConnection();
 
@@ -222,9 +225,7 @@ test('it asks the sessions to clean up after the connection', async () => {
 
   await ctx.connections.forget.finish(connection.tokenRef.credentialID);
 
-  expect(ctx.effects.cleanedCauses).toStrictEqual([
-    { connectionID: connection.tokenRef.credentialID },
-  ]);
+  expect(ctx.effects.cleanedCauses).toStrictEqual([]);
 });
 
 test('it refuses a forget of a connection that is unknown or already forgotten', async () => {
@@ -356,4 +357,159 @@ test('it leaves a copy of the database from before the forget with sealed values
     0,
     true,
   ]);
+});
+
+test('it keeps the logged requests of other threads when a connection is forgotten', async () => {
+  const ctx = await setupTest();
+  const connection = await ctx.seedConnection();
+
+  ctx.effects.seedInput('task-unrelated', 5);
+
+  await ctx.connections.forget.begin(
+    { connection: connection.tokenRef.credentialID },
+    { by: 'user' },
+  );
+
+  await ctx.connections.forget.finish(connection.tokenRef.credentialID);
+
+  expect(ctx.effects.readInputs()).toStrictEqual([['task-unrelated', 5]]);
+});
+
+test('it revokes the rotated token of a connection whose account key a forget deleted before the save', async () => {
+  const ctx = await setupTest();
+
+  ctx.provider.answerToken(() =>
+    Response.json({
+      access_token: 'fake-access-token-1',
+      refresh_token: 'fake-refresh-token-1',
+      expires_in: 3600,
+      id_token: buildIDToken({
+        iss: 'https://issuer.example',
+        aud: 'client-123',
+        exp: ctx.clock.now() / 1000 + 600,
+        sub: 'account-subject-1',
+      }),
+    }),
+  );
+
+  const connection = await ctx.seedConnection();
+
+  ctx.provider.answerToken(() =>
+    Response.json({
+      access_token: 'fake-access-token-2',
+      refresh_token: 'fake-refresh-token-2',
+      expires_in: 3600,
+    }),
+  );
+
+  ctx.hooks.beforeTokenWrite = async () => {
+    await ctx.connections.forget.begin(
+      { connection: connection.tokenRef.credentialID },
+      { by: 'user' },
+    );
+
+    await ctx.runner.finishOpen();
+  };
+
+  const outcome = await ctx.held.store.refresh(connection.token);
+  const kinds = await ctx.readKinds();
+
+  const revoked = ctx.provider.requests.filter(
+    (request) => request.path === '/revoke' && request.form['token'] === 'fake-refresh-token-2',
+  );
+
+  expect([outcome, kinds.includes('credential.refresh_saved'), revoked.length]).toStrictEqual([
+    'removed',
+    false,
+    1,
+  ]);
+});
+
+test('it keeps the tokens of a refresh out of the own values when a forget finishes after the save', async () => {
+  const ctx = await setupTest();
+  const connection = await ctx.seedConnection();
+
+  const saved = Promise.withResolvers<void>();
+  const release = Promise.withResolvers<void>();
+
+  ctx.provider.answerToken(() =>
+    Response.json({
+      access_token: 'fake-access-token-2',
+      refresh_token: 'fake-refresh-token-2',
+      expires_in: 3600,
+    }),
+  );
+
+  ctx.hooks.afterTokenSaved = async () => {
+    saved.resolve();
+
+    await release.promise;
+  };
+
+  const refreshing = ctx.held.store.refresh(connection.token);
+
+  await saved.promise;
+
+  await ctx.connections.forget.begin(
+    { connection: connection.tokenRef.credentialID },
+    { by: 'user' },
+  );
+
+  await ctx.runner.finishOpen();
+
+  release.resolve();
+
+  await refreshing;
+
+  const values = ctx.held.ownValues.read({ minChars: 1 });
+
+  expect([
+    values.includes('fake-access-token-2'),
+    values.includes('fake-refresh-token-2'),
+  ]).toStrictEqual([false, false]);
+});
+
+test('it ends a fetch that waits on a refresh when a forget begins, before the provider answers', async () => {
+  const ctx = await setupTest({ tokenRequestTimeoutMs: 60_000 });
+  const connection = await ctx.seedConnection();
+
+  const gate = Promise.withResolvers<void>();
+  let isRefreshing = false;
+
+  onTestFinished(() => {
+    gate.resolve();
+  });
+
+  ctx.provider.answerToken(async (request) => {
+    if (request.path === '/data') {
+      return new Response('expired', { status: 401 });
+    }
+
+    isRefreshing = true;
+
+    await gate.promise;
+
+    return Response.json({
+      access_token: 'fake-access-token-2',
+      refresh_token: 'fake-refresh-token-2',
+      expires_in: 3600,
+    });
+  });
+
+  const fetching = Promise.allSettled([
+    ctx.held.store.fetcher(connection.token, [ctx.provider.origin])(`${ctx.provider.origin}/data`),
+  ]);
+
+  await waitFor(() => {
+    expect(isRefreshing).toBeTrue();
+  });
+
+  await ctx.connections.forget.begin(
+    { connection: connection.tokenRef.credentialID },
+    { by: 'user' },
+  );
+
+  const [result] = await fetching;
+
+  expect(result).toMatchObject({ status: 'rejected', reason: expect.any(CredentialRemovedError) });
 });
