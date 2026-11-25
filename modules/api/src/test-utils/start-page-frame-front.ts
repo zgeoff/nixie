@@ -7,6 +7,10 @@ interface PageFrameFrontOptions {
   // the ticket of the page's frame, read when the host page loads, so a test can start the front
   // first and give its page the address of the server that counts requests
   readonly readFrame: () => string;
+
+  // serves the frame as a browser without trusted types gets it: no trusted-types directive, and no
+  // `trustedTypes` on the window
+  readonly hasTrustedTypes?: boolean;
 }
 
 // the policy of the device page for what a frame may load and where a page may navigate
@@ -65,7 +69,7 @@ export function startPageFrameFront(options: PageFrameFrontOptions) {
     },
   });
 
-  const answerFront = (request: Request): Promise<Response> | Response => {
+  const answerFront = async (request: Request): Promise<Response> => {
     const url = new URL(request.url);
 
     if (url.pathname === '/favicon.ico') {
@@ -80,10 +84,14 @@ export function startPageFrameFront(options: PageFrameFrontOptions) {
       );
     }
 
-    return globalThis.fetch(`${options.apiURL}${url.pathname}${url.search}`, {
+    const answer = await globalThis.fetch(`${options.apiURL}${url.pathname}${url.search}`, {
       method: request.method,
       headers: { 'x-forwarded-proto': 'http', 'x-forwarded-host': url.host },
     });
+
+    return options.hasTrustedTypes === false && url.pathname.includes('/frames/')
+      ? removeTrustedTypes(answer)
+      : answer;
   };
 
   const front = Bun.serve({ fetch: answerFront, hostname: '127.0.0.1', port: 0 });
@@ -100,4 +108,26 @@ export function startPageFrameFront(options: PageFrameFrontOptions) {
     evilOrigin: `http://127.0.0.1:${String(evil.port)}`,
     hostURL: `http://127.0.0.1:${String(front.port)}/host`,
   };
+}
+
+async function removeTrustedTypes(response: Response): Promise<Response> {
+  const policy = (response.headers.get('content-security-policy') ?? '')
+    .split('; ')
+    .filter((directive) => !directive.includes('trusted-types'))
+    .join('; ');
+
+  const headers = new Headers(response.headers);
+
+  headers.set('content-security-policy', policy);
+  headers.delete('content-length');
+
+  const hide =
+    "<script>Object.defineProperty(window, 'trustedTypes', { value: undefined });</script>";
+
+  const document = await response.text();
+
+  return new Response(document.replace('<script>', `${hide}<script>`), {
+    status: response.status,
+    headers,
+  });
 }

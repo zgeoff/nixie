@@ -1,5 +1,5 @@
-export const eventsPerMinute = 30;
-export const eventIntervalMs = 1000;
+const eventsPerMinute = 30;
+const eventIntervalMs = 1000;
 
 // Whether a region may send another event now, given the times of the ones it sent in the last
 // minute: 1 a second and 30 a minute. The device drops the rest.

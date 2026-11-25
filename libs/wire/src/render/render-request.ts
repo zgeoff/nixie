@@ -7,7 +7,7 @@ export const renderEntryPath = 'index.html';
 
 // The most files one render holds: the entry, then for each of the 36 regions of a layout its page
 // and up to 20 images, which is 757 at most.
-export const renderFilesLimit = 1024;
+const renderFilesLimit = 1024;
 
 // The page's own origin. Every request to it is answered from the request's files, and the render
 // refuses every other.

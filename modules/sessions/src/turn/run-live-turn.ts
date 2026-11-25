@@ -48,6 +48,9 @@ export interface LiveTurnPlan {
 
   // the session the turn runs on, which the turn's step token hands each tool call
   readonly session: ToolSession;
+
+  // where the content of the events that a new session's opening replays came from
+  readonly openingSources: readonly RuleSource[];
 }
 
 interface LiveWrites {
@@ -79,6 +82,8 @@ export async function runLiveTurn(
 
   // grows as the turn reads more: its events block, and each message that lands while it runs
   const sources = collectRecordSources(opening.batch.records);
+
+  takeSources(sources, plan.openingSources);
 
   const stepToken = run.endpoint.startStep(
     buildStepRunID(input),

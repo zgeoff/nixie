@@ -209,19 +209,23 @@ The policy also sets `sandbox allow-scripts`. A person who opens the frame's add
 the same opaque origin, and the page reads none of the app's storage.
 
 The policy leaves two ways out open: a peer connection reaches any server its page names, and a link
-element opens a connection from a resource hint such as `preconnect`. Three things close them:
+element opens a connection from a resource hint such as `preconnect`. A frame, object or embed
+element gives the page a second window that has neither guard. Three things close them:
 
-- `device.region` refuses a page that holds a link element, because the page has no network and its
-  styles go in a style element.
-- The policy requires trusted types and allows only a `default` policy. The bridge makes that
-  policy, which turns a link element in any string that the page parses into a span.
-- The bridge removes `RTCPeerConnection` and makes the page's `createElement` build a span for a
-  link. Nested frames are blocked by `default-src 'none'`, so the page gets no second window that
-  still has them.
+- `device.region` refuses a page that holds a link, frame, object or embed element, because the page
+  has no network and its styles go in a style element.
+- The bridge removes `RTCPeerConnection` and makes the page's `createElement` build a span for each
+  of those elements.
+- The bridge cleans each string that the page turns into markup, so a string never brings the
+  elements back. A browser with trusted types gets this from the `default` policy that the bridge
+  makes, which the frame's policy requires and allows alone. A browser without trusted types gets it
+  from the bridge's own wrappers around `innerHTML`, `outerHTML`, `insertAdjacentHTML`, `srcdoc`,
+  `DOMParser`, `createContextualFragment` and `document.write`.
 
-The browser test opens a link element, a hint made by script and by a parsed string, and a peer
-connection against a server that counts connections, and expects none. The response also sets
-`x-dns-prefetch-control: off`.
+The browser test opens each of those against a server that counts connections, in a browser with
+trusted types and in one without, and expects none. The response also sets
+`x-dns-prefetch-control: off`. The frame builder and the bridge live in `libs/wire`, so the device
+page's own browser tests frame their pages with the same bridge.
 
 The frame's URL is built from the request's own origin, with the forwarded protocol and host
 cleaned, so a page behind a reverse proxy loads its images from the same origin as the frame. The
@@ -280,15 +284,16 @@ waking event that lands while the turn runs.
 
 ### Messages to a page
 
-`device.sendToPage` sends data of up to 16 KiB into the page of a region. With `retain: true` the
-server also keeps the message as the page's state, the newest one for each page region, in memory in
-the stream registry. A stream hands that message to the page each time the page loads, after a
-reload or a reconnect, until new content replaces the page, and a restart forgets it. A
-`device.region` call that writes any content drops the region's retained message and its tickets, so
-a temporary replacement that ends with `previous` brings the earlier page back with no state and new
-tickets. The device page keeps each region's newest retained message past its limit of 200 messages,
-so a frame that loads again on the same stream starts from it. A retained message is kept even when
-the device is offline, and the call then returns `OFFLINE`.
+`device.sendToPage` sends data into the page of a region. With `retain: true` the server also keeps
+the message as the page's state, the newest one for each page region, in memory in the stream
+registry. A stream hands that message to the page each time the page loads, after a reload or a
+reconnect, until new content replaces the page, and a restart forgets it. A `device.region` call
+that writes any content drops the region's retained message and its tickets, so a temporary
+replacement that ends with `previous` brings the earlier page back with no state and new tickets.
+The device page keeps each region's newest retained message past its limit of 200 messages, so a
+frame that loads again on the same stream starts from it. A layout event that no longer shows a page
+drops that page's messages, so a page that a replacement gives back starts with no state. A retained
+message is kept even when the device is offline, and the call then returns `OFFLINE`.
 
 ## Waking the model
 

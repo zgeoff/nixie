@@ -5,7 +5,20 @@ import type { DeviceEvents } from './use-device-events';
 function setupTest() {
   const start: DeviceEvents = { event: null, layout: null, messages: [], connection: 'open' };
 
-  return { start };
+  return {
+    start,
+    buildRegion: (shown: string) => ({
+      name: 'pond',
+      column: 1,
+      row: 1,
+      columnSpan: 1,
+      rowSpan: 1,
+      background: null,
+      content: null,
+      shown,
+      until: null,
+    }),
+  };
 }
 
 test('#applyDeviceEvent numbers each message in the order the stream sent it', () => {
@@ -54,7 +67,7 @@ test('#applyDeviceEvent keeps the 200 newest messages', () => {
   );
 });
 
-test('#applyDeviceEvent keeps the messages when the layout changes', () => {
+test('#applyDeviceEvent keeps the messages of a page that the layout still shows', () => {
   const ctx = setupTest();
 
   const withMessage = applyDeviceEvent(ctx.start, {
@@ -65,9 +78,52 @@ test('#applyDeviceEvent keeps the messages when the layout changes', () => {
     retain: false,
   });
 
-  const after = applyDeviceEvent(withMessage, { kind: 'layout', layout: null });
+  const after = applyDeviceEvent(withMessage, {
+    kind: 'layout',
+    layout: { columns: ['1fr'], rows: ['1fr'], regions: [ctx.buildRegion('sh1')] },
+  });
 
   expect(after.messages).toHaveLength(1);
+});
+
+test('#applyDeviceEvent leaves a page no retained state after a replacement gave it back', () => {
+  const ctx = setupTest();
+
+  const retained = applyDeviceEvent(ctx.start, {
+    kind: 'message',
+    region: 'pond',
+    shown: 'sh1',
+    data: 'old state',
+    retain: true,
+  });
+
+  const replaced = applyDeviceEvent(retained, {
+    kind: 'layout',
+    layout: { columns: ['1fr'], rows: ['1fr'], regions: [ctx.buildRegion('sh2')] },
+  });
+
+  const restored = applyDeviceEvent(replaced, {
+    kind: 'layout',
+    layout: { columns: ['1fr'], rows: ['1fr'], regions: [ctx.buildRegion('sh1')] },
+  });
+
+  expect(restored.messages).toStrictEqual([]);
+});
+
+test('#applyDeviceEvent drops every message when the layout is none', () => {
+  const ctx = setupTest();
+
+  const withMessage = applyDeviceEvent(ctx.start, {
+    kind: 'message',
+    region: 'pond',
+    shown: 'sh1',
+    data: 'x',
+    retain: true,
+  });
+
+  expect(applyDeviceEvent(withMessage, { kind: 'layout', layout: null }).messages).toStrictEqual(
+    [],
+  );
 });
 
 test('#applyDeviceEvent keeps the screen event that a show sent', () => {

@@ -1,4 +1,6 @@
 import { onTestFinished } from 'bun:test';
+import { devicePagePaths } from '@heynixie/contract';
+import { buildPageFrame } from '@heynixie/wire';
 import { runMockAPIRequest } from '../mocks/run-mock-api-request';
 
 interface StubAPIRequest {
@@ -58,9 +60,18 @@ export function startStubAPI() {
     requests,
     url: `http://127.0.0.1:${server.port}`,
 
-    // Answers a request for this ticket's frame with this document, as the API answers one.
+    // Answers a request for this ticket's frame with this page, framed with the bridge as the API
+    // frames one. A file has no headers, so the policy sits in the document.
     serveFrame: (ticket: string, html: string) => {
-      frames.set(`/rpc/device/frames/${ticket}`, html);
+      const frame = buildPageFrame({
+        html,
+        images: new Map(),
+        imageBase: `http://127.0.0.1:${server.port}${devicePagePaths.images}`,
+        initialMessages: [],
+        isPolicyInline: true,
+      });
+
+      frames.set(`${devicePagePaths.frames}${ticket}`, frame.document);
     },
 
     // Holds back each answer to this path, so a test sees the page before the data lands.

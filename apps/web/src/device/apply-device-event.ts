@@ -3,7 +3,7 @@ import type { DeviceEvents, PageDelivery } from './use-device-events';
 
 export function applyDeviceEvent(current: DeviceEvents, event: DeviceEvent): DeviceEvents {
   if (event.kind === 'layout') {
-    return { ...current, layout: event.layout };
+    return { ...current, layout: event.layout, messages: keepShownMessages(current, event.layout) };
   }
 
   if (event.kind === 'message') {
@@ -13,6 +13,20 @@ export function applyDeviceEvent(current: DeviceEvents, event: DeviceEvent): Dev
   }
 
   return { ...current, event };
+}
+
+// A region that shows other content has lost the page's state, which the server dropped, so no
+// message of that page may reach a frame that the same content gets later, such as the page that
+// a temporary replacement gave back.
+function keepShownMessages(
+  current: DeviceEvents,
+  layout: DeviceEvents['layout'],
+): readonly PageDelivery[] {
+  return current.messages.filter((message) =>
+    layout?.regions.some(
+      (region) => region.name === message.region && region.shown === message.shown,
+    ),
+  );
 }
 
 // the most messages the device keeps, so a page that gets many never grows the list for good

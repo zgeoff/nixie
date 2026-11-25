@@ -35,10 +35,10 @@ const declaredImagesSchema = z.array(imageIDSchema).max(regionImagesLimit);
 const ticketedImageSchema = z.object({ image: z.string(), ticket: z.string() });
 const ticketedImagesSchema = z.array(ticketedImageSchema).max(regionImagesLimit);
 
-// A link element opens a connection from a resource hint, such as preconnect, before the page's own
-// code runs, and nothing in a page's policy stops it. A page has no network, and its styles go in a
-// style element.
-const linkElementPattern = /<link(?![\w-])/iu;
+// A link element opens a connection from a resource hint that no policy stops, and a frame, object
+// or embed holds a document with no guard of the page's own. A page has no network, and its styles
+// go in a style element.
+const blockedElementPattern = /<(?:link|iframe|frame|object|embed)(?![\w-])/iu;
 
 // What one region of a layout shows. A page holds its HTML, and the images it may show by their
 // image store IDs.
@@ -50,9 +50,9 @@ export const regionContentSchema = z.union([
       .string()
       .min(1)
       .max(regionHTMLLimit)
-      .refine((html) => !linkElementPattern.test(html), {
+      .refine((html) => !blockedElementPattern.test(html), {
         message:
-          'a page cannot hold a link element: it has no network, and its styles go in a style element',
+          'a page cannot hold a link, frame, object or embed element: it has no network, and its styles go in a style element',
       }),
     images: declaredImagesSchema.optional(),
   }),

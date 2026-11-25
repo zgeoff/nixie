@@ -1136,6 +1136,6 @@ test('it fails a call for a page that holds a link element, and says why', async
 
   expect(outcome).toMatchObject({
     status: 'error',
-    message: expect.stringContaining('a page cannot hold a link element'),
+    message: expect.stringContaining('a page cannot hold a link, frame, object or embed element'),
   });
 });

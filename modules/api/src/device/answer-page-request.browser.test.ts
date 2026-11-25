@@ -12,11 +12,17 @@ interface PagePosts {
 }
 
 // The page runs in a real Chrome, in the frame that the API serves, under the policy it sends.
-async function setupTest() {
+async function setupTest(options: { hasTrustedTypes?: boolean } = {}) {
   const api = await startTestAPI();
 
   const holder = { frame: '' };
-  const front = startPageFrameFront({ apiURL: api.url, readFrame: () => holder.frame });
+
+  const front = startPageFrameFront({
+    apiURL: api.url,
+    readFrame: () => holder.frame,
+    hasTrustedTypes: options.hasTrustedTypes ?? true,
+  });
+
   const clock = api.context.clock;
   const streams = api.context.clients.devices;
 
@@ -214,6 +220,41 @@ test('it keeps a page from opening a connection by a resource hint, a string of 
     ctx.front.evilConnections.count,
     ctx.front.evilRequests,
   ]).toStrictEqual([{ peer: 'undefined', prefixed: 'undefined' }, 0, []]);
+});
+
+test('it keeps a page from opening a connection by markup in a browser without trusted types', async () => {
+  const ctx = await setupTest({ hasTrustedTypes: false });
+
+  const evil = ctx.front.evilOrigin;
+
+  await ctx.openPage(`<script>
+    const link = '<' + 'link rel="preconnect" href="${evil}/';
+    const holder = document.createElement('div');
+    document.body.append(holder);
+
+    holder.innerHTML = link + 'inner">';
+    holder.insertAdjacentHTML('beforeend', link + 'adjacent">');
+    holder.append(document.createRange().createContextualFragment(link + 'fragment">'));
+
+    const parsed = new DOMParser().parseFromString(link + 'parsed">', 'text/html');
+    holder.append(document.importNode(parsed.head.firstChild ?? holder, true));
+
+    const frame = document.createElement('iframe');
+    document.body.append(frame);
+
+    nixie.send('probed', { trustedTypes: typeof trustedTypes, frame: frame.tagName, links: document.querySelectorAll('link').length });
+    setTimeout(() => nixie.send('settled'), 1500);
+  </script>`);
+
+  await ctx.waitForPost('settled');
+
+  const posts = await ctx.readPosts();
+
+  expect([
+    posts.find((post) => post.name === 'probed')?.data,
+    ctx.front.evilConnections.count,
+    ctx.front.evilRequests,
+  ]).toStrictEqual([{ trustedTypes: 'undefined', frame: 'SPAN', links: 0 }, 0, []]);
 });
 
 test('it keeps a page that opens on its own, outside the device page, from the origin of the app', async () => {

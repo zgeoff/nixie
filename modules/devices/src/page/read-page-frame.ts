@@ -1,6 +1,6 @@
 import { devicePagePaths } from '@heynixie/contract';
-import type { PageFrame } from './build-page-frame';
-import { buildPageFrame } from './build-page-frame';
+import type { PageFrame } from '@heynixie/wire';
+import { buildPageFrame } from '@heynixie/wire';
 import { readPageContent } from './read-page-content';
 import type { PageRequestSource } from './types';
 

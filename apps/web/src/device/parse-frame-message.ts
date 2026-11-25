@@ -20,7 +20,7 @@ const frameMessageSchema = z.discriminatedUnion('type', [
   }),
 ]);
 
-export type FrameMessage =
+type FrameMessage =
   | { readonly type: 'ready' }
   | { readonly type: 'touch' }
   | { readonly type: 'error'; readonly message: string }

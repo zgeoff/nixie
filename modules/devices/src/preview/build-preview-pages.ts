@@ -1,6 +1,5 @@
 import type { RenderFile } from '@heynixie/wire';
-import { renderOrigin } from '@heynixie/wire';
-import { buildPageFrame } from '../page/build-page-frame';
+import { buildPageFrame, renderOrigin } from '@heynixie/wire';
 import type { PreviewPageInput } from './types';
 
 // the URL of an image that a page declares but the preview holds no file for, which the render

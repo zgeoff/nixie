@@ -1,7 +1,8 @@
 import { expect, test } from 'bun:test';
 import type { RecordInput, WriteTransaction } from '@heynixie/log';
-import { readRecords, writeRecordsInTransaction } from '@heynixie/log';
+import { readRecords, withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import invariant from 'tiny-invariant';
+import { writeScreenSwitch } from '../device/write-screen-switch';
 import { startTestDevices } from '../test-utils';
 import { recordPageEvent } from './record-page-event';
 
@@ -107,12 +108,24 @@ async function setupTest() {
 
       return found.map((entry) => entry.record);
     },
-    sendWithScreenOff: () =>
-      recordPageEvent(
+
+    // switches the screen off after the caller read the device, and sends with what it read
+    sendAfterScreenSwitchedOff: async () => {
+      await withWriteTransaction(ctx.log.writer, (tx) =>
+        writeScreenSwitch(tx, ctx.log, {
+          device,
+          isOn: false,
+          nowMs: ctx.clock.now(),
+          definitions: ctx.definitions(),
+        }),
+      );
+
+      return recordPageEvent(
         sink,
-        { ...device, capabilities: { ...device.capabilities, screen: false } },
+        { ...device },
         { region: 'pond', shown: pond?.shown?.shownID ?? '', name: 'touched', wake: false },
-      ),
+      );
+    },
   };
 }
 
@@ -238,9 +251,9 @@ test('#recordPageEvent lets the device wake again an hour after its sixth wake',
   expect(wakes.at(-1)).toBe(true);
 });
 
-test('#recordPageEvent says stale when the screen is off', async () => {
+test('#recordPageEvent says stale when the screen switched off after the caller read the device', async () => {
   const ctx = await setupTest();
-  const outcome = await ctx.sendWithScreenOff();
+  const outcome = await ctx.sendAfterScreenSwitchedOff();
   const events = await ctx.readEvents();
 
   expect([outcome, events]).toStrictEqual(['stale', []]);

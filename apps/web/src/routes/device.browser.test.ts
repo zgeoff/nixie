@@ -471,13 +471,7 @@ test('it reports to the server an image that downloads but cannot be decoded', a
 test('it shows the screen buttons after a touch inside a page that fills the screen', async () => {
   const ctx = await setupTest();
 
-  ctx.serveFrame(
-    'f1',
-    `<body style="margin:0"><script>
-      addEventListener('pointerdown', () => parent.postMessage({ nixie: true, type: 'touch' }, '*'));
-      parent.postMessage({ nixie: true, type: 'event', name: 'loaded', wake: false }, '*');
-    </script></body>`,
-  );
+  ctx.serveFrame('f1', `<script>nixie.send('loaded');</script>`);
 
   deviceStore.layoutHolder.layout = {
     columns: ['1fr'],
@@ -520,12 +514,7 @@ test('it shows the screen buttons after a touch inside a page that fills the scr
 test('it sends to the server the event that a page in a frame raises', async () => {
   const ctx = await setupTest();
 
-  ctx.serveFrame(
-    'f1',
-    `<body><script>
-      parent.postMessage({ nixie: true, type: 'event', name: 'touched', data: { count: 2 }, wake: false }, '*');
-    </script></body>`,
-  );
+  ctx.serveFrame('f1', `<script>nixie.send('touched', { count: 2 });</script>`);
 
   deviceStore.layoutHolder.layout = {
     columns: ['1fr'],
@@ -567,15 +556,7 @@ test('it sends to the server the event that a page in a frame raises', async () 
 test('it hands a message from the assistant to the page, and again to a page that loads again', async () => {
   const ctx = await setupTest();
 
-  ctx.serveFrame(
-    'f1',
-    `<body><script>
-      addEventListener('message', (event) => {
-        parent.postMessage({ nixie: true, type: 'event', name: 'echo', data: event.data.data, wake: false }, '*');
-      });
-      addEventListener('load', () => parent.postMessage({ nixie: true, type: 'ready' }, '*'));
-    </script></body>`,
-  );
+  ctx.serveFrame('f1', `<script>nixie.onMessage((data) => nixie.send('echo', data));</script>`);
 
   deviceStore.messageHolder.messages = [
     {
@@ -622,4 +603,41 @@ test('it hands a message from the assistant to the page, and again to a page tha
     { text: 'hello' },
     { text: 'hello' },
   ]);
+});
+
+test('it reports to the server an error that a page in a frame raises', async () => {
+  const ctx = await setupTest();
+
+  ctx.serveFrame(
+    'f1',
+    `<script>nixie.send('loaded'); throw new TypeError('x is undefined');</script>`,
+  );
+
+  deviceStore.layoutHolder.layout = {
+    columns: ['1fr'],
+    rows: ['1fr'],
+    regions: [
+      {
+        name: 'pond',
+        column: 1,
+        row: 1,
+        columnSpan: 1,
+        rowSpan: 1,
+        background: null,
+        content: { kind: 'html', frame: 'f1', images: [] },
+        shown: 'sh1',
+        until: null,
+      },
+    ],
+  };
+
+  await ctx.switchScreenOn();
+
+  await waitForCondition(() => deviceStore.pageErrors.findMany().length === 1, {
+    timeoutMs: 8000,
+  });
+
+  expect(
+    deviceStore.pageErrors.findMany().map((error) => [error.region, error.shown, error.message]),
+  ).toStrictEqual([['pond', 'sh1', expect.stringContaining('x is undefined')]]);
 });

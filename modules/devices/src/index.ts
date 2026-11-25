@@ -41,7 +41,6 @@ export type { PageEventReport, PageEventSink } from './page/record-page-event';
 export { recordPageEvent } from './page/record-page-event';
 export { devicePageEventCodec } from './record/device-page-event-codec';
 export { readPageFrame } from './page/read-page-frame';
-export type { PageFrame } from './page/build-page-frame';
 export { readPageImage } from './page/read-page-image';
 export type { PageMessage } from './stream/create-page-messages';
 export type { PageMessageState } from './types';

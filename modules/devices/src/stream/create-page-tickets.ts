@@ -1,5 +1,5 @@
 // What a ticket opens: a page's frame, or one image the page declares.
-export type PageTicket =
+type PageTicket =
   | {
       readonly kind: 'frame';
       readonly deviceID: string;

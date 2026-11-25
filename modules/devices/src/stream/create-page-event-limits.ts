@@ -1,5 +1,5 @@
-export const pageEventsPerSecond = 1;
-export const pageEventsPerMinute = 30;
+const pageEventsPerSecond = 1;
+const pageEventsPerMinute = 30;
 
 export interface PageEventLimits {
   // true and counts the event when the region has room for it, false and counts nothing when a

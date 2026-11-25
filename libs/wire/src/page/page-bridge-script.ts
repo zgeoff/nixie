@@ -8,28 +8,61 @@ export const pageBridgeScript = `(function () {
   var parentWindow = window.parent;
 
   // The frame's policy leaves two ways out that it cannot close: a peer connection reaches any
-  // server a page names, and a link element opens a connection from a resource hint. The page
-  // gets neither, and the default trusted-types policy cleans every string it turns into markup.
+  // server a page names, and a link element opens a connection from a resource hint. A frame
+  // inside the page would give it a window with none of these guards. The page gets none of them.
   ['RTCPeerConnection', 'webkitRTCPeerConnection', 'mozRTCPeerConnection'].forEach(function (name) {
     try {
       delete window[name];
     } catch (error) {}
   });
 
+  var blockedTag = /^(link|iframe|frame|object|embed)$/i;
   var createElement = Document.prototype.createElement;
   var createElementNS = Document.prototype.createElementNS;
-  var linkTag = /^link$/i;
   Document.prototype.createElement = function (name) {
-    return createElement.call(this, linkTag.test(String(name)) ? 'span' : name, arguments[1]);
+    return createElement.call(this, blockedTag.test(String(name)) ? 'span' : name, arguments[1]);
   };
   Document.prototype.createElementNS = function (namespace, name) {
-    return createElementNS.call(this, namespace, linkTag.test(String(name)) ? 'span' : name, arguments[2]);
+    return createElementNS.call(this, namespace, blockedTag.test(String(name)) ? 'span' : name, arguments[2]);
   };
 
-  var linkMarkup = /<link(?![\\w-])/gi;
+  var blockedMarkup = /<(link|iframe|frame|object|embed)(?![\\w-])/gi;
   function clean(markup) {
-    return String(markup).replace(linkMarkup, '<span');
+    return String(markup).replace(blockedMarkup, '<span');
   }
+
+  // A browser with trusted types sends each string of markup through a default policy. One
+  // without them gets the same cleaning at each place that turns a string into markup.
+  function wrapSetter(prototype, property) {
+    var descriptor = Object.getOwnPropertyDescriptor(prototype, property);
+    if (!descriptor || !descriptor.set) {
+      return;
+    }
+    var set = descriptor.set;
+    Object.defineProperty(prototype, property, {
+      configurable: true,
+      enumerable: descriptor.enumerable,
+      get: descriptor.get,
+      set: function (value) {
+        set.call(this, clean(value));
+      },
+    });
+  }
+
+  function wrapMethod(owner, method, first, last) {
+    var original = owner[method];
+    if (typeof original !== 'function') {
+      return;
+    }
+    owner[method] = function () {
+      var args = Array.prototype.slice.call(arguments);
+      for (var index = first; index <= Math.min(last, args.length - 1); index += 1) {
+        args[index] = clean(args[index]);
+      }
+      return original.apply(this, args);
+    };
+  }
+
   if (window.trustedTypes) {
     window.trustedTypes.createPolicy('default', {
       createHTML: clean,
@@ -40,6 +73,30 @@ export const pageBridgeScript = `(function () {
         throw new TypeError('a page cannot load a script by its address');
       },
     });
+  } else {
+    ['innerHTML', 'outerHTML'].forEach(function (property) {
+      wrapSetter(Element.prototype, property);
+    });
+    if (window.ShadowRoot) {
+      wrapSetter(ShadowRoot.prototype, 'innerHTML');
+    }
+    wrapSetter(HTMLIFrameElement.prototype, 'srcdoc');
+    wrapMethod(Element.prototype, 'insertAdjacentHTML', 1, 1);
+    wrapMethod(Element.prototype, 'setHTMLUnsafe', 0, 0);
+    wrapMethod(Element.prototype, 'setHTML', 0, 0);
+    if (window.ShadowRoot) {
+      wrapMethod(ShadowRoot.prototype, 'setHTMLUnsafe', 0, 0);
+    }
+    wrapMethod(Document, 'parseHTMLUnsafe', 0, 0);
+    wrapMethod(DOMParser.prototype, 'parseFromString', 0, 0);
+    wrapMethod(Range.prototype, 'createContextualFragment', 0, 0);
+    wrapMethod(Document.prototype, 'write', 0, Infinity);
+    wrapMethod(Document.prototype, 'writeln', 0, Infinity);
+
+    var setAttribute = Element.prototype.setAttribute;
+    Element.prototype.setAttribute = function (name, value) {
+      return setAttribute.call(this, name, /^srcdoc$/i.test(String(name)) ? clean(value) : value);
+    };
   }
 
   function post(message) {

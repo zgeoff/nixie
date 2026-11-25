@@ -1,4 +1,3 @@
-import type { PageData } from '@heynixie/contract';
 import { pageBridgeScript } from './page-bridge-script';
 
 export interface PageFrameInput {
@@ -12,7 +11,7 @@ export interface PageFrameInput {
   readonly imageBase: string;
 
   // messages that wait for the page's first onMessage, such as its retained message
-  readonly initialMessages: readonly PageData[];
+  readonly initialMessages: readonly unknown[];
 
   // true puts the policy in a meta tag, for a frame that a plain file serves
   readonly isPolicyInline: boolean;

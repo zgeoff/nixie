@@ -1516,6 +1516,57 @@ test('it rebuilds the session with the recent turns when the guest has lost the 
   ]);
 });
 
+test('it counts the sources of the events a rebuilt session replays in the policy frame of its turn', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: buildMockCredentialRef(),
+    toolNames: ['notes_read'],
+    memory: {
+      readTurnNote: (request) =>
+        Promise.resolve({
+          text: request?.span === undefined ? null : 'Events.',
+          throughSequence: 4,
+          eventCount: 1,
+          sources: request?.span === undefined ? [] : ['outside'],
+        }),
+    },
+  });
+
+  ctx.sandboxes.setGuestScript((turn) =>
+    turn.resume === null
+      ? [
+          { type: 'read', uuids: turn.input.map((message) => message.uuid) },
+          { type: 'assistant', messageID: crypto.randomUUID(), text: 'Hello.', toolUses: [] },
+          {
+            type: 'ended',
+            boundary: {
+              harness: 'agent-sdk',
+              sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
+              messageID: crypto.randomUUID(),
+            },
+            outcome: 'finished',
+            stopReason: 'end_turn',
+            turns: 1,
+            usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 },
+          },
+        ]
+      : [{ type: 'failed', reason: 'session_missing', detail: 'No conversation found' }],
+  );
+
+  await ctx.sendMessage(runner, 'Hi.');
+  await ctx.sendMessage(runner, 'Hi again.');
+
+  expect(ctx.steps.map((step) => step.session?.policy?.sources)).toStrictEqual([
+    [],
+    [],
+    ['outside'],
+  ]);
+});
+
 test('it gives a resumed session your next message after its send time, with no recap of the last turn', async () => {
   const ctx = await setupTest();
 

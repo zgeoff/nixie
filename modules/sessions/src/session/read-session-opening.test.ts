@@ -328,6 +328,44 @@ test('it carries the note again over the span from the oldest recent turn throug
   expect(opening.record.recentEvents).toBe(1);
 });
 
+test('it reports the sources of the events that the replayed note lists', async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'Did the parcel come?' },
+    },
+    {
+      kind: 'model.turn_ended',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: { memoryNotedThrough: 2 },
+    },
+  ]);
+
+  const opening = await readSessionOpening(ctx.tasks.context, {
+    taskID: 'conversation',
+    start: { kind: 'rebuild', reason: 'lost', lostSessionID: null },
+    beforeSequence: Number.MAX_SAFE_INTEGER,
+    rebuildTokens: 30_000,
+    brief: null,
+    isFirstSession: false,
+    inbox: [],
+    messaging: buildMockTaskMessageView().messaging,
+    times: { defaultZone: 'Australia/Sydney', now: new Date() },
+    pinnedMemory: 'Nothing is pinned in your memory.',
+    model: 'claude-test-1',
+    status: [buildStartStatus()],
+    readTurnNote: () =>
+      Promise.resolve({ text: 'EVENTS', throughSequence: 2, eventCount: 1, sources: ['outside'] }),
+  });
+
+  expect(opening.sources).toStrictEqual(['outside']);
+});
+
 test('it starts the span where the note of the oldest kept turn started, so an event noted with that turn comes along', async () => {
   const ctx = await setupTest();
 
