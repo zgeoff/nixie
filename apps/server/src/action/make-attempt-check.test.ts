@@ -7,9 +7,9 @@ import {
   readTestAction,
   startTestActions,
 } from '@heynixie/actions/test-utils';
-import { codingActionDeclarations } from '@heynixie/coding';
+import { codingActionDeclarations, codingDeclarations } from '@heynixie/coding';
 import { parseJSONObject, readRecords, withWriteTransaction, writeRecords } from '@heynixie/log';
-import type { RuleEntry } from '@heynixie/policy';
+import type { EffectDeclaration, RuleEntry } from '@heynixie/policy';
 import { actionProposedCodec, makeDecisionPoint } from '@heynixie/policy';
 import { readStarterRules } from '@heynixie/policy/test-utils';
 import type { ApprovedCallRequest, ToolDefinition } from '@heynixie/tools';
@@ -61,6 +61,8 @@ async function setupTest() {
 
   const rules: RuleEntry[] = [];
 
+  const snapshotTools = new Map<string, EffectDeclaration>();
+
   const check = makeAttemptCheck({
     log: actions.context.log,
     clock: actions.clock,
@@ -90,7 +92,7 @@ async function setupTest() {
       makeDecisionPoint({
         findDeclaration,
         readInputs: () =>
-          Promise.resolve({ rules, contacts: [], tools: new Map(), ownerDestinations: [] }),
+          Promise.resolve({ rules, contacts: [], tools: snapshotTools, ownerDestinations: [] }),
         findTaskDestinations: () => [],
         readConsent: overrides?.readConsent ?? (() => Promise.resolve(null)),
       }),
@@ -100,6 +102,7 @@ async function setupTest() {
     ...actions,
     check,
     rules,
+    snapshotTools,
     queueRunnerAction: async (taskID: string, action: RunnerActionInput) => {
       const queue = actions.context.queueRunnerActions;
 
@@ -422,3 +425,32 @@ test.each([
     expect(verdict).toStrictEqual({ kind: 'go', destinations: [...destinations] });
   },
 );
+
+test('it denies a runner steer under a send deny rule, even when the snapshot declares the tool that queues it', async () => {
+  const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
+
+  ctx.snapshotTools.set('coding.steer', codingDeclarations.steerCall);
+
+  ctx.rules.push(...readStarterRules(), {
+    id: 'deny-sends',
+    revision: 1,
+    rule: { id: 'deny-sends', outcome: 'deny', effects: ['send'] },
+  });
+
+  const cause = await ctx.readNewestSequence(step.lease.workID);
+
+  const action = await ctx.queueRunnerAction(step.lease.workID, {
+    tool: 'coding.steer',
+    args: { session: 'atc:cloud.3f9a1c2e.1', text: 'Go on.' },
+    sequence: cause,
+  });
+
+  const verdict = await ctx.check({
+    action,
+    arguments: { session: 'atc:cloud.3f9a1c2e.1', text: 'Go on.' },
+    proposalID: action.action_id,
+  });
+
+  expect(verdict).toMatchObject({ kind: 'deny', rule: { id: 'deny-sends' } });
+});

@@ -101,9 +101,12 @@ async function decideRunnerAction(
     }),
   );
 
+  // A snapshot's declaration of the same name, such as the tool that only queues this action, wins
+  // in the decision point, so the call carries the action's own effects to join them.
   const policy = await decide({
     tool,
     toolList: [tool],
+    effects: declaration.effects,
     ...runnerFrame,
     sources: [...runnerFrame.sources],
     args: input.arguments,
