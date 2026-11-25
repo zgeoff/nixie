@@ -1,7 +1,8 @@
 # device-layout
 
 - [Journey](#journey): enrol a browser as a device, switch its screen on, and have the model lay it
-  out in 3 regions, update one and let another time out.
+  out in 3 regions, update one, let another time out, then save the layout, change it and restore
+  it.
 - [End state](#end-state): what the page and the records show.
 
 Run this journey on `local` only, after every other journey, because enrolling a device replaces the
@@ -16,7 +17,8 @@ run another journey after it, restart and run `sign-in-enrol` again. Restart the
 each repeat of this journey, even after a failed one: a restart gives nixie a new, empty database.
 
 A layout is a grid of named regions on a device's screen. Each region shows its own content, and the
-model updates or times out one region with no change to the others.
+model updates or times out one region with no change to the others. The model can also save a layout
+under a name, lay the screen out again, and restore the saved layout in one call.
 
 ## Journey
 
@@ -85,10 +87,53 @@ model updates or times out one region with no change to the others.
    still shows "Dentist at 3" and a time. The query lists `clock`, `note` and `pond`: a timed-out
    region keeps its pointer, and the server reads that its minutes passed.
 
+6. Have the model save the layout as `evening`, then read the saved names:
+
+   ```bash
+   bun verify action layout-on-device --step save --text 'The layout is saved.'
+   bun verify conversation turn --message 'Save the layout of the screen in the hall as evening.' --reply 'The layout is saved.'
+   bun verify db query "select name from device_saved_layouts"
+   ```
+
+   Expect: `layout-on-device` returns `data.replies` of 3, and `conversation turn` exits 0. The
+   query lists one row, `evening`.
+
+7. Have the model lay the screen out again in 2 regions, `note` and `garden`, the second on a teal
+   background, and fill `garden`. `note` keeps its text, because the new grid keeps its name, and
+   `clock` goes, because it does not:
+
+   ```bash
+   bun verify action layout-on-device --step change --text 'The layout changed.'
+   bun verify conversation turn --message 'Change the layout of the screen in the hall.' --reply 'The layout changed.'
+   bun verify browser snapshot --until-text 'Water the pots'
+   bun verify browser screenshot
+   bun verify db query "select region from device_regions order by region"
+   ```
+
+   Expect: `data.replies` of 4. The snapshot shows "Water the pots" and "Dentist at 3", and no time.
+   The screenshot shows the teal background behind "Water the pots". The query lists `garden` and
+   `note`.
+
+8. Have the model restore `evening`:
+
+   ```bash
+   bun verify action layout-on-device --step restore --text 'The layout is back.'
+   bun verify conversation turn --message 'Restore the evening layout of the screen in the hall.' --reply 'The layout is back.'
+   bun verify browser snapshot --until-no-text 'Water the pots'
+   bun verify browser screenshot
+   bun verify db query "select region from device_regions order by region"
+   ```
+
+   Expect: `data.replies` of 3. The snapshot shows "Dentist at 3" and a time, and no "Water the
+   pots" and no "Ripples", because the minute of `pond` passed before the save. The query lists
+   `clock`, `note` and `pond`.
+
 ## End state
 
-- The last snapshot shows "Dentist at 3" and a time, and no "Ripples" and no "Bins go out tonight".
-- `device_regions` holds 3 rows, one for each region.
+- The last snapshot shows "Dentist at 3" and a time, and no "Ripples", no "Water the pots" and no
+  "Bins go out tonight".
+- `device_regions` holds 3 rows, one for each region of the restored layout.
+- `device_saved_layouts` holds the one row, `evening`.
 - The screenshots are evidence for the reviewer. Check nothing in them.
 
 Once the end state matches, run `bun verify done`.
