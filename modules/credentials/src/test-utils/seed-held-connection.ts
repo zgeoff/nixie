@@ -1,7 +1,14 @@
+import type { CredentialStore } from '../create-credential-store';
+import type { HeldBackend } from '../held/types';
 import type { BindingRef, DatabaseCredentialRef } from '../types';
 import { buildHeldSpec } from './build-held-spec';
-import type { HeldTestStore } from './create-held-test-store';
 import type { FakeOAuthProvider } from './start-fake-oauth-provider';
+
+// What a seed needs of a test store: any backend that writes a client.
+export interface HeldConnectionStore {
+  readonly store: CredentialStore;
+  readonly backend: Pick<HeldBackend, 'writeClient'>;
+}
 
 export interface HeldConnection {
   readonly clientRef: DatabaseCredentialRef;
@@ -14,13 +21,14 @@ export interface HeldConnection {
 // and one exchange of a code for the token. The provider's default answer gives the token
 // fake-access-token-1 and fake-refresh-token-1.
 export async function seedHeldConnection(
-  held: HeldTestStore,
+  held: HeldConnectionStore,
   provider: FakeOAuthProvider,
 ): Promise<HeldConnection> {
   const clientRef = { backend: 'database', credentialID: crypto.randomUUID() } as const;
   const tokenRef = { backend: 'database', credentialID: crypto.randomUUID() } as const;
 
   await held.backend.writeClient(clientRef.credentialID, {
+    clientID: 'client-123',
     clientSecret: 'fake-client-secret-value',
   });
 

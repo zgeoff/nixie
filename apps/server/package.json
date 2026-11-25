@@ -23,6 +23,7 @@
     "@heynixie/coding": "workspace:*",
     "@heynixie/coding-atc": "workspace:*",
     "@heynixie/compaction": "workspace:*",
+    "@heynixie/connections": "workspace:*",
     "@heynixie/connectors": "workspace:*",
     "@heynixie/contract": "workspace:*",
     "@heynixie/credentials": "workspace:*",

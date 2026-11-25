@@ -4,6 +4,7 @@ import { match } from 'ts-pattern';
 import { isForgettableKind } from './is-forgettable-kind';
 import { mockApprovalProcedures } from './mock-approval-procedures';
 import { mockComputerProcedures } from './mock-computer-procedures';
+import { mockConnectionProcedures } from './mock-connection-procedures';
 import { mockDefinitionProcedures } from './mock-definition-procedures';
 import { mockDeviceProcedures } from './mock-device-procedures';
 import { mockErasureProcedures } from './mock-erasure-procedures';
@@ -51,6 +52,7 @@ export const mockAPIRouter = os.router({
     }),
   },
   computer: mockComputerProcedures,
+  connections: mockConnectionProcedures,
   devices: mockDeviceProcedures,
   erasure: mockErasureProcedures,
   notebook: mockNotebookProcedures,

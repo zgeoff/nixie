@@ -5,4 +5,5 @@ export const sessionCleanupCauseShape = {
   recordSequence: z.int().exactOptional(),
   momentID: z.string().exactOptional(),
   noteID: z.string().exactOptional(),
+  connectionID: z.string().exactOptional(),
 };

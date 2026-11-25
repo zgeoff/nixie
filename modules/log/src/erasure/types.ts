@@ -57,6 +57,10 @@ export interface Erasable<Request> {
   // The request that starts a child erasure from a target that readChildren found.
   readonly toRequest: (target: ErasureTarget) => Request;
 
+  // Optional. After the start commits and before any key goes: sends the target's one revocation
+  // and records its outcome. It runs on every run of the tree, so it sends nothing once recorded.
+  readonly revoke?: (target: ErasureTarget) => Promise<void>;
+
   // After the keys go; repeats hide's work safely.
   readonly cleanIndexes: (target: ErasureTarget) => Promise<void>;
 
@@ -106,6 +110,7 @@ export interface ErasureRegistry {
 export interface ErasureEntry {
   readonly descriptor: ErasableDescriptor;
   readonly hide: (target: ErasureTarget) => Promise<void>;
+  readonly revoke: (target: ErasureTarget) => Promise<void>;
   readonly readChildren: (tx: WriteTransaction, target: ErasureTarget) => Promise<ErasureTarget[]>;
   readonly cleanIndexes: (target: ErasureTarget) => Promise<void>;
   readonly beginChild: (target: ErasureTarget, parent: ErasureParent) => Promise<ErasureBegin>;

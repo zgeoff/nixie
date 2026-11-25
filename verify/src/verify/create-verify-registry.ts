@@ -447,11 +447,6 @@ export function createVerifyRegistry(): Wringer {
         paths: featurePaths['coding-session'],
       },
       {
-        name: 'mail-wake',
-        summary: 'Mail wakes the chat',
-        paths: featurePaths['mail-wake'],
-      },
-      {
         name: 'drawing',
         summary: 'Draw a picture, edit it, and list both',
         paths: featurePaths.drawing,
@@ -465,6 +460,11 @@ export function createVerifyRegistry(): Wringer {
         name: 'notebook-pages',
         summary: 'Browse notes, open a private one, forget one',
         paths: featurePaths['notebook-pages'],
+      },
+      {
+        name: 'google-connections',
+        summary: 'Connect a Google account and forget it',
+        paths: featurePaths['google-connections'],
       },
       ...computerFeatures,
       ...lastFeatures,

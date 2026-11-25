@@ -377,6 +377,7 @@ export type FaultPointID =
   | 'record.forget.purged'
   | 'erasure.begun'
   | 'erasure.sandboxes_destroyed'
+  | 'erasure.revoked'
   | 'erasure.keys_removed'
   | 'erasure.cleaned'
   | 'erasure.turn_inputs_removed'

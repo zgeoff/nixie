@@ -21,6 +21,9 @@ export interface TestErasableOptions {
   readonly childKind: ErasableKind;
   readonly targets: readonly TestErasureTarget[];
   readonly events: string[];
+
+  // runs as the revoke step of each target, so a test sees what is left when it runs
+  readonly onRevoke?: (targetID: string) => Promise<void>;
 }
 
 // An erasable over a list of targets, for a test of the runner. It captures each target's keys,
@@ -72,6 +75,13 @@ export function buildTestErasable(
         })),
       ),
     toRequest: (target) => ({ id: target.targetID }),
+    ...(options.onRevoke === undefined
+      ? {}
+      : {
+          revoke: async (target) => {
+            await options.onRevoke?.(target.targetID);
+          },
+        }),
     cleanIndexes: (target) => {
       options.events.push(`cleanIndexes ${target.targetID}`);
 

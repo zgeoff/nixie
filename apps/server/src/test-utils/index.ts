@@ -15,6 +15,8 @@ export { writeBootFiles } from './write-boot-files';
 export { startInProcessNixie } from './start-in-process-nixie';
 export { startTestConversation } from './start-test-conversation';
 export { createSpawnedNixie } from './create-spawned-nixie';
+export { startFakeGoogleSite } from './start-fake-google-site';
+export type { FakeGoogleSite } from './start-fake-google-site';
 export { startE2ENixie } from './start-e2e-nixie';
 export { startSpawnedNixie } from './start-spawned-nixie';
 export { startTestServer } from './start-test-server';
