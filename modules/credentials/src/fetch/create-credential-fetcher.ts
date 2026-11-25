@@ -9,6 +9,7 @@ import {
   scrubText,
   toCaseInsensitiveForms,
 } from '@heynixie/egress';
+import { CredentialRemovedError } from '../held/credential-removed-error';
 import type { CredentialFetch, CredentialSpec, FetchOptions } from '../types';
 import { findCredentialHeader, placeCredential } from './place-credential';
 import type { PlacedCredential } from './place-credential';
@@ -30,8 +31,17 @@ export interface FetcherChecks {
 export interface FetcherTarget {
   readonly spec: CredentialSpec | null;
 
-  // the credential's value, read when a request sends
-  readonly readValue: () => string | null;
+  // the credential's value, read when a request sends. A read that throws stops the request.
+  readonly readValue: () => string | null | Promise<string | null>;
+
+  // values that go in the request body, and that the response never shows: cut from the response
+  // and from an error, though never placed
+  readonly bodyValues?: readonly string[];
+
+  // Runs `start`, which hands the request off, after each hop's checks, under the credential's lock
+  // from its own check until `start` returns, so no removal lands between the check and the send.
+  // An error it throws reaches the caller as it is.
+  readonly withSendCheck?: <T>(start: () => T) => Promise<T>;
 
   // the origins the caller passed, all inside the spec's
   readonly origins: readonly string[];
@@ -46,8 +56,11 @@ export function createCredentialFetcher(
   target: FetcherTarget,
 ): CredentialFetch {
   return async (input, init) => {
-    const value = target.readValue();
-    const forms = value === null ? [] : buildValueForms(value);
+    const value = await target.readValue();
+
+    const forms = [value, ...(target.bodyValues ?? [])].flatMap((held) =>
+      held === null ? [] : buildValueForms(held),
+    );
 
     try {
       refuseUserinfo(String(input), 'the request URL');
@@ -94,7 +107,13 @@ async function sendRequest(
 
   const body = await readRequestBody(request);
 
-  const hop = { url, method: request.method, body, hasCredential: value !== null, count: 0 };
+  const hop = {
+    url,
+    method: request.method,
+    body,
+    hasCredential: value !== null,
+    count: 0,
+  };
 
   for (;;) {
     refuseOrigin(target, hop.url);
@@ -223,29 +242,52 @@ async function sendHop(
     throw new CredentialRefusalError(planned.reason);
   }
 
+  // The reply goes in an object, so the lock is released once the request is handed off and not
+  // held until the answer comes.
+  const start = () => ({ reply: startHop(checks, signal, planned, hop) });
+  const started = target.withSendCheck === undefined ? start() : await target.withSendCheck(start);
+
+  return started.reply;
+}
+
+interface PlannedAddress {
+  readonly url: URL;
+  readonly address: string;
+}
+
+// Hands the request off before it returns: nothing it does before the send waits.
+function startHop(
+  checks: FetcherChecks,
+  signal: AbortSignal,
+  planned: PlannedAddress,
+  hop: HopRequest,
+): Promise<HopReply> {
   if (checks.transport !== undefined) {
     return sendThroughTransport(checks.transport, signal, hop);
   }
 
-  const response = await sendPinnedRequest({
+  const response = sendPinnedRequest({
     url: planned.url,
     address: planned.address,
     method: hop.method,
-    headers: { ...Object.fromEntries(hop.headers), 'accept-encoding': 'gzip, deflate, br' },
+    headers: {
+      ...Object.fromEntries(hop.headers),
+      'accept-encoding': 'gzip, deflate, br',
+    },
     body: hop.body,
     signal,
     ...(checks.ca === undefined ? {} : { ca: checks.ca }),
   });
 
-  return {
-    status: response.statusCode ?? 502,
-    statusText: response.statusMessage ?? '',
-    headers: toHeaders(response.headers),
-    read: () => readCappedBody(response),
+  return response.then((answer) => ({
+    status: answer.statusCode ?? 502,
+    statusText: answer.statusMessage ?? '',
+    headers: toHeaders(answer.headers),
+    read: () => readCappedBody(answer),
     discard: () => {
-      response.destroy();
+      answer.destroy();
     },
-  };
+  }));
 }
 
 async function sendThroughTransport(
@@ -315,6 +357,10 @@ async function readResponse(reply: HopReply, forms: readonly ValueForm[]): Promi
 // The cleaned error keeps the name and the cleaned message and drops the cause, which may hold the
 // value: a caller's abort reason reaches here too.
 function cleanError(error: unknown, forms: readonly ValueForm[]): unknown {
+  if (error instanceof CredentialRemovedError) {
+    return error;
+  }
+
   if (error instanceof CredentialRefusalError) {
     return new CredentialRefusalError(scrubText(error.message, forms));
   }

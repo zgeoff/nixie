@@ -14,7 +14,9 @@ export { secretsEntryNames } from './file/secrets-entry-names';
 export type {
   CredentialQuery,
   CredentialRef,
+  DatabaseCredentialRef,
   FileCredentialRef,
+  OAuthProvider,
   FileGroup,
   BindingRef,
   CredentialFetch,
@@ -35,3 +37,26 @@ export type {
 } from './create-credential-store';
 
 export { createCredentialStore } from './create-credential-store';
+export type { CredentialRecorderOptions } from './record/create-credential-recorder';
+export { createCredentialRecorder } from './record/create-credential-recorder';
+export { credentialRecordTopics } from './record/credential-record-topics';
+export type { CredentialRecordKind } from './record/credential-record-kind';
+export { CredentialRemovedError } from './held/credential-removed-error';
+export type { TokenRequestErrorCode } from './held/token-request-error';
+export { TokenRequestError } from './held/token-request-error';
+
+export type {
+  CredentialEvent,
+  CredentialRecorder,
+  CredentialStatus,
+  FailingReason,
+  HeldBackend,
+  HeldClient,
+  HeldState,
+  HeldToken,
+  OpenRefresh,
+  RefreshOutcome,
+  TokenExchange,
+  TokenResult,
+  WriteTokenResult,
+} from './held/types';

@@ -1,4 +1,5 @@
 import { collectModuleRecordTopicMaps } from '@heynixie/api';
+import { credentialRecordTopics } from '@heynixie/credentials';
 import type { Writer } from '@heynixie/log';
 import { registerRecordTopics } from '@heynixie/log';
 import { sandboxRecordTopics } from '@heynixie/sandbox';
@@ -8,6 +9,7 @@ import { serverRecordTopics } from './server-record-topics';
 export function registerServerRecordTopics(writer: Pick<Writer, 'commits'>): void {
   for (const topics of [
     ...collectModuleRecordTopicMaps(),
+    credentialRecordTopics,
     sandboxRecordTopics,
     serverRecordTopics,
   ]) {
