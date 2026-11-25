@@ -41,6 +41,12 @@ not, a retry finishes the record and answers `ok`.
    outside the lock. Two consents for one account at once therefore make one connection. A token
    response with no refresh token keeps nothing.
 
+The request asks for the identity scopes `openid` and `email` beside the 4 tool scopes. Google
+grants the identity scopes with no checkbox, so nixie knows the account when you untick every tool
+scope, and the ID token's `sub` survives an address change. The return route lives on the
+deployment's own https name, even one that resolves only inside its private network, because the
+browser and not Google follows the redirect.
+
 A renewal advances the connection's removal counter, so a refresh that began before it saves nothing
 and revokes nothing, and a check that began before it keeps the scopes the consent found. The
 renewal also moves the tokens in the live own-value set from the consent's credential to the
