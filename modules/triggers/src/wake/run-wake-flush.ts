@@ -5,7 +5,6 @@ import {
   triggerMailArrivedCodec,
 } from '../record/trigger-mail-arrived-codec';
 import type { TriggerCoreContext, TriggersTables } from '../types';
-import { buildHeldKey } from './build-held-key';
 import { buildMailWokeInput } from './build-mail-woke-input';
 import type { WokeMail } from './build-mail-woke-input';
 import { collectReadyWakes } from './collect-ready-wakes';
@@ -13,91 +12,58 @@ import { endRulesOfEndedTasks } from './end-rules-of-ended-tasks';
 import { readHeldWakeRules } from './read-held-wake-rules';
 import { removeSpentArrivalKeys } from './remove-spent-arrival-keys';
 
-// One tick of the flush. It wakes each target that holds a ready match, with every ready match of
-// the target in one record, and ends the rules of a target whose task ended. Returns the number of
-// wakes written.
+// One tick of the flush: ends the rules of ended tasks, wakes each target with a ready match once,
+// and removes the keys that no held match needs. It decides inside the write transaction that writes
+// the wakes, so a concurrent arrival cannot wake a rule twice in its window. Returns the wakes written.
 export async function runWakeFlush(core: TriggerCoreContext): Promise<number> {
-  const db = core.log.writer.db.$extendTables<TriggersTables>();
+  await removeSpentArrivalKeys(core);
 
-  const held = await db.selectFrom('wake_held').selectAll().orderBy('arrived_seq').execute();
+  const held = await core.log.writer.db
+    .$extendTables<TriggersTables>()
+    .selectFrom('wake_held')
+    .select('arrived_seq')
+    .execute();
 
   if (held.length === 0) {
     return 0;
   }
 
-  const rules = await readHeldWakeRules(core.log.writer.db, [
-    ...new Set(held.map((row) => row.rule_id)),
-  ]);
-
-  const wakes = collectReadyWakes(
-    held.map((row) => ({
-      ruleID: row.rule_id,
-      targetTaskID: row.target_task_id,
-      arrivedSeq: row.arrived_seq,
-    })),
-    rules,
-    core.clock.now(),
-  );
-
-  if (wakes.length === 0) {
-    return 0;
-  }
-
-  const arrivals = await readArrivals(core, [...new Set(wakes.flatMap((wake) => wake.arrived))]);
-
-  const spent: number[] = [];
+  const arrivals = await readArrivals(core, [...new Set(held.map((row) => row.arrived_seq))]);
 
   const written = await withWriteTransaction(core.log.writer, async (tx) => {
-    const ended = await endRulesOfEndedTasks(
-      tx,
-      core,
-      wakes.map((wake) => wake.targetTaskID),
+    const db = tx.$extendTables<TriggersTables>();
+
+    const targets = await db.selectFrom('wake_held').select('target_task_id').execute();
+
+    await endRulesOfEndedTasks(tx, core, [...new Set(targets.map((row) => row.target_task_id))]);
+
+    const rows = await db.selectFrom('wake_held').selectAll().orderBy('arrived_seq').execute();
+    const rules = await readHeldWakeRules(tx, [...new Set(rows.map((row) => row.rule_id))]);
+
+    const wakes = collectReadyWakes(
+      rows.map((row) => ({
+        ruleID: row.rule_id,
+        targetTaskID: row.target_task_id,
+        arrivedSeq: row.arrived_seq,
+      })),
+      rules,
+      core.clock.now(),
     );
 
-    spent.push(
-      ...wakes.filter((wake) => ended.has(wake.targetTaskID)).flatMap((wake) => wake.arrived),
-    );
+    const inputs = wakes.flatMap((wake) => {
+      const mails = wake.arrived.flatMap((sequence) => arrivals.get(sequence) ?? []);
 
-    const inputs = [];
-
-    for (const wake of wakes.filter((entry) => !ended.has(entry.targetTaskID))) {
-      const stillHeld = await tx
-        .$extendTables<TriggersTables>()
-        .selectFrom('wake_held')
-        .select('held_key')
-        .where(
-          'held_key',
-          'in',
-          wake.rules.flatMap((rule) =>
-            wake.arrived.map((sequence) => buildHeldKey(rule.ruleID, sequence)),
-          ),
-        )
-        .execute();
-
-      const heldKeys = new Set(stillHeld.map((row) => row.held_key));
-
-      const mails = wake.arrived.flatMap((sequence) => {
-        const arrival = arrivals.get(sequence);
-        const isHeld = wake.rules.some((rule) => heldKeys.has(buildHeldKey(rule.ruleID, sequence)));
-
-        return arrival === undefined || !isHeld ? [] : [arrival];
-      });
-
-      if (mails.length > 0) {
-        inputs.push(
-          buildMailWokeInput(core, { targetTaskID: wake.targetTaskID, rules: wake.rules, mails }),
-        );
-
-        spent.push(...mails.map((mail) => mail.arrived));
-      }
-    }
+      return mails.length === 0
+        ? []
+        : [buildMailWokeInput(core, { targetTaskID: wake.targetTaskID, rules: wake.rules, mails })];
+    });
 
     await writeInboxRecordsInTransaction(tx, core, inputs);
 
     return inputs.length;
   });
 
-  await removeSpentArrivalKeys(core, spent);
+  await removeSpentArrivalKeys(core);
 
   return written;
 }

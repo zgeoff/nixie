@@ -15,26 +15,15 @@ import { endRulesOfEndedTasks } from './end-rules-of-ended-tasks';
 import { pickArrivalPlan } from './pick-arrival-plan';
 import { readLiveWakeRules } from './read-live-wake-rules';
 
-export interface WrittenArrival {
-  // false when the event wrote no arrival record
-  readonly isWritten: boolean;
-
-  // the arrival's sequence when it is written, and whether a held match still names it
-  readonly sequence: number | null;
-  readonly isHeld: boolean;
-}
-
-const notWritten: WrittenArrival = { isWritten: false, sequence: null, isHeld: false };
-
 // One mail arrival in the deliver transaction. It is dropped when its key is held, its mailbox is not
 // its source's, or no rule takes it. Otherwise the core writes one arrival record, and one wake for
-// each target with a ready rule.
+// each target with a ready rule. Returns false when it wrote no arrival record.
 export async function writeMailArrival(
   tx: Transaction<unknown>,
   core: TriggerCoreContext,
   sourceID: string,
   event: MailArrivalEvent,
-): Promise<WrittenArrival> {
+): Promise<boolean> {
   const sourceKey = buildSourceKey(sourceID, event.dedupeKey);
 
   const key = await tx
@@ -45,7 +34,7 @@ export async function writeMailArrival(
     .executeTakeFirst();
 
   if (key !== undefined || buildMailboxKey(event.mailbox) !== sourceID) {
-    return notWritten;
+    return false;
   }
 
   const live = await readLiveWakeRules(tx, event.mailbox);
@@ -59,7 +48,7 @@ export async function writeMailArrival(
   const kept = matches.filter((match) => !ended.has(buildTargetTaskID(match.rule.target)));
 
   if (kept.length === 0) {
-    return notWritten;
+    return false;
   }
 
   const plan = pickArrivalPlan(kept, core.clock.now());
@@ -92,6 +81,12 @@ export async function writeMailArrival(
     throw new Error('the log wrote no record for the arrival');
   }
 
+  await tx
+    .$extendTables<TriggersTables>()
+    .insertInto('wake_arrival_cleanup')
+    .values({ arrived_seq: arrived.sequence })
+    .execute();
+
   const now = plan.filter((target) => target.isNow);
 
   if (now.length > 0) {
@@ -108,5 +103,5 @@ export async function writeMailArrival(
     );
   }
 
-  return { isWritten: true, sequence: arrived.sequence, isHeld: now.length < plan.length };
+  return true;
 }

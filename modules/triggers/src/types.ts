@@ -109,6 +109,11 @@ export interface WakeRuleInput {
 
   // 'reply': registered by a send
   readonly origin: 'tool' | 'reply';
+
+  // epoch ms: when the rule starts to take mail. A send's reply rule starts when the send began, so
+  // a reply that reaches the host before the rule is written still matches it. Absent, the rule
+  // starts when it is set.
+  readonly createdAt?: number;
 }
 
 export interface WakeRule extends WakeRuleInput {
@@ -269,6 +274,11 @@ interface WakeHeldTable {
   readonly arrived_seq: number;
 }
 
+interface WakeArrivalCleanupTable {
+  // the sequence of a trigger.mail_arrived record whose key stays until no held match names it
+  readonly arrived_seq: number;
+}
+
 export type TriggersTables = CheckedTables<
   Readonly<{
     trigger_sources: TriggerSourceTable;
@@ -277,5 +287,6 @@ export type TriggersTables = CheckedTables<
     wake_rules: WakeRuleTable;
     wake_rule_windows: WakeRuleWindowTable;
     wake_held: WakeHeldTable;
+    wake_arrival_cleanup: WakeArrivalCleanupTable;
   }>
 >;

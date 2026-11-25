@@ -3,10 +3,11 @@ import type { TasksTables } from '@heynixie/tasks';
 import type { Transaction } from 'kysely';
 import type { TriggersTables } from '../types';
 import { endWakeRuleInTransaction } from './end-wake-rule-in-transaction';
+import { releaseHeldInTransaction } from './release-held-in-transaction';
 import type { WakeRuleContext } from './set-wake-rule-in-transaction';
 
-// Ends each live rule of each named task that has ended, as task_ended, and returns the IDs of
-// those tasks.
+// Ends each live rule of each named task that has ended, as task_ended, drops the matches that its
+// cancelled rules still hold, and returns the IDs of those tasks.
 export async function endRulesOfEndedTasks(
   tx: Transaction<unknown>,
   context: WakeRuleContext,
@@ -32,13 +33,14 @@ export async function endRulesOfEndedTasks(
   const rules = await tx
     .$extendTables<TriggersTables>()
     .selectFrom('wake_rules')
-    .select('rule_id')
+    .select(['rule_id', 'ended_at'])
     .where('target_task_id', 'in', ended)
-    .where('ended_at', 'is', null)
     .execute();
 
   for (const rule of rules) {
-    await endWakeRuleInTransaction(tx, context, rule.rule_id, 'task_ended');
+    await (rule.ended_at === null
+      ? endWakeRuleInTransaction(tx, context, rule.rule_id, 'task_ended')
+      : releaseHeldInTransaction(tx, context, rule.rule_id));
   }
 
   return new Set(ended);

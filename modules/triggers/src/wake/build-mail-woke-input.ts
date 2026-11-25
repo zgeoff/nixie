@@ -31,6 +31,7 @@ export function buildMailWokeInput(
     kind: triggerMailWokeCodec.kind,
     definitions: core.definitions(),
     thread: wake.targetTaskID,
+    contentSource: 'untrusted',
     payload: triggerMailWokeCodec.encode({
       taskID: wake.targetTaskID,
       mailbox: buildMailboxKey({ kind: 'mail' }),

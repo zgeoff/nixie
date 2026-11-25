@@ -1,32 +1,44 @@
 import type { LogTables } from '@heynixie/log';
-import { removeRecordKey } from '@heynixie/log';
+import { removeRecordKey, withWriteTransaction } from '@heynixie/log';
+import { triggerMailArrivedCodec } from '../record/trigger-mail-arrived-codec';
 import type { TriggerCoreContext, TriggersTables } from '../types';
 
-// Deletes the key of each arrival that no held match names, so the mail's text lasts in nixie's
-// records only in the wakes that showed it. Runs once the transaction that spent them committed.
+// Deletes the key of each arrival that no held match names. The cleanup row goes only after its key,
+// so a crash leaves the arrival for the next call. Returns the number of keys removed.
 export async function removeSpentArrivalKeys(
   core: Pick<TriggerCoreContext, 'log'>,
-  sequences: readonly number[],
-): Promise<void> {
-  const db = core.log.writer.db;
+): Promise<number> {
+  const db = core.log.writer.db.$extendTables<TriggersTables & LogTables>();
 
-  for (const sequence of new Set(sequences)) {
-    const held = await db
-      .$extendTables<TriggersTables>()
-      .selectFrom('wake_held')
-      .select('held_key')
-      .where('arrived_seq', '=', sequence)
-      .executeTakeFirst();
+  const spent = await db
+    .selectFrom('wake_arrival_cleanup')
+    .leftJoin('records', 'records.sequence', 'wake_arrival_cleanup.arrived_seq')
+    .select(['wake_arrival_cleanup.arrived_seq', 'records.key_id', 'records.kind'])
+    .where((builder) =>
+      builder.not(
+        builder.exists(
+          builder
+            .selectFrom('wake_held')
+            .select('wake_held.held_key')
+            .whereRef('wake_held.arrived_seq', '=', 'wake_arrival_cleanup.arrived_seq'),
+        ),
+      ),
+    )
+    .execute();
 
-    const record = await db
-      .$extendTables<LogTables>()
-      .selectFrom('records')
-      .select('key_id')
-      .where('sequence', '=', sequence)
-      .executeTakeFirst();
-
-    if (held === undefined && record?.key_id !== undefined && record.key_id !== null) {
-      await removeRecordKey(core.log, record.key_id);
+  for (const arrival of spent) {
+    if (arrival.key_id !== null && arrival.kind === triggerMailArrivedCodec.kind) {
+      await removeRecordKey(core.log, arrival.key_id);
     }
+
+    await withWriteTransaction(core.log.writer, (tx) =>
+      tx
+        .$extendTables<TriggersTables>()
+        .deleteFrom('wake_arrival_cleanup')
+        .where('arrived_seq', '=', arrival.arrived_seq)
+        .execute(),
+    );
   }
+
+  return spent.length;
 }

@@ -44,20 +44,11 @@ export async function deliverTriggerBatch(
 
   const result = await withWriteTransaction(core.log.writer, async (tx) => {
     let delivered = 0;
-    const spent: number[] = [];
 
     for (const event of batch.events) {
       const isWritten = await match(event)
         .with({ kind: 'task_input' }, (input) => writeTaskInput(tx, core, sourceID, input))
-        .with({ kind: 'mail' }, async (mail) => {
-          const arrival = await writeMailArrival(tx, core, sourceID, mail);
-
-          if (arrival.sequence !== null && !arrival.isHeld) {
-            spent.push(arrival.sequence);
-          }
-
-          return arrival.isWritten;
-        })
+        .with({ kind: 'mail' }, (mail) => writeMailArrival(tx, core, sourceID, mail))
         .with({ kind: P.union('schedule', 'at') }, (schedule) =>
           writeEvent(tx, core, sourceID, schedule),
         )
@@ -70,10 +61,12 @@ export async function deliverTriggerBatch(
 
     await writeCursor(tx, core, sourceID, batch.cursor);
 
-    return { delivered, spent };
+    return { delivered, hasMail: batch.events.some((event) => event.kind === 'mail') };
   });
 
-  await removeSpentArrivalKeys(core, result.spent);
+  if (result.hasMail) {
+    await removeSpentArrivalKeys(core);
+  }
 
   if (NIXIE_TEST_BUILD) {
     await waitAtFaultPoint('trigger.batch.after', { kind: 'trigger', id: sourceID });

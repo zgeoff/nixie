@@ -5,7 +5,8 @@ import type { TriggersTables } from '../types';
 import { toCanonicalJSON } from '../utils/to-canonical-json';
 
 // One row per rule. A replace sets the rule again under its ID and keeps its end, which a live rule
-// has none of.
+// has none of. The first end of a rule stands: a later record that names the rule only releases its
+// held matches.
 export const wakeRulesProjection: Projection = {
   table: 'wake_rules',
   keyColumn: 'rule_id',
@@ -23,6 +24,7 @@ export const wakeRulesProjection: Projection = {
           updated_sequence: record.sequence,
         })
         .where('rule_id', '=', ended.ruleID)
+        .where('ended_at', 'is', null)
         .execute();
 
       return [ended.ruleID];

@@ -122,3 +122,16 @@ test('#readWakeRules leaves out a rule whose task ended', async () => {
 
   expect(awaited5).toStrictEqual([]);
 });
+
+test('#setWakeRuleInTransaction starts a rule at the time it is given, and at its own time without one', async () => {
+  const ctx = await setupTest();
+
+  ctx.clock.advance(5000);
+
+  const given = await seedWakeRule(ctx, { match: { subject: 'code' }, createdAt: 2000 });
+  const own = await seedWakeRule(ctx, { match: { subject: 'loan' } });
+  const rules = await ctx.readRules();
+
+  expect([given.createdAt, own.createdAt]).toStrictEqual([2000, ctx.clock.now()]);
+  expect(rules.map((rule) => rule.createdAt)).toStrictEqual([ctx.clock.now(), 2000]);
+});

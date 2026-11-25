@@ -37,7 +37,7 @@ export async function setWakeRuleInTransaction(
     ...input,
     ruleID: same?.ruleID ?? crypto.randomUUID(),
     shortID: same?.shortID ?? createShortID(),
-    createdAt: same?.createdAt ?? now,
+    createdAt: same?.createdAt ?? input.createdAt ?? now,
   };
 
   await writeRecordsInTransaction(tx, context.log, [

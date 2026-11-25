@@ -877,6 +877,9 @@ export interface NixieTables {
     readonly state: string;
     readonly removed_cause: string | null;
   };
+  readonly wake_arrival_cleanup: {
+    readonly arrived_seq: number;
+  };
   readonly wake_held: {
     readonly held_key: string;
     readonly rule_id: string;
