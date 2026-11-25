@@ -85,12 +85,10 @@ export const pageBridgeScript = `(function () {
   function refuseWrite() {
     throw new TypeErrorType('a page cannot write into its document');
   }
-  Document.prototype.write = refuseWrite;
-  Document.prototype.writeln = refuseWrite;
 
   // A browser with trusted types sends each string of markup through a default policy, which no
   // script can replace, and which refuses a write before the browser parses it. One without them
-  // gets the same cleaning at each place that turns a string into markup.
+  // gets the same cleaning and refusal at each place that turns a string into markup.
   function wrapSetter(prototype, property) {
     var descriptor = getOwnPropertyDescriptor(prototype, property);
     if (!descriptor || !descriptor.set) {
@@ -142,6 +140,8 @@ export const pageBridgeScript = `(function () {
       },
     });
   } else {
+    Document.prototype.write = refuseWrite;
+    Document.prototype.writeln = refuseWrite;
     ['innerHTML', 'outerHTML'].forEach(function (property) {
       wrapSetter(Element.prototype, property);
     });

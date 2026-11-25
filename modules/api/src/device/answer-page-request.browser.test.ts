@@ -258,24 +258,24 @@ test('it keeps a page from opening a connection by markup in a browser without t
 });
 
 test.each([
-  { route: 'document.write arguments', browser: 'with', hasTrustedTypes: true },
-  { route: 'document.write calls', browser: 'with', hasTrustedTypes: true },
-  { route: 'document.writeln arguments', browser: 'with', hasTrustedTypes: true },
-  { route: 'a prefixed element name', browser: 'with', hasTrustedTypes: true },
-  { route: 'prefixed XML markup', browser: 'with', hasTrustedTypes: true },
-  { route: 'a new document', browser: 'with', hasTrustedTypes: true },
-  { route: 'an XSLT transform', browser: 'with', hasTrustedTypes: true },
-  { route: 'markup after replaced RegExp methods', browser: 'with', hasTrustedTypes: true },
-  { route: 'document.write arguments', browser: 'without', hasTrustedTypes: false },
-  { route: 'document.write calls', browser: 'without', hasTrustedTypes: false },
-  { route: 'document.writeln arguments', browser: 'without', hasTrustedTypes: false },
-  { route: 'a prefixed element name', browser: 'without', hasTrustedTypes: false },
-  { route: 'prefixed XML markup', browser: 'without', hasTrustedTypes: false },
-  { route: 'a new document', browser: 'without', hasTrustedTypes: false },
-  { route: 'an XSLT transform', browser: 'without', hasTrustedTypes: false },
-  { route: 'markup after replaced RegExp methods', browser: 'without', hasTrustedTypes: false },
+  { route: 'document.write arguments', outcome: 'TypeError', hasTrustedTypes: true },
+  { route: 'document.write calls', outcome: 'TypeError', hasTrustedTypes: true },
+  { route: 'document.writeln arguments', outcome: 'TypeError', hasTrustedTypes: true },
+  { route: 'a prefixed element name', outcome: 'span', hasTrustedTypes: true },
+  { route: 'prefixed XML markup', outcome: 'span', hasTrustedTypes: true },
+  { route: 'a new document', outcome: 'span', hasTrustedTypes: true },
+  { route: 'an XSLT transform', outcome: 'ReferenceError', hasTrustedTypes: true },
+  { route: 'markup after replaced RegExp methods', outcome: 'span', hasTrustedTypes: true },
+  { route: 'document.write arguments', outcome: 'TypeError', hasTrustedTypes: false },
+  { route: 'document.write calls', outcome: 'TypeError', hasTrustedTypes: false },
+  { route: 'document.writeln arguments', outcome: 'TypeError', hasTrustedTypes: false },
+  { route: 'a prefixed element name', outcome: 'span', hasTrustedTypes: false },
+  { route: 'prefixed XML markup', outcome: 'span', hasTrustedTypes: false },
+  { route: 'a new document', outcome: 'span', hasTrustedTypes: false },
+  { route: 'an XSLT transform', outcome: 'ReferenceError', hasTrustedTypes: false },
+  { route: 'markup after replaced RegExp methods', outcome: 'span', hasTrustedTypes: false },
 ])(
-  'it keeps a page from opening a connection by a resource hint made through $route, $browser trusted types',
+  'it keeps a page from opening a connection by a resource hint made through $route, trusted types shown: $hasTrustedTypes',
   async (row) => {
     const ctx = await setupTest({ hasTrustedTypes: row.hasTrustedTypes });
 
@@ -293,20 +293,24 @@ test.each([
       'document.writeln arguments': () => document.writeln('<li', 'nk rel="preconnect" href="' + evil + '/writeln">'),
       'a prefixed element name': () => {
         const link = document.createElementNS(xhtml, 'x:link');
-        link.rel = 'preconnect';
-        link.href = evil + '/prefixed';
+        link.setAttribute('rel', 'preconnect');
+        link.setAttribute('href', evil + '/prefixed');
         document.head.append(link);
+        return link.localName;
       },
       'prefixed XML markup': () => {
         const markup = '<x:link xmlns:x="' + xhtml + '" rel="preconnect" href="' + evil + '/xml"/>';
         const parsed = new DOMParser().parseFromString(markup, 'application/xml');
-        document.head.append(document.importNode(parsed.documentElement, true));
+        const link = document.importNode(parsed.documentElement, true);
+        document.head.append(link);
+        return link.localName;
       },
       'a new document': () => {
         const link = document.implementation.createDocument(xhtml, 'link', null).documentElement;
         link.setAttribute('rel', 'preconnect');
         link.setAttribute('href', evil + '/document');
         document.head.append(document.adoptNode(link));
+        return link.localName;
       },
       'an XSLT transform': () => {
         const sheet = '<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">' +
@@ -325,13 +329,17 @@ test.each([
         const holder = document.createElement('div');
         holder.innerHTML = hint + '/regexp">';
         document.body.append(holder);
+        return holder.firstChild.localName;
       },
     };
 
+    let outcome;
     try {
-      attacks[${JSON.stringify(row.route)}]();
-    } catch (error) {}
-    setTimeout(() => nixie.send('settled', { links: document.querySelectorAll('link').length }), 1500);
+      outcome = attacks[${JSON.stringify(row.route)}]();
+    } catch (error) {
+      outcome = error.name;
+    }
+    setTimeout(() => nixie.send('settled', { outcome, links: document.querySelectorAll('link').length }), 1500);
   </script>`);
 
     await ctx.waitForPost('settled');
@@ -342,7 +350,7 @@ test.each([
       posts.find((post) => post.name === 'settled')?.data,
       ctx.front.evilConnections.count,
       ctx.front.evilRequests,
-    ]).toStrictEqual([{ links: 0 }, 0, []]);
+    ]).toStrictEqual([{ outcome: row.outcome, links: 0 }, 0, []]);
   },
 );
 

@@ -222,18 +222,20 @@ Four things close them:
 - The bridge refuses `document.write` and `document.writeln`, because a page can split a start tag
   across 2 writes, and no check of each write sees the whole tag.
 - The bridge cleans each string that the page turns into markup, so a string never brings the
-  elements back, with or without a namespace prefix. A browser with trusted types gets this from the
-  `default` policy that the bridge makes, which the frame's policy requires and allows alone. That
-  policy also refuses each write, at the browser's own call, so no script can undo it. A browser
-  without trusted types gets it from the bridge's own wrappers around `innerHTML`, `outerHTML`,
-  `insertAdjacentHTML`, `srcdoc`, `DOMParser` and `createContextualFragment`.
+  elements back, with or without a namespace prefix.
+
+A browser with trusted types gets the refusal and the cleaning from the `default` policy that the
+bridge makes, which the frame's policy requires and allows alone. The browser calls that policy
+itself, so no script can undo it. A browser without trusted types gets them from the bridge's own
+wrappers around `document.write`, `document.writeln`, `innerHTML`, `outerHTML`,
+`insertAdjacentHTML`, `srcdoc`, `DOMParser` and `createContextualFragment`.
 
 The bridge's guards call only the built-ins it took before the page's script ran, so a page that
 replaces a built-in, such as a method of `RegExp`, changes no guard. The browser test opens each of
-those ways against a server that counts connections, in a browser with trusted types and in one
-without, and expects none. The response also sets `x-dns-prefetch-control: off`. The frame builder
-and the bridge live in `libs/wire`, so the device page's own browser tests frame their pages with
-the same bridge.
+those ways against a server that counts connections, in Chrome with trusted types and with trusted
+types hidden from the frame, and expects none. The response also sets `x-dns-prefetch-control: off`.
+The frame builder and the bridge live in `libs/wire`, so the device page's own browser tests frame
+their pages with the same bridge.
 
 The frame's URL is built from the request's own origin, with the forwarded protocol and host
 cleaned, so a page behind a reverse proxy loads its images from the same origin as the frame. The
