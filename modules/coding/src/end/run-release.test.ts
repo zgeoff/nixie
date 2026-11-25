@@ -2,6 +2,7 @@ import { expect, test } from 'bun:test';
 import { readTestActions } from '@heynixie/actions/test-utils';
 import { readRecords } from '@heynixie/log';
 import { writeTaskControl } from '@heynixie/tasks';
+import { buildTaskSeeder } from '@heynixie/tasks/test-utils';
 import { readBinding } from '../session/read-binding';
 import { startTestCoding } from '../test-utils/start-test-coding';
 import { runCodingSweep } from './run-coding-sweep';
@@ -220,6 +221,33 @@ test('it queues no second stop when the sweep runs after a stop that queued one'
   const stops = await ctx.readStops();
 
   expect(stops.length).toBe(1);
+});
+
+test('it runs the coding.stop of a task that stopped while its task run was at its limit', async () => {
+  const ctx = await setupTest();
+  const taskID = await ctx.seed.startedSession();
+
+  await buildTaskSeeder({ context: ctx.context }).limitReached({ taskID, stepKey: 'step-1' });
+
+  await ctx.control(taskID, 'stop');
+  await ctx.runActions();
+
+  const stops = await ctx.readStops();
+
+  expect({
+    stops: stops.map((stop) => stop.status),
+    calls: ctx.readStopCalls(),
+  }).toStrictEqual({
+    stops: ['done'],
+    calls: [
+      {
+        method: 'stop',
+        session: 'cloud.3f9a1c2e.00000001',
+        idempotencyKey: null,
+        text: null,
+      },
+    ],
+  });
 });
 
 test('it runs the coding.stop of a stopped task that closes before the queue claims the stop', async () => {
