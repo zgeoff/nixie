@@ -1,4 +1,4 @@
-import { fitFetchedImage } from '@heynixie/connectors';
+import { imageLimits } from '@heynixie/contract';
 import type { ToolImage } from '@heynixie/tools';
 import { readLayout } from '../layout/read-layout';
 import { readScreenState } from '../screen/read-screen-state';
@@ -15,8 +15,7 @@ export interface DevicePreview {
   readonly pixels: ScreenPixels | null;
   readonly errors: readonly PageError[];
 
-  // null when the preview has no picture, whatever the reason; its long edge is at most the
-  // model's, so a large screen comes back smaller
+  // null when the preview has no picture, whatever the reason
   readonly picture: ToolImage | null;
 }
 
@@ -60,10 +59,6 @@ interface PictureInputs {
   readonly nowMs: number;
 }
 
-// The render's own picture of a screen, so its size is the device's, and a screen of 8000 by 6000
-// pixels draws. The cap still stops a device that claims a screen of 20000 by 20000.
-const maxPreviewPixels = 64_000_000;
-
 async function drawPicture(
   options: DeviceToolOptions,
   preview: DevicePreviewOptions,
@@ -92,7 +87,11 @@ async function drawPicture(
     return null;
   }
 
-  const fitted = await fitFetchedImage(outcome.png, preview.imageLongEdge, maxPreviewPixels);
+  // The picture keeps the device's exact size. One past the byte limit that the model takes has no
+  // room, so the preview has no picture.
+  if (outcome.png.byteLength > imageLimits.bytes) {
+    return null;
+  }
 
-  return fitted.kind === 'image' ? fitted.image : null;
+  return { mediaType: 'image/png', bytes: outcome.png };
 }

@@ -274,7 +274,6 @@ export async function startConversationEndpoint(
       : {
           preview: {
             draw: tools.render.draw,
-            imageLongEdge: options.config.web_fetch.imageLongEdge,
             timeZone: options.config.time.default_zone,
           },
         }),

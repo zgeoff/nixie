@@ -1,5 +1,4 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { imageLimits } from '@heynixie/contract';
 import { startTestDevices } from '@heynixie/devices/test-utils';
 import { setupTestRecorder } from '@heynixie/sandbox/test-utils';
 import { waitForCondition } from '@heynixie/testing';
@@ -49,7 +48,7 @@ test('it draws a preview of a device of 1872 by 1404 pixels at a pixel ratio of 
   invariant(render !== null);
 
   const devices = await startTestDevices({
-    preview: { draw: render.draw, imageLongEdge: imageLimits.longEdge, timeZone: 'UTC' },
+    preview: { draw: render.draw, timeZone: 'UTC' },
   });
 
   const device = await devices.seed.screenOnDevice();
@@ -90,7 +89,7 @@ test('it draws a preview of a device of 1872 by 1404 pixels at a pixel ratio of 
       errors: [],
       picture: 'shown',
     },
-    size: { width: 1568, height: 1176 },
+    size: { width: 1872, height: 1404 },
   });
 });
 
@@ -101,7 +100,7 @@ test('it draws a picture of a device of 8000 by 6000 pixels', async () => {
   invariant(render !== null);
 
   const devices = await startTestDevices({
-    preview: { draw: render.draw, imageLongEdge: imageLimits.longEdge, timeZone: 'UTC' },
+    preview: { draw: render.draw, timeZone: 'UTC' },
   });
 
   const device = await devices.seed.screenOnDevice();
@@ -110,7 +109,12 @@ test('it draws a picture of a device of 8000 by 6000 pixels', async () => {
 
   const outcome = await devices.call('device.preview', { device: device.deviceID });
 
-  expect(outcome).toMatchObject({ result: { picture: 'shown' } });
+  const picture = outcome.status === 'ok' ? outcome.images?.[0] : undefined;
+
+  expect({
+    picture: outcome.status === 'ok' ? outcome.result : null,
+    size: picture === undefined ? null : readPNGSize(picture.bytes),
+  }).toMatchObject({ picture: { picture: 'shown' }, size: { width: 8000, height: 6000 } });
 });
 
 test('it draws a render at the exact pixel size of a device of an odd width', async () => {

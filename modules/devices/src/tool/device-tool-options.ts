@@ -17,9 +17,6 @@ export interface DeviceToolOptions {
 export interface DevicePreviewOptions {
   readonly draw: RenderSandbox['draw'];
 
-  // the longest edge of the picture that the model sees
-  readonly imageLongEdge: number;
-
   // the zone that a clock region shows its time in when the device sent none
   readonly timeZone: string;
 }

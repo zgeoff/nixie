@@ -266,9 +266,9 @@ It answers each request for one of the page's files from the files it received, 
 request and every WebSocket, and lists the refused URLs in its reply. It waits for the page to say
 that its text has fitted, and takes a PNG of exactly the requested width and height. The page lays
 out at the width divided by the pixel ratio, rounded up to a whole CSS pixel, and the picture is cut
-to the exact size, so a device with an odd width gets a picture of its own width. The server fits
-the PNG to the long edge of the images the model reads before it reaches the assistant, so a large
-screen comes back smaller. It decodes a render of up to 64 million pixels.
+to the exact size, so a device with an odd width gets a picture of its own width. The server sends
+the PNG on at that exact size, so a large screen is not shrunk, and the picture is `unavailable`
+when the PNG passes the byte limit that the model takes.
 
 `buildPreviewPage` matches each kind of region content with no fallback, so the kind that pages add
 fails the type check until the page has a branch for it.

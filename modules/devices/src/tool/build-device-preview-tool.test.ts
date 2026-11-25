@@ -6,14 +6,11 @@ import type { DevicePreviewOptions } from './device-tool-options';
 type Render = DevicePreviewOptions['draw'];
 
 async function setupTest() {
-  const picture = await encodeTestImage({ width: 40, height: 30 }, 'png');
-
-  const draw = mock<Render>(() =>
-    Promise.resolve({ kind: 'picture' as const, png: new Uint8Array(picture), refused: [] }),
-  );
+  // each test that needs a picture sets the render's outcome itself
+  const draw = mock<Render>(() => Promise.resolve({ kind: 'failed' as const, reason: 'not set' }));
 
   const ctx = await startTestDevices({
-    preview: { draw, imageLongEdge: 1568, timeZone: 'UTC' },
+    preview: { draw, timeZone: 'UTC' },
   });
 
   const device = await ctx.seed.screenOnDevice();
@@ -142,8 +139,14 @@ test('it sends the image that a region of the layout shows', async () => {
   ]);
 });
 
-test("it returns the device's size in pixels and the picture", async () => {
+test("it returns the device's size in pixels and the picture as the render drew it", async () => {
   const ctx = await setupTest();
+  const encoded = await encodeTestImage({ width: 1872, height: 1404 }, 'png');
+
+  const png = new Uint8Array(encoded);
+
+  ctx.draw.mockResolvedValue({ kind: 'picture', png, refused: [] });
+
   const outcome = await ctx.call('device.preview', { device: ctx.device.deviceID });
 
   expect(outcome).toStrictEqual({
@@ -156,7 +159,7 @@ test("it returns the device's size in pixels and the picture", async () => {
       errors: [],
       picture: 'shown',
     },
-    images: [{ mediaType: 'image/png', bytes: expect.any(Uint8Array) }],
+    images: [{ mediaType: 'image/png', bytes: png }],
   });
 });
 
