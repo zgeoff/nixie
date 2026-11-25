@@ -6,15 +6,34 @@ browser's microphone. Every event from the sideband and from the browser's data 
 log. The excerpts below come from those logs, with IDs shortened; times in brackets are `start_ms`
 and `end_ms` on GPT-Live's session timeline.
 
+The probes are [`run-probe.ts`](run-probe.ts) and its helpers in this folder, and the
+[README](README.md#run-it) holds the commands that run them and print their logs.
+
 ## Setup
 
-| Item    | Value                                                                                                                                             |
-| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Models  | `gpt-live-1`, the model in [0014](../../docs/decisions/0014-voice-pipeline.md), and `gpt-live-1.1`, the model OpenAI's WebRTC quickstart now uses |
-| Device  | Chromium from `playwright-core` 1.65.1, headless, one `RTCPeerConnection` with a WebAudio microphone and the `oai-events` data channel            |
-| Server  | `POST /v1/live/sessions` with `transport: { type: 'webrtc', sdp }`, then `wss://api.openai.com/v1/live/sessions/<session_id>/attach`              |
-| Session | `delegation: { type: 'client' }`, `store: false`, a short voice prompt that hands every request to the backend, voice `marin`                     |
-| Speech  | OpenAI `tts-1`, voice `alloy`, PCM16 at 24 kHz, synthetic lines written for the spike                                                             |
+The spike read these OpenAI pages, as published in November 2026, and the results name them as
+below:
+
+- the
+  [GPT-Live event reference](https://developers.openai.com/api/reference/resources/live/primary-websocket):
+  every client and server event, and the session fields;
+- the [delegation guide](https://developers.openai.com/api/docs/guides/live-delegation): client
+  delegation, answer parts and the automatic acknowledgement;
+- the
+  [sideband guide](https://developers.openai.com/api/docs/guides/voice-server-controls?api=live):
+  attaching to a running session and the reflected audio;
+- the [WebRTC guide](https://developers.openai.com/api/docs/guides/voice-webrtc?api=live): creating
+  a session from the device's offer;
+- the [sessions guide](https://developers.openai.com/api/docs/guides/live-conversations):
+  transcripts, long sessions, forks and close reasons.
+
+| Item    | Value                                                                                                                                   |
+| ------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| Models  | `gpt-live-1`, the model in [0014](../../docs/decisions/0014-voice-pipeline.md), and `gpt-live-1.1`, the model the WebRTC guide now uses |
+| Device  | Chromium from `playwright-core` 1.65.1, headless, one `RTCPeerConnection` with a WebAudio microphone and the `oai-events` data channel  |
+| Server  | `POST /v1/live/sessions` with `transport: { type: 'webrtc', sdp }`, then `wss://api.openai.com/v1/live/sessions/<session_id>/attach`    |
+| Session | `delegation: { type: 'client' }`, `store: false`, a short voice prompt that hands every request to the backend, voice `marin`           |
+| Speech  | OpenAI `tts-1`, voice `alloy`, PCM16 at 24 kHz, synthetic lines written for the spike                                                   |
 
 The probes:
 
@@ -71,8 +90,8 @@ session.delegation.created offset_ms 47400
 ```
 
 The adapter builds the request from the `session.input_transcript.delta` events whose `start_ms` is
-at or before `offset_ms`, since the last hand-off. The OpenAI reference says the same: the
-delegation object "contains metadata, not the task text".
+at or before `offset_ms`, since the last hand-off. The event reference says the same: the delegation
+object "contains metadata, not the task text".
 
 Transcript deltas arrive in 200 ms slices with no event that ends a turn. In one session, an input
 delta `" Done"` arrived at the moment an empty commentary part was acknowledged, though the
@@ -114,10 +133,10 @@ output transcript shows what was said.
 While the reminder waited 15 s with no answer, GPT-Live's automatic acknowledgement said "Sure, I'll
 set that up." in 2 of 3 sessions, and "Sure!" in the third.
 
-OpenAI's documented way to stop that acknowledgement works. With `acknowledgement_delay_ms: 800` and
-an empty `session.thinking.append` sent as soon as the delegation arrived, GPT-Live stayed silent
-for the 8 s until the answer, on 2 of 2 delegations. Unlike an empty commentary part, the empty
-thinking part drew no invented result.
+The delegation guide's way to stop that acknowledgement works. With `acknowledgement_delay_ms: 800`
+and an empty `session.thinking.append` sent as soon as the delegation arrived, GPT-Live stayed
+silent for the 8 s until the answer, on 2 of 2 delegations. Unlike an empty commentary part, the
+empty thinking part drew no invented result.
 
 A commentary part with `delegation_id: null`, as `say` would send, is spoken, with GPT-Live's own
 words around it. "I dropped out for a second." came out as "Sorry, I dropped out for a second—want
@@ -144,9 +163,10 @@ adapter learns what was spoken only from the output transcript.
 ## Question 3: a cut
 
 No event reports a cut. In each of the 6 trials, no event of a type other than transcript, audio,
-usage and the probe's own marks arrived within 5 s of the cut, and the reference lists no truncation
-event. GPT-Live stops its output where your speech starts on the session timeline, says a short line
-such as "Sure, pausing.", and did not resume the answer in the 6 s before the next question.
+usage and the probe's own marks arrived within 5 s of the cut, and the event reference lists no
+truncation event. GPT-Live stops its output where your speech starts on the session timeline, says a
+short line such as "Sure, pausing.", and did not resume the answer in the 6 s before the next
+question.
 
 The adapter can still find the cut and the heard text from the sideband:
 
@@ -186,8 +206,8 @@ The session that turns client delegation on, as the server created it:
 ```
 
 - The `session.started` and `session.closed` snapshots echo `"delegation": { "type": "client" }` and
-  `"store": false`. The reference says an omitted delegation also selects client mode; the spike set
-  it.
+  `"store": false`. The event reference says an omitted delegation also selects client mode; the
+  spike set it.
 - WebRTC negotiates the audio format, so the session omits `audio.format`. The HTTP request starts
   the session, so nothing sends `session.start`.
 - `store` decides only whether OpenAI keeps the session for forking and recording download. OpenAI's
@@ -195,9 +215,9 @@ The session that turns client delegation on, as the server created it:
   `/v1/live/sessions` with 30 days of abuse-monitoring retention whatever `store` says, and no
   application state unless stored.
 - Without restrictions, the device's data channel received every event, including `session.started`
-  with the full instructions and each `session.delegation.created`. The reference says an omitted
-  `allowed_client_events` keeps "the existing allow-all behavior", so the device could also send any
-  command; the spike did not try one on an open channel.
+  with the full instructions and each `session.delegation.created`. The event reference says an
+  omitted `allowed_client_events` keeps "the existing allow-all behavior", so the device could also
+  send any command; the spike did not try one on an open channel.
 - `client.data_channel` closes that. With `allowed_client_events: []` and only the two transcript
   events allowed out, the device got `{"type":"info","code":"data_channel_permissions"}` at start,
   and its own `session.commentary.append` was refused with `event_not_allowed`. The sideband was
@@ -205,7 +225,7 @@ The session that turns client delegation on, as the server created it:
 
 ## Question 5: a new session for the same call
 
-Every session's `expires_at` came 7,200 s after it started, so a session lasts 2 hours. The
+Every session's `expires_at` came 7,200 s after it started, so a session lasts 2 hours. The event
 reference lists no event that warns of the limit: `session.closed` with reason `expired` arrives
 when it is reached. The spike did not reach it. Separately, GPT-Live replaces its own engine inside
 the session when context passes 90%, and `session.usage.updated` reports
@@ -296,7 +316,7 @@ reason it no longer holds.
     `session.thinking.append` on each delegation, which kept GPT-Live silent on 2 of 2 delegations,
     and nixie sends its own holding line.
 12. "The deployment's speech credential never reaches a device. The server creates every session."
-    The key stays on the server, but the device's data channel receives every event, and the
+    The key stays on the server, but the device's data channel receives every event, and the event
     reference lets it send any command. The server must set `client.data_channel` to allow the
     device only the transcript events it shows.
 13. "Each `heard` event becomes one `owner_message` record on the call thread, with a short ID and
