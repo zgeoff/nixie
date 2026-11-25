@@ -233,11 +233,15 @@ the model's records and the prompts hold no sandbox ID, image or size.
 
 ## The listed state
 
-A started task's step that leaves no unread input moves the task to the `waiting` task state,
-whether or not its work is done. The task state alone therefore can't tell a task that waits on a
-reply from a task with nothing left to do. So the list tool gives a task in the `waiting` task state
-one of 4 listed states, from its [message waits](./task-messages.md#message-waits), whether it is
-wakeable, and how its newest task run ended:
+A step of the sandbox runner that leaves no unread input moves the task to the `waiting` task state,
+whether or not its work is done, because that runner never returns `done`. The task state alone
+therefore can't tell a task that waits on a reply from a task with nothing left to do. The coding
+runner returns `done` only in the step that finds its session ended, and that task is `done` unless
+unread input keeps it ready. Every other step of a coding task waits.
+
+So the list tool gives a task in the `waiting` task state one of 4 listed states, from its
+[message waits](./task-messages.md#message-waits), whether it is wakeable, and how its newest task
+run ended:
 
 - `waiting`: the task has an open wait on another task.
 - `asleep`: the task has no open wait, and no message wakes it. A definition's task that is asleep
@@ -335,7 +339,7 @@ applies decides:
 | ------------------------------------------ | ----------- | -------------------------------------------- |
 | a report request                           | `reported`  | what the step asked                          |
 | a reached limit                            | `limit`     | `paused`, under the limit hold               |
-| the runner returned `done`                 | `no_report` | `done`, or `waiting` for a definition's task |
+| the runner returned `done`, with no report | `no_report` | `done`, or `waiting` for a definition's task |
 | a first step that found no work            | `no_work`   | `waiting`                                    |
 | a quiet turn, and the task is not wakeable | `no_report` | `waiting`                                    |
 

@@ -177,7 +177,7 @@ test('it reports a started session once when a forget erased its ID before the s
             body:
               'The coding session this task started may still be running, but nixie cannot find ' +
               "its ID, so it could not stop it. Find it in atc's own list of sessions, or join it " +
-              'by its ID from coding.sessions.',
+              'by calling coding.start with its session ID.',
           },
         },
       },
@@ -246,7 +246,7 @@ test('it reports a lost session when the task sent another message after the ans
           body:
             'The coding session this task started may still be running, but nixie cannot find ' +
             "its ID, so it could not stop it. Find it in atc's own list of sessions, or join it " +
-            'by its ID from coding.sessions.',
+            'by calling coding.start with its session ID.',
         },
       },
     ],
