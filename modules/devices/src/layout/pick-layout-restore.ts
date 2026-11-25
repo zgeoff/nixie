@@ -1,4 +1,4 @@
-export interface SavedRegionState {
+interface SavedRegionState {
   readonly region: string;
   readonly shownSequence: number;
 
