@@ -129,7 +129,7 @@ async function readFilesOfCall(
     return { status: 'error', message: z.prettifyError(parsed.error) };
   }
 
-  const files = await readSendFiles(context.log, thread, parsed.data.files ?? []);
+  const files = await readSendFiles(context.ports, thread, parsed.data.files ?? []);
 
   return files.status === 'ok' ? null : { status: 'error', message: files.message };
 }

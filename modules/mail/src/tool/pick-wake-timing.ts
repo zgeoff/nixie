@@ -1,4 +1,5 @@
 import { parseDuration } from '@heynixie/clock';
+import { maxWakeDurationMs, minWakeDurationMs } from '@heynixie/triggers';
 
 export interface WakeTimingRequest {
   readonly expires: string | undefined;
@@ -14,7 +15,7 @@ export type WakeTiming =
   | { readonly status: 'bad' };
 
 // The expiry and the window of a rule. A duration is bad when it is no duration, runs under a
-// minute, or puts the expiry past the last date a Date holds. The window is at most the expiry, so
+// minute or over 3650 days, or puts the expiry past the last date a Date holds. The window is at most the expiry, so
 // the default window shrinks to a short expiry, and a window that the call names never passes it.
 export function pickWakeTiming(request: WakeTimingRequest): WakeTiming {
   const expiresMs = request.expires === undefined ? null : parseDuration(request.expires);
@@ -43,8 +44,6 @@ export function pickWakeTiming(request: WakeTimingRequest): WakeTiming {
   return { status: 'ok', expiresAt, windowMs: windowMs ?? defaultMs };
 }
 
-const minDurationMs = 60_000;
-
 function isUsable(durationMs: number | null): durationMs is number {
-  return durationMs !== null && Number.isSafeInteger(durationMs) && durationMs >= minDurationMs;
+  return durationMs !== null && durationMs >= minWakeDurationMs && durationMs <= maxWakeDurationMs;
 }

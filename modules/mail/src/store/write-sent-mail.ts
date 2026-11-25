@@ -75,7 +75,7 @@ export function writeSentMail(context: MailContext, input: SentMailInput): Promi
                 : { kind: 'task', taskID: input.senderTaskID },
             setBy: input.senderTaskID,
             expiresAt: input.sentAt + input.replyExpiryMs,
-            windowMs: context.settings.wake.window,
+            windowMs: Math.min(context.settings.wake.window, input.replyExpiryMs),
             origin: 'reply',
             createdAt: input.sentAt,
           });

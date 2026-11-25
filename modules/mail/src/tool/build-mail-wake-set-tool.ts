@@ -94,8 +94,8 @@ export function buildMailWakeSetTool(context: MailToolContext): ToolDefinition {
         return {
           status: 'error',
           message:
-            'BAD_DURATION: expires and window take a duration such as 1m, 30m or 7d, from 1m, ' +
-            'and the window is at most the expiry',
+            'BAD_DURATION: expires and window take a duration such as 1m, 30m or 7d, from 1m to ' +
+            '3650d, and the window is at most the expiry',
         };
       }
 

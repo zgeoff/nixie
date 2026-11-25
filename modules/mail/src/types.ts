@@ -1,8 +1,9 @@
 import type { Clock } from '@heynixie/clock';
 import type { CheckedTables } from '@heynixie/db';
-import type { Definitions, JSONValue, Log } from '@heynixie/log';
+import type { Definitions, JSONObject, JSONValue, Log, WriteTransaction } from '@heynixie/log';
 import type { Logger } from '@heynixie/logger';
 import type { TasksContext } from '@heynixie/tasks';
+import type { ToolRun } from '@heynixie/tools';
 import type { WakeRulesConfig } from '@heynixie/triggers';
 import type { FetchReply } from '@heynixie/wire';
 
@@ -70,7 +71,7 @@ export interface ParsedMail {
   readonly subject: string;
   readonly text: string;
 
-  // the HTML of a mail with no plain part, as it came; empty otherwise
+  // the HTML of the mail as it came; empty when it has none
   readonly html: string;
   readonly attachments: readonly MailAttachment[];
 
@@ -91,7 +92,7 @@ export interface StoredMailFields {
   readonly subject: string;
   readonly text: string;
 
-  // the HTML of a mail with no plain part, as it came; empty otherwise
+  // the HTML of the mail as it came; empty when it has none
   readonly html: string;
   readonly attachments: readonly StoredAttachment[];
 
@@ -118,12 +119,129 @@ export interface MailSettings {
   readonly linkPathChars: number;
 }
 
+// A file of a code run, which a mail sends or a received attachment becomes.
+interface MailFileRow {
+  readonly thread: string;
+  readonly bytes: number;
+  readonly mediaType: string;
+}
+
+export type MailFileEntry =
+  | { readonly kind: 'missing' }
+  | { readonly kind: 'forgotten'; readonly row: MailFileRow }
+  | {
+      readonly kind: 'ok';
+      readonly row: MailFileRow;
+
+      // the last segment of the file's path in the run's result
+      readonly name: string;
+
+      // the file is a kept stream of the run, not a file the program wrote
+      readonly isStream: boolean;
+    };
+
+export type MailFileRead =
+  | { readonly kind: 'ok'; readonly bytes: Uint8Array<ArrayBuffer> }
+  | { readonly kind: 'missing' | 'forgotten' };
+
+// The files of the threads' code runs, which the mail module reads to send them.
+export interface MailFileReader {
+  // the file with its run's result, whatever thread it belongs to
+  readonly readEntry: (fileID: string) => Promise<MailFileEntry>;
+
+  // the file's bytes, when it belongs to the thread
+  readonly readFile: (thread: string, fileID: string) => Promise<MailFileRead>;
+}
+
+// A file that bytes became, for a result record to hold.
+interface MailStoredFile {
+  readonly file: string;
+  readonly mediaType: string;
+  readonly files: readonly {
+    readonly file: string;
+    readonly path: string;
+    readonly bytes: number;
+    readonly mediaType: string;
+    readonly isShown: boolean;
+  }[];
+  readonly attachments: readonly Uint8Array<ArrayBuffer>[];
+
+  // writes the file's row in the transaction of the result record that holds its bytes
+  readonly writeBeside: (tx: WriteTransaction, sequence: number) => Promise<void>;
+}
+
+interface StoredFileRequest {
+  readonly name: string;
+  readonly bytes: Uint8Array<ArrayBuffer>;
+  readonly thread: string;
+}
+
+interface LinkTagRequest {
+  readonly urls: readonly string[];
+  readonly linkPathChars: number;
+}
+
+interface LinkedTextRequest {
+  // the text of a fetcher's reply, with a mark where each link ends
+  readonly text: string;
+
+  // the target of each mark, by the index the mark names
+  readonly links: readonly string[];
+  readonly textBytes: number;
+  readonly linkPathChars: number;
+}
+
+// What the mail module takes from the web tools and the code files, which the server wires: the
+// two modules never import each other.
+export interface MailPorts extends MailFileReader {
+  // keeps bytes as a file of the thread
+  readonly buildStoredFile: (request: StoredFileRequest) => MailStoredFile;
+
+  // numbers each URL in the session of the call, as a search hit is, and returns each URL's tag, or
+  // null when the session ended
+  readonly writeLinkTags: (
+    run: ToolRun,
+    request: LinkTagRequest,
+  ) => Promise<ReadonlyMap<string, string> | null>;
+
+  // numbers each link of a text the fetcher read, and returns the text with each mark replaced by
+  // its tag, or null when the session ended
+  readonly writeLinkedText: (run: ToolRun, request: LinkedTextRequest) => Promise<string | null>;
+}
+
+export interface MailActionAttempt {
+  readonly actionID: string;
+  readonly tool: string;
+  readonly arguments: JSONObject;
+}
+
+export type MailProviderResponse =
+  | { readonly kind: 'success'; readonly result: JSONObject }
+  | { readonly kind: 'refused'; readonly reason: string };
+
+export type MailCheckResponse =
+  | { readonly kind: 'found'; readonly result: JSONObject }
+  | { readonly kind: 'not_found' }
+  | { readonly kind: 'inconclusive' };
+
+// The queue's connector of a mail tool, in the shape the actions module runs.
+export interface MailActionConnector {
+  readonly run: (attempt: MailActionAttempt) => Promise<MailProviderResponse>;
+  readonly reconcile: {
+    readonly kind: 'check';
+    readonly tool: string;
+    readonly onNotFound: 'retry';
+  };
+  readonly check: (attempt: MailActionAttempt) => Promise<MailCheckResponse>;
+}
+
 export interface MailContext {
   readonly log: Log;
   readonly clock: Clock;
   readonly definitions: () => Definitions;
   readonly settings: MailSettings;
   readonly logEvent: Logger;
+  readonly ports: MailPorts;
 }
 
 // The context of the tools and the connector, which run in a server that holds the whole tasks

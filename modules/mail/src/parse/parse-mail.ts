@@ -7,8 +7,8 @@ import { parseHeaders } from './parse-headers';
 import { splitMessage } from './split-message';
 
 // Reads a raw RFC 5322 message. Only the mail module reads mail, and every text it returns came from
-// outside nixie. A mail with a plain part keeps that text. A mail with an HTML part alone keeps the
-// HTML as it came, which the fetch sandbox reads when the assistant opens the mail.
+// outside nixie. A mail keeps its plain text and its HTML as they came, and the fetch sandbox reads
+// the HTML when the assistant opens the mail, which is where the links of the HTML get their IDs.
 export function parseMail(raw: Uint8Array): ParsedMail {
   const latin1 = Buffer.from(raw).toString('latin1');
   const split = splitMessage(latin1);
@@ -17,7 +17,7 @@ export function parseMail(raw: Uint8Array): ParsedMail {
   const headers = parseHeaders(Buffer.from(split.head, 'latin1').toString('utf8'));
   const parts = collectParts(latin1);
   const plain = parts.texts.filter((part) => part.trim() !== '');
-  const html = plain.length > 0 ? '' : parts.htmls.join('\n').trim();
+  const html = parts.htmls.join('\n').trim();
   const answered = [...(headers.get('in-reply-to') ?? []), ...(headers.get('references') ?? [])];
 
   return {

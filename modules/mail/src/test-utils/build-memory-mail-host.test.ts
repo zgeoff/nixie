@@ -2,6 +2,7 @@ import { expect, test } from 'bun:test';
 import invariant from 'tiny-invariant';
 import { buildOutgoingMail } from '../parse/build-outgoing-mail';
 import { buildMemoryMailHost } from './build-memory-mail-host';
+import type { MemoryHostState } from './types';
 
 function setupTest() {
   const host = buildMemoryMailHost({ address: 'assistant@nixie.example.org', now: () => 5000 });
@@ -105,4 +106,54 @@ test('it gives a hint when a mail arrives', async () => {
   abort.abort();
 
   expect(hint?.done).toBe(false);
+});
+
+test('it continues the host of an earlier state, with its unread mail, sent mail and IDs', async () => {
+  const states: MemoryHostState[] = [];
+  const options = { address: 'assistant@nixie.example.org', now: () => 5000 };
+
+  const host = buildMemoryMailHost({
+    ...options,
+    onChange: (state) => {
+      states.push(state);
+    },
+  });
+
+  const cursor = await host.begin();
+
+  const arrived = host.deliver({ from: 'a@x.example.org', subject: 'Unread', text: 'Unread.' });
+
+  const mail = buildOutgoingMail({
+    messageID: 'act1@nixie.example.org',
+    from: 'assistant@nixie.example.org',
+    to: ['a@x.example.org'],
+    subject: 'Hello',
+    text: 'Hello.',
+    references: [],
+    files: [],
+    sentAt: 5000,
+  });
+
+  invariant(mail !== null, 'the draft is valid');
+
+  const sent = await host.send(mail);
+
+  const state = states.at(-1);
+
+  invariant(state !== undefined, 'the host told its state');
+
+  const continued = buildMemoryMailHost({ ...options, state });
+
+  const changes = await continued.readChanges(cursor);
+  const found = await continued.findSent('act1@nixie.example.org');
+
+  const next = continued.deliver({ from: 'b@x.example.org', subject: 'Next', text: 'Next.' });
+
+  expect(changes).toMatchObject({
+    kind: 'changes',
+    mails: [{ hostMessageID: arrived.hostMessageID }],
+  });
+
+  expect(found).toStrictEqual(sent);
+  expect(next.hostMessageID).not.toBe(arrived.hostMessageID);
 });

@@ -1,12 +1,14 @@
-import type {
-  ActionAttempt,
-  ActionConnector,
-  CheckResponse,
-  ProviderResponse,
-} from '@heynixie/connectors';
+import { toErrorFields } from '@heynixie/logger';
 import { withHostLock } from '../host/with-host-lock';
 import { writeSentMail } from '../store/write-sent-mail';
-import type { MailHost, MailToolContext } from '../types';
+import type {
+  MailActionAttempt,
+  MailActionConnector,
+  MailCheckResponse,
+  MailHost,
+  MailProviderResponse,
+  MailToolContext,
+} from '../types';
 import { buildSendMessageID } from './build-send-message-id';
 import { mailToolNames } from './mail-tool-names';
 import { parseSendArguments } from './parse-send-arguments';
@@ -19,8 +21,8 @@ import { planSend } from './plan-send';
 export function buildMailConnectors(
   context: MailToolContext,
   host: MailHost,
-): ReadonlyMap<string, ActionConnector> {
-  return new Map<string, ActionConnector>(
+): ReadonlyMap<string, MailActionConnector> {
+  return new Map<string, MailActionConnector>(
     [mailToolNames.send, mailToolNames.reply].map((tool) => [
       tool,
       {
@@ -35,8 +37,8 @@ export function buildMailConnectors(
 async function runSend(
   context: MailToolContext,
   host: MailHost,
-  attempt: ActionAttempt,
-): Promise<ProviderResponse> {
+  attempt: MailActionAttempt,
+): Promise<MailProviderResponse> {
   const plan = await readPlan(context, attempt, { isReconcile: false });
 
   if (plan.status === 'refused') {
@@ -49,18 +51,31 @@ async function runSend(
     return { kind: 'refused', reason: 'the plan of the send holds no mail' };
   }
 
-  return withHostLock<ProviderResponse>(host, async () => {
-    const sent = await host.send(outgoing);
-    const written = await writeSentMail(context, plan.toSentInput(sent.hostMessageID));
+  return withHostLock<MailProviderResponse>(host, async () => {
+    try {
+      const sent = await host.send(outgoing);
+      const written = await writeSentMail(context, plan.toSentInput(sent.hostMessageID));
 
-    return {
-      kind: 'success',
-      result: {
-        message: written.shortID,
-        thread: written.threadShortID,
-        replyRule: written.replyRuleShortID,
-      },
-    };
+      return {
+        kind: 'success',
+        result: {
+          message: written.shortID,
+          thread: written.threadShortID,
+          replyRule: written.replyRuleShortID,
+        },
+      };
+    } catch (error) {
+      // A host that took the mail and then failed already holds it, and a reply to it may be in the
+      // inbox: write its record and rule before the lock lets the source read.
+      await writeFoundSend(context, host, attempt).catch((writeError: unknown) => {
+        context.logEvent('mail.send_record_failed', {
+          actionID: attempt.actionID,
+          ...toErrorFields(writeError),
+        });
+      });
+
+      throw error;
+    }
   });
 }
 
@@ -70,7 +85,7 @@ interface PlanOptions {
 
 function readPlan(
   context: MailToolContext,
-  attempt: ActionAttempt,
+  attempt: MailActionAttempt,
   options: PlanOptions,
 ): Promise<SendPlan> {
   const parsed = parseSendArguments(attempt.tool, attempt.arguments);
@@ -91,35 +106,41 @@ function readPlan(
 
 // Asks the host first, by the Message-ID that the action ID makes, so a send that went out is found
 // even when the mail it answered was forgotten since. Only a found send needs the plan.
+async function writeFoundSend(
+  context: MailToolContext,
+  host: MailHost,
+  attempt: MailActionAttempt,
+): Promise<MailCheckResponse> {
+  const messageIDHeader = buildSendMessageID(context.settings, attempt.actionID);
+
+  const found = await host.findSent(messageIDHeader);
+
+  if (found === null) {
+    return { kind: 'not_found' };
+  }
+
+  const plan = await readPlan(context, attempt, { isReconcile: true });
+
+  if (plan.status === 'refused') {
+    return { kind: 'inconclusive' };
+  }
+
+  const written = await writeSentMail(context, plan.toSentInput(found.hostMessageID));
+
+  return {
+    kind: 'found',
+    result: {
+      message: written.shortID,
+      thread: written.threadShortID,
+      replyRule: written.replyRuleShortID,
+    },
+  };
+}
+
 function checkSend(
   context: MailToolContext,
   host: MailHost,
-  attempt: ActionAttempt,
-): Promise<CheckResponse> {
-  const messageIDHeader = buildSendMessageID(context.settings, attempt.actionID);
-
-  return withHostLock<CheckResponse>(host, async () => {
-    const found = await host.findSent(messageIDHeader);
-
-    if (found === null) {
-      return { kind: 'not_found' };
-    }
-
-    const plan = await readPlan(context, attempt, { isReconcile: true });
-
-    if (plan.status === 'refused') {
-      return { kind: 'inconclusive' };
-    }
-
-    const written = await writeSentMail(context, plan.toSentInput(found.hostMessageID));
-
-    return {
-      kind: 'found',
-      result: {
-        message: written.shortID,
-        thread: written.threadShortID,
-        replyRule: written.replyRuleShortID,
-      },
-    };
-  });
+  attempt: MailActionAttempt,
+): Promise<MailCheckResponse> {
+  return withHostLock<MailCheckResponse>(host, () => writeFoundSend(context, host, attempt));
 }

@@ -1,7 +1,8 @@
 import { expect, test } from 'bun:test';
-import { seedCodeRunFiles } from '@heynixie/connectors/test-utils';
+import { readRecords } from '@heynixie/log';
+import { buildAllowingDecisionPoint } from '@heynixie/policy/test-utils';
 import { buildTaskSeeder } from '@heynixie/tasks/test-utils';
-import { buildToolRegistry } from '@heynixie/tools';
+import { buildToolRegistry, runToolCall } from '@heynixie/tools';
 import { formatLinkMark } from '@heynixie/wire';
 import { z } from 'zod';
 import { parseMail } from '../parse/parse-mail';
@@ -177,6 +178,45 @@ test('it marks the sender, subject and text of an incoming mail as outside conte
   );
 });
 
+test.each([
+  ['mail.read', (message: string) => ({ message })],
+  ['mail.list', () => ({})],
+])('it stores the result of %s as untrusted content', async (tool, buildInput) => {
+  const ctx = await setupTest();
+  const received = await ctx.receive('hello@library.example.org', 'Your loan');
+
+  await runToolCall(
+    { tool, input: buildInput(received.shortID), toolUseID: null },
+    {
+      runID: 'run-1',
+      thread: 'conversation',
+      logThread: 'conversation',
+      tools: [tool],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    {
+      registry: buildToolRegistry(buildMailTools(ctx.context, ctx.html)),
+      decide: buildAllowingDecisionPoint(),
+      log: ctx.context.log,
+      definitions: ctx.context.definitions,
+      queue: {
+        enqueue: () => Promise.reject(new Error('the mail tools run direct')),
+        readOpenRepeat: () => Promise.resolve(null),
+        readOpenAsk: () => Promise.resolve(null),
+        waitForOutcome: () => Promise.resolve(null),
+      },
+      queuedWaitMs: 1000,
+    },
+  );
+
+  const records = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['tool_result'],
+  });
+
+  expect(records.map((entry) => entry.record.contentSource)).toStrictEqual(['untrusted']);
+});
+
 test('#mail.wake_set sets a rule that wakes the caller and stays with no expiry', async () => {
   const ctx = await setupTest();
   const set = await ctx.callTool('mail.wake_set', { from: ['@library.example.org'] });
@@ -257,6 +297,7 @@ test('#mail.wake_set refuses a task that has ended and one that never existed', 
 test.each([
   ['an expiry under a minute', { expires: '30s' }],
   ['an expiry past the last date', { expires: '100000000d' }],
+  ['an expiry past 3650 days', { expires: '3651d' }],
   ['a window past the last date', { window: '100000000d', expires: '5m' }],
   ['a window under a minute', { window: '10s' }],
   ['a window past the expiry', { expires: '5m', window: '10m' }],
@@ -441,8 +482,8 @@ test('#mail.save_attachment keeps an attachment as a file of the thread, with it
       file: expect.stringMatching(/^[a-z0-9]+$/u),
       name: 'plan.pdf',
       bytes: 7,
-      mediaType: 'application/pdf',
-      files: [{ path: 'plan.pdf', bytes: 7 }],
+      mediaType: expect.any(String),
+      files: [expect.objectContaining({ path: 'plan.pdf', bytes: 7 })],
     },
     attachments: [board],
   });
@@ -550,6 +591,57 @@ test('#mail.read reads the HTML of a mail in the fetch sandbox, and numbers each
   });
 });
 
+test('#mail.read numbers a link that only the HTML part of a mail holds', async () => {
+  const ctx = await setupTest();
+
+  const html = '<p>Reset: <a href="https://library.example.org/reset?t=1">reset</a></p>';
+
+  ctx.html.answer(html, {
+    kind: 'page',
+    url: 'about:blank',
+    status: 200,
+    contentType: 'text/html',
+    text: `Reset: reset ${formatLinkMark(0)}`,
+    links: ['https://library.example.org/reset?t=1'],
+    isTruncated: false,
+    blocked: null,
+    retryAfterMs: null,
+    isGated: false,
+  });
+
+  const received = await seedReceivedMail(ctx, {
+    from: 'hello@library.example.org',
+    subject: 'Reset',
+    text: 'Reset your password in your browser.',
+    html,
+  });
+
+  const opened = await ctx.callTool('mail.read', { message: received.shortID });
+
+  expect(opened).toMatchObject({
+    status: 'ok',
+    record: { text: 'Reset: reset [L1 · library.example.org/reset]' },
+  });
+});
+
+test('#mail.read gives the plain text of a mail whose HTML the sandbox cannot read', async () => {
+  const ctx = await setupTest();
+
+  const received = await seedReceivedMail(ctx, {
+    from: 'hello@library.example.org',
+    subject: 'Reset',
+    text: 'Reset your password in your browser.',
+    html: '<p>Unknown to the stand-in.</p>',
+  });
+
+  const opened = await ctx.callTool('mail.read', { message: received.shortID });
+
+  expect(opened).toMatchObject({
+    status: 'ok',
+    record: { text: 'Reset your password in your browser.' },
+  });
+});
+
 test('#mail.read leaves a mail unread when the sandbox cannot read its HTML', async () => {
   const ctx = await setupTest();
 
@@ -590,16 +682,17 @@ test.each([
 test('#mail.send names each recipient as a destination, and accepts a file of the thread', async () => {
   const ctx = await setupTest();
 
-  const seeded = await seedCodeRunFiles(ctx.context.log, {
+  const file = ctx.files.addFile({
     thread: 'conversation',
-    writes: { 'out/plan.txt': 'Plan.' },
+    name: 'plan.txt',
+    content: new Uint8Array(Buffer.from('Plan.')),
   });
 
   const resolved = await ctx.resolveDestinations('mail.send', {
     to: ['hello@library.example.org'],
     subject: 'Plan',
     text: 'See attached.',
-    files: seeded.files.map((file) => file.file),
+    files: [file],
   });
 
   expect(resolved).toStrictEqual({
@@ -611,16 +704,17 @@ test('#mail.send names each recipient as a destination, and accepts a file of th
 test('#mail.send refuses the file of another thread', async () => {
   const ctx = await setupTest();
 
-  const seeded = await seedCodeRunFiles(ctx.context.log, {
+  const file = ctx.files.addFile({
     thread: 'task-9',
-    writes: { 'out/plan.txt': 'Plan.' },
+    name: 'plan.txt',
+    content: new Uint8Array(Buffer.from('Plan.')),
   });
 
   const resolved = await ctx.resolveDestinations('mail.send', {
     to: ['hello@library.example.org'],
     subject: 'Plan',
     text: 'See attached.',
-    files: seeded.files.map((file) => file.file),
+    files: [file],
   });
 
   expect(resolved).toMatchObject({

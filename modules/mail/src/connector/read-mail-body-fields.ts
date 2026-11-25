@@ -1,5 +1,5 @@
-import type { Log } from '@heynixie/log';
 import type { BodyFields, BodyFieldsRequest } from '@heynixie/policy';
+import type { MailFileReader } from '../types';
 import { buildMailBodyFields } from './build-mail-body-fields';
 import { readSendFiles } from './read-send-files';
 
@@ -7,7 +7,7 @@ import { readSendFiles } from './read-send-files';
 // the card names each one the owner approves. A call whose files cannot be read shows none: the
 // call is refused before it reaches a card.
 export async function readMailBodyFields(
-  log: Pick<Log, 'deploymentKey' | 'writer'>,
+  reader: MailFileReader,
   request: BodyFieldsRequest,
   replyExpiryMs: number,
 ): Promise<BodyFields> {
@@ -20,7 +20,7 @@ export async function readMailBodyFields(
   const files =
     request.thread === null || ids.length === 0
       ? { status: 'ok' as const, files: [] }
-      : await readSendFiles(log, request.thread, ids);
+      : await readSendFiles(reader, request.thread, ids);
 
   const listed = files.status === 'ok' ? files.files : [];
 

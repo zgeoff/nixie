@@ -399,6 +399,7 @@
         "@heynixie/egress": "workspace:*",
         "@heynixie/log": "workspace:*",
         "@heynixie/logger": "workspace:*",
+        "@heynixie/mail": "workspace:*",
         "@heynixie/memory": "workspace:*",
         "@heynixie/model-gateway": "workspace:*",
         "@heynixie/models": "workspace:*",
@@ -800,7 +801,6 @@
       "dependencies": {
         "@heynixie/actions": "workspace:*",
         "@heynixie/clock": "workspace:*",
-        "@heynixie/connectors": "workspace:*",
         "@heynixie/db": "workspace:*",
         "@heynixie/log": "workspace:*",
         "@heynixie/logger": "workspace:*",

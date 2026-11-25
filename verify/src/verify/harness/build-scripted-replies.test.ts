@@ -552,6 +552,7 @@ test('it opens the mail that the list of unread mail named', () => {
         content: [
           {
             type: 'tool_result',
+            tool_use_id: 'toolu_list',
             content: JSON.stringify({ mails: [{ message: 'k3x9a2m1', subject: 'Reset' }] }),
           },
         ],
@@ -570,4 +571,42 @@ test('it opens the mail that the list of unread mail named', () => {
   ]);
 
   expect(opened).toStrictEqual({ message: 'k3x9a2m1' });
+});
+
+test('it fails the open of a mail when the newest list is empty, though an older list named a mail', () => {
+  const replies = buildScriptedReplies({
+    text: 'I read it.',
+    mailRead: { from: '@library.example.org' },
+  });
+
+  const [, open] = replies;
+  const openCall = open !== undefined && 'toolUse' in open ? open.toolUse : null;
+  const readInput = openCall?.input;
+
+  const body = {
+    messages: [
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'tool_result',
+            tool_use_id: 'toolu_list',
+            content: JSON.stringify({ mails: [{ message: 'k3x9a2m1', subject: 'Reset' }] }),
+          },
+        ],
+      },
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'tool_result',
+            tool_use_id: 'toolu_again',
+            content: JSON.stringify({ mails: [] }),
+          },
+        ],
+      },
+    ],
+  };
+
+  expect(() => (typeof readInput === 'function' ? readInput(body) : null)).toThrow('names no mail');
 });

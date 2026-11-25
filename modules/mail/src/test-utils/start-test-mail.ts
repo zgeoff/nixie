@@ -23,11 +23,13 @@ import { buildMailConnectors } from '../connector/build-mail-connectors';
 import { buildMailSource } from '../source/build-mail-source';
 import { mailMessagesProjection } from '../store/mail-messages-projection';
 import { buildMailTools } from '../tool/build-mail-tools';
-import type { MailToolContext } from '../types';
+import type { MailHTMLReader, MailPorts, MailToolContext } from '../types';
 import type { MemoryMailHost } from './build-memory-mail-host';
 import { buildMemoryMailHost } from './build-memory-mail-host';
 import type { TestHTMLReader } from './build-test-html-reader';
 import { buildTestHTMLReader } from './build-test-html-reader';
+import type { TestMailPorts } from './build-test-mail-ports';
+import { buildTestMailPorts } from './build-test-mail-ports';
 
 export interface TestMail {
   readonly writer: Writer;
@@ -37,8 +39,11 @@ export interface TestMail {
   readonly context: MailToolContext;
   readonly host: MemoryMailHost;
 
-  // the fetch sandbox that reads the HTML of a mail, which a test tells what each HTML reads as
+  // the reader of a mail's HTML, which a test tells what each HTML reads as
   readonly html: TestHTMLReader;
+
+  // the files and the links that the mail tools use, in memory unless the test wired its own
+  readonly files: TestMailPorts;
   readonly source: TriggerSource;
 
   // calls a mail tool as the conversation, or as the task whose ID the thread names, in one session
@@ -61,10 +66,18 @@ export interface TestMail {
 
 export const testMailAddress = 'assistant@nixie.example.org';
 
+export interface StartTestMailOptions {
+  // the ports of the tools, built over the test's log, in place of the ones in memory
+  readonly buildPorts?: (log: Log) => MailPorts;
+
+  // the reader of a mail's HTML, in place of the one that a test answers by hand
+  readonly reader?: MailHTMLReader;
+}
+
 // A log that holds the log, tasks, actions, triggers and mail projections, the mail module over an
-// in-memory host, and the mailbox source, which a test starts with `startSource`. The writer's
+// in-memory host, and the mailbox source, which a test starts with `startTestMailSource`. The writer's
 // clock is the test clock.
-export async function startTestMail(): Promise<TestMail> {
+export async function startTestMail(options: StartTestMailOptions = {}): Promise<TestMail> {
   const stack = new AsyncDisposableStack();
 
   onTestFinished(() => stack.disposeAsync());
@@ -117,6 +130,7 @@ export async function startTestMail(): Promise<TestMail> {
   };
 
   const host = buildMemoryMailHost({ address: testMailAddress, now: () => clock.now() });
+  const files = buildTestMailPorts();
 
   const context: MailToolContext = {
     log,
@@ -124,6 +138,7 @@ export async function startTestMail(): Promise<TestMail> {
     definitions,
     logEvent,
     tasks,
+    ports: options.buildPorts?.(log) ?? files,
     settings: {
       address: testMailAddress,
       hostPollIntervalMs: 30_000,
@@ -134,9 +149,9 @@ export async function startTestMail(): Promise<TestMail> {
 
   const html = buildTestHTMLReader();
 
-  stack.defer(() => html.stop());
-
-  const toolsByName = new Map(buildMailTools(context, html).map((tool) => [tool.name, tool]));
+  const toolsByName = new Map(
+    buildMailTools(context, options.reader ?? html).map((tool) => [tool.name, tool]),
+  );
 
   return {
     writer,
@@ -146,6 +161,7 @@ export async function startTestMail(): Promise<TestMail> {
     context,
     host,
     html,
+    files,
     source: buildMailSource(context, host),
     callTool: (name, input, thread = 'conversation') => {
       const tool = toolsByName.get(name);

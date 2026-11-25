@@ -1,4 +1,3 @@
-import { buildStoredFile } from '@heynixie/connectors';
 import { readRecordAttachments } from '@heynixie/log';
 import type { ToolDefinition } from '@heynixie/tools';
 import { z } from 'zod';
@@ -104,7 +103,7 @@ export function buildMailSaveAttachmentTool(context: MailContext): ToolDefinitio
         };
       }
 
-      const file = buildStoredFile({
+      const file = context.ports.buildStoredFile({
         name: entry.name,
         bytes,
         thread: toolContext.run.thread,

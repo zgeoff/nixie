@@ -1,7 +1,7 @@
 import { buildMailConnectors } from '@heynixie/mail';
 import type { MailToolContext } from '@heynixie/mail';
 import type { ActionsWithCoding } from '../coding/add-coding-connectors';
-import type { ServerMail } from './build-server-mail';
+import type { ServerMail } from './create-server-mail';
 
 // The mail connectors need the host, so the part adds them after the queue is built. The send and
 // the reply sit in the model's tool list, so they add no queued tool. Without a mailbox, the

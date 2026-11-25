@@ -27,7 +27,13 @@ A test build serves the one host built so far, which keeps mail in memory. The s
 the config holds a `mail` section, and the harness operation `deliverMail` puts a mail in it. A
 release build with a `mail` section refuses to start, and a deployment with no `mail` section starts
 with no mailbox, as it does without a coding runner. The `mail` section holds the assistant's
-`address` and `host_poll_interval`.
+`address` and `host_poll_interval`. The host in memory keeps its mail, its sent mail and its IDs in
+a file in the data folder, so a restart of nixie loses none of them, and a cursor from before the
+restart still reads only the mail after it.
+
+The mail module never imports the connectors module, which owns the web tools and the code files. It
+takes the files of a thread, the link IDs of a session and the stored file of an attachment as ports
+in its context, and the server wires each to the connectors module.
 
 ## The source
 
@@ -39,13 +45,16 @@ For each new mail, the source parses it and writes it in a write transaction of 
 delivers the mail's arrival to the trigger core with the host's new cursor. A crash between the two
 delivers the arrival again, and the core drops it by its dedupe key, the host's ID for the mail. A
 read that fails, whether the host answers `failed` or throws, backs off from a minute, doubling the
-wait up to an hour. A retry time that the host names replaces the backoff. The source reports
+wait up to an hour. A retry time that the host names replaces the backoff. A hint from the host
+never ends that wait, so repeated hints cannot keep a failing host busy. The source reports
 `unhealthy` after 3 failures in a row.
 
 The source and each send share one lock per host. A send holds it from the host's send to its stored
 record and reply rule, so a reply that reaches the host in between is read only once both exist. The
 reply joins the sent mail's thread and wakes its sender. A rule that a send sets starts at the send
-time, so it matches a reply that came before the rule was written.
+time, so it matches a reply that came before the rule was written. When the host takes the mail and
+then fails, the connector asks the host for the sent mail before it frees the lock, and writes the
+record and the rule when the host holds it.
 
 ## The stored mail
 
@@ -61,27 +70,32 @@ joins a thread by the Message-ID headers that it answers. The table stores each 
 a thread lookup needs no text.
 
 The parser reads UTF-8, Latin-1 and Windows-1252 text, quoted-printable and base64 bodies, encoded
-subject words and multipart mail. It prefers the plain part. A mail with an HTML part and no plain
-part keeps the HTML as it came, cut at 1,000,000 characters, and the module never reads it.
-`mail.list` searches the text, and for such a mail the source of its HTML. A mail with attachments
-lists each by name and size, and keeps each name as its last path segment with no control character.
+subject words and multipart mail. The sender is the address in angle brackets, so an address inside
+a display name never counts. A mail keeps its plain text and its HTML as they came, the HTML cut at
+1,000,000 characters, and the module never reads the HTML itself. `mail.list` searches the text and
+the source of the HTML. A mail with attachments lists each by name and size. The parser reads a
+quoted name that holds a semicolon and an extended name such as `filename*=UTF-8''caf%C3%A9.pdf`,
+and keeps each name as its last path segment with no control character.
 
-`mail.read` numbers each link of the text as a link ID of the session, such as
-`[L1 · example.org/reset]`, and the model opens it with `web_fetch` by that ID. The text the model
-sees never holds the address of a link, so a link with a token stays out of the model's input until
-it opens the link. The numbers belong to the conversation session, or the task run, that reads the
-mail, and the same address keeps its number there.
+`mail.read` numbers each link of a plain text as a link ID of the session, such as
+`[L1 · example.org/reset]`, and the model opens it with `web_fetch` by that ID. An address that
+stands alone on its line is taken whole, with any punctuation at its end, and any other address
+loses the punctuation that ends its sentence. The text the model sees never holds the address of a
+link, so a link with a token stays out of the model's input until it opens the link. The numbers
+belong to the conversation session, or the task run, that reads the mail, and the same address keeps
+its number there.
 
 ### HTML mail
 
-A mail with only an HTML part reads in the fetch sandbox, where `web_fetch` reads a page. When the
-model opens such a mail, the mail module sends the HTML to the sandbox in the `html` field of a
+A mail with an HTML part reads in the fetch sandbox, where `web_fetch` reads a page, whether or not
+it also has a plain part, because a link may sit only in the HTML. When the model opens such a mail,
+the mail module sends the HTML to the sandbox in the `html` field of a
 [fetch request](../connectors/web-fetch.md#the-fetch-sandbox), and the fetch guest answers with the
 page reply, whose text holds a mark where each link ends. The module numbers each link in the
-session of the call, as `web_fetch` does, and replaces each mark with its link ID. A mail with a
-plain part never goes to the sandbox, and its addresses take link IDs in the module. When the
-sandbox fails, `mail.read` refuses with `HTML_UNREADABLE` and leaves the mail unread, so the model
-can open it again.
+session of the call, as `web_fetch` does, and replaces each mark with its link ID. A mail with no
+HTML takes its link IDs in the module. When the sandbox fails, `mail.read` gives the plain text of a
+mail that has some, and otherwise refuses with `HTML_UNREADABLE` and leaves the mail unread, so the
+model can open it again.
 
 ## The tools
 
@@ -104,8 +118,10 @@ checks when the server starts.
 Tool errors start with a code: `UNKNOWN_MESSAGE`, `UNKNOWN_ATTACHMENT`, `UNKNOWN_FILE`,
 `UNKNOWN_RULE`, `UNKNOWN_TASK`, `BAD_ADDRESS`, `BAD_DURATION`, `TOO_BIG` or `HTML_UNREADABLE`. An
 address with a character outside ASCII is a `BAD_ADDRESS`, because the header cannot carry it. A
-duration is a number of seconds, minutes, hours or days of at most 7 digits, from a minute. A call
-that sets no window takes the default window, cut to the expiry when the expiry is shorter.
+duration is a number of minutes, hours or days of at most 7 digits, from a minute to 3650 days. The
+`wake_rules` durations of the config and the `replyWake` of a send take the same range, and the
+config refuses a window past the reply expiry. A call that sets no window takes the default window,
+cut to the expiry when the expiry is shorter.
 
 ## Attachments
 
@@ -162,8 +178,8 @@ stores each in a `trigger.wake_rule_set` record, and the `wake_rules` table fold
   match filters and never checks trust.
 - **Target.** The rule wakes the conversation, or any task, which the call that sets the rule names.
   A call from a task that names no target wakes that task. A rule whose task ended ends with it.
-- **Expiry.** The expiry is optional with no cap, so a rule can stay for good. A rule matches the
-  mail received before its expiry.
+- **Expiry.** The expiry is optional, so a rule can stay for good, and at most 3650 days. A rule
+  matches the mail received before its expiry.
 - **Window.** The window is the shortest time between two wakes by one rule. The deployment's
   `wake_rules.window` sets the default, and a call sets a window of a minute at least. Each rule
   keeps its own window, and no limit holds for the mailbox as a whole.

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { HostChanges, HostCursor, HostMail, MailHost, OutgoingMail } from '../types';
+import type { MemoryHostState, SentMemoryMail } from './types';
 
-const replySettleMs = 50;
 const hostCursorSchema = z.object({ instance: z.string(), count: z.int().min(0) });
 
 export interface MemoryMail {
@@ -16,16 +16,11 @@ export interface MemoryMail {
   // the IDs that the mail answers
   readonly references?: readonly string[];
 
-  // replaces the plain text body with an HTML body
+  // the HTML body: the only body when the text is empty, and an alternative to the text otherwise
   readonly html?: string;
 
   // the files the mail carries
   readonly attachments?: readonly { readonly name: string; readonly content: Uint8Array }[];
-}
-
-export interface SentMemoryMail {
-  readonly hostMessageID: string;
-  readonly raw: Uint8Array;
 }
 
 export interface MemoryMailHost extends MailHost {
@@ -39,26 +34,44 @@ export interface MemoryMailHost extends MailHost {
   // makes the next read fail
   readonly failNextRead: (reason: string, after?: number) => void;
 
-  // makes the next send put a reply in the inbox before it returns, so the reply reaches the host
-  // while nixie has not yet stored the sent mail
-  readonly replyDuringNextSend: (reply: (sent: SentMemoryMail) => MemoryMail) => void;
+  // makes the next send put a reply in the inbox and then wait for `release` before it returns, so
+  // the reply reaches the host while nixie has not yet stored the sent mail. Releasing with an
+  // error makes the send throw after the host holds the mail.
+  readonly replyDuringNextSend: (reply: (sent: SentMemoryMail) => MemoryMail) => {
+    readonly release: (failure?: Error) => void;
+  };
 }
 
 export interface MemoryMailHostOptions {
   readonly address: string;
   readonly now: () => number;
+
+  // the state of an earlier host, which this host continues. Without it, the host starts empty.
+  readonly state?: MemoryHostState;
+
+  // told the host's whole state after each change
+  readonly onChange?: (state: MemoryHostState) => void;
 }
 
-// A mail host in memory, the stand-in for a real one. Each host takes an ID that its mail IDs carry,
-// so a restarted host never repeats an earlier ID, and a cursor from an earlier host reads as a
-// resync with every mail of this one.
+// A mail host in memory, the stand-in for a real one. A host with no earlier state takes an ID that
+// its mail IDs carry, so it never repeats another host's ID, and a cursor from another host reads
+// as a resync with every mail of this one. A host given an earlier state continues that host.
 export function buildMemoryMailHost(options: MemoryMailHostOptions): MemoryMailHost {
-  const instance = crypto.randomUUID().slice(0, 8);
-  const inbox: HostMail[] = [];
-  const replies: ((sent: SentMemoryMail) => MemoryMail)[] = [];
-  const sent: SentMemoryMail[] = [];
+  const instance = options.state?.instance ?? crypto.randomUUID().slice(0, 8);
+  const inbox: HostMail[] = [...(options.state?.inbox ?? [])];
+
+  const replies: {
+    reply: (sent: SentMemoryMail) => MemoryMail;
+    released: PromiseWithResolvers<Error | undefined>;
+  }[] = [];
+
+  const sent: SentMemoryMail[] = [...(options.state?.sent ?? [])];
   const hints: (() => void)[] = [];
   const failures: { reason: string; after: number | undefined }[] = [];
+
+  const writeState = () => {
+    options.onChange?.({ instance, inbox, sent });
+  };
 
   const writeMail = (raw: Uint8Array): HostMail => {
     const mail: HostMail = {
@@ -68,6 +81,8 @@ export function buildMemoryMailHost(options: MemoryMailHostOptions): MemoryMailH
     };
 
     inbox.push(mail);
+
+    writeState();
 
     for (const hint of hints.splice(0)) {
       hint();
@@ -103,16 +118,18 @@ export function buildMemoryMailHost(options: MemoryMailHostOptions): MemoryMailH
 
       sent.push(stored);
 
-      const reply = replies.shift();
+      writeState();
 
-      if (reply !== undefined) {
-        writeMail(buildRaw(options.address, reply(stored)));
+      const planned = replies.shift();
 
-        // the host answers a moment after the reply reached it, which a reader that does not wait
-        // for the send uses to read the reply first
-        await new Promise((resolve) => {
-          setTimeout(resolve, replySettleMs);
-        });
+      if (planned !== undefined) {
+        writeMail(buildRaw(options.address, planned.reply(stored)));
+
+        const failure = await planned.released.promise;
+
+        if (failure !== undefined) {
+          throw failure;
+        }
       }
 
       return { hostMessageID };
@@ -152,7 +169,11 @@ export function buildMemoryMailHost(options: MemoryMailHostOptions): MemoryMailH
       failures.push({ reason, after });
     },
     replyDuringNextSend: (reply) => {
-      replies.push(reply);
+      const released = Promise.withResolvers<Error | undefined>();
+
+      replies.push({ reply, released });
+
+      return { release: (failure) => released.resolve(failure) };
     },
   };
 }
@@ -169,14 +190,13 @@ function buildRaw(address: string, mail: MemoryMail): Uint8Array {
     ...(nearest === undefined
       ? []
       : [`In-Reply-To: ${nearest}`, `References: ${references.join(' ')}`]),
-    `Content-Type: ${mail.html === undefined ? 'text/plain' : 'text/html'}; charset=utf-8`,
   ];
 
-  const body = mail.html ?? mail.text;
+  const body = buildBodyLines(mail);
   const files = mail.attachments ?? [];
 
   if (files.length === 0) {
-    return Buffer.from(`${headers.join('\r\n')}\r\n\r\n${body}\r\n`, 'utf8');
+    return Buffer.from(`${[...headers, ...body].join('\r\n')}\r\n`, 'utf8');
   }
 
   const parts = files.flatMap((file) => [
@@ -188,16 +208,40 @@ function buildRaw(address: string, mail: MemoryMail): Uint8Array {
   ]);
 
   const lines = [
-    ...headers.slice(0, -1),
+    ...headers,
     `Content-Type: multipart/mixed; boundary="memory-boundary"`,
     '',
     '--memory-boundary',
-    headers.at(-1) ?? '',
-    '',
-    body,
+    ...body,
     ...parts,
     '--memory-boundary--',
   ];
 
   return Buffer.from(`${lines.join('\r\n')}\r\n`, 'utf8');
+}
+
+// The content headers, a blank line and the body of a mail: plain text, HTML alone, or the two as
+// the alternatives of one mail.
+function buildBodyLines(mail: MemoryMail): string[] {
+  if (mail.html === undefined) {
+    return ['Content-Type: text/plain; charset=utf-8', '', mail.text];
+  }
+
+  if (mail.text === '') {
+    return ['Content-Type: text/html; charset=utf-8', '', mail.html];
+  }
+
+  return [
+    'Content-Type: multipart/alternative; boundary="memory-alternative"',
+    '',
+    '--memory-alternative',
+    'Content-Type: text/plain; charset=utf-8',
+    '',
+    mail.text,
+    '--memory-alternative',
+    'Content-Type: text/html; charset=utf-8',
+    '',
+    mail.html,
+    '--memory-alternative--',
+  ];
 }

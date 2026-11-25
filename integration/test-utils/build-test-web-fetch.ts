@@ -1,7 +1,7 @@
 import { buildWebFetchTool, makeFetchBackoff } from '@heynixie/connectors';
+import type { TestMail } from '@heynixie/mail/test-utils';
 import type { ToolDefinition } from '@heynixie/tools';
 import type { FetchReply } from '@heynixie/wire';
-import type { TestMail } from './start-test-mail';
 
 // The web_fetch tool of a test mailbox: it shares the mailbox's log, so it opens the links that
 // mail.read numbered, and it reaches the site a test started on a loopback port with a real

@@ -1,6 +1,5 @@
-import { readCodeFile, readCodeFileEntry } from '@heynixie/connectors';
-import type { Log } from '@heynixie/log';
 import { maxAttachmentBytes } from '../store/count-stored-attachments';
+import type { MailFileReader } from '../types';
 
 export interface SendFile {
   readonly file: string;
@@ -17,14 +16,14 @@ export type SendFiles =
 // the first reason one cannot go. A file of another thread reads as unknown, as it does for
 // file.send, and the files hold no more than a mail carries.
 export async function readSendFiles(
-  log: Pick<Log, 'deploymentKey' | 'writer'>,
+  reader: MailFileReader,
   thread: string,
   ids: readonly string[],
 ): Promise<SendFiles> {
   const files: SendFile[] = [];
 
   for (const id of ids) {
-    const entry = await readCodeFileEntry(log, id);
+    const entry = await reader.readEntry(id);
 
     if (entry.kind === 'missing' || entry.row.thread !== thread) {
       return { status: 'error', message: `UNKNOWN_FILE: no file ${id} belongs to this thread` };
@@ -63,11 +62,11 @@ export type SendFileContents =
 // The names and the bytes of the files that a send names, read when the send runs. A file that a
 // forget took since the call makes the send refuse.
 export async function readSendFileContents(
-  log: Pick<Log, 'deploymentKey' | 'writer'>,
+  reader: MailFileReader,
   thread: string,
   ids: readonly string[],
 ): Promise<SendFileContents> {
-  const named = await readSendFiles(log, thread, ids);
+  const named = await readSendFiles(reader, thread, ids);
 
   if (named.status === 'error') {
     return named;
@@ -76,7 +75,7 @@ export async function readSendFileContents(
   const files: SendFileContent[] = [];
 
   for (const file of named.files) {
-    const read = await readCodeFile(log, { thread, fileID: file.file });
+    const read = await reader.readFile(thread, file.file);
 
     if (read.kind !== 'ok') {
       return { status: 'error', message: `UNKNOWN_FILE: the file ${file.file} cannot be read` };

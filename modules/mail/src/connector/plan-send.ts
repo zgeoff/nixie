@@ -1,4 +1,5 @@
 import { parseDuration } from '@heynixie/clock';
+import { maxWakeDurationMs, minWakeDurationMs } from '@heynixie/triggers';
 import { buildOutgoingMail } from '../parse/build-outgoing-mail';
 import type { OutgoingDraft } from '../parse/build-outgoing-mail';
 import { readMailFields } from '../store/read-mail-fields';
@@ -77,8 +78,14 @@ export async function planSend(context: MailToolContext, request: SendRequest): 
       ? null
       : (parseDuration(request.arguments.replyWake ?? '') ?? context.settings.wake.reply_expiry);
 
-  if (replyExpiryMs !== null && Number.isNaN(new Date(sentAt + replyExpiryMs).getTime())) {
-    return { status: 'refused', reason: 'BAD_DURATION: the reply wake ends past the last date' };
+  if (
+    replyExpiryMs !== null &&
+    (replyExpiryMs < minWakeDurationMs || replyExpiryMs > maxWakeDurationMs)
+  ) {
+    return {
+      status: 'refused',
+      reason: 'BAD_DURATION: the reply wake runs from 1m to 3650d',
+    };
   }
 
   const mail = request.isReconcile ? null : buildOutgoingMail(draft);
@@ -196,12 +203,12 @@ async function readFiles(
   thread: string,
 ): Promise<Files> {
   if (request.isReconcile) {
-    const named = await readSendFiles(context.log, thread, request.arguments.files);
+    const named = await readSendFiles(context.ports, thread, request.arguments.files);
 
     return { status: 'read', listed: named.status === 'ok' ? named.files : [], contents: [] };
   }
 
-  const read = await readSendFileContents(context.log, thread, request.arguments.files);
+  const read = await readSendFileContents(context.ports, thread, request.arguments.files);
 
   return read.status === 'ok'
     ? { status: 'read', listed: read.files, contents: read.files }

@@ -59,6 +59,7 @@ async function runMailLoop(run: MailRun): Promise<void> {
 
   while (!run.signal.aborted) {
     let delayMs = run.context.settings.hostPollIntervalMs;
+    let isHintable = true;
 
     try {
       const read = await withHostLock(run.host, () => readHostOnce(run));
@@ -69,6 +70,7 @@ async function runMailLoop(run: MailRun): Promise<void> {
         run.trigger.reportHealth('running');
       } else {
         failures += 1;
+        isHintable = false;
         delayMs = read.afterMs ?? buildBackoffMs(failures);
 
         run.context.logEvent('mail.host_read_failed', {
@@ -79,6 +81,7 @@ async function runMailLoop(run: MailRun): Promise<void> {
       }
     } catch (error) {
       failures += 1;
+      isHintable = false;
       delayMs = buildBackoffMs(failures);
 
       run.context.logEvent('mail.source_failed', { failures, ...toErrorFields(error) });
@@ -88,7 +91,7 @@ async function runMailLoop(run: MailRun): Promise<void> {
       run.trigger.reportHealth('unhealthy');
     }
 
-    await sleepUntilHint(run, delayMs);
+    await sleepUntilHint(run, delayMs, isHintable);
   }
 }
 
@@ -156,7 +159,8 @@ function buildBackoffMs(failures: number): number {
   return Math.min(maxRetryMs, firstRetryMs * 2 ** (failures - 1));
 }
 
-async function sleepUntilHint(run: MailRun, delayMs: number): Promise<void> {
+// After a failed read the wait is the backoff or the host's own retry time, which a hint never ends.
+async function sleepUntilHint(run: MailRun, delayMs: number, isHintable: boolean): Promise<void> {
   if (run.signal.aborted) {
     return;
   }
@@ -164,7 +168,9 @@ async function sleepUntilHint(run: MailRun, delayMs: number): Promise<void> {
   const waking = new AbortController();
 
   run.wake = () => {
-    waking.abort();
+    if (isHintable) {
+      waking.abort();
+    }
   };
 
   await run.context.clock
@@ -172,7 +178,7 @@ async function sleepUntilHint(run: MailRun, delayMs: number): Promise<void> {
     .catch(() => {});
 }
 
-// A host that pushes a hint ends the wait for the next read at once.
+// A host that pushes a hint ends the wait for the next read at once, after a read that worked.
 async function runHintLoop(run: MailRun): Promise<void> {
   if (run.host.watch === undefined) {
     return;

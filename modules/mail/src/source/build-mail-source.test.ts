@@ -2,22 +2,19 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { readRecords } from '@heynixie/log';
 import { readInbox } from '@heynixie/tasks';
 import { buildTaskSeeder } from '@heynixie/tasks/test-utils';
-import { buildMockToolCall, buildMockToolContext } from '@heynixie/tools/test-utils';
 import { startTriggerSources } from '@heynixie/triggers';
 import { readTestTriggerRows } from '@heynixie/triggers/test-utils';
-import { formatLinkMark } from '@heynixie/wire';
 import { waitFor } from '@zgeoff/testing';
 import { z } from 'zod';
 import { readMailPage } from '../store/read-mail-page';
 import {
   buildMemoryMailHost,
-  buildTestWebFetch,
   matchOutsideText,
   startTestMail,
   startTestMailSource,
-  startTestSite,
   testMailAddress,
 } from '../test-utils';
+import type { MailHost } from '../types';
 import { buildMailSource } from './build-mail-source';
 
 async function setupTest() {
@@ -176,69 +173,6 @@ test('it wakes the conversation with a mail that a rule matches, and the assista
   });
 });
 
-test('it lets the assistant open the reset link of a mail that a rule woke it for', async () => {
-  const ctx = await setupTest();
-
-  const site = startTestSite({ '/reset': 'Choose a new password.' });
-  const resetURL = `${site.origin}/reset?token=t0k3n`;
-  const html = `<p>Tap <a href="${resetURL}">Reset password</a>.</p>`;
-
-  ctx.html.answer(html, {
-    kind: 'page',
-    url: 'about:blank',
-    status: 200,
-    contentType: 'text/html',
-    text: `Tap Reset password ${formatLinkMark(0)}.`,
-    links: [resetURL],
-    isTruncated: false,
-    blocked: null,
-    retryAfterMs: null,
-    isGated: false,
-  });
-
-  await ctx.startSource();
-  await ctx.callTool('mail.wake_set', { from: ['@library.example.org'], window: '1m' });
-
-  ctx.clock.advance(1000);
-
-  ctx.host.deliver({
-    from: 'hello@library.example.org',
-    subject: 'Reset your password',
-    text: '',
-    html,
-  });
-
-  ctx.poll();
-
-  await waitFor(async () => {
-    const wakes = await ctx.readWakes();
-
-    expect(wakes).toHaveLength(1);
-  });
-
-  const stored = await ctx.readStored();
-  const opened = await ctx.callTool('mail.read', { message: stored.mails[0]?.message });
-
-  const fetched = await buildTestWebFetch(ctx).run(
-    buildMockToolCall({ tool: 'web_fetch', input: { link: 'L1' } }),
-    buildMockToolContext({
-      run: { tools: ['web_fetch'], session: { key: 'test-session', invalidatedThrough: 0 } },
-    }),
-  );
-
-  expect(opened).toMatchObject({
-    status: 'ok',
-    result: { text: matchOutsideText('Tap Reset password [L1 · 127.0.0.1/reset].') },
-  });
-
-  expect(fetched).toMatchObject({
-    status: 'ok',
-    result: { url: resetURL, status: 200, text: 'Choose a new password.' },
-  });
-
-  expect(site.requests).toStrictEqual(['/reset?token=t0k3n']);
-});
-
 test('it stores the mail of a host that started again, which the earlier cursor does not cover', async () => {
   const ctx = await setupTest();
   const first = await startTriggerSources([ctx.source], ctx.core);
@@ -295,6 +229,63 @@ test('it waits a minute after a first failed read that names no retry time, then
   expect(
     failed.map((entry) => z.object({ retryInMs: z.number() }).parse(entry.fields)),
   ).toStrictEqual([{ retryInMs: 60_000 }, { retryInMs: 120_000 }, { retryInMs: 240_000 }]);
+});
+
+test('it keeps the wait that a failed read set, though the host gives hints during it', async () => {
+  const ctx = await setupTest();
+
+  const handled = { hints: 0 };
+
+  // the generator resumes after the source has handled the hint it was given
+  const host: MailHost = {
+    ...ctx.host,
+    watch: async function* watch(signal: AbortSignal) {
+      for await (const hint of ctx.host.watch?.(signal) ?? []) {
+        yield hint;
+        handled.hints += 1;
+      }
+    },
+  };
+
+  ctx.host.failNextRead('the host is busy', 1000);
+  ctx.host.failNextRead('the host is still busy', 5000);
+
+  const sources = await startTriggerSources([buildMailSource(ctx.context, host)], ctx.core);
+
+  onTestFinished(() => sources.stop());
+
+  await waitFor(() => {
+    const failed = ctx.logged.filter((entry) => entry.event === 'mail.host_read_failed');
+
+    expect(failed).toHaveLength(1);
+  });
+
+  const failedAtMs = ctx.clock.now();
+
+  await waitFor(() => {
+    expect(ctx.clock.readNextDueMs()).toBe(failedAtMs + 1000);
+  });
+
+  ctx.host.deliver({ from: 'hello@library.example.org', subject: 'Hint', text: 'Hello.' });
+
+  await waitFor(() => {
+    expect(handled.hints).toBe(1);
+  });
+
+  ctx.clock.advance(1000);
+
+  const failed = await waitFor(() => {
+    const entries = ctx.logged.filter((entry) => entry.event === 'mail.host_read_failed');
+
+    expect(entries).toHaveLength(2);
+    expect(ctx.clock.readNextDueMs()).toBe(failedAtMs + 1000 + 5000);
+
+    return entries;
+  });
+
+  expect(
+    failed.map((entry) => z.object({ retryInMs: z.number() }).parse(entry.fields)),
+  ).toStrictEqual([{ retryInMs: 1000 }, { retryInMs: 5000 }]);
 });
 
 test('it reports itself unhealthy after 3 failed reads in a row', async () => {

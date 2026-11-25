@@ -33,7 +33,7 @@ import {
 import { buildScheduleSource, startTriggerSources, startWakeFlush } from '@heynixie/triggers';
 import { runDefinitionsSeed } from '../definition/run-definitions-seed';
 import { startDefinitionsExports } from '../definition/start-definitions-exports';
-import { buildServerMailContext } from '../mail/build-server-mail';
+import { buildServerMailContext } from '../mail/build-server-mail-context';
 import { queueCheckRunner } from '../queue/queue-check-runner';
 import { startQueueCheckTask } from '../queue/start-queue-check-task';
 import { runServerReminderMoves } from '../reminder/run-server-reminder-moves';

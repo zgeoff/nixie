@@ -1,14 +1,16 @@
-import type { Logger } from '@heynixie/logger';
-import type { MailHost, MailSettings, MailToolContext } from '@heynixie/mail';
+import { join } from 'node:path';
+import type { MailHost, MailSettings } from '@heynixie/mail';
 import { buildMailSettings } from '@heynixie/mail';
 import type { MemoryMailHost } from '@heynixie/mail/memory-host';
-import { buildMemoryMailHost } from '@heynixie/mail/memory-host';
-import type { TasksContext } from '@heynixie/tasks';
+import { createFileMemoryMailHost } from '@heynixie/mail/memory-host';
 import type { DeploymentConfig } from '../deployment/deployment-config-schema';
 
 export interface ServerMailOptions {
   readonly config: Pick<DeploymentConfig, 'mail' | 'wake_rules' | 'web_fetch'>;
   readonly now: () => number;
+
+  // the folder that the test build's host keeps its mail in, so a restart keeps it
+  readonly dataDir: string;
 }
 
 export interface ServerMail {
@@ -21,7 +23,7 @@ export interface ServerMail {
 
 // The assistant's own mailbox, or null when the config sets no `mail` section, which starts nixie
 // with no mailbox. No real mail host is built yet, so only a test build serves one, in memory.
-export function buildServerMail(options: ServerMailOptions): ServerMail | null {
+export function createServerMail(options: ServerMailOptions): ServerMail | null {
   const mail = options.config.mail;
 
   if (mail === undefined) {
@@ -32,7 +34,11 @@ export function buildServerMail(options: ServerMailOptions): ServerMail | null {
     throw new Error('the config sets a mail section, and no mail host is built yet');
   }
 
-  const memory = buildMemoryMailHost({ address: mail.address, now: options.now });
+  const memory = createFileMemoryMailHost({
+    address: mail.address,
+    now: options.now,
+    stateFile: join(options.dataDir, 'test-mail-host.json'),
+  });
 
   return {
     host: memory,
@@ -42,26 +48,5 @@ export function buildServerMail(options: ServerMailOptions): ServerMail | null {
       options.config.wake_rules,
       options.config.web_fetch.linkPathChars,
     ),
-  };
-}
-
-// The context of the mail module's tools, connectors and source: the tasks context, with the
-// logger that records the module's events. Null without a mailbox.
-export function buildServerMailContext(
-  mail: ServerMail | null,
-  tasks: TasksContext,
-  logEvent: Logger,
-): MailToolContext | null {
-  if (mail === null) {
-    return null;
-  }
-
-  return {
-    log: tasks.log,
-    clock: tasks.clock,
-    definitions: tasks.definitions,
-    settings: mail.settings,
-    logEvent,
-    tasks,
   };
 }

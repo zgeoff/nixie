@@ -1,4 +1,3 @@
-import { writeLinkTags, writeLinkedText } from '@heynixie/connectors';
 import type { ToolDefinition, ToolRun } from '@heynixie/tools';
 import { z } from 'zod';
 import { mailDeclarations } from '../connector/mail-declarations';
@@ -79,7 +78,7 @@ export function buildMailReadTool(context: MailContext, reader: MailHTMLReader):
         return body;
       }
 
-      const tags = await writeLinkTags(context.log, toolContext.run, {
+      const tags = await context.ports.writeLinkTags(toolContext.run, {
         urls: collectMailURLs(body.text),
         linkPathChars: context.settings.linkPathChars,
       });
@@ -138,15 +137,16 @@ type BodyText =
   | { readonly status: 'ok'; readonly text: string }
   | { readonly status: 'error'; readonly message: string };
 
-// The text of a mail's body. A mail that holds HTML and no plain text has the sandbox read its HTML,
-// and each link of it takes a link ID of the session, so no address of a link reaches the model.
+// The text of a mail's body. A mail that holds HTML has the sandbox read it, and each link of it
+// takes a link ID of the session, so no address of a link reaches the model. A mail whose HTML the
+// sandbox cannot read keeps its plain text, when it has some.
 async function readBodyText(
   context: MailContext,
   reader: MailHTMLReader,
   run: ToolRun,
   fields: StoredMailFields,
 ): Promise<BodyText> {
-  if (fields.text !== '' || fields.html === '') {
+  if (fields.html === '') {
     return { status: 'ok', text: fields.text };
   }
 
@@ -157,6 +157,10 @@ async function readBodyText(
 
     context.logEvent('mail.html_unreadable', { reason });
 
+    if (fields.text !== '') {
+      return { status: 'ok', text: fields.text };
+    }
+
     return {
       status: 'error',
       message:
@@ -164,7 +168,7 @@ async function readBodyText(
     };
   }
 
-  const linked = await writeLinkedText(context.log, run, {
+  const linked = await context.ports.writeLinkedText(run, {
     text: reply.text,
     links: reply.links,
     textBytes: Buffer.byteLength(reply.text) + linkTagHeadroomBytes,

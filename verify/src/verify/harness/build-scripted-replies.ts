@@ -302,10 +302,17 @@ function buildMailReadReplies(from: string) {
 }
 
 function readListedMailID(body: ScriptedBody): string {
-  const seen = JSON.stringify(body.messages);
+  const blocks = (body.messages ?? []).flatMap(
+    (message) => z.array(z.unknown()).safeParse(message.content).data ?? [],
+  );
 
-  const mailID = [...seen.matchAll(/mails\\*":\[\{\\*"message\\*":\\*"(?<id>[a-z0-9]+)/gu)].at(-1)
-    ?.groups?.['id'];
+  const results = blocks
+    .map((block) => toolResultBlockSchema.safeParse(block))
+    .filter((parsed) => parsed.success)
+    .map((parsed) => parsed.data);
+
+  const listed = JSON.stringify(results.at(-1)?.content);
+  const mailID = /mails\\*":\[\{\\*"message\\*":\\*"(?<id>[a-z0-9]+)/u.exec(listed)?.groups?.['id'];
 
   invariant(mailID !== undefined, 'the result of the list names no mail');
 

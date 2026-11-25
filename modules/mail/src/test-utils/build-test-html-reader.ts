@@ -1,54 +1,28 @@
-import { startFetchSandbox } from '@heynixie/connectors';
-import { buildStubSandboxAdapter, makeStubFetcher } from '@heynixie/connectors/test-utils';
 import type { FetchReply } from '@heynixie/wire';
 import type { MailHTMLReader } from '../types';
 
 export interface TestHTMLReader extends MailHTMLReader {
-  // answers the HTML that a test names with the page the fetcher would read from it
+  // answers the HTML that a test names with the page the fetch sandbox would read from it
   readonly answer: (html: string, page: FetchReply) => void;
-  readonly stop: () => Promise<void>;
 }
 
-// The reader of a mail's HTML in a test: the real fetch sandbox over a stand-in fetcher, so each
-// request travels the wire as it does in a deployment. The fetcher answers only the HTML a test
-// gave it, because the parse of HTML is the fetch guest's own, with its own tests.
+// The reader of a mail's HTML in a test. It answers only the HTML a test gave it, because the parse
+// of HTML is the fetch guest's own, with its own tests, and an integration test reads mail through
+// the real fetch sandbox.
 export function buildTestHTMLReader(): TestHTMLReader {
   const pages = new Map<string, FetchReply>();
 
-  const adapter = buildStubSandboxAdapter(
-    makeStubFetcher((request) => {
-      const page = request.html === undefined ? undefined : pages.get(request.html);
-
-      return (
-        page ?? {
-          kind: 'failed',
-          reason: 'the test gave the fetcher no page for this HTML',
-          isGated: false,
-        }
-      );
-    }),
-  );
-
-  const sandbox = startFetchSandbox({
-    adapter,
-    image: 'nixie-fetch',
-    argv: ['bun', '/app/fetch.js'],
-    limits: {
-      bodyBytes: 100_000,
-      timeoutMs: 5000,
-      redirects: 0,
-      textBytes: 300_000,
-      imageBytes: 0,
-    },
-    deniedRanges: [],
-    sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
-  });
-
   return {
-    readHTML: (html) => sandbox.readHTML(html),
+    readHTML: (html) =>
+      Promise.resolve(
+        pages.get(html) ?? {
+          kind: 'failed',
+          reason: 'the test gave the reader no page for this HTML',
+          isGated: false,
+        },
+      ),
     answer: (html, page) => {
       pages.set(html, page);
     },
-    stop: () => sandbox.stop(),
   };
 }

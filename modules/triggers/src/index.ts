@@ -76,4 +76,5 @@ export { isWakeMatch } from './wake/is-wake-match';
 export { runWakeFlush } from './wake/run-wake-flush';
 export { startWakeFlush } from './wake/start-wake-flush';
 export type { WakeRulesConfig } from './wake/wake-rules-config-schema';
+export { maxWakeDurationMs, minWakeDurationMs } from './wake/constants';
 export { wakeRulesConfigSchema } from './wake/wake-rules-config-schema';

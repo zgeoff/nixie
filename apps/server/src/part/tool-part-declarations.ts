@@ -11,7 +11,7 @@ import { makeReadErasureStuckPort } from '../erasure/make-read-erasure-stuck-por
 import { addLogForget } from '../forget/add-log-forget';
 import { buildLogForgetTool } from '../forget/build-log-forget-tool';
 import { addMailConnectors } from '../mail/add-mail-connectors';
-import { buildServerMailContext } from '../mail/build-server-mail';
+import { buildServerMailContext } from '../mail/build-server-mail-context';
 import { buildServerMailTools } from '../mail/build-server-mail-tools';
 import { runInForceSeedAndWake } from '../seed/run-in-force-seed-and-wake';
 import { buildActions } from '../test/build-actions';

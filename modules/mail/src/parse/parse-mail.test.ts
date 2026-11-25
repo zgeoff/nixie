@@ -190,7 +190,7 @@ test('#parseMail keeps the HTML of an HTML mail as it came, for the sandbox to r
   ]);
 });
 
-test('#parseMail keeps no HTML for a mail that has a plain part', () => {
+test('#parseMail keeps the HTML beside the plain text of a mail that has both', () => {
   const ctx = setupTest();
 
   const parsed = parseMail(
@@ -211,7 +211,10 @@ test('#parseMail keeps no HTML for a mail that has a plain part', () => {
     ]),
   );
 
-  expect([parsed.text, parsed.html]).toStrictEqual(['See the board.', '']);
+  expect([parsed.text, parsed.html]).toStrictEqual([
+    'See the board.',
+    '<p>See the <b>board</b>.</p>',
+  ]);
 });
 
 test('#parseMail returns the bytes of each attachment beside its name', () => {
@@ -247,4 +250,57 @@ test('#parseMail reads a mail with no Message-ID header as one with none', () =>
   const parsed = parseMail(ctx.buildRaw(['From: a@x.example.org', 'Subject: Hi', '', 'Hello.']));
 
   expect(parsed.messageID).toBeNull();
+});
+
+test.each([
+  [
+    'a quoted display name that holds an address',
+    '"Support support@example.com" <billing@example.net>',
+  ],
+  [
+    'an unquoted display name that holds an address',
+    'Support support@example.com <billing@example.net>',
+  ],
+  [
+    'a quoted display name with a comma and an address',
+    '"Team, support@example.com" <billing@example.net>',
+  ],
+])('#parseMail takes the angle-bracket address from %s', (_name, from) => {
+  const ctx = setupTest();
+  const parsed = parseMail(ctx.buildRaw([`From: ${from}`, 'Subject: Hi', '', 'Hello.']));
+
+  expect(parsed.from).toBe('billing@example.net');
+});
+
+test('#parseMail reads the name of an attachment that holds a semicolon or an extended name', () => {
+  const ctx = setupTest();
+
+  const parsed = parseMail(
+    ctx.buildRaw([
+      'From: a@x.example.org',
+      'Subject: Receipts',
+      'Content-Type: multipart/mixed; boundary="b1"',
+      '',
+      '--b1',
+      'Content-Type: text/plain',
+      '',
+      'Receipts.',
+      '--b1',
+      'Content-Disposition: attachment; filename="receipt;nov.pdf"',
+      'Content-Transfer-Encoding: base64',
+      '',
+      Buffer.from([1]).toString('base64'),
+      '--b1',
+      "Content-Disposition: attachment; filename*=UTF-8''caf%C3%A9.pdf",
+      'Content-Transfer-Encoding: base64',
+      '',
+      Buffer.from([1, 2]).toString('base64'),
+      '--b1--',
+    ]),
+  );
+
+  expect(parsed.attachments).toStrictEqual([
+    { name: 'receipt;nov.pdf', bytes: 1 },
+    { name: 'café.pdf', bytes: 2 },
+  ]);
 });

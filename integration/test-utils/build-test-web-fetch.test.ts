@@ -1,8 +1,7 @@
 import { expect, test } from 'bun:test';
+import { startTestMail, startTestSite } from '@heynixie/mail/test-utils';
 import { buildMockToolCall, buildMockToolContext } from '@heynixie/tools/test-utils';
 import { buildTestWebFetch } from './build-test-web-fetch';
-import { startTestMail } from './start-test-mail';
-import { startTestSite } from './start-test-site';
 
 test('it answers a fetch of a URL with the page that the test site serves for it', async () => {
   const mail = await startTestMail();
