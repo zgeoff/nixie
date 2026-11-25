@@ -33,7 +33,7 @@ therefore refuses a `default_zone` whose offset, in winter or in summer, is not 
 
 ## Prices
 
-Each price has one source:
+Each price that nixie counts has one source in nixie's config:
 
 | Price                  | Source                                                        | Unit                         |
 | ---------------------- | ------------------------------------------------------------- | ---------------------------- |
@@ -58,10 +58,11 @@ a positive amount to nothing.
 
 ## The spend ledger
 
-The `spend_ledger` table holds the money counts that nixie writes, one row per counter, unit and
-period. A row's `ledger_key` joins the four, such as `budget:search-day|micros:USD|day|2026-10-16`.
-The row's `amount` is an integer. The `budget.charged` and `budget.credited` records on no thread
-write the ledger, through a projection, so a rebuild from the records reproduces every row.
+The `spend_ledger` table holds the money counts that nixie writes, one row per counter, unit, period
+kind and period start. A row's `ledger_key` joins the four, such as
+`budget:search-day|micros:USD|day|2026-10-16`. The row's `amount` is an integer. The
+`budget.charged` and `budget.credited` records on no thread write the ledger, through a projection,
+so a rebuild from the records reproduces every row.
 
 A budget charge adds its amount to the row of its key, and a credit subtracts from the row its
 charge added to. The charge record holds its `ledgerKey`, and the `budget_charges` projection keeps

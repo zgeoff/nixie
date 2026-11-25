@@ -69,7 +69,7 @@ same way, per minute, against `call-day` and `call-month` at the default limits.
 its own limits: `image.draw-day` at $2 and `image.draw-month` at $20, and its cost never counts
 toward the spending stop. `run-tool-call` charges both in the transaction that writes the call's
 `tool_called` record, before the provider sees the call, so the record and its charge commit
-together or not at all:
+together or not at all. A call the user approved is the one exception, as the last item says:
 
 - At the limit, the call returns `budget reached: search-day. Resets at midnight.` to the model,
   with no dollar figure, and the provider gets nothing.
@@ -77,7 +77,7 @@ together or not at all:
   credited in the transaction that writes the call's `tool_result` record. An error that sets
   `billed`, because the provider answered before the error, keeps its charges.
 - A tool that throws leaves an unknown outcome, so its charges stand.
-- A call that the owner approved from a held action has its call record from earlier. Before the
+- A call that the user approved from a held action has its call record from earlier. Before the
   provider sees the call, the cap and the budgets are checked and nothing is written. The charge
   then commits in the transaction of the result record, so the result and its charge commit
   together, and a call that errors with no bill charges nothing. The charge can take a budget past

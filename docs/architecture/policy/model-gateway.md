@@ -11,8 +11,8 @@ part of the hard spending stop that the
 [budgets design](../../design/platform/policy/budgets.md#the-hard-spending-stop) describes, and a
 preview host runs one per preview with a small limit.
 
-A sandbox reaches the model API only through its credential broker, so every model call from a
-worker's sandbox passes through the gateway.
+With `spendStop` set, a sandbox reaches the model API only through its credential broker, so every
+model call from a worker's sandbox passes through the gateway.
 [The imp adapter](../connectors/sandboxes.md#the-imp-adapter) sets up the sandbox with no other
 route.
 

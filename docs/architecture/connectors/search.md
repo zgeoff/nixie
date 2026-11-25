@@ -103,8 +103,8 @@ Kagi marks the query's words in a title or a snippet with tags such as `<strong>
 characters as entities such as `&#39;`, so the adapter strips the tags and decodes the entities. The
 adapter takes each hit's date from the day of the `time` Kagi gives the hit, which Kagi's
 [Search API docs](https://kagi.com/api/docs/openapi/search) call the date when the resource was
-created or last updated. Kagi can set the time of day to the moment of the search, so the time of
-day tells the reader nothing about the page, and the adapter drops it.
+created or last updated. Kagi can set the time of day to the moment of the search, so the adapter
+drops the time of day.
 
 ## Settings and the key
 
@@ -125,5 +125,5 @@ deployment whose config sets no credential gets no search tool.
 The key stays in the server's memory. The adapter holds no key: it calls the API URL through a
 [credential store](credentials.md#the-fetcher) fetcher, which adds the key in the `Authorization`
 header on the host and removes it from every response and error, so the key reaches no record, log
-event or sandbox. The server reads the secrets file only at start, so restart it to load a new key.
-A deploy restarts it.
+event or sandbox. The server reads the secrets file only at start, so restart the server to load a
+new key. A deploy restarts it.

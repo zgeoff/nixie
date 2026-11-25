@@ -47,13 +47,13 @@ for a name the store lacks. A limit with no `tokens` sets no token limit. The sa
   as `task.meter_read`, rounded up to the micro. When a read before a step gets no answer, the step
   doesn't start and retries as a step does while the stop is unreachable. When any other read gets
   no answer, the next read catches up, and a task run waits to close until its end read succeeds.
-- A `task.meter_read` sets its task run's ledger row to the run's dollars, in the transaction that
-  writes the record. Today `task.run_ended` sets that row.
+- A `task.meter_read` sets its task run's ledger row to the task run's dollars, in the transaction
+  that writes the record. Today `task.run_ended` sets that row.
 - At a restart, the server registers a sandbox with `PUT` only when the gateway has no such name,
   and patches every other.
-- A worker run keeps today's rule: its limit is the smaller of `workerRun` and what its task run has
-  left, and when the gateway doesn't answer at its end, it charges the larger of its planned dollars
-  and its own tally, recorded in `worker.gateway_charged` as today.
+- A worker run keeps today's rule: its limit is the smaller of `workerRun` and the planned limit
+  above, and when the gateway doesn't answer at its end, it charges the larger of its planned
+  dollars and its own tally, recorded in `worker.gateway_charged` as today.
 - With a gateway, the runner's own pricing of each call, its interrupt at the dollar limit, its read
   of late spend, `task.failed_turn_spent` and `task.turn_spend_unrecorded` go: the sandbox's limit
   replaces them. A step whose sandbox refused it, by `lastRefusal` since the step began, ends with
