@@ -245,7 +245,8 @@ definitions (excerpt)
 voice/prompt.md   the voice-call prompt; nixie ships a default, a deployment's copy replaces it
 voice/voice.yaml  voice: <provider voice name>, hold_after_ms: 1500
 voice/lines.yaml  the fixed lines: holding, reconnect, couldn't finish, budget
-budgets/call-day.yaml, budgets/call-month.yaml   counts: tool:call, limit in dollars
+budgets/call-day.yaml, budgets/call-month.yaml   optional; each replaces the built-in budget of
+                                                 its ID, as for a paid tool
 ```
 
 ### The conversation during a call

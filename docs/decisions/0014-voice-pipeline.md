@@ -14,7 +14,8 @@ the answer to every request and GPT-Live speaks it.
 
 - In the [reply run](../../research/voice-latency/voice-reply.md) on the deployment host, GPT-Live
   and Grok Voice reached first audio within noise of each other, and you heard their voices as
-  equal. Both pipelines in the run spoke through Piper, which you ruled out as nixie's voice.
+  equal. The run's two pipelines of speech-to-text, Claude and text-to-speech spoke through Piper,
+  which you ruled out as nixie's voice.
 - Claude writes every answer to a request, so a request keeps nixie's model choice, memory context
   and route through the [decision point](../architecture/policy/decision-point.md).
 - Once Claude writes the answers, Grok Voice would wait for nixie's turn the same way. What sets the
