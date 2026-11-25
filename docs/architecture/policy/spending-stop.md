@@ -1,9 +1,9 @@
 # The spending stop
 
-The spending stop ends all model spending once the turn limit is reached, and holds the work on each
-route that reached its own dollar limit. It builds on the [model gateway](model-gateway.md), which
-counts each route's dollars, and adds the count of turns, the pause, the raise and the notice. A
-deployment whose config has no `spendStop` has none of it: no spend module context, no watcher and
+The spending stop starts no new model spending once the turn limit is reached, and holds the work on
+each route that reached its own dollar limit. It builds on the [model gateway](model-gateway.md),
+which counts each route's dollars, and adds the count of turns, the pause, the raise and the notice.
+A deployment whose config has no `spendStop` has none of it: no spend module context, no watcher and
 no check before a turn. [Budgets](budgets.md) cover the limits on tool calls and purchases.
 
 ## What stops
@@ -68,14 +68,16 @@ held step ends at once with no step commit. A failed step counts no step error w
 explains it, or when the gateway recorded a refusal of the step's sandbox on the step's route after
 the step began, which the sandbox's `lastRefusal` holds, though the route has since reset or risen.
 
-A clear writes `spend.wait_notice` on the thread of each task that waited, and the model's next wake
-reads that it waited about so many minutes. The notice holds no dollar figure and no route. The read
-cursor moves only through an unbroken run of read records, so a notice that falls past the wake's
-batch, at the
+A clear writes `spend.wait_notice` on the thread of each task that waited. On its next wake, the
+model reads about how many minutes the task waited. The wait notice holds no dollar figure and no
+route. The read cursor moves only through an unbroken run of read records, so a notice that falls
+past the wake's batch, at the
 [batch limit or an image cap](../core/conversation-turns.md#inbox-records-as-messages), can't join
-that batch. The turn's opening message tells it instead, with no inbox ID, and the turn end records
-the newest such notice as `waitNoticeToldThrough`. A later batch that reaches a told notice takes it
-with no text, and a step whose inbox holds only told notices marks them read and runs no turn.
+that batch. Instead, the turn's opening message carries the notice, with no inbox ID. Once the model
+reads the opening message, the turn end lists each notice that message carried in `waitNoticesTold`.
+A later batch that reaches a told notice marks it read and sends the model no text for it, and the
+image check before a resumed turn passes over it. A step whose inbox holds only told notices marks
+them read and runs no turn, even when the session's summary fails.
 
 ## The watcher
 
@@ -90,9 +92,10 @@ transaction:
 - When the stop it reads, or whether the gateway answers, differs from its last read, the watcher
   calls `publishChanged` with the `spend` topic, so an open client reads `spend.read` again. The
   [live stream](../channels/live-updates.md#topics) carries it, because no write makes that change.
-- When the gateway did not answer at the start, the watcher trips on its first poll that finds no
-  answer, and clears when the gateway answers. A start that finds the gateway's lost mark standing
-  logs `spend.gateway_lost`, and the first poll trips the stop.
+- When the gateway did not answer at the start, the watcher trips the stop as `unreachable` on its
+  first poll that finds no answer, and clears it when the gateway answers. A start that finds the
+  gateway's lost mark standing logs `spend.gateway_lost`, and the first poll trips the stop as
+  `lost`.
 
 The spending pause raises the database's reader gate to the spend migration, so the release before
 refuses to open the database while the pause stands. When the pause takes another cause, the gate
@@ -136,16 +139,18 @@ While the stop stands, the API refuses `nixie.resume` and a task's resume, whate
 cause, with the way the stop clears. A pause and a stop of a task work as usual. When the user
 pauses nixie while the stop stands, the cause becomes `owner`, and the clear leaves nixie paused.
 
-`spend.read` gives the notice: the stop of nixie and each route that stands stopped. `spend.raise`
-takes the day's start and either a route with its dollars, the turns, or both, and works for a day
-trip only. It calls the gateway's `POST /raise` with the route and its dollars, then writes
+`spend.read` gives the stop of nixie and each route that stands stopped. `spend.raise` takes the
+day's start and either a route with its dollars, the turns, or both, and works for a day trip only.
+It calls the gateway's `POST /raise` with the route and its dollars, then writes
 `spend.limit_raised` with the session as `by`. A total above a cap, the gateway's for a route's
 dollars or the config's for turns, comes back as `above_cap` with the measure, the route and the
 cap, and writes nothing. A route the gateway does not hold comes back as `unknown_route`. A raise of
-a route's dollars never pauses nixie and clears the route's stop. The host command
-`nixie spend raise --turns <n>` raises the day's turns past the turn cap, and writes the host as
-`by`. A route's dollars pass its cap only through the gateway's own `raise` command, and the month's
-limits move only in the gateway's config.
+a route's dollars never pauses nixie. It clears the route's stop when the raised limit passes the
+route's spend, and restates the stop when it does not.
+
+The host command `nixie spend raise --turns <n>` raises the day's turns past the turn cap, and
+writes the host as `by`. A route's dollars pass its cap only through the gateway's own `raise`
+command, and the month's limits move only in the gateway's config.
 
 The web client shows the notice under the pause banner. A turn trip of the day offers "Raise today's
 limit" with today's limit plus half, up to the cap, and the amount stays editable until the one

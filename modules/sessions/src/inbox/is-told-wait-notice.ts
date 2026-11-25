@@ -4,7 +4,7 @@ import type { LogRecord } from '@heynixie/log';
 // text.
 export function isToldWaitNotice(
   record: Pick<LogRecord, 'kind' | 'sequence'>,
-  toldThrough: number,
+  told: ReadonlySet<number>,
 ): boolean {
-  return record.kind === 'spend.wait_notice' && record.sequence <= toldThrough;
+  return record.kind === 'spend.wait_notice' && told.has(record.sequence);
 }

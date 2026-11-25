@@ -24,28 +24,7 @@ test('it reads no earlier core and no invalidation before the first turn', async
     compactionFailures: 0,
     images: { bytes: 0, count: 0 },
     isTurnCut: false,
-    waitNoticeToldThrough: 0,
   });
-});
-
-test.each([
-  { name: 'a turn end that told wait notices', payload: { waitNoticeToldThrough: 70 }, told: 70 },
-  { name: 'a turn end from before turns told wait notices', payload: {}, told: 0 },
-])('it reads the wait notices told through $told from $name', async (row) => {
-  const ctx = await setupTest();
-
-  await writeRecords(ctx.tasks.context.log, [
-    {
-      kind: 'model.turn_ended',
-      definitions: { snapshotHash: 'sha256:test' },
-      thread: 'conversation',
-      payload: { stopReason: 'end_turn', ...row.payload },
-    },
-  ]);
-
-  const marks = await readSessionMarks(ctx.tasks.context, 'conversation');
-
-  expect(marks.waitNoticeToldThrough).toBe(row.told);
 });
 
 test.each([

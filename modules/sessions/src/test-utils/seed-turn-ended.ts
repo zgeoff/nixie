@@ -50,7 +50,7 @@ export async function seedTurnEnded(context: TasksContext): Promise<LogRecord> {
     silent: new Set<number>(),
     hasMore: false,
     notedThrough: null,
-    waitNoticeToldThrough: null,
+    waitTelling: null,
     images: { bytes: 0, count: 0 },
     isSilent: false,
     runID: 'seed-step@1',

@@ -32,9 +32,11 @@ export interface InboxRead {
   // reads the gaps that the first message of the read shows
   readonly gaps?: GapReader;
 
-  // the newest wait notice that a turn's opening told, which the read takes with no text
-  readonly waitNoticeToldThrough?: number;
+  // the wait notices that a turn's opening told, which the read takes with no text
+  readonly toldWaitNotices?: ReadonlySet<number>;
 }
+
+const noneTold: ReadonlySet<number> = new Set();
 
 export interface InboxMessages {
   // the records that the read took, in order: each one that has a message, and each silent one
@@ -61,7 +63,7 @@ export async function readInboxMessages(
       continue;
     }
 
-    if (isSilentRecord(record) || isToldWaitNotice(record, read.waitNoticeToldThrough ?? 0)) {
+    if (isSilentRecord(record) || isToldWaitNotice(record, read.toldWaitNotices ?? noneTold)) {
       taken.push(record);
       silent.push(record);
       continue;

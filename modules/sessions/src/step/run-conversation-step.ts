@@ -20,6 +20,7 @@ import { openStepCapture } from '../utils/open-step-capture';
 import { parseSessionBoundary } from '../utils/parse-session-boundary';
 import type { SessionMarks } from '../utils/read-session-marks';
 import { readSessionMarks } from '../utils/read-session-marks';
+import { readToldWaitNotices } from '../utils/read-told-wait-notices';
 import { isStepTurnCut } from './is-step-turn-cut';
 import { pickSessionPosition } from './pick-session-position';
 import { voidLostReplies } from './void-lost-replies';
@@ -147,7 +148,18 @@ function runSessionTurn(conversation: ConversationRun, input: StepInput): Promis
         threshold: run.compaction.threshold,
       });
 
-      const step = { run, input, signal, definitions, skillCatalog, marks, position };
+      const toldWaitNotices = await readToldWaitNotices(run.context, input.taskID, input.inbox);
+
+      const step = {
+        run,
+        input,
+        signal,
+        definitions,
+        skillCatalog,
+        marks,
+        position,
+        toldWaitNotices,
+      };
 
       const result = await runSessionStep(step);
 
@@ -174,7 +186,7 @@ async function runSessionStep(step: SessionStep): Promise<StepResult> {
 
   // a wait notice that an earlier turn's opening told needs no turn of its own
   const isAllTold = step.input.inbox.every((record) =>
-    isToldWaitNotice(record, step.marks.waitNoticeToldThrough),
+    isToldWaitNotice(record, step.toldWaitNotices),
   );
 
   if (

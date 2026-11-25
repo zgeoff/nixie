@@ -26,6 +26,7 @@ export async function runResumedTurn(
     inbox: step.input.inbox,
     wake: step.input.wake,
     images: step.marks.images,
+    toldWaitNotices: step.toldWaitNotices,
   });
 
   return isFull ? runRebuiltTurn(step, session, 'images') : runBoundaryTurn(step, session);

@@ -23,12 +23,15 @@ async function setupTest() {
 
   return {
     ...spend,
-    readInbox: (inbox: Parameters<typeof readTurnBatch>[1], waitNoticeToldThrough = 0) =>
+    readInbox: (
+      inbox: Parameters<typeof readTurnBatch>[1],
+      toldWaitNotices: ReadonlySet<number> = new Set(),
+    ) =>
       readTurnBatch({ log: spend.log, readDefinitionVersion: () => Promise.resolve(null) }, inbox, {
         times: { defaultZone: 'UTC', now: new Date(spend.clock.now()) },
         view: buildMockTaskMessageView(),
         imageBudget: { bytes: 24 * 1024 * 1024, count: 100 },
-        waitNoticeToldThrough,
+        toldWaitNotices,
       }),
     settle,
     readWaitNotices: () =>
@@ -81,7 +84,7 @@ test("it takes a notice that a turn's opening told with no text, so the read cur
 
   const inbox = notices.map((notice) => notice.record);
 
-  const batch = await ctx.readInbox(inbox, inbox.at(-1)?.sequence);
+  const batch = await ctx.readInbox(inbox, new Set(inbox.map((record) => record.sequence)));
 
   expect(batch).toStrictEqual({ records: inbox, messages: [], silent: inbox });
 });

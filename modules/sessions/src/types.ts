@@ -296,6 +296,9 @@ export interface SessionStep {
   readonly signal: AbortSignal;
   readonly marks: SessionMarks;
   readonly position: SessionPosition;
+
+  // the wait notices in the inbox that an earlier turn's opening told
+  readonly toldWaitNotices: ReadonlySet<number>;
 }
 
 export interface InboxPlan {

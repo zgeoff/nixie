@@ -38,9 +38,6 @@ export interface SessionMarks {
 
   // whether an interrupt cut the newest turn before the model's own end_turn, so its work is not done
   readonly isTurnCut: boolean;
-
-  // the newest wait notice past a batch that the newest turn's opening told, or 0 for none
-  readonly waitNoticeToldThrough: number;
 }
 
 export async function readSessionMarks(
@@ -95,7 +92,6 @@ export async function readSessionMarks(
     compactionFailures: countFailures(failed.at(0), Math.max(openedThrough, summarizedThrough)),
     images: toImages(ended),
     isTurnCut: ended?.isInterrupted === true,
-    waitNoticeToldThrough: ended?.waitNoticeToldThrough ?? 0,
   };
 }
 

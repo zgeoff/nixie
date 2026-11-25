@@ -24,7 +24,7 @@ interface OpeningRead {
   readonly replies?: InboxRead['replies'];
   readonly gaps?: InboxRead['gaps'];
 
-  readonly waitNoticeToldThrough: number;
+  readonly toldWaitNotices: ReadonlySet<number>;
 }
 
 export async function readOpeningBatch(
@@ -41,7 +41,7 @@ export async function readOpeningBatch(
     },
     ...(read.replies === undefined ? {} : { replies: read.replies }),
     ...(read.gaps === undefined ? {} : { gaps: read.gaps }),
-    waitNoticeToldThrough: read.waitNoticeToldThrough,
+    toldWaitNotices: read.toldWaitNotices,
   });
 
   const spent = mergeImageTallies(

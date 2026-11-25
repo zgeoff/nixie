@@ -17,6 +17,14 @@ import type { GuestTurn } from '../utils/run-guest-turn';
 import { checkEndedContract } from './check-ended-contract';
 import { ModelAuthError } from './model-auth-error';
 
+export interface WaitTelling {
+  // the wait notices past the batch that the turn's opening told
+  readonly sequences: readonly number[];
+
+  // the uuid of the message that carried the opening
+  readonly carrierUUID: string;
+}
+
 export interface CompletedTurn {
   readonly turn: GuestTurn;
 
@@ -30,8 +38,8 @@ export interface CompletedTurn {
 
   readonly notedThrough: number | null;
 
-  // the newest wait notice past the batch, which the turn's opening told now or an earlier turn's did
-  readonly waitNoticeToldThrough: number | null;
+  // the wait notices that the turn's opening told, or null for none
+  readonly waitTelling: WaitTelling | null;
 
   readonly images: ImageTally;
 
@@ -124,9 +132,7 @@ function buildTurnRecords(source: ModelRecordSource, completed: StepTurn): reado
         ? {}
         : { recalledThrough: completed.turn.endedMark }),
       ...(completed.notedThrough === null ? {} : { memoryNotedThrough: completed.notedThrough }),
-      ...(completed.waitNoticeToldThrough === null
-        ? {}
-        : { waitNoticeToldThrough: completed.waitNoticeToldThrough }),
+      ...buildWaitNoticesTold(completed),
     }),
   ];
 }
@@ -208,4 +214,14 @@ function buildThinkingTokens(turn: GuestTurn): number {
 
 function buildCutCalls(turn: GuestTurn): number {
   return turn.ended.reduce((total, frame) => total + (frame.cutCalls ?? 0), 0);
+}
+
+// A turn that never read the message carrying its opening told nothing, so the next turn tells
+// the notices again.
+function buildWaitNoticesTold(completed: StepTurn): { readonly waitNoticesTold?: number[] } {
+  const telling = completed.waitTelling;
+
+  return telling === null || !completed.turn.read.includes(telling.carrierUUID)
+    ? {}
+    : { waitNoticesTold: [...telling.sequences] };
 }
