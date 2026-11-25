@@ -14,10 +14,10 @@ module into the server. The
 [coding session runner design](../../design/queue/coding-session-runner/README.md) covers that
 adapter.
 
-[Tasks](./tasks.md) covers the state machine, the inbox and the controls that a coding task shares
-with every task. [Actions](./actions.md) covers the queue that carries each call that changes the
-session, and [triggers](./triggers.md) covers the core that lands each session event on a task's
-thread.
+Read this doc before you change the coding module or write an adapter for it. [Tasks](./tasks.md)
+covers the state machine, the inbox and the controls that a coding task shares with every task.
+[Actions](./actions.md) covers the queue that carries each call that changes the session, and
+[triggers](./triggers.md) covers the core that lands each session event on a task's thread.
 
 ## The bound session
 
@@ -74,9 +74,11 @@ reply counts its hop from the message it answers, so an exchange through a sessi
 give each origin its default, and a start or `coding.watch` can replace it. The defaults wake a task
 that joined a session only on `waiting`, `ended` and `gone`, because the user already watches that
 session. An event in the wake set wakes the task, and the step forwards it to the report target as a
-progress message. An event outside the set lands on the task's thread and wakes nothing. An `ended`
-state always wakes the task, so the task ends with its session, and forwards a progress message only
-when the wake set lists `ended`.
+progress message. Any other event lands on the task's thread and wakes nothing, with 2 exceptions:
+
+- An `ended` state wakes the task whatever the wake set holds, so the task ends with its session.
+  The step forwards it only when the wake set lists `ended`.
+- An answer to a note wakes the task, so the step can reply to the note's sender.
 
 ## Tools
 
@@ -100,8 +102,8 @@ then fails, and the next step tells the report target.
 Each adapter has one [trigger source](./triggers.md), with the ID `coding:<adapter ID>`, which reads
 the adapter's event trail from a cursor. The source drops each event of a session that no open
 coding task binds, and hands every other event to the trigger core as a task input on its task's
-thread, with a `wake` flag from the wake set. The core keys each input by the event's own key, so an
-event that the source reads twice lands once.
+thread, with a `wake` flag that follows the rules in [steps](#steps). The core keys each input by
+the event's own key, so an event that the source reads twice lands once.
 
 At its first start the source keeps only the cursor of its first read, so it never replays the whole
 trail. A session bound after the cursor passed its earlier events is caught up from the cursor that
