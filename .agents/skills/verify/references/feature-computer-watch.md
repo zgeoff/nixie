@@ -23,8 +23,8 @@ Run this journey on `local` only. The stand-in desktop exists only in `local`'s 
 because it needs `local`.
 
 Before you start, run [sign-in-enrol](feature-sign-in-enrol.md) in the same `up`, when you have not
-run it since `up`. Step 5 needs the approval that [computer-browser](feature-computer-browser.md)
-gives, so run that journey first in the same `up`.
+run it since `up`. Run [computer-browser](feature-computer-browser.md) first in the same `up`: its
+tab is `t1`, which step 8 expects the 2 new tabs to follow.
 
 After this journey, run `bun verify up --restart`, `bun verify doctor` and sign-in-enrol before any
 journey that sends a message. The hand-back record starts a conversation turn, and the journey gives
@@ -69,17 +69,31 @@ that turn no reply, so the turn fails.
 
    Expect: all three commands exit 0. The second visit watches again with a new address.
 
-5. Open 2 tabs in the assistant's browser, so the hand-back in step 8 has 2 tabs to list. The
-   approval from computer-browser covers the site, so nothing waits for an answer:
+5. Open 2 tabs in the assistant's browser, so the hand-back in step 8 has 2 tabs to list. nixie
+   holds each open until the user approves it, and gives the model a tool result of `queued` at
+   once, so the reply arrives first. Script a reply for the turn that an approval starts, then
+   approve both held calls. The second approval's turn gets no reply, and no step checks it:
 
    ```bash
    bun verify action use-computer --kind browser-two-tabs --text 'The assistant opened 2 tabs.'
    bun verify conversation turn --message 'Open the page in two tabs of your browser.' --reply 'The assistant opened 2 tabs.'
+   bun verify action script-reply --text 'Thanks, I have your answer.'
+   bun verify browser goto /proposals
+   bun verify browser snapshot
+   ```
+
+   Expect: each command exits 0, and `data.replies` of the first is 3. The snapshot shows 2 items
+   that read "Run computer.browser_open to pages.test:", then a port, then "(fetch).". For each
+   item, click the line that holds that text and `[cursor=pointer]`, take a snapshot, and click the
+   button whose name starts with `Run computer.browser_open to pages.test:`. Each snapshot gives
+   every element a new `ref`, so take each `ref` from the snapshot just before its click. Then check
+   that both calls ran:
+
+   ```bash
    bun verify db query "select count(*) as opened from records where kind = 'action.outcome' and json_extract(payload, '$.tool') = 'computer.browser_open' and json_extract(payload, '$.status') = 'done'"
    ```
 
-   Expect: each command exits 0, and `data.replies` of the first is 3. The query returns one row,
-   with `opened` at least 2.
+   Expect: one row, with `opened` 3: the open of computer-browser and the 2 new ones.
 
 6. Script the assistant's ask for a take-over, send a message, and wait for the banner. The scripted
    turn calls `computer.handover` with the reason, then replies:
@@ -133,7 +147,7 @@ that turn no reply, so the turn fails.
   the desktop image.
 - In step 3, no stored result held a watch address.
 - In step 4, a second visit watched again.
-- In step 5, the assistant opened 2 tabs, and nixie held at least 2 finished `computer.browser_open`
+- In step 5, the assistant opened 2 tabs, and nixie held 3 finished `computer.browser_open`
   outcomes.
 - In step 6, the page showed the banner with the assistant's reason, and nixie held one
   `computer.handover_asked` record.
