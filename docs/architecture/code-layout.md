@@ -140,9 +140,9 @@ A few imports belong to one package each:
 | ONNX Runtime and its tokenizer      | `adapters/encoder-onnx`             |
 
 The `zgeoff/import-zones` lint rule refuses each of these imports outside its one package. The Agent
-SDK has one exception: the SDK contract suite and the eval helpers in `evals/` drive the SDK itself,
-to check the behaviours nixie relies on, so the rule lets them import it. The rule covers
-`bun:sqlite`, which Bun provides with no declared dependency. Lint also refuses `require`,
+SDK has one exception: the SDK contract suite and the memory checker's eval in `evals/` drive the
+SDK itself, to check the behaviours nixie relies on, so the rule lets them import it. The rule
+covers `bun:sqlite`, which Bun provides with no declared dependency. Lint also refuses `require`,
 `import.meta.require`, `node:module` and any `import()` whose specifier the rule cannot read, so no
 import escapes the zones. The Agent SDK runs only inside a sandbox
 ([0003](../decisions/0003-sdk-placement.md)), and one package owns each outside system.
@@ -217,11 +217,11 @@ The other packages each hold one piece the modules and apps share:
 
 ## Tests and checks
 
-Tests run on `bun test`, and each test sits beside the module it tests, as `x.test.ts` beside
-`x.ts`. A lint rule refuses a test file with no module of its name beside it. The only test folders
-at the root are 2, `integration/`, which runs one flow across several packages in one process, and
-`evals/`, which checks committed evaluation reports against the code. Each app that a test starts as
-a program holds its whole-program suites in its own `e2e/` folder, such as the
+Tests run on `bun test`, and each unit test sits beside the module it tests, as `x.test.ts` beside
+`x.ts`. A lint rule refuses a test file outside `e2e/` with no module of its name beside it. The
+only test folders at the root are 2, `integration/`, which runs one flow across several packages in
+one process, and `evals/`, which checks committed evaluation reports against the code. Each app that
+a test starts as a program holds its whole-program suites in its own `e2e/` folder, such as the
 [crash tests](core/crash-tests.md) in `apps/server/e2e/`. Their helpers live in packages: the
 spawned-nixie harness in the server's test utilities, the helpers that build the web client and the
 backup job in those apps' test utilities, and the eval helpers in the memory module and the

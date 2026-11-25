@@ -27,7 +27,7 @@ Use one project for this nixie alone. A revocation reaches every client of a pro
 nixie in the same project would lose its grant when you forget a connection here.
 
 1. Open the [new project page](https://console.cloud.google.com/projectcreate) and create a project.
-2. Note the project number on the project's dashboard. The Drive picker needs it.
+2. When you want the Drive picker, note the project number on the project's dashboard.
 
 ## Turn on the APIs
 
@@ -83,9 +83,10 @@ another one. nixie refuses while a connection that is not forgotten uses the cli
 
 Expect: Google sends you back to nixie, on the page of the new connection. Its status is Active.
 
+The setup ends here. Come back to this guide when you want to forget the connection.
+
 When you untick a scope on Google's page, the connection still works. Its page lists each missing
-scope with the tools it holds back, and a button to ask Google again. The conversation never shows
-that notice.
+scope, and a button to ask Google again. The conversation never shows that notice.
 
 ## The unverified-app warning
 

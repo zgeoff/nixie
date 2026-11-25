@@ -185,10 +185,11 @@ discarded or lost record closes. The provider may hold a token nixie never saved
 spent one may not end it, so `recover` marks the credential `needs_consent` and writes
 `credential.refresh_lost` for the refresh. When a credential's removal counter moved since the
 refresh began, a removal or a new consent replaced what the refresh could touch, so `recover` only
-closes the refresh and leaves the status. The next start finds nothing. The check reads the log
-alone, so it holds after a crash that loses the held backend's memory. The server runs `recover` at
-each start, over the credential database, and the crash suite `recover-credential-refresh.test.ts`
-kills the process during a refresh and checks the status after the restart.
+closes the refresh and leaves the status. The next start finds nothing. The check finds each open
+refresh in the log, and reads the counter and the token from the credential database. The server
+runs `recover` at each start, over the credential database, and the crash suite
+`recover-credential-refresh.test.ts` kills the process during a refresh and checks the status after
+the restart.
 
 ## Grants
 

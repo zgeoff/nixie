@@ -42,7 +42,7 @@ adds four test-only parts:
   stale writer epoch. A guest leads its own process group and would otherwise outlive nixie, which a
   host that loses nixie never allows.
 
-The release build drops 3 more reads that only the test build makes:
+The release build drops 3 more test-only paths:
 
 - `NIXIE_TEST_ATC_URL` points the coding runner at a double of atc-gateway, because the
   configuration accepts only an `https` URL.
