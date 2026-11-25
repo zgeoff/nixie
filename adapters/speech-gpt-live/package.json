@@ -21,7 +21,6 @@
   "devDependencies": {
     "@heynixie/egress": "workspace:*",
     "@heynixie/testing": "workspace:*",
-    "@zgeoff/testing": "catalog:",
-    "tiny-invariant": "catalog:"
+    "@zgeoff/testing": "catalog:"
   }
 }

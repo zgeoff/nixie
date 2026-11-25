@@ -108,7 +108,7 @@ export type CredentialSocketOpener = (
   init?: CredentialSocketInit,
 ) => Promise<CredentialSocket>;
 
-export interface CredentialSocketInit {
+interface CredentialSocketInit {
   readonly signal?: AbortSignal;
 
   // how long the handshake may take; 30 s when left out
