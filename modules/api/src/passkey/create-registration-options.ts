@@ -2,11 +2,12 @@ import type { ContractOutputs } from '@heynixie/contract';
 import { withWriteTransaction } from '@heynixie/log';
 import type { PasskeyFailure } from '@heynixie/proposals';
 import { generateRegistrationOptions } from '@simplewebauthn/server';
+import invariant from 'tiny-invariant';
 import { normalizeEnrolmentCode } from '../enrolment/normalize-enrolment-code';
 import type { APIContext, Identity } from '../types';
 import { deriveSecretHash } from '../utils/derive-secret-hash';
 import type { Assertion } from './challenge-for';
-import { createPasskeyCheck } from './create-passkey-check';
+import { checkPasskey } from './check-passkey';
 import { parseRegistrationOrigin } from './parse-registration-origin';
 import { challengeLifetimeMs, codeLifetimeMs, maxLivePasskeys } from './passkey-state';
 import { readAllPasskeys } from './read-all-passkeys';
@@ -75,18 +76,24 @@ export function createRegistrationOptions(
 
         context.passkeys.code.current = null;
       } else if (request.assertion !== undefined && live.length > 0) {
-        const verdict = await createPasskeyCheck(context).verify(
-          tx,
-          request.caller,
-          { kind: 'register' },
-          request.assertion,
-        );
+        const outcome = await checkPasskey(context, tx, {
+          caller: request.caller,
+          binding: { kind: 'register' },
+          assertion: request.assertion,
+        });
 
-        if ('error' in verdict) {
-          return { status: 'failed', reason: verdict.reason };
+        if ('error' in outcome) {
+          invariant(
+            outcome.error === 'PASSKEY_FAILED',
+            'a live passkey and an assertion leave only a failed check',
+          );
+
+          return { status: 'failed', reason: outcome.reason };
         }
 
-        authorizedBy = verdict.passkeyID;
+        invariant(outcome.passkeyID !== null, 'an always-ask check never passes on a window');
+
+        authorizedBy = outcome.passkeyID;
       } else {
         return { status: 'code_required' };
       }

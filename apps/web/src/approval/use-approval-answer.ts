@@ -3,7 +3,7 @@ import { ORPCError } from '@orpc/client';
 import { useMutation } from '@tanstack/react-query';
 import { useRef } from 'react';
 import { z } from 'zod';
-import { askPasskey } from '../passkey/ask-passkey';
+import { askPasskeyUnlessOpen } from '../passkey/ask-passkey-unless-open';
 import { useNixieClient } from '../utils/use-nixie-client';
 
 type ApprovalAnswerInput = Omit<
@@ -58,7 +58,7 @@ export function useApprovalAnswer(options: ApprovalAnswerOptions): ApprovalAnswe
 
       try {
         const passkey = options.passkeyChoices.includes(input.choice)
-          ? await askPasskey(client, {
+          ? await askPasskeyUnlessOpen(client, {
               kind: 'answer',
               proposalID: input.proposalID,
               actionHash: input.actionHash,

@@ -4,6 +4,7 @@ import type { APIContext } from '../types';
 import { apiImplementer } from '../utils/api-implementer';
 import { createPasskeyChallenge } from './create-passkey-challenge';
 import { createRegistrationOptions } from './create-registration-options';
+import { isPasskeyWindowOpen } from './is-passkey-window-open';
 import { readAllPasskeys } from './read-all-passkeys';
 import { writePasskeyRevocation } from './write-passkey-revocation';
 import { writeRegistration } from './write-registration';
@@ -29,6 +30,16 @@ export function createPasskeyProcedures(context: APIContext) {
       }
 
       return { options: { ...issued, allowCredentials: [] } };
+    }),
+
+    window: passkeys.window.handler(async (options) => {
+      const caller = await requireCaller(
+        context,
+        options.context.sessionToken,
+        options.errors.UNAUTHORIZED,
+      );
+
+      return { isOpen: isPasskeyWindowOpen(context, caller.identityID, options.input.for) };
     }),
 
     registrationOptions: passkeys.registrationOptions.handler(async (options) => {

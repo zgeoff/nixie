@@ -5,8 +5,9 @@ import { probeLiveIdentity } from '../utils/probe-live-identity';
 import { readClientAction } from '../utils/read-client-action';
 import { writeClientAction } from '../utils/write-client-action';
 import type { Assertion } from './challenge-for';
+import { checkPasskey } from './check-passkey';
+import type { PasskeyOutcome } from './check-passkey';
 import type { PasskeyVerdict } from './create-passkey-check';
-import { createPasskeyCheck } from './create-passkey-check';
 import { updatePasskeyRevoked } from './update-passkey-revoked';
 
 interface RevocationRequest {
@@ -15,9 +16,11 @@ interface RevocationRequest {
   readonly assertion: Assertion;
 }
 
+type FailedVerdict = Extract<PasskeyVerdict, { error: string }>;
+
 export type PasskeyRevocationResult =
   | { readonly status: 'revoked'; readonly revokedAt: number }
-  | { readonly status: 'failed'; readonly verdict: Extract<PasskeyVerdict, { error: string }> }
+  | { readonly status: 'failed'; readonly verdict: FailedVerdict }
   | { readonly status: 'not_found' }
   | { readonly status: 'reused' }
   | { readonly status: 'unauthorized' };
@@ -59,15 +62,14 @@ export function writePasskeyRevocation(
       return { status: 'not_found' };
     }
 
-    const verdict = await createPasskeyCheck(context).verify(
-      tx,
+    const outcome = await checkPasskey(context, tx, {
       caller,
-      { kind: 'revoke', passkeyID: request.passkeyID },
-      request.assertion,
-    );
+      binding: { kind: 'revoke', passkeyID: request.passkeyID },
+      assertion: request.assertion,
+    });
 
-    if ('error' in verdict) {
-      return { status: 'failed', verdict };
+    if ('error' in outcome) {
+      return { status: 'failed', verdict: toVerdict(outcome) };
     }
 
     const revokedAt = await updatePasskeyRevoked(tx, context, {
@@ -86,4 +88,11 @@ export function writePasskeyRevocation(
 
     return { status: 'revoked', revokedAt };
   });
+}
+
+// A revoke with no live passkey fails as the unknown passkey it would have named.
+function toVerdict(outcome: Extract<PasskeyOutcome, { error: string }>): FailedVerdict {
+  return outcome.error === 'PASSKEY_FAILED'
+    ? outcome
+    : { error: 'PASSKEY_FAILED', reason: 'unknown_passkey' };
 }

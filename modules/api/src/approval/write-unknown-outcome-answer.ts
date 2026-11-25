@@ -5,8 +5,7 @@ import type { PasskeyRefusal } from '@heynixie/proposals';
 import type { Transaction } from 'kysely';
 import { z } from 'zod';
 import type { Assertion } from '../passkey/challenge-for';
-import { createPasskeyCheck } from '../passkey/create-passkey-check';
-import { readLivePasskeys } from '../passkey/read-live-passkeys';
+import { checkPasskey } from '../passkey/check-passkey';
 import type { APIContext, Identity } from '../types';
 import { buildInputHash } from '../utils/build-input-hash';
 import { probeLiveIdentity } from '../utils/probe-live-identity';
@@ -70,7 +69,7 @@ export function writeUnknownOutcomeAnswer(
         return { status: 'not_allowed', reason: 'not_waiting' };
       }
 
-      const refusal = await checkPasskey(context, tx, { caller, answer, riskClass });
+      const refusal = await checkRetryPasskey(context, tx, { caller, answer, riskClass });
 
       if (refusal !== null) {
         return { status: 'passkey_refused', refusal };
@@ -105,7 +104,7 @@ interface PasskeyRequest {
 }
 
 // A retry of an action that ran under an always-ask approval takes a passkey, because it sends again.
-async function checkPasskey(
+async function checkRetryPasskey(
   context: APIContext,
   tx: Transaction<unknown>,
   request: PasskeyRequest,
@@ -116,22 +115,11 @@ async function checkPasskey(
     return null;
   }
 
-  const live = await readLivePasskeys(tx);
+  const outcome = await checkPasskey(context, tx, {
+    caller: request.caller,
+    assertion: request.answer.passkey,
+    binding: { kind: 'unknown_outcome', actionID: request.answer.actionID, choice: 'retry' },
+  });
 
-  if (live.length === 0) {
-    return { error: 'NO_PASSKEY' };
-  }
-
-  if (request.answer.passkey === undefined) {
-    return { error: 'PASSKEY_REQUIRED' };
-  }
-
-  const verdict = await createPasskeyCheck(context).verify(
-    tx,
-    request.caller,
-    { kind: 'unknown_outcome', actionID: request.answer.actionID, choice: 'retry' },
-    request.answer.passkey,
-  );
-
-  return 'error' in verdict ? verdict : null;
+  return 'error' in outcome ? outcome : null;
 }

@@ -73,8 +73,9 @@ first that fails:
    with approving a memory write, and a defer time lies within the limits the host sets. Otherwise
    the answer is refused as not allowed.
 5. For an `approve` or `always_allow` on an `always_ask` or `lifting` row, the caller's passkey
-   assertion passes the [passkey check](./passkeys.md). Otherwise the answer is refused as
-   `NO_PASSKEY`, `PASSKEY_REQUIRED` or `PASSKEY_FAILED`, and the refusal is not stored.
+   assertion, or the caller's open [passkey window](./passkeys.md#the-window), passes the
+   [passkey check](./passkeys.md). Otherwise the answer is refused as `NO_PASSKEY`,
+   `PASSKEY_REQUIRED` or `PASSKEY_FAILED`, and the refusal is not stored.
 
 Approving an action proposal queues the action once, under the proposal's ID, as
 [actions](../core/actions.md#approved-actions) describes. That holds for a call to a tool that runs

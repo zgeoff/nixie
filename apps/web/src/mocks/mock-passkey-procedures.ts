@@ -26,6 +26,12 @@ export const mockPasskeyProcedures = {
     };
   }),
 
+  window: passkeys.window.handler((options) => {
+    requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+    return { isOpen: false };
+  }),
+
   registrationOptions: passkeys.registrationOptions.handler((options) => {
     requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
 

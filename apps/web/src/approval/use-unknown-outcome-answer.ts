@@ -2,7 +2,7 @@ import type { ContractInputs } from '@heynixie/contract';
 import { ORPCError } from '@orpc/client';
 import { useMutation } from '@tanstack/react-query';
 import { useRef } from 'react';
-import { askPasskey } from '../passkey/ask-passkey';
+import { askPasskeyUnlessOpen } from '../passkey/ask-passkey-unless-open';
 import { useNixieClient } from '../utils/use-nixie-client';
 
 type UnknownChoice = ContractInputs['approvals']['answerUnknownOutcome']['choice'];
@@ -46,7 +46,7 @@ export function useUnknownOutcomeAnswer(
 
       try {
         const passkey = options.passkeyChoices.includes(choice)
-          ? await askPasskey(client, {
+          ? await askPasskeyUnlessOpen(client, {
               kind: 'unknown_outcome',
               actionID: options.actionID,
               choice: 'retry',

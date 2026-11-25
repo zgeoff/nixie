@@ -37,6 +37,10 @@ export const passkeyContract = {
     .input(z.object({ for: challengeForSchema }))
     .output(z.object({ options: requestOptionsSchema })),
 
+  window: signedIn
+    .input(z.object({ for: challengeForSchema }))
+    .output(z.object({ isOpen: z.boolean() })),
+
   registrationOptions: signedIn
     .errors(registrationErrors)
     .errors({
