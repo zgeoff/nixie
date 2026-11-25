@@ -154,9 +154,7 @@ function runAppended(
     return;
   }
 
-  if (line.startMs === null) {
-    line.startMs = startMs;
-  }
+  line.startMs ??= startMs;
 
   // each part starts the line playing again, after a gap between the parts
   line.isPlaying = true;

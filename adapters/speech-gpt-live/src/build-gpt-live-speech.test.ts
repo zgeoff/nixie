@@ -369,7 +369,7 @@ test('it splits an answer past the provider limit into parts on the same delegat
   const ctx = await setupTest();
   const session = await ctx.openSession();
 
-  const text = `${'The plumber comes on Monday. '.repeat(100)}`.trim();
+  const text = 'The plumber comes on Monday. '.repeat(100).trim();
 
   await ctx.speech.answer(session.opened.sessionID, 'item_a1', text, true);
 
@@ -807,7 +807,7 @@ test('it splits a long line to say into parts with no delegation', async () => {
   const ctx = await setupTest();
   const session = await ctx.openSession();
 
-  const text = `${'The plumber comes on Monday. '.repeat(100)}`.trim();
+  const text = 'The plumber comes on Monday. '.repeat(100).trim();
 
   await ctx.speech.say(session.opened.sessionID, text);
 
