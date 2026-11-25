@@ -66,7 +66,7 @@ holds the content outside the log.
 `readScreenState` reads the two pointed records and `pickScreenState` picks the state: the show,
 while it has no `until` or its `until` is ahead, or else the idle scene. A new show replaces the one
 before it, and an `until` that passes ends the show, never returning to an older one. While no show
-covers it, the screen draws the layout in place of the idle scene when a region shows content or has
+covers the layout, the screen draws it in place of the idle scene when a region shows content or has
 a background, as [Layouts and regions](#layouts-and-regions) says. An idle device with no scene
 shows black.
 
@@ -79,10 +79,10 @@ spans one or more tracks without overlapping another or leaving the grid. A regi
 `background`: a colour from the palette `black`, `white`, `gray`, `red`, `orange`, `yellow`,
 `green`, `teal`, `blue`, `navy`, `purple`, `pink` and `brown`, or `#rrggbb`.
 
-The background belongs to the grid, so a new layout sets it again. A region holds markdown (20,000
-characters), an image with `fit` `whole` or `fill`, or a live value: a clock in `HH:mm`, `HH:mm:ss`
-or `EEE d MMM`, or a countdown to a time with an optional label. A region cannot hold a page yet,
-and a call that sends one gets `PAGE_NOT_BUILT`.
+The background belongs to the grid, so a new layout sets it again. A region holds markdown (up to
+20,000 characters), an image with `fit` `whole` or `fill`, or a live value: a clock in `HH:mm`,
+`HH:mm:ss` or `EEE d MMM`, or a countdown to a time with an optional label. A region cannot hold a
+page yet, and a call that sends one gets `PAGE_NOT_BUILT`.
 
 Two record kinds hold a layout and its content, and three tables point at those records:
 
@@ -93,8 +93,7 @@ Two record kinds hold a layout and its content, and three tables point at those 
 - `device_regions` points each region at its newest `device.region_shown` record.
 - `device_saved_layouts` holds the layouts saved under a name, one row for each device and name,
   with a random UUID key the assistant never sees. A row holds sequences alone: the sequence of the
-  `device.layout_set` record and the sequence of each region's `device.region_shown` record. It
-  never holds content.
+  `device.layout_set` record and the sequence of each region's `device.region_shown` record.
 
 A new layout writes its record and repoints the device. It deletes the pointer of each region whose
 name the grid drops and keeps the pointer of each region whose name it keeps, so a kept region keeps
@@ -105,16 +104,16 @@ its content and every other region starts blank. A layout never times out.
 `device.layout_save` stores the layout the device holds under a name, and a save under a name that
 is taken replaces that layout. It writes a `device.layout_saved` record. `device.layout_restore`
 puts a layout back in one write transaction: it writes a new `device.layout_set` record with the
-saved grid, so a `device.region` call that waited for approval against the layout before the restore
-still fails, and points each region at its saved content record. It also writes a
-`device.layout_restored` record. `device.layout_remove` deletes a saved layout and writes a
-`device.layout_removed` record. None of the three records is erasable.
+saved grid, points each region at its saved content record, and writes a `device.layout_restored`
+record. A `device.region` call that waited for approval against the layout before the restore still
+fails, because the restore wrote a new `device.layout_set` record. `device.layout_remove` deletes a
+saved layout and writes a `device.layout_removed` record. None of the three records is erasable.
 
-A saved layout is never a second copy of content, so a forget needs nothing more. A restore leaves a
-region blank when a forget erased its content record, and the result lists those regions in
+A saved layout holds no copy of the content, so a forget has nothing more to erase. A restore leaves
+a region blank when a forget erased its content record, and the result lists those regions in
 `emptied`. A region whose minutes ran out since the save restores as blank too, because the region
-reads its record at the time it is asked. A reset deletes the saved layouts with the layout
-pointers, and so does a device removal, which a revoke or a sign-out of the device's session makes.
+reads its record at the time it is asked. A reset deletes the saved layouts along with the layout
+pointers. So does a device removal, which a revoke or a sign-out of the device's session causes.
 
 The record kinds `device.layout_saved`, `device.layout_restored` and `device.layout_removed` have an
 empty list of live topics, as the other layout records do: a device page follows its own stream,
@@ -136,27 +135,27 @@ shows content or has a background, then the idle scene.
 the call's own record also fails the call, even when it keeps the region's name, so an approval
 never fills a region of a layout the user did not see. The write checks that, and reads the region
 and the content it covers, in its own transaction, so two calls for one region never cover the same
-content. Until then the region keeps its content.
+content. Until that write commits, the region keeps its content.
 
 ## The streams
 
 The device form of [`live.follow`](./live-updates.md#the-stream) takes the screen's size in pixels
 and its `pixelRatio`, device pixels per CSS pixel, which the device sends again on each reconnect
 and in each `devices.resize`. The server keeps each open stream and its size in memory in
-`createDeviceStreams`, which the API's client registry holds. A device is online while it has one
-open, and for `deviceOfflineGraceMs` after its last one closes, so a reconnect never reads as
-offline. A device that has been offline reports the time its last stream closed, as long as the
-process has run since. `devices.resize({ width, height })` gives every open stream of the caller's
+`createDeviceStreams`, which the API's client registry holds. A device is online while it has a
+stream open, and for `deviceOfflineGraceMs` after its last one closes, so a reconnect never reads as
+offline. For an offline device, `devices.list` gives the time its last stream closed, unless the
+process restarted since. `devices.resize({ width, height })` gives every open stream of the caller's
 device a new size, and `devices.list` reads the new size at once. One pixels schema bounds the size
 in both calls. The stream sends `opened` first, then what the screen shows now. A later event
 follows a commit that touches the device, and the stream sends an event only when the state changes.
 The event of a show carries the `fit` of an image, `whole` or `fill`.
 
-The layout travels in `layout` events, apart from the `show` and `idle` events. A stream sends one
-when the device holds a layout, and again when the grid or a region's content changes, a region's
-minutes pass or a forget blanks a region. A clear sends a `layout` event with no layout. A stream
-that opens on a device with no layout sends no `layout` event. The stream wakes at the earliest end
-among the show and the regions, including while a show covers the layout.
+The layout travels in its own `layout` events, separate from the `show` and `idle` events. A stream
+sends one when the device holds a layout, and again when the grid or a region's content changes, a
+region's minutes pass or a forget blanks a region. A clear sends a `layout` event with no layout. A
+stream that opens on a device with no layout sends no `layout` event. The stream wakes at the
+earliest end among the show and the regions, including while a show covers the layout.
 
 `devices.readImage` serves an image only while it is in the current show, the idle scene or a region
 of the layout, and returns `NOT_SHOWN` otherwise.
@@ -200,10 +199,11 @@ when it comes back online, and the result carries `waiting: true` with a message
 `UNKNOWN_LAYOUT` message lists the saved names. `device.region` returns `UNKNOWN_DEVICE`,
 `SCREEN_OFF`, `UNKNOWN_REGION`, `PAGE_NOT_BUILT`, the image refusals, then `OFFLINE`.
 
-`devices.list` shows the layout a device holds whether or not the device is online, apart from
-`showing`. `showing` follows the screen's order: it is `layout` while no show covers the layout and
-at least one region shows content or has a background. Each region lists its kind, `until` and the
-short ID of its `device.region_shown` record, and never its content. A blank region has a null kind.
+`devices.list` shows the layout a device holds whether or not the device is online, unlike
+`showing`, which is null while the device is offline. `showing` follows the screen's order: it is
+`layout` while no show covers the layout and at least one region shows content or has a background.
+Each region lists its kind, `until` and the short ID of its `device.region_shown` record, and never
+its content. A blank region has a null kind.
 
 ## Device mode
 
@@ -227,8 +227,8 @@ changes. A clock or a countdown ticks each second from the browser's own time, w
 the server. The page renders markdown like a reply and an image on black: `whole` scales it to fit
 and centres it, `fill` covers the screen and crops evenly. The page sends `devices.resize` after the
 window resizes, at most once per debounce window and only when the size differs from the one the
-server has, which each stream connect and each answered resize set, so the assistant reads the new
-size within a second.
+server has, so the assistant reads the new size within a second. The server has the size from the
+latest stream connect or answered resize.
 
 While the screen is on, the page hides its close, full-screen, screen-off and sign-out buttons until
 a touch or a pointer move, and shows them for `revealMs` after the latest one. Close leaves full

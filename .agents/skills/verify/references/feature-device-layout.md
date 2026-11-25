@@ -5,18 +5,19 @@
   it.
 - [End state](#end-state): what the page and the records show.
 
-Run this journey on `local` only. Run all of it last, after every other journey, `live-updates`
-included, though the features table lists `live-updates` after it: enrolling a device replaces the
-browser's session (see below). It needs the scripted model and the `layout-on-device` action, which
-the harness that runs nixie on `local` serves. On `preview`, list the feature as not verified, and
-run no `bun verify done`.
+Run this journey on `local` only. It needs the scripted model and the `layout-on-device` action,
+which the harness that runs nixie on `local` serves. On `preview`, list the feature as not verified,
+and run no `bun verify done`.
+
+Run this journey last in a pass, after every other journey, `live-updates` included, even though the
+features table lists `live-updates` after it. Enrolling a device replaces the browser's session, so
+to run another journey after this one, restart and run `sign-in-enrol` again.
 
 Start from a browser with no session, because the device page shows the enrolment form only to such
 a browser. Before step 1, run `bun verify up --restart` and `bun verify doctor`, and run no
-`sign-in-enrol` between that restart and step 1, because it signs the browser in. This journey is
-the last one of a pass. To run another journey after it, restart and run `sign-in-enrol` again.
-Restart the same way before each repeat of this journey, even after a failed one: a restart gives
-nixie a new, empty database, which holds no session for the browser.
+`sign-in-enrol` between that restart and step 1, because it signs the browser in. Restart the same
+way before each repeat of this journey, even after a failed one, because a restart gives nixie a
+new, empty database, which holds no session for the browser.
 
 A layout is a grid of named regions on a device's screen. Each region shows its own content, and the
 model updates or times out one region with no change to the others. The model can also save a layout
@@ -65,8 +66,8 @@ under a name, lay the screen out again, and restore the saved layout in one call
 
    Expect: `layout-on-device` returns `data.replies` of 6, and `conversation turn` exits 0. The
    first snapshot shows "Ripples", "Bins go out tonight" and a time such as `14:05`, and no buttons.
-   The click is a touch, which shows the buttons for 4 seconds, so the last snapshot, run straight
-   after it, shows "Close", "Switch off screen", "Full screen" and "Sign out".
+   The click is a touch, and shows the buttons for 4 seconds. The last snapshot runs straight after
+   the click, so it shows "Close", "Switch off screen", "Full screen" and "Sign out".
 
 4. Have the model replace the text of `note` with "Dentist at 3", and check that the other two keep
    their content:
@@ -80,7 +81,7 @@ under a name, lay the screen out again, and restore the saved layout in one call
    Expect: `data.replies` of 3. The snapshot shows "Dentist at 3", "Ripples" and a time, and no
    "Bins go out tonight".
 
-5. Move nixie's clock forward 2 minutes, so the first region's minute passes with no wait. Then read
+5. Move nixie's clock forward 2 minutes, so the 1 minute of `pond` passes with no wait. Then read
    the region pointers:
 
    ```bash
@@ -91,8 +92,9 @@ under a name, lay the screen out again, and restore the saved layout in one call
    ```
 
    Expect: `advance-clock` returns `data.minutes` of 2. The snapshot no longer shows "Ripples", and
-   still shows "Dentist at 3" and a time. The query lists `clock`, `note` and `pond`: a timed-out
-   region keeps its pointer, and nixie finds its minutes passed each time it reads the region.
+   still shows "Dentist at 3" and a time. The query lists `clock`, `note` and `pond`, because a
+   timed-out region keeps its pointer. nixie checks whether the region's time has passed each time
+   it reads the region.
 
 6. Have the model save the layout as `evening`, then read the saved names:
 
@@ -105,9 +107,9 @@ under a name, lay the screen out again, and restore the saved layout in one call
    Expect: `layout-on-device` returns `data.replies` of 3, and `conversation turn` exits 0. The
    query lists one row, `evening`.
 
-7. Have the model lay the screen out again in 2 regions, `note` and `garden`, the second on a teal
-   background, and fill `garden`. `note` keeps its text, because the new grid keeps its name, and
-   `clock` goes, because it does not:
+7. Have the model lay the screen out again in 2 regions, `note` and `garden`, and fill `garden` on a
+   teal background. `note` keeps its text because the new grid keeps the name `note`, and `clock`
+   goes because the new grid drops it:
 
    ```bash
    bun verify action layout-on-device --step change --text 'The layout changed.'
@@ -118,8 +120,8 @@ under a name, lay the screen out again, and restore the saved layout in one call
    ```
 
    Expect: `data.replies` of 4. The snapshot shows "Water the pots" and "Dentist at 3", and no time.
-   The screenshot gives the reviewer the teal background behind "Water the pots". The query lists
-   `garden` and `note`.
+   Take the screenshot for the reviewer, who checks the teal background behind "Water the pots". The
+   query lists `garden` and `note`.
 
 8. Have the model restore `evening`:
 
