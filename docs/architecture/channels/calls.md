@@ -3,9 +3,11 @@
 A call is a live voice conversation between the user and nixie. The `modules/calls` package owns the
 call's state, its records, its price and the rule that a call ends when its budget runs out. It
 never talks to a speech provider. It holds the `SpeechLayer` interface, and the server passes in an
-adapter that implements it. The [voice design](../../design/platform/channels/voice.md) describes
-the whole feature. The server holds no speech adapter, so a server with a `voice` config section
-answers `calls.start` with `SPEECH_UNAVAILABLE`.
+adapter that implements it. For the whole feature, see the
+[voice design](../../design/platform/channels/voice.md). The release build of the server holds no
+speech adapter, so a release server with a `voice` config section answers `calls.start` with
+`SPEECH_UNAVAILABLE`, whatever its `provider`. Only a test build wires one, the fake that the next
+section describes.
 
 ## The speech layer
 
@@ -70,9 +72,12 @@ stopped before its last turn, as [the call's last turn](#hand-offs) describes.
 
 ## Records
 
-Each call writes these record kinds. The model sees only the kinds with a short ID or a rendering
-below, and only `call.rang`, `call.spoke` and `call.handed_off` hold text that the user can ask
-nixie to forget.
+Each call writes these record kinds. The model sees `call.started`, `call.answered` and `call.ended`
+on the conversation's thread, and `call.handed_off`, `call.heard_cut` and `call.closing` on the
+call's thread. It reads each `call.spoke` line beside the hand-off that follows it. Of these kinds,
+only `call.rang`, `call.spoke` and `call.handed_off` hold text that the user can ask nixie to
+forget. The user's dictated speech is an `owner_message`, whose text sits in its
+[erasable fields](../core/erasable-fields.md) as every message's text does.
 
 | Kind               | Thread       | What it records                                                                                                                                      |
 | ------------------ | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -89,8 +94,8 @@ nixie to forget.
 
 The `calls` projection folds `call.started`, `call.rang`, `call.answered`, `call.ended` and
 `budget.charged` into one row per call, in the same transaction as each record. A call that nixie
-started is `ringing` until `call.answered` makes it `connecting`, and a call that you started is
-`connecting` at once. A call is `live` once its first `call_minute` charge exists, and its minute
+started is `ringing` until `call.answered` makes it `connecting`, and a call that the user started
+is `connecting` at once. A call is `live` once its first `call_minute` charge exists, and its minute
 count is the number of those charges, so no record marks the connection. The kinds `call.started`,
 `call.answered` and `call.ended` change the `tasks` live topic, because a call is a task in the task
 list.
@@ -131,18 +136,18 @@ call's thread:
 | `cut`      | See below.                                                                                                                   |
 
 A `call.spoke` record wakes nothing and shows no message of its own: the turn reads each line of
-small talk beside the hand-off that follows it, so the first reply of the turn is the answer. The
-call's task runs one turn over what it has not read. When the turn ends, the module sends the text
-of its replies to the speech layer in one `answer` call for each hand-off the turn took: the ones it
-started with and the ones that landed during it, oldest first. A hand-off that already has its
-answer gets no second one. A turn that fails, passes a limit, ends with a proposal still waiting for
-the user, or writes no text sends the `couldnt_finish` line instead. The line claims no outcome, so
-the speech layer never makes one up, and the module writes it as a `call.spoke` record. A proposal
-counts when the turn's task asked for it or it sits on the call's thread, after the turn began. A
-turn that throws answers every hand-off that landed on the call's thread since it started, as one
-that fails does. A turn that the user cut sends nothing. Each hand-off it started with closes, with
-no answer and no holding line, and a hand-off that landed during it stays unread for the next turn
-to answer. A cut turn also drops a hang-up it asked for.
+small talk beside the hand-off that follows it. The call's task runs one turn over what it has not
+read. When the turn ends, the module joins the text of all the turn's replies and sends it to the
+speech layer in one `answer` call for each hand-off the turn took: the ones it started with and the
+ones that landed during it, oldest first. A hand-off that already has its answer gets no second one.
+A turn that fails, passes a limit, ends with a proposal still waiting for the user, or writes no
+text sends the `couldnt_finish` line instead. The line claims no outcome, so the speech layer never
+makes one up, and the module writes it as a `call.spoke` record. A proposal counts when the turn's
+task asked for it or it sits on the call's thread, after the turn began. A turn that throws answers
+every hand-off that landed on the call's thread since it started, as one that fails does. A turn
+that the user cut sends nothing. Each hand-off it started with closes, with no answer and no holding
+line, and a hand-off that landed during it stays unread for the next turn to answer. A cut turn also
+drops a hang-up it asked for.
 
 When no answer has been sent `hold_after_ms` after a hand-off, the module sends the `holding` line
 through `say`. That line is not part of the answer. The module writes it as a `call.spoke` record

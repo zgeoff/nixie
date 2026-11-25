@@ -17,8 +17,15 @@ Run this journey on `local` only, on an `up` of its own:
 
 Before you start:
 
+- Run this journey last, after every other feature's journey, because it needs an `up` with
+  `NIXIE_VERIFY_CALLS=1`.
 - Run `NIXIE_VERIFY_CALLS=1 bun verify up --restart` and `bun verify doctor`.
-- Run this journey once per `up`, because each step expects the first call of the run.
+- Run this journey once per `up`, because each step expects the first call of the run. To run it
+  again, run the `up --restart` and `doctor` above first.
+
+When a step exits with a code other than 0, do what its row in [Exit codes](exit-codes.md) says.
+When a step exits 0 and its `data` differs from the Expect line, compare the app with the end state
+below, as step 5 of Check a change in the [verify skill](../SKILL.md#check-a-change) says.
 
 ## Journey
 
@@ -63,7 +70,7 @@ Before you start:
    ```bash
    bun verify action call-step --step hang-up
    bun verify db query "select kind from records where kind like 'call.%' order by sequence"
-   bun verify db query "select count(*) as reports from records where kind = 'task_message' and json_extract(payload, '$.wake') = 0"
+   bun verify db query "select count(*) as reports from records where kind = 'task_message' and json_extract(payload, '$.kind') = 'report'"
    ```
 
    Expect: the first query lists `call.started`, `call.answered`, `call.spoke`, `call.handed_off`,
@@ -71,8 +78,8 @@ Before you start:
 
 ## End state
 
-- Step 1: the speech layer holds an open session, and the call has a task of its own.
-- Step 3: the speech layer said the holding line once, with no answer yet.
-- Step 4: the speech layer got one answer for the one hand-off.
-- Step 5: the call's records show the small talk, the hand-off and the closing in one thread, and
-  the conversation holds the call's report.
+- After step 1, the speech layer holds an open session.
+- After step 3, the speech layer has said the holding line once and has no answer yet.
+- After step 4, the speech layer has one answer for the one hand-off.
+- After step 5, the call's thread holds the small talk, the hand-off and the closing, and the
+  conversation holds the call's report.
