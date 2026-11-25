@@ -9,7 +9,7 @@ export interface StatusFacts {
   readonly nowMs: number;
 }
 
-export const expiringWindowMs = 3 * 24 * 60 * 60 * 1000;
+const expiringWindowMs = 3 * 24 * 60 * 60 * 1000;
 
 // The status the owner sees. A connection past the end of its grant needs consent, and one within 3
 // days of it is expiring. When two statuses hold, the first of needs_consent, failing and expiring
