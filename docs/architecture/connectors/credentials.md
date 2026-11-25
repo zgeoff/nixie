@@ -84,15 +84,19 @@ reference and spec again returns the same binding ID with the counter's current 
 keeps a frozen copy of the spec, so a caller that changes the object it passed in afterwards cannot
 move the origins or provider endpoints the credential reaches.
 
-A removal of a database credential advances its counter in the same transaction as the removal.
-Every handle that the store hands out from a binding, such as a fetcher or a refresh, compares its
-binding's counter with the current one before it reads a value, and fails with
-`CredentialRemovedError` when they differ. That covers `refresh`, `refreshIfDue` and `readStatus`
-too. A fetcher checks the counter again after its address checks and just before the request leaves,
-so a removal during a host lookup stops the request. The error is a `CredentialRefusalError`, so a
-tool call that meets it fails with an error and no reply. A binding registered after the removal
-carries the new counter and works. A file binding always carries counter 0, because nothing removes
-a file credential yet.
+A removal of a database credential advances its counter in the same transaction. Every handle that
+the store hands out from a binding, such as a fetcher, `refresh`, `refreshIfDue` or `readStatus`,
+compares its binding's counter with the current one before it reads a value, and fails with
+`CredentialRemovedError` when they differ. The error is a `CredentialRefusalError`, so a tool call
+that meets it fails with an error and no reply. A binding registered after the removal carries the
+new counter and works. A file binding always carries counter 0, because nothing removes a file
+credential yet.
+
+A fetcher checks the counter again just before the request leaves, under a lock per credential that
+`remove` also takes, and holds the lock until it has handed the request off. A removal therefore
+stops the request, or lands after it left, and a check after the answer refuses the reply. A fetch
+whose credential was removed during the refresh after a 401 throws `CredentialRemovedError`, never
+the 401.
 
 ## OAuth tokens
 
@@ -109,15 +113,17 @@ token only when the credential's counter still equals the one the caller read, a
 the credential and advances the counter in one transaction. `writeState` takes the counter too, so a
 late result of an older binding never changes the status of a credential that was removed and
 connected again. `writeToken` also takes the record of a refresh, `credential.refresh_saved`, and
-commits it with the token, so a crash leaves both or neither. An in-memory backend in the module's
-`test-utils` implements the interface for tests. It saves the token and the record it owes to its
-file in one write, then writes the record to the log, and `settle` writes a record that a crash left
-owed, so a restart finds both or neither.
+commits it with the token, so a crash leaves both or neither.
 
 A token records the `sub` of the account its ID token named at the credential's first use. A second
 code exchanged into the same credential that names another account, or none, marks the credential
 `needs_consent`, revokes the new tokens, saves nothing and throws `TokenRequestError` with the code
 `account_changed`. A second code for the same account replaces the token and removes the old key.
+
+An exchange or a refresh holds the credential's slot lock from its read of the stored token until it
+saved its own and removed the key it replaced. **Why:** two saves that both find the slot empty
+leave the first one's key with no token. An exchange checks its client's counter again just before
+it writes, and revokes the tokens of a save that kept nothing after it lets go of the lock.
 
 ### Exchange
 
@@ -149,11 +155,10 @@ the provider's token URL over the checked connection.
   `no_answer`. A refusal for good, such as `invalid_grant`, marks it `needs_consent`. A successful
   refresh returns the credential to `active`.
 - Each refresh creates a new key and seals its result under it. After the save, the refresh removes
-  the old key. After a failure, it removes the new one.
-- A refresh that finishes after a removal advanced the counter revokes the token it received at the
-  provider, which is the new refresh token, or the new access token when the reply holds no refresh
-  token. It saves nothing and removes its new key. The revocation skips the counter check, which
-  would refuse it.
+  the key of the token the save replaced. After a failure, it removes the new one.
+- A refresh that finishes after a removal advanced the counter revokes the token it received, which
+  is the new refresh token, or the new access token when the reply holds none. It saves nothing and
+  removes its new key.
 
 ### Records
 
@@ -236,7 +241,7 @@ credential is `needs_consent`. A second test holds the process at the fault poin
 checks that the restart leaves the credential `active` with `credential.refresh_saved` written.
 
 A test that plants a fake value in the secrets file asserts that the value appears in no tool
-result, no log line, no record and no error. `createTestCredentials` in the module's `test-utils`
+result, no log line, no record and no error.`createTestCredentials` in the module's `test-utils`
 builds a resolver and a store over the groups a test names. A test build lets the store send each
 request through the global `fetch` after all its checks, so a mock network answers it, and a release
 build drops that path. The test build resolves each `.test` host to a public address, so the address
