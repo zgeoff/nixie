@@ -102,3 +102,25 @@ test('it writes a record that holds the fingerprint and never the secret', async
     { client: expect.any(String), fingerprint: expect.stringMatching(/^[0-9a-f]{8}$/u) },
   ]);
 });
+
+test('it saves the registration and the step that stores its outcome in one transaction', async () => {
+  const ctx = await setupTest();
+
+  const settled = ctx.connections.registerClient(
+    {
+      clientID: 'client-123.apps.test',
+      clientSecret: 'fake-client-secret-value',
+      origin: ctx.origin,
+      headerOrigin: ctx.origin,
+      pickerKey: null,
+      projectNumber: null,
+    },
+    { isRetry: false, settle: () => Promise.reject(new Error('the outcome could not be stored')) },
+  );
+
+  await Promise.allSettled([settled]);
+
+  const setup = await ctx.connections.readSetup(ctx.origin);
+
+  expect(setup.client).toBeNull();
+});

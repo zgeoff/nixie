@@ -13,6 +13,7 @@ import { pickConsentOutcome } from './pick-consent-outcome';
 import type { ConsentOutcome } from './pick-consent-outcome';
 import { pickExchangeFailure } from './pick-exchange-failure';
 import { pickGrantedShortScopes } from './pick-granted-short-scopes';
+import { probeLiveAccount } from './probe-live-account';
 import { readKnownAccounts, readLiveLabels } from './read-known-accounts';
 import { waitForForget } from './wait-for-forget';
 import type { FinishedConsent } from './write-new-connection';
@@ -64,6 +65,7 @@ export async function finishConsent(
       redirectURI: client.redirect_uri,
       codeVerifier: claim.verifier,
       credentialID,
+      probeRevocable: async (subject) => !(await probeLiveAccount(context, credentialID, subject)),
     })
     .catch(async (error: unknown) => {
       await removeConsentRequest(context, consentID);
@@ -117,9 +119,7 @@ export async function finishConsent(
     fingerprint: await context.store.readFingerprint(token.refreshToken),
   };
 
-  const outcome = await decide(context, finished, claim.request.connection_id);
-
-  return conclude(context, finished, outcome);
+  return settleConsent(context, finished, claim.request.connection_id);
 }
 
 interface ScopeFacts {
@@ -173,33 +173,51 @@ async function readScopes(
   }
 }
 
-async function decide(
+// Decides and writes under the module's lock, so two consents for one account cannot both read an
+// empty account list and each write a new connection. The wait for a Forget to end runs outside the
+// lock, and the decision is read again after it.
+async function settleConsent(
   context: ServiceContext,
   finished: FinishedConsent,
   again: string | null,
-): Promise<ConsentOutcome | { readonly kind: 'forget_in_progress' }> {
-  const read = async () =>
-    pickConsentOutcome({
-      again,
-      subject: finished.account.subject,
-      known: await readKnownAccounts(context, finished.credential.connection_id),
-    });
+): Promise<FinishConsentResult> {
+  const settled = await context.lock.withLock(async () => {
+    const outcome = await readOutcome(context, finished, again);
 
-  const outcome = await read();
+    return outcome.kind === 'wait'
+      ? outcome
+      : { kind: 'concluded' as const, result: await conclude(context, finished, outcome) };
+  });
 
-  if (outcome.kind !== 'wait') {
-    return outcome;
+  if (settled.kind === 'concluded') {
+    return settled.result;
   }
 
-  const isFinished = await waitForForget(context, outcome.connectionID);
+  const isFinished = await waitForForget(context, settled.connectionID);
 
-  return isFinished ? read() : { kind: 'forget_in_progress' };
+  return isFinished
+    ? settleConsent(context, finished, again)
+    : conclude(context, finished, { kind: 'forget_in_progress' });
 }
+
+async function readOutcome(
+  context: ServiceContext,
+  finished: FinishedConsent,
+  again: string | null,
+): Promise<ConsentOutcome> {
+  return pickConsentOutcome({
+    again,
+    subject: finished.account.subject,
+    known: await readKnownAccounts(context, finished.credential.connection_id),
+  });
+}
+
+type DecidedOutcome = ConsentOutcome | { readonly kind: 'forget_in_progress' };
 
 function conclude(
   context: ServiceContext,
   finished: FinishedConsent,
-  outcome: Awaited<ReturnType<typeof decide>>,
+  outcome: Exclude<DecidedOutcome, { readonly kind: 'wait' }>,
 ): Promise<FinishConsentResult> {
   const discard = (
     reason: 'account_mismatch' | 'connection_forgotten' | 'forget_in_progress',
@@ -265,8 +283,5 @@ function conclude(
         ? { kind: 'account_mismatch' }
         : { kind: 'consent_not_found' };
     })
-    .with({ kind: 'wait' }, () =>
-      Promise.reject(new Error('a consent that waits is decided first')),
-    )
     .exhaustive();
 }

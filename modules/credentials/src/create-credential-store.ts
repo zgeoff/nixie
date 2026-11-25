@@ -125,6 +125,10 @@ export interface CredentialStore {
   // handle made before it refuses from then on, and a refresh in flight saves nothing.
   readonly remove: (ref: DatabaseCredentialRef) => Promise<void>;
 
+  // Gives the values that a credential's tokens hold in the live set to another credential that now
+  // holds those tokens, so the second credential's removal clears them.
+  readonly moveOwnValues: (from: DatabaseCredentialRef, to: DatabaseCredentialRef) => Promise<void>;
+
   // At start: a refresh that sent and never saved a result marks its credential `needs_consent`.
   readonly recover: () => Promise<void>;
 
@@ -425,6 +429,7 @@ export function createCredentialStore(options: CredentialStoreOptions): Credenti
     readStatus: (binding) => requireHeld().readState(toHandle(binding)),
     revoke: (binding) => requireHeld().revoke(toHandle(binding)),
     remove: (ref) => requireHeld().remove(ref.credentialID),
+    moveOwnValues: (from, to) => requireHeld().moveOwnValues(from.credentialID, to.credentialID),
     recover: () => requireHeld().recover(),
     readFingerprint: (value) => readFingerprint(value, options.secrets.fingerprintKey),
   };

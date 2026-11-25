@@ -79,3 +79,28 @@ test('it records the removal with the short ID of the client', async () => {
 
   expect(records).toStrictEqual([{ client: ctx.client }]);
 });
+
+test('it finishes the removal of a client that an earlier try removed before its record committed', async () => {
+  const ctx = await startGoogleConnections();
+
+  const outcomes: unknown[] = [];
+
+  await ctx.connections.removeClient(ctx.client);
+
+  const plain = await ctx.connections.removeClient(ctx.client);
+
+  const retried = await ctx.connections.removeClient(ctx.client, {
+    isRetry: true,
+    settle: (_tx, result) => {
+      outcomes.push(result);
+
+      return Promise.resolve();
+    },
+  });
+
+  expect([plain, retried, outcomes]).toStrictEqual([
+    { kind: 'client_not_found' },
+    { kind: 'ok' },
+    [{ kind: 'ok' }],
+  ]);
+});

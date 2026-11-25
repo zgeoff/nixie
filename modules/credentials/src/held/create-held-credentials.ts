@@ -6,13 +6,13 @@ import type { CredentialFetch, OAuthProvider } from '../types';
 import { createKeyedLock } from './create-keyed-lock';
 import { CredentialRemovedError } from './credential-removed-error';
 import { isDue } from './is-due';
-import { parseIDToken } from './parse-id-token';
 import { pickFailureState } from './pick-failure-state';
 import type { RefreshFailureKind } from './pick-failure-state';
+import { pickRevocable } from './pick-revocable';
+import { readAccount } from './read-account';
 import { recoverLostRefreshes } from './recover-lost-refreshes';
 import { sendRevocation } from './send-revocation';
 import { pickProviderError, sendTokenRequest } from './send-token-request';
-import type { TokenReply } from './send-token-request';
 import { TokenRequestError } from './token-request-error';
 import type {
   CredentialRecorder,
@@ -86,6 +86,7 @@ export interface HeldCredentials {
   readonly revoke: (handle: HeldHandle) => Promise<RevokeResult>;
   readonly readState: (handle: CounterHandle) => Promise<HeldState | null>;
   readonly remove: (credentialID: string) => Promise<void>;
+  readonly moveOwnValues: (fromCredentialID: string, toCredentialID: string) => Promise<void>;
   readonly recover: () => Promise<void>;
 }
 
@@ -218,6 +219,7 @@ export function createHeldCredentials(options: HeldOptions): HeldCredentials {
       credentialID: handle.credentialID,
       attemptID,
       newKeyID,
+      removalCounter: handle.removalCounter,
     });
 
     const send = options.makeProviderFetch(handle.provider, [client.clientSecret]);
@@ -288,7 +290,13 @@ export function createHeldCredentials(options: HeldOptions): HeldCredentials {
     });
 
     if (written === 'removed') {
-      const isRevoked = await revoke(handle, client.clientSecret, pickRevocable(result.reply));
+      // A credential that still holds a token was connected again while the refresh ran. Google ends
+      // the whole grant when it revokes any token of it, so the reply is dropped without a revocation.
+      const isRenewed = (await backend.readToken(handle.credentialID)) !== null;
+
+      const isRevoked = isRenewed
+        ? false
+        : await revoke(handle, client.clientSecret, pickRevocable(result.reply));
 
       await backend.removeKey(newKeyID);
 
@@ -451,23 +459,33 @@ export function createHeldCredentials(options: HeldOptions): HeldCredentials {
         throw new TokenRequestError(result.kind, pickProviderError(result));
       }
 
-      const dropTokens = async (): Promise<void> => {
+      // Revoking a token of an account ends its whole grant, so the caller may veto the revocation
+      // when another connection of the same account still uses the grant.
+      const dropTokens = async (subject: string | null): Promise<void> => {
+        if (request.probeRevocable !== undefined && !(await request.probeRevocable(subject))) {
+          return;
+        }
+
         await revoke(client, secret.clientSecret, pickRevocable(result.reply));
       };
 
+      const account = await readAccount(result.reply, client.provider, options.now(), () =>
+        dropTokens(null),
+      );
+
+      const subject = account?.subject ?? null;
+
       // an exchange with no refresh token keeps nothing and revokes what it received
       if (result.reply.refresh_token === undefined) {
-        await dropTokens();
+        await dropTokens(subject);
 
         throw new TokenRequestError('no_refresh_token');
       }
 
-      const account = await readAccount(result.reply, client.provider, options.now(), dropTokens);
-
       try {
         await checkCounter(client);
       } catch (error) {
-        await dropTokens();
+        await dropTokens(subject);
 
         throw error;
       }
@@ -490,7 +508,7 @@ export function createHeldCredentials(options: HeldOptions): HeldCredentials {
         )
         .catch(async (error: unknown) => {
           if (!kept.isKept) {
-            await dropTokens();
+            await dropTokens(subject);
           }
 
           throw error;
@@ -500,7 +518,7 @@ export function createHeldCredentials(options: HeldOptions): HeldCredentials {
         return written.result;
       }
 
-      await dropTokens();
+      await dropTokens(subject);
 
       throw match(written)
         .with({ kind: 'removed' }, () => new CredentialRemovedError(client.label))
@@ -578,6 +596,17 @@ export function createHeldCredentials(options: HeldOptions): HeldCredentials {
         options.ownValues.remove('connector_credentials', `held:${credentialID}:refresh`);
       });
     },
+    moveOwnValues: (fromCredentialID, toCredentialID) =>
+      removalLock.withLock(toCredentialID, async () => {
+        options.ownValues.remove('connector_credentials', `held:${fromCredentialID}:access`);
+        options.ownValues.remove('connector_credentials', `held:${fromCredentialID}:refresh`);
+
+        const token = await backend.readToken(toCredentialID);
+
+        if (token !== null) {
+          addOwnValues(toCredentialID, token);
+        }
+      }),
     recover: () =>
       recoverLostRefreshes({
         backend,
@@ -586,33 +615,4 @@ export function createHeldCredentials(options: HeldOptions): HeldCredentials {
         writeState,
       }),
   };
-}
-
-function pickRevocable(reply: TokenReply): string {
-  return reply.refresh_token ?? reply.access_token;
-}
-
-async function readAccount(
-  reply: TokenReply,
-  provider: OAuthProvider,
-  nowMs: number,
-  dropTokens: () => Promise<void>,
-): Promise<TokenResult['account']> {
-  if (reply.id_token === undefined) {
-    return null;
-  }
-
-  const parsed = parseIDToken(reply.id_token, {
-    issuer: provider.issuer,
-    audience: provider.clientID,
-    nowMs,
-  });
-
-  if (!parsed.isValid) {
-    await dropTokens();
-
-    throw new TokenRequestError(parsed.code);
-  }
-
-  return { subject: parsed.subject, email: parsed.email };
 }

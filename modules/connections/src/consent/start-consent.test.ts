@@ -92,3 +92,18 @@ test('it starts a consent again for a live connection', async () => {
 
   expect(result.kind).toBe('started');
 });
+
+test('it saves no request when the step that stores the outcome fails', async () => {
+  const ctx = await startGoogleConnections();
+
+  const settled = ctx.connections.startConsent(
+    { deviceSessionID: 'session-a', connection: null },
+    { isRetry: false, settle: () => Promise.reject(new Error('the outcome could not be stored')) },
+  );
+
+  await Promise.allSettled([settled]);
+
+  const rows = await ctx.readConsentRows();
+
+  expect(rows).toStrictEqual([]);
+});

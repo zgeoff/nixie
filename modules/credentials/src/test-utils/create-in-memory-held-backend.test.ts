@@ -199,7 +199,9 @@ test('it writes the record that a crash left owed when the backend settles', asy
     ctx.savedRecord,
   );
 
-  const open = [{ credentialID: 'credential', attemptID: 'attempt', newKeyID: 'new-key' }];
+  const open = [
+    { credentialID: 'credential', attemptID: 'attempt', newKeyID: 'new-key', removalCounter: null },
+  ];
 
   const second = createInMemoryHeldBackend({
     recorder: { ...ctx.recorder, readOpenRefreshes: () => Promise.resolve(open) },

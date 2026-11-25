@@ -8,6 +8,7 @@ function setupTest() {
     ['stub.read_mail', ['gmail.modify']],
     ['stub.read_file', ['drive.file']],
     ['stub.plain', []],
+    ['stub.copy_attachment', ['gmail.modify', 'drive.file']],
   ];
 
   const actions = specs.map(([name, scopes]): ConnectorAction => {
@@ -38,7 +39,7 @@ test.each([
   {
     title: 'a scope the only connection lacks holds its tools back',
     missing: [[{ scope: 'drive.file', reason: 'not_granted' }]],
-    expected: ['stub.read_file'],
+    expected: ['stub.read_file', 'stub.copy_attachment'],
   },
   {
     title: 'a scope that only one of two connections lacks holds nothing back',
@@ -54,7 +55,15 @@ test.each([
         { scope: 'gmail.modify', reason: 'not_granted' },
       ],
     ],
-    expected: ['stub.read_mail'],
+    expected: ['stub.read_mail', 'stub.copy_attachment'],
+  },
+  {
+    title: 'a tool of two scopes that each of two connections lacks one of',
+    missing: [
+      [{ scope: 'gmail.modify', reason: 'not_granted' }],
+      [{ scope: 'drive.file', reason: 'not_granted' }],
+    ],
+    expected: ['stub.copy_attachment'],
   },
 ] as const)('#collectHeldBackToolNames holds back tools when $title', (row) => {
   const ctx = setupTest();

@@ -218,6 +218,7 @@ test('it leaves a key that a refresh in flight names to the sweep of the next st
     credentialID: crypto.randomUUID(),
     attemptID: crypto.randomUUID(),
     newKeyID: keyID,
+    removalCounter: 0,
   });
 
   const swept = await ctx.held.backend.sweepKeys();

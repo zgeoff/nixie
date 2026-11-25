@@ -341,5 +341,5 @@ test('it answers the return route of a Google consent from the API, and never re
     response.status,
     api.requests.map((request) => request.path),
     startFetch.mock.calls.length,
-  ]).toStrictEqual([503, ['/rpc/connections/finishConsent'], 0]);
+  ]).toStrictEqual([400, ['/rpc/connections/finishConsent'], 0]);
 });

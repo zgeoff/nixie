@@ -14,24 +14,39 @@ export function createRunServer(guestRun: GuestToolRun, options: ToolCallOptions
     { capabilities: { tools: { listChanged: true } } },
   );
 
-  const tools = run.tools.flatMap((name) => {
-    const registered = options.registry.findTool(name);
+  // the run's tools minus the ones held back at the moment of the request
+  const readLiveTools = async (): Promise<readonly string[]> => {
+    const heldBackNames = await options.readHeldBackTools?.();
 
-    return registered === null
-      ? []
-      : [
-          {
-            name,
-            description: registered.definition.description,
-            inputSchema: { ...registered.definition.input, type: 'object' as const },
-          },
-        ];
+    const heldBack = new Set(heldBackNames);
+
+    return run.tools.filter((name) => !heldBack.has(name));
+  };
+
+  server.setRequestHandler('tools/list', async () => {
+    const live = await readLiveTools();
+
+    const tools = live.flatMap((name) => {
+      const registered = options.registry.findTool(name);
+
+      return registered === null
+        ? []
+        : [
+            {
+              name,
+              description: registered.definition.description,
+              inputSchema: { ...registered.definition.input, type: 'object' as const },
+            },
+          ];
+    });
+
+    return { tools };
   });
 
-  server.setRequestHandler('tools/list', () => ({ tools }));
+  server.setRequestHandler('tools/call', async (request) => {
+    const live = await readLiveTools();
 
-  server.setRequestHandler('tools/call', (request) =>
-    runToolCall(
+    return runToolCall(
       {
         tool: request.params.name,
         input: JSON_OBJECT_SCHEMA.parse(request.params.arguments ?? {}),
@@ -40,10 +55,10 @@ export function createRunServer(guestRun: GuestToolRun, options: ToolCallOptions
         toolUseID: findToolUseID(request.params._meta, toolUseMetaKey),
         ...(parent === undefined ? {} : { parent }),
       },
-      run,
+      { ...run, tools: live },
       options,
-    ),
-  );
+    );
+  });
 
   return server;
 }

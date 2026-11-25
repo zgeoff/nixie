@@ -37,6 +37,15 @@ export interface ConnectionsHarnessOptions {
 
   // the actions that the connector holds; none by default, as Google's connector has none yet
   readonly actions?: Connector['actions'];
+
+  // a log that another part of the test already runs on, in place of one of the harness's own
+  readonly sharedLog?: { readonly log: Log; readonly dataDir: string };
+
+  // wraps the clock the connections module reads, so a test can move time part way through a call
+  readonly wrapNow?: (now: () => number) => () => number;
+
+  // wraps the connector's check, so a test can act while a check is under way
+  readonly wrapCheck?: (check: Connector['check']) => Connector['check'];
 }
 
 export interface ConnectionsHarness {
@@ -96,10 +105,16 @@ export async function startConnectionsHarness(
     apisOrigin: provider.apiOrigin,
   });
 
-  const connector: Connector = { ...google, actions: options.actions ?? google.actions };
+  const connector: Connector = {
+    ...google,
+    actions: options.actions ?? google.actions,
+    check: options.wrapCheck?.(google.check) ?? google.check,
+  };
+
   const clock = createFakeClock({ startMs: Date.parse('2026-11-20T09:00:00Z') });
 
-  const testLog = await startCredentialTestLog({ clock });
+  const testLog =
+    options.sharedLog === undefined ? await startCredentialTestLog({ clock }) : options.sharedLog;
 
   const mutable: MutableHooks = {};
 
@@ -128,13 +143,15 @@ export async function startConnectionsHarness(
     effects: effects.effects,
   });
 
+  const readNow = options.wrapNow?.(() => clock.now()) ?? (() => clock.now());
+
   const connections = startConnections({
     log: testLog.log,
     definitions: () => ({ snapshotHash: 'test-snapshot' }),
     store: held.store,
     backend: held.backend,
     erasure: runner,
-    now: () => clock.now(),
+    now: readNow,
     connector,
     forgetWaitMs: options.forgetWaitMs ?? 200,
     forgetPollMs: 20,

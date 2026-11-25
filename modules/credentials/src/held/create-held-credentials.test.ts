@@ -1560,7 +1560,6 @@ test('it returns the scopes the provider granted and when a limited grant ends',
 
 test.each([
   { title: 'the token endpoint', path: '/token', host: 'origin' as const },
-  { title: 'the revoke endpoint', path: '/revoke', host: 'origin' as const },
   { title: 'a path under /oauth2/', path: '/oauth2/v1/userinfo', host: 'apiOrigin' as const },
   {
     title: 'a path under /oauth2/ in capitals',
@@ -1591,6 +1590,28 @@ test.each([
   await Promise.allSettled([send(`${ctx.provider[row.host]}${row.path}`)]);
 
   expect(ctx.provider.requests).toHaveLength(before);
+});
+
+test('it refuses a request of a connection to the host of the revoke URL', async () => {
+  const ctx = await setupTest();
+  const connection = await ctx.connectCredential();
+
+  const revokeOrigin = ctx.provider.origin.replace('auth.test', 'revoke.test');
+  const base = ctx.spec('oauth_token');
+
+  const spec = {
+    ...base,
+    origins: [...base.origins, revokeOrigin],
+    ...(base.provider === undefined
+      ? {}
+      : { provider: { ...base.provider, revokeURL: `${revokeOrigin}/v1/withdraw` } }),
+  };
+
+  const binding = await ctx.store.register(connection.tokenRef, spec);
+
+  const send = ctx.store.fetcher(binding, [revokeOrigin]);
+
+  expect(send(`${revokeOrigin}/data`)).rejects.toBeInstanceOf(CredentialRefusalError);
 });
 
 test('it refuses a request of a connection to the host of the authorize URL', async () => {

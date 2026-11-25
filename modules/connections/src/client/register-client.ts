@@ -1,7 +1,7 @@
 import { createShortID } from '@heynixie/db';
 import { clientRegisteredCodec } from '../record/client-registered-codec';
 import type { ServiceContext } from '../service-context';
-import type { RegisterClientResult } from '../types';
+import type { OperationAttempt, RegisterClientResult } from '../types';
 import { pickRegisteredOrigin } from './pick-registered-origin';
 import { readLiveClient } from './read-live-client';
 
@@ -21,6 +21,7 @@ export interface RegisterClientInput {
 export function registerClient(
   context: ServiceContext,
   input: RegisterClientInput,
+  attempt?: OperationAttempt<RegisterClientResult>,
 ): Promise<RegisterClientResult> {
   return context.lock.withLock(async () => {
     const origin = pickRegisteredOrigin(input.origin, input.headerOrigin);
@@ -38,6 +39,8 @@ export function registerClient(
 
     const secretFingerprint = await context.store.readFingerprint(input.clientSecret);
 
+    const registered: RegisterClientResult = { kind: 'registered', client: shortID, redirectURI };
+
     await context.backend.writeRegisteredClient(
       crypto.randomUUID(),
       { clientID: input.clientID, clientSecret: input.clientSecret },
@@ -48,6 +51,7 @@ export function registerClient(
         pickerKey: input.pickerKey,
         projectNumber: input.projectNumber,
         secretFingerprint,
+        settle: (tx) => attempt?.settle(tx, registered) ?? Promise.resolve(),
         record: {
           kind: clientRegisteredCodec.kind,
           payload: clientRegisteredCodec.encode({
@@ -58,6 +62,6 @@ export function registerClient(
       },
     );
 
-    return { kind: 'registered', client: shortID, redirectURI };
+    return registered;
   });
 }

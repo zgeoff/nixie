@@ -20,6 +20,7 @@ async function setupTest(config: SetupConfig) {
   const testLog = await setupTestLog();
 
   const registry = buildToolRegistry(config.tools);
+  const heldBack = { names: config.heldBack ?? [] };
 
   const logLines: { event: string; fields: LogFields | undefined; level: LogLevel | undefined }[] =
     [];
@@ -29,9 +30,7 @@ async function setupTest(config: SetupConfig) {
       logLines.push({ event, fields, level });
     },
     socketDir: join(testLog.dataDir, 'tools'),
-    ...(config.heldBack === undefined
-      ? {}
-      : { readHeldBackTools: () => Promise.resolve(config.heldBack ?? []) }),
+    readHeldBackTools: () => Promise.resolve(heldBack.names),
     registry,
     decide: readStarterDecisionPoint(
       (tool) => registry.findTool(tool)?.definition.declaration ?? null,
@@ -49,7 +48,7 @@ async function setupTest(config: SetupConfig) {
 
   onTestFinished(() => endpoint.stop());
 
-  return { endpoint, log: testLog.log, dataDir: testLog.dataDir, logLines };
+  return { endpoint, log: testLog.log, dataDir: testLog.dataDir, logLines, heldBack };
 }
 
 test('it lists and runs a tool that the run names by its SDK name under the registered name', async () => {
@@ -96,6 +95,57 @@ test('it leaves out of a run the tools that are held back, and lists the others'
   const listed = await client.listTools();
 
   expect(listed.tools.map((tool) => tool.name)).toStrictEqual(['notes.read']);
+});
+
+test('it lists a tool again once its scope returns, in a run that started while it was held back', async () => {
+  const ctx = await setupTest({
+    tools: [buildMockToolDefinition({ name: 'stub.read_mail' })],
+    heldBack: ['stub.read_mail'],
+  });
+
+  const run = await ctx.endpoint.startRun({
+    toolUseMetaKey: null,
+    runID: 'run-1',
+    thread: 'task-1',
+    logThread: 'task-1',
+    tools: ['mcp__nixie__stub_read_mail'],
+    model: { model: 'model-a', profile: 'chat-direct' },
+  });
+
+  const client = await startRunClient(run);
+  const before = await client.listTools();
+
+  ctx.heldBack.names = [];
+
+  const after = await client.listTools();
+
+  expect([
+    before.tools.map((tool) => tool.name),
+    after.tools.map((tool) => tool.name),
+  ]).toStrictEqual([[], ['stub.read_mail']]);
+});
+
+test('it refuses a call to a tool that is held back when the call arrives', async () => {
+  const ctx = await setupTest({
+    tools: [buildMockToolDefinition({ name: 'stub.read_mail' })],
+  });
+
+  const run = await ctx.endpoint.startRun({
+    toolUseMetaKey: null,
+    runID: 'run-1',
+    thread: 'task-1',
+    logThread: 'task-1',
+    tools: ['mcp__nixie__stub_read_mail'],
+    model: { model: 'model-a', profile: 'chat-direct' },
+  });
+
+  const client = await startRunClient(run);
+
+  ctx.heldBack.names = ['stub.read_mail'];
+
+  const result = await client.callTool({ name: 'stub.read_mail', arguments: { query: 'milk' } });
+
+  expect(result.isError).toBe(true);
 });
 
 test('it warns once for each tool of a run that no registered tool answers', async () => {

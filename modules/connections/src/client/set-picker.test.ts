@@ -37,3 +37,19 @@ test('it answers an unknown client, and records a change with the client alone',
     [{ client: ctx.client }],
   ]);
 });
+
+test('it keeps the picker as it was when the step that stores the outcome fails', async () => {
+  const ctx = await startGoogleConnections();
+
+  const settled = ctx.connections.setPicker(
+    ctx.client,
+    { pickerKey: 'AIzaKey', projectNumber: '123456789012' },
+    { isRetry: false, settle: () => Promise.reject(new Error('the outcome could not be stored')) },
+  );
+
+  await Promise.allSettled([settled]);
+
+  const setup = await ctx.connections.readSetup('https://nixie.example.org');
+
+  expect([setup.client?.pickerKey, setup.client?.projectNumber]).toStrictEqual([null, null]);
+});

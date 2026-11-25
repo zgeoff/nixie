@@ -1,5 +1,5 @@
 import type { HeldClient } from '@heynixie/credentials';
-import type { JSONObject } from '@heynixie/log';
+import type { JSONObject, WriteTransaction } from '@heynixie/log';
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import type { ConnectionTables } from '../types';
 import type { BackendContext } from './backend-context';
@@ -14,6 +14,9 @@ export interface ClientRegistration {
   readonly pickerKey: string | null;
   readonly projectNumber: string | null;
   readonly secretFingerprint: string;
+
+  // runs in the same transaction, after the record
+  readonly settle?: (tx: WriteTransaction) => Promise<void>;
   readonly record: { readonly kind: 'connection.client_registered'; readonly payload: JSONObject };
 }
 
@@ -78,6 +81,8 @@ export async function writeClientSecret(
           definitions: context.definitions(),
         },
       ]);
+
+      await registration.settle?.(tx);
     }
 
     if (existing !== undefined) {

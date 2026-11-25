@@ -22,7 +22,11 @@ export async function recoverLostRefreshes(options: RecoveryOptions): Promise<vo
     const counter = await options.backend.readRemovalCounter(open.credentialID);
     const token = await options.backend.readToken(open.credentialID);
 
-    if (token !== null) {
+    // A counter that moved since the refresh began means the credential was connected again, and
+    // the token it holds is not one this refresh could have replaced.
+    const isRenewed = open.removalCounter !== null && open.removalCounter !== counter;
+
+    if (token !== null && !isRenewed) {
       await options.writeState(
         open.credentialID,
         token.state,

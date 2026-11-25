@@ -123,6 +123,12 @@ export async function writeRenewedConnection(
 
   moveAccessToken(context, finished.credential, targetID, written.counter);
 
+  // the tokens were live under the consent's own credential, which no longer exists
+  await context.store.moveOwnValues(
+    { backend: 'database', credentialID: finished.credential.connection_id },
+    { backend: 'database', credentialID: targetID },
+  );
+
   for (const keyID of written.unnamed) {
     await removeKey(context.backend.shared, keyID);
   }

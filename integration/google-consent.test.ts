@@ -4,8 +4,11 @@ import { startGoogleConnections } from '@heynixie/connections/test-utils';
 import { handleGoogleReturn } from '@heynixie/web/google-return';
 
 async function setupTest() {
-  const google = await startGoogleConnections();
   const api = await startTestAPI();
+
+  const google = await startGoogleConnections({
+    sharedLog: { log: api.context.log, dataDir: api.dataDir },
+  });
 
   api.setConnections(google.connections);
 
