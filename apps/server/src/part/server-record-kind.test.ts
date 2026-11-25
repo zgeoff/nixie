@@ -47,6 +47,8 @@ function setupTest() {
     'task.step_errored': ['message'],
     task_message: ['body'],
     tool_called: ['input', 'destinations'],
+    'trigger.mail_arrived': ['from', 'subject'],
+    'trigger.mail_woke': ['mails'],
     'trigger.task_input': ['event'],
     'worker.run_ended': ['detail'],
     'worker.turn_ended': ['text'],

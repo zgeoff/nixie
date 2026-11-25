@@ -12,6 +12,7 @@ import {
   writeInboxRecordsInTransaction,
 } from '@heynixie/tasks';
 import type { Transaction } from 'kysely';
+import { P, match } from 'ts-pattern';
 import { triggerArmedCodec } from '../record/trigger-armed-codec';
 import { triggerDeliveredCodec } from '../record/trigger-delivered-codec';
 import type {
@@ -23,6 +24,8 @@ import type {
 } from '../types';
 import { buildSourceKey } from '../utils/build-source-key';
 import { toCanonicalJSON } from '../utils/to-canonical-json';
+import { removeSpentArrivalKeys } from '../wake/remove-spent-arrival-keys';
+import { writeMailArrival } from '../wake/write-mail-arrival';
 import { catchUpThresholdMs, maxSkippedSlots } from './constants';
 import { isEventDeliverable } from './is-event-deliverable';
 import type { EventOutcome } from './pick-event-outcome';
@@ -41,12 +44,24 @@ export async function deliverTriggerBatch(
 
   const result = await withWriteTransaction(core.log.writer, async (tx) => {
     let delivered = 0;
+    const spent: number[] = [];
 
     for (const event of batch.events) {
-      const isWritten =
-        event.kind === 'task_input'
-          ? await writeTaskInput(tx, core, sourceID, event)
-          : await writeEvent(tx, core, sourceID, event);
+      const isWritten = await match(event)
+        .with({ kind: 'task_input' }, (input) => writeTaskInput(tx, core, sourceID, input))
+        .with({ kind: 'mail' }, async (mail) => {
+          const arrival = await writeMailArrival(tx, core, sourceID, mail);
+
+          if (arrival.sequence !== null && !arrival.isHeld) {
+            spent.push(arrival.sequence);
+          }
+
+          return arrival.isWritten;
+        })
+        .with({ kind: P.union('schedule', 'at') }, (schedule) =>
+          writeEvent(tx, core, sourceID, schedule),
+        )
+        .exhaustive();
 
       if (isWritten) {
         delivered += 1;
@@ -55,14 +70,16 @@ export async function deliverTriggerBatch(
 
     await writeCursor(tx, core, sourceID, batch.cursor);
 
-    return { delivered };
+    return { delivered, spent };
   });
+
+  await removeSpentArrivalKeys(core, result.spent);
 
   if (NIXIE_TEST_BUILD) {
     await waitAtFaultPoint('trigger.batch.after', { kind: 'trigger', id: sourceID });
   }
 
-  return result;
+  return { delivered: result.delivered };
 }
 
 // An event that names its task reads no definition. It is dropped when its key is held or its task

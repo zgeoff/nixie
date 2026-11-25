@@ -73,7 +73,81 @@ export interface TaskInputEvent {
   readonly payload: JSONObject;
 }
 
-export type TriggerEvent = ScheduleTriggerEvent | TaskInputEvent;
+// The one mailbox that a mail source reads: the assistant's own.
+export interface Mailbox {
+  readonly kind: 'mail';
+}
+
+// Every field is optional, and every field present must match. An empty match takes every arrival.
+export interface WakeMatch {
+  // addresses, or '@domain' for that domain and never a subdomain; compared without case
+  readonly from?: readonly string[];
+
+  // a substring, both sides in NFC and lowered
+  readonly subject?: string;
+
+  // the mailbox's thread ID: a short ID for the assistant's mailbox
+  readonly thread?: string;
+}
+
+// The conversation or any task that a rule wakes.
+export type WakeTarget =
+  | { readonly kind: 'conversation' }
+  | { readonly kind: 'task'; readonly taskID: string };
+
+export interface WakeRuleInput {
+  readonly mailbox: Mailbox;
+  readonly match: WakeMatch;
+  readonly target: WakeTarget;
+
+  // the task ID of the conversation or task that set the rule
+  readonly setBy: string;
+
+  // epoch ms; null: the rule stays until it is cancelled
+  readonly expiresAt: number | null;
+  readonly windowMs: number;
+
+  // 'reply': registered by a send
+  readonly origin: 'tool' | 'reply';
+}
+
+export interface WakeRule extends WakeRuleInput {
+  readonly ruleID: string;
+  readonly shortID: string;
+
+  // epoch ms: the clock's time when the rule was set
+  readonly createdAt: number;
+}
+
+export type WakeRuleEndReason = 'cancelled' | 'task_ended';
+
+// One new mail in one mailbox, as the source read it from the host.
+export interface MailArrival {
+  // the short ID of the stored mail
+  readonly messageID: string;
+  readonly threadID: string;
+
+  // epoch ms, the host's receive time
+  readonly receivedAt: number;
+
+  // the From address alone, lowered
+  readonly from: string;
+  readonly subject: string;
+}
+
+export interface MailArrivalEvent {
+  readonly kind: 'mail';
+  readonly mailbox: Mailbox;
+
+  // the source's part of the key: the host's message ID
+  readonly dedupeKey: string;
+
+  // ISO instant: when the source read it
+  readonly occurredAt: string;
+  readonly payload: MailArrival;
+}
+
+export type TriggerEvent = ScheduleTriggerEvent | TaskInputEvent | MailArrivalEvent;
 
 export interface TriggerBatch {
   readonly cursor: JSONValue;
@@ -97,7 +171,7 @@ export interface TriggerContext {
 export interface TriggerSource {
   // stable across restarts, such as 'schedule'
   readonly id: string;
-  readonly kind: 'schedule' | 'stream';
+  readonly kind: 'schedule' | 'stream' | 'mail';
 
   // resolves once the source runs
   readonly start: (context: TriggerContext) => Promise<void>;
@@ -159,10 +233,49 @@ interface TriggerDefinitionTable {
   readonly updated_sequence: number;
 }
 
+interface WakeRuleTable {
+  readonly rule_id: string;
+  readonly short_id: string;
+  readonly mailbox: string;
+
+  // canonical JSON
+  readonly match: string;
+  readonly target_kind: 'conversation' | 'task';
+  readonly target_task_id: string;
+  readonly set_by: string;
+  readonly expires_at: number | null;
+  readonly window_ms: number;
+  readonly origin: 'tool' | 'reply';
+  readonly created_at: number;
+  readonly ended_at: number | null;
+  readonly end_reason: WakeRuleEndReason | null;
+  readonly updated_sequence: number;
+}
+
+interface WakeRuleWindowTable {
+  readonly rule_id: string;
+
+  // the recorded time of the rule's last wake, epoch ms
+  readonly last_wake_at: number;
+  readonly updated_sequence: number;
+}
+
+interface WakeHeldTable {
+  readonly held_key: string;
+  readonly rule_id: string;
+  readonly target_task_id: string;
+
+  // the sequence of the trigger.mail_arrived record
+  readonly arrived_seq: number;
+}
+
 export type TriggersTables = CheckedTables<
   Readonly<{
     trigger_sources: TriggerSourceTable;
     trigger_keys: TriggerKeyTable;
     trigger_definitions: TriggerDefinitionTable;
+    wake_rules: WakeRuleTable;
+    wake_rule_windows: WakeRuleWindowTable;
+    wake_held: WakeHeldTable;
   }>
 >;

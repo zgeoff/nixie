@@ -1,7 +1,7 @@
 import type { TriggersTables } from '../types';
 import type { TestTriggers } from './start-test-triggers';
 
-// The rows of the 3 trigger tables, for a test of the folds.
+// The rows of the trigger tables, for a test of the folds.
 export async function readTestTriggerRows(triggers: Pick<TestTriggers, 'writer'>) {
   const db = triggers.writer.db.$extendTables<TriggersTables>();
 
@@ -13,5 +13,7 @@ export async function readTestTriggerRows(triggers: Pick<TestTriggers, 'writer'>
       .selectAll()
       .orderBy('definition_id')
       .execute(),
+    held: await db.selectFrom('wake_held').selectAll().orderBy('arrived_seq').execute(),
+    windows: await db.selectFrom('wake_rule_windows').selectAll().orderBy('rule_id').execute(),
   };
 }

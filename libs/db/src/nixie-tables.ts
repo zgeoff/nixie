@@ -233,6 +233,18 @@ export interface NixieTables {
     readonly epoch: number;
     readonly generation: number;
   };
+  readonly mail_messages: {
+    readonly message_id: string;
+    readonly short_id: string;
+    readonly thread_short_id: string;
+    readonly host_message_id: string;
+    readonly direction: string;
+    readonly received_at: number;
+    readonly unread: number;
+    readonly header_hash: string;
+    readonly record_sequence: number;
+    readonly updated_sequence: number;
+  };
   readonly memory_change_notices: {
     readonly entry_key: string;
     readonly notice_key: string;
@@ -864,6 +876,33 @@ export interface NixieTables {
     readonly taken_at: number;
     readonly state: string;
     readonly removed_cause: string | null;
+  };
+  readonly wake_held: {
+    readonly held_key: string;
+    readonly rule_id: string;
+    readonly target_task_id: string;
+    readonly arrived_seq: number;
+  };
+  readonly wake_rule_windows: {
+    readonly rule_id: string;
+    readonly last_wake_at: number;
+    readonly updated_sequence: number;
+  };
+  readonly wake_rules: {
+    readonly rule_id: string;
+    readonly short_id: string;
+    readonly mailbox: string;
+    readonly match: string;
+    readonly target_kind: string;
+    readonly target_task_id: string;
+    readonly set_by: string;
+    readonly expires_at: number | null;
+    readonly window_ms: number;
+    readonly origin: string;
+    readonly created_at: number;
+    readonly ended_at: number | null;
+    readonly end_reason: string | null;
+    readonly updated_sequence: number;
   };
   readonly web_fetch_links: {
     readonly session_key: string;

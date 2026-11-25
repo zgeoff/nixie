@@ -1,0 +1,112 @@
+import { writeRecordsInTransaction } from '@heynixie/log';
+import { writeInboxRecordsInTransaction } from '@heynixie/tasks';
+import type { Transaction } from 'kysely';
+import {
+  mailArrivedFieldsSchema,
+  triggerMailArrivedCodec,
+} from '../record/trigger-mail-arrived-codec';
+import type { MailArrivalEvent, TriggerCoreContext, TriggersTables } from '../types';
+import { buildSourceKey } from '../utils/build-source-key';
+import { buildMailWokeInput } from './build-mail-woke-input';
+import { buildMailboxKey } from './build-mailbox-key';
+import { buildTargetTaskID } from './build-target-task-id';
+import { collectArrivalMatches } from './collect-arrival-matches';
+import { endRulesOfEndedTasks } from './end-rules-of-ended-tasks';
+import { pickArrivalPlan } from './pick-arrival-plan';
+import { readLiveWakeRules } from './read-live-wake-rules';
+
+export interface WrittenArrival {
+  // false when the event wrote no arrival record
+  readonly isWritten: boolean;
+
+  // the arrival's sequence when it is written, and whether a held match still names it
+  readonly sequence: number | null;
+  readonly isHeld: boolean;
+}
+
+const notWritten: WrittenArrival = { isWritten: false, sequence: null, isHeld: false };
+
+// One mail arrival in the deliver transaction. It is dropped when its key is held, its mailbox is not
+// its source's, or no rule takes it. Otherwise the core writes one arrival record, and one wake for
+// each target with a ready rule.
+export async function writeMailArrival(
+  tx: Transaction<unknown>,
+  core: TriggerCoreContext,
+  sourceID: string,
+  event: MailArrivalEvent,
+): Promise<WrittenArrival> {
+  const sourceKey = buildSourceKey(sourceID, event.dedupeKey);
+
+  const key = await tx
+    .$extendTables<TriggersTables>()
+    .selectFrom('trigger_keys')
+    .select('source_key')
+    .where('source_key', '=', sourceKey)
+    .executeTakeFirst();
+
+  if (key !== undefined || buildMailboxKey(event.mailbox) !== sourceID) {
+    return notWritten;
+  }
+
+  const live = await readLiveWakeRules(tx, event.mailbox);
+
+  const matches = collectArrivalMatches(live, event.payload);
+
+  const ended = await endRulesOfEndedTasks(tx, core, [
+    ...new Set(matches.map((match) => buildTargetTaskID(match.rule.target))),
+  ]);
+
+  const kept = matches.filter((match) => !ended.has(buildTargetTaskID(match.rule.target)));
+
+  if (kept.length === 0) {
+    return notWritten;
+  }
+
+  const plan = pickArrivalPlan(kept, core.clock.now());
+  const mail = event.payload;
+
+  const [arrived] = await writeRecordsInTransaction(tx, core.log, [
+    {
+      kind: triggerMailArrivedCodec.kind,
+      definitions: core.definitions(),
+      payload: triggerMailArrivedCodec.encode({
+        source: sourceID,
+        dedupeKey: event.dedupeKey,
+        mailbox: buildMailboxKey(event.mailbox),
+        messageID: mail.messageID,
+        threadID: mail.threadID,
+        receivedAt: mail.receivedAt,
+        matches: plan.flatMap((target) =>
+          target.rules.map((rule) => ({
+            ruleID: rule.ruleID,
+            targetTaskID: target.targetTaskID,
+            isHeld: !target.isNow,
+          })),
+        ),
+      }),
+      erasable: mailArrivedFieldsSchema.parse({ from: mail.from, subject: mail.subject }),
+    },
+  ]);
+
+  if (arrived === undefined) {
+    throw new Error('the log wrote no record for the arrival');
+  }
+
+  const now = plan.filter((target) => target.isNow);
+
+  if (now.length > 0) {
+    await writeInboxRecordsInTransaction(
+      tx,
+      core,
+      now.map((target) =>
+        buildMailWokeInput(core, {
+          targetTaskID: target.targetTaskID,
+          rules: target.rules,
+          mails: [{ arrived: arrived.sequence, ...mail }],
+        }),
+      ),
+    );
+  }
+
+  return { isWritten: true, sequence: arrived.sequence, isHeld: now.length < plan.length };
+}

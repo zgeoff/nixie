@@ -6,4 +6,7 @@ export const triggersRecordTopics = {
   'trigger.armed': ['triggers', 'definitions'],
   'trigger.delivered': ['triggers'],
   'trigger.deferred': ['triggers', 'definitions'],
+  'trigger.wake_rule_set': ['triggers'],
+  'trigger.wake_rule_ended': ['triggers'],
+  'trigger.mail_arrived': ['triggers'],
 } as const satisfies Record<TriggersRecordKind, readonly LiveTopic[]>;
