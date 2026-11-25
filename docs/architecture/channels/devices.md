@@ -351,9 +351,9 @@ a URL of its own, so it can't put what it holds into a query string.
   for its answer: it returns `STALE` for content that the region no longer shows, `NOT_DECLARED` for
   a URL that the shown page did not declare, then `REFUSED` or `NOT_READY` or the response.
 
-A fetched response is outside content. It reaches the assistant only when the page sends it in a
-page event, which arrives inside an untrusted block, and a refused fetch reaches the assistant as a
-page error.
+A fetched response is outside content. It reaches the assistant in a page event the page sends,
+which arrives inside an untrusted block, or in a [preview](#the-preview) picture of the page, which
+counts as outside content too. A refused fetch reaches the assistant as a page error.
 
 **Why:** the decision point judges the URLs when the page is sent, and the page's script can't build
 new ones, so it can't leak what it holds to an allowed host. A declared fetch shares the web fetch's
@@ -453,9 +453,9 @@ that holds a link, frame, object or embed element before any refusal. `device.re
 `devices.list` shows the layout a device holds whether or not the device is online, unlike
 `showing`, which is null while the device is offline. `showing` follows the screen's order: it is
 `layout` while no show covers the layout and at least one region shows content or has a background.
-Each region lists its kind, `until` and the short ID of its `device.region_shown` record, and never
-its content. A page region also lists its packages and the URLs of its fetches, and never its HTML.
-A blank region has a null kind.
+Each region lists its kind, `until` and the short ID of its `device.region_shown` record. A page
+region also lists its packages and the URLs of its fetches. No region lists the rest of its content,
+such as its text, its image or its HTML. A blank region has a null kind.
 
 ## The preview
 
@@ -493,13 +493,13 @@ without one still boots, and each preview of it has `picture: unavailable`.
 
 The `devices` module builds the page that the sandbox opens. It picks what the screen draws as the
 device page does: a show, then the layout while a region shows content or has a background, then the
-idle scene. `buildPreviewPage` turns that choice into `index.html` and one file for each image that
-the screen draws, so an image that a show covers is never sent. A markdown region keeps raw HTML as
-text, shows a link as underlined words with no address, and shows an image as the device does, a
-link labelled `image: <alt>`. A clock or a countdown shows the time of the render, in the time zone
-that the device's browser sent beside its size, or in the deployment's default time zone when the
-device sent none. A script in the page grows the text of each region to the largest size that fits,
-as the device page does.
+idle scene. `buildPreviewPage` turns that choice into `index.html` and the files that the screen
+draws, such as one for each image, so an image that a show covers is never sent. A markdown region
+keeps raw HTML as text, shows a link as underlined words with no address, and shows an image as the
+device does, a link labelled `image: <alt>`. A clock or a countdown shows the time of the render, in
+the time zone that the device's browser sent beside its size, or in the deployment's default time
+zone when the device sent none. A script in the page grows the text of each region to the largest
+size that fits, as the device page does.
 
 The server sends the files, the screen's size in device pixels and the pixel ratio. The render guest
 in `guests/render` starts Chromium on an empty profile in a folder that it removes after the render.

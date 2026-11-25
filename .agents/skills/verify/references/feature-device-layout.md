@@ -195,9 +195,9 @@ under a name, lay the screen out again, and restore the saved layout in one call
 12. Have the model show a page in `pond` that loads the approved package and reads the declared
     fetch of `https://tides.test/today`, which the test site serves. nixie holds the model's
     `device.region` call, because no rule allows the host `tides.test`. The approvals page refuses
-    the browser's device session, so give the user's answer with the action `--step approve`. Script
-    the model's text for the turn that the approval starts with `action script-reply`, before the
-    approve action:
+    the browser's device session, so give the user's answer with the action `--step approve`. Before
+    the approve action, script the model's text for the turn that the approval starts, with
+    `action script-reply`:
 
     ```bash
     bun verify action layout-on-device --step package --text 'The tide page is up.'
@@ -214,7 +214,7 @@ under a name, lay the screen out again, and restore the saved layout in one call
     exits 0. The approve action returns `data.replies` of 1. The snapshot shows "Tide 14:05 ripples
     7": the page loaded the package's script, which set `ripples` to 7, and read the declared fetch
     from the test site. When the snapshot does not list the text inside the frame, read it from the
-    screenshot. A page that shows "Failed" and a code means the fetch was refused or not ready: skip
+    screenshot. When the page shows "Failed" and a code, the fetch was refused or not ready: skip
     `done`, and report the code.
 
 ## End state
