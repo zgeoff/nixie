@@ -1,5 +1,12 @@
 import type { TokenReply } from './send-token-request';
-import type { HeldBackend, HeldState, HeldToken, TokenExchange, TokenResult } from './types';
+import type {
+  ClientGuard,
+  HeldBackend,
+  HeldState,
+  HeldToken,
+  TokenExchange,
+  TokenResult,
+} from './types';
 
 export interface ExchangeWriter {
   readonly backend: HeldBackend;
@@ -26,8 +33,8 @@ export interface ExchangedTokens {
   // the counter of the credential the tokens save into, read before the code went out
   readonly tokenCounter: number;
 
-  // whether the OAuth client that issued the tokens is still the one the exchange began with
-  readonly probeClient: () => Promise<boolean>;
+  // the OAuth client that issued the tokens, with the counter the exchange read for it
+  readonly client: ClientGuard;
 
   // runs once the token is kept, so a caller that meets a later throw knows not to revoke it
   readonly onKept: () => void;
@@ -82,11 +89,12 @@ export async function writeExchangedToken(
     },
   };
 
-  const isClientCurrent = await exchanged.probeClient();
-
-  const written = isClientCurrent
-    ? await writer.backend.writeToken(credentialID, token, exchanged.tokenCounter, null)
-    : 'removed';
+  const written = await writer.backend.writeToken(
+    credentialID,
+    token,
+    { expectedCounter: exchanged.tokenCounter, client: exchanged.client },
+    null,
+  );
 
   if (written === 'removed') {
     await writer.backend.removeKey(keyID);

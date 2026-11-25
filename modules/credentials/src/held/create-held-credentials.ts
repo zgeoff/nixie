@@ -8,6 +8,7 @@ import { createKeyedLock } from './create-keyed-lock';
 import { CredentialRemovedError } from './credential-removed-error';
 import { parseIDToken } from './parse-id-token';
 import { recoverLostRefreshes } from './recover-lost-refreshes';
+import { sendRevocation } from './send-revocation';
 import { sendTokenRequest } from './send-token-request';
 import type { TokenReply } from './send-token-request';
 import { TokenRequestError } from './token-request-error';
@@ -18,6 +19,7 @@ import type {
   HeldState,
   HeldToken,
   RefreshOutcome,
+  RevokeResult,
   TokenExchange,
   TokenResult,
 } from './types';
@@ -68,6 +70,10 @@ export interface HeldCredentials {
   // lived token never starts a second refresh
   readonly readCurrentToken: (handle: HeldHandle) => Promise<string>;
   readonly markFailing: (handle: HeldHandle, reason: FailingReason) => Promise<void>;
+
+  // Sends the credential's refresh token to the provider's revoke URL once, and says how it ended.
+  // It reads the token that a removal began, which every other path refuses.
+  readonly revoke: (handle: HeldHandle) => Promise<RevokeResult>;
   readonly readState: (handle: CounterHandle) => Promise<HeldState | null>;
   readonly remove: (credentialID: string) => Promise<void>;
   readonly recover: () => Promise<void>;
@@ -101,11 +107,13 @@ export function createHeldCredentials(options: HeldOptions): HeldCredentials {
   };
 
   const addOwnValues = (credentialID: string, token: HeldToken): void => {
-    options.ownValues.add({
-      group: 'connector_credentials',
-      name: `held:${credentialID}:access`,
-      value: token.accessToken,
-    });
+    if (token.accessToken !== '') {
+      options.ownValues.add({
+        group: 'connector_credentials',
+        name: `held:${credentialID}:access`,
+        value: token.accessToken,
+      });
+    }
 
     if (token.refreshToken !== null) {
       options.ownValues.add({
@@ -145,27 +153,9 @@ export function createHeldCredentials(options: HeldOptions): HeldCredentials {
     clientSecret: string,
     token: string,
   ): Promise<boolean> => {
-    if (handle.provider.revokeURL === undefined) {
-      return false;
-    }
+    const result = await sendRevocation(options, handle.provider, clientSecret, token);
 
-    const send = options.makeProviderFetch(handle.provider, [clientSecret]);
-
-    try {
-      const response = await send(handle.provider.revokeURL, {
-        method: 'POST',
-        body: new URLSearchParams({
-          token,
-          client_id: handle.provider.clientID,
-          client_secret: clientSecret,
-        }),
-        signal: AbortSignal.timeout(options.requestTimeoutMs),
-      });
-
-      return response.ok;
-    } catch {
-      return false;
-    }
+    return result.outcome === 'confirmed';
   };
 
   const runRefresh = async (handle: HeldHandle): Promise<RefreshOutcome> => {
@@ -179,6 +169,7 @@ export function createHeldCredentials(options: HeldOptions): HeldCredentials {
       return 'removed';
     }
 
+    const clientCounter = await backend.readRemovalCounter(token.clientCredentialID);
     const client = await backend.readClient(token.clientCredentialID);
 
     if (token.refreshToken === null || client === null) {
@@ -251,7 +242,10 @@ export function createHeldCredentials(options: HeldOptions): HeldCredentials {
       const outcome = await backend.writeToken(
         handle.credentialID,
         renewed,
-        handle.removalCounter,
+        {
+          expectedCounter: handle.removalCounter,
+          client: { credentialID: token.clientCredentialID, expectedCounter: clientCounter },
+        },
         {
           event: 'refresh_saved',
           credentialID: handle.credentialID,
@@ -375,6 +369,10 @@ export function createHeldCredentials(options: HeldOptions): HeldCredentials {
       throw new CredentialRefusalError(`the credential ${handle.label} needs the owner's consent`);
     }
 
+    if (token.accessToken === '') {
+      throw new CredentialRefusalError(`the credential ${handle.label} has no access token yet`);
+    }
+
     return token.accessToken;
   };
 
@@ -446,8 +444,7 @@ export function createHeldCredentials(options: HeldOptions): HeldCredentials {
             reply: result.reply,
             account,
             tokenCounter,
-            probeClient: async () =>
-              (await backend.readRemovalCounter(client.credentialID)) === client.removalCounter,
+            client: { credentialID: client.credentialID, expectedCounter: client.removalCounter },
             onKept: () => {
               kept.isKept = true;
             },
@@ -491,6 +488,23 @@ export function createHeldCredentials(options: HeldOptions): HeldCredentials {
         { ...token.state, status: 'failing', reason, sinceMs: options.now() },
         handle.removalCounter,
       );
+    },
+    revoke: async (handle) => {
+      const token = await backend.readTokenForRevocation(handle.credentialID);
+
+      if (token === null) {
+        return { outcome: 'not_attempted', status: null, providerError: null };
+      }
+
+      const client = await backend.readClient(token.clientCredentialID);
+
+      const value = token.refreshToken ?? token.accessToken;
+
+      if (client === null || value === '') {
+        return { outcome: 'not_attempted', status: null, providerError: null };
+      }
+
+      return sendRevocation(options, handle.provider, client.clientSecret, value);
     },
     readState: async (handle) => {
       const token = await backend.readToken(handle.credentialID);

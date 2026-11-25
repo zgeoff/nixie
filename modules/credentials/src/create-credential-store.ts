@@ -8,13 +8,14 @@ import { readFingerprint } from './fingerprint/read-fingerprint';
 import { buildHostHeldName } from './grant/build-host-held-name';
 import { modelSecretNameLength, modelSecretPrefix } from './grant/constants';
 import { createHeldCredentials } from './held/create-held-credentials';
-import type { HeldHandle } from './held/create-held-credentials';
+import type { HeldCredentials, HeldHandle } from './held/create-held-credentials';
 import { CredentialRemovedError } from './held/credential-removed-error';
 import type {
   CredentialRecorder,
   HeldBackend,
   HeldState,
   RefreshOutcome,
+  RevokeResult,
   TokenExchange,
   TokenResult,
 } from './held/types';
@@ -31,6 +32,11 @@ import type {
   ResolveCredential,
 } from './types';
 
+export interface HeldWiring {
+  readonly backend: HeldBackend;
+  readonly recorder: CredentialRecorder;
+}
+
 export interface CredentialStoreOptions {
   readonly secrets: Pick<Secrets, 'readFileValue' | 'fingerprintKey' | 'ownValues'>;
   readonly resolveHost: (host: string) => Promise<readonly string[]>;
@@ -39,11 +45,9 @@ export interface CredentialStoreOptions {
   readonly denied: readonly string[];
 
   // The database backend's storage, and the log the store writes its records to. Without it the
-  // store holds file credentials alone.
-  readonly held?: {
-    readonly backend: HeldBackend;
-    readonly recorder: CredentialRecorder;
-  };
+  // store holds file credentials alone. The store calls it at the first database credential, so a
+  // server can build the store before the log it needs has started.
+  readonly held?: () => HeldWiring;
 
   // the time a refresh reads, in ms; the system clock by default
   readonly now?: () => number;
@@ -112,6 +116,11 @@ export interface CredentialStore {
   // null when the credential holds no token yet
   readonly readStatus: (binding: BindingRef<'database'>) => Promise<HeldState | null>;
 
+  // Sends the credential's refresh token to the provider's revoke URL once, and says how it ended.
+  // It still reads a token whose removal began, and its key must not have gone: otherwise it sends
+  // nothing and answers `not_attempted`.
+  readonly revoke: (binding: BindingRef<'database'>) => Promise<RevokeResult>;
+
   // Removes a database credential and advances its removal counter in one transaction. Every
   // handle made before it refuses from then on, and a refresh in flight saves nothing.
   readonly remove: (ref: DatabaseCredentialRef) => Promise<void>;
@@ -147,34 +156,36 @@ export function createCredentialStore(options: CredentialStoreOptions): Credenti
     ...(options.test?.transport === undefined ? {} : { transport: options.test.transport }),
   };
 
-  const held =
-    options.held === undefined
-      ? null
-      : createHeldCredentials({
-          backend: options.held.backend,
-          recorder: options.held.recorder,
-          fingerprintKey: options.secrets.fingerprintKey,
-          ownValues: options.secrets.ownValues,
-          now,
-          requestTimeoutMs: options.tokenRequestTimeoutMs ?? defaultTokenRequestTimeoutMs,
-          makeProviderFetch: (provider, bodyValues) =>
-            createCredentialFetcher(fetcherChecks, {
-              spec: null,
-              readValue: () => null,
-              bodyValues,
-              origins: normalizeOrigins(listProviderURLs(provider)),
-              options: { redirects: 'none' },
-            }),
-        });
+  const heldHolder: { current: HeldCredentials | null } = { current: null };
 
-  const requireHeld = () => {
+  const requireHeld = (): HeldCredentials => {
     invariant(
-      held !== null,
+      options.held !== undefined,
       'a database credential needs the store to be made with a held backend',
     );
 
-    return held;
+    heldHolder.current ??= createHeld(options.held());
+
+    return heldHolder.current;
   };
+
+  const createHeld = (wiring: HeldWiring): HeldCredentials =>
+    createHeldCredentials({
+      backend: wiring.backend,
+      recorder: wiring.recorder,
+      fingerprintKey: options.secrets.fingerprintKey,
+      ownValues: options.secrets.ownValues,
+      now,
+      requestTimeoutMs: options.tokenRequestTimeoutMs ?? defaultTokenRequestTimeoutMs,
+      makeProviderFetch: (provider, bodyValues) =>
+        createCredentialFetcher(fetcherChecks, {
+          spec: null,
+          readValue: () => null,
+          bodyValues,
+          origins: normalizeOrigins(listProviderURLs(provider)),
+          options: { redirects: 'none' },
+        }),
+    });
 
   const getBinding = (ref: BindingRef): Binding => {
     const binding = bindings.get(ref.bindingID);
@@ -370,6 +381,7 @@ export function createCredentialStore(options: CredentialStoreOptions): Credenti
     refresh: (binding) => requireHeld().refresh(toHandle(binding)),
     refreshIfDue: (binding) => requireHeld().refreshIfDue(toHandle(binding)),
     readStatus: (binding) => requireHeld().readState(toHandle(binding)),
+    revoke: (binding) => requireHeld().revoke(toHandle(binding)),
     remove: (ref) => requireHeld().remove(ref.credentialID),
     recover: () => requireHeld().recover(),
   };

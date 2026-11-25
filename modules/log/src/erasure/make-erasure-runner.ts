@@ -137,6 +137,7 @@ function buildEntry<Request>(
   return {
     descriptor: erasable,
     hide: (target) => erasable.hide(target),
+    revoke: (target) => erasable.revoke?.(target) ?? Promise.resolve(),
     readChildren: (tx, target) => erasable.readChildren(tx, target),
     cleanIndexes: (target) => erasable.cleanIndexes(target),
     beginChild: (target, parent) =>
