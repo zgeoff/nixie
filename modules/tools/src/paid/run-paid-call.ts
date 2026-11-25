@@ -16,9 +16,7 @@ export interface PaidCallOptions {
   readonly budgets?: BudgetsContext;
 }
 
-export type PaidOutcome =
-  | ToolOutcome
-  | { readonly status: 'budget_reached'; readonly message: string };
+type PaidOutcome = ToolOutcome | { readonly status: 'budget_reached'; readonly message: string };
 
 export interface PaidRun {
   readonly outcome: PaidOutcome;
