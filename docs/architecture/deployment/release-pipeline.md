@@ -301,11 +301,11 @@ The config schema check lists each change between two copies of `config.schema.j
 a `config.yaml` the older copy accepts: a removed or newly required key, a narrower type, bound or
 value list, or a new pattern. A change it cannot prove harmless counts as breaking, so the list can
 hold a false alarm but never misses a break. A changed pattern counts as breaking unless it keeps
-the older pattern's literal prefix and opens the one character class after it to `.`, that class can
-never match a line terminator, and a `*` repeat stays `*`. Any change to a schema that uses `$ref`
-counts as breaking, because the check compares each subschema only where it sits. The check compares
-the choices of a `oneOf` one by one only when a required string tag, such as a model profile's
-`harness`, keeps them apart. It counts any other `oneOf` change as breaking.
+the older pattern's literal prefix, opens the one character class after that prefix to `.`, and
+leaves a `*` repeat as `*`, and that class can never match a line terminator. Any change to a schema
+that uses `$ref` counts as breaking, because the check compares each subschema only where it sits.
+The check compares the choices of a `oneOf` one by one only when a required string tag, such as a
+model profile's `harness`, keeps them apart. It counts any other `oneOf` change as breaking.
 
 On a pull request, the check compares with the copy on the pull request's base, so each pull request
 answers only for the change it adds. A pull request with a breaking change fails until its title
