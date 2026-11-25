@@ -347,3 +347,14 @@ test('it refuses a nixie pause without its client action ID', () => {
     { path: ['clientActionID'] },
   );
 });
+
+test('it refuses a message send that labels a span as dictated', () => {
+  expect(
+    contract.conversation.send['~orpc'].inputSchema?.safeParse({
+      clientMessageId: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+      spans: [{ end: 5, source: 'dictated', start: 0 }],
+      text: 'hello',
+      thread: 'conversation',
+    }).error?.issues,
+  ).toPartiallyContain({ path: ['spans', 0, 'source'] });
+});

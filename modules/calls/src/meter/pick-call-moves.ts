@@ -1,8 +1,8 @@
 import type { Call } from '../types';
 import type { CallEndedBy } from '../utils/call-ended-by';
+import { countOwedMinutes } from '../utils/count-owed-minutes';
 
 export const connectingLimitMs = 30_000;
-export const minuteMs = 60_000;
 
 export type CallMove =
   | { readonly kind: 'end'; readonly callID: string; readonly endedBy: CallEndedBy }
@@ -34,10 +34,8 @@ export function pickCallMoves(calls: readonly Call[], facts: CallFacts): readonl
       return [{ kind: 'end', callID: call.callID, endedBy: 'dropped' }];
     }
 
-    const startedMinutes = Math.floor((facts.nowMs - call.connectedAtMs) / minuteMs) + 1;
+    const owed = countOwedMinutes(call, facts.nowMs);
 
-    return startedMinutes > call.minutes
-      ? [{ kind: 'charge', callID: call.callID, minutes: startedMinutes - call.minutes }]
-      : [];
+    return owed > 0 ? [{ kind: 'charge', callID: call.callID, minutes: owed }] : [];
   });
 }

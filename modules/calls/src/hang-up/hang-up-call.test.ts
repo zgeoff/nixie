@@ -3,8 +3,9 @@ import { readRecords } from '@heynixie/log';
 import { conversationTaskID } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
 import { connectCall } from '../connect/connect-call';
+import { runCallSweep } from '../meter/run-call-sweep';
 import { startCall } from '../start/start-call';
-import { startTestCalls } from '../test-utils';
+import { probeStubbedCaller, startTestCalls } from '../test-utils';
 import { readCall } from '../utils/read-call';
 import { hangUpCall } from './hang-up-call';
 
@@ -24,6 +25,7 @@ test('it ends a live call as you, closes its session and keeps its minutes', asy
     callID: ctx.callID,
     session: 'identity-1',
     sdpOffer: 'offer',
+    probeCaller: probeStubbedCaller,
   });
 
   const result = await hangUpCall(ctx.context, ctx.callID);
@@ -67,4 +69,56 @@ test('it lets a new call start after the running one hangs up', async () => {
   const next = await startCall(ctx.context, { carryingSession: 'identity-1' });
 
   expect(next.status).toBe('started');
+});
+
+test('it charges the minute that has started and no sweep has charged before it ends the call', async () => {
+  const ctx = await setupTest();
+
+  await connectCall(ctx.context, {
+    callID: ctx.callID,
+    session: 'identity-1',
+    sdpOffer: 'offer',
+    probeCaller: probeStubbedCaller,
+  });
+
+  ctx.clock.advance(60_001);
+
+  await hangUpCall(ctx.context, ctx.callID);
+  await runCallSweep(ctx.context);
+
+  const call = await readCall(ctx.writer.db, ctx.callID);
+  const found = await readRecords(ctx.log, { afterSequence: 0, kinds: ['call.ended'] });
+
+  expect([call?.minutes, found.map((entry) => entry.record.payload)]).toStrictEqual([
+    2,
+    [{ callID: ctx.callID, endedBy: 'you', minutes: 2 }],
+  ]);
+});
+
+test('it logs a session that fails to close, and forgets the session', async () => {
+  const ctx = await setupTest();
+
+  await connectCall(ctx.context, {
+    callID: ctx.callID,
+    session: 'identity-1',
+    sdpOffer: 'offer',
+    probeCaller: probeStubbedCaller,
+  });
+
+  const failingClose = {
+    ...ctx.context,
+    speech: { ...ctx.speech, close: () => Promise.reject(new Error('the close was refused')) },
+  };
+
+  await hangUpCall(failingClose, ctx.callID);
+
+  expect({ logged: ctx.logged, sessions: ctx.context.sessions.size }).toStrictEqual({
+    logged: [
+      {
+        event: 'calls.session_close_failed',
+        fields: { callID: ctx.callID, error: 'the close was refused' },
+      },
+    ],
+    sessions: 0,
+  });
 });

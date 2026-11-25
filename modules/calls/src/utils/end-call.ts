@@ -3,11 +3,13 @@ import { conversationTaskID } from '@heynixie/tasks';
 import type { CallsContext } from '../types';
 import type { CallEndedBy } from './call-ended-by';
 import { callEndedCodec } from './call-ended-codec';
+import { chargeOwedMinutes } from './charge-owed-minutes';
+import { closeSpeechSession } from './close-speech-session';
 import { readCall } from './read-call';
 
 // Ends the call once: the ended record goes on the conversation's thread, and the speech session
-// closes after it commits. A call that is over, or that no call has, ends nothing. For a call that
-// the budget ends, the speech layer first says the budget line.
+// closes after it commits. A call that is over ends nothing. The transaction first charges each
+// started minute that is unpaid, unless a budget ended the call.
 export async function endCall(
   context: CallsContext,
   callID: string,
@@ -20,12 +22,23 @@ export async function endCall(
       return false;
     }
 
+    const price = context.readVoiceDefinitions().pricePerMinuteMicros;
+
+    const paid =
+      endedBy === 'budget' || price === null
+        ? { charged: 0 }
+        : await chargeOwedMinutes(tx, context, { callID, pricePerMinuteMicros: price });
+
     await writeRecordsInTransaction(tx, context.log, [
       {
         kind: callEndedCodec.kind,
         definitions: context.definitions(),
         thread: conversationTaskID,
-        payload: callEndedCodec.encode({ callID, endedBy, minutes: call.minutes }),
+        payload: callEndedCodec.encode({
+          callID,
+          endedBy,
+          minutes: call.minutes + paid.charged,
+        }),
       },
     ]);
 
@@ -45,24 +58,10 @@ async function closeSession(
   endedBy: CallEndedBy,
 ): Promise<void> {
   const sessionID = context.sessions.get(callID);
-  const speech = context.speech;
 
   context.sessions.delete(callID);
 
-  if (sessionID === undefined || speech === null) {
-    return;
-  }
-
-  try {
-    if (endedBy === 'budget') {
-      await speech.say(sessionID, context.readVoiceDefinitions().lines.budget);
-    }
-
-    await speech.close(sessionID);
-  } catch (error) {
-    context.logEvent('calls.session_close_failed', {
-      callID,
-      error: error instanceof Error ? error.message : String(error),
-    });
+  if (sessionID !== undefined) {
+    await closeSpeechSession(context, { callID, sessionID, isBudgetEnd: endedBy === 'budget' });
   }
 }

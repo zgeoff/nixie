@@ -90,6 +90,7 @@ export function buildTestCallsContext(
     },
     readInstructions: () => Promise.resolve('the voice-call prompt'),
     sessions: new Map(),
+    openings: new Set(),
   };
 
   return { context, speech, createdTasks, logged };

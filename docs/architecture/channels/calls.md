@@ -18,7 +18,8 @@ server holds no speech adapter, so a server with a `voice` config section answer
 - `answer` and `say` tell the provider what to speak, and `close` ends the session.
 
 The package's `test-utils` holds a fake layer in memory. It records each `open`, `answer`, `say` and
-`close`, and a test emits each `SpeechEvent` into a session by hand.
+`close`, an `open` that the layer refused too, and a test emits each `SpeechEvent` into a session by
+hand.
 
 ## The call's states
 
@@ -41,9 +42,18 @@ A call is `ringing`, `connecting`, `live` or `ended`. An ended call carries who 
 | `CALL_RUNNING`        | Another call has not ended.                                                |
 | `CALL_BUDGET_REACHED` | `call-day` or `call-month` has no room for a minute.                       |
 
-`calls.connect` refuses a call that does not exist, a session that does not carry the call and a
-call that is already connected. When the provider refuses its credential, the call ends as
-`dropped`.
+`calls.connect` refuses a call that does not exist or has ended, a session that does not carry the
+call, and a call that is connected or that another connect is opening. A connect claims the call
+before it opens a speech session, so one call never holds two sessions. The API checks that the
+calling session is live before the session opens and again in the transaction that makes the call
+`live`, and a session revoked in between is refused as `UNAUTHORIZED` with its speech session
+closed. A speech session that no connect keeps, because the call ended or the charge failed, is
+closed. When the provider refuses its credential, the call ends as `dropped`.
+
+Every end of a call, hang-up included, first charges each started minute that is still unpaid, so a
+hang-up between sweeps costs the minute the call had started. The charge reads the call inside its
+own transaction, so a call that ended since a sweep looked is never charged. A budget line that
+fails to speak never keeps the speech session open.
 
 A sweep closes the gaps that a crash or a silent provider leaves. Every 5 seconds it ends a call
 that stayed `connecting` for 30 seconds, ends a `live` call whose speech session is gone, and
@@ -67,11 +77,13 @@ the user can ask nixie to forget.
 | `call.heard_cut`   | The user cut nixie off, and how much of the line they heard.       |
 | `call.turn_timed`  | How long a turn took, for the latency record.                      |
 
-The `calls` projection folds `call.started`, `call.answered`, `call.ended` and `budget.charged` into
-one row per call, in the same transaction as each record. A call is `live` once its first
-`call_minute` charge exists, and its minute count is the number of those charges, so no record marks
-the connection. The kinds `call.started`, `call.answered` and `call.ended` change the `tasks` live
-topic, because a call is a task in the task list.
+The `calls` projection folds `call.started`, `call.rang`, `call.answered`, `call.ended` and
+`budget.charged` into one row per call, in the same transaction as each record. A call that nixie
+started is `ringing` until `call.answered` makes it `connecting`, and a call that you started is
+`connecting` at once. A call is `live` once its first `call_minute` charge exists, and its minute
+count is the number of those charges, so no record marks the connection. The kinds `call.started`,
+`call.answered` and `call.ended` change the `tasks` live topic, because a call is a task in the task
+list.
 
 ## Price and budget
 
@@ -98,4 +110,6 @@ Both places that hold settings are optional.
 
 A voice file that fails to parse never stops the server or the seed. The seed leaves the file
 unapplied and logs `definitions.voice_file_skipped` with the file and its fault. Calls then use the
-defaults, which hold no price, until the file is fixed.
+defaults, which hold no price, until the file is fixed. A file that is not UTF-8 text is reported
+the same way, and a `price_per_minute` above 1000 dollars counts as a fault, because its micros no
+longer add up exactly.

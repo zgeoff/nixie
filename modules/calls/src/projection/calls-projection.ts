@@ -3,6 +3,7 @@ import type { EnvelopeRecord, Projection } from '@heynixie/log';
 import type { Transaction } from 'kysely';
 import { match } from 'ts-pattern';
 import { callAnsweredCodec } from '../record/call-answered-codec';
+import { callRangCodec } from '../record/call-rang-codec';
 import { callStartedCodec } from '../record/call-started-codec';
 import type { CallsTables } from '../types';
 import { callBudgetIDs } from '../utils/call-budget-ids';
@@ -18,6 +19,7 @@ export const callsProjection: Projection = {
 
     return match(record.kind)
       .with('call.started', () => foldStarted(db, record))
+      .with('call.rang', () => foldRang(db, record))
       .with('call.answered', () => foldAnswered(db, record))
       .with('call.ended', () => foldEnded(db, record))
       .with('budget.charged', () => foldMinuteCharged(db, record))
@@ -36,7 +38,7 @@ async function foldStarted(
     .values({
       call_id: started.callID,
       task_id: started.taskID,
-      state: 'connecting',
+      state: started.startedBy === 'nixie' ? 'ringing' : 'connecting',
       started_by: started.startedBy,
       carrying_session: started.carryingSession,
       started_at: record.recordedAt.getTime(),
@@ -52,6 +54,20 @@ async function foldStarted(
   return [started.callID];
 }
 
+// A ring leaves the call ringing, and the row changes so that its watchers see the ring.
+async function foldRang(db: Transaction<CallsTables>, record: EnvelopeRecord): Promise<string[]> {
+  const rang = callRangCodec.decode(record.payload);
+
+  await db
+    .updateTable('calls')
+    .set({ updated_sequence: record.sequence })
+    .where('call_id', '=', rang.callID)
+    .where('state', '=', 'ringing')
+    .execute();
+
+  return [rang.callID];
+}
+
 async function foldAnswered(
   db: Transaction<CallsTables>,
   record: EnvelopeRecord,
@@ -60,9 +76,13 @@ async function foldAnswered(
 
   await db
     .updateTable('calls')
-    .set({ carrying_session: answered.carryingSession, updated_sequence: record.sequence })
+    .set({
+      state: 'connecting',
+      carrying_session: answered.carryingSession,
+      updated_sequence: record.sequence,
+    })
     .where('call_id', '=', answered.callID)
-    .where('state', '!=', 'ended')
+    .where('state', 'in', ['ringing', 'connecting'])
     .execute();
 
   return [answered.callID];

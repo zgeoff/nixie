@@ -32,5 +32,6 @@ export function buildServerCalls(options: ServerCallsOptions): CallsContext {
     createTask: () => Promise.reject(new Error('a call task needs the call runner')),
     readInstructions: () => Promise.reject(new Error('a call needs the voice-call prompt')),
     sessions: new Map(),
+    openings: new Set(),
   };
 }

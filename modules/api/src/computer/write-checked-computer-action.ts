@@ -10,6 +10,9 @@ export interface CheckedComputerAction {
   readonly procedure: string;
   readonly clientActionID: string;
 
+  // what the action acts on besides its action ID
+  readonly input: JSONObject;
+
   // what the stored action says before the action ran
   readonly result: JSONObject;
 }
@@ -27,7 +30,7 @@ export function writeCheckedComputerAction(
   caller: Identity,
   action: CheckedComputerAction,
 ): Promise<CheckedComputerActionResult> {
-  const inputHash = buildInputHash({});
+  const inputHash = buildInputHash(action.input);
 
   return withWriteTransaction(context.log.writer, async (tx) => {
     const [live, earlier] = await Promise.all([
@@ -69,7 +72,7 @@ export function writeComputerActionResult(
   caller: Identity,
   action: CheckedComputerAction,
 ): Promise<void> {
-  const inputHash = buildInputHash({});
+  const inputHash = buildInputHash(action.input);
 
   return withWriteTransaction(context.log.writer, async (tx) => {
     await writeClientAction(tx, {

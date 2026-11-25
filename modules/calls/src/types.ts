@@ -118,6 +118,9 @@ export interface CallsContext {
 
   // the speech sessions of the calls that run in this process, by call ID
   readonly sessions: Map<string, string>;
+
+  // the calls whose speech session is opening in this process, so one connect at a time opens
+  readonly openings: Set<string>;
 }
 
 export interface CallRow {

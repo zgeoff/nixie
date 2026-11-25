@@ -20,12 +20,14 @@ export interface ParsedVoiceFiles {
   readonly paths: ReadonlySet<string>;
 }
 
+const maxPricePerMinute = 1000;
+
 const voiceFileSchema = z.strictObject({
   voice: z.string().min(1).optional(),
   hold_after_ms: z.int().positive().optional(),
 
-  // US dollars per open minute
-  price_per_minute: z.number().positive().optional(),
+  // US dollars per open minute, at most the price whose micros still add up exactly
+  price_per_minute: z.number().positive().max(maxPricePerMinute).optional(),
 });
 
 const linesFileSchema = z.strictObject({

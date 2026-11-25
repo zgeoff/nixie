@@ -3188,3 +3188,76 @@ test('it keeps the voice settings through a seed of the definitions in force', a
 
   expect([first.status, again.status]).toStrictEqual(['seeded', 'unchanged']);
 });
+
+test('it seeds a repo whose voice file is not UTF-8 text, and reports the file', async () => {
+  const ctx = await setupTest();
+
+  const reported: { path: string; reason: string }[] = [];
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 5\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await mkdir(join(ctx.root, 'voice'));
+  await writeFile(join(ctx.root, 'voice', 'voice.yaml'), new Uint8Array([0xff, 0xfe, 0x3a]));
+
+  const result = await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+    onVoiceProblem: (problem) => {
+      reported.push(problem);
+    },
+  });
+
+  const stored = await readDefinitionsInForce(ctx.writer.db);
+
+  expect([result.status, reported, stored?.voice]).toStrictEqual([
+    'seeded',
+    [{ path: 'voice/voice.yaml', reason: 'the file is not UTF-8 text' }],
+    null,
+  ]);
+});
+
+test.each(['1e20', '1e308'])(
+  'it seeds a repo whose voice file prices a minute at %s dollars, and reports the file',
+  async (price) => {
+    const ctx = await setupTest();
+
+    const reported: string[] = [];
+
+    await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 5\n');
+    await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+    await mkdir(join(ctx.root, 'voice'));
+    await writeFile(join(ctx.root, 'voice', 'voice.yaml'), `price_per_minute: ${price}\n`);
+
+    const result = await runSeed({
+      tasks: buildTestTaskSeed(),
+      log: ctx.log,
+      source: ctx.source,
+      buildPolicy: () => ({ rules: [], tools: [] }),
+      onVoiceProblem: (problem) => {
+        reported.push(problem.path);
+      },
+    });
+
+    expect([result.status, reported]).toStrictEqual(['seeded', ['voice/voice.yaml']]);
+  },
+);
+
+test('it refuses a seed of a repo whose voice file is not text, below the format that reads voice files', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 4\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await mkdir(join(ctx.root, 'voice'));
+  await writeFile(join(ctx.root, 'voice', 'voice.yaml'), new Uint8Array([0xff, 0xfe, 0x3a]));
+
+  const result = await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
+
+  expect(result.status).toBe('refused');
+});

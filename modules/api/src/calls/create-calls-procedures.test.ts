@@ -1,4 +1,6 @@
 import { expect, test } from 'bun:test';
+import { readCall } from '@heynixie/calls';
+import { registerFaultPointAction } from '@heynixie/memory/test-utils';
 import { buildTestClient } from '../test-utils/build-test-client';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { startTestAPI } from '../test-utils/start-test-api';
@@ -161,4 +163,44 @@ test('#calls.hangUp refuses a call that does not exist', async () => {
   await Promise.allSettled([refused]);
 
   expect(refused).rejects.toMatchObject({ code: 'CALL_NOT_FOUND' });
+});
+
+test('#calls.connect refuses a session that is revoked right after its check passes, and opens no speech session', async () => {
+  const ctx = await setupTest();
+  const started = await ctx.client.calls.start({ clientActionID: crypto.randomUUID() });
+
+  registerFaultPointAction('session.checked', () =>
+    ctx.client.sessions.revoke({
+      clientActionID: crypto.randomUUID(),
+      sessionID: ctx.owner.sessionID,
+    }),
+  );
+
+  const refused = ctx.client.calls.connect({ callID: started.callID, sdpOffer: 'offer' });
+
+  await Promise.allSettled([refused]);
+
+  expect(refused).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
+  expect(ctx.calls?.speech.calls).toStrictEqual([]);
+});
+
+test('#calls.hangUp refuses an action ID that an earlier hang-up of another call used, and ends nothing', async () => {
+  const ctx = await setupTest();
+
+  const clientActionID = crypto.randomUUID();
+
+  const first = await ctx.client.calls.start({ clientActionID: crypto.randomUUID() });
+
+  await ctx.client.calls.hangUp({ callID: first.callID, clientActionID });
+
+  const second = await ctx.client.calls.start({ clientActionID: crypto.randomUUID() });
+
+  const reused = ctx.client.calls.hangUp({ callID: second.callID, clientActionID });
+
+  await Promise.allSettled([reused]);
+
+  const call = await readCall(ctx.writer.db, second.callID);
+
+  expect(reused).rejects.toMatchObject({ code: 'CLIENT_ACTION_ID_REUSED' });
+  expect(call?.state).toBe('connecting');
 });

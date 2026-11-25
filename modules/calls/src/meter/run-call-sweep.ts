@@ -1,6 +1,6 @@
 import { withWriteTransaction } from '@heynixie/log';
 import type { CallsContext } from '../types';
-import { chargeCallMinute } from '../utils/charge-call-minute';
+import { chargeOwedMinutes } from '../utils/charge-owed-minutes';
 import { endCall } from '../utils/end-call';
 import { readOpenCalls } from '../utils/read-call';
 import { pickCallMoves } from './pick-call-moves';
@@ -21,6 +21,8 @@ export async function runCallSweep(context: CallsContext): Promise<void> {
   }
 }
 
+// A charge reads the call again inside its transaction, so a call that ended since the pick, or
+// that another pass charged, owes only what is still due.
 async function runMove(context: CallsContext, move: CallMove): Promise<void> {
   if (move.kind === 'end') {
     await endCall(context, move.callID, move.endedBy);
@@ -36,15 +38,11 @@ async function runMove(context: CallsContext, move: CallMove): Promise<void> {
     return;
   }
 
-  for (let minute = 0; minute < move.minutes; minute += 1) {
-    const reached = await withWriteTransaction(context.log.writer, (tx) =>
-      chargeCallMinute(tx, context, { callID: move.callID, pricePerMinuteMicros: price }),
-    );
+  const paid = await withWriteTransaction(context.log.writer, (tx) =>
+    chargeOwedMinutes(tx, context, { callID: move.callID, pricePerMinuteMicros: price }),
+  );
 
-    if (reached !== null) {
-      await endCall(context, move.callID, 'budget');
-
-      return;
-    }
+  if (paid.isReached) {
+    await endCall(context, move.callID, 'budget');
   }
 }

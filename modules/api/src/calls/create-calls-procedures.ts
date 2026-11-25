@@ -6,6 +6,7 @@ import { runComputerAction } from '../computer/run-computer-action';
 import { requireCaller } from '../memory/require-caller';
 import type { APIContext } from '../types';
 import { apiImplementer } from '../utils/api-implementer';
+import { probeLiveIdentity } from '../utils/probe-live-identity';
 
 const startRefusalSchema = z.enum([
   'VOICE_OFF',
@@ -41,7 +42,7 @@ export function createCallsProcedures(context: APIContext) {
       const run = await runComputerAction(
         context,
         caller,
-        { procedure: 'calls.start', clientActionID: options.input.clientActionID },
+        { procedure: 'calls.start', clientActionID: options.input.clientActionID, input: {} },
         async () => {
           const result = await startCall(calls, { carryingSession: caller.identityID });
 
@@ -95,6 +96,7 @@ export function createCallsProcedures(context: APIContext) {
         callID: options.input.callID,
         session: caller.identityID,
         sdpOffer: options.input.sdpOffer,
+        probeCaller: (db) => probeLiveIdentity(db, context, caller.identityID),
       });
 
       if (result.status === 'connected') {
@@ -109,6 +111,7 @@ export function createCallsProcedures(context: APIContext) {
         .with('VOICE_PRICE_MISSING', () => options.errors.VOICE_PRICE_MISSING())
         .with('VOICE_CREDENTIAL_REFUSED', () => options.errors.VOICE_CREDENTIAL_REFUSED())
         .with('CALL_BUDGET_REACHED', () => options.errors.CALL_BUDGET_REACHED())
+        .with('SESSION_REVOKED', () => options.errors.UNAUTHORIZED())
         .exhaustive();
     }),
 
@@ -132,7 +135,11 @@ export function createCallsProcedures(context: APIContext) {
       const run = await runComputerAction(
         context,
         caller,
-        { procedure: 'calls.hangUp', clientActionID: options.input.clientActionID },
+        {
+          procedure: 'calls.hangUp',
+          clientActionID: options.input.clientActionID,
+          input: { callID: options.input.callID },
+        },
         async () => {
           const result = await hangUpCall(calls, options.input.callID);
 

@@ -27,7 +27,8 @@ export function parseDefinitions(
   snapshot: Snapshot,
   tasks: TaskSeedContext | null,
 ): ParsedDefinitions {
-  const texts = decodeFiles(snapshot.files);
+  const decoded = decodeFiles(snapshot.files);
+  const texts = decoded.texts;
   const manifest = parseManifest(texts.get(manifestPath));
   const formatVersion = manifest.format;
   const persona = parsePersona(texts.get(personaPath));
@@ -61,6 +62,11 @@ export function parseDefinitions(
 
   const readsVoice = formatVersion >= definitionsFormats.voice;
 
+  // a voice file that is not text is a voice problem, which never refuses the seed
+  if (!readsVoice && decoded.unreadableVoicePaths.length > 0) {
+    throw new DefinitionsParseError(decoded.unreadableVoicePaths.map(toNotTextProblem));
+  }
+
   const voice = readsVoice
     ? parseVoiceFiles(
         new Map(
@@ -70,6 +76,8 @@ export function parseDefinitions(
         ),
       )
     : { voice: null, problems: [], paths: new Set<string>() };
+
+  const voiceProblems = [...voice.problems, ...decoded.unreadableVoicePaths.map(toNotTextProblem)];
 
   const taskTexts = new Map(
     [...texts].filter(([path]) => path.startsWith('tasks/') && !overrides.partFiles.has(path)),
@@ -119,12 +127,20 @@ export function parseDefinitions(
     tasks: taskDefinitions.definitions,
     taskWarnings: taskDefinitions.warnings,
     voice: voice.voice,
-    voiceProblems: voice.problems,
+    voiceProblems,
     unapplied,
   };
 }
 
-function decodeFiles(files: Snapshot['files']): ReadonlyMap<string, string> {
+interface DecodedFiles {
+  readonly texts: ReadonlyMap<string, string>;
+
+  // the files under voice/ that are not UTF-8 text, which the voice settings report in place of a
+  // refusal when the format reads them
+  readonly unreadableVoicePaths: readonly string[];
+}
+
+function decodeFiles(files: Snapshot['files']): DecodedFiles {
   const decoder = new TextDecoder('utf-8', { fatal: true });
 
   const decoded = [...files].map(([path, bytes]) => {
@@ -135,15 +151,24 @@ function decodeFiles(files: Snapshot['files']): ReadonlyMap<string, string> {
     }
   });
 
-  const problems = decoded
-    .filter((file) => file.text === null)
-    .map((file) => ({ path: file.path, reason: 'the file is not UTF-8 text' }));
+  const unreadable = decoded.filter((file) => file.text === null);
+
+  const problems = unreadable
+    .filter((file) => !file.path.startsWith('voice/'))
+    .map((file) => toNotTextProblem(file.path));
 
   if (problems.length > 0) {
     throw new DefinitionsParseError(problems);
   }
 
-  return new Map(decoded.map((file) => [file.path, file.text ?? '']));
+  return {
+    texts: new Map(decoded.flatMap((file) => (file.text === null ? [] : [[file.path, file.text]]))),
+    unreadableVoicePaths: unreadable.map((file) => file.path),
+  };
+}
+
+function toNotTextProblem(path: string): ParseProblem {
+  return { path, reason: 'the file is not UTF-8 text' };
 }
 
 interface Manifest {

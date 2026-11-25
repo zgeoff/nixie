@@ -1,7 +1,13 @@
 import type { OpenSpeech, SpeechEvent, SpeechLayer, SpeechRefused } from '../types';
 
 export type FakeSpeechCall =
-  | { readonly method: 'open'; readonly input: OpenSpeech; readonly sessionID: string }
+  | {
+      readonly method: 'open';
+      readonly input: OpenSpeech;
+
+      // null for an open that the layer refused
+      readonly sessionID: string | null;
+    }
   | {
       readonly method: 'answer';
       readonly sessionID: string;
@@ -13,7 +19,7 @@ export type FakeSpeechCall =
   | { readonly method: 'close'; readonly sessionID: string };
 
 export interface FakeSpeechLayer extends SpeechLayer {
-  // every open, answer, say and close, in order
+  // every open (a refused one too), answer, say and close, in order
   readonly calls: readonly FakeSpeechCall[];
 
   // Delivers an event to the session's `events` stream, as the provider would.
@@ -62,6 +68,8 @@ export function buildFakeSpeechLayer(): FakeSpeechLayer {
       const error = refusals.shift();
 
       if (error !== undefined) {
+        calls.push({ method: 'open', input, sessionID: null });
+
         return Promise.resolve({ error });
       }
 

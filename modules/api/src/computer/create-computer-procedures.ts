@@ -93,7 +93,7 @@ export function createComputerProcedures(context: APIContext) {
       const run = await runComputerAction(
         context,
         caller,
-        { procedure: 'computer.takeOver', clientActionID: options.input.clientActionID },
+        { procedure: 'computer.takeOver', clientActionID: options.input.clientActionID, input: {} },
         async () => {
           const result = await takeover.start(caller.identityID);
 
@@ -144,7 +144,7 @@ export function createComputerProcedures(context: APIContext) {
       const run = await runComputerAction(
         context,
         caller,
-        { procedure: 'computer.handBack', clientActionID: options.input.clientActionID },
+        { procedure: 'computer.handBack', clientActionID: options.input.clientActionID, input: {} },
         async () => {
           const result = await takeover.end('user', caller.identityID);
 

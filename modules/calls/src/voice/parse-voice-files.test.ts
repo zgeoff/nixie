@@ -76,3 +76,18 @@ test('#parseVoiceFiles keeps a good lines file when voice.yaml is bad', () => {
     parsed.problems.length,
   ]).toStrictEqual(['Hang on.', null, 1]);
 });
+
+test.each(['1e20', '1e308', '1001'])(
+  '#parseVoiceFiles refuses a price of %s dollars a minute, which no budget can add up',
+  (price) => {
+    const parsed = parseVoiceFiles(new Map([['voice/voice.yaml', `price_per_minute: ${price}\n`]]));
+
+    expect({
+      voice: parsed.voice,
+      paths: parsed.problems.map((problem) => problem.path),
+    }).toStrictEqual({
+      voice: null,
+      paths: ['voice/voice.yaml'],
+    });
+  },
+);
