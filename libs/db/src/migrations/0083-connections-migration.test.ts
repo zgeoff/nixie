@@ -30,8 +30,8 @@ async function setupTest() {
   return { db };
 }
 
-test('it moves the schema to version 81', () => {
-  expect(nixieSchema.migrations.indexOf(connectionsMigration) + 1).toBe(81);
+test('it moves the schema to version 83', () => {
+  expect(nixieSchema.migrations.indexOf(connectionsMigration) + 1).toBe(83);
 });
 
 test('it creates the table that holds each connection', async () => {

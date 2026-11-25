@@ -91,6 +91,32 @@ export interface NixieTables {
     readonly bytes: number;
     readonly media_type: string;
   };
+  readonly coding_session_ids: {
+    readonly short_id: string;
+    readonly adapter: string;
+    readonly session_id: string;
+    readonly named_sequence: number;
+  };
+  readonly coding_sessions: {
+    readonly task_id: string;
+    readonly adapter: string;
+    readonly session_id: string;
+    readonly origin: string;
+    readonly state: string;
+    readonly wake: string;
+    readonly hop: number;
+    readonly from_cursor: string;
+    readonly last_event_at: number | null;
+    readonly unbound_at: number | null;
+    readonly updated_sequence: number;
+    readonly held_answers: string;
+  };
+  readonly coding_start_cursors: {
+    readonly adapter: string;
+    readonly idempotency_key: string;
+    readonly cursor: string;
+    readonly written_at: number;
+  };
   readonly connections: {
     readonly connection_id: string;
     readonly short_id: string;
@@ -126,32 +152,6 @@ export interface NixieTables {
     readonly claimed_at: number | null;
     readonly created_at: number;
     readonly expires_at: number;
-  };
-  readonly coding_session_ids: {
-    readonly short_id: string;
-    readonly adapter: string;
-    readonly session_id: string;
-    readonly named_sequence: number;
-  };
-  readonly coding_sessions: {
-    readonly task_id: string;
-    readonly adapter: string;
-    readonly session_id: string;
-    readonly origin: string;
-    readonly state: string;
-    readonly wake: string;
-    readonly hop: number;
-    readonly from_cursor: string;
-    readonly last_event_at: number | null;
-    readonly unbound_at: number | null;
-    readonly updated_sequence: number;
-    readonly held_answers: string;
-  };
-  readonly coding_start_cursors: {
-    readonly adapter: string;
-    readonly idempotency_key: string;
-    readonly cursor: string;
-    readonly written_at: number;
   };
   readonly definition_rules: {
     readonly rule_id: string;
