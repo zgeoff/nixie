@@ -97,6 +97,24 @@ test('it lists the screen as idle when no region shows content and no show cover
   expect(listed).toMatchObject({ result: { devices: [{ showing: { kind: 'idle' } }] } });
 });
 
+test('it lists the screen as the layout when a region has a background and no show covers it', async () => {
+  const ctx = await setupTest();
+  const device = await ctx.seed.screenOnDevice({ name: 'desk panel' });
+
+  ctx.streams.open(device.deviceID, { width: 1920, height: 480, pixelRatio: 1 });
+
+  await ctx.call('device.layout', {
+    device: device.deviceID,
+    columns: ['1fr'],
+    rows: ['1fr'],
+    regions: [{ name: 'garden', column: 1, row: 1, background: 'teal' }],
+  });
+
+  const listed = await ctx.call('devices.list', {});
+
+  expect(listed).toMatchObject({ result: { devices: [{ showing: { kind: 'layout' } }] } });
+});
+
 test('it lists the screen as the layout when a region shows content and no show covers it', async () => {
   const ctx = await setupTest();
   const device = await ctx.seed.screenOnDevice({ name: 'desk panel' });

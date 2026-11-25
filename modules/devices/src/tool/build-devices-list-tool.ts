@@ -71,10 +71,12 @@ async function readListedDevice(options: DeviceToolOptions, device: Device): Pro
 }
 
 // What the screen draws, in the order the device draws it: a show, the layout while a region shows
-// content, then the idle scene.
+// content or has a background, then the idle scene.
 function toShowing(state: ScreenState, layout: LayoutView | null): JSONObject {
   if (state.kind === 'idle') {
-    const isLayoutVisible = layout?.regions.some((region) => region.shown !== null) ?? false;
+    const isLayoutVisible =
+      layout?.regions.some((region) => region.shown !== null || region.background !== null) ??
+      false;
 
     return { kind: isLayoutVisible ? 'layout' : 'idle' };
   }
