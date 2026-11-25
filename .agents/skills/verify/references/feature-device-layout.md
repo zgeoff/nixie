@@ -2,7 +2,7 @@
 
 - [Journey](#journey): enrol a browser as a device, switch its screen on, and have the model lay it
   out in 3 regions, update one, let another time out, then save the layout, change it and restore
-  it, then have the model preview the screen.
+  it, then have the model preview the screen, show a page in a region, and send the page a message.
 - [End state](#end-state): what the page and the records show.
 
 Run this journey on `local` only. It needs the scripted model and the `layout-on-device` action,
@@ -152,6 +152,25 @@ under a name, lay the screen out again, and restore the saved layout in one call
    holds the result with `picture` `shown`. A render that failed still gives the outcome `result`,
    with `picture` `unavailable`, so only `model input` shows that the render worked.
 
+10. Have the model fill `pond` with a page that shows the text of each message it gets and sends the
+    message back as an event, then send the page a message:
+
+    ```bash
+    bun verify action layout-on-device --step page --text 'The page is up.'
+    bun verify conversation turn --message 'Put a page in the pond of the screen in the hall.' --reply 'The page is up.'
+    bun verify browser snapshot --until-text 'Waiting'
+    bun verify action layout-on-device --step message --text 'The message is sent.'
+    bun verify conversation turn --message 'Send the page in the pond of the screen in the hall a message.' --reply 'The message is sent.'
+    bun verify browser snapshot --until-text 'Got hello'
+    bun verify db query "select json_extract(payload, '$.name') as name, json_extract(payload, '$.region') as region, json_extract(payload, '$.wake') as wake from records where kind = 'device.page_event'"
+    ```
+
+    Expect: each `layout-on-device` returns `data.replies` of 3, and each `conversation turn`
+    exits 0. The first snapshot shows "Waiting", and the second shows "Got hello", because the page
+    ran in its frame and read the message. The query returns one row: `echo`, `pond` and `0`, the
+    event the page sent back, which woke nothing. When a snapshot does not list the text inside the
+    frame, take a screenshot and read the page from it.
+
 ## End state
 
 - The last snapshot shows "Dentist at 3" and a time, and no "Ripples", no "Water the pots" and no
@@ -160,6 +179,8 @@ under a name, lay the screen out again, and restore the saved layout in one call
   content.
 - `device_saved_layouts` holds the one row, `evening`.
 - In step 9, the model's one call of `device.preview` returned a result with `picture` `shown`.
+- In step 10, the page in `pond` shows "Got hello", and `records` holds one `device.page_event`
+  named `echo`.
 - The screenshots are evidence for the reviewer. Check nothing in them.
 
 Once the end state matches, run `bun verify done`.
