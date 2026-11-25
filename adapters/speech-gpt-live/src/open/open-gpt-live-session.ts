@@ -1,6 +1,6 @@
 import type { OpenSpeech, OpenedSpeech, SpeechRefused } from '@heynixie/calls';
 import { parseJSONOrNull } from '@heynixie/wire';
-import { acknowledgementDelayMs } from '../constants';
+import { acknowledgementDelayMs, sidebandOpenLimitMs } from '../constants';
 import { gptLiveEventSchema } from '../event/gpt-live-event-schema';
 import { runGPTLiveEvent } from '../event/run-gpt-live-event';
 import { scheduleSessionEnding } from '../event/schedule-session-ending';
@@ -105,8 +105,13 @@ async function attachSideband(
 
   url.protocol = 'wss:';
 
+  const attempt = new AbortController();
+  const opened = new AbortController();
+
+  void abortSlowAttempt(options, attempt, opened.signal);
+
   try {
-    return await options.openSideband(url.href);
+    return await options.fetch.openSocket(url.href, { signal: attempt.signal });
   } catch (error) {
     options.logEvent(
       'calls.speech_attach_failed',
@@ -115,6 +120,23 @@ async function attachSideband(
     );
 
     return null;
+  } finally {
+    opened.abort();
+  }
+}
+
+// A site that takes the connection and never answers the upgrade would otherwise hold the open for
+// ever. The attempt's signal aborts the handshake and never an open socket, because the caller
+// stops waiting once the attempt ends.
+async function abortSlowAttempt(
+  options: GPTLiveOptions,
+  attempt: AbortController,
+  finished: AbortSignal,
+): Promise<void> {
+  await options.clock.sleep(sidebandOpenLimitMs, finished);
+
+  if (!finished.aborted) {
+    attempt.abort(new Error('the sideband did not open in time'));
   }
 }
 

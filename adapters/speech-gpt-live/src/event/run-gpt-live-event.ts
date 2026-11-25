@@ -142,18 +142,22 @@ function runAppended(
   clientEventID: string | undefined,
   startMs: number,
 ): void {
+  if (clientEventID !== undefined) {
+    session.pendingEventIDs.delete(clientEventID);
+  }
+
   const line = session.lines.find((candidate) => isLineEvent(candidate, clientEventID));
 
   if (line === undefined) {
     return;
   }
 
-  session.unacknowledged = Math.max(0, session.unacknowledged - 1);
-
   if (line.startMs === null) {
     line.startMs = startMs;
-    line.isPlaying = true;
   }
+
+  // each part starts the line playing again, after a gap between the parts
+  line.isPlaying = true;
 
   startOutputQuietTimer(options, session);
 }
@@ -178,14 +182,16 @@ function runProviderError(
   session: GPTLiveSession,
   error: ProviderError,
 ): void {
-  const line = session.lines.find((candidate) =>
-    isLineEvent(candidate, error.client_event_id ?? undefined),
-  );
+  const clientEventID = error.client_event_id ?? undefined;
+  const line = session.lines.find((candidate) => isLineEvent(candidate, clientEventID));
 
-  // a commentary that the provider refused is never spoken
+  // a commentary that the provider refused is never spoken, and a close no longer waits on it
+  if (clientEventID !== undefined) {
+    session.pendingEventIDs.delete(clientEventID);
+  }
+
   if (line !== undefined && line.startMs === null) {
     session.lines = session.lines.filter((candidate) => candidate !== line);
-    session.unacknowledged = Math.max(0, session.unacknowledged - 1);
   }
 
   options.logEvent(

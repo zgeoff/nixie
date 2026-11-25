@@ -1,23 +1,22 @@
 import { expect, test } from 'bun:test';
 import type { SpeechEvent } from '@heynixie/calls';
-import { createTestCredentials } from '@heynixie/credentials/test-utils';
 import { startTestSite } from '@heynixie/egress/test-utils';
 import { waitForCondition } from '@heynixie/testing';
 import { createFakeClock, runClockUntil } from '@zgeoff/testing/clock';
-import invariant from 'tiny-invariant';
 import { z } from 'zod';
 import { buildGPTLiveSpeech } from './build-gpt-live-speech';
+import { buildTestFetcher } from './test-utils/build-test-fetcher';
+import type { SidebandInit } from './types';
 
 async function setupTest() {
-  const key = 'fake-gpt-live-key-0001';
   const createBodies: unknown[] = [];
 
   // what the fake provider does with the next requests, which a test changes before it opens
-  const provider = { createStatus: 201, isSocketRefused: false };
+  const provider = { createStatus: 201, isSocketRefused: false, isSocketSilent: false };
   const clientEvents: Record<string, unknown>[] = [];
 
   const site = await startTestSite({
-    names: ['api.test'],
+    names: ['localhost'],
     respond: async (request) => {
       if (request.method !== 'POST') {
         return new Response('not a socket');
@@ -44,29 +43,27 @@ async function setupTest() {
     },
   });
 
-  const origin = `https://api.test:${String(site.port)}`;
+  const origin = `https://localhost:${String(site.port)}`;
+  const siteFetcher = buildTestFetcher(site.ca);
 
-  const credentials = await createTestCredentials({ connector_credentials: { speech: key } }, site);
-
-  const reference = credentials.resolveCredential({
-    class: 'connector',
-    reference: 'deployment:speech',
-  });
-
-  invariant(reference !== null, 'the test credential resolves');
-
-  const binding = credentials.store.register(reference, {
-    kind: 'static',
-    label: 'GPT-Live',
-    origins: [origin],
+  // A silent site takes the connection and never answers the upgrade, so its open ends only when
+  // the adapter aborts it.
+  const fetcher = Object.assign((input: string, init?: RequestInit) => siteFetcher(input, init), {
+    openSocket: (url: string, init?: SidebandInit) =>
+      provider.isSocketSilent
+        ? new Promise<never>((_resolve, reject) => {
+            init?.signal?.addEventListener('abort', () => {
+              reject(new Error('the open was aborted'));
+            });
+          })
+        : siteFetcher.openSocket(url, init),
   });
 
   const clock = createFakeClock({ startMs: 1_800_000_000_000 });
   const logged: { event: string; fields: unknown }[] = [];
 
   const speech = buildGPTLiveSpeech({
-    fetch: credentials.store.fetcher(binding, [origin]),
-    openSideband: credentials.store.makeSocketOpener(binding, [origin]),
+    fetch: fetcher,
     apiURL: origin,
     model: 'gpt-live-test-1',
     clock,
@@ -106,8 +103,8 @@ async function setupTest() {
   };
 
   return {
-    key,
     site,
+    fetcher,
     clock,
     speech,
     logged,
@@ -119,7 +116,7 @@ async function setupTest() {
   };
 }
 
-test('it creates the session from the device offer, with the key, and joins it on the sideband', async () => {
+test('it creates the session from the device offer, and joins it on the sideband', async () => {
   const ctx = await setupTest();
 
   const opened = await ctx.speech.open({
@@ -145,19 +142,19 @@ test('it creates the session from the device offer, with the key, and joins it o
   ]);
 
   expect(ctx.site.requests.map((request) => request.url)).toStrictEqual([
-    `https://api.test:${String(ctx.site.port)}/v1/live/sessions`,
-    `https://api.test:${String(ctx.site.port)}/v1/live/sessions/sess_live_1/attach`,
+    `https://localhost:${String(ctx.site.port)}/v1/live/sessions`,
+    `https://localhost:${String(ctx.site.port)}/v1/live/sessions/sess_live_1/attach`,
   ]);
 });
 
-test('it adds the key on the host to the create request and to the sideband', async () => {
+test('it sends no credential of its own to the create request or the sideband', async () => {
   const ctx = await setupTest();
 
   await ctx.openSession();
 
   expect(ctx.site.requests.map((request) => request.headers['authorization'])).toStrictEqual([
-    `Bearer ${ctx.key}`,
-    `Bearer ${ctx.key}`,
+    undefined,
+    undefined,
   ]);
 });
 
@@ -190,6 +187,29 @@ test('it refuses an open whose sideband the site does not upgrade', async () => 
   const opened = await ctx.speech.open({ sdpOffer: 'offer-sdp', instructions: 'x', voice: 'v' });
 
   expect(opened).toStrictEqual({ error: 'SPEECH_UNAVAILABLE' });
+});
+
+test('it refuses an open whose sideband never answers the upgrade, once the open limit passes', async () => {
+  const ctx = await setupTest();
+
+  ctx.provider.isSocketSilent = true;
+
+  const opening = ctx.speech.open({ sdpOffer: 'offer-sdp', instructions: 'x', voice: 'v' });
+
+  await waitForCondition(() => ctx.clock.countPending() > 0);
+
+  ctx.clock.advance(15_000);
+
+  const opened = await opening;
+
+  expect(opened).toStrictEqual({ error: 'SPEECH_UNAVAILABLE' });
+
+  expect(ctx.logged).toStrictEqual([
+    {
+      event: 'calls.speech_attach_failed',
+      fields: { sessionID: 'sess_live_1', reason: 'the open was aborted' },
+    },
+  ]);
 });
 
 test('it turns the speech up to a delegation into a heard line and a hand-off, and holds the speech layer silent', async () => {
@@ -590,6 +610,162 @@ test('it raises no cut for speech after the answer has finished', async () => {
   await waitForCondition(() => session.events.some((event) => event.kind === 'heard'));
 
   expect(session.events.map((event) => event.kind)).toStrictEqual(['heard']);
+});
+
+test('it counts the speech that arrives after the interruption, inside the settle wait', async () => {
+  const ctx = await setupTest();
+  const session = await ctx.openSession();
+
+  await ctx.speech.answer(session.opened.sessionID, 'item_a1', 'One two', true);
+
+  await waitForCondition(() => ctx.clientEvents.length === 1);
+
+  ctx.emit({
+    type: 'session.commentary.appended',
+    client_event_id: 'answer_1.0',
+    start_ms: 5000,
+    end_ms: 5200,
+  });
+
+  ctx.emit({
+    type: 'session.input_transcript.delta',
+    delta: ' Stop',
+    start_ms: 8000,
+    end_ms: 8200,
+  });
+
+  ctx.emit({
+    type: 'session.output_transcript.delta',
+    delta: 'One two',
+    start_ms: 5000,
+    end_ms: 7000,
+  });
+
+  await waitForCondition(() => ctx.clock.countPending() > 2);
+
+  ctx.clock.advance(500);
+
+  await waitForCondition(() => session.events.some((event) => event.kind === 'cut'));
+
+  expect(session.events.filter((event) => event.kind === 'cut')).toStrictEqual([
+    { kind: 'cut', handOffID: 'item_a1', heardChars: 7 },
+  ]);
+});
+
+test('it records no spoke line for the second part of an answer after a gap between the parts', async () => {
+  const ctx = await setupTest();
+  const session = await ctx.openSession();
+
+  const sentence = `${'word '.repeat(60).trim()}. `;
+
+  await ctx.speech.answer(session.opened.sessionID, 'item_a1', sentence.repeat(5).trim(), true);
+
+  await waitForCondition(() => ctx.clientEvents.length === 2);
+
+  ctx.emit({
+    type: 'session.commentary.appended',
+    client_event_id: 'answer_1.0',
+    start_ms: 5000,
+    end_ms: 5200,
+  });
+
+  ctx.emit({
+    type: 'session.output_transcript.delta',
+    delta: 'Part one.',
+    start_ms: 5000,
+    end_ms: 6000,
+  });
+
+  await waitForCondition(() => ctx.clock.countPending() > 1);
+
+  ctx.clock.advance(1000);
+
+  ctx.emit({
+    type: 'session.commentary.appended',
+    client_event_id: 'answer_1.1',
+    start_ms: 20_000,
+    end_ms: 20_200,
+  });
+
+  ctx.emit({
+    type: 'session.output_transcript.delta',
+    delta: 'One two',
+    start_ms: 20_000,
+    end_ms: 21_000,
+  });
+
+  await waitForCondition(() => ctx.clock.countPending() > 1);
+
+  ctx.clock.advance(1000);
+
+  ctx.emit({
+    type: 'session.input_transcript.delta',
+    delta: ' Ok',
+    start_ms: 40_000,
+    end_ms: 40_100,
+  });
+
+  await waitForCondition(() => ctx.clock.countPending() > 1);
+
+  ctx.clock.advance(1000);
+
+  await waitForCondition(() => session.events.some((event) => event.kind === 'heard'));
+
+  expect(session.events.map((event) => event.kind)).toStrictEqual(['heard']);
+});
+
+test('it closes without the full wait when the provider refuses a later part of an answer', async () => {
+  const ctx = await setupTest();
+  const session = await ctx.openSession();
+
+  const sentence = `${'word '.repeat(60).trim()}. `;
+
+  await ctx.speech.answer(session.opened.sessionID, 'item_a1', sentence.repeat(5).trim(), true);
+
+  await waitForCondition(() => ctx.clientEvents.length === 2);
+
+  ctx.emit({
+    type: 'session.commentary.appended',
+    client_event_id: 'answer_1.0',
+    start_ms: 5000,
+    end_ms: 5200,
+  });
+
+  ctx.emit({
+    type: 'error',
+    error: { type: 'invalid_request_error', message: 'Too long.', client_event_id: 'answer_1.1' },
+  });
+
+  await waitForCondition(() => ctx.logged.length === 1);
+
+  const closing = ctx.speech.close(session.opened.sessionID);
+
+  await waitForCondition(() => ctx.clock.countPending() > 0);
+  await runClockUntil(ctx.clock, () => ctx.clientEvents.length === 3, { maxMs: 10_000 });
+
+  expect(ctx.clientEvents[2]).toStrictEqual({ type: 'session.close' });
+
+  ctx.emit({ type: 'session.closed', reason: 'closed' });
+
+  await closing;
+});
+
+test('it splits a long line to say into parts with no delegation', async () => {
+  const ctx = await setupTest();
+  const session = await ctx.openSession();
+
+  const text = `${'The plumber comes on Monday. '.repeat(100)}`.trim();
+
+  await ctx.speech.say(session.opened.sessionID, text);
+
+  await waitForCondition(() => ctx.clientEvents.length >= 3);
+
+  expect(ctx.clientEvents).toSatisfyAll(
+    (event: Record<string, unknown>) =>
+      event['type'] === 'session.commentary.append' && event['delegation_id'] === null,
+  );
+
+  expect(ctx.clientEvents.map((event) => event['content']).join(' ')).toBe(text);
 });
 
 test('it warns of the session limit 5 minutes before the expiry the session reports', async () => {

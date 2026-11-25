@@ -1,11 +1,11 @@
-// The provider takes at most 500 tokens in one commentary, so an answer past this many characters
-// goes in several parts. About 3 characters to a token keeps each part well inside the limit.
-export const maxPartChars = 1200;
+import { maxPartTokens } from '../constants';
+import { estimateTokens } from './estimate-tokens';
 
-// Splits an answer into parts of at most `maxPartChars`, at the end of a sentence where it can, so
-// that each part is a whole statement. A short answer stays one part.
+// Splits a text into parts of at most `maxPartTokens` estimated tokens, at the end of a sentence
+// where it can, so that each part is a whole statement. A short text stays one part, and the parts
+// hold every word of the text in order.
 export function collectAnswerParts(text: string): string[] {
-  if (text.length <= maxPartChars) {
+  if (estimateTokens(text) <= maxPartTokens) {
     return [text];
   }
 
@@ -13,7 +13,7 @@ export function collectAnswerParts(text: string): string[] {
   let current = '';
 
   for (const sentence of collectSentences(text)) {
-    if (current.length + sentence.length > maxPartChars && current.length > 0) {
+    if (current !== '' && estimateTokens(current + sentence) > maxPartTokens) {
       parts.push(current.trim());
 
       current = '';
@@ -22,28 +22,24 @@ export function collectAnswerParts(text: string): string[] {
     current += sentence;
   }
 
-  if (current.trim().length > 0) {
-    parts.push(current.trim());
-  }
+  parts.push(current.trim());
 
-  return parts.flatMap((part) => splitLongPart(part));
+  return parts.filter((part) => part !== '').flatMap((part) => splitLongPart(part));
 }
 
+// Every character of the text lands in one piece: a run of text, a run of marks, or newlines.
 function collectSentences(text: string): string[] {
-  return text.match(/[^.!?\n]+[.!?]*\s*|\n+/gu) ?? [text];
+  return text.match(/[.!?]*[^.!?\n]+[.!?]*\s*|[.!?]+\s*|\n+/gu) ?? [text];
 }
 
 function splitLongPart(part: string): string[] {
-  if (part.length <= maxPartChars) {
-    return [part];
-  }
-
   const pieces: string[] = [];
   let rest = part;
 
-  while (rest.length > maxPartChars) {
-    const space = rest.lastIndexOf(' ', maxPartChars);
-    const cut = space > 0 ? space : maxPartChars;
+  while (estimateTokens(rest) > maxPartTokens) {
+    const limit = getLimitIndex(rest);
+    const space = rest.lastIndexOf(' ', limit);
+    const cut = space > 0 ? space : limit;
 
     pieces.push(rest.slice(0, cut).trim());
 
@@ -53,4 +49,22 @@ function splitLongPart(part: string): string[] {
   pieces.push(rest);
 
   return pieces;
+}
+
+// The index where the text first goes past the token limit.
+function getLimitIndex(text: string): number {
+  let tokens = 0;
+  let index = 0;
+
+  for (const character of text) {
+    tokens += estimateTokens(character);
+
+    if (tokens > maxPartTokens) {
+      break;
+    }
+
+    index += character.length;
+  }
+
+  return index;
 }

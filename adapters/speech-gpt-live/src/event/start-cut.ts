@@ -12,7 +12,7 @@ export function startCut(options: GPTLiveOptions, session: GPTLiveSession, cutAt
     (candidate) =>
       candidate.kind === 'answer' &&
       candidate.isPlaying &&
-      !candidate.isCut &&
+      !candidate.isCutting &&
       candidate.startMs !== null &&
       cutAtMs >= candidate.startMs,
   );
@@ -21,7 +21,7 @@ export function startCut(options: GPTLiveOptions, session: GPTLiveSession, cutAt
     return;
   }
 
-  line.isCut = true;
+  line.isCutting = true;
 
   const handOffID = line.handOffID;
 
@@ -42,6 +42,8 @@ async function raiseCut(
   await options.clock.sleep(cutSettleMs, session.stopping.signal);
 
   if (!session.isClosed) {
+    cut.line.isCut = true;
+
     raiseSpeechEvent(session, {
       kind: 'cut',
       handOffID: cut.handOffID,

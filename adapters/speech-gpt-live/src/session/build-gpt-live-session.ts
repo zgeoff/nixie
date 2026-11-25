@@ -11,7 +11,7 @@ export function buildGPTLiveSession(sessionID: string, socket: SidebandSocket): 
     heardSlices: [],
     talkSlices: [],
     lines: [],
-    unacknowledged: 0,
+    pendingEventIDs: new Set(),
     lastOutputAtMs: 0,
     nextEventNumber: 1,
     isClosed: false,

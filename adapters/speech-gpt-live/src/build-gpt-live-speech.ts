@@ -65,7 +65,9 @@ export function buildGPTLiveSpeech(options: GPTLiveOptions): SpeechLayer {
 
       session.lines.push(buildLine('say', eventID, null, text));
 
-      sendCommentary(session, `${eventID}.0`, null, text);
+      for (const [index, part] of collectAnswerParts(text).entries()) {
+        sendCommentary(session, `${eventID}.${String(index)}`, null, part);
+      }
 
       return Promise.resolve();
     },
@@ -95,6 +97,7 @@ function buildLine(
     sentText,
     startMs: null,
     isPlaying: false,
+    isCutting: false,
     isCut: false,
     spoken: [],
   };
@@ -107,7 +110,7 @@ function sendCommentary(
   delegationID: string | null,
   content: string,
 ): void {
-  session.unacknowledged += 1;
+  session.pendingEventIDs.add(eventID);
 
   sendGPTLiveEvent(session, {
     type: 'session.commentary.append',
@@ -139,7 +142,7 @@ async function closeSession(options: GPTLiveOptions, session: GPTLiveSession): P
 }
 
 function isSpeaking(session: GPTLiveSession): boolean {
-  return session.unacknowledged > 0 || session.lines.some((line) => line.isPlaying);
+  return session.pendingEventIDs.size > 0 || session.lines.some((line) => line.isPlaying);
 }
 
 async function* streamEvents(session: GPTLiveSession | undefined): AsyncGenerator<SpeechEvent> {

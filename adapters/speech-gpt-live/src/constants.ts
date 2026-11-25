@@ -24,3 +24,10 @@ export const closePollMs = 200;
 // The acknowledgement delay at its maximum, which holds back the speech layer's own
 // acknowledgement of a hand-off.
 export const acknowledgementDelayMs = 800;
+
+// The provider takes at most 500 tokens in one commentary. A part stays inside 400 estimated tokens,
+// so a text that the estimate undercounts still fits.
+export const maxPartTokens = 400;
+
+// How long the sideband may take to open before the open fails.
+export const sidebandOpenLimitMs = 15_000;

@@ -19,7 +19,6 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@heynixie/credentials": "workspace:*",
     "@heynixie/egress": "workspace:*",
     "@heynixie/testing": "workspace:*",
     "@zgeoff/testing": "catalog:",

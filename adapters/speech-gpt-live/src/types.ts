@@ -9,13 +9,18 @@ export interface SidebandSocket {
   readonly close: () => void;
 }
 
-// The shape of `CredentialSocketOpener`: it adds the API key to the handshake on the host.
-export type OpenSideband = (url: string) => Promise<SidebandSocket>;
+// The shape of `CredentialFetcher`: the fetcher adds the API key to a request, and its socket opener
+// adds it to the handshake, both on the host, so the adapter holds none.
+export type GPTLiveFetcher = ((input: string, init?: RequestInit) => Promise<Response>) & {
+  readonly openSocket: (url: string, init?: SidebandInit) => Promise<SidebandSocket>;
+};
+
+export interface SidebandInit {
+  readonly signal?: AbortSignal;
+}
 
 export interface GPTLiveOptions {
-  // adds the API key on the host, so the adapter holds none
-  readonly fetch: (input: string, init?: RequestInit) => Promise<Response>;
-  readonly openSideband: OpenSideband;
+  readonly fetch: GPTLiveFetcher;
 
   // the API's base URL, such as https://api.openai.com
   readonly apiURL: string;
@@ -47,6 +52,11 @@ export interface SpokenLine {
   // null until the provider acknowledges the commentary, which gives its start on the timeline
   startMs: number | null;
   isPlaying: boolean;
+
+  // a cut has begun, and waits for the transcript of the last words
+  isCutting: boolean;
+
+  // the cut has been raised, so the line's later speech is no longer its own
   isCut: boolean;
   readonly spoken: TranscriptSlice[];
 }
@@ -70,8 +80,8 @@ export interface GPTLiveSession {
   talkSlices: TranscriptSlice[];
   lines: SpokenLine[];
 
-  // commentaries sent and not yet acknowledged
-  unacknowledged: number;
+  // the client event IDs of the commentaries sent and not yet acknowledged or refused
+  readonly pendingEventIDs: Set<string>;
   lastOutputAtMs: number;
   nextEventNumber: number;
   isClosed: boolean;

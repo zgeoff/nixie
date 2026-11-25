@@ -33,8 +33,8 @@ events.
 `adapters/speech-gpt-live` implements `SpeechLayer` on OpenAI's GPT-Live. The server creates each
 session from the device's WebRTC offer and joins it on a sideband WebSocket, so the device carries
 the audio and the key never leaves the host. The adapter reaches OpenAI only through the
-[credential store](../connectors/credentials.md): `fetch` creates the session, and the
-[socket opener](../connectors/credentials.md#the-socket-opener) opens the sideband. `model` is
+[credential store](../connectors/credentials.md), through one fetcher: it creates the session, and
+its [socket opener](../connectors/credentials.md#the-socket-opener) opens the sideband. `model` is
 `gpt-live-1`, and each `call.spoke` record carries it.
 
 The adapter creates each session with these settings:
@@ -56,7 +56,7 @@ The adapter turns the provider's events into `SpeechEvent`s:
 | output transcript slices, then a short quiet gap    | `spoke` with the speech layer's own small talk, never a line that the module sent through `say` or `answer`                                                       |
 | the first input slice while an answer plays         | `cut`, counted after a short wait for the last words' transcript, in characters of the sent answer. The provider reports no cut.                                  |
 | a timer, a warning time before the session's expiry | `session_ending`. The provider sends no warning, and the expiry comes from `session.started`, or the provider's standard limit after the open when it gives none. |
-| `session.closed`, or a sideband that ends           | `dropped`, unless a `close` asked for it                                                                                                                          |
+| `session.closed`, or a sideband that ends           | `dropped`, unless a `close` asked for it. The module ends the call as `dropped`, which closes its session and stops its charges.                                  |
 
 The cut counts what the user heard by aligning the words that the speech layer said before the
 user's speech to the words of the sent answer, and takes the sent text up to the last aligned word.
@@ -66,16 +66,18 @@ after the cut.
 Other rules of the adapter:
 
 - `answer` sends the whole answer as one commentary on the delegation. The provider takes at most
-  500 tokens in a commentary, so an answer past 1,200 characters goes as several commentaries, split
-  at the end of a sentence. `final` marks the end inside nixie, because the provider has no close
-  for a delegation.
-- `say` sends a commentary with no delegation, which the speech layer words as its own.
+  500 tokens in a commentary, so a text past 400 estimated tokens, counting a character outside
+  ASCII as several, goes as several commentaries, split at the end of a sentence. Every word of the
+  text goes out in order. `final` marks the end inside nixie, because the provider has no close for
+  a delegation.
+- `say` sends a commentary with no delegation, which the speech layer words as its own. It splits a
+  long line the same way.
 - `close` waits for the line that the speech layer is speaking, for a bounded time, and then closes
   the session. A close that nixie asked for raises no `dropped`.
 - A provider error is logged as `calls.speech_provider_error` with the session ID, and the session
   stays open. A create request that the provider answers with 401 or 403 is
-  `VOICE_CREDENTIAL_REFUSED`, and any other failure, including a sideband that does not open, is
-  `SPEECH_UNAVAILABLE`.
+  `VOICE_CREDENTIAL_REFUSED`, and any other failure, including a sideband that does not open within
+  15 s, is `SPEECH_UNAVAILABLE`.
 - Every `open` creates a session from a fresh offer of the device. The adapter holds no state across
   sessions.
 

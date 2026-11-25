@@ -7,6 +7,7 @@ import {
   deriveFingerprintKey,
 } from '@heynixie/credentials';
 import { resolveHostAddresses } from '@heynixie/egress';
+import type { SidebandInit } from '@heynixie/speech-gpt-live';
 import { buildGPTLiveSpeech, defaultGPTLiveModel } from '@heynixie/speech-gpt-live';
 import { waitForCondition } from '@heynixie/testing';
 import { chromium } from 'playwright-core';
@@ -76,32 +77,32 @@ async function setupTest() {
   );
 
   const fetchWithKey = store.fetcher(binding, [apiURL]);
-  const openSocket = store.makeSocketOpener(binding, [apiURL]);
 
   // what the provider sent down the sideband, for the checks that the layer's own events omit
   const received: z.infer<typeof receivedEvent>[] = [];
 
   const speech = buildGPTLiveSpeech({
-    fetch: fetchWithKey,
-    openSideband: async (url) => {
-      const socket = await openSocket(url);
+    fetch: Object.assign((input: string, init?: RequestInit) => fetchWithKey(input, init), {
+      openSocket: async (url: string, init?: SidebandInit) => {
+        const socket = await fetchWithKey.openSocket(url, init);
 
-      return {
-        send: socket.send,
-        close: socket.close,
-        messages: (async function* teeMessages() {
-          for await (const text of socket.messages) {
-            const parsed = receivedEvent.safeParse(JSON.parse(text));
+        return {
+          send: socket.send,
+          close: socket.close,
+          messages: (async function* teeMessages() {
+            for await (const text of socket.messages) {
+              const parsed = receivedEvent.safeParse(JSON.parse(text));
 
-            if (parsed.success) {
-              received.push(parsed.data);
+              if (parsed.success) {
+                received.push(parsed.data);
+              }
+
+              yield text;
             }
-
-            yield text;
-          }
-        })(),
-      };
-    },
+          })(),
+        };
+      },
+    }),
     apiURL,
     model: defaultGPTLiveModel,
     clock: systemClock,
@@ -176,7 +177,7 @@ test.skipIf(!isContractRun)(
 
     invariant(handOff?.kind === 'hand_off', 'the speech became a hand-off');
 
-    await ctx.speech.say(opened.sessionID, 'One moment.');
+    await ctx.speech.say(opened.sessionID, 'Just a moment while I look that up.');
 
     await ctx.speech.answer(
       opened.sessionID,
@@ -191,19 +192,27 @@ test.skipIf(!isContractRun)(
       { timeoutMs: 30_000 },
     );
 
+    // acknowledging a commentary does not mean the provider speaks it, so both lines must show in
+    // what the speech layer said
+    const readSpoken = () =>
+      ctx.received
+        .filter((event) => event.type === 'session.output_transcript.delta')
+        .map((event) => event.delta)
+        .join('')
+        .toLowerCase();
+
     await waitForCondition(
-      () =>
-        ctx.received
-          .filter((event) => event.type === 'session.output_transcript.delta')
-          .map((event) => event.delta)
-          .join('')
-          .includes('dentist'),
-      { timeoutMs: 30_000 },
+      () => readSpoken().includes('dentist') && readSpoken().includes('moment'),
+      {
+        timeoutMs: 30_000,
+      },
     );
 
     await ctx.speech.close(opened.sessionID);
 
     expect(handOff.request).toInclude('calendar');
+    expect(readSpoken()).toInclude('moment');
+    expect(readSpoken()).toInclude('dentist');
     expect(ctx.received.filter((event) => event.type === 'error')).toStrictEqual([]);
 
     expect(

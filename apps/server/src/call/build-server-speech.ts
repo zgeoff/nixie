@@ -37,7 +37,6 @@ export function buildServerSpeech(options: ServerSpeechOptions): SpeechLayer | n
 
   return buildGPTLiveSpeech({
     fetch: options.credentials.store.fetcher(binding, [gptLiveAPIURL]),
-    openSideband: options.credentials.store.makeSocketOpener(binding, [gptLiveAPIURL]),
     apiURL: gptLiveAPIURL,
     model: defaultGPTLiveModel,
     clock: options.clock,
