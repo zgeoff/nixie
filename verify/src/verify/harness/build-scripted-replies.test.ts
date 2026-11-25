@@ -51,12 +51,11 @@ test('it queues the atc start for the conversation before the reply, and no repl
     {
       reply: {
         toolUse: {
-          name: 'mcp__nixie__task_start',
+          name: 'mcp__nixie__coding_start',
           input: {
             name: 'Login fix',
             brief: 'Fix the login test.',
             repo: { url: 'https://example.net/acme/app.git', ref: 'main' },
-            runner: 'atc',
           },
         },
         when: undefined,

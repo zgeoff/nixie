@@ -31,6 +31,8 @@ export { codingActionDeclarations, codingDeclarations } from './connector/coding
 export type { CodingRunner } from './runner/build-coding-runner';
 export { buildCodingRunner } from './runner/build-coding-runner';
 export { buildCodingTools } from './tool/build-coding-tools';
+export type { CodingStartParts } from './tool/build-coding-start-tool';
+export { buildCodingStartTool } from './tool/build-coding-start-tool';
 export { buildCodingActionTools } from './tool/build-coding-action-tools';
 export { buildCodingSource } from './source/build-coding-source';
 export { runCodingSweep } from './end/run-coding-sweep';

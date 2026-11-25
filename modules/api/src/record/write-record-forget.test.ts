@@ -604,44 +604,48 @@ test('it refuses a forget from a session revoked after the call resolved it', as
   expect(message?.erasable.status).toBe('readable');
 });
 
-test("it forgets a started task's brief with the starter's recorded task.start call, and rebuilds the sessions of both", async () => {
-  const ctx = await setupTest();
-  const laptop = await createDeviceSession(ctx.context, 'laptop');
+test.each(['task.start', 'coding.start'])(
+  "it forgets a started task's brief with the starter's recorded %s call, and rebuilds the sessions of both",
+  async (tool) => {
+    const ctx = await setupTest();
+    const laptop = await createDeviceSession(ctx.context, 'laptop');
 
-  const started = await seedTaskStartCall(ctx.context, {
-    name: 'Tide tables',
-    brief: 'Find the high tides for Saturday.',
-  });
+    const started = await seedTaskStartCall(ctx.context, {
+      name: 'Tide tables',
+      brief: 'Find the high tides for Saturday.',
+      tool,
+    });
 
-  const cleanupSessions = mock<CleanupRecordSessions>(() => Promise.resolve());
+    const cleanupSessions = mock<CleanupRecordSessions>(() => Promise.resolve());
 
-  const result = await writeRecordForget(
-    { ...ctx.context, readSessionCleanup: () => cleanupSessions },
-    laptop.caller,
-    {
-      clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
-      thread: started.taskID,
-      sequence: started.briefSequence,
-    },
-  );
+    const result = await writeRecordForget(
+      { ...ctx.context, readSessionCleanup: () => cleanupSessions },
+      laptop.caller,
+      {
+        clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+        thread: started.taskID,
+        sequence: started.briefSequence,
+      },
+    );
 
-  const entries = await readRecords(ctx.context.log, {
-    afterSequence: 0,
-    sequences: [started.callSequence, started.resultSequence, started.briefSequence],
-  });
+    const entries = await readRecords(ctx.context.log, {
+      afterSequence: 0,
+      sequences: [started.callSequence, started.resultSequence, started.briefSequence],
+    });
 
-  const [call, brief, outcome] = entries.map((entry) => entry.record);
+    const [call, brief, outcome] = entries.map((entry) => entry.record);
 
-  expect(result).toStrictEqual({ status: 'forgotten', forgottenAt: expect.toBeNumber() });
-  expect(brief?.erasable).toStrictEqual({ status: 'shredded' });
-  expect(call?.erasable).toStrictEqual({ status: 'shredded' });
-  expect(outcome?.erasable.status).toBe('readable');
+    expect(result).toStrictEqual({ status: 'forgotten', forgottenAt: expect.toBeNumber() });
+    expect(brief?.erasable).toStrictEqual({ status: 'shredded' });
+    expect(call?.erasable).toStrictEqual({ status: 'shredded' });
+    expect(outcome?.erasable.status).toBe('readable');
 
-  expect(cleanupSessions.mock.calls).toStrictEqual([
-    [{ recordSequence: started.callSequence }],
-    [{ recordSequence: started.briefSequence }],
-  ]);
-});
+    expect(cleanupSessions.mock.calls).toStrictEqual([
+      [{ recordSequence: started.callSequence }],
+      [{ recordSequence: started.briefSequence }],
+    ]);
+  },
+);
 
 test("it leaves the text of another started task's call readable when it forgets a brief", async () => {
   const ctx = await setupTest();

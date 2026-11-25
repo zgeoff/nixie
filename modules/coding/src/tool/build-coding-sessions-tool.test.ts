@@ -100,7 +100,6 @@ test('it names the coding task that joined a session in boundTo', async () => {
   invariant(shortID !== undefined);
 
   const taskID = await ctx.startTask(claim, {
-    runner: 'atc',
     name: 'Your billing refactor',
     brief: 'Watch for a question.',
     session: shortID,

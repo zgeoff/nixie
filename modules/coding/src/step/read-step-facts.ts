@@ -4,6 +4,7 @@ import { readRecords } from '@heynixie/log';
 import { sql } from 'kysely';
 import { z } from 'zod';
 import { codingToolNames } from '../connector/coding-tool-names';
+import { spawnToolNames } from '../connector/spawn-tool-names';
 import { codingDeliveredCodec } from '../record/coding-delivered-codec';
 import { readOpenBindings } from '../session/read-open-bindings';
 import { sessionEventSchema } from '../source/session-event-schema';
@@ -241,7 +242,7 @@ function readSessionOwners(
   outcomes: readonly InboxItem[],
 ): Promise<ReadonlyMap<string, string>> {
   const sessionIDs = outcomes.flatMap((item) => {
-    if (item.kind !== 'outcome' || item.tool !== codingToolNames.start || item.status !== 'done') {
+    if (item.kind !== 'outcome' || !spawnToolNames.includes(item.tool) || item.status !== 'done') {
       return [];
     }
 

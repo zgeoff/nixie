@@ -22,8 +22,8 @@ export function buildCodingRunner(context: CodingContext, adapter: CodingAdapter
     key: adapter.id,
     controls: ['pause', 'resume', 'stop', 'close'],
     start: defineRunnerStart({
-      schema: buildCodingStartSchema(adapter.id),
-      describeInput: () => buildCodingStartInput(adapter.id, context.settings),
+      schema: buildCodingStartSchema(),
+      describeInput: () => buildCodingStartInput(context.settings),
       declaration: codingDeclarations.start,
       storesBuiltOptions: false,
       plan: (start, _starter, bounds) => planCodingStart(context, adapter, start, bounds),

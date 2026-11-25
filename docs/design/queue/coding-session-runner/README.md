@@ -13,8 +13,7 @@ needs them, and only the session events that nixie picked wake it. This design a
 runner, which runs such a task, with its tools and its first adapter: the package `coding-atc`,
 whose adapter ID is `atc`.
 
-Once the owner approves this design, build
-[the atc runner](https://linear.app/zgeoff/issue/GEO-1843) from it and its three parts.
+Build [the atc runner](https://linear.app/zgeoff/issue/GEO-1843) from it and its three parts.
 
 The coding runner calls no model of its own, and judges nothing about the session's work. Each step
 of a coding task moves text and events between the task and the session. nixie's conversation reads
@@ -54,7 +53,6 @@ These sibling designs touch this one:
 | joined         | a bound session that already ran in atc before the task, such as one you started yourself                                                                         |
 | coding source  | the [trigger source](../../../architecture/core/triggers.md) that reads atc's event trail into each coding task's thread                                          |
 | report target  | the task that started a coding task, usually the conversation; it receives each forwarded event and the report                                                    |
-| variant        | one form of a tool's input, picked by a field such as `runner`, with its own policy rule name, such as `task.start/atc`                                           |
 | hop            | the count of task messages in one exchange; past the [hop limit](../../../architecture/core/task-messages.md#the-hop-limit) a message wakes nobody                |
 | claim          | the step of the task runner that takes a task's lease before a step runs ([leases and the restart sweep](../../../architecture/core/leases-and-restart-sweep.md)) |
 | decision point | the code that decides allow, ask or deny for each tool call and each attempt of an action ([actions](../../../architecture/core/actions.md))                      |
@@ -68,7 +66,7 @@ too. Look up other terms, such as an inbox, a task run, a projection and an imp,
 
 ```mermaid
 flowchart LR
-  conv[conversation] -->|"task.start/atc, coding.steer"| queue[action queue]
+  conv[conversation] -->|"coding.start, coding.steer"| queue[action queue]
   queue -->|"atc_session_spawn, atc_terminal_type"| gw[atc-gateway]
   gw -->|"atc_events_read, cursor"| source[coding source]
   source -->|"trigger.task_input"| thread[coding task's thread]
@@ -78,7 +76,7 @@ flowchart LR
   conv -->|"coding.read"| gw
 ```
 
-To start a session, nixie writes the coding task and queues the spawn, a `coding.start` action whose
+To start a session, nixie writes the coding task and queues the spawn, a `coding.spawn` action whose
 prompt is the brief. To join one, nixie reads the session from atc and binds it in the same step,
 and sends the session nothing. nixie steers the session with `coding.steer`, an action that types
 nixie's text into the session's input. The spawn's outcome and the session's events land on the
@@ -88,11 +86,11 @@ state, last reply and recent turns with `coding.read`.
 
 ## Parts
 
-| Doc                       | What it holds                                                                                          |
-| ------------------------- | ------------------------------------------------------------------------------------------------------ |
-| [the runner](runner.md)   | the start and the join, their policy, the runner definition, the records, what one step does, the ends |
-| [the tools](tools.md)     | `coding.sessions`, `coding.steer`, `coding.message`, `coding.read`, `coding.watch`, and their policy   |
-| [the atc adapter](atc.md) | `CodingAdapter`, the coding source, the map onto atc-gateway's tools, the config, the release pairs    |
+| Doc                       | What it holds                                                                                                             |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| [the runner](runner.md)   | `coding.start` for the start and the join, their policy, the runner definition, the records, what one step does, the ends |
+| [the tools](tools.md)     | `coding.sessions`, `coding.steer`, `coding.message`, `coding.read`, `coding.watch`, and their policy                      |
+| [the atc adapter](atc.md) | `CodingAdapter`, the coding source, the map onto atc-gateway's tools, the config, the release pairs                       |
 
 This work changes these modules that every runner or connector uses:
 
@@ -117,12 +115,15 @@ This work changes these modules that every runner or connector uses:
   failed start, a stop, a close or a failure ends it, with one report. Between those, each event in
   the wake set reaches the report target as a `task_message`, and no event but `ended` ends the task
   run. `gone` never ends it.
-- **This runner's key is `atc`.** The config section `coding.atc` and the variant `task.start/atc`
-  take their names from the key.
+- **This runner's key is `atc`.** The config section `coding.atc` takes its name from the key.
 - **The coding runner is generic over `CodingAdapter`, and its key is the adapter's ID.** A later
   adapter, such as a built-in one that runs a session in an [imp](../../../glossary.md), gets its
-  own key and its own `task.start` variant. The wake set, the tools and the `coding.wake` config are
-  the same for every adapter, and only `coding.<key>` holds what the adapter needs.
+  own key. The tools, `coding.start` among them, the wake set and the `coding.wake` config are the
+  same for every adapter, and only `coding.<key>` holds what the adapter needs. The server wires one
+  coding adapter, and `coding.start` starts that adapter's runner.
+- **A coding task starts from its own tool, `coding.start`.** `task.start` takes a plain object
+  input for sandbox tasks only. The Agent SDK's harness drops a tool whose input schema has a root
+  `oneOf`, so the model would never see a `task.start` that took both inputs.
 - **The spawn, each steer, each note and each `coding.stop` are actions on the action queue.** The
   spawn and each note declare `idempotency_key` reconciliation, so a crash never spawns a second
   session or sends a note twice. A steer declares `none`, because atc's typing call takes no key and
@@ -139,9 +140,11 @@ This work changes these modules that every runner or connector uses:
   `coding.message` note, as [what one step does](runner.md#what-one-step-does) describes.
 - **nixie names each session by a short ID.** `coding.sessions` gives each session it lists a short
   ID, and every tool takes that ID. atc's session IDs stay inside the runner.
-- **The default wake sets are fixed.** A started session wakes nixie on `waiting`, `idle`,
-  `blocked`, `decision`, `ended` and `gone`. A joined session wakes it on `waiting`, `ended` and
-  `gone`. `coding.wake` holds both, as [the wake set](tools.md#picking-the-wake-set) shows.
+- **Each origin has its own default wake set.** By default, a started session wakes nixie on
+  `waiting`, `idle`, `blocked`, `decision`, `ended` and `gone`, and a joined session wakes it on
+  `waiting`, `ended` and `gone`. The deployment config's `coding.wake` sets both defaults, and a
+  start or `coding.watch` replaces one task's set, as [the wake set](tools.md#picking-the-wake-set)
+  shows.
 - **nixie reaches atc only through atc-gateway, as a service client.** The gateway reaches every
   daemon in its registry, so one connection sees the sessions on your desktop and on a cloud VM
   alike.
@@ -163,13 +166,3 @@ This work changes these modules that every runner or connector uses:
 - A coding task from a definition file. The
   [task definitions work](https://linear.app/zgeoff/issue/GEO-1330) adds a `runner` key to the
   definition format.
-
-## Open questions
-
-- **Does each model API accept a `oneOf` under an object root for the `task.start` input?** The
-  `task.start` tool sends that root as soon as a second runner can start tasks. Settle it with one
-  probe per harness, for `agent-sdk` and `codex`: have the conversation's model call `task.start`
-  with both variants in the tool's input schema, and check that the API takes the schema and the
-  call parses. This work runs both probes. Until the probe passes on a harness, the server leaves
-  the coding variant out of `task.start` on that harness. The tasks module's code keeps the list of
-  harnesses that passed.

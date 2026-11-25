@@ -2,12 +2,11 @@ import type { JSONObject } from '@heynixie/log';
 import type { CodingSettings } from '../types';
 import { wakeEvents } from './wake-events';
 
-// The JSON schema of the coding variant of `task.start`, as the model reads it.
-export function buildCodingStartInput(adapterID: string, settings: CodingSettings): JSONObject {
+// The JSON schema of the `coding.start` tool, as the model reads it.
+export function buildCodingStartInput(settings: CodingSettings): JSONObject {
   return {
     type: 'object',
     properties: {
-      runner: { type: 'string', const: adapterID },
       name: { type: 'string', minLength: 1, maxLength: 80 },
       brief: {
         type: 'string',
@@ -49,7 +48,7 @@ export function buildCodingStartInput(adapterID: string, settings: CodingSetting
           'always reaches you',
       },
     },
-    required: ['runner', 'name', 'brief'],
+    required: ['name', 'brief'],
     additionalProperties: false,
   };
 }

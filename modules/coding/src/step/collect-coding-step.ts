@@ -2,6 +2,7 @@ import type { Definitions, RecordInput } from '@heynixie/log';
 import type { RunnerAction, StepMessage } from '@heynixie/tasks';
 import { z } from 'zod';
 import { codingToolNames } from '../connector/coding-tool-names';
+import { spawnToolNames } from '../connector/spawn-tool-names';
 import { codingAnswerHeldCodec } from '../record/coding-answer-held-codec';
 import { codingDeliveredCodec } from '../record/coding-delivered-codec';
 import { codingSessionBoundCodec } from '../record/coding-session-bound-codec';
@@ -113,7 +114,7 @@ export function collectCodingStep(facts: CodingStepFacts): CodingStepPlan {
 type Outcome = Extract<InboxItem, { readonly kind: 'outcome' }>;
 
 function collectOutcome(facts: CodingStepFacts, state: StepState, outcome: Outcome): void {
-  if (outcome.tool === codingToolNames.start) {
+  if (spawnToolNames.includes(outcome.tool)) {
     collectSpawnOutcome(facts, state, outcome);
   }
 
