@@ -14,14 +14,25 @@ const namedColours: Readonly<Record<string, string>> = {
   brown: '#a52a2a',
 };
 
-// The text colour that reads on a region's background: black on a light one, white on a dark one.
-// A region with no background is on the screen's black.
+// The text colour with the higher WCAG contrast ratio on a region's background. A region with no
+// background is on the screen's black.
 export function pickRegionTextColour(background: string | null): 'black' | 'white' {
   const hex = background === null ? '#000000' : (namedColours[background] ?? background);
-  const red = Number.parseInt(hex.slice(1, 3), 16);
-  const green = Number.parseInt(hex.slice(3, 5), 16);
-  const blue = Number.parseInt(hex.slice(5, 7), 16);
-  const luminance = (0.2126 * red + 0.7152 * green + 0.0722 * blue) / 255;
 
-  return luminance > 0.55 ? 'black' : 'white';
+  const luminance =
+    0.2126 * toLinearChannel(hex.slice(1, 3)) +
+    0.7152 * toLinearChannel(hex.slice(3, 5)) +
+    0.0722 * toLinearChannel(hex.slice(5, 7));
+
+  const onBlack = (luminance + 0.05) / 0.05;
+  const onWhite = 1.05 / (luminance + 0.05);
+
+  return onBlack > onWhite ? 'black' : 'white';
+}
+
+// One sRGB channel, as two hex digits, in linear light.
+function toLinearChannel(digits: string): number {
+  const channel = Number.parseInt(digits, 16) / 255;
+
+  return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
 }
