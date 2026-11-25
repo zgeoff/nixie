@@ -55,8 +55,8 @@ test('it seals the refresh token and the client secret under keys of their own',
     leaksToken,
     leaksSecret,
     keyIDs.includes(undefined) || keyIDs.includes(null),
-    new Set(keyIDs).size,
-  ]).toStrictEqual([true, true, false, false, false, 3]);
+    new Set(keyIDs).size === 3,
+  ]).toStrictEqual([true, true, false, false, false, true]);
 });
 
 test('it keeps the access token in memory, so a restart finds none', async () => {
