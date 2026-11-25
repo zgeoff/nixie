@@ -1,3 +1,4 @@
+import type { VoiceDefinitions } from '@heynixie/calls';
 import type { JSONObject } from '@heynixie/log';
 import type { PromptOverrides } from '@heynixie/prompts';
 import type {
@@ -26,6 +27,9 @@ export interface DefinitionsSnapshotInput {
 
   // the budgets in force, which a raised limit joins only once you approve it
   readonly budgets?: readonly DefinitionBudget[];
+
+  // the voice settings, which enter the snapshot only when the definitions hold some
+  readonly voice?: VoiceDefinitions | null;
 }
 
 export function buildDefinitionsSnapshot(input: DefinitionsSnapshotInput): DefinitionsSnapshot {
@@ -61,6 +65,8 @@ export function buildDefinitionsSnapshot(input: DefinitionsSnapshotInput): Defin
     (budget) => budget.id,
   );
 
+  const voice = input.voice ?? null;
+
   const form = toCanonicalJSON({
     conversation,
     persona: personaVersion,
@@ -69,6 +75,7 @@ export function buildDefinitionsSnapshot(input: DefinitionsSnapshotInput): Defin
     tasks,
     ...(Object.keys(prompts).length === 0 ? {} : { prompts }),
     ...(budgets.length === 0 ? {} : { budgets }),
+    ...(voice === null ? {} : { voice: buildVoiceForm(voice) }),
   });
 
   return {
@@ -78,6 +85,7 @@ export function buildDefinitionsSnapshot(input: DefinitionsSnapshotInput): Defin
     persona,
     prompts: input.prompts,
     tasks,
+    voice,
     form,
   };
 }
@@ -128,4 +136,18 @@ function buildTaskForm(task: SnapshotTask): SnapshotTask {
   return task.origin === 'nixie'
     ? { id: task.id, hash: task.hash, origin: 'nixie', changeID: task.changeID }
     : { id: task.id, hash: task.hash, origin: 'definitions' };
+}
+
+function buildVoiceForm(voice: VoiceDefinitions): JSONObject {
+  return {
+    voice: voice.voice,
+    holdAfterMs: voice.holdAfterMs,
+    pricePerMinuteMicros: voice.pricePerMinuteMicros,
+    lines: {
+      holding: voice.lines.holding,
+      reconnect: voice.lines.reconnect,
+      couldntFinish: voice.lines.couldntFinish,
+      budget: voice.lines.budget,
+    },
+  };
 }

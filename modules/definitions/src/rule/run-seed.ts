@@ -1,3 +1,4 @@
+import type { VoiceFileProblem } from '@heynixie/calls';
 import type { Log, LogRecord } from '@heynixie/log';
 import { withWriteTransaction } from '@heynixie/log';
 import type { RuleFileWarning } from '@heynixie/policy';
@@ -47,6 +48,9 @@ export interface SeedOptions {
   // Takes each skipped definition and each dropped tool
   readonly onTaskWarning?: (warning: TaskDefinitionWarning) => void;
 
+  // Takes each voice file that the seed left unapplied, which never refuses the seed
+  readonly onVoiceProblem?: (problem: VoiceFileProblem) => void;
+
   readonly buildPolicy: (prompts: PromptOverrides) => SnapshotPolicy;
 
   // The built-in budget of each paid tool, which a budget of the definitions may change
@@ -85,6 +89,10 @@ export async function runSeed(options: SeedOptions): Promise<SeedResult> {
 
   for (const warning of read.parsed.taskWarnings) {
     options.onTaskWarning?.(warning);
+  }
+
+  for (const problem of read.parsed.voiceProblems) {
+    options.onVoiceProblem?.(problem);
   }
 
   return withWriteTransaction(options.log.writer, async (tx) => {
@@ -143,6 +151,7 @@ export async function runSeed(options: SeedOptions): Promise<SeedResult> {
       conversationSkills: overlay.conversationSkills,
       tasks: taskPlan.tasks,
       budgets: budgets.inForce,
+      voice: read.parsed.voice,
     });
 
     await writeAdoptedSkills(tx, {

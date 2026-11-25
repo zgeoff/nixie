@@ -1,6 +1,7 @@
 import { actionsProjection } from '@heynixie/actions';
 import { apiProjections, proposalsProjection } from '@heynixie/api';
 import { budgetProjections } from '@heynixie/budgets';
+import { callsProjection } from '@heynixie/calls';
 import { codingProjections } from '@heynixie/coding';
 import {
   gapAnswersProjection,
@@ -31,6 +32,7 @@ export function buildServerLog(writer: Writer, deploymentKey: CryptoKey): Log {
       ...codingProjections,
       ...remindersProjections,
       actionsProjection,
+      callsProjection,
       sandboxesProjection,
       ...apiProjections,
       ...memoryProjections,

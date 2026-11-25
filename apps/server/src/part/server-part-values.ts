@@ -63,6 +63,7 @@ export interface ServerPartValues {
   readonly sandbox_runner: SandboxRunner;
   readonly runners: void;
   readonly coding_sweep: void;
+  readonly calls_sweep: void;
   readonly seed_poll: void;
   readonly proposal_sweeps: void;
   readonly prompt_lapse_sweep: void;

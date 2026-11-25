@@ -184,6 +184,7 @@
         "@heynixie/async": "workspace:*",
         "@heynixie/backup": "workspace:*",
         "@heynixie/budgets": "workspace:*",
+        "@heynixie/calls": "workspace:*",
         "@heynixie/clock": "workspace:*",
         "@heynixie/coding": "workspace:*",
         "@heynixie/coding-atc": "workspace:*",
@@ -569,6 +570,7 @@
         "@heynixie/async": "workspace:*",
         "@heynixie/backup": "workspace:*",
         "@heynixie/budgets": "workspace:*",
+        "@heynixie/calls": "workspace:*",
         "@heynixie/clock": "workspace:*",
         "@heynixie/coding": "workspace:*",
         "@heynixie/connectors": "workspace:*",
@@ -635,6 +637,26 @@
         "@heynixie/policy": "workspace:*",
         "kysely": "catalog:",
         "tiny-invariant": "catalog:",
+        "zod": "catalog:",
+      },
+      "devDependencies": {
+        "@zgeoff/testing": "catalog:",
+      },
+    },
+    "modules/calls": {
+      "name": "@heynixie/calls",
+      "version": "0.0.0",
+      "dependencies": {
+        "@heynixie/budgets": "workspace:*",
+        "@heynixie/clock": "workspace:*",
+        "@heynixie/credentials": "workspace:*",
+        "@heynixie/db": "workspace:*",
+        "@heynixie/log": "workspace:*",
+        "@heynixie/logger": "workspace:*",
+        "@heynixie/tasks": "workspace:*",
+        "kysely": "catalog:",
+        "tiny-invariant": "catalog:",
+        "ts-pattern": "catalog:",
         "zod": "catalog:",
       },
       "devDependencies": {
@@ -726,6 +748,7 @@
       "name": "@heynixie/definitions",
       "version": "0.0.0",
       "dependencies": {
+        "@heynixie/calls": "workspace:*",
         "@heynixie/clock": "workspace:*",
         "@heynixie/contract": "workspace:*",
         "@heynixie/db": "workspace:*",
@@ -1639,6 +1662,8 @@
     "@heynixie/backup-job": ["@heynixie/backup-job@workspace:apps/backup-job"],
 
     "@heynixie/budgets": ["@heynixie/budgets@workspace:modules/budgets"],
+
+    "@heynixie/calls": ["@heynixie/calls@workspace:modules/calls"],
 
     "@heynixie/clock": ["@heynixie/clock@workspace:libs/clock"],
 

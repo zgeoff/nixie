@@ -43,7 +43,13 @@ export async function readSourceEvidence(
   };
 }
 
-const spanSources: readonly MessageSpan['source'][] = ['typed', 'pasted', 'dropped', 'unknown'];
+const spanSources: readonly MessageSpan['source'][] = [
+  'typed',
+  'pasted',
+  'dropped',
+  'dictated',
+  'unknown',
+];
 
 function toOwnerMessage(source: SourceMessage): OwnerMessage {
   return {

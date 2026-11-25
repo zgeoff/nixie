@@ -3,6 +3,7 @@ import { renderSessionCookie } from '@heynixie/contract';
 import { match } from 'ts-pattern';
 import { isForgettableKind } from './is-forgettable-kind';
 import { mockApprovalProcedures } from './mock-approval-procedures';
+import { mockCallsProcedures } from './mock-calls-procedures';
 import { mockComputerProcedures } from './mock-computer-procedures';
 import { mockDefinitionProcedures } from './mock-definition-procedures';
 import { mockDeviceProcedures } from './mock-device-procedures';
@@ -50,6 +51,7 @@ export const mockAPIRouter = os.router({
       return readMockBackupNotice();
     }),
   },
+  calls: mockCallsProcedures,
   computer: mockComputerProcedures,
   devices: mockDeviceProcedures,
   erasure: mockErasureProcedures,

@@ -318,6 +318,7 @@ test('it returns the definitions it put in force', async () => {
     skills: [],
     conversationSkills: [],
     tasks: [],
+    voice: null,
   });
 });
 
@@ -3107,4 +3108,83 @@ test('it applies a budget that raises a built-in limit, as one that lowers it', 
   const rows = await sql`select budget_id from budgets_in_force`.execute(ctx.writer.db);
 
   expect(rows.rows).toStrictEqual([{ budget_id: 'search-day' }, { budget_id: 'search-month' }]);
+});
+
+test('it puts the voice settings in force and in the snapshot hash', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 5\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await mkdir(join(ctx.root, 'voice'));
+  await writeFile(join(ctx.root, 'voice', 'voice.yaml'), 'price_per_minute: 0.05\n');
+
+  const result = await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
+
+  const stored = await readDefinitionsInForce(ctx.writer.db);
+
+  invariant(result.status === 'seeded', 'the seed applies');
+
+  expect([
+    result.inForce.voice?.pricePerMinuteMicros,
+    stored?.voice?.pricePerMinuteMicros,
+  ]).toStrictEqual([50_000, 50_000]);
+});
+
+test('it seeds a repo whose voice file is bad, reports the file and holds no voice settings', async () => {
+  const ctx = await setupTest();
+
+  const reported: string[] = [];
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 5\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await mkdir(join(ctx.root, 'voice'));
+  await writeFile(join(ctx.root, 'voice', 'voice.yaml'), 'price_per_minute: -3\n');
+
+  const result = await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+    onVoiceProblem: (problem) => {
+      reported.push(problem.path);
+    },
+  });
+
+  const stored = await readDefinitionsInForce(ctx.writer.db);
+
+  expect([result.status, reported, stored?.voice]).toStrictEqual([
+    'seeded',
+    ['voice/voice.yaml'],
+    null,
+  ]);
+});
+
+test('it keeps the voice settings through a seed of the definitions in force', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 5\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await mkdir(join(ctx.root, 'voice'));
+  await writeFile(join(ctx.root, 'voice', 'voice.yaml'), 'price_per_minute: 0.05\n');
+
+  const first = await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
+
+  const again = await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
+
+  expect([first.status, again.status]).toStrictEqual(['seeded', 'unchanged']);
 });

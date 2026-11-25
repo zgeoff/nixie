@@ -2102,6 +2102,24 @@
         }
       },
       "additionalProperties": false
+    },
+    "voice": {
+      "type": "object",
+      "properties": {
+        "provider": {
+          "type": "string",
+          "const": "gpt-live"
+        },
+        "credential": {
+          "type": "string",
+          "pattern": "^deployment:.+$"
+        }
+      },
+      "required": [
+        "provider",
+        "credential"
+      ],
+      "additionalProperties": false
     }
   },
   "required": [

@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { codeFileSchema } from '../file/code-file-schema';
 import { spanSchema } from '../span/span-schema';
 import { approvalContract } from './approval-contract';
+import { callsContract } from './calls-contract';
 import { computerContract } from './computer-contract';
 import { definitionsContract } from './definitions-contract';
 import { devicesContract } from './devices-contract';
@@ -305,6 +306,7 @@ export const contract = {
   },
   notebook: notebookContract,
   images: imagesContract,
+  calls: callsContract,
   computer: computerContract,
   files: {
     read: signedIn

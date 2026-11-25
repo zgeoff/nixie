@@ -1,4 +1,5 @@
 import type { BackupSchedule, ForgetBackup } from '@heynixie/backup';
+import type { CallsContext } from '@heynixie/calls';
 import type { ComputerTakeover, WatchConnection, WatchSocket } from '@heynixie/connectors';
 import type { DefinitionNotice, ImageMediaType } from '@heynixie/contract';
 import type { CheckedTables } from '@heynixie/db';
@@ -119,6 +120,9 @@ export interface APIContext extends TasksContext {
   readonly readZone: ReadZone;
 
   readonly readSessionCleanup: () => CleanupRecordSessions | null;
+
+  // absent, the server holds no calls module, and every call procedure answers as with voice off
+  readonly calls?: CallsContext;
 
   // absent, the server holds no computer to watch
   readonly computerWatch?: ComputerWatchPort;
