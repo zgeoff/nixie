@@ -47,15 +47,15 @@ test('it answers a page with the error code when the API refuses, with no store 
     response.headers.get('referrer-policy'),
     page.includes('CONNECTIONS_NOT_STARTED'),
     page.includes('4/0Ab'),
-  ]).toStrictEqual([503, 'no-store', 'no-referrer', true, false]);
+  ]).toStrictEqual([400, 'no-store', 'no-referrer', true, false]);
 });
 
-test('it answers 401 when the browser has no session', async () => {
+test('it answers 400 with the error code when the browser has no session', async () => {
   const ctx = await setupTest();
   const response = await ctx.handleReturn('?state=abc&code=4%2F0Ab', null);
   const page = await response.text();
 
-  expect([response.status, page.includes('UNAUTHORIZED')]).toStrictEqual([401, true]);
+  expect([response.status, page.includes('UNAUTHORIZED')]).toStrictEqual([400, true]);
 });
 
 test('it answers 400 without calling the API when the state is missing', async () => {

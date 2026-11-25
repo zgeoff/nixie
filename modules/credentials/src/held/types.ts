@@ -117,6 +117,7 @@ export type CredentialEvent =
       readonly credentialID: string;
       readonly attemptID: string;
       readonly newKeyID: string;
+      readonly removalCounter: number;
     }
   | {
       readonly event: 'refresh_saved';
@@ -152,6 +153,9 @@ export interface OpenRefresh {
   readonly credentialID: string;
   readonly attemptID: string;
   readonly newKeyID: string;
+
+  // null for a refresh that an older record began
+  readonly removalCounter: number | null;
 }
 
 export interface CredentialRecorder {
@@ -168,6 +172,10 @@ export interface TokenExchange {
 
   // the credential the tokens are saved under: a random UUID the caller made
   readonly credentialID: string;
+
+  // Asked before the exchange revokes a token it will not keep, with the `sub` of the account the
+  // ID token named, or null when it named none. Answers false when the grant is still in use.
+  readonly probeRevocable?: (subject: string | null) => Promise<boolean>;
 }
 
 // What an exchange tells the caller. It holds no token.

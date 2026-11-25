@@ -15,10 +15,6 @@ export interface ToolEndpointOptions extends Omit<ToolCallOptions, 'queuedWaitMs
 
   readonly queuedWaitMs?: number;
 
-  // The names of the tools that no run lists for now, such as a connector's tools whose scope the
-  // owner left out. Each run reads it as it starts, and keeps the list it got.
-  readonly readHeldBackTools?: () => Promise<readonly string[]>;
-
   readonly logger: Logger;
 }
 
@@ -36,40 +32,32 @@ export async function startToolEndpoint(options: ToolEndpointOptions): Promise<T
     join(options.socketDir, buildSocketName(`${String(options.log.writer.epoch)}:${runID}`));
 
   return {
-    startRun: async (run) => {
-      if (runs.has(run.runID)) {
-        throw new Error(`the run ${run.runID} already has a tool endpoint`);
-      }
+    startRun: (run) =>
+      Promise.try(() => {
+        if (runs.has(run.runID)) {
+          throw new Error(`the run ${run.runID} already has a tool endpoint`);
+        }
 
-      const heldBackNames = await options.readHeldBackTools?.();
+        const names = collectHeldToolNames(run.tools, options.registry.toolNames);
 
-      const heldBack = new Set(heldBackNames);
+        // The endpoint lists only registered tools, so a name it drops would vanish from the run.
+        for (const tool of names.unknown) {
+          options.logger('tools.run_tool_unknown', { runID: run.runID, tool }, 'warn');
+        }
 
-      // a second start of the run could have begun while the read waited
-      if (runs.has(run.runID)) {
-        throw new Error(`the run ${run.runID} already has a tool endpoint`);
-      }
+        const endpoint = startRunEndpoint({
+          run: { ...run, tools: [...names.held] },
+          socketPath: getSocketPath(run.runID),
+          options: callOptions,
+          onStop: () => {
+            runs.delete(run.runID);
+          },
+        });
 
-      const names = collectHeldToolNames(run.tools, options.registry.toolNames);
+        runs.set(run.runID, endpoint);
 
-      // The endpoint lists only registered tools, so a name it drops would vanish from the run.
-      for (const tool of names.unknown) {
-        options.logger('tools.run_tool_unknown', { runID: run.runID, tool }, 'warn');
-      }
-
-      const endpoint = startRunEndpoint({
-        run: { ...run, tools: names.held.filter((tool) => !heldBack.has(tool)) },
-        socketPath: getSocketPath(run.runID),
-        options: callOptions,
-        onStop: () => {
-          runs.delete(run.runID);
-        },
-      });
-
-      runs.set(run.runID, endpoint);
-
-      return endpoint;
-    },
+        return endpoint;
+      }),
 
     // A worker's sandbox is owned by its worker run, whose tool run takes the run's UUID.
     getToolTarget: (sandbox) => ({

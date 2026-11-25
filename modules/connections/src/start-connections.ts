@@ -32,6 +32,7 @@ import type {
   ForgetConnectionResult,
   ForgetState,
   ListedConnection,
+  OperationAttempt,
   RegisterClientResult,
   RemoveClientResult,
   SetPickerResult,
@@ -65,10 +66,23 @@ export interface ConnectionsOptions {
 // The API's way into the connections: what a signed-in owner can ask of them.
 export interface ConnectionsPort {
   readonly readSetup: (pageOrigin: string) => Promise<SetupReply>;
-  readonly registerClient: (input: RegisterClientInput) => Promise<RegisterClientResult>;
-  readonly setPicker: (client: string, picker: PickerSettings | null) => Promise<SetPickerResult>;
-  readonly removeClient: (client: string) => Promise<RemoveClientResult>;
-  readonly startConsent: (input: StartConsentInput) => Promise<StartConsentResult>;
+  readonly registerClient: (
+    input: RegisterClientInput,
+    attempt?: OperationAttempt<RegisterClientResult>,
+  ) => Promise<RegisterClientResult>;
+  readonly setPicker: (
+    client: string,
+    picker: PickerSettings | null,
+    attempt?: OperationAttempt<SetPickerResult>,
+  ) => Promise<SetPickerResult>;
+  readonly removeClient: (
+    client: string,
+    attempt?: OperationAttempt<RemoveClientResult>,
+  ) => Promise<RemoveClientResult>;
+  readonly startConsent: (
+    input: StartConsentInput,
+    attempt?: OperationAttempt<StartConsentResult>,
+  ) => Promise<StartConsentResult>;
   readonly finishConsent: (input: FinishConsentInput) => Promise<FinishConsentResult>;
   readonly list: () => Promise<ListedConnection[]>;
 
@@ -158,10 +172,10 @@ export function startConnections(options: ConnectionsOptions): Connections {
     forget,
     writeLostRevocations: () => writeLostRevocations(writer),
     readSetup: (pageOrigin) => readSetup(context, pageOrigin),
-    registerClient: (input) => registerClient(context, input),
-    setPicker: (client, picker) => setPicker(context, client, picker),
-    removeClient: (client) => removeClient(context, client),
-    startConsent: (input) => startConsent(context, input),
+    registerClient: (input, attempt) => registerClient(context, input, attempt),
+    setPicker: (client, picker, attempt) => setPicker(context, client, picker, attempt),
+    removeClient: (client, attempt) => removeClient(context, client, attempt),
+    startConsent: (input, attempt) => startConsent(context, input, attempt),
     finishConsent: (input) => finishConsent(context, input),
     list: () => listConnections(context),
     forgetConnection: (connection) => forgetConnection(context, connection),

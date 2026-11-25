@@ -6,7 +6,8 @@ import { readRowContext } from './read-connection-context';
 import { readConnectionRowByID } from './read-connection-rows';
 
 // Runs the connector's check of one live connection and keeps the scopes it found missing. A check
-// that fails, such as a server error from Google, keeps what the last check found.
+// that fails, such as a server error from Google, keeps what the last check found, and so does a
+// check that began before a consent renewed the connection.
 export async function runConnectionCheck(
   context: ServiceContext,
   connectionID: string,
@@ -39,6 +40,7 @@ export async function runConnectionCheck(
         })
         .where('connection_id', '=', connectionID)
         .where('binding', '=', 'enabled')
+        .where('removal_counter', '=', row.removal_counter)
         .execute(),
     );
 

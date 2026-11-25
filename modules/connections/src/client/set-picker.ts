@@ -1,21 +1,23 @@
-import { withWriteTransaction, writeRecords } from '@heynixie/log';
+import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import { pickerSetCodec } from '../record/picker-set-codec';
 import type { ServiceContext } from '../service-context';
-import type { ConnectionTables, SetPickerResult } from '../types';
+import type { ConnectionTables, OperationAttempt, SetPickerResult } from '../types';
 
 export interface PickerSettings {
   readonly pickerKey: string;
   readonly projectNumber: string;
 }
 
-// Sets the Drive picker's API key and project number on the client, or clears both with null.
-export async function setPicker(
+// Sets the Drive picker's API key and project number on the client, or clears both with null. The
+// change, its record and the caller's outcome commit in one transaction.
+export function setPicker(
   context: ServiceContext,
   shortID: string,
   picker: PickerSettings | null,
+  attempt?: OperationAttempt<SetPickerResult>,
 ): Promise<SetPickerResult> {
-  const updated = await withWriteTransaction(context.log.writer, (tx) =>
-    tx
+  return withWriteTransaction(context.log.writer, async (tx) => {
+    const updated = await tx
       .$extendTables<ConnectionTables>()
       .updateTable('oauth_clients')
       .set({
@@ -24,20 +26,23 @@ export async function setPicker(
       })
       .where('short_id', '=', shortID)
       .where('removed_at', 'is', null)
-      .executeTakeFirst(),
-  );
+      .executeTakeFirst();
 
-  if (updated.numUpdatedRows === 0n) {
-    return { kind: 'client_not_found' };
-  }
+    const result: SetPickerResult =
+      updated.numUpdatedRows === 0n ? { kind: 'client_not_found' } : { kind: 'ok' };
 
-  await writeRecords(context.log, [
-    {
-      kind: pickerSetCodec.kind,
-      definitions: context.definitions(),
-      payload: pickerSetCodec.encode({ client: shortID }),
-    },
-  ]);
+    if (result.kind === 'ok') {
+      await writeRecordsInTransaction(tx, context.log, [
+        {
+          kind: pickerSetCodec.kind,
+          definitions: context.definitions(),
+          payload: pickerSetCodec.encode({ client: shortID }),
+        },
+      ]);
+    }
 
-  return { kind: 'ok' };
+    await attempt?.settle(tx, result);
+
+    return result;
+  });
 }

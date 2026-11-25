@@ -35,12 +35,17 @@ export async function claimConsent(
     return null;
   }
 
+  const claimedAtMs = context.now();
+
   const claimed = await withWriteTransaction(context.log.writer, (tx) =>
     tx
       .$extendTables<ConnectionTables>()
       .updateTable('consent_requests')
-      .set({ claimed_at: context.now() })
+      .set({ claimed_at: claimedAtMs })
       .where('consent_id', '=', request.consent_id)
+      .where('state_hash', '=', request.state_hash)
+      .where('device_session_id', '=', deviceSessionID)
+      .where('expires_at', '>', claimedAtMs)
       .where('claimed_at', 'is', null)
       .executeTakeFirst(),
   );

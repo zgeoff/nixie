@@ -55,16 +55,7 @@ function toReturnErrorResponse(error: unknown): Response {
   }
 
   const googleError = googleErrorSchema.safeParse(error.data);
-  const status = pickReturnStatus(error.code);
   const reported = googleError.success ? googleError.data.googleError : null;
 
-  return renderReturnError(status, error.code, reported);
-}
-
-function pickReturnStatus(code: string): number {
-  if (code === 'UNAUTHORIZED') {
-    return 401;
-  }
-
-  return code === 'CONNECTIONS_NOT_STARTED' ? 503 : 400;
+  return renderReturnError(400, error.code, reported);
 }

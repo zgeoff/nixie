@@ -1,6 +1,6 @@
 import type { CredentialRecorder } from '@heynixie/credentials';
 import type { CheckedTables } from '@heynixie/db';
-import type { Definitions, Log } from '@heynixie/log';
+import type { Definitions, Log, WriteTransaction } from '@heynixie/log';
 import type { Generated, Selectable } from 'kysely';
 
 interface OAuthClientRow {
@@ -109,6 +109,14 @@ export interface BackendOptions {
 export interface ConnectionMissingScope {
   readonly scope: string;
   readonly reason: 'not_granted' | 'api_disabled';
+}
+
+// What a caller that keeps the outcome of an operation passes: whether an earlier try of the same
+// operation began and never finished, and a step that runs inside the operation's last write
+// transaction, so the outcome commits with the operation.
+export interface OperationAttempt<Result> {
+  readonly isRetry: boolean;
+  readonly settle: (tx: WriteTransaction, result: Result) => Promise<void>;
 }
 
 export type RegisterClientResult =

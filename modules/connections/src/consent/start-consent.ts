@@ -4,7 +4,13 @@ import { openValue, sealValue } from '../backend/seal-value';
 import { readLiveClient } from '../client/read-live-client';
 import { readConnectionRowByShortID } from '../connection/read-connection-rows';
 import type { ServiceContext } from '../service-context';
-import type { ClientRow, ConnectionTables, StartConsentInput, StartConsentResult } from '../types';
+import type {
+  ClientRow,
+  ConnectionTables,
+  OperationAttempt,
+  StartConsentInput,
+  StartConsentResult,
+} from '../types';
 import { buildConsentURL } from './build-consent-url';
 import { buildPKCEChallenge } from './build-pkce-challenge';
 import { hashConsentState } from './hash-consent-state';
@@ -15,6 +21,7 @@ import { hashConsentState } from './hash-consent-state';
 export function startConsent(
   context: ServiceContext,
   input: StartConsentInput,
+  attempt?: OperationAttempt<StartConsentResult>,
 ): Promise<StartConsentResult> {
   return context.lock.withLock(async () => {
     const client = await readLiveClient(context);
@@ -39,7 +46,10 @@ export function startConsent(
       return retried;
     }
 
-    return beginConsent(context, client, input, target?.connection_id ?? null);
+    return beginConsent(context, client, input, {
+      connectionID: target?.connection_id ?? null,
+      attempt,
+    });
   });
 }
 
@@ -116,11 +126,16 @@ function buildURL(
   });
 }
 
+interface ConsentBegin {
+  readonly connectionID: string | null;
+  readonly attempt: OperationAttempt<StartConsentResult> | undefined;
+}
+
 async function beginConsent(
   context: ServiceContext,
   client: ClientRow,
   input: StartConsentInput,
-  connectionID: string | null,
+  begin: ConsentBegin,
 ): Promise<StartConsentResult> {
   const consentID = crypto.randomUUID();
   const state = buildRandomToken();
@@ -136,6 +151,13 @@ async function beginConsent(
     verifier,
   );
 
+  const started: StartConsentResult = {
+    kind: 'started',
+    consentID,
+    expiresAt,
+    consentURL: buildURL(context, client, state, verifier),
+  };
+
   await withWriteTransaction(context.log.writer, async (tx) => {
     const tables = tx.$extendTables<ConnectionTables>();
 
@@ -146,7 +168,7 @@ async function beginConsent(
         state_hash: hashConsentState(state),
         device_session_id: input.deviceSessionID,
         oauth_client_id: client.oauth_client_id,
-        connection_id: connectionID,
+        connection_id: begin.connectionID,
         key_id: minted.keyID,
         verifier_sealed: sealed,
         created_at: nowMs,
@@ -155,14 +177,10 @@ async function beginConsent(
       .execute();
 
     await tables.deleteFrom('key_marks').where('key_id', '=', minted.keyID).execute();
+    await begin.attempt?.settle(tx, started);
   });
 
   context.backend.shared.heldKeys.delete(minted.keyID);
 
-  return {
-    kind: 'started',
-    consentID,
-    expiresAt,
-    consentURL: buildURL(context, client, state, verifier),
-  };
+  return started;
 }

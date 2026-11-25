@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import type { ConnectionsPort } from '@heynixie/connections';
+import { withWriteTransaction } from '@heynixie/log';
 import { buildTestClient } from '../test-utils/build-test-client';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { startTestAPI } from '../test-utils/start-test-api';
@@ -17,11 +18,19 @@ async function setupTest() {
     started: 'started' | 'client_missing' | 'connection_not_found';
     finished: Awaited<ReturnType<ConnectionsPort['finishConsent']>>;
     removed: 'ok' | 'client_not_found' | 'client_in_use';
+
+    // the expiry of a consent that a retry began again, when it is not the first one's
+    retryExpiresAt: number | null;
+
+    // a registration whose outcome committed and whose process then ended
+    isCrashAfterRegistration: boolean;
   } = {
     registered: 'registered',
     started: 'started',
     finished: { kind: 'consent_not_found' },
     removed: 'ok',
+    retryExpiresAt: null,
+    isCrashAfterRegistration: false,
   };
 
   const forgetState = {
@@ -39,7 +48,7 @@ async function setupTest() {
         client: null,
       });
     },
-    registerClient: (input) => {
+    registerClient: async (input, attempt) => {
       calls.push(['registerClient', input]);
 
       const result: Awaited<ReturnType<ConnectionsPort['registerClient']>> =
@@ -47,7 +56,15 @@ async function setupTest() {
           ? { kind: 'registered', client: 'q7m2x9k4ta', redirectURI: `${input.origin}/return` }
           : { kind: state.registered };
 
-      return Promise.resolve(result);
+      if (state.isCrashAfterRegistration) {
+        await withWriteTransaction(api.context.log.writer, async (tx) => {
+          await attempt?.settle(tx, result);
+        });
+
+        throw new Error('the process ended after the registration committed');
+      }
+
+      return result;
     },
     setPicker: (client, picker) => {
       calls.push(['setPicker', client, picker]);
@@ -70,7 +87,10 @@ async function setupTest() {
               kind: 'started',
               consentID: input.consentID ?? 'consent-1',
               consentURL: `https://accounts.example/authorize?state=s${calls.length}`,
-              expiresAt: 1_800_000_000_000,
+              expiresAt:
+                input.consentID === undefined
+                  ? 1_800_000_000_000
+                  : (state.retryExpiresAt ?? 1_800_000_000_000),
             }
           : { kind: state.started };
 
@@ -285,6 +305,86 @@ test('#connections.setPicker sets both values, and refuses a client that is not 
   ]);
 });
 
+test('#connections.setPicker answers a retry with the first result, so an older change never overwrites a newer one', async () => {
+  const ctx = await setupTest();
+
+  ctx.setConnections(ctx.port);
+
+  const clientActionID = crypto.randomUUID();
+
+  await ctx.client.connections.setPicker({
+    clientActionID,
+    client: 'q7m2x9k4ta',
+    pickerKey: 'AIzaOld',
+    projectNumber: '111111111111',
+  });
+
+  await ctx.client.connections.setPicker({
+    clientActionID: crypto.randomUUID(),
+    client: 'q7m2x9k4ta',
+    pickerKey: 'AIzaNew',
+    projectNumber: '222222222222',
+  });
+
+  const retried = await ctx.client.connections.setPicker({
+    clientActionID,
+    client: 'q7m2x9k4ta',
+    pickerKey: 'AIzaOld',
+    projectNumber: '111111111111',
+  });
+
+  expect([retried, ctx.calls.length]).toStrictEqual([{}, 2]);
+});
+
+test('#connections.removeClient answers a retry of a removal with the first result', async () => {
+  const ctx = await setupTest();
+
+  ctx.setConnections(ctx.port);
+
+  const clientActionID = crypto.randomUUID();
+
+  await ctx.client.connections.removeClient({ clientActionID, client: 'q7m2x9k4ta' });
+
+  ctx.state.removed = 'client_not_found';
+
+  const retried = await ctx.client.connections.removeClient({
+    clientActionID,
+    client: 'q7m2x9k4ta',
+  });
+
+  expect([retried, ctx.calls.length]).toStrictEqual([{}, 1]);
+});
+
+test('#connections.registerClient answers a retry of a registration whose process ended after it committed', async () => {
+  const ctx = await setupTest();
+
+  ctx.setConnections(ctx.port);
+
+  ctx.state.isCrashAfterRegistration = true;
+
+  const request = {
+    clientActionID: crypto.randomUUID(),
+    connector: 'google',
+    clientID: 'client-1.apps.example',
+    clientSecret: 'secret-value-1',
+    origin: ctx.origin,
+  } as const;
+
+  const first = ctx.client.connections.registerClient(request);
+
+  await first.catch(() => {});
+
+  ctx.state.registered = 'client_exists';
+  ctx.state.isCrashAfterRegistration = false;
+
+  const retried = await ctx.client.connections.registerClient(request);
+
+  expect([retried, ctx.calls.length]).toStrictEqual([
+    { client: 'q7m2x9k4ta', redirectURI: `${ctx.origin}/return` },
+    1,
+  ]);
+});
+
 test('#connections.setPicker refuses one value without the other', async () => {
   const ctx = await setupTest();
 
@@ -335,6 +435,30 @@ test('#connections.startConsent answers the consent URL of the device session th
     started.consentURL.startsWith('https://accounts.example/authorize?state='),
     started.expiresAt,
   ]).toStrictEqual([true, new Date(1_800_000_000_000)]);
+});
+
+test('#connections.startConsent answers a retry with the expiry of the request that began again', async () => {
+  const ctx = await setupTest();
+
+  ctx.setConnections(ctx.port);
+
+  const clientActionID = crypto.randomUUID();
+
+  await ctx.client.connections.startConsent({
+    clientActionID,
+    connector: 'google',
+    connection: null,
+  });
+
+  ctx.state.retryExpiresAt = 1_800_000_600_000;
+
+  const retried = await ctx.client.connections.startConsent({
+    clientActionID,
+    connector: 'google',
+    connection: null,
+  });
+
+  expect(retried.expiresAt).toStrictEqual(new Date(1_800_000_600_000));
 });
 
 test('#connections.startConsent gives a retry a fresh consent URL of the same consent', async () => {

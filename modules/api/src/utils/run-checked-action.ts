@@ -1,5 +1,6 @@
-import type { JSONObject } from '@heynixie/log';
+import type { JSONObject, WriteTransaction } from '@heynixie/log';
 import { withWriteTransaction } from '@heynixie/log';
+import { z } from 'zod';
 import type { APIContext, Identity } from '../types';
 import { buildInputHash } from './build-input-hash';
 import { probeLiveIdentity } from './probe-live-identity';
@@ -13,6 +14,14 @@ export interface CheckedAction {
 
   // the input fields that the stored hash leaves out, such as a secret
   readonly omit?: readonly string[];
+}
+
+// What a run gets: whether an earlier try of this action began and never stored its result, and a
+// way to store the result in the run's own write transaction, so the operation and its result commit
+// together. A run that never calls `writeResult` has its result stored after it returns.
+export interface CheckedAttempt {
+  readonly isRetry: boolean;
+  readonly writeResult: (tx: WriteTransaction, result: JSONObject) => Promise<void>;
 }
 
 // `isReplay` is true when an earlier try of the action stored the result
@@ -35,7 +44,7 @@ export async function runCheckedAction(
   context: APIContext,
   caller: Identity,
   action: CheckedAction,
-  run: () => Promise<JSONObject>,
+  run: (attempt: CheckedAttempt) => Promise<JSONObject>,
 ): Promise<CheckedActionRun> {
   const earlier = tries.get(action.clientActionID) ?? Promise.resolve();
   const turn = Promise.withResolvers<void>();
@@ -55,11 +64,16 @@ export async function runCheckedAction(
   }
 }
 
+// A stored action whose row holds no `result` began and never finished. A finished one holds its
+// result under that key, so an empty result still counts as finished.
+const unfinishedResult = { unfinished: true } as const;
+const finishedSchema = z.object({ result: z.record(z.string(), z.unknown()) });
+
 async function tryAction(
   context: APIContext,
   caller: Identity,
   action: CheckedAction,
-  run: () => Promise<JSONObject>,
+  run: (attempt: CheckedAttempt) => Promise<JSONObject>,
 ): Promise<CheckedActionRun> {
   const inputHash = buildInputHash(action.input, action.omit);
 
@@ -89,7 +103,7 @@ async function tryAction(
       procedure: action.procedure,
       identityID: caller.identityID,
       inputHash,
-      result: {},
+      result: unfinishedResult,
       recordedAt: context.clock.now(),
     });
 
@@ -100,23 +114,52 @@ async function tryAction(
     return { status: checked.status };
   }
 
-  // a stored action with no result is one that never finished
-  if (checked.status === 'stored' && Object.keys(checked.result).length > 0) {
-    return { status: 'done', result: checked.result, isReplay: true };
+  if (checked.status === 'stored') {
+    const finished = finishedSchema.safeParse(checked.result);
+
+    if (finished.success) {
+      return { status: 'done', result: finished.data.result, isReplay: true };
+    }
   }
 
-  const result = await run();
+  const written = { isWritten: false };
 
-  await withWriteTransaction(context.log.writer, (tx) =>
-    writeClientAction(tx, {
-      clientActionID: action.clientActionID,
-      procedure: action.procedure,
-      identityID: caller.identityID,
-      inputHash,
-      result,
-      recordedAt: context.clock.now(),
-    }),
-  );
+  const result = await run({
+    isRetry: checked.status === 'stored',
+    writeResult: async (tx, value) => {
+      written.isWritten = true;
+
+      await writeClientAction(
+        tx,
+        buildStoredAction({ context, caller, action, inputHash, result: value }),
+      );
+    },
+  });
+
+  if (!written.isWritten) {
+    await withWriteTransaction(context.log.writer, (tx) =>
+      writeClientAction(tx, buildStoredAction({ context, caller, action, inputHash, result })),
+    );
+  }
 
   return { status: 'done', result, isReplay: false };
+}
+
+interface StoredActionParts {
+  readonly context: APIContext;
+  readonly caller: Identity;
+  readonly action: CheckedAction;
+  readonly inputHash: string;
+  readonly result: JSONObject;
+}
+
+function buildStoredAction(parts: StoredActionParts) {
+  return {
+    clientActionID: parts.action.clientActionID,
+    procedure: parts.action.procedure,
+    identityID: parts.caller.identityID,
+    inputHash: parts.inputHash,
+    result: { result: parts.result },
+    recordedAt: parts.context.clock.now(),
+  };
 }

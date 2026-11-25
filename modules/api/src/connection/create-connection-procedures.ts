@@ -1,4 +1,11 @@
 // oxlint-disable new-cap -- oRPC names a procedure's typed errors by their upper-case codes
+import type {
+  RegisterClientResult,
+  RemoveClientResult,
+  SetPickerResult,
+  StartConsentResult,
+} from '@heynixie/connections';
+import type { JSONObject } from '@heynixie/log';
 import { match } from 'ts-pattern';
 import { z } from 'zod';
 import { requireCaller } from '../memory/require-caller';
@@ -77,19 +84,23 @@ export function createConnectionProcedures(context: APIContext) {
           },
           omit: ['clientSecret'],
         },
-        async () => {
-          const result = await port.registerClient({
-            clientID: input.clientID,
-            clientSecret: input.clientSecret,
-            origin: input.origin,
-            headerOrigin: options.context.origin,
-            pickerKey: input.pickerKey ?? null,
-            projectNumber: input.projectNumber ?? null,
-          });
+        async (attempt) => {
+          const result = await port.registerClient(
+            {
+              clientID: input.clientID,
+              clientSecret: input.clientSecret,
+              origin: input.origin,
+              headerOrigin: options.context.origin,
+              pickerKey: input.pickerKey ?? null,
+              projectNumber: input.projectNumber ?? null,
+            },
+            {
+              isRetry: attempt.isRetry,
+              settle: (tx, settled) => attempt.writeResult(tx, toRegisterClientResult(settled)),
+            },
+          );
 
-          return result.kind === 'registered'
-            ? { client: result.client, redirectURI: result.redirectURI }
-            : { error: result.kind };
+          return toRegisterClientResult(result);
         },
       );
 
@@ -134,15 +145,18 @@ export function createConnectionProcedures(context: APIContext) {
             projectNumber: input.projectNumber,
           },
         },
-        async () => {
+        async (attempt) => {
           const picker =
             input.pickerKey === null || input.projectNumber === null
               ? null
               : { pickerKey: input.pickerKey, projectNumber: input.projectNumber };
 
-          const result = await port.setPicker(input.client, picker);
+          const result = await port.setPicker(input.client, picker, {
+            isRetry: attempt.isRetry,
+            settle: (tx, settled) => attempt.writeResult(tx, toSetPickerResult(settled)),
+          });
 
-          return result.kind === 'ok' ? {} : { error: result.kind };
+          return toSetPickerResult(result);
         },
       );
 
@@ -179,10 +193,13 @@ export function createConnectionProcedures(context: APIContext) {
           clientActionID: input.clientActionID,
           input: { client: input.client },
         },
-        async () => {
-          const result = await port.removeClient(input.client);
+        async (attempt) => {
+          const result = await port.removeClient(input.client, {
+            isRetry: attempt.isRetry,
+            settle: (tx, settled) => attempt.writeResult(tx, toRemoveClientResult(settled)),
+          });
 
-          return result.kind === 'ok' ? {} : { error: result.kind };
+          return toRemoveClientResult(result);
         },
       );
 
@@ -224,19 +241,20 @@ export function createConnectionProcedures(context: APIContext) {
           clientActionID: input.clientActionID,
           input: { connector: input.connector, connection: input.connection },
         },
-        async () => {
-          const result = await port.startConsent({
-            deviceSessionID: caller.identityID,
-            connection: input.connection,
-          });
+        async (attempt) => {
+          const result = await port.startConsent(
+            { deviceSessionID: caller.identityID, connection: input.connection },
+            {
+              isRetry: attempt.isRetry,
+              settle: (tx, settled) => attempt.writeResult(tx, toStartConsentResult(settled)),
+            },
+          );
 
-          if (result.kind !== 'started') {
-            return { error: result.kind };
+          if (result.kind === 'started') {
+            started.url = result.consentURL;
           }
 
-          started.url = result.consentURL;
-
-          return { consentID: result.consentID, expiresAt: result.expiresAt };
+          return toStartConsentResult(result);
         },
       );
 
@@ -258,7 +276,8 @@ export function createConnectionProcedures(context: APIContext) {
 
       const consent = consentSchema.parse(run.result);
 
-      // A retry gets a fresh state and URL that replace the first ones, with the first expiry.
+      // A retry gets a fresh state and URL that replace the first ones, with the expiry of the
+      // request that the URL belongs to.
       if (started.url !== null) {
         return { consentURL: started.url, expiresAt: new Date(consent.expiresAt) };
       }
@@ -275,7 +294,7 @@ export function createConnectionProcedures(context: APIContext) {
           : options.errors.CONNECTION_NOT_FOUND();
       }
 
-      return { consentURL: again.consentURL, expiresAt: new Date(consent.expiresAt) };
+      return { consentURL: again.consentURL, expiresAt: new Date(again.expiresAt) };
     }),
 
     finishConsent: connections.finishConsent.handler(async (options) => {
@@ -391,4 +410,24 @@ export function createConnectionProcedures(context: APIContext) {
       );
     }),
   };
+}
+
+function toRegisterClientResult(result: RegisterClientResult): JSONObject {
+  return result.kind === 'registered'
+    ? { client: result.client, redirectURI: result.redirectURI }
+    : { error: result.kind };
+}
+
+function toSetPickerResult(result: SetPickerResult): JSONObject {
+  return result.kind === 'ok' ? {} : { error: result.kind };
+}
+
+function toRemoveClientResult(result: RemoveClientResult): JSONObject {
+  return result.kind === 'ok' ? {} : { error: result.kind };
+}
+
+function toStartConsentResult(result: StartConsentResult): JSONObject {
+  return result.kind === 'started'
+    ? { consentID: result.consentID, expiresAt: result.expiresAt }
+    : { error: result.kind };
 }

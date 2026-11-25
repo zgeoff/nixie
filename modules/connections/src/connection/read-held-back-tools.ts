@@ -3,7 +3,7 @@ import { collectHeldBackToolNames } from './collect-held-back-tool-names';
 import { readMissing } from './list-connections';
 import { readConnectionRows } from './read-connection-rows';
 
-// The tools that each run leaves out of its list, read as the run starts.
+// The tools that each run leaves out of its list, read as each tool list and call is served.
 export async function readHeldBackTools(context: ServiceContext): Promise<string[]> {
   const rows = await readConnectionRows(context.log);
 

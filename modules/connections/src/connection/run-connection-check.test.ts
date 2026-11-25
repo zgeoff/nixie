@@ -1,9 +1,10 @@
 import { expect, test } from 'bun:test';
 import invariant from 'tiny-invariant';
+import type { ConnectionsHarnessOptions } from '../test-utils/start-connections-harness';
 import { startGoogleConnections } from '../test-utils/start-google-connections';
 
-async function setupTest() {
-  const ctx = await startGoogleConnections();
+async function setupTest(options: ConnectionsHarnessOptions = {}) {
+  const ctx = await startGoogleConnections(options);
 
   ctx.google.apiAnswers.set('/drive/v3/files', {
     status: 403,
@@ -59,4 +60,48 @@ test('it skips a connection that is forgotten', async () => {
   const result = await ctx.connections.runCheck(ctx.connectionID);
 
   expect(result).toBe('skipped');
+});
+
+test('it keeps the scopes of a consent that renewed the connection while a check was under way', async () => {
+  const reads: { afterCheck: () => Promise<void> } = { afterCheck: () => Promise.resolve() };
+
+  const ctx = await setupTest({
+    wrapCheck: (check) => async (connection, context) => {
+      const report = await check(connection, context);
+
+      await reads.afterCheck();
+
+      return report;
+    },
+  });
+
+  reads.afterCheck = async () => {
+    reads.afterCheck = () => Promise.resolve();
+
+    ctx.google.apiAnswers.delete('/drive/v3/files');
+
+    await ctx.connect('code-work');
+  };
+
+  const result = await ctx.connections.runCheck(ctx.connectionID);
+  const [listed] = await ctx.connections.list();
+
+  expect([result, listed?.missing]).toStrictEqual(['checked', []]);
+});
+
+test('it keeps what the last check found when Google answers with a quota error', async () => {
+  const ctx = await setupTest();
+
+  ctx.google.apiAnswers.set('/gmail/v1/users/me/labels', {
+    status: 403,
+    body: '{"error":{"errors":[{"reason":"userRateLimitExceeded"}]}}',
+  });
+
+  const result = await ctx.connections.runCheck(ctx.connectionID);
+  const [listed] = await ctx.connections.list();
+
+  expect([result, listed?.missing]).toStrictEqual([
+    'failed',
+    [{ scope: 'drive.file', reason: 'api_disabled' }],
+  ]);
 });

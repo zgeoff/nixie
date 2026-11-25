@@ -3,6 +3,7 @@ import { readRecords } from '@heynixie/log';
 import invariant from 'tiny-invariant';
 import { connectedCodec } from '../record/connected-codec';
 import { consentDiscardedCodec } from '../record/consent-discarded-codec';
+import type { ConnectionsHarnessOptions } from '../test-utils/start-connections-harness';
 import {
   googleClientID,
   googleScopes,
@@ -10,8 +11,8 @@ import {
 } from '../test-utils/start-google-connections';
 import { buildPKCEChallenge } from './build-pkce-challenge';
 
-async function setupTest() {
-  const ctx = await startGoogleConnections();
+async function setupTest(options: ConnectionsHarnessOptions = {}) {
+  const ctx = await startGoogleConnections(options);
 
   const readKinds = async () => {
     const records = await readRecords(ctx.log, { afterSequence: 0 });
@@ -407,4 +408,139 @@ test('it keeps no token for a consent again whose connection was forgotten durin
     { kind: 'consent_not_found' },
     ['forgotten'],
   ]);
+});
+
+test('it refuses a state that lapsed between the check and the claim', async () => {
+  const timing: { lapsesAtMs: number | null; reads: number } = { lapsesAtMs: null, reads: 0 };
+
+  const ctx = await setupTest({
+    wrapNow: (now) => () => {
+      if (timing.lapsesAtMs === null) {
+        return now();
+      }
+
+      timing.reads += 1;
+
+      return timing.reads === 1 ? now() : timing.lapsesAtMs;
+    },
+  });
+
+  const started = await ctx.start('session-a');
+
+  timing.lapsesAtMs = started.expiresAt + 1;
+
+  const result = await ctx.finish('session-a', started.state);
+
+  expect([result, ctx.google.codeRequests]).toStrictEqual([{ kind: 'consent_not_found' }, []]);
+});
+
+test('it makes one connection when two consents for one account finish at once', async () => {
+  const ctx = await setupTest();
+  const first = await ctx.start('session-a');
+  const second = await ctx.start('session-a');
+
+  const results = await Promise.all([
+    ctx.finish('session-a', first.state),
+    ctx.finish('session-a', second.state),
+  ]);
+
+  const listed = await ctx.connections.list();
+
+  expect([results.map((result) => result.kind), listed]).toStrictEqual([
+    ['finished', 'finished'],
+    [expect.anything()],
+  ]);
+});
+
+test('it clears the tokens of a renewed connection from the own values when it is forgotten', async () => {
+  const ctx = await setupTest();
+  const first = await ctx.connect('code-work');
+
+  invariant(first.kind === 'finished', 'the first consent finishes');
+
+  await ctx.connect('code-work');
+
+  const held = () =>
+    ctx.held.ownValues.read({ minChars: 1 }).filter((value) => value.startsWith('google-'));
+
+  const before = held();
+
+  await ctx.connections.forgetConnection(first.connection);
+
+  expect([before.length > 0, held()]).toStrictEqual([true, []]);
+});
+
+test('it never revokes the grant of an account that a live connection reaches when a consent again returns no refresh token', async () => {
+  const ctx = await setupTest();
+
+  await ctx.connect('code-work');
+
+  ctx.google.accounts.set('code-work', {
+    sub: 'sub-work',
+    email: 'work@example.test',
+    scopes: googleScopes,
+    hasRefreshToken: false,
+  });
+
+  const revokes = ctx.countRequests('/revoke');
+
+  const result = await ctx.connect('code-work');
+
+  expect([result, ctx.countRequests('/revoke') - revokes]).toStrictEqual([
+    { kind: 'no_refresh_token' },
+    0,
+  ]);
+});
+
+test('it leaves the token of a refresh alone when a consent renewed the connection while the refresh was in flight', async () => {
+  const ctx = await setupTest();
+  const first = await ctx.connect('code-work');
+
+  invariant(first.kind === 'finished', 'the first consent finishes');
+
+  const [row] = await ctx.readRows();
+  const connection = await ctx.connections.readContext(row?.connection_id ?? '');
+
+  invariant(connection !== null, 'the connection is live');
+
+  ctx.hooks.beforeTokenWrite = async () => {
+    ctx.hooks.beforeTokenWrite = () => Promise.resolve();
+
+    await ctx.connect('code-work');
+  };
+
+  ctx.clock.advance(3_500_000);
+
+  const revokes = ctx.countRequests('/revoke');
+
+  await connection.fetch(`${ctx.provider.apiOrigin}/gmail/v1/users/me/labels`).catch(() => null);
+
+  const [listed] = await ctx.connections.list();
+
+  expect([ctx.countRequests('/revoke') - revokes, listed?.status]).toStrictEqual([0, 'active']);
+});
+
+test('it leaves a connection that a consent renewed active when a refresh began before the renewal was lost with a crash', async () => {
+  const ctx = await setupTest();
+  const first = await ctx.connect('code-work');
+
+  invariant(first.kind === 'finished', 'the first consent finishes');
+
+  const [before] = await ctx.readRows();
+
+  await ctx.connect('code-work');
+
+  await ctx.held.recorder.write({
+    event: 'refresh_started',
+    credentialID: before?.connection_id ?? '',
+    attemptID: crypto.randomUUID(),
+    newKeyID: crypto.randomUUID(),
+    removalCounter: before?.removal_counter ?? 0,
+  });
+
+  await ctx.held.store.recover();
+
+  const [listed] = await ctx.connections.list();
+
+  expect(listed?.status).toBe('active');
 });

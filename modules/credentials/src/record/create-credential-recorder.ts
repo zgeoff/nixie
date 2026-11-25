@@ -60,7 +60,12 @@ export function createCredentialRecorder(options: CredentialRecorderOptions): Cr
             const newKeyID = fields?.newKeyID;
 
             if (record.kind === refreshStartedCodec.kind && newKeyID !== undefined) {
-              open.set(attemptID, { credentialID, attemptID, newKeyID });
+              open.set(attemptID, {
+                credentialID,
+                attemptID,
+                newKeyID,
+                removalCounter: fields?.removalCounter ?? null,
+              });
             } else {
               open.delete(attemptID);
             }
@@ -91,6 +96,7 @@ export function buildCredentialRecordInput(event: CredentialEvent): EventRecord 
         credentialID: started.credentialID,
         attemptID: started.attemptID,
         newKeyID: started.newKeyID,
+        removalCounter: started.removalCounter,
       }),
     }))
     .with({ event: 'refresh_saved' }, (saved) => ({

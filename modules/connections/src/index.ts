@@ -20,6 +20,7 @@ export type {
   ForgetConnectionResult,
   ForgetState,
   ListedConnection,
+  OperationAttempt,
   RegisterClientResult,
   RegisteredClient,
   RemoveClientResult,
