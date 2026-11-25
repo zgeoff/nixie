@@ -1,5 +1,5 @@
 import { match } from 'ts-pattern';
-import type { Call, CallsContext, SpeechEvent } from '../types';
+import type { Call, CallsContext, HandOff, SpeechEvent } from '../types';
 import { startHoldingLine } from './start-holding-line';
 import { writeHandOff } from './write-hand-off';
 import { writeHeardCut } from './write-heard-cut';
@@ -42,7 +42,7 @@ async function runHandOff(
 
   context.runtime.smallTalk.set(call.callID, []);
 
-  const handOffs = context.runtime.handOffs.get(call.callID) ?? new Map();
+  const handOffs = context.runtime.handOffs.get(call.callID) ?? new Map<string, HandOff>();
 
   const holding = new AbortController();
 

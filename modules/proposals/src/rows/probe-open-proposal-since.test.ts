@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { EnvelopeRecord } from '@heynixie/log';
 import { logProjections, startWriter, writeRecords } from '@heynixie/log';
+import { z } from 'zod';
 import { buildProposalsProjection } from './build-proposals-projection';
 import { probeOpenProposalSince } from './probe-open-proposal-since';
 import type { ProposalChange } from './proposal-change';
@@ -39,7 +40,7 @@ async function setupTest() {
       ...logProjections,
       buildProposalsProjection([
         (record: EnvelopeRecord): ProposalChange | null => {
-          const proposalID = String(record.payload['proposalID']);
+          const proposalID = z.string().parse(record.payload['proposalID']);
 
           if (record.kind === 'test.proposal_approved') {
             return { type: 'close', proposalID, state: 'approved', usedBy: null, answeredBy: null };

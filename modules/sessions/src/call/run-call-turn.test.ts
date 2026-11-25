@@ -79,7 +79,9 @@ async function setupTest() {
     interrupt: interrupt.signal,
   });
 
-  const cut = () => interrupt.abort();
+  const cut = () => {
+    interrupt.abort();
+  };
 
   const writeClosing = async () => {
     const [record] = await writeRecords(tasks.context.log, [

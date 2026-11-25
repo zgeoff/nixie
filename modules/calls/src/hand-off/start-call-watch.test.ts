@@ -111,17 +111,19 @@ test('it says the holding line when no answer has started by hold_after_ms after
     request: 'what is on today',
   });
 
-  await waitFor(() => expect(ctx.clock.readNextDueMs()).not.toBeNull());
+  await waitFor(() => {
+    expect(ctx.clock.readNextDueMs()).not.toBeNull();
+  });
 
   ctx.clock.advance(1500);
 
-  await waitFor(() =>
+  await waitFor(() => {
     expect(ctx.speech.calls.at(-1)).toStrictEqual({
       method: 'say',
       sessionID: ctx.sessionID,
       text: 'One moment.',
-    }),
-  );
+    });
+  });
 });
 
 test('it says no holding line when the answer started before hold_after_ms', async () => {
@@ -133,7 +135,9 @@ test('it says no holding line when the answer started before hold_after_ms', asy
     request: 'what is on today',
   });
 
-  await waitFor(() => expect(ctx.clock.readNextDueMs()).not.toBeNull());
+  await waitFor(() => {
+    expect(ctx.clock.readNextDueMs()).not.toBeNull();
+  });
 
   await sendTurnAnswer(ctx.context, {
     callID: ctx.callID,
@@ -280,7 +284,9 @@ test('it interrupts the running turn and marks no reply when the user talks over
 
   ctx.speech.emit(ctx.sessionID, { kind: 'cut', handOffID: 'h1', heardChars: 0 });
 
-  await waitFor(() => expect(ctx.interrupted).toStrictEqual([ctx.taskID]));
+  await waitFor(() => {
+    expect(ctx.interrupted).toStrictEqual([ctx.taskID]);
+  });
 
   const thread = await ctx.readThread();
 
@@ -296,11 +302,15 @@ test('it says no holding line for a hand-off the user talked over before its ans
     request: 'what is on today',
   });
 
-  await waitFor(() => expect(ctx.clock.readNextDueMs()).not.toBeNull());
+  await waitFor(() => {
+    expect(ctx.clock.readNextDueMs()).not.toBeNull();
+  });
 
   ctx.speech.emit(ctx.sessionID, { kind: 'cut', handOffID: 'h1', heardChars: 0 });
 
-  await waitFor(() => expect(ctx.interrupted).toStrictEqual([ctx.taskID]));
+  await waitFor(() => {
+    expect(ctx.interrupted).toStrictEqual([ctx.taskID]);
+  });
 
   ctx.clock.advance(1500);
   ctx.speech.emit(ctx.sessionID, { kind: 'heard', text: 'wait', startedAtMs: 0, endedAtMs: 300 });
@@ -426,7 +436,9 @@ test('it records the holding line as speech layer speech on the call thread', as
     request: 'what is on today',
   });
 
-  await waitFor(() => expect(ctx.clock.readNextDueMs()).not.toBeNull());
+  await waitFor(() => {
+    expect(ctx.clock.readNextDueMs()).not.toBeNull();
+  });
 
   ctx.clock.advance(1500);
 

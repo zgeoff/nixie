@@ -214,9 +214,10 @@ test('it gives the call thread the hang-up, which ends the call as nixie after t
   );
 
   const hangUp = ctx.nixie.toolResults.find((result) => result.name === 'call.hang_up');
+  const hangUpResult: unknown = JSON.parse(hangUp?.result ?? '{}');
 
   expect({
-    hangUp: JSON.parse(hangUp?.result ?? '{}'),
+    hangUp: hangUpResult,
     speech: ctx.speech.calls
       .filter((call) => call.method === 'answer' || call.method === 'close')
       .map((call) => (call.method === 'answer' ? call.text : call.method)),

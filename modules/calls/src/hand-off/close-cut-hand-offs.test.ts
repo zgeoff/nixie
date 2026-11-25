@@ -50,7 +50,9 @@ test('it sends a hand-off that a cut turn closed no holding line and no answer',
     request: 'what is on today',
   });
 
-  await waitFor(() => expect(ctx.clock.readNextDueMs()).not.toBeNull());
+  await waitFor(() => {
+    expect(ctx.clock.readNextDueMs()).not.toBeNull();
+  });
 
   closeCutHandOffs(ctx.context, ctx.callID, ['h1']);
 
