@@ -1,3 +1,4 @@
+import { buildSpendPeriods } from '../time/build-spend-periods';
 import type { SpendContext, SpendStop } from '../types';
 import { pickSpendMove } from './pick-spend-move';
 import type { SpendFacts } from './pick-spend-stop';
@@ -11,21 +12,21 @@ import { writeSpendClearInTransaction } from './write-spend-clear-in-transaction
 import { writeSpendTripInTransaction } from './write-spend-trip-in-transaction';
 
 // Brings the log's stop and each route's stop in line with the facts, in one transaction, and
-// returns what the stop is. It reads the turn count and the raise again inside the transaction, so
-// facts read before a raise of turns never put back the stop that raise cleared.
+// returns what the stop is. It reads the day, its turns and its raise again inside the transaction,
+// so facts read before a raise or before midnight never put back the stop that either cleared.
 export function settleSpendStop(context: SpendContext, facts: SpendFacts): Promise<SpendStop> {
   return withSettleTransaction(context, async (tx) => {
+    const now = context.clock.now();
+    const periods = buildSpendPeriods(now, context.zone);
+
     const [turns, raise, standing] = await Promise.all([
-      readSpendTurns(tx, {
-        dayMs: facts.periods.day.startMs,
-        monthMs: facts.periods.month.startMs,
-      }),
-      readSpendRaise(tx, facts.periods.day.start),
+      readSpendTurns(tx, { dayMs: periods.day.startMs, monthMs: periods.month.startMs }),
+      readSpendRaise(tx, periods.day.start),
       readSpendStopRow(tx),
     ]);
 
-    const stop = pickSpendStop({ ...facts, turns, raise });
-    const move = pickSpendMove(standing, stop, facts.now);
+    const stop = pickSpendStop({ ...facts, turns, raise, now, periods });
+    const move = pickSpendMove(standing, stop, now);
 
     if (move.clear !== null) {
       await writeSpendClearInTransaction(tx, context, move.clear);

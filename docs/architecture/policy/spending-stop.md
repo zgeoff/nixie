@@ -50,8 +50,10 @@ route's stop beside the stop of nixie, in the same transaction. A route whose da
   flight may hold a status from before a raise that this settle carried. That read writes nothing,
   and the next poll catches up. So a late answer never puts back a stop that a raise cleared, even
   when both read in the same millisecond. A settle that rolls back gives its place back.
-- The stop of nixie takes no place in line. Each settle reads the turn count and the raise again
-  inside its transaction, so facts read before a raise of turns never put back the stop it cleared.
+- The stop of nixie takes no place in line. Each settle reads the clock, the turn count and the
+  raise again inside its transaction, and counts the day the clock is in then. So facts read before
+  a raise of turns, or before midnight, never put back the stop that the raise or the reset cleared.
+  The check before a turn does the same before it writes a trip.
 - A trip whose period has ended at the instant before the gateway answered is no trip, and an ended
   day never hides a month that still binds. A raise settles with the instant before its own request,
   so midnight during the raise does not expire the status that the request returned.

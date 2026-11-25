@@ -11,6 +11,7 @@ import type { Logger } from '@heynixie/logger';
 import { waitForCondition } from '@heynixie/testing';
 import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
+import { writeHostSpendRaise } from '../raise/write-host-spend-raise';
 import { writeSpendRaise } from '../raise/write-spend-raise';
 import { spendLimitRaisedCodec } from '../record/spend-limit-raised-codec';
 import { holdTaskOnRefusal } from '../route/hold-task-on-refusal';
@@ -215,6 +216,35 @@ test('it treats a gateway in another zone as no answer and sends it nothing', as
     { gatewayZone: 'Asia/Tokyo', defaultZone: 'UTC' },
     'error',
   ]);
+});
+
+test("it puts back no stop of yesterday that today's raise of turns cleared, when a poll waits across midnight", async () => {
+  const ctx = await setupTest();
+
+  const state = { noAnswerSince: null, lastStopKey: null };
+  const lateStatus = Promise.withResolvers<Awaited<ReturnType<typeof ctx.gateway.readStatus>>>();
+
+  for (let turn = 0; turn < 3; turn += 1) {
+    await ctx.writeTurn();
+  }
+
+  await ctx.poll(state);
+
+  ctx.gateway.readStatus.mockReturnValueOnce(lateStatus.promise);
+
+  const late = ctx.poll(state);
+
+  ctx.clock.advance(15 * 60 * 60 * 1000);
+
+  await writeHostSpendRaise(ctx.context, { turns: 10 });
+
+  lateStatus.resolve({ kind: 'ok', value: buildMockGatewayStatus() });
+
+  await late;
+
+  const spendStopRow = await readSpendStopRow(ctx.writer.db);
+
+  expect(spendStopRow).toBeNull();
 });
 
 test('it sends a standing raise that the gateway has not applied, and clears the route stop with its answer', async () => {

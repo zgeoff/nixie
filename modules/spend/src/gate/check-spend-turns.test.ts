@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import { readPause, withWriteTransaction } from '@heynixie/log';
+import { writeSpendRaiseRecord } from '../raise/write-spend-raise-record';
 import { readSpendStopRow } from '../stop/read-spend-stop-row';
 import { writeSpendTrip } from '../stop/write-spend-trip';
 import { startTestSpend } from '../test-utils';
@@ -68,6 +69,40 @@ test('it trips the stop at the month limit when the day is under its own', async
   const row = await readSpendStopRow(ctx.writer.db);
 
   expect([result, row?.period, row?.limit]).toStrictEqual(['stopped', 'month', 4]);
+});
+
+test("it trips no stop of yesterday when midnight passes before the trip's write", async () => {
+  const ctx = await setupTest();
+
+  await ctx.writeTurn();
+  await ctx.writeTurn();
+  await ctx.writeTurn();
+
+  const checking = ctx.check();
+
+  ctx.clock.advance(15 * 60 * 60 * 1000);
+
+  const result = await checking;
+  const row = await readSpendStopRow(ctx.writer.db);
+
+  expect([result, row]).toStrictEqual(['open', null]);
+});
+
+test("it trips no stop when a raise of turns lands before the trip's write", async () => {
+  const ctx = await setupTest();
+
+  await ctx.writeTurn();
+  await ctx.writeTurn();
+  await ctx.writeTurn();
+
+  const checking = ctx.check();
+
+  await writeSpendRaiseRecord(ctx.context, { start: '2026-10-16', turns: 5, by: 'host' });
+
+  const result = await checking;
+  const row = await readSpendStopRow(ctx.writer.db);
+
+  expect([result, row]).toStrictEqual(['open', null]);
 });
 
 test('it ends the step with no second trip when the stop already stands', async () => {

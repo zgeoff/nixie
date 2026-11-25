@@ -134,6 +134,56 @@ test('it puts back no stop that a raise of turns cleared, when a settle that rea
   expect(stop).toBeNull();
 });
 
+test("it puts back no stop of yesterday that today's raise of turns cleared, when a settle that read yesterday settles after it", async () => {
+  const ctx = await setupTest();
+
+  const lateStatus = Promise.withResolvers<Awaited<ReturnType<typeof ctx.gateway.readStatus>>>();
+
+  await ctx.trip();
+  await ctx.settle();
+
+  ctx.gateway.readStatus.mockReturnValueOnce(lateStatus.promise);
+
+  const late = ctx.settle();
+
+  ctx.clock.advance(15 * 60 * 60 * 1000);
+
+  await writeHostSpendRaise(ctx.context, { turns: 10 });
+
+  lateStatus.resolve({ kind: 'ok', value: buildMockGatewayStatus() });
+
+  await late;
+
+  const stop = await readSpendStopRow(ctx.writer.db);
+
+  expect(stop).toBeNull();
+});
+
+test("it puts back no stop of yesterday that the day's reset cleared, when a settle that read yesterday settles after it", async () => {
+  const ctx = await setupTest();
+
+  const lateStatus = Promise.withResolvers<Awaited<ReturnType<typeof ctx.gateway.readStatus>>>();
+
+  await ctx.trip();
+  await ctx.settle();
+
+  ctx.gateway.readStatus.mockReturnValueOnce(lateStatus.promise);
+
+  const late = ctx.settle();
+
+  ctx.clock.advance(15 * 60 * 60 * 1000);
+
+  await ctx.settle();
+
+  lateStatus.resolve({ kind: 'ok', value: buildMockGatewayStatus() });
+
+  await late;
+
+  const stop = await readSpendStopRow(ctx.writer.db);
+
+  expect(stop).toBeNull();
+});
+
 test('it writes one trip when the stop is found twice', async () => {
   const ctx = await setupTest();
 
