@@ -28,7 +28,7 @@ async function runCLI(): Promise<void> {
     return;
   }
 
-  const composeText = await Bun.file('compose.yaml').text();
+  const composeText = await Bun.file('deploy/compose/compose.yaml').text();
 
   const image = pickProxyImage(composeText);
 
@@ -61,7 +61,7 @@ async function readForwardedAnswer(image: string): Promise<string> {
 
     await $`docker network create ${name}`.quiet();
     await $`docker run -d --name ${name}-upstream --network ${name} --network-alias nixie --network-alias web -v ${join(directory, 'upstream.Caddyfile')}:/etc/caddy/Caddyfile:ro ${image}`.quiet();
-    await $`docker run -d --name ${name}-proxy --network ${name} -p 127.0.0.1::8080 -v ${join(process.cwd(), 'Caddyfile')}:/etc/caddy/Caddyfile:ro ${image}`.quiet();
+    await $`docker run -d --name ${name}-proxy --network ${name} -p 127.0.0.1::8080 -v ${join(process.cwd(), 'deploy/compose/Caddyfile')}:/etc/caddy/Caddyfile:ro ${image}`.quiet();
 
     const mapping = await $`docker port ${name}-proxy 8080/tcp`.text();
 

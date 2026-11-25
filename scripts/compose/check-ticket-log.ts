@@ -19,7 +19,9 @@ async function runCLI(): Promise<void> {
 
   const origin = 'http://127.0.0.1:8080';
 
-  await $`docker compose -f compose.yaml -f ci/compose.yaml stop nixie`.quiet();
+  await $`docker compose -f compose.yaml -f ci/compose.yaml stop nixie`
+    .cwd('deploy/compose')
+    .quiet();
 
   for (const path of [
     `/rpc/device/frames/${fixtureTicket}`,
@@ -30,6 +32,7 @@ async function runCLI(): Promise<void> {
   }
 
   const log = await $`docker compose -f compose.yaml -f ci/compose.yaml logs --no-log-prefix proxy`
+    .cwd('deploy/compose')
     .quiet()
     .text();
 
