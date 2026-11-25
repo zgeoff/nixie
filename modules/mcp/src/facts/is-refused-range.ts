@@ -1,5 +1,5 @@
-import { parseCIDR } from './parse-cidr';
-import type { CIDRRange } from './parse-cidr';
+import { parseCIDR } from '@heynixie/egress';
+import type { CIDRRange } from '@heynixie/egress';
 
 const refusedRanges = [
   '127.0.0.0/8',

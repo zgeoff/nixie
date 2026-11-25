@@ -268,8 +268,19 @@ export interface RegisteredTool {
 }
 
 export interface ToolRegistry {
-  // the name of each registered tool
+  // the name of each registered tool, which a source's tools join at each read
   readonly toolNames: readonly string[];
+  readonly findTool: (name: string) => RegisteredTool | null;
+}
+
+// A second source of tool definitions, which the composition root passes in. The MCP proxy provides
+// one, whose tools come and go as servers list them.
+export interface ToolSource {
+  // the exposed, stopped and held tools, read at each call
+  readonly toolNames: () => readonly string[];
+
+  // Built from the tool's current pin, and cached for its hash. A definition that fails the
+  // registry's checks is not served.
   readonly findTool: (name: string) => RegisteredTool | null;
 }
 

@@ -3,6 +3,7 @@ import { match } from 'ts-pattern';
 import { readFingerprint } from '../fingerprint/read-fingerprint';
 import type { OwnValueSet } from '../own-values/create-own-value-set';
 import type { CredentialFetch, OAuthProvider } from '../types';
+import { buildClientFields } from './build-client-fields';
 import { createKeyedLock } from './create-keyed-lock';
 import { CredentialRemovedError } from './credential-removed-error';
 import { isDue } from './is-due';
@@ -230,8 +231,7 @@ export function createHeldCredentials(options: HeldOptions): HeldCredentials {
       {
         grant_type: 'refresh_token',
         refresh_token: token.refreshToken,
-        client_id: handle.provider.clientID,
-        client_secret: client.clientSecret,
+        ...buildClientFields(handle.provider, client.clientSecret),
       },
       options.requestTimeoutMs,
     );
@@ -448,8 +448,7 @@ export function createHeldCredentials(options: HeldOptions): HeldCredentials {
           grant_type: 'authorization_code',
           code: request.code,
           redirect_uri: request.redirectURI,
-          client_id: client.provider.clientID,
-          client_secret: secret.clientSecret,
+          ...buildClientFields(client.provider, secret.clientSecret),
           ...(request.codeVerifier === undefined ? {} : { code_verifier: request.codeVerifier }),
         },
         options.requestTimeoutMs,

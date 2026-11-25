@@ -61,6 +61,7 @@ export type {
   ToolImage,
   ToolOutcome,
   ToolRegistry,
+  ToolSource,
   ToolRun,
   ToolResolveContext,
   ToolRunModel,

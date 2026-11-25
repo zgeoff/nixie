@@ -1,5 +1,5 @@
+import { parseCIDR } from '@heynixie/egress';
 import type { ServerFacts } from '../types';
-import { parseCIDR } from './parse-cidr';
 
 export type FactsChange = 'same' | 'widened' | 'narrowed';
 

@@ -1,4 +1,4 @@
-import { parseIPAddress } from '@heynixie/egress';
+import { parseIPAddress } from '../parse-ip-address';
 
 export interface CIDRRange {
   readonly family: 4 | 6;

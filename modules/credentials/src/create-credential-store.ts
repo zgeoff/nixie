@@ -467,7 +467,14 @@ function requireProviderOrigins(spec: CredentialSpec): void {
   }
 }
 
+// The hosts that a credential's fetcher never reaches, so a tool cannot request a token. A provider
+// that names a resource guards that resource on its own hosts, so only the /oauth2/ paths stay
+// refused there.
 function listOAuthHostnames(provider: OAuthProvider): readonly string[] {
+  if (provider.resource !== undefined) {
+    return [];
+  }
+
   return [provider.tokenURL, provider.revokeURL, provider.authorizeURL]
     .filter((url) => url !== undefined)
     .map((url) => new URL(url).hostname.toLowerCase());
