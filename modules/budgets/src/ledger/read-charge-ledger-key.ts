@@ -4,14 +4,15 @@ import { buildBudgetLedgerKey } from './build-budget-ledger-key';
 import { pickLedgerPeriodKind } from './pick-ledger-period-kind';
 
 export interface ChargedPayload {
+  readonly chargeID: string;
   readonly budgetID: string;
   readonly periodStart: string;
   readonly ledgerKey?: string;
 }
 
-// The ledger key of a charge. A charge from before the ledger names none, so its key takes the
-// period kind of the budget in force, the same rule that the migration applies to the stored
-// charges.
+// The ledger key of a charge. A charge from before the ledger names none, so its key takes the kind
+// that the migration kept for it, which a replay finds whatever the budget has become since. A
+// charge that the migration never saw takes the period kind of the budget in force.
 export async function readChargeLedgerKey(
   tx: Transaction<unknown>,
   payload: ChargedPayload,
@@ -20,8 +21,22 @@ export async function readChargeLedgerKey(
     return payload.ledgerKey;
   }
 
-  const row = await tx
-    .$extendTables<BudgetsTables>()
+  const tables = tx.$extendTables<BudgetsTables>();
+
+  const kept = await tables
+    .selectFrom('legacy_charge_kinds')
+    .select('period_kind')
+    .where('charge_id', '=', payload.chargeID)
+    .executeTakeFirst();
+
+  if (kept !== undefined) {
+    return buildBudgetLedgerKey(payload.budgetID, {
+      kind: pickLedgerPeriodKind(kept.period_kind, payload.budgetID),
+      start: payload.periodStart,
+    });
+  }
+
+  const row = await tables
     .selectFrom('budgets_in_force')
     .select('period')
     .where('budget_id', '=', payload.budgetID)

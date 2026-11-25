@@ -36,7 +36,7 @@ export function buildStatus(
 
     return {
       start: count.start,
-      resetsAt: formatInstant(buildResetMs(name, count, config.zone)),
+      resetsAt: formatInstant(buildResetMs(name, count)),
       spent: { dollars: count.dollars, tokens: count.tokens },
       limit: pickLimitInForce(name, count, override),
       cap: config.caps[name],

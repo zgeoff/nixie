@@ -76,7 +76,10 @@ test('it carries each count over to the row of its ledger key and drops the old 
     ctx.db,
   );
 
-  expect([rows.rows, keys.rows, old.rows]).toStrictEqual([
+  const kinds = await sql`select charge_id, period_kind from legacy_charge_kinds
+    order by charge_id`.execute(ctx.db);
+
+  expect([rows.rows, keys.rows, old.rows, kinds.rows]).toStrictEqual([
     [
       {
         ledger_key: 'budget:groceries|micros:USD|week|2026-10-12',
@@ -109,5 +112,10 @@ test('it carries each count over to the row of its ledger key and drops the old 
       { charge_id: 'c3', ledger_key: 'budget:search-month|micros:USD|month|2026-10-01' },
     ],
     [],
+    [
+      { charge_id: 'c1', period_kind: 'week' },
+      { charge_id: 'c2', period_kind: 'day' },
+      { charge_id: 'c3', period_kind: 'month' },
+    ],
   ]);
 });

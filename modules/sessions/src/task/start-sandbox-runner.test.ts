@@ -1670,6 +1670,27 @@ test("it pauses a task at its dollar limit, priced on its model's profile", asyn
   });
 });
 
+test('it errors the step of a task whose saved profile sets no prices, and runs no turn', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: { model: null, profile: 'chat-direct', limits: { turns: 25, dollars: 0.5 } },
+  });
+
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+
+  const errored = await ctx.readKinds('task.step_errored');
+
+  expect(errored).toHaveLength(1);
+  expect(ctx.guest.turns).toHaveLength(0);
+});
+
 test('it interrupts a task turn whose model calls reach its dollar limit, and pauses the task with the limit it reached', async () => {
   const ctx = await setupTest();
   const starter = await ctx.seed.conversationStep();

@@ -388,6 +388,13 @@ async function runTaskTurn(
   input: StepInput,
   parts: TaskTurnParts,
 ): Promise<StepResult> {
+  const prices = parts.run.profile.profile.prices;
+
+  invariant(
+    prices !== null,
+    `the profile ${parts.run.profile.profile.id} of task ${input.taskID} sets no prices, so its dollar limit cannot count`,
+  );
+
   await renewStaleImp(runner, input.taskID, parts.run.definitionHash);
 
   const imp = resolveTaskImp(runner, input.taskID);
@@ -397,14 +404,11 @@ async function runTaskTurn(
 
   const held = await acquired.promise;
 
-  const run = parts.run;
   const context = runner.options.context;
   const limits = parts.taskRun.opened.limits;
 
-  const budget = createCallBudget(
-    run.profile.profile.prices,
-    limits.dollars - parts.used.dollars,
-    () => readLateSpend(context, parts.taskRun, parts.throughSequence, buildStepRunID(input)),
+  const budget = createCallBudget(prices, limits.dollars - parts.used.dollars, () =>
+    readLateSpend(context, parts.taskRun, parts.throughSequence, buildStepRunID(input)),
   );
 
   const ended = await runConversationStep(

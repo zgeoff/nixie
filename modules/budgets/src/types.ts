@@ -79,6 +79,11 @@ interface SpendLedgerRow {
   readonly amount: number;
 }
 
+interface LegacyChargeKindRow {
+  readonly charge_id: string;
+  readonly period_kind: string;
+}
+
 interface BudgetInForceRow {
   readonly budget_id: string;
   readonly counts: string;
@@ -93,5 +98,6 @@ export type BudgetsTables = CheckedTables<
     budget_charges: BudgetChargeRow;
     spend_ledger: SpendLedgerRow;
     budgets_in_force: BudgetInForceRow;
+    legacy_charge_kinds: LegacyChargeKindRow;
   }>
 >;

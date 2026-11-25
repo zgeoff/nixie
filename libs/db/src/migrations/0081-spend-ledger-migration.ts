@@ -3,7 +3,7 @@ import type { Migration } from '../types';
 
 // The ledger key joins the counter, the unit, the period kind and the period start. A charge from
 // before the key names none, so the key takes the kind from the budget in force, and from the
-// budget's ID suffix for a built-in budget. The replay applies the same rule.
+// budget's ID suffix for a built-in budget. A table keeps that kind for the replay of the records.
 const kindOfBudget = sql`coalesce(
   (select period from budgets_in_force where budgets_in_force.budget_id = budget_charges.budget_id),
   case
@@ -31,6 +31,14 @@ export const spendLedgerMigration: Migration = {
     await sql`alter table budget_charges add column ledger_key text not null default ''`.execute(
       tx,
     );
+
+    await sql`create table if not exists legacy_charge_kinds (
+      charge_id text primary key,
+      period_kind text not null
+    ) strict`.execute(tx);
+
+    await sql`insert into legacy_charge_kinds (charge_id, period_kind)
+      select charge_id, ${kindOfBudget} from budget_charges`.execute(tx);
 
     await sql`update budget_charges
       set ledger_key = 'budget:' || budget_id || '|micros:USD|' || ${kindOfBudget} || '|' || period_start`.execute(

@@ -62,9 +62,10 @@ write the ledger, through a projection, so a rebuild from the records reproduces
 A budget charge adds its amount to the row of its key, and a credit subtracts from the row its
 charge added to. The charge record names its `ledgerKey`, and the `budget_charges` projection keeps
 it, so a credit lands on the charge's row even when the budget's period has changed since. A charge
-recorded before the ledger names no key, so its key takes the period kind of the budget in force, or
-the kind its ID ends with for a built-in budget that no row holds. The migration applies the same
-rule to the charges it stores.
+recorded before the ledger names no key, so its key takes the period kind that the migration kept
+for it in `legacy_charge_kinds`: the kind of the budget in force then, or the kind its ID ends with
+for a built-in budget that no row holds. A rebuild reads the kept kind, so a budget that changes its
+period afterwards never moves the charge to another key.
 
 A charge reads the budget's row, compares it with the limit, and writes its record in one
 transaction, so the ledger row and the record that causes it commit together or not at all. Only the

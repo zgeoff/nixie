@@ -57,7 +57,23 @@ test('#buildResetStore resets a period at its end and starts the next one in the
   });
 });
 
-test('#buildResetStore ends a period that stamps no end at the next start in the zone', () => {
+test('#buildResetStore keeps a period that stamps no end until its UTC end, whatever the zone', () => {
+  const ctx = setupTest();
+
+  const legacy: PeriodStore = {
+    ...ctx.store,
+    periods: {
+      day: { ...ctx.store.periods.day, resetsAt: null },
+      month: { ...ctx.store.periods.month, resetsAt: null },
+    },
+  };
+
+  const reset = buildResetStore(legacy, Date.parse('2026-11-24T12:00:00Z'), 'Pacific/Auckland');
+
+  expect(reset).toBe(legacy);
+});
+
+test('#buildResetStore resets a period that stamps no end at the next UTC start', () => {
   const ctx = setupTest();
 
   const reset = buildResetStore(
@@ -68,7 +84,7 @@ test('#buildResetStore ends a period that stamps no end at the next start in the
         month: { ...ctx.store.periods.month, resetsAt: null },
       },
     },
-    Date.parse('2026-11-24T12:00:00Z'),
+    Date.parse('2026-11-25T00:00:00Z'),
     'Pacific/Auckland',
   );
 

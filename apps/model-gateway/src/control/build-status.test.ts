@@ -57,31 +57,17 @@ test.each([
     zone: 'Europe/London',
     day: '2026-03-29',
     month: '2026-03-01',
-    dayResets: '2026-03-29T23:00:00Z',
-    monthResets: '2026-03-31T23:00:00Z',
-  },
-  {
-    zone: 'Europe/London',
-    day: '2026-10-25',
-    month: '2026-10-01',
-    dayResets: '2026-10-26T00:00:00Z',
-    monthResets: '2026-11-01T00:00:00Z',
+    dayResets: '2026-03-30T00:00:00Z',
+    monthResets: '2026-04-01T00:00:00Z',
   },
   {
     zone: 'Asia/Tokyo',
     day: '2026-12-01',
     month: '2026-12-01',
-    dayResets: '2026-12-01T15:00:00Z',
-    monthResets: '2026-12-31T15:00:00Z',
+    dayResets: '2026-12-02T00:00:00Z',
+    monthResets: '2027-01-01T00:00:00Z',
   },
-  {
-    zone: 'Pacific/Apia',
-    day: '2011-12-30',
-    month: '2011-12-01',
-    dayResets: '2011-12-31T10:00:00Z',
-    monthResets: '2011-12-31T10:00:00Z',
-  },
-])('#buildStatus resets the day of $zone that starts $day at $dayResets', (row) => {
+])('#buildStatus ends a count that stamps no end at the UTC end, in $zone', (row) => {
   const ctx = setupTest();
 
   expect(ctx.readResets(row)).toStrictEqual([row.dayResets, row.monthResets]);

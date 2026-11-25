@@ -7,10 +7,6 @@ import { spendProjections } from '../projection/spend-projections';
 import type { SpendContext, SpendTurnLimits } from '../types';
 import { buildStubSpendGateway } from './build-stub-spend-gateway';
 
-// The re-export loads the record kinds that the triggers module's dependencies register, which the
-// test log's types need.
-export type { TriggersRecordKind } from '@heynixie/triggers';
-
 export interface TestSpend {
   readonly writer: Writer;
   readonly log: Log;

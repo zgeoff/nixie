@@ -1,5 +1,9 @@
 import { expect, test } from 'bun:test';
-import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
+import {
+  runProjectionRebuild,
+  withWriteTransaction,
+  writeRecordsInTransaction,
+} from '@heynixie/log';
 import { readTestProjectionDrift } from '@heynixie/log/test-utils';
 import { sql } from 'kysely';
 import { chargeBudgetsInTransaction } from '../charge/charge-budgets-in-transaction';
@@ -174,6 +178,43 @@ test.each([
   expect(ledger.rows).toStrictEqual([{ ledger_key: row.ledgerKey, amount: 4_000_000 }]);
 });
 
+test('it keys a charge from before the ledger by the kind the migration kept, after a rebuild', async () => {
+  const ctx = await startTestBudgets();
+
+  await ctx.seedBudgetInForce({
+    id: 'groceries',
+    counts: 'spend',
+    limitMicros: 100_000_000,
+    period: 'week',
+  });
+
+  await ctx.seedLegacyChargeKind('old-charge', 'day');
+
+  await withWriteTransaction(ctx.writer, (tx) =>
+    writeRecordsInTransaction(tx, ctx.log, [
+      {
+        kind: budgetChargedCodec.kind,
+        definitions: ctx.context.definitions(),
+        payload: budgetChargedCodec.encode({
+          chargeID: 'old-charge',
+          budgetID: 'groceries',
+          periodStart: '2026-10-12',
+          amountMicros: 4_000_000,
+          for: { kind: 'action', id: 'action-1' },
+        }),
+      },
+    ]),
+  );
+
+  await runProjectionRebuild(ctx.log);
+
+  const ledger = await sql`select ledger_key, amount from spend_ledger`.execute(ctx.writer.db);
+
+  expect(ledger.rows).toStrictEqual([
+    { ledger_key: 'budget:groceries|micros:USD|day|2026-10-12', amount: 4_000_000 },
+  ]);
+});
+
 test('it rolls back the ledger change with the record that caused it', async () => {
   const ctx = await startTestBudgets();
 
@@ -187,7 +228,9 @@ test('it rolls back the ledger change with the record that caused it', async () 
     throw new Error('the write fails after the ledger folds');
   });
 
-  await expect(attempt).rejects.toThrow('the write fails after the ledger folds');
+  await Promise.allSettled([attempt]);
+
+  expect(attempt).rejects.toThrow('the write fails after the ledger folds');
 
   const records =
     await sql`select kind from records where kind = ${budgetChargedCodec.kind}`.execute(

@@ -201,6 +201,10 @@ export interface NixieTables {
     readonly epoch: number;
     readonly generation: number;
   };
+  readonly legacy_charge_kinds: {
+    readonly charge_id: string;
+    readonly period_kind: string;
+  };
   readonly memory_change_notices: {
     readonly entry_key: string;
     readonly notice_key: string;
