@@ -34,7 +34,9 @@ async function setupTest() {
 
   const standIn = await startStandInMcp({ tools: [itemGet, itemFind, itemNotify] });
 
-  onTestFinished(() => standIn.mcp.stop());
+  onTestFinished(() => {
+    standIn.mcp.stop();
+  });
 
   await standIn.approveServer();
   await standIn.signIn(standIn.mcp);

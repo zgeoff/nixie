@@ -57,7 +57,10 @@ export async function startMcpPart(
   });
 
   await mcp.start();
-  await parts.cleanup.defer(() => mcp.stop());
+
+  await parts.cleanup.defer(() => {
+    mcp.stop();
+  });
 
   const servers = await mcp.readServers();
 

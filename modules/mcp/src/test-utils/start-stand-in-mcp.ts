@@ -145,7 +145,7 @@ export async function startStandInMcp(options: StandInMcpOptions = {}): Promise<
 
       const proposalID = rows.find((row) => row.server_id === 'tracker')?.proposal_id ?? null;
 
-      invariant(proposalID, 'the start proposed the server');
+      invariant(proposalID !== null, 'the start proposed the server');
 
       await test.answer(proposalID, 'approve');
     },

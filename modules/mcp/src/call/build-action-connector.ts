@@ -126,7 +126,9 @@ function toProviderResponse(result: ProxiedCallResult): ProviderResponse {
   }
 
   if (outcome.isError === true) {
-    return { kind: 'refused', reason: String(outcome.result['text'] ?? 'the server refused') };
+    const text = outcome.result['text'];
+
+    return { kind: 'refused', reason: typeof text === 'string' ? text : 'the server refused' };
   }
 
   return {

@@ -66,7 +66,13 @@ async function readJSON(
 
   const response = await fetchFrom([new URL(url).origin])(url, { signal });
 
-  return response.ok ? await response.json().catch(() => null) : null;
+  if (!response.ok) {
+    return null;
+  }
+
+  const body: unknown = await response.json().catch(() => null);
+
+  return body;
 }
 
 function toCanonical(url: string): string {

@@ -350,9 +350,15 @@ test('it keeps the MCP overrides in the form and gives a changed override anothe
     mcp: { tracker: { item_notify: { ...override, destinations: ['owner_email'] } } },
   });
 
+  const parsed: unknown = JSON.parse(first.form);
+
   expect([
-    JSON.parse(first.form).mcp,
+    parsed,
     without.form.includes('"mcp"'),
     new Set([without.snapshotHash, first.snapshotHash, second.snapshotHash]).size,
-  ]).toStrictEqual([{ tracker: { item_notify: override } }, false, 3]);
+  ]).toStrictEqual([
+    expect.objectContaining({ mcp: { tracker: { item_notify: override } } }),
+    false,
+    3,
+  ]);
 });

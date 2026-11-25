@@ -19,11 +19,11 @@ function omitFromKeyword(keyword: string, value: JSONValue, name: string): JSONV
     return Object.fromEntries(Object.entries(value).filter(([property]) => property !== name));
   }
 
-  if (keyword === 'required' && Array.isArray(value)) {
+  if (keyword === 'required' && isArray(value)) {
     return value.filter((entry) => entry !== name);
   }
 
-  if (unionKeywords.has(keyword) && Array.isArray(value)) {
+  if (unionKeywords.has(keyword) && isArray(value)) {
     return value.map((member) => (isObject(member) ? omitSchemaArgument(member, name) : member));
   }
 
@@ -32,4 +32,8 @@ function omitFromKeyword(keyword: string, value: JSONValue, name: string): JSONV
 
 function isObject(value: JSONValue): value is JSONObject {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isArray(value: JSONValue): value is readonly JSONValue[] {
+  return Array.isArray(value);
 }

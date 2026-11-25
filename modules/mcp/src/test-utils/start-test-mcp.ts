@@ -165,7 +165,7 @@ export async function startTestMcp(options: TestMcpOptions = {}): Promise<TestMc
 
       const proposalID = rows.find((row) => row.server_id === serverID)?.proposal_id ?? null;
 
-      invariant(proposalID, 'the start proposed the server');
+      invariant(proposalID !== null, 'the start proposed the server');
 
       await answer(proposalID, 'approve');
     },
@@ -196,9 +196,11 @@ export async function startTestMcp(options: TestMcpOptions = {}): Promise<TestMc
     allow: async (tool) => {
       const row = await readToolRow(writer.db, tool);
 
-      invariant(row?.proposal_id, 'the tool waits for an allow');
+      const proposalID = row?.proposal_id ?? null;
 
-      await answer(row.proposal_id, 'approve');
+      invariant(proposalID !== null, 'the tool waits for an allow');
+
+      await answer(proposalID, 'approve');
     },
     readNotices: async () => {
       const records = await readRecords(log, { afterSequence: 0, kinds: [mcpNoticeCodec.kind] });

@@ -48,7 +48,7 @@ async function setupTest() {
           return Promise.resolve();
         },
       },
-      log: () => null,
+      log: () => {},
     },
     {
       listingTimeoutSeconds: 5,

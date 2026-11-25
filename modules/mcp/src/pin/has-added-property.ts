@@ -14,7 +14,7 @@ export function hasAddedProperty(before: unknown, after: unknown): boolean {
 
   const old = typeof before === 'object' && before !== null && !Array.isArray(before) ? before : {};
 
-  return Object.entries(after).some(([key, value]) => {
+  return Object.entries(after).some(([key, value]: [string, unknown]) => {
     const oldValue: unknown = Reflect.get(old, key);
 
     if (key === 'properties' && typeof value === 'object' && value !== null) {

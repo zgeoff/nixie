@@ -24,7 +24,7 @@ export async function applyListing(
 ): Promise<readonly ToolPlan[]> {
   const hashes = request.forms.map((form) => hashToolForm(form));
 
-  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+  for (let attempt = 1; ; attempt += 1) {
     const forms = await readListingForms(application.context.log, {
       serverID: request.serverID,
       hashes,
@@ -44,7 +44,10 @@ export async function applyListing(
     if (written.kind === 'written') {
       return written.plans;
     }
-  }
 
-  invariant(false, 'a pin moves to a form that the listing read only when another listing ran');
+    invariant(
+      attempt < maxAttempts,
+      'a pin moves to a form that the listing read only when another listing ran',
+    );
+  }
 }

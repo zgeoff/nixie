@@ -454,7 +454,9 @@ export function startMcp(options: McpOptions): Mcp {
 
       return steps;
     },
-    stop: () => health.stop(),
+    stop: () => {
+      health.stop();
+    },
     connect: signIn.connect,
     finishSignIn: signIn.finish,
     forgetGrants: forgetCredentials,

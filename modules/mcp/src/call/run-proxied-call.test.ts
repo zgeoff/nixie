@@ -64,7 +64,9 @@ async function setupTest(options: StandInMcpOptions = {}) {
     ...options,
   });
 
-  onTestFinished(() => standIn.mcp.stop());
+  onTestFinished(() => {
+    standIn.mcp.stop();
+  });
 
   await standIn.approveServer();
   await standIn.signIn(standIn.mcp);
