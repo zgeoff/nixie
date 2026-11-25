@@ -10,16 +10,34 @@ function setupTest() {
     day: {
       start: '2026-11-24',
       resetsAt: resetsDay,
-      dollars: 4,
+      micros: 4_000_000,
       raise: 20,
       trippedAt: '2026-11-24T10:00:00.000Z',
     },
-    month: { start: '2026-11-01', resetsAt: resetsMonth, dollars: 4, raise: null, trippedAt: null },
+    month: {
+      start: '2026-11-01',
+      resetsAt: resetsMonth,
+      micros: 4_000_000,
+      raise: null,
+      trippedAt: null,
+    },
   };
 
   const metered = {
-    day: { start: '2026-11-24', resetsAt: resetsDay, dollars: 1, raise: null, trippedAt: null },
-    month: { start: '2026-11-01', resetsAt: resetsMonth, dollars: 1, raise: null, trippedAt: null },
+    day: {
+      start: '2026-11-24',
+      resetsAt: resetsDay,
+      micros: 1_000_000,
+      raise: null,
+      trippedAt: null,
+    },
+    month: {
+      start: '2026-11-01',
+      resetsAt: resetsMonth,
+      micros: 1_000_000,
+      raise: null,
+      trippedAt: null,
+    },
   };
 
   const store: PeriodStore = {
@@ -46,7 +64,7 @@ test('#buildResetStore resets the day of every route at its end, in the new zone
   const fresh = {
     start: '2026-11-25',
     resetsAt: '2026-11-25T11:00:00.000Z',
-    dollars: 0,
+    micros: 0,
     raise: null,
     trippedAt: null,
   };

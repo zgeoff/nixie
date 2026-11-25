@@ -9,13 +9,13 @@ import type {
   PeriodStoreHandle,
   Refusal,
 } from '../types';
-import { addDollars } from './add-dollars';
 import { buildEmptyRoute, buildFreshStore } from './build-fresh-store';
 import { buildResetStore } from './build-reset-store';
 import { buildTrippedStore } from './build-tripped-store';
 import type { RouteLimitsByID } from './collect-trips';
 import { parsePeriodStore } from './parse-period-store';
 import { parseStartStore } from './parse-start-store';
+import { toMicros } from './to-micros';
 
 export interface PeriodStoreOptions {
   readonly path: string;
@@ -214,6 +214,7 @@ function buildSpentStore(
       : undefined;
 
   const periods = Object.hasOwn(store.routes, route) ? store.routes[route] : undefined;
+  const micros = toMicros(spend.dollars);
 
   return {
     ...store,
@@ -223,10 +224,10 @@ function buildSpentStore(
         : {
             ...store.routes,
             [route]: {
-              day: { ...periods.day, dollars: addDollars(periods.day.dollars, spend.dollars) },
+              day: { ...periods.day, micros: periods.day.micros + micros },
               month: {
                 ...periods.month,
-                dollars: addDollars(periods.month.dollars, spend.dollars),
+                micros: periods.month.micros + micros,
               },
             },
           },
@@ -237,7 +238,7 @@ function buildSpentStore(
             ...store.sandboxes,
             [sandbox]: {
               ...held,
-              dollars: addDollars(held.dollars, spend.dollars),
+              micros: held.micros + micros,
               tokens: held.tokens + spend.tokens,
             },
           },

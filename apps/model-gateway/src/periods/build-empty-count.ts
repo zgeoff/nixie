@@ -11,7 +11,7 @@ export function buildEmptyCount(name: PeriodName, nowMs: number, zone: string): 
   return {
     start: period.start,
     resetsAt: new Date(period.endsAtMs).toISOString(),
-    dollars: 0,
+    micros: 0,
     raise: null,
     trippedAt: null,
   };

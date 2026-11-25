@@ -12,7 +12,7 @@ export function pickSandboxSetChange(
       ...store,
       sandboxes: {
         ...store.sandboxes,
-        [name]: { dollars: 0, tokens: 0, limit, lastRefusal: null },
+        [name]: { micros: 0, tokens: 0, limit, lastRefusal: null },
       },
     },
     result: { kind: 'done' },

@@ -15,7 +15,7 @@ async function setupTest(startAt: string) {
   const emptyDay = {
     start: '2026-11-13',
     resetsAt: '2026-11-14T00:00:00.000Z',
-    dollars: 0,
+    micros: 0,
     raise: null,
     trippedAt: null,
   };
@@ -23,7 +23,7 @@ async function setupTest(startAt: string) {
   const emptyMonth = {
     start: '2026-11-01',
     resetsAt: '2026-12-01T00:00:00.000Z',
-    dollars: 0,
+    micros: 0,
     raise: null,
     trippedAt: null,
   };
@@ -130,7 +130,7 @@ test('it rewrites a version 2 store with every route at zero, keeps its sandboxe
         plan: { day: ctx.emptyDay, month: ctx.emptyMonth },
         metered: { day: ctx.emptyDay, month: ctx.emptyMonth },
       },
-      sandboxes: { alpha: { dollars: 1, tokens: 2, limit: null, lastRefusal: null } },
+      sandboxes: { alpha: { micros: 1_000_000, tokens: 2, limit: null, lastRefusal: null } },
     },
     [
       'store.moved',
@@ -148,10 +148,38 @@ test('it adds a spend to the route it names and to no other', async () => {
   const stored = await ctx.store.read();
 
   expect([
-    stored.routes['plan']?.day.dollars,
-    stored.routes['plan']?.month.dollars,
-    stored.routes['metered']?.day.dollars,
-  ]).toStrictEqual([3, 3, 0]);
+    stored.routes['plan']?.day.micros,
+    stored.routes['plan']?.month.micros,
+    stored.routes['metered']?.day.micros,
+  ]).toStrictEqual([3_000_000, 3_000_000, 0]);
+});
+
+test('it adds one micro to a count of 8.6 billion dollars as exactly one micro', async () => {
+  const ctx = await setupTest('2026-11-13T10:00:00Z');
+
+  await ctx.store.change((held) => {
+    const plan = held.routes['plan'];
+
+    return {
+      store:
+        plan === undefined
+          ? null
+          : {
+              ...held,
+              routes: {
+                ...held.routes,
+                plan: { ...plan, day: { ...plan.day, micros: 8_600_000_000_000_000 } },
+              },
+            },
+      result: undefined,
+    };
+  });
+
+  await ctx.store.addSpend('plan', null, { dollars: 1e-6, tokens: 1 });
+
+  const stored = await ctx.store.read();
+
+  expect(stored.routes['plan']?.day.micros).toBe(8_600_000_000_000_001);
 });
 
 test('it stamps the instant a route first reaches its day limit, and only that route', async () => {
@@ -193,8 +221,8 @@ test('it starts a route that the config gained at zero', async () => {
   const wider = await ctx.start({ ...ctx.limits, extra: { day: 1, month: 2, dayCap: 2 } });
   const stored = await wider.read();
 
-  expect([stored.routes['plan']?.day.dollars, stored.routes['extra']?.day]).toStrictEqual([
-    3,
+  expect([stored.routes['plan']?.day.micros, stored.routes['extra']?.day]).toStrictEqual([
+    3_000_000,
     ctx.emptyDay,
   ]);
 });
@@ -205,7 +233,7 @@ test('it keeps the last refusal on a sandbox the store holds, and on no other', 
   await ctx.store.change((held) => ({
     store: {
       ...held,
-      sandboxes: { alpha: { dollars: 0, tokens: 0, limit: null, lastRefusal: null } },
+      sandboxes: { alpha: { micros: 0, tokens: 0, limit: null, lastRefusal: null } },
     },
     result: undefined,
   }));

@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test';
 import { readPause, withWriteTransaction } from '@heynixie/log';
 import { sql } from 'kysely';
+import invariant from 'tiny-invariant';
 import { readSpendFacts } from '../stop/read-spend-facts';
 import { readSpendRouteStops } from '../stop/read-spend-route-stops';
 import { settleSpendStop } from '../stop/settle-spend-stop';
@@ -77,6 +78,34 @@ test('it lifts a route trip with one call: it records the raise, tells the gatew
   expect(raises).toStrictEqual([
     { route_id: 'plan', start: '2026-11-13', dollars: 50, raised_by: 'session-a' },
   ]);
+});
+
+test('it keeps the day stop of a route whose month is at its limit too, when midnight passes during the raise', async () => {
+  const ctx = await setupTest();
+
+  await ctx.trip();
+
+  const tripped = buildTrippedGatewayStatus();
+  const plan = tripped.routes['plan'];
+
+  invariant(plan !== undefined, 'the mock status holds the route plan');
+
+  const both = {
+    ...tripped,
+    routes: { plan: { day: plan.day, month: { ...plan.month, tripped: true } } },
+  };
+
+  ctx.gateway.postRaise.mockImplementation(() => {
+    ctx.clock.advance(16 * 3_600_000);
+
+    return Promise.resolve({ kind: 'ok', value: both });
+  });
+
+  await ctx.raise();
+
+  const stops = await readSpendRouteStops(ctx.writer.db);
+
+  expect(stops.map((stop) => [stop.route, stop.period])).toStrictEqual([['plan', 'day']]);
 });
 
 test('it never pauses nixie for a raise of a route', async () => {

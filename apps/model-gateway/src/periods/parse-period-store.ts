@@ -8,7 +8,7 @@ const isoDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/u);
 const routeCountSchema = z.strictObject({
   start: isoDateSchema,
   resetsAt: z.iso.datetime(),
-  dollars: z.number().nonnegative(),
+  micros: z.int().nonnegative(),
   raise: z.number().nonnegative().nullable(),
   trippedAt: z.iso.datetime().nullable(),
 });
@@ -20,7 +20,7 @@ const refusalSchema = z.strictObject({
 });
 
 const sandboxCountSchema = z.strictObject({
-  dollars: z.number().nonnegative(),
+  micros: z.int().nonnegative(),
   tokens: z.number().nonnegative(),
   limit: measuresSchema.nullable(),
   lastRefusal: refusalSchema.nullable().default(null),

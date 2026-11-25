@@ -81,7 +81,7 @@ test('it serves the routes of its config until SIGINT, then exits 0', async () =
   expect(code).toBe(0);
 
   expect(stored).toMatchObject({
-    routes: { preview: { day: { dollars: 0.0026 }, month: { dollars: 0.0026 } } },
+    routes: { preview: { day: { micros: 2600 }, month: { micros: 2600 } } },
   });
 });
 

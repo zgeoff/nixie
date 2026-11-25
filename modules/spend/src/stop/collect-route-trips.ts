@@ -1,12 +1,15 @@
 import type { GatewayStatus, PeriodName, RouteTrip } from '../types';
 
 // Every route that has reached a limit in force, with the period that holds it: the day when both
-// are reached, because only the day can be raised.
+// are reached, because only the day can be raised. A period that has ended at the instant is no
+// trip, so an ended day never hides a month that still stands.
 export function collectRouteTrips(status: GatewayStatus, nowMs: number): RouteTrip[] {
   const trips: RouteTrip[] = [];
 
   for (const [route, periods] of Object.entries(status.routes)) {
-    const reached = (['day', 'month'] as const).find((name) => periods[name].tripped);
+    const reached = (['day', 'month'] as const).find(
+      (name) => periods[name].tripped && Date.parse(periods[name].resetsAt) > nowMs,
+    );
 
     if (reached === undefined) {
       continue;

@@ -1,19 +1,16 @@
 import type { SpendContext } from '../types';
+import { getSettleOrderState } from './get-settle-order-state';
 
-// the instant of the newest facts that each log's route stops settled from
-const settledAtMs = new WeakMap<object, number>();
+// Whether facts are newer than the facts that the last settle used, and when they are, marks them
+// as the newest. The orders are counted, so two reads in one millisecond still differ.
+export function claimSettleOrder(context: SpendContext, order: number): boolean {
+  const state = getSettleOrderState(context);
 
-// Whether facts read at the instant are no older than the facts that the last settle used, and when
-// they are, marks them as the newest. A poll that read the gateway before a raise, and settles after
-// it, holds an older count than the raise's, and must not put back a stop that the raise cleared.
-export function claimSettleOrder(context: SpendContext, factsAtMs: number): boolean {
-  const newest = settledAtMs.get(context.log.writer);
-
-  if (newest !== undefined && factsAtMs < newest) {
+  if (order <= state.settled) {
     return false;
   }
 
-  settledAtMs.set(context.log.writer, factsAtMs);
+  state.settled = order;
 
   return true;
 }

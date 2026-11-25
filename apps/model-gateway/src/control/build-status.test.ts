@@ -5,10 +5,10 @@ import { buildStatus } from './build-status';
 function setupTest() {
   const endsDay = '2026-11-25T00:00:00.000Z';
 
-  const count = (start: string, resetsAt: string, dollars: number, trippedAt: string | null) => ({
+  const count = (start: string, resetsAt: string, micros: number, trippedAt: string | null) => ({
     start,
     resetsAt: start === '2026-11-24' ? endsDay : resetsAt,
-    dollars,
+    micros,
     raise: null,
     trippedAt,
   });
@@ -18,12 +18,17 @@ function setupTest() {
     lost: false,
     routes: {
       plan: {
-        day: count('2026-11-24', '2026-11-25T00:00:00.000Z', 40, '2026-11-24T09:30:00.000Z'),
-        month: count('2026-11-01', '2026-12-01T00:00:00.000Z', 211.5, null),
+        day: count(
+          '2026-11-24',
+          '2026-11-25T00:00:00.000Z',
+          40_000_000,
+          '2026-11-24T09:30:00.000Z',
+        ),
+        month: count('2026-11-01', '2026-12-01T00:00:00.000Z', 211_500_000, null),
       },
       metered: {
-        day: count('2026-11-24', '2026-11-25T00:00:00.000Z', 1, null),
-        month: count('2026-11-01', '2026-12-01T00:00:00.000Z', 1, null),
+        day: count('2026-11-24', '2026-11-25T00:00:00.000Z', 1_000_000, null),
+        month: count('2026-11-01', '2026-12-01T00:00:00.000Z', 1_000_000, null),
       },
     },
     sandboxes: {},

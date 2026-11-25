@@ -4,8 +4,9 @@ import { toErrorFields } from '@heynixie/logger';
 import { z } from 'zod';
 import type { PlanLogin } from '../login/create-plan-login';
 import type { RouteLimitsByID } from '../periods/collect-trips';
-import { isDollarLimitReached } from '../periods/is-dollar-limit-reached';
+import { isLimitReached } from '../periods/is-limit-reached';
 import { sandboxNameSchema } from '../periods/sandbox-name-schema';
+import { toDollars } from '../periods/to-dollars';
 import type { PeriodChange, PeriodStore, PeriodStoreHandle, PeriodsConfig } from '../types';
 import { buildStatus } from './build-status';
 import type { ControlOutcome } from './control-outcome';
@@ -103,13 +104,12 @@ export function makeControlHandler(
     const held = store.sandboxes[name];
 
     return Response.json({
-      dollars: held?.dollars ?? 0,
+      dollars: toDollars(held?.micros ?? 0),
       tokens: held?.tokens ?? 0,
       tripped:
         held?.limit !== undefined &&
         held.limit !== null &&
-        (isDollarLimitReached(held.dollars, held.limit.dollars) ||
-          held.tokens >= held.limit.tokens),
+        (isLimitReached(held.micros, held.limit.dollars) || held.tokens >= held.limit.tokens),
       lastRefusal: held?.lastRefusal ?? null,
     });
   };

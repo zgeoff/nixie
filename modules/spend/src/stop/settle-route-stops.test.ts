@@ -156,14 +156,13 @@ test('it keeps the holds, tells no one and restates the stop when a raise leaves
   expect(holds.map((hold) => hold.taskID)).toStrictEqual(['task-a']);
 });
 
-test('it puts back no stop that a newer settle cleared, when a poll that read the gateway earlier settles late', async () => {
+test('it puts back no stop that a newer settle cleared, when a poll that read the gateway earlier in the same millisecond settles late', async () => {
   const ctx = await setupTest();
 
   ctx.gateway.readStatus.mockResolvedValue({ kind: 'ok', value: buildTrippedGatewayStatus() });
 
   const staleFacts = await readSpendFacts(ctx.context);
 
-  ctx.clock.advance(1000);
   ctx.gateway.readStatus.mockResolvedValue({ kind: 'ok', value: buildMockGatewayStatus() });
 
   await ctx.settle();

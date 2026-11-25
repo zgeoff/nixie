@@ -21,7 +21,7 @@ function setupTest() {
   const count = (start: string, dollars: number, raise: number | null) => ({
     start,
     resetsAt,
-    dollars,
+    micros: Math.round(dollars * 1_000_000),
     raise,
     trippedAt: null,
   });
@@ -132,7 +132,12 @@ test('it refuses a sandbox past its own limit, on the route it asked for', () =>
 
   const store = ctx.buildStore({
     sandboxes: {
-      alpha: { dollars: 2, tokens: 0, limit: { dollars: 2, tokens: 100 }, lastRefusal: null },
+      alpha: {
+        micros: 2_000_000,
+        tokens: 0,
+        limit: { dollars: 2, tokens: 100 },
+        lastRefusal: null,
+      },
     },
   });
 

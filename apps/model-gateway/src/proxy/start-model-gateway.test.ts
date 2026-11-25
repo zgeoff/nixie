@@ -214,7 +214,7 @@ test('it serves its routes from a config file and writes the count of each route
   expect(body).toMatchObject({ content: [{ type: 'text', text: 'counted' }] });
 
   expect(JSON.parse(stored)).toMatchObject({
-    routes: { preview: { day: { dollars: 0.0026 }, month: { dollars: 0.0026 } } },
+    routes: { preview: { day: { micros: 2600 }, month: { micros: 2600 } } },
   });
 });
 
@@ -380,7 +380,7 @@ test('it lets a streamed reply under way finish and counts it before a stop reso
   expect(body).toInclude('event: message_stop');
 
   expect(JSON.parse(stored)).toMatchObject({
-    routes: { preview: { day: { dollars: 0.0026 } } },
+    routes: { preview: { day: { micros: 2600 } } },
   });
 });
 
@@ -515,7 +515,7 @@ test('it charges the estimate of a reply a stop cut off at the drain deadline, a
   });
 
   // the stream's body of 69 bytes and 4,096 allowance tokens in, and 1,000 tokens out
-  expect(JSON.parse(stored).routes.preview.day.dollars).toBeCloseTo(0.01333, 9);
+  expect(JSON.parse(stored).routes.preview.day.micros).toBe(13_330);
   expect(response.status).toBe(200);
   expect(ctx.model.requests).toHaveLength(2);
 
@@ -560,7 +560,7 @@ test('it leaves the count unmarked when a stop finds no reply under way', async 
 
   expect(JSON.parse(stored)).toMatchObject({
     version: 3,
-    routes: { preview: { day: { dollars: 0 }, month: { dollars: 0 } } },
+    routes: { preview: { day: { micros: 0 }, month: { micros: 0 } } },
     sandboxes: {},
   });
 
@@ -679,10 +679,10 @@ test('it counts a reply on its route day and month and on its sandbox in one wri
 
   expect(stored).toMatchObject({
     routes: {
-      other: { day: { dollars: 0.0026 }, month: { dollars: 0.0026 } },
-      preview: { day: { dollars: 0 } },
+      other: { day: { micros: 2600 }, month: { micros: 2600 } },
+      preview: { day: { micros: 0 } },
     },
-    sandboxes: { alpha: { dollars: 0.0026, tokens: 1000 } },
+    sandboxes: { alpha: { micros: 2600, tokens: 1000 } },
   });
 });
 

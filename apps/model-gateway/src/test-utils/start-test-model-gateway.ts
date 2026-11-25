@@ -6,6 +6,7 @@ import type { ModelAPI } from '@heynixie/wire';
 import type { LoginFile } from '../login/login-file-schema';
 import { writeLoginFile } from '../login/write-login-file';
 import { parsePeriodStore } from '../periods/parse-period-store';
+import { toDollars } from '../periods/to-dollars';
 import { startModelGateway } from '../proxy/start-model-gateway';
 
 export interface TestModelGateway {
@@ -221,6 +222,6 @@ function createPeriodsCountReader(path: string): TestModelGateway['readCount'] {
 
     const store = parsePeriodStore(stored);
 
-    return { dollars: store.routes['scripted']?.day.dollars ?? 0 };
+    return { dollars: toDollars(store.routes['scripted']?.day.micros ?? 0) };
   };
 }

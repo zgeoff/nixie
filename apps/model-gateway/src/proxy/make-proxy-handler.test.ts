@@ -384,7 +384,7 @@ async function setupTest() {
       await store.change((held) => ({
         store: {
           ...held,
-          sandboxes: { alpha: { dollars: 0, tokens: 0, limit: null, lastRefusal: null } },
+          sandboxes: { alpha: { micros: 0, tokens: 0, limit: null, lastRefusal: null } },
         },
         result: undefined,
       }));

@@ -16,22 +16,22 @@ import { readSpendRouteStops } from './read-spend-route-stops';
 
 // Brings the log's route stops in line with the gateway's routes. A trip writes the notice to the
 // owner once, and a clear writes a wait notice for each task that waited. A restated stop sends no
-// notice and keeps its holds. Facts of a gateway that did not answer, or older than a settle's, move nothing.
+// notice and keeps its holds. Facts of a gateway that did not answer, or read before a settle's facts, move nothing.
 export async function settleRouteStops(context: SpendContext, facts: SpendFacts): Promise<void> {
   if (facts.status === null) {
     return;
   }
 
-  const trips = collectRouteTrips(facts.status, facts.now);
+  const trips = collectRouteTrips(facts.status, facts.statusAtMs);
 
   await withWriteTransaction(context.log.writer, async (tx) => {
-    if (!claimSettleOrder(context, facts.now)) {
+    if (!claimSettleOrder(context, facts.order)) {
       return;
     }
 
     const standing = await readSpendRouteStops(tx);
 
-    const move = pickRouteMove(standing, trips, facts.now);
+    const move = pickRouteMove(standing, trips, facts.statusAtMs);
     const definitions = context.definitions();
 
     for (const clear of move.clears) {

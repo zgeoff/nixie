@@ -44,9 +44,12 @@ route's stop beside the stop of nixie, in the same transaction. A route whose da
   `raised`. A route that stays tripped at another limit or period, such as when a raise leaves it
   over its day limit, or when the day ends and the month still binds, writes `spend.route_restated`
   instead. That record replaces the row, sends no notice, and keeps the holds.
-- A poll that read the gateway before a settle that a later read made writes nothing, so a poll that
-  settles late never puts back a stop that a raise cleared. A trip whose period has ended is no
-  trip.
+- Each read of the facts takes the next place in line, and a settle whose facts took a place no
+  later than the last settle's writes nothing, so a poll that settles late never puts back a stop
+  that a raise cleared, even when both read in the same millisecond. A trip whose period has ended
+  at the instant before the gateway answered is no trip, and an ended day never hides a month that
+  still binds. A raise settles with the instant before its own request, so midnight during the raise
+  does not expire the status that the request returned.
 - A gateway that did not answer changes no route's stop. The stop of nixie covers it.
 
 A task that a refusal or a stopped route held has a row in `spend_route_holds`. A step holds its
@@ -58,7 +61,8 @@ held step ends at once with no step commit. A failed step counts no step error w
 explains it, or when the gateway recorded a refusal of the step's sandbox on the step's route after
 the step began, which the sandbox's `lastRefusal` holds, though the route has since reset or risen.
 A clear writes `spend.wait_notice` on the thread of each task that waited, and the model's next wake
-reads that it waited about so many minutes. The notice holds no dollar figure and no route.
+reads that it waited about so many minutes, in the first turn whose batch reaches the notice. The
+notice holds no dollar figure and no route.
 
 ## The watcher
 

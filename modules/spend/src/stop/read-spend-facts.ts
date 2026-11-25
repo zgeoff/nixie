@@ -5,10 +5,12 @@ import type { SpendFacts } from './pick-spend-stop';
 import { readSpendRaise } from './read-spend-raise';
 import { readSpendRouteRaises } from './read-spend-route-raises';
 import { readSpendTurns } from './read-spend-turns';
+import { takeSettleOrder } from './take-settle-order';
 
 // The gateway's status, the turn count and today's raises, read now. The status is never a cached
 // one, because the caller has just seen a request fail or is about to act on the answer.
 export async function readSpendFacts(context: SpendContext): Promise<SpendFacts> {
+  const order = takeSettleOrder(context);
   const now = context.clock.now();
   const periods = buildSpendPeriods(now, context.zone);
   const db = context.log.writer.db;
@@ -28,6 +30,8 @@ export async function readSpendFacts(context: SpendContext): Promise<SpendFacts>
     routeRaises,
     limits: context.limits,
     now,
+    statusAtMs: now,
+    order,
     periods,
   };
 }

@@ -94,7 +94,7 @@ export interface CounterStore {
   readonly settle: () => Promise<void>;
 }
 
-// One route's count of one period, in US dollars
+// One route's count of one period, in whole micros of a US dollar
 export interface RouteCount {
   // the ISO date of the period's first day, in the periods zone
   readonly start: string;
@@ -102,7 +102,7 @@ export interface RouteCount {
   // the ISO instant the period ends and its count resets. Stamped with the zone the period began
   // in, so a changed zone takes effect at the next reset.
   readonly resetsAt: string;
-  readonly dollars: number;
+  readonly micros: number;
 
   // the day's raise of the limit, always null on the month
   readonly raise: number | null;
@@ -125,7 +125,11 @@ export interface Refusal {
   readonly atMs: number;
 }
 
-interface SandboxCount extends Measures {
+interface SandboxCount {
+  // whole micros of a US dollar
+  readonly micros: number;
+  readonly tokens: number;
+
   // null counts only
   readonly limit: Measures | null;
   readonly lastRefusal: Refusal | null;
@@ -166,7 +170,7 @@ export interface PeriodStoreHandle {
   // reads, resets, decides and writes in one turn
   readonly change: <T>(decide: (store: PeriodStore) => PeriodChange<T>) => Promise<T>;
 
-  // adds the dollars to the route's day and month, and the spend to the sandbox, in one write; a
+  // adds the spend's dollars, in whole micros, to the route's day and month, and the spend to the sandbox, in one write; a
   // sandbox the store lacks, or null, counts on the route only
   readonly addSpend: (
     route: string,

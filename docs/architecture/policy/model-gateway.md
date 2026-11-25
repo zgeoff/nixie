@@ -379,9 +379,11 @@ override: /var/lib/model-gateway/override.json # no path, no override
 The schema requires `periods` and `control`, and refuses a top-level `limits` key, because no limit
 spans routes. It refuses a `dayCap` below its route's `day`. The store is a file of its own, in
 version 3: the lost mark, for each route its day and its month, and a count and a limit per sandbox.
-A period holds its start, the instant it ends, its dollars, the raise and the trip time. A period's
-trip time is the instant the gateway first found its count at the limit in force, and a reset or a
-raise that lifts the limit clears it.
+A period holds its start, the instant it ends, its count in whole micros of a dollar, the raise and
+the trip time. A sandbox's count is in whole micros too. The count is an integer, so a long run of
+replies adds no drift, whatever the size of the total. A period's trip time is the instant the
+gateway first found its count at the limit in force, and a reset or a raise that lifts the limit
+clears it.
 
 At start, the gateway rewrites a store file of an earlier shape, a count of one total or a version 2
 store, as a version 3 store in one write. Every route starts at zero, because a total that spans
@@ -413,8 +415,8 @@ the raise drops. A period keeps the end that the zone gave it when it started, s
 `periods.zone` takes effect at the next reset. A period with no stored end ends at the next start in
 the zone. The lost mark stays. A reset therefore needs no model request, and a `/status` read after
 midnight shows the new day. The store runs one change at a time, so a reply counted after midnight
-lands in the new day and the month once. A reply adds its dollars to its route's day and month, and
-its dollars and tokens to its sandbox, in one write.
+lands in the new day and the month once. A reply adds its dollars, rounded to whole micros, to its
+route's day and month, and its micros and tokens to its sandbox, in one write.
 
 ### Count by sandbox
 
@@ -441,7 +443,7 @@ the day only: the month's limit moves only in the gateway's config. A period's `
 while its dollars are at its limit in force, and its `sinceMs` is the period's trip time. The status
 holds the lost mark apart from the routes, and a lost gateway answers its routes as they stand. A
 count reaches a limit in whole micros of a dollar, so ten replies of 0.1 dollars reach a limit of 1
-dollar.
+dollar. The status and the sandbox read answer in dollars, worked out from the micros.
 
 ### The override
 

@@ -1,6 +1,7 @@
 import type { RouteLimitsByID } from '../periods/collect-trips';
-import { isDollarLimitReached } from '../periods/is-dollar-limit-reached';
+import { isLimitReached } from '../periods/is-limit-reached';
 import { pickRouteLimit } from '../periods/pick-route-limit';
+import { toDollars } from '../periods/to-dollars';
 import type { Overrides, PeriodName, PeriodStore, PeriodsConfig } from '../types';
 
 interface PeriodStatus {
@@ -47,12 +48,12 @@ export function buildStatus(
 
     const limit = pickRouteLimit({ store, limits, overrides, route, period: name });
     const configured = Object.hasOwn(limits, route) ? limits[route] : null;
-    const isTripped = limit !== null && isDollarLimitReached(count.dollars, limit);
+    const isTripped = limit !== null && isLimitReached(count.micros, limit);
 
     return {
       start: count.start,
       resetsAt: formatInstant(Date.parse(count.resetsAt)),
-      dollars: count.dollars,
+      dollars: toDollars(count.micros),
       limit,
       cap: name === 'day' ? (configured?.dayCap ?? null) : null,
       tripped: isTripped,

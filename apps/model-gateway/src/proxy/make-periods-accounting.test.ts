@@ -30,7 +30,7 @@ async function setupTest() {
   await store.change((held) => ({
     store: {
       ...held,
-      sandboxes: { alpha: { dollars: 0, tokens: 0, limit: null, lastRefusal: null } },
+      sandboxes: { alpha: { micros: 0, tokens: 0, limit: null, lastRefusal: null } },
     },
     result: undefined,
   }));
@@ -100,8 +100,8 @@ test('it counts the estimate and marks nothing lost when a reply that spent has 
   // 5,096 input tokens at the highest input rate, $2, and 1,000 output tokens at $5, per million
   expect([stored.lost, stored.routes['preview']?.day, stored.sandboxes['alpha']]).toMatchObject([
     false,
-    { dollars: 0.015192 },
-    { dollars: 0.015192, tokens: 6096 },
+    { micros: 15_192 },
+    { micros: 15_192, tokens: 6096 },
   ]);
 });
 
@@ -172,8 +172,8 @@ test('it charges a cut stream the larger of its byte bound and the input it repo
   const stored = await ctx.store.read();
 
   // 9,000 input tokens at $2 and 1,000 output tokens at $5, per million
-  expect([stored.routes['preview']?.day.dollars, stored.sandboxes['alpha']?.tokens]).toStrictEqual([
-    0.023, 10_000,
+  expect([stored.routes['preview']?.day.micros, stored.sandboxes['alpha']?.tokens]).toStrictEqual([
+    23_000, 10_000,
   ]);
 });
 
@@ -194,8 +194,8 @@ test('it charges a cut stream from Anthropic its reported input at the class rat
   const stored = await ctx.store.read();
 
   // 9,000 cache read tokens at $0.10 and 1,000 output tokens at $5, per million
-  expect([stored.routes['preview']?.day.dollars, stored.sandboxes['alpha']?.tokens]).toStrictEqual([
-    0.0059, 10_000,
+  expect([stored.routes['preview']?.day.micros, stored.sandboxes['alpha']?.tokens]).toStrictEqual([
+    5900, 10_000,
   ]);
 });
 
@@ -217,8 +217,8 @@ test('it charges the byte bound for a cut Anthropic stream that never reported i
 
   // 5,096 byte-bound input tokens (1,000 bytes and the 4,096 allowance) at $2, and 1,000 output
   // tokens at $5, per million
-  expect([stored.routes['preview']?.day.dollars, stored.sandboxes['alpha']?.tokens]).toStrictEqual([
-    0.015192, 6096,
+  expect([stored.routes['preview']?.day.micros, stored.sandboxes['alpha']?.tokens]).toStrictEqual([
+    15_192, 6096,
   ]);
 });
 
@@ -233,8 +233,8 @@ test('it charges the output bound for a reply whose usage holds only its input',
 
   // 5,096 byte-bound input tokens beat the 900 reported, so they are priced at $2, with 1,000
   // output tokens at $5, per million
-  expect([stored.routes['preview']?.day.dollars, stored.sandboxes['alpha']?.tokens]).toStrictEqual([
-    0.015192, 6096,
+  expect([stored.routes['preview']?.day.micros, stored.sandboxes['alpha']?.tokens]).toStrictEqual([
+    15_192, 6096,
   ]);
 });
 
@@ -262,7 +262,7 @@ test('it adds nothing for a reply with no usage that spent nothing', async () =>
 
   const stored = await ctx.store.read();
 
-  expect([stored.lost, stored.routes['preview']?.day.dollars]).toStrictEqual([false, 0]);
+  expect([stored.lost, stored.routes['preview']?.day.micros]).toStrictEqual([false, 0]);
 });
 
 test('it logs once that a limit was reached', async () => {

@@ -15,6 +15,13 @@ export interface SpendFacts {
   readonly routeRaises: Readonly<Record<string, number>>;
   readonly limits: SpendTurnLimits;
   readonly now: number;
+
+  // the instant before the read that the status came from, so a period that ended after it still
+  // counts for the status
+  readonly statusAtMs: number;
+
+  // the place of these facts among the facts that were read, which a settle checks for staleness
+  readonly order: number;
   readonly periods: Readonly<Record<PeriodName, SpendPeriodStart>>;
 }
 

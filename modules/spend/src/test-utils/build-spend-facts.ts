@@ -14,6 +14,8 @@ export function buildSpendFacts(overrides: Partial<SpendFacts> = {}): SpendFacts
     routeRaises: {},
     limits: { dayTurns: 1000, dayTurnCap: 2000, monthTurns: 20_000 },
     now,
+    statusAtMs: now,
+    order: 1,
     periods: buildSpendPeriods(now, 'UTC'),
     ...overrides,
   };

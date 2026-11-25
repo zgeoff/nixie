@@ -3,6 +3,7 @@ import type { PeriodStore } from '../types';
 import { buildFreshStore } from './build-fresh-store';
 import { parsePeriodStore } from './parse-period-store';
 import { sandboxNameSchema } from './sandbox-name-schema';
+import { toMicros } from './to-micros';
 
 export type StartStore =
   | { readonly kind: 'routes'; readonly store: PeriodStore }
@@ -73,7 +74,12 @@ export function parseStartStore(
         sandboxes: Object.fromEntries(
           Object.entries(sandboxes).map(([name, held]) => [
             name,
-            { dollars: held.dollars, tokens: held.tokens, limit: held.limit, lastRefusal: null },
+            {
+              micros: toMicros(held.dollars),
+              tokens: held.tokens,
+              limit: held.limit,
+              lastRefusal: null,
+            },
           ]),
         ),
       },

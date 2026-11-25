@@ -27,6 +27,8 @@ export async function writeSpendRaise(
   context: SpendContext,
   request: RaiseRequest & { readonly by: string },
 ): Promise<SpendRaiseResult> {
+  const readAtMs = context.clock.now();
+
   const [status] = await Promise.all([context.gateway.readStatus(), readPlanLogins(context)]);
 
   if (status.kind !== 'ok') {
@@ -38,6 +40,8 @@ export async function writeSpendRaise(
   if (refusal !== null) {
     return refusal;
   }
+
+  const postedAtMs = context.clock.now();
 
   const posted = await postRouteRaise(context, request);
 
@@ -58,8 +62,9 @@ export async function writeSpendRaise(
   const facts = await readSpendFacts(context);
 
   const after = posted?.kind === 'ok' ? posted.value : status.value;
+  const statusAtMs = posted?.kind === 'ok' ? postedAtMs : readAtMs;
 
-  const stop = await settleSpendStop(context, { ...facts, status: after });
+  const stop = await settleSpendStop(context, { ...facts, status: after, statusAtMs });
 
   const isRouteTripped = Object.values(after.routes).some(
     (route) => route.day.tripped || route.month.tripped,

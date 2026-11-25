@@ -1,6 +1,6 @@
 import type { Overrides, PeriodStore, RefusalCounter } from '../types';
 import type { RouteLimitsByID } from './collect-trips';
-import { isDollarLimitReached } from './is-dollar-limit-reached';
+import { isLimitReached } from './is-limit-reached';
 import { pickRouteLimit } from './pick-route-limit';
 
 export type PeriodsRefusal =
@@ -81,10 +81,10 @@ export function pickPeriodsRefusal(ask: RefusalAsk): PeriodsRefusal | null {
 
   const reached = (
     [
-      ['route_day', day, periods?.day.dollars],
-      ['route_month', month, periods?.month.dollars],
+      ['route_day', day, periods?.day.micros],
+      ['route_month', month, periods?.month.micros],
     ] as const
-  ).find(([, limit, spent]) => spent !== undefined && isDollarLimitReached(spent, limit));
+  ).find(([, limit, spent]) => spent !== undefined && isLimitReached(spent, limit));
 
   if (reached !== undefined) {
     const period = reached[0] === 'route_day' ? 'day' : 'month';
@@ -102,7 +102,7 @@ export function pickPeriodsRefusal(ask: RefusalAsk): PeriodsRefusal | null {
   if (
     held?.limit !== undefined &&
     held.limit !== null &&
-    (isDollarLimitReached(held.dollars, held.limit.dollars) || held.tokens >= held.limit.tokens)
+    (isLimitReached(held.micros, held.limit.dollars) || held.tokens >= held.limit.tokens)
   ) {
     return {
       kind: 'limit_reached',
