@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
+import { useEffect, useRef } from 'react';
 import { css } from '../styled-system/css';
 import { useBlobURL } from '../utils/use-blob-url';
 import { useNixieClient } from '../utils/use-nixie-client';
@@ -7,6 +8,9 @@ import { useNixieClient } from '../utils/use-nixie-client';
 export interface DeviceImageProps {
   readonly image: string;
   readonly fit: 'whole' | 'fill';
+
+  // called once with the reason when the picture cannot be read
+  readonly onFail?: (message: string) => void;
 }
 
 const whole = css({ height: '100%', objectFit: 'contain', width: '100%' });
@@ -28,6 +32,16 @@ export function DeviceImage(props: DeviceImageProps): ReactNode {
   });
 
   const url = useBlobURL(bytes.data);
+  const failure = bytes.error?.message;
+  const onFail = props.onFail;
+  const reported = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (failure !== undefined && reported.current !== failure) {
+      reported.current = failure;
+      onFail?.(failure);
+    }
+  }, [failure, onFail]);
 
   if (url === null) {
     return null;

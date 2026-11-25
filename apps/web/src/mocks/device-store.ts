@@ -7,6 +7,11 @@ const resizes = new Collection({
   schema: z.object({ width: z.int(), height: z.int(), pixelRatio: z.number() }),
 });
 
+// the errors that devices.pageError received, so a test reads what the page reported
+const pageErrors = new Collection({
+  schema: z.object({ region: z.string(), shown: z.string(), message: z.string() }),
+});
+
 // the sessions that hold no device row: a session has one unless it is listed here
 const sessionsWithoutDevice = new Collection({
   schema: z.object({ sessionID: z.uuid() }),
@@ -19,12 +24,14 @@ const layoutHolder: { layout: Extract<DeviceEvent, { kind: 'layout' }>['layout']
 
 export const deviceStore = {
   resizes,
+  pageErrors,
   layoutHolder,
   sessionsWithoutDevice,
   hasDevice: (sessionID: string): boolean =>
     sessionsWithoutDevice.findFirst((query) => query.where({ sessionID })) === undefined,
   reset: (): void => {
     resizes.clear();
+    pageErrors.clear();
     sessionsWithoutDevice.clear();
 
     layoutHolder.layout = null;

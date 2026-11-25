@@ -5,6 +5,8 @@ import { reusedIDErrors } from './reused-id-errors';
 import { screenContentSchema } from './screen-content-schema';
 import { signedIn } from './signed-in';
 
+export const pageErrorMessageLimit = 2000;
+
 export const pixelsSchema = z.object({
   width: z.int().min(1).max(20_000),
   height: z.int().min(1).max(20_000),
@@ -25,6 +27,9 @@ const layoutRegionSchema = z.object({
 
   // null while the region is blank
   content: regionContentSchema.nullable(),
+
+  // the short ID of the record that holds the content, which an error the region reports names
+  shown: z.string().nullable(),
   until: z.iso.datetime().nullable(),
 });
 
@@ -64,6 +69,22 @@ export const devicesContract = {
     .output(z.object({ deviceID: z.string() })),
 
   resize: ownDevice.input(pixelsSchema).output(z.object({})),
+
+  // An error that a region's content raised on the device, such as an uncaught error. The call
+  // names the content by its shown ID, and returns STALE with no change when the region shows
+  // other content by now.
+  pageError: ownDevice
+    .errors({
+      STALE: { message: 'The region no longer shows that content', status: 409 },
+    })
+    .input(
+      z.object({
+        region: z.string().min(1).max(32),
+        shown: z.string().min(1).max(100),
+        message: z.string().min(1).max(pageErrorMessageLimit),
+      }),
+    )
+    .output(z.object({})),
 
   setCapability: ownDevice
     .input(z.object({ capability: z.enum(['screen']), isOn: z.boolean() }))

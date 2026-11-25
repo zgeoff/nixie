@@ -10,6 +10,9 @@ const pixelPNG = Uint8Array.fromBase64(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
 );
 
+// the image that no device shows, which readImage refuses
+export const missingImage = 'missing-image';
+
 export const mockDeviceProcedures = {
   register: os.devices.register.handler((options) => {
     const session = requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
@@ -37,6 +40,18 @@ export const mockDeviceProcedures = {
     return {};
   }),
 
+  pageError: os.devices.pageError.handler(async (options) => {
+    const session = requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+    if (!deviceStore.hasDevice(session.sessionID)) {
+      throw options.errors.NOT_A_DEVICE();
+    }
+
+    await deviceStore.pageErrors.create(options.input);
+
+    return {};
+  }),
+
   setCapability: os.devices.setCapability.handler((options) => {
     const session = requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
 
@@ -52,6 +67,10 @@ export const mockDeviceProcedures = {
 
     if (!deviceStore.hasDevice(session.sessionID)) {
       throw options.errors.NOT_A_DEVICE();
+    }
+
+    if (options.input.image === missingImage) {
+      throw options.errors.NOT_SHOWN();
     }
 
     return new File([pixelPNG], 'image', { type: 'image/png' });
