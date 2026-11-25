@@ -1,21 +1,7 @@
 // Maps what GPT-Live said before a cut onto the text nixie sent it. GPT-Live paraphrases, so the
 // spoken words are aligned to the sent words by their longest common subsequence, and the count is
 // the sent text up to the end of the last sent word that was spoken.
-const numberWords: Record<string, string> = {
-  eight: '8',
-  eleven: '11',
-  five: '5',
-  four: '4',
-  nine: '9',
-  one: '1',
-  seven: '7',
-  seventeen: '17',
-  six: '6',
-  ten: '10',
-  three: '3',
-  twelve: '12',
-  two: '2',
-};
+import { numberWords } from './number-words.ts';
 
 export function pickHeardChars(sentText: string, spokenText: string): number {
   const sent = collectWords(sentText);

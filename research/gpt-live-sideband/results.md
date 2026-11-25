@@ -48,6 +48,10 @@ The probes:
 - In `quiet`, the probe sets `acknowledgement_delay_ms: 800`, answers each of 2 delegations at once
   with an empty `session.thinking.append`, sends the answer 8 s later, and then sends a line as a
   commentary part with a null delegation ID.
+- In `parts`, each trial is a session of its own with `acknowledgement_delay_ms: 800`. The caller
+  asks one question, the probe sends an empty `session.thinking.append` as soon as the delegation
+  arrives, and it sends the answer 1.2 s later in one of 3 shapes, as
+  [Question 6](#question-6-sentence-parts-under-the-hold) describes.
 
 Sessions and their billed seconds, from `session.closed`:
 
@@ -62,9 +66,12 @@ Sessions and their billed seconds, from `session.closed`:
 | `delegation`                                             | `gpt-live-1.1` | 69             |
 | `cut`                                                    | `gpt-live-1.1` | 58             |
 | `quiet`                                                  | `gpt-live-1`   | 41             |
+| `parts`, a pilot of 3 sessions                           | `gpt-live-1`   | 53             |
+| `parts`, 24 sessions with parts 300 to 800 ms apart      | `gpt-live-1`   | 387            |
+| `parts`, 16 sessions with parts 3 s apart                | `gpt-live-1`   | 271            |
 
-The total is about 453 s, 7.6 minutes, or $0.38 at $0.05 a minute. The synthetic speech cost under
-$0.01.
+The total is about 1,164 s, 19.4 minutes, or $0.97 at $0.05 a minute. The synthetic speech cost
+under $0.01.
 
 ## Question 1: the request's text
 
@@ -259,6 +266,141 @@ So a reconnect needs a round trip to the device. The same peer connection and mi
 the audio of the new session, but the device's captions need another route, such as a new data
 channel or nixie's own live stream; the spike tried neither.
 
+## Question 6: sentence parts under the hold
+
+Does GPT-Live speak a lead-in sentence part and then wait for the next part, or invent the rest,
+when the adapter holds it with the acknowledgement delay and an empty thinking part?
+
+GPT-Live does not reliably wait. With parts 300 to 800 ms apart, it never had to: the next part
+always arrived before or while it spoke the part before. It invented nothing in 8 of 8 trials of
+shape b, with the lead-in, and in 8 of 8 trials of shape c, with full statements only. With parts 3
+s apart, shape b drew invented facts after the lead-in in 4 of 8 trials, and GPT-Live went quiet to
+wait for the next part in 2 of 8. Both waits lasted 1000 ms, so no trial shows GPT-Live waiting
+longer than about 1 s. Shape c at 3 s drew an invented fact in 1 of 8 trials, and GPT-Live went
+quiet to wait in 0 of 8.
+
+### Setup of the parts probe
+
+Each trial ran in a session of its own, so no earlier answer sat in GPT-Live's context. The session
+used the voice prompt of the other probes,
+`delegation: { acknowledgement_delay_ms: 800, type: 'client' }` and `store: false`, on `gpt-live-1`.
+The caller asked one of 3 questions. The probe sent an empty `session.thinking.append` as soon as
+`session.delegation.created` arrived, and the first part 1.2 s later, inside the design's
+`hold_after_ms` of 1500.
+
+The 3 answers carry the same facts in each shape:
+
+| Shape | Parts                                                                                        |
+| ----- | -------------------------------------------------------------------------------------------- |
+| a     | the whole answer as one part: the lead-in sentence, then both statements                     |
+| b     | the lead-in sentence, such as "Tomorrow morning you have two things.", then each statement   |
+| c     | each statement alone, such as "At nine tomorrow, you have a dentist check-up on Elm Street." |
+
+Shapes took turns, and so did the answers: a calendar, 2 messages and a weekend forecast. In the
+first batch, the gap between parts took turns at 300, 550 and 800 ms, in step with the answers: the
+calendar always ran at 300 ms, the messages at 550 ms and the forecast at 800 ms. So shape b had
+only 2 trials at 800 ms, and the earlier spike's failing lead-in, the calendar's, ran only at 300
+ms. A second batch ran shapes b and c with a 3 s gap, the time a turn could take to write its next
+sentence after a tool call.
+
+Each trial was scored from the log with [`report-parts.ts`](report-parts.ts):
+
+- **Invented**: each spoken word that appears in no part, from
+  [`collectNewWords`](collect-new-words.ts), then read by hand. "Fact" means the speech layer said
+  something the parts did not hold or contradicted. Paraphrase such as "you've got" is not counted.
+- **First audio**: from sending the first part to the first loud output audio on the sideband, on
+  the server's clock. It includes about 0.7 s from sending a part to its
+  `session.commentary.appended`.
+- **Quiet when the next part arrived**: on the session timeline, how long the output audio had been
+  silent when each later part's `appended` event came. 0 means GPT-Live was still speaking. "Before
+  speech" means it had not started.
+
+### Results of the parts probe
+
+Every one of the 40 trials delegated, and GPT-Live said nothing between the delegation and the first
+part.
+
+| Shape | Gap        | Trials | Invented a fact | Changed words, no new fact | Median first audio (range) | Quiet for a later part |
+| ----- | ---------- | ------ | --------------- | -------------------------- | -------------------------- | ---------------------- |
+| a     | none       | 8      | 0               | 1                          | 749 ms (694–1105)          | no later part          |
+| b     | 300–800 ms | 8      | 0               | 2                          | 1323 ms (1100–1517)        | 0 of 8                 |
+| c     | 300–800 ms | 8      | 0               | 1                          | 890 ms (714–1327)          | 0 of 8                 |
+| b     | 3 s        | 8      | 4               | 1                          | 1185 ms (966–1380)         | 2 of 8, 1000 ms each   |
+| c     | 3 s        | 8      | 1               | 0                          | 908 ms (658–1670)          | 0 of 8                 |
+
+Each trial:
+
+| Shape | Gap    | Answer   | Invented                                                                   | First audio | Quiet when the next part arrived |
+| ----- | ------ | -------- | -------------------------------------------------------------------------- | ----------- | -------------------------------- |
+| a     | none   | calendar | none                                                                       | 783 ms      | no later part                    |
+| a     | none   | messages | none                                                                       | 694 ms      | no later part                    |
+| a     | none   | forecast | none                                                                       | 704 ms      | no later part                    |
+| a     | none   | calendar | none; dropped "Tomorrow morning"                                           | 900 ms      | no later part                    |
+| a     | none   | messages | none                                                                       | 1105 ms     | no later part                    |
+| a     | none   | forecast | none                                                                       | 709 ms      | no later part                    |
+| a     | none   | calendar | none                                                                       | 885 ms      | no later part                    |
+| a     | none   | messages | none                                                                       | 714 ms      | no later part                    |
+| b     | 300 ms | calendar | none                                                                       | 1512 ms     | before speech, before speech     |
+| b     | 550 ms | messages | none                                                                       | 1517 ms     | before speech, 0 ms              |
+| b     | 800 ms | forecast | none                                                                       | 1313 ms     | 0 ms, 0 ms                       |
+| b     | 300 ms | calendar | none; dropped the lead-in                                                  | 1332 ms     | before speech, 0 ms              |
+| b     | 550 ms | messages | none; "You've got two."                                                    | 1196 ms     | 0 ms, 0 ms                       |
+| b     | 800 ms | forecast | none                                                                       | 1100 ms     | 0 ms, 0 ms                       |
+| b     | 300 ms | calendar | none                                                                       | 1296 ms     | before speech, 0 ms              |
+| b     | 550 ms | messages | none                                                                       | 1403 ms     | before speech, 0 ms              |
+| c     | 300 ms | calendar | none                                                                       | 755 ms      | 0 ms                             |
+| c     | 550 ms | messages | none                                                                       | 1327 ms     | before speech                    |
+| c     | 800 ms | forecast | none                                                                       | 1217 ms     | 0 ms                             |
+| c     | 300 ms | calendar | none                                                                       | 925 ms      | 0 ms                             |
+| c     | 550 ms | messages | none                                                                       | 884 ms      | 0 ms                             |
+| c     | 800 ms | forecast | none                                                                       | 896 ms      | 0 ms                             |
+| c     | 300 ms | calendar | none                                                                       | 714 ms      | 0 ms                             |
+| c     | 550 ms | messages | none; added "Okay, here's what's new."                                     | 741 ms      | 0 ms                             |
+| b     | 3 s    | calendar | fact: "team stand-up at nine"                                              | 1009 ms     | 0 ms, 0 ms                       |
+| b     | 3 s    | messages | none                                                                       | 1139 ms     | 1000 ms, 0 ms                    |
+| b     | 3 s    | forecast | fact: "Saturday looks mild but breezy", where the part said cool and windy | 1280 ms     | 0 ms, 200 ms                     |
+| b     | 3 s    | calendar | fact: "a team standup at 9"                                                | 966 ms      | 0 ms, 0 ms                       |
+| b     | 3 s    | messages | fact: "One's from Alex: 'Hey, are we still on for lunch tomorrow?'"        | 1138 ms     | 0 ms, 0 ms                       |
+| b     | 3 s    | forecast | none; "Saturday looks mostly like 12 degrees"                              | 1380 ms     | 0 ms, 0 ms                       |
+| b     | 3 s    | calendar | none                                                                       | 1366 ms     | 0 ms, 0 ms                       |
+| b     | 3 s    | messages | none                                                                       | 1230 ms     | 1000 ms, 0 ms                    |
+| c     | 3 s    | calendar | none                                                                       | 658 ms      | 0 ms                             |
+| c     | 3 s    | messages | fact: "You have one new message:", where there were 2                      | 1670 ms     | 0 ms                             |
+| c     | 3 s    | forecast | none                                                                       | 1138 ms     | 0 ms                             |
+| c     | 3 s    | calendar | none                                                                       | 738 ms      | 0 ms                             |
+| c     | 3 s    | messages | none                                                                       | 896 ms      | 0 ms                             |
+| c     | 3 s    | forecast | none                                                                       | 919 ms      | 200 ms                           |
+| c     | 3 s    | calendar | none                                                                       | 833 ms      | 0 ms                             |
+| c     | 3 s    | messages | none                                                                       | 932 ms      | 0 ms                             |
+
+In the rows with a 3 s gap, 0 ms means GPT-Live was speaking when the next part came: either still
+the lead-in, or words it had invented after it. The "Invented" column tells the two apart.
+
+An invented fact comes out mid-sentence, before the real part arrives, and GPT-Live then speaks the
+real part beside it. In one messages trial, the lead-in "You have two new messages." went on as
+"One's from Alex: 'Hey, are we still on for lunch tomorrow?'", and the school's message, which
+arrived during that line, became "The other's from the school", followed by "Also," and the bike
+shop: 3 messages after saying 2. In the forecast trial, the server received "Saturday" before it
+sent the part with Saturday's weather. On the session timeline, "Saturday" starts 1000 ms before
+that part's `appended`, and "looks mild" ends as the part is accepted:
+
+```text
+said [5600-5800] " Saturday"
+session.commentary.append  part_2  "Saturday is cool and windy, around twelve degrees."
+said [6200-6400] " looks"   said [6400-6600] " mild"
+session.commentary.appended [6600-6800] part_2
+said [6800-7000] " but"   said [7000-7200] " breezy"   … " around twelve degrees."
+```
+
+Shape b also started speaking about 400 ms later than shapes a and c, at 1323 ms against 749 and 890
+ms in the first batch. The spike did not find why. Sending the whole answer as one part was fastest
+here, because every part was ready within 1.6 s of the first; the probe did not model a turn that
+writes its sentences slowly.
+
+So a whole sentence is not a safe part. A lead-in is safe only when the next part arrives before
+GPT-Live finishes speaking it, and a full statement still drew an invented count in 1 trial of 8 at
+a 3 s gap.
+
 ## Contract lines that must change
 
 Each line below is quoted from [Voice calls](../../docs/design/platform/channels/voice.md), with the
@@ -277,7 +419,10 @@ reason it no longer holds.
 
 2. "The calls module sends a turn's reply text to the speech layer in parts as the turn writes it,
    and sends `final: true` with the last part." A part that leads in to more text makes GPT-Live
-   invent the rest. Each part must be a complete statement, such as a whole sentence of facts.
+   invent the rest. Each part must be safe to speak alone, and a lead-in sentence such as "You have
+   two new messages." is not, as [Question 6](#question-6-sentence-parts-under-the-hold) shows. How
+   the calls module splits a reply into parts is an open question for the owner, on
+   [the call thread and the speech layer](https://linear.app/zgeoff/issue/GEO-2862).
 3. "Every hand-off gets a final part, even when the turn wrote no text, so the speech layer never
    waits on it." An empty part made GPT-Live claim a result in 3 of 3 sessions. A turn with no text
    must send a fixed line from `voice/`.
@@ -337,3 +482,5 @@ reason it no longer holds.
 - A second request while a hand-off is running.
 - A session that omits `delegation`, and a session seeded with a long call through `input`.
 - How the device's playback delay varies, beyond the 6 trials here.
+- Sentence parts on `gpt-live-1.1`, gaps between 800 ms and 3 s, and a hold longer than 1.2 s before
+  the first part.
