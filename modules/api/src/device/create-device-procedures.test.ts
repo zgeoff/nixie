@@ -42,16 +42,73 @@ async function setupTest() {
     return { ...enrolled, client: buildTestClient(api.url, enrolled.token), token: enrolled.token };
   };
 
+  const call = makeDeviceToolCaller({
+    log: api.context.log,
+    definitions: api.context.definitions,
+    clock: api.context.clock,
+    streams: api.context.clients.devices,
+  });
+
+  // a device whose screen is on and follows its stream, with a layout of one region that holds
+  // markdown, and the ID the stream gave that content
+  const startRegionDevice = async () => {
+    const device = await enrol('device', 'desk panel');
+    const row = await readDeviceByIdentity(api.writer.db, device.sessionID);
+
+    invariant(row, 'the enrolled device has its row');
+
+    await device.client.devices.setCapability({ capability: 'screen', isOn: true });
+
+    const stopped = new AbortController();
+
+    const events = await followTestDevice(
+      device.client,
+      { pixels: { width: 1872, height: 1404, pixelRatio: 2 } },
+      { signal: stopped.signal },
+    );
+
+    await events.next();
+
+    await call('device.layout', {
+      device: row.deviceID,
+      columns: ['1fr'],
+      rows: ['1fr'],
+      regions: [{ name: 'pond', column: 1, row: 1 }],
+    });
+
+    await call('device.region', {
+      device: row.deviceID,
+      region: 'pond',
+      content: { kind: 'markdown', markdown: 'Ripples' },
+    });
+
+    let shown: string | null = null;
+
+    while (shown === null) {
+      const next = await events.next();
+
+      shown =
+        next.value !== undefined && next.value.kind === 'layout'
+          ? (next.value.layout?.regions[0]?.shown ?? null)
+          : null;
+    }
+
+    return {
+      client: device.client,
+      deviceID: row.deviceID,
+      shown,
+      stop: () => {
+        stopped.abort();
+      },
+    };
+  };
+
   return {
     ...api,
     ownerClient,
     enrol,
-    call: makeDeviceToolCaller({
-      log: api.context.log,
-      definitions: api.context.definitions,
-      clock: api.context.clock,
-      streams: api.context.clients.devices,
-    }),
+    call,
+    startRegionDevice,
     readSessionCount: async () => {
       const sessions = await readSessions(api.context, null);
 
@@ -129,6 +186,10 @@ test.each([
   ],
   ['readImage', (client: Client) => client.devices.readImage({ image: 'k3x9m2p7qa' })],
   ['resize', (client: Client) => client.devices.resize({ width: 800, height: 600 })],
+  [
+    'pageError',
+    (client: Client) => client.devices.pageError({ region: 'pond', shown: 'x', message: 'boom' }),
+  ],
 ])('it tells a full session with no device row to register before %s', async (_name, call) => {
   const ctx = await setupTest();
   const session = await ctx.enrol('full', 'phone');
@@ -466,6 +527,49 @@ test('it updates the size that devices.list reads when a session resizes', async
   });
 });
 
+test('it keeps the time zone that a device sends with its size', async () => {
+  const ctx = await setupTest();
+  const device = await ctx.enrol('device', 'desk panel');
+  const row = await readDeviceByIdentity(ctx.writer.db, device.sessionID);
+
+  const stopped = new AbortController();
+
+  const events = await followTestDevice(
+    device.client,
+    { pixels: { width: 800, height: 600, timeZone: 'Australia/Sydney' } },
+    { signal: stopped.signal },
+  );
+
+  await events.next();
+
+  const opened = ctx.context.clients.devices.readPixels(row?.deviceID ?? '');
+
+  await device.client.devices.resize({
+    width: 1024,
+    height: 768,
+    pixelRatio: 2,
+    timeZone: 'Europe/London',
+  });
+
+  const resized = ctx.context.clients.devices.readPixels(row?.deviceID ?? '');
+
+  stopped.abort();
+
+  expect({ opened, resized }).toStrictEqual({
+    opened: { width: 800, height: 600, pixelRatio: 1, timeZone: 'Australia/Sydney' },
+    resized: { width: 1024, height: 768, pixelRatio: 2, timeZone: 'Europe/London' },
+  });
+});
+
+test('it refuses a resize with a time zone that does not exist', async () => {
+  const ctx = await setupTest();
+  const device = await ctx.enrol('device', 'desk panel');
+
+  expect(
+    device.client.devices.resize({ width: 800, height: 600, timeZone: 'Mars/Olympus' }),
+  ).rejects.toThrow();
+});
+
 test('it refuses a resize outside the screen bounds', async () => {
   const ctx = await setupTest();
   const device = await ctx.enrol('device', 'desk panel');
@@ -500,6 +604,7 @@ test('it lets a device session reach only the paths of its own device', async ()
 
   expect(reached.filter((entry) => entry.isReached).map((entry) => entry.path)).toStrictEqual([
     '/rpc/devices/resize',
+    '/rpc/devices/pageError',
     '/rpc/devices/setCapability',
     '/rpc/devices/readImage',
     '/rpc/live/follow',
@@ -932,4 +1037,52 @@ test('it keeps the last seen time of a session fresh while its device stream is 
   const afterBeat = await ctx.readLastSeen(device.sessionID);
 
   expect(afterBeat).toBeGreaterThan(afterOpen);
+});
+
+test('it hands the device the ID of the content of each region', async () => {
+  const ctx = await setupTest();
+  const region = await ctx.startRegionDevice();
+
+  region.stop();
+
+  expect(region.shown).toBeString();
+});
+
+test('it keeps an error that a device reports for the content its region shows, for device.preview', async () => {
+  const ctx = await setupTest();
+  const region = await ctx.startRegionDevice();
+
+  await region.client.devices.pageError({
+    region: 'pond',
+    shown: region.shown ?? '',
+    message: 'TypeError: x is undefined',
+  });
+
+  const outcome = await ctx.call('device.preview', { device: region.deviceID });
+
+  region.stop();
+
+  expect(outcome).toMatchObject({
+    status: 'ok',
+    result: { errors: [{ region: 'pond', message: 'TypeError: x is undefined' }] },
+  });
+});
+
+test('it refuses an error for content that its region no longer shows, and keeps nothing', async () => {
+  const ctx = await setupTest();
+  const region = await ctx.startRegionDevice();
+
+  const refused = region.client.devices.pageError({
+    region: 'pond',
+    shown: 'stale-id',
+    message: 'boom',
+  });
+
+  expect(refused).rejects.toMatchObject({ code: 'STALE' });
+
+  const outcome = await ctx.call('device.preview', { device: region.deviceID });
+
+  region.stop();
+
+  expect(outcome).toMatchObject({ result: { errors: [] } });
 });

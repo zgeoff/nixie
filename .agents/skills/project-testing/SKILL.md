@@ -87,12 +87,15 @@ match the test file.
 
 ### One unit test file
 
-`bun run test` runs 3 commands before the unit tests. Before you run `bun test <path>` on one unit
+`bun run test` runs 4 commands before the unit tests. Before you run `bun test <path>` on one unit
 test file, run each one that the file needs, from the repo root:
 
 - Run `bun run models` to fetch the memory encoder's model files, for a file in
   `adapters/encoder-onnx/` or one that loads the encoder. Without them, `bun test` skips the
   encoder's suites, and a skipped suite has not passed.
+- Run `bun run test:chromium` to install the headless browser that the render guest starts, for a
+  file in `guests/render/` or one that draws a preview. Without it, the file fails at the browser
+  launch.
 - Run `bun run test:bundles` to build nixie's test and release bundles when the file reads a bundle
   through [`readTestBundle`](../../../apps/server/src/test-utils/read-test-bundle.ts), and again
   after each change to a server package. A test that finds no bundle builds one, and runs past its

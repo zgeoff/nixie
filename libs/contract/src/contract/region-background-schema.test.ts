@@ -56,6 +56,7 @@ test.each([
         rowSpan: 1,
         background: null,
         content: null,
+        shown: null,
         until: null,
       })),
     },

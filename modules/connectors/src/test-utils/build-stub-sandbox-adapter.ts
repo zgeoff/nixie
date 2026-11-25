@@ -61,6 +61,9 @@ export interface StubSandboxAdapterOptions {
   // a file that copyIn silently drops, so a copy of it comes back missing
   readonly skipCopyIn?: (path: string) => boolean;
 
+  // true when a guest ignores its stop, so its exit ends only with its sandbox
+  readonly isStopIgnored?: boolean;
+
   // true when a sandbox can sleep in memory, as an imp can; its sleep and wake do nothing
   readonly isSuspendable?: boolean;
 }
@@ -119,6 +122,7 @@ export function buildStubSandboxAdapter(
         exec: options.exec ?? null,
         skipCopyIn: options.skipCopyIn ?? (() => false),
         isSuspendable: options.isSuspendable ?? false,
+        isStopIgnored: options.isStopIgnored ?? false,
         readMemoryKills:
           options.readMemoryKills ?? (() => Promise.resolve({ kind: 'unsupported' })),
       });
@@ -173,6 +177,7 @@ interface StubState {
   readonly exec: StubExec | null;
   readonly skipCopyIn: (path: string) => boolean;
   readonly isSuspendable: boolean;
+  readonly isStopIgnored: boolean;
   readonly readMemoryKills: () => Promise<MemoryKillRead>;
 }
 
@@ -196,7 +201,9 @@ function buildStubSandbox(id: string, spec: SandboxSpec, state: StubState): Sand
 
       state.spawned.push({ sandboxID: id, argv: command.argv, env: command.env ?? {} });
 
-      return Promise.resolve(startExecStream(startGuest(state.guest), command.maxMessageBytes));
+      return Promise.resolve(
+        startExecStream(startGuest(state.guest, state.isStopIgnored), command.maxMessageBytes),
+      );
     },
     copyIn: (specs) => {
       if (!state.live.has(id)) {
@@ -255,7 +262,7 @@ function buildStubSandbox(id: string, spec: SandboxSpec, state: StubState): Sand
   };
 }
 
-function startGuest(guest: StubGuest): ProcessIO {
+function startGuest(guest: StubGuest, isStopIgnored: boolean): ProcessIO {
   const stdin = new TransformStream<Uint8Array, Uint8Array>(
     {},
     { highWaterMark: Number.POSITIVE_INFINITY },
@@ -277,7 +284,9 @@ function startGuest(guest: StubGuest): ProcessIO {
     closeStdin: () => stdinWriter.close(),
     exit: exit.promise,
     stop: () => {
-      void stopProcess(process, { code: null, signal: 'SIGTERM' });
+      if (!isStopIgnored) {
+        void stopProcess(process, { code: null, signal: 'SIGTERM' });
+      }
     },
   };
 }

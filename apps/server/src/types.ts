@@ -164,6 +164,11 @@ export interface PartDeclaration<Values, Name extends keyof Values> {
   // covers it.
   readonly images?: (config: DeploymentConfig) => readonly SandboxImageKey[];
 
+  // The image keys this part uses when the sandbox manifest holds them. nixie adds each one the
+  // manifest holds and starts without the rest, so the part reads a missing image as its own
+  // absence.
+  readonly optionalImages?: (config: DeploymentConfig) => readonly SandboxImageKey[];
+
   readonly start: (parts: PartReader<Values>) => Promise<Values[Name]>;
 }
 

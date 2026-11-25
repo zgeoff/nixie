@@ -1,6 +1,13 @@
 // This file imports nothing, because release scripts import it by relative path in a job that
 // runs no install.
-export const sandboxImageKeys = ['conversation', 'fetch', 'code', 'codex', 'computer'] as const;
+export const sandboxImageKeys = [
+  'conversation',
+  'fetch',
+  'code',
+  'codex',
+  'computer',
+  'render',
+] as const;
 
 export type SandboxImageKey = (typeof sandboxImageKeys)[number];
 
@@ -18,4 +25,5 @@ export const sandboxImageRecords: Readonly<Record<SandboxImageKey, SandboxImageR
   code: { repository: 'nixie-code', dockerfile: 'guests/code/Dockerfile' },
   codex: { repository: 'nixie-codex', dockerfile: 'guests/codex/Dockerfile' },
   computer: { repository: 'nixie-computer', dockerfile: 'guests/computer/Dockerfile' },
+  render: { repository: 'nixie-render', dockerfile: 'guests/render/Dockerfile' },
 };

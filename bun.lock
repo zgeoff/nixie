@@ -377,6 +377,14 @@
         "entities": "catalog:",
       },
     },
+    "guests/render": {
+      "name": "@heynixie/render",
+      "version": "0.0.0",
+      "dependencies": {
+        "@heynixie/wire": "workspace:*",
+        "playwright-core": "catalog:",
+      },
+    },
     "integration": {
       "name": "@heynixie/integration",
       "version": "0.0.0",
@@ -774,8 +782,10 @@
         "@heynixie/db": "workspace:*",
         "@heynixie/log": "workspace:*",
         "@heynixie/tools": "workspace:*",
+        "@heynixie/wire": "workspace:*",
         "kysely": "catalog:",
         "tiny-invariant": "catalog:",
+        "ts-pattern": "catalog:",
         "zod": "catalog:",
       },
       "devDependencies": {
@@ -1723,6 +1733,8 @@
     "@heynixie/pulumi-k8s": ["@heynixie/pulumi-k8s@workspace:deploy/pulumi-k8s"],
 
     "@heynixie/reminders": ["@heynixie/reminders@workspace:modules/reminders"],
+
+    "@heynixie/render": ["@heynixie/render@workspace:guests/render"],
 
     "@heynixie/retry": ["@heynixie/retry@workspace:libs/retry"],
 

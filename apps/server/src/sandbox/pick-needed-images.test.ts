@@ -45,3 +45,24 @@ test('it names each missing image and what needs it in one error', () => {
     'nixie refuses to start: the profile chat-main on the agent-sdk harness needs the conversation image; the web_fetch part needs the fetch image, and the sandbox manifest holds no image',
   );
 });
+
+test('it leaves out an optional image that the manifest lacks', () => {
+  const ctx = setupTest();
+
+  expect(
+    pickNeededImages({ conversation: ctx.conversation }, [
+      { key: 'conversation', neededBy: 'a profile' },
+      { key: 'render', neededBy: 'the render part', isOptional: true },
+    ]),
+  ).toStrictEqual({ conversation: ctx.conversation });
+});
+
+test('it keeps an optional image that the manifest holds', () => {
+  const ctx = setupTest();
+
+  expect(
+    pickNeededImages({ fetch: ctx.fetch }, [
+      { key: 'fetch', neededBy: 'the render part', isOptional: true },
+    ]),
+  ).toStrictEqual({ fetch: ctx.fetch });
+});

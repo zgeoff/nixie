@@ -101,7 +101,7 @@ export const controlRoutes = {
     method: 'POST',
     path: '/control/layout-on-device',
     input: z.strictObject({
-      step: z.enum(['set', 'update', 'save', 'change', 'restore']),
+      step: z.enum(['set', 'update', 'save', 'change', 'restore', 'preview']),
       text: z.string().min(1),
     }),
     output: z.strictObject({ replies: z.int().positive() }),

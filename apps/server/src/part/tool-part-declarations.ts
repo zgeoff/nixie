@@ -20,6 +20,7 @@ import { collectHostHeldNames } from './collect-host-held-names';
 import type { ServerPartValues } from './server-part-values';
 import { startCodeRunPart } from './start-code-run-part';
 import { startComputerPart } from './start-computer-part';
+import { startRenderPart } from './start-render-part';
 import { startSandboxAdapterPart } from './start-sandbox-adapter-part';
 import { startWebFetchPart } from './start-web-fetch-part';
 import { startWorkerPart } from './start-worker-part';
@@ -70,6 +71,16 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
         adapter: parts.get('sandbox_adapter'),
         log: parts.get('context').apiContext.log,
         definitions: parts.get('context').apiContext.definitions,
+      }),
+  },
+  {
+    name: 'render',
+    needs: ['inputs', 'sandbox_adapter'],
+    optionalImages: () => ['render'],
+    start: (parts) =>
+      startRenderPart({
+        options: parts.get('inputs').options,
+        adapter: parts.get('sandbox_adapter'),
       }),
   },
   {
@@ -124,6 +135,7 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
       'context',
       'web_fetch',
       'computer',
+      'render',
       'code_run',
       'worker',
       'actions',
@@ -153,6 +165,7 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
         {
           webFetch: parts.get('web_fetch').tool,
           computer: parts.get('computer').tools,
+          render: parts.get('render'),
           coding: buildServerCodingTools(parts.get('context')),
 
           harnesses: collectProfileHarnesses(options.config.models),
