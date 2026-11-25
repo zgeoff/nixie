@@ -45,7 +45,7 @@ interface CodingAdapter {
     text: string,
     idempotencyKey: string,
   ): Promise<AdapterReply<{ messageRef: string }>>;
-  stop(session: SessionRef): Promise<AdapterReply<{ stopped: boolean }>>; // started or joined
+  stop(session: SessionRef): Promise<AdapterReply<{ stopped: boolean }>>; // started sessions only
   events(
     cursor: string | null,
     signal: AbortSignal,
