@@ -1,10 +1,28 @@
 import { expect, test } from 'bun:test';
+import { ZodToJsonSchemaConverter } from '@orpc/zod/zod4';
+import { z } from 'zod';
 import { deviceEventSchema } from './devices-contract';
 import { regionBackgroundSchema } from './region-background-schema';
 
 test.each(['black', 'teal', '#a0B1c2'])('it takes the background %s', (background) => {
   expect(regionBackgroundSchema.safeParse(background).success).toBeTrue();
 });
+
+test.each(['#0a1B2c', '#A0B1C2', '#a0b1c2'])(
+  'it gives an OpenAPI pattern that takes the background %s',
+  (background) => {
+    const [, converted] = new ZodToJsonSchemaConverter().convert(regionBackgroundSchema, {
+      strategy: 'input',
+    });
+
+    const hexSchema = z.object({ pattern: z.string() });
+    const hex = z.object({ anyOf: z.tuple([z.unknown(), hexSchema]) }).parse(converted);
+
+    const pattern = new RegExp(hex.anyOf[1].pattern, 'u');
+
+    expect(pattern.test(background)).toBeTrue();
+  },
+);
 
 test.each(['chartreuse', '#abc', '#12345g', 'rgb(0,0,0)', ''])(
   'it refuses the background %s',

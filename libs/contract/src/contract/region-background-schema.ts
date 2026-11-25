@@ -18,7 +18,9 @@ export const regionBackgroundNames = [
 
 // The most a layout takes: columns, rows and named regions.
 export const layoutLimits = { columns: 12, rows: 12, regions: 36 } as const;
-const hexColourPattern = /^#[0-9a-f]{6}$/iu;
+
+// OpenAPI carries a pattern without its flags, so the pattern spells out both cases.
+const hexColourPattern = /^#[0-9a-fA-F]{6}$/u;
 
 // A region's background: a colour from the fixed palette of names, or `#rrggbb`.
 export const regionBackgroundSchema = z.union([
