@@ -140,9 +140,10 @@ when the user answered that an unknown spawn happened. The sweep then cannot sto
 writes one `coding.session_lost` record on the task's thread, with no free text, and in the same
 commit sends the task's report target one waking `progress` message from the task. In that message,
 nixie says that the session may still run, and that the user can find it in the adapter's own list
-of sessions or join it through `coding.sessions`. A later sweep finds the `coding.session_lost`
-record and does nothing more. When the report target refuses the message, as a finished report
-target does, the record still stands, and the sweep logs `coding.lost_session_unreported` once.
+of sessions, or join it with `coding.start` by the short ID that `coding.sessions` lists. A later
+sweep finds the `coding.session_lost` record and does nothing more. When the report target refuses
+the message, as a finished report target does, the record still stands, and the sweep logs
+`coding.lost_session_unreported` once.
 
 ## The atc adapter and the server
 

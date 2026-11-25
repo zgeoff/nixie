@@ -10,7 +10,7 @@ and ends the task with a report when the session ends. Below are the start and t
 task, the runner's definition, its records, what one step does, and how the task ends. The tools
 nixie calls on a coding task are in [the tools](tools.md), and the adapter that the step calls is in
 [the atc adapter](atc.md). The terms, such as a bound session, a joined session, a hop and a report
-target, are in the [README](README.md#terms). Once the owner approves the design, build this part in
+target, are in the [README](README.md#terms). Build this part in
 [the atc runner](https://linear.app/zgeoff/issue/GEO-1843).
 
 ## Shape
@@ -341,7 +341,9 @@ tasks.list({ runner: 'atc', state: 'waiting', limit: 20 });
   declaration, its reconciliation and the adapter call its attempt makes. Each coding task's tool
   list holds these 4, so stage 2 of the decision point passes their attempts.
 - This work adds the starter rule `allow-coding-spawns`, which allows `coding.spawn`, because the
-  start call already met your rules. nixie therefore asks you at most once per start.
+  start call already met your rules. nixie therefore asks you to approve each start at most once.
+  When a spawn's outcome is unknown, nixie still asks you whether the session started, as
+  [what one step does](#what-one-step-does) shows.
 - The queue writes the outcome of every attempt that started, as it does for every action, so a
   spawn that finishes after its task stopped still leaves its outcome on the task's thread.
 - A join reads the session in its plan, then writes `task.created` and `coding.session_bound` with

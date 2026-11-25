@@ -10,9 +10,11 @@ describes. The [rules design](../../design/platform/policy/rules.md) holds the p
 and [the decision point](decision-point.md) covers the stages that decide a call.
 
 An allow rule can allow any call, with 2 exceptions. A call that widens the policy or raises a
-budget always asks, so no rule can give the assistant more room than the user approved. A call that
-spends passes only an allow rule with a [lift](budgets.md#lifts), which caps each purchase and
-charges a budget. A new tool never adds a third exception.
+budget always asks, so no rule can give the assistant more room than the user approved. A seed
+applies a widening from the definitions without asking, because the user wrote them, as
+[rules in force](#rules-in-force) describes. A call that spends passes only an allow rule with a
+[lift](budgets.md#lifts), which caps each purchase and charges a budget. A new tool never adds a
+third exception.
 
 ## The rule format
 
@@ -217,12 +219,12 @@ The proposal is a row of the `rule_change` family with the cause `proposed_rule`
 `always_ask` risk class. Its record, `rules.rule_proposed`, keeps the rule in erasable fields, so a
 record forget of the proposal removes it. The card offers these choices:
 
-| Control | What happens                                                                                          |
-| ------- | ----------------------------------------------------------------------------------------------------- |
-| Approve | A runtime change adds the rule as `proposed-<short ID>`, with the reason "proposed after 3 approvals" |
-| Not now | The decline choice: the group stays quiet for `policy.proposed_rules.quiet_days`                      |
-| Defer   | As [the approval record](approvals.md#defer) defines it                                               |
-| Edit    | Sends `rules.editProposedRule`, which withdraws the card and opens a new one with the edited rule     |
+| Control | What happens                                                                                                                                              |
+| ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Approve | A runtime change adds the rule as `proposed-<short ID>`, with the reason "proposed after <n> approvals", where `<n>` is `policy.proposed_rules.approvals` |
+| Not now | The decline choice: the group stays quiet for `policy.proposed_rules.quiet_days`                                                                          |
+| Defer   | As [the approval record](approvals.md#defer) defines it                                                                                                   |
+| Edit    | Sends `rules.editProposedRule`, which withdraws the card and opens a new one with the edited rule                                                         |
 
 A lapse of the proposal keeps the group quiet as Not now does, and a decline of a new action
 proposal in the group withdraws the open proposed rule. A `rules.change_lapsed` record for the

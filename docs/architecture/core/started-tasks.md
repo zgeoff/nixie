@@ -1,15 +1,15 @@
 # Started tasks
 
-A started task is a task that the conversation starts through the start tool, for work that needs
-its own context, can wait or lasts beyond the turn, and that no listed task covers. The user may
-have asked for the work, or the model may have seen it needed. It runs on the same state machine,
-inbox and controls as every [task](./tasks.md), and this doc covers what only a started task has:
-the start and its options, the sandbox runner that runs its steps, and its limits.
+A started task is a task that the conversation, or another task, starts through the start tool, for
+work that needs its own context, can wait or lasts beyond the turn, and that no listed task covers.
+The user may have asked for the work, or the model may have seen it needed. It runs on the same
+state machine, inbox and controls as every [task](./tasks.md), and this doc covers what only a
+started task has: the start and its options, the sandbox runner that runs its steps, and its limits.
 
 ## The start
 
-The conversation starts a task with a name and a brief. The start checks the step's lease as a
-message write does, and writes the task's creation record in the ready state under a
+A start gives the task a name and a brief. The start checks the step's lease as a message write
+does, and writes the task's creation record in the ready state under a
 [short ID](./database.md#short-ids), with the name in its erasable fields, and the brief as the
 task's first [message](./task-messages.md): a `task_message` record on the task's thread, written in
 the same transaction, which the creation record names by its message ID. The creation record holds
@@ -46,12 +46,16 @@ The [selectable models](./model-profiles.md#selectable-models) give the choices 
 the tool's input schema lists with their descriptions. The conversation has the persona and reads
 memory, and a started task has each only when its own start gave it, so a task it starts never has
 more. The tools a task holds are its starter's tools that the start named, plus the list tool and
-the message tool, and so never more than its starter holds. The sandbox runner adds the
-[silent end](./conversation-turns.md#a-turn-that-ends-with-nothing-sent) to every task's tool run,
-whatever its start named. A start with `memory: read` also gives the task each memory tool that only
-reads and that its starter holds. A task gets a memory tool that writes only when all 3 hold: the
-start names it in `tools`, the starter holds it, and the start sets `memory: read`. A start never
-gives a write tool by default. A start with `memory: none` may name no memory tool at all.
+the message tool, and so never more than its starter holds. The sandbox runner adds 2 tools to every
+task's tool run, whatever its start named:
+
+- `task.report`, as [Reports](#reports) says;
+- the [silent end](./conversation-turns.md#a-turn-that-ends-with-nothing-sent).
+
+A start with `memory: read` also gives the task each memory tool that only reads and that its
+starter holds. A task gets a memory tool that writes only when all 3 hold: the start names it in
+`tools`, the starter holds it, and the start sets `memory: read`. A start never gives a write tool
+by default. A start with `memory: none` may name no memory tool at all.
 
 The value `self_notes` is the memory grant of a task definition, and a start never sets it. It gives
 a task everything that `read` gives, and the self-note writes of the assistant: `memory.remember`,
@@ -126,14 +130,14 @@ list in a registry on its context, and each definition gives the registry its ke
 [controls](./tasks.md#pause-stop-and-close) it offers, the start tool that picks it (or none), the
 fixed tasks it owns, and whether the restart sweep keeps the sandboxes of its open tasks.
 
-| Key            | Controls | Start tool           | Fixed task   | Keeps sandboxes |
-| -------------- | -------- | -------------------- | ------------ | --------------- |
-| `conversation` | all 6    | none                 | conversation | yes             |
-| `sandbox`      | all 6    | `task.start/sandbox` | none         | yes             |
-| `queue-check`  | all 6    | none                 | queue check  | no              |
+| Key            | Controls | Start tool   | Fixed task   | Keeps sandboxes |
+| -------------- | -------- | ------------ | ------------ | --------------- |
+| `conversation` | all 6    | none         | conversation | yes             |
+| `sandbox`      | all 6    | `task.start` | none         | yes             |
+| `queue-check`  | all 6    | none         | queue check  | no              |
 
-Every start record names its task's runner in `runner`, and the registry finds the runner of a task
-in this order:
+A start record names its task's runner in `runner`, and the registry finds the runner of a task in
+this order:
 
 1. A fixed task belongs to the runner that owns it.
 2. A task whose creation record names a `runner` belongs to that runner. A name with no definition
@@ -220,7 +224,7 @@ gives. It closes a started task in any state but ready, running and closed, and 
 
 A task that is already closed answers `wasClosed: true` and writes nothing, so a rerun of the step
 after a crash gets the same answer. The close sends the caller no report message: a task run that
-ends because its report target closed it keeps its report, as [Reports](#reports) says. The owner's
+ends because its report target closed it keeps its report, as [Reports](#reports) says. The user's
 close control and a disposable task's auto-close still deliver theirs.
 
 A started task holds the tool only when its start names it in `tools`. The tool declares the `note`
@@ -342,12 +346,13 @@ the control, and a step error that fails the task ends it with `failed` in the e
 The restart sweep ends no task run: the rerun of a step joins the open one. When the transaction
 that ends a task run throws, the task run stays open and the caller's retry ends it.
 
-A kept started task that reported is wakeable and waits with its sandbox asleep until the user
-closes it. A disposable one closes itself, as [the mark](#the-mark-and-closing) says. A kept or a
-disposable task is never `done` after a report, because a `done` task refuses messages and has no
-sandbox. A definition's task is never `done` either. A step whose task run holds a report request
-runs no further model turn, so when the lease of a step that called `task.report` expires, the rerun
-does no work and its commit sends the first summary and fields under the first report ID.
+A kept started task that reported is wakeable and waits with its sandbox asleep until the user or
+nixie closes it. A disposable one closes itself, as [the mark](#the-mark-and-closing) says. A kept
+or a disposable task is never `done` after a `task.report` call, because a `done` task refuses
+messages and has no sandbox. A definition's task is never `done` either. A step whose task run holds
+a report request runs no further model turn, so when the lease of a step that called `task.report`
+expires, the rerun does no work and its commit sends the first summary and fields under the first
+report ID.
 
 The end writer delivers the report, and the first row that applies decides:
 
@@ -355,6 +360,7 @@ The end writer delivers the report, and the first row that applies decides:
 | ------------------------------------------- | ----------------------------------------------- | ----------- |
 | the end cause is `no_work`                  | no message                                      | `kept`      |
 | the report target is done, failed or closed | no message                                      | `kept`      |
+| the report target closed the task           | no message                                      | `kept`      |
 | the mode `none`                             | no message                                      | `kept`      |
 | the mode `next_turn`                        | a `task_message` of kind `report`, with no wake | `next_turn` |
 | the mode `wake`, past the hop limit         | a `task_message` of kind `report`, with no wake | `next_turn` |
@@ -439,14 +445,14 @@ nixie wrote for the end cause, such as "The run stopped at its turns limit befor
 summary", and `missing` lists each top-level field of the shape. The same body reaches both
 `task.run_ended` and the message.
 
-A task that finishes a turn with no report ends its task run as `no_report`. A forget of a delivered
-report destroys the request, the end and the message together, and rebuilds the sessions of each.
-The forget accepts the message of a report from any one of the 3 records, and finds the other two
-through the task run's row. It runs the session cleanup once per destroyed record, so the cleanup
-reaches the task's thread and the report target's thread. The user cannot forget a kept report on
-its own, only by forgetting its task's thread. A forget of the request before the end leaves the
-summary that nixie writes and `missing`. `log.read` shows each task message on the thread it reads
-as an entry of the role `task`, with no text once the message is forgotten.
+A forget of a delivered report destroys the request, the end and the message together, and rebuilds
+the sessions of each. The forget accepts the message of a report from any one of the 3 records, and
+finds the other two through the task run's row. It runs the session cleanup once per destroyed
+record, so the cleanup reaches the task's thread and the report target's thread. The user cannot
+forget a kept report on its own, only by forgetting its task's thread. A forget of the request
+before the end leaves the summary that nixie writes and `missing`. `log.read` shows each task
+message on the thread it reads as an entry of the role `task`, with no text once the message is
+forgotten.
 
 ## Limits
 
@@ -469,11 +475,11 @@ count of a task that has one can fall below its spend.
 
 Before each step runs a turn, the runner reads both meters. When either has reached its limit, the
 step runs no turn and returns the limit as its end, and the step's commit ends the task run as
-`limit`, which writes the report, a `task.limit_reached` record, and a pause that leaves the task in
-the ready state with its work. The starter learns of it through the report or the limit notice, and
-its model reads the task's ID and counts in a system message that says only the user can resume the
-task. The message leaves out the task's name, because a model wrote that name, and the model trusts
-a system message as nixie's own text.
+`limit`, which writes the report, a `task.limit_reached` record, and a pause under the limit hold.
+The paused task keeps its work, and the user's raise of the limit resumes it. The starter learns of
+it through the report or the limit notice, and its model reads the task's ID and counts in a system
+message that says only the user can resume the task. The message leaves out the task's name, because
+a model wrote that name, and the model trusts a system message as nixie's own text.
 
 A turn can pass the dollar limit on its own, so the runner prices each of the turn's model calls
 with the task's profile as the guest reports it

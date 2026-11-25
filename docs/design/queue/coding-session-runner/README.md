@@ -13,8 +13,7 @@ needs them, and only the session events that nixie picked wake it. This design a
 runner, which runs such a task, with its tools and its first adapter: the package `coding-atc`,
 whose adapter ID is `atc`.
 
-Once the owner approves this design, build
-[the atc runner](https://linear.app/zgeoff/issue/GEO-1843) from it and its three parts.
+Build [the atc runner](https://linear.app/zgeoff/issue/GEO-1843) from it and its three parts.
 
 The coding runner calls no model of its own, and judges nothing about the session's work. Each step
 of a coding task moves text and events between the task and the session. nixie's conversation reads
@@ -87,11 +86,11 @@ state, last reply and recent turns with `coding.read`.
 
 ## Parts
 
-| Doc                       | What it holds                                                                                          |
-| ------------------------- | ------------------------------------------------------------------------------------------------------ |
-| [the runner](runner.md)   | the start and the join, their policy, the runner definition, the records, what one step does, the ends |
-| [the tools](tools.md)     | `coding.sessions`, `coding.steer`, `coding.message`, `coding.read`, `coding.watch`, and their policy   |
-| [the atc adapter](atc.md) | `CodingAdapter`, the coding source, the map onto atc-gateway's tools, the config, the release pairs    |
+| Doc                       | What it holds                                                                                                             |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| [the runner](runner.md)   | `coding.start` for the start and the join, their policy, the runner definition, the records, what one step does, the ends |
+| [the tools](tools.md)     | `coding.sessions`, `coding.steer`, `coding.message`, `coding.read`, `coding.watch`, and their policy                      |
+| [the atc adapter](atc.md) | `CodingAdapter`, the coding source, the map onto atc-gateway's tools, the config, the release pairs                       |
 
 This work changes these modules that every runner or connector uses:
 
@@ -119,8 +118,9 @@ This work changes these modules that every runner or connector uses:
 - **This runner's key is `atc`.** The config section `coding.atc` takes its name from the key.
 - **The coding runner is generic over `CodingAdapter`, and its key is the adapter's ID.** A later
   adapter, such as a built-in one that runs a session in an [imp](../../../glossary.md), gets its
-  own key and its own start tool. The wake set, the tools and the `coding.wake` config are the same
-  for every adapter, and only `coding.<key>` holds what the adapter needs.
+  own key. The tools, `coding.start` among them, the wake set and the `coding.wake` config are the
+  same for every adapter, and only `coding.<key>` holds what the adapter needs. The server wires one
+  coding adapter, and `coding.start` starts that adapter's runner.
 - **A coding task starts from its own tool, `coding.start`.** `task.start` takes a plain object
   input for sandbox tasks only. The Agent SDK's harness drops a tool whose input schema has a root
   `oneOf`, so the model would never see a `task.start` that took both inputs.
@@ -140,9 +140,11 @@ This work changes these modules that every runner or connector uses:
   `coding.message` note, as [what one step does](runner.md#what-one-step-does) describes.
 - **nixie names each session by a short ID.** `coding.sessions` gives each session it lists a short
   ID, and every tool takes that ID. atc's session IDs stay inside the runner.
-- **The default wake sets are fixed.** A started session wakes nixie on `waiting`, `idle`,
-  `blocked`, `decision`, `ended` and `gone`. A joined session wakes it on `waiting`, `ended` and
-  `gone`. `coding.wake` holds both, as [the wake set](tools.md#picking-the-wake-set) shows.
+- **Each origin has its own default wake set.** By default, a started session wakes nixie on
+  `waiting`, `idle`, `blocked`, `decision`, `ended` and `gone`, and a joined session wakes it on
+  `waiting`, `ended` and `gone`. The deployment config's `coding.wake` sets both defaults, and a
+  start or `coding.watch` replaces one task's set, as [the wake set](tools.md#picking-the-wake-set)
+  shows.
 - **nixie reaches atc only through atc-gateway, as a service client.** The gateway reaches every
   daemon in its registry, so one connection sees the sessions on your desktop and on a cloud VM
   alike.
