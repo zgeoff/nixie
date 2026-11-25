@@ -135,13 +135,15 @@ under a name, lay the screen out again, and restore the saved layout in one call
 
    Expect: `data.replies` of 3. The snapshot shows "Dentist at 3" and a time, and no "Water the
    pots" and no "Ripples", because the minute of `pond` passed before the save. The query lists
-   `clock`, `note` and `pond`.
+   `clock` and `note`: a save stores no content for a blank region, so `pond` comes back blank with
+   no pointer.
 
 ## End state
 
 - The last snapshot shows "Dentist at 3" and a time, and no "Ripples", no "Water the pots" and no
   "Bins go out tonight".
-- `device_regions` holds 3 rows, one for each region of the restored layout.
+- `device_regions` holds 2 rows, `clock` and `note`, the regions of the restored layout that hold
+  content.
 - `device_saved_layouts` holds the one row, `evening`.
 - The screenshots are evidence for the reviewer. Check nothing in them.
 
