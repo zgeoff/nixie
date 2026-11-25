@@ -1,1 +1,1 @@
-export const modelRoles = ['conversation', 'task', 'worker', 'checker'] as const;
+export const modelRoles = ['conversation', 'task', 'worker', 'checker', 'call'] as const;

@@ -391,6 +391,10 @@
             "checker": {
               "type": "string",
               "pattern": "^[a-z0-9][a-z0-9-]*$"
+            },
+            "call": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9-]*$"
             }
           },
           "additionalProperties": false,
@@ -1874,7 +1878,8 @@
                 "type": "string",
                 "enum": [
                   "conversation",
-                  "task"
+                  "task",
+                  "call"
                 ]
               },
               {

@@ -1,7 +1,7 @@
 import { buildDurationSchema } from '@heynixie/clock';
 import { z } from 'zod';
 
-const turnInputRoles = ['conversation', 'task'] as const;
+const turnInputRoles = ['conversation', 'task', 'call'] as const;
 
 export type TurnInputRole = (typeof turnInputRoles)[number];
 

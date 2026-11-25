@@ -33,6 +33,7 @@ const rolesSchema = z.strictObject({
   task: profileIDSchema.optional(),
   worker: profileIDSchema.optional(),
   checker: profileIDSchema.optional(),
+  call: profileIDSchema.optional(),
 });
 
 const selectableSchema = z.strictObject({
