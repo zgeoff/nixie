@@ -517,6 +517,98 @@ test('it keeps a disposable task open when the task run ends at a limit', async 
   expect(closed).toStrictEqual([]);
 });
 
+test('it leaves a kept task done after a reported final step', async () => {
+  const ctx = await setupTest();
+  const task = await ctx.startTask(false);
+
+  await writeStepCommit(ctx.context, task.claim, {
+    next: 'done',
+    isFinal: true,
+    records: [],
+    acknowledged: task.brief,
+    run: { activity: 'worked', report: { summary: 'High tide is at 06:42.' } },
+  });
+
+  const currentState = await ctx.readState(task.taskID);
+
+  expect(currentState).toBe('done');
+});
+
+test('it writes the messages of a step result from the stepping task, one hop past the step', async () => {
+  const ctx = await setupTest();
+  const task = await ctx.startTask(false);
+
+  await writeStepCommit(ctx.context, task.claim, {
+    next: 'wait',
+    records: [],
+    acknowledged: task.brief,
+    messages: [
+      {
+        to: 'conversation',
+        kind: 'progress',
+        body: 'The session opened a pull request.',
+        replyTo: null,
+        onBehalfOf: [],
+        wake: true,
+      },
+    ],
+  });
+
+  const sent = await ctx.readKinds('task_message');
+
+  expect(
+    sent
+      .filter((record) => record.payload['from'] === task.taskID)
+      .map((record) => ({ thread: record.thread, payload: record.payload })),
+  ).toStrictEqual([
+    {
+      thread: 'conversation',
+      payload: {
+        messageID: expect.toBeString(),
+        from: task.taskID,
+        to: 'conversation',
+        kind: 'progress',
+        replyTo: null,
+        onBehalfOf: [],
+        hop: 1,
+        hopLimit: 6,
+        wake: true,
+        woke: true,
+        opensWait: false,
+        source: `task:${task.taskID}`,
+      },
+    },
+  ]);
+});
+
+test('it counts the hop of a step message from its sender hop when the step sets one', async () => {
+  const ctx = await setupTest();
+  const task = await ctx.startTask(false);
+
+  await writeStepCommit(ctx.context, task.claim, {
+    next: 'wait',
+    records: [],
+    acknowledged: task.brief,
+    messages: [
+      {
+        to: 'conversation',
+        kind: 'progress',
+        body: 'The session opened a pull request.',
+        replyTo: null,
+        onBehalfOf: [],
+        wake: true,
+        senderHop: 3,
+      },
+    ],
+  });
+
+  const sent = await ctx.readKinds('task_message');
+
+  const message = sent.find((record) => record.payload['from'] === task.taskID);
+
+  expect(message?.payload['hop']).toBe(4);
+});
+
 test('it keeps a disposable task open when input arrived that it did not read', async () => {
   const ctx = await setupTest();
   const task = await ctx.startTask(true);

@@ -4,6 +4,7 @@ import type { Lease, TasksContext } from '@heynixie/tasks';
 import { startLeaseRenewal } from '@heynixie/tasks';
 import type { ActionRow } from '../types';
 import type { ActionAttemptOptions } from './action-attempt-options';
+import { buildAttemptKey } from './build-attempt-key';
 import { defaultRetryDelaysMs } from './default-retry-delays-ms';
 import { buildOutcomeRecord, readArguments, writeLeasedRecords } from './leased-records';
 import { pickCheckStep } from './pick-check-step';
@@ -70,7 +71,7 @@ async function runCheck(
       tool: claimed.action.tool,
       arguments: call.args,
       attempt: claimed.action.attempt_count,
-      idempotencyKey: claimed.action.action_id,
+      idempotencyKey: buildAttemptKey(claimed.action),
       destinations: [],
       actionHash: claimed.action.action_hash,
       deadlineAt: claimed.action.deadline_at,

@@ -81,6 +81,36 @@ test('it retries an unknown outcome under the same key while the provider keeps 
   expect(stub.calls.map((call) => call.idempotencyKey)).toStrictEqual([ctx.actionID, ctx.actionID]);
 });
 
+test('it retries an unknown outcome after a refusal under the key of the refused attempt count', async () => {
+  const ctx = await setupTest();
+
+  const stub = buildStubConnector(
+    (call) => {
+      if (call.attempt === 1) {
+        return { kind: 'refused_retryable', reason: 'rate limited' };
+      }
+
+      return call.attempt === 2
+        ? { kind: 'ambiguous', reason: 'timed out' }
+        : { kind: 'success', result: { messageID: 'm-1' } };
+    },
+    { reconcile: { kind: 'idempotency_key', where: 'header', keptForMs: 3_600_000 } },
+  );
+
+  await ctx.runNext(stub.connector);
+
+  ctx.clock.advance(30_000);
+
+  await ctx.runNext(stub.connector);
+  await ctx.runNext(stub.connector);
+
+  expect(stub.calls.map((call) => call.idempotencyKey)).toStrictEqual([
+    ctx.actionID,
+    `${ctx.actionID}.1`,
+    `${ctx.actionID}.1`,
+  ]);
+});
+
 test('it brings an unknown outcome to the owner once the provider no longer keeps the key', async () => {
   const ctx = await setupTest();
 
@@ -168,6 +198,33 @@ test('it settles an unknown outcome as done when the check finds the send, and s
   expect(settled).toMatchObject({ status: 'done', reconcile_at: null });
   expect(answers).toStrictEqual(['found']);
   expect([stub.calls.length, stub.checks.length]).toStrictEqual([1, 1]);
+});
+
+test('it checks for an unknown outcome after a refusal under the key of the refused attempt count', async () => {
+  const ctx = await setupTest();
+
+  const stub = buildStubConnector(
+    (call) =>
+      call.attempt === 1
+        ? { kind: 'refused_retryable', reason: 'rate limited' }
+        : { kind: 'ambiguous', reason: 'timed out' },
+    {
+      reconcile: { kind: 'check', tool: 'test.send' },
+      answerCheck: () => ({ kind: 'found', result: { messageID: 'm-9' } }),
+    },
+  );
+
+  await ctx.runNext(stub.connector);
+
+  ctx.clock.advance(30_000);
+
+  await ctx.runNext(stub.connector);
+
+  ctx.clock.advance(60_000);
+
+  await ctx.runNext(stub.connector);
+
+  expect(stub.checks.map((check) => check.idempotencyKey)).toStrictEqual([`${ctx.actionID}.1`]);
 });
 
 test('it retries the send when the check does not find it', async () => {

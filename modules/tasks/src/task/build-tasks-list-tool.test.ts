@@ -7,6 +7,12 @@ import { z } from 'zod';
 import { createConversationTask } from '../conversation/create-conversation-task';
 import { withdrawDefinitionTaskInTransaction } from '../definition/withdraw-definition-task-in-transaction';
 import { readInbox } from '../inbox/read-inbox';
+import { taskRunOptionsSchema } from '../limit/task-run-options-schema';
+import { buildTaskRunnerRegistry } from '../runner/build-task-runner-registry';
+import { conversationRunner } from '../runner/conversation-runner';
+import { sandboxRunner } from '../runner/sandbox-runner';
+import type { TaskRunnerDefinition } from '../runner/types';
+import { buildStepRunID } from '../step/build-step-run-id';
 import { writeStepCommit } from '../step/write-step-commit';
 import { seedConversationStep } from '../test-utils/seed-conversation-step';
 import { seedDefinitionTask } from '../test-utils/seed-definition-task';
@@ -14,17 +20,63 @@ import { seedTask } from '../test-utils/seed-task';
 import { startTestTasks } from '../test-utils/start-test-tasks';
 import { writeTestTaskMessage } from '../test-utils/write-test-task-message';
 import { writeTestTriggerFire } from '../test-utils/write-test-trigger-fire';
-import type { TaskClaim } from '../types';
+import type { StartedClaim, TaskClaim, TasksContext } from '../types';
 import { buildTasksListTool } from './build-tasks-list-tool';
 import { createSystemTask } from './create-system-task';
 import { claimTask } from './projection/claim-task';
+import { writeTaskStart } from './start/write-task-start';
+import { startedTaskDefaultTools } from './started-task-default-tools';
 import { writeTaskControl } from './write-task-control';
 
 async function setupTest() {
   const tasks = await startTestTasks();
 
+  const codingRunner: TaskRunnerDefinition = {
+    ...sandboxRunner,
+    key: 'coding',
+    meters: [],
+    listFields: (_context, taskIDs) =>
+      Promise.resolve(new Map(taskIDs.map((taskID) => [taskID, { session: { state: 'open' } }]))),
+  };
+
+  const codingContext: TasksContext = {
+    ...tasks.context,
+    runners: buildTaskRunnerRegistry({
+      definitions: [conversationRunner, sandboxRunner, codingRunner],
+      defaultRunner: sandboxRunner,
+    }),
+  };
+
   return {
     ...tasks,
+    codingContext,
+    startCodingTask: async (starter: StartedClaim, name: string, brief: string) => {
+      const outcome = await writeTaskStart(codingContext, {
+        from: 'conversation',
+        name,
+        brief,
+        runner: 'coding',
+        stored: {
+          kind: 'built',
+          options: taskRunOptionsSchema.parse({
+            model: null,
+            profile: null,
+            persona: 'none',
+            memory: 'none',
+            tools: startedTaskDefaultTools,
+            report: 'wake',
+            limits: { turns: 25, dollars: 2 },
+          }),
+        },
+        hopLimit: 6,
+        stepRunID: buildStepRunID(starter),
+        disposable: false,
+      });
+
+      invariant(outcome.status === 'started', 'the coding start is valid');
+
+      return outcome.taskID;
+    },
     readUnreadSequences: async (claim: TaskClaim) => {
       const inbox = await readInbox(tasks.context, claim.lease.workID);
 
@@ -74,6 +126,7 @@ test('it lists the tasks other than the caller, with each last activity in UTC',
           model: null,
           brief: 'Plans the week.',
           isBriefClipped: false,
+          runner: '',
           lastActivityAt: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/u),
           wakeable: true,
         },
@@ -130,6 +183,7 @@ test('it lists a started task with the name and brief it started with', async ()
           model: null,
           brief: 'Plan the beds.',
           isBriefClipped: false,
+          runner: 'sandbox',
           lastActivityAt: expect.toBeString(),
           wakeable: true,
         },
@@ -180,6 +234,7 @@ test('it lists only as many tasks as the limit asks for', async () => {
           model: null,
           brief: 'Checks plans.',
           isBriefClipped: false,
+          runner: '',
           lastActivityAt: expect.toBeString(),
           wakeable: true,
         },
@@ -233,6 +288,7 @@ test('it lists each task with the model it runs on', async () => {
           model: null,
           brief: 'List the seeds to order for spring.',
           isBriefClipped: false,
+          runner: 'sandbox',
           lastActivityAt: expect.toBeString(),
           wakeable: true,
         },
@@ -243,6 +299,7 @@ test('it lists each task with the model it runs on', async () => {
           model: 'second-look',
           brief: 'Find the weak points in the plan.',
           isBriefClipped: false,
+          runner: 'sandbox',
           lastActivityAt: expect.toBeString(),
           wakeable: true,
         },
@@ -324,6 +381,7 @@ test.each([
             model: null,
             brief: 'List the seeds to order for spring.',
             isBriefClipped: false,
+            runner: 'sandbox',
             lastActivityAt: expect.toBeString(),
             wakeable: true,
             ...wait,
@@ -410,6 +468,7 @@ test('it lists a finished task under done within the limit, behind a newer idle 
           model: null,
           brief: 'List the seeds to order for spring.',
           isBriefClipped: false,
+          runner: 'sandbox',
           lastActivityAt: expect.toBeString(),
           wakeable: true,
         },
@@ -486,6 +545,7 @@ test.each([
           ...task,
           model: null,
           isBriefClipped: false,
+          runner: '',
           lastActivityAt: expect.toBeString(),
           wakeable: true,
         })),
@@ -498,9 +558,15 @@ test.each([
   [
     'waiting',
     [
-      { id: 'critic', name: 'Critic', state: 'idle', brief: 'Checks plans.' },
-      { id: 'planner', name: 'Planner', state: 'idle', brief: 'Plans the week.' },
-      { id: 'conversation', name: 'Conversation', state: 'idle', brief: 'Talks.' },
+      { id: 'critic', name: 'Critic', state: 'idle', runner: '', brief: 'Checks plans.' },
+      { id: 'planner', name: 'Planner', state: 'idle', runner: '', brief: 'Plans the week.' },
+      {
+        id: 'conversation',
+        name: 'Conversation',
+        state: 'idle',
+        runner: 'conversation',
+        brief: 'Talks.',
+      },
     ],
   ],
   ['done', []],
@@ -621,6 +687,7 @@ test.each([
           model: null,
           brief: 'Water the beds.',
           isBriefClipped: false,
+          runner: 'sandbox',
           lastActivityAt: expect.toBeString(),
           wakeable: false,
           ...row.shown,
@@ -659,6 +726,7 @@ test('it lists a wakeable definition task as idle with no next run', async () =>
           model: null,
           brief: 'Water the beds.',
           isBriefClipped: false,
+          runner: 'sandbox',
           lastActivityAt: expect.toBeString(),
           wakeable: true,
         },
@@ -708,6 +776,7 @@ test('it lists a wakeable definition task as finished when its newest task run r
           model: null,
           brief: 'Water the beds.',
           isBriefClipped: false,
+          runner: 'sandbox',
           lastActivityAt: expect.toBeString(),
           wakeable: true,
         },
@@ -877,6 +946,7 @@ test('it lists one task with its whole brief when given its ID', async () => {
           model: null,
           brief,
           isBriefClipped: false,
+          runner: 'sandbox',
           lastActivityAt: expect.toBeString(),
           wakeable: true,
         },
@@ -915,5 +985,89 @@ test('it answers a cursor it did not give with an error that says to start again
   expect(outcome).toStrictEqual({
     status: 'error',
     message: 'that cursor is not one tasks.list gave; call tasks.list again with no cursor',
+  });
+});
+
+test('it lists only the tasks of the runner that the runner filter names, with the fields that runner adds', async () => {
+  const ctx = await setupTest();
+  const starter = await seedConversationStep(ctx.context);
+
+  await seedTask(ctx.context, {
+    starter: starter.claim,
+    name: 'Seed list',
+    brief: 'List the seeds to order for spring.',
+  });
+
+  const codingTask = await ctx.startCodingTask(
+    starter.claim,
+    'Garden planner',
+    'Add a frost warning to the planner.',
+  );
+
+  const tool = buildTasksListTool(ctx.codingContext, { directory: [] });
+
+  const outcome = await tool.run(
+    buildMockToolCall({ tool: 'tasks.list', input: { runner: 'coding' } }),
+    buildMockToolContext({ run: { thread: 'conversation' } }),
+  );
+
+  expect(outcome).toStrictEqual({
+    status: 'ok',
+    result: {
+      tasks: [
+        {
+          id: codingTask,
+          name: 'Garden planner',
+          state: 'ready',
+          model: null,
+          brief: 'Add a frost warning to the planner.',
+          isBriefClipped: false,
+          runner: 'coding',
+          limits: null,
+          session: { state: 'open' },
+          lastActivityAt: expect.toBeString(),
+          wakeable: true,
+        },
+      ],
+    },
+  });
+});
+
+test('it lists one task by its ID with the fields its runner adds', async () => {
+  const ctx = await setupTest();
+  const starter = await seedConversationStep(ctx.context);
+
+  const taskID = await ctx.startCodingTask(
+    starter.claim,
+    'Garden planner',
+    'Add a frost warning to the planner.',
+  );
+
+  const tool = buildTasksListTool(ctx.codingContext, { directory: [] });
+
+  const outcome = await tool.run(
+    buildMockToolCall({ tool: 'tasks.list', input: { taskID } }),
+    buildMockToolContext({ run: { thread: 'conversation' } }),
+  );
+
+  expect(outcome).toStrictEqual({
+    status: 'ok',
+    result: {
+      tasks: [
+        {
+          id: taskID,
+          name: 'Garden planner',
+          state: 'ready',
+          model: null,
+          brief: 'Add a frost warning to the planner.',
+          isBriefClipped: false,
+          runner: 'coding',
+          limits: null,
+          session: { state: 'open' },
+          lastActivityAt: expect.toBeString(),
+          wakeable: true,
+        },
+      ],
+    },
   });
 });

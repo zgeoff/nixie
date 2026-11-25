@@ -2,6 +2,7 @@ import { DatabaseError, createShortID } from '@heynixie/db';
 import type { RecordInput } from '@heynixie/log';
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import type { Transaction } from 'kysely';
+import invariant from 'tiny-invariant';
 import { match } from 'ts-pattern';
 import { requireLease } from '../lease/require-lease';
 import { waitAtFaultPoint } from '../lease/wait-at-fault-point';
@@ -11,6 +12,7 @@ import type { RunEndCause } from '../run/run-end-cause';
 import { taskRunReportRequestedCodec } from '../run/task-run-report-requested-codec';
 import type { TaskRun } from '../run/types';
 import { writeRunEndInTransaction } from '../run/write-run-end-in-transaction';
+import { writeTaskMessageInTransaction } from '../task/projection/write-task-message';
 import { readTaskMark } from '../task/read-task-mark';
 import { buildPausedRecord } from '../task/record/build-paused-record';
 import { writeTaskCloseInTransaction } from '../task/write-task-close-in-transaction';
@@ -25,6 +27,7 @@ import type {
 import { resetLease } from '../utils/reset-lease';
 import { taskStepCommittedCodec } from '../utils/task-step-committed-codec';
 import { readStepCursor } from './read-step-cursor';
+import { readStepMessaging } from './read-step-messaging';
 import { StepAlreadyCommittedError } from './step-already-committed-error';
 
 export async function writeStepCommit(
@@ -41,6 +44,9 @@ export async function writeStepCommit(
     await waitAtFaultPoint('step.commit.before', faultContext);
   }
 
+  const messages = result.messages ?? [];
+  const messaging = messages.length === 0 ? null : await readStepMessaging(context);
+
   await withWriteTransaction(context.log.writer, async (tx) => {
     await requireLease(tx, claim.lease, context.clock.now());
 
@@ -49,8 +55,10 @@ export async function writeStepCommit(
 
     const hasReport = run !== null && (run.reportID !== null || result.run?.report !== undefined);
 
-    // A started task that reported waits for its starter's next message, and is never done.
-    const reportedNext = hasReport && result.next === 'done' ? 'wait' : result.next;
+    // A started task that reported waits for its starter's next message, and is never done, unless
+    // its runner says that the task is over.
+    const reportedNext =
+      hasReport && result.next === 'done' && result.isFinal !== true ? 'wait' : result.next;
 
     const isDefinitionTask = await probeDefinitionTask(tx, taskID);
 
@@ -62,6 +70,8 @@ export async function writeStepCommit(
     const isPauseRequested = await probePauseRequested(tx, taskID);
 
     const resumeState = pickPausedResume(nextState, isPauseRequested);
+
+    await queueStepActions(tx, context, claim, result);
 
     await writeRecordsInTransaction(tx, context.log, [
       ...result.records.map((record) => ({ ...record, thread: taskID })),
@@ -86,6 +96,17 @@ export async function writeStepCommit(
         ? []
         : [buildPausedRecord(taskID, resumeState, context.definitions())]),
     ]);
+
+    for (const message of messages) {
+      invariant(messaging, 'a step that sends messages has read its receivers');
+
+      await writeTaskMessageInTransaction(
+        tx,
+        context,
+        { ...message, from: taskID },
+        { messaging, senderHop: message.senderHop ?? claim.wake.hop, stepKey: claim.stepKey },
+      );
+    }
 
     const hasOpenWait = await probeOpenWait(tx, taskID);
 
@@ -190,6 +211,27 @@ function pickPausedResume(nextState: TaskState, isPauseRequested: boolean): Resu
   }
 
   return nextState === 'ready' || nextState === 'waiting' ? nextState : null;
+}
+
+async function queueStepActions(
+  tx: Transaction<unknown>,
+  context: TasksContext,
+  claim: TaskClaim,
+  result: StepResult,
+): Promise<void> {
+  const actions = result.actions ?? [];
+
+  if (actions.length === 0) {
+    return;
+  }
+
+  invariant(context.queueRunnerActions, 'a step that queues actions needs the actions queue');
+
+  await context.queueRunnerActions(tx, {
+    taskID: claim.lease.workID,
+    stepKey: claim.stepKey,
+    actions,
+  });
 }
 
 function buildReportRequest(

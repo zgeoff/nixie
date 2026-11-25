@@ -53,18 +53,28 @@ async function setupTest() {
         results: { taskID: 'owner_data', name: 'owner_data', note: 'owner_data' },
       },
       storesBuiltOptions: false,
-      plan: (start) =>
-        start.target === ''
-          ? { status: 'refused', sentence: 'a watcher needs a target, so nixie started nothing' }
-          : {
-              status: 'planned',
-              envelope: { report: 'next_turn', limits: { turns: 3, dollars: 1 } },
-              options: { target: start.target },
-            },
+      plan: (start) => {
+        if (start.target === '') {
+          return Promise.resolve({
+            status: 'refused',
+            sentence: 'a watcher needs a target, so nixie started nothing',
+          });
+        }
+
+        return Promise.resolve({
+          status: 'planned',
+          actions: [],
+          envelope: { report: 'next_turn', limits: { turns: 3, dollars: 1 } },
+          options: { target: start.target },
+        });
+      },
       encodeOptions: (options) => options,
     }),
     fixedTasks: [],
     keepsSandboxes: false,
+    meters: [],
+    ended: null,
+    listFields: null,
   };
 
   const context = {

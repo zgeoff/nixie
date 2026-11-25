@@ -20,6 +20,7 @@ export const tasksRecordTopics = {
   'task.definition_set': ['tasks', 'definitions'],
   'trigger.fired': ['tasks', 'triggers', 'definitions'],
   'trigger.skipped': ['tasks', 'triggers', 'definitions'],
+  'trigger.task_input': ['tasks'],
   'task.interrupted': ['tasks'],
   'task.limit_reached': ['tasks'],
   'task.failed_turn_spent': ['tasks'],

@@ -7,6 +7,7 @@ export { renderReportBody } from './report/render-report-body';
 export { taskReportToolName } from './report/task-report-tool-name';
 export type { FieldSchema, ReportShape, ShapeFault } from './report/types';
 export { pickRecordRun } from './run/pick-record-run';
+export { readRunMeters } from './run/read-run-meters';
 export { pickReportMode } from './run/pick-report-mode';
 export { readEndedRuns } from './run/read-ended-runs';
 export { readEndedRunByReportID } from './run/read-ended-run-by-report-id';
@@ -45,12 +46,16 @@ export { conversationRunner } from './runner/conversation-runner';
 export { defineRunnerStart } from './runner/define-runner-start';
 export { pickResolvedControls } from './runner/pick-resolved-controls';
 export { parseTaskStartInput } from './runner/parse-task-start-input';
-export { sandboxRunner } from './runner/sandbox-runner';
+export { planSandboxStart, sandboxRunner } from './runner/sandbox-runner';
 export type { SandboxStartInput } from './runner/sandbox-start-schema';
 export { sandboxStartSchema } from './runner/sandbox-start-schema';
 
 export type {
   BoundStep,
+  RunnerAction,
+  RunnerEndCause,
+  RunnerEndContext,
+  StartTransaction,
   RunnerStart,
   RunnerStartPlan,
   RunnerStartPort,
@@ -92,7 +97,13 @@ export { renderLimitedSummary } from './task/render-limited-summary';
 export { taskExchangeLimitedCodec } from './task/codec/task-exchange-limited-codec';
 export { taskMessageCodec } from './utils/task-message-codec';
 export type { TaskMessageOutcome } from './task/projection/write-task-message';
-export { writeTaskMessage } from './task/projection/write-task-message';
+
+export {
+  writeTaskMessage,
+  writeTaskMessageInTransaction,
+} from './task/projection/write-task-message';
+
+export type { TaskMessageRequest } from './task/message/plan-task-message';
 export { buildGateFilter } from './gate/build-gate-filter';
 export { isGateBarring } from './gate/is-gate-barring';
 export { readTaskGate } from './gate/read-task-gate';
@@ -172,6 +183,7 @@ export {
   triggerFiredKinds,
 } from './task/codec/trigger-fired-codec';
 
+export { triggerTaskInputCodec } from './task/codec/trigger-task-input-codec';
 export type { DatedFire, TriggerDetails } from './trigger/build-trigger-details';
 export { buildTriggerDetails } from './trigger/build-trigger-details';
 export type { RunFire } from './trigger/read-run-fire';
@@ -219,11 +231,14 @@ export type {
   ClaimCandidate,
   Lease,
   LeaseKind,
+  QueueRunnerActions,
+  QueueRunnerActionsRequest,
   RunStep,
   SandboxCleanup,
   StartedClaim,
   StepErrored,
   StepInput,
+  StepMessage,
   StepResult,
   StepWake,
   TaskClaim,
@@ -263,6 +278,8 @@ export type {
   TaskControlRequest,
 } from './task/write-task-control-in-transaction';
 
+export { runControlEnded } from './task/write-task-control';
+export { runEndedHook } from './runner/run-ended-hook';
 export { writeTaskControlInTransaction } from './task/write-task-control-in-transaction';
 export type { TaskResumeRequest } from './task/resume/write-task-resume-in-transaction';
 export { writeTaskResumeInTransaction } from './task/resume/write-task-resume-in-transaction';

@@ -19,6 +19,7 @@ import { pickRunEnding } from './pick-run-ending';
 import type { RunEnding, RunEndingTrigger } from './pick-run-ending';
 import { readOpenRun } from './read-open-run';
 import { readPieceCounts } from './read-piece-counts';
+import { readRunMeters } from './read-run-meters';
 import { readRunRows } from './read-run-rows';
 import { taskRunEndedCodec } from './task-run-ended-codec';
 import { taskRunReportRequestedCodec } from './task-run-report-requested-codec';
@@ -167,7 +168,7 @@ async function readRunUsed(
 ): Promise<RunUsed> {
   const used = { turns: 0, dollars: 0 };
 
-  for (const meter of context.runSettings.meters) {
+  for (const meter of await readRunMeters(toTransactionContext(context, tx), run.taskID)) {
     used[meter.name] = await meter.read(context, run);
   }
 

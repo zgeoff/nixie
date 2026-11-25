@@ -47,63 +47,88 @@ export function writeTaskMessage(
       return { status: 'refused', refusal: { reason: 'stale_step' } };
     }
 
-    const facts = await readFacts(tx, request, senderHop);
+    return writeTaskMessageInTransaction(tx, context, request, {
+      messaging,
+      senderHop,
+      stepKey: step.stepKey,
+    });
+  });
+}
 
-    const plan = planTaskMessage(request, facts, messaging);
+export interface TaskMessageSender {
+  readonly messaging: Pick<TaskMessaging, 'directory' | 'hopLimit'>;
 
-    if (plan.status === 'refused') {
-      return plan;
-    }
+  // the hop of the exchange the sender is in; the message takes it plus 1
+  readonly senderHop: number;
+  readonly stepKey: string;
+}
 
-    const messageID = createShortID();
-    const definitions = context.definitions();
+// The caller holds the writer's write transaction and has checked the sender's lease.
+export async function writeTaskMessageInTransaction(
+  tx: Transaction<unknown>,
+  context: Pick<TasksContext, 'clock' | 'definitions' | 'log'>,
+  request: TaskMessageRequest,
+  sender: TaskMessageSender,
+): Promise<TaskMessageOutcome> {
+  const messaging = sender.messaging;
 
-    await writeInboxRecordsInTransaction(tx, context, [
+  const facts = await readFacts(tx, request, sender.senderHop);
+
+  const plan = planTaskMessage(request, facts, messaging);
+
+  if (plan.status === 'refused') {
+    return plan;
+  }
+
+  const messageID = createShortID();
+  const definitions = context.definitions();
+
+  await writeInboxRecordsInTransaction(tx, context, [
+    {
+      kind: 'task_message',
+      definitions,
+      thread: request.to,
+      payload: taskMessageCodec.encode({
+        messageID,
+        from: request.from,
+        to: request.to,
+        kind: request.kind,
+        replyTo: request.replyTo,
+        onBehalfOf: [...plan.onBehalfOf],
+        hop: plan.hop,
+        hopLimit: messaging.hopLimit,
+        wake: request.wake,
+        woke: plan.woke,
+        opensWait: plan.opensWait,
+        source: `task:${request.from}`,
+        ...(request.outside === true ? { outside: true } : {}),
+      }),
+      erasable: { body: request.body },
+    },
+  ]);
+
+  const isNoticeDue =
+    plan.hold === 'hop_limit' && !(await probeNotice(tx, request, sender.stepKey));
+
+  if (isNoticeDue) {
+    await writeRecordsInTransaction(tx, context.log, [
       {
-        kind: 'task_message',
+        kind: 'task.exchange_limited',
         definitions,
-        thread: request.to,
-        payload: taskMessageCodec.encode({
+        thread: request.from,
+        payload: taskExchangeLimitedCodec.encode({
           messageID,
+          stepKey: sender.stepKey,
           from: request.from,
           to: request.to,
-          kind: request.kind,
-          replyTo: request.replyTo,
-          onBehalfOf: [...plan.onBehalfOf],
-          hop: plan.hop,
-          hopLimit: messaging.hopLimit,
-          wake: request.wake,
-          woke: plan.woke,
-          opensWait: plan.opensWait,
-          source: `task:${request.from}`,
+          hops: plan.hop - 1,
+          waiting: await readOpenWait(tx, request.from, request.to),
         }),
-        erasable: { body: request.body },
       },
     ]);
+  }
 
-    const isNoticeDue =
-      plan.hold === 'hop_limit' && !(await probeNotice(tx, request, step.stepKey));
-
-    if (isNoticeDue) {
-      await writeRecordsInTransaction(tx, context.log, [
-        {
-          kind: 'task.exchange_limited',
-          definitions,
-          thread: request.from,
-          payload: taskExchangeLimitedCodec.encode({
-            messageID,
-            stepKey: step.stepKey,
-            from: request.from,
-            to: request.to,
-            hops: plan.hop - 1,
-            waiting: await readOpenWait(tx, request.from, request.to),
-          }),
-        },
-      ]);
-    }
-
-    return { status: 'sent', messageID, hop: plan.hop, woke: plan.woke, hold: plan.hold };
-  });
+  return { status: 'sent', messageID, hop: plan.hop, woke: plan.woke, hold: plan.hold };
 }
 
 async function readFacts(

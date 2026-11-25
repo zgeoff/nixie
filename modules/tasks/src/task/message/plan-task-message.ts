@@ -11,6 +11,9 @@ export interface TaskMessageRequest {
   readonly replyTo: string | null;
   readonly onBehalfOf: readonly string[];
   readonly wake: boolean;
+
+  // true: the body is outside content, and the reader's view marks it so
+  readonly outside?: boolean;
 }
 
 export interface TaskMessageFacts {

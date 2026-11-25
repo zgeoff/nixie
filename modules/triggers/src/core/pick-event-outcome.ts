@@ -1,7 +1,7 @@
 import type { DefinitionTaskAnswer, SkipReason } from '@heynixie/tasks';
 import { conversationTaskID } from '@heynixie/tasks';
 import { match } from 'ts-pattern';
-import type { TriggerEvent } from '../types';
+import type { ScheduleTriggerEvent } from '../types';
 
 export type EventOutcome =
   | { readonly kind: 'fire'; readonly thread: string }
@@ -14,7 +14,7 @@ export type EventOutcome =
 // thread is the conversation's, and which heeds only nixie's pause and the spending stop: the
 // caller says whether one of them holds the conversation's task.
 export function pickEventOutcome(
-  event: Pick<TriggerEvent, 'skip'>,
+  event: Pick<ScheduleTriggerEvent, 'skip'>,
   answer: DefinitionTaskAnswer | null,
   isConversationWaiting: boolean,
 ): EventOutcome {

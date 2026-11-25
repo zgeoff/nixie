@@ -40,7 +40,13 @@ export async function writeThreadRecordInTransaction(
     return;
   }
 
-  if (isInboxRecord({ kind: input.kind, thread })) {
+  if (
+    isInboxRecord({
+      kind: input.kind,
+      thread,
+      ...(input.payload ? { payload: input.payload } : {}),
+    })
+  ) {
     await writeInboxRecordsInTransaction(tx, context, [input]);
 
     return;

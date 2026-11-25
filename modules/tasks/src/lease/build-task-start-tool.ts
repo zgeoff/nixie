@@ -6,8 +6,10 @@ import type {
   ToolResolveContext,
 } from '@heynixie/tools';
 import { addRelatedMemory, relatedMemoryOutput } from '@heynixie/tools';
+import type { HarnessID } from '@heynixie/wire';
 import invariant from 'tiny-invariant';
 import { match } from 'ts-pattern';
+import { oneOfStartHarnesses } from '../runner/one-of-start-harnesses';
 import { parseTaskStartInput } from '../runner/parse-task-start-input';
 import { pickStartRunner } from '../runner/pick-start-runner';
 import type { StartDeclaration, StartableRunner } from '../runner/types';
@@ -27,9 +29,15 @@ import { conversationTaskID } from '../utils/conversation-task-id';
 
 type StartToolContext = Pick<TasksContext, 'clock' | 'definitions' | 'log' | 'runners'>;
 
+interface StartMessaging extends Pick<TaskMessaging, 'hopLimit' | 'ownerName'> {
+  // the harnesses of the model profiles in use. The variants past the default runner's are left out
+  // unless every one of them is in `oneOfStartHarnesses`; absent, none is left out.
+  readonly harnesses?: readonly HarnessID[];
+}
+
 export function buildTaskStartTool(
   context: StartToolContext,
-  messaging: Pick<TaskMessaging, 'hopLimit' | 'ownerName'>,
+  messaging: StartMessaging,
   bounds: TaskStartBounds,
 
   // what task.start looks up in memory after it applies, for a starter that reads memory; without
@@ -38,7 +46,13 @@ export function buildTaskStartTool(
 ): ToolDefinition {
   const owner = messaging.ownerName ?? 'the owner';
   const registry = context.runners;
-  const startable = registry.startable;
+
+  const startable = pickAdvertisedStarts(
+    registry.startable,
+    registry.defaultRunner.key,
+    messaging.harnesses,
+  );
+
   const defaultStart = startable.find((runner) => runner.key === registry.defaultRunner.key)?.start;
 
   invariant(defaultStart, 'the task.start tool needs the default runner to have a start');
@@ -119,6 +133,14 @@ export function buildTaskStartTool(
         hopLimit: messaging.hopLimit,
         stepRunID: tool.run.stepRunID ?? null,
         disposable,
+
+        // the plan runs before the call has an ID, so its actions name the call with an empty ID
+        actions: plan.actions.map((action) =>
+          action.causedBy.kind === 'tool_call'
+            ? { ...action, causedBy: { kind: 'tool_call' as const, callID: call.callID } }
+            : action,
+        ),
+        transaction: plan.transaction,
       });
 
       if (outcome.status === 'refused') {
@@ -147,6 +169,18 @@ export function buildTaskStartTool(
   };
 }
 
+function pickAdvertisedStarts(
+  startable: readonly StartableRunner[],
+  defaultKey: string,
+  harnesses: readonly HarnessID[] | undefined,
+): readonly StartableRunner[] {
+  const isOneOfSafe =
+    harnesses === undefined ||
+    harnesses.every((harness) => oneOfStartHarnesses.some((passed) => passed === harness));
+
+  return isOneOfSafe ? startable : startable.filter((runner) => runner.key === defaultKey);
+}
+
 // Memory text can hold outside content, so a runner's declaration gains a source for `related`.
 function addRelatedResult(declaration: StartDeclaration): StartDeclaration {
   return { ...declaration, results: { ...declaration.results, related: 'untrusted' } };
@@ -158,7 +192,7 @@ type PlannedStart =
       readonly runner: StartableRunner;
       readonly memory: TaskMemory;
       readonly plan: Extract<
-        ReturnType<StartableRunner['start']['plan']>,
+        Awaited<ReturnType<StartableRunner['start']['plan']>>,
         { readonly status: 'planned' }
       >;
     }
@@ -175,8 +209,7 @@ async function planStart(
   const runner = pickStartRunner(input, context.runners);
 
   const access = await readStarterAccess(context, tool.run.thread);
-
-  const plan = runner.start.plan(input, { tools: tool.run.tools, ...access }, bounds);
+  const plan = await runner.start.plan(input, { tools: tool.run.tools, ...access }, bounds);
 
   return plan.status === 'refused'
     ? plan
@@ -215,6 +248,7 @@ function renderRefusal(refusal: TaskStartRefusal): string {
   return match(refusal)
     .with({ reason: 'empty_name' }, () => 'a task needs a name')
     .with({ reason: 'empty_brief' }, () => 'a task needs a brief')
+    .with({ reason: 'runner_refused' }, (refused) => refused.sentence)
     .with(
       { reason: 'stale_step' },
       () => 'this call comes from a step that no longer holds its task, so nixie started nothing',

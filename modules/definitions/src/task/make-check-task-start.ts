@@ -1,6 +1,5 @@
 import type { SandboxStartInput, TaskStartBounds } from '@heynixie/tasks';
-import { sandboxRunner } from '@heynixie/tasks';
-import invariant from 'tiny-invariant';
+import { planSandboxStart } from '@heynixie/tasks';
 import type { CheckTaskStart } from './types';
 
 export interface CheckTaskStartOptions {
@@ -13,13 +12,9 @@ export interface CheckTaskStartOptions {
   readonly conversationTools: readonly string[];
 }
 
-// The one check of a start: the sandbox runner plans the input for the starter, with the bounds
+// The one check of a start: the sandbox runner's plan plans the input for the starter, with the bounds
 // that the conversation's task.start passes.
 export function makeCheckTaskStart(options: CheckTaskStartOptions): CheckTaskStart {
-  const start = sandboxRunner.start;
-
-  invariant(start, 'the sandbox runner has a start');
-
   return (input: SandboxStartInput, starter) => {
     const tools = starter === 'file' ? options.toolNames : options.conversationTools;
 
@@ -27,7 +22,7 @@ export function makeCheckTaskStart(options: CheckTaskStartOptions): CheckTaskSta
     // definition may hold it, and it holds every tool that `read` does, so the plan checks it as read.
     const planned = input.memory === 'self_notes' ? { ...input, memory: 'read' as const } : input;
 
-    const plan = start.plan(
+    const plan = planSandboxStart(
       planned,
       { tools, memory: 'read', persona: 'default', log: 'conversation' },
       options.bounds,

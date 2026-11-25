@@ -1,18 +1,26 @@
 import type { JSONValue, RecordInput } from '@heynixie/log';
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
-import type { DefinitionTaskAnswer } from '@heynixie/tasks';
+import type { DefinitionTaskAnswer, TasksTables } from '@heynixie/tasks';
 import {
   conversationTaskID,
+  isFinishedState,
   readTaskGate,
   triggerFiredCodec,
   triggerSkippedCodec,
+  triggerTaskInputCodec,
   waitAtFaultPoint,
   writeInboxRecordsInTransaction,
 } from '@heynixie/tasks';
 import type { Transaction } from 'kysely';
 import { triggerArmedCodec } from '../record/trigger-armed-codec';
 import { triggerDeliveredCodec } from '../record/trigger-delivered-codec';
-import type { TriggerBatch, TriggerCoreContext, TriggerEvent, TriggersTables } from '../types';
+import type {
+  ScheduleTriggerEvent,
+  TaskInputEvent,
+  TriggerBatch,
+  TriggerCoreContext,
+  TriggersTables,
+} from '../types';
 import { buildSourceKey } from '../utils/build-source-key';
 import { toCanonicalJSON } from '../utils/to-canonical-json';
 import { catchUpThresholdMs, maxSkippedSlots } from './constants';
@@ -35,7 +43,10 @@ export async function deliverTriggerBatch(
     let delivered = 0;
 
     for (const event of batch.events) {
-      const isWritten = await writeEvent(tx, core, sourceID, event);
+      const isWritten =
+        event.kind === 'task_input'
+          ? await writeTaskInput(tx, core, sourceID, event)
+          : await writeEvent(tx, core, sourceID, event);
 
       if (isWritten) {
         delivered += 1;
@@ -54,11 +65,60 @@ export async function deliverTriggerBatch(
   return result;
 }
 
+// An event that names its task reads no definition. It is dropped when its key is held or its task
+// is missing or ended, and otherwise lands on the task's thread: in the inbox when it wakes the task.
+async function writeTaskInput(
+  tx: Transaction<unknown>,
+  core: TriggerCoreContext,
+  sourceID: string,
+  event: TaskInputEvent,
+): Promise<boolean> {
+  const key = await tx
+    .$extendTables<TriggersTables>()
+    .selectFrom('trigger_keys')
+    .select('source_key')
+    .where('source_key', '=', buildSourceKey(sourceID, event.dedupeKey))
+    .executeTakeFirst();
+
+  const task = await tx
+    .$extendTables<TasksTables>()
+    .selectFrom('tasks')
+    .select('state')
+    .where('task_id', '=', event.taskID)
+    .executeTakeFirst();
+
+  if (key !== undefined || task === undefined || isFinishedState(task.state)) {
+    return false;
+  }
+
+  const input: RecordInput = {
+    kind: 'trigger.task_input',
+    definitions: core.definitions(),
+    thread: event.taskID,
+    payload: triggerTaskInputCodec.encode({
+      taskID: event.taskID,
+      source: sourceID,
+      dedupeKey: event.dedupeKey,
+      occurredAt: event.occurredAt,
+      hop: event.hop,
+      wake: event.wake,
+      facts: event.facts,
+    }),
+    erasable: { event: event.payload },
+  };
+
+  await (event.wake
+    ? writeInboxRecordsInTransaction(tx, core, [input])
+    : writeRecordsInTransaction(tx, core.log, [input]));
+
+  return true;
+}
+
 async function writeEvent(
   tx: Transaction<unknown>,
   core: TriggerCoreContext,
   sourceID: string,
-  event: TriggerEvent,
+  event: ScheduleTriggerEvent,
 ): Promise<boolean> {
   const db = tx.$extendTables<TriggersTables>();
 
@@ -128,7 +188,7 @@ async function probeConversationWaiting(tx: Transaction<unknown>): Promise<boole
 function buildFired(
   core: TriggerCoreContext,
   sourceID: string,
-  event: TriggerEvent,
+  event: ScheduleTriggerEvent,
   thread: string,
 ): RecordInput {
   const firedAt = core.clock.now();
@@ -155,7 +215,7 @@ function buildFired(
 function buildSkipped(
   core: TriggerCoreContext,
   sourceID: string,
-  event: TriggerEvent,
+  event: ScheduleTriggerEvent,
   outcome: Extract<EventOutcome, { readonly kind: 'skip' }>,
 ): RecordInput {
   return {
