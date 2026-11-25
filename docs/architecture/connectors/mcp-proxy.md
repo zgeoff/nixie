@@ -127,7 +127,8 @@ that both hold.
 
 A tool joins the registry only when its pinned form has a declaration, as the next section says. A
 form without one stays hidden with the reason, and a call to it fails at the registry stage of the
-decision point.
+decision point. A tool whose override does not fit its pinned form stays `stopped_unfit` and out of
+the registry until the override or the form changes.
 
 Before a task run reads its tool list, the registry asks each source to prepare the run's tools. The
 proxy lists the server of each named `<serverID>.<tool>`, unless that server's backoff is running. A
@@ -135,21 +136,11 @@ failed listing leaves the pinned tools in place, and the preparation never rejec
 
 ## Effect declarations
 
-A tool's declaration comes from the annotations of its pinned form:
-
-| Annotations                                                        | Effects                   |
-| ------------------------------------------------------------------ | ------------------------- |
-| `readOnlyHint: true`                                               | `read`                    |
-| `readOnlyHint` false or missing, `destructiveHint: false`          | `write`, `send`           |
-| `readOnlyHint` false or missing, `destructiveHint` true or missing | `write`, `delete`, `send` |
-
-A missing hint takes the MCP standard's default, so a tool with no annotations declares the
-strictest effects and asks for an approval at each call until an allow rule covers it. A hint that
-is present and not a boolean leaves the tool with no declaration. Every string argument at any depth
-counts as content, including the items of an array, each member of a union and the free keys of an
-object, no argument is a destination or an amount, and every result field is outside content, so its
-source is `untrusted`. A tool with a read effect runs direct, and a tool with any other effect is
-queued. The definitions repo holds no override for a proxied tool.
+A tool's declaration comes from the override file of its server in the definitions repo, or from the
+annotations of its pinned form when the file has no entry for the tool. A tool with a read effect
+runs direct, and a tool with any other effect is queued.
+[Effect declarations of proxied tools](mcp-proxy-declarations.md) holds the annotation table, the
+override file format, the fit check and the reconcile.
 
 ## Calls and results
 
@@ -178,24 +169,26 @@ call's error flag.
 
 The tool's definition names its pinned hash, and the call record keeps it. A call runs only under
 the form it loaded. When a listing moves the pin after the call loaded the tool, nothing runs and
-the call returns an error that asks the model to call again. An approved call of a direct tool runs
-only when the pin is still the one the call record names. An approved call of a queued tool runs
-only when the current form accepts its saved arguments, and otherwise settles as refused.
+the call returns an error that asks the model to call again. A call checks its input and its result
+against the pin hash it loaded, never the newest one. An approved call of a direct tool runs only
+when the pin is still the one the call record names. An approved call of a queued tool runs only
+when the current form accepts its saved arguments, and otherwise settles as refused.
 
 Every field of a proxied result is `untrusted`, so the endpoint sends the whole result as one text
 block inside `tool-result` markers with a random fence, and sends no structured content. This holds
 for every direct tool whose result fields are all `untrusted`. A field that the declaration names no
-source for counts as `untrusted`, so a tool whose output schema names no field is fenced too. A tool
-with trusted output keeps its structured content. The pictures of a result go to the model only when
-the turn's image budget has room for all of them. Text that nixie writes itself, such as a refusal,
-carries no markers.
+source for counts as `untrusted`, so a tool whose output schema names no field, or whose source map
+is empty, is fenced too. A tool with trusted output keeps its structured content. The pictures of a
+result go to the model only when the turn's image budget has room for all of them, and a proxied
+call reserves them from that budget. Text that nixie writes itself, such as a refusal, carries no
+markers.
 
 An approved call of a queued tool reaches the action runners through the connector that
 `findConnector` answers for it. The connector clears the call again before it runs. A refusal or a
 server error settles the action as refused, and a call that fails after it left settles as
-ambiguous. A proxied tool has no idempotency key or check, so an ambiguous action comes to the user.
-The reason of a refused action holds the server's own words, so a call that waits for it gets the
-reason fenced, as an error.
+ambiguous. Unless the tool's override sets a reconcile, an ambiguous action comes to the user. The
+reason of a refused action holds the server's own words, so a call that waits for it, and a queued
+or approved call that ends in a server error, gets the reason fenced, as an error.
 
 ## Health
 
@@ -209,7 +202,9 @@ After 3 failed listings in a row the server is unhealthy, and the proxy writes o
 `mcp.health_changed` record with the last error and the next try. The next passed listing writes one
 more, for the recovery. A start resets every state and writes a recovery record for each server
 whose last record said unhealthy. A grant that needs consent is not a failed listing: the proxy
-stops listing the server until the user signs in.
+reads the need from the grant's state, never from the HTTP status, marks the server's cached health
+as healthy and writes a recovery record when it was unhealthy, and stops listing the server until
+the user signs in.
 
 ## The model's view
 
@@ -222,6 +217,10 @@ beside the proxied tools, and the config load refuses `mcp` as a server ID.
 A trusted server's change to a tool, and a tool that a listing drops, each write an `mcp.notice`
 record, which marks the `mcp` live topic. `mcp.readNotices` returns the newest notices to a
 signed-in client, and `nixie mcp notices` prints them for the host.
+
+A pin that moves by a trusted server's change also reaches the tasks that hold the tool. Each task
+with an open run whose tool list names the tool, or the whole server with `<serverID>.*`, gets the
+same system message in its inbox, so a running task learns of the change too.
 
 A pin that moves by a trusted server's change also writes a `tool_changed` record in the same
 transaction, on the conversation's thread. It sits in the conversation's inbox without waking the
