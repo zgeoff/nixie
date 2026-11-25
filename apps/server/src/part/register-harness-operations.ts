@@ -1,10 +1,15 @@
 import { closeSync, readdirSync, readlinkSync, realpathSync } from 'node:fs';
+import type { MemoryMailHost } from '@heynixie/mail/memory-host';
 import type { TasksContext } from '@heynixie/tasks';
 import { createTask, writeInboxRecords, writeTaskControl } from '@heynixie/tasks';
 import type { HarnessLink } from '@heynixie/testing';
 import { buildNixieOperationSchemas } from './build-nixie-operation-schemas';
 
-export function registerHarnessOperations(link: HarnessLink, context: TasksContext): void {
+export function registerHarnessOperations(
+  link: HarnessLink,
+  context: TasksContext,
+  mail: MemoryMailHost | null,
+): void {
   const schemas = buildNixieOperationSchemas();
 
   link.registerOperation('sendMessage', schemas.sendMessage, async (message) => {
@@ -44,6 +49,14 @@ export function registerHarnessOperations(link: HarnessLink, context: TasksConte
     const outcome = await writeTaskControl(context, request);
 
     return outcome.status === 'controlled' ? outcome.sequence : null;
+  });
+
+  link.registerOperation('deliverMail', schemas.deliverMail, (incoming) => {
+    if (mail === null) {
+      throw new Error('the config sets no mail section, so the test build has no mailbox');
+    }
+
+    return mail.deliver(incoming).hostMessageID;
   });
 
   link.registerOperation('releaseWriterLock', schemas.releaseWriterLock, () => {

@@ -89,6 +89,9 @@ export interface ConversationEndpointTools {
   // the tools on coding sessions, none without a coding runner
   readonly coding: readonly ToolDefinition[];
 
+  // the tools on the assistant's own mailbox, none without a mailbox
+  readonly mail: readonly ToolDefinition[];
+
   // the harnesses of the model profiles in use, which decide the variants that task.start
   // advertises; absent, it advertises every variant
   readonly harnesses: readonly HarnessID[] | undefined;
@@ -315,6 +318,7 @@ export async function startConversationEndpoint(
     ...notebook,
     ...tools.computer,
     ...tools.coding,
+    ...tools.mail,
     ...search,
     ...images,
     ...devices,

@@ -50,3 +50,4 @@ export { apiRecordTopics } from './api/api-record-topics';
 export { collectModuleRecordTopicMaps } from './live/collect-module-record-topic-maps';
 export type { ClientRegistry, Presence } from './live/create-client-registry';
 export { createClientRegistry } from './live/create-client-registry';
+export { buildMailFileReader } from './proposal/build-mail-file-reader';
