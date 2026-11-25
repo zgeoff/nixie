@@ -2,6 +2,7 @@ import { onTestFinished } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { actionsProjection } from '@heynixie/actions';
+import type { Clock } from '@heynixie/clock';
 import { readDefinitionNotices, readDefinitionVersion } from '@heynixie/definitions';
 import { definitionTaskProjections } from '@heynixie/definitions/test-utils';
 import type { Writer } from '@heynixie/log';
@@ -81,6 +82,9 @@ interface TestAPI {
 interface TestAPIOptions {
   // gives the context a spending stop on a stub gateway, with turn limits of 3 a day (cap 5) and 4 a month
   readonly isSpendOn?: boolean;
+
+  // the clock that the log's writer and the spending stop read, the system's when unset
+  readonly writerClock?: Clock;
 }
 
 export async function startTestAPI(
@@ -95,7 +99,10 @@ export async function startTestAPI(
 
   stack.defer(() => rm(dataDir, { recursive: true, force: true }));
 
-  const writer = await startWriter({ dataDir });
+  const writer = await startWriter({
+    dataDir,
+    ...(options.writerClock === undefined ? {} : { clock: options.writerClock }),
+  });
 
   for (const topics of collectModuleRecordTopicMaps()) {
     registerRecordTopics(writer, topics);

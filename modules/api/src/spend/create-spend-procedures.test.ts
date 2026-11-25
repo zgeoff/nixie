@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test';
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import { buildMockGatewayStatus, buildTrippedGatewayStatus } from '@heynixie/spend/test-utils';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import { sql } from 'kysely';
 import { buildTestClient } from '../test-utils/build-test-client';
 import { createDeviceSession } from '../test-utils/create-device-session';
@@ -11,7 +12,12 @@ interface TestOptions {
 }
 
 async function setupTest(options: TestOptions) {
-  const api = await startTestAPI(undefined, options);
+  // the stub gateway counts the day of 13 Nov 2026
+  const api = await startTestAPI(undefined, {
+    ...options,
+    writerClock: createFakeClock({ startMs: Date.parse('2026-11-13T09:00:00Z') }),
+  });
+
   const laptop = await createDeviceSession(api.context, 'laptop');
 
   return {
