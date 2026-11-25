@@ -231,11 +231,18 @@ test('it gives the call thread the hang-up, which ends the call as nixie after t
 test('it runs no compaction on the call thread when a call turn ends past the threshold', async () => {
   const ctx = await setupTest();
 
-  ctx.nixie.guest.setContextSize(190_000);
   ctx.nixie.guest.addKindReplies('worker', { text: 'Two things.' }, { text: 'Nothing else.' });
 
   await ctx.startLiveCall();
 
+  // the conversation's turn on the call's start takes the next context size, so it goes first
+  await waitForCondition(() =>
+    ctx.nixie.guest.received.some(
+      (received) => received.frame.type === 'turn' && received.owner === 'conversation',
+    ),
+  );
+
+  ctx.nixie.guest.setContextSize(190_000);
   ctx.speech.emit('fake-session-1', { kind: 'hand_off', handOffID: 'h1', request: 'my day' });
 
   await waitForCondition(() => ctx.readAnswers().length === 1);
