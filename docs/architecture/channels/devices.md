@@ -41,11 +41,12 @@ act on the caller's own row. A full session with no row gets `NOT_A_DEVICE` and 
 first. A device session whose row a revoke removed gets the refusal of a missing session.
 
 `create-api-app.ts` refuses with 403 each call from a device session except `live.follow` in its
-device form, `devices.resize`, `devices.pageError`, `devices.pageEvent`, `devices.setCapability`,
-`devices.readImage` and `sessions.signOut`. The test in `create-device-procedures.test.ts` walks
-every contract path to keep that list true. A revoke or a sign-out of a session, full or device,
-removes its device row and ends its open streams. A full session's revoke also closes its computer
-watch sockets. A reset keeps the device rows and clears what they show.
+device form, `devices.resize`, `devices.pageError`, `devices.pageEvent`, `devices.pageData`,
+`devices.setCapability`, `devices.readImage` and `sessions.signOut`. The test in
+`create-device-procedures.test.ts` walks every contract path to keep that list true. A revoke or a
+sign-out of a session, full or device, removes its device row and ends its open streams. A full
+session's revoke also closes its computer watch sockets. A reset keeps the device rows and clears
+what they show.
 
 ## The device record
 
@@ -257,8 +258,8 @@ An inline script defines the frozen global `nixie` in each page:
 - `nixie.image(id)` returns the URL of a declared image.
 - `nixie.data(url)` returns the last response of one of the page's
   [declared fetches](#declared-fetches) as `{ status, type, body, fetchedAt }`, and rejects with an
-  error whose `code` is `REFUSED`, `NOT_READY`, `STALE` or `NOT_DECLARED` for a URL the page did not
-  declare.
+  error whose `code` says why: `NOT_DECLARED`, `REFUSED`, `NOT_READY` or `STALE`, as
+  [declared fetches](#declared-fetches) explains.
 - `nixie.onData(handler)` calls the handler with the URL of each declared fetch that refreshed.
 
 The bridge takes a message only from its parent window, so a sibling frame can't send the page one.
