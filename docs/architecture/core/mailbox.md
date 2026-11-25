@@ -111,15 +111,15 @@ model can open it again.
 | `mail.wake_cancel`     | ends a rule by its short ID                                                             |
 
 Every field of an incoming mail is content from outside. The model sees each sender, subject and
-text of a result fenced as outside text, and the tool result record keeps the plain value with the
-source `untrusted`. Each result field a tool returns has a declared source, which the tool registry
-checks when the server starts.
+text of a result marked as outside text, and the tool result record keeps the value as it came, with
+the source `untrusted`. Each result field a tool returns has a declared source, which the tool
+registry checks when the server starts.
 
 Tool errors start with a code: `UNKNOWN_MESSAGE`, `UNKNOWN_ATTACHMENT`, `UNKNOWN_FILE`,
 `UNKNOWN_RULE`, `UNKNOWN_TASK`, `BAD_ADDRESS`, `BAD_DURATION`, `TOO_BIG` or `HTML_UNREADABLE`. An
 address with a character outside ASCII is a `BAD_ADDRESS`, because the header cannot carry it. A
-duration is a number of minutes, hours or days of at most 7 digits, from a minute to 3650 days. The
-`wake_rules` durations of the config and the `replyWake` of a send take the same range, and the
+duration is a number of minutes, hours or days, within the range that the mail tools' schemas set.
+The `wake_rules` durations of the config and the `replyWake` of a send take the same range, and the
 config refuses a window past the reply expiry. A call that sets no window takes the default window,
 cut to the expiry when the expiry is shorter.
 
@@ -127,7 +127,7 @@ cut to the expiry when the expiry is shorter.
 
 A received mail keeps the bytes of its attachments as attachments of its `mail.received` record,
 sealed under the record's key, so a forget of the mail destroys them. A mail keeps its first
-attachments up to 25 MiB in all. A later attachment stays in the list without its bytes, and
+attachments up to the mail size limit. A later attachment stays in the list without its bytes, and
 `mail.save_attachment` refuses it with `TOO_BIG`.
 
 `mail.save_attachment` takes the mail's short ID and the attachment's number from `mail.read`. It
@@ -136,12 +136,12 @@ returns the file's ID, name, size and media type. The file counts as untrusted, 
 ID works in the `files` argument of a send, in `file.send` and in a code run's inputs, on that
 thread only.
 
-`mail.send` and `mail.reply` take `files`, up to 10 file IDs of the calling thread, 25 MiB in all.
-The call refuses `UNKNOWN_FILE` for a file that is missing, forgotten or of another thread, and
-`TOO_BIG` for more bytes than a mail carries. The approval card lists each file by name and size.
-When the send runs, it reads each file's bytes from the thread that queued the action, refuses when
-a forget took one, and sends the mail as multipart with each file as an attachment. The `mail.sent`
-record keeps each file's name and size.
+`mail.send` and `mail.reply` take `files`, a list of file IDs of the calling thread that the tool's
+schema limits in count and total size. The call refuses `UNKNOWN_FILE` for a file that is missing,
+forgotten or of another thread, and `TOO_BIG` for more bytes than a mail carries. The approval card
+lists each file by name and size. When the send runs, it reads each file's bytes from the thread
+that queued the action, refuses when a forget took one, and sends the mail as multipart with each
+file as an attachment. The `mail.sent` record keeps each file's name and size.
 
 ## Sending
 
@@ -178,8 +178,8 @@ stores each in a `trigger.wake_rule_set` record, and the `wake_rules` table fold
   match filters and never checks trust.
 - **Target.** The rule wakes the conversation, or any task, which the call that sets the rule names.
   A call from a task that names no target wakes that task. A rule whose task ended ends with it.
-- **Expiry.** The expiry is optional, so a rule can stay for good. An expiry is at most 3650 days. A
-  rule matches the mail received before its expiry.
+- **Expiry.** The expiry is optional, so a rule can stay for good. The tool's schema sets the
+  longest expiry. A rule matches the mail received before its expiry.
 - **Window.** The window is the shortest time between two wakes by one rule. The deployment's
   `wake_rules.window` sets the default, and a call sets a window of a minute at least. Each rule
   keeps its own window, and no limit holds for the mailbox as a whole.

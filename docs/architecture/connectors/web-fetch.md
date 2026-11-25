@@ -287,7 +287,7 @@ sandbox.
 A request may also carry an `html` field, a document that nixie already holds, such as a mail's HTML
 body. The fetcher then makes no request. It reads the document's text and links as it reads a page,
 takes `about:blank` from the request's URL as the base that links resolve against, and answers with
-a page reply. A request frame holds at most 8 MiB, and the field at most 1,000,000 characters. The
+a page reply. The frame size limit of a request and a character limit of the field apply. The
 [mailbox](../core/mailbox.md#html-mail) reads each HTML mail this way.
 
 A page or image reply also carries `retryAfterMs`, the wait in milliseconds that the site's headers
