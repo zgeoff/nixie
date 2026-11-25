@@ -282,7 +282,10 @@ test('it runs nothing for a call whose tool changed its pin after the call loade
 
 test('it runs nothing for a call whose declaration moved to another snapshot while its decision was pending', async () => {
   const runs: string[] = [];
+  const outcomes: string[] = [];
   const snapshot = { current: 'sha256:test' };
+  const decisionStarted = Promise.withResolvers<void>();
+  const decisionReleased = Promise.withResolvers<void>();
 
   const tool = buildToolRegistry([
     {
@@ -296,13 +299,6 @@ test('it runs nothing for a call whose declaration moved to another snapshot whi
       }),
       pinHash: 'pin-a',
       definitionsHash: 'sha256:test',
-
-      // a seed that changes only an override lands once the call has loaded its tool
-      clear: () => {
-        snapshot.current = 'sha256:seeded';
-
-        return Promise.resolve(null);
-      },
     },
   ]).findTool('notes_read');
 
@@ -311,7 +307,7 @@ test('it runs nothing for a call whose declaration moved to another snapshot whi
     sources: [{ toolNames: () => ['notes_read'], findTool: () => tool }],
   });
 
-  const result = await runToolCall(
+  const pending = runToolCall(
     { tool: 'notes_read', input: { query: 'milk' }, toolUseID: 'toolu_1' },
     {
       runID: 'run-1',
@@ -320,10 +316,33 @@ test('it runs nothing for a call whose declaration moved to another snapshot whi
       tools: ['notes_read'],
       model: { model: 'model-a', profile: 'chat-direct' },
     },
-    { ...ctx.options, definitions: () => ({ snapshotHash: snapshot.current }) },
+    {
+      ...ctx.options,
+      definitions: () => ({ snapshotHash: snapshot.current }),
+      decide: async (policyCall) => {
+        decisionStarted.resolve();
+
+        await decisionReleased.promise;
+
+        const decided = await ctx.options.decide(policyCall);
+
+        outcomes.push(decided.decision.outcome);
+
+        return decided;
+      },
+    },
   );
 
-  expect([result, runs]).toStrictEqual([
+  await decisionStarted.promise;
+
+  // a seed that changes only an override lands while the decision is pending
+  snapshot.current = 'sha256:seeded';
+
+  decisionReleased.resolve();
+
+  const result = await pending;
+
+  expect([result, outcomes, runs]).toStrictEqual([
     {
       content: [
         {
@@ -333,6 +352,7 @@ test('it runs nothing for a call whose declaration moved to another snapshot whi
       ],
       isError: true,
     },
+    ['allow'],
     [],
   ]);
 });

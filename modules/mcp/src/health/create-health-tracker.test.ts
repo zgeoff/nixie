@@ -44,6 +44,19 @@ test('it writes no health record at failures 1 and 2, one at the 3rd, and one on
     invariant(isDone(), 'the backoff timer ran the retry');
   };
 
+  // Reads the database until the health records reach the count, with the same bound.
+  const readUntilRecords = async (count: number) => {
+    let records = await ctx.readHealthChangeCount();
+
+    for (let step = 0; step < 2000 && records < count; step += 1) {
+      await ctx.mcp.readServers();
+
+      records = await ctx.readHealthChangeCount();
+    }
+
+    invariant(records >= count, 'the tracker wrote the health record');
+  };
+
   ctx.site.failListings(true);
 
   await ctx.mcp.list('tracker');
@@ -55,20 +68,14 @@ test('it writes no health record at failures 1 and 2, one at the 3rd, and one on
   const afterTwo = await ctx.readHealthChangeCount();
 
   await runBackoffUntil(120_000, () => ctx.mcp.readHealth('tracker').failures === 3);
-
-  while ((await ctx.readHealthChangeCount()) < 1) {
-    await ctx.mcp.readServers();
-  }
+  await readUntilRecords(1);
 
   const afterThree = await ctx.test.readHealthChanges();
 
   ctx.site.failListings(false);
 
   await runBackoffUntil(240_000, () => ctx.mcp.readHealth('tracker').failures === 0);
-
-  while ((await ctx.readHealthChangeCount()) < 2) {
-    await ctx.mcp.readServers();
-  }
+  await readUntilRecords(2);
 
   const afterRecovery = await ctx.test.readHealthChanges();
 

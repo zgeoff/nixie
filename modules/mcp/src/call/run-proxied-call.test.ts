@@ -1186,6 +1186,76 @@ test('it sends no second request for a scheduled retry once its idempotency over
   ]);
 });
 
+test('it sends no second request for a scheduled retry once its idempotency override is replaced by a check', async () => {
+  const ctx = await setupTest();
+
+  const keyedCreate = {
+    ...ctx.itemCreate,
+    inputSchema: {
+      type: 'object',
+      properties: { title: { type: 'string' }, requestID: { type: 'string' } },
+      required: ['title'],
+    },
+    outputSchema: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] },
+    answer: { content: [], structuredContent: { id: 7 } },
+  };
+
+  ctx.setOverrides({
+    tracker: {
+      item_create: {
+        effects: ['write'],
+        destinations: [],
+        amount: null,
+        content: null,
+        reconcile: { idempotencyKey: 'requestID' },
+      },
+    },
+  });
+
+  ctx.site.setTools([ctx.itemGet, keyedCreate]);
+
+  await ctx.mcp.list('tracker');
+  await ctx.allow('tracker.item_get');
+  await ctx.allow('tracker.item_create');
+
+  const runner = await ctx.startRunner();
+  const queued = await runner.queue('tracker.item_create', { title: 'water the plants' });
+
+  await runner.runNext();
+
+  ctx.setOverrides(
+    {
+      tracker: {
+        item_create: {
+          effects: ['write'],
+          destinations: [],
+          amount: null,
+          content: null,
+          reconcile: { check: 'item_get' },
+        },
+      },
+    },
+    'sha256:checked',
+  );
+
+  await ctx.mcp.refit();
+
+  runner.clock.advance(61_000);
+
+  await runner.runNext();
+
+  runner.clock.advance(61_000);
+
+  await runner.runNext();
+
+  const outcome = await runner.readOutcome(queued.actionID);
+
+  expect([outcome, ctx.site.calls.map((call) => [call.tool, call.args])]).toStrictEqual([
+    { outcome: 'unknown', reason: expect.toBeString() },
+    [['item_create', { title: 'water the plants', requestID: queued.actionID }]],
+  ]);
+});
+
 test('it runs a queued call whose required idempotency key the proxy fills, though its schema allows no other property', async () => {
   const ctx = await setupTest();
 
@@ -1218,14 +1288,77 @@ test('it runs a queued call whose required idempotency key the proxy fills, thou
   await ctx.allow('tracker.item_create');
 
   const runner = await ctx.startRunner();
-  const queued = await runner.queue('tracker.item_create', { title: 'water the plants' });
+
+  const stepInput: StepInput = {
+    run: null,
+    taskID: runner.step.lease.workID,
+    stepKey: runner.step.stepKey,
+    lease: runner.step.lease,
+    inbox: [],
+    wake: runner.step.wake,
+    sessionBoundary: null,
+    signal: new AbortController().signal,
+    interrupt: new AbortController().signal,
+  };
+
+  const results: Awaited<ReturnType<typeof ctx.callTool>>[] = [];
+
+  const stepRan = runner.bridge.trackSteps(async () => {
+    const result = await ctx.callTool(
+      'tracker.item_create',
+      { title: 'water the plants' },
+      {
+        rules: [
+          {
+            id: 'allow-tracker',
+            revision: 1,
+            rule: { id: 'allow-tracker', outcome: 'allow', tools: ['tracker.item_create'] },
+          },
+        ],
+        inStep: {
+          queue: runner.bridge.queue,
+          thread: stepInput.taskID,
+          stepRunID: buildStepRunID(stepInput),
+        },
+      },
+    );
+
+    results.push(result);
+
+    return { next: 'wait', records: [], acknowledged: [], sessionBoundary: null };
+  })(stepInput);
+
+  // a call that the model-facing schema refused answers at once and queues nothing
+  await waitForCondition(async () => {
+    const actions = await runner.readActions();
+
+    return actions.length === 1 || results.length === 1;
+  });
 
   await runner.runNext();
 
-  const outcome = await runner.readOutcome(queued.actionID);
+  await stepRan;
 
-  expect([outcome, ctx.site.calls.map((call) => call.args)]).toStrictEqual([
-    { outcome: 'done', result: { text: 'called item_create' } },
-    [{ title: 'water the plants', requestID: queued.actionID }],
+  const actions = await runner.readActions();
+
+  expect([
+    results,
+    actions.map((action) => action.status),
+    ctx.site.calls.map((call) => call.args),
+  ]).toStrictEqual([
+    [
+      {
+        content: [
+          {
+            type: 'text',
+            text: expect.stringMatching(
+              /^<tool-result source="untrusted" fence="[0-9a-f]+">\ncalled item_create\n<\/tool-result fence="[0-9a-f]+">$/u,
+            ),
+          },
+        ],
+      },
+    ],
+    ['done'],
+    [{ title: 'water the plants', requestID: actions.at(0)?.actionID }],
   ]);
 });

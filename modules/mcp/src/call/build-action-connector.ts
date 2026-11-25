@@ -44,6 +44,10 @@ export function buildActionConnector(
 
     return {
       run: async (attempt) => {
+        if (attempt.attempt > 1 && isRecoveryMoved(reconcile, attempt)) {
+          return { kind: 'ambiguous', reason: renderMovedReason(attempt.tool) };
+        }
+
         const result = await call(attempt.arguments);
 
         return toProviderResponse(result);
@@ -86,10 +90,7 @@ export function buildActionConnector(
   return {
     run: async (attempt) => {
       if (attempt.attempt > 1 && isRecoveryMoved(reconcile, attempt)) {
-        return {
-          kind: 'ambiguous',
-          reason: `${attempt.tool} changed its declaration after the first attempt, so nothing was retried`,
-        };
+        return { kind: 'ambiguous', reason: renderMovedReason(attempt.tool) };
       }
 
       const result = await call({ ...attempt.arguments, [key]: attempt.actionID });
@@ -98,6 +99,14 @@ export function buildActionConnector(
     },
     reconcile: keyed,
   };
+}
+
+function isRecoveryMoved(reconcile: ConnectorReconcile, attempt: ActionAttempt): boolean {
+  return reconcile.definitionsHash !== null && reconcile.definitionsHash !== attempt.snapshotHash;
+}
+
+function renderMovedReason(tool: string): string {
+  return `${tool} changed its declaration after the first attempt, so nothing was retried`;
 }
 
 function toProviderResponse(result: ProxiedCallResult): ProviderResponse {
@@ -125,8 +134,4 @@ function toProviderResponse(result: ProxiedCallResult): ProviderResponse {
     result: outcome.result,
     ...(outcome.images === undefined ? {} : { images: outcome.images }),
   };
-}
-
-function isRecoveryMoved(reconcile: ConnectorReconcile, attempt: ActionAttempt): boolean {
-  return reconcile.definitionsHash !== null && reconcile.definitionsHash !== attempt.snapshotHash;
 }
