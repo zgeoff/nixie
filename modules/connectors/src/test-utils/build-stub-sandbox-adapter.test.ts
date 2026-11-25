@@ -461,7 +461,11 @@ test('it leaves the exit of a guest open when the adapter ignores a stop', async
   });
 
   const stream = await sandbox.spawn({ argv: ['fetcher'], maxMessageBytes: 100 });
-  const settled = await Promise.race([stream.stop().then(() => 'stopped'), 'still running']);
+
+  const settled = await Promise.race([
+    stream.stop().then(() => 'stopped'),
+    Promise.resolve('still running'),
+  ]);
 
   expect(settled).toBe('still running');
 });

@@ -93,7 +93,14 @@ async function setupTest() {
           : null;
     }
 
-    return { client: device.client, deviceID: row.deviceID, shown, stop: () => stopped.abort() };
+    return {
+      client: device.client,
+      deviceID: row.deviceID,
+      shown,
+      stop: () => {
+        stopped.abort();
+      },
+    };
   };
 
   return {
@@ -1071,7 +1078,7 @@ test('it refuses an error for content that its region no longer shows, and keeps
     message: 'boom',
   });
 
-  await expect(refused).rejects.toMatchObject({ code: 'STALE' });
+  expect(refused).rejects.toMatchObject({ code: 'STALE' });
 
   const outcome = await ctx.call('device.preview', { device: region.deviceID });
 

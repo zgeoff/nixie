@@ -168,12 +168,9 @@ async function readPicture(
   try {
     await waitOrTimeOut(stream.send(encodeRenderMessage(request)), limit);
 
-    const first = await waitOrTimeOut(
-      stream.messages[Symbol.asyncIterator]()
-        .next()
-        .then((next) => next.value ?? null),
-      limit,
-    );
+    const next = await waitOrTimeOut(stream.messages[Symbol.asyncIterator]().next(), limit);
+
+    const first = next.done === true ? null : next.value;
 
     const exit = await waitOrTimeOut(stream.exit, limit);
 
