@@ -5,7 +5,8 @@
   it.
 - [End state](#end-state): what the page and the records show.
 
-Run this journey on `local` only, after every other journey, because enrolling a device replaces the
+Run this journey on `local` only. Run all of it last, after every other journey, `live-updates`
+included, though the features table lists `live-updates` after it: enrolling a device replaces the
 browser's session (see below). It needs the scripted model and the `layout-on-device` action, which
 the harness that runs nixie on `local` serves. On `preview`, list the feature as not verified, and
 run no `bun verify done`.
@@ -14,7 +15,8 @@ Start from a browser with no session, because the device page shows the enrolmen
 a browser. Before step 1, run `bun verify up --restart` and `bun verify doctor`, and do not run
 `sign-in-enrol` first, because it signs the browser in. This journey is the last one of a pass. To
 run another journey after it, restart and run `sign-in-enrol` again. Restart the same way before
-each repeat of this journey, even after a failed one: a restart gives nixie a new, empty database.
+each repeat of this journey, even after a failed one: a restart gives nixie a new, empty database,
+which holds no session for the browser.
 
 A layout is a grid of named regions on a device's screen. Each region shows its own content, and the
 model updates or times out one region with no change to the others. The model can also save a layout

@@ -65,8 +65,9 @@ holds the content outside the log.
 `readScreenState` reads the two pointed records and `pickScreenState` picks the state: the show,
 while it has no `until` or its `until` is ahead, or else the idle scene. A new show replaces the one
 before it, and an `until` that passes ends the show, never returning to an older one. The screen
-then draws the layout while a region shows content, as [Layouts and regions](#layouts-and-regions)
-says, or else the idle scene. An idle device with no scene shows black.
+then draws the layout while a region shows content or has a background, as
+[Layouts and regions](#layouts-and-regions) says, or else the idle scene. An idle device with no
+scene shows black.
 
 ## Layouts and regions
 
@@ -111,8 +112,8 @@ still fails, and points each region at its saved content record. It also writes 
 A saved layout is never a second copy of content, so a forget needs nothing more. A restore leaves a
 region blank when a forget erased its content record, and the result lists those regions in
 `emptied`. A region whose minutes ran out since the save restores as blank too, because the region
-reads its record at the time it is asked. A reset and a device removal delete the saved layouts with
-the layout pointers.
+reads its record at the time it is asked. A reset deletes the saved layouts with the layout
+pointers, and so does a device removal, which a revoke or a sign-out of the device's session makes.
 
 The record kinds `device.layout_saved`, `device.layout_restored` and `device.layout_removed` have an
 empty list of live topics, as the other layout records do: a device page follows its own stream,
@@ -171,21 +172,22 @@ writes nothing. A device counts as offline once it has had no open stream for
 
 ## The tools
 
-| Tool                    | What it does                                                                                                                                   |
-| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| `devices.list`          | Lists each device: `shortID`, name, screen, camera, online, `offlineSinceMs`, `wake`, pixels, `pixelRatio`, what it shows and its saved layout |
-| `devices.watch`         | Sets which changes of a device wake the model: `online`, `offline`, both or none                                                               |
-| `device.show`           | Shows markdown or an image, with `fit` `whole` or `fill`, for `minutes` or until the next show                                                 |
-| `device.setIdle`        | Sets the idle scene: up to 8 blocks and 20,000 characters of markdown in all                                                                   |
-| `device.layout`         | Sets the grid and its named regions, or clears the layout with `clear: true`                                                                   |
-| `device.region`         | Fills one region, for `minutes` with `then` `blank` or `previous`, or until its next call                                                      |
-| `device.layout_save`    | Saves the device's layout under a name, replacing a saved layout of that name                                                                  |
-| `device.layout_restore` | Puts a saved layout back: its grid and every region's content                                                                                  |
-| `device.layouts`        | Lists the saved names, each with the time it was saved                                                                                         |
-| `device.layout_remove`  | Deletes a saved layout                                                                                                                         |
+| Tool                    | What it does                                                                                                                                      |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `devices.list`          | Lists each device: `shortID`, name, screen, camera, online, `offlineSinceMs`, `wake`, pixels, `pixelRatio`, what it shows and the layout it holds |
+| `devices.watch`         | Sets which changes of a device wake the model: `online`, `offline`, both or none                                                                  |
+| `device.show`           | Shows markdown or an image, with `fit` `whole` or `fill`, for `minutes` or until the next show                                                    |
+| `device.setIdle`        | Sets the idle scene: up to 8 blocks and 20,000 characters of markdown in all                                                                      |
+| `device.layout`         | Sets the grid and its named regions, or clears the layout with `clear: true`                                                                      |
+| `device.region`         | Fills one region, for `minutes` with `then` `blank` or `previous`, or until its next call                                                         |
+| `device.layout_save`    | Saves the device's layout under a name, replacing a saved layout of that name                                                                     |
+| `device.layout_restore` | Puts a saved layout back: its grid and every region's content                                                                                     |
+| `device.layouts`        | Lists the saved names, each with the time it was saved                                                                                            |
+| `device.layout_remove`  | Deletes a saved layout                                                                                                                            |
 
-All 10 declare the `note` effect and run direct. `device.show` checks in this order and returns the
-first refusal: `UNKNOWN_DEVICE`, `SCREEN_OFF`, then the image refusals `UNKNOWN_IMAGE` and
+All 10 declare the `note` effect and run direct, inside the turn. The user's rules still decide each
+call, so an ask rule can hold a call for approval. `device.show` checks in this order and returns
+the first refusal: `UNKNOWN_DEVICE`, `SCREEN_OFF`, then the image refusals `UNKNOWN_IMAGE` and
 `IMAGE_FORGOTTEN`. A show to an offline device refuses nothing: the show waits, the device shows it
 when it comes back online, and the result carries `waiting: true` with a message that says so. The
 `minutes` of a show that waits count from the time the device comes online. An image is an
@@ -197,10 +199,10 @@ when it comes back online, and the result carries `waiting: true` with a message
 `UNKNOWN_LAYOUT` message lists the saved names. `device.region` returns `UNKNOWN_DEVICE`,
 `SCREEN_OFF`, `UNKNOWN_REGION`, `PAGE_NOT_BUILT`, the image refusals, then `OFFLINE`.
 
-`devices.list` shows the saved layout whether or not the device is online, apart from `showing`.
-`showing` follows the screen's order: it is `layout` while no show covers the layout and at least
-one region shows content. Each region lists its kind, `until` and the short ID of its
-`device.region_shown` record, and never its content. A blank region has a null kind.
+`devices.list` shows the layout a device holds whether or not the device is online, apart from
+`showing`. `showing` follows the screen's order: it is `layout` while no show covers the layout and
+at least one region shows content or has a background. Each region lists its kind, `until` and the
+short ID of its `device.region_shown` record, and never its content. A blank region has a null kind.
 
 ## Device mode
 
@@ -228,10 +230,9 @@ server has, which each stream connect and each answered resize set, so the assis
 size within a second.
 
 While the screen is on, the page hides its close, full-screen, screen-off and sign-out buttons until
-a touch or a pointer move, and shows them for `revealMs` after the latest one. Close leaves device
-mode for the home page, which holds the conversation that links the device page. A button toggles
-full screen on the page's root element with the Fullscreen API. Its label reads Full screen or Leave
-full screen, and follows `fullscreenchange`, so Escape updates it. The page keeps the screen awake
-with the Wake Lock API while a stream is open, and asks for the lock again when the page shows
-again. The web server sends the page with a Content-Security-Policy that includes
-`frame-ancestors 'none'`.
+a touch or a pointer move, and shows them for `revealMs` after the latest one. Close leaves full
+screen and device mode, and opens the home page. A button toggles full screen on the page's root
+element with the Fullscreen API. Its label reads Full screen or Leave full screen, and follows
+`fullscreenchange`, so Escape updates it. The page keeps the screen awake with the Wake Lock API
+while a stream is open, and asks for the lock again when the page shows again. The web server sends
+the page with a Content-Security-Policy that includes `frame-ancestors 'none'`.
