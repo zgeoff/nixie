@@ -93,13 +93,13 @@ order as below. A retry of a routine action takes none.
 The passkey step runs after step 4 and before step 5 of the
 [answer checks](approvals.md#the-answer), in the transaction that applies the answer. Every path
 that takes a passkey calls the one function `checkPasskey` in `modules/api/src/passkey/`: the
-answers, the retry of an unknown outcome, the registration options and the revoke. It refuses in
-this order:
+answers, the retry of an unknown outcome, the registration options while a passkey is live, and the
+revoke. It refuses in this order:
 
 1. No passkey is live: `NO_PASSKEY`.
 2. The answer carries no assertion and no [window](#the-window) covers it: `PASSKEY_REQUIRED`. A
-   registration with no assertion and no covering window falls back to the host code and refuses as
-   `CODE_REQUIRED`.
+   registration with no assertion and no covering window refuses as `CODE_REQUIRED`, which asks for
+   the host code.
 3. The check fails: `PASSKEY_FAILED` with the reason.
 
 A refusal from the step writes nothing under the client action ID, and the hash of a checked

@@ -85,8 +85,8 @@ ID is the hostname of the origin the client runs on. The API keeps its challenge
 options and the host's code in memory, so a restart drops them.
 
 `passkeys.window` takes a check and tells whether the session's open window covers it, so the client
-knows whether to ask the passkey. It reports `false` for adding or removing a passkey.
-[The window](../policy/passkeys.md#the-window) describes how a tap opens and closes it.
+knows whether to ask the passkey. It reports `false` for adding or removing a passkey. See
+[the window](../policy/passkeys.md#the-window) for how a tap opens and closes it.
 
 ## Checked actions
 
