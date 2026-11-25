@@ -7,7 +7,7 @@ import { runMigrations } from '../migration/run-migrations';
 import { nixieSchema } from '../schema/nixie-schema';
 import { buildSqliteWorkerDialect } from '../sqlite/build-sqlite-worker-dialect';
 import { readRunPrefix } from '../test-utils/read-run-prefix';
-import { spendLedgerMigration } from './0083-spend-ledger-migration';
+import { spendLedgerMigration } from './0085-spend-ledger-migration';
 
 async function setupTest() {
   const stack = new AsyncDisposableStack();
@@ -38,11 +38,11 @@ async function setupTest() {
   };
 }
 
-test('it is the migration of version 83, and the oldest reader moves up to it', async () => {
+test('it is the migration of version 85, and the oldest reader moves up to it', async () => {
   const ctx = await setupTest();
 
-  expect(ctx.version).toBe(83);
-  expect(nixieSchema.oldestReader).toBe(83);
+  expect(ctx.version).toBe(85);
+  expect(nixieSchema.oldestReader).toBe(85);
 });
 
 test('it carries each count over to the row of its ledger key and drops the old ledger', async () => {

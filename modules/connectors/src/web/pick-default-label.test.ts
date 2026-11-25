@@ -1,41 +1,29 @@
 import { expect, test } from 'bun:test';
-import type { Connector } from '../types';
 import { pickDefaultLabel } from './pick-default-label';
 
-test('it labels a connection with the account name that its connector reports', async () => {
-  const connector: Connector = {
-    id: 'google',
-    auth: { kind: 'none' },
-    actions: [],
-    check: () =>
-      Promise.resolve({ grantedScopes: ['gmail.modify'], accountName: 'robin.vale@example.com' }),
+test('it labels a connection with the account name that its connector reports', () => {
+  const report = {
+    grantedScopes: ['gmail.modify'],
+    accountName: 'robin.vale@example.com',
+    missing: [],
   };
 
-  const report = await connector.check();
-
-  expect(pickDefaultLabel({ connectorID: connector.id, report, takenLabels: [] })).toBe(
+  expect(pickDefaultLabel({ connectorID: 'google', report, takenLabels: [] })).toBe(
     'robin.vale@example.com',
   );
 });
 
-test('it labels a connection with the connector ID when its connector reports no account name', async () => {
-  const connector: Connector = {
-    id: 'kagi',
-    auth: { kind: 'none' },
-    actions: [],
-    check: () => Promise.resolve({ grantedScopes: [], accountName: null }),
-  };
+test('it labels a connection with the connector ID when its connector reports no account name', () => {
+  const report = { grantedScopes: [], accountName: null, missing: [] };
 
-  const report = await connector.check();
-
-  expect(pickDefaultLabel({ connectorID: connector.id, report, takenLabels: [] })).toBe('kagi');
+  expect(pickDefaultLabel({ connectorID: 'kagi', report, takenLabels: [] })).toBe('kagi');
 });
 
 test('it labels a connection with the connector ID when the account name is blank', () => {
   expect(
     pickDefaultLabel({
       connectorID: 'kagi',
-      report: { grantedScopes: [], accountName: '   ' },
+      report: { grantedScopes: [], missing: [], accountName: '   ' },
       takenLabels: [],
     }),
   ).toBe('kagi');
@@ -45,7 +33,7 @@ test('it trims the account name', () => {
   expect(
     pickDefaultLabel({
       connectorID: 'google',
-      report: { grantedScopes: [], accountName: ' robin.vale@example.com\n' },
+      report: { grantedScopes: [], missing: [], accountName: ' robin.vale@example.com\n' },
       takenLabels: [],
     }),
   ).toBe('robin.vale@example.com');
@@ -55,7 +43,7 @@ test('it numbers the label from 2 when another connection of the connector holds
   expect(
     pickDefaultLabel({
       connectorID: 'kagi',
-      report: { grantedScopes: [], accountName: null },
+      report: { grantedScopes: [], missing: [], accountName: null },
       takenLabels: ['kagi'],
     }),
   ).toBe('kagi 2');
@@ -65,7 +53,7 @@ test('it takes the lowest free number when numbered labels are held', () => {
   expect(
     pickDefaultLabel({
       connectorID: 'kagi',
-      report: { grantedScopes: [], accountName: null },
+      report: { grantedScopes: [], missing: [], accountName: null },
       takenLabels: ['kagi', 'kagi 2', 'kagi 4'],
     }),
   ).toBe('kagi 3');
@@ -78,7 +66,7 @@ test('it treats a held label as taken after trimming, in NFC and ignoring case',
   expect(
     pickDefaultLabel({
       connectorID: 'google',
-      report: { grantedScopes: [], accountName: composed },
+      report: { grantedScopes: [], missing: [], accountName: composed },
       takenLabels: [decomposed],
     }),
   ).toBe(`${composed} 2`);

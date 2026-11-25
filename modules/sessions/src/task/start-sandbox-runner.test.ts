@@ -1430,6 +1430,27 @@ test('it leaves the session of a task that reads no memory as it is on a forget'
   expect(ctx.guest.purged).toStrictEqual([]);
 });
 
+test('it leaves the session of a task that reads memory as it is when a connection is forgotten', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: { persona: 'default', memory: 'read' },
+  });
+
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+  await runner.cleanupSessions({ connectionID: 'connection-lake' });
+
+  const invalidated = await ctx.readKinds('model.session_invalidated');
+
+  expect([invalidated, ctx.guest.purged]).toStrictEqual([[], []]);
+});
+
 test('it purges and invalidates the session of a task that reads no memory when a forgotten record is on its thread', async () => {
   const ctx = await setupTest();
   const starter = await ctx.seed.conversationStep();

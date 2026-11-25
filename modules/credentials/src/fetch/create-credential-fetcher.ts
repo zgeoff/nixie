@@ -11,6 +11,7 @@ import {
 } from '@heynixie/egress';
 import { CredentialRemovedError } from '../held/credential-removed-error';
 import type { CredentialFetch, CredentialSpec, FetchOptions } from '../types';
+import { isRefusedOAuthURL } from './is-refused-oauth-url';
 import { findCredentialHeader, placeCredential } from './place-credential';
 import type { PlacedCredential } from './place-credential';
 import { readCappedBody } from './read-capped-body';
@@ -42,6 +43,11 @@ export interface FetcherTarget {
   // from its own check until `start` returns, so no removal lands between the check and the send.
   // An error it throws reaches the caller as it is.
   readonly withSendCheck?: <T>(start: () => T) => Promise<T>;
+
+  // The host names of an OAuth provider's token, revoke and authorize endpoints. With them set, the
+  // fetcher also refuses every path under /oauth2/, on any host, so no tool reaches a token or
+  // revocation endpoint.
+  readonly oauthHostnames?: readonly string[];
 
   // the origins the caller passed, all inside the spec's
   readonly origins: readonly string[];
@@ -187,6 +193,10 @@ function refuseOrigin(target: FetcherTarget, url: URL): void {
 
   if (url.protocol !== 'https:' && target.options.deploymentService !== true) {
     throw new CredentialRefusalError(`${url.origin} is not an https origin`);
+  }
+
+  if (target.oauthHostnames !== undefined && isRefusedOAuthURL(url, target.oauthHostnames)) {
+    throw new CredentialRefusalError(`${url.origin}${url.pathname} is an OAuth endpoint`);
   }
 }
 

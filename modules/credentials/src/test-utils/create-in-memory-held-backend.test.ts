@@ -31,6 +31,8 @@ async function setupTest() {
     state: { status: 'active', sinceMs: 0, lastSuccessAtMs: null, failures: 0, retryAtMs: null },
   };
 
+  const client = { credentialID: 'client', expectedCounter: 0 };
+
   const savedRecord: CredentialEvent = {
     event: 'refresh_saved',
     credentialID: 'credential',
@@ -45,6 +47,7 @@ async function setupTest() {
   return {
     backend,
     token,
+    client,
     written,
     recorder,
     savedRecord,
@@ -54,7 +57,14 @@ async function setupTest() {
 
 test('it saves a token while the counter is the expected one', async () => {
   const ctx = await setupTest();
-  const result = await ctx.backend.writeToken('credential', ctx.token, 0, null);
+
+  const result = await ctx.backend.writeToken(
+    'credential',
+    ctx.token,
+    { expectedCounter: 0, client: ctx.client },
+    null,
+  );
+
   const saved = await ctx.backend.readToken('credential');
 
   expect(result).toBe('saved');
@@ -64,7 +74,12 @@ test('it saves a token while the counter is the expected one', async () => {
 test('it removes a credential, advances its counter and drops its key', async () => {
   const ctx = await setupTest();
 
-  await ctx.backend.writeToken('credential', ctx.token, 0, null);
+  await ctx.backend.writeToken(
+    'credential',
+    ctx.token,
+    { expectedCounter: 0, client: ctx.client },
+    null,
+  );
 
   const counter = await ctx.backend.remove('credential');
   const saved = await ctx.backend.readToken('credential');
@@ -79,7 +94,13 @@ test('it refuses a token that arrives after a removal', async () => {
 
   await ctx.backend.remove('credential');
 
-  const result = await ctx.backend.writeToken('credential', ctx.token, 0, null);
+  const result = await ctx.backend.writeToken(
+    'credential',
+    ctx.token,
+    { expectedCounter: 0, client: ctx.client },
+    null,
+  );
+
   const saved = await ctx.backend.readToken('credential');
 
   expect(result).toBe('removed');
@@ -99,9 +120,21 @@ test('it keeps a state change away from a credential that is not held', async ()
 test('it writes the record of a token that saves, and none for a token a removal refused', async () => {
   const ctx = await setupTest();
 
-  await ctx.backend.writeToken('credential', ctx.token, 0, ctx.savedRecord);
+  await ctx.backend.writeToken(
+    'credential',
+    ctx.token,
+    { expectedCounter: 0, client: ctx.client },
+    ctx.savedRecord,
+  );
+
   await ctx.backend.remove('credential');
-  await ctx.backend.writeToken('credential', ctx.token, 0, ctx.savedRecord);
+
+  await ctx.backend.writeToken(
+    'credential',
+    ctx.token,
+    { expectedCounter: 0, client: ctx.client },
+    ctx.savedRecord,
+  );
 
   expect(ctx.written).toStrictEqual([ctx.savedRecord]);
 });
@@ -110,7 +143,13 @@ test('it refuses a state change that carries an older counter than the credentia
   const ctx = await setupTest();
 
   await ctx.backend.remove('credential');
-  await ctx.backend.writeToken('credential', ctx.token, 1, null);
+
+  await ctx.backend.writeToken(
+    'credential',
+    ctx.token,
+    { expectedCounter: 1, client: ctx.client },
+    null,
+  );
 
   const result = await ctx.backend.writeState('credential', { ...ctx.token.state, failures: 5 }, 0);
   const saved = await ctx.backend.readToken('credential');
@@ -125,17 +164,21 @@ test('it holds in a new backend on the same file what an earlier one saved', asy
   const file = ctx.file;
   const first = createInMemoryHeldBackend({ recorder: ctx.recorder, file });
 
-  await first.writeToken('credential', ctx.token, 0, null);
-  await first.writeClient('client', { clientSecret: 'fake-client-secret' });
+  await first.writeToken('credential', ctx.token, { expectedCounter: 0, client: ctx.client }, null);
+  await first.writeClient('client', { clientID: 'client-123', clientSecret: 'fake-client-secret' });
   await first.remove('other');
 
   const second = createInMemoryHeldBackend({ recorder: ctx.recorder, file });
 
+  const token = await second.readToken('credential');
+  const client = await second.readClient('client');
+
   expect([
-    await second.readToken('credential'),
-    await second.readClient('client'),
+    Bun.deepEquals(token, ctx.token),
+    client?.clientID,
+    client?.clientSecret === 'fake-client-secret',
     await second.readRemovalCounter('other'),
-  ]).toStrictEqual([ctx.token, { clientSecret: 'fake-client-secret' }, 1]);
+  ]).toStrictEqual([true, 'client-123', true, 1]);
 });
 
 test('it writes the record that a crash left owed when the backend settles', async () => {
@@ -149,8 +192,16 @@ test('it writes the record that a crash left owed when the backend settles', asy
     afterTokenSaved: () => new Promise<void>(() => {}),
   });
 
-  void first.writeToken('credential', ctx.token, 0, ctx.savedRecord);
-  const open = [{ credentialID: 'credential', attemptID: 'attempt' }];
+  void first.writeToken(
+    'credential',
+    ctx.token,
+    { expectedCounter: 0, client: ctx.client },
+    ctx.savedRecord,
+  );
+
+  const open = [
+    { credentialID: 'credential', attemptID: 'attempt', newKeyID: 'new-key', removalCounter: null },
+  ];
 
   const second = createInMemoryHeldBackend({
     recorder: { ...ctx.recorder, readOpenRefreshes: () => Promise.resolve(open) },
@@ -176,7 +227,13 @@ test('it writes no record at settle for a refresh the log already closed', async
     afterTokenSaved: () => new Promise<void>(() => {}),
   });
 
-  void first.writeToken('credential', ctx.token, 0, ctx.savedRecord);
+  void first.writeToken(
+    'credential',
+    ctx.token,
+    { expectedCounter: 0, client: ctx.client },
+    ctx.savedRecord,
+  );
+
   const second = createInMemoryHeldBackend({ recorder: ctx.recorder, file });
 
   await second.settle();
@@ -217,4 +274,22 @@ test('it makes no key until the hook before key creation returns', async () => {
   const keyID = await creating;
 
   expect([before, backend.readKeyIDs()]).toStrictEqual([[], [keyID]]);
+});
+
+test('it refuses a token whose client was removed after the caller read its counter', async () => {
+  const ctx = await setupTest();
+
+  await ctx.backend.remove('client');
+
+  const result = await ctx.backend.writeToken(
+    'credential',
+    ctx.token,
+    { expectedCounter: 0, client: ctx.client },
+    null,
+  );
+
+  const saved = await ctx.backend.readToken('credential');
+
+  expect(result).toBe('removed');
+  expect(saved).toBeNull();
 });

@@ -141,7 +141,15 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
       'actions',
       'decisions',
     ],
-    uses: ['memory', 'notebook', 'server_parts', 'checker', 'definitions_exports', 'erasure'],
+    uses: [
+      'memory',
+      'notebook',
+      'server_parts',
+      'checker',
+      'definitions_exports',
+      'erasure',
+      'connections',
+    ],
     start: (parts) => {
       const options = parts.get('inputs').options;
       const inForce = parts.get('context').inForce;
@@ -202,6 +210,8 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
           makeDecide: parts.get('decisions'),
           readStore: () => parts.find('memory'),
           readNotebook: () => parts.find('notebook'),
+          readHeldBackTools: () =>
+            parts.find('connections')?.readHeldBackTools() ?? Promise.resolve([]),
           readInForce: () => inForce.read(),
           refreshDefinitions: () => refreshDefinitions(parts.find('server_parts'), inForce),
           runInForceSeed: () =>

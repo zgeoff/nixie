@@ -104,3 +104,11 @@ export type Note = ReadonlyDeep<
 export type NoteLink = Note['links'][number];
 
 export type NoteCheck = ReadonlyDeep<ContractOutputs['notebook']['readCheck']>;
+
+export type ListedConnection = ReadonlyDeep<ContractOutputs['connections']['list'][number]>;
+
+export type ConnectionForgetStatus = ReadonlyDeep<
+  ContractOutputs['connections']['readForgetStatus'][number]
+>;
+
+export type SetupReading = ReadonlyDeep<ContractOutputs['connections']['readSetup']>;

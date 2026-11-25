@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./test-utils": "./src/test-utils/index.ts"
+    "./test-utils": "./src/test-utils/index.ts",
+    "./google-return": "./src/client/handle-google-return.ts"
   },
   "scripts": {
     "build": "vite build",

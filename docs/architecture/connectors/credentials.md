@@ -9,14 +9,15 @@ A part of nixie names a credential by a reference, a resolver turns the referenc
 the store serves the entry: a fetcher makes a request to an outside service with the value added on
 the host, and a grant passes the value through the sandbox adapter to a sandbox's broker for one
 host. No tool or connector ever holds a value. A credential's value never enters a tool result, a
-prompt, a log line, a record or an error message. [Two secrets](#references-and-the-resolver) stay
-outside the store.
+prompt, a log line, a record or an error message. The one exception is the user's name and pronouns,
+which the prompt shows. [A few secrets](#references-and-the-resolver) stay outside the store.
 
-A release server's store has one backend, the secrets file, which the
-[server](../deployment/server.md#configuration-and-secrets) decrypts at start. It holds the search,
-image and model credentials, the spend gateway's token, and the user's name and pronouns, settings
-the prompt shows by design. Only the test build adds a held backend, for the
-[OAuth tokens](#oauth-tokens) that nixie changes at runtime.
+A release server's store reads the secrets file, which the
+[server](../deployment/server.md#configuration-and-secrets) decrypts at start, and a held backend
+over [the credential database](credential-database.md). The secrets file holds the search, image and
+model credentials, the spend gateway's token, and the user's name and pronouns, settings the prompt
+shows by design. The held backend holds the [OAuth tokens](#oauth-tokens) that nixie changes at
+runtime. Every build of the server runs both.
 
 ```mermaid
 flowchart LR
@@ -132,8 +133,11 @@ the caller passes. Its result holds the expiry and the account the ID token name
 When the reply holds an ID token, nixie checks its issuer, audience and expiry before it reads `sub`
 or `email`. A failed check throws `TokenRequestError` with the code `id_token_issuer`,
 `id_token_audience`, `id_token_expired` or `id_token_malformed`, revokes the tokens that arrived,
-and saves nothing. nixie does not check the token's signature, because the token comes straight from
-the provider's token URL over the checked connection.
+and saves nothing. An exchange takes an optional `probeRevocable` callback, which it calls with the
+`sub` before each revocation of a token it keeps nothing of. The callback returns false for an
+account whose grant another live connection uses, because the provider ends the whole grant when any
+token of it is revoked. nixie does not check the token's signature, because the token comes straight
+from the provider's token URL over the checked connection.
 
 ### Refresh
 
@@ -158,30 +162,32 @@ the provider's token URL over the checked connection.
   the key of the token the save replaced. After a failure, it removes the new one.
 - A refresh that finishes after a removal advanced the counter revokes the token it received, which
   is the new refresh token, or the new access token when the reply holds none. It saves nothing and
-  removes its new key.
+  removes its new key. When the credential still holds a token, a consent connected it again while
+  the refresh ran. The refresh then drops its reply and revokes nothing, because the revocation
+  would end the grant of the new token.
 
 ### Records
 
-| Record                         | Written                                                               |
-| ------------------------------ | --------------------------------------------------------------------- |
-| `credential.refresh_started`   | before the request leaves; it names the credential and the new key    |
-| `credential.refresh_saved`     | with the save; it holds the new access token's fingerprint            |
-| `credential.refresh_failed`    | after a refresh that gave no token                                    |
-| `credential.refresh_discarded` | after a removal moved the counter; it records whether revoking worked |
-| `credential.refresh_lost`      | at start, for a refresh that sent and never saved                     |
-| `credential.status_changed`    | when a credential's status or reason changes                          |
+| Record                         | Written                                                                                 |
+| ------------------------------ | --------------------------------------------------------------------------------------- |
+| `credential.refresh_started`   | before the request leaves; it holds the credential, the new key and the removal counter |
+| `credential.refresh_saved`     | with the save; it holds the new access token's fingerprint                              |
+| `credential.refresh_failed`    | after a refresh that gave no token                                                      |
+| `credential.refresh_discarded` | after a removal moved the counter; it records whether revoking worked                   |
+| `credential.refresh_lost`      | at start, for a refresh that sent and never saved                                       |
+| `credential.status_changed`    | when a credential's status or reason changes                                            |
 
 A record holds a credential's ID and a fingerprint, never a token, a client secret or a key. Every
 kind has an entry, with no live topic, in `credentialRecordTopics`, which the server registers.
 
 At start, `recover` reads the log for each `credential.refresh_started` that no saved, failed,
-discarded or lost record closes. The provider may hold a token nixie never saved, and revoking the
-spent one may not end it, so `recover` marks the credential `needs_consent` and writes
-`credential.refresh_lost` for the refresh. The next start finds nothing. The check reads the log
-alone, so it holds after a crash that loses the held backend's memory. A test build of the server
-runs `recover` at each start, over a backend in a file of the data directory, and the crash suite
-`recover-credential-refresh.test.ts` kills the process during a refresh and checks the status after
-the restart.
+discarded or lost record closes, and reads the counter and the token from the credential database.
+The provider may hold a token nixie never saved, and revoking the spent one may not end it, so
+`recover` marks the credential `needs_consent` and writes `credential.refresh_lost` for the refresh.
+When the credential's removal counter moved since the refresh began, a removal or a new consent
+replaced what the refresh could touch, so `recover` only closes the refresh and leaves the status.
+The next start finds nothing. The crash suite `recover-credential-refresh.test.ts` kills the process
+during a refresh and checks the status after the restart.
 
 ## Grants
 
@@ -236,9 +242,9 @@ HTTPS site on the loopback address, which a test reaches through the pinned conn
 suite `recover-credential-refresh.test.ts` in the server's `e2e/` folder starts nixie, begins a
 refresh against a provider that never answers, kills the process with `SIGKILL`, starts it again on
 the same data directory, and checks that the credential is `needs_consent`. A second test holds the
-process at the fault point `credential.refresh.token_saved`, after the token saved and before its
-record, kills it there, and checks that the restart leaves the credential `active` with
-`credential.refresh_saved` written.
+process at the fault point `credential.refresh.token_saved`, after the transaction that commits the
+token and its `credential.refresh_saved` record, kills it there, and checks that the restart finds
+both and leaves the credential `active`.
 
 Plant a fake value in the secrets file and assert that it appears in no tool result, no log line, no
 record and no error. `createTestCredentials` in the module's `test-utils` builds a resolver and a
