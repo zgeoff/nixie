@@ -9,7 +9,7 @@ import type { CallEndedBy } from './utils/call-ended-by';
 
 export type CallState = 'ringing' | 'connecting' | 'live' | 'ended';
 
-export type CallStartedBy = 'you' | 'nixie';
+type CallStartedBy = 'you' | 'nixie';
 
 // The speech layer is the outside service that hears the user, takes turns and speaks.
 export interface SpeechLayer {

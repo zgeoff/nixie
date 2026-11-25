@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { seedBudgetInForce } from '@heynixie/budgets/test-utils';
 import { readRecords } from '@heynixie/log';
 import { conversationTaskID } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
@@ -92,6 +93,44 @@ test('it charges the minute that has started and no sweep has charged before it 
   expect([call?.minutes, found.map((entry) => entry.record.payload)]).toStrictEqual([
     2,
     [{ callID: ctx.callID, endedBy: 'you', minutes: 2 }],
+  ]);
+});
+
+test('it ends the call as budget when the day budget has no room for the minute that has started', async () => {
+  const ctx = await setupTest();
+
+  await seedBudgetInForce(ctx.writer, {
+    id: 'call-day',
+    counts: 'tool:call',
+    limitMicros: 50_000,
+    period: 'day',
+  });
+
+  await connectCall(ctx.context, {
+    callID: ctx.callID,
+    session: 'identity-1',
+    sdpOffer: 'offer',
+    probeCaller: probeStubbedCaller,
+  });
+
+  ctx.clock.advance(60_001);
+
+  const result = await hangUpCall(ctx.context, ctx.callID);
+  const call = await readCall(ctx.writer.db, ctx.callID);
+
+  expect([result, call?.endedBy, call?.minutes]).toStrictEqual([
+    { status: 'done', state: 'ended' },
+    'budget',
+    1,
+  ]);
+
+  expect(ctx.speech.calls.slice(1)).toStrictEqual([
+    {
+      method: 'say',
+      sessionID: 'fake-session-1',
+      text: ctx.context.readVoiceDefinitions().lines.budget,
+    },
+    { method: 'close', sessionID: 'fake-session-1' },
   ]);
 });
 

@@ -332,6 +332,38 @@ test('it opens no speech session for a session that is no longer live', async ()
   expect(ctx.speech.calls).toStrictEqual([]);
 });
 
+test('it opens no speech session when the session is revoked while the instructions are read', async () => {
+  const ctx = await setupTest();
+  const callID = await ctx.startRingingCall();
+
+  const state = { isLive: true };
+
+  const result = await connectCall(
+    {
+      ...ctx.context,
+      readInstructions: () => {
+        state.isLive = false;
+
+        return Promise.resolve('the voice-call prompt');
+      },
+    },
+    {
+      callID,
+      session: 'identity-1',
+      sdpOffer: 'offer',
+      probeCaller: () => Promise.resolve(state.isLive),
+    },
+  );
+
+  const call = await readCall(ctx.writer.db, callID);
+
+  expect([result, call?.minutes, ctx.speech.calls]).toStrictEqual([
+    { status: 'refused', error: 'SESSION_REVOKED' },
+    0,
+    [],
+  ]);
+});
+
 test('it closes the speech session when the session is revoked while the provider opens', async () => {
   const ctx = await setupTest();
   const callID = await ctx.startRingingCall();

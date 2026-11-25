@@ -2,7 +2,7 @@ import { makeQueueRunnerActions } from '@heynixie/actions';
 import type { APIContext, APISettings, CleanupRecordSessions } from '@heynixie/api';
 import { createClientRegistry, createPasskeyState, defaultAPISettings } from '@heynixie/api';
 import { buildBuiltInBudgets } from '@heynixie/budgets';
-import type { VoiceConfig } from '@heynixie/calls';
+import type { SpeechLayer, VoiceConfig } from '@heynixie/calls';
 import { callBudgetName } from '@heynixie/calls';
 import {
   makeReadDefinitionRunPolicy,
@@ -39,7 +39,12 @@ export interface ServerContextOptions {
 
   // the voice section of the config, or null without it, and the logger of the calls module
   // Absent, calls are off and the module logs nothing.
-  readonly calls?: { readonly voice: VoiceConfig | null; readonly logEvent: Logger };
+  // The speech layer is null where the server wires no adapter.
+  readonly calls?: {
+    readonly voice: VoiceConfig | null;
+    readonly logEvent: Logger;
+    readonly speech: SpeechLayer | null;
+  };
 
   // the gateway and the turn limits of the spending stop, or absent without spendStop
   readonly spend?: {
@@ -90,6 +95,7 @@ export async function createServerContext(
         inForce,
         voice: options.calls?.voice ?? null,
         logEvent: options.calls?.logEvent ?? (() => {}),
+        speech: options.calls?.speech ?? null,
       }),
       ...(options.spend === undefined
         ? {}

@@ -62,11 +62,6 @@ export function parseDefinitions(
 
   const readsVoice = formatVersion >= definitionsFormats.voice;
 
-  // a voice file that is not text is a voice problem, which never refuses the seed
-  if (!readsVoice && decoded.unreadableVoicePaths.length > 0) {
-    throw new DefinitionsParseError(decoded.unreadableVoicePaths.map(toNotTextProblem));
-  }
-
   const voice = readsVoice
     ? parseVoiceFiles(
         new Map(
@@ -136,7 +131,7 @@ interface DecodedFiles {
   readonly texts: ReadonlyMap<string, string>;
 
   // the files under voice/ that are not UTF-8 text, which the voice settings report in place of a
-  // refusal when the format reads them
+  // refusal, whatever the format
   readonly unreadableVoicePaths: readonly string[];
 }
 

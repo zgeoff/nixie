@@ -27,8 +27,8 @@ export interface ConnectCall {
   readonly session: string;
   readonly sdpOffer: string;
 
-  // Says that the asking session is still live. It runs before the speech session opens and
-  // again in the transaction that moves the call to live, so a session revoked in between never
+  // Says that the asking session is still live. It runs after the instructions are read and
+  // before the speech session opens, and again in the transaction that moves the call to live, so a session revoked in between never
   // connects.
   readonly probeCaller: (db: Kysely<unknown>) => Promise<boolean>;
 }
@@ -92,13 +92,16 @@ async function openAndCharge(
   input: ConnectCall,
   terms: ConnectTerms,
 ): Promise<ConnectResult> {
+  const instructions = await context.readInstructions(input.callID);
+
+  // checked after the instructions read, so a session revoked during it opens no speech session
   if (!(await input.probeCaller(context.log.writer.db))) {
     return { status: 'refused', error: 'SESSION_REVOKED' };
   }
 
   const opened = await speech.open({
     sdpOffer: input.sdpOffer,
-    instructions: await context.readInstructions(input.callID),
+    instructions,
     voice: terms.voice,
   });
 

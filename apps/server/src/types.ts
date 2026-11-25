@@ -1,4 +1,5 @@
 import type { APIContext } from '@heynixie/api';
+import type { SpeechLayer } from '@heynixie/calls';
 import type { HostContractClient } from '@heynixie/contract';
 import type { DefinitionsInForce, DefinitionsSource } from '@heynixie/definitions';
 import type { Logger } from '@heynixie/logger';
@@ -76,6 +77,9 @@ export interface CLIIO {
   readonly harness?: CrashHarness;
 
   readonly credentialSite?: TestCredentialSite;
+
+  // the speech layer of a test build, because the server holds no speech adapter
+  readonly speech?: SpeechLayer;
 }
 
 export interface CLIFlags {

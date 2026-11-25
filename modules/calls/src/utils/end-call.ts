@@ -7,27 +7,29 @@ import { chargeOwedMinutes } from './charge-owed-minutes';
 import { closeSpeechSession } from './close-speech-session';
 import { readCall } from './read-call';
 
-// Ends the call once: the ended record goes on the conversation's thread, and the speech session
-// closes after it commits. A call that is over ends nothing. The transaction first charges each
-// started minute that is unpaid, unless a budget ended the call.
+// Ends the call once, or null when it was over. The ended record goes on the conversation's thread
+// and the speech session closes after it commits. The transaction first charges each unpaid
+// started minute, and a budget with no room for one makes the call end as budget.
 export async function endCall(
   context: CallsContext,
   callID: string,
   endedBy: CallEndedBy,
-): Promise<boolean> {
-  const isEnded = await withWriteTransaction(context.log.writer, async (tx) => {
+): Promise<CallEndedBy | null> {
+  const ended = await withWriteTransaction(context.log.writer, async (tx) => {
     const call = await readCall(tx, callID);
 
     if (call === null || call.state === 'ended') {
-      return false;
+      return null;
     }
 
     const price = context.readVoiceDefinitions().pricePerMinuteMicros;
 
     const paid =
       endedBy === 'budget' || price === null
-        ? { charged: 0 }
+        ? { charged: 0, isReached: false }
         : await chargeOwedMinutes(tx, context, { callID, pricePerMinuteMicros: price });
+
+    const finalEndedBy = paid.isReached ? 'budget' : endedBy;
 
     await writeRecordsInTransaction(tx, context.log, [
       {
@@ -36,20 +38,20 @@ export async function endCall(
         thread: conversationTaskID,
         payload: callEndedCodec.encode({
           callID,
-          endedBy,
+          endedBy: finalEndedBy,
           minutes: call.minutes + paid.charged,
         }),
       },
     ]);
 
-    return true;
+    return finalEndedBy;
   });
 
-  if (isEnded) {
-    await closeSession(context, callID, endedBy);
+  if (ended !== null) {
+    await closeSession(context, callID, ended);
   }
 
-  return isEnded;
+  return ended;
 }
 
 async function closeSession(

@@ -2,7 +2,7 @@ import type { Call } from '../types';
 import type { CallEndedBy } from '../utils/call-ended-by';
 import { countOwedMinutes } from '../utils/count-owed-minutes';
 
-export const connectingLimitMs = 30_000;
+const connectingLimitMs = 30_000;
 
 export type CallMove =
   | { readonly kind: 'end'; readonly callID: string; readonly endedBy: CallEndedBy }

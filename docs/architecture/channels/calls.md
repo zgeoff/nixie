@@ -26,11 +26,11 @@ hand.
 A call is `ringing`, `connecting`, `live` or `ended`. An ended call carries who ended it: `you`,
 `nixie`, `budget`, `missed`, `declined` or `dropped`.
 
-| Step            | What happens                                                                                                                                                                                                                                             |
-| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `calls.start`   | A full-scope session starts a call. One write transaction checks the refusals, creates the call, asks the server's seam for the call task, and writes `call.started` and `call.answered`. The call is `connecting`, and the starting session carries it. |
-| `calls.connect` | The carrying session sends its SDP offer. The module opens a speech session, and the transaction that makes the call `live` charges its first minute.                                                                                                    |
-| `calls.hangUp`  | Ends the call with `endedBy: 'you'`. A second hang up of an ended call returns the same result.                                                                                                                                                          |
+| Step            | What happens                                                                                                                                                                                                                                            |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `calls.start`   | A full-scope session starts a call. One write transaction checks the refusals, creates the call, asks the server to create the call task, and writes `call.started` and `call.answered`. The call is `connecting`, and the starting session carries it. |
+| `calls.connect` | The carrying session sends its SDP offer. The module opens a speech session, and the transaction that makes the call `live` charges its first minute.                                                                                                   |
+| `calls.hangUp`  | Ends the call with `endedBy: 'you'`. A second hang up of an ended call returns the same result.                                                                                                                                                         |
 
 `calls.start` refuses with one of these errors, checked in this order:
 
@@ -45,18 +45,20 @@ A call is `ringing`, `connecting`, `live` or `ended`. An ended call carries who 
 `calls.connect` refuses a call that does not exist or has ended, a session that does not carry the
 call, and a call that is connected or that another connect is opening. A connect claims the call
 before it opens a speech session, so one call never holds two sessions. The API checks that the
-calling session is live before the session opens and again in the transaction that makes the call
-`live`, and a session revoked in between is refused as `UNAUTHORIZED` with its speech session
-closed. A speech session that no connect keeps, because the call ended or the charge failed, is
-closed. When the provider refuses its credential, the call ends as `dropped`.
+calling session is live after the instructions are read and before the session opens and again in
+the transaction that makes the call `live`, and a session revoked in between is refused as
+`UNAUTHORIZED` with its speech session closed. A speech session that no connect keeps, because the
+call ended or the charge failed, is closed. When the provider refuses its credential, the call ends
+as `dropped`.
 
 Every end of a call, hang-up included, first charges each started minute that is still unpaid, so a
-hang-up between sweeps costs the minute the call had started. The charge reads the call inside its
-own transaction, so a call that ended since a sweep looked is never charged. A budget line that
-fails to speak never keeps the speech session open.
+hang-up between sweeps costs the minute the call had started. A call whose budget has no room for
+one of those minutes ends as `budget`, with the budget line, in place of the way it was ending. The
+charge reads the call inside its own transaction, so a call that ended since a sweep looked is never
+charged. A budget line that fails to speak never keeps the speech session open.
 
-A sweep closes the gaps that a crash or a silent provider leaves. Every 5 seconds it ends a call
-that stayed `connecting` for 30 seconds, ends a `live` call whose speech session is gone, and
+A sweep closes the gaps that a crash or a silent provider leaves. On a short interval it ends a call
+that stayed `connecting` past its limit, ends a `live` call whose speech session is gone, and
 charges each further started minute of a live call.
 
 ## Records
@@ -111,5 +113,5 @@ Both places that hold settings are optional.
 A voice file that fails to parse never stops the server or the seed. The seed leaves the file
 unapplied and logs `definitions.voice_file_skipped` with the file and its fault. Calls then use the
 defaults, which hold no price, until the file is fixed. A file that is not UTF-8 text is reported
-the same way, and a `price_per_minute` above 1000 dollars counts as a fault, because its micros no
-longer add up exactly.
+the same way, whatever the format, and a `price_per_minute` above 1000 dollars counts as a fault,
+because its micros no longer add up exactly.

@@ -57,7 +57,11 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
               options.harness.atcURL !== null,
           }),
           taskRunLimits: options.config.models.limits.taskRun.default,
-          calls: { voice: options.config.voice ?? null, logEvent: options.log },
+          calls: {
+            voice: options.config.voice ?? null,
+            logEvent: options.log,
+            speech: options.speech ?? null,
+          },
           defaultZone: options.config.time.default_zone,
           ...(options.spend === null
             ? {}

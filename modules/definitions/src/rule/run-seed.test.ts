@@ -3244,8 +3244,10 @@ test.each(['1e20', '1e308'])(
   },
 );
 
-test('it refuses a seed of a repo whose voice file is not text, below the format that reads voice files', async () => {
+test('it seeds a repo whose voice file is not text, below the format that reads voice files, and reports the file', async () => {
   const ctx = await setupTest();
+
+  const reported: string[] = [];
 
   await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 4\n');
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
@@ -3257,7 +3259,10 @@ test('it refuses a seed of a repo whose voice file is not text, below the format
     log: ctx.log,
     source: ctx.source,
     buildPolicy: () => ({ rules: [], tools: [] }),
+    onVoiceProblem: (problem) => {
+      reported.push(problem.path);
+    },
   });
 
-  expect(result.status).toBe('refused');
+  expect([result.status, reported]).toStrictEqual(['seeded', ['voice/voice.yaml']]);
 });
