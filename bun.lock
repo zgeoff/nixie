@@ -320,7 +320,6 @@
         "@heynixie/models": "workspace:*",
         "@heynixie/prompts": "workspace:*",
         "@heynixie/sessions": "workspace:*",
-        "@heynixie/tasks": "workspace:*",
         "@heynixie/wire": "workspace:*",
         "zod": "catalog:",
       },

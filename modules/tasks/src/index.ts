@@ -44,7 +44,6 @@ export { buildTaskRunnerRegistry } from './runner/build-task-runner-registry';
 export type { TaskRunnerRegistryOptions } from './runner/build-task-runner-registry';
 export { conversationRunner } from './runner/conversation-runner';
 export { defineRunnerStart } from './runner/define-runner-start';
-export { oneOfStartHarnesses } from './runner/one-of-start-harnesses';
 export { pickResolvedControls } from './runner/pick-resolved-controls';
 export { parseTaskStartInput } from './runner/parse-task-start-input';
 export { planSandboxStart, sandboxRunner } from './runner/sandbox-runner';

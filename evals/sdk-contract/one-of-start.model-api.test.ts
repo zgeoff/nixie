@@ -3,7 +3,6 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { buildContractEnv, runOneOfStartProbe } from '@heynixie/conversation/sdk-contract';
-import { oneOfStartHarnesses } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
 
@@ -37,7 +36,7 @@ async function setupTest() {
 }
 
 test.skipIf(!isContractRun)(
-  'it lists the agent-sdk harness for the oneOf start input only while the model calls that tool with the coding variant',
+  'it makes no coding call to a task start tool whose input schema is a oneOf under the object root',
   async () => {
     const ctx = await setupTest();
     const probe = await runOneOfStartProbe(ctx.target);
@@ -54,9 +53,9 @@ test.skipIf(!isContractRun)(
       probe.calls.length === 1 &&
       ctx.codingStartSchema.safeParse(call).success;
 
-    // A failing probe keeps the harness out of the list, so the coding variant stays off the
-    // start tool on it. A passing probe means the list should name the harness.
-    expect(oneOfStartHarnesses.includes('agent-sdk')).toBe(isCallParsed);
+    // The model calls no tool with a root oneOf, which is why `oneOfStartHarnesses` lists no harness.
+    // When this changes, list the harness there in the same commit.
+    expect(isCallParsed).toBe(false);
   },
   60_000,
 );
