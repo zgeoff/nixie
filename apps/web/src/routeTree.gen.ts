@@ -30,6 +30,8 @@ import { Route as NotebookCheckRouteImport } from './routes/notebook.check'
 import { Route as TasksIndexRouteImport } from './routes/tasks.index'
 import { Route as TasksTaskIDRouteImport } from './routes/tasks.$taskID'
 import { Route as TasksEndedRouteImport } from './routes/tasks.ended'
+import { Route as SettingsConnectionsIndexRouteImport } from './routes/settings.connections.index'
+import { Route as SettingsConnectionsConnectionRouteImport } from './routes/settings.connections.$connection'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -136,6 +138,18 @@ const TasksEndedRoute = TasksEndedRouteImport.update({
   path: '/tasks/ended',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SettingsConnectionsIndexRoute =
+  SettingsConnectionsIndexRouteImport.update({
+    id: '/settings/connections/',
+    path: '/settings/connections/',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const SettingsConnectionsConnectionRoute =
+  SettingsConnectionsConnectionRouteImport.update({
+    id: '/settings/connections/$connection',
+    path: '/settings/connections/$connection',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -159,6 +173,8 @@ export interface FileRoutesByFullPath {
   '/tasks/ended': typeof TasksEndedRoute
   '/notebook/': typeof NotebookIndexRoute
   '/tasks/': typeof TasksIndexRoute
+  '/settings/connections/$connection': typeof SettingsConnectionsConnectionRoute
+  '/settings/connections/': typeof SettingsConnectionsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -181,6 +197,8 @@ export interface FileRoutesByTo {
   '/tasks/ended': typeof TasksEndedRoute
   '/notebook': typeof NotebookIndexRoute
   '/tasks': typeof TasksIndexRoute
+  '/settings/connections/$connection': typeof SettingsConnectionsConnectionRoute
+  '/settings/connections': typeof SettingsConnectionsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -205,6 +223,8 @@ export interface FileRoutesById {
   '/tasks/ended': typeof TasksEndedRoute
   '/notebook/': typeof NotebookIndexRoute
   '/tasks/': typeof TasksIndexRoute
+  '/settings/connections/$connection': typeof SettingsConnectionsConnectionRoute
+  '/settings/connections/': typeof SettingsConnectionsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -230,6 +250,8 @@ export interface FileRouteTypes {
     | '/tasks/ended'
     | '/notebook/'
     | '/tasks/'
+    | '/settings/connections/$connection'
+    | '/settings/connections/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -252,6 +274,8 @@ export interface FileRouteTypes {
     | '/tasks/ended'
     | '/notebook'
     | '/tasks'
+    | '/settings/connections/$connection'
+    | '/settings/connections'
   id:
     | '__root__'
     | '/'
@@ -275,6 +299,8 @@ export interface FileRouteTypes {
     | '/tasks/ended'
     | '/notebook/'
     | '/tasks/'
+    | '/settings/connections/$connection'
+    | '/settings/connections/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -296,6 +322,8 @@ export interface RootRouteChildren {
   TasksTaskIDRoute: typeof TasksTaskIDRoute
   TasksEndedRoute: typeof TasksEndedRoute
   TasksIndexRoute: typeof TasksIndexRoute
+  SettingsConnectionsConnectionRoute: typeof SettingsConnectionsConnectionRoute
+  SettingsConnectionsIndexRoute: typeof SettingsConnectionsIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -447,6 +475,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TasksEndedRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/settings/connections/': {
+      id: '/settings/connections/'
+      path: '/settings/connections'
+      fullPath: '/settings/connections/'
+      preLoaderRoute: typeof SettingsConnectionsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings/connections/$connection': {
+      id: '/settings/connections/$connection'
+      path: '/settings/connections/$connection'
+      fullPath: '/settings/connections/$connection'
+      preLoaderRoute: typeof SettingsConnectionsConnectionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -485,6 +527,8 @@ const rootRouteChildren: RootRouteChildren = {
   TasksTaskIDRoute: TasksTaskIDRoute,
   TasksEndedRoute: TasksEndedRoute,
   TasksIndexRoute: TasksIndexRoute,
+  SettingsConnectionsConnectionRoute: SettingsConnectionsConnectionRoute,
+  SettingsConnectionsIndexRoute: SettingsConnectionsIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
