@@ -3,7 +3,7 @@ import { hashMessageID } from './hash-message-id';
 import { isMailAddress } from './is-mail-address';
 import { isMessageIDText } from './is-message-id-text';
 
-export interface OutgoingFile {
+interface OutgoingFile {
   readonly name: string;
   readonly mediaType: string;
   readonly content: Uint8Array;

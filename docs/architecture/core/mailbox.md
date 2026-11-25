@@ -62,9 +62,9 @@ a thread lookup needs no text.
 
 The parser reads UTF-8, Latin-1 and Windows-1252 text, quoted-printable and base64 bodies, encoded
 subject words and multipart mail. It prefers the plain part. A mail with an HTML part and no plain
-part keeps the HTML as it came, cut at 1,000,000 characters, and the module never reads it. A mail
-with attachments lists each by name and size, and keeps each name as its last path segment with no
-control character.
+part keeps the HTML as it came, cut at 1,000,000 characters, and the module never reads it.
+`mail.list` searches the text, and for such a mail the source of its HTML. A mail with attachments
+lists each by name and size, and keeps each name as its last path segment with no control character.
 
 `mail.read` numbers each link of the text as a link ID of the session, such as
 `[L1 · example.org/reset]`, and the model opens it with `web_fetch` by that ID. The text the model

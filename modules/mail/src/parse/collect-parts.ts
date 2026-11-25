@@ -7,7 +7,7 @@ import { parseContentType } from './parse-content-type';
 import { parseHeaders } from './parse-headers';
 import { splitMessage } from './split-message';
 
-export interface PartAttachment extends MailAttachment {
+interface PartAttachment extends MailAttachment {
   readonly content: Uint8Array<ArrayBuffer>;
 }
 

@@ -79,7 +79,7 @@ export interface ParsedMail {
 }
 
 // An attachment of a stored mail. The mail keeps the bytes of the first attachments, up to a limit.
-export interface StoredAttachment extends MailAttachment {
+interface StoredAttachment extends MailAttachment {
   readonly isStored: boolean;
 }
 
