@@ -98,8 +98,8 @@ revoke. It refuses in this order:
 
 1. No passkey is live: `NO_PASSKEY`.
 2. The answer carries no assertion and no [window](#the-window) covers it: `PASSKEY_REQUIRED`. A
-   registration with no assertion and no covering window refuses as `CODE_REQUIRED`, which asks for
-   the host code.
+   registration with no assertion and no covering window refuses as `CODE_REQUIRED`, because it
+   needs the host code.
 3. The check fails: `PASSKEY_FAILED` with the reason.
 
 A refusal from the step writes nothing under the client action ID, and the hash of a checked
