@@ -10,7 +10,8 @@ export async function approveHeldRegion(client: ContractClient): Promise<number>
     (item) =>
       item.proposal.kind === 'action' &&
       item.proposal.state === 'pending' &&
-      item.body?.approveLabel.startsWith('Run device.region') === true,
+      item.body !== null &&
+      item.body.approveLabel.startsWith('Run device.region'),
   );
 
   for (const item of held) {

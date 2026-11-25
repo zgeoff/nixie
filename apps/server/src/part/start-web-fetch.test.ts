@@ -537,7 +537,7 @@ test('it sends a declared fetch with a limit of 3 redirects', async () => {
 
   const [frame] = received;
 
-  invariant(frame, 'the fetcher read the request');
+  invariant(frame !== undefined, 'the fetcher read the request');
 
   expect(decodeFetchRequest(new TextEncoder().encode(frame)).limits.redirects).toBe(3);
 });

@@ -1,16 +1,22 @@
 import { z } from 'zod';
 import type { PackageMetadata } from './types';
 
-const metadataSchema = z.object({
-  name: z.string(),
-  version: z.string(),
-  description: z.string().optional(),
-  _npmUser: z.object({ name: z.string() }).optional(),
-  dist: z.object({
-    integrity: z.string().regex(/^sha512-[A-Za-z0-9+/]{86}==$/u),
-    unpackedSize: z.int().nonnegative().optional(),
-  }),
-});
+const metadataSchema = z
+  .object({
+    name: z.string(),
+    version: z.string(),
+    description: z.string().optional(),
+    _npmUser: z.object({ name: z.string() }).optional(),
+    dist: z.object({
+      integrity: z.string().regex(/^sha512-[A-Za-z0-9+/]{86}==$/u),
+      unpackedSize: z.int().nonnegative().optional(),
+    }),
+  })
+  .transform((document) => {
+    const { _npmUser: npmUser, ...rest } = document;
+
+    return { ...rest, npmUser };
+  });
 
 const descriptionLimit = 500;
 
@@ -40,7 +46,7 @@ export function parsePackageMetadata(
     version,
     integrity: parsed.data.dist.integrity,
     unpackedBytes: parsed.data.dist.unpackedSize ?? null,
-    publisher: parsed.data['_npmUser']?.name ?? 'unknown',
+    publisher: parsed.data.npmUser?.name ?? 'unknown',
     description: (parsed.data.description ?? '').slice(0, descriptionLimit),
   };
 }

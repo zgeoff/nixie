@@ -1482,5 +1482,5 @@ test('it answers a refused fetch to the page as REFUSED', async () => {
 
   page.stop();
 
-  await expect(refused).rejects.toMatchObject({ code: 'REFUSED' });
+  expect(refused).rejects.toMatchObject({ code: 'REFUSED' });
 });

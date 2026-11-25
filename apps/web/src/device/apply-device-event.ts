@@ -10,10 +10,11 @@ export function applyDeviceEvent(current: DeviceEvents, event: DeviceEvent): Dev
       ...current,
       layout: event.layout,
       messages: keepShownMessages(current, event.layout),
-      notices: current.notices.filter((notice) =>
-        event.layout?.regions.some(
-          (region) => region.name === notice.region && region.shown === notice.shown,
-        ),
+      notices: current.notices.filter(
+        (notice) =>
+          event.layout?.regions.some(
+            (region) => region.name === notice.region && region.shown === notice.shown,
+          ) === true,
       ),
     };
   }

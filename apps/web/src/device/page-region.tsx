@@ -172,6 +172,6 @@ async function readData(
       value: await client.devices.pageData({ region: ask.region, shown: ask.shown, url: ask.url }),
     };
   } catch (error) {
-    return { ok: false, code: error instanceof ORPCError ? error.code : 'REFUSED' };
+    return { ok: false, code: error instanceof ORPCError ? String(error.code) : 'REFUSED' };
   }
 }

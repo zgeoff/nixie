@@ -72,8 +72,8 @@ async function relayToSite(firstBytes: Uint8Array, input: PipedInput): Promise<v
     { stdin: 'pipe', stdout: 'inherit', stderr: 'inherit' },
   );
 
-  site.stdin.write(firstBytes);
-  site.stdin.flush();
+  void site.stdin.write(firstBytes);
+  void site.stdin.flush();
   void pipeRest(input, site.stdin);
 
   await site.exited;

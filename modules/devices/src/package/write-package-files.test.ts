@@ -50,7 +50,7 @@ test.each([
     { path, bytes: new Uint8Array([2]) },
   ]);
 
-  await expect(written).rejects.toThrow('unsafe path');
+  expect(written).rejects.toThrow('unsafe path');
 
   const names = await readdir(ctx.root);
 
