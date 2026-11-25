@@ -9,11 +9,25 @@ export async function waitForPage(
   expression: string,
   timeoutMs: number = defaultTimeoutMs,
 ): Promise<void> {
+  let lastError: unknown = null;
+
+  // A page that navigates has no body until the next document parses, so an expression that reads
+  // the body throws in between. The wait reads that as not yet, and names the last throw on a miss.
   const [waited] = await Promise.allSettled([
-    waitForCondition(async () => (await view.evaluate(expression)) === true, {
-      intervalMs: 50,
-      timeoutMs,
-    }),
+    waitForCondition(
+      async () => {
+        const [read] = await Promise.allSettled([view.evaluate(expression)]);
+
+        if (read.status === 'rejected') {
+          lastError = read.reason;
+
+          return false;
+        }
+
+        return read.value === true;
+      },
+      { intervalMs: 50, timeoutMs },
+    ),
   ]);
 
   if (waited.status === 'fulfilled') {
@@ -26,6 +40,6 @@ export async function waitForPage(
 
   throw new Error(
     `the page never made this true within ${timeoutMs} ms: ${expression}\nThe page showed: ${text.slice(0, 400)}`,
-    { cause: waited.reason },
+    { cause: lastError ?? waited.reason },
   );
 }

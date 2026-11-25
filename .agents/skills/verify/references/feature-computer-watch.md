@@ -86,12 +86,14 @@ that turn no reply, so the turn fails.
    ```bash
    bun verify browser click --role button --name 'Take over'
    bun verify browser snapshot --until-text 'You have taken over the computer'
+   bun verify browser snapshot --until-no-text 'asks you to take over the computer'
    bun verify db query "select kind from records where kind like 'computer.takeover_%' order by sequence"
    ```
 
-   Expect: all three commands exit 0. The page is `/computer`. It shows a button "Hand back" and no
-   banner. The query returns one row, `computer.takeover_started`. A take-over answers the ask, so
-   no `computer.handover_closed` record follows it.
+   Expect: all four commands exit 0. The banner can stay a few seconds after the page shows the
+   take-over, so the second snapshot waits for it to go. The page is `/computer`. It shows a button
+   "Hand back" and no banner. The query returns one row, `computer.takeover_started`. No
+   `computer.handover_closed` record follows, because the user answered the ask by taking over.
 
 7. Hand the desktop back, and check the records:
 

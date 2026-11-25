@@ -1303,6 +1303,9 @@
         "ts-pattern": "catalog:",
         "zod": "catalog:",
       },
+      "devDependencies": {
+        "@zgeoff/testing": "catalog:",
+      },
     },
   },
   "overrides": {

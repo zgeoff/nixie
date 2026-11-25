@@ -2,27 +2,24 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { chmod, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import {
+  createNodePullRequestHost,
+  createNodeRepoHost,
+  createRepoState,
+  makeProcessSupervisorPort,
+  runSupervisorProcess,
+} from '@wringer/core';
+import { runCLI } from '@wringer/gunshi';
+import { updateEnv } from '@zgeoff/testing';
 import { $ } from 'bun';
 import { z } from 'zod';
+import { createVerifyRegistry } from '../create-verify-registry';
 
 // The prod target reads a cluster through kubectl, so the test puts a kubectl on PATH that answers
 // for a ready nixie, and serves the web origin from a loopback server. wringer keys each run to the
 // repo's head commit against `main`, so the test repo gets a commit on `main`.
 async function setupTest() {
   const root = await mkdtemp(join(tmpdir(), 'nixie-verify-prod-'));
-
-  const verifyPath = join(import.meta.dir, '..', 'verify.ts');
-
-  // An attached run keeps a supervisor that writes into the repo until `detach`, and bun runs these
-  // callbacks in the order they were added, so the one callback ends the run before the folder goes.
-  onTestFinished(async () => {
-    await Bun.spawn([process.execPath, verifyPath, 'detach', '--target', 'prod'], {
-      cwd: root,
-      stdout: 'ignore',
-    }).exited;
-
-    await rm(root, { recursive: true, force: true });
-  });
 
   const server = Bun.serve({
     hostname: '127.0.0.1',
@@ -61,37 +58,63 @@ async function setupTest() {
     root,
   );
 
-  const env = {
-    ...process.env,
-    PATH: `${bin}:${process.env['PATH'] ?? ''}`,
-    NIXIE_PROD_URL: server.url.origin,
-    NIXIE_PROD_KUBECONFIG: join(root, 'kubeconfig.yaml'),
-    NIXIE_PROD_TOKEN: 'a-read-only-token-for-the-test',
-  };
+  updateEnv('PATH', `${bin}:${process.env['PATH'] ?? ''}`);
+  updateEnv('NIXIE_PROD_URL', server.url.origin);
+  updateEnv('NIXIE_PROD_KUBECONFIG', join(root, 'kubeconfig.yaml'));
+  updateEnv('NIXIE_PROD_TOKEN', 'a-read-only-token-for-the-test');
+
+  const registry = createVerifyRegistry();
+
+  // The supervisor runs as its own process, so it starts the repo's verify script, as the CLI does.
+  const selfCommand = [process.execPath, join(import.meta.dir, '..', 'verify.ts')];
 
   const envelopeSchema = z.looseObject({
     ok: z.boolean(),
     error: z.looseObject({ code: z.string(), hint: z.string().nullable() }).nullable(),
   });
 
+  // Each command runs in the test process: a cold start of the CLI per command outlasted the time
+  // limit on a busy runner.
   const runVerify = async (args: readonly string[]) => {
     // `exec` passes on each word after `--`, so the target flag goes before it.
     const end = args.includes('--') ? args.indexOf('--') : args.length;
-    const targetArgs = [...args.slice(0, end), '--target', 'prod', ...args.slice(end)];
+    const argv = [...args.slice(0, end), '--target', 'prod', ...args.slice(end)];
+    const written: string[] = [];
 
-    const child = Bun.spawn([process.execPath, verifyPath, ...targetArgs], {
+    const exitCode = await runCLI(registry, {
+      argv,
       cwd: root,
-      env,
-      stdout: 'pipe',
-      stderr: 'pipe',
+      isTTY: false,
+      isAgent: true,
+      env: process.env,
+      writeStdout: (text) => {
+        written.push(text);
+      },
+      readRepoRoot: () => Promise.resolve(root),
+      openRepo: (repoRoot) => ({
+        state: createRepoState(repoRoot, registry.stateDir),
+        repoHost: createNodeRepoHost(),
+        pullRequests: createNodePullRequestHost(repoRoot),
+        supervisor: makeProcessSupervisorPort({
+          selfCommand,
+          root: repoRoot,
+          stateDir: registry.stateDir,
+        }),
+      }),
+      runSupervisor: runSupervisorProcess,
     });
 
-    const [exitCode, stdout] = await Promise.all([child.exited, new Response(child.stdout).text()]);
-
-    const lastLine = stdout.trim().split('\n').at(-1) ?? '';
+    const lastLine = written.join('').trim().split('\n').at(-1) ?? '';
 
     return { exitCode, envelope: envelopeSchema.parse(JSON.parse(lastLine)) };
   };
+
+  // An attached run keeps a supervisor that writes into the repo until `detach`, and bun runs these
+  // callbacks in the order they were added, so the one callback ends the run before the folder goes.
+  onTestFinished(async () => {
+    await runVerify(['detach']);
+    await rm(root, { recursive: true, force: true });
+  });
 
   return { runVerify };
 }

@@ -49,6 +49,7 @@ async function setupTest() {
             activeIsInDialog: dialog?.contains(document.activeElement) ?? false,
             activeIsMenuButton: document.activeElement === button,
             isBarNavVisible: barNav !== null && barNav.getBoundingClientRect().width > 0,
+            isComposerEnabled: document.querySelector('textarea:enabled') !== null,
             isMenuButtonVisible: button !== null && button.getBoundingClientRect().width > 0,
             isOpen: dialog?.open ?? false,
             width: innerWidth,
@@ -59,6 +60,7 @@ async function setupTest() {
           activeIsInDialog: z.boolean(),
           activeIsMenuButton: z.boolean(),
           isBarNavVisible: z.boolean(),
+          isComposerEnabled: z.boolean(),
           isMenuButtonVisible: z.boolean(),
           isOpen: z.boolean(),
           width: z.number(),
@@ -160,6 +162,8 @@ test('it folds the nav into a drawer at phone width that closes on a link, Escap
   await ctx.setViewport(390, 844);
   await ctx.signIn();
 
+  // The server render shows the Menu button before hydration gives it a click handler, so a click
+  // that early is lost. The composer turns on at hydration, so the test waits for it.
   await waitFor(
     async () => {
       const drawer = await ctx.readDrawer();
@@ -168,6 +172,7 @@ test('it folds the nav into a drawer at phone width that closes on a link, Escap
         activeIsInDialog: false,
         activeIsMenuButton: false,
         isBarNavVisible: false,
+        isComposerEnabled: true,
         isMenuButtonVisible: true,
         isOpen: false,
         width: 390,
