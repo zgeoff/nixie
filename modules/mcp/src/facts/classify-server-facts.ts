@@ -30,6 +30,14 @@ export function classifyServerFacts(inUse: ServerFacts, asked: ServerFacts): Fac
   return isNarrowed ? 'narrowed' : 'same';
 }
 
+// Whether the facts in use grant a scope that the entry no longer asks for. The grant that holds
+// the dropped scope has to go, because a refresh would keep it.
+export function isScopeReduced(inUse: ServerFacts, asked: ServerFacts): boolean {
+  const askedScopes = toScopeSet(asked.scope);
+
+  return [...toScopeSet(inUse.scope)].some((scope) => !askedScopes.has(scope));
+}
+
 function toScopeSet(scope: string): ReadonlySet<string> {
   return new Set(scope.split(/\s+/u).filter((part) => part !== ''));
 }

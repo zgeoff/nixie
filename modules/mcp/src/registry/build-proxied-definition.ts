@@ -4,36 +4,35 @@ import type { ToolDefinition } from '@heynixie/tools';
 import type { ToolForm } from '../types';
 import { collectStringArguments } from './collect-string-arguments';
 
-const defaultOutput = { type: 'object', properties: { text: { type: 'string' } } };
+// The result shape of a tool with no output schema. The proxy has no call path in this build, so
+// every call answers in this shape whatever schema the pinned form names.
+const placeholderOutput = { type: 'object', properties: { text: { type: 'string' } } };
 
-// Declares the strictest effects for every tool: a call writes, deletes and sends, and each string
-// argument counts as content. Every result field is untrusted. A call answers with an error until
-// the proxy can run one.
+// Declares the strictest effects for every tool, with each string argument as content. The tool is
+// queued, so dispatch never reaches `run`: `prepare` ends each valid call with the unavailable
+// result before the decision point, so no call asks for approval or queues an action.
 export function buildProxiedDefinition(tool: string, pinned: ToolForm): ToolDefinition {
-  const output = pinned.outputSchema ?? defaultOutput;
-
   const declaration: EffectDeclaration = {
     effects: ['write', 'delete', 'send'],
     destinations: [],
     amount: null,
     content: collectStringArguments(pinned.inputSchema),
     results: Object.fromEntries(
-      listOutputFields(output).map((field) => [field, 'untrusted' as const]),
+      listOutputFields(placeholderOutput).map((field) => [field, 'untrusted' as const]),
     ),
   };
+
+  const unavailable = `${tool} cannot run yet: the proxy has no call path in this build`;
 
   return {
     name: tool,
     description: pinned.description ?? '',
     input: pinned.inputSchema,
-    output,
+    output: placeholderOutput,
     declaration,
     execution: hasQueuedEffect(declaration.effects) ? 'queued' : 'direct',
-    run: () =>
-      Promise.resolve({
-        status: 'error',
-        message: `${tool} cannot run yet: the proxy has no call path in this build`,
-      }),
+    prepare: () => Promise.resolve({ result: { text: unavailable }, refusalCode: 'unavailable' }),
+    run: () => Promise.resolve({ status: 'error', message: unavailable }),
   };
 }
 

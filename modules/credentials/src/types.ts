@@ -61,6 +61,10 @@ export interface OAuthProvider {
   // The protected resource that every token request names, as RFC 8707 sets, such as an MCP
   // server's URL.
   readonly resource?: string;
+
+  // A host on a private network, as a fetch option names it. Token and revoke requests to this host
+  // pass on an address in the range, and every other host still needs a public address.
+  readonly pairing?: { readonly host: string; readonly range: string };
 }
 
 export interface CredentialSpec {

@@ -32,6 +32,12 @@ export interface StandInMcpSite {
   // from the next request on, the refresh grant answers invalid_grant while the flag holds
   readonly refuseRefresh: (isRefusing: boolean) => void;
 
+  // from the next discovery on, the token endpoint sits at another path
+  readonly moveTokenEndpoint: (isMoved: boolean) => void;
+
+  // from the next request on, each listing page holds no tool and names another page, after the delay
+  readonly serveEndlessPages: (delayMs: number | null) => void;
+
   // every access token issued so far stops working, as an expired one does
   readonly expireAccessTokens: () => void;
   readonly calls: readonly StandInCall[];
@@ -46,6 +52,8 @@ interface SiteState {
   tools: readonly StandInTool[];
   isListingFailing: boolean;
   isRefreshRefused: boolean;
+  isTokenEndpointMoved: boolean;
+  endlessPageDelayMs: number | null;
   readonly accessTokens: Set<string>;
   readonly refreshTokens: Set<string>;
   readonly codes: Map<string, { challenge: string; redirectURI: string }>;
@@ -67,6 +75,8 @@ export async function startStandInMcpSite(
     tools: options.tools ?? [],
     isListingFailing: false,
     isRefreshRefused: false,
+    isTokenEndpointMoved: false,
+    endlessPageDelayMs: null,
     accessTokens: new Set<string>(),
     refreshTokens: new Set<string>(),
     codes: new Map<string, { challenge: string; redirectURI: string }>(),
@@ -101,6 +111,12 @@ export async function startStandInMcpSite(
     },
     refuseRefresh: (isRefusing) => {
       state.isRefreshRefused = isRefusing;
+    },
+    moveTokenEndpoint: (isMoved) => {
+      state.isTokenEndpointMoved = isMoved;
+    },
+    serveEndlessPages: (delayMs) => {
+      state.endlessPageDelayMs = delayMs;
     },
     expireAccessTokens: () => {
       state.accessTokens.clear();
@@ -137,7 +153,7 @@ function answerRequest(site: SiteRequest): Promise<Response> | Response {
     return Response.json({
       issuer: site.origin,
       authorization_endpoint: `${site.origin}/authorize`,
-      token_endpoint: `${site.origin}/token`,
+      token_endpoint: `${site.origin}${site.state.isTokenEndpointMoved ? '/token-moved' : '/token'}`,
       revocation_endpoint: `${site.origin}/revoke`,
       response_types_supported: ['code'],
       grant_types_supported: ['authorization_code', 'refresh_token'],
@@ -151,7 +167,7 @@ function answerRequest(site: SiteRequest): Promise<Response> | Response {
     return answerAuthorize(site, url);
   }
 
-  if (path === '/token') {
+  if (path === '/token' || path === '/token-moved') {
     return answerToken(site);
   }
 
@@ -301,7 +317,11 @@ async function answerMcp(site: SiteRequest): Promise<Response> {
 
 type RPCMessage = z.infer<typeof rpcMessageSchema>;
 
-function answerRPC(site: SiteRequest, message: RPCMessage, authorization: string | null): Response {
+function answerRPC(
+  site: SiteRequest,
+  message: RPCMessage,
+  authorization: string | null,
+): Response | Promise<Response> {
   const id = message.id ?? null;
 
   if (message.method === 'initialize') {
@@ -320,6 +340,10 @@ function answerRPC(site: SiteRequest, message: RPCMessage, authorization: string
 
   if (message.method === 'tools/list') {
     site.state.listings += 1;
+
+    if (site.state.endlessPageDelayMs !== null) {
+      return answerEndlessPage(id, site.state.endlessPageDelayMs, site.state.listings);
+    }
 
     return site.state.isListingFailing
       ? new Response('down', { status: 503 })
@@ -342,5 +366,19 @@ function answerRPC(site: SiteRequest, message: RPCMessage, authorization: string
     jsonrpc: '2.0',
     id,
     error: { code: -32_601, message: 'method not found' },
+  });
+}
+
+async function answerEndlessPage(
+  id: string | number | null,
+  delayMs: number,
+  page: number,
+): Promise<Response> {
+  await Bun.sleep(delayMs);
+
+  return Response.json({
+    jsonrpc: '2.0',
+    id,
+    result: { tools: [], nextCursor: `page-${String(page)}` },
   });
 }

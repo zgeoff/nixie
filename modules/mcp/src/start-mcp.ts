@@ -26,7 +26,7 @@ export interface McpOptions {
   readonly definitions: () => Definitions;
   readonly now: () => number;
   readonly store: CredentialStore;
-  readonly backend: Pick<HeldBackend, 'writeClient' | 'readToken' | 'removeKey'>;
+  readonly backend: Pick<HeldBackend, 'writeClient'>;
 
   // the facts each configured server asks for, by server ID
   readonly servers: Readonly<Record<string, ServerFacts>>;
@@ -43,7 +43,7 @@ export type ListResult =
   | { readonly status: 'skipped'; readonly reason: 'not_added' | 'no_grant' | 'needs_sign_in' };
 
 // What the API reaches: the two steps of a sign-in, and the forget of a server's credentials.
-export type McpPort = Pick<Mcp, 'connect' | 'finishSignIn' | 'forgetGrants'>;
+export type McpPort = Pick<Mcp, 'connect' | 'finishSignIn' | 'forgetGrants' | 'allow'>;
 
 export interface Mcp {
   // the tools that the registry serves from the proxy
@@ -85,8 +85,7 @@ export function startMcp(options: McpOptions): Mcp {
   // a listing of a server runs one at a time, and a caller that arrives meanwhile awaits it
   const listings = new Map<string, Promise<ListResult>>();
 
-  const forgetCredentials = (ids: readonly string[]) =>
-    forgetGrants({ store: options.store, backend: options.backend }, ids);
+  const forgetCredentials = (ids: readonly string[]) => forgetGrants({ store: options.store }, ids);
 
   const list = (serverID: string): Promise<ListResult> => {
     const running = listings.get(serverID);
@@ -133,7 +132,7 @@ export function startMcp(options: McpOptions): Mcp {
       return { status: 'skipped', reason: 'no_grant' };
     }
 
-    if (status.status === 'needs_consent') {
+    if (status.status === 'needs_consent' || bindings.hasMoved) {
       return { status: 'skipped', reason: 'needs_sign_in' };
     }
 

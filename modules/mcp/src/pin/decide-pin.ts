@@ -25,6 +25,14 @@ export interface PinInput {
   readonly nameRefusal: string | null;
 }
 
+// A change the owner learns of after the fact: a trusted server's tool changed, or a listing dropped
+// a tool.
+export interface PinNotice {
+  readonly kind: 'tool_changed' | 'tool_removed';
+  readonly fromHash: string | null;
+  readonly toHash: string | null;
+}
+
 export interface PinDecision {
   readonly state: PinState;
   readonly pinnedHash: string | null;
@@ -40,8 +48,8 @@ export interface PinDecision {
   // an allow proposal the listing owes: the form you would allow
   readonly propose: { readonly fromHash: string | null; readonly hash: string } | null;
 
-  // whether the owner sees a notice of the change
-  readonly hasNotice: boolean;
+  // the notice the owner reads of a change that applied with no allow, or null
+  readonly notice: PinNotice | null;
   readonly hiddenReason: string | null;
 }
 
@@ -59,7 +67,7 @@ export function decidePin(input: PinInput): PinDecision {
       latestHash: hash,
       move: null,
       propose: null,
-      hasNotice: false,
+      notice: null,
       hiddenReason: input.nameRefusal,
     };
   }
@@ -77,7 +85,7 @@ export function decidePin(input: PinInput): PinDecision {
       latestHash: hash,
       move: null,
       propose: null,
-      hasNotice: false,
+      notice: null,
       hiddenReason: null,
     };
   }
@@ -90,7 +98,7 @@ export function decidePin(input: PinInput): PinDecision {
       latestHash: hash,
       move: { fromHash: pinnedHash, toHash: null, cause: 'forgotten' },
       propose: { fromHash: null, hash },
-      hasNotice: false,
+      notice: null,
       hiddenReason: null,
     };
   }
@@ -102,7 +110,7 @@ export function decidePin(input: PinInput): PinDecision {
       latestHash: hash,
       move: { fromHash: pinnedHash, toHash: hash, cause: 'trusted_change' },
       propose: null,
-      hasNotice: true,
+      notice: { kind: 'tool_changed', fromHash: pinnedHash, toHash: hash },
       hiddenReason: null,
     };
   }
@@ -113,7 +121,7 @@ export function decidePin(input: PinInput): PinDecision {
     latestHash: hash,
     move: null,
     propose: { fromHash: pinnedHash, hash },
-    hasNotice: false,
+    notice: null,
     hiddenReason: null,
   };
 }
@@ -130,7 +138,7 @@ function decideUnpinned(input: PinInput): PinDecision {
       isChanged || input.existing?.state !== 'hidden_new'
         ? { fromHash: null, hash: input.hash }
         : null,
-    hasNotice: false,
+    notice: null,
     hiddenReason: null,
   };
 }
@@ -143,7 +151,14 @@ export function decideMissingPin(existing: ExistingPin): PinDecision {
     latestHash: existing.latestHash,
     move: null,
     propose: null,
-    hasNotice: existing.state !== 'removed',
+    notice:
+      existing.state === 'removed'
+        ? null
+        : {
+            kind: 'tool_removed',
+            fromHash: existing.pinnedHash ?? existing.latestHash,
+            toHash: null,
+          },
     hiddenReason: null,
   };
 }

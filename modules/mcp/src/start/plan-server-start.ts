@@ -1,4 +1,4 @@
-import { classifyServerFacts } from '../facts/classify-server-facts';
+import { classifyServerFacts, isScopeReduced } from '../facts/classify-server-facts';
 import type { ServerFacts, ServerState } from '../types';
 
 // What the start knows of a server that the log has held.
@@ -26,6 +26,9 @@ export type ServerStartStep =
       readonly serverID: string;
       readonly facts: ServerFacts;
       readonly replacesProposalID: string | null;
+
+      // a grant that holds a scope the entry dropped is forgotten, so you sign in with fewer
+      readonly dropsGrant: boolean;
     }
   | { readonly action: 'restore'; readonly serverID: string }
   | { readonly action: 'remove'; readonly serverID: string };
@@ -75,7 +78,15 @@ function planConfigured(
   }
 
   if (change === 'narrowed') {
-    return [{ action: 'narrow', serverID, facts, replacesProposalID: server.proposalID }];
+    return [
+      {
+        action: 'narrow',
+        serverID,
+        facts,
+        replacesProposalID: server.proposalID,
+        dropsGrant: isScopeReduced(server.inUse, facts),
+      },
+    ];
   }
 
   return isAlreadyAsked(server, facts)

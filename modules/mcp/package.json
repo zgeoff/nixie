@@ -11,6 +11,7 @@
     "typecheck": "tsrs --fast --noEmit"
   },
   "dependencies": {
+    "@heynixie/contract": "workspace:*",
     "@heynixie/credentials": "workspace:*",
     "@heynixie/db": "workspace:*",
     "@heynixie/egress": "workspace:*",

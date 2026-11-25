@@ -18,6 +18,7 @@ export const mcpMigration: Migration = {
       proposal_id text,
       client_credential_id text,
       grant_credential_id text,
+      grant_binding text,
       updated_sequence integer not null
     ) strict`.execute(tx);
 

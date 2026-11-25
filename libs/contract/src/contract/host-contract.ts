@@ -6,6 +6,7 @@ import { forgottenItemsSchema } from './forgotten-items-schema';
 import { hostBackupsContract } from './host-backups-contract';
 import { hostBudgetsContract } from './host-budgets-contract';
 import { hostMandatesContract } from './host-mandates-contract';
+import { hostMcpContract } from './host-mcp-contract';
 import { hostPasskeyContract } from './host-passkey-contract';
 import { hostSessionSchema } from './host-session-schema';
 import { knownContactSchema } from './known-contact-schema';
@@ -523,6 +524,7 @@ export const hostContract = {
     },
   },
   mandates: hostMandatesContract,
+  mcp: hostMcpContract,
   budgets: hostBudgetsContract,
   contacts: {
     list: contacts.output(z.array(knownContactSchema)),

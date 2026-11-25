@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { readOpenProposals } from '@heynixie/proposals';
 import { hashToolForm } from '../pin/hash-tool-form';
 import { readToolRow } from '../rows/read-tool-rows';
 import { buildServerFacts } from '../test-utils/build-server-facts';
@@ -31,6 +32,28 @@ test('it stops a changed tool of an untrusted server until you allow it', async 
   });
 });
 
+test('it exposes a changed tool of an untrusted server in the new form once you allow it', async () => {
+  const ctx = await setupTest();
+
+  const first = buildToolForm();
+  const changed = buildToolForm({ description: 'Read one item, and say who owns it.' });
+
+  await ctx.mcp.addServer('tracker', buildServerFacts());
+  await ctx.mcp.list('tracker', { forms: [first] });
+  await ctx.mcp.allow('tracker.item_get');
+  await ctx.mcp.list('tracker', { forms: [changed] });
+  await ctx.mcp.allow('tracker.item_get');
+
+  const tool = await ctx.readTool('tracker.item_get');
+
+  expect(tool).toMatchObject({
+    state: 'exposed',
+    pinned_hash: hashToolForm(changed),
+    latest_hash: hashToolForm(changed),
+    proposal_id: null,
+  });
+});
+
 test('it applies a changed tool of a trusted server and tells you', async () => {
   const ctx = await setupTest();
 
@@ -43,10 +66,19 @@ test('it applies a changed tool of a trusted server and tells you', async () => 
 
   const moves = await ctx.mcp.list('tracker', { forms: [changed], isTrusted: true });
   const tool = await ctx.readTool('tracker.item_get');
+  const notices = await ctx.mcp.readNotices();
 
-  expect([tool, moves]).toMatchObject([
+  expect([tool, moves, notices]).toMatchObject([
     { state: 'exposed', pinned_hash: hashToolForm(changed) },
     [{ tool: 'tracker.item_get', cause: 'trusted_change', toHash: hashToolForm(changed) }],
+    [
+      {
+        tool: 'tracker.item_get',
+        change: 'tool_changed',
+        fromHash: hashToolForm(first),
+        toHash: hashToolForm(changed),
+      },
+    ],
   ]);
 });
 
@@ -87,5 +119,56 @@ test('it stops a tool of a trusted server that gains an input property', async (
   expect(tool).toMatchObject({
     state: 'stopped_changed',
     pinned_hash: hashToolForm(first),
+  });
+});
+
+test('it keeps an allow that commits while the listing is between its read and its write', async () => {
+  const ctx = await setupTest();
+
+  const first = buildToolForm();
+  const changed = buildToolForm({ description: 'Read one item, and say who owns it.' });
+
+  await ctx.mcp.addServer('tracker', buildServerFacts());
+  await ctx.mcp.list('tracker', { forms: [first] });
+
+  await ctx.mcp.list('tracker', {
+    forms: [changed],
+    afterRead: () => ctx.mcp.allow('tracker.item_get'),
+  });
+
+  const tool = await ctx.readTool('tracker.item_get');
+
+  expect(tool).toMatchObject({
+    state: 'stopped_changed',
+    pinned_hash: hashToolForm(first),
+    latest_hash: hashToolForm(changed),
+  });
+});
+
+test('it closes the approval of a tool that the next listing omits', async () => {
+  const ctx = await setupTest();
+
+  await ctx.mcp.addServer('tracker', buildServerFacts());
+  await ctx.mcp.list('tracker', { forms: [buildToolForm()] });
+  await ctx.mcp.list('tracker', { forms: [] });
+
+  const tool = await ctx.readTool('tracker.item_get');
+  const open = await readOpenProposals(ctx.mcp.log.writer.db, ctx.mcp.context.now());
+
+  expect([tool?.state, tool?.proposal_id, open]).toStrictEqual(['removed', null, []]);
+});
+
+test('it keeps a tool whose form the registry refuses hidden, with the reason and no approval', async () => {
+  const ctx = await setupTest();
+
+  await ctx.mcp.addServer('tracker', buildServerFacts());
+  await ctx.mcp.list('tracker', { forms: [buildToolForm({ inputSchema: { type: 'string' } })] });
+
+  const tool = await ctx.readTool('tracker.item_get');
+
+  expect(tool).toMatchObject({
+    state: 'hidden_new',
+    proposal_id: null,
+    hidden_reason: expect.stringContaining('needs an object input schema'),
   });
 });

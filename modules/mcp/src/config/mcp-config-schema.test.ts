@@ -30,6 +30,17 @@ test.each(['T', 'a', 'tracker-1', '1tracker', 'averyveryverylongid'])(
   },
 );
 
+test.each(['web', 'memory', 'notebook', 'task'])(
+  'it refuses the server ID %s, the first segment of a tool nixie registers',
+  (id) => {
+    const result = buildMcpConfigSchema(false).safeParse({
+      servers: { [id]: { url: 'https://tracker.example.org/mcp', clientID: 'c', scope: 'read' } },
+    });
+
+    expect(result.success).toBe(false);
+  },
+);
+
 test.each([
   'http://tracker.example.org/mcp',
   'https://user:pw@tracker.example.org/mcp',

@@ -18,7 +18,7 @@ test('it exposes a tool whose hash equals its pin', () => {
     latestHash: 'sha256:a',
     move: null,
     propose: null,
-    hasNotice: false,
+    notice: null,
     hiddenReason: null,
   });
 });
@@ -39,7 +39,7 @@ test('it stops a changed tool of an untrusted server and proposes its allow', ()
     latestHash: 'sha256:b',
     move: null,
     propose: { fromHash: 'sha256:a', hash: 'sha256:b' },
-    hasNotice: false,
+    notice: null,
     hiddenReason: null,
   });
 });
@@ -60,7 +60,7 @@ test('it moves the pin of a changed tool of a trusted server, with a notice', ()
     latestHash: 'sha256:b',
     move: { fromHash: 'sha256:a', toHash: 'sha256:b', cause: 'trusted_change' },
     propose: null,
-    hasNotice: true,
+    notice: { kind: 'tool_changed', fromHash: 'sha256:a', toHash: 'sha256:b' },
     hiddenReason: null,
   });
 });
@@ -106,7 +106,7 @@ test.each([true, false])(
       latestHash: 'sha256:a',
       move: null,
       propose: { fromHash: null, hash: 'sha256:a' },
-      hasNotice: false,
+      notice: null,
       hiddenReason: null,
     });
   },
@@ -197,6 +197,6 @@ test('it keeps the pin of a tool that the listing no longer holds', () => {
     state: 'removed',
     pinnedHash: 'sha256:a',
     latestHash: 'sha256:a',
-    hasNotice: true,
+    notice: { kind: 'tool_removed', fromHash: 'sha256:a', toHash: null },
   });
 });

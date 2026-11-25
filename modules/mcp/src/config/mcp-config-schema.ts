@@ -1,6 +1,7 @@
 import { parseCIDR } from '@heynixie/egress';
 import { z } from 'zod';
 import { isRefusedRange } from '../facts/is-refused-range';
+import { reservedServerIDs } from './reserved-server-ids';
 
 export const serverIDPattern = /^[a-z][a-z0-9]{1,15}$/u;
 const defaultListingTimeoutSeconds = 10;
@@ -8,16 +9,20 @@ const defaultListingTimeoutSeconds = 10;
 export type McpServerConfig = z.output<ReturnType<typeof buildServerSchema>>;
 
 // The mcp section of config.yaml: each server is one entry under its ID, which prefixes every tool
-// name. Whether an ID collides with a tool nixie registers is checked where the tool names are
-// known.
+// name. An ID that is the first segment of a tool nixie registers is refused at the load.
 export function buildMcpConfigSchema(isTestBuild: boolean) {
   return z.strictObject({
     listingTimeoutSeconds: z.number().int().positive().default(defaultListingTimeoutSeconds),
     servers: z
       .record(
-        z.string().refine((id) => serverIDPattern.test(id), {
-          message: 'a server ID matches ^[a-z][a-z0-9]{1,15}$',
-        }),
+        z
+          .string()
+          .refine((id) => serverIDPattern.test(id), {
+            message: 'a server ID matches ^[a-z][a-z0-9]{1,15}$',
+          })
+          .refine((id) => !reservedServerIDs.includes(id), {
+            message: 'a server ID is not the first segment of a tool nixie registers, such as web',
+          }),
         buildServerSchema(isTestBuild),
       )
       .default({}),

@@ -15,7 +15,7 @@ async function setupTest() {
     handleReturn: (query: string, cookie: string | null) =>
       handleMcpReturn(
         api.url,
-        new Request(`http://web.test/connections/mcp/return${query}`, {
+        new Request(`http://web.test/connections/google/return${query}`, {
           headers: cookie === null ? {} : { cookie },
         }),
       ),

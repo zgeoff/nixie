@@ -2,34 +2,49 @@ import type { RecordInput } from '@heynixie/log';
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import type { Transaction } from 'kysely';
 import { readWithdrawals, writeMcpProposal } from '../proposal/write-mcp-proposal';
+import { mcpNoticeCodec } from '../record/mcp-notice-codec';
 import { mcpPinMovedCodec } from '../record/mcp-pin-moved-codec';
 import { mcpToolChangedCodec } from '../record/mcp-tool-changed-codec';
 import { mcpToolListedCodec } from '../record/mcp-tool-listed-codec';
+import type { FoundForm } from '../rows/read-forms-by-hash';
+import { readToolRows } from '../rows/read-tool-rows';
 import type { McpContext, OnPinMoved } from '../types';
-import type { ToolPlan } from './plan-listing';
+import { buildListingState } from './build-listing-state';
+import { hasFormsOfPins } from './has-forms-of-pins';
+import { planListing } from './plan-listing';
+import type { ListingRequest, ToolPlan } from './plan-listing';
 
 export interface ListingWriter {
   readonly context: McpContext;
   readonly onPinMoved?: OnPinMoved;
 }
 
-// Writes what a listing owes, in one transaction: a record for each new tool form, one allow
-// proposal for each tool that needs one, each pin move and each tool row that changes. A listing
-// that changes nothing writes nothing.
-export async function writeListing(
+export type ListingWritten =
+  | { readonly kind: 'written'; readonly plans: readonly ToolPlan[] }
+  | { readonly kind: 'stale' };
+
+// Plans the listing from the tool rows as the write transaction finds them, and writes what it owes
+// there: each new tool form, allow proposal, pin move and changed tool row. A listing that changes
+// nothing writes nothing. Stale when a pin moved to a form that the caller never read.
+export function writeListing(
   writer: ListingWriter,
-  plans: readonly ToolPlan[],
-): Promise<void> {
-  const owed = plans.filter((plan) => plan.isChanged || plan.isListed);
+  request: ListingRequest,
+  forms: ReadonlyMap<string, FoundForm>,
+): Promise<ListingWritten> {
+  return withWriteTransaction(writer.context.log.writer, async (tx): Promise<ListingWritten> => {
+    const rows = await readToolRows(tx, request.serverID);
 
-  if (owed.length === 0) {
-    return;
-  }
+    if (!hasFormsOfPins(rows, forms)) {
+      return { kind: 'stale' };
+    }
 
-  await withWriteTransaction(writer.context.log.writer, async (tx) => {
-    for (const plan of owed) {
+    const plans = planListing(request, buildListingState(rows, forms));
+
+    for (const plan of plans.filter((candidate) => candidate.isChanged || candidate.isListed)) {
       await writePlan(writer, tx, plan);
     }
+
+    return { kind: 'written', plans };
   });
 }
 
@@ -104,6 +119,22 @@ async function writePlan(
     },
     ...moved,
   ]);
+
+  if (decision.notice !== null) {
+    await writeRecordsInTransaction(tx, context.log, [
+      {
+        kind: mcpNoticeCodec.kind,
+        definitions: context.definitions(),
+        payload: mcpNoticeCodec.encode({
+          serverID: plan.serverID,
+          tool: plan.tool,
+          change: decision.notice.kind,
+          fromHash: decision.notice.fromHash,
+          toHash: decision.notice.toHash,
+        }),
+      },
+    ]);
+  }
 
   if (decision.move !== null) {
     await writer.onPinMoved?.(tx, { tool: plan.tool, ...decision.move });

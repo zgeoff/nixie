@@ -78,3 +78,37 @@ test('it loads a file with an unknown key inside a module’s section, and names
     unknownKeys: ['tasks.runner'],
   });
 });
+
+test('it refuses a server ID that is the first segment of a tool nixie registers', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(
+    ctx.path,
+    [
+      'models:',
+      '  profiles:',
+      '    chat-direct:',
+      '      harness: agent-sdk',
+      '      base_url: https://api.anthropic.com',
+      '      credential: deployment:anthropic',
+      '      auth_header: x-api-key',
+      '      model: claude-test-1',
+      '      effort: medium',
+      '      prices: { input: 1, cache_write: 1, cache_write_1h: 1, cached_input: 0.1, output: 4 }',
+      '  roles:',
+      '    conversation: chat-direct',
+      'imp:',
+      '  url: http://127.0.0.1:7070',
+      'definitions:',
+      '  source: { kind: path, path: /etc/nixie/definitions }',
+      'mcp:',
+      '  servers:',
+      '    web:',
+      '      url: https://tracker.example.org/mcp',
+      '      clientID: nixie-7f3a',
+      '      scope: read',
+    ].join('\n'),
+  );
+
+  expect(readDeploymentConfig(ctx.path)).rejects.toThrow(/mcp\.servers\.web/u);
+});

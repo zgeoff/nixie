@@ -17,6 +17,9 @@ export interface McpServerRow {
   readonly proposal_id: string | null;
   readonly client_credential_id: string | null;
   readonly grant_credential_id: string | null;
+
+  // JSON of the GrantBinding the grant was signed in under; null until a sign-in finishes
+  readonly grant_binding: string | null;
   readonly updated_sequence: number;
 }
 

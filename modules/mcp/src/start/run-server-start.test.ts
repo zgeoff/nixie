@@ -8,10 +8,20 @@ import { runServerStart } from './run-server-start';
 async function setupTest() {
   const mcp = await startTestMcp();
 
+  const forgotten: string[] = [];
+
   return {
     mcp,
+    forgotten,
     start: (config: Parameters<typeof runServerStart>[1]['config']) =>
-      runServerStart(mcp.context, { config, forgetCredentials: () => Promise.resolve() }),
+      runServerStart(mcp.context, {
+        config,
+        forgetCredentials: (ids) => {
+          forgotten.push(...ids);
+
+          return Promise.resolve();
+        },
+      }),
     readServer: async (serverID: string) => {
       const rows = await readServerRows(mcp.log.writer.db);
 
@@ -28,12 +38,19 @@ test('it holds a widened server and makes one proposal, however often the server
 
   await ctx.mcp.addServer('tracker', buildServerFacts());
   await ctx.start({ tracker: widened });
+
+  const first = await ctx.readServer('tracker');
+
   await ctx.start({ tracker: widened });
 
   const server = await ctx.readServer('tracker');
   const open = await ctx.readOpen();
 
-  expect([server?.state, server?.scope, open.length]).toStrictEqual(['held', 'read write', 1]);
+  expect([server?.state, server?.scope, open.map((proposal) => proposal.id)]).toStrictEqual([
+    'held',
+    'read write',
+    [first?.proposal_id ?? ''],
+  ]);
 });
 
 test('it applies a narrowed server at once with no proposal', async () => {
@@ -65,4 +82,31 @@ test('it holds the server until you approve the widening, and then it uses the n
   const approved = await ctx.readServer('tracker');
 
   expect([approved?.state, approved?.scope]).toStrictEqual(['added', 'read write admin']);
+});
+
+test('it forgets the grant of a server whose entry dropped a scope, so you sign in again with fewer', async () => {
+  const ctx = await setupTest();
+
+  await ctx.mcp.addServer('tracker', buildServerFacts());
+
+  const before = await ctx.readServer('tracker');
+
+  await ctx.start({ tracker: buildServerFacts({ scope: 'read' }) });
+
+  const after = await ctx.readServer('tracker');
+
+  expect([
+    ctx.forgotten,
+    after?.grant_credential_id === before?.grant_credential_id,
+    after?.client_credential_id === before?.client_credential_id,
+  ]).toStrictEqual([[before?.grant_credential_id ?? ''], false, true]);
+});
+
+test('it keeps the grant of a server whose entry only switched trust off', async () => {
+  const ctx = await setupTest();
+
+  await ctx.mcp.addServer('tracker', buildServerFacts({ trusted: true }));
+  await ctx.start({ tracker: buildServerFacts({ trusted: false }) });
+
+  expect(ctx.forgotten).toStrictEqual([]);
 });

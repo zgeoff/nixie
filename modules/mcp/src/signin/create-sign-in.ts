@@ -1,9 +1,15 @@
+import { mcpSignInStatePrefix } from '@heynixie/contract';
 import type { CredentialStore, HeldBackend } from '@heynixie/credentials';
 import { TokenRequestError } from '@heynixie/credentials';
+import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
+import { mcpServerChangedCodec } from '../record/mcp-server-changed-codec';
 import { readServerRow } from '../rows/read-server-rows';
+import { toCredentialFields } from '../rows/to-credential-fields';
+import { toFactsInUse } from '../rows/to-facts-in-use';
+import { toRequestedFacts } from '../rows/to-requested-facts';
 import type { McpContext } from '../types';
 import { buildPKCE } from './build-pkce';
-import { readBindings } from './read-bindings';
+import { readBindings, toBinding } from './read-bindings';
 import type { BindingsRuntime, ServerBindings } from './read-bindings';
 
 export type ConnectResult =
@@ -52,10 +58,11 @@ interface PendingSignIn {
 }
 
 // The state of every sign-in starts with this, so the shared OAuth return route knows whose it is.
-export const signInStatePrefix = 'mcp_';
+export const signInStatePrefix = mcpSignInStatePrefix;
 
-// where the web client receives the browser that the authorization server sends back
-export const signInReturnPath = '/connections/mcp/return';
+// The OAuth return route that Google's consent uses too, where the web client receives the browser
+// that the authorization server sends back.
+export const signInReturnPath = '/connections/google/return';
 const defaultLifetimeMs = 10 * 60 * 1000;
 
 // Connect starts the OAuth sign-in of one server, and the return route finishes it. The PKCE
@@ -139,12 +146,8 @@ export function createSignIn(options: SignInOptions): SignIn {
 
       const bindings = found.bindings;
 
-      // RFC 9207: a server that says it returns its issuer must, and the issuer must be its own
-      const isIssuerWrong = bindings.discovered.isIssuerReturned
-        ? input.iss !== bindings.discovered.issuer
-        : input.iss !== null && input.iss !== bindings.discovered.issuer;
-
-      if (isIssuerWrong) {
+      // RFC 9207: the return names the issuer, and the issuer is the one that discovery found
+      if (input.iss !== bindings.discovered.issuer) {
         return { status: 'issuer_mismatch' };
       }
 
@@ -161,6 +164,8 @@ export function createSignIn(options: SignInOptions): SignIn {
           code: error instanceof TokenRequestError ? error.code : 'request_failed',
         };
       }
+
+      await writeSignedIn(options.context, found.serverID, bindings);
 
       await options.onSignedIn(found.serverID);
 
@@ -181,4 +186,37 @@ function isOrigin(text: string): boolean {
   const isSecure = url.protocol === 'https:' || (NIXIE_TEST_BUILD && url.protocol === 'http:');
 
   return isSecure && url.origin === text && url.username === '' && url.password === '';
+}
+
+// Records where the grant was signed in, so a later discovery that names another authorization
+// server stops at a new sign-in.
+async function writeSignedIn(
+  context: McpContext,
+  serverID: string,
+  bindings: ServerBindings,
+): Promise<void> {
+  await withWriteTransaction(context.log.writer, async (tx) => {
+    const row = await readServerRow(tx, serverID);
+
+    if (row?.state !== 'added') {
+      return;
+    }
+
+    await writeRecordsInTransaction(tx, context.log, [
+      {
+        kind: mcpServerChangedCodec.kind,
+        definitions: context.definitions(),
+        payload: mcpServerChangedCodec.encode({
+          serverID,
+          cause: 'signed_in',
+          state: row.state,
+          facts: toFactsInUse(row),
+          requested: toRequestedFacts(row),
+          proposalID: row.proposal_id,
+          ...toCredentialFields(row),
+          grantBinding: toBinding(bindings.discovered),
+        }),
+      },
+    ]);
+  });
 }

@@ -5,6 +5,8 @@ import { readWithdrawals, writeMcpProposal } from '../proposal/write-mcp-proposa
 import { mcpServerChangedCodec } from '../record/mcp-server-changed-codec';
 import type { McpServerRow } from '../rows/mcp-tables';
 import { readServerRows } from '../rows/read-server-rows';
+import { toCredentialFields } from '../rows/to-credential-fields';
+import type { CredentialFields } from '../rows/to-credential-fields';
 import { toFactsInUse } from '../rows/to-facts-in-use';
 import { toRequestedFacts } from '../rows/to-requested-facts';
 import type { McpContext, ServerFacts } from '../types';
@@ -44,11 +46,7 @@ export async function runServerStart(
 
     await withWriteTransaction(context.log.writer, (tx) => writeStep(context, tx, step, row));
 
-    if (step.action === 'remove') {
-      const credentials = [row?.client_credential_id ?? null, row?.grant_credential_id ?? null];
-
-      await deps.forgetCredentials(credentials.filter((id) => id !== null));
-    }
+    await deps.forgetCredentials(collectForgottenCredentials(step, row));
   }
 
   return steps;
@@ -67,6 +65,7 @@ async function writeStep(
     });
 
     const isReturning = row === undefined || row.state === 'removed';
+    const kept = isReturning ? null : row;
 
     await writeRecordsInTransaction(tx, context.log, [
       buildServerChanged(context, {
@@ -76,7 +75,7 @@ async function writeStep(
         facts: isReturning ? null : toFactsInUse(row),
         requested: step.facts,
         proposalID,
-        credentials: isReturning ? null : row,
+        credentials: toCredentialFields(kept),
       }),
     ]);
 
@@ -97,7 +96,7 @@ interface ServerChange {
   readonly facts: ServerFacts | null;
   readonly requested: ServerFacts | null;
   readonly proposalID: string | null;
-  readonly credentials: McpServerRow | null;
+  readonly credentials: CredentialFields;
 }
 
 function buildServerChanged(context: McpContext, change: ServerChange): RecordInput {
@@ -111,8 +110,9 @@ function buildServerChanged(context: McpContext, change: ServerChange): RecordIn
       facts: change.facts,
       requested: change.requested,
       proposalID: change.proposalID,
-      clientCredentialID: change.credentials?.client_credential_id ?? null,
-      grantCredentialID: change.credentials?.grant_credential_id ?? null,
+      clientCredentialID: change.credentials.clientCredentialID,
+      grantCredentialID: change.credentials.grantCredentialID,
+      grantBinding: change.credentials.grantBinding,
     }),
   };
 }
@@ -130,7 +130,9 @@ function buildStepRecord(
       facts: step.facts,
       requested: null,
       proposalID: null,
-      credentials: row ?? null,
+      credentials: step.dropsGrant
+        ? { ...toCredentialFields(row), grantCredentialID: crypto.randomUUID(), grantBinding: null }
+        : toCredentialFields(row),
     });
   }
 
@@ -142,7 +144,7 @@ function buildStepRecord(
       facts: row === undefined ? null : toFactsInUse(row),
       requested: null,
       proposalID: null,
-      credentials: row ?? null,
+      credentials: toCredentialFields(row),
     });
   }
 
@@ -153,6 +155,23 @@ function buildStepRecord(
     facts: null,
     requested: null,
     proposalID: null,
-    credentials: null,
+    credentials: toCredentialFields(null),
   });
+}
+
+// The credentials a committed step leaves behind: both of a removed server, and the grant of a
+// server whose entry dropped a scope.
+function collectForgottenCredentials(
+  step: ServerStartStep,
+  row: McpServerRow | undefined,
+): string[] {
+  if (step.action === 'remove') {
+    return [row?.client_credential_id ?? null, row?.grant_credential_id ?? null].filter(
+      (id) => id !== null,
+    );
+  }
+
+  const grantID = row?.grant_credential_id ?? null;
+
+  return step.action === 'narrow' && step.dropsGrant && grantID !== null ? [grantID] : [];
 }

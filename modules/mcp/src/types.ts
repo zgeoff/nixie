@@ -14,6 +14,14 @@ export interface ServerFacts {
   readonly privateRange: string | null;
 }
 
+// Where a server's grant was signed in: the authorization server that issued it and the endpoints
+// that receive its refresh token. A later discovery that names others needs a new sign-in.
+export interface GrantBinding {
+  readonly issuer: string;
+  readonly tokenURL: string;
+  readonly revokeURL: string | null;
+}
+
 // held: waits for the proposal of its widened facts; added: approved, signed in or not
 export type ServerState = 'held' | 'added' | 'removed';
 

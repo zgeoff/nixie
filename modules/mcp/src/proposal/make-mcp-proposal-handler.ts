@@ -4,9 +4,11 @@ import { proposalLapseMs } from '@heynixie/proposals';
 import invariant from 'tiny-invariant';
 import { buildOperationHash } from '../operation/build-operation-hash';
 import { mcpLapsedCodec } from '../record/mcp-lapsed-codec';
+import { readFormsByHash } from '../rows/read-forms-by-hash';
 import type { McpOperation } from '../types';
 import { answerMcpProposal } from './answer-mcp-proposal';
 import type { AnswerContext } from './answer-mcp-proposal';
+import { buildMcpProposalBody } from './build-mcp-proposal-body';
 import { readOperation } from './read-operation';
 
 // The handler of the mcp family. It recomputes the operation from the facts and the tool's latest
@@ -22,8 +24,7 @@ export function makeMcpProposalHandler(context: AnswerContext): ProposalKindHand
 
       for (const row of rows) {
         const operation = await readOperation(db, row.id);
-
-        const body = operation === null ? null : buildBody(operation);
+        const body = await readBody(context, operation);
 
         bodies.set(row.id, body);
       }
@@ -59,30 +60,29 @@ export function makeMcpProposalHandler(context: AnswerContext): ProposalKindHand
   };
 }
 
-function buildBody(operation: McpOperation): ProposalBody {
-  if (operation.change === 'server') {
-    return {
-      sentence: `Connect to the MCP server ${operation.serverID}.`,
-      fields: {
-        url: operation.facts.url,
-        scopes: operation.facts.scope,
-        trusted: operation.facts.trusted ? 'yes' : 'no',
-        ...(operation.facts.privateRange === null
-          ? {}
-          : { privateRange: operation.facts.privateRange }),
-      },
-      ruleSentence: null,
-      approveLabel: 'Add the server',
-    };
+// The card of an operation. An allow card shows the forms, read from the records that listed them.
+async function readBody(
+  context: AnswerContext,
+  operation: McpOperation | null,
+): Promise<ProposalBody | null> {
+  if (operation === null) {
+    return null;
   }
 
-  return {
-    sentence: `Allow the tool ${operation.tool} in the form the server lists now.`,
-    fields: {
-      ...(operation.fromHash === null ? {} : { allowedForm: operation.fromHash }),
-      newForm: operation.hash,
-    },
-    ruleSentence: null,
-    approveLabel: 'Allow the tool',
-  };
+  if (operation.change === 'server') {
+    return buildMcpProposalBody(operation, { allowed: null, proposed: null });
+  }
+
+  const found = await readFormsByHash(context.log, [
+    ...(operation.fromHash === null ? [] : [operation.fromHash]),
+    operation.hash,
+  ]);
+
+  const allowed =
+    operation.fromHash === null ? null : (found.get(operation.fromHash)?.form ?? null);
+
+  return buildMcpProposalBody(operation, {
+    allowed,
+    proposed: found.get(operation.hash)?.form ?? null,
+  });
 }

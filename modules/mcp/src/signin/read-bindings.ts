@@ -6,8 +6,9 @@ import type {
   FetchOptions,
 } from '@heynixie/credentials';
 import type { McpServerRow } from '../rows/mcp-tables';
+import { toGrantBinding } from '../rows/to-credential-fields';
 import { toFactsInUse } from '../rows/to-facts-in-use';
-import type { ServerFacts } from '../types';
+import type { GrantBinding, ServerFacts } from '../types';
 import { discoverAuthorization } from './discover-authorization';
 import type { DiscoveredAuthorization } from './discover-authorization';
 
@@ -21,6 +22,10 @@ export interface ServerBindings {
   readonly grant: BindingRef<'database'>;
   readonly clientCredentialID: string;
   readonly grantCredentialID: string;
+
+  // Whether the authorization server that answers now differs from the one that the grant was
+  // signed in under. A grant that has moved is never refreshed, and only a new sign-in replaces it.
+  readonly hasMoved: boolean;
 }
 
 export type BindingsOutcome =
@@ -80,6 +85,7 @@ export async function readBindings(
       grant,
       clientCredentialID: clientID,
       grantCredentialID: grantID,
+      hasMoved: isMoved(toGrantBinding(server), found),
     },
   };
 }
@@ -157,6 +163,26 @@ function buildSpec(
       issuer: found.issuer,
       clientID: facts.clientID,
       resource: facts.url,
+      ...(facts.privateRange === null
+        ? {}
+        : { pairing: { host: new URL(facts.url).hostname, range: facts.privateRange } }),
     },
   };
+}
+
+// Where a grant is signed in: what discovery found at the moment of sign-in.
+export function toBinding(found: DiscoveredAuthorization): GrantBinding {
+  return { issuer: found.issuer, tokenURL: found.tokenURL, revokeURL: found.revokeURL };
+}
+
+function isMoved(saved: GrantBinding | null, found: DiscoveredAuthorization): boolean {
+  if (saved === null) {
+    return false;
+  }
+
+  return (
+    saved.issuer !== found.issuer ||
+    saved.tokenURL !== found.tokenURL ||
+    saved.revokeURL !== found.revokeURL
+  );
 }

@@ -6,6 +6,7 @@ import type { CredentialFetch, OAuthProvider } from '../types';
 import { buildClientFields } from './build-client-fields';
 import { createKeyedLock } from './create-keyed-lock';
 import { CredentialRemovedError } from './credential-removed-error';
+import { forgetCredential } from './forget-credential';
 import { isDue } from './is-due';
 import { pickFailureState } from './pick-failure-state';
 import type { RefreshFailureKind } from './pick-failure-state';
@@ -15,6 +16,8 @@ import { recoverLostRefreshes } from './recover-lost-refreshes';
 import { sendRevocation } from './send-revocation';
 import { pickProviderError, sendTokenRequest } from './send-token-request';
 import { TokenRequestError } from './token-request-error';
+import { trackRequest } from './track-request';
+import type { TrackedRequest } from './track-request';
 import type {
   CredentialRecorder,
   FailingReason,
@@ -53,11 +56,6 @@ export interface HeldHandle {
   readonly provider: OAuthProvider;
 }
 
-interface TrackedRequest {
-  readonly signal: AbortSignal;
-  readonly end: () => void;
-}
-
 type CounterHandle = Pick<HeldHandle, 'credentialID' | 'removalCounter' | 'label'>;
 
 export interface HeldCredentials {
@@ -87,6 +85,7 @@ export interface HeldCredentials {
   readonly revoke: (handle: HeldHandle) => Promise<RevokeResult>;
   readonly readState: (handle: CounterHandle) => Promise<HeldState | null>;
   readonly remove: (credentialID: string) => Promise<void>;
+  readonly forget: (credentialID: string) => Promise<void>;
   readonly moveOwnValues: (fromCredentialID: string, toCredentialID: string) => Promise<void>;
   readonly recover: () => Promise<void>;
 }
@@ -417,7 +416,7 @@ export function createHeldCredentials(options: HeldOptions): HeldCredentials {
     addOwnValues: addCurrentOwnValues,
   };
 
-  return {
+  const held: HeldCredentials = {
     readCounter: backend.readRemovalCounter,
     checkCounter,
     withSendCheck: (handle, start) =>
@@ -568,21 +567,7 @@ export function createHeldCredentials(options: HeldOptions): HeldCredentials {
 
       return token?.state ?? null;
     },
-    trackRequest: (credentialID) => {
-      const controller = new AbortController();
-
-      const active = requests.get(credentialID) ?? new Set<AbortController>();
-
-      active.add(controller);
-      requests.set(credentialID, active);
-
-      return {
-        signal: controller.signal,
-        end: () => {
-          active.delete(controller);
-        },
-      };
-    },
+    trackRequest: (credentialID) => trackRequest(requests, credentialID),
     remove: (credentialID) => {
       for (const controller of requests.get(credentialID) ?? []) {
         controller.abort();
@@ -595,6 +580,7 @@ export function createHeldCredentials(options: HeldOptions): HeldCredentials {
         options.ownValues.remove('connector_credentials', `held:${credentialID}:refresh`);
       });
     },
+    forget: (credentialID) => forgetCredential({ backend, held }, credentialID),
     moveOwnValues: (fromCredentialID, toCredentialID) =>
       removalLock.withLock(toCredentialID, async () => {
         options.ownValues.remove('connector_credentials', `held:${fromCredentialID}:access`);
@@ -614,4 +600,6 @@ export function createHeldCredentials(options: HeldOptions): HeldCredentials {
         writeState,
       }),
   };
+
+  return held;
 }

@@ -25,6 +25,7 @@ export const mcpServersProjection: Projection = {
       proposal_id: changed.proposalID,
       client_credential_id: changed.clientCredentialID,
       grant_credential_id: changed.grantCredentialID,
+      grant_binding: changed.grantBinding === null ? null : JSON.stringify(changed.grantBinding),
       updated_sequence: record.sequence,
     };
 

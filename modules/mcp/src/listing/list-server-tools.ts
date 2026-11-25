@@ -9,6 +9,8 @@ export interface ListRequest {
 
   // sends each request with the server's access token added
   readonly send: CredentialFetch;
+
+  // bounds the whole listing: the connection and every page of it together
   readonly timeoutMs: number;
 }
 
@@ -36,8 +38,10 @@ export async function listServerTools(request: ListRequest): Promise<ListOutcome
     redirectPolicy: 'same-origin',
   });
 
+  const signal = AbortSignal.timeout(request.timeoutMs);
+
   try {
-    await client.connect(transport, { timeout: request.timeoutMs });
+    await client.connect(transport, { signal });
 
     const forms: ToolForm[] = [];
     let cursor: string | undefined;
@@ -45,7 +49,7 @@ export async function listServerTools(request: ListRequest): Promise<ListOutcome
     do {
       const params = cursor === undefined ? {} : { cursor };
 
-      const page = await client.listTools(params, { timeout: request.timeoutMs });
+      const page = await client.listTools(params, { signal });
 
       forms.push(...page.tools.flatMap((tool) => parseToolForm(tool) ?? []));
 

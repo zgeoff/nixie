@@ -125,6 +125,10 @@ export interface CredentialStore {
   // handle made before it refuses from then on, and a refresh in flight saves nothing.
   readonly remove: (ref: DatabaseCredentialRef) => Promise<void>;
 
+  // Removes a database credential as `remove` does, and then deletes the key that sealed its token,
+  // so nothing readable stays in the database or in a backup. The caller never reads the token.
+  readonly forget: (ref: DatabaseCredentialRef) => Promise<void>;
+
   // Gives the values that a credential's tokens hold in the live set to another credential that now
   // holds those tokens, so the second credential's removal clears them.
   readonly moveOwnValues: (from: DatabaseCredentialRef, to: DatabaseCredentialRef) => Promise<void>;
@@ -190,7 +194,10 @@ export function createCredentialStore(options: CredentialStoreOptions): Credenti
           readValue: () => null,
           bodyValues,
           origins: normalizeOrigins(listProviderURLs(provider)),
-          options: { redirects: 'none' },
+          options: {
+            redirects: 'none',
+            ...(provider.pairing === undefined ? {} : { pairing: provider.pairing }),
+          },
         }),
     });
 
@@ -429,6 +436,7 @@ export function createCredentialStore(options: CredentialStoreOptions): Credenti
     readStatus: (binding) => requireHeld().readState(toHandle(binding)),
     revoke: (binding) => requireHeld().revoke(toHandle(binding)),
     remove: (ref) => requireHeld().remove(ref.credentialID),
+    forget: (ref) => requireHeld().forget(ref.credentialID),
     moveOwnValues: (from, to) => requireHeld().moveOwnValues(from.credentialID, to.credentialID),
     recover: () => requireHeld().recover(),
     readFingerprint: (value) => readFingerprint(value, options.secrets.fingerprintKey),

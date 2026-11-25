@@ -51,8 +51,13 @@ test.each<{ title: string; asked: Partial<ServerFacts> }>([
   ]);
 });
 
-test.each<{ title: string; inUse: Partial<ServerFacts>; asked: Partial<ServerFacts> }>([
-  { title: 'fewer scopes', inUse: {}, asked: { scope: 'read' } },
+test.each<{
+  title: string;
+  inUse: Partial<ServerFacts>;
+  asked: Partial<ServerFacts>;
+  dropsGrant?: true;
+}>([
+  { title: 'fewer scopes', inUse: {}, asked: { scope: 'read' }, dropsGrant: true },
   { title: 'trusted switched off', inUse: { trusted: true }, asked: { trusted: false } },
   {
     title: 'a narrower range',
@@ -76,6 +81,7 @@ test.each<{ title: string; inUse: Partial<ServerFacts>; asked: Partial<ServerFac
       serverID: 'tracker',
       facts: buildServerFacts(row.asked),
       replacesProposalID: null,
+      dropsGrant: row.dropsGrant ?? false,
     },
   ]);
 });

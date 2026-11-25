@@ -285,6 +285,7 @@ export interface NixieTables {
     readonly proposal_id: string | null;
     readonly client_credential_id: string | null;
     readonly grant_credential_id: string | null;
+    readonly grant_binding: string | null;
     readonly updated_sequence: number;
   };
   readonly mcp_tool_forms: {

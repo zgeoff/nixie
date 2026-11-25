@@ -1,0 +1,31 @@
+// The first segment of each tool nixie registers, such as `web` for `web_fetch`. The config load
+// refuses these IDs. The conversation endpoint checks the registry itself at its start, which
+// catches a tool that a release adds and this list lacks.
+export const reservedServerIDs: readonly string[] = [
+  'code',
+  'computer',
+  'contact',
+  'contacts',
+  'device',
+  'devices',
+  'file',
+  'forget',
+  'image',
+  'log',
+  'mandate',
+  'memory',
+  'moment',
+  'notebook',
+  'notes',
+  'prompt',
+  'reminder',
+  'reminders',
+  'rules',
+  'search',
+  'silent',
+  'skill',
+  'task',
+  'tasks',
+  'time',
+  'web',
+];

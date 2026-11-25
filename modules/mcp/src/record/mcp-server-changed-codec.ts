@@ -1,5 +1,6 @@
 import { defineRecordCodec } from '@heynixie/log';
 import { z } from 'zod';
+import { grantBindingSchema } from './grant-binding-schema';
 import type { McpRecordKind } from './mcp-record-kind';
 import { serverFactsSchema } from './server-facts-schema';
 
@@ -12,12 +13,13 @@ export const mcpServerChangedCodec = defineRecordCodec(
   kind,
   z.object({
     serverID: z.string(),
-    cause: z.enum(['held', 'approved', 'narrowed', 'restored', 'removed']),
+    cause: z.enum(['held', 'approved', 'narrowed', 'restored', 'removed', 'signed_in']),
     state: z.enum(['held', 'added', 'removed']),
     facts: serverFactsSchema.nullable(),
     requested: serverFactsSchema.nullable(),
     proposalID: z.string().nullable(),
     clientCredentialID: z.string().nullable(),
     grantCredentialID: z.string().nullable(),
+    grantBinding: grantBindingSchema.nullable(),
   }),
 );

@@ -3,14 +3,15 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Log } from '@heynixie/log';
-import { logProjections, startWriter, writeRecordsInTransaction } from '@heynixie/log';
-import type { AnswerOutcome } from '@heynixie/proposals';
+import { logProjections, readRecords, startWriter, writeRecordsInTransaction } from '@heynixie/log';
+import type { AnswerOutcome, ProposalKindHandler } from '@heynixie/proposals';
 import { answerProposal, buildProposalsProjection, readProposal } from '@heynixie/proposals';
 import { createFakeClock } from '@zgeoff/testing/clock';
 import invariant from 'tiny-invariant';
 import { applyListing } from '../listing/apply-listing';
 import { makeMcpProposalHandler } from '../proposal/make-mcp-proposal-handler';
 import { mapMcpProposalRecord } from '../proposal/map-mcp-proposal-record';
+import { mcpNoticeCodec } from '../record/mcp-notice-codec';
 import { mcpProjections } from '../rows/mcp-projections';
 import { readServerRows } from '../rows/read-server-rows';
 import { readToolRow } from '../rows/read-tool-rows';
@@ -20,10 +21,19 @@ import type { McpContext, PinMove, ServerFacts, ToolForm } from '../types';
 export interface ListInput {
   readonly forms: readonly ToolForm[];
   readonly isTrusted?: boolean;
+
+  // runs after the listing read what it compares with and before it writes
+  readonly afterRead?: () => Promise<void>;
+}
+
+export interface TestMcpOptions {
+  // the handler of the mcp family, read at each answer; the default forgets nothing in a store
+  readonly readHandler?: () => ProposalKindHandler;
 }
 
 export interface TestMcp {
   readonly log: Log;
+  readonly clock: ReturnType<typeof createFakeClock>;
   readonly context: McpContext;
 
   // the credential IDs that a removal asked the store to forget
@@ -40,11 +50,14 @@ export interface TestMcp {
 
   // Approves the open allow proposal of the tool.
   readonly allow: (tool: string) => Promise<void>;
+
+  // the notices that listings wrote, oldest first
+  readonly readNotices: () => Promise<ReturnType<typeof mcpNoticeCodec.decode>[]>;
 }
 
 // A real log with the tables of the proxy and of the proposals, and the shared answer path with
 // the proxy's handler on it.
-export async function startTestMcp(): Promise<TestMcp> {
+export async function startTestMcp(options: TestMcpOptions = {}): Promise<TestMcp> {
   const stack = new AsyncDisposableStack();
 
   onTestFinished(() => stack.disposeAsync());
@@ -75,24 +88,23 @@ export async function startTestMcp(): Promise<TestMcp> {
   const context: McpContext = { log, definitions, now: () => clock.now() };
   const forgotten: string[] = [];
 
+  const defaultHandler = makeMcpProposalHandler({
+    ...context,
+    forgetCredentials: (ids) => {
+      forgotten.push(...ids);
+
+      return Promise.resolve();
+    },
+  });
+
   const deps = {
     log,
     clock,
     definitions,
     projection,
-    handlers: new Map([
-      [
-        'mcp' as const,
-        makeMcpProposalHandler({
-          ...context,
-          forgetCredentials: (ids) => {
-            forgotten.push(...ids);
-
-            return Promise.resolve();
-          },
-        }),
-      ],
-    ]),
+    get handlers() {
+      return new Map([['mcp' as const, options.readHandler?.() ?? defaultHandler]]);
+    },
     readDeferContext: () => Promise.resolve({ quietHours: null, zone: 'UTC' }),
     writeThreadRecord: async (
       tx: Parameters<typeof writeRecordsInTransaction>[0],
@@ -116,6 +128,7 @@ export async function startTestMcp(): Promise<TestMcp> {
 
   return {
     log,
+    clock,
     context,
     forgotten,
     answer,
@@ -139,6 +152,7 @@ export async function startTestMcp(): Promise<TestMcp> {
       await applyListing(
         {
           context,
+          ...(input.afterRead === undefined ? {} : { afterRead: input.afterRead }),
           onPinMoved: (_tx, move) => {
             moves.push(move);
 
@@ -161,6 +175,11 @@ export async function startTestMcp(): Promise<TestMcp> {
       invariant(row?.proposal_id, 'the tool waits for an allow');
 
       await answer(row.proposal_id, 'approve');
+    },
+    readNotices: async () => {
+      const records = await readRecords(log, { afterSequence: 0, kinds: [mcpNoticeCodec.kind] });
+
+      return records.map((entry) => mcpNoticeCodec.decode(entry.record.payload));
     },
   };
 }

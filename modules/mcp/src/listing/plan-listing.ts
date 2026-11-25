@@ -3,8 +3,9 @@ import { buildProxiedToolName, pickNameRefusal } from '../name/pick-name-refusal
 import { decideMissingPin, decidePin } from '../pin/decide-pin';
 import type { PinDecision } from '../pin/decide-pin';
 import { hashToolForm } from '../pin/hash-tool-form';
+import { buildProxiedTool } from '../registry/build-proxied-tool';
 import type { ToolForm } from '../types';
-import type { ListingState } from './read-listing-state';
+import type { ListingState } from './types';
 
 export interface ListingRequest {
   readonly serverID: string;
@@ -75,8 +76,8 @@ export function planListing(request: ListingRequest, state: ListingState): ToolP
         decision,
         isListed: false,
         proposeAllow: null,
-        withdrawProposalID: null,
-        keptProposalID: row.proposal_id,
+        withdrawProposalID: row.proposal_id,
+        keptProposalID: null,
         isChanged: true,
       };
     });
@@ -107,11 +108,12 @@ function planListedTool(
   const hash = hashToolForm(form);
   const row = state.rows.get(tool);
 
-  const refusal = pickNameRefusal({
-    serverID: request.serverID,
-    toolName: form.name,
-    takenModelNames: taken,
-  });
+  const refusal =
+    pickNameRefusal({
+      serverID: request.serverID,
+      toolName: form.name,
+      takenModelNames: taken,
+    }) ?? pickFormRefusal(tool, form);
 
   if (refusal === null) {
     taken.add(toSDKToolName(tool));
@@ -138,7 +140,11 @@ function planListedTool(
       ? null
       : { ...decision.propose, replacesProposalID: row?.proposal_id ?? null };
 
-  const isMoot = decision.state === 'exposed' && (row?.proposal_id ?? null) !== null;
+  // an allow waits only on a form the owner could pin: an exposed tool or a refused form has none
+  const isMoot =
+    (decision.state === 'exposed' || decision.hiddenReason !== null) &&
+    (row?.proposal_id ?? null) !== null;
+
   const withdrawProposalID = isMoot ? (row?.proposal_id ?? null) : null;
 
   return {
@@ -159,4 +165,11 @@ function planListedTool(
       proposeAllow !== null ||
       withdrawProposalID !== null,
   };
+}
+
+// Why the registry refuses the form, or null when it registers.
+function pickFormRefusal(tool: string, form: ToolForm): string | null {
+  const built = buildProxiedTool(tool, form);
+
+  return built.kind === 'refused' ? built.reason : null;
 }

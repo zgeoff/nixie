@@ -9,6 +9,7 @@ import { mcpToolChangedCodec } from '../record/mcp-tool-changed-codec';
 import type { McpServerRow, McpToolRow } from '../rows/mcp-tables';
 import { readServerRows } from '../rows/read-server-rows';
 import { readToolRows } from '../rows/read-tool-rows';
+import { toCredentialFields } from '../rows/to-credential-fields';
 import { toFactsInUse } from '../rows/to-facts-in-use';
 import { toRequestedFacts } from '../rows/to-requested-facts';
 import type { McpContext, OnPinMoved } from '../types';
@@ -103,8 +104,13 @@ async function answerServer(
           facts: requested,
           requested: null,
           proposalID: null,
-          clientCredentialID: isNewGrant ? crypto.randomUUID() : server.client_credential_id,
-          grantCredentialID: isNewGrant ? crypto.randomUUID() : server.grant_credential_id,
+          ...(isNewGrant
+            ? {
+                clientCredentialID: crypto.randomUUID(),
+                grantCredentialID: crypto.randomUUID(),
+                grantBinding: null,
+              }
+            : toCredentialFields(server)),
         }),
       }
     : {
@@ -117,8 +123,7 @@ async function answerServer(
           facts: inUse,
           requested,
           proposalID: null,
-          clientCredentialID: server.client_credential_id,
-          grantCredentialID: server.grant_credential_id,
+          ...toCredentialFields(server),
         }),
       };
 

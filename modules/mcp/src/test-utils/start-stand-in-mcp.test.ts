@@ -1,0 +1,214 @@
+import { expect, test } from 'bun:test';
+import { readServerRows } from '../rows/read-server-rows';
+import { readToolRow } from '../rows/read-tool-rows';
+import { startStandInMcp } from './start-stand-in-mcp';
+
+async function setupTest() {
+  const itemGet = {
+    name: 'item_get',
+    description: 'Read one item.',
+    inputSchema: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] },
+    annotations: { readOnlyHint: true },
+  };
+
+  const itemNotify = {
+    name: 'item_notify',
+    description: 'Tell the assignee about an item.',
+    inputSchema: {
+      type: 'object',
+      properties: { assignee_email: { type: 'string' }, message: { type: 'string' } },
+    },
+  };
+
+  const ctx = await startStandInMcp({ tools: [itemGet, itemNotify] });
+
+  await ctx.approveServer();
+
+  return {
+    ...ctx,
+    itemNotify,
+    readTool: (tool: string) => readToolRow(ctx.test.log.writer.db, tool),
+    readServer: async () => {
+      const rows = await readServerRows(ctx.test.log.writer.db);
+
+      return rows[0] ?? null;
+    },
+  };
+}
+
+test('it signs in through the credential store and lists the tools as hidden until allowed', async () => {
+  const ctx = await setupTest();
+  const finished = await ctx.signIn(ctx.mcp);
+  const tools = await ctx.mcp.readTools('tracker');
+
+  expect([finished, tools.map((tool) => [tool.tool, tool.state])]).toStrictEqual([
+    { status: 'ok', server: 'tracker' },
+    [
+      ['tracker.item_get', 'hidden_new'],
+      ['tracker.item_notify', 'hidden_new'],
+    ],
+  ]);
+});
+
+test('it sends the resource and no client secret with the code, and keeps the token out of the rows', async () => {
+  const ctx = await setupTest();
+
+  await ctx.signIn(ctx.mcp);
+
+  const server = await ctx.readServer();
+
+  expect([
+    ctx.site.tokenRequests[0],
+    JSON.stringify(server).includes('stand-in-access'),
+  ]).toMatchObject([{ grant_type: 'authorization_code', resource: ctx.site.mcpURL }, false]);
+
+  expect(ctx.site.tokenRequests[0]).not.toHaveProperty('client_secret');
+});
+
+test.each([
+  { title: 'no issuer', iss: null },
+  { title: 'another issuer', iss: 'https://other.example.org' },
+])('it stops a return with $title before the code is exchanged', async (row) => {
+  const ctx = await setupTest();
+  const finished = await ctx.signIn(ctx.mcp, row.iss);
+
+  expect([finished, ctx.site.tokenRequests.length]).toStrictEqual([
+    { status: 'issuer_mismatch' },
+    0,
+  ]);
+});
+
+test('it keeps the pinned tool in its pinned form when the next listing fails', async () => {
+  const ctx = await setupTest();
+
+  await ctx.signIn(ctx.mcp);
+  await ctx.test.allow('tracker.item_get');
+
+  ctx.site.failListings(true);
+
+  const listed = await ctx.mcp.list('tracker');
+  const tool = await ctx.readTool('tracker.item_get');
+
+  expect([listed.status, tool?.state, tool?.pinned_hash === tool?.latest_hash]).toStrictEqual([
+    'failed',
+    'exposed',
+    true,
+  ]);
+});
+
+test('it drops a tool that the next listing lacks and tells you', async () => {
+  const ctx = await setupTest();
+
+  await ctx.signIn(ctx.mcp);
+  await ctx.test.allow('tracker.item_get');
+
+  ctx.site.setTools([ctx.itemNotify]);
+
+  await ctx.mcp.list('tracker');
+
+  const tool = await ctx.readTool('tracker.item_get');
+  const notices = await ctx.test.readNotices();
+
+  expect([tool?.state, notices.map((notice) => [notice.tool, notice.change])]).toStrictEqual([
+    'removed',
+    [['tracker.item_get', 'tool_removed']],
+  ]);
+});
+
+test('it refreshes with the rotating refresh token when the access token stops working', async () => {
+  const ctx = await setupTest();
+
+  await ctx.signIn(ctx.mcp);
+
+  ctx.site.expireAccessTokens();
+
+  const listed = await ctx.mcp.list('tracker');
+
+  const refresh = ctx.site.tokenRequests.at(-1);
+
+  expect([listed.status, refresh?.['grant_type'], refresh?.['resource']]).toStrictEqual([
+    'listed',
+    'refresh_token',
+    ctx.site.mcpURL,
+  ]);
+});
+
+test('it stops listing a server whose refresh the authorization server refused for good', async () => {
+  const ctx = await setupTest();
+
+  await ctx.signIn(ctx.mcp);
+
+  ctx.site.expireAccessTokens();
+  ctx.site.refuseRefresh(true);
+
+  const refused = await ctx.mcp.list('tracker');
+  const next = await ctx.mcp.list('tracker');
+
+  expect([refused.status, next]).toStrictEqual([
+    'failed',
+    { status: 'skipped', reason: 'needs_sign_in' },
+  ]);
+});
+
+test('it never sends a saved refresh token to a token endpoint that moved after a restart', async () => {
+  const ctx = await setupTest();
+
+  await ctx.signIn(ctx.mcp);
+
+  const restarted = ctx.restart();
+
+  ctx.site.moveTokenEndpoint(true);
+  ctx.site.expireAccessTokens();
+
+  const listed = await restarted.list('tracker');
+
+  expect([listed, ctx.site.tokenRequests.length]).toStrictEqual([
+    { status: 'skipped', reason: 'needs_sign_in' },
+    1,
+  ]);
+});
+
+test('it signs in again at a moved token endpoint when you press Connect', async () => {
+  const ctx = await setupTest();
+
+  await ctx.signIn(ctx.mcp);
+
+  const restarted = ctx.restart();
+
+  ctx.site.moveTokenEndpoint(true);
+
+  const finished = await ctx.signIn(restarted);
+  const listed = await restarted.list('tracker');
+
+  expect([finished.status, listed.status]).toStrictEqual(['ok', 'listed']);
+});
+
+test('it ends a listing that keeps returning a page cursor within one timeout', async () => {
+  const ctx = await startStandInMcp({ listingTimeoutSeconds: 1 });
+
+  await ctx.approveServer();
+  await ctx.signIn(ctx.mcp);
+
+  ctx.site.serveEndlessPages(300);
+
+  const startedAtMs = Date.now();
+
+  const listed = await ctx.mcp.list('tracker');
+
+  expect(Date.now() - startedAtMs).toBeWithin(900, 2500);
+  expect(listed.status).toBe('failed');
+});
+
+test('it forgets the grant when the config drops a scope, so the server shows no grant until you sign in', async () => {
+  const ctx = await setupTest();
+
+  await ctx.signIn(ctx.mcp);
+
+  const restarted = ctx.restart({ scope: 'read' });
+
+  await restarted.start();
+
+  const listed = await restarted.list('tracker');
+
+  expect(listed).toStrictEqual({ status: 'skipped', reason: 'no_grant' });
+});

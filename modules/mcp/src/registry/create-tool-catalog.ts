@@ -1,10 +1,9 @@
 import type { Log } from '@heynixie/log';
-import { buildToolRegistry } from '@heynixie/tools';
 import type { RegisteredTool, ToolSource } from '@heynixie/tools';
 import { readFormsByHash } from '../rows/read-forms-by-hash';
 import { readServerRows } from '../rows/read-server-rows';
 import { readToolRows } from '../rows/read-tool-rows';
-import { buildProxiedDefinition } from './build-proxied-definition';
+import { buildProxiedTool } from './build-proxied-tool';
 
 export interface ToolCatalog extends ToolSource {
   // Reads the tool rows again. The tool names and definitions change only here, so a read of them
@@ -50,29 +49,24 @@ export function createToolCatalog(log: Log): ToolCatalog {
         const kept = served.tools.get(row.tool);
         const form = forms.get(hash)?.form ?? null;
 
+        // A form whose record a forget erased is gone from the registry, whatever it cached.
+        if (form === null) {
+          continue;
+        }
+
         if (kept?.hash === hash) {
           next.set(row.tool, kept);
-        } else if (form !== null) {
-          const built = tryBuild(row.tool, form);
+          continue;
+        }
 
-          if (built !== null) {
-            next.set(row.tool, { hash, tool: built });
-          }
+        const built = buildProxiedTool(row.tool, form);
+
+        if (built.kind === 'built') {
+          next.set(row.tool, { hash, tool: built.tool });
         }
       }
 
       served.tools = next;
     },
   };
-}
-
-function tryBuild(
-  tool: string,
-  form: Parameters<typeof buildProxiedDefinition>[1],
-): RegisteredTool | null {
-  try {
-    return buildToolRegistry([buildProxiedDefinition(tool, form)]).findTool(tool);
-  } catch {
-    return null;
-  }
 }

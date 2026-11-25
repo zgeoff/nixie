@@ -10,4 +10,5 @@ export const mcpRecordTopics = {
   'mcp.tool_listed': [],
   'mcp.tool_changed': ['mcp'],
   'mcp.pin_moved': ['mcp'],
+  'mcp.notice': ['mcp'],
 } as const satisfies Record<McpRecordKind, readonly LiveTopic[]>;

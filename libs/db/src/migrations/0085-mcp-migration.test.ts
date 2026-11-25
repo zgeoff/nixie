@@ -61,6 +61,7 @@ test('it creates the tables of the servers, their tools and the tool forms', asy
       { name: 'proposal_id' },
       { name: 'client_credential_id' },
       { name: 'grant_credential_id' },
+      { name: 'grant_binding' },
       { name: 'updated_sequence' },
     ],
     [

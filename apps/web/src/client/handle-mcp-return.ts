@@ -5,11 +5,11 @@ import { RPCLink } from '@orpc/client/fetch';
 import { buildForwardHeaders } from './build-forward-headers';
 import { renderReturnError } from './render-return-error';
 
-export const mcpReturnPath = '/connections/mcp/return';
 const returnHeaders = { 'cache-control': 'no-store', 'referrer-policy': 'no-referrer' } as const;
 
 // Finishes a sign-in that an MCP server's authorization server sent the browser back from, as the
-// browser's own session. The query string holds the state and the code, so nothing here logs the URL.
+// browser's own session. The OAuth return route calls it for a state that starts with the MCP
+// prefix. The query string holds the state and the code, so nothing here logs the URL.
 export async function handleMcpReturn(apiURL: string, request: Request): Promise<Response> {
   const query = new URL(request.url).searchParams;
 
