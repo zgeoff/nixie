@@ -88,6 +88,30 @@ export interface FetchOptions {
 
 export type CredentialFetch = (input: string | URL, init?: RequestInit) => Promise<Response>;
 
+// A WebSocket that the credential store opened, with the credential placed in its handshake.
+export interface CredentialSocket {
+  // throws once the socket has closed
+  readonly send: (text: string) => void;
+
+  // the text messages in order, scrubbed of the credential; one consumer, and the stream ends when
+  // the socket closes
+  readonly messages: AsyncIterable<string>;
+
+  // closes the connection, and ends the message stream
+  readonly close: () => void;
+}
+
+// The shape of `new WebSocket`, with the same checks as the fetcher: a `wss` URL is checked as the
+// https URL of the same host.
+export type CredentialSocketOpener = (
+  url: string,
+  init?: CredentialSocketInit,
+) => Promise<CredentialSocket>;
+
+export interface CredentialSocketInit {
+  readonly signal?: AbortSignal;
+}
+
 export interface GrantRequest {
   readonly profileID: string;
   readonly header: 'bearer' | 'x-api-key';

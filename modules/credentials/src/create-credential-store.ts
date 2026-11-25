@@ -19,10 +19,12 @@ import type {
   TokenExchange,
   TokenResult,
 } from './held/types';
+import { createCredentialSocketOpener } from './socket/create-credential-socket-opener';
 import type {
   BindingRef,
   CredentialFetch,
   CredentialRef,
+  CredentialSocketOpener,
   CredentialSpec,
   DatabaseCredentialRef,
   FetchOptions,
@@ -91,6 +93,14 @@ export interface CredentialStore {
     origins: readonly string[],
     options?: FetchOptions,
   ) => CredentialFetch;
+
+  // The fetcher's checks, for a WebSocket: the opener adds the credential to the handshake. It takes
+  // a file credential alone, and its origins are https origins, which a `wss` URL of the same host
+  // matches.
+  readonly makeSocketOpener: (
+    binding: BindingRef<'file'>,
+    origins: readonly string[],
+  ) => CredentialSocketOpener;
 
   // A model credential the sandbox host holds has no binding. The broker secret goes in through the
   // sandbox adapter, which records the grant.
@@ -386,6 +396,27 @@ export function createCredentialStore(options: CredentialStoreOptions): Credenti
           request.end();
         }
       };
+    },
+    makeSocketOpener: (ref, origins) => {
+      const binding = getBinding(ref);
+
+      invariant(binding.ref.backend === 'file', 'a socket takes a file credential');
+
+      const fileRef = binding.ref;
+      const allowed = normalizeOrigins(origins);
+
+      for (const origin of allowed) {
+        if (!binding.spec.origins.includes(origin)) {
+          throw new Error(`${origin} is not an origin of the credential ${binding.spec.label}`);
+        }
+      }
+
+      return createCredentialSocketOpener(fetcherChecks, {
+        spec: binding.spec,
+        readValue: () => options.secrets.readFileValue(fileRef),
+        origins: allowed,
+        options: {},
+      });
     },
     grant: async (source, sandboxes, request) => {
       if ('hostHeld' in source) {
