@@ -70,6 +70,45 @@ test('it trips and pauses nixie with the cause spending when the gateway reports
   expect(kinds).toStrictEqual([{ kind: 'spend.stop_tripped' }, { kind: 'nixie.paused' }]);
 });
 
+test('it writes no trip of the stop when the route stops fail to settle', async () => {
+  const ctx = await setupTest();
+
+  const definitions = ctx.context.definitions();
+
+  const facts = await readSpendFacts(ctx.context);
+
+  let calls = 0;
+
+  await ctx.trip();
+
+  const settling = settleSpendStop(
+    {
+      ...ctx.context,
+      definitions: () => {
+        calls += 1;
+
+        if (calls > 1) {
+          throw new Error('the definitions are gone');
+        }
+
+        return definitions;
+      },
+    },
+    { ...facts, turns: { day: 3, month: 3 } },
+  );
+
+  const [settled] = await Promise.allSettled([settling]);
+
+  expect(settled).toMatchObject({
+    status: 'rejected',
+    reason: new Error('the definitions are gone'),
+  });
+
+  const stop = await readSpendStopRow(ctx.writer.db);
+
+  expect(stop).toBeNull();
+});
+
 test('it writes one trip when the stop is found twice', async () => {
   const ctx = await setupTest();
 
