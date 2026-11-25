@@ -71,16 +71,16 @@ device.preview({ device: 'tb8r3k6m1q' });
 //     picture: 'shown' } with the picture beside it,
 //   or picture: 'unavailable' with no picture when the render sandbox is not set up or fails
 //   UNKNOWN_DEVICE | SCREEN_OFF; a device that is offline still returns its last errors.
-// The tool's description says the picture is a render in Chromium, not a capture of the device:
-// fonts and drawing can differ, so it is no proof of what the device shows.
+// The picture is a Chromium render of the layout. Fonts and drawing can differ on the device, so
+// the tool's description warns the assistant that the picture proves nothing about what it shows.
 ```
 
 The server sends the layout to the render sandbox over the wire as files: the device page's grid,
 each region's content, the package files the pages name, the images they declare, and the last body
 of each declared fetch. The render sandbox runs headless Chromium and nothing else. It opens the
 files as a local page at the device's CSS size and pixel ratio, takes the picture, and fetches
-nothing. It holds no files, browser or session of the assistant's computer, so a preview never waits
-for the computer or changes what its browser shows.
+nothing. A preview never waits for the assistant's computer or changes what its browser shows,
+because the render sandbox holds none of that computer's files, browser or session.
 
 The errors come from the device: the last 20 uncaught errors and console errors of each page region
 since its content last changed, which the server keeps in memory.
@@ -246,8 +246,8 @@ Regions:
 
 The preview:
 
-- In the render sandbox, the bridge serves `nixie.data` and `nixie.image` from the bundled files,
-  and the sandbox has no network.
+- In the render sandbox, the bridge serves `nixie.data` and `nixie.image` from the files the server
+  sent, and the sandbox has no network.
 - The render sandbox keeps nothing between previews: each preview starts from an empty profile.
 - One preview renders at a time; a second waits for the first.
 
@@ -265,9 +265,9 @@ The preview:
   is sent, and the page's script can't build new ones, so it can't leak what it holds to an allowed
   host.
 - **The preview renders in a render sandbox of its own.** A web page can't take a picture of its own
-  screen without a prompt on the device, so the assistant sees a render of the same layout at the
-  same size, and the real device's errors beside it. The page is the assistant's own code, so it
-  renders in a sandbox, never in the server. A sandbox apart from the assistant's computer leaves
+  screen without a prompt on the device, so the assistant gets a render of the same layout at the
+  same size, with the real device's errors beside it. The page is the assistant's own code, so it
+  renders in a sandbox and never in the server. Rendering apart from the assistant's computer leaves
   that computer's browser and busy slot alone, as the fetch sandbox does for fetches.
 
 ## Builder decides
