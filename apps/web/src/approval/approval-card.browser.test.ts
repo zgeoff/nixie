@@ -130,6 +130,50 @@ test('it asks the passkey before it sends the approval of an always-ask row, and
   ]).toStrictEqual([[[row.proposalID, 'approve']], credentialIDs, 1]);
 });
 
+test('it asks the passkey once for two always-ask rows, because the first tap covers the second', async () => {
+  const ctx = await setupTest();
+
+  await ctx.registerPasskey();
+
+  const first = await store.approvalRows.create({
+    choices: ['approve', 'defer', 'decline'],
+    riskClass: 'always_ask',
+    sentence: 'Pay the berth fee.',
+  });
+
+  const second = await store.approvalRows.create({
+    choices: ['approve', 'defer', 'decline'],
+    riskClass: 'always_ask',
+    sentence: 'Pay the rigging fee.',
+  });
+
+  await ctx.openLine('Pay the berth fee.');
+  await ctx.waitForPage(`document.querySelector('button[name="approve"]') !== null`);
+  await ctx.view.click('button[name="approve"]');
+
+  await waitFor(
+    () => {
+      expect(ctx.findRow(first.proposalID)?.state).toBe('approved');
+    },
+    { timeout: 8000 },
+  );
+
+  await ctx.openLine('Pay the rigging fee.');
+  await ctx.waitForPage(`document.querySelector('button[name="approve"]') !== null`);
+  await ctx.view.click('button[name="approve"]');
+
+  await waitFor(
+    () => {
+      expect(ctx.findRow(second.proposalID)?.state).toBe('approved');
+    },
+    { timeout: 8000 },
+  );
+
+  expect(store.passkeyChecks.all().map((check) => check.proposalID)).toStrictEqual([
+    first.proposalID,
+  ]);
+});
+
 test('it asks no passkey for a decline', async () => {
   const ctx = await setupTest();
 

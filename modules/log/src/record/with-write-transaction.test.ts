@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { startDatabase } from '@heynixie/db';
 import { sql } from 'kysely';
 import { claimWriterEpoch } from './claim-writer-epoch';
+import { queueCommitHook } from './queue-commit-hook';
 import { withWriteTransaction } from './with-write-transaction';
 
 async function setupTest() {
@@ -98,4 +99,36 @@ test('it fires no commit event for a write transaction that fails', async () => 
   await write.catch(() => {});
 
   expect(onCommit).not.toHaveBeenCalled();
+});
+
+test('it runs a queued commit hook once the write has committed', async () => {
+  const ctx = await setupTest();
+  const epoch = await claimWriterEpoch(ctx.db);
+
+  const ran: string[] = [];
+
+  await withWriteTransaction({ db: ctx.db, epoch, commits: ctx.commits }, (tx) => {
+    queueCommitHook(tx, () => ran.push('hook'));
+
+    return Promise.resolve();
+  });
+
+  expect(ran).toStrictEqual(['hook']);
+});
+
+test('it drops a queued commit hook when the write rolls back', async () => {
+  const ctx = await setupTest();
+  const epoch = await claimWriterEpoch(ctx.db);
+
+  const ran: string[] = [];
+
+  const write = withWriteTransaction({ db: ctx.db, epoch, commits: ctx.commits }, (tx) => {
+    queueCommitHook(tx, () => ran.push('hook'));
+
+    return Promise.reject(new Error('the handler failed'));
+  });
+
+  await write.catch(() => {});
+
+  expect(ran).toStrictEqual([]);
 });

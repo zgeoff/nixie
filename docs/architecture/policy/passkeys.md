@@ -44,8 +44,9 @@ directly, as it writes the identity record, and no log record rebuilds it.
   it creates. The row offers Always allow only for a routine action, so a high-risk row never
   reaches the check with it. A row of a later kind that offers Always allow on a high-risk proposal
   takes the passkey with no further change.
-- `approvals.answerProposals` has no field for an assertion, so it refuses each answer that takes
-  the passkey with `PASSKEY_REQUIRED`, unless the session's [window](#the-window) is open.
+- `approvals.answerProposals` has no field for an assertion, so it runs each answer through the same
+  check with no assertion. It refuses each answer that takes the passkey with `PASSKEY_REQUIRED`,
+  unless the session's [window](#the-window) is open.
 - An answer through a [host command](../deployment/host-commands.md) takes no passkey and writes no
   `passkey.used`, because whoever runs a host command can already read the database and the key
   store.
@@ -53,19 +54,26 @@ directly, as it writes the identity record, and no log record rebuilds it.
 ## The window
 
 A passed assertion opens a window for the session that tapped, and the window closes after
-`approvals.passkey_window_minutes` of the deployment config, 10 by default. While it is open, every
-passkey check of that session passes with no assertion. A later tap restarts the window. The window
-belongs to one session, so another session's check still asks. The API keeps each window in memory
-beside the challenges, so a restart closes every window.
+`approvals.passkey_window_minutes` of the deployment config, 10 by default. The window opens once
+the transaction that verified the assertion commits, so a transaction that rolls back, such as an
+approval whose handler fails, leaves it shut. While it is open, every passkey check of that session
+passes with no assertion. A later tap restarts the window, and a check that the window covers leaves
+its close time alone. The window belongs to one session, so another session's check still asks. The
+API keeps each window in memory beside the challenges, with the ID of the passkey that tapped, so a
+restart closes every window.
 
 - Signing the session out, or revoking it, closes its window.
+- A window covers a check only while the passkey that opened it is live. Revoking that passkey, from
+  a client or the host, therefore ends the window, even when another passkey stays live.
 - Adding a passkey and removing one always ask, and an open window never covers them. The one list
-  of these checks is `alwaysAskKinds` in `modules/api/src/passkey/always-ask-kinds.ts`. A check kind
-  joins the list there and nowhere else.
+  of these checks is `alwaysAskKinds` in `modules/api/src/passkey/always-ask-kinds.ts`, and
+  `findPasskeyWindow` in the same folder is the one place that reads it. A check kind joins the list
+  there and nowhere else. Registration and revocation call `checkPasskey` with or without an
+  assertion, so the list alone decides whether a window could cover them.
 - `passkeys.window` takes a check and tells whether the window covers it, and reports `false` for an
-  always-ask check. The client calls it before it asks the passkey, and sends the check with no
-  assertion when the window is open. A client that sends an assertion anyway has the assertion
-  verified, which restarts the window.
+  always-ask check or a window whose passkey is revoked. The client calls it before it asks the
+  passkey, and sends the check with no assertion when the window is open. A client that sends an
+  assertion anyway has the assertion verified, which restarts the window.
 - A check that the window covers writes no `passkey.used` and moves no counter, because no assertion
   ran.
 
@@ -87,7 +95,9 @@ answers, the retry of an unknown outcome, the registration options and the revok
 this order:
 
 1. No passkey is live: `NO_PASSKEY`.
-2. The answer carries no assertion and no [window](#the-window) covers it: `PASSKEY_REQUIRED`.
+2. The answer carries no assertion and no [window](#the-window) covers it: `PASSKEY_REQUIRED`. A
+   registration with no assertion and no covering window falls back to the host code and refuses as
+   `CODE_REQUIRED`.
 3. The check fails: `PASSKEY_FAILED` with the reason.
 
 A refusal from the step writes nothing under the client action ID, and the hash of a checked
@@ -170,8 +180,9 @@ the BE flag.
 ## Revoking
 
 - `passkeys.revoke` from a client needs an assertion on a `revoke` challenge for that passkey, from
-  any live passkey, the one being revoked included. It writes `revoked_at` and `passkey.revoked` in
-  one transaction.
+  any live passkey, the one being revoked included. A call with no assertion is refused with
+  `PASSKEY_REQUIRED`, because no window covers a revoke. It writes `revoked_at` and
+  `passkey.revoked` in one transaction.
 - A revoke through `nixie passkeys revoke` needs no passkey and records `host` as the revoker.
 - A revoke changes no proposal: a waiting approval stays pending, and any live passkey can approve
   it. Revoking the last live passkey leaves the client unable to approve always-ask rows until a

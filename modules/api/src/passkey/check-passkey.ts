@@ -1,9 +1,10 @@
+import { queueCommitHook } from '@heynixie/log';
 import type { PasskeyFailure, PasskeyRefusal } from '@heynixie/proposals';
 import type { Transaction } from 'kysely';
 import type { APIContext, Identity } from '../types';
 import type { Assertion, ChallengeFor } from './challenge-for';
 import { createPasskeyCheck } from './create-passkey-check';
-import { isPasskeyWindowOpen } from './is-passkey-window-open';
+import { findPasskeyWindow } from './find-passkey-window';
 import { openPasskeyWindow } from './open-passkey-window';
 import { readLivePasskeys } from './read-live-passkeys';
 
@@ -13,15 +14,16 @@ interface PasskeyRequest {
   readonly assertion: Assertion | undefined;
 }
 
-// passkeyID is null when the session's open window covered the check and no assertion ran
+// passkeyID is the passkey whose assertion passed, or, when an open window covered the check and
+// no assertion ran, the passkey that opened the window
 export type PasskeyOutcome =
-  | { readonly passkeyID: string | null }
+  | { readonly passkeyID: string }
   | PasskeyRefusal
   | { readonly error: 'PASSKEY_FAILED'; readonly reason: PasskeyFailure };
 
-// The one passkey check, which every gated path calls inside its write transaction. It refuses in
-// this order: no live passkey, then no assertion with no open window, then a failed assertion. A
-// passed assertion opens the session's window. A check that the window covers writes nothing.
+// The one passkey check, which every gated path calls inside its write transaction. A passed
+// assertion opens the session's window once the transaction commits, so a rollback leaves it shut.
+// A check that the window covers writes nothing.
 export async function checkPasskey(
   context: APIContext,
   tx: Transaction<unknown>,
@@ -34,9 +36,13 @@ export async function checkPasskey(
   }
 
   if (request.assertion === undefined) {
-    return isPasskeyWindowOpen(context, request.caller.identityID, request.binding)
-      ? { passkeyID: null }
-      : { error: 'PASSKEY_REQUIRED' };
+    const passkeyID = findPasskeyWindow(context, {
+      identityID: request.caller.identityID,
+      binding: request.binding,
+      livePasskeyIDs: live.map((row) => row.passkey_id),
+    });
+
+    return passkeyID === null ? { error: 'PASSKEY_REQUIRED' } : { passkeyID };
   }
 
   const verdict = await createPasskeyCheck(context).verify(
@@ -50,7 +56,12 @@ export async function checkPasskey(
     return verdict;
   }
 
-  openPasskeyWindow(context, request.caller.identityID);
+  queueCommitHook(tx, () => {
+    openPasskeyWindow(context, {
+      identityID: request.caller.identityID,
+      passkeyID: verdict.passkeyID,
+    });
+  });
 
   return verdict;
 }

@@ -4,6 +4,7 @@ import type { Writer } from '../types';
 import { requireWriterEpoch } from '../writer/require-writer-epoch';
 import { createChangedEvent } from './changed-event';
 import { commitEvent } from './commit-event';
+import { pendingCommitHooks } from './pending-commit-hooks';
 import { pendingTopics } from './pending-topics';
 
 // the transaction that withWriteTransaction passes to its callback
@@ -15,13 +16,20 @@ export async function withWriteTransaction<T>(
 ): Promise<T> {
   let topics = new Set<LiveTopic>();
 
+  let hooks: (() => void)[] = [];
+
   const result = await writer.db.transaction().execute(async (tx) => {
     topics = pendingTopics.open(tx);
+    hooks = pendingCommitHooks.open(tx);
 
     await requireWriterEpoch(tx, writer.epoch);
 
     return fn(tx);
   });
+
+  for (const hook of hooks) {
+    hook();
+  }
 
   writer.commits.dispatchEvent(new Event(commitEvent));
 

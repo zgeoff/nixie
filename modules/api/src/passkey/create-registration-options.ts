@@ -75,7 +75,7 @@ export function createRegistrationOptions(
         }
 
         context.passkeys.code.current = null;
-      } else if (request.assertion !== undefined && live.length > 0) {
+      } else if (live.length > 0) {
         const outcome = await checkPasskey(context, tx, {
           caller: request.caller,
           binding: { kind: 'register' },
@@ -84,14 +84,14 @@ export function createRegistrationOptions(
 
         if ('error' in outcome) {
           invariant(
-            outcome.error === 'PASSKEY_FAILED',
-            'a live passkey and an assertion leave only a failed check',
+            outcome.error !== 'NO_PASSKEY',
+            'a live passkey leaves the check a refusal for a missing assertion or a failed one',
           );
 
-          return { status: 'failed', reason: outcome.reason };
+          return outcome.error === 'PASSKEY_REQUIRED'
+            ? { status: 'code_required' }
+            : { status: 'failed', reason: outcome.reason };
         }
-
-        invariant(outcome.passkeyID !== null, 'an always-ask check never passes on a window');
 
         authorizedBy = outcome.passkeyID;
       } else {

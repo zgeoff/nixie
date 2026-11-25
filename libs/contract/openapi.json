@@ -31659,8 +31659,7 @@
                 },
                 "required": [
                   "clientActionID",
-                  "passkeyID",
-                  "passkey"
+                  "passkeyID"
                 ]
               }
             }
@@ -31796,6 +31795,31 @@
                         "status",
                         "message",
                         "data"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": true
+                        },
+                        "code": {
+                          "const": "PASSKEY_REQUIRED"
+                        },
+                        "status": {
+                          "const": 403
+                        },
+                        "message": {
+                          "type": "string",
+                          "default": "A revoke needs a passkey check"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
                       ]
                     },
                     {

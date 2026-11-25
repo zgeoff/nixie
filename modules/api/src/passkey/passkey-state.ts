@@ -21,6 +21,12 @@ interface PendingRegistration {
   readonly issuedAt: number;
 }
 
+// The tap that opened a session's window: the passkey that tapped and when the window closes
+interface PasskeyWindow {
+  readonly passkeyID: string;
+  readonly closesAtMs: number;
+}
+
 interface PendingCode {
   readonly codeHash: string;
   readonly issuedAt: number;
@@ -35,8 +41,8 @@ export interface PasskeyState {
   // keyed by the identity ID of the session that asked
   readonly registrations: Map<string, PendingRegistration>;
 
-  // when the window that a session's last tap opened closes, keyed by the session's identity ID
-  readonly windows: Map<string, number>;
+  // the window that a session's last tap opened, keyed by the session's identity ID
+  readonly windows: Map<string, PasskeyWindow>;
   readonly code: { current: PendingCode | null };
 
   // the one user handle every passkey shares, fixed when the first options are issued

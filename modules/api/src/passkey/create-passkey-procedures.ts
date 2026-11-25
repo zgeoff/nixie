@@ -4,8 +4,9 @@ import type { APIContext } from '../types';
 import { apiImplementer } from '../utils/api-implementer';
 import { createPasskeyChallenge } from './create-passkey-challenge';
 import { createRegistrationOptions } from './create-registration-options';
-import { isPasskeyWindowOpen } from './is-passkey-window-open';
+import { findPasskeyWindow } from './find-passkey-window';
 import { readAllPasskeys } from './read-all-passkeys';
+import { readLivePasskeys } from './read-live-passkeys';
 import { writePasskeyRevocation } from './write-passkey-revocation';
 import { writeRegistration } from './write-registration';
 
@@ -39,7 +40,15 @@ export function createPasskeyProcedures(context: APIContext) {
         options.errors.UNAUTHORIZED,
       );
 
-      return { isOpen: isPasskeyWindowOpen(context, caller.identityID, options.input.for) };
+      const live = await readLivePasskeys(context.log.writer.db);
+
+      const passkeyID = findPasskeyWindow(context, {
+        identityID: caller.identityID,
+        binding: options.input.for,
+        livePasskeyIDs: live.map((row) => row.passkey_id),
+      });
+
+      return { isOpen: passkeyID !== null };
     }),
 
     registrationOptions: passkeys.registrationOptions.handler(async (options) => {
@@ -134,6 +143,10 @@ export function createPasskeyProcedures(context: APIContext) {
 
       if (result.status === 'revoked') {
         return { revokedAt: new Date(result.revokedAt) };
+      }
+
+      if (result.status === 'passkey_required') {
+        throw options.errors.PASSKEY_REQUIRED();
       }
 
       if (result.status === 'failed') {
