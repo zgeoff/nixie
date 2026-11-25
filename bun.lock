@@ -368,6 +368,7 @@
         "@heynixie/actions": "workspace:*",
         "@heynixie/api": "workspace:*",
         "@heynixie/backup": "workspace:*",
+        "@heynixie/connections": "workspace:*",
         "@heynixie/connectors": "workspace:*",
         "@heynixie/contract": "workspace:*",
         "@heynixie/credentials": "workspace:*",
@@ -395,6 +396,7 @@
         "@heynixie/testing": "workspace:*",
         "@heynixie/tools": "workspace:*",
         "@heynixie/triggers": "workspace:*",
+        "@heynixie/web": "workspace:*",
         "@heynixie/wire": "workspace:*",
         "@impz/testing": "catalog:",
         "@modelcontextprotocol/server": "catalog:",
@@ -644,6 +646,7 @@
         "zod": "catalog:",
       },
       "devDependencies": {
+        "@heynixie/tools": "workspace:*",
         "@heynixie/turn-inputs": "workspace:*",
         "@zgeoff/testing": "catalog:",
       },

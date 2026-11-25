@@ -1,3 +1,4 @@
+import type { Connector } from '@heynixie/connectors';
 import { createGoogleConnector } from '@heynixie/connectors';
 import type { FakeOAuthProvider, HeldConnection } from '@heynixie/credentials/test-utils';
 import {
@@ -33,6 +34,9 @@ export interface ConnectionsHarnessOptions {
 
   // how long a consent waits for the Forget of its account, in ms; 200 by default
   readonly forgetWaitMs?: number;
+
+  // the actions that the connector holds; none by default, as Google's connector has none yet
+  readonly actions?: Connector['actions'];
 }
 
 export interface ConnectionsHarness {
@@ -83,7 +87,7 @@ export async function startConnectionsHarness(
 ): Promise<ConnectionsHarness> {
   const provider = await startFakeOAuthProvider({ otherNames: ['accounts.test'] });
 
-  const connector = createGoogleConnector({
+  const google = createGoogleConnector({
     authorizeURL: `${provider.origin.replace('auth.test', 'accounts.test')}/o/oauth2/v2/auth`,
     tokenURL: provider.tokenURL,
     revokeURL: provider.revokeURL,
@@ -92,6 +96,7 @@ export async function startConnectionsHarness(
     apisOrigin: provider.apiOrigin,
   });
 
+  const connector: Connector = { ...google, actions: options.actions ?? google.actions };
   const clock = createFakeClock({ startMs: Date.parse('2026-11-20T09:00:00Z') });
 
   const testLog = await startCredentialTestLog({ clock });

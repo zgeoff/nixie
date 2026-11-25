@@ -21,6 +21,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@heynixie/tools": "workspace:*",
     "@heynixie/turn-inputs": "workspace:*",
     "@zgeoff/testing": "catalog:"
   }
