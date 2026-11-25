@@ -82,7 +82,7 @@ characters), an image with `fit` `whole` or `fill`, or a live value: a clock in 
 or `EEE d MMM`, or a countdown to a time with an optional label. A region cannot hold a page yet,
 and a call that sends one gets `PAGE_NOT_BUILT`.
 
-Three records and three tables hold the state:
+Two record kinds hold a layout and its content, and three tables point at those records:
 
 - `device.layout_set` holds the grid and a short ID. A clear writes one with no grid.
 - `device.region_shown` holds one region's content, sealed under the record's own key, with the
@@ -218,18 +218,20 @@ browser holds:
 
 With the screen on, the page opens the device form of `live.follow`. A layout draws as a CSS grid,
 and each region keeps its place as another updates. A region with a `background` draws it, with
-black or white text, whichever reads better on it. Markdown and a live value grow to the largest
-size that fits their region, and fit again when the region's size or the text changes. A clock or a
-countdown ticks each second from the browser's own time, with no event from the server. The page
-renders markdown like a reply and an image on black: `whole` scales it to fit and centres it, `fill`
-covers the screen and crops evenly. The page sends `devices.resize` after the window resizes, at
-most once per debounce window and only when the size differs from the one the server has, which each
-stream connect and each answered resize set, so the assistant reads the new size within a second.
-While the screen is on, the page hides its full-screen, screen-off and sign-out buttons until a
-touch or a pointer move, and shows them for 4 seconds after the latest one.
+black or white text, whichever has the higher WCAG contrast ratio on it. Markdown and a live value
+grow to the largest size that fits their region, and fit again when the region's size or the text
+changes. A clock or a countdown ticks each second from the browser's own time, with no event from
+the server. The page renders markdown like a reply and an image on black: `whole` scales it to fit
+and centres it, `fill` covers the screen and crops evenly. The page sends `devices.resize` after the
+window resizes, at most once per debounce window and only when the size differs from the one the
+server has, which each stream connect and each answered resize set, so the assistant reads the new
+size within a second.
 
-A button toggles full screen on the page's root element with the Fullscreen API. Its label reads
-Full screen or Leave full screen, and follows `fullscreenchange`, so Escape updates it. The page
-keeps the screen awake with the Wake Lock API while a stream is open, and asks for the lock again
-when the page shows again. The web server sends the page with a Content-Security-Policy that
-includes `frame-ancestors 'none'`.
+While the screen is on, the page hides its close, full-screen, screen-off and sign-out buttons until
+a touch or a pointer move, and shows them for `revealMs` after the latest one. Close leaves device
+mode for the home page, which holds the conversation that links the device page. A button toggles
+full screen on the page's root element with the Fullscreen API. Its label reads Full screen or Leave
+full screen, and follows `fullscreenchange`, so Escape updates it. The page keeps the screen awake
+with the Wake Lock API while a stream is open, and asks for the lock again when the page shows
+again. The web server sends the page with a Content-Security-Policy that includes
+`frame-ancestors 'none'`.
