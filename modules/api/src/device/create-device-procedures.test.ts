@@ -2,7 +2,11 @@ import { expect, test } from 'bun:test';
 import { seedImage } from '@heynixie/connectors/test-utils';
 import { clientHeaderName, contract, sessionCookieName } from '@heynixie/contract';
 import { readDeviceByIdentity } from '@heynixie/devices';
-import { makeDeviceToolCaller, seedDevicePackage } from '@heynixie/devices/test-utils';
+import {
+  buildTestFetching,
+  makeDeviceToolCaller,
+  seedDevicePackage,
+} from '@heynixie/devices/test-utils';
 import type { JSONObject } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
 import { createConversationTask } from '@heynixie/tasks';
@@ -49,6 +53,10 @@ async function setupTest() {
     definitions: api.context.definitions,
     clock: api.context.clock,
     streams: api.context.clients.devices,
+    fetching: buildTestFetching({
+      clock: api.context.clock,
+      allowedHosts: ['tides.example'],
+    }).fetching,
   });
 
   // a device whose screen is on and follows its stream, with a layout of one region that holds
@@ -1406,7 +1414,12 @@ test.each([
 
 test('it answers a page the fetch that its region declared, and refuses the others', async () => {
   const ctx = await setupTest();
-  const page = await ctx.startRegionDevice({ kind: 'html', html: '<p>tides</p>' });
+
+  const page = await ctx.startRegionDevice({
+    kind: 'html',
+    html: '<p>tides</p>',
+    fetches: [{ url: 'https://tides.example/today' }],
+  });
 
   const streams = ctx.context.clients.devices;
   const shown = page.shown ?? '';
@@ -1460,7 +1473,12 @@ test('it answers a page the fetch that its region declared, and refuses the othe
 
 test('it answers a refused fetch to the page as REFUSED', async () => {
   const ctx = await setupTest();
-  const page = await ctx.startRegionDevice({ kind: 'html', html: '<p>tides</p>' });
+
+  const page = await ctx.startRegionDevice({
+    kind: 'html',
+    html: '<p>tides</p>',
+    fetches: [{ url: 'https://tides.example/today' }],
+  });
 
   const streams = ctx.context.clients.devices;
   const url = 'https://tides.example/today';
