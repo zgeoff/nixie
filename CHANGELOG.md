@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.118.0](https://github.com/zgeoff/nixie/compare/v0.117.0...v0.118.0) (2026-11-25)
+
+
+### Features
+
+* **coding:** add the coding session runner with a fake adapter ([#1471](https://github.com/zgeoff/nixie/issues/1471)) ([28e8d79](https://github.com/zgeoff/nixie/commit/28e8d7910e7c9d9a93eb54d3ebb05a4e87c278fc))
+* **computer:** hand back every tab, and copy and paste in a take-over ([#1454](https://github.com/zgeoff/nixie/issues/1454)) ([518eabd](https://github.com/zgeoff/nixie/commit/518eabdc15795610c2f0011f4e34db817d9033c9))
+* **devices:** preview a device screen in a render sandbox ([#1477](https://github.com/zgeoff/nixie/issues/1477)) ([3684e8f](https://github.com/zgeoff/nixie/commit/3684e8feeb3d8514e4adf13c059cc799b918b8ed))
+* **passkey:** let one tap cover ten minutes on the same browser ([#1475](https://github.com/zgeoff/nixie/issues/1475)) ([bcf47f7](https://github.com/zgeoff/nixie/commit/bcf47f7c8edeabcfd8da2d9a42336b5372c33158))
+
 ## [0.117.0](https://github.com/zgeoff/nixie/compare/v0.116.0...v0.117.0) (2026-11-25)
 
 
