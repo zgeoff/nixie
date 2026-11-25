@@ -21,6 +21,7 @@
     "@heynixie/budgets": "workspace:*",
     "@heynixie/clock": "workspace:*",
     "@heynixie/compaction": "workspace:*",
+    "@heynixie/connections": "workspace:*",
     "@heynixie/connectors": "workspace:*",
     "@heynixie/contract": "workspace:*",
     "@heynixie/credentials": "workspace:*",

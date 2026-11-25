@@ -76,6 +76,7 @@ test('it creates the tables that hold OAuth clients and the marks of minted keys
     [
       { name: 'oauth_client_id' },
       { name: 'connector_id' },
+      { name: 'provider_client_id' },
       { name: 'key_id' },
       { name: 'secret_sealed' },
       { name: 'removal_counter' },

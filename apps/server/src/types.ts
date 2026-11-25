@@ -7,6 +7,7 @@ import type { ModelCredentials } from '@heynixie/models';
 import type { SandboxAdapter, SandboxImageKey } from '@heynixie/sandbox';
 import type { TasksContext } from '@heynixie/tasks';
 import type { TurnInputs } from '@heynixie/turn-inputs';
+import type { HeldSlot } from './credential/create-held-slot';
 import type { DeploymentConfig } from './deployment/deployment-config-schema';
 import type { Tools } from './part/tools';
 import type { SandboxAdapterOptions } from './sandbox/create-sandbox-adapter';
@@ -48,6 +49,7 @@ export interface ServerParts {
   readonly tasks: SeedInputs['tasks'];
   readonly inForce: InForce;
   readonly credentials: ModelCredentials;
+  readonly heldSlot: HeldSlot;
 
   // the gateway that counts every model request, or null when the config sets no spendStop
   readonly spend: SpendInputs | null;

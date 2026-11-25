@@ -27,6 +27,9 @@ export function buildNixieOperationSchemas() {
     connectCredential: credentialProviderSchema,
     refreshCredential: credentialProviderSchema,
     readCredentialStatus: credentialProviderSchema,
+    readCredentialToken: credentialProviderSchema,
+    readCredentialKeys: z.null(),
+    forgetConnection: credentialProviderSchema,
   };
 }
 

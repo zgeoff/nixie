@@ -439,6 +439,7 @@ export interface NixieTables {
   readonly oauth_clients: {
     readonly oauth_client_id: string;
     readonly connector_id: string;
+    readonly provider_client_id: string;
     readonly key_id: string;
     readonly secret_sealed: Uint8Array<ArrayBuffer> | null;
     readonly removal_counter: number;
