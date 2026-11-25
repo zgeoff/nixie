@@ -247,8 +247,8 @@ ticket from a request address, which `check-ticket-log.ts` checks.
 
 An inline script defines the frozen global `nixie` in each page:
 
-- `nixie.send(name, data, { wake })` sends an event. The name has 1 to 64 characters and the data is
-  JSON of up to 2 KiB.
+- `nixie.send(name, data, { wake })` sends an event. The name and the JSON data each have a size
+  limit, which `pageEventDataLimitBytes` and the contract's schema hold.
 - `nixie.onMessage(handler)` takes each message that `device.sendToPage` sent. A message that comes
   before the handler waits for it, and the page's retained message comes first.
 - `nixie.image(id)` returns the URL of a declared image.
