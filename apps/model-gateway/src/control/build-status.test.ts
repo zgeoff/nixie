@@ -83,3 +83,39 @@ test('#buildStatus leaves a route under its limit untripped, and keeps the zone 
     ctx.status.lost,
   ]).toStrictEqual([false, 'Europe/London', false]);
 });
+
+test('#buildStatus leaves out a route that the store still counts but the config no longer names', () => {
+  const day = {
+    start: '2026-11-24',
+    resetsAt: '2026-11-25T00:00:00.000Z',
+    micros: 2_000_000,
+    raise: null,
+    trippedAt: null,
+  };
+
+  const month = {
+    start: '2026-11-01',
+    resetsAt: '2026-12-01T00:00:00.000Z',
+    micros: 9_000_000,
+    raise: null,
+    trippedAt: null,
+  };
+
+  const store: PeriodStore = {
+    version: 3,
+    lost: false,
+    routes: { plan: { day, month }, retired: { day, month } },
+    sandboxes: {},
+  };
+
+  const config: PeriodsConfig = {
+    zone: 'UTC',
+    control: { listen: { hostname: '127.0.0.1', port: 1 }, tokenFile: '/token' },
+    countBySandbox: false,
+    override: null,
+  };
+
+  const status = buildStatus(store, { plan: { day: 40, month: 600, dayCap: 80 } }, {}, config);
+
+  expect(Object.keys(status.routes)).toStrictEqual(['plan']);
+});

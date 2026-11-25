@@ -444,9 +444,11 @@ listener serves no control path.
 A refused call changes nothing. A raise body is `{ route, start, dollars }`, and the raise is for
 the day only: the month's limit moves only in the gateway's config. A period's `tripped` is true
 while its dollars are at its limit in force, and its `sinceMs` is the period's trip time. The status
-holds the lost mark apart from the routes, and a lost gateway answers its routes as they stand. A
-count reaches a limit in whole micros of a dollar, so ten replies of 0.1 dollars reach a limit of 1
-dollar. The status and the sandbox read answer in dollars, worked out from the micros.
+holds the lost mark apart from the routes, and a lost gateway answers its routes as they stand. The
+status lists only the routes in the config: the store keeps the count of a route the config dropped,
+and the status leaves that route out. A count reaches a limit in whole micros of a dollar, so ten
+replies of 0.1 dollars reach a limit of 1 dollar. The status and the sandbox read answer in dollars,
+worked out from the micros.
 
 ### The override
 

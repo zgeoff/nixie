@@ -31,8 +31,9 @@ export interface GatewayStatus {
   readonly routes: Readonly<Record<string, RouteStatus>>;
 }
 
-// Each route's day and month, with the limit in force. A period's `sinceMs` is the instant the
-// store first saw it at its limit.
+// Each configured route's day and month, with the limit in force. The store keeps the count of a
+// route that the config dropped, which the status leaves out. A period's `sinceMs` is the instant
+// the store first saw it at its limit.
 export function buildStatus(
   store: PeriodStore,
   limits: RouteLimitsByID,
@@ -67,10 +68,12 @@ export function buildStatus(
     zone: config.zone,
     lost: store.lost,
     routes: Object.fromEntries(
-      Object.keys(store.routes).map((route) => [
-        route,
-        { day: buildPeriod(route, 'day'), month: buildPeriod(route, 'month') },
-      ]),
+      Object.keys(store.routes)
+        .filter((route) => Object.hasOwn(limits, route))
+        .map((route) => [
+          route,
+          { day: buildPeriod(route, 'day'), month: buildPeriod(route, 'month') },
+        ]),
     ),
   };
 }
