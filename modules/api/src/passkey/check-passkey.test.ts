@@ -213,15 +213,18 @@ test('#checkPasskey covers the session that tapped and asks another session', as
   const ctx = await setupTest();
   const first = await ctx.createAlwaysAskUnknown();
   const second = await ctx.createAlwaysAskUnknown();
+  const third = await ctx.createAlwaysAskUnknown();
 
   await ctx.tap(first);
 
   const settled = await Promise.allSettled([
     ctx.retry(ctx.client, second),
-    ctx.retry(ctx.phoneClient, second),
+    ctx.retry(ctx.phoneClient, third),
   ]);
 
-  expect(settled.map((result) => result.status)).toStrictEqual(['fulfilled', 'rejected']);
+  expect(
+    settled.map((result) => (result.status === 'fulfilled' ? 'covered' : result.reason.code)),
+  ).toStrictEqual(['covered', 'PASSKEY_REQUIRED']);
 });
 
 test('#checkPasskey asks with no window open before any tap', async () => {
@@ -395,6 +398,30 @@ test('#passkeys.window reports an open window for an answer and never for adding
   );
 
   expect(reports).toStrictEqual([{ isOpen: true }, { isOpen: false }, { isOpen: false }]);
+});
+
+test('#passkeys.revoke refuses a revoke that carries no assertion for it, even in an open window', async () => {
+  const ctx = await setupTest();
+  const action = await ctx.createAlwaysAskUnknown();
+
+  await ctx.tap(action);
+
+  const other = await createDeviceSession(ctx.api.context, 'tablet');
+  const spare = await seedPasskey(ctx.api.context, { caller: other.caller });
+
+  const issued = await ctx.client.passkeys.challenge({
+    for: { kind: 'unknown_outcome', actionID: action, choice: 'retry' },
+  });
+
+  const revocation = ctx.client.passkeys.revoke({
+    clientActionID: crypto.randomUUID(),
+    passkeyID: spare.passkeyID,
+    passkey: await spare.authenticator.assert(issued.options, {
+      origin: 'https://nixie.example.org',
+    }),
+  });
+
+  expect(revocation).rejects.toMatchObject({ code: 'PASSKEY_FAILED', data: { reason: 'binding' } });
 });
 
 test('#sessions.signOut ends the window of the session', async () => {
