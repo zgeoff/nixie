@@ -20,6 +20,9 @@ const inboxKinds: ReadonlySet<string> = new Set([
   'computer.handover_asked',
   'computer.handover_closed',
   'device.status_changed',
+  'call.started',
+  'call.answered',
+  'call.ended',
 ]);
 
 // The conversation reads these 2 in its turns' events block, so as inbox records too they would

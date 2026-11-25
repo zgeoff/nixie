@@ -11,6 +11,7 @@ import { renderOwnerText } from '../utils/render-owner-text';
 import { renderActionFailure } from './render-action-failure';
 import type { ActionResultBlock } from './render-action-result';
 import { renderApprovalAnswer } from './render-approval-answer';
+import { renderCallNotice } from './render-call-notice';
 import { renderHandoverAsked } from './render-handover-asked';
 import { renderHandoverClosed } from './render-handover-closed';
 import { renderLimitNotice } from './render-limit-notice';
@@ -78,6 +79,14 @@ export function renderInboxMessage(
 
   if (record.kind === 'computer.handover_asked') {
     return renderHandoverAsked(record, times, view.messaging.ownerName);
+  }
+
+  if (
+    record.kind === 'call.started' ||
+    record.kind === 'call.answered' ||
+    record.kind === 'call.ended'
+  ) {
+    return renderCallNotice(record, times, view.messaging.ownerName ?? 'the user');
   }
 
   if (record.kind === 'policy.action_answered') {
