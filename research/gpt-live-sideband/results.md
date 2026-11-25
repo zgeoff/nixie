@@ -272,10 +272,12 @@ Does GPT-Live speak a lead-in sentence part and then wait for the next part, or 
 when the adapter holds it with the acknowledgement delay and an empty thinking part?
 
 GPT-Live does not reliably wait. With parts 300 to 800 ms apart, it never had to: the next part
-always arrived before or while it spoke the lead-in, and it invented nothing in 8 of 8 trials. With
-parts 3 s apart, it invented facts after the lead-in in 4 of 8 trials, and went quiet to wait for
-the next part in 2 of 8. Both waits lasted 1000 ms, so no trial shows GPT-Live waiting longer than
-about 1 s.
+always arrived before or while it spoke the part before. It invented nothing in 8 of 8 trials of
+shape b, with the lead-in, and in 8 of 8 trials of shape c, with full statements only. With parts 3
+s apart, shape b drew invented facts after the lead-in in 4 of 8 trials, and GPT-Live went quiet to
+wait for the next part in 2 of 8. Both waits lasted 1000 ms, so no trial shows GPT-Live waiting
+longer than about 1 s. Shape c at 3 s drew an invented fact in 1 of 8 trials, and GPT-Live went
+quiet to wait in 0 of 8.
 
 ### Setup of the parts probe
 
@@ -417,7 +419,10 @@ reason it no longer holds.
 
 2. "The calls module sends a turn's reply text to the speech layer in parts as the turn writes it,
    and sends `final: true` with the last part." A part that leads in to more text makes GPT-Live
-   invent the rest. Each part must be a complete statement, such as a whole sentence of facts.
+   invent the rest. Each part must be safe to speak alone, and a lead-in sentence such as "You have
+   two new messages." is not, as [Question 6](#question-6-sentence-parts-under-the-hold) shows. How
+   the calls module splits a reply into parts is an open question for the owner, on
+   [the call thread and the speech layer](https://linear.app/zgeoff/issue/GEO-2862).
 3. "Every hand-off gets a final part, even when the turn wrote no text, so the speech layer never
    waits on it." An empty part made GPT-Live claim a result in 3 of 3 sessions. A turn with no text
    must send a fixed line from `voice/`.
