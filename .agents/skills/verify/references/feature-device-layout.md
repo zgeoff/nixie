@@ -183,7 +183,7 @@ under a name, lay the screen out again, and restore the saved layout in one call
 - In step 9, the model's one call of `device.preview` returned a result with `picture` `shown`.
 - In step 10, the page in `pond` shows "Got hello", and `records` holds one `device.page_event`
   named `echo`.
-- The screenshots are evidence for the reviewer. Check nothing in them, except the page's text in
-  step 10 when the snapshot does not list it.
+- The screenshots are evidence for the reviewer. Check nothing in them. When the snapshot in step 10
+  does not list the page's text, read that text from the screenshot.
 
 Once the end state matches, run `bun verify done`.

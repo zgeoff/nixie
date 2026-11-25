@@ -36,11 +36,12 @@ libs/       shared code that belongs to no domain
   over the sandbox's route back to nixie.
 
 The workspace globs cover those 5 folders, the Pulumi component, the root `verify/`, `integration/`
-and `evals/` packages, and each spike in `research/` but those the root `workspaces` list leaves
-out. The spikes join the workspace so that CI typechecks them, and they stand outside the package
-rules here: a spike pins the exact versions it ran against, imports product files by path with a
-`@boundaries-ignore` comment, and has no tests that CI runs. A spike whose pins conflict with the
-workspace stays out of it and installs on its own, as do the Agent SDK spikes under `docs/design/`.
+and `evals/` packages, and each spike in `research/` except those the root `workspaces` list
+excludes. The spikes join the workspace so that CI typechecks them, and they stand outside the
+package rules here: a spike pins the exact versions it ran against, imports product files by path
+with a `@boundaries-ignore` comment, and has no tests that CI runs. A spike whose pins conflict with
+the workspace stays out of it and installs on its own, as do the Agent SDK spikes under
+`docs/design/`.
 
 `deploy/` holds the deployment artifacts nixie ships: the Compose recipe in `deploy/compose/`, the
 [reference Kubernetes manifests](deployment/kubernetes.md) in `deploy/kubernetes/`, and the
@@ -132,12 +133,12 @@ code reach test code.
 
 A few imports belong to one package each:
 
-| Import                              | The packages that may import it     |
-| ----------------------------------- | ----------------------------------- |
-| The Agent SDK                       | `guests/conversation`, and `evals/` |
-| imp's client                        | `adapters/sandbox-imp`              |
-| `bun:sqlite` and the Kysely dialect | `libs/db`                           |
-| ONNX Runtime and its tokenizer      | `adapters/encoder-onnx`             |
+| Import                              | The packages that may import it    |
+| ----------------------------------- | ---------------------------------- |
+| The Agent SDK                       | `guests/conversation` and `evals/` |
+| imp's client                        | `adapters/sandbox-imp`             |
+| `bun:sqlite` and the Kysely dialect | `libs/db`                          |
+| ONNX Runtime and its tokenizer      | `adapters/encoder-onnx`            |
 
 The `zgeoff/import-zones` lint rule refuses each of these imports outside its one package. The Agent
 SDK has one exception: the SDK contract suite and the memory checker's eval in `evals/` drive the

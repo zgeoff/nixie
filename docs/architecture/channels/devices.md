@@ -60,8 +60,8 @@ holds what the screen shows:
 - `device.capability_changed` holds a switch of a capability.
 
 A forget of a `device.shown` or `device.idle_set` record erases the content. The state reader then
-drops that content, and an image that is forgotten or missing counts as erased too. The server never
-holds the content outside the log.
+drops that content, and an image that is forgotten or missing counts as erased too. The server keeps
+no copy of the content outside the log, apart from the files of a preview while it draws one.
 
 ## The screen state
 
@@ -154,12 +154,12 @@ stream open, and for `deviceOfflineGraceMs` after its last one closes, so a reco
 offline.
 
 For an offline device, `devices.list` gives the time its last stream closed, unless the process
-restarted since. `devices.resize({ width, height })` gives every open stream of the caller's device
-a new size, and `devices.list` reads the new size at once. One pixels schema bounds the size in both
-calls. The stream sends `opened` first, then what the screen shows now. A later event follows a
-commit that touches the device, or the end of a show or a region's minutes, and the stream sends an
-event only when the state changes. The event of a show carries the `fit` of an image, `whole` or
-`fill`.
+restarted since. `devices.resize(pixels)`, which takes the fields that `live.follow` opens with,
+gives every open stream of the caller's device a new size, and `devices.list` reads the new size at
+once. One pixels schema bounds the size in both calls. The stream sends `opened` first, then what
+the screen shows now. A later event follows a commit that touches the device, or the end of a show
+or of a region's minutes. The stream sends an event only when the state changes. The event of a show
+carries the `fit` of an image, `whole` or `fill`.
 
 A region's `layout` event carries the short ID of the region's `device.region_shown` record as
 `shown`, which the device names in the errors it reports. The layout travels in its own `layout`
@@ -181,8 +181,9 @@ it sends the retained message of each page region right after its first layout.
 ## Page regions
 
 A page is a region whose content has `kind: 'html'`: the `html` in a body, and `images`, a map from
-an ID the page names to an image-store short ID. The server never holds the markup outside the
-record that seals it, and `devices.list` never shows it.
+an ID the page names to an image-store short ID. The server keeps no copy of the markup outside the
+record that seals it, apart from the files of a preview while it draws one, and `devices.list` never
+shows it.
 
 ### The frame
 
@@ -347,9 +348,9 @@ when it comes back online, and the result carries `waiting: true` with a message
 `UNKNOWN_LAYOUT` message lists the saved names. `device.region` returns `UNKNOWN_DEVICE`,
 `SCREEN_OFF`, `UNKNOWN_REGION`, `PACKAGES_NOT_BUILT`, `FETCHES_NOT_BUILT`, the image refusals, then
 `OFFLINE`. Its input check fails a page that holds a link, frame, object or embed element before any
-refusal, and `UNKNOWN_REGION` also answers a call whose layout changed after its own record.
-`device.sendToPage` returns `UNKNOWN_DEVICE`, `SCREEN_OFF`, `UNKNOWN_REGION`, `NOT_A_PAGE` for a
-region that holds no page, then `OFFLINE`. `device.preview` returns `UNKNOWN_DEVICE`, then
+refusal. `device.region` also returns `UNKNOWN_REGION` when a layout was set after the call's own
+record. `device.sendToPage` returns `UNKNOWN_DEVICE`, `SCREEN_OFF`, `UNKNOWN_REGION`, `NOT_A_PAGE`
+for a region that holds no page, then `OFFLINE`. `device.preview` returns `UNKNOWN_DEVICE`, then
 `SCREEN_OFF`.
 
 `devices.list` shows the layout a device holds whether or not the device is online, unlike

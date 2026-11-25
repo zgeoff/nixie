@@ -436,8 +436,9 @@ the moments, leaves out a voided reply.
 The step returns to waiting once it commits, because the conversation always waits for the user's
 next message. A turn that fails for any reason but a lost session, such as a disconnected tool
 server, throws, so the tasks module records the error and retries the step after a delay that grows
-with each failure in a row. The model API refusals that wait for the user, listed below, are the
-exception. The conversation never fails ([tasks](./tasks.md#steps)).
+with each failure in a row. The exception is a
+[model API refusal that waits for the user](#a-call-the-model-api-refuses). The conversation never
+fails ([tasks](./tasks.md#steps)).
 
 ### A turn that ends with nothing sent
 
