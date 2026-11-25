@@ -86,9 +86,11 @@ function runInputSlice(options: GPTLiveOptions, session: GPTLiveSession, slice: 
 function runOutputSlice(options: GPTLiveOptions, session: GPTLiveSession, slice: Slice): void {
   session.lastOutputAtMs = options.clock.now();
 
+  // a line that a cut waits on still takes the speech that reaches the session late, even when the
+  // quiet timer has ended the line meanwhile
   const line = session.lines.findLast(
     (candidate) =>
-      candidate.isPlaying &&
+      (candidate.isPlaying || candidate.isCutting) &&
       !candidate.isCut &&
       candidate.startMs !== null &&
       slice.startMs >= candidate.startMs,

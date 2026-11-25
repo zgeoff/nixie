@@ -652,13 +652,66 @@ test('it counts the speech that arrives after the interruption, inside the settl
   ]);
 });
 
+test('it counts the speech that arrives after the output goes quiet, inside the settle wait', async () => {
+  const ctx = await setupTest();
+  const session = await ctx.openSession();
+
+  await ctx.speech.answer(session.opened.sessionID, 'item_a1', 'One two', true);
+
+  await waitForCondition(() => ctx.clientEvents.length === 1);
+
+  ctx.emit({
+    type: 'session.commentary.appended',
+    client_event_id: 'answer_1.0',
+    start_ms: 5000,
+    end_ms: 5200,
+  });
+
+  await waitForCondition(() => ctx.clock.countPending() === 2);
+
+  ctx.clock.advance(600);
+
+  ctx.emit({
+    type: 'session.input_transcript.delta',
+    delta: ' Stop',
+    start_ms: 8000,
+    end_ms: 8200,
+  });
+
+  await waitForCondition(() => ctx.clock.countPending() === 4);
+
+  // the quiet timer of the output ends here, 100 ms before the settle wait does
+  ctx.clock.advance(400);
+
+  await waitForCondition(() => ctx.clock.countPending() === 3);
+
+  ctx.emit({
+    type: 'session.output_transcript.delta',
+    delta: 'One two',
+    start_ms: 5000,
+    end_ms: 6000,
+  });
+
+  await waitForCondition(() => ctx.clock.countPending() === 4);
+
+  ctx.clock.advance(100);
+
+  await waitForCondition(() => session.events.some((event) => event.kind === 'cut'));
+
+  expect(session.events.filter((event) => event.kind === 'cut')).toStrictEqual([
+    { kind: 'cut', handOffID: 'item_a1', heardChars: 7 },
+  ]);
+
+  expect(session.events.filter((event) => event.kind === 'spoke')).toStrictEqual([]);
+});
+
 test('it records no spoke line for the second part of an answer after a gap between the parts', async () => {
   const ctx = await setupTest();
   const session = await ctx.openSession();
 
   const sentence = `${'word '.repeat(60).trim()}. `;
 
-  await ctx.speech.answer(session.opened.sessionID, 'item_a1', sentence.repeat(5).trim(), true);
+  await ctx.speech.answer(session.opened.sessionID, 'item_a1', sentence.repeat(2).trim(), true);
 
   await waitForCondition(() => ctx.clientEvents.length === 2);
 
@@ -720,7 +773,7 @@ test('it closes without the full wait when the provider refuses a later part of 
 
   const sentence = `${'word '.repeat(60).trim()}. `;
 
-  await ctx.speech.answer(session.opened.sessionID, 'item_a1', sentence.repeat(5).trim(), true);
+  await ctx.speech.answer(session.opened.sessionID, 'item_a1', sentence.repeat(2).trim(), true);
 
   await waitForCondition(() => ctx.clientEvents.length === 2);
 

@@ -1,11 +1,5 @@
-// An upper estimate of the tokens in a text, which the provider counts and the adapter cannot.
-// Plain ASCII runs near 4 characters to a token, and any other character can cost several.
+// An upper bound on the tokens in a text, which the provider counts and the adapter cannot. A
+// byte-level tokenizer never makes more tokens than the text has UTF-8 bytes, whatever the text.
 export function estimateTokens(text: string): number {
-  let tokens = 0;
-
-  for (const character of text) {
-    tokens += (character.codePointAt(0) ?? 0) < 128 ? 1 / 3 : 2;
-  }
-
-  return tokens;
+  return new TextEncoder().encode(text).length;
 }

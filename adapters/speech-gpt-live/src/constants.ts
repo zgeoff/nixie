@@ -26,7 +26,7 @@ export const closePollMs = 200;
 export const acknowledgementDelayMs = 800;
 
 // The provider takes at most 500 tokens in one commentary. A part stays inside 400 estimated tokens,
-// so a text that the estimate undercounts still fits.
+// and the estimate is the text's UTF-8 byte count, which no text goes past in real tokens.
 export const maxPartTokens = 400;
 
 // How long the sideband may take to open before the open fails.

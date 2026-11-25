@@ -177,7 +177,21 @@ test.skipIf(!isContractRun)(
 
     invariant(handOff?.kind === 'hand_off', 'the speech became a hand-off');
 
-    await ctx.speech.say(opened.sessionID, 'Just a moment while I look that up.');
+    // The say line holds a code word that the speech layer would not choose, so hearing it proves
+    // the line itself was spoken, and not an acknowledgement of the speech layer's own. The answer
+    // goes only after that, so what follows the code word in the transcript is the answer.
+    const readSpoken = () =>
+      ctx.received
+        .filter((event) => event.type === 'session.output_transcript.delta')
+        .map((event) => event.delta)
+        .join('')
+        .toLowerCase();
+
+    await ctx.speech.say(opened.sessionID, 'Hold on, still checking. The code word is tangerine.');
+
+    await waitForCondition(() => readSpoken().includes('tangerine'), { timeoutMs: 30_000 });
+
+    const spokenBeforeAnswer = readSpoken().length;
 
     await ctx.speech.answer(
       opened.sessionID,
@@ -186,33 +200,15 @@ test.skipIf(!isContractRun)(
       true,
     );
 
-    await waitForCondition(
-      () =>
-        ctx.received.filter((event) => event.type === 'session.commentary.appended').length >= 2,
-      { timeoutMs: 30_000 },
-    );
-
-    // acknowledging a commentary does not mean the provider speaks it, so both lines must show in
-    // what the speech layer said
-    const readSpoken = () =>
-      ctx.received
-        .filter((event) => event.type === 'session.output_transcript.delta')
-        .map((event) => event.delta)
-        .join('')
-        .toLowerCase();
-
-    await waitForCondition(
-      () => readSpoken().includes('dentist') && readSpoken().includes('moment'),
-      {
-        timeoutMs: 30_000,
-      },
-    );
+    await waitForCondition(() => readSpoken().slice(spokenBeforeAnswer).includes('dentist'), {
+      timeoutMs: 30_000,
+    });
 
     await ctx.speech.close(opened.sessionID);
 
     expect(handOff.request).toInclude('calendar');
-    expect(readSpoken()).toInclude('moment');
-    expect(readSpoken()).toInclude('dentist');
+    expect(readSpoken()).toInclude('tangerine');
+    expect(readSpoken().slice(spokenBeforeAnswer)).toInclude('dentist');
     expect(ctx.received.filter((event) => event.type === 'error')).toStrictEqual([]);
 
     expect(
