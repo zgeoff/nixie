@@ -119,6 +119,7 @@ test('it refuses a memory write tool to a worker of a task that holds the self-n
 
 test.each([
   'task.start',
+  'coding.start',
   'task.message',
   'task.close',
   'tasks.list',

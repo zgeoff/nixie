@@ -23,7 +23,6 @@ test.each<[string, CodingStartInput, CodingStartChoice]>([
   [
     'a start with the default target and wake set when it names neither',
     {
-      runner: 'atc',
       name: 'Fix the login test',
       brief: 'Find why the login test fails.',
       repo: { url: 'https://github.com/example/shop.git', ref: 'main' },
@@ -43,7 +42,6 @@ test.each<[string, CodingStartInput, CodingStartChoice]>([
   [
     'a start on the named target laptop/local with the agent and model it names',
     {
-      runner: 'atc',
       name: 'Fix the login test',
       brief: 'Find why the login test fails.',
       repo: { url: 'https://github.com/example/shop.git', ref: 'v2.1.0' },
@@ -67,7 +65,6 @@ test.each<[string, CodingStartInput, CodingStartChoice]>([
   [
     'a start on an ssh git@host:org/repo.git url',
     {
-      runner: 'atc',
       name: 'Fix the login test',
       brief: 'Find why the login test fails.',
       repo: { url: 'git@github.com:example/shop.git', ref: 'main' },
@@ -87,7 +84,6 @@ test.each<[string, CodingStartInput, CodingStartChoice]>([
   [
     'a start with the explicit wake list it names',
     {
-      runner: 'atc',
       name: 'Fix the login test',
       brief: 'Find why the login test fails.',
       repo: { url: 'https://github.com/example/shop.git', ref: 'main' },
@@ -108,7 +104,6 @@ test.each<[string, CodingStartInput, CodingStartChoice]>([
   [
     'a refusal of an unknown target',
     {
-      runner: 'atc',
       name: 'Fix the login test',
       brief: 'Find why the login test fails.',
       repo: { url: 'https://github.com/example/shop.git', ref: 'main' },
@@ -119,7 +114,6 @@ test.each<[string, CodingStartInput, CodingStartChoice]>([
   [
     'a refusal of a repo url that starts with -',
     {
-      runner: 'atc',
       name: 'Fix the login test',
       brief: 'Find why the login test fails.',
       repo: { url: '-x@github.com:example/shop.git', ref: 'main' },
@@ -132,7 +126,6 @@ test.each<[string, CodingStartInput, CodingStartChoice]>([
   [
     'a refusal of a file:// repo url',
     {
-      runner: 'atc',
       name: 'Fix the login test',
       brief: 'Find why the login test fails.',
       repo: { url: 'file:///srv/git/shop.git', ref: 'main' },
@@ -145,7 +138,6 @@ test.each<[string, CodingStartInput, CodingStartChoice]>([
   [
     'a refusal of an input with both repo and session',
     {
-      runner: 'atc',
       name: 'Fix the login test',
       brief: 'Find why the login test fails.',
       repo: { url: 'https://github.com/example/shop.git', ref: 'main' },
@@ -158,7 +150,7 @@ test.each<[string, CodingStartInput, CodingStartChoice]>([
   ],
   [
     'a refusal of an input with neither repo nor session',
-    { runner: 'atc', name: 'Fix the login test', brief: 'Find why the login test fails.' },
+    { name: 'Fix the login test', brief: 'Find why the login test fails.' },
     {
       kind: 'refused',
       sentence: 'Give exactly one of repo, to start a session, and session, to join one.',
@@ -166,13 +158,12 @@ test.each<[string, CodingStartInput, CodingStartChoice]>([
   ],
   [
     'a join with the joined default wake set',
-    { runner: 'atc', name: 'Billing', brief: 'Watch for a question.', session: 'cs4k' },
+    { name: 'Billing', brief: 'Watch for a question.', session: 'cs4k' },
     { kind: 'join', shortID: 'cs4k', wake: ['waiting', 'ended'] },
   ],
   [
     'a join with the explicit wake list it names',
     {
-      runner: 'atc',
       name: 'Billing',
       brief: 'Watch for a question.',
       session: 'cs4k',
@@ -183,7 +174,6 @@ test.each<[string, CodingStartInput, CodingStartChoice]>([
   [
     'a refusal of a join that names a target',
     {
-      runner: 'atc',
       name: 'Billing',
       brief: 'Watch for a question.',
       session: 'cs4k',
@@ -194,7 +184,6 @@ test.each<[string, CodingStartInput, CodingStartChoice]>([
   [
     'a refusal of a join that names an agent',
     {
-      runner: 'atc',
       name: 'Billing',
       brief: 'Watch for a question.',
       session: 'cs4k',
@@ -205,7 +194,6 @@ test.each<[string, CodingStartInput, CodingStartChoice]>([
   [
     'a refusal of a join that names a model',
     {
-      runner: 'atc',
       name: 'Billing',
       brief: 'Watch for a question.',
       session: 'cs4k',
@@ -230,7 +218,6 @@ test('it picks a start with no agent when neither the input nor the settings nam
   expect(
     pickCodingStart(
       {
-        runner: 'atc',
         name: 'Fix the login test',
         brief: 'Find why the login test fails.',
         repo: { url: 'https://github.com/example/shop.git', ref: 'main' },

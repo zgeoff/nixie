@@ -8,8 +8,8 @@ can join, steers a session by typing into its input, sends a note through atc's 
 session, and picks the events that wake it. Below are each tool's contract, its effect declaration
 and its policy. The start and the join are in [the runner](runner.md), and the adapter calls that
 each tool makes are in [the atc adapter](atc.md). The terms, such as a steer, a note, the wake set
-and a bound session, are in the [README](README.md#terms). Once the owner approves the design, build
-these tools in [the atc runner](https://linear.app/zgeoff/issue/GEO-1843).
+and a bound session, are in the [README](README.md#terms). Build these tools in
+[the atc runner](https://linear.app/zgeoff/issue/GEO-1843).
 
 ## Shape
 

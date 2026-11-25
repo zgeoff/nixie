@@ -1,12 +1,6 @@
 import { buildCodingTools } from '@heynixie/coding';
 import type { ToolDefinition } from '@heynixie/tools';
-import type { ServerParts } from '../types';
-import type { ServerCoding } from './build-server-coding';
-
-interface CodingToolsContext {
-  readonly apiContext: ServerParts['apiContext'];
-  readonly coding: ServerCoding | null;
-}
+import type { CodingToolsContext } from './types';
 
 // The tools that a model calls on coding sessions, or none without a coding runner.
 export function buildServerCodingTools(context: CodingToolsContext): ToolDefinition[] {

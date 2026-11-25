@@ -190,13 +190,13 @@ tier. It has 13 rules:
 | `allow-sends-within-limits`   | Allow   | Effect `send`, still bound by the destination limits    |
 | `allow-sandboxed-code`        | Allow   | Effect `code_run`                                       |
 | `allow-narrowing`             | Allow   | Effects `policy_narrow` and `budget_lower`              |
-| `allow-coding-spawns`         | Allow   | `coding.start`, which the start call's own ask covered  |
+| `allow-coding-spawns`         | Allow   | `coding.spawn`, which the start call's own ask covered  |
 | `allow-coding-input`          | Allow   | `coding.steer` and `coding.message` to `atc:*`          |
 | `allow-stop-started-sessions` | Allow   | `coding.stop` with `origin: started`, to `atc:*`        |
 | `ask-permanent-deletes`       | Ask     | Effect `delete`                                         |
 | `ask-exports`                 | Ask     | Effect `export`, such as a memory or event log export   |
 | `ask-stranger-with-memory`    | Ask     | `task.start/sandbox` with `memory: read` and no persona |
-| `ask-coding-sessions`         | Ask     | `task.start/atc`                                        |
+| `ask-coding-sessions`         | Ask     | `coding.start`                                          |
 
 The always-ask set and the destination limits hold whatever the starter rules say, so the set is
 permissive inside those bounds. An effect the set does not mention, such as `device`, falls to "no

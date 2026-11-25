@@ -12,6 +12,11 @@ on Compose, on Kubernetes with the reference manifests, and on Kubernetes with t
    [release pipeline](../architecture/deployment/release-pipeline.md) describes.
 2. When the deployment skips releases, also follow
    [deploy in milestones](releasing.md#deploy-in-milestones).
+3. When your copy of the starter rules has `ask-coding-sessions` on `task.start/atc` and
+   `allow-coding-spawns` on `coding.start`, edit them to match
+   [`starter.yaml`](../../deploy/compose/definitions/rules/starter.yaml): ask on `coding.start`, and
+   allow on `coding.spawn`. Without the edit, your allow rule covers the model's `coding.start`
+   call, so a join of a coding session needs no approval.
 
 ## Upgrade
 

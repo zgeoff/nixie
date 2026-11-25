@@ -10,9 +10,11 @@ describes. The [rules design](../../design/platform/policy/rules.md) holds the p
 and [the decision point](decision-point.md) covers the stages that decide a call.
 
 An allow rule can allow any call, with 2 exceptions. A call that widens the policy or raises a
-budget always asks, so no rule can give the assistant more room than the user approved. A call that
-spends passes only an allow rule with a [lift](budgets.md#lifts), which caps each purchase and
-charges a budget. A new tool never adds a third exception.
+budget always asks, so no rule can give the assistant more room than the user approved. A seed
+applies a widening from the definitions without asking, because the user wrote them, as
+[rules in force](#rules-in-force) describes. A call that spends passes only an allow rule with a
+[lift](budgets.md#lifts), which caps each purchase and charges a budget. A new tool never adds a
+third exception.
 
 ## The rule format
 
@@ -24,7 +26,7 @@ field but the outcome is optional, and a field that is missing matches every cal
 | Field          | Holds                                                                                                     |
 | -------------- | --------------------------------------------------------------------------------------------------------- |
 | `outcome`      | `allow`, `ask` or `deny`                                                                                  |
-| `tools`        | Tool names or patterns, such as `mail.*`, or a tool variant such as `task.start/atc`                      |
+| `tools`        | Tool names or patterns, such as `mail.*`, or a tool variant such as `task.start/sandbox`                  |
 | `effects`      | Declared effects                                                                                          |
 | `contexts`     | `conversation`, `task` or `coding`; `task` covers a task that nixie starts and a task run of a definition |
 | `definitions`  | Task definition IDs; the rule matches a task run of one of them                                           |
@@ -78,9 +80,9 @@ while an ask or a deny guards access and catches any part of it:
 | `sources`      | the call has sources, and the rule lists each one     | the rule lists one of the call's sources |
 
 A check on an argument that the call lacks fails, whatever the rule's outcome. A tool name matches
-the tool and each of its variants, so `task.start` matches `task.start/atc`, while `task.start/atc`
-matches only that variant. A rule stops matching at its expiry, compared with the time of the call,
-so a replay agrees.
+the tool and each of its variants, so `task.start` matches `task.start/sandbox`, while
+`task.start/sandbox` matches only that variant. A rule stops matching at its expiry, compared with
+the time of the call, so a replay agrees.
 
 nixie evaluates no CEL, so a rule with a CEL condition fails closed: an allow with one covers no
 call, and an ask or a deny with one catches on its other fields alone.
@@ -98,10 +100,10 @@ verdict.
 Each rule renders as one sentence from a fixed template per field, such as "**Allow** `mail.send`
 when every destination matches `sam@example.com`." The outcome leads the sentence, the tools or "a
 call" follow it, and each other field adds a condition after "when". A `task.start` variant renders
-in words, so `task.start/atc` reads "starting a task in atc". The sentence for a rule with a CEL
-condition says how the rule fails closed: an allow reads "**Allow** no call", and an ask or a deny
-ends "whatever the CEL condition". The note stays out of the sentence, so the user's words never mix
-with the rule's.
+in words, so `task.start/sandbox` reads "starting a task in sandbox". The sentence for a rule with a
+CEL condition says how the rule fails closed: an allow reads "**Allow** no call", and an ask or a
+deny ends "whatever the CEL condition". The note stays out of the sentence, so the user's words
+never mix with the rule's.
 
 ## The widening check
 
@@ -217,12 +219,12 @@ The proposal is a row of the `rule_change` family with the cause `proposed_rule`
 `always_ask` risk class. Its record, `rules.rule_proposed`, keeps the rule in erasable fields, so a
 record forget of the proposal removes it. The card offers these choices:
 
-| Control | What happens                                                                                          |
-| ------- | ----------------------------------------------------------------------------------------------------- |
-| Approve | A runtime change adds the rule as `proposed-<short ID>`, with the reason "proposed after 3 approvals" |
-| Not now | The decline choice: the group stays quiet for `policy.proposed_rules.quiet_days`                      |
-| Defer   | As [the approval record](approvals.md#defer) defines it                                               |
-| Edit    | Sends `rules.editProposedRule`, which withdraws the card and opens a new one with the edited rule     |
+| Control | What happens                                                                                                                                              |
+| ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Approve | A runtime change adds the rule as `proposed-<short ID>`, with the reason "proposed after <n> approvals", where `<n>` is `policy.proposed_rules.approvals` |
+| Not now | The decline choice: the group stays quiet for `policy.proposed_rules.quiet_days`                                                                          |
+| Defer   | As [the approval record](approvals.md#defer) defines it                                                                                                   |
+| Edit    | Sends `rules.editProposedRule`, which withdraws the card and opens a new one with the edited rule                                                         |
 
 A lapse of the proposal keeps the group quiet as Not now does, and a decline of a new action
 proposal in the group withdraws the open proposed rule. A `rules.change_lapsed` record for the

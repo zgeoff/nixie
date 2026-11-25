@@ -1,9 +1,9 @@
 import { buildGitHubDefinitionsRepo } from '@heynixie/definitions-repo-github';
 import { buildKagiSearch } from '@heynixie/search-kagi';
 import { addCodingConnectors } from '../coding/add-coding-connectors';
+import { buildServerCodingStart } from '../coding/build-server-coding-start';
 import { buildServerCodingTools } from '../coding/build-server-coding-tools';
 import { addComputerConnector } from '../computer/add-computer-connector';
-import { collectProfileHarnesses } from '../conversation/collect-profile-harnesses';
 import { startConversationEndpoint } from '../conversation/start-conversation-endpoint';
 import { readDefinitionsContext } from '../definition/read-definitions-context';
 import { refreshDefinitions } from '../definition/refresh-definitions';
@@ -182,7 +182,7 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
           coding: buildServerCodingTools(parts.get('context')),
           mail: buildServerMailTools(mailContext, parts.get('web_fetch')),
 
-          harnesses: collectProfileHarnesses(options.config.models),
+          buildCodingStart: buildServerCodingStart(parts.get('context')),
           codeRun: parts.get('code_run').tool,
           fileSend: parts.get('code_run').sendTool,
           forget: parts.get('actions').forget.tool,

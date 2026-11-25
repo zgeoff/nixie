@@ -11,6 +11,7 @@ import { workerRunToolName } from './worker-run-tool-name';
 // definitions list and the tools that change reminders belong to the conversation alone.
 const neverHeldTools: ReadonlySet<string> = new Set([
   'task.start',
+  'coding.start',
   'task.message',
   'task.close',
   'tasks.list',

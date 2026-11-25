@@ -38,8 +38,8 @@ test.each<[string, Rule, string]>([
   ],
   [
     'ask-coding-sessions',
-    { id: 'ask-coding-sessions', outcome: 'ask', tools: ['task.start/atc'] },
-    '**Ask** before starting a task in atc.',
+    { id: 'ask-coding-sessions', outcome: 'ask', tools: ['coding.start'] },
+    '**Ask** before `coding.start`.',
   ],
   [
     'allow-any-task-start',
@@ -148,7 +148,7 @@ test('it renders every rule of the starter template as one sentence', async () =
       'allow-coding-input',
       '**Allow** `coding.message` or `coding.steer` when every destination matches `atc:*`.',
     ],
-    ['allow-coding-spawns', '**Allow** `coding.start`.'],
+    ['allow-coding-spawns', '**Allow** `coding.spawn`.'],
     [
       'allow-narrowing',
       '**Allow** a call when every effect it has is `budget_lower` or `policy_narrow`.',
@@ -169,7 +169,7 @@ test('it renders every rule of the starter template as one sentence', async () =
       '**Allow** `coding.stop` when `origin` is `started` and every destination matches `atc:*`.',
     ],
     ['allow-take-back', '**Allow** a call when every effect it has is `computer_take_back`.'],
-    ['ask-coding-sessions', '**Ask** before starting a task in atc.'],
+    ['ask-coding-sessions', '**Ask** before `coding.start`.'],
     ['ask-exports', '**Ask** before a call when it has the effect `export`.'],
     ['ask-permanent-deletes', '**Ask** before a call when it has the effect `delete`.'],
     [

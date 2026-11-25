@@ -16,7 +16,6 @@ async function setupTest() {
     seed: {
       session: async (): Promise<string> => {
         const taskID = await ctx.startTask(claim, {
-          runner: 'atc',
           name: 'Fix the flaky login test',
           brief: 'Find why the login test fails.',
           repo: { url: 'https://github.com/example/shop.git', ref: 'main' },

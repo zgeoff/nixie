@@ -56,7 +56,7 @@ allow-term-mail-in-hours:
 ```ts
 // policy module. Built from RuleCall for each evaluation; nothing else is in scope.
 interface ConditionInput {
-  tool: string; // with its variant, such as 'task.start/atc'
+  tool: string; // with its variant, such as 'task.start/sandbox'
   effects: string[];
   context: string; // 'conversation' | 'task' | 'coding'
   definition: string; // the task definition ID, or '' outside a task run

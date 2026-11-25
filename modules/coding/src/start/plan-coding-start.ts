@@ -76,7 +76,7 @@ export async function planCodingStart(
 // The spawn's arguments are the brief, so every attempt sends the same spawn.
 function buildSpawnAction(brief: SessionBrief): RunnerAction {
   return {
-    tool: codingToolNames.start,
+    tool: codingToolNames.spawn,
     args: {
       name: brief.name,
       prompt: brief.prompt,

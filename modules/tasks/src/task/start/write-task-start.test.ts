@@ -41,6 +41,17 @@ async function setupTest() {
         stepRunID: buildStepRunID(starter.claim),
         disposable: false,
       }),
+    startOnRunner: (runner: string, name: string, brief: string) =>
+      writeTaskStart(tasks.context, {
+        from: 'conversation',
+        name,
+        brief,
+        runner,
+        stored: { kind: 'built', options },
+        hopLimit: 7,
+        stepRunID: buildStepRunID(starter.claim),
+        disposable: false,
+      }),
     startPlanned: (
       plan: Pick<TaskStartRequest, 'actions' | 'transaction'>,
       context: Parameters<typeof writeTaskStart>[0],
@@ -159,6 +170,19 @@ test('it writes neither record when a rerun of the starting step starts the same
   const records = await ctx.readStartRecords(after);
 
   expect(records).toStrictEqual([]);
+});
+
+test('it starts a second task when another runner starts the same name in the same step', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.start('Tide tables', 'Find the high tides for Saturday.');
+  const other = await ctx.startOnRunner('atc', 'Tide tables', 'Find the high tides for Saturday.');
+
+  expect(other).toStrictEqual({ status: 'started', taskID: expect.toBeString() });
+  expect(other).not.toStrictEqual(sandbox);
+
+  const tasks = await ctx.readTasks();
+
+  expect(tasks).toHaveLength(2);
 });
 
 test('it leaves no task and no brief when the brief record fails to write', async () => {

@@ -34,11 +34,11 @@ The interface's calls are `start`, `join`, `list`, `read`, `steer`, `message`, `
 their signatures.
 
 A session is a task, so it shows on the dashboard. nixie starts a session, or joins one you already
-run, through the `task.start/<key>` variant, which declares `coding_start`, so your rules decide
-both. nixie steers a session with `coding.steer`, which types into its input as a user turn, and
-sends it a note with `coding.message`, which never steers it. The spawn, each steer, each note and
-each stop run as actions on the queue. The adapter's `events` feed a trigger source with a cursor,
-so the session's events reach the task's thread as records.
+run, through the `coding.start` tool, which declares `coding_start`, so your rules decide both.
+nixie steers a session with `coding.steer`, which types into its input as a user turn, and sends it
+a note with `coding.message`, which never steers it. The spawn, each steer, each note and each stop
+run as actions on the queue. The adapter's `events` feed a trigger source with a cursor, so the
+session's events reach the task's thread as records.
 [The coding session runner](../../queue/coding-session-runner/README.md) holds the types, the tools,
 the step and the records.
 

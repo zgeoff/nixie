@@ -45,7 +45,6 @@ export type { TaskRunnerRegistryOptions } from './runner/build-task-runner-regis
 export { conversationRunner } from './runner/conversation-runner';
 export { defineRunnerStart } from './runner/define-runner-start';
 export { pickResolvedControls } from './runner/pick-resolved-controls';
-export { parseTaskStartInput } from './runner/parse-task-start-input';
 export { planSandboxStart, sandboxRunner } from './runner/sandbox-runner';
 export type { SandboxStartInput } from './runner/sandbox-start-schema';
 export { sandboxStartSchema } from './runner/sandbox-start-schema';
@@ -75,7 +74,9 @@ export { readStepMessaging } from './step/read-step-messaging';
 export type { StepRunRef } from './utils/parse-step-run-id';
 export { parseStepRunID } from './utils/parse-step-run-id';
 export { buildTaskMessageTool } from './task/projection/build-task-message-tool';
+export { buildRunnerStartTool } from './lease/build-runner-start-tool';
 export { buildTaskStartTool } from './lease/build-task-start-tool';
+export type { RunnerStartSpec } from './lease/types';
 export { buildTaskCloseTool } from './task/build-task-close-tool';
 export { buildTasksListTool } from './task/build-tasks-list-tool';
 export { buildTasksRunsTool } from './run/build-tasks-runs-tool';

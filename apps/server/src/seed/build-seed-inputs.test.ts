@@ -53,8 +53,8 @@ test("it puts the coding runner's queued actions in the policy and the task tool
     policy: inputs.buildPolicy({}).tools.map((declared) => declared.name),
     taskTools: inputs.tasks.toolNames,
   }).toStrictEqual({
-    policy: ['actions.log', 'coding.start', 'coding.stop'],
-    taskTools: ['actions.log', 'coding.start', 'coding.stop'],
+    policy: ['actions.log', 'coding.spawn', 'coding.stop'],
+    taskTools: ['actions.log', 'coding.spawn', 'coding.stop'],
   });
 });
 
