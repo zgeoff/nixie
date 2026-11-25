@@ -1,0 +1,33 @@
+{
+  "name": "@heynixie/coding",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./test-utils": "./src/test-utils/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsrs --fast --noEmit"
+  },
+  "dependencies": {
+    "@heynixie/actions": "workspace:*",
+    "@heynixie/clock": "workspace:*",
+    "@heynixie/connectors": "workspace:*",
+    "@heynixie/db": "workspace:*",
+    "@heynixie/log": "workspace:*",
+    "@heynixie/logger": "workspace:*",
+    "@heynixie/policy": "workspace:*",
+    "@heynixie/tasks": "workspace:*",
+    "@heynixie/tools": "workspace:*",
+    "@heynixie/triggers": "workspace:*",
+    "kysely": "catalog:",
+    "tiny-invariant": "catalog:",
+    "ts-pattern": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@heynixie/testing": "workspace:*",
+    "@zgeoff/testing": "catalog:"
+  }
+}

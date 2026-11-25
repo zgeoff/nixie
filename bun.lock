@@ -171,6 +171,7 @@
         "@heynixie/backup": "workspace:*",
         "@heynixie/budgets": "workspace:*",
         "@heynixie/clock": "workspace:*",
+        "@heynixie/coding": "workspace:*",
         "@heynixie/compaction": "workspace:*",
         "@heynixie/connectors": "workspace:*",
         "@heynixie/contract": "workspace:*",
@@ -546,6 +547,7 @@
         "@heynixie/backup": "workspace:*",
         "@heynixie/budgets": "workspace:*",
         "@heynixie/clock": "workspace:*",
+        "@heynixie/coding": "workspace:*",
         "@heynixie/connectors": "workspace:*",
         "@heynixie/contract": "workspace:*",
         "@heynixie/db": "workspace:*",
@@ -613,6 +615,30 @@
         "zod": "catalog:",
       },
       "devDependencies": {
+        "@zgeoff/testing": "catalog:",
+      },
+    },
+    "modules/coding": {
+      "name": "@heynixie/coding",
+      "version": "0.0.0",
+      "dependencies": {
+        "@heynixie/actions": "workspace:*",
+        "@heynixie/clock": "workspace:*",
+        "@heynixie/connectors": "workspace:*",
+        "@heynixie/db": "workspace:*",
+        "@heynixie/log": "workspace:*",
+        "@heynixie/logger": "workspace:*",
+        "@heynixie/policy": "workspace:*",
+        "@heynixie/tasks": "workspace:*",
+        "@heynixie/tools": "workspace:*",
+        "@heynixie/triggers": "workspace:*",
+        "kysely": "catalog:",
+        "tiny-invariant": "catalog:",
+        "ts-pattern": "catalog:",
+        "zod": "catalog:",
+      },
+      "devDependencies": {
+        "@heynixie/testing": "workspace:*",
         "@zgeoff/testing": "catalog:",
       },
     },
@@ -1590,6 +1616,8 @@
     "@heynixie/clock": ["@heynixie/clock@workspace:libs/clock"],
 
     "@heynixie/codex": ["@heynixie/codex@workspace:guests/codex"],
+
+    "@heynixie/coding": ["@heynixie/coding@workspace:modules/coding"],
 
     "@heynixie/compaction": ["@heynixie/compaction@workspace:modules/compaction"],
 

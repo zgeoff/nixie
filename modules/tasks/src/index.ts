@@ -54,6 +54,7 @@ export type {
   BoundStep,
   RunnerAction,
   RunnerEndCause,
+  RunnerEndCommit,
   RunnerEndContext,
   StartTransaction,
   RunnerStart,
@@ -69,6 +70,9 @@ export type {
 export type { TaskStarter } from './task/start/plan-task-start';
 export { selfNoteToolNames } from './task/start/self-note-tool-names';
 export { buildStepRunID } from './step/build-step-run-id';
+export { readLeasedStepHop } from './step/read-leased-step-hop';
+export type { StepRunRef } from './utils/parse-step-run-id';
+export { parseStepRunID } from './utils/parse-step-run-id';
 export { buildTaskMessageTool } from './task/projection/build-task-message-tool';
 export { buildTaskStartTool } from './lease/build-task-start-tool';
 export { buildTaskCloseTool } from './task/build-task-close-tool';
