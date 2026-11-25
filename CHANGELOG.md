@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.115.0](https://github.com/zgeoff/nixie/compare/v0.114.0...v0.115.0) (2026-11-25)
+
+
+### Features
+
+* **live:** one live stream per tab with topics and presence ([#1453](https://github.com/zgeoff/nixie/issues/1453)) ([27e74b2](https://github.com/zgeoff/nixie/commit/27e74b28334f32d3d4796701e3d32c213d72acac))
+
+
+### Bug Fixes
+
+* **deps:** update @anthropic-ai/claude-agent-sdk to v0.3.327 ([#1455](https://github.com/zgeoff/nixie/issues/1455)) ([fdbe792](https://github.com/zgeoff/nixie/commit/fdbe792df5cc17d629b8c90efd44b4d342c10410))
+
 ## [0.114.0](https://github.com/zgeoff/nixie/compare/v0.113.0...v0.114.0) (2026-11-24)
 
 
