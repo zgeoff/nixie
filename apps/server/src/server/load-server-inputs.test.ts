@@ -68,6 +68,34 @@ test('it refuses a manifest that lacks the image a part needs, before any image 
   );
 });
 
+test('it starts with a manifest that holds no render image, and holds none for it', async () => {
+  const ctx = await setupTest();
+
+  const files = await writeBootFiles(ctx.directory, 'http://127.0.0.1:4010', {
+    config: [],
+    secrets: [],
+  });
+
+  await writeFile(
+    files.manifestPath,
+    JSON.stringify({
+      conversation: `ghcr.io/example/nixie-conversation@sha256:${'c'.repeat(64)}`,
+      fetch: `ghcr.io/example/nixie-fetch@sha256:${'f'.repeat(64)}`,
+      computer: `ghcr.io/example/nixie-computer@sha256:${'a'.repeat(64)}`,
+      code: `ghcr.io/example/nixie-code@sha256:${'d'.repeat(64)}`,
+    }),
+  );
+
+  const inputs = await loadServerInputs({
+    configPath: files.configPath,
+    manifestPath: files.manifestPath,
+    sopsArgv: [files.sopsPath],
+    log: mock<Logger>(),
+  });
+
+  expect(Object.keys(inputs.images)).toStrictEqual(['conversation', 'fetch', 'computer', 'code']);
+});
+
 test('it gives the images that the profiles and the parts need', async () => {
   const ctx = await setupTest();
 
@@ -83,7 +111,13 @@ test('it gives the images that the profiles and the parts need', async () => {
     log: mock<Logger>(),
   });
 
-  expect(Object.keys(inputs.images)).toStrictEqual(['conversation', 'fetch', 'computer', 'code']);
+  expect(Object.keys(inputs.images)).toStrictEqual([
+    'conversation',
+    'fetch',
+    'computer',
+    'render',
+    'code',
+  ]);
 });
 
 test('it logs a warning that names each config key it does not know', async () => {

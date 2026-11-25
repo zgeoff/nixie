@@ -55,6 +55,10 @@ test('it prints each sandbox image with the name nixie gives it in impd', async 
           name: 'nixie-computer-aaaaaaaaaaaa',
           ref: `ghcr.io/example/nixie-computer@sha256:${'a'.repeat(64)}`,
         },
+        render: {
+          name: 'nixie-render-bbbbbbbbbbbb',
+          ref: `ghcr.io/example/nixie-render@sha256:${'b'.repeat(64)}`,
+        },
       }),
     ],
   ]);
@@ -121,6 +125,10 @@ test('it prints only the needed images from sandbox-manifest --needed', async ()
         computer: {
           name: 'nixie-computer-aaaaaaaaaaaa',
           ref: `ghcr.io/example/nixie-computer@sha256:${'a'.repeat(64)}`,
+        },
+        render: {
+          name: 'nixie-render-bbbbbbbbbbbb',
+          ref: `ghcr.io/example/nixie-render@sha256:${'b'.repeat(64)}`,
         },
       }),
     ],

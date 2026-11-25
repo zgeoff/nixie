@@ -17,8 +17,10 @@
     "@heynixie/db": "workspace:*",
     "@heynixie/log": "workspace:*",
     "@heynixie/tools": "workspace:*",
+    "@heynixie/wire": "workspace:*",
     "kysely": "catalog:",
     "tiny-invariant": "catalog:",
+    "ts-pattern": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {

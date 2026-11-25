@@ -1,9 +1,10 @@
 // The only calls a device session may make: it follows its own device stream, sends its screen's
-// size, switches its own screen, reads an image it shows, and signs out. Every other path stays closed to it, so a call
+// size and the errors of its regions, switches its own screen, reads an image it shows, and signs out. Every other path stays closed to it, so a call
 // that a later release adds is refused until it is listed here.
 const deviceProcedurePaths: ReadonlySet<string> = new Set([
   '/rpc/live/follow',
   '/rpc/devices/resize',
+  '/rpc/devices/pageError',
   '/rpc/devices/setCapability',
   '/rpc/devices/readImage',
   '/rpc/sessions/signOut',

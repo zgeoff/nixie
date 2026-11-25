@@ -4,6 +4,7 @@ export type { ImageProfile, ImagesConfig } from './image/images-config-schema';
 export { imagesConfigSchema } from './image/images-config-schema';
 export type { ImageSize } from './image/image-size';
 export { imageSizes } from './image/image-size';
+export { fitFetchedImage } from './fetch/fit-fetched-image';
 export { readImageEntry } from './image/read-image-entry';
 export type { GalleryImage } from './image/types';
 export { readGalleryImage } from './image/read-gallery-image';
@@ -136,3 +137,11 @@ export { computerOwner, legacyComputerOwners } from './computer/computer-owner';
 export { makeUnexemptScans } from './computer/run-computer-call';
 export { computerTakeoverRecordTopics } from './computer/takeover/computer-takeover-record-topics';
 export { imagesRecordTopics } from './image/images-record-topics';
+
+export type {
+  RenderOutcome,
+  RenderSandbox,
+  RenderSandboxOptions,
+} from './render/start-render-sandbox';
+
+export { renderSandboxOwner, startRenderSandbox } from './render/start-render-sandbox';

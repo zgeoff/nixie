@@ -349,6 +349,7 @@ test('#followDevice sends a layout that the assistant sets while the stream is o
           rowSpan: 1,
           background: null,
           content: null,
+          shown: null,
           until: null,
         },
         {
@@ -359,6 +360,7 @@ test('#followDevice sends a layout that the assistant sets while the stream is o
           rowSpan: 1,
           background: null,
           content: null,
+          shown: null,
           until: null,
         },
         {
@@ -369,6 +371,7 @@ test('#followDevice sends a layout that the assistant sets while the stream is o
           rowSpan: 1,
           background: null,
           content: null,
+          shown: null,
           until: null,
         },
       ],

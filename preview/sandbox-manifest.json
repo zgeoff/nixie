@@ -3,5 +3,6 @@
   "fetch": "ghcr.io/example/nixie-fetch@sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
   "code": "ghcr.io/example/nixie-code@sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
   "codex": "ghcr.io/example/nixie-codex@sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
-  "computer": "ghcr.io/example/nixie-computer@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  "computer": "ghcr.io/example/nixie-computer@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "render": "ghcr.io/example/nixie-render@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
 }

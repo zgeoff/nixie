@@ -11,6 +11,9 @@ export interface ImageNeed {
   // what needs the image, such as "the profile chat-main on the agent-sdk harness" or
   // "the web_fetch part"
   readonly neededBy: string;
+
+  // set for an image that the part uses when the manifest holds it, and does without otherwise
+  readonly isOptional?: true;
 }
 
 // One need per configured profile, from its harness record, then one per key that a part
@@ -48,6 +51,10 @@ export function listImageNeeds(
   for (const declaration of declarations) {
     for (const key of declaration.images?.(config) ?? []) {
       needs.push({ key, neededBy: `the ${declaration.name} part` });
+    }
+
+    for (const key of declaration.optionalImages?.(config) ?? []) {
+      needs.push({ key, neededBy: `the ${declaration.name} part`, isOptional: true });
     }
   }
 
