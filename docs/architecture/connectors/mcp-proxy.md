@@ -83,7 +83,8 @@ event as the event arrives.
 
 A tool's form is its name, title, description, input schema, output schema and annotations. nixie
 hashes the form in canonical JSON, with sorted keys and NFC text, and pins the hash the user
-allowed. The model sees only the pinned form. nixie keeps the listing's newest hash beside the pin.
+allowed. On a trusted server, the user allowed each later change when they trusted the server. The
+model sees only the pinned form. nixie keeps the listing's newest hash beside the pin.
 
 | Listing shows                             | Untrusted server      | Trusted server                    |
 | ----------------------------------------- | --------------------- | --------------------------------- |
@@ -192,13 +193,13 @@ An approved call of a queued tool runs only when the current pin accepts its sav
 argument that an idempotency key fills included, and otherwise settles as refused.
 
 Every field of a proxied result is `untrusted`, so the endpoint sends the whole result as one text
-block inside `tool-result` markers with a random ID, and sends no structured content. This holds for
-every direct tool whose result fields are all `untrusted`. A field that the declaration names no
-source for counts as `untrusted`, so a tool whose output schema names no field, or whose source map
-is empty, is wrapped in the markers too. A tool with trusted output keeps its structured content.
-The pictures of a result go to the model only when the turn's image budget has room for all of them,
-and a proxied call reserves them from that budget. Text that nixie writes itself, such as a refusal,
-carries no markers.
+block inside `tool-result` markers with a random ID, and sends no structured content. nixie's own
+direct tools follow the same rule: one whose result fields are all `untrusted` gets the markers. A
+field that the declaration names no source for counts as `untrusted`, so a tool whose output schema
+names no field, or whose source map is empty, is wrapped in the markers too. One of nixie's own
+tools with trusted output keeps its structured content. The pictures of a result go to the model
+only when the turn's image budget has room for all of them, and a proxied call reserves them from
+that budget. Text that nixie writes itself, such as a refusal, carries no markers.
 
 An approved call of a queued tool reaches the action runners through the connector that
 `findConnector` returns for it. The connector clears the call again before it runs. A refusal or a

@@ -53,9 +53,9 @@ definitions version. The snapshot still lists every skipped root entry, so a mis
 Within the known paths, every source applies one filter. It skips every path with a part that starts
 with a dot, such as `.git`. It keeps every file under `skills/`, whatever its extension, because a
 skill brings its scripts. It keeps only `.yaml`, `.md` and `.ts` files under `tasks/`, and only
-markdown, YAML and JSON files under `effects/`, `prompts/` and `rules/`. Every kept file must decode
-as UTF-8 text, so a binary file under `skills/` fails the snapshot. A snapshot past the per-file or
-the total size limit fails too, and its error lists the files at fault.
+markdown, YAML and JSON files under each other known folder. Every kept file must decode as UTF-8
+text, so a binary file under `skills/` fails the snapshot. A snapshot past the per-file or the total
+size limit fails too, and its error lists the files at fault.
 
 The path source never follows a link out of the root: a symlink that stays inside the root is
 skipped, and one that leads outside it, or resolves nowhere, fails the snapshot. A file can change
