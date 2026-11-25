@@ -549,6 +549,23 @@ test('it grants no task permission to a call with no definition', async () => {
   expect(decided.decision.stage).toBe(5);
 });
 
+test('it grants the task permission to a destination among the call task destinations, with no definition', async () => {
+  const ctx = buildTestDecisionPoint({
+    rules: [buildRuleEntry('allow-sends', { outcome: 'allow', effects: ['send'] })],
+  });
+
+  const decided = await ctx.decide(
+    buildPolicyCall({
+      destinations: [{ value: 'atc:cloud.4b2e.9', replyTarget: false }],
+      taskDestinations: ['atc:cloud.4b2e.9'],
+    }),
+  );
+
+  expect(decided.decision.destinations).toStrictEqual([
+    { value: 'atc:cloud.4b2e.9', permission: 'task' },
+  ]);
+});
+
 test('it grants a known contact permission to its destination', async () => {
   const ctx = buildTestDecisionPoint({
     inputs: { contacts: [{ contactID: 'c1', name: 'Sam', destination: 'sam@example.org' }] },

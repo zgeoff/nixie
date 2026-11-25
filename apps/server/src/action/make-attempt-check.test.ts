@@ -22,6 +22,7 @@ interface RunnerActionInput {
   tool: string;
   args: object;
   sequence: number;
+  stepKey?: string;
 }
 
 async function setupTest() {
@@ -111,7 +112,7 @@ async function setupTest() {
       const [actionID] = await withWriteTransaction(actions.writer, (tx) =>
         queue(tx, {
           taskID,
-          stepKey: 'ended:stopped',
+          stepKey: action.stepKey ?? 'ended:stopped',
           actions: [
             {
               tool: action.tool,
@@ -352,7 +353,7 @@ test('it fails an approved in-step call rule_denied, and runs no call, when a ru
   expect(action).toMatchObject({ status: 'failed', reason: 'rule_denied', attempt_count: 0 });
 });
 
-test('it decides a runner action under its own tool with the task as caller, and asks before a stop of a joined session with the record that caused it', async () => {
+test('it decides a runner action under its own tool with the task as caller, and asks under an ask rule before a stop of a joined session with the record that caused it', async () => {
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
 
@@ -377,15 +378,19 @@ test('it decides a runner action under its own tool with the task as caller, and
   const proposed = actionProposedCodec.decode(verdict.record.payload);
 
   expect({
+    cause: verdict.cause,
     destinations: verdict.destinations,
     parent: verdict.record.parent,
     tool: proposed.tool,
     callSequence: proposed.callSequence,
+    proposedCause: proposed.cause,
   }).toStrictEqual({
+    cause: 'ask_rule',
     destinations: ['atc:cloud.3f9a1c2e.7c1d0e55'],
     parent: cause,
     tool: 'coding.stop',
     callSequence: cause,
+    proposedCause: 'ask_rule',
   });
 });
 
@@ -401,6 +406,18 @@ test.each([
     'coding.start',
     { name: 'Login fix', prompt: 'Fix the login test.' },
     [],
+  ],
+  [
+    'a steer of a bound session',
+    'coding.steer',
+    { session: 'atc:cloud.3f9a1c2e.1', text: 'Check the cookie expiry.' },
+    ['atc:cloud.3f9a1c2e.1'],
+  ],
+  [
+    'a note to a bound session',
+    'coding.message',
+    { session: 'atc:cloud.3f9a1c2e.1', text: 'The cache fix landed.' },
+    ['atc:cloud.3f9a1c2e.1'],
   ],
 ] as const)(
   'it lets %s go ahead under the starter rules',
@@ -453,4 +470,32 @@ test('it denies a runner steer under a send deny rule, even when the snapshot de
   });
 
   expect(verdict).toMatchObject({ kind: 'deny', rule: { id: 'deny-sends' } });
+});
+
+test('it holds a steer that a step queued at the destination limits, when an allow rule that names no destination covers it', async () => {
+  const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
+
+  ctx.rules.push({
+    id: 'allow-steers',
+    revision: 1,
+    rule: { id: 'allow-steers', outcome: 'allow', tools: ['coding.steer'] },
+  });
+
+  const action = await ctx.queueRunnerAction(step.lease.workID, {
+    tool: 'coding.steer',
+    args: { session: 'atc:cloud.3f9a1c2e.1', text: 'Check the cookie expiry.' },
+    sequence: await ctx.readNewestSequence(step.lease.workID),
+    stepKey: `${step.lease.workID}:2`,
+  });
+
+  const verdict = await ctx.check({
+    action,
+    arguments: { session: 'atc:cloud.3f9a1c2e.1', text: 'Check the cookie expiry.' },
+    proposalID: action.action_id,
+  });
+
+  invariant(verdict.kind === 'ask' && verdict.record.payload, 'the steer asks');
+
+  expect(actionProposedCodec.decode(verdict.record.payload).cause).toBe('outside_steering');
 });

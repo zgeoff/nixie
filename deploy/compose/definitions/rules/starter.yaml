@@ -148,7 +148,6 @@ allow-coding-input:
 allow-stop-started-sessions:
   outcome: allow
   tools: [coding.stop]
-  destinations: ['atc:*']
   checks:
     - { arg: origin, op: eq, value: started }
   note: Stopping a session that nixie started needs no ask.

@@ -138,8 +138,10 @@ async function runRuleStages(run: StageRun): Promise<PolicyDecision> {
   const permissions = pickDestinationPermissions(call.destinations, {
     ownerDestinations: run.inputs.ownerDestinations,
     contacts: run.inputs.contacts,
-    taskDestinations:
-      call.definitionID === null ? [] : run.options.findTaskDestinations(call.definitionID),
+    taskDestinations: [
+      ...(call.definitionID === null ? [] : run.options.findTaskDestinations(call.definitionID)),
+      ...(call.taskDestinations ?? []),
+    ],
     allowRules: allowing.map((entry) => entry.rule),
   });
 

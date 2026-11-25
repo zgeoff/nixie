@@ -192,7 +192,7 @@ tier. It has 14 rules:
 | `allow-narrowing`             | Allow   | Effects `policy_narrow` and `budget_lower`              |
 | `allow-coding-spawns`         | Allow   | `coding.start`, which the start call's own ask covered  |
 | `allow-coding-input`          | Allow   | `coding.steer` and `coding.message` to `atc:*`          |
-| `allow-stop-started-sessions` | Allow   | `coding.stop` with `origin: started` to `atc:*`         |
+| `allow-stop-started-sessions` | Allow   | `coding.stop` with `origin: started`                    |
 | `ask-permanent-deletes`       | Ask     | Effect `delete`                                         |
 | `ask-exports`                 | Ask     | Effect `export`, such as a memory or event log export   |
 | `ask-stranger-with-memory`    | Ask     | `task.start/sandbox` with `memory: read` and no persona |
