@@ -1,11 +1,11 @@
 import { expect, mock, test } from 'bun:test';
 import { encodeTestImage } from '@heynixie/connectors/test-utils';
-import { startTestDevices } from '../test-utils';
+import { readPreviewPage, startTestDevices } from '../test-utils';
 import type { DevicePreviewOptions } from './device-tool-options';
 
 type Render = DevicePreviewOptions['draw'];
 
-async function setupTest(render?: Render) {
+async function setupTest() {
   const picture = await encodeTestImage({ width: 40, height: 30 }, 'png');
 
   const draw = mock<Render>(() =>
@@ -13,7 +13,7 @@ async function setupTest(render?: Render) {
   );
 
   const ctx = await startTestDevices({
-    preview: { draw: render ?? draw, imageLongEdge: 1568, timeZone: 'UTC' },
+    preview: { draw, imageLongEdge: 1568, timeZone: 'UTC' },
   });
 
   const device = await ctx.seed.screenOnDevice();
@@ -38,8 +38,14 @@ test('it refuses a device whose screen is off', async () => {
   expect(outcome).toMatchObject({ status: 'ok', refusalCode: 'SCREEN_OFF' });
 });
 
-test('it asks for a render at the device CSS size and pixel ratio, an odd size included', async () => {
+test.each([
+  { width: 1872, height: 1404, pixelRatio: 2 },
+  { width: 1873, height: 1404, pixelRatio: 2 },
+  { width: 1233, height: 1251, pixelRatio: 2.5 },
+])('it asks for a render of $width by $height pixels at ratio $pixelRatio', async (row) => {
   const ctx = await setupTest();
+
+  ctx.streams.resize(ctx.device.deviceID, row);
 
   await ctx.call('device.preview', { device: ctx.device.deviceID });
 
@@ -48,8 +54,92 @@ test('it asks for a render at the device CSS size and pixel ratio, an odd size i
   expect({
     width: request?.width,
     height: request?.height,
-    ratio: request?.pixelRatio,
-  }).toStrictEqual({ width: 936, height: 702, ratio: 2 });
+    pixelRatio: request?.pixelRatio,
+  }).toStrictEqual(row);
+});
+
+test('it shows a clock in the time zone that the device sent', async () => {
+  const ctx = await setupTest();
+
+  ctx.streams.resize(ctx.device.deviceID, {
+    width: 1872,
+    height: 1404,
+    pixelRatio: 2,
+    timeZone: 'Australia/Sydney',
+  });
+
+  await ctx.call('device.layout', {
+    device: ctx.device.deviceID,
+    columns: ['1fr'],
+    rows: ['1fr'],
+    regions: [{ name: 'clock', column: 1, row: 1 }],
+  });
+
+  await ctx.call('device.region', {
+    device: ctx.device.deviceID,
+    region: 'clock',
+    content: { kind: 'live', live: 'clock', format: 'HH:mm' },
+  });
+
+  await ctx.call('device.preview', { device: ctx.device.deviceID });
+
+  const page = readPreviewPage(ctx.draw.mock.calls[0]?.[0].files ?? []);
+
+  expect(page).toContain('19:00');
+});
+
+test('it sends no image that a show covers', async () => {
+  const ctx = await setupTest();
+
+  await ctx.seed.image('k3x9m2p7qa');
+
+  await ctx.call('device.layout', {
+    device: ctx.device.deviceID,
+    columns: ['1fr'],
+    rows: ['1fr'],
+    regions: [{ name: 'pond', column: 1, row: 1 }],
+  });
+
+  await ctx.call('device.region', {
+    device: ctx.device.deviceID,
+    region: 'pond',
+    content: { kind: 'image', image: 'k3x9m2p7qa', fit: 'whole' },
+  });
+
+  await ctx.call('device.show', {
+    device: ctx.device.deviceID,
+    content: { kind: 'markdown', text: '# Saturday' },
+  });
+
+  await ctx.call('device.preview', { device: ctx.device.deviceID });
+
+  expect(ctx.draw.mock.calls[0]?.[0].files.map((file) => file.path)).toStrictEqual(['index.html']);
+});
+
+test('it sends the image that a region of the layout shows', async () => {
+  const ctx = await setupTest();
+
+  await ctx.seed.image('k3x9m2p7qa');
+
+  await ctx.call('device.layout', {
+    device: ctx.device.deviceID,
+    columns: ['1fr'],
+    rows: ['1fr'],
+    regions: [{ name: 'pond', column: 1, row: 1 }],
+  });
+
+  await ctx.call('device.region', {
+    device: ctx.device.deviceID,
+    region: 'pond',
+    content: { kind: 'image', image: 'k3x9m2p7qa', fit: 'whole' },
+  });
+
+  await ctx.call('device.preview', { device: ctx.device.deviceID });
+
+  expect(ctx.draw.mock.calls[0]?.[0].files.map((file) => file.path)).toStrictEqual([
+    'index.html',
+    'images/0',
+  ]);
 });
 
 test("it returns the device's size in pixels and the picture", async () => {
@@ -97,8 +187,7 @@ test('it draws the regions that hold content into the page it sends', async () =
 
   await ctx.call('device.preview', { device: ctx.device.deviceID });
 
-  const request = ctx.draw.mock.calls[0]?.[0];
-  const page = Buffer.from(request?.files[0]?.base64 ?? '', 'base64').toString('utf8');
+  const page = readPreviewPage(ctx.draw.mock.calls[0]?.[0].files ?? []);
 
   expect({
     hasNote: page.includes('Bins go out &lt;script&gt;x&lt;/script&gt;'),
@@ -130,7 +219,10 @@ test('it returns no picture when no render sandbox is set up', async () => {
 });
 
 test('it returns no picture when the render fails', async () => {
-  const ctx = await setupTest(() => Promise.resolve({ kind: 'failed', reason: 'no browser' }));
+  const ctx = await setupTest();
+
+  ctx.draw.mockResolvedValue({ kind: 'failed', reason: 'no browser' });
+
   const outcome = await ctx.call('device.preview', { device: ctx.device.deviceID });
 
   expect(outcome).toMatchObject({ result: { picture: 'unavailable' }, images: [] });
@@ -248,4 +340,82 @@ test('it still returns the last errors of a device that is offline, with no size
       picture: 'unavailable',
     },
   });
+});
+
+test('it returns no error for content that a region shows again after other content', async () => {
+  const ctx = await setupTest();
+
+  await ctx.call('device.layout', {
+    device: ctx.device.deviceID,
+    columns: ['1fr'],
+    rows: ['1fr'],
+    regions: [{ name: 'pond', column: 1, row: 1 }],
+  });
+
+  await ctx.call('device.region', {
+    device: ctx.device.deviceID,
+    region: 'pond',
+    content: { kind: 'markdown', markdown: 'Ripples' },
+  });
+
+  const layout = await ctx.readLayout(ctx.device.deviceID);
+
+  ctx.streams.errors.record(ctx.device.deviceID, {
+    region: 'pond',
+    shown: layout?.regions[0]?.shown?.shownID ?? '',
+    atMs: 1,
+    message: 'old content failed',
+  });
+
+  await ctx.call('device.region', {
+    device: ctx.device.deviceID,
+    region: 'pond',
+    content: { kind: 'markdown', markdown: 'Calm' },
+    minutes: 10,
+    // oxlint-disable-next-line unicorn/no-thenable -- the tool's input is named then
+    then: 'previous',
+  });
+
+  ctx.clock.advance(11 * 60_000);
+
+  const outcome = await ctx.call('device.preview', { device: ctx.device.deviceID });
+
+  expect(outcome).toMatchObject({ result: { errors: [] } });
+});
+
+test('it returns no error for a region that a new layout cleared', async () => {
+  const ctx = await setupTest();
+
+  await ctx.call('device.layout', {
+    device: ctx.device.deviceID,
+    columns: ['1fr'],
+    rows: ['1fr'],
+    regions: [{ name: 'pond', column: 1, row: 1 }],
+  });
+
+  await ctx.call('device.region', {
+    device: ctx.device.deviceID,
+    region: 'pond',
+    content: { kind: 'markdown', markdown: 'Ripples' },
+  });
+
+  const layout = await ctx.readLayout(ctx.device.deviceID);
+
+  ctx.streams.errors.record(ctx.device.deviceID, {
+    region: 'pond',
+    shown: layout?.regions[0]?.shown?.shownID ?? '',
+    atMs: 1,
+    message: 'old content failed',
+  });
+
+  await ctx.call('device.layout', {
+    device: ctx.device.deviceID,
+    columns: ['1fr'],
+    rows: ['1fr'],
+    regions: [{ name: 'lake', column: 1, row: 1 }],
+  });
+
+  const outcome = await ctx.call('device.preview', { device: ctx.device.deviceID });
+
+  expect(outcome).toMatchObject({ result: { errors: [] } });
 });

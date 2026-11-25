@@ -1,13 +1,9 @@
-import type { ScreenContent } from '@heynixie/contract';
 import type { RenderFile } from '@heynixie/wire';
 import { renderEntryPath } from '@heynixie/wire';
 import { match } from 'ts-pattern';
-import type { LayoutView } from '../types';
-import { pickTextColour } from './pick-text-colour';
 import { previewFitScript } from './preview-fit-script';
-import { renderPreviewImage } from './render-preview-image';
-import { renderPreviewMarkdown } from './render-preview-markdown';
-import { renderPreviewRegion } from './render-preview-region';
+import { renderPreviewBlocks } from './render-preview-blocks';
+import { renderPreviewLayout } from './render-preview-layout';
 import type { PreviewPageInput } from './types';
 
 const previewStyle = `
@@ -44,8 +40,8 @@ img.fill { object-fit: cover; object-position: center; }
 // for its own files, and the sandbox refuses every other.
 export function buildPreviewPage(input: PreviewPageInput): RenderFile[] {
   const body = match(input.surface)
-    .with({ kind: 'layout' }, (surface) => renderLayout(surface.layout, input))
-    .with({ kind: 'blocks' }, (surface) => renderBlocks(surface.blocks, input))
+    .with({ kind: 'layout' }, (surface) => renderPreviewLayout(surface.layout, input))
+    .with({ kind: 'blocks' }, (surface) => renderPreviewBlocks(surface.blocks, input))
     .exhaustive();
 
   const html =
@@ -62,46 +58,4 @@ export function buildPreviewPage(input: PreviewPageInput): RenderFile[] {
     },
     ...input.images.values(),
   ];
-}
-
-function renderLayout(layout: LayoutView, input: PreviewPageInput): string {
-  const columns = layout.columns.map(toTrack).join(' ');
-  const rows = layout.rows.map(toTrack).join(' ');
-
-  const cells = layout.regions.map((region) => {
-    const colours =
-      region.background === null
-        ? ''
-        : `background-color:${Bun.escapeHTML(region.background)};color:${pickTextColour(region.background)};`;
-
-    const place = `grid-column:${region.column} / span ${region.columnSpan};grid-row:${region.row} / span ${region.rowSpan};`;
-
-    const content =
-      region.shown === null
-        ? ''
-        : renderPreviewRegion(region.shown.content, {
-            images: input.images,
-            nowMs: input.nowMs,
-            timeZone: input.timeZone,
-          });
-
-    return `<div class="cell" data-region="${Bun.escapeHTML(region.name)}" style="${place}${colours}">${content}</div>`;
-  });
-
-  return `<div class="grid" style="grid-template-columns:${columns};grid-template-rows:${rows}">${cells.join('')}</div>`;
-}
-
-// `2fr` as `minmax(0, 2fr)`, so a wide region never pushes the others out of the grid
-function toTrack(track: string): string {
-  return `minmax(0, ${track})`;
-}
-
-function renderBlocks(blocks: readonly ScreenContent[], input: PreviewPageInput): string {
-  const rendered = blocks.map((block) =>
-    block.kind === 'markdown'
-      ? `<div class="screen-text reply">${renderPreviewMarkdown(block.text)}</div>`
-      : `<div class="screen-picture">${renderPreviewImage(block.image, block.fit, input.images)}</div>`,
-  );
-
-  return `<div class="screen">${rendered.join('')}</div>`;
 }

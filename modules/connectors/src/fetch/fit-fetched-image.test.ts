@@ -124,3 +124,21 @@ test('it returns an image still past the 5 MiB the model takes as a JPEG as unre
     reason: 'past the 5242880 bytes the model takes',
   });
 });
+
+test('it returns a canvas past the pixel cap as unreadable', async () => {
+  const bytes = await encodeTestImage({ width: 400, height: 300 }, 'png');
+
+  expect(fitFetchedImage(bytes, 1568, 100_000)).resolves.toStrictEqual({
+    kind: 'unreadable',
+    reason: 'ERR_IMAGE_TOO_MANY_PIXELS',
+  });
+});
+
+test('it fits a canvas that a raised pixel cap takes', async () => {
+  const bytes = await encodeTestImage({ width: 400, height: 300 }, 'png');
+  const fitted = await fitFetchedImage(bytes, 200, 200_000);
+
+  invariant(fitted.kind === 'image');
+
+  expect({ width: fitted.width, height: fitted.height }).toStrictEqual({ width: 200, height: 150 });
+});

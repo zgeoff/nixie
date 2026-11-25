@@ -143,17 +143,20 @@ content. Until that write commits, the region keeps its content.
 
 ## The streams
 
-The device form of [`live.follow`](./live-updates.md#the-stream) takes the screen's size in pixels
-and its `pixelRatio`, device pixels per CSS pixel, which the device sends again on each reconnect
-and in each `devices.resize`. The server keeps each open stream and its size in memory in
+The device form of [`live.follow`](./live-updates.md#the-stream) takes the screen's size in pixels,
+its `pixelRatio`, device pixels per CSS pixel, and the browser's IANA time zone, which the device
+sends again on each reconnect and in each `devices.resize`. A page that sends no time zone gets the
+deployment's default in a preview. The server keeps each open stream and its size in memory in
 `createDeviceStreams`, which the API's client registry holds. A device is online while it has a
 stream open, and for `deviceOfflineGraceMs` after its last one closes, so a reconnect never reads as
-offline. For an offline device, `devices.list` gives the time its last stream closed, unless the
-process restarted since. `devices.resize({ width, height })` gives every open stream of the caller's
-device a new size, and `devices.list` reads the new size at once. One pixels schema bounds the size
-in both calls. The stream sends `opened` first, then what the screen shows now. A later event
-follows a commit that touches the device, and the stream sends an event only when the state changes.
-The event of a show carries the `fit` of an image, `whole` or `fill`.
+offline.
+
+For an offline device, `devices.list` gives the time its last stream closed, unless the process
+restarted since. `devices.resize({ width, height })` gives every open stream of the caller's device
+a new size, and `devices.list` reads the new size at once. One pixels schema bounds the size in both
+calls. The stream sends `opened` first, then what the screen shows now. A later event follows a
+commit that touches the device, and the stream sends an event only when the state changes. The event
+of a show carries the `fit` of an image, `whole` or `fill`.
 
 A region's `layout` event carries the short ID of the region's `device.region_shown` record as
 `shown`, which the device names in the errors it reports. The layout travels in its own `layout`
@@ -221,7 +224,7 @@ of the same layout at the same size, which the device did not make.
 
 ```mermaid
 flowchart LR
-  tool[device.preview] -->|"layout files, CSS size, pixel ratio"| render[render sandbox]
+  tool[device.preview] -->|"layout files, size in pixels, pixel ratio"| render[render sandbox]
   render -->|"PNG"| tool
   device[device page] -->|"devices.pageError"| errors[errors in memory]
   tool --> errors
@@ -237,25 +240,35 @@ differ.
 
 ### The render
 
-`startRenderSandbox` in the `connectors` module runs each render in a new sandbox of the `render`
-kind, which has no network, no grant and no tool route, and destroys the sandbox when the render
-ends. A second render waits for the first, so one render runs at a time, and a render never touches
-the assistant's computer.
+`startRenderSandbox` in the `connectors` module runs each render in a new sandbox that has the rule
+of a code run: no network, no grant and no tool route. It destroys the sandbox when the render ends.
+A second render waits for the first, so one render runs at a time, and a render never touches the
+assistant's computer. A render sandbox that ignores its stop is destroyed after a short wait, so it
+never holds the queue. The sandbox takes the code run's kind, because a kind of its own would leave
+a stored spec that the release before cannot parse.
+
+nixie starts the render sandbox only when the sandbox manifest holds a render image. A deployment
+without one boots as before, and each preview of it has `picture: unavailable`.
 
 The `devices` module builds the page that the sandbox opens. It picks what the screen draws as the
 device page does: a show, then the layout while a region shows content or has a background, then the
-idle scene. `buildPreviewPage` turns that surface into `index.html` and one file for each image the
-surface shows. A markdown region keeps raw HTML as text and shows a link as its words. A clock or a
-countdown shows the time of the render, in the deployment's default time zone. A script in the page
-grows the text of each region to the largest size that fits, as the device page does.
+idle scene. `buildPreviewPage` turns that choice into `index.html` and one file for each image that
+the screen draws, so an image that a show covers is never sent. A markdown region keeps raw HTML as
+text and shows a link as its words. A clock or a countdown shows the time of the render, in the time
+zone that the device's browser sent beside its size, or in the deployment's default time zone when
+the device sent none. A script in the page grows the text of each region to the largest size that
+fits, as the device page does.
 
-The server sends the files and the screen's size in CSS pixels, which is the device's width and
-height divided by its pixel ratio, with the pixel ratio itself. The render guest in `guests/render`
-starts Chromium on an empty profile in a folder that it removes after the render. It answers each
-request for one of the page's files from the files it received, refuses every other request and
-every WebSocket, and lists the refused URLs in its reply. It waits for the page to say that its text
-has fitted, takes a PNG at the CSS size times the pixel ratio, and exits. The server fits the PNG to
-the long edge of the images the model reads before it reaches the assistant.
+The server sends the files, the screen's size in device pixels and the pixel ratio. The render guest
+in `guests/render` starts Chromium on an empty profile in a folder that it removes after the render.
+
+It answers each request for one of the page's files from the files it received, refuses every other
+request and every WebSocket, and lists the refused URLs in its reply. It waits for the page to say
+that its text has fitted, and takes a PNG of exactly the requested width and height. The page lays
+out at the width divided by the pixel ratio, rounded up to a whole CSS pixel, and the picture is cut
+to the exact size, so a device with an odd width gets a picture of its own width. The server fits
+the PNG to the long edge of the images the model reads before it reaches the assistant, so a large
+screen comes back smaller. It decodes a render of up to 64 million pixels.
 
 `buildPreviewPage` matches each kind of region content with no fallback, so the kind that pages add
 fails the type check until the page has a branch for it.
@@ -264,12 +277,16 @@ fails the type check until the page has a branch for it.
 
 The device reports an error that a region's content raised with
 `devices.pageError({ region, shown, message })`, which a device session may call. The device page
-reports an image that a region cannot read. The server keeps the last 20 errors of each region, in
-memory, in the stream registry beside the open streams, so a restart forgets them. The call returns
-`STALE`, and keeps nothing, when the region no longer shows the content that `shown` names or the
-layout has no such region. An error of earlier content is dropped when the region reports an error
-of its new content, and `device.preview` leaves it out. `device.preview` returns each error's
-region, time and message in an untrusted block, because the text comes from the device.
+reports an image that a region cannot read, and each replacement image that fails reports again,
+including one that fails with the same message as the image before it. It reports an image that
+downloads but does not decode too. The server keeps the last 20 errors of each region, in memory, in
+the stream registry beside the open streams, so a restart forgets them. The call returns `STALE`,
+and keeps nothing, when the region no longer shows the content that `shown` names or the layout has
+no such region. The server forgets a region's errors when `device.region` writes the region, and
+forgets the errors of each region that a new grid, or a restored layout, clears. A region whose
+earlier content returns when a timed content ends therefore starts with no errors. `device.preview`
+returns each error's region, time and message in an untrusted block, because the text comes from the
+device.
 
 ## Device mode
 

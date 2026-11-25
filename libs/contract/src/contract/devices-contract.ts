@@ -13,6 +13,10 @@ export const pixelsSchema = z.object({
 
   // device pixels per CSS pixel, so a CSS size is the width divided by it
   pixelRatio: z.number().positive().max(16).default(1),
+
+  // the IANA time zone of the device's browser, which a clock region shows its time in; a page that
+  // sends none gets the deployment's default zone in a preview
+  timeZone: z.string().max(64).refine(isTimeZone, 'an IANA time zone').exactOptional(),
 });
 
 const layoutRegionSchema = z.object({
@@ -97,3 +101,11 @@ export const devicesContract = {
     .input(z.object({ image: z.string().min(1).max(100) }))
     .output(z.file()),
 };
+
+function isTimeZone(zone: string): boolean {
+  try {
+    return new Intl.DateTimeFormat('en-GB', { timeZone: zone }).resolvedOptions().timeZone !== '';
+  } catch {
+    return false;
+  }
+}

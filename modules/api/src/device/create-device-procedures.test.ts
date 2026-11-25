@@ -520,6 +520,49 @@ test('it updates the size that devices.list reads when a session resizes', async
   });
 });
 
+test('it keeps the time zone that a device sends with its size', async () => {
+  const ctx = await setupTest();
+  const device = await ctx.enrol('device', 'desk panel');
+  const row = await readDeviceByIdentity(ctx.writer.db, device.sessionID);
+
+  const stopped = new AbortController();
+
+  const events = await followTestDevice(
+    device.client,
+    { pixels: { width: 800, height: 600, timeZone: 'Australia/Sydney' } },
+    { signal: stopped.signal },
+  );
+
+  await events.next();
+
+  const opened = ctx.context.clients.devices.readPixels(row?.deviceID ?? '');
+
+  await device.client.devices.resize({
+    width: 1024,
+    height: 768,
+    pixelRatio: 2,
+    timeZone: 'Europe/London',
+  });
+
+  const resized = ctx.context.clients.devices.readPixels(row?.deviceID ?? '');
+
+  stopped.abort();
+
+  expect({ opened, resized }).toStrictEqual({
+    opened: { width: 800, height: 600, pixelRatio: 1, timeZone: 'Australia/Sydney' },
+    resized: { width: 1024, height: 768, pixelRatio: 2, timeZone: 'Europe/London' },
+  });
+});
+
+test('it refuses a resize with a time zone that does not exist', async () => {
+  const ctx = await setupTest();
+  const device = await ctx.enrol('device', 'desk panel');
+
+  expect(
+    device.client.devices.resize({ width: 800, height: 600, timeZone: 'Mars/Olympus' }),
+  ).rejects.toThrow();
+});
+
 test('it refuses a resize outside the screen bounds', async () => {
   const ctx = await setupTest();
   const device = await ctx.enrol('device', 'desk panel');

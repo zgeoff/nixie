@@ -2,13 +2,16 @@ import type { SandboxImageKey } from '@heynixie/sandbox';
 import type { ImageNeed } from '../part/list-image-needs';
 import type { SandboxImages } from './load-sandbox-manifest';
 
-// Returns the images that the needs name, or throws one refusal that holds each missing image and
+// Returns the images that the needs name, leaving out an optional one that the manifest lacks, or
+// throws one refusal that holds each missing image and
 // what needs it.
 export function pickNeededImages(
   images: SandboxImages,
   needs: readonly ImageNeed[],
 ): SandboxImages {
-  const missing = needs.filter((need) => images[need.key] === undefined);
+  const missing = needs.filter(
+    (need) => need.isOptional !== true && images[need.key] === undefined,
+  );
 
   if (missing.length > 0) {
     const held = Object.keys(images);

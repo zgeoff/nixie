@@ -144,10 +144,13 @@ under a name, lay the screen out again, and restore the saved layout in one call
    bun verify action layout-on-device --step preview --text 'The preview is back.'
    bun verify conversation turn --message 'Show me what the screen in the hall looks like.' --reply 'The preview is back.'
    bun verify db query "select json_extract(res.payload, '$.outcome') as outcome from records call join records res on json_extract(res.payload, '$.callID') = json_extract(call.payload, '$.callID') where call.kind = 'tool_called' and res.kind = 'tool_result' and json_extract(call.payload, '$.tool') = 'device.preview'"
+   bun verify model input --contains '\"picture\":\"shown'
    ```
 
    Expect: `layout-on-device` returns `data.replies` of 3, and `conversation turn` exits 0. The
-   query returns one row, with `outcome` `result`.
+   query returns one row, with `outcome` `result`. `model input` exits 0: the model's last input
+   holds the result with `picture` `shown`. A render that failed still gives the outcome `result`,
+   with `picture` `unavailable`, so only `model input` shows that the render worked.
 
 ## End state
 
@@ -156,7 +159,7 @@ under a name, lay the screen out again, and restore the saved layout in one call
 - `device_regions` holds 2 rows, `clock` and `note`, the regions of the restored layout that hold
   content.
 - `device_saved_layouts` holds the one row, `evening`.
-- In step 9, the model's one call of `device.preview` returned a result.
+- In step 9, the model's one call of `device.preview` returned a result with `picture` `shown`.
 - The screenshots are evidence for the reviewer. Check nothing in them.
 
 Once the end state matches, run `bun verify done`.

@@ -13,11 +13,11 @@ const renderFileSchema = z.strictObject({
 });
 
 export const renderRequestSchema = z.strictObject({
-  // the screen's size in CSS pixels
+  // the screen's size in device pixels, which is also the size of the picture
   width: z.int().min(1).max(20_000),
   height: z.int().min(1).max(20_000),
 
-  // device pixels per CSS pixel
+  // device pixels per CSS pixel, so the page's CSS size is the width divided by it
   pixelRatio: z.number().positive().max(16),
 
   files: z.array(renderFileSchema).max(512),

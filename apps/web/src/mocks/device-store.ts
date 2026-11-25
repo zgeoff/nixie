@@ -4,7 +4,12 @@ import { z } from 'zod';
 
 // the sizes that devices.resize received, so a test reads what the page sent
 const resizes = new Collection({
-  schema: z.object({ width: z.int(), height: z.int(), pixelRatio: z.number() }),
+  schema: z.object({
+    width: z.int(),
+    height: z.int(),
+    pixelRatio: z.number(),
+    timeZone: z.string().nullable(),
+  }),
 });
 
 // the errors that devices.pageError received, so a test reads what the page reported

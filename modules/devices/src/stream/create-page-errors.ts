@@ -14,6 +14,13 @@ export interface PageErrors {
   // keeps the error; the region's errors of other content are dropped, and only the newest 20 stay
   readonly record: (deviceID: string, error: PageError) => void;
 
+  // forgets the errors of a region, because its content changed
+  readonly remove: (deviceID: string, region: string) => void;
+
+  // forgets the errors of every region of the device but the named ones, because a new grid
+  // cleared the rest
+  readonly keepOnly: (deviceID: string, regions: readonly string[]) => void;
+
   // The errors of each region whose current content is the one named, oldest first. A region that
   // shows other content by now has none.
   readonly read: (deviceID: string, current: ReadonlyMap<string, string>) => readonly PageError[];
@@ -32,6 +39,18 @@ export function createPageErrors(): PageErrors {
 
       regions.set(error.region, [...same, error].slice(-pageErrorLimit));
       held.set(deviceID, regions);
+    },
+    remove: (deviceID, region) => {
+      held.get(deviceID)?.delete(region);
+    },
+    keepOnly: (deviceID, regions) => {
+      const kept = held.get(deviceID);
+
+      for (const region of kept?.keys() ?? []) {
+        if (!regions.includes(region)) {
+          kept?.delete(region);
+        }
+      }
     },
     read: (deviceID, current) =>
       [...(held.get(deviceID)?.values() ?? [])].flatMap((errors) =>

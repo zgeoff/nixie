@@ -1,13 +1,12 @@
 import { fitFetchedImage } from '@heynixie/connectors';
 import type { ToolImage } from '@heynixie/tools';
-import { collectLayoutImages } from '../layout/collect-layout-images';
 import { readLayout } from '../layout/read-layout';
-import { collectScreenImages } from '../screen/collect-screen-images';
 import { readScreenState } from '../screen/read-screen-state';
 import type { PageError } from '../stream/create-page-errors';
 import type { DevicePreviewOptions, DeviceToolOptions } from '../tool/device-tool-options';
 import type { Device, LayoutView, ScreenPixels } from '../types';
 import { buildPreviewPage } from './build-preview-page';
+import { collectSurfaceImages } from './collect-surface-images';
 import { pickPreviewSurface } from './pick-preview-surface';
 import { readPreviewImages } from './read-preview-images';
 
@@ -16,7 +15,8 @@ export interface DevicePreview {
   readonly pixels: ScreenPixels | null;
   readonly errors: readonly PageError[];
 
-  // null when the preview has no picture, whatever the reason
+  // null when the preview has no picture, whatever the reason; its long edge is at most the
+  // model's, so a large screen comes back smaller
   readonly picture: ToolImage | null;
 }
 
@@ -60,6 +60,10 @@ interface PictureInputs {
   readonly nowMs: number;
 }
 
+// The render's own picture of a screen, so its size is the device's, and a screen of 8000 by 6000
+// pixels draws. The cap still stops a device that claims a screen of 20000 by 20000.
+const maxPreviewPixels = 64_000_000;
+
 async function drawPicture(
   options: DeviceToolOptions,
   preview: DevicePreviewOptions,
@@ -70,20 +74,17 @@ async function drawPicture(
 
   const surface = pickPreviewSurface(state, inputs.layout);
 
-  const images = await readPreviewImages(options.log, [
-    ...collectScreenImages(state),
-    ...collectLayoutImages(inputs.layout),
-  ]);
+  const images = await readPreviewImages(options.log, collectSurfaceImages(surface));
 
   const outcome = await preview.draw({
-    width: Math.max(1, Math.round(inputs.pixels.width / inputs.pixels.pixelRatio)),
-    height: Math.max(1, Math.round(inputs.pixels.height / inputs.pixels.pixelRatio)),
+    width: inputs.pixels.width,
+    height: inputs.pixels.height,
     pixelRatio: inputs.pixels.pixelRatio,
     files: buildPreviewPage({
       surface,
       images,
       nowMs: inputs.nowMs,
-      timeZone: preview.timeZone,
+      timeZone: inputs.pixels.timeZone ?? preview.timeZone,
     }),
   });
 
@@ -91,7 +92,7 @@ async function drawPicture(
     return null;
   }
 
-  const fitted = await fitFetchedImage(outcome.png, preview.imageLongEdge);
+  const fitted = await fitFetchedImage(outcome.png, preview.imageLongEdge, maxPreviewPixels);
 
   return fitted.kind === 'image' ? fitted.image : null;
 }

@@ -2,19 +2,21 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { buildMockRenderRequest, readPNGSize, startLoopbackProbe } from '@heynixie/wire/test-utils';
 import { drawPicture } from './draw-picture';
 
-test('it draws a picture at the CSS size times the pixel ratio', async () => {
-  const reply = await drawPicture(
-    buildMockRenderRequest({ width: 936, height: 702, pixelRatio: 2 }),
-  );
+test.each([
+  { width: 1872, height: 1404, pixelRatio: 2 },
+  { width: 1873, height: 1404, pixelRatio: 2 },
+  { width: 1233, height: 1251, pixelRatio: 2.5 },
+])('it draws a picture of $width by $height pixels at ratio $pixelRatio', async (row) => {
+  const reply = await drawPicture(buildMockRenderRequest(row));
 
   const size = reply.kind === 'picture' ? readPNGSize(Buffer.from(reply.base64, 'base64')) : reply;
 
-  expect(size).toStrictEqual({ width: 1872, height: 1404 });
+  expect(size).toStrictEqual({ width: row.width, height: row.height });
 });
 
 test('it draws a picture of a screen larger than any real one', async () => {
   const reply = await drawPicture(
-    buildMockRenderRequest({ width: 4000, height: 3000, pixelRatio: 2 }),
+    buildMockRenderRequest({ width: 8000, height: 6000, pixelRatio: 2 }),
   );
 
   const size = reply.kind === 'picture' ? readPNGSize(Buffer.from(reply.base64, 'base64')) : reply;

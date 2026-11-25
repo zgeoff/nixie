@@ -23,7 +23,7 @@ export interface ServerPartValues {
   readonly sandbox_adapter: Tools['adapter'];
   readonly web_fetch: Tools['webFetch'];
   readonly computer: ComputerTools;
-  readonly render: RenderSandbox;
+  readonly render: RenderSandbox | null;
   readonly code_run: CodeRunPart;
   readonly worker: WorkerTool | null;
   readonly actions: Tools['actions'];

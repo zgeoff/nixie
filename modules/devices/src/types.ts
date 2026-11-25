@@ -68,6 +68,9 @@ export interface ScreenPixels {
 
   // device pixels per CSS pixel
   readonly pixelRatio: number;
+
+  // the IANA time zone of the device's browser, absent for a page that sent none
+  readonly timeZone?: string;
 }
 
 // A region's place in the grid, 1-based.

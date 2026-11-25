@@ -81,7 +81,9 @@ interface ConversationImages {
 export interface ConversationEndpointTools {
   readonly webFetch: ToolDefinition;
   readonly computer: readonly ToolDefinition[];
-  readonly render: RenderSandbox;
+
+  // null when the sandbox manifest holds no render image, so a preview has no picture
+  readonly render: RenderSandbox | null;
   readonly codeRun: ToolDefinition;
   readonly fileSend: ToolDefinition;
   readonly forget: ToolDefinition;
@@ -267,11 +269,15 @@ export async function startConversationEndpoint(
     definitions: options.context.definitions,
     clock: options.context.clock,
     streams: tools.deviceStreams,
-    preview: {
-      draw: tools.render.draw,
-      imageLongEdge: options.config.web_fetch.imageLongEdge,
-      timeZone: options.config.time.default_zone,
-    },
+    ...(tools.render === null
+      ? {}
+      : {
+          preview: {
+            draw: tools.render.draw,
+            imageLongEdge: options.config.web_fetch.imageLongEdge,
+            timeZone: options.config.time.default_zone,
+          },
+        }),
   });
 
   const worker = tools.worker === null ? [] : [tools.worker.buildTool(bounds)];

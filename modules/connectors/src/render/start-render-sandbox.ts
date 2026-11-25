@@ -1,6 +1,6 @@
 import type { Clock } from '@heynixie/clock';
 import { systemClock } from '@heynixie/clock';
-import type { Sandbox, SandboxAdapter, SandboxLimits } from '@heynixie/sandbox';
+import type { ExecStream, Sandbox, SandboxAdapter, SandboxLimits } from '@heynixie/sandbox';
 import { buildSandboxSpec } from '@heynixie/sandbox';
 import type { RenderRequest } from '@heynixie/wire';
 import { decodeRenderReply, encodeRenderMessage, renderFrameLimitBytes } from '@heynixie/wire';
@@ -127,7 +127,10 @@ async function createRenderSandbox(
   try {
     return await options.adapter.create(
       buildSandboxSpec({
-        kind: 'render',
+        // A render sandbox has the rule of a code run: no network, no grant and no tool route. A
+        // kind of its own would make the stored spec unreadable to the release before, whose
+        // startup parses every live spec and every sandbox record.
+        kind: 'code_run',
         image: options.image,
         owner: renderSandboxOwner,
         limits: options.sandboxLimits,
@@ -195,9 +198,24 @@ async function readPicture(
           refused: reply.refused,
         };
   } catch (error) {
-    await stream.stop();
+    await stopOrGiveUp(stream, limit);
 
     throw error;
+  }
+}
+
+const stopTimeoutMs = 5000;
+
+// A guest that ignores its stop never ends its exit, so the wait ends at a deadline of its own and
+// the destroy of the sandbox after it ends the guest.
+async function stopOrGiveUp(stream: ExecStream, limit: TimeLimit): Promise<void> {
+  try {
+    await waitOrTimeOut(stream.stop(), {
+      ...limit,
+      deadline: limit.clock.now() + stopTimeoutMs,
+    });
+  } catch {
+    // the sandbox's destroy follows, and a guest that did not stop dies with its sandbox
   }
 }
 

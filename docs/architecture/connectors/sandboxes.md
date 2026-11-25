@@ -31,7 +31,6 @@ route from the kind:
 | code run     | None      | No               | No           | No         |
 | fetch        | Public    | No               | No           | No         |
 | computer     | Public    | No               | No           | No         |
-| render       | None      | No               | No           | No         |
 | coding       | Allowlist | Yes              | Yes          | Yes        |
 
 The owner is the ID that the restart sweep checks to decide whether the sandbox still has work. For

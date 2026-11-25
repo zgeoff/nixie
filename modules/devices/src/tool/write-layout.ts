@@ -15,8 +15,8 @@ interface LayoutWrite {
 
 // Records a layout, points the device at it, and clears every region the new grid does not keep by
 // name: a region the grid keeps keeps its content. The short ID of the record is the layout's.
-export function writeLayout(options: DeviceToolOptions, write: LayoutWrite): Promise<string> {
-  return withWriteTransaction(options.log.writer, async (tx) => {
+export async function writeLayout(options: DeviceToolOptions, write: LayoutWrite): Promise<string> {
+  const recordedID = await withWriteTransaction(options.log.writer, async (tx) => {
     const layoutID = createShortID();
 
     const [record] = await writeRecordsInTransaction(tx, options.log, [
@@ -69,4 +69,11 @@ export function writeLayout(options: DeviceToolOptions, write: LayoutWrite): Pro
 
     return layoutID;
   });
+
+  options.streams.errors.keepOnly(
+    write.deviceID,
+    write.layout?.regions.map((region) => region.name) ?? [],
+  );
+
+  return recordedID;
 }

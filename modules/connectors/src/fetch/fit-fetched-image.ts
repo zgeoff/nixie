@@ -12,13 +12,18 @@ export type FittedImage =
 
 // Bun.Image refuses a canvas past this many pixels from its header, before it decodes, so a small
 // file that claims a huge canvas cannot take the host's memory: 25 million pixels decode to 100 MB.
-const maxPixels = 25_000_000;
+// A caller that drew the picture itself passes a higher cap.
+const defaultMaxPixels = 25_000_000;
 const jpegQuality = 85;
 
 // Every image is decoded and encoded again: a clean header can come before pixels that never
 // decode, and the SDK resends each image in every later request of the session. Bun runs the
 // decode and the encode on its own worker threads, off the event loop.
-export async function fitFetchedImage(bytes: Uint8Array, longEdge: number): Promise<FittedImage> {
+export async function fitFetchedImage(
+  bytes: Uint8Array,
+  longEdge: number,
+  maxPixels: number = defaultMaxPixels,
+): Promise<FittedImage> {
   try {
     const image = new Bun.Image(bytes, { maxPixels }).resize(longEdge, longEdge, {
       fit: 'inside',

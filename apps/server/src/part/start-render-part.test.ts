@@ -1,8 +1,10 @@
 import { expect, onTestFinished, test } from 'bun:test';
+import { imageLimits } from '@heynixie/contract';
 import { startTestDevices } from '@heynixie/devices/test-utils';
 import { setupTestRecorder } from '@heynixie/sandbox/test-utils';
 import { waitForCondition } from '@heynixie/testing';
 import { buildMockRenderRequest, readPNGSize, startLoopbackProbe } from '@heynixie/wire/test-utils';
+import invariant from 'tiny-invariant';
 import { createSandboxAdapter } from '../sandbox/create-sandbox-adapter';
 import { buildCleanup } from '../server/build-cleanup';
 import { startRenderPart } from './start-render-part';
@@ -24,13 +26,14 @@ async function setupTest() {
     hostEnv: {},
   });
 
-  const render = await startRenderPart({
-    options: { images: { render: { name: 'render', ref: 'render' } }, cleanup },
-    adapter,
-  });
-
   return {
-    render,
+    adapter,
+    cleanup,
+    startRender: () =>
+      startRenderPart({
+        options: { images: { render: { name: 'render', ref: 'render' } }, cleanup },
+        adapter,
+      }),
     probeSandboxGone: async () => {
       const left = await testRecorder.recorder.list('process', 'device_render');
 
@@ -39,11 +42,14 @@ async function setupTest() {
   };
 }
 
-test('it draws a preview at the size of a device of 1872 by 1404 pixels at a pixel ratio of 2', async () => {
+test('it draws a preview of a device of 1872 by 1404 pixels at a pixel ratio of 2 for the model', async () => {
   const ctx = await setupTest();
+  const render = await ctx.startRender();
+
+  invariant(render !== null);
 
   const devices = await startTestDevices({
-    preview: { draw: ctx.render.draw, imageLongEdge: 4000, timeZone: 'UTC' },
+    preview: { draw: render.draw, imageLongEdge: imageLimits.longEdge, timeZone: 'UTC' },
   });
 
   const device = await devices.seed.screenOnDevice();
@@ -84,12 +90,60 @@ test('it draws a preview at the size of a device of 1872 by 1404 pixels at a pix
       errors: [],
       picture: 'shown',
     },
-    size: { width: 1872, height: 1404 },
+    size: { width: 1568, height: 1176 },
   });
+});
+
+test('it draws a picture of a device of 8000 by 6000 pixels', async () => {
+  const ctx = await setupTest();
+  const render = await ctx.startRender();
+
+  invariant(render !== null);
+
+  const devices = await startTestDevices({
+    preview: { draw: render.draw, imageLongEdge: imageLimits.longEdge, timeZone: 'UTC' },
+  });
+
+  const device = await devices.seed.screenOnDevice();
+
+  devices.streams.open(device.deviceID, { width: 8000, height: 6000, pixelRatio: 2 });
+
+  const outcome = await devices.call('device.preview', { device: device.deviceID });
+
+  expect(outcome).toMatchObject({ result: { picture: 'shown' } });
+});
+
+test('it draws a render at the exact pixel size of a device of an odd width', async () => {
+  const ctx = await setupTest();
+  const render = await ctx.startRender();
+
+  invariant(render !== null);
+
+  const outcome = await render.draw(
+    buildMockRenderRequest({ width: 1873, height: 1404, pixelRatio: 2 }),
+  );
+
+  const size = outcome.kind === 'picture' ? readPNGSize(outcome.png) : outcome;
+
+  expect(size).toStrictEqual({ width: 1873, height: 1404 });
+});
+
+test('it starts no render sandbox for a manifest that holds no render image', async () => {
+  const ctx = await setupTest();
+
+  const render = await startRenderPart({
+    options: { images: {}, cleanup: ctx.cleanup },
+    adapter: ctx.adapter,
+  });
+
+  expect(render).toBeNull();
 });
 
 test('it makes no network request for a page that asks for a URL of its own', async () => {
   const ctx = await setupTest();
+  const render = await ctx.startRender();
+
+  invariant(render !== null);
 
   const probe = startLoopbackProbe();
 
@@ -99,7 +153,7 @@ test('it makes no network request for a page that asks for a URL of its own', as
 
   const script = `fetch(${JSON.stringify(probe.url)}).catch(() => {}).finally(() => { window.__nixieReady = true; });`;
 
-  const outcome = await ctx.render.draw(buildMockRenderRequest({ script }));
+  const outcome = await render.draw(buildMockRenderRequest({ script }));
 
   const refused = outcome.kind === 'picture' ? outcome.refused : null;
 

@@ -11,7 +11,8 @@ const readyFlag = '__nixieReady';
 const readyTimeoutMs = 10_000;
 
 // Opens the request's files as a page at the screen's CSS size and pixel ratio, in a browser that
-// starts on an empty profile and fetches nothing, and returns a picture of the page.
+// starts on an empty profile and fetches nothing, and returns a picture of the page that is exactly
+// the request's width and height in pixels.
 export async function drawPicture(request: RenderRequest): Promise<RenderReply> {
   const profile = await mkdtemp(join(tmpdir(), 'nixie-render-'));
 
@@ -20,7 +21,10 @@ export async function drawPicture(request: RenderRequest): Promise<RenderReply> 
   try {
     const context = await chromium.launchPersistentContext(profile, {
       headless: true,
-      viewport: { width: request.width, height: request.height },
+      viewport: {
+        width: Math.ceil(request.width / request.pixelRatio),
+        height: Math.ceil(request.height / request.pixelRatio),
+      },
       deviceScaleFactor: request.pixelRatio,
       serviceWorkers: 'block',
       args: ['--disable-quic', '--hide-scrollbars', '--force-color-profile=srgb'],
@@ -55,9 +59,22 @@ export async function drawPicture(request: RenderRequest): Promise<RenderReply> 
         timeout: readyTimeoutMs,
       });
 
-      const picture = await page.screenshot({ type: 'png' });
+      // The viewport takes whole CSS pixels, so a width that the ratio does not divide leaves it a
+      // pixel wider than the picture. A clip with a scale cuts the picture to the exact size.
+      const session = await context.newCDPSession(page);
 
-      return { kind: 'picture', base64: picture.toString('base64'), refused };
+      const shot = await session.send('Page.captureScreenshot', {
+        format: 'png',
+        clip: {
+          x: 0,
+          y: 0,
+          width: request.width / request.pixelRatio,
+          height: request.height / request.pixelRatio,
+          scale: request.pixelRatio,
+        },
+      });
+
+      return { kind: 'picture', base64: shot.data, refused };
     } finally {
       await context.close();
     }

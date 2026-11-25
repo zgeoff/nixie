@@ -23817,6 +23817,10 @@
                     "maximum": 16,
                     "exclusiveMinimum": 0,
                     "default": 1
+                  },
+                  "timeZone": {
+                    "type": "string",
+                    "maxLength": 64
                   }
                 },
                 "required": [
@@ -32008,6 +32012,10 @@
                                 "maximum": 16,
                                 "exclusiveMinimum": 0,
                                 "default": 1
+                              },
+                              "timeZone": {
+                                "type": "string",
+                                "maxLength": 64
                               }
                             },
                             "required": [

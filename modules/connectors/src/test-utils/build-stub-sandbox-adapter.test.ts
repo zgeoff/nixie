@@ -444,3 +444,24 @@ test('it refuses an exec and a copy in of a destroyed sandbox', async () => {
   await expect(sandbox.exec({ argv: ['echo'] })).toReject();
   await expect(sandbox.copyIn([])).toReject();
 });
+
+test('it leaves the exit of a guest open when the adapter ignores a stop', async () => {
+  const adapter = buildStubSandboxAdapter(() => Promise.withResolvers<number>().promise, {
+    isStopIgnored: true,
+  });
+
+  const sandbox = await adapter.create({
+    kind: 'fetch',
+    image: 'fetch',
+    owner: 'web_fetch',
+    egress: { kind: 'public' },
+    grants: [],
+    toolRoute: false,
+    limits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
+  });
+
+  const stream = await sandbox.spawn({ argv: ['fetcher'], maxMessageBytes: 100 });
+  const settled = await Promise.race([stream.stop().then(() => 'stopped'), 'still running']);
+
+  expect(settled).toBe('still running');
+});

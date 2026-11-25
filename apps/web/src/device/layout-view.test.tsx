@@ -250,3 +250,49 @@ test('it reports to the server the error of an image that a region cannot read',
     ).toStrictEqual([['pond', 'sh3k7m2q9x']]);
   });
 });
+
+test('it reports again for a replacement image that fails with the same reason', async () => {
+  await createDeviceSession();
+
+  const first = {
+    columns: ['1fr'],
+    rows: ['1fr'],
+    regions: [
+      {
+        name: 'pond',
+        column: 1,
+        row: 1,
+        columnSpan: 1,
+        rowSpan: 1,
+        background: null,
+        content: { kind: 'image' as const, image: missingImage, fit: 'whole' as const },
+        shown: 'sh3k7m2q9x',
+        until: null,
+      },
+    ],
+  };
+
+  const replaced = {
+    ...first,
+    regions: first.regions.map((region) => ({
+      ...region,
+      content: { kind: 'image' as const, image: `${missingImage}-2`, fit: 'whole' as const },
+      shown: 'sh8d4n6w1z',
+    })),
+  };
+
+  const rendered = render(<LayoutView layout={first} />);
+
+  await waitFor(() => {
+    expect(deviceStore.pageErrors.findMany()).toHaveLength(1);
+  });
+
+  rendered.rerender(<LayoutView layout={replaced} />);
+
+  await waitFor(() => {
+    expect(deviceStore.pageErrors.findMany().map((error) => error.shown)).toStrictEqual([
+      'sh3k7m2q9x',
+      'sh8d4n6w1z',
+    ]);
+  });
+});

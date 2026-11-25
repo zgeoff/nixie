@@ -18,8 +18,13 @@ const testRenderArgv: readonly string[] = [
   join(import.meta.dir, '../../../../guests/render/src/test-main.ts'),
 ];
 
-// The render sandbox of the device preview: one new sandbox for each render, with no network.
-export async function startRenderPart(inputs: RenderPartInputs): Promise<RenderSandbox> {
+// The render sandbox of the device preview: one new sandbox for each render, with no network. A
+// deployment whose sandbox manifest holds no render image gets none, and its previews draw nothing.
+export async function startRenderPart(inputs: RenderPartInputs): Promise<RenderSandbox | null> {
+  if (inputs.options.images.render === undefined) {
+    return null;
+  }
+
   const render = startRenderSandbox({
     adapter: inputs.adapter,
     image: getSandboxImage(inputs.options.images, 'render').name,

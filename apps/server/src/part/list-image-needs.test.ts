@@ -64,7 +64,7 @@ test('it needs each image that a declaration names', async () => {
     { key: 'conversation', neededBy: 'the profile scripted on the agent-sdk harness' },
     { key: 'fetch', neededBy: 'the web_fetch part' },
     { key: 'computer', neededBy: 'the computer part' },
-    { key: 'render', neededBy: 'the render part' },
+    { key: 'render', neededBy: 'the render part', isOptional: true },
     { key: 'code', neededBy: 'the code_run part' },
   ]);
 });

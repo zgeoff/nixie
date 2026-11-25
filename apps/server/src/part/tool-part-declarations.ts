@@ -73,7 +73,7 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
   {
     name: 'render',
     needs: ['inputs', 'sandbox_adapter'],
-    images: () => ['render'],
+    optionalImages: () => ['render'],
     start: (parts) =>
       startRenderPart({
         options: parts.get('inputs').options,

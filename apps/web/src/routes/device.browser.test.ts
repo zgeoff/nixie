@@ -1,5 +1,7 @@
 import { expect, onTestFinished, test } from 'bun:test';
+import { waitForCondition } from '@heynixie/testing';
 import { deviceStore } from '../mocks/device-store';
+import { brokenImage } from '../mocks/mock-device-procedures';
 import { store } from '../mocks/store';
 import { setupSignedInBrowser } from '../test-utils/setup-signed-in-browser';
 import { startBuiltWeb } from '../test-utils/start-built-web';
@@ -432,5 +434,35 @@ test('it hides the screen buttons 4 seconds after the latest touch', async () =>
   expect([before, after]).toStrictEqual([
     ['Close', 'Full screen', 'Switch off screen', 'Sign out'],
     [],
+  ]);
+});
+
+test('it reports to the server an image that downloads but cannot be decoded', async () => {
+  const ctx = await setupTest();
+
+  deviceStore.layoutHolder.layout = {
+    columns: ['1fr'],
+    rows: ['1fr'],
+    regions: [
+      {
+        name: 'pond',
+        column: 1,
+        row: 1,
+        columnSpan: 1,
+        rowSpan: 1,
+        background: null,
+        content: { kind: 'image', image: brokenImage, fit: 'whole' },
+        shown: 'sh3k7m2q9x',
+        until: null,
+      },
+    ],
+  };
+
+  await ctx.switchScreenOn();
+
+  await waitForCondition(() => deviceStore.pageErrors.findMany().length === 1);
+
+  expect(deviceStore.pageErrors.findMany().map((error) => error.message)).toStrictEqual([
+    'the picture could not be decoded',
   ]);
 });

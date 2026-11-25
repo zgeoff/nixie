@@ -53,3 +53,32 @@ test('it keeps the errors of each device apart', () => {
 
   expect(errors.read('dev2', new Map([['pond', 'aaa']]))).toStrictEqual([]);
 });
+
+test('it forgets the errors of a region that a remove names, and keeps the other regions', () => {
+  const errors = createPageErrors();
+
+  errors.record('dev1', { region: 'pond', shown: 'aaa', atMs: 1, message: 'one' });
+  errors.record('dev1', { region: 'note', shown: 'bbb', atMs: 2, message: 'two' });
+  errors.remove('dev1', 'pond');
+
+  expect(errors.read('dev1', new Map([['pond', 'aaa']]))).toStrictEqual([]);
+
+  expect(errors.read('dev1', new Map([['note', 'bbb']]))).toStrictEqual([
+    { region: 'note', shown: 'bbb', atMs: 2, message: 'two' },
+  ]);
+});
+
+test('it keeps only the errors of the regions that keepOnly names', () => {
+  const errors = createPageErrors();
+
+  errors.record('dev1', { region: 'pond', shown: 'aaa', atMs: 1, message: 'one' });
+  errors.record('dev1', { region: 'note', shown: 'bbb', atMs: 2, message: 'two' });
+  errors.record('dev2', { region: 'pond', shown: 'ccc', atMs: 3, message: 'three' });
+  errors.keepOnly('dev1', ['note']);
+
+  expect({
+    pond: errors.read('dev1', new Map([['pond', 'aaa']])),
+    note: errors.read('dev1', new Map([['note', 'bbb']])).length,
+    other: errors.read('dev2', new Map([['pond', 'ccc']])).length,
+  }).toStrictEqual({ pond: [], note: 1, other: 1 });
+});
