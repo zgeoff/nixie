@@ -2,6 +2,7 @@ import { onTestFinished } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { budgetProjections } from '@heynixie/budgets';
 import type { Log, Writer } from '@heynixie/log';
 import { logProjections, startWriter } from '@heynixie/log';
 import type { FakeClock } from '@zgeoff/testing/clock';
@@ -42,7 +43,12 @@ export async function startTestTasks(): Promise<TestTasks> {
     'unwrapKey',
   ]);
 
-  const log: Log = { writer, deploymentKey, projections: [...logProjections, ...tasksProjections] };
+  const log: Log = {
+    writer,
+    deploymentKey,
+    projections: [...logProjections, ...budgetProjections, ...tasksProjections],
+  };
+
   const clock = createFakeClock({ startMs: 1_000_000 });
   const definitionStore = buildTestDefinitionStore();
 

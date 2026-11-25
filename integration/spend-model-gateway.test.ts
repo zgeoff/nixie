@@ -132,6 +132,18 @@ test('it registers, reads and removes a sandbox', async () => {
   expect(after).toStrictEqual({ kind: 'not_found' });
 });
 
+test('it patches the limit of a sandbox and reports a name the gateway lacks', async () => {
+  const ctx = await setupTest();
+
+  await ctx.spend.putSandbox('nixie-abc', { dollars: 2, tokens: 2000 });
+
+  const patched = await ctx.spend.patchSandbox('nixie-abc', { dollars: 1.6 });
+  const missing = await ctx.spend.patchSandbox('nixie-none', { dollars: 1.6 });
+
+  expect(patched).toStrictEqual({ kind: 'ok' });
+  expect(missing).toStrictEqual({ kind: 'not_found' });
+});
+
 test('it registers a sandbox as count only', async () => {
   const ctx = await setupTest();
   const put = await ctx.spend.putSandbox('nixie-abc', null);

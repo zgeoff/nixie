@@ -1,19 +1,21 @@
 import type { Projection } from '@heynixie/log';
 import type { Transaction } from 'kysely';
+import { foldRunSpend } from '../ledger/fold-run-spend';
 import { readChargeLedgerKey } from '../ledger/read-charge-ledger-key';
 import { splitLedgerKey } from '../ledger/split-ledger-key';
 import { budgetChargedCodec } from '../record/budget-charged-codec';
 import { budgetCreditedCodec } from '../record/budget-credited-codec';
 import type { BudgetsTables } from '../types';
 
-// The amount of each counter in each period, in integer units. A credit subtracts from the row its
+// The amount of each counter in each period, in integer units. A budget's row adds its charges, and a
+// task run's or a worker run's row is set by the record that ends the run. A credit subtracts from the row its
 // charge added to, so it folds before the charges projection marks that charge credited.
 export const spendLedgerProjection: Projection = {
   table: 'spend_ledger',
   keyColumn: 'ledger_key',
   fold: async (tx, record) => {
     if (record.thread !== null) {
-      return [];
+      return foldRunSpend(tx, record);
     }
 
     const tables = tx.$extendTables<BudgetsTables>();

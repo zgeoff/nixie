@@ -11,6 +11,7 @@ import type { PeriodChange, PeriodStore, PeriodStoreHandle, PeriodsConfig } from
 import { buildStatus } from './build-status';
 import type { ControlOutcome } from './control-outcome';
 import { pickRaiseChange } from './pick-raise-change';
+import { pickSandboxPatchChange } from './pick-sandbox-patch-change';
 import { pickSandboxRemoveChange } from './pick-sandbox-remove-change';
 import { pickSandboxSetChange } from './pick-sandbox-set-change';
 
@@ -43,6 +44,12 @@ const raiseBodySchema = z.strictObject({
 
 const sandboxBodySchema = z.strictObject({ limit: positiveMeasuresSchema.nullable() });
 
+const sandboxPatchBodySchema = z.strictObject({
+  limit: z
+    .strictObject({ dollars: z.number().positive(), tokens: z.number().positive().optional() })
+    .nullable(),
+});
+
 export function makeControlHandler(
   deps: ControlHandlerDeps,
 ): (request: Request) => Promise<Response> {
@@ -68,6 +75,10 @@ export function makeControlHandler(
 
     if (outcome.kind === 'period_ended') {
       return Promise.resolve(Response.json({ error: 'period_ended' }, { status: 409 }));
+    }
+
+    if (outcome.kind === 'not_found') {
+      return Promise.resolve(Response.json({ error: 'not_found' }, { status: 404 }));
     }
 
     return answerStatus();
@@ -131,6 +142,22 @@ export function makeControlHandler(
       await changeStore((store) => pickSandboxSetChange(store, name.data, body.data.limit));
 
       return new Response(null, { status: 204 });
+    }
+
+    if (request.method === 'PATCH') {
+      const body = await readBody(request, sandboxPatchBodySchema);
+
+      if (body.kind === 'invalid') {
+        return renderInvalid(body.message);
+      }
+
+      const outcome = await changeStore((store) =>
+        pickSandboxPatchChange(store, name.data, body.data.limit),
+      );
+
+      return outcome.kind === 'not_found'
+        ? Response.json({ error: 'not_found' }, { status: 404 })
+        : new Response(null, { status: 204 });
     }
 
     if (request.method === 'DELETE') {

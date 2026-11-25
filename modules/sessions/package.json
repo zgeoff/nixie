@@ -37,6 +37,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@heynixie/budgets": "workspace:*",
     "@heynixie/testing": "workspace:*",
     "@zgeoff/testing": "catalog:",
     "kysely": "catalog:"

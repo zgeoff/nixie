@@ -62,6 +62,7 @@ export type {
   PlanLogins,
   PlanLoginsHolder,
   SandboxCount,
+  SandboxLimit,
   SpendContext,
   SpendGateway,
   SpendMeasure,

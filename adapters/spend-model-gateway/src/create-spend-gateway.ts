@@ -85,6 +85,15 @@ export function createSpendGateway(options: SpendGatewayOptions): SpendGateway {
 
       return parseNoContent(answer);
     },
+    patchSandbox: async (name, limit) => {
+      const answer = await send('PATCH', `/sandboxes/${encodeURIComponent(name)}`, { limit });
+
+      if (!isUnreachable(answer) && answer.status === 404) {
+        return { kind: 'not_found' };
+      }
+
+      return parseNoContent(answer);
+    },
     readSandbox: async (name) => {
       const answer = await send('GET', `/sandboxes/${encodeURIComponent(name)}`);
 

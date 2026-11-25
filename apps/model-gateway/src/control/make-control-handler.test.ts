@@ -103,6 +103,7 @@ test.each([
   ['POST', '/raise'],
   ['PUT', '/sandboxes/alpha'],
   ['GET', '/sandboxes/alpha'],
+  ['PATCH', '/sandboxes/alpha'],
   ['DELETE', '/sandboxes/alpha'],
   ['GET', '/anything-else'],
 ])('it answers %s %s with a 401 and no change when the token is wrong', async (method, path) => {
@@ -447,6 +448,32 @@ test('it sets the count of a sandbox that it already holds back to zero', async 
     tripped: false,
     lastRefusal: null,
   });
+});
+
+test('it patches the limit of a sandbox and keeps its count', async () => {
+  const ctx = await setupTest();
+
+  await ctx.call('PUT', '/sandboxes/alpha', { limit: { dollars: 5, tokens: 2_000_000 } });
+  await ctx.store.addSpend('plan', 'alpha', { dollars: 2.5, tokens: 10 });
+
+  const patch = await ctx.call('PATCH', '/sandboxes/alpha', { limit: { dollars: 2 } });
+  const get = await ctx.call('GET', '/sandboxes/alpha');
+
+  expect(patch).toStrictEqual({ status: 204, body: null });
+
+  expect(get.body).toStrictEqual({
+    dollars: 2.5,
+    tokens: 10,
+    tripped: true,
+    lastRefusal: null,
+  });
+});
+
+test('it answers a patch of a sandbox that the store lacks with a 404', async () => {
+  const ctx = await setupTest();
+  const patch = await ctx.call('PATCH', '/sandboxes/ghost', { limit: { dollars: 2 } });
+
+  expect(patch.status).toBe(404);
 });
 
 test('it reports a sandbox past its limit as tripped', async () => {

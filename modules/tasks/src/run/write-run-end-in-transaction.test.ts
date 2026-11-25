@@ -1,11 +1,13 @@
 import { expect, test } from 'bun:test';
 import type { RecordKind } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
+import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
 import { writeStepCommit } from '../step/write-step-commit';
 import { writeTaskLimitRaise } from '../task/limit/write-task-limit-raise';
 import { claimTask } from '../task/projection/claim-task';
 import { writeTaskControl } from '../task/write-task-control';
+import { buildTestRunSettings } from '../test-utils/build-test-run-settings';
 import { seedConversationStep } from '../test-utils/seed-conversation-step';
 import { seedDefinitionTask } from '../test-utils/seed-definition-task';
 import { seedTask } from '../test-utils/seed-task';
@@ -65,6 +67,41 @@ test('it opens one task run at the claim of a started task, and joins it on a re
   expect(opened).toHaveLength(1);
   expect(run?.opened.limits).toStrictEqual({ turns: 25, dollars: 2, calls: {} });
   expect(run?.opened.report).toStrictEqual({ mode: 'wake', target: 'conversation' });
+});
+
+test('it sets the ledger row of the task run to its dollars in the transaction of its end', async () => {
+  const ctx = await setupTest();
+  const taskID = await ctx.startTask();
+  const claim = await ctx.claim(taskID);
+
+  const priced = {
+    ...ctx.context,
+    runSettings: buildTestRunSettings({ used: { turns: 3, dollars: 0.41 } }),
+  };
+
+  await writeStepCommit(priced, claim, {
+    next: 'done',
+    records: [],
+    acknowledged: [],
+    run: { activity: 'worked', report: { summary: 'High tide is at 06:42.' } },
+  });
+
+  const [ended] = await ctx.readKinds('task.run_ended');
+
+  const ledger =
+    await sql`select counter, unit, period_kind, period_start, amount from spend_ledger`.execute(
+      ctx.writer.db,
+    );
+
+  expect(ledger.rows).toStrictEqual([
+    {
+      counter: `task_run:${String(ended?.payload['runID'])}`,
+      unit: 'micros:USD',
+      period_kind: 'none',
+      period_start: '',
+      amount: 410_000,
+    },
+  ]);
 });
 
 test('it ends the task run as reported with the words the task sent, and wakes the starter with a report message', async () => {

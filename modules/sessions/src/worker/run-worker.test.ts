@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { budgetProjections } from '@heynixie/budgets';
 import { createTestCredentials } from '@heynixie/credentials/test-utils';
 import type { JSONObject, RecordKinds } from '@heynixie/log';
 import { readRecords, writeRecords } from '@heynixie/log';
@@ -11,6 +12,7 @@ import { waitForCondition } from '@heynixie/testing';
 import type { GuestToolRun, ToolOutcome, ToolStepHold } from '@heynixie/tools';
 import { buildMockToolContext, buildMockToolDefinition } from '@heynixie/tools/test-utils';
 import { createFakeClock } from '@zgeoff/testing/clock';
+import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
 import { startTestSessionHost } from '../test-utils/start-test-session-host';
 import { startWorkerTool } from './start-worker-tool';
@@ -53,7 +55,7 @@ async function setupTest(config: SetupConfig = {}) {
   const host = await startTestSessionHost({
     clock,
     tools: [fetchTool],
-    projections: spendProjections,
+    projections: [...spendProjections, ...budgetProjections],
   });
 
   const prices = { input: 3, cache_write: 3.75, cache_write_1h: 6, cached_input: 0.3, output: 15 };
@@ -304,6 +306,14 @@ async function setupTest(config: SetupConfig = {}) {
       const entries = await readRecords(host.context.log, { afterSequence: 0, kinds: [...kinds] });
 
       return entries.map((entry) => entry.record);
+    },
+    readLedger: async () => {
+      const rows =
+        await sql`select counter, unit, amount from spend_ledger order by ledger_key`.execute(
+          host.context.log.writer.db,
+        );
+
+      return rows.rows;
     },
     readOwners: async () => {
       const entries = await readRecords(host.context.log, {
@@ -973,6 +983,30 @@ test('it records the dollars the gateway counted beyond the priced calls of the 
   const records = await ctx.readKinds(['worker.gateway_charged']);
 
   expect(records.map((record) => record.payload['dollars'])).toStrictEqual([0.42]);
+});
+
+test('it sets the ledger rows of a run to the dollars and tokens the gateway counted, in micros', async () => {
+  const ctx = await setupTest({ isGatewayOn: true });
+
+  ctx.gateway.readSandbox.mockResolvedValue({
+    kind: 'ok',
+    value: { dollars: 0.42, tokens: 7777, tripped: false, lastRefusal: null },
+  });
+
+  ctx.guest.addKindReplies('worker', { text: 'Done.' });
+
+  await ctx.callWorker({ question: 'Which cafes are open?' });
+
+  const [ended] = await ctx.readKinds(['worker.run_ended']);
+
+  const counter = `worker_run:${String(ended?.payload['workerRunID'])}`;
+
+  const ledger = await ctx.readLedger();
+
+  expect(ledger).toStrictEqual([
+    { counter, unit: 'micros:USD', amount: 420_000 },
+    { counter, unit: 'tokens', amount: 7777 },
+  ]);
 });
 
 test('it charges the calling task the planned dollars when the gateway does not answer the count', async () => {
