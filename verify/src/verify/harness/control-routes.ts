@@ -84,6 +84,10 @@ export const controlRoutes = {
       // opens the newest, before its reply
       mailRead: z.strictObject({ from: z.string().min(1) }).optional(),
 
+      // the model searches the connected Google account's mail with this query, opens the first
+      // mail the search lists, and replies to it with this text, before its own reply
+      gmailReply: z.strictObject({ query: z.string().min(1), text: z.string().min(1) }).optional(),
+
       // a picture the model draws with the image tool before its reply, the one edit it then makes
       // to that picture, and a list of its pictures
       draw: drawnPictureSchema.optional(),

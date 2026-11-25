@@ -70,6 +70,7 @@ The mistakes that cost the most time:
 | device-layout      | Lay out a screen in regions, and change them                              | [references/feature-device-layout.md](references/feature-device-layout.md)           |
 | live-updates       | Pause from the host, see it on the page                                   | [references/feature-live-updates.md](references/feature-live-updates.md)             |
 | mail-wake          | Mail wakes the chat                                                       | [references/feature-mail-wake.md](references/feature-mail-wake.md)                   |
+| gmail-tools        | Search and read a mail, and approve the reply the assistant writes        | [references/feature-gmail-tools.md](references/feature-gmail-tools.md)               |
 
 <!-- /wringer:features -->
 

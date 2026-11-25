@@ -56,8 +56,7 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
   },
   {
     name: 'web_fetch',
-    needs: ['inputs', 'context', 'sandbox_adapter'],
-    uses: ['connections'],
+    needs: ['inputs', 'context', 'sandbox_adapter', 'google_tools'],
     images: () => ['fetch'],
     start: async (parts) => {
       const webFetch = await startWebFetchPart({
@@ -66,7 +65,7 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
         log: parts.get('context').apiContext.log,
       });
 
-      parts.find('connections')?.bindHTMLReader(webFetch.readHTML);
+      parts.get('google_tools').bindHTMLReader(webFetch.readHTML);
 
       return webFetch;
     },
@@ -121,8 +120,7 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
   },
   {
     name: 'actions',
-    needs: ['inputs', 'context', 'computer'],
-    uses: ['connections'],
+    needs: ['inputs', 'context', 'computer', 'google_tools'],
     start: (parts) => {
       const options = parts.get('inputs').options;
       const apiContext = parts.get('context').apiContext;
@@ -140,9 +138,7 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
       const mailContext = buildServerMailContext(mail, apiContext, options.log);
       const withMail = addMailConnectors(withCoding, mail, mailContext);
 
-      return Promise.resolve(
-        addGoogleConnectors(withMail, parts.find('connections')?.actions ?? []),
-      );
+      return Promise.resolve(addGoogleConnectors(withMail, parts.get('google_tools').actions));
     },
   },
   {
@@ -157,6 +153,7 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
       'worker',
       'actions',
       'decisions',
+      'google_tools',
     ],
     uses: [
       'memory',
@@ -192,7 +189,7 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
           render: parts.get('render'),
           coding: buildServerCodingTools(parts.get('context')),
           mail: buildServerMailTools(mailContext, parts.get('web_fetch')),
-          google: parts.find('connections')?.actions.map((action) => action.tool) ?? [],
+          google: parts.get('google_tools').actions.map((action) => action.tool),
 
           buildCodingStart: buildServerCodingStart(parts.get('context')),
           codeRun: parts.get('code_run').tool,

@@ -37,7 +37,15 @@ export function buildGmailLabelTool(deps: GmailDeps): ToolDefinition {
       required: ['threads', 'add', 'remove'],
       additionalProperties: false,
     },
-    output: { type: 'object' },
+    output: {
+      type: 'object',
+      properties: {
+        threads: { type: 'array', items: { type: 'string' } },
+        created: { type: ['array', 'null'], items: { type: 'string' } },
+      },
+      required: ['threads', 'created'],
+      additionalProperties: false,
+    },
     declaration: gmailDeclarations.label,
     execution: 'queued',
     resolveInput: makeResolveGmailInput(deps.access),

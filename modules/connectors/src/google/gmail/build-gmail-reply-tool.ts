@@ -25,7 +25,12 @@ export function buildGmailReplyTool(deps: GmailDeps): ToolDefinition {
       "reply is queued under your rules, and the call returns the action's ID. Once it runs, " +
       'its outcome holds the sent message and its thread.',
     input: replyInputSchema,
-    output: { type: 'object' },
+    output: {
+      type: 'object',
+      properties: { message: { type: 'string' }, thread: { type: 'string' } },
+      required: ['message', 'thread'],
+      additionalProperties: false,
+    },
     declaration: gmailDeclarations.reply,
     execution: 'queued',
     resolveInput: makeResolveGmailInput(deps.access),

@@ -14,6 +14,20 @@ import {
 } from './send-arguments-schema';
 import type { GmailDeps } from './types';
 
+const sentOutput = {
+  type: 'object',
+  properties: { message: { type: 'string' }, thread: { type: 'string' } },
+  required: ['message', 'thread'],
+  additionalProperties: false,
+} as const;
+
+const draftOutput = {
+  type: 'object',
+  properties: { draft: { type: 'string' } },
+  required: ['draft'],
+  additionalProperties: false,
+} as const;
+
 export type NewMailKind = 'send' | 'draft';
 
 // gmail.send and gmail.draft: a new mail from the connected account. A send queues an action under
@@ -33,7 +47,7 @@ export function buildGmailSendTool(deps: GmailDeps, kind: NewMailKind): ToolDefi
         : 'Writes a draft mail in a connected Google account and sends nothing. The call returns ' +
           "the action's ID, and its outcome holds the draft, which gmail.send_draft sends.",
     input: newMailInputSchema,
-    output: { type: 'object' },
+    output: kind === 'send' ? sentOutput : draftOutput,
     declaration: kind === 'send' ? gmailDeclarations.send : gmailDeclarations.draft,
     execution: 'queued',
     resolveInput: makeResolveGmailInput(deps.access),

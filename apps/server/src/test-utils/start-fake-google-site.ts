@@ -22,6 +22,7 @@ export function startFakeGoogleSite(): FakeGoogleSite {
   gmail.seed({
     from: 'Sam Lee <sam@example.org>',
     to: ['verify@example.test'],
+    replyTo: 'reports@example.org',
     subject: 'Q3 numbers',
     text: 'Hi, the Q3 numbers are in the shared sheet.',
   });

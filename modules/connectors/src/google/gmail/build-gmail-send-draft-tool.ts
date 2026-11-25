@@ -25,7 +25,12 @@ export function buildGmailSendDraftTool(deps: GmailDeps): ToolDefinition {
       "send is queued under your rules, and the call returns the action's ID. Once it runs, " +
       'its outcome holds the sent message and its thread.',
     input: sendDraftInputSchema,
-    output: { type: 'object' },
+    output: {
+      type: 'object',
+      properties: { message: { type: 'string' }, thread: { type: 'string' } },
+      required: ['message', 'thread'],
+      additionalProperties: false,
+    },
     declaration: gmailDeclarations.sendDraft,
     execution: 'queued',
     resolveInput: makeResolveGmailInput(deps.access),

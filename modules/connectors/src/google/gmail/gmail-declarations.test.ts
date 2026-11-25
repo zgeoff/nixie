@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { buildToolRegistry } from '@heynixie/tools';
 import { startGmailTools } from '../../test-utils/start-gmail-tools';
 import { gmailDeclarations } from './gmail-declarations';
 
@@ -105,4 +106,12 @@ test.each([
   const ctx = await startGmailTools();
 
   expect(ctx.findAction(row.tool).tool.execution).toBe(row.execution);
+});
+
+test('it registers every Gmail tool, each result field with a source', async () => {
+  const ctx = await startGmailTools();
+
+  const registry = buildToolRegistry(ctx.actions.map((action) => action.tool));
+
+  expect(registry.toolNames).toHaveLength(8);
 });
