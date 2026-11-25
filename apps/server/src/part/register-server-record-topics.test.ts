@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import { collectModuleRecordTopicMaps } from '@heynixie/api';
+import { connectionRecordTopics } from '@heynixie/connections';
 import { credentialRecordTopics } from '@heynixie/credentials';
 import { startTestLog } from '@heynixie/log/test-utils';
 import { sandboxRecordTopics } from '@heynixie/sandbox';
@@ -12,6 +13,7 @@ async function setupTest() {
   const registered = new Map<string, readonly string[]>(
     [
       ...collectModuleRecordTopicMaps(),
+      connectionRecordTopics,
       credentialRecordTopics,
       sandboxRecordTopics,
       serverRecordTopics,

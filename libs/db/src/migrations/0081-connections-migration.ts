@@ -10,6 +10,7 @@ export const connectionsMigration: Migration = {
     await sql`create table if not exists oauth_clients (
       oauth_client_id text primary key,
       connector_id text not null default 'google',
+      provider_client_id text not null,
       key_id text not null,
       secret_sealed blob,
       removal_counter integer not null default 0,

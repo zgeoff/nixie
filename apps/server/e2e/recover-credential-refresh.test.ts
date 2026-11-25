@@ -127,7 +127,7 @@ test('it finds nothing to recover on the start after the one that marked the cre
   ]);
 });
 
-test('it keeps the saved token and its record together when the process dies between them', async () => {
+test('it keeps the saved token and its record together when the process dies after the save', async () => {
   const ctx = await setupTest();
 
   const first = ctx.nixie.harness.start();
@@ -149,10 +149,80 @@ test('it keeps the saved token and its record together when the process dies bet
   await second.ready;
 
   const status = await second.request('readCredentialStatus', ctx.config);
+  const generation = await second.request('readCredentialToken', ctx.config);
+  const keys = await second.request('readCredentialKeys', null);
   const kinds = await ctx.readCredentialKinds();
 
   await second.kill();
 
   expect(status).toBe('active');
+  expect(generation).toBe(2);
+
+  // the client's key, the connection's account key and the new token's key: the start swept the key
+  // that the save replaced
+  expect(keys).toBe(3);
   expect(kinds).toStrictEqual(['credential.refresh_started', 'credential.refresh_saved']);
+});
+
+test('it keeps the old token whole when the process dies before the save commits', async () => {
+  const ctx = await setupTest();
+
+  const first = ctx.nixie.harness.start();
+
+  await first.ready;
+
+  await first.request('connectCredential', ctx.config);
+  await first.request('arm', { point: 'credential.refresh.before_save' });
+
+  const refreshing = Promise.allSettled([first.request('refreshCredential', ctx.config)]);
+
+  await first.waitForArrival('credential.refresh.before_save');
+  await first.kill();
+
+  await refreshing;
+
+  const second = ctx.nixie.harness.start();
+
+  await second.ready;
+
+  const generation = await second.request('readCredentialToken', ctx.config);
+  const keys = await second.request('readCredentialKeys', null);
+
+  await second.kill();
+
+  expect(generation).toBe(1);
+
+  // the start swept the key that the unsaved refresh made
+  expect(keys).toBe(3);
+});
+
+test('it gives needs_consent when the provider spent the old token that a crash kept', async () => {
+  const ctx = await setupTest();
+
+  const first = ctx.nixie.harness.start();
+
+  await first.ready;
+
+  await first.request('connectCredential', ctx.config);
+  await first.request('arm', { point: 'credential.refresh.before_save' });
+
+  const refreshing = Promise.allSettled([first.request('refreshCredential', ctx.config)]);
+
+  await first.waitForArrival('credential.refresh.before_save');
+  await first.kill();
+
+  await refreshing;
+
+  ctx.provider.answerToken(() => Response.json({ error: 'invalid_grant' }, { status: 400 }));
+
+  const second = ctx.nixie.harness.start();
+
+  await second.ready;
+
+  const outcome = await second.request('refreshCredential', ctx.config);
+  const status = await second.request('readCredentialStatus', ctx.config);
+
+  await second.kill();
+
+  expect([outcome, status]).toStrictEqual(['needs_consent', 'needs_consent']);
 });

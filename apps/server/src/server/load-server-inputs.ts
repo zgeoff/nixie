@@ -5,6 +5,7 @@ import { startONNXEncoder } from '@heynixie/encoder-onnx';
 import { makeThresholdLogger } from '@heynixie/logger';
 import type { ModelCredentials } from '@heynixie/models';
 import { readOwnerConfig } from '../config/read-owner-config';
+import { createHeldSlot } from '../credential/create-held-slot';
 import { resolveDefinitionsExport } from '../definition/resolve-definitions-export';
 import { readDeploymentConfig } from '../deployment/read-deployment-config';
 import { listImageNeeds } from '../part/list-image-needs';
@@ -23,6 +24,7 @@ export type ServerInputs = Pick<
   | 'config'
   | 'secrets'
   | 'credentials'
+  | 'heldSlot'
   | 'images'
   | 'sandbox'
   | 'definitionsExport'
@@ -52,9 +54,11 @@ export async function loadServerInputs(options: ServerOptions): Promise<ServerIn
   const config = { ...loaded, owner: readOwnerConfig(loaded.owner, secrets.readSetting) };
   const sandbox = resolveSandboxSettings(loaded, secrets.impdToken);
   const publicEgress = sandbox.adapter === 'imp' ? sandbox.imp.publicEgress : null;
+  const heldSlot = createHeldSlot();
 
   const store = createCredentialStore({
     secrets,
+    held: heldSlot.read,
     denied: [...(publicEgress?.hostAddresses ?? []), ...(publicEgress?.egressDeny ?? [])],
     ...(NIXIE_TEST_BUILD
       ? buildTestCredentialChecks(options.credentialSite ?? null)
@@ -83,6 +87,7 @@ export async function loadServerInputs(options: ServerOptions): Promise<ServerIn
     config,
     secrets,
     credentials,
+    heldSlot,
     images,
     sandbox,
     definitionsExport,
