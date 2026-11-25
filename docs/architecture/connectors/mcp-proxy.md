@@ -4,9 +4,9 @@ The MCP proxy lets the model use the tools of an outside MCP server, such as an 
 the same rules as nixie's own tools. The user lists each server in the `mcp` section of the config.
 nixie signs in to the server as the user, lists its tools, and registers each tool the user allowed
 under the name `<serverID>.<tool>`. Everything the server sends is outside content, because the
-server is outside nixie. The user, never the server, decides which of its tools the model may call.
-The [credential store](./credentials.md) holds the tokens, and [tool calls](./tool-calls.md) covers
-the endpoint that serves the registered tools.
+server is outside nixie. Only the user decides which of the server's tools the model may call. The
+[credential store](./credentials.md) holds the tokens, and [tool calls](./tool-calls.md) covers the
+endpoint that serves the registered tools.
 
 ```mermaid
 flowchart LR
@@ -113,10 +113,10 @@ unchanged listing proposes nothing.
 
 nixie hides a tool, with the reason, when the model cannot read its name. The server's tool name
 must use only letters, digits, `_` and `-`, and the model's name for the tool must fit 64 characters
-and differ from the model name of every other tool. The config load refuses a server ID that is the
-first segment of one of nixie's own tools, such as `web` for `web_fetch`, from a list of those
-segments. The conversation endpoint checks the registry itself at its start, which catches a tool
-that a release adds and the list lacks.
+and differ from the model name of every other tool. The config load checks each server ID against a
+list of the first segments of nixie's own tools, such as `web` for `web_fetch`, and refuses a match.
+The conversation endpoint checks the registry itself at its start, which catches a tool that a
+release adds and the list lacks.
 
 ## The registry
 
@@ -208,8 +208,8 @@ snapshot sends nothing and leaves the action ambiguous, whether the new declarat
 check, and so does a connector that declares no reconcile any more. A check whose read tool answers
 only with pictures, or outside its output schema, is inconclusive and never schedules a retry.
 
-The reason of a refused action holds the server's own words, so a call that waits for it, and a
-queued or approved call that ends in a server error, gets the reason inside the markers, as an
+The reason of a refused action holds the server's own words. A call that waits for the action, and a
+queued or approved call that ends in a server error, gets that reason inside the markers, as an
 error.
 
 ## Health

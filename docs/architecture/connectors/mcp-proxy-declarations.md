@@ -19,8 +19,8 @@ hint that is present and not a boolean leaves the tool with no declaration. By d
 argument at any depth counts as content: the items of an array or a tuple, each member of an
 `anyOf`, `oneOf` or `allOf` union, the free keys of an object, a string enum, and the target of a
 local `$ref` together with the keywords that sit beside the `$ref`. No argument is a destination or
-an amount, and every result field is outside content, so its source is `untrusted`. A tool with a
-read effect runs direct, and a tool with any other effect is queued.
+an amount, and every result field is outside content, so its source is `untrusted`. A tool whose
+effects are all reads runs direct, and a tool with any other effect is queued.
 
 ## Override files
 
@@ -35,21 +35,22 @@ server's ID. Each key is a tool's name on the server, before the prefix, and hol
 | `content`      | the arguments, at any depth, that carry the call's content; every string argument by default |
 | `reconcile`    | `idempotencyKey: <argument>` or `check: <tool>`, never both; none by default                 |
 
-nixie refuses the whole seed when a file does not parse, names an unknown field or effect, or sits
+nixie refuses the whole seed when a file does not parse, holds an unknown field or effect, or sits
 in a subfolder, or when 2 files cover one server. The error lists each file with its fault.
 
-An override fits only while the tool's pinned form and the server's listing hold everything it
-names. Each destination, the amount and the idempotency key must be a top-level input property. A
-property of a member of a root `anyOf`, `oneOf` or `allOf` counts as top-level, and so does a
+An override fits only while the tool's pinned form and the server's listing hold every argument and
+tool in it. Each destination, the amount and the idempotency key must be a top-level input property.
+A property of a member of a root `anyOf`, `oneOf` or `allOf` counts as top-level, and so does a
 property of a local `$ref` or one that sits beside the `$ref`. Each `content` entry must be an
 argument path of the input schema, a `check` tool must be in the server's listing, and the
 idempotency key must be no destination, amount or content entry, because the proxy fills it only
-after the user approves. A file that names a tool the server's listing lacks leaves that tool
-`stopped_unfit`, whether or not the tool had a pin. A tool whose override does not fit is
-`stopped_unfit` with the fault as its reason, so no call runs under a declaration that names what
-the tool lacks. nixie judges the fit at each listing, at each allow and at each seed that changes
-the overrides, and a tool whose override fits again is exposed again with no new approval, because
-its pin never moved. The allow proposal's body shows which declaration the tool would run under.
+after the user approves. When a file has an entry for a tool that the server's listing lacks, that
+tool is `stopped_unfit`, whether or not it had a pin. A tool whose override does not fit is
+`stopped_unfit` with the fault as its reason, so no call runs under a declaration with an argument
+or a tool that the tool lacks. nixie judges the fit at each listing, at each allow and at each seed
+that changes the overrides, and a tool whose override fits again is exposed again with no new
+approval, because its pin never moved. The allow proposal's body shows which declaration the tool
+would run under.
 
 ## Reconcile
 
@@ -65,8 +66,9 @@ not found, and the action runs again. The check runs only when that tool is itse
 read and is exposed.
 
 A check that does not run, fails or ends in a server error is inconclusive, and the action comes to
-the user. A result of images alone is inconclusive too, because it proves no absence. A tool with no
-`reconcile` has neither, and an ambiguous action comes to the user.
+the user. A result of images alone is inconclusive too, because nixie cannot read in the pictures
+whether the read tool found the write. A tool with no `reconcile` has neither a key nor a check, and
+an ambiguous action comes to the user.
 
 A recovery runs only under the definitions snapshot that the action's first attempt ran under. A
 later snapshot may set another key argument, a check in place of a key, or no reconcile. After a

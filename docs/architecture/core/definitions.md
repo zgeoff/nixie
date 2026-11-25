@@ -75,14 +75,14 @@ The manifest holds the definitions format version. A release reads formats 2 to 
 other, because an image upgrade and a definitions change land in separate repos, in either order.
 The persona must be UTF-8 text and not blank.
 
-Each format applies what the formats before it apply, and adds these files. The seed lists as
-unapplied each file that belongs to a format later than the repo's own:
+The seed applies the files of the repo's format and of every format before it. Each format adds
+these files, and the seed lists as unapplied each file from a format later than the repo's own:
 
 - Format 2: each skill under `skills/`.
 - Format 3: the prompt overrides in the manifest's `prompts:` map, as
   [prompts](prompts.md#overrides-from-the-definitions) describes, and each `rules/*.yaml` file as a
   rules file, as [rules in force](../policy/rules.md#rules-in-force) describes, except a file that
-  the `prompts:` map names as a prompt part. From format 3, the seed therefore refuses a repo whose
+  the `prompts:` map lists as a prompt part. From format 3, the seed therefore refuses a repo whose
   existing rule files fail the [rule format](../policy/rules.md#the-rule-format), and the error
   lists each file with its fault.
 - Format 4: each folder under `tasks/` as a [task definition](#task-definitions).
