@@ -249,9 +249,9 @@ opens a turn's batch or lands while the turn runs, and that step opens a rebuilt
 no request passes the size or the image count the Messages API accepts. The first message of a new
 session always goes. An image a tool returns during the turn counts against the same caps, and the
 turn refuses one that would pass either cap. A rebuilt session's history and every other render of
-the message show only the markers, never the bytes, so an image reaches the model once, in the turn
-it was sent. The pasted-text rule in the system prompt names the images too: the model treats an
-image's content, its text included, as it treats dropped text.
+the message show only the markers, never the bytes, so a rebuilt session never sends an image again.
+The pasted-text rule in the system prompt names the images too: the model treats an image's content,
+its text included, as it treats dropped text.
 
 ## Interrupts
 
@@ -436,7 +436,8 @@ the moments, leaves out a voided reply.
 The step returns to waiting once it commits, because the conversation always waits for the user's
 next message. A turn that fails for any reason but a lost session, such as a disconnected tool
 server, throws, so the tasks module records the error and retries the step after a delay that grows
-with each failure in a row. The conversation never fails ([tasks](./tasks.md#steps)).
+with each failure in a row. The model API refusals that wait for the user, listed below, are the
+exception. The conversation never fails ([tasks](./tasks.md#steps)).
 
 ### A turn that ends with nothing sent
 

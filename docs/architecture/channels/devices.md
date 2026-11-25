@@ -207,11 +207,11 @@ frame, and each test of the policy runs in a real browser in `answer-page-reques
 The policy also sets `sandbox allow-scripts`. A person who opens the frame's address in a tab gets
 the same opaque origin, and the page reads none of the app's storage.
 
-The policy leaves two ways out open: a peer connection reaches any server its page names, and a link
-element opens a connection from a resource hint such as `preconnect`. No directive closes the
-second: Chrome opens a preconnect's connection under `connect-src 'none'`, and blocks only a
-prefetch. A frame, object or embed element gives the page a second window, where the bridge's guards
-don't run. nixie closes them this way:
+The policy leaves three ways out open. A peer connection reaches any server its page names. A link
+element opens a connection from a resource hint such as `preconnect`, and no directive closes it:
+Chrome opens a preconnect's connection under `connect-src 'none'`, and blocks only a prefetch. A
+frame, object or embed element gives the page a second window, where the bridge's guards don't run.
+nixie closes them this way:
 
 - `device.region` refuses a page that holds a link, frame, object or embed element, because the page
   has no network and its styles go in a style element.
@@ -345,9 +345,11 @@ when it comes back online, and the result carries `waiting: true` with a message
 `device.layouts` return `UNKNOWN_DEVICE`, and the remove call returns `UNKNOWN_LAYOUT` too. An
 `UNKNOWN_LAYOUT` message lists the saved names. `device.region` returns `UNKNOWN_DEVICE`,
 `SCREEN_OFF`, `UNKNOWN_REGION`, `PACKAGES_NOT_BUILT`, `FETCHES_NOT_BUILT`, the image refusals, then
-`OFFLINE`. `device.sendToPage` returns `UNKNOWN_DEVICE`, `SCREEN_OFF`, `UNKNOWN_REGION`,
-`NOT_A_PAGE` for a region that holds no page, then `OFFLINE`. `device.preview` returns
-`UNKNOWN_DEVICE`, then `SCREEN_OFF`.
+`OFFLINE`. Its input check fails a page that holds a link, frame, object or embed element before any
+refusal, and `UNKNOWN_REGION` also answers a call whose layout changed after its own record.
+`device.sendToPage` returns `UNKNOWN_DEVICE`, `SCREEN_OFF`, `UNKNOWN_REGION`, `NOT_A_PAGE` for a
+region that holds no page, then `OFFLINE`. `device.preview` returns `UNKNOWN_DEVICE`, then
+`SCREEN_OFF`.
 
 `devices.list` shows the layout a device holds whether or not the device is online, unlike
 `showing`, which is null while the device is offline. `showing` follows the screen's order: it is

@@ -29,9 +29,9 @@ secret reaches the container's configuration or its disk.
    NIXIE_SECRETS_FILE=<sops_file> NIXIE_AGE_KEY_FILE=<age_key_file> docker compose up --wait
    ```
 
-   Expect every service healthy and `setup` exited 0. The `setup` service copies the sops file and
-   the age key into a volume that only nixie's user reads, so the host's files stay readable by
-   their owner alone.
+   Expect every running service healthy, and `setup` exited 0. The `setup` service copies the sops
+   file and the age key into a volume that only nixie's user reads, so the host's files stay
+   readable by their owner alone.
 
 6. Print a sign-in code, and enter it on the sign-in page:
 
@@ -54,8 +54,8 @@ own log in front, drop those parts of the address from each log line too.
 The `/rpc*` rule already sends the socket to nixie, and Caddy carries WebSocket upgrades without
 more settings.
 
-An upgrade changes the tag and the digest of 3 images together: nixie, web, and the backup image
-when the deployment runs one, as a release's notes list them. A rollback reverts that change. The
+An upgrade changes the tag and the digest of nixie and web together, and of the backup image when
+the deployment runs one, as a release's notes list them. A rollback reverts that change. The
 [upgrade runbook](../runbooks/upgrades.md) gives the steps.
 
 ## How CI checks it
