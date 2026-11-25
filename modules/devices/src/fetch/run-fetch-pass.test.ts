@@ -51,6 +51,13 @@ async function setupTest() {
           ),
         },
       }),
+    showPageForMinutes: (url: string, minutes: number) =>
+      ctx.call('device.region', {
+        device: device.deviceID,
+        region: 'pond',
+        minutes,
+        content: { kind: 'html', html: '<p>tides</p>', fetches: [{ url }] },
+      }),
     showPlainPage: () =>
       ctx.call('device.region', {
         device: device.deviceID,
@@ -142,6 +149,48 @@ test('#runFetchPass starts no further fetch of a page that a call replaced while
   await ctx.runPass();
 
   expect(ctx.site.requests).toStrictEqual([first]);
+});
+
+test('#runFetchPass starts no further fetch of a page that a forget erased while an earlier fetch ran', async () => {
+  const ctx = await setupTest();
+
+  const first = 'https://tides.example/first';
+  const second = 'https://tides.example/second';
+
+  ctx.site.addPage(first, '{}');
+  ctx.site.addPage(second, '{}');
+
+  await ctx.showPage([first, second]);
+
+  const shown = await ctx.readShown();
+
+  ctx.site.holdRequest(first, async () => {
+    await ctx.forget(shown?.sequence ?? 0);
+  });
+
+  await ctx.runPass();
+
+  expect(ctx.site.requests).toStrictEqual([first]);
+});
+
+test('#runFetchPass drops what a page held once its minutes passed', async () => {
+  const ctx = await setupTest();
+
+  const url = 'https://tides.example/today';
+
+  ctx.site.addPage(url, '{"high":"14:05"}');
+
+  await ctx.showPageForMinutes(url, 30);
+  await ctx.runPass();
+
+  const held = ctx.streams.fetches.readRegions();
+
+  ctx.clock.advance(31 * 60_000);
+
+  await ctx.runPass();
+
+  expect(held).toHaveLength(1);
+  expect(ctx.streams.fetches.readRegions()).toStrictEqual([]);
 });
 
 test('#runFetchPass drops what a page held once a forget erased the page', async () => {
