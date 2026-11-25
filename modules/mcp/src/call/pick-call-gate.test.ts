@@ -51,11 +51,19 @@ test.each([
     gate: { kind: 'refused', text: 'tracker is no longer configured' },
   },
   {
-    title: 'a server whose grant the last listing found refused',
+    title: 'a server whose grant needs consent',
     server: buildServerRow(),
     toolRow: buildToolRow(),
-    health: { ...initialHealth, lastError: 'unauthorised' },
+    health: { ...initialHealth, hasPassed: true },
+    signIn: 'needs_sign_in',
     gate: { kind: 'refused', text: 'tracker needs you to sign in again' },
+  },
+  {
+    title: 'a server whose listing got a 401 while its grant holds, once the next try is due',
+    server: buildServerRow(),
+    toolRow: buildToolRow(),
+    health: { ...initialHealth, failures: 1, lastError: 'unauthorised', nextTryAtMs: 1 },
+    gate: { kind: 'list' },
   },
   {
     title: 'a server that failed its listing, before the next try is due',
@@ -85,6 +93,7 @@ test.each([
     server: row.server,
     toolRow: row.toolRow,
     health: row.health,
+    signIn: row.signIn ?? 'ok',
     nowMs: 1000,
     formatTime: (timeMs) => `at ${String(timeMs)}`,
   });

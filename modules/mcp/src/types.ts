@@ -61,7 +61,7 @@ export interface McpContext {
   readonly now: () => number;
 }
 
-// One move of a pin, which the 2 items that build on the proxy listen to.
+// One move of a pin.
 export interface PinMove {
   readonly tool: string;
   readonly fromHash: string | null;
@@ -69,5 +69,5 @@ export interface PinMove {
   readonly cause: PinMoveCause;
 }
 
-// Called inside the transaction that moves a pin. The proxy ships it with no listener.
+// Called inside the transaction that moves a pin, so what a move causes commits with it.
 export type OnPinMoved = (tx: Transaction<unknown>, move: PinMove) => Promise<void>;

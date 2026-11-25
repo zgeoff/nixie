@@ -14,9 +14,12 @@ export function buildProxiedTool(
   tool: string,
   form: ToolForm,
   calls: ProxyCalls,
+  pinHash: string,
 ): ProxiedToolBuild {
   try {
-    const found = buildToolRegistry([buildProxiedDefinition(tool, form, calls)]).findTool(tool);
+    const found = buildToolRegistry([buildProxiedDefinition(tool, form, calls, pinHash)]).findTool(
+      tool,
+    );
 
     return found === null
       ? { kind: 'refused', reason: 'the registry holds no tool of this name' }

@@ -83,6 +83,11 @@ export async function runApprovedCall(
     return { status: 'changed' };
   }
 
+  // the owner approved the call under the form the call loaded
+  if (stored.pinHash !== found.definition.pinHash) {
+    return { status: 'changed' };
+  }
+
   const call: ToolCall = {
     callID: stored.callID,
     tool: request.tool,
@@ -112,6 +117,7 @@ export async function runApprovedCall(
   const recorder = makeCallRecorder(call, run, options, {
     definitions: options.definitions(),
     parent: undefined,
+    pinHash: found.definition.pinHash,
   });
 
   const written = await recorder.writeSettled(request.callSequence, settled);
@@ -123,6 +129,7 @@ interface StoredApprovedCall {
   readonly callID: string;
   readonly toolUseID: string | null;
   readonly destinations: readonly string[];
+  readonly pinHash: string | undefined;
 }
 
 const approvedCalledSchema = z.object({
@@ -160,6 +167,7 @@ async function readApprovedCall(
     ? {
         callID: payload.callID,
         toolUseID: payload.toolUseID,
+        pinHash: payload.pinHash,
         destinations: erasable.destinations.map((destination) => destination.value),
       }
     : null;
@@ -211,7 +219,12 @@ async function tryRunApproved(
 }
 
 function toApprovedRun(resultSequence: number, settled: Settled): ApprovedRun {
-  if (settled.outcome !== 'result' || settled.reply.kind !== 'typed') {
+  // a result that reports its service's own failure is no done action
+  if (
+    settled.outcome !== 'result' ||
+    settled.reply.kind !== 'typed' ||
+    settled.reply.isError === true
+  ) {
     return { status: 'failed', resultSequence };
   }
 

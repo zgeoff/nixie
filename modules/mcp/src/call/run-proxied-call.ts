@@ -30,6 +30,10 @@ export async function runProxiedCall(
 
   const sent = await calls.send(request.tool, request.form.name, request.input);
 
+  if (sent.kind === 'refused') {
+    return { kind: 'refused', text: sent.text };
+  }
+
   return sent.kind === 'answered'
     ? {
         kind: 'answered',

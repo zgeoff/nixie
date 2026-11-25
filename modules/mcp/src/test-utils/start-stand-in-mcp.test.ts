@@ -1,7 +1,12 @@
 import { expect, test } from 'bun:test';
 import type { CredentialStore } from '@heynixie/credentials';
+import type { Log } from '@heynixie/log';
+import { readRecords, writeRecordsInTransaction } from '@heynixie/log';
+import invariant from 'tiny-invariant';
+import { buildToolChangeNote } from '../notice/build-tool-change-note';
 import { readServerRows } from '../rows/read-server-rows';
 import { readToolRow } from '../rows/read-tool-rows';
+import { readListedTools } from './read-listed-tools';
 import { startStandInMcp } from './start-stand-in-mcp';
 
 async function setupTest() {
@@ -130,11 +135,12 @@ test('it stops a tool that stays listed with a changed form until you allow it',
   ]).toStrictEqual(['stopped_changed', true, false]);
 });
 
-test('it shows the caller the old pinned form of a changed tool on an untrusted server until you allow it', async () => {
+test('it lists the old pinned form of a changed tool to the caller until you allow it', async () => {
   const ctx = await setupTest();
 
   await ctx.signIn(ctx.mcp);
   await ctx.test.allow('tracker.item_get');
+  await ctx.mcp.tools.refresh();
 
   ctx.site.setTools([
     { ...ctx.itemGet, description: 'Read one item, and say who owns it.' },
@@ -143,17 +149,36 @@ test('it shows the caller the old pinned form of a changed tool on an untrusted 
 
   await ctx.mcp.list('tracker');
 
-  const beforeAllow = ctx.mcp.tools.findTool('tracker.item_get')?.definition.description;
+  const beforeAllow = await readListedTools(ctx, ['tracker.item_get']);
 
   await ctx.test.allow('tracker.item_get');
   await ctx.mcp.tools.refresh();
 
-  const afterAllow = ctx.mcp.tools.findTool('tracker.item_get')?.definition.description;
+  const afterAllow = await readListedTools(ctx, ['tracker.item_get']);
 
   expect([beforeAllow, afterAllow]).toStrictEqual([
-    'Read one item.',
-    'Read one item, and say who owns it.',
+    [{ name: 'tracker.item_get', description: 'Read one item.' }],
+    [{ name: 'tracker.item_get', description: 'Read one item, and say who owns it.' }],
   ]);
+});
+
+test('it lists a stopped tool to the caller in its pinned form, and leaves a hidden tool off the list', async () => {
+  const ctx = await setupTest();
+
+  await ctx.signIn(ctx.mcp);
+  await ctx.test.allow('tracker.item_get');
+  await ctx.mcp.tools.refresh();
+
+  ctx.site.setTools([
+    { ...ctx.itemGet, description: 'Read one item, and say who owns it.' },
+    ctx.itemNotify,
+  ]);
+
+  await ctx.mcp.list('tracker');
+
+  const listed = await readListedTools(ctx, ['tracker.item_get', 'tracker.item_notify']);
+
+  expect(listed).toStrictEqual([{ name: 'tracker.item_get', description: 'Read one item.' }]);
 });
 
 test('it shows the caller the new form of a changed tool on a trusted server and tells the owner', async () => {
@@ -179,6 +204,55 @@ test('it shows the caller the new form of a changed tool on a trusted server and
   expect([served, notices.map((notice) => [notice.tool, notice.change])]).toStrictEqual([
     'Read one item, newly.',
     [['tracker.item_get', 'tool_changed']],
+  ]);
+});
+
+test('it leaves a note in the inbox of the conversation when a trusted server changes a tool, with no read of the notices', async () => {
+  const holder: { log: Log | null } = { log: null };
+
+  const ctx = await startStandInMcp({
+    tools: [{ name: 'item_get', description: 'Read one item.', inputSchema: { type: 'object' } }],
+    facts: { trusted: true },
+    onPinMoved: async (tx, move) => {
+      const note = buildToolChangeNote(move, {
+        definitions: { snapshotHash: 'sha256:test' },
+        thread: 'conversation',
+      });
+
+      invariant(holder.log, 'the log exists before a pin moves');
+
+      if (note !== null) {
+        await writeRecordsInTransaction(tx, holder.log, [note]);
+      }
+    },
+  });
+
+  holder.log = ctx.test.log;
+
+  await ctx.approveServer();
+  await ctx.signIn(ctx.mcp);
+  await ctx.test.allow('tracker.item_get');
+
+  const pinned = await readToolRow(ctx.test.log.writer.db, 'tracker.item_get');
+
+  ctx.site.setTools([
+    { name: 'item_get', description: 'Read one item, newly.', inputSchema: { type: 'object' } },
+  ]);
+
+  await ctx.mcp.list('tracker');
+
+  const moved = await readToolRow(ctx.test.log.writer.db, 'tracker.item_get');
+  const records = await readRecords(ctx.test.log, { afterSequence: 0, kinds: ['tool_changed'] });
+
+  expect(records.map((entry) => [entry.record.thread, entry.record.payload])).toStrictEqual([
+    [
+      'conversation',
+      {
+        tool: 'tracker.item_get',
+        fromHash: pinned?.pinned_hash ?? null,
+        toHash: moved?.pinned_hash ?? null,
+      },
+    ],
   ]);
 });
 

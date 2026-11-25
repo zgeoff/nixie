@@ -6,7 +6,7 @@ import { readServerRows } from '../rows/read-server-rows';
 import type { FinishResult } from '../signin/create-sign-in';
 import { startMcp } from '../start-mcp';
 import type { Mcp } from '../start-mcp';
-import type { ServerFacts } from '../types';
+import type { OnPinMoved, ServerFacts } from '../types';
 import { buildServerFacts } from './build-server-facts';
 import { startStandInMcpSite } from './start-stand-in-mcp-site';
 import type { StandInMcpSite, StandInTool } from './start-stand-in-mcp-site';
@@ -20,6 +20,7 @@ export interface StandInMcpOptions {
   readonly facts?: Partial<ServerFacts>;
   readonly listingTimeoutSeconds?: number;
   readonly advertisesIssuer?: boolean;
+  readonly onPinMoved?: OnPinMoved;
 }
 
 export interface StandInMcp {
@@ -88,6 +89,7 @@ export async function startStandInMcp(options: StandInMcpOptions = {}): Promise<
       servers: { tracker: { ...facts, ...changed } },
       listingTimeoutSeconds: options.listingTimeoutSeconds ?? 5,
       takenModelNames: () => new Set(),
+      ...(options.onPinMoved === undefined ? {} : { onPinMoved: options.onPinMoved }),
     });
 
   const mcp = makeMcp();

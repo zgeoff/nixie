@@ -7,6 +7,9 @@ export interface CallGateFacts {
   readonly server: McpServerRow | null;
   readonly toolRow: McpToolRow | null;
   readonly health: ServerHealth;
+
+  // whether the server's grant still holds, as the newest look at it found
+  readonly signIn: 'ok' | 'needs_sign_in';
   readonly nowMs: number;
 
   // the time of a next try as the owner reads it, such as 14:05
@@ -37,12 +40,12 @@ export function pickCallGate(facts: CallGateFacts): CallGate {
     return refuse(`${serverID} waits for your approval`);
   }
 
+  if (facts.signIn === 'needs_sign_in') {
+    return refuse(`${serverID} needs you to sign in again`);
+  }
+
   if (!health.hasPassed) {
     const nextTryAtMs = health.nextTryAtMs;
-
-    if (health.lastError === 'unauthorised') {
-      return refuse(`${serverID} needs you to sign in again`);
-    }
 
     return nextTryAtMs !== null && nextTryAtMs > facts.nowMs
       ? refuse(`${serverID} is unreachable, next try ${facts.formatTime(nextTryAtMs)}`)

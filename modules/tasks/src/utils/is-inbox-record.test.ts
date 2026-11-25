@@ -10,6 +10,7 @@ test.each([
   ['trigger.fired', 'task-1', true],
   ['trigger.skipped', 'task-1', false],
   ['recovery.notice', 'conversation', true],
+  ['tool_changed', 'conversation', true],
   ['memory.proposal_rejected', 'task-1', true],
   ['skills.write_rejected', 'task-1', true],
   ['memory.proposal_rejected', 'conversation', false],

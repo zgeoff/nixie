@@ -23,6 +23,7 @@ import type { ReminderRead } from './render-reminder-notice';
 import { renderReminderNotice } from './render-reminder-notice';
 import { renderTakeoverEnded } from './render-takeover-ended';
 import { renderTakeoverStarted } from './render-takeover-started';
+import { renderToolChangeNote } from './render-tool-change-note';
 
 // What the inbox read fetched beside the record, for the kinds that show it.
 interface RenderedExtras {
@@ -64,6 +65,10 @@ export function renderInboxMessage(
 
   if (record.kind === 'recovery.notice') {
     return renderRecoveryNotice(record, times);
+  }
+
+  if (record.kind === 'tool_changed') {
+    return renderToolChangeNote(record, times);
   }
 
   if (record.kind === 'computer.takeover_started') {

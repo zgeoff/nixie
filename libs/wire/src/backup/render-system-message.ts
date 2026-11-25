@@ -22,7 +22,8 @@ export type SystemMessageType =
   | 'restore'
   | 'computer'
   | 'page-event'
-  | 'mail';
+  | 'mail'
+  | 'mcp';
 
 export interface SystemMessage {
   readonly type: SystemMessageType;

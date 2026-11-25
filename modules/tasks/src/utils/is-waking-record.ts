@@ -15,6 +15,11 @@ export function isWakingRecord(
     return false;
   }
 
+  // A change to a tool applies at once, so its note waits for the conversation's next turn.
+  if (record.kind === 'tool_changed') {
+    return false;
+  }
+
   // A person taking the desktop wakes nothing: the assistant reads that with its next input, and
   // its queued acts stay pending until the desktop comes back, which does wake it.
   // the connectors module registers this kind, and tasks depends on no connector

@@ -23,6 +23,8 @@ interface ApprovalOverrides {
 
 // A direct tool that asks, so its call is stored and waits for the owner.
 async function setupTest(outcome?: ToolOutcome, paid?: PaidTool) {
+  const pin = { current: 'pin-a' };
+
   const run: ToolRun = {
     runID: 'run-1',
     thread: 'task-1',
@@ -54,7 +56,16 @@ async function setupTest(outcome?: ToolOutcome, paid?: PaidTool) {
     },
   });
 
-  const registry = buildToolRegistry([tool]);
+  // a tool whose pin can move is read from a source, as a proxied tool is
+  const registry = buildToolRegistry(
+    [],
+    [
+      {
+        toolNames: () => ['notes_wipe'],
+        findTool: (name) => buildToolRegistry([{ ...tool, pinHash: pin.current }]).findTool(name),
+      },
+    ],
+  );
 
   const budgets: BudgetsContext = {
     log: testLog.log,
@@ -81,6 +92,7 @@ async function setupTest(outcome?: ToolOutcome, paid?: PaidTool) {
   );
 
   return {
+    pin,
     options,
     budgets,
     log: testLog.log,
@@ -290,4 +302,26 @@ test('it refuses the approved call of a paid tool whose budget is full, and runs
 
   expect(approved).toStrictEqual({ status: 'failed', resultSequence: 4 });
   expect(ctx.contexts).toStrictEqual([]);
+});
+
+test('it fails an approved call whose tool reported its own failure, and never counts it done', async () => {
+  const ctx = await setupTest({
+    status: 'ok',
+    result: { text: 'no such item' },
+    isError: true,
+  });
+
+  const approved = await ctx.approve({});
+
+  expect(approved).toStrictEqual({ status: 'failed', resultSequence: 4 });
+});
+
+test('it runs nothing for an approved call whose tool changed its pin after the call', async () => {
+  const ctx = await setupTest();
+
+  ctx.pin.current = 'pin-b';
+
+  const approved = await ctx.approve({});
+
+  expect([approved, ctx.contexts]).toStrictEqual([{ status: 'changed' }, []]);
 });

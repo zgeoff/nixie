@@ -146,6 +146,7 @@ export { readDefinitionRunContext } from './task/read-definition-run-context';
 export { startedTaskBaseTools, startedTaskDefaultTools } from './task/started-task-default-tools';
 export { taskFailedTurnSpentCodec } from './task/codec/task-failed-turn-spent-codec';
 export { taskLimitNoticeCodec } from './limit/task-limit-notice-codec';
+export { toolChangedCodec } from './inbox/tool-changed-codec';
 export { taskLimitReachedCodec } from './limit/task-limit-reached-codec';
 export { taskLimitsRaisedCodec } from './limit/task-limits-raised-codec';
 export type { FailedTurnSpend } from './task/write-failed-turn-spend';

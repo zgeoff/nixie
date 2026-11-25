@@ -159,6 +159,8 @@ export function startMcp(options: McpOptions): Mcp {
     const server = servers.find((row) => row.server_id === serverID);
 
     if (server?.state !== 'added') {
+      signIns.set(serverID, 'ok');
+
       return { kind: 'skipped' as const, reason: 'not_added' as const };
     }
 
@@ -173,12 +175,18 @@ export function startMcp(options: McpOptions): Mcp {
     const status = await options.store.readStatus(bindings.grant);
 
     if (status === null) {
+      signIns.set(serverID, 'needs_sign_in');
+
       return { kind: 'skipped' as const, reason: 'no_grant' as const };
     }
 
     if (status.status === 'needs_consent' || bindings.hasMoved) {
+      signIns.set(serverID, 'needs_sign_in');
+
       return { kind: 'skipped' as const, reason: 'needs_sign_in' as const };
     }
+
+    signIns.set(serverID, 'ok');
 
     return {
       kind: 'open' as const,
@@ -196,10 +204,6 @@ export function startMcp(options: McpOptions): Mcp {
     const opened = await openServer(serverID);
 
     if (opened.kind === 'skipped') {
-      const signInState = opened.reason === 'not_added' ? 'ok' : 'needs_sign_in';
-
-      signIns.set(serverID, signInState);
-
       return { status: 'skipped', reason: opened.reason };
     }
 
@@ -208,8 +212,6 @@ export function startMcp(options: McpOptions): Mcp {
 
       return { status: 'failed', message: opened.message };
     }
-
-    signIns.set(serverID, 'ok');
 
     const outcome = await listServerTools({ url: opened.url, send: opened.send, timeoutMs });
 
@@ -254,6 +256,7 @@ export function startMcp(options: McpOptions): Mcp {
         server: servers.find((row) => row.server_id === serverID) ?? null,
         toolRow: rows.find((row) => row.tool === tool) ?? null,
         health: health.read(serverID),
+        signIn: signIns.get(serverID) ?? 'ok',
         nowMs: options.now(),
         formatTime,
       });
@@ -291,16 +294,29 @@ export function startMcp(options: McpOptions): Mcp {
   const calls: ProxyCalls = {
     clear,
     send: async (tool, serverName, input) => {
-      const opened = await openServer(tool.split('.')[0] ?? '');
+      const serverID = tool.split('.')[0] ?? '';
 
-      return opened.kind === 'open'
-        ? runServerCall({
-            url: opened.url,
-            send: opened.send,
-            name: serverName,
-            input,
-            timeoutMs: callTimeoutMs,
-          })
+      const opened = await openServer(serverID);
+
+      if (opened.kind === 'open') {
+        const outcome = await runServerCall({
+          url: opened.url,
+          send: opened.send,
+          name: serverName,
+          input,
+          timeoutMs: callTimeoutMs,
+        });
+
+        // A refresh that the authorization server refused for good ends the grant during the call.
+        const grant = outcome.kind === 'failed' ? await openServer(serverID) : opened;
+
+        return grant.kind === 'skipped' && grant.reason !== 'not_added'
+          ? buildSignInRefusal(serverID)
+          : outcome;
+      }
+
+      return opened.kind === 'skipped' && opened.reason !== 'not_added'
+        ? buildSignInRefusal(serverID)
         : { kind: 'failed', message: 'could not be reached' };
     },
   };
@@ -395,6 +411,10 @@ export function startMcp(options: McpOptions): Mcp {
 
 function formatUTCTime(timeMs: number): string {
   return new Date(timeMs).toISOString().slice(11, 16);
+}
+
+function buildSignInRefusal(serverID: string) {
+  return { kind: 'refused' as const, text: `${serverID} needs you to sign in again` };
 }
 
 function countTools(rows: readonly McpToolRow[]) {

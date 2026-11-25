@@ -85,8 +85,9 @@ export async function runToolCall(
   const { parent, ...fields } = request;
   const call: ToolCall = { ...fields, callID: crypto.randomUUID() };
   const definitions = options.definitions();
-  const recorder = makeCallRecorder(call, run, options, { definitions, parent });
   const found = options.registry.findTool(call.tool);
+  const pinHash = found?.definition.pinHash;
+  const recorder = makeCallRecorder(call, run, options, { definitions, parent, pinHash });
   const inputCheck = checkListedInput(found, call, run);
 
   if (!inputCheck.isValid) {
@@ -231,6 +232,7 @@ export async function runToolCall(
         destinations,
         deadlineAt,
         prepared,
+        pinHash,
         options,
       });
 
@@ -267,7 +269,9 @@ function toCallToolResult(settled: Settled): CallToolResult {
   const reply = settled.reply;
 
   if (reply.kind === 'text') {
-    return { content: [{ type: 'text', text: reply.text }], isError: reply.isError };
+    const text = reply.isOutside === true ? renderFencedText(reply.text) : reply.text;
+
+    return { content: [{ type: 'text', text }], isError: reply.isError };
   }
 
   // The Claude Code CLI ends its turn after a result with this key and makes no further model call.
@@ -300,6 +304,15 @@ function toCallToolResult(settled: Settled): CallToolResult {
   };
 }
 
+function renderFencedText(text: string): string {
+  return renderFenced({
+    tag: 'tool-result',
+    attributes: { source: 'untrusted' },
+    text,
+    fence: mintBlockID(),
+  });
+}
+
 // A result is outside text when every one of its fields is untrusted. A result that mixes sources
 // reaches the model as it is, and its tool marks its own outside fields.
 function isUntrustedResult(settled: Settled): boolean {
@@ -314,12 +327,7 @@ function renderFencedResult(result: JSONObject): string {
   const text = result['text'];
   const body = keys.length === 1 && typeof text === 'string' ? text : JSON.stringify(result);
 
-  return renderFenced({
-    tag: 'tool-result',
-    attributes: { source: 'untrusted' },
-    text: body,
-    fence: mintBlockID(),
-  });
+  return renderFencedText(body);
 }
 
 function toImageBlock(image: ToolImage) {
@@ -408,6 +416,7 @@ interface DecidedCall {
   readonly destinations: readonly CallDestination[];
   readonly deadlineAt: number | null;
   readonly prepared: Prepared | null;
+  readonly pinHash: string | undefined;
   readonly options: ToolCallOptions;
 }
 
@@ -472,6 +481,7 @@ interface AllowedCall {
   readonly destinations: readonly CallDestination[];
   readonly deadlineAt: number | null;
   readonly prepared: Prepared | null;
+  readonly pinHash: string | undefined;
   readonly options: ToolCallOptions;
 
   readonly verdict?: MemoryWriteVerdict;
@@ -479,6 +489,18 @@ interface AllowedCall {
 }
 
 async function tryRunAllowedCall(allowed: AllowedCall): Promise<Settled> {
+  // A relist can move the pin after the call loaded the tool, and the call's input and result were
+  // read against the old form, so the call runs only under the form it loaded.
+  const current = allowed.options.registry.findTool(allowed.call.tool);
+
+  if (current?.definition.pinHash !== allowed.pinHash) {
+    return buildMessage(
+      'error',
+      `${allowed.call.tool} changed while this call was starting, so nothing ran; call it again`,
+      { source: 'owner_data' },
+    );
+  }
+
   try {
     return await runAllowedCall(allowed);
   } catch (error) {

@@ -126,6 +126,15 @@ export interface ToolDefinition {
   readonly declaration: EffectDeclaration;
   readonly execution: ToolExecution;
 
+  // The version of a tool whose definition changes while the server runs, such as a proxied tool's
+  // pinned hash. The call record keeps it. A call whose tool has another version when it starts to
+  // run, or when its approval runs, ends with nothing run.
+  readonly pinHash?: string;
+
+  // The tool's errors and the reasons of its failed actions carry what an outside service said, so
+  // they reach the model fenced as untrusted text.
+  readonly outsideErrors?: true;
+
   readonly run: (call: ToolCall, context: ToolContext) => Promise<ToolOutcome>;
 
   // A tool that costs money for each call, which is not a purchase. A call charges the price to the

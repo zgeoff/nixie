@@ -146,9 +146,10 @@ A tool's declaration comes from the annotations of its pinned form:
 A missing hint takes the MCP standard's default, so a tool with no annotations declares the
 strictest effects and asks for an approval at each call until an allow rule covers it. A hint that
 is present and not a boolean leaves the tool with no declaration. Every string argument at any depth
-counts as content, no argument is a destination or an amount, and every result field is outside
-content, so its source is `untrusted`. A tool with a read effect runs direct, and a tool with any
-other effect is queued. The definitions repo holds no override for a proxied tool.
+counts as content, including the items of an array, each member of a union and the free keys of an
+object, no argument is a destination or an amount, and every result field is outside content, so its
+source is `untrusted`. A tool with a read effect runs direct, and a tool with any other effect is
+queued. The definitions repo holds no override for a proxied tool.
 
 ## Calls and results
 
@@ -159,7 +160,8 @@ failing its listing. A call that cannot go returns plain error text that names t
 tool, and asks for no approval:
 
 - "tracker waits for your approval", for a server that is held;
-- "tracker needs you to sign in again", for a grant that needs consent;
+- "tracker needs you to sign in again", for a grant that needs consent, whatever status the last
+  listing got, and for a grant whose refresh the authorization server refused during the call;
 - "tracker.item_get changed and waits for your review", for a stopped tool;
 - "tracker is unreachable, next try 09:05", for a server whose newest listing failed.
 
@@ -174,15 +176,26 @@ blocks the proxy drops. A tool with an output schema returns the server's struct
 the registry checks against the pinned schema. A server's own error keeps its text and sets the
 call's error flag.
 
+The tool's definition names its pinned hash, and the call record keeps it. A call runs only under
+the form it loaded. When a listing moves the pin after the call loaded the tool, nothing runs and
+the call returns an error that asks the model to call again. An approved call of a direct tool runs
+only when the pin is still the one the call record names. An approved call of a queued tool runs
+only when the current form accepts its saved arguments, and otherwise settles as refused.
+
 Every field of a proxied result is `untrusted`, so the endpoint sends the whole result as one text
 block inside `tool-result` markers with a random fence, and sends no structured content. This holds
-for every direct tool whose result fields are all `untrusted`. A tool with trusted output keeps its
-structured content. Text that nixie writes itself, such as a refusal, carries no markers.
+for every direct tool whose result fields are all `untrusted`. A field that the declaration names no
+source for counts as `untrusted`, so a tool whose output schema names no field is fenced too. A tool
+with trusted output keeps its structured content. The pictures of a result go to the model only when
+the turn's image budget has room for all of them. Text that nixie writes itself, such as a refusal,
+carries no markers.
 
 An approved call of a queued tool reaches the action runners through the connector that
 `findConnector` answers for it. The connector clears the call again before it runs. A refusal or a
 server error settles the action as refused, and a call that fails after it left settles as
 ambiguous. A proxied tool has no idempotency key or check, so an ambiguous action comes to the user.
+The reason of a refused action holds the server's own words, so a call that waits for it gets the
+reason fenced, as an error.
 
 ## Health
 
@@ -209,6 +222,12 @@ beside the proxied tools, and the config load refuses `mcp` as a server ID.
 A trusted server's change to a tool, and a tool that a listing drops, each write an `mcp.notice`
 record, which marks the `mcp` live topic. `mcp.readNotices` returns the newest notices to a
 signed-in client, and `nixie mcp notices` prints them for the host.
+
+A pin that moves by a trusted server's change also writes a `tool_changed` record in the same
+transaction, on the conversation's thread. It sits in the conversation's inbox without waking the
+model, and the next turn reads it as a system message of type `mcp` that names the tool with its old
+and new hash. The tasks module owns that record kind, because the `mcp.` records sit off every
+thread.
 
 ## Tests
 

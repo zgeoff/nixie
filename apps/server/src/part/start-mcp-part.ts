@@ -1,6 +1,7 @@
 import { toErrorFields } from '@heynixie/logger';
 import type { Mcp, McpConfig } from '@heynixie/mcp';
-import { startMcp } from '@heynixie/mcp';
+import { buildToolChangeNote, startMcp } from '@heynixie/mcp';
+import { conversationTaskID, writeThreadRecordInTransaction } from '@heynixie/tasks';
 import { toSDKToolName } from '@heynixie/tools';
 import type { PartReader, ServerParts } from '../types';
 import type { ServerPartValues } from './server-part-values';
@@ -20,6 +21,19 @@ export async function startMcpPart(
     store: parts.credentials.store,
     backend: parts.heldSlot.read().backend,
     formatTime: (timeMs) => formatClockTime(timeMs, parts.config.time.default_zone),
+
+    // A trusted server's change to a tool reaches the conversation's inbox in the transaction that
+    // moves the pin.
+    onPinMoved: async (tx, move) => {
+      const note = buildToolChangeNote(move, {
+        definitions: parts.context.definitions(),
+        thread: conversationTaskID,
+      });
+
+      if (note !== null) {
+        await writeThreadRecordInTransaction(tx, parts.context, note);
+      }
+    },
     servers: config.servers,
     listingTimeoutSeconds: config.listingTimeoutSeconds,
     takenModelNames: () =>

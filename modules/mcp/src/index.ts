@@ -16,6 +16,7 @@ export type { ListResult, Mcp, McpOptions, McpPort } from './start-mcp';
 export { startMcp } from './start-mcp';
 export { buildMcpServersTool } from './tool/build-mcp-servers-tool';
 export type { McpServerSummary } from './start-mcp';
+export { buildToolChangeNote } from './notice/build-tool-change-note';
 export type { McpNotice } from './notice/read-notices';
 export type { AllowResult } from './proposal/allow-tool';
 

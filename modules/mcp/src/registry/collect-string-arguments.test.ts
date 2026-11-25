@@ -34,3 +34,40 @@ test('it lists an argument whose type allows a string', () => {
 test('it lists nothing for a schema with no properties', () => {
   expect(collectStringArguments({ type: 'object' })).toStrictEqual([]);
 });
+
+test('it lists an array whose items are strings', () => {
+  const schema = {
+    type: 'object',
+    properties: { tags: { type: 'array', items: { type: 'string' } } },
+  };
+
+  expect(collectStringArguments(schema)).toStrictEqual(['tags[]']);
+});
+
+test('it lists a string inside a union of schemas', () => {
+  const schema = {
+    type: 'object',
+    properties: {
+      owner: { anyOf: [{ type: 'string' }, { type: 'null' }] },
+      note: { oneOf: [{ type: 'integer' }, { type: 'string' }] },
+      target: { allOf: [{ type: 'object', properties: { name: { type: 'string' } } }] },
+    },
+  };
+
+  expect(collectStringArguments(schema)).toStrictEqual(['owner', 'note', 'target.name']);
+});
+
+test('it lists the free keys of an object whose values are strings', () => {
+  const schema = {
+    type: 'object',
+    properties: { labels: { type: 'object', additionalProperties: { type: 'string' } } },
+  };
+
+  expect(collectStringArguments(schema)).toStrictEqual(['labels.*']);
+});
+
+test('it lists a string argument of an object schema that has no type', () => {
+  const schema = { properties: { title: { type: 'string' } } };
+
+  expect(collectStringArguments(schema)).toStrictEqual(['title']);
+});

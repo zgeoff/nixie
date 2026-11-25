@@ -14,8 +14,8 @@ export interface ToolCatalog extends ToolSource {
   // never waits on the database.
   readonly refresh: () => Promise<void>;
 
-  // Runs one approved call of a served tool through the same clearance as the model's call. Null
-  // when the tool is not served.
+  // Runs one approved call of a served tool through the same clearance as the model's call, once the
+  // current form accepts its arguments. Null when the tool is not served.
   readonly runApproved: (tool: string, input: JSONObject) => Promise<ProxiedCallResult | null>;
 }
 
@@ -48,9 +48,20 @@ export function createToolCatalog(
     runApproved: (tool, input) => {
       const found = served.tools.get(tool);
 
-      return found === undefined
-        ? Promise.resolve(null)
-        : runProxiedCall({ tool, form: found.form, input }, calls);
+      if (found === undefined) {
+        return Promise.resolve(null);
+      }
+
+      // The owner approved the arguments under the form the call loaded, and the pin may have moved
+      // since, so they go to the server only when the current form still accepts them.
+      if (!found.tool.parseInput(input).isValid) {
+        return Promise.resolve({
+          kind: 'refused',
+          text: `${tool} changed after you approved this call, and its new form no longer accepts the arguments`,
+        });
+      }
+
+      return runProxiedCall({ tool, form: found.form, input }, calls);
     },
     refresh: async () => {
       const servers = await readServerRows(log.writer.db);
@@ -91,7 +102,7 @@ export function createToolCatalog(
           continue;
         }
 
-        const built = buildProxiedTool(row.tool, form, calls);
+        const built = buildProxiedTool(row.tool, form, calls, hash);
 
         if (built.kind === 'built') {
           next.set(row.tool, { hash, tool: built.tool, form });

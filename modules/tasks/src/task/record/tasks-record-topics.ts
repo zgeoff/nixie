@@ -27,6 +27,7 @@ export const tasksRecordTopics = {
   'task.failed_turn_spent': ['tasks'],
   'task.limit_notice': ['tasks'],
   'recovery.notice': ['tasks'],
+  tool_changed: ['tasks'],
   'task.limits_raised': ['tasks'],
   'task.wake': ['tasks'],
   'task.run_opened': ['tasks'],
