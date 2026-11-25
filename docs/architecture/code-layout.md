@@ -167,6 +167,7 @@ Each module package covers one area of the architecture, and its doc covers the 
 | `sandbox`     | The [sandbox adapter](connectors/sandboxes.md) interface, sandboxes by kind and the sandbox double                                              |
 | `tools`       | The [tool endpoint](connectors/tool-calls.md) per task run                                                                                      |
 | `credentials` | The [credential store](connectors/credentials.md): the reference resolver, the fetcher, the model grant and the own-value set                   |
+| `connections` | The [credential database](connectors/credential-database.md): the database backend for OAuth tokens and the forget of a connection              |
 | `connectors`  | The [web fetch](connectors/web-fetch.md), [time](connectors/time.md) and [search](connectors/search.md) and [image](connectors/images.md) tools |
 | `memory`      | The [memory store](memory/store.md) and its context                                                                                             |
 | `notebook`    | The [notebook](memory/notebook.md): notes, their links, the tools and the forget                                                                |
