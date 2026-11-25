@@ -33964,13 +33964,17 @@
                                               }
                                             }
                                           ]
+                                        },
+                                        "retain": {
+                                          "type": "boolean"
                                         }
                                       },
                                       "required": [
                                         "kind",
                                         "region",
                                         "shown",
-                                        "data"
+                                        "data",
+                                        "retain"
                                       ]
                                     }
                                   ]
