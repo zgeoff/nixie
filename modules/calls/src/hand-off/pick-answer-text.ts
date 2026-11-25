@@ -16,9 +16,9 @@ export interface AnswerText {
   readonly isFixedLine: boolean;
 }
 
-// The whole text that the speech layer gets for a hand-off. A turn that failed or wrote no text gets
-// the fixed line instead, because an empty answer makes the speech layer invent one, and the line
-// claims no outcome.
+// The whole text that the speech layer gets for a hand-off. A turn that failed, ended on a proposal,
+// passed a limit or wrote no text gets the fixed line instead, which claims no outcome: an empty
+// answer makes the speech layer invent one.
 export function pickAnswerText(parts: AnswerParts): AnswerText {
   const text = parts.replies
     .map((reply) => reply.trim())

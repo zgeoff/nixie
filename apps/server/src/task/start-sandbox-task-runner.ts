@@ -1,4 +1,9 @@
-import { defaultVoicePrompt, sendTurnAnswer } from '@heynixie/calls';
+import {
+  closeCutHandOffs,
+  defaultVoicePrompt,
+  endAskedCall,
+  sendTurnAnswer,
+} from '@heynixie/calls';
 import type { StartedMemoryStore } from '@heynixie/memory';
 import type { SandboxRunner } from '@heynixie/sessions';
 import { startSandboxRunner } from '@heynixie/sessions';
@@ -44,6 +49,20 @@ export async function startSandboxTaskRunner(
 
         if (calls !== undefined) {
           await sendTurnAnswer(calls, answer);
+        }
+      },
+      closeCutHandOffs: (callID, handOffIDs) => {
+        const calls = parts.apiContext.calls;
+
+        if (calls !== undefined) {
+          closeCutHandOffs(calls, callID, handOffIDs);
+        }
+      },
+      endTurn: async (callID) => {
+        const calls = parts.apiContext.calls;
+
+        if (calls !== undefined) {
+          await endAskedCall(calls, callID);
         }
       },
     },

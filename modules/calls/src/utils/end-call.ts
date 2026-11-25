@@ -32,13 +32,20 @@ export async function endCall(
 
     const finalEndedBy = paid.isReached ? 'budget' : endedBy;
 
+    // A task that can run no more turns never takes the closing marker, so the report goes out here.
+    const isReported = await context.writeStrandedReport(tx, call);
+
     await writeRecordsInTransaction(tx, context.log, [
-      {
-        kind: callClosingCodec.kind,
-        definitions: context.definitions(),
-        thread: call.taskID,
-        payload: callClosingCodec.encode({ callID }),
-      },
+      ...(isReported
+        ? []
+        : [
+            {
+              kind: callClosingCodec.kind,
+              definitions: context.definitions(),
+              thread: call.taskID,
+              payload: callClosingCodec.encode({ callID }),
+            },
+          ]),
       {
         kind: callEndedCodec.kind,
         definitions: context.definitions(),

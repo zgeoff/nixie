@@ -226,6 +226,7 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
                   readReviewer: () => parts.find('checker')?.check ?? null,
                 },
           isPromptExported: definitionsExport !== null,
+          calls: parts.get('context').apiContext.calls,
         },
       );
     },

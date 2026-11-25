@@ -52,4 +52,10 @@ export interface CallStepHooks {
 
   // sends a turn's answer to the speech layer when the turn ends
   readonly answer: (answer: TurnAnswer) => Promise<void>;
+
+  // closes the hand-offs of a turn the user cut, with no answer and no holding line
+  readonly closeCutHandOffs: (callID: string, handOffIDs: readonly string[]) => void;
+
+  // ends the call once the turn's answers are sent, when the turn asked to hang up
+  readonly endTurn: (callID: string) => Promise<void>;
 }

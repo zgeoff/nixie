@@ -13,6 +13,9 @@ type CallStartedBy = 'you' | 'nixie';
 
 // The speech layer is the outside service that hears the user, takes turns and speaks.
 export interface SpeechLayer {
+  // the provider's model that speaks the call, which each `call.spoke` record names
+  readonly model: string;
+
   // Creates the session from the device's offer and opens the sideband. The session sets
   // `store: false`, client delegation, an acknowledgement delay, and a device data channel that
   // may receive and send no event.
@@ -105,6 +108,9 @@ export interface CallRuntime {
 
   // the speech layer's own lines since the call's last hand-off, by call ID
   readonly smallTalk: Map<string, SmallTalkLine[]>;
+
+  // the calls whose turn asked to hang up, which end once the turn's answer is sent
+  readonly hangUps: Set<string>;
 }
 
 export interface HandOff {
@@ -113,6 +119,9 @@ export interface HandOff {
 
   // the record that holds the answered reply, which a cut marks
   replyRecordID: string | null;
+
+  // cancels the holding line's timer
+  readonly holding: AbortController;
 }
 
 export interface SmallTalkLine {
@@ -144,6 +153,13 @@ export interface CallsContext {
   // Interrupts the turn that the call's task runs, so that the user talking over a reply cuts a
   // model call in flight.
   readonly interruptTurn: (taskID: string) => Promise<void>;
+
+  // Writes the call's report to the conversation in the transaction that ends the call, when the
+  // call's task can run no closing turn, and returns whether it wrote one.
+  readonly writeStrandedReport: (
+    tx: Transaction<unknown>,
+    call: Pick<Call, 'callID' | 'taskID'>,
+  ) => Promise<boolean>;
   readonly runtime: CallRuntime;
 
   // the speech sessions of the calls that run in this process, by call ID

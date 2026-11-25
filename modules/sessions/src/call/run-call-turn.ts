@@ -1,6 +1,7 @@
-import { callHandedOffCodec } from '@heynixie/calls';
+import { callHandedOffCodec, renderNoSummaryReport } from '@heynixie/calls';
 import type { LogRecord } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
+import { probeOpenProposalSince } from '@heynixie/proposals';
 import type { StepInput, StepResult, TasksContext } from '@heynixie/tasks';
 import { buildStepRunID, conversationTaskID, readCallTask } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
@@ -43,10 +44,13 @@ export interface CallTurn {
   readonly runTurn: () => Promise<StepResult>;
 }
 
-// One step of a call's thread. A hand-off's turn answers the speech layer when it ends. The turn
-// that carries the closing marker reports its reply to the conversation as the call's summary.
+// One step of a call's thread. A hand-off's turn answers the speech layer when it ends, and then
+// ends the call when the turn asked to hang up. The turn that carries the closing marker reports
+// its reply to the conversation as the call's summary.
 export async function runCallTurn(turn: CallTurn): Promise<StepResult> {
   const isClosing = turn.input.inbox.some((record) => record.kind === 'call.closing');
+
+  const startSequence = await readNewestSequence(turn);
 
   const ended = await turn
     .runTurn()
@@ -65,11 +69,14 @@ export async function runCallTurn(turn: CallTurn): Promise<StepResult> {
       isFailed: true,
     });
 
+    await turn.hooks.endTurn(turn.callID);
+
     throw ended.error;
   }
 
-  // A turn that the user cut writes no answer: the speech layer stopped speaking it. A hand-off
-  // that landed during the cut turn stays unread, so the next turn answers it.
+  // A turn that the user cut writes no answer: the speech layer stopped speaking it, so the
+  // hand-offs it took close with no answer and no holding line. A hand-off that landed during the
+  // cut turn stays unread, so the next turn answers it.
   if (turn.input.interrupt.aborted) {
     return releaseLiveHandOffs(turn, ended.result);
   }
@@ -84,12 +91,32 @@ export async function runCallTurn(turn: CallTurn): Promise<StepResult> {
 
   const handOffIDs = await readTakenHandOffs(turn, ended.result, isLimited);
 
-  await sendAnswers(turn, handOffIDs, {
-    replies,
-    isFailed: isLimited,
+  // A turn that ends on a proposal claims no outcome: the user has not answered it yet.
+  const isProposed = await probeOpenProposalSince(turn.context.log.writer.db, {
+    taskID: turn.input.taskID,
+    afterSequence: startSequence,
   });
 
+  await sendAnswers(turn, handOffIDs, {
+    replies,
+    isFailed: isLimited || isProposed,
+  });
+
+  await turn.hooks.endTurn(turn.callID);
+
   return ended.result;
+}
+
+// The newest record of the call's thread before the turn, after which the turn's own records come.
+async function readNewestSequence(turn: CallTurn): Promise<number> {
+  const [newest] = await readRecords(turn.context.log, {
+    afterSequence: 0,
+    thread: turn.input.taskID,
+    order: 'newest',
+    limit: 1,
+  });
+
+  return newest?.record.sequence ?? 0;
 }
 
 async function writeClosing(turn: CallTurn, result: StepResult | null): Promise<StepResult> {
@@ -99,11 +126,7 @@ async function writeClosing(turn: CallTurn, result: StepResult | null): Promise<
       : await readTurnReplies(turn.context, turn.input.taskID, buildStepRunID(turn.input));
 
   const summary = replies?.texts.join('\n\n').trim() ?? '';
-
-  const body =
-    summary === ''
-      ? `The call ${turn.callID} ended with no summary. Its record is the thread of the task ${turn.input.taskID}.`
-      : summary;
+  const body = summary === '' ? renderNoSummaryReport(turn.callID, turn.input.taskID) : summary;
 
   return {
     ...(result ?? { records: [], acknowledged: turn.input.inbox.map((record) => record.sequence) }),
@@ -117,7 +140,9 @@ async function writeClosing(turn: CallTurn, result: StepResult | null): Promise<
         body,
         replyTo: null,
         onBehalfOf: [],
-        wake: false,
+
+        // the ended notice told the conversation a summary follows, so the summary wakes it
+        wake: true,
       },
     ],
   };
@@ -166,8 +191,16 @@ function pickHandOffIDs(records: readonly LogRecord[]): readonly string[] {
     .map((entry) => callHandedOffCodec.decode(entry.payload).handOffID);
 }
 
-// A cut turn sends no answer, so a hand-off it took live goes back to the inbox unread.
+// A cut turn sends no answer, so a hand-off it took live goes back to the inbox unread, and each
+// one it started with closes.
 async function releaseLiveHandOffs(turn: CallTurn, result: StepResult): Promise<StepResult> {
+  const acknowledged = new Set(result.acknowledged);
+
+  turn.hooks.closeCutHandOffs(
+    turn.callID,
+    pickHandOffIDs(turn.input.inbox.filter((record) => acknowledged.has(record.sequence))),
+  );
+
   const live = await readLiveHandOffs(turn, result);
 
   if (live.length === 0) {

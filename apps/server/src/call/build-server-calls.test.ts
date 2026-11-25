@@ -4,6 +4,7 @@ import { dirname, join } from 'node:path';
 import { buildFakeSpeechLayer } from '@heynixie/calls/test-utils';
 import type { LogRecord } from '@heynixie/contract';
 import { waitForCondition } from '@heynixie/testing';
+import invariant from 'tiny-invariant';
 import { createTestClient } from '../test-utils/create-test-client';
 import { startInProcessNixie } from '../test-utils/start-in-process-nixie';
 
@@ -88,6 +89,21 @@ async function setupTest() {
       return started.callID;
     },
     readAnswers: () => speech.calls.filter((call) => call.method === 'answer'),
+    waitForConversationRecord: async (isWanted: (record: LogRecord) => boolean) => {
+      const found: { record: LogRecord | null } = { record: null };
+
+      await waitForCondition(async () => {
+        const page = await api.client.conversation.read({ thread: 'conversation' });
+
+        found.record = page.records.find((record) => isWanted(record)) ?? null;
+
+        return found.record !== null;
+      });
+
+      invariant(found.record !== null, 'the record was found');
+
+      return found.record;
+    },
   };
 }
 
@@ -174,4 +190,87 @@ test('it posts the summary of the call to the conversation as a report when the 
   });
 
   expect(read.records.map((record) => record.kind)).toContain('task_message');
+});
+
+test('it gives the call thread the hang-up, which ends the call as nixie after the turn says its last line', async () => {
+  const ctx = await setupTest();
+
+  ctx.nixie.guest.addKindReplies(
+    'worker',
+    { toolUse: { name: 'call.hang_up', input: {} } },
+    { text: 'Goodbye.' },
+  );
+
+  await ctx.startLiveCall();
+
+  ctx.speech.emit('fake-session-1', { kind: 'hand_off', handOffID: 'h1', request: 'that is all' });
+
+  await ctx.waitForConversationRecord((record) => record.kind === 'call.ended');
+
+  await waitForCondition(() =>
+    ctx.nixie.guest.turns.some((turn) =>
+      turn.input.some((message) => message.text.includes('The call ended when you hung up')),
+    ),
+  );
+
+  const hangUp = ctx.nixie.toolResults.find((result) => result.name === 'call.hang_up');
+
+  expect({
+    hangUp: JSON.parse(hangUp?.result ?? '{}'),
+    speech: ctx.speech.calls
+      .filter((call) => call.method === 'answer' || call.method === 'close')
+      .map((call) => (call.method === 'answer' ? call.text : call.method)),
+  }).toStrictEqual({
+    hangUp: expect.objectContaining({
+      structuredContent: { note: 'The call ends once the user hears this turn.' },
+    }),
+    speech: ['Goodbye.', 'close'],
+  });
+});
+
+test('it runs no compaction on the call thread when a call turn ends past the threshold', async () => {
+  const ctx = await setupTest();
+
+  ctx.nixie.guest.setContextSize(190_000);
+  ctx.nixie.guest.addKindReplies('worker', { text: 'Two things.' }, { text: 'Nothing else.' });
+
+  await ctx.startLiveCall();
+
+  ctx.speech.emit('fake-session-1', { kind: 'hand_off', handOffID: 'h1', request: 'my day' });
+
+  await waitForCondition(() => ctx.readAnswers().length === 1);
+
+  ctx.speech.emit('fake-session-1', { kind: 'hand_off', handOffID: 'h2', request: 'and then' });
+
+  await waitForCondition(() => ctx.readAnswers().length === 2);
+
+  const callSummaries = ctx.nixie.guest.received.filter(
+    (received) => received.frame.type === 'summarize' && received.owner !== 'conversation',
+  );
+
+  expect({ answers: ctx.readAnswers().length, callSummaries }).toStrictEqual({
+    answers: 2,
+    callSummaries: [],
+  });
+});
+
+test('it reports a call whose task was stopped when the call ends, with a wake and no summary', async () => {
+  const ctx = await setupTest();
+  const callID = await ctx.startLiveCall();
+  const listed = await ctx.api.client.tasks.list({});
+
+  const taskID = listed.tasks.find((task) => task.runner === 'call')?.taskID ?? '';
+
+  await ctx.api.client.tasks.stop({ taskID, clientActionID: crypto.randomUUID() });
+  await ctx.api.client.calls.hangUp({ callID, clientActionID: crypto.randomUUID() });
+
+  const report = await ctx.waitForConversationRecord(
+    (record) => record.taskMessage?.from === taskID,
+  );
+
+  expect(report.taskMessage).toMatchObject({
+    kind: 'report',
+    text: `The call ${callID} ended with no summary. Its record is the thread of the task ${taskID}.`,
+    woke: true,
+  });
 });

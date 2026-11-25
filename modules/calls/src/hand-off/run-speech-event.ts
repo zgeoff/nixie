@@ -44,7 +44,9 @@ async function runHandOff(
 
   const handOffs = context.runtime.handOffs.get(call.callID) ?? new Map();
 
-  handOffs.set(handOff.handOffID, { isAnswered: false, replyRecordID: null });
+  const holding = new AbortController();
+
+  handOffs.set(handOff.handOffID, { isAnswered: false, replyRecordID: null, holding });
   context.runtime.handOffs.set(call.callID, handOffs);
 
   await writeHandOff(context, call, {
@@ -54,7 +56,12 @@ async function runHandOff(
   });
 
   // the clock of the holding line runs beside the turn, so the next event never waits on it
-  void startHoldingLine(context, call, handOff.handOffID, signal);
+  void startHoldingLine(
+    context,
+    call,
+    handOff.handOffID,
+    AbortSignal.any([signal, holding.signal]),
+  );
 }
 
 async function runCut(
@@ -68,9 +75,17 @@ async function runCut(
     return;
   }
 
-  if (!handOff.isAnswered || handOff.replyRecordID === null) {
+  // The user talked before the answer, so the turn that runs it stops and says no holding line.
+  if (!handOff.isAnswered) {
+    handOff.holding.abort();
+
     await context.interruptTurn(call.taskID);
 
+    return;
+  }
+
+  // A fixed line, or a hand-off a cut turn closed, holds no reply to mark, and its turn has ended.
+  if (handOff.replyRecordID === null) {
     return;
   }
 

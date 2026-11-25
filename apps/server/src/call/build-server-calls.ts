@@ -1,10 +1,20 @@
-import type { CallsContext, SpeechLayer, VoiceConfig } from '@heynixie/calls';
-import { buildCallRuntime, defaultVoiceDefinitions, defaultVoicePrompt } from '@heynixie/calls';
+import type { Call, CallsContext, SpeechLayer, VoiceConfig } from '@heynixie/calls';
+import {
+  buildCallRuntime,
+  defaultVoiceDefinitions,
+  defaultVoicePrompt,
+  renderNoSummaryReport,
+} from '@heynixie/calls';
 import type { Clock } from '@heynixie/clock';
-import type { Definitions, Log } from '@heynixie/log';
+import type { Definitions, Log, WriteTransaction } from '@heynixie/log';
 import type { Logger } from '@heynixie/logger';
-import type { TasksContext } from '@heynixie/tasks';
-import { writeCallTask, writeTaskControl } from '@heynixie/tasks';
+import type { TaskMessaging, TaskState, TasksContext, TasksTables } from '@heynixie/tasks';
+import {
+  conversationTaskID,
+  writeCallTask,
+  writeTaskControl,
+  writeTaskMessageInTransaction,
+} from '@heynixie/tasks';
 import type { InForce } from '../types';
 
 export interface ServerCallsOptions {
@@ -20,6 +30,9 @@ export interface ServerCallsOptions {
 
   // null where the server wires no adapter
   readonly speech: SpeechLayer | null;
+
+  // the conversation's place in the task directory, which a call's report goes to
+  readonly messaging: Pick<TaskMessaging, 'directory' | 'hopLimit'>;
 
   // what the call's task and the cut of its turn need
   readonly tasks: Pick<
@@ -45,8 +58,49 @@ export function buildServerCalls(options: ServerCallsOptions): CallsContext {
     interruptTurn: async (taskID) => {
       await writeTaskControl(options.tasks, { taskID, control: 'interrupt' });
     },
+    writeStrandedReport: (tx, call) => writeStrandedReport(tx, options, call),
     runtime: buildCallRuntime(),
     sessions: new Map(),
     openings: new Set(),
   };
+}
+
+// The states in which a task takes no more steps until someone acts on it, so a closing marker
+// would wait unread.
+const strandedStates: ReadonlySet<TaskState> = new Set(['failed', 'stopped', 'done', 'closed']);
+
+// A call whose task can run no closing turn gets its report here, with no summary, in the
+// transaction that ends the call.
+async function writeStrandedReport(
+  tx: WriteTransaction,
+  options: ServerCallsOptions,
+  call: Pick<Call, 'callID' | 'taskID'>,
+): Promise<boolean> {
+  const task = await tx
+    .$extendTables<TasksTables>()
+    .selectFrom('tasks')
+    .select('state')
+    .where('task_id', '=', call.taskID)
+    .executeTakeFirst();
+
+  if (task === undefined || !strandedStates.has(task.state)) {
+    return false;
+  }
+
+  const sent = await writeTaskMessageInTransaction(
+    tx,
+    options.tasks,
+    {
+      from: call.taskID,
+      to: conversationTaskID,
+      kind: 'report',
+      body: renderNoSummaryReport(call.callID, call.taskID),
+      replyTo: null,
+      onBehalfOf: [],
+      wake: true,
+    },
+    { messaging: options.messaging, senderHop: 0, stepKey: `${call.taskID}:end` },
+  );
+
+  return sent.status === 'sent';
 }

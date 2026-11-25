@@ -287,6 +287,79 @@ test('it interrupts the running turn and marks no reply when the user talks over
   expect(thread).toHaveLength(1);
 });
 
+test('it says no holding line for a hand-off the user talked over before its answer', async () => {
+  const ctx = await setupTest();
+
+  ctx.speech.emit(ctx.sessionID, {
+    kind: 'hand_off',
+    handOffID: 'h1',
+    request: 'what is on today',
+  });
+
+  await waitFor(() => expect(ctx.clock.readNextDueMs()).not.toBeNull());
+
+  ctx.speech.emit(ctx.sessionID, { kind: 'cut', handOffID: 'h1', heardChars: 0 });
+
+  await waitFor(() => expect(ctx.interrupted).toStrictEqual([ctx.taskID]));
+
+  ctx.clock.advance(1500);
+  ctx.speech.emit(ctx.sessionID, { kind: 'heard', text: 'wait', startedAtMs: 0, endedAtMs: 300 });
+
+  const kinds = await waitFor(async () => {
+    const thread = await ctx.readThread();
+
+    expect(thread).toHaveLength(2);
+
+    return thread.map((record) => record.kind);
+  });
+
+  expect({ kinds, says: ctx.speech.calls.filter((call) => call.method === 'say') }).toStrictEqual({
+    kinds: ['call.handed_off', 'owner_message'],
+    says: [],
+  });
+});
+
+test('it interrupts no turn when the user talks over the fixed line of a hand-off', async () => {
+  const ctx = await setupTest();
+
+  ctx.speech.emit(ctx.sessionID, {
+    kind: 'hand_off',
+    handOffID: 'h1',
+    request: 'what is on today',
+  });
+
+  await waitFor(async () => {
+    const thread = await ctx.readThread();
+
+    expect(thread).toHaveLength(1);
+  });
+
+  await sendTurnAnswer(ctx.context, {
+    callID: ctx.callID,
+    taskID: ctx.taskID,
+    handOffID: 'h1',
+    replies: [],
+    replyRecordID: null,
+    isFailed: true,
+  });
+
+  ctx.speech.emit(ctx.sessionID, { kind: 'cut', handOffID: 'h1', heardChars: 4 });
+  ctx.speech.emit(ctx.sessionID, { kind: 'heard', text: 'okay', startedAtMs: 0, endedAtMs: 300 });
+
+  const kinds = await waitFor(async () => {
+    const thread = await ctx.readThread();
+
+    expect(thread).toHaveLength(3);
+
+    return thread.map((record) => record.kind);
+  });
+
+  expect({ kinds, interrupted: ctx.interrupted }).toStrictEqual({
+    kinds: ['call.handed_off', 'call.spoke', 'owner_message'],
+    interrupted: [],
+  });
+});
+
 test('it asks the call thread for its last turn when the call ends', async () => {
   const ctx = await setupTest();
 
@@ -367,7 +440,12 @@ test('it records the holding line as speech layer speech on the call thread', as
 
   const spoke = thread.at(-1);
 
-  expect(spoke?.payload).toMatchObject({ speaker: 'speech_layer', heardChars: 11 });
+  expect(spoke?.payload).toMatchObject({
+    speaker: 'speech_layer',
+    model: 'fake-speech-1',
+    heardChars: 11,
+  });
+
   expect(spoke?.erasable).toMatchObject({ fields: { text: 'One moment.' } });
 });
 

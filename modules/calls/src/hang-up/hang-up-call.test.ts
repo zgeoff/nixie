@@ -55,6 +55,38 @@ test('it writes the ended record on the conversation thread once, however often 
   ]);
 });
 
+test('it reports a call whose task can run no closing turn as it ends, and writes no closing marker', async () => {
+  const ctx = await setupTest();
+
+  const taskID = ctx.createdTasks[0]?.taskID ?? '';
+
+  ctx.endTask(taskID);
+
+  await hangUpCall(ctx.context, ctx.callID);
+
+  const thread = await readRecords(ctx.log, { afterSequence: 0, thread: taskID });
+
+  expect({
+    thread: thread.map((entry) => entry.record.kind),
+    reported: ctx.strandedReports,
+  }).toStrictEqual({ thread: [], reported: [ctx.callID] });
+});
+
+test('it asks a call task that can still run for its closing turn, and reports nothing itself', async () => {
+  const ctx = await setupTest();
+
+  const taskID = ctx.createdTasks[0]?.taskID ?? '';
+
+  await hangUpCall(ctx.context, ctx.callID);
+
+  const thread = await readRecords(ctx.log, { afterSequence: 0, thread: taskID });
+
+  expect({
+    thread: thread.map((entry) => entry.record.kind),
+    reported: ctx.strandedReports,
+  }).toStrictEqual({ thread: ['call.closing'], reported: [] });
+});
+
 test('it refuses an ID that no call has', async () => {
   const ctx = await setupTest();
   const result = await hangUpCall(ctx.context, 'nothing');

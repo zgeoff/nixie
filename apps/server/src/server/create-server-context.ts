@@ -13,7 +13,7 @@ import {
 import type { Writer } from '@heynixie/log';
 import type { Logger } from '@heynixie/logger';
 import type { PlanLoginsHolder, SpendGateway, SpendTurnLimits } from '@heynixie/spend';
-import type { RunSettings, TaskLimits, TaskRunnerRegistry } from '@heynixie/tasks';
+import type { RunSettings, TaskLimits, TaskMessaging, TaskRunnerRegistry } from '@heynixie/tasks';
 import { readDefinitionNextFire } from '@heynixie/triggers';
 import { paidToolLimits, paidToolNames } from '../budget/paid-tool-names';
 import { buildServerCalls } from '../call/build-server-calls';
@@ -44,6 +44,9 @@ export interface ServerContextOptions {
     readonly voice: VoiceConfig | null;
     readonly logEvent: Logger;
     readonly speech: SpeechLayer | null;
+
+    // the conversation's place in the task directory, which a call's report goes to
+    readonly messaging: Pick<TaskMessaging, 'directory' | 'hopLimit'>;
   };
 
   // the gateway and the turn limits of the spending stop, or absent without spendStop
@@ -96,6 +99,7 @@ export async function createServerContext(
         voice: options.calls?.voice ?? null,
         logEvent: options.calls?.logEvent ?? (() => {}),
         speech: options.calls?.speech ?? null,
+        messaging: options.calls?.messaging ?? { directory: [], hopLimit: 0 },
         tasks: {
           log,
           clock: writer.clock,

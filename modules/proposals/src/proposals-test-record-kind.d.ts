@@ -1,4 +1,5 @@
 export type ProposalsTestRecordKind =
+  | 'test.proposal_created'
   | 'test.proposal_approved'
   | 'test.proposal_rejected'
   | 'test.proposal_lapsed';

@@ -61,6 +61,7 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
           calls: {
             voice: options.config.voice ?? null,
             logEvent: options.log,
+            messaging: buildTaskMessaging(options.config),
             speech:
               options.speech ??
               (NIXIE_TEST_BUILD && options.harness !== undefined ? harnessSpeech : null),

@@ -45,6 +45,7 @@ export function buildFakeSpeechLayer(): FakeSpeechLayer {
   const refusals: SpeechRefused['error'][] = [];
 
   return {
+    model: 'fake-speech-1',
     calls,
     emit: (sessionID, event) => {
       const session = sessions.get(sessionID);

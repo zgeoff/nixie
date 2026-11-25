@@ -35,6 +35,12 @@ export interface TestCallsContext {
 
   // each event that the calls module logged
   readonly logged: readonly { readonly event: string; readonly fields: unknown }[];
+
+  // each call that the module reported in the transaction that ended it
+  readonly strandedReports: readonly string[];
+
+  // Makes the call task the seam created run no more turns, as a failed or closed task does.
+  readonly endTask: (taskID: string) => void;
 }
 
 export interface TestCalls extends TestCallsContext {
@@ -59,6 +65,9 @@ export function buildTestCallsContext(
   const createdTasks: (CreateCallTask & { readonly taskID: string })[] = [];
   const logged: { event: string; fields: unknown }[] = [];
   const interrupted: string[] = [];
+  const strandedReports: string[] = [];
+
+  const endedTasks = new Set<string>();
 
   const voice: VoiceDefinitions = {
     ...defaultVoiceDefinitions,
@@ -99,12 +108,31 @@ export function buildTestCallsContext(
 
       return Promise.resolve();
     },
+    writeStrandedReport: (_tx, call) => {
+      if (!endedTasks.has(call.taskID)) {
+        return Promise.resolve(false);
+      }
+
+      strandedReports.push(call.callID);
+
+      return Promise.resolve(true);
+    },
     runtime: buildCallRuntime(),
     sessions: new Map(),
     openings: new Set(),
   };
 
-  return { context, speech, createdTasks, logged, interrupted };
+  return {
+    context,
+    speech,
+    createdTasks,
+    logged,
+    interrupted,
+    strandedReports,
+    endTask: (taskID) => {
+      endedTasks.add(taskID);
+    },
+  };
 }
 
 // A log that folds the budget and call records, and the calls context on top. The clock starts at

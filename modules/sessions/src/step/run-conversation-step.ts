@@ -159,7 +159,14 @@ function runSessionTurn(conversation: ConversationRun, input: StepInput): Promis
 async function runSessionStep(step: SessionStep): Promise<StepResult> {
   const frame = step.run.frame;
 
-  if (isSessionLive(step.position) && canSessionTake(step.position.state, 'compact')) {
+  // A call is short and speaks each answer at once, so it never waits on a summary.
+  const canCompact = frame.kind !== 'call';
+
+  if (
+    canCompact &&
+    isSessionLive(step.position) &&
+    canSessionTake(step.position.state, 'compact')
+  ) {
     return runCompactionStep(step, step.position.boundary);
   }
 
@@ -180,7 +187,7 @@ async function runSessionStep(step: SessionStep): Promise<StepResult> {
     };
   }
 
-  return runInboxStep(step, { canCompact: true, before: [] });
+  return runInboxStep(step, { canCompact, before: [] });
 }
 
 // A started task's brief is its first piece of work, and it arrives in no inbox record. A forget can
