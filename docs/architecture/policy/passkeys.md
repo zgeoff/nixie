@@ -38,8 +38,9 @@ directly, as it writes the identity record, and no log record rebuilds it.
   passkey. `defer` and `decline` never do.
 - The server builds each row's `passkeyChoices` from its risk class and its choices, as the choices
   that `approve` or `always_allow` take, and returns them on `approvals.listItems` and
-  `approvals.readProposals`. The client asks the passkey before it sends one of these choices. The
-  server checks the answer against the row, never against what the client sends.
+  `approvals.readProposals`. The client asks the passkey before it sends one of these choices,
+  unless the session's [window](#the-window) covers the check. The server checks the answer against
+  the row, never against what the client sends.
 - Always allow on a routine row takes no passkey, because the answer's rule hash pins the one rule
   it creates. The row offers Always allow only for a routine action, so a high-risk row never
   reaches the check with it. A row of a later kind that offers Always allow on a high-risk proposal
@@ -72,8 +73,10 @@ restart closes every window.
   assertion, so the list alone decides whether a window could cover them.
 - `passkeys.window` takes a check and tells whether the window covers it, and reports `false` for an
   always-ask check or a window whose passkey is revoked. The client calls it before it asks the
-  passkey, and sends the check with no assertion when the window is open. A client that sends an
-  assertion anyway has the assertion verified, which restarts the window.
+  passkey, and sends the check with no assertion when the window is open. When the window lapses
+  before the answer arrives, the server refuses it with `PASSKEY_REQUIRED`, and the client then asks
+  the passkey and sends the answer once more. A client that sends an assertion anyway has the
+  assertion verified, which restarts the window.
 - A check that the window covers writes no `passkey.used` and moves no counter, because no assertion
   ran.
 
