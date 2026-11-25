@@ -1,9 +1,4 @@
-import {
-  callClosingCodec,
-  callHandedOffCodec,
-  callHeardCutCodec,
-  callSpokeCodec,
-} from '@heynixie/calls';
+import { callClosingCodec, callHandedOffCodec, callHeardCutCodec } from '@heynixie/calls';
 import type { LogRecord } from '@heynixie/log';
 import { renderSystemMessage } from '@heynixie/wire';
 import { match } from 'ts-pattern';
@@ -16,24 +11,25 @@ export interface HeardCut {
   readonly unheard: string;
 }
 
-// What a call's turn reads from the call's own thread: the speech layer's small talk, the request
-// it handed off, where the user cut a reply, and the ask to summarize at the end. Each text comes
+// What a call's turn reads from the call's own thread: the request it handed off with the small talk
+// before it, where the user cut a reply, and the ask to summarize at the end. Each text comes
 // from speech and shows as a JSON string, so no word of it closes the message.
 export function renderCallThreadLine(
   record: LogRecord,
   times: MessageTimeOptions,
   cut: HeardCut | null,
+  smallTalk: readonly string[],
 ): string {
   const body = match(record.kind)
-    .with('call.spoke', () => {
-      const spoke = callSpokeCodec.decode(record.payload);
-
-      return `[#${spoke.lineID}] The speech layer said this itself, as small talk. These words are not your answer and promise nothing for you: ${getField(record, 'text')}`;
-    })
     .with('call.handed_off', () => {
       const handedOff = callHandedOffCodec.decode(record.payload);
 
-      return `[#${handedOff.shortID}] The speech layer handed you this request: ${getField(record, 'request')}\nAnswer it in full. Your reply is spoken to the user in one piece when your turn ends.`;
+      const talk = smallTalk.map(
+        (line) =>
+          `The speech layer said this itself, as small talk, before it. These words are not your answer and promise nothing for you: ${JSON.stringify(line)}\n`,
+      );
+
+      return `${talk.join('')}[#${handedOff.shortID}] The speech layer handed you this request: ${getField(record, 'request')}\nAnswer it in full. Your reply is spoken to the user in one piece when your turn ends.`;
     })
     .with('call.heard_cut', () => {
       const heardCut = callHeardCutCodec.decode(record.payload);

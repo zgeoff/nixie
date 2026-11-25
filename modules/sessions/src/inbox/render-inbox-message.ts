@@ -31,6 +31,7 @@ interface RenderedExtras {
   readonly result?: ActionResultBlock | null;
   readonly approvedAt?: Date | null;
   readonly cut?: HeardCut | null;
+  readonly smallTalk?: readonly string[];
 }
 
 export function renderInboxMessage(
@@ -93,12 +94,11 @@ export function renderInboxMessage(
   }
 
   if (
-    record.kind === 'call.spoke' ||
     record.kind === 'call.handed_off' ||
     record.kind === 'call.heard_cut' ||
     record.kind === 'call.closing'
   ) {
-    return renderCallThreadLine(record, times, extras.cut ?? null);
+    return renderCallThreadLine(record, times, extras.cut ?? null, extras.smallTalk ?? []);
   }
 
   if (record.kind === 'policy.action_answered') {

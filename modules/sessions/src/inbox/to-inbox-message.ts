@@ -25,6 +25,9 @@ export interface InboxExtras {
   // the part of a reply that the user heard, for the record that marks a cut
   readonly cut?: HeardCut | null;
 
+  // the small talk that came before a hand-off
+  readonly smallTalk?: readonly string[];
+
   // set on the message that starts a turn, or cuts into one
   readonly gaps?: TurnGaps;
 }

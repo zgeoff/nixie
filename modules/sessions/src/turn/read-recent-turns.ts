@@ -84,7 +84,10 @@ async function* readTurnsNewestFirst(
 
       cuts.set(cut.replyRecordID, cut.heardChars);
     } else if (record.kind === 'call.spoke') {
-      unanswered.push({ record, answered: null });
+      // a line at or after the turn's first record shows in the turn's own messages
+      if (record.sequence < query.beforeSequence) {
+        unanswered.push({ record, answered: null });
+      }
     } else if (record.kind === 'model.reply') {
       // an attempt that kept no reply leaves none in the history a rebuilt session reads
       const voided = await readVoidedReplies(context.log.writer.db, [record.sequence]);

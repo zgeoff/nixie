@@ -123,10 +123,12 @@ call's thread:
 | `hand_off` | The held `call.spoke` lines, then `call.handed_off`, in one transaction. The hand-off wakes the call's task.                 |
 | `cut`      | See below.                                                                                                                   |
 
-The call's task runs one turn over what it has not read. When the turn ends, the module sends the
-text of its replies to the speech layer in one `answer` call. A turn that fails, passes a limit or
-writes no text sends the `couldnt_finish` line instead, so the speech layer never makes up an
-answer. A turn that the user cut sends nothing.
+A `call.spoke` record wakes nothing and shows no message of its own: the turn reads each line of
+small talk beside the hand-off that follows it, so the first reply of the turn is the answer. The
+call's task runs one turn over what it has not read. When the turn ends, the module sends the text
+of its replies to the speech layer in one `answer` call. A turn that fails, passes a limit or writes
+no text sends the `couldnt_finish` line instead, so the speech layer never makes up an answer. A
+turn that the user cut sends nothing.
 
 When no answer has been sent `hold_after_ms` after a hand-off, the module sends the `holding` line
 through `say`. That line is not part of the answer, and it writes no record, because `call.spoke`
