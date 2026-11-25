@@ -87,6 +87,7 @@ export const spendRaiseOutputSchema = z.union([
   z.object({ error: z.literal('period_ended') }),
   z.object({ error: z.literal('unknown_route') }),
   z.object({ error: z.literal('unreachable') }),
+  z.object({ error: z.literal('unanswered') }),
 ]);
 
 export const spendStopStandsError = {

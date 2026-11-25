@@ -34,7 +34,6 @@ export function buildStubSpendGateway() {
       Promise.resolve({ kind: 'ok', value: buildMockGatewayStatus() }),
     ),
     putSandbox: mock<SpendGateway['putSandbox']>(() => Promise.resolve({ kind: 'ok' })),
-    patchSandbox: mock<SpendGateway['patchSandbox']>(() => Promise.resolve({ kind: 'ok' })),
     readSandbox: mock<SpendGateway['readSandbox']>(() =>
       Promise.resolve({
         kind: 'ok',

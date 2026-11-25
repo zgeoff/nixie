@@ -203,7 +203,7 @@ test('it keeps the record when the gateway does not answer the raise, for the wa
   const raises = await ctx.readRouteRaises();
   const stops = await readSpendRouteStops(ctx.writer.db);
 
-  expect([result, raises.length, stops.length]).toStrictEqual([{ error: 'unreachable' }, 1, 1]);
+  expect([result, raises.length, stops.length]).toStrictEqual([{ error: 'unanswered' }, 1, 1]);
 });
 
 test('it answers unreachable and writes nothing when the gateway does not answer the status', async () => {

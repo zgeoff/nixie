@@ -1,5 +1,7 @@
 import { match } from 'ts-pattern';
 import type { SpendRouteTrip, SpendStop } from '../types';
+import { formatSpendAmount } from './format-spend-amount';
+import type { SpendDisplay } from './format-spend-amount';
 
 const timeFormat: Intl.DateTimeFormatOptions = {
   hour: '2-digit',
@@ -44,7 +46,9 @@ export function formatSpendNotice(stop: StandingStop): string {
     .exhaustive();
 }
 
-export function formatRouteNotice(trip: SpendRouteTrip): string {
+// The notice of a route at its limit, with the limit in US dollars and its approximate amount in the
+// display currency.
+export function formatRouteNotice(trip: SpendRouteTrip, display: SpendDisplay | null): string {
   const period = trip.period === 'day' ? 'daily' : 'monthly';
 
   const reset =
@@ -52,5 +56,5 @@ export function formatRouteNotice(trip: SpendRouteTrip): string {
       ? 'at midnight'
       : `on ${trip.resetsAt.toLocaleDateString(undefined, dateFormat)}`;
 
-  return `Model spending paused on ${trip.route}: its ${period} limit was reached. Work on that route waits and nothing is lost. Other routes go on. It resumes on its own ${reset}.`;
+  return `Model spending paused on ${trip.route}: its ${period} limit of ${formatSpendAmount(trip.limit, display)} was reached. Work on that route waits and nothing is lost. Other routes go on. It resumes on its own ${reset}.`;
 }

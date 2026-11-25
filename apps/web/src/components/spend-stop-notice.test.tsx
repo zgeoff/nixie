@@ -64,6 +64,31 @@ test('it tells the owner which route waits at its limit, and offers a raise that
   expect(rendered.getByRole('button', { name: 'Raise the day limit of plan' })).toBeInTheDocument();
 });
 
+test('it shows the limit and the raise in US dollars with the approximate amount in the display currency', async () => {
+  const ctx = setupTest();
+
+  await createDeviceSession();
+
+  await spendStore.counts.create({
+    counts: { routes: [], display: { currency: 'AUD', rate: 1.5 } },
+  });
+
+  await spendStore.stops.create({ stop: { state: 'clear', routes: [ctx.buildRouteTrip()] } });
+
+  const rendered = render(<SpendStopNotice />);
+
+  await waitFor(() => {
+    expect(rendered.getByRole('status')).toHaveTextContent(
+      'its daily limit of $40.00 (about A$60) was reached',
+    );
+  });
+
+  await ctx.user.click(rendered.getByRole('button', { name: 'Raise the day limit of plan' }));
+
+  expect(rendered.getByLabelText('US dollars')).toHaveValue(60);
+  expect(rendered.getByText('$60.00 (about A$90)')).toBeInTheDocument();
+});
+
 test('it offers no raise for a route whose limit is at its cap or whose month is at its limit', async () => {
   const ctx = setupTest();
 
@@ -109,6 +134,49 @@ test('it raises the day limit of a route in dollars with one confirm and clears 
   await waitFor(() => {
     expect(rendered.container).toBeEmptyDOMElement();
   });
+});
+
+test('it says a raise is saved when the gateway gave no answer to it', async () => {
+  const ctx = setupTest();
+
+  await createDeviceSession();
+
+  await spendStore.stops.create({
+    stop: { state: 'clear', routes: [ctx.buildRouteTrip({ route: 'unanswered' })] },
+  });
+
+  const rendered = render(<SpendStopNotice />);
+
+  const open = await rendered.findByRole('button', { name: 'Raise the day limit of unanswered' });
+
+  await ctx.user.click(open);
+  await ctx.user.click(rendered.getByRole('button', { name: 'Confirm raise of unanswered' }));
+
+  const alert = await rendered.findByRole('alert');
+
+  expect(alert).toHaveTextContent('Your raise is saved, and applies when it answers.');
+});
+
+test('it says a raise is not saved when the gateway gave no status', async () => {
+  const ctx = setupTest();
+
+  await createDeviceSession();
+
+  await spendStore.stops.create({
+    stop: { state: 'clear', routes: [ctx.buildRouteTrip({ route: 'no-status' })] },
+  });
+
+  const rendered = render(<SpendStopNotice />);
+
+  const open = await rendered.findByRole('button', { name: 'Raise the day limit of no-status' });
+
+  await ctx.user.click(open);
+  await ctx.user.click(rendered.getByRole('button', { name: 'Confirm raise of no-status' }));
+
+  const alert = await rendered.findByRole('alert');
+
+  expect(alert).toHaveTextContent('your raise was not saved');
+  expect(spendStore.raises.all()).toStrictEqual([]);
 });
 
 test('it offers no raise to an operator-only stop', async () => {

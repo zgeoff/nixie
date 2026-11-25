@@ -13,3 +13,7 @@ test.each([
 test('#isLimitReached finds ten replies of 0.1 dollars at a limit of 1 dollar', () => {
   expect(isLimitReached(10 * 100_000, 1)).toBe(true);
 });
+
+test('#isLimitReached finds an empty count under a limit of less than half a micro', () => {
+  expect(isLimitReached(0, 0.0000004)).toBe(false);
+});

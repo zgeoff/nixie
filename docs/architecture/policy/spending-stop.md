@@ -144,9 +144,12 @@ day's start and either a route with its dollars, the turns, or both, and works f
 It calls the gateway's `POST /raise` with the route and its dollars, then writes
 `spend.limit_raised` with the session as `by`. A total above a cap, the gateway's for a route's
 dollars or the config's for turns, comes back as `above_cap` with the measure, the route and the
-cap, and writes nothing. A route the gateway does not hold comes back as `unknown_route`. A raise of
-a route's dollars never pauses nixie. It clears the route's stop when the raised limit passes the
-route's spend, and restates the stop when it does not.
+cap, and writes nothing. A route the gateway does not hold comes back as `unknown_route`. A raise
+made while the gateway gives no status comes back as `unreachable` and writes nothing, and one whose
+post to the gateway got no answer comes back as `unanswered`, with its record kept for the watcher
+to send again. The client tells the user that an `unanswered` raise is saved and that an
+`unreachable` one is not. A raise of a route's dollars never pauses nixie. It clears the route's
+stop when the raised limit passes the route's spend, and restates the stop when it does not.
 
 The host command `nixie spend raise --turns <n>` raises the day's turns past the turn cap, and
 writes the host as `by`. A route's dollars pass its cap only through the gateway's own `raise`
@@ -159,11 +162,12 @@ comes from.
 
 The web client shows the notice under the pause banner. A turn trip of the day offers "Raise today's
 limit" with today's limit plus half, up to the cap, and the amount stays editable until the one
-confirm. Each stopped route shows a line that names the route and says its work waits. A route that
-tripped its day limit, below its cap, also offers "Raise the day limit of" the route, with the day's
-limit plus half in dollars, up to the route's cap, and one confirm sends `spend.raise` with the
-route and the dollars. A month trip, `unreachable` and `lost` show no button, and the pause banner
-offers no resume for the cause `spending`.
+confirm. Each stopped route shows a line that names the route, gives its limit in US dollars with
+the approximate amount in the display currency, and says its work waits. A route that tripped its
+day limit, below its cap, also offers "Raise the day limit of" the route, with the day's limit plus
+half in US dollars, up to the route's cap, and the amount in the display currency beside the field,
+and one confirm sends `spend.raise` with the route and the dollars. A month trip, `unreachable` and
+`lost` show no button, and the pause banner offers no resume for the cause `spending`.
 
 The spending page, at `/spend`, lists each route with its day and month count against its limit.
 Each figure is in US dollars with the approximate amount in the display currency beside it, such as

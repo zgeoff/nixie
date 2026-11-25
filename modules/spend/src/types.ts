@@ -154,11 +154,6 @@ export interface SandboxCount {
   readonly lastRefusal: SandboxRefusal | null;
 }
 
-export interface SandboxLimit {
-  readonly dollars: number;
-  readonly tokens?: number | undefined;
-}
-
 export interface GatewayRaise {
   readonly route: string;
   readonly start: string;
@@ -206,11 +201,6 @@ export interface SpendGateway {
   // sets the sandbox's limit, or null to count only, and sets its count to zero
   readonly putSandbox: (name: string, limit: Measures | null) => Promise<Done | Unreachable>;
 
-  // sets the limit whole and keeps the count; a name the gateway lacks is not_found
-  readonly patchSandbox: (
-    name: string,
-    limit: SandboxLimit | null,
-  ) => Promise<Done | NotFound | Unreachable>;
   readonly readSandbox: (name: string) => Promise<Done<SandboxCount> | NotFound | Unreachable>;
   readonly removeSandbox: (name: string) => Promise<Done | Unreachable>;
 }

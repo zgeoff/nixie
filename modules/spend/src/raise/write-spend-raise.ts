@@ -19,11 +19,12 @@ export type SpendRaiseResult =
     }
   | { readonly error: 'period_ended' }
   | { readonly error: 'unknown_route' }
-  | { readonly error: 'unreachable' };
+  | { readonly error: 'unreachable' }
+  | { readonly error: 'unanswered' };
 
 // Your raise of today's limits, confirmed once in the client: it checks the caps, tells the gateway
 // of a route's dollars, writes the record unless the gateway refused it, and clears the stops that
-// the raise lifts. It never lowers a total that an earlier raise set.
+// the raise lifts. It never lowers a total that an earlier raise set. `unreachable` writes nothing.
 export async function writeSpendRaise(
   context: SpendContext,
   request: RaiseRequest & { readonly by: string },
@@ -60,7 +61,7 @@ export async function writeSpendRaise(
   await writeSpendRaiseRecord(context, request);
 
   if (posted?.kind === 'unreachable') {
-    return { error: 'unreachable' };
+    return { error: 'unanswered' };
   }
 
   const facts = await readSpendFacts(context);

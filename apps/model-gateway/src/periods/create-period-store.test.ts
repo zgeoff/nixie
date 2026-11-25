@@ -140,6 +140,67 @@ test('it rewrites a version 2 store with every route at zero, keeps its sandboxe
   ]);
 });
 
+test('it carries a version 2 store into the one route of a single-route gateway, so a restart keeps its counts', async () => {
+  const ctx = await setupTest('2026-11-13T10:00:00Z');
+
+  await writeFile(
+    ctx.path,
+    JSON.stringify({
+      version: 2,
+      periods: {
+        day: {
+          start: '2026-11-13',
+          dollars: 40,
+          tokens: 70,
+          limit: null,
+          raise: { dollars: 45, tokens: 80 },
+          trippedAt: '2026-11-13T09:00:00.000Z',
+        },
+        month: {
+          start: '2026-10-01',
+          dollars: 500,
+          tokens: 90,
+          limit: null,
+          raise: null,
+          trippedAt: null,
+        },
+      },
+      sandboxes: {},
+    }),
+  );
+
+  await ctx.start({ plan: { day: 40, month: 600, dayCap: 80 } });
+
+  const stored = await ctx.readFile();
+
+  expect(stored).toStrictEqual({
+    version: 3,
+    routes: {
+      plan: {
+        day: {
+          ...ctx.emptyDay,
+          micros: 40_000_000,
+          raise: 45,
+          trippedAt: '2026-11-13T09:00:00.000Z',
+        },
+        month: ctx.emptyMonth,
+      },
+    },
+    sandboxes: {},
+  });
+});
+
+test('it adds up replies that each cost less than half a micro', async () => {
+  const ctx = await setupTest('2026-11-13T10:00:00Z');
+
+  await ctx.store.addSpend('plan', null, { dollars: 1e-7, tokens: 1 });
+  await ctx.store.addSpend('plan', null, { dollars: 1e-7, tokens: 1 });
+
+  const stored = await ctx.store.read();
+
+  expect(stored.routes['plan']?.day.micros).toBe(2);
+});
+
 test('it adds a spend to the route it names and to no other', async () => {
   const ctx = await setupTest('2026-11-13T10:00:00Z');
 

@@ -64,7 +64,6 @@ export type {
   DisplayRates,
   RateSource,
   SandboxCount,
-  SandboxLimit,
   SpendContext,
   SpendGateway,
   SpendMeasure,

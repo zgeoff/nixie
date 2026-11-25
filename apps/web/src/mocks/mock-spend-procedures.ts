@@ -79,7 +79,16 @@ async function raiseMockRoute(
     };
   }
 
+  // a route named for what the gateway does to its raise, so a test reaches each refusal
+  if (route === 'no-status') {
+    return { error: 'unreachable' };
+  }
+
   await spendStore.raises.create(input);
+
+  if (route === 'unanswered') {
+    return { error: 'unanswered' };
+  }
 
   spendStore.stops.clear();
 

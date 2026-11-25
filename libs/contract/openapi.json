@@ -25067,6 +25067,17 @@
                       "required": [
                         "error"
                       ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "const": "unanswered"
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ]
                     }
                   ]
                 }

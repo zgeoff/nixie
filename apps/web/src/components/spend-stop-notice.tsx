@@ -1,8 +1,11 @@
 import type { ReactNode } from 'react';
 import { useState } from 'react';
+import { formatSpendAmount } from '../spend/format-spend-amount';
+import type { SpendDisplay } from '../spend/format-spend-amount';
 import { formatRouteNotice, formatSpendNotice } from '../spend/format-spend-notice';
 import { pickRaiseOffer } from '../spend/pick-raise-offer';
 import { pickRouteRaiseOffer } from '../spend/pick-route-raise-offer';
+import { useSpendCounts } from '../spend/use-spend-counts';
 import { useSpendRaise } from '../spend/use-spend-raise';
 import { useSpendStop } from '../spend/use-spend-stop';
 import { css } from '../styled-system/css';
@@ -23,6 +26,7 @@ const notice = css({
 
 export function SpendStopNotice(): ReactNode {
   const read = useSpendStop();
+  const display = useSpendCounts().data?.display ?? null;
   const stop = read.data;
 
   if (stop === undefined || (stop.state === 'clear' && stop.routes.length === 0)) {
@@ -34,8 +38,8 @@ export function SpendStopNotice(): ReactNode {
       {stop.state === 'clear' ? null : <p role="status">{formatSpendNotice(stop)}</p>}
       {stop.routes.map((trip) => (
         <div key={`${trip.route}-${trip.period}`}>
-          <p role="status">{formatRouteNotice(trip)}</p>
-          {trip.canRaise ? <RaiseRouteLimit trip={trip} /> : null}
+          <p role="status">{formatRouteNotice(trip, display)}</p>
+          {trip.canRaise ? <RaiseRouteLimit display={display} trip={trip} /> : null}
         </div>
       ))}
       {stop.state === 'tripped' && stop.canRaise ? <RaiseLimit stop={stop} /> : null}
@@ -45,6 +49,7 @@ export function SpendStopNotice(): ReactNode {
 
 interface RaiseRouteLimitProps {
   readonly trip: SpendRouteTrip;
+  readonly display: SpendDisplay | null;
 }
 
 // The raise of a route's day limit in dollars. One confirm is the whole approval, and the amount
@@ -85,15 +90,16 @@ function RaiseRouteLimit(props: RaiseRouteLimitProps): ReactNode {
         <legend>Raise the day limit of {trip.route} to</legend>
         <AmountField
           cap={trip.cap ?? trip.limit}
-          label="Dollars"
+          label="US dollars"
           onChange={setDollars}
           value={dollars}
         />
+        {Number.isNaN(dollars) ? null : <p>{formatSpendAmount(dollars, props.display)}</p>}
         <button type="submit">Confirm raise of {trip.route}</button>
       </fieldset>
       {raise.isError ? <p role="alert">The raise did not finish. Try again.</p> : null}
       {answer !== undefined && 'error' in answer ? (
-        <p role="alert">{describeRefusal(answer)}</p>
+        <p role="alert">{describeRefusal(answer, props.display)}</p>
       ) : null}
     </form>
   );
@@ -129,9 +135,14 @@ type Refusal = Extract<
   { readonly error: string }
 >;
 
-function describeRefusal(refusal: Refusal): string {
+function describeRefusal(refusal: Refusal, display: SpendDisplay | null): string {
   if (refusal.error === 'above_cap') {
-    return `That is above the cap of ${refusal.cap.toLocaleString()} ${refusal.measure} for today.`;
+    const cap =
+      refusal.measure === 'dollars'
+        ? formatSpendAmount(refusal.cap, display)
+        : `${refusal.cap.toLocaleString()} turns`;
+
+    return `That is above the cap of ${cap} for today.`;
   }
 
   if (refusal.error === 'period_ended') {
@@ -142,7 +153,11 @@ function describeRefusal(refusal: Refusal): string {
     return 'The spending gateway holds no such route.';
   }
 
-  return 'nixie could not reach the spending gateway. Your raise is saved, and applies when it answers.';
+  if (refusal.error === 'unanswered') {
+    return 'nixie could not reach the spending gateway. Your raise is saved, and applies when it answers.';
+  }
+
+  return 'nixie could not reach the spending gateway, so your raise was not saved. Try again when it answers.';
 }
 
 interface RaiseLimitProps {
@@ -196,7 +211,7 @@ function RaiseLimit(props: RaiseLimitProps): ReactNode {
       </fieldset>
       {raise.isError ? <p role="alert">The raise did not finish. Try again.</p> : null}
       {answer !== undefined && 'error' in answer ? (
-        <p role="alert">{describeRefusal(answer)}</p>
+        <p role="alert">{describeRefusal(answer, null)}</p>
       ) : null}
     </form>
   );

@@ -28,8 +28,10 @@ task.meter_read           { taskRunID, sandbox, reason, countMicros }
   reason: 'run_start' | 'step_start' | 'step_end' | 'worker_end' | 'run_end'
 ```
 
-The gateway's `PATCH /sandboxes/<name>` is built: it sets a sandbox's limit whole and keeps its
-count. The sandbox's `lastRefusal` is built too.
+The gateway gains `PATCH /sandboxes/<name>`, which sets a sandbox's limit whole, with
+`{ limit: { dollars, tokens? } }` or `{ limit: null }`, and keeps its count; it answers 204, or 404
+for a name the store lacks. A limit with no `tokens` sets no token limit. The sandbox's
+`lastRefusal` is built.
 
 - A task keeps its sandbox across its task runs, and replaces it when the host loses it. A task
   run's dollars are, for each sandbox it used, the last count less the count at the task run's start
