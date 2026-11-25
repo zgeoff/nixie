@@ -33,7 +33,7 @@ therefore refuses a `default_zone` whose offset, in winter or in summer, is not 
 
 ## Prices
 
-Each price has one source, and a recorded call keeps the price it was charged:
+Each price has one source:
 
 | Price                  | Source                                                        | Unit                         |
 | ---------------------- | ------------------------------------------------------------- | ---------------------------- |
@@ -46,7 +46,8 @@ records the same value as the call's cost, so the charge and the record never di
 price applies to the calls after the process that holds it reads it. A turn record and a session
 summary record hold the dollars of their tokens at the profile's prices when the record was written,
 and the task's dollar meter sums those dollars, so a changed price never reprices them. A record
-without dollars prices through the profile's table when the meter reads it.
+written with no dollars, by a release before records held them, takes the profile's prices in force
+when the meter reads it.
 
 A profile that a task, a selectable model or the worker role runs on needs `prices`, with a gateway
 or without. The task's dollar limit counts each call by the profile's prices, because the task
@@ -119,9 +120,9 @@ until the task run it belongs to ends: `task.run_ended` sets the run's row from 
 turns in its own transaction, and `worker.run_ended` does the same for a worker run. A conversation
 reply has no row, because the gateway's count of its route is the one place that holds it.
 
-The gateway limits each route on its own, and no limit spans routes. The spending stop reads the
-gateway's counts of the routes and the turn count: a route at its limit holds only its own work, and
-the turn count stops nixie. A paid tool counts against its budget and never against the stop, so
+The gateway limits each route on its own, and no gateway limit spans routes. The spending stop reads
+the gateway's counts of the routes and the turn count: a route at its limit holds only its own work,
+and the turn count stops nixie. A paid tool counts against its budget and never against the stop, so
 model dollars on a plan stay notional while tool dollars are real. The daily search call count in
 `search_calls` and the turn count stay in their own tables, because each counts calls or turns and
 its limit reads that table.

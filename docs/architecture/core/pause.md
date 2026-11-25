@@ -73,10 +73,10 @@ resume, or until the user resumes that task, which then takes its inbox as it st
   [pause, stop and close](tasks.md#pause-stop-and-close) describes.
 
 A schedule fire waits while nixie is paused: the trigger core writes nothing for it and takes no
-key, so the schedule source delivers it again at its next tick. After the resume, or after you
-resume the task, the fire is late, and the catch-up rule of
+key, so the schedule source delivers it again at its next tick. After the resume, or after the user
+resumes the task, the fire is late, and the catch-up rule of
 [the schedule source](triggers.md#the-schedule-source) decides. A fire at the conversation waits
-too, though a conversation you paused yourself still takes its fires.
+too, though a conversation the user paused still takes its fires.
 
 ## The task gate
 

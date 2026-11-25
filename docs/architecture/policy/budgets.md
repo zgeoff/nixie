@@ -1,6 +1,6 @@
 # Budgets
 
-A budget limits how much one kind of spending may cost in a period. nixie charges a budget before a
+A budget limits how much one kind of spending may cost in a period. nixie checks a budget before a
 paid tool call or a purchase goes out, so a loop or a runaway task stops at the limit. The
 [budgets module](../../../modules/budgets/) owns the ledger. The [policy](rules.md) module parses
 the budget files and the `lift` field of a rule, and [the decision point](decision-point.md) passes
@@ -36,7 +36,7 @@ The seed compares each budget with the one in force, as it does for a rule, and 
 once, as [rules in force](rules.md#rules-in-force) explains. The seed record lists each edit with
 its class:
 
-- A new budget, a removed budget and a lower limit narrow.
+- A new budget, a removed budget and a lower limit narrow, except as the next two lines say.
 - A higher limit, or a changed period or counts, widens the budget.
 - A budget that raises the built-in limit of a paid tool widens too.
 
@@ -89,8 +89,8 @@ checks the cap, then charges both budgets, then counts the call, so a call passe
 neither. When both are full, the cap's refusal wins. A call that is counted stays counted when the
 tool errors, because nothing credits the count.
 
-The same charge runs for a call the user approved. The [client](../channels/client.md) shows the
-last refusal in a notice beside the spending-stop notice.
+The [client](../channels/client.md) shows the last refusal in a notice beside the spending-stop
+notice.
 
 ## Lifts
 

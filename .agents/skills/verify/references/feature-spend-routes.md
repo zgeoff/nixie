@@ -13,7 +13,8 @@ Run this journey on `local` only, on an `up` of its own:
 - On `local`, `NIXIE_VERIFY_SPEND=1 bun verify up` runs a test build of nixie with a scripted model
   behind a spending gateway with 2 routes, and a double of the rate source that gives 1.52
   Australian dollars for one US dollar. The route `scripted` carries the conversation, with a day
-  limit of 100 dollars. The route `second` has a day limit of 1.50 dollars.
+  limit of 100 dollars and a month limit of 1,000 dollars. The route `second` has a day limit of
+  1.50 dollars and a month limit of 50 dollars.
 - On `preview`, skip this journey, and list the feature as not verified there in your reply.
 
 Before you start:

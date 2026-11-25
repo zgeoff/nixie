@@ -88,15 +88,16 @@ in place.
 ## Providers
 
 The connectors module holds the tool and the provider interface. A provider takes the query, the
-limit, the sites and the freshness, and returns the hits with the search's cost, or a reason for the
-failure. The tool calls nothing else of the provider, so another provider can replace Kagi without a
-change to the tool. The provider holds its own key, and its failure reason must never hold that key,
-because the tool passes the reason to the model as it is.
+limit, the sites and the freshness, and returns the hits, or a reason for the failure. The tool
+calls nothing else of the provider, so another provider can replace Kagi without a change to the
+tool. The provider holds its own key, and its failure reason must never hold that key, because the
+tool passes the reason to the model as it is.
 
 Kagi is the one provider, in the `search-kagi` adapter. The adapter sends the sites and the
 freshness in Kagi's lens, the set of filters Kagi applies to one search. The adapter sets no price:
-[the search budgets](#the-budgets) charge the configured price. The adapter removes the key from
-every failure reason, so an error in which Kagi repeats the key still reaches the model without it.
+[the search budgets](#the-budgets) charge the configured price. The fetcher that adds the key, as
+[settings and the key](#settings-and-the-key) says, removes it from every failure, so an error in
+which Kagi repeats the key still reaches the model without it.
 
 Kagi marks the query's words in a title or a snippet with tags such as `<strong>`, and escapes
 characters as entities such as `&#39;`, so the adapter strips the tags and decodes the entities. The

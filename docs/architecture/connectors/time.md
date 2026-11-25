@@ -59,10 +59,10 @@ after the model wrote it.
 A fired timer and an action's outcome start a conversation turn as well, so each opens with its
 event ID and the time its record was written, in the same format. Neither carries a zone, so both
 read in the default zone. Every input that starts a conversation turn therefore carries its own
-time, and the model answers each input in the turn it arrives, so it can place each of its replies
-in time without a stamp on the reply. Stamps go only on a new turn's input, never into a turn a
-resumed session already holds, because changing an earlier turn would change the session's prefix
-and lose its prompt cache.
+time, and the model answers each input in the turn it arrives, so in a live session it can place
+each of its replies in time without a stamp on the reply. Stamps go only on a new turn's input,
+never into a turn a resumed session already holds, because changing an earlier turn would change the
+session's prefix and lose its prompt cache.
 
 ## The tool
 

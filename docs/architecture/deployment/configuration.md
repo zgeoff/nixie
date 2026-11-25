@@ -69,9 +69,9 @@ and only the warning shows it. The error lists the path of each other fault it r
 
 A setting that names a secret holds a reference of the form `deployment:<name>`, which names an
 entry in the secrets file. One schema validates every such key: a model profile's credential, the
-search and image keys, the spend gateway's token and the user's name and pronouns. The user's name
-and each pronoun accept either a reference or the value, so a deployment whose configuration lives
-in a public repo keeps them in the secrets file. The
+search and image keys, the model gateway's control token and the user's name and pronouns. The
+user's name and each pronoun accept either a reference or the value, so a deployment whose
+configuration lives in a public repo keeps them in the secrets file. The
 [credential store](../connectors/credentials.md) resolves each reference once the secrets load, and
 the server refuses to start when the secrets file lacks an entry, except a model profile's, which
 the sandbox host may hold. nixie therefore never shows the model a reference in place of a name or a

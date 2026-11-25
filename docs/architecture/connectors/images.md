@@ -18,8 +18,9 @@ them.
 | `image.name`   | `note`  | Names an image, or clears the name with `null`.                                           |
 | `image.pin`    | `note`  | Marks an image so `image.list` can filter on it. `image.unpin` clears the mark.           |
 
-All 7 run [direct](./tool-calls.md#a-tool-definition). An image tool is present only when the
-deployment config has an `images` block.
+All 7 run [direct](./tool-calls.md#a-tool-definition), except a draw that sends a photo of the user,
+as [photos of the user](#photos-of-the-user) says. An image tool is present only when the deployment
+config has an `images` block.
 
 `image.draw` takes a prompt of 1 to 4,000 characters, and optionally:
 

@@ -1,12 +1,13 @@
 # The model gateway
 
 The model gateway is a process of its own on the host that sits between a deployment and the model
-API. Every model request the deployment sends passes through it. The gateway prices each reply from
-the reply's own token counts, adds the price to its route's count, and refuses every request on a
-route once that route's count reaches the route's own limit. It fails closed: when it cannot read or
-write its count, it refuses every request, so none passes uncounted. Because the gateway runs
-outside the deployment, code that the deployment runs cannot raise or skip its limit. The gateway is
-the first part of the hard spending stop that the
+API. When the deployment's config sets `spendStop`, every model request the deployment sends passes
+through it. The gateway prices each reply from the reply's own token counts, adds the price to its
+route's count, and refuses every request on a route once that route's count reaches the route's own
+limit. It fails closed: when it cannot read or write its count, it refuses every request, so none
+passes uncounted. Because the gateway runs outside the deployment, code that the deployment runs
+cannot skip its limit, or raise it past the cap in the gateway's config. The gateway is the first
+part of the hard spending stop that the
 [budgets design](../../design/platform/policy/budgets.md#the-hard-spending-stop) describes, and a
 preview host runs one per preview with a small limit.
 

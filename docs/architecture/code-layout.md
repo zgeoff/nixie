@@ -131,7 +131,7 @@ code reach test code.
 - **Modules form no cycles.** `turbo boundaries` refuses a cycle, so a module that needs work from a
   module that depends on it takes that work through an interface the server passes in.
 
-A few imports belong to one package each:
+A few imports belong to one package each, and the Agent SDK to two:
 
 | Import                              | The packages that may import it    |
 | ----------------------------------- | ---------------------------------- |

@@ -67,8 +67,8 @@ for a name the store lacks. A limit with no `tokens` sets no token limit. The sa
 
 ## Constraints
 
-- Every counter has exactly one writer. A task run's limit comes from its sandboxes' counts and its
-  worker runs' counters.
+- Every counter has exactly one writer. The server checks a task run's limit against its sandboxes'
+  counts and its worker runs' counters.
 - A ledger row and the record that causes it commit in one transaction.
 - The gateway never reads nixie's ledger, and nixie changes the gateway's store only through the
   control listener's calls.

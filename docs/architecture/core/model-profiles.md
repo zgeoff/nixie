@@ -262,8 +262,8 @@ The schema refuses 3 cases at the config's load:
 
 A profile that states `outside_claude: false` loads whatever its model ID, and its guest runs no
 rewriter. The conversation role may run on a profile outside Claude when the checker role names
-another profile. The context cap check above still applies: a model the CLI's catalog lacks gets the
-smaller window.
+another profile. The [context cap](#the-context-cap) check still applies: a model the CLI's catalog
+lacks gets the smaller window.
 
 nixie's code checks no model before a deployment lists it in `models.selectable`. OpenRouter
 promises that its Messages endpoint works with the CLI only for the models of its Anthropic
@@ -370,7 +370,8 @@ with the long-prompt set once its prompt passes the length. The prompt length co
 cache writes and the cache reads, the same tokens the provider counts. A table with no long-prompt
 set prices every response with its base set.
 
-The [model gateway](../policy/model-gateway.md#the-count) is the one built part that calls the call
-cost. Only the guest's request rewriter reads the provider pin, and the gateway forwards a request
-body as it came. The [models design](../../design/platform/core/models.md#cost) sets out how the
-model gateway prices each response with the table.
+The [model gateway](../policy/model-gateway.md#the-count), a task's dollar meter and a worker run
+call the same call cost, as [metering](../policy/metering.md#prices) says. Only the guest's request
+rewriter reads the provider pin, and the gateway forwards a request body as it came. The
+[models design](../../design/platform/core/models.md#cost) sets out how the model gateway prices
+each response with the table.
