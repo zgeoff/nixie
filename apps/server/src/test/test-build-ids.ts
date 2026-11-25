@@ -64,7 +64,7 @@ export const testBuildIDs: readonly string[] = [
   'readCredentialKeys',
   'readCredentialMarks',
   'hasCredentialKey',
-  'forgetConnection',
+  'forgetCredential',
   'credential.refresh.before_save',
   'credential.refresh.key_created',
   'test-snapshot',
