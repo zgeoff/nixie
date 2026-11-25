@@ -5,8 +5,8 @@ import { codingDeclarations } from './coding-declarations';
 
 function setupTest() {
   const declarations: Readonly<Record<string, EffectDeclaration>> = {
-    'task.start/atc': codingDeclarations.start,
-    'coding.start': codingDeclarations.spawn,
+    'coding.start': codingDeclarations.start,
+    'coding.spawn': codingDeclarations.spawn,
     'coding.stop': codingDeclarations.stop,
     'coding.steer': codingDeclarations.steer,
     'coding.message': codingDeclarations.message,
@@ -26,26 +26,26 @@ function setupTest() {
 test.each([
   {
     label: 'a start of a session the user asked for',
-    tool: 'task.start/atc',
-    toolList: ['task.start'],
-    args: { runner: 'atc', name: 'Login fix', brief: 'Fix it.', repo: { url: 'x', ref: 'main' } },
+    tool: 'coding.start',
+    toolList: ['coding.start'],
+    args: { name: 'Login fix', brief: 'Fix it.', repo: { url: 'x', ref: 'main' } },
     destinations: [],
     outcome: 'ask',
     rule: 'ask-coding-sessions',
   },
   {
     label: 'a join of a running session',
-    tool: 'task.start/atc',
-    toolList: ['task.start'],
-    args: { runner: 'atc', name: 'Billing', brief: 'Watch it.', session: 'cs4k' },
+    tool: 'coding.start',
+    toolList: ['coding.start'],
+    args: { name: 'Billing', brief: 'Watch it.', session: 'cs4k' },
     destinations: [],
     outcome: 'ask',
     rule: 'ask-coding-sessions',
   },
   {
     label: 'the spawn that a start queued',
-    tool: 'coding.start',
-    toolList: ['coding.start'],
+    tool: 'coding.spawn',
+    toolList: ['coding.spawn'],
     args: { name: 'Login fix', prompt: 'Fix it.' },
     destinations: [],
     outcome: 'allow',
@@ -115,11 +115,11 @@ test('it asks before a coding start that the user asked for in the message that 
 
   const decided = await ctx.decideWithConsent(
     buildPolicyCall({
-      tool: 'task.start/atc',
-      toolList: ['task.start'],
+      tool: 'coding.start',
+      toolList: ['coding.start'],
       sources: ['owner'],
       turnMessageSequence: 3,
-      args: { runner: 'atc', name: 'Login fix', brief: 'Fix it.', session: 'cs4k' },
+      args: { name: 'Login fix', brief: 'Fix it.', session: 'cs4k' },
     }),
   );
 

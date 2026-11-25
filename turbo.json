@@ -50,9 +50,12 @@
         "dependencies": { "allow": [] }
       },
       // an eval runs production code from any layer against a committed corpus, and nothing
-      // depends on it
+      // depends on it; the SDK contract suite starts the in-process server, so it reaches every
+      // layer the server wires
       "eval": {
-        "dependencies": { "allow": ["module", "guest", "lib"] }
+        "dependencies": {
+          "allow": ["app", "client", "sidecar", "module", "adapter", "guest", "lib"]
+        }
       },
       // the verify CLI starts the server and the web client behind one origin, and nothing depends
       // on it

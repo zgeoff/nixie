@@ -3,7 +3,7 @@ import { readRecords, withWriteTransaction, writeRecordsInTransaction } from '@h
 import type { RunnerEndCause, RunnerEndCommit, TasksTables } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
-import { codingToolNames } from '../connector/coding-tool-names';
+import { spawnToolNames } from '../connector/spawn-tool-names';
 import { codingSessionBoundCodec } from '../record/coding-session-bound-codec';
 import { sessionStateSchema } from '../record/session-state-schema';
 import { codingOptionsSchema } from '../start/coding-options-schema';
@@ -57,7 +57,7 @@ async function runLateSpawnBinds(context: CodingContext, adapter: CodingAdapter)
     .innerJoin('tasks', 'tasks.task_id', 'actions.task_id')
     .leftJoin('coding_sessions', 'coding_sessions.task_id', 'actions.task_id')
     .select(['actions.action_id', 'actions.task_id', 'actions.outcome_sequence'])
-    .where('actions.tool', '=', codingToolNames.start)
+    .where('actions.tool', 'in', [...spawnToolNames])
     .where('actions.status', '=', 'done')
     .where('actions.outcome_sequence', 'is not', null)
     .where('tasks.state', 'in', [...endedStates])

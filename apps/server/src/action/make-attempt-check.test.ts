@@ -419,7 +419,7 @@ test.each([
   ],
   [
     'the spawn of a start',
-    'coding.start',
+    'coding.spawn',
     { name: 'Login fix', prompt: 'Fix the login test.' },
     [],
   ],

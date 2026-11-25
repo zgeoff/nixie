@@ -1161,27 +1161,7 @@ test('it refuses a start with self notes through the public tool path, with the 
   expect(tasks).toStrictEqual([]);
 });
 
-test.each(['agent-sdk', 'codex'] as const)(
-  "it advertises only the default runner's start, with no oneOf, to a deployment on the %s harness",
-  async (harness) => {
-    const ctx = await setupTest();
-
-    const tool = buildTaskStartTool(
-      ctx.twoRunnersContext,
-      { hopLimit: 20, ownerName: null, harnesses: [harness] },
-      buildMockTaskStartBounds(),
-    );
-
-    expect(tool.input).toMatchObject({
-      type: 'object',
-      properties: { runner: { type: 'string', const: 'sandbox' } },
-    });
-
-    expect(tool.input).not.toContainKey('oneOf');
-  },
-);
-
-test('it advertises every startable runner under a oneOf when the deployment names no harness', async () => {
+test("it advertises only the default runner's input, as a plain object with no oneOf anywhere at its root, beside a second startable runner", async () => {
   const ctx = await setupTest();
 
   const tool = buildTaskStartTool(
@@ -1190,13 +1170,11 @@ test('it advertises every startable runner under a oneOf when the deployment nam
     buildMockTaskStartBounds(),
   );
 
-  expect(tool.input).toStrictEqual({
+  expect(tool.input).toMatchObject({
     type: 'object',
-    oneOf: [
-      expect.objectContaining({
-        properties: expect.objectContaining({ runner: { type: 'string', const: 'sandbox' } }),
-      }),
-      { type: 'object', properties: { runner: { type: 'string', const: 'atc' } } },
-    ],
+    properties: { runner: { type: 'string', const: 'sandbox' } },
   });
+
+  expect(Object.keys(tool.input)).not.toIncludeAnyMembers(['oneOf', 'anyOf', 'allOf', 'not']);
+  expect(Object.keys(tool.variants?.declarations ?? {})).toStrictEqual(['sandbox']);
 });

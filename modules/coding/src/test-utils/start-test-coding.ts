@@ -26,6 +26,7 @@ import { z } from 'zod';
 import { buildCodingConnectors } from '../connector/build-coding-connectors';
 import { codingProjections } from '../projection/coding-projections';
 import { buildCodingRunner } from '../runner/build-coding-runner';
+import { buildCodingStartTool } from '../tool/build-coding-start-tool';
 import { buildCodingTools } from '../tool/build-coding-tools';
 import type { CodingContext, CodingSettings } from '../types';
 import type { FakeCodingAdapter } from './build-fake-coding-adapter';
@@ -60,18 +61,19 @@ export interface TestCoding {
   // a step of the conversation that holds its lease, as a turn that calls tools does
   readonly claimConversation: () => Promise<StartedClaim>;
 
-  // calls task.start or a coding tool from the step that the claim holds, with a call ID of its own
+  // calls task.start, coding.start or another coding tool from the step that the claim holds, with a call ID of its own
   readonly callTool: (
     claim: StartedClaim,
     tool: string,
     input: object,
   ) => Promise<{ readonly callID: string; readonly outcome: ToolOutcome }>;
 
-  // calls task.start from the step that the claim holds, and returns the ID of the task it started
+  // calls task.start from the step that the claim holds, and returns the ID of the sandbox task it started
+  readonly startSandboxTask: (claim: StartedClaim, input: object) => Promise<string>;
+
+  // calls coding.start from the step that the claim holds, and returns the ID of the task it started
   readonly startTask: (claim: StartedClaim, input: object) => Promise<string>;
 }
-
-const startedTaskSchema = z.object({ taskID: z.string() });
 
 const testSettings: CodingSettings = {
   wake: {
@@ -139,7 +141,14 @@ export async function startTestCoding(): Promise<TestCoding> {
     buildMockTaskStartBounds(),
   );
 
-  const toolsByName = new Map([...codingTools, startTool].map((tool) => [tool.name, tool]));
+  const codingStartTool = buildCodingStartTool({ ...coding, tasks: context }, adapter, {
+    messaging: { hopLimit: context.runSettings.hopLimit, ownerName: null },
+    bounds: buildMockTaskStartBounds(),
+  });
+
+  const toolsByName = new Map(
+    [...codingTools, startTool, codingStartTool].map((tool) => [tool.name, tool]),
+  );
 
   const callTool: TestCoding['callTool'] = async (claim, name, input) => {
     const tool = toolsByName.get(name);
@@ -225,12 +234,22 @@ export async function startTestCoding(): Promise<TestCoding> {
     },
     claimConversation: () => createTestConversationClaim(context, 'Fix the flaky login test.'),
     callTool,
-    startTask: async (claim, input) => {
-      const started = await callTool(claim, 'task.start', input);
-
-      invariant(started.outcome.status === 'ok', 'the test expected task.start to succeed');
-
-      return startedTaskSchema.parse(started.outcome.result).taskID;
-    },
+    startTask: (claim, input) => startVia(callTool, claim, 'coding.start', input),
+    startSandboxTask: (claim, input) => startVia(callTool, claim, 'task.start', input),
   };
+}
+
+const startedTaskSchema = z.object({ taskID: z.string() });
+
+async function startVia(
+  callTool: TestCoding['callTool'],
+  claim: StartedClaim,
+  tool: string,
+  input: object,
+): Promise<string> {
+  const started = await callTool(claim, tool, input);
+
+  invariant(started.outcome.status === 'ok', `the test expected ${tool} to succeed`);
+
+  return startedTaskSchema.parse(started.outcome.result).taskID;
 }

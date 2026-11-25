@@ -1,7 +1,9 @@
 import { expect, test } from 'bun:test';
 import { githubAPIURL } from '@heynixie/definitions-repo-github/mocks';
+import { network } from '@heynixie/mock-server';
 import { kagiAPIURL, kagiStore } from '@heynixie/search-kagi/mocks';
 import { waitForCondition } from '@heynixie/testing';
+import { HttpResponse, http } from 'msw';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
 import { createTestClient } from '../test-utils/create-test-client';
@@ -895,4 +897,81 @@ test('it lets no registered tool run a call that no rule in force allows', async
   ).toBeGreaterThan(3);
 
   expect(ran).toStrictEqual([]);
+});
+
+test('it offers the conversation both task.start and coding.start when the configuration sets a coding runner', async () => {
+  // the runner reads its sessions from the gateway as nixie starts; a refusal leaves the tools
+  network.use(
+    http.post('https://atc.example.test/mcp', () =>
+      HttpResponse.json({ error: 'refused' }, { status: 500 }),
+    ),
+  );
+
+  const nixie = await startInProcessNixie({
+    extraConfig: [
+      'coding:',
+      '  atc:',
+      '    url: https://atc.example.test/mcp',
+      '    principal: service:nixie',
+      '    token: deployment:atc_token',
+      '    targets:',
+      '      - { daemon: cloud, target: cloud }',
+      '    defaultTarget: cloud/cloud',
+    ],
+    extraSecrets: ['atc_token: atcs_token-value'],
+  });
+
+  const api = await createTestClient(nixie);
+
+  const gate = Promise.withResolvers<void>();
+
+  nixie.guest.addReplies({ text: 'Hello.', gate: () => gate.promise });
+
+  await api.client.conversation.send({
+    clientMessageId: crypto.randomUUID(),
+    spans: [],
+    text: 'Hi.',
+    thread: 'conversation',
+  });
+
+  await waitForCondition(() => nixie.guest.turns.length === 1);
+
+  const [received] = nixie.guest.received;
+
+  invariant(received);
+
+  const names = await nixie.readToolNames(received);
+
+  gate.resolve();
+
+  expect(names).toIncludeAllMembers(['task.start', 'coding.start']);
+});
+
+test('it offers the conversation no coding.start when the configuration sets no coding runner', async () => {
+  const nixie = await startInProcessNixie();
+  const api = await createTestClient(nixie);
+
+  const gate = Promise.withResolvers<void>();
+
+  nixie.guest.addReplies({ text: 'Hello.', gate: () => gate.promise });
+
+  await api.client.conversation.send({
+    clientMessageId: crypto.randomUUID(),
+    spans: [],
+    text: 'Hi.',
+    thread: 'conversation',
+  });
+
+  await waitForCondition(() => nixie.guest.turns.length === 1);
+
+  const [received] = nixie.guest.received;
+
+  invariant(received);
+
+  const names = await nixie.readToolNames(received);
+
+  gate.resolve();
+
+  expect(names).toContain('task.start');
+  expect(names).not.toContain('coding.start');
 });

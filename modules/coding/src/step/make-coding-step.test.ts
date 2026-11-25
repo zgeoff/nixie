@@ -19,7 +19,6 @@ async function setupTest() {
 
   const startSession = async (input: object = {}): Promise<string> => {
     const taskID = await ctx.startTask(claim, {
-      runner: 'atc',
       name: 'Fix the flaky login test',
       brief: 'Find why the login test fails.',
       repo: { url: 'https://github.com/example/shop.git', ref: 'main' },
@@ -584,7 +583,6 @@ test('it tells the sender that the session did not get a message sent before the
   const claim = ctx.claim;
 
   const taskID = await ctx.startTask(claim, {
-    runner: 'atc',
     name: 'Fix the flaky login test',
     brief: 'Find why the login test fails.',
     repo: { url: 'https://github.com/example/shop.git', ref: 'main' },
@@ -674,7 +672,6 @@ test('it ends a started task as done, and binds nothing, when another task joine
   const ctx = await setupTest();
 
   const startedID = await ctx.startTask(ctx.claim, {
-    runner: 'atc',
     name: 'Fix the flaky login test',
     brief: 'Find why the login test fails.',
     repo: { url: 'https://github.com/example/shop.git', ref: 'main' },
@@ -685,7 +682,6 @@ test('it ends a started task as done, and binds nothing, when another task joine
   const session = await ctx.listSession();
 
   const joinedID = await ctx.startTask(ctx.claim, {
-    runner: 'atc',
     name: 'Watch the login fix',
     brief: 'Watch for a question.',
     session,
@@ -723,7 +719,6 @@ test('it ends a started task as done, and binds nothing, when another task joins
   const ctx = await setupTest();
 
   const startedID = await ctx.startTask(ctx.claim, {
-    runner: 'atc',
     name: 'Fix the flaky login test',
     brief: 'Find why the login test fails.',
     repo: { url: 'https://github.com/example/shop.git', ref: 'main' },
@@ -737,7 +732,6 @@ test('it ends a started task as done, and binds nothing, when another task joins
 
   await ctx.runStepThen(startedID, async () => {
     joinedID = await ctx.startTask(ctx.claim, {
-      runner: 'atc',
       name: 'Watch the login fix',
       brief: 'Watch for a question.',
       session,

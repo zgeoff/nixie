@@ -1,4 +1,5 @@
 import type { APIContext } from '@heynixie/api';
+import type { CodingStartParts } from '@heynixie/coding';
 import type { HostContractClient } from '@heynixie/contract';
 import type { DefinitionsInForce, DefinitionsSource } from '@heynixie/definitions';
 import type { Logger } from '@heynixie/logger';
@@ -6,6 +7,7 @@ import type { Encoder } from '@heynixie/memory';
 import type { ModelCredentials } from '@heynixie/models';
 import type { SandboxAdapter, SandboxImageKey } from '@heynixie/sandbox';
 import type { TasksContext } from '@heynixie/tasks';
+import type { ToolDefinition } from '@heynixie/tools';
 import type { TurnInputs } from '@heynixie/turn-inputs';
 import type { HeldSlot } from './credential/create-held-slot';
 import type { DeploymentConfig } from './deployment/deployment-config-schema';
@@ -189,3 +191,6 @@ export type StartOutage = Readonly<{
   upAtMs: number;
   downSequence: number;
 }>;
+
+// Builds the `coding.start` tool from what the conversation holds that it shares with `task.start`.
+export type BuildCodingStart = (start: CodingStartParts) => ToolDefinition;

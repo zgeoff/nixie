@@ -61,8 +61,8 @@ export async function writeLostSessionReport(
         kind: 'progress',
         body:
           'The coding session this task started may still be running, but nixie cannot find its ID, ' +
-          `so it could not stop it. Find it in ${adapter.id}'s own list of sessions, or join it by ` +
-          'its ID from coding.sessions.',
+          `so it could not stop it. Find it in ${adapter.id}'s own list of sessions, or join it ` +
+          'by calling coding.start with its session ID.',
         replyTo: null,
         onBehalfOf: [],
         wake: true,
