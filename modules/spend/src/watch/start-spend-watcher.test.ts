@@ -10,6 +10,7 @@ import {
 import type { Logger } from '@heynixie/logger';
 import { waitForCondition } from '@heynixie/testing';
 import { sql } from 'kysely';
+import invariant from 'tiny-invariant';
 import { writeSpendRaise } from '../raise/write-spend-raise';
 import { spendLimitRaisedCodec } from '../record/spend-limit-raised-codec';
 import { holdTaskOnRefusal } from '../route/hold-task-on-refusal';
@@ -310,6 +311,41 @@ test('it keeps the route stop cleared when your raise clears it while the gatewa
   const routeStops = await readSpendRouteStops(ctx.writer.db);
 
   expect(routeStops).toStrictEqual([]);
+});
+
+test('it dates a route trip that the answer to a resend shows from the instant before the resend went out', async () => {
+  const ctx = await setupTest();
+
+  const state = { noAnswerSince: null, lastStopKey: null };
+  const status = buildMockGatewayStatus();
+  const plan = status.routes['plan'];
+
+  invariant(plan !== undefined, 'the mock status holds the route plan');
+
+  const raisedAndSpent = buildMockGatewayStatus({
+    routes: {
+      ...status.routes,
+      plan: { ...plan, day: { ...plan.day, limit: 60, dollars: 61.5, tripped: true } },
+    },
+  });
+
+  const postedAtMs = ctx.clock.now() + 1000;
+
+  await ctx.writeRaise({ dollars: 60, by: 'session-a' });
+
+  ctx.gateway.readStatus.mockImplementationOnce(() => {
+    ctx.clock.advance(1000);
+
+    return Promise.resolve({ kind: 'ok', value: status });
+  });
+
+  ctx.gateway.postRaise.mockResolvedValueOnce({ kind: 'ok', value: raisedAndSpent });
+
+  await ctx.poll(state);
+
+  const routeStops = await readSpendRouteStops(ctx.writer.db);
+
+  expect(routeStops.map((stop) => stop.at)).toStrictEqual([postedAtMs]);
 });
 
 test('it ends a wait notice no earlier than the hold began, when a task is held while the resend is in flight', async () => {

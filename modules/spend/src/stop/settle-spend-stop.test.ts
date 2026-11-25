@@ -9,7 +9,7 @@ import {
 import { sql } from 'kysely';
 import { writeHostSpendRaise } from '../raise/write-host-spend-raise';
 import { writeSpendRaiseRecord } from '../raise/write-spend-raise-record';
-import { buildMockGatewayStatus, startTestSpend } from '../test-utils';
+import { buildMockGatewayStatus, buildTrippedGatewayStatus, startTestSpend } from '../test-utils';
 import { readSpendFacts } from './read-spend-facts';
 import { readSpendStopRow } from './read-spend-stop-row';
 import { settleSpendStop } from './settle-spend-stop';
@@ -78,6 +78,8 @@ test('it writes no trip of the stop when the route stops fail to settle', async 
   let calls = 0;
 
   await ctx.trip();
+
+  ctx.gateway.readStatus.mockResolvedValue({ kind: 'ok', value: buildTrippedGatewayStatus() });
 
   const facts = await readSpendFacts(ctx.context);
 

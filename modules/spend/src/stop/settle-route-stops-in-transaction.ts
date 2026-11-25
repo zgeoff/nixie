@@ -22,7 +22,7 @@ export async function settleRouteStopsInTransaction(
   context: SpendContext,
   facts: SpendFacts,
 ): Promise<void> {
-  if (facts.status === null || !claimSettleOrder(context, facts.order)) {
+  if (facts.status === null) {
     return;
   }
 
@@ -31,6 +31,12 @@ export async function settleRouteStopsInTransaction(
   const standing = await readSpendRouteStops(tx);
 
   const move = pickRouteMove(standing, trips, facts.statusAtMs);
+  const isWriting = move.clears.length + move.trips.length + move.restates.length > 0;
+
+  if (!claimSettleOrder(context, facts.order, isWriting) || !isWriting) {
+    return;
+  }
+
   const definitions = context.definitions();
 
   for (const clear of move.clears) {

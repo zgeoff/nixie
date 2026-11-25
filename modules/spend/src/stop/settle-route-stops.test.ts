@@ -204,3 +204,24 @@ test('it clears the stop with facts read before a settle that failed', async () 
 
   expect(stops).toStrictEqual([]);
 });
+
+test('it clears the stop with newer facts after an older settle that found the stop as it stood', async () => {
+  const ctx = await setupTest();
+
+  ctx.gateway.readStatus.mockResolvedValue({ kind: 'ok', value: buildTrippedGatewayStatus() });
+
+  await ctx.settle();
+
+  const sameFacts = await readSpendFacts(ctx.context);
+
+  ctx.gateway.readStatus.mockResolvedValue({ kind: 'ok', value: buildMockGatewayStatus() });
+
+  const clearFacts = await readSpendFacts(ctx.context);
+
+  await settleRouteStops(ctx.context, sameFacts);
+  await settleRouteStops(ctx.context, clearFacts);
+
+  const stops = await readSpendRouteStops(ctx.writer.db);
+
+  expect(stops).toStrictEqual([]);
+});
