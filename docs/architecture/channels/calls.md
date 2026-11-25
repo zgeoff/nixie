@@ -37,7 +37,7 @@ the audio and the key never leaves the host. The adapter reaches OpenAI only thr
 [socket opener](../connectors/credentials.md#the-socket-opener) opens the sideband. `model` is
 `gpt-live-1`, and each `call.spoke` record carries it.
 
-A session asks for these settings:
+The adapter creates each session with these settings:
 
 - client delegation, so each request reaches nixie as a delegation event;
 - the provider's longest acknowledgement delay, with an empty thinking part sent on each delegation,
@@ -47,7 +47,7 @@ A session asks for these settings:
 - a data channel that lets the device neither send an event nor receive one, so the device reads no
   instructions and sends no command.
 
-The adapter maps the provider's events onto `SpeechEvent`:
+The adapter turns the provider's events into `SpeechEvent`s:
 
 | Provider                                            | Event                                                                                                                                                             |
 | --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
