@@ -117,7 +117,9 @@ export function DevicePage(): ReactNode {
     return (
       <DeviceScreen
         onClose={() => {
-          void navigate({ to: '/' });
+          void closeDeviceScreen(async () => {
+            await navigate({ to: '/' });
+          });
         }}
         onSwitchOff={() => {
           setScreen(false);
@@ -212,4 +214,17 @@ async function signOutDevice(client: ContractClient, setPhase: SetPhase): Promis
   }
 
   setPhase({ kind: 'enrol' });
+}
+
+// Full screen belongs to the document, which outlives the device page, so Close leaves it first.
+async function closeDeviceScreen(openHome: () => Promise<void>): Promise<void> {
+  if (globalThis.document.fullscreenElement !== null) {
+    try {
+      await globalThis.document.exitFullscreen();
+    } catch {
+      // a refused exit still leaves device mode
+    }
+  }
+
+  await openHome();
 }

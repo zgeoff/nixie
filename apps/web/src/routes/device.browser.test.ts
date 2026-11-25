@@ -363,6 +363,26 @@ test('it leaves the device page for the home page on Close', async () => {
   expect(pathname).toBe('/');
 });
 
+test('it leaves full screen on Close', async () => {
+  const ctx = await setupTest();
+
+  await ctx.switchScreenOn();
+  await ctx.tap(20, 20);
+  await ctx.waitForPage(`document.querySelector('button[name=fullscreen]:enabled') !== null`);
+  await ctx.view.click('button[name=fullscreen]');
+  await ctx.waitForPage(`document.fullscreenElement === document.documentElement`);
+
+  await ctx.view.evaluate(
+    `([...document.querySelectorAll('button')].find((button) => button.innerText === 'Close').click(), true)`,
+  );
+
+  await ctx.waitForPage(`location.pathname === '/'`);
+
+  const isFullscreen = await ctx.view.evaluate('document.fullscreenElement !== null');
+
+  expect(isFullscreen).toBeFalse();
+});
+
 test('it shows the screen buttons on a pointer move', async () => {
   const ctx = await setupTest();
 
