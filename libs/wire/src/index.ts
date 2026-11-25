@@ -141,3 +141,15 @@ export { vncChunkLimitBytes } from './computer/vnc-frame';
 export { decodeVNCFrame } from './computer/decode-vnc-frame';
 export { encodeVNCFrame } from './computer/encode-vnc-frame';
 export { canBeBotChallenge, findBotChallenge } from './fetch/find-bot-challenge';
+export type { RenderFile, RenderReply, RenderRequest } from './render/render-request';
+
+export {
+  renderEntryPath,
+  renderFrameLimitBytes,
+  renderReplySchema,
+  renderRequestSchema,
+} from './render/render-request';
+
+export { decodeRenderReply } from './render/decode-render-reply';
+export { decodeRenderRequest } from './render/decode-render-request';
+export { encodeRenderMessage } from './render/encode-render-message';
