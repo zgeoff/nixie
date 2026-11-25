@@ -67,6 +67,12 @@ test.each<[string, TranscriptTurn[], { count: number; limit: number }, JSONObjec
     { turns: [{ user: 'u'.repeat(10), assistant: '', tools: [] }], cut: true },
   ],
   [
+    'the newest tool names that fit, and the end of the reply, when the tool names alone pass the limit',
+    [{ user: 'u', assistant: 'the reply', tools: ['Read', 'Edit', 'Bash'] }],
+    { count: 1, limit: 10 },
+    { turns: [{ user: 'u', assistant: 'y', tools: ['Edit', 'Bash'] }], cut: true },
+  ],
+  [
     'no turns with cut false for an empty transcript',
     [],
     { count: 3, limit: 1000 },

@@ -40,8 +40,11 @@ export interface CodingStepFacts {
   readonly queued: ReadonlyMap<string, QueuedInput>;
   readonly delivered: readonly DeliveredNote[];
 
-  // a coding.message action of the task that is neither done nor failed
+  // a coding.message action of the task whose outcome no step has read yet
   readonly hasPendingNote: boolean;
+
+  // the open coding task that binds each session that a spawn outcome of the inbox names
+  readonly sessionOwners: ReadonlyMap<string, string>;
 
   // the events of the held answers, by the sequence of the record that holds each
   readonly heldEvents: ReadonlyMap<number, SessionEvent>;
@@ -139,6 +142,17 @@ function collectSpawnOutcome(facts: CodingStepFacts, state: StepState, outcome: 
         summary:
           `${facts.ownerName} answered that the session started, but nixie cannot find it. ` +
           'Join it by its ID from coding.sessions.',
+      };
+
+      return;
+    }
+
+    const owner = facts.sessionOwners.get(spawned.data.sessionID);
+
+    if (owner !== undefined && owner !== facts.taskID) {
+      state.end = {
+        kind: 'report',
+        summary: `The coding session started, but the task ${owner} joined it first, so this task let it go.`,
       };
 
       return;
@@ -341,6 +355,10 @@ function collectInput(facts: CodingStepFacts, state: StepState, item: InboxItem)
   if (item.kind === 'event' && item.event !== null) {
     collectEvent(facts, state, item.sequence, item.event);
   }
+
+  if (item.kind === 'event' && item.event === null && item.state === 'ended') {
+    collectErasedEnd(facts, state);
+  }
 }
 
 type Message = Extract<InboxItem, { readonly kind: 'message' }>;
@@ -386,8 +404,6 @@ function collectEvent(
     return;
   }
 
-  const wake = state.binding?.wake ?? facts.wake;
-
   if (event.kind === 'note') {
     addTargetMessage(facts, state, {
       kind: 'progress',
@@ -399,6 +415,7 @@ function collectEvent(
   }
 
   const isEnded = event.state === 'ended';
+  const wake = state.binding?.wake ?? facts.wake;
 
   if (!isEnded || wake.includes('ended')) {
     addTargetMessage(facts, state, {
@@ -446,4 +463,15 @@ function collectAnswer(
       }),
     });
   }
+}
+
+// The session's end from the facts that a forget of its event keeps.
+function collectErasedEnd(facts: CodingStepFacts, state: StepState): void {
+  const wake = state.binding?.wake ?? facts.wake;
+
+  if (wake.includes('ended')) {
+    addTargetMessage(facts, state, { kind: 'progress', body: 'The coding session is now ended.' });
+  }
+
+  state.end = { kind: 'session_ended' };
 }

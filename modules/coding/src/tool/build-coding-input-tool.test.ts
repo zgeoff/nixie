@@ -1,6 +1,8 @@
 import { expect, test } from 'bun:test';
 import { readTestActions } from '@heynixie/actions/test-utils';
-import { readRecords } from '@heynixie/log';
+import { parseJSONObject, readRecords } from '@heynixie/log';
+import { buildStepRunID } from '@heynixie/tasks';
+import { buildMockToolCall, buildMockToolContext } from '@heynixie/tools/test-utils';
 import { readBinding } from '../session/read-binding';
 import { startTestCoding } from '../test-utils/start-test-coding';
 
@@ -30,6 +32,17 @@ async function setupTest() {
       },
     },
     readActions: () => readTestActions(ctx.log.writer),
+    callWithToolUseID: (tool: string, input: object, toolUseID: string) => {
+      const call = buildMockToolCall({
+        tool,
+        input: parseJSONObject(JSON.stringify(input)),
+        toolUseID,
+      });
+
+      const run = { thread: 'conversation', stepRunID: buildStepRunID(claim), tools: [tool] };
+
+      return ctx.tools.get(tool)?.run(call, buildMockToolContext({ run }));
+    },
     readHop: async (taskID: string) => {
       const binding = await readBinding(ctx.log.writer.db, taskID);
 
@@ -86,6 +99,25 @@ test('#coding.steer types the text into the session as one input, and records th
     ],
     action: expect.objectContaining({ tool: 'coding.steer', status: 'done', taskID }),
   });
+});
+
+test('#coding.steer queues one action, and types once, when a rerun of the step calls it again with the same tool-use ID', async () => {
+  const ctx = await setupTest();
+  const taskID = await ctx.seed.session();
+
+  const input = { task: taskID, text: 'Find why the cookie expires.' };
+
+  await ctx.callWithToolUseID('coding.steer', input, 'toolu_01');
+  await ctx.runActions();
+  await ctx.callWithToolUseID('coding.steer', input, 'toolu_01');
+  await ctx.runActions();
+
+  const actions = await ctx.readActions();
+
+  expect({
+    steers: actions.filter((action) => action.tool === 'coding.steer').length,
+    typed: ctx.adapter.calls.filter((call) => call.method === 'steer').length,
+  }).toStrictEqual({ steers: 1, typed: 1 });
 });
 
 test('#coding.steer fails, and the step tells the report target, while the session waits on a menu', async () => {

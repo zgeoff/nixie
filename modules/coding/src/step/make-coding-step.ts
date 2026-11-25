@@ -23,7 +23,15 @@ export function makeCodingStep(context: CodingContext, adapter: CodingAdapter): 
     }
 
     const binding = await readBinding(log.writer.db, input.taskID);
-    const stored = await readStepFacts(log, input.taskID, binding);
+
+    const inbox = input.inbox.map((record) => toInboxItem(record));
+
+    const stored = await readStepFacts(log, {
+      taskID: input.taskID,
+      adapterID: adapter.id,
+      binding,
+      inbox,
+    });
 
     const plan = collectCodingStep({
       taskID: input.taskID,
@@ -33,7 +41,7 @@ export function makeCodingStep(context: CodingContext, adapter: CodingAdapter): 
       ownerName: context.ownerName,
       wake: task.options.wake,
       binding,
-      inbox: input.inbox.map((record) => toInboxItem(record)),
+      inbox,
       ...stored,
     });
 
@@ -51,29 +59,36 @@ export function makeCodingStep(context: CodingContext, adapter: CodingAdapter): 
 
     const sessionID = binding?.sessionID ?? null;
 
-    const summary = await readSummary(adapter, plan.end, sessionID);
+    const report = await readReport(adapter, plan.end, sessionID);
 
     return {
       ...result,
       next: 'done',
       isFinal: true,
-      run: { activity: 'worked', report: { summary } },
+      run: { activity: 'worked', report },
     };
   };
 }
 
 const reportLimit = 8000;
 
-async function readSummary(
+interface StepReport {
+  readonly summary: string;
+
+  // set for the session's last reply, which is outside content
+  readonly outside?: true;
+}
+
+async function readReport(
   adapter: CodingAdapter,
   end: CodingStepEnd,
   sessionID: string | null,
-): Promise<string> {
+): Promise<StepReport> {
   if (end.kind === 'report') {
-    return end.summary;
+    return { summary: end.summary };
   }
 
-  const fallback = 'The session ended, and nixie could not read its final reply.';
+  const fallback = { summary: 'The session ended, and nixie could not read its final reply.' };
 
   if (sessionID === null) {
     return fallback;
@@ -87,5 +102,5 @@ async function readSummary(
     return fallback;
   }
 
-  return renderCutText(reply.value.lastReply, reportLimit);
+  return { summary: renderCutText(reply.value.lastReply, reportLimit), outside: true };
 }

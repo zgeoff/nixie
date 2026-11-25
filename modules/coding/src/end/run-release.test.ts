@@ -226,3 +226,30 @@ test('it queues no second stop when the sweep runs after a stop that queued one'
 
   expect(stops.length).toBe(1);
 });
+
+test('it runs the coding.stop of a stopped task that closes before the queue claims the stop', async () => {
+  const ctx = await setupTest();
+  const taskID = await ctx.seed.startedSession();
+
+  await ctx.control(taskID, 'stop');
+  await ctx.control(taskID, 'close');
+  await ctx.runActions();
+  await ctx.sweep();
+
+  const stops = await ctx.readStops();
+
+  expect({
+    stops: stops.map((stop) => stop.status),
+    calls: ctx.readStopCalls(),
+  }).toStrictEqual({
+    stops: ['done'],
+    calls: [
+      {
+        method: 'stop',
+        session: 'cloud.3f9a1c2e.00000001',
+        idempotencyKey: null,
+        text: null,
+      },
+    ],
+  });
+});

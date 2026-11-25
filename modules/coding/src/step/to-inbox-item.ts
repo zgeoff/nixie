@@ -1,10 +1,11 @@
 import type { JSONObject, LogRecord } from '@heynixie/log';
 import { JSON_OBJECT_SCHEMA } from '@heynixie/log';
-import { taskMessageCodec } from '@heynixie/tasks';
+import { taskMessageCodec, triggerTaskInputCodec } from '@heynixie/tasks';
 import { match } from 'ts-pattern';
 import { z } from 'zod';
+import { sessionStateSchema } from '../record/session-state-schema';
 import { sessionEventSchema } from '../source/session-event-schema';
-import type { SessionEvent } from '../types';
+import type { SessionEvent, SessionState } from '../types';
 
 export type InboxItem =
   | {
@@ -31,7 +32,16 @@ export type InboxItem =
       // the brief that the start wrote as the task's first message
       readonly isBrief: boolean;
     }
-  | { readonly kind: 'event'; readonly sequence: number; readonly event: SessionEvent | null }
+  | {
+      readonly kind: 'event';
+      readonly sequence: number;
+
+      // null once a forget erased the event
+      readonly event: SessionEvent | null;
+
+      // the state of a state event, from the record's facts, which a forget keeps
+      readonly state: SessionState | null;
+    }
   | { readonly kind: 'other'; readonly sequence: number };
 
 const outcomePayloadSchema = z.object({
@@ -45,6 +55,8 @@ const outcomeFieldsSchema = z.object({
   result: JSON_OBJECT_SCHEMA.optional(),
   message: z.string().optional(),
 });
+
+const stateFactsSchema = z.object({ kind: z.literal('state'), state: sessionStateSchema });
 
 // What the coding step reads of one record of its inbox. A record whose text a forget erased reads
 // as empty text.
@@ -91,11 +103,14 @@ export function toInboxItem(record: LogRecord): InboxItem {
     }))
     .with('trigger.task_input', () => {
       const event = sessionEventSchema.safeParse(fields['event']);
+      const input = triggerTaskInputCodec.decode(record.payload);
+      const state = stateFactsSchema.safeParse(input.facts);
 
       return {
         kind: 'event',
         sequence: record.sequence,
         event: event.success ? event.data : null,
+        state: state.success ? state.data.state : null,
       };
     })
     .otherwise(() => ({ kind: 'other', sequence: record.sequence }));
