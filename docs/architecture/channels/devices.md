@@ -220,7 +220,7 @@ its content. A blank region has a null kind.
 
 `device.preview` shows the assistant what a screen looks like and what went wrong on it. A web page
 cannot take a picture of its own screen without a prompt on the device, so the picture is a render
-of the same layout at the same size, which the device did not make.
+of the same layout at the same size.
 
 ```mermaid
 flowchart LR
@@ -242,10 +242,10 @@ differ.
 
 `startRenderSandbox` in the `connectors` module runs each render in a new sandbox that has the rule
 of a code run: no network, no grant and no tool route. It destroys the sandbox when the render ends.
-A second render waits for the first, so one render runs at a time, and a render never touches the
-assistant's computer. A render sandbox that ignores its stop is destroyed after a short wait, so it
-never holds the queue. The sandbox takes the code run's kind, because a kind of its own would leave
-a stored spec that the release before cannot parse.
+A second render waits for the first, and a render never touches the assistant's computer. A render
+sandbox that ignores its stop is destroyed after a short wait, so it never holds the queue. The
+sandbox takes the code run's kind, because a kind of its own would leave a stored spec that the
+release before cannot parse.
 
 nixie starts the render sandbox only when the sandbox manifest holds a render image. A deployment
 without one boots as before, and each preview of it has `picture: unavailable`.
@@ -263,16 +263,16 @@ as the device page does.
 The server sends the files, the screen's size in device pixels and the pixel ratio. The render guest
 in `guests/render` starts Chromium on an empty profile in a folder that it removes after the render.
 
-It answers each request for one of the page's files from the files it received, refuses every other
-request and every WebSocket, and lists the refused URLs in its reply. It waits for the page to say
-that its text has fitted, and takes a PNG of exactly the requested width and height. The page lays
-out at the width divided by the pixel ratio, rounded up to a whole CSS pixel, and the picture is cut
-to the exact size, so a device with an odd width gets a picture of its own width. The server sends
-the PNG on at that exact size, so a large screen is not shrunk, and the picture is `unavailable`
-when the PNG passes the byte limit that the model takes.
+The guest answers each request for one of the page's files from the files it received, refuses every
+other request and every WebSocket, and lists the refused URLs in its reply. It waits for the page to
+say that its text has fitted, and takes a PNG of exactly the requested width and height. The page
+lays out at the width divided by the pixel ratio, rounded up to a whole CSS pixel, and the picture
+is cut to the exact size, so a device with an odd width gets a picture of its own width. The server
+sends the PNG on at that exact size, so a large screen is not shrunk, and the picture is
+`unavailable` when the PNG passes the byte limit that the model takes.
 
-`buildPreviewPage` matches each kind of region content with no fallback, so the kind that pages add
-fails the type check until the page has a branch for it.
+`buildPreviewPage` matches each kind of region content with no fallback, so a new kind, such as the
+one that page regions add, fails the type check until `buildPreviewPage` has a branch for it.
 
 ### The errors
 
