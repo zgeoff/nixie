@@ -14,6 +14,7 @@ import type { AnyPartDeclaration } from '../types';
 import { buildAPIGate } from '../utils/build-api-gate';
 import { buildTaskMessaging } from '../utils/build-task-messaging';
 import { makeServerDecisions } from '../utils/make-server-decisions';
+import { harnessSpeech } from './harness-speech';
 import { loadStartState } from './load-start-state';
 import type { ServerPartValues } from './server-part-values';
 import { startHostCommands } from './start-host-commands';
@@ -60,7 +61,9 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
           calls: {
             voice: options.config.voice ?? null,
             logEvent: options.log,
-            speech: options.speech ?? null,
+            speech:
+              options.speech ??
+              (NIXIE_TEST_BUILD && options.harness !== undefined ? harnessSpeech : null),
           },
           defaultZone: options.config.time.default_zone,
           ...(options.spend === null

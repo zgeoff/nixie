@@ -1,10 +1,18 @@
 import { closeSync, readdirSync, readlinkSync, realpathSync } from 'node:fs';
+import type { CallsContext } from '@heynixie/calls';
+import { connectCall, startCall } from '@heynixie/calls';
 import type { TasksContext } from '@heynixie/tasks';
 import { createTask, writeInboxRecords, writeTaskControl } from '@heynixie/tasks';
 import type { HarnessLink } from '@heynixie/testing';
+import invariant from 'tiny-invariant';
 import { buildNixieOperationSchemas } from './build-nixie-operation-schemas';
+import { harnessSpeech } from './harness-speech';
 
-export function registerHarnessOperations(link: HarnessLink, context: TasksContext): void {
+export function registerHarnessOperations(
+  link: HarnessLink,
+  context: TasksContext,
+  calls: CallsContext | undefined,
+): void {
   const schemas = buildNixieOperationSchemas();
 
   link.registerOperation('sendMessage', schemas.sendMessage, async (message) => {
@@ -46,11 +54,50 @@ export function registerHarnessOperations(link: HarnessLink, context: TasksConte
     return outcome.status === 'controlled' ? outcome.sequence : null;
   });
 
+  registerCallOperations(link, calls);
+
   link.registerOperation('releaseWriterLock', schemas.releaseWriterLock, () => {
     removeLockDescriptor(context.log.writer.dataDir);
 
     return null;
   });
+}
+
+// The harness starts a call as the user and connects it with no device, then plays the provider.
+function registerCallOperations(link: HarnessLink, calls: CallsContext | undefined): void {
+  const schemas = buildNixieOperationSchemas();
+
+  link.registerOperation('startCall', schemas.startCall, async () => {
+    invariant(calls !== undefined, 'the test build holds no calls');
+
+    const started = await startCall(calls, { carryingSession: 'harness-session' });
+
+    invariant(started.status === 'started', `the call did not start: ${JSON.stringify(started)}`);
+
+    const connected = await connectCall(calls, {
+      callID: started.callID,
+      session: 'harness-session',
+      sdpOffer: 'offer',
+      probeCaller: () => Promise.resolve(true),
+    });
+
+    invariant(
+      connected.status === 'connected',
+      `the call did not connect: ${JSON.stringify(connected)}`,
+    );
+
+    return started.callID;
+  });
+
+  link.registerOperation('emitSpeech', schemas.emitSpeech, (emit) => {
+    harnessSpeech?.emit(emit.sessionID, emit.event);
+
+    return null;
+  });
+
+  link.registerOperation('readSpeechCalls', schemas.readSpeechCalls, () =>
+    structuredClone(harnessSpeech?.calls ?? []),
+  );
 }
 
 // The writer lock is a flock on the data directory itself, so its descriptor points at the directory.

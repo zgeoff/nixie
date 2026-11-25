@@ -2,6 +2,38 @@ import { z } from 'zod';
 
 // The bundler keeps a schema built at module level, so a release bundle would hold these names.
 export function buildNixieOperationSchemas() {
+  const heardSchema = z.object({
+    kind: z.literal('heard'),
+    text: z.string(),
+    startedAtMs: z.number(),
+    endedAtMs: z.number(),
+  });
+
+  const spokeSchema = z.object({
+    kind: z.literal('spoke'),
+    text: z.string(),
+    heardChars: z.number(),
+  });
+
+  const handOffSchema = z.object({
+    kind: z.literal('hand_off'),
+    handOffID: z.string(),
+    request: z.string(),
+  });
+
+  const cutSchema = z.object({
+    kind: z.literal('cut'),
+    handOffID: z.string(),
+    heardChars: z.number(),
+  });
+
+  const speechEventSchema = z.discriminatedUnion('kind', [
+    heardSchema,
+    spokeSchema,
+    handOffSchema,
+    cutSchema,
+  ]);
+
   // the fake provider a credential test reaches, and the credentials it connects
   const credentialProviderSchema = z.object({
     ca: z.string(),
@@ -23,6 +55,15 @@ export function buildNixieOperationSchemas() {
       control: z.enum(['pause', 'resume', 'stop', 'restart', 'close', 'interrupt']),
     }),
     releaseWriterLock: z.null(),
+
+    // a call that the user started and connected, on the harness's speech layer
+    startCall: z.null(),
+
+    // an event that the speech layer's session raises, as the provider would
+    emitSpeech: z.object({ sessionID: z.string(), event: speechEventSchema }),
+
+    // what the speech layer was asked to do, in order
+    readSpeechCalls: z.null(),
 
     connectCredential: credentialProviderSchema,
     refreshCredential: credentialProviderSchema,

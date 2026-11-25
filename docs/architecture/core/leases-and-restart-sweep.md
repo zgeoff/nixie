@@ -54,7 +54,8 @@ poll interval unless the pool wakes it. Task steps and action attempts run in po
 an action goes out while every task runner is busy with a long turn. The task pool runs one more
 runner that fires due timers on each poll. The tasks that the conversation starts claim their steps
 through a claim pool of their own, with 2 claim loops unless `tasks.startedClaimLoops` sets another
-number, so the user's next message never waits behind their long steps.
+number, so the user's next message never waits behind their long steps. The task of a voice call
+claims through a third pool, with 1 claim loop unless `tasks.callClaimLoops` sets another number.
 
 A stop claims nothing new and waits a bounded grace for the work in flight. Work still running at
 the deadline is left for the restart sweep exactly as after a crash, and a claim that commits after

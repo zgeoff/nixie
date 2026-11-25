@@ -12,9 +12,10 @@ conversation runs its turns on its role's profile.
 ## The role map
 
 The deployment configuration holds the profiles, each under its ID, and the role map: the
-conversation, other tasks, workers and the checker. The models module owns the schema of that
-section, and the server composes it into the root schema of the whole file, which refuses a key no
-module reads, so a typo never passes as a default.
+conversation, other tasks, workers, the checker and voice calls. The `call` role is the one a
+[voice call](../channels/calls.md#the-call-thread) runs its turns on. The models module owns the
+schema of that section, and the server composes it into the root schema of the whole file, which
+refuses a key no module reads, so a typo never passes as a default.
 
 The conversation role is the one role nixie needs, and the schema refuses a file that leaves it
 unset, so nixie stops at start rather than failing its first turn. A role left unset uses the

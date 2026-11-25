@@ -29,7 +29,7 @@ start pays for no transpile. The bundle keeps each module's source folder, so it
 their source as they do in an unbundled run. It writes the real event log, runs the real restart
 sweep, task runners, action runners and tool endpoint, and runs each conversation turn through the
 real Agent SDK. The SDK runs in a guest that the process sandbox adapter starts as a local child, so
-CI needs no `/dev/kvm` and no imp. The test-only parts are four:
+CI needs no `/dev/kvm` and no imp. The test-only parts are five:
 
 - The test connector declares one queued action, `test.send`, which the test rule allows. The
   release build's rules in code hold no such rule, so no release build can queue it.
@@ -37,6 +37,9 @@ CI needs no `/dev/kvm` and no imp. The test-only parts are four:
   read, and finishes when its inbox holds a finish request, so a test can see a wake-up, a timer
   fire and a task that stays done.
 - A harness link connects the process to the test over an IPC channel.
+- A fake speech layer stands in for the speech provider when the config holds a `voice` section. The
+  harness operations `startCall`, `emitSpeech` and `readSpeechCalls` start a call as the user and
+  play the provider, so a test hands a request off with no device.
 - The process kills every guest it started before it exits on its own, as on a graceful stop or a
   stale writer epoch. A guest leads its own process group and would otherwise outlive nixie, which a
   host that loses nixie never allows.

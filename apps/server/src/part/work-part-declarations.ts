@@ -446,7 +446,7 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
       if (NIXIE_TEST_BUILD && harness !== undefined) {
         await recoverTestCredentials(parts.context);
 
-        registerHarnessOperations(harness.link, parts.context);
+        registerHarnessOperations(harness.link, parts.context, parts.apiContext.calls);
         registerCredentialOperations(harness.link, parts.context);
 
         harness.link.sendReady();

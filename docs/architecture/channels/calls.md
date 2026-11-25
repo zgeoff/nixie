@@ -4,22 +4,26 @@ A call is a live voice conversation between the user and nixie. The `modules/cal
 call's state, its records, its price and the rule that a call ends when its budget runs out. It
 never talks to a speech provider. It holds the `SpeechLayer` interface, and the server passes in an
 adapter that implements it. The [voice design](../../design/platform/channels/voice.md) describes
-the whole feature. This doc covers the module, its records, its budget and its configuration. The
-server holds no speech adapter, so a server with a `voice` config section answers `calls.start` with
-`SPEECH_UNAVAILABLE`.
+the whole feature. This doc covers the module, its records, the call's thread and hand-offs, its
+budget and its configuration. The server holds no speech adapter, so a server with a `voice` config
+section answers `calls.start` with `SPEECH_UNAVAILABLE`.
 
 ## The speech layer
 
 `SpeechLayer` is the whole of what the module asks of a provider:
 
-- `open` takes the browser's SDP offer and the voice settings, and returns the SDP answer, a
-  provider session ID and a stream of `SpeechEvent`s. A provider that refuses its credential returns
-  a refusal in place of a session.
-- `answer` and `say` tell the provider what to speak, and `close` ends the session.
+- `open` takes the browser's SDP offer and the voice settings, and returns the SDP answer and a
+  provider session ID. A provider that refuses its credential returns a refusal in place of a
+  session.
+- `events` takes a session ID and returns the session's stream of `SpeechEvent`s. `open` returns no
+  events.
+- `answer` and `say` tell the provider what to speak, and `close` ends the session. The module sends
+  each answer with `final: true`.
 
 The package's `test-utils` holds a fake layer in memory. It records each `open`, `answer`, `say` and
 `close`, an `open` that the layer refused too, and a test emits each `SpeechEvent` into a session by
-hand.
+hand. A test build of the server wires the same fake and lets the test harness start a call and emit
+events.
 
 ## The call's states
 
@@ -63,21 +67,22 @@ charges each further started minute of a live call.
 
 ## Records
 
-Each call writes these record kinds. The model sees only `call.rang`, `call.spoke` and
-`call.handed_off`, so only those carry a short ID from `createShortID`, and only they hold text that
-the user can ask nixie to forget.
+Each call writes these record kinds. The model sees only the kinds with a short ID or a rendering
+below, and only `call.rang`, `call.spoke` and `call.handed_off` hold text that the user can ask
+nixie to forget.
 
-| Kind               | What it records                                                    |
-| ------------------ | ------------------------------------------------------------------ |
-| `call.rang`        | nixie rang the user, with its reason.                              |
-| `call.started`     | A call began, who began it and the ID of its task.                 |
-| `call.answered`    | The starting session answered the call.                            |
-| `call.reconnected` | The speech session dropped and came back.                          |
-| `call.ended`       | The call ended, with who ended it and how many minutes it charged. |
-| `call.spoke`       | One spoken line, from the user or from nixie, with its line ID.    |
-| `call.handed_off`  | A request that the call passed to the conversation.                |
-| `call.heard_cut`   | The user cut nixie off, and how much of the line they heard.       |
-| `call.turn_timed`  | How long a turn took, for the latency record.                      |
+| Kind               | Thread       | What it records                                                                             |
+| ------------------ | ------------ | ------------------------------------------------------------------------------------------- |
+| `call.started`     | conversation | A call began, who began it and the ID of its task.                                          |
+| `call.answered`    | conversation | The starting session answered the call.                                                     |
+| `call.ended`       | conversation | The call ended, with who ended it and how many minutes it charged.                          |
+| `call.spoke`       | call         | One line of the speech layer's own small talk, with its line ID. It holds no other speaker. |
+| `call.handed_off`  | call         | A request that the speech layer passed to nixie's turn, with its short ID.                  |
+| `call.heard_cut`   | call         | The user talked over a reply, and how many characters of it they heard.                     |
+| `call.closing`     | call         | The call ended, and its thread now runs a last turn that writes the summary.                |
+| `call.rang`        | none yet     | nixie rang the user. The kind has a codec, and no code writes it yet.                       |
+| `call.reconnected` | none yet     | The speech session came back. The kind has a codec, and no code writes it yet.              |
+| `call.turn_timed`  | none yet     | How long a turn took. The kind has a codec, and no code writes it yet.                      |
 
 The `calls` projection folds `call.started`, `call.rang`, `call.answered`, `call.ended` and
 `budget.charged` into one row per call, in the same transaction as each record. A call that nixie
@@ -86,6 +91,65 @@ started is `ringing` until `call.answered` makes it `connecting`, and a call tha
 count is the number of those charges, so no record marks the connection. The kinds `call.started`,
 `call.answered` and `call.ended` change the `tasks` live topic, because a call is a task in the task
 list.
+
+## The call thread
+
+A call is a task of the `call` runner, which no start tool picks. `calls.start` creates the task in
+its own transaction, with the call's short ID and the conversation's newest sequence at that moment,
+called `seedThrough`. The runner runs the same turn code as a started task, with these differences:
+
+- The task claims from a pool of its own, so a call's turn never waits behind a conversation turn.
+  One loop claims by default, and `tasks.callClaimLoops` sets another count.
+- The task takes no pause and no meter. The call budgets limit what a call spends.
+- The task holds one sandbox, as any task that keeps sandboxes does.
+- The turn runs on the profile that `models.roles.call` names. When the role is unset, it runs on
+  the conversation's profile. The turn-input log can capture the `call` role.
+- The session's prompt is the conversation's prompt followed by the voice-call prompt.
+- A new session opens with two threads: the conversation's summary and recent turns through
+  `seedThrough`, then the call's own thread. The call's thread shows the user's speech, the speech
+  layer's small talk and the replies.
+- The call gets memory read, the task and time tools, and `task.message`. It gets none of the tools
+  that start work or ring the user.
+
+## Hand-offs
+
+After a call connects, the module reads the speech session's events and writes each one to the
+call's thread:
+
+| Event      | What the module writes                                                                                                       |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `heard`    | An `owner_message` whose one span has the source `dictated`. It never wakes the call, because only a hand-off starts a turn. |
+| `spoke`    | Nothing yet. The module holds the line until the next hand-off.                                                              |
+| `hand_off` | The held `call.spoke` lines, then `call.handed_off`, in one transaction. The hand-off wakes the call's task.                 |
+| `cut`      | See below.                                                                                                                   |
+
+The call's task runs one turn over what it has not read. When the turn ends, the module sends the
+text of its replies to the speech layer in one `answer` call. A turn that fails, passes a limit or
+writes no text sends the `couldnt_finish` line instead, so the speech layer never makes up an
+answer. A turn that the user cut sends nothing.
+
+When no answer has been sent `hold_after_ms` after a hand-off, the module sends the `holding` line
+through `say`. That line is not part of the answer, and it writes no record, because `call.spoke`
+holds only the speech layer's own speech. A second hand-off during a running turn joins that turn as
+a mid-turn message, and the turn answers the newest hand-off.
+
+A `cut` event does one of two things:
+
+- Before the module sent an answer, it interrupts the call's turn.
+- After the module sent an answer, it writes `call.heard_cut` with the reply's record and the count
+  of characters heard. The next turn reads the reply split where the user stopped hearing it, both
+  in a session that continues and in one that rebuilds.
+
+When the call ends, `call.closing` lands on the call's thread. The task's last turn reads it, writes
+the summary as its reply, and the step reports that reply to the conversation as a `report` message.
+A last turn that fails reports with no summary and names the call's task.
+
+## The conversation's wakes
+
+`call.started`, `call.answered` and `call.ended` are inbox kinds of the conversation. Each wakes it,
+and a call that the user starts writes the first two in one transaction, so one turn reads both. The
+conversation reads each as a `call` system message, and it may end the turn silently. It briefs the
+call with `task.message`.
 
 ## Price and budget
 
