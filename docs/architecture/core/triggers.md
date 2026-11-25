@@ -28,8 +28,10 @@ A source can hand over a task input instead, an event for one task's thread that
 definition. The [coding source](./coding-tasks.md#the-coding-source) hands over each session event
 this way. The core writes a task input as a `trigger.task_input` record, with the event's own text
 in its erasable fields, and drops one whose dedupe key the source already delivered or whose task is
-missing or ended. The input carries a `wake` flag: with it, the record joins the task's inbox and
-wakes the task; without it, the record lands on the thread and no step reads it.
+missing, stopped or finished. A dropped input takes no dedupe key, so the same event can still land
+on the task that binds its session next. The input carries a `wake` flag: with it, the record joins
+the task's inbox and wakes the task; without it, the record lands on the thread and no step reads
+it.
 
 ## Which definitions can fire
 

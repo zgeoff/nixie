@@ -180,9 +180,11 @@ provider, and [reconciliation](#reconciling-an-unknown-outcome) takes it from th
 have reached the provider before the crash, so a second attempt could repeat it. The restart sweep
 does the same for every such action before any runner starts. A runner claims no action of a paused
 or closed [task](./tasks.md#pause-stop-and-close) before its first attempt, so a pause holds the
-task's queued actions, and an action with a started attempt runs on to its outcome. A claimed action
-whose tool has no connector (a tool that runs inside the turn has none, and its action is not
-claimed), or whose arguments are gone because their key was forgotten, fails without an attempt.
+task's queued actions, and an action with a started attempt runs on to its outcome. An action that a
+runner's end hook queued is never held, because it is the task's last act, such as the stop of a
+coding session after the task stopped and then closed. A claimed action whose tool has no connector
+(a tool that runs inside the turn has none, and its action is not claimed), or whose arguments are
+gone because their key was forgotten, fails without an attempt.
 
 Pausing nixie as a whole bars attempts too. The attempt start checks, in the transaction that would
 record it, whether nixie is paused and the action's task is not on the exemption list. If so, it

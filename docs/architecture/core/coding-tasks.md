@@ -46,9 +46,9 @@ Each start and each join is the call variant `task.start/<adapter ID>`, with the
 user's own message asked for, because a session runs code under the user's accounts.
 
 - **A start** writes the task and queues one `coding.start` action, which the adapter calls a spawn.
-  The action carries the brief as the session's first prompt, and its action ID as the idempotency
-  key, so a spawn that runs again after a crash gets the adapter's first answer. When the spawn's
-  outcome lands as done, the next step binds the session.
+  The action carries the brief as the session's first prompt, and each attempt sends the action's
+  [idempotency key](./actions.md#attempts), so a spawn that runs again after a crash gets the
+  adapter's first answer. When the spawn's outcome lands as done, the next step binds the session.
 - **A join** asks the adapter to join the session, then binds it in the start's own transaction. A
   join sends the session nothing, because the session belongs to the user until a steer or a note
   reaches it. The transaction refuses a session that another open coding task binds, so two tasks
@@ -59,7 +59,8 @@ user's own message asked for, because a session runs code under the user's accou
 
 A step reads the task's inbox, takes each action outcome first, then each message and event in the
 order it arrived. A step that ends the session commits as done, with the session's last reply as the
-task's report, or a fallback sentence when the adapter cannot read that reply.
+task's report, marked as outside content, or a fallback sentence when the adapter cannot read that
+reply.
 
 **Messages.** A message to the task, from another task or from the user, goes to the session as a
 note through a `coding.message` action. A note never steers: the session's agent reads it beside its
