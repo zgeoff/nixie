@@ -13,6 +13,7 @@ import type { ToolContext, ToolDefinition } from './types';
 
 interface SetupConfig {
   readonly tools: readonly ToolDefinition[];
+  readonly heldBack?: readonly string[];
 }
 
 async function setupTest(config: SetupConfig) {
@@ -28,6 +29,9 @@ async function setupTest(config: SetupConfig) {
       logLines.push({ event, fields, level });
     },
     socketDir: join(testLog.dataDir, 'tools'),
+    ...(config.heldBack === undefined
+      ? {}
+      : { readHeldBackTools: () => Promise.resolve(config.heldBack ?? []) }),
     registry,
     decide: readStarterDecisionPoint(
       (tool) => registry.findTool(tool)?.definition.declaration ?? null,
@@ -68,6 +72,30 @@ test('it lists and runs a tool that the run names by its SDK name under the regi
 
   expect(listed.tools.map((tool) => tool.name)).toStrictEqual(['notes.read']);
   expect(result.structuredContent).toStrictEqual({ text: 'a note' });
+});
+
+test('it leaves out of a run the tools that are held back, and lists the others', async () => {
+  const ctx = await setupTest({
+    tools: [
+      buildMockToolDefinition({ name: 'notes.read' }),
+      buildMockToolDefinition({ name: 'stub.read_mail' }),
+    ],
+    heldBack: ['stub.read_mail'],
+  });
+
+  const run = await ctx.endpoint.startRun({
+    toolUseMetaKey: null,
+    runID: 'run-1',
+    thread: 'task-1',
+    logThread: 'task-1',
+    tools: ['mcp__nixie__notes_read', 'mcp__nixie__stub_read_mail'],
+    model: { model: 'model-a', profile: 'chat-direct' },
+  });
+
+  const client = await startRunClient(run);
+  const listed = await client.listTools();
+
+  expect(listed.tools.map((tool) => tool.name)).toStrictEqual(['notes.read']);
 });
 
 test('it warns once for each tool of a run that no registered tool answers', async () => {

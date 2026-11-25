@@ -11,6 +11,7 @@ import type { PickerSettings } from './client/set-picker';
 import { forgetConnection, readConnectionForgetState } from './connection/forget-connection';
 import { listConnections } from './connection/list-connections';
 import { readConnectionContext } from './connection/read-connection-context';
+import { readHeldBackTools } from './connection/read-held-back-tools';
 import { readSetup } from './connection/read-setup';
 import { runConnectionCheck, runDailyChecks } from './connection/run-connection-check';
 import { finishConsent } from './consent/finish-consent';
@@ -97,6 +98,10 @@ export interface Connections extends ConnectionsPort {
   // the daily check of every live connection; returns how many it checked
   readonly runDailyChecks: () => Promise<number>;
 
+  // The names of the tools that a run leaves out of its list, because no live connection has all the
+  // scopes they need.
+  readonly readHeldBackTools: () => Promise<readonly string[]>;
+
   // deletes lapsed consent requests and abandoned consent credentials
   readonly sweepConsents: () => Promise<{
     readonly requests: number;
@@ -164,6 +169,7 @@ export function startConnections(options: ConnectionsOptions): Connections {
     readContext: (connectionID) => readConnectionContext(context, connectionID),
     runCheck: (connectionID) => runConnectionCheck(context, connectionID),
     runDailyChecks: () => runDailyChecks(context),
+    readHeldBackTools: () => readHeldBackTools(context),
     sweepConsents: () => sweepConsents(context),
   };
 }

@@ -1,0 +1,63 @@
+import { expect, test } from 'bun:test';
+import type { ConnectorAction } from '@heynixie/connectors';
+import { buildMockToolDefinition } from '@heynixie/tools/test-utils';
+import { collectHeldBackToolNames } from './collect-held-back-tool-names';
+
+function setupTest() {
+  const specs: readonly (readonly [string, readonly string[]])[] = [
+    ['stub.read_mail', ['gmail.modify']],
+    ['stub.read_file', ['drive.file']],
+    ['stub.plain', []],
+  ];
+
+  const actions = specs.map(([name, scopes]): ConnectorAction => {
+    const { run: _, ...tool } = buildMockToolDefinition({ name });
+
+    return {
+      tool,
+      scopes,
+      reconcile: { kind: 'none' },
+      run: () => Promise.resolve({ kind: 'done', result: {} }),
+    };
+  });
+
+  return { actions };
+}
+
+test.each([
+  {
+    title: 'no live connection holds nothing back',
+    missing: [],
+    expected: [],
+  },
+  {
+    title: 'a connection with every scope holds nothing back',
+    missing: [[]],
+    expected: [],
+  },
+  {
+    title: 'a scope the only connection lacks holds its tools back',
+    missing: [[{ scope: 'drive.file', reason: 'not_granted' }]],
+    expected: ['stub.read_file'],
+  },
+  {
+    title: 'a scope that only one of two connections lacks holds nothing back',
+    missing: [[{ scope: 'drive.file', reason: 'not_granted' }], []],
+    expected: [],
+  },
+  {
+    title: 'a scope that both connections lack holds its tools back',
+    missing: [
+      [{ scope: 'gmail.modify', reason: 'api_disabled' }],
+      [
+        { scope: 'drive.file', reason: 'not_granted' },
+        { scope: 'gmail.modify', reason: 'not_granted' },
+      ],
+    ],
+    expected: ['stub.read_mail'],
+  },
+] as const)('#collectHeldBackToolNames holds back tools when $title', (row) => {
+  const ctx = setupTest();
+
+  expect(collectHeldBackToolNames(ctx.actions, row.missing)).toStrictEqual([...row.expected]);
+});
