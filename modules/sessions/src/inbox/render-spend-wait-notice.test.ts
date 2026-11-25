@@ -9,6 +9,7 @@ import {
 import invariant from 'tiny-invariant';
 import { buildMockTaskMessageView } from '../test-utils/build-mock-task-message-view';
 import { readTurnBatch } from '../turn/read-turn-batch';
+import { renderToldWaitNotices } from './render-told-wait-notices';
 
 async function setupTest() {
   const spend = await startTestSpend();
@@ -101,4 +102,33 @@ test("it takes a notice that a turn's opening told with no text, so the read cur
   const batch = await ctx.readInbox(inbox, new Set(inbox.map((record) => record.sequence)));
 
   expect(batch).toStrictEqual({ records: inbox, messages: [], silent: inbox });
+});
+
+test("it tells a notice in a turn's opening with the notice's short ID and the same text as the batch, each time", async () => {
+  const ctx = await setupTest();
+
+  ctx.gateway.readStatus.mockResolvedValue({ kind: 'ok', value: buildTrippedGatewayStatus() });
+
+  await ctx.settle();
+
+  await holdTaskOnRoute(ctx.context, 'task-a', 'plan');
+
+  ctx.clock.advance(5 * 60_000);
+  ctx.gateway.readStatus.mockResolvedValue({ kind: 'ok', value: buildMockGatewayStatus() });
+
+  await ctx.settle();
+
+  const notices = await ctx.readWaitNotices();
+
+  const inbox = notices.map((notice) => notice.record);
+  const times = { defaultZone: 'UTC', now: new Date(ctx.clock.now()) };
+
+  const batch = await ctx.readInbox(inbox);
+
+  const shown = batch.messages.map((entry) => entry.text).join('\n\n');
+
+  expect([renderToldWaitNotices(inbox, times), renderToldWaitNotices(inbox, times)]).toStrictEqual([
+    shown,
+    shown,
+  ]);
 });
