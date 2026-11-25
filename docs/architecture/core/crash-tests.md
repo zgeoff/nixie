@@ -93,8 +93,8 @@ test reads the leases and the tasks that the sweep left. After the last kill, th
 restart sweep once more in the test process, as a last restart, then checks:
 
 - Each step key has at most one commit, and one step queues each call it makes as one action.
-- Each provider call carries the idempotency key of an action, and no key has more calls than the
-  action has attempts.
+- Each provider call carries the idempotency key of an action's attempt, and no action has more
+  calls than it has attempts.
 - No task holds a lease after any start's restart sweep.
 - After any start's restart sweep, no task is running, and no waiting task has unread input.
 - A task that reached an end state keeps it in every later read.

@@ -148,9 +148,11 @@ function collectStrayCalls(
   return nixie.provider.calls
     .map((call) => call.idempotencyKey)
     .filter((key) => {
-      const remaining = key === null ? 0 : (attempts.get(key) ?? 0);
+      // an attempt after a refusal sends `<action ID>.<refusals>`
+      const actionID = key?.replace(/\.\d+$/u, '') ?? null;
+      const remaining = actionID === null ? 0 : (attempts.get(actionID) ?? 0);
 
-      attempts.set(key, remaining - 1);
+      attempts.set(actionID, remaining - 1);
 
       return remaining <= 0;
     });
