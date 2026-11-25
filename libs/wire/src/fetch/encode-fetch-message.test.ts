@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { decodeFetchRequest } from './decode-fetch-request';
 import { encodeFetchMessage } from './encode-fetch-message';
 
 test('it writes the message as one line of JSON', () => {
@@ -81,4 +82,22 @@ test('it writes the HTML of a request after its other fields', () => {
   expect(new TextDecoder().decode(bytes)).toBe(
     JSON.stringify({ url: 'about:blank', limits, deniedRanges: [], html: '<p>Hi</p>' }),
   );
+});
+
+test.each([
+  [{ kind: 'body' }],
+  [{ kind: 'package', integrity: 'sha512-abc', unpackedBytes: 5_242_880 }],
+] as const)('it carries the mode of a request through a decode: %o', (mode) => {
+  const request = {
+    url: 'https://registry.example/chart.js/4.4.6',
+    limits: { bodyBytes: 1, timeoutMs: 1, redirects: 2, textBytes: 1, imageBytes: 0 },
+    deniedRanges: [],
+    hops: 'ask' as const,
+    mode,
+  };
+
+  expect(decodeFetchRequest(encodeFetchMessage(request))).toStrictEqual({
+    ...request,
+    limits: { ...request.limits, redirects: 2 },
+  });
 });

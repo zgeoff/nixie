@@ -1,4 +1,4 @@
-import type { FetchLimits, FetchRequest } from './fetch-request';
+import type { FetchLimits, FetchMode, FetchRequest } from './fetch-request';
 import { parseFetchObject } from './parse-fetch-object';
 
 export function decodeFetchRequest(bytes: Uint8Array): FetchRequest {
@@ -15,7 +15,7 @@ export function decodeFetchRequest(bytes: Uint8Array): FetchRequest {
   }
 
   const decoded = decodeLimits(limits);
-  const html = decodeHTML(request['html']);
+  const html = { ...decodeHTML(request['html']), ...decodeMode(request['mode']) };
 
   if (!('hopGate' in request)) {
     return { url: request['url'], limits: decoded, deniedRanges, hops: 'none', ...html };
@@ -70,6 +70,33 @@ function decodeHTML(value: unknown): { readonly html?: string } {
   }
 
   return { html: value };
+}
+
+function decodeMode(value: unknown): { readonly mode?: FetchMode } {
+  if (value === undefined) {
+    return {};
+  }
+
+  const mode: Readonly<Record<string, unknown>> =
+    typeof value === 'object' && value !== null ? Object.fromEntries(Object.entries(value)) : {};
+
+  if (mode['kind'] === 'body') {
+    return { mode: { kind: 'body' } };
+  }
+
+  if (
+    mode['kind'] === 'package' &&
+    typeof mode['integrity'] === 'string' &&
+    typeof mode['unpackedBytes'] === 'number' &&
+    Number.isSafeInteger(mode['unpackedBytes']) &&
+    mode['unpackedBytes'] > 0
+  ) {
+    return {
+      mode: { kind: 'package', integrity: mode['integrity'], unpackedBytes: mode['unpackedBytes'] },
+    };
+  }
+
+  throw new TypeError('a fetch request needs mode, a body or a package with integrity and bytes');
 }
 
 function decodeHopGateRedirects(value: unknown): number {

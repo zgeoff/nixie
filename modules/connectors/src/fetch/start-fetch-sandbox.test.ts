@@ -1585,3 +1585,64 @@ test('it sends the fetcher the HTML of a document in place of an address to fetc
     html: '<a href="https://example.org/reset">Reset password</a>',
   });
 });
+
+test('it asks the fetcher for a response body and returns the text it answers', async () => {
+  const answer = mock((request: FetchRequest) => ({
+    kind: 'body' as const,
+    url: request.url,
+    status: 200,
+    contentType: 'application/json',
+    text: '{"a":1}',
+    isTruncated: false,
+    retryAfterMs: null,
+    isGated: false,
+  }));
+
+  const fetchSandbox = startFetchSandbox({
+    adapter: buildStubSandboxAdapter(makeStubFetcher(answer)),
+    image: 'nixie-fetch',
+    argv: ['bun', '/app/fetch.js'],
+    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50, imageBytes: 100 },
+    deniedRanges: [],
+    sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
+  });
+
+  onTestFinished(() => fetchSandbox.stop());
+
+  const reply = await fetchSandbox.readBody('https://example.com/data.json');
+
+  expect(reply).toMatchObject({ kind: 'body', text: '{"a":1}' });
+  expect(answer.mock.calls[0]?.[0]).toMatchObject({ mode: { kind: 'body' }, hops: 'none' });
+});
+
+test('it asks the fetcher to unpack a package against the approved integrity', async () => {
+  const answer = mock((request: FetchRequest) => ({
+    kind: 'package' as const,
+    url: request.url,
+    files: [{ path: 'a.js', base64: 'YQ==' }],
+    isGated: false,
+  }));
+
+  const fetchSandbox = startFetchSandbox({
+    adapter: buildStubSandboxAdapter(makeStubFetcher(answer)),
+    image: 'nixie-fetch',
+    argv: ['bun', '/app/fetch.js'],
+    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50, imageBytes: 100 },
+    deniedRanges: [],
+    sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
+  });
+
+  onTestFinished(() => fetchSandbox.stop());
+
+  const reply = await fetchSandbox.readPackage('https://registry.example/a/-/a-1.0.0.tgz', {
+    kind: 'package',
+    integrity: 'sha512-x',
+    unpackedBytes: 5000,
+  });
+
+  expect(reply).toMatchObject({ kind: 'package', files: [{ path: 'a.js', base64: 'YQ==' }] });
+
+  expect(answer.mock.calls[0]?.[0]).toMatchObject({
+    mode: { kind: 'package', integrity: 'sha512-x', unpackedBytes: 5000 },
+  });
+});
