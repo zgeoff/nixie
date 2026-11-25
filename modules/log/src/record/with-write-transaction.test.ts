@@ -108,7 +108,9 @@ test('it runs a queued commit hook once the write has committed', async () => {
   const ran: string[] = [];
 
   await withWriteTransaction({ db: ctx.db, epoch, commits: ctx.commits }, (tx) => {
-    queueCommitHook(tx, () => ran.push('hook'));
+    queueCommitHook(tx, () => {
+      ran.push('hook');
+    });
 
     return Promise.resolve();
   });
@@ -123,7 +125,9 @@ test('it drops a queued commit hook when the write rolls back', async () => {
   const ran: string[] = [];
 
   const write = withWriteTransaction({ db: ctx.db, epoch, commits: ctx.commits }, (tx) => {
-    queueCommitHook(tx, () => ran.push('hook'));
+    queueCommitHook(tx, () => {
+      ran.push('hook');
+    });
 
     return Promise.reject(new Error('the handler failed'));
   });

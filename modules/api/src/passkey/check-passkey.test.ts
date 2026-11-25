@@ -10,6 +10,7 @@ import { buildActionProposalInput } from '@heynixie/policy';
 import { createConversationTask } from '@heynixie/tasks';
 import { createFakeClock } from '@zgeoff/testing/clock';
 import invariant from 'tiny-invariant';
+import { z } from 'zod';
 import { buildTestClient } from '../test-utils/build-test-client';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { seedPasskey } from '../test-utils/seed-passkey';
@@ -224,7 +225,11 @@ test('#checkPasskey covers the session that tapped and asks another session', as
   ]);
 
   expect(
-    settled.map((result) => (result.status === 'fulfilled' ? 'covered' : result.reason.code)),
+    settled.map((result) =>
+      result.status === 'fulfilled'
+        ? 'covered'
+        : z.object({ code: z.string() }).parse(result.reason).code,
+    ),
   ).toStrictEqual(['covered', 'PASSKEY_REQUIRED']);
 });
 
@@ -312,7 +317,11 @@ test('#checkPasskey covers an answer and refuses adding and removing a passkey i
   ]);
 
   expect(
-    settled.map((result) => (result.status === 'fulfilled' ? 'covered' : result.reason.code)),
+    settled.map((result) =>
+      result.status === 'fulfilled'
+        ? 'covered'
+        : z.object({ code: z.string() }).parse(result.reason).code,
+    ),
   ).toStrictEqual(['covered', 'CODE_REQUIRED', 'PASSKEY_REQUIRED']);
 });
 
