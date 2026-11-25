@@ -995,7 +995,11 @@ test('it sets the ledger rows of a run to the dollars and tokens the gateway cou
 
   const [ended] = await ctx.readKinds(['worker.run_ended']);
 
-  const counter = `worker_run:${String(ended?.payload['workerRunID'])}`;
+  const workerRunID = ended?.payload['workerRunID'];
+
+  invariant(typeof workerRunID === 'string');
+
+  const counter = `worker_run:${workerRunID}`;
 
   const ledger = await ctx.readLedger();
 

@@ -87,11 +87,16 @@ test('it sets the ledger row of the task run to its dollars in the transaction o
   });
 
   const [ended] = await ctx.readKinds('task.run_ended');
+
+  const runID = ended?.payload['runID'];
+
+  invariant(typeof runID === 'string');
+
   const ledger = await readSpendLedger(ctx.writer.db);
 
   expect(ledger).toStrictEqual([
     {
-      counter: `task_run:${String(ended?.payload['runID'])}`,
+      counter: `task_run:${runID}`,
       unit: 'micros:USD',
       periodKind: 'none',
       periodStart: '',
