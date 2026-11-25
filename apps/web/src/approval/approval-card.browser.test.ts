@@ -1,6 +1,7 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { waitFor } from '@testing-library/react';
 import { z } from 'zod';
+import { closeMockPasskeyWindow } from '../mocks/close-mock-passkey-window';
 import { mockPasskeyCode } from '../mocks/passkey-rows';
 import { store } from '../mocks/store';
 import { setupSignedInBrowser } from '../test-utils/setup-signed-in-browser';
@@ -62,6 +63,7 @@ async function setupTest() {
   const waitInView = (expression: string) => waitForPage(view, expression, 8000);
 
   return {
+    api,
     view,
     waitForPage: waitInView,
     findRow: (proposalID: string) =>
@@ -171,6 +173,68 @@ test('it asks the passkey once for two always-ask rows, because the first tap co
 
   expect(store.passkeyChecks.all().map((check) => check.proposalID)).toStrictEqual([
     first.proposalID,
+  ]);
+});
+
+test('it asks the passkey and sends again when the window lapses between the status call and the answer', async () => {
+  const ctx = await setupTest();
+
+  await ctx.registerPasskey();
+
+  const first = await store.approvalRows.create({
+    choices: ['approve', 'defer', 'decline'],
+    riskClass: 'always_ask',
+    sentence: 'Pay the berth fee.',
+  });
+
+  const second = await store.approvalRows.create({
+    choices: ['approve', 'defer', 'decline'],
+    riskClass: 'always_ask',
+    sentence: 'Pay the rigging fee.',
+  });
+
+  await ctx.openLine('Pay the berth fee.');
+  await ctx.waitForPage(`document.querySelector('button[name="approve"]') !== null`);
+  await ctx.view.click('button[name="approve"]');
+
+  await waitFor(
+    () => {
+      expect(ctx.findRow(first.proposalID)?.state).toBe('approved');
+    },
+    { timeout: 8000 },
+  );
+
+  const answerPath = '/rpc/approvals/answerProposal';
+  const answersBefore = ctx.api.requests.filter((request) => request.path === answerPath).length;
+  const release = ctx.api.holdPath(answerPath);
+
+  await ctx.openLine('Pay the rigging fee.');
+  await ctx.waitForPage(`document.querySelector('button[name="approve"]') !== null`);
+  await ctx.view.click('button[name="approve"]');
+
+  await waitFor(
+    () => {
+      expect(ctx.api.requests.filter((request) => request.path === answerPath)).toHaveLength(
+        answersBefore + 1,
+      );
+    },
+    { timeout: 8000 },
+  );
+
+  await closeMockPasskeyWindow();
+
+  release();
+
+  await waitFor(
+    () => {
+      expect(ctx.findRow(second.proposalID)?.state).toBe('approved');
+    },
+    { timeout: 8000 },
+  );
+
+  expect(store.passkeyChecks.all().map((check) => check.proposalID)).toStrictEqual([
+    first.proposalID,
+    second.proposalID,
   ]);
 });
 

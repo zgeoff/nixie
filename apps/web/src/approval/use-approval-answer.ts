@@ -3,13 +3,15 @@ import { ORPCError } from '@orpc/client';
 import { useMutation } from '@tanstack/react-query';
 import { useRef } from 'react';
 import { z } from 'zod';
-import { askPasskeyUnlessOpen } from '../passkey/ask-passkey-unless-open';
+import { writeWithPasskey } from '../passkey/write-with-passkey';
 import { useNixieClient } from '../utils/use-nixie-client';
 
 type ApprovalAnswerInput = Omit<
   ContractInputs['approvals']['answerProposal'],
   'clientActionID' | 'passkey'
 >;
+
+type Assertion = NonNullable<ContractInputs['approvals']['answerProposal']['passkey']>;
 
 type ApprovalAnswerResult = ContractOutputs['approvals']['answerProposal'];
 
@@ -41,8 +43,8 @@ export interface ApprovalAnswerOptions {
 }
 
 // Sends one answer through the checked path. A second send of the same answer reuses its client
-// action ID, so a retry after a lost reply settles once. A choice that takes a passkey asks for a
-// fresh assertion on each send, and the signature of an answer leaves the assertion out.
+// action ID, so a retry after a lost reply settles once. A choice that takes a passkey asks for an
+// assertion unless the session's last tap covers it.
 export function useApprovalAnswer(options: ApprovalAnswerOptions): ApprovalAnswerer {
   const client = useNixieClient().client;
   const last = useRef<{ readonly signature: string; readonly clientActionID: string } | null>(null);
@@ -57,24 +59,30 @@ export function useApprovalAnswer(options: ApprovalAnswerOptions): ApprovalAnswe
       last.current = { signature, clientActionID };
 
       try {
-        const passkey = options.passkeyChoices.includes(input.choice)
-          ? await askPasskeyUnlessOpen(client, {
-              kind: 'answer',
-              proposalID: input.proposalID,
-              actionHash: input.actionHash,
-              choice: input.choice,
-              ...(input.ruleHash === undefined ? {} : { ruleHash: input.ruleHash }),
-            })
-          : undefined;
-
-        return {
-          status: 'answered',
-          result: await client.approvals.answerProposal({
+        const answer = (passkey: Assertion | undefined) =>
+          client.approvals.answerProposal({
             ...input,
             clientActionID,
             ...(passkey === undefined ? {} : { passkey }),
-          }),
-        };
+          });
+
+        if (!options.passkeyChoices.includes(input.choice)) {
+          return { status: 'answered', result: await answer(undefined) };
+        }
+
+        const result = await writeWithPasskey(
+          client,
+          {
+            kind: 'answer',
+            proposalID: input.proposalID,
+            actionHash: input.actionHash,
+            choice: input.choice,
+            ...(input.ruleHash === undefined ? {} : { ruleHash: input.ruleHash }),
+          },
+          answer,
+        );
+
+        return { status: 'answered', result };
       } catch (error) {
         const outcome = toRefusal(error);
 
