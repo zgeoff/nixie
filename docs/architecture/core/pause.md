@@ -84,17 +84,19 @@ too, though a conversation you paused yourself still takes its fires.
 gives `open`, or a hold with the first reason that applies, in this order, and `since`, the time of
 the record that put the task in that hold:
 
-| Reason  | The task is held because                                                                   |
-| ------- | ------------------------------------------------------------------------------------------ |
-| `ended` | it is done, stopped, failed or closed                                                      |
-| `spend` | the row of the [spending stop](../policy/spending-stop.md) stands, whatever the exemptions |
-| `nixie` | nixie is paused and the task is not on the exemption list                                  |
-| `limit` | the newest limit record on its thread is `task.limit_reached`                              |
-| `task`  | its state is `paused`; a pause request counts once `task.paused` is written                |
+| Reason  | The task is held because                                                                                                          |
+| ------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `ended` | it is done, stopped, failed or closed                                                                                             |
+| `spend` | the [spending stop](../policy/spending-stop.md) stands, or the task is held on a route whose stop stands, whatever the exemptions |
+| `nixie` | nixie is paused and the task is not on the exemption list                                                                         |
+| `limit` | the newest limit record on its thread is `task.limit_reached`                                                                     |
+| `task`  | its state is `paused`; a pause request counts once `task.paused` is written                                                       |
 
-The spending stop's row lives in the log module, beside the pause tables, so the tasks module reads
-it without importing the spend module. A trip still pauses nixie, and the gate reports `spend`
-first. Each caller applies its own rule to the reasons:
+The spending stop's row, and each route's stop and the tasks held on it, live in the log module,
+beside the pause tables, so the tasks module reads them without importing the spend module. A trip
+of the turn count still pauses nixie, and the gate reports `spend` first. A route's stop pauses
+nothing: it holds only the tasks on that route, and the gate reports `spend` for them. Each caller
+applies its own rule to the reasons:
 
 | Caller         | `ended`                            | `spend`, `nixie`               | `limit`, `task`                                    |
 | -------------- | ---------------------------------- | ------------------------------ | -------------------------------------------------- |

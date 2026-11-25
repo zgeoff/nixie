@@ -36,7 +36,8 @@ Each part's doc owns the meaning of its own settings, and the file only carries 
   `openai`. Every `image.draw` result names the profile and its `model`, and every refusal lists the
   profiles
 - the [model gateway](../policy/model-gateway.md#how-nixie-uses-the-gateway) that counts every model
-  request, which `spendStop` names, and the model limits it sets: the day and the month
+  request, which `spendStop` names, and the model limits it sets: the turns of the day and of the
+  month
 - the shortest gap between two fires of a recurring [reminder](../core/reminders.md#tools)
 - the task and action [claim pool](../core/leases-and-restart-sweep.md#claim-pools) sizes
 - whether nixie stages [backups](backups.md), and how often

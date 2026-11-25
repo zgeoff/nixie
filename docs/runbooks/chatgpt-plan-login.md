@@ -25,10 +25,9 @@ first with the doc that the item links.
 - nixie's `config.yaml` has a `spendStop` section. With it, nixie sends every model request through
   the gateway and reads the gateway's status
   ([how nixie uses the gateway](../architecture/policy/model-gateway.md#how-nixie-uses-the-gateway)).
-- The gateway's config has a `periods` section, which holds the day and month dollar limits, and a
-  `control` section ([the periods](../architecture/policy/model-gateway.md#the-periods)). nixie
-  reads the plan login's status from the control listener, the gateway's second address, which only
-  the nixie server calls.
+- The gateway's config has a `periods` section, and a `control` section
+  ([the periods](../architecture/policy/model-gateway.md#the-periods)). nixie reads the plan login's
+  status from the control listener, the gateway's second address, which only the nixie server calls.
 
 ## Placeholders
 
@@ -41,6 +40,7 @@ first with the doc that the item links.
 | `<route_key_file>`                                                           | a file on `<gateway_host>` for the route key, such as `/run/secrets/<route>-route-key`                                                                                             |
 | `<login_file>`                                                               | the file where the gateway keeps the login, such as `/var/lib/model-gateway/logins/<route>.json`                                                                                   |
 | `<model>`                                                                    | the Codex model ID, such as `gpt-6-luna`                                                                                                                                           |
+| `<day_dollars>`, `<month_dollars>`                                           | the most that the route counts in a day and in a month, in US dollars                                                                                                              |
 | `<input>`, `<cache_write>`, `<cache_write_1h>`, `<cached_input>`, `<output>` | OpenAI's API price for `<model>`, in US dollars per million tokens, for each class of token in [a price table](../architecture/core/model-profiles.md#prices-and-the-provider-pin) |
 | `<max_output_tokens>`                                                        | the model's largest output in tokens, which the gateway assumes for a request with no `max_output_tokens` ([the estimate](../architecture/policy/model-gateway.md#the-estimate))   |
 | `<control_address>`                                                          | the `hostname:port` of `control.listen` in `<config_file>`                                                                                                                         |
@@ -97,15 +97,16 @@ answer holds no token and no email.
          cache_write_1h: <cache_write_1h>
          cached_input: <cached_input>
          output: <output>
+       limits: { day: <day_dollars>, month: <month_dollars> }
        login:
          file: <login_file>
          routeKeyFile: <route_key_file>
    ```
 
    A plan has no price per token, but Codex use past the plan's own limit draws on credits bought
-   for the account. The gateway counts each plan request at these prices against the dollar limits
-   in `periods`, so those limits cap that spend. The count therefore shows more than the plan itself
-   costs.
+   for the account. The gateway counts each plan request at these prices against the route's dollar
+   `limits`, so those limits cap that spend. The count therefore shows more than the plan itself
+   costs. A route with no `limits` refuses every request.
 
 4. Print the name that nixie gives the plan profile's model secret:
 

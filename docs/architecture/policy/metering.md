@@ -1,11 +1,12 @@
 # Metering
 
 nixie counts what it spends against a day, a month, a week or a budget, in three kinds of count: the
-model gateway's count of model dollars, the ledger of every other money count, and the turn count.
-Three parts keep those counts agreeing with each other: one helper that says when each period
-starts, one source for each price, and one table that holds the money counts nixie writes.
+model gateway's count of model dollars on each route, the ledger of every other money count, and the
+turn count. Three parts keep those counts agreeing with each other: one helper that says when each
+period starts, one source for each price, and one table that holds the money counts nixie writes.
 [The model gateway](model-gateway.md) and [the spending stop](spending-stop.md) cover the gateway's
-own count, and [budgets](budgets.md) covers what a budget charge refuses.
+own count and the limit of each route, and [budgets](budgets.md) covers what a budget charge
+refuses.
 
 ## Periods
 
@@ -76,13 +77,15 @@ with its key, and gives each earlier charge its key.
 
 ## What counts where
 
-| Spend        | The gateway's count   | The ledger                                         |
-| ------------ | --------------------- | -------------------------------------------------- |
-| a model call | the day and the month | no                                                 |
-| a search     | no                    | `budget:search-day`, `budget:search-month`         |
-| a picture    | no                    | `budget:image.draw-day`, `budget:image.draw-month` |
+| Spend        | The gateway's count                | The ledger                                         |
+| ------------ | ---------------------------------- | -------------------------------------------------- |
+| a model call | the day and the month of its route | no                                                 |
+| a search     | no                                 | `budget:search-day`, `budget:search-month`         |
+| a picture    | no                                 | `budget:image.draw-day`, `budget:image.draw-month` |
 
-The spending stop reads the gateway's counts and the turn count. A paid tool counts against its
-budget and never against the stop, so model dollars on a plan stay notional while tool dollars are
-real. The daily search call count in `search_calls` and the turn count stay in their own tables,
-because each counts calls or turns and its limit reads that table.
+The gateway limits each route on its own, and no limit spans routes. The spending stop reads the
+gateway's counts of the routes and the turn count: a route at its limit holds only its own work, and
+the turn count stops nixie. A paid tool counts against its budget and never against the stop, so
+model dollars on a plan stay notional while tool dollars are real. The daily search call count in
+`search_calls` and the turn count stay in their own tables, because each counts calls or turns and
+its limit reads that table.

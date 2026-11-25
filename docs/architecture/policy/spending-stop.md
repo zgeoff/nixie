@@ -1,22 +1,26 @@
 # The spending stop
 
-The spending stop ends all model spending once a deployment limit is reached. It builds on the
-[model gateway](model-gateway.md), which counts dollars and tokens, and adds the count of turns, the
-pause, the raise and the notice. A deployment whose config has no `spendStop` has none of it: no
-spend module context, no watcher and no check before a turn. [Budgets](budgets.md) cover the limits
-on tool calls and purchases.
+The spending stop ends all model spending once the turn limit is reached, and holds the work on each
+route that reached its own dollar limit. It builds on the [model gateway](model-gateway.md), which
+counts each route's dollars, and adds the count of turns, the pause, the raise and the notice. A
+deployment whose config has no `spendStop` has none of it: no spend module context, no watcher and
+no check before a turn. [Budgets](budgets.md) cover the limits on tool calls and purchases.
 
 ## What stops
 
-The stop stands in one of 4 states, which `readSpendStop` in `modules/spend` works out from the
-gateway's `/status` and the turn count:
+The stop of nixie stands in one of 4 states, which `readSpendStop` in `modules/spend` works out from
+the gateway's `/status` and the turn count:
 
 | State         | When                                                                                                                  | Clears                                                     |
 | ------------- | --------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
-| `tripped`     | a day or month limit in dollars, tokens or turns is reached                                                           | at the period's reset, or when a raise lifts every measure |
+| `tripped`     | a day or month limit in turns is reached                                                                              | at the period's reset, or when a raise lifts the day limit |
 | `unreachable` | the gateway has not answered for the watcher's no-answer time, or not since the start                                 | at the gateway's first answer                              |
 | `lost`        | the gateway's count is lost: a count failed to write, or a reply with an input the estimate cannot bound had no usage | when an operator removes the lost mark from the store      |
 | `clear`       | none of the above                                                                                                     |                                                            |
+
+A route that reached its day or month limit in dollars stops no state of nixie.
+[The stop of a route](#the-stop-of-a-route) holds only the work on that route, and every other route
+goes on.
 
 The turn count has its own table, `spend_turns`, in UTC buckets. It adds one turn for each
 `model.turn_ended` and each `worker.turn_ended` record, and no call writes both. A limit is a total:
@@ -26,6 +30,29 @@ The server counts each turn record that no fold counted at each start, before an
 last sequence it counted, which `spend_turns_folded` holds. The first start after the upgrade counts
 every turn the log holds, and a start after a rollback counts the turns the release before wrote.
 The migration only adds tables, so that rollback needs no restore.
+
+## The stop of a route
+
+The gateway counts each route's day and month in dollars and limits each route on its own, as
+[the periods](model-gateway.md#the-periods) describe. The watcher's poll of `/status` settles each
+route's stop beside the stop of nixie, in the same transaction. A route whose day or month shows
+`tripped` has a row in `spend_route_stops`. When both periods tripped, the row holds the day.
+
+- A new trip writes `spend.route_stopped`, which names the route, its period and its limit. That
+  record is the one notice to the user, and a later poll that finds the same stop writes none.
+- A route that is no longer tripped, or whose limit or reset changed, writes `spend.route_cleared`
+  with the reason `reset` or `raised`.
+- A gateway that did not answer changes no route's stop. The stop of nixie covers it.
+
+A task that a refusal or a stopped route held has a row in `spend_route_holds`. A step holds its
+task on the route of its profile in 2 places: before its model turn, when the route's stop stands,
+and after a failed step, after it reads the gateway and settles the route stops. The
+[task gate](../core/pause.md#the-task-gate) reports `spend` for a held task while its route's stop
+stands, and the claim filter leaves the task's work unclaimed, so a task on another route runs. A
+held step ends at once with no step commit, and a failed step that a route's stop explains counts no
+step error. A clear writes `spend.wait_notice` on the thread of each task that waited, and the
+model's next wake reads that it waited about so many minutes. The notice holds no dollar figure and
+no route.
 
 ## The watcher
 
@@ -40,8 +67,8 @@ transaction:
 - When the stop it reads, or whether the gateway answers, differs from its last read, the watcher
   calls `publishChanged` with the `spend` topic, so an open client reads `spend.read` again. The
   [live stream](../channels/live-updates.md#topics) carries it, because no write makes that change.
-- When the gateway did not answer at the start, the server starts with the limits unsent, and the
-  watcher trips on its first poll and sends the limits when the gateway answers.
+- When the gateway did not answer at the start, the watcher trips on its first poll that finds no
+  answer, and clears when the gateway answers.
 
 The spending pause raises the database's reader gate to the spend migration, so the release before
 refuses to open the database while the pause stands. When the pause takes another cause, the gate
@@ -85,14 +112,19 @@ While the stop stands, the API refuses `nixie.resume` and a task's resume, whate
 cause, with the way the stop clears. A pause and a stop of a task work as usual. When the user
 pauses nixie while the stop stands, the cause becomes `owner`, and the clear leaves nixie paused.
 
-`spend.read` gives the notice. `spend.raise` takes the period's start and the totals for dollars,
-tokens and turns, and works for a day trip only. It calls the gateway's `POST /raise`, then writes
-`spend.limit_raised` with the session as `by`. A total above a cap, the gateway's for dollars and
-tokens or the config's for turns, comes back as `above_cap` with the three caps, and writes nothing.
-The host command `nixie spend raise --turns <n>` raises the day's turns past the turn cap, and
-writes the host as `by`. The month's limit moves only in the config.
+`spend.read` gives the notice: the stop of nixie and each route that stands stopped. `spend.raise`
+takes the day's start and either a route with its dollars, the turns, or both, and works for a day
+trip only. It calls the gateway's `POST /raise` with the route and its dollars, then writes
+`spend.limit_raised` with the session as `by`. A total above a cap, the gateway's for a route's
+dollars or the config's for turns, comes back as `above_cap` with the measure, the route and the
+cap, and writes nothing. A route the gateway does not hold comes back as `unknown_route`. A raise of
+a route's dollars never pauses nixie and clears the route's stop. The host command
+`nixie spend raise --turns <n>` raises the day's turns past the turn cap, and writes the host as
+`by`. A route's dollars pass its cap only through the gateway's own `raise` command, and the month's
+limits move only in the gateway's config.
 
-The web client shows the notice under the pause banner. A day trip offers "Raise today's limit" with
-today's limit plus half, up to the cap, and the amounts stay editable until the one confirm. A month
-trip, `unreachable` and `lost` show no button, and the pause banner offers no resume for the cause
+The web client shows the notice under the pause banner. A turn trip of the day offers "Raise today's
+limit" with today's limit plus half, up to the cap, and the amount stays editable until the one
+confirm. Each stopped route shows a line that names the route and says its work waits. A month trip,
+`unreachable` and `lost` show no button, and the pause banner offers no resume for the cause
 `spending`.
