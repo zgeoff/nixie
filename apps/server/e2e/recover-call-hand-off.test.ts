@@ -17,7 +17,10 @@ test('it reruns only the hand-off turn that a crash cut, and writes no small tal
   await ctx.nixie.waitForQueueCheck();
 
   // the conversation's wake on the call and the call's turn both ask the model, in either order
-  ctx.nixie.model.addReplies({ text: 'You have two things today.' }, { text: 'Noted.' });
+  ctx.nixie.model.addReplies(
+    { text: 'You have two things today.' },
+    ...Array.from({ length: 8 }, () => ({ text: 'Noted.' })),
+  );
 
   const callID = await first.request('startCall', null);
   const started = await ctx.nixie.waitForRecord((record) => record.kind === 'call.started');
@@ -65,7 +68,7 @@ test('it reruns only the hand-off turn that a crash cut, and writes no small tal
     thread
       .filter((record) => record.kind === 'task.step_committed')
       .map((record) => record.stepKey),
-  ).toStrictEqual([`${taskID}:1`]);
+  ).toStrictEqual([`${taskID}:1`, `${taskID}:2`]);
 
   expect(oracle.repeatedStepKeys).toStrictEqual([]);
 });
