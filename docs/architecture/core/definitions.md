@@ -73,25 +73,30 @@ commit a second hash.
 
 The manifest holds the definitions format version. A release reads formats 2 to 6 and refuses any
 other, because an image upgrade and a definitions change land in separate repos, in either order.
-The persona must be UTF-8 text and not blank. From format 2, the seed applies each skill under
-`skills/`. From format 3, it applies the prompt overrides in the manifest's `prompts:` map, as
-[prompts](prompts.md#overrides-from-the-definitions) describes, and format 2 leaves that map and its
-files unapplied. Format 3 also applies each `rules/*.yaml` file as a rules file, as
-[rules in force](../policy/rules.md#rules-in-force) describes, except a file that the `prompts:` map
-names as a prompt part. Format 3 therefore refuses a repo whose existing rule files fail the
-[rule format](../policy/rules.md#the-rule-format), and the error lists each file with its fault. The
-seed applies each folder under `tasks/` as a [task definition](#task-definitions) from format 4, and
-lists the `tasks/` files of an older format as unapplied. From format 5, it applies each
-`budgets/*.yaml` file as [budgets](../policy/budgets.md#the-budget-format), and lists those files of
-an older format as unapplied. From format 5 too, the seed reads `voice/voice.yaml` and
-`voice/lines.yaml` as the [voice settings](../channels/calls.md#configuration), and a fault in
-either leaves it unapplied and never refuses the seed. From format 6, it applies each
-`mcp/<server>.yaml` file as the [overrides](../connectors/mcp-proxy-declarations.md#override-files)
-of one MCP server's tools, and lists those files of an older format as unapplied. The prompt and
-task exports raise the manifest's `format` line to the format they need, as [prompts](prompts.md)
-and [the export of task definitions](#the-export-of-task-definitions) describe. The seed applies no
-other file, and lists each one in its record as unapplied. Each unapplied YAML or JSON file must
-still parse.
+The persona must be UTF-8 text and not blank.
+
+Each format applies what the formats before it apply, and adds these files. The seed lists each file
+that a repo's format comes before as unapplied:
+
+- Format 2: each skill under `skills/`.
+- Format 3: the prompt overrides in the manifest's `prompts:` map, as
+  [prompts](prompts.md#overrides-from-the-definitions) describes, and each `rules/*.yaml` file as a
+  rules file, as [rules in force](../policy/rules.md#rules-in-force) describes, except a file that
+  the `prompts:` map names as a prompt part. Format 3 therefore refuses a repo whose existing rule
+  files fail the [rule format](../policy/rules.md#the-rule-format), and the error lists each file
+  with its fault.
+- Format 4: each folder under `tasks/` as a [task definition](#task-definitions).
+- Format 5: each `budgets/*.yaml` file as [budgets](../policy/budgets.md#the-budget-format), and
+  `voice/voice.yaml` and `voice/lines.yaml` as the
+  [voice settings](../channels/calls.md#configuration). A fault in either voice file leaves it
+  unapplied and never refuses the seed.
+- Format 6: each `mcp/<server>.yaml` file as the
+  [overrides](../connectors/mcp-proxy-declarations.md#override-files) of one MCP server's tools.
+
+The prompt and task exports raise the manifest's `format` line to the format they need, as
+[prompts](prompts.md) and [the export of task definitions](#the-export-of-task-definitions)
+describe. The seed applies no other file, and lists each one in its record as unapplied. Each
+unapplied YAML or JSON file must still parse.
 
 nixie owns the format, and each release publishes the manifest's rules as a JSON Schema, the
 `definitions-manifest.schema.json` asset, so a definitions repo checks its manifest against the
