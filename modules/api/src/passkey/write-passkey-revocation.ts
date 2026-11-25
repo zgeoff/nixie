@@ -5,19 +5,23 @@ import { probeLiveIdentity } from '../utils/probe-live-identity';
 import { readClientAction } from '../utils/read-client-action';
 import { writeClientAction } from '../utils/write-client-action';
 import type { Assertion } from './challenge-for';
+import { checkPasskey } from './check-passkey';
 import type { PasskeyVerdict } from './create-passkey-check';
-import { createPasskeyCheck } from './create-passkey-check';
+import { toRevocationVerdict } from './to-revocation-verdict';
 import { updatePasskeyRevoked } from './update-passkey-revoked';
 
 interface RevocationRequest {
   readonly clientActionID: string;
   readonly passkeyID: string;
-  readonly assertion: Assertion;
+  readonly assertion: Assertion | undefined;
 }
+
+type FailedVerdict = Extract<PasskeyVerdict, { error: string }>;
 
 export type PasskeyRevocationResult =
   | { readonly status: 'revoked'; readonly revokedAt: number }
-  | { readonly status: 'failed'; readonly verdict: Extract<PasskeyVerdict, { error: string }> }
+  | { readonly status: 'failed'; readonly verdict: FailedVerdict }
+  | { readonly status: 'passkey_required' }
   | { readonly status: 'not_found' }
   | { readonly status: 'reused' }
   | { readonly status: 'unauthorized' };
@@ -25,7 +29,8 @@ export type PasskeyRevocationResult =
 const procedure = 'passkeys.revoke';
 
 // A client revoke takes an assertion on a revoke challenge from any live passkey, the one being
-// revoked included. A failed check stores nothing, so a retry with a fresh assertion runs again.
+// revoked included, and no open window covers it. A refused check stores nothing, so a retry with a
+// fresh assertion runs again.
 export function writePasskeyRevocation(
   context: APIContext,
   caller: Identity,
@@ -59,15 +64,16 @@ export function writePasskeyRevocation(
       return { status: 'not_found' };
     }
 
-    const verdict = await createPasskeyCheck(context).verify(
-      tx,
+    const outcome = await checkPasskey(context, tx, {
       caller,
-      { kind: 'revoke', passkeyID: request.passkeyID },
-      request.assertion,
-    );
+      binding: { kind: 'revoke', passkeyID: request.passkeyID },
+      assertion: request.assertion,
+    });
 
-    if ('error' in verdict) {
-      return { status: 'failed', verdict };
+    if ('error' in outcome) {
+      return outcome.error === 'PASSKEY_REQUIRED'
+        ? { status: 'passkey_required' }
+        : { status: 'failed', verdict: toRevocationVerdict(outcome) };
     }
 
     const revokedAt = await updatePasskeyRevoked(tx, context, {

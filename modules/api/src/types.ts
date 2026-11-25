@@ -31,6 +31,9 @@ export interface APISettings {
 
   readonly sessionIdleMs: number;
 
+  // how long one passkey tap covers every other passkey check of the same session
+  readonly passkeyWindowMs: number;
+
   readonly refusalIntervalMs: number;
 
   readonly lastSeenIntervalMs: number;

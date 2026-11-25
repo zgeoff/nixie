@@ -23,4 +23,11 @@ const deferSchema = z.strictObject({
 
 export const approvalsConfigSchema = z.strictObject({
   defer: deferSchema.default(deferSchema.parse({})),
+  passkey_window_minutes: z
+    .int()
+    .positive()
+    .default(10)
+    .describe(
+      'Minutes after a passkey tap in which the same signed-in browser skips the passkey. Adding or removing a passkey always asks.',
+    ),
 });

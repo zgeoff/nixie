@@ -161,7 +161,10 @@ export function createApprovalProcedures(context: APIContext, parts: ProposalPar
       const results = [];
 
       for (const answer of options.input.answers) {
-        const run = await runApprovalAnswer(context, deps, caller, { answer, passkey: undefined });
+        const run = await runApprovalAnswer(context, deps, caller, {
+          answer,
+          passkey: createPasskeyAnswerGate(context, { caller, assertion: undefined }),
+        });
 
         if (run.status === 'unauthorized') {
           throw options.errors.UNAUTHORIZED();
@@ -189,7 +192,7 @@ function toRunResult(
     };
   }
 
-  // a batch carries no assertion, so a passkey refusal is always PASSKEY_REQUIRED
+  // a batch carries no assertion, so every passkey refusal asks for a tap
   if (run.status === 'passkey_refused') {
     return { proposalID: answer.proposalID, error: 'PASSKEY_REQUIRED' as const };
   }

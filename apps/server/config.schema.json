@@ -1753,7 +1753,8 @@
           "default_minutes": 60,
           "evening_at": "18:00",
           "morning_at": "08:00"
-        }
+        },
+        "passkey_window_minutes": 10
       },
       "type": "object",
       "properties": {
@@ -1786,6 +1787,13 @@
             }
           },
           "additionalProperties": false
+        },
+        "passkey_window_minutes": {
+          "default": 10,
+          "description": "Minutes after a passkey tap in which the same signed-in browser skips the passkey. Adding or removing a passkey always asks.",
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
         }
       },
       "additionalProperties": false

@@ -3,6 +3,7 @@ import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import type { Transaction } from 'kysely';
 import type { APIContext, APITables, Identity } from '../types';
 import { buildInputHash } from './build-input-hash';
+import { closePasskeyWindow } from './close-passkey-window';
 import { probeLiveIdentity } from './probe-live-identity';
 import type { ClientAction } from './read-client-action';
 import { readClientAction } from './read-client-action';
@@ -125,6 +126,8 @@ async function updateRevokedAt(
     .execute();
 
   await removeDevice(tx, revocation.sessionID);
+
+  closePasskeyWindow(context, revocation.sessionID);
 
   return revokedAt;
 }
