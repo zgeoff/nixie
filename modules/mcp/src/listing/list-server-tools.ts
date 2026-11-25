@@ -1,8 +1,10 @@
 import type { CredentialFetch } from '@heynixie/credentials';
-import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
-import type { jsonSchemaValidator } from '@modelcontextprotocol/client';
+import { StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
+import { pickFailureCause } from '../health/pick-failure-cause';
+import type { ListingFailureCause } from '../health/types';
 import { parseToolForm } from '../pin/parse-tool-form';
 import type { ToolForm } from '../types';
+import { buildClient } from './build-client';
 
 export interface ListRequest {
   readonly url: string;
@@ -16,22 +18,16 @@ export interface ListRequest {
 
 export type ListOutcome =
   | { readonly kind: 'listed'; readonly forms: readonly ToolForm[] }
-  | { readonly kind: 'failed'; readonly message: string };
-
-// The proxy checks each result against the pinned output schema itself, so the client accepts every
-// result and never reads a listing's schema as a check of its own.
-const acceptAnyResult: jsonSchemaValidator = {
-  // oxlint-disable-next-line typescript/consistent-type-assertions -- the validator's result type is generic over the schema, and this one passes the input through
-  getValidator: () => (input) => ({ valid: true, data: input as never, errorMessage: undefined }),
-};
+  | {
+      readonly kind: 'failed';
+      readonly message: string;
+      readonly cause: ListingFailureCause;
+    };
 
 // One MCP `tools/list` of one server, over Streamable HTTP with no sampling, roots, logging or
 // input-request capability. A listing that fails for any reason is a failure value, never a throw.
 export async function listServerTools(request: ListRequest): Promise<ListOutcome> {
-  const client = new Client(
-    { name: 'nixie', version: '0.0.0' },
-    { jsonSchemaValidator: acceptAnyResult, versionNegotiation: { mode: 'auto' } },
-  );
+  const client = buildClient();
 
   const transport = new StreamableHTTPClientTransport(new URL(request.url), {
     fetch: request.send,
@@ -58,7 +54,11 @@ export async function listServerTools(request: ListRequest): Promise<ListOutcome
 
     return { kind: 'listed', forms };
   } catch (error) {
-    return { kind: 'failed', message: error instanceof Error ? error.message : 'unknown error' };
+    return {
+      kind: 'failed',
+      message: error instanceof Error ? error.message : 'unknown error',
+      cause: pickFailureCause(error),
+    };
   } finally {
     await client.close().catch(() => null);
   }

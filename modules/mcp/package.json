@@ -11,6 +11,7 @@
     "typecheck": "tsrs --fast --noEmit"
   },
   "dependencies": {
+    "@heynixie/connectors": "workspace:*",
     "@heynixie/contract": "workspace:*",
     "@heynixie/credentials": "workspace:*",
     "@heynixie/db": "workspace:*",
@@ -18,6 +19,7 @@
     "@heynixie/log": "workspace:*",
     "@heynixie/policy": "workspace:*",
     "@heynixie/proposals": "workspace:*",
+    "@heynixie/retry": "workspace:*",
     "@heynixie/tools": "workspace:*",
     "@modelcontextprotocol/client": "catalog:",
     "kysely": "catalog:",

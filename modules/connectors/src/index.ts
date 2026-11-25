@@ -73,6 +73,7 @@ export type {
   ActionResponse,
   CheckResponse,
   Connector,
+  ConnectorLookup,
   ConnectorAction,
   ConnectionRef,
   ConnectorContext,

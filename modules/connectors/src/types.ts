@@ -50,6 +50,12 @@ export interface ActionConnector {
   readonly check?: (attempt: ActionAttempt) => Promise<CheckResponse>;
 }
 
+// Where the action runners find the connector of a tool. A map answers it, and so does a source
+// whose tools come and go, such as the MCP proxy.
+export interface ConnectorLookup {
+  readonly get: (tool: string) => ActionConnector | undefined;
+}
+
 // How a connector action settles an unknown outcome: a retry under the provider's idempotency key, a
 // read-only check, or none, which asks the owner. A not-found check counts after trustNegativeAfterMs.
 export type Reconcile =

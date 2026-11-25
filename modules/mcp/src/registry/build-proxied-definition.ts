@@ -1,38 +1,74 @@
 import { hasQueuedEffect } from '@heynixie/policy';
 import type { EffectDeclaration } from '@heynixie/policy';
 import type { ToolDefinition } from '@heynixie/tools';
+import { runProxiedCall } from '../call/run-proxied-call';
+import type { ProxyCalls } from '../call/types';
+import { pickAnnotationEffects } from '../declaration/pick-annotation-effects';
 import type { ToolForm } from '../types';
 import { collectStringArguments } from './collect-string-arguments';
 
-// The result shape of a tool with no output schema. The proxy has no call path in this build, so
-// every call answers in this shape whatever schema the pinned form names.
-const placeholderOutput = { type: 'object', properties: { text: { type: 'string' } } };
+// The result shape of a tool whose pinned form has no output schema.
+const textOutput = { type: 'object', properties: { text: { type: 'string' } } };
 
-// Declares the strictest effects for every tool, with each string argument as content. The tool is
-// queued, so dispatch never reaches `run`: `prepare` ends each valid call with the unavailable
-// result before the decision point, so no call asks for approval or queues an action.
-export function buildProxiedDefinition(tool: string, pinned: ToolForm): ToolDefinition {
-  const declaration: EffectDeclaration = {
-    effects: ['write', 'delete', 'send'],
-    destinations: [],
-    amount: null,
-    content: collectStringArguments(pinned.inputSchema),
-    results: Object.fromEntries(
-      listOutputFields(placeholderOutput).map((field) => [field, 'untrusted' as const]),
-    ),
-  };
+// Builds the definition a pinned form registers as, under the declaration of its annotations. A form
+// that names no effects has no declaration, so it throws and stays hidden. Every call is cleared
+// first.
+export function buildProxiedDefinition(
+  tool: string,
+  pinned: ToolForm,
+  calls: ProxyCalls,
+): ToolDefinition {
+  const declaration = buildProxiedDeclaration(pinned);
 
-  const unavailable = `${tool} cannot run yet: the proxy has no call path in this build`;
+  if (declaration === null) {
+    throw new Error('the form has no declaration, because its annotations name no effects');
+  }
+
+  const output = pinned.outputSchema ?? textOutput;
 
   return {
     name: tool,
     description: pinned.description ?? '',
     input: pinned.inputSchema,
-    output: placeholderOutput,
+    output,
     declaration,
     execution: hasQueuedEffect(declaration.effects) ? 'queued' : 'direct',
-    prepare: () => Promise.resolve({ result: { text: unavailable }, refusalCode: 'unavailable' }),
-    run: () => Promise.resolve({ status: 'error', message: unavailable }),
+    clear: async () => {
+      const clearance = await calls.clear(tool);
+
+      return clearance.kind === 'refused' ? clearance.text : null;
+    },
+    run: async (call) => {
+      const result = await runProxiedCall({ tool, form: pinned, input: call.input }, calls);
+
+      return result.kind === 'answered'
+        ? result.outcome
+        : { status: 'error', message: result.text };
+    },
+  };
+}
+
+// The declaration a pinned form runs under, or null when its annotations name no effects. Every
+// string argument is content, no argument is a destination or an amount, and every result field is
+// untrusted.
+export function buildProxiedDeclaration(pinned: ToolForm): EffectDeclaration | null {
+  const effects = pickAnnotationEffects(pinned.annotations);
+
+  if (effects === null) {
+    return null;
+  }
+
+  return {
+    effects: [...effects],
+    destinations: [],
+    amount: null,
+    content: collectStringArguments(pinned.inputSchema),
+    results: Object.fromEntries(
+      listOutputFields(pinned.outputSchema ?? textOutput).map((field) => [
+        field,
+        'untrusted' as const,
+      ]),
+    ),
   };
 }
 

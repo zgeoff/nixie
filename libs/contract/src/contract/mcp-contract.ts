@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { mcpNoticeSchema } from './mcp-notice-schema';
 import { signedIn } from './signed-in';
 
 const mcpProcedure = signedIn.errors({
@@ -55,4 +56,9 @@ export const mcpContract = {
       }),
     )
     .output(z.object({ server: z.string() })),
+
+  // the newest changes that applied with no allow, newest first, which the client shows the owner
+  readNotices: mcpProcedure
+    .input(z.strictObject({ limit: z.number().int().min(1).max(50) }))
+    .output(z.object({ notices: z.array(mcpNoticeSchema) })),
 };

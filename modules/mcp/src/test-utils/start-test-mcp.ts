@@ -11,6 +11,7 @@ import invariant from 'tiny-invariant';
 import { applyListing } from '../listing/apply-listing';
 import { makeMcpProposalHandler } from '../proposal/make-mcp-proposal-handler';
 import { mapMcpProposalRecord } from '../proposal/map-mcp-proposal-record';
+import { mcpHealthChangedCodec } from '../record/mcp-health-changed-codec';
 import { mcpNoticeCodec } from '../record/mcp-notice-codec';
 import { mcpProjections } from '../rows/mcp-projections';
 import { readServerRows } from '../rows/read-server-rows';
@@ -53,6 +54,9 @@ export interface TestMcp {
 
   // the notices that listings wrote, oldest first
   readonly readNotices: () => Promise<ReturnType<typeof mcpNoticeCodec.decode>[]>;
+
+  // the health changes of servers, oldest first
+  readonly readHealthChanges: () => Promise<ReturnType<typeof mcpHealthChangedCodec.decode>[]>;
 }
 
 // A real log with the tables of the proxy and of the proposals, and the shared answer path with
@@ -180,6 +184,14 @@ export async function startTestMcp(options: TestMcpOptions = {}): Promise<TestMc
       const records = await readRecords(log, { afterSequence: 0, kinds: [mcpNoticeCodec.kind] });
 
       return records.map((entry) => mcpNoticeCodec.decode(entry.record.payload));
+    },
+    readHealthChanges: async () => {
+      const records = await readRecords(log, {
+        afterSequence: 0,
+        kinds: [mcpHealthChangedCodec.kind],
+      });
+
+      return records.map((entry) => mcpHealthChangedCodec.decode(entry.record.payload));
     },
   };
 }

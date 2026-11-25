@@ -6,7 +6,8 @@ export type McpRecordKind =
   | 'mcp.tool_listed'
   | 'mcp.tool_changed'
   | 'mcp.pin_moved'
-  | 'mcp.notice';
+  | 'mcp.notice'
+  | 'mcp.health_changed';
 
 // The tool form of a listing is the server's text, so it sits in the record's erasable fields.
 type McpErasableRecordKind = 'mcp.tool_listed';

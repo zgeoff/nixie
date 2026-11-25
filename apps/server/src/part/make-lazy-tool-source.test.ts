@@ -13,6 +13,7 @@ test('it has no tools before its source starts, and the source tools after', () 
       : {
           toolNames: () => slot.source?.toolNames ?? [],
           findTool: (name) => started.findTool(name),
+          prepareTaskRun: () => Promise.resolve(),
         },
   );
 
@@ -25,4 +26,22 @@ test('it has no tools before its source starts, and the source tools after', () 
     lazy.toolNames(),
     lazy.findTool('tracker.item_get')?.definition.name,
   ]).toStrictEqual([[], ['tracker.item_get'], 'tracker.item_get']);
+});
+
+test('it passes the tools of a task run to its source once the source has started', async () => {
+  const asked: string[] = [];
+
+  const lazy = makeLazyToolSource(() => ({
+    toolNames: () => [],
+    findTool: () => null,
+    prepareTaskRun: (names) => {
+      asked.push(...names);
+
+      return Promise.resolve();
+    },
+  }));
+
+  await lazy.prepareTaskRun?.(['tracker.item_get']);
+
+  expect(asked).toStrictEqual(['tracker.item_get']);
 });

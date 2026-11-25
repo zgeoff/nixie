@@ -63,5 +63,17 @@ export function createMcpProcedures(context: APIContext) {
         })
         .exhaustive();
     }),
+
+    readNotices: mcp.readNotices.handler(async (options) => {
+      await requireCaller(context, options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+      const port = context.readMcp?.() ?? null;
+
+      if (port === null) {
+        throw options.errors.MCP_NOT_STARTED();
+      }
+
+      return { notices: await port.readNotices(options.input.limit) };
+    }),
   };
 }

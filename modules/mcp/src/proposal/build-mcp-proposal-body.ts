@@ -1,6 +1,6 @@
 import type { ProposalBody } from '@heynixie/proposals';
 import { formatCanonicalJSON } from '../pin/format-canonical-json';
-import { buildProxiedDefinition } from '../registry/build-proxied-definition';
+import { buildProxiedDeclaration } from '../registry/build-proxied-definition';
 import type { McpOperation, ToolForm } from '../types';
 
 // The forms an allow card shows: the form the tool is allowed in now, when it has one, and the form
@@ -42,15 +42,19 @@ export function buildMcpProposalBody(operation: McpOperation, forms: AllowForms)
             allowedForm: forms.allowed === null ? unreadable : formatCanonicalJSON(forms.allowed),
           }),
       newForm: forms.proposed === null ? unreadable : formatCanonicalJSON(forms.proposed),
-      ...(forms.proposed === null ? {} : describeDeclaration(operation.tool, forms.proposed)),
+      ...(forms.proposed === null ? {} : describeDeclaration(forms.proposed)),
     },
     ruleSentence: null,
     approveLabel: 'Allow the tool',
   };
 }
 
-function describeDeclaration(tool: string, form: ToolForm): Record<string, string> {
-  const declaration = buildProxiedDefinition(tool, form).declaration;
+function describeDeclaration(form: ToolForm): Record<string, string> {
+  const declaration = buildProxiedDeclaration(form);
+
+  if (declaration === null) {
+    return { effects: 'none declared' };
+  }
 
   return {
     effects: declaration.effects.join(', '),

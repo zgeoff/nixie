@@ -28,9 +28,20 @@ test('it shows both forms of an allow in full, with the effects the tool would r
   expect(body.fields).toStrictEqual({
     allowedForm: expect.stringContaining('"description":"Read one item."'),
     newForm: expect.stringContaining('"description":"Read one item, and say who owns it."'),
-    effects: 'write, delete, send',
+    effects: 'read',
     contentArguments: 'id',
   });
+});
+
+test('it shows the strictest effects for a tool whose form has no annotations', () => {
+  const proposed = buildToolForm({ annotations: null });
+
+  const body = buildMcpProposalBody(
+    { change: 'allow', tool: 'tracker.item_get', fromHash: null, hash: 'sha256:b' },
+    { allowed: null, proposed },
+  );
+
+  expect(body.fields).toMatchObject({ effects: 'write, delete, send' });
 });
 
 test('it says so when a form was forgotten, and never shows a hash in its place', () => {

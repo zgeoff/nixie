@@ -14,6 +14,7 @@ export const reservedServerIDs: readonly string[] = [
   'image',
   'log',
   'mandate',
+  'mcp',
   'memory',
   'moment',
   'notebook',

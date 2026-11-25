@@ -1,4 +1,4 @@
-import type { ActionConnector } from '@heynixie/connectors';
+import type { ConnectorLookup } from '@heynixie/connectors';
 import { subscribeToRecordCommits } from '@heynixie/log';
 import type { ClaimPool, TasksContext } from '@heynixie/tasks';
 import { startClaimPool } from '@heynixie/tasks';
@@ -8,7 +8,7 @@ import { claimAction } from './claim-action';
 import { runActionAttempt } from './run-action-attempt';
 
 export interface ActionRunnersOptions {
-  readonly connectors: ReadonlyMap<string, ActionConnector>;
+  readonly connectors: ConnectorLookup;
   readonly onError: (error: unknown) => void;
 
   // decides an action again before each attempt

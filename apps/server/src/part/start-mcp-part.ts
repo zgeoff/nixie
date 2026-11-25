@@ -19,6 +19,7 @@ export async function startMcpPart(
     now: () => parts.context.clock.now(),
     store: parts.credentials.store,
     backend: parts.heldSlot.read().backend,
+    formatTime: (timeMs) => formatClockTime(timeMs, parts.config.time.default_zone),
     servers: config.servers,
     listingTimeoutSeconds: config.listingTimeoutSeconds,
     takenModelNames: () =>
@@ -30,6 +31,7 @@ export async function startMcpPart(
   });
 
   await mcp.start();
+  await parts.cleanup.defer(() => mcp.stop());
 
   const servers = await mcp.readServers();
 
@@ -38,6 +40,16 @@ export async function startMcpPart(
   }
 
   return mcp;
+}
+
+// A time as the owner reads it in their zone, such as 14:05.
+function formatClockTime(timeMs: number, zone: string): string {
+  return new Intl.DateTimeFormat('en-GB', {
+    timeZone: zone,
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(timeMs);
 }
 
 async function listOne(parts: ServerParts, mcp: Mcp, serverID: string): Promise<void> {

@@ -22,7 +22,8 @@ import {
 } from '@heynixie/definitions';
 import type { DeviceStreams } from '@heynixie/devices';
 import { buildDeviceTools } from '@heynixie/devices';
-import { findServerIDClash } from '@heynixie/mcp';
+import { buildMcpServersTool, findServerIDClash } from '@heynixie/mcp';
+import type { Mcp } from '@heynixie/mcp';
 import type { ConversationMemoryStore } from '@heynixie/memory';
 import {
   buildLogReadImageTool,
@@ -115,6 +116,9 @@ export interface ConversationEndpointTools {
 
   // sources of more tools, which join the registry as they start
   readonly toolSources: readonly ToolSource[];
+
+  // the MCP proxy, which `mcp.servers` reads once it starts
+  readonly readMcp: () => Mcp | null;
 
   // the values nixie holds as its own, which every tool result is scanned for
   readonly readOwnValues: () => readonly string[];
@@ -323,6 +327,7 @@ export async function startConversationEndpoint(
     ...tools.computer,
     ...tools.coding,
     ...tools.mail,
+    buildMcpServersTool(tools.readMcp),
     ...search,
     ...images,
     ...devices,

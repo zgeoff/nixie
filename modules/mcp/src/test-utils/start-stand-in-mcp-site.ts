@@ -8,6 +8,13 @@ export interface StandInTool {
   readonly inputSchema: Record<string, unknown>;
   readonly outputSchema?: Record<string, unknown>;
   readonly annotations?: Record<string, unknown>;
+
+  // what a call to the tool answers; `called <name>` as text when absent. The listing leaves it out.
+  readonly answer?: {
+    readonly content: readonly Record<string, unknown>[];
+    readonly structuredContent?: Record<string, unknown>;
+    readonly isError?: boolean;
+  };
 }
 
 export interface StandInCall {
@@ -356,7 +363,11 @@ function answerRPC(
 
     return site.state.isListingFailing
       ? new Response('down', { status: 503 })
-      : Response.json({ jsonrpc: '2.0', id, result: { tools: site.state.tools } });
+      : Response.json({
+          jsonrpc: '2.0',
+          id,
+          result: { tools: site.state.tools.map(toListedTool) },
+        });
   }
 
   if (message.method === 'tools/call') {
@@ -364,10 +375,15 @@ function answerRPC(
 
     site.calls.push({ tool, args: message.params?.arguments, authorization });
 
+    const answer = site.state.tools.find((candidate) => candidate.name === tool)?.answer;
+
     return Response.json({
       jsonrpc: '2.0',
       id,
-      result: { content: [{ type: 'text', text: `called ${tool}` }], isError: tool === 'fails' },
+      result: answer ?? {
+        content: [{ type: 'text', text: `called ${tool}` }],
+        isError: tool === 'fails',
+      },
     });
   }
 
@@ -390,4 +406,11 @@ async function answerEndlessPage(
     id,
     result: { tools: [], nextCursor: `page-${String(page)}` },
   });
+}
+
+// The tool as a listing shows it, which leaves out what a call answers.
+function toListedTool(tool: StandInTool): Omit<StandInTool, 'answer'> {
+  const { answer: _answer, ...listed } = tool;
+
+  return listed;
 }

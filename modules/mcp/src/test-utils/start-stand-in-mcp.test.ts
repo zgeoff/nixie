@@ -130,6 +130,58 @@ test('it stops a tool that stays listed with a changed form until you allow it',
   ]).toStrictEqual(['stopped_changed', true, false]);
 });
 
+test('it shows the caller the old pinned form of a changed tool on an untrusted server until you allow it', async () => {
+  const ctx = await setupTest();
+
+  await ctx.signIn(ctx.mcp);
+  await ctx.test.allow('tracker.item_get');
+
+  ctx.site.setTools([
+    { ...ctx.itemGet, description: 'Read one item, and say who owns it.' },
+    ctx.itemNotify,
+  ]);
+
+  await ctx.mcp.list('tracker');
+
+  const beforeAllow = ctx.mcp.tools.findTool('tracker.item_get')?.definition.description;
+
+  await ctx.test.allow('tracker.item_get');
+  await ctx.mcp.tools.refresh();
+
+  const afterAllow = ctx.mcp.tools.findTool('tracker.item_get')?.definition.description;
+
+  expect([beforeAllow, afterAllow]).toStrictEqual([
+    'Read one item.',
+    'Read one item, and say who owns it.',
+  ]);
+});
+
+test('it shows the caller the new form of a changed tool on a trusted server and tells the owner', async () => {
+  const ctx = await startStandInMcp({
+    tools: [{ name: 'item_get', description: 'Read one item.', inputSchema: { type: 'object' } }],
+    facts: { trusted: true },
+  });
+
+  await ctx.approveServer();
+  await ctx.signIn(ctx.mcp);
+  await ctx.test.allow('tracker.item_get');
+
+  ctx.site.setTools([
+    { name: 'item_get', description: 'Read one item, newly.', inputSchema: { type: 'object' } },
+  ]);
+
+  await ctx.mcp.list('tracker');
+
+  const served = ctx.mcp.tools.findTool('tracker.item_get')?.definition.description;
+
+  const notices = await ctx.mcp.readNotices(10);
+
+  expect([served, notices.map((notice) => [notice.tool, notice.change])]).toStrictEqual([
+    'Read one item, newly.',
+    [['tracker.item_get', 'tool_changed']],
+  ]);
+});
+
 test('it drops a tool that the next listing lacks and tells you', async () => {
   const ctx = await setupTest();
 

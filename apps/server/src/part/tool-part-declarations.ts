@@ -226,6 +226,7 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
           readStore: () => parts.find('memory'),
           readNotebook: () => parts.find('notebook'),
           toolSources: [makeLazyToolSource(() => parts.find('mcp')?.tools ?? null)],
+          readMcp: () => parts.find('mcp') ?? null,
           readHeldBackTools: () =>
             parts.find('connections')?.readHeldBackTools() ?? Promise.resolve([]),
           readInForce: () => inForce.read(),

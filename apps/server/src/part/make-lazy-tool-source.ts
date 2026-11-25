@@ -6,5 +6,8 @@ export function makeLazyToolSource(pickSource: () => ToolSource | null): ToolSou
   return {
     toolNames: () => pickSource()?.toolNames() ?? [],
     findTool: (name) => pickSource()?.findTool(name) ?? null,
+    prepareTaskRun: async (names) => {
+      await pickSource()?.prepareTaskRun?.(names);
+    },
   };
 }

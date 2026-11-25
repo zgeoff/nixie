@@ -13,4 +13,10 @@ export const mockMcpProcedures = {
     requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
     throw options.errors.SIGN_IN_NOT_FOUND();
   }),
+
+  readNotices: mockImplementer.mcp.readNotices.handler((options) => {
+    requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+    return { notices: [] };
+  }),
 };
