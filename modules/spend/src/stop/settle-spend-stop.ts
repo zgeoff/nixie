@@ -4,12 +4,13 @@ import { pickSpendMove } from './pick-spend-move';
 import type { SpendFacts } from './pick-spend-stop';
 import { pickSpendStop } from './pick-spend-stop';
 import { readSpendStopRow } from './read-spend-stop-row';
+import { settleRouteStops } from './settle-route-stops';
 import { writeSpendClear } from './write-spend-clear';
 import { writeSpendClearInTransaction } from './write-spend-clear-in-transaction';
 import { writeSpendTrip } from './write-spend-trip';
 import { writeSpendTripInTransaction } from './write-spend-trip-in-transaction';
 
-// Brings the log's stop in line with the facts, and returns what the stop is. The watcher calls it
+// Brings the log's stop and each route's stop in line with the facts, and returns what the stop is. The watcher calls it
 // each poll, and a raise calls it so that the stop clears with the raise.
 export async function settleSpendStop(
   context: SpendContext,
@@ -35,6 +36,8 @@ export async function settleSpendStop(
   } else if (move.trip !== null) {
     await writeSpendTrip(context, move.trip);
   }
+
+  await settleRouteStops(context, facts);
 
   return stop;
 }

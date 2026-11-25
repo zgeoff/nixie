@@ -136,6 +136,10 @@ export interface RecordKinds {
   'recovery.started': true;
   'spend.stop_tripped': true;
   'spend.stop_cleared': true;
+  'spend.route_stopped': true;
+  'spend.route_cleared': true;
+  'spend.route_held': true;
+  'spend.wait_notice': true;
 }
 
 export type RecordKind = keyof RecordKinds;
@@ -308,6 +312,22 @@ interface SpendStopRow {
   readonly updated_sequence: number;
 }
 
+interface SpendRouteStopRow {
+  readonly route_id: string;
+  readonly period: string;
+  readonly limit_amount: number;
+  readonly spent_amount: number;
+  readonly at: number;
+  readonly resets_at: number;
+  readonly updated_sequence: number;
+}
+
+interface SpendRouteHoldRow {
+  readonly task_id: string;
+  readonly route_id: string;
+  readonly updated_sequence: number;
+}
+
 interface PauseExemptionRow {
   readonly task_id: string;
   readonly exempt_sequence: number;
@@ -342,6 +362,8 @@ export type LogTables = CheckedTables<
     nixie_pause: NixiePauseRow;
     pause_exemptions: PauseExemptionRow;
     spend_stop: SpendStopRow;
+    spend_route_stops: SpendRouteStopRow;
+    spend_route_holds: SpendRouteHoldRow;
     recoveries: RecoveryRow;
   }>
 >;

@@ -1,5 +1,5 @@
 import type { RecordKind } from '@heynixie/log';
-import { readPauseSince, readSpendStopSince } from '@heynixie/log';
+import { readPauseSince, readSpendHoldSince, readSpendStopSince } from '@heynixie/log';
 import type { Kysely } from 'kysely';
 import invariant from 'tiny-invariant';
 import { match } from 'ts-pattern';
@@ -40,12 +40,19 @@ function readSince(
   reason: TaskHoldReason,
 ): Promise<number | null> {
   return match(reason)
-    .with('spend', () => readSpendStopSince(db))
+    .with('spend', () => readSpendSince(db, taskID))
     .with('nixie', () => readPauseTime(db))
     .with('limit', () => readNewestRecordTime(db, taskID, ['task.limit_reached']))
     .with('task', () => readNewestRecordTime(db, taskID, ['task.paused']))
     .with('ended', () => readEndedSince(db, taskID))
     .exhaustive();
+}
+
+// the global stop's time when it stands, otherwise the time of the hold of the task's route
+async function readSpendSince(db: Kysely<unknown>, taskID: string): Promise<number | null> {
+  const global = await readSpendStopSince(db);
+
+  return global === null ? readSpendHoldSince(db, taskID) : global;
 }
 
 async function readPauseTime(db: Kysely<unknown>): Promise<number | null> {

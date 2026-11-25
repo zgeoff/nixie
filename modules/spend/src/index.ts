@@ -2,14 +2,22 @@ export { buildGatewayBaseURL } from './route/build-gateway-base-url';
 export { withSandboxCounts } from './sandbox/with-sandbox-counts';
 export { createPlanLoginsHolder } from './login/create-plan-logins-holder';
 export { readPlanLogins } from './login/read-plan-logins';
-export { startSpendLimits } from './start/start-spend-limits';
-export type { SpendLimitsOptions } from './start/start-spend-limits';
+export { checkSpendStart } from './start/check-spend-start';
+export type { SpendStartOptions } from './start/check-spend-start';
+export { holdTaskOnRefusal } from './route/hold-task-on-refusal';
+export { holdTaskOnRoute } from './route/hold-task-on-route';
+export { settleRouteStops } from './stop/settle-route-stops';
+export { collectRouteTrips } from './stop/collect-route-trips';
+export { readSpendRouteStops } from './stop/read-spend-route-stops';
+export type { SpendRouteStopRow } from './stop/read-spend-route-stops';
+export { readSpendRouteRaises } from './stop/read-spend-route-raises';
 export { spendProjections } from './projection/spend-projections';
 export { writeMissedTurns } from './projection/write-missed-turns';
 export { spendLimitRaisedCodec } from './record/spend-limit-raised-codec';
 export type { SpendRecordKind, SpendTurnKind } from './record/spend-record-kind';
 export { buildSpendPeriods } from './time/build-spend-periods';
 export { readSpendStop } from './stop/read-spend-stop';
+export { readSpendRoutes } from './stop/read-spend-routes';
 export { readSpendFacts } from './stop/read-spend-facts';
 export { pickSpendStop } from './stop/pick-spend-stop';
 export type { SpendFacts } from './stop/pick-spend-stop';
@@ -39,15 +47,17 @@ export { writeSpendTrip } from './stop/write-spend-trip';
 export type {
   AboveCap,
   Done,
-  GatewayLimits,
   GatewayRaise,
   GatewayStatus,
-  GatewayTrip,
   Measures,
   NotFound,
   PeriodEnded,
   PeriodName,
-  PeriodStatus,
+  RefusalCounter,
+  RoutePeriodStatus,
+  RouteStatus,
+  RouteTrip,
+  SandboxRefusal,
   PlanLoginStatus,
   PlanLogins,
   PlanLoginsHolder,
@@ -57,7 +67,6 @@ export type {
   SpendMeasure,
   SpendStop,
   SpendTables,
-  SpendTriple,
   SpendTurnLimits,
   Unreachable,
 } from './types';

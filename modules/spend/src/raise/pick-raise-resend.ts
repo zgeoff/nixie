@@ -2,26 +2,30 @@ import type { SpendRaise } from '../stop/read-spend-raise';
 import { buildSpendPeriods } from '../time/build-spend-periods';
 import type { GatewayRaise, GatewayStatus } from '../types';
 
-// The raise that the gateway has not applied: today's raise holds more dollars or tokens than the
-// day's limit in force. It stands until the day ends, and the watcher sends it each poll.
+// The raises that the gateway has not applied: a route's raise of today holds more dollars than the
+// route's day limit in force. It stands until the day ends, and the watcher sends it each poll.
 export interface RaiseFacts {
   readonly status: GatewayStatus;
-  readonly raise: SpendRaise | null;
+  readonly routeRaises: Readonly<Record<string, number>>;
+  readonly raise?: SpendRaise | null;
   readonly now: number;
 }
 
-export function pickRaiseResend(facts: RaiseFacts, zone: string): GatewayRaise | null {
-  const day = facts.status.periods.day;
+export function pickRaiseResend(facts: RaiseFacts, zone: string): GatewayRaise[] {
   const today = buildSpendPeriods(facts.now, zone).day.start;
+  const resends: GatewayRaise[] = [];
 
-  if (facts.raise === null || day.start !== today || day.limit === null) {
-    return null;
+  for (const [route, dollars] of Object.entries(facts.routeRaises)) {
+    const day = Object.hasOwn(facts.status.routes, route)
+      ? facts.status.routes[route]?.day
+      : undefined;
+
+    if (day === undefined || day.start !== today || day.limit === null || day.limit >= dollars) {
+      continue;
+    }
+
+    resends.push({ route, start: today, dollars });
   }
 
-  const isApplied =
-    day.limit.dollars >= facts.raise.dollars && day.limit.tokens >= facts.raise.tokens;
-
-  return isApplied
-    ? null
-    : { start: today, limit: { dollars: facts.raise.dollars, tokens: facts.raise.tokens } };
+  return resends;
 }

@@ -4,16 +4,10 @@ import type { Definitions, Log } from '@heynixie/log';
 
 export type PeriodName = 'day' | 'month';
 
-export type SpendMeasure = 'dollars' | 'tokens' | 'turns';
+export type SpendMeasure = 'turns';
 
-export interface SpendTriple {
-  readonly dollars: number;
-  readonly tokens: number;
-  readonly turns: number;
-}
-
-// The limits that nixie holds itself, as the models config sets them. The gateway holds the
-// dollars and the tokens, and nixie counts the turns.
+// The limits that nixie holds itself, as the models config sets them. The gateway holds each
+// route's dollars, and nixie counts the turns.
 export interface SpendTurnLimits {
   readonly dayTurns: number;
   readonly dayTurnCap: number;
@@ -34,8 +28,9 @@ export interface SpendContext {
   readonly planLogins: PlanLoginsHolder;
 }
 
-// What the stop is now. A trip also holds the measures of its period, so a client can offer a
-// raise: `limits` are the limits in force, `used` the counts, and `cap` the highest a raise reaches.
+// What the stop is now, for the whole of nixie: the gateway does not answer, it lost its count, or
+// the turn count reached a limit. A route that reached its dollar limit holds only its own work, so
+// it is a RouteTrip and never a state of this stop.
 export type SpendStop =
   | { readonly state: 'clear' }
   | { readonly state: 'unreachable' }
@@ -52,40 +47,59 @@ export type SpendStop =
       readonly at: number;
       readonly resetsAt: number;
       readonly canRaise: boolean;
-      readonly limits: SpendTriple;
-      readonly used: SpendTriple;
-      readonly cap: SpendTriple;
+
+      // the most a raise reaches
+      readonly cap: number;
     };
+
+// A route that reached its day or month limit in US dollars. Only the work on the route waits.
+export interface RouteTrip {
+  readonly route: string;
+  readonly period: PeriodName;
+
+  // the ISO date of the period's first day, which a raise names
+  readonly start: string;
+  readonly limit: number;
+  readonly spent: number;
+  readonly at: number;
+  readonly resetsAt: number;
+  readonly canRaise: boolean;
+
+  // the most a raise of the day reaches, null on the month
+  readonly cap: number | null;
+}
 
 export interface Measures {
   readonly dollars: number;
   readonly tokens: number;
 }
 
-export interface PeriodStatus {
+export interface RoutePeriodStatus {
   // the ISO date of the period's first day, in the gateway's zone
   readonly start: string;
   readonly resetsAt: string;
-  readonly spent: Measures;
+  readonly dollars: number;
 
-  // the limit in force, null until the server sets one
-  readonly limit: Measures | null;
-  readonly cap: Measures;
+  // the limit in force in US dollars, null on a route with none
+  readonly limit: number | null;
+
+  // the most a raise of the day reaches, null on the month
+  readonly cap: number | null;
+  readonly tripped: boolean;
+
+  // when the count first reached the limit, null while it is under
+  readonly sinceMs: number | null;
 }
 
-export type GatewayTrip =
-  | {
-      readonly period: PeriodName;
-      readonly measure: 'dollars' | 'tokens';
-      readonly at: string;
-    }
-  | { readonly lost: true; readonly at: string };
+export interface RouteStatus {
+  readonly day: RoutePeriodStatus;
+  readonly month: RoutePeriodStatus;
+}
 
 export interface GatewayStatus {
   readonly zone: string;
   readonly lost: boolean;
-  readonly periods: Readonly<Record<PeriodName, PeriodStatus>>;
-  readonly tripped: GatewayTrip | null;
+  readonly routes: Readonly<Record<string, RouteStatus>>;
 }
 
 // The state of one plan route's login, as the gateway reports it. It holds no token and no email.
@@ -107,20 +121,26 @@ export interface PlanLoginsHolder {
   readonly write: (logins: PlanLogins) => void;
 }
 
+export type RefusalCounter = 'route_day' | 'route_month' | 'sandbox';
+
+// The last request that a sandbox's count refused
+export interface SandboxRefusal {
+  readonly counter: RefusalCounter;
+  readonly route: string;
+  readonly atMs: number;
+}
+
 export interface SandboxCount {
   readonly dollars: number;
   readonly tokens: number;
   readonly tripped: boolean;
-}
-
-export interface GatewayLimits {
-  readonly day: Measures;
-  readonly month: Measures;
+  readonly lastRefusal: SandboxRefusal | null;
 }
 
 export interface GatewayRaise {
+  readonly route: string;
   readonly start: string;
-  readonly limit: Measures;
+  readonly dollars: number;
 }
 
 // A call that the gateway did not answer, or answered in a way the port does not know, such as a 401
@@ -132,8 +152,8 @@ export interface Unreachable {
 
 export interface AboveCap {
   readonly kind: 'above_cap';
-  readonly period: PeriodName | null;
-  readonly cap: Measures;
+  readonly route: string;
+  readonly cap: number;
 }
 
 export interface PeriodEnded {
@@ -157,9 +177,6 @@ export interface SpendGateway {
   readonly readChatGPTLogins: () => Promise<
     Done<Readonly<Record<string, PlanLoginStatus>>> | Unreachable
   >;
-  readonly putLimits: (
-    limits: GatewayLimits,
-  ) => Promise<Done<GatewayStatus> | AboveCap | Unreachable>;
   readonly postRaise: (
     raise: GatewayRaise,
   ) => Promise<Done<GatewayStatus> | AboveCap | PeriodEnded | Unreachable>;
@@ -180,6 +197,15 @@ interface SpendRaiseTable {
   readonly updated_sequence: number;
 }
 
+interface SpendRouteRaiseTable {
+  readonly route_id: string;
+  readonly start: string;
+  readonly dollars: number;
+  readonly raised_by: string;
+  readonly at: number;
+  readonly updated_sequence: number;
+}
+
 interface SpendTurnTable {
   readonly bucket_start: number;
   readonly turns: number;
@@ -193,6 +219,7 @@ interface SpendTurnsFoldedTable {
 export type SpendTables = CheckedTables<
   Readonly<{
     spend_raises: SpendRaiseTable;
+    spend_route_raises: SpendRouteRaiseTable;
     spend_turns: SpendTurnTable;
     spend_turns_folded: SpendTurnsFoldedTable;
   }>

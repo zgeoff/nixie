@@ -678,6 +678,28 @@ export interface NixieTables {
     readonly at: number;
     readonly updated_sequence: number;
   };
+  readonly spend_route_stops: {
+    readonly route_id: string;
+    readonly period: string;
+    readonly limit_amount: number;
+    readonly spent_amount: number;
+    readonly at: number;
+    readonly resets_at: number;
+    readonly updated_sequence: number;
+  };
+  readonly spend_route_holds: {
+    readonly task_id: string;
+    readonly route_id: string;
+    readonly updated_sequence: number;
+  };
+  readonly spend_route_raises: {
+    readonly route_id: string;
+    readonly start: string;
+    readonly dollars: number;
+    readonly raised_by: string;
+    readonly at: number;
+    readonly updated_sequence: number;
+  };
   readonly spend_stop: {
     readonly id: number;
     readonly reason: string;

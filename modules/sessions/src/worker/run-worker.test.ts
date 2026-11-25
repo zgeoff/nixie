@@ -939,7 +939,7 @@ test('it states the gateway numbers in the result of an answered run', async () 
 
   ctx.gateway.readSandbox.mockResolvedValue({
     kind: 'ok',
-    value: { dollars: 0.42, tokens: 7777, tripped: false },
+    value: { dollars: 0.42, tokens: 7777, tripped: false, lastRefusal: null },
   });
 
   ctx.guest.addKindReplies('worker', { text: 'Done.' });
@@ -963,7 +963,7 @@ test('it records the dollars the gateway counted beyond the priced calls of the 
 
   ctx.gateway.readSandbox.mockResolvedValue({
     kind: 'ok',
-    value: { dollars: 0.42, tokens: 7777, tripped: false },
+    value: { dollars: 0.42, tokens: 7777, tripped: false, lastRefusal: null },
   });
 
   ctx.guest.addKindReplies('worker', { text: 'Done.' });
@@ -1012,7 +1012,7 @@ test('it ends a run at a dollar limit when the gateway found its sandbox past it
 
   ctx.gateway.readSandbox.mockResolvedValue({
     kind: 'ok',
-    value: { dollars: 1.2, tokens: 10, tripped: true },
+    value: { dollars: 1.2, tokens: 10, tripped: true, lastRefusal: null },
   });
 
   ctx.guest.addKindReplies('worker', { text: '', stopReason: 'tool_use' });
@@ -1030,7 +1030,7 @@ test('it ends a run at a token limit when the gateway found its sandbox past it'
 
   ctx.gateway.readSandbox.mockResolvedValue({
     kind: 'ok',
-    value: { dollars: 0.01, tokens: 1500, tripped: true },
+    value: { dollars: 0.01, tokens: 1500, tripped: true, lastRefusal: null },
   });
 
   ctx.guest.addKindReplies('worker', { text: '', stopReason: 'tool_use' });

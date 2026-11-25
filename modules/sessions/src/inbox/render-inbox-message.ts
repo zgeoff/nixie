@@ -19,6 +19,7 @@ import { renderProposalDefer } from './render-proposal-defer';
 import { renderRecoveryNotice } from './render-recovery-notice';
 import type { ReminderRead } from './render-reminder-notice';
 import { renderReminderNotice } from './render-reminder-notice';
+import { renderSpendWaitNotice } from './render-spend-wait-notice';
 import { renderTakeoverEnded } from './render-takeover-ended';
 import { renderTakeoverStarted } from './render-takeover-started';
 
@@ -58,6 +59,10 @@ export function renderInboxMessage(
 
   if (record.kind === 'task.limit_notice') {
     return renderLimitNotice(record, times);
+  }
+
+  if (record.kind === 'spend.wait_notice') {
+    return renderSpendWaitNotice(record, times);
   }
 
   if (record.kind === 'recovery.notice') {

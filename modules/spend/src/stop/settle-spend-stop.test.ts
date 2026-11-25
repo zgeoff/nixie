@@ -7,13 +7,14 @@ import {
   withWriteTransaction,
 } from '@heynixie/log';
 import { sql } from 'kysely';
-import { buildMockGatewayStatus, buildTrippedGatewayStatus, startTestSpend } from '../test-utils';
+import { writeSpendRaiseRecord } from '../raise/write-spend-raise-record';
+import { buildMockGatewayStatus, startTestSpend } from '../test-utils';
 import { readSpendFacts } from './read-spend-facts';
 import { readSpendStopRow } from './read-spend-stop-row';
 import { settleSpendStop } from './settle-spend-stop';
 
 async function setupTest() {
-  const spend = await startTestSpend();
+  const spend = await startTestSpend({ dayTurns: 3, dayTurnCap: 10, monthTurns: 100 });
 
   return {
     ...spend,
@@ -22,9 +23,19 @@ async function setupTest() {
 
       return settleSpendStop(spend.context, facts);
     },
+    trip: async () => {
+      for (let turn = 0; turn < 3; turn += 1) {
+        await spend.writeTurn();
+      }
+    },
+    raise: (turns: number) =>
+      writeSpendRaiseRecord(spend.context, { start: '2026-10-16', turns, by: 'host' }),
     readPaused: () => withWriteTransaction(spend.writer, (tx) => readPause(tx)),
     readKinds: async () => {
-      const result = await sql`select kind from records order by sequence`.execute(spend.writer.db);
+      const result =
+        await sql`select kind from records where kind like 'spend.%' or kind like 'nixie.%' order by sequence`.execute(
+          spend.writer.db,
+        );
 
       return result.rows;
     },
@@ -43,8 +54,7 @@ async function setupTest() {
 test('it trips and pauses nixie with the cause spending when the gateway reports a trip', async () => {
   const ctx = await setupTest();
 
-  ctx.gateway.readStatus.mockResolvedValue({ kind: 'ok', value: buildTrippedGatewayStatus() });
-
+  await ctx.trip();
   await ctx.settle();
 
   const paused = await ctx.readPaused();
@@ -63,8 +73,7 @@ test('it trips and pauses nixie with the cause spending when the gateway reports
 test('it writes one trip when the stop is found twice', async () => {
   const ctx = await setupTest();
 
-  ctx.gateway.readStatus.mockResolvedValue({ kind: 'ok', value: buildTrippedGatewayStatus() });
-
+  await ctx.trip();
   await ctx.settle();
   await ctx.settle();
 
@@ -77,9 +86,7 @@ test('it writes only the trip, and keeps the cause, when nixie is paused by its 
   const ctx = await setupTest();
 
   await ctx.pauseBy('owner');
-
-  ctx.gateway.readStatus.mockResolvedValue({ kind: 'ok', value: buildTrippedGatewayStatus() });
-
+  await ctx.trip();
   await ctx.settle();
 
   const paused = await ctx.readPaused();
@@ -94,8 +101,7 @@ test('it writes only the trip, and keeps the cause, when nixie is paused by its 
 test('it clears the stop at the reset and resumes a spending pause', async () => {
   const ctx = await setupTest();
 
-  ctx.gateway.readStatus.mockResolvedValue({ kind: 'ok', value: buildTrippedGatewayStatus() });
-
+  await ctx.trip();
   await ctx.settle();
 
   ctx.clock.advance(15 * 60 * 60 * 1000);
@@ -123,12 +129,9 @@ test('it clears the stop at the reset and resumes a spending pause', async () =>
 test('it clears the stop as raised when the day is still running', async () => {
   const ctx = await setupTest();
 
-  ctx.gateway.readStatus.mockResolvedValue({ kind: 'ok', value: buildTrippedGatewayStatus() });
-
+  await ctx.trip();
   await ctx.settle();
-
-  ctx.gateway.readStatus.mockResolvedValue({ kind: 'ok', value: buildMockGatewayStatus() });
-
+  await ctx.raise(6);
   await ctx.settle();
 
   const rows = await sql`select payload from records where kind = 'spend.stop_cleared'`.execute(
@@ -143,13 +146,10 @@ test('it clears the stop as raised when the day is still running', async () => {
 test('it clears the stop and leaves nixie paused when its owner paused it during the stop', async () => {
   const ctx = await setupTest();
 
-  ctx.gateway.readStatus.mockResolvedValue({ kind: 'ok', value: buildTrippedGatewayStatus() });
-
+  await ctx.trip();
   await ctx.settle();
   await ctx.pauseBy('owner');
-
-  ctx.gateway.readStatus.mockResolvedValue({ kind: 'ok', value: buildMockGatewayStatus() });
-
+  await ctx.raise(6);
   await ctx.settle();
 
   const paused = await ctx.readPaused();
@@ -164,8 +164,7 @@ test('it clears the stop and leaves nixie paused when its owner paused it during
 test('it keeps the stop row when a resume of the pause is written by hand', async () => {
   const ctx = await setupTest();
 
-  ctx.gateway.readStatus.mockResolvedValue({ kind: 'ok', value: buildTrippedGatewayStatus() });
-
+  await ctx.trip();
   await ctx.settle();
 
   await withWriteTransaction(ctx.writer, (tx) =>
@@ -236,8 +235,9 @@ test('it replaces an unreachable stop with a limit trip in two records when the 
 
   await ctx.settle();
 
-  ctx.gateway.readStatus.mockResolvedValue({ kind: 'ok', value: buildTrippedGatewayStatus() });
+  ctx.gateway.readStatus.mockResolvedValue({ kind: 'ok', value: buildMockGatewayStatus() });
 
+  await ctx.trip();
   await ctx.settle();
 
   const spendStopRow = await readSpendStopRow(ctx.writer.db);
@@ -252,12 +252,9 @@ test('it replaces an unreachable stop with a limit trip in two records when the 
 test('it trips by turns from the count of turn records alone', async () => {
   const ctx = await setupTest();
 
-  for (let turn = 0; turn < 1000; turn += 1) {
-    const kind = turn % 2 === 0 ? 'model.turn_ended' : 'worker.turn_ended';
-
-    await ctx.writeTurn(kind);
-  }
-
+  await ctx.writeTurn('model.turn_ended');
+  await ctx.writeTurn('worker.turn_ended');
+  await ctx.writeTurn('model.turn_ended');
   await ctx.settle();
 
   const spendStopRow = await readSpendStopRow(ctx.writer.db);
@@ -266,7 +263,7 @@ test('it trips by turns from the count of turn records alone', async () => {
     reason: 'limit',
     period: 'day',
     measure: 'turns',
-    limit: 1000,
-    spent: 1000,
+    limit: 3,
+    spent: 3,
   });
 });

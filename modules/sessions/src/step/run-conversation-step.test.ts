@@ -1,7 +1,13 @@
 import { expect, mock, test } from 'bun:test';
 import { buildMockCredentialRef, createTestCredentials } from '@heynixie/credentials/test-utils';
 import type { RecordKind } from '@heynixie/log';
-import { readRecords, writeRecords } from '@heynixie/log';
+import {
+  readRecords,
+  spendRouteStoppedCodec,
+  withWriteTransaction,
+  writeRecords,
+  writeRecordsInTransaction,
+} from '@heynixie/log';
 import type { Harness } from '@heynixie/models';
 import { bindHarness } from '@heynixie/models';
 import { buildMockCodexProfile, buildMockModelProfile } from '@heynixie/models/test-utils';
@@ -1011,6 +1017,41 @@ test('it fails a step on a plan profile whose login is not active, with no captu
 
   expect(errored).toMatchObject([{ payload: { reason: 'model_auth.chatgpt_login' } }]);
   expect([ctx.opened, ctx.sandboxes.turns]).toStrictEqual([[], []]);
+});
+
+test('it holds a step on a route that stands stopped, with no capture and no turn', async () => {
+  const ctx = await setupTest();
+  const spend = await startTestSpend();
+
+  await createConversationTask(ctx.context);
+
+  await withWriteTransaction(ctx.context.log.writer, (tx) =>
+    writeRecordsInTransaction(tx, ctx.context.log, [
+      {
+        kind: spendRouteStoppedCodec.kind,
+        definitions: ctx.context.definitions(),
+        payload: spendRouteStoppedCodec.encode({
+          route: ctx.profile.id,
+          period: 'day',
+          limit: 40,
+          spent: 41,
+          at: 1,
+          resetsAt: Date.parse('2099-01-01T00:00:00Z'),
+        }),
+      },
+    ]),
+  );
+
+  const runner = await ctx.startRunner(2000, undefined, undefined, {
+    overrides: { spend: { ...spend.context, log: ctx.context.log } },
+  });
+
+  await ctx.sendMessage(runner, 'What does the tide gauge read?');
+
+  const errored = await ctx.readKinds('task.step_errored');
+  const held = await ctx.readKinds('spend.route_held');
+
+  expect([errored, held.length, ctx.opened, ctx.sandboxes.turns]).toStrictEqual([[], 1, [], []]);
 });
 
 test('it sends the account and plan of an active login in the turn profile of a plan profile', async () => {

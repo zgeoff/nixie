@@ -10,4 +10,8 @@ export const logRecordTopics = {
   'recovery.started': ['nixie', 'tasks'],
   'spend.stop_tripped': ['spend', 'nixie', 'tasks'],
   'spend.stop_cleared': ['spend', 'nixie', 'tasks'],
+  'spend.route_stopped': ['spend', 'tasks'],
+  'spend.route_cleared': ['spend', 'tasks'],
+  'spend.route_held': ['spend', 'tasks'],
+  'spend.wait_notice': ['tasks'],
 } as const satisfies RecordTopics;

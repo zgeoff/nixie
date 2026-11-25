@@ -10,6 +10,7 @@ const inboxKinds: ReadonlySet<string> = new Set([
   'trigger.fired',
   'task.limit_notice',
   'recovery.notice',
+  'spend.wait_notice',
   'policy.action_answered',
   'memory.proposal_rejected',
   'skills.write_rejected',
