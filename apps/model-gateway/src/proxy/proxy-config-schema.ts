@@ -4,24 +4,8 @@ import { modelAPIs } from '@heynixie/wire';
 import { z } from 'zod';
 import type { ProxyConfig } from '../types';
 
-const measuresSchema = z.strictObject({
-  dollars: z.number().positive(),
-  tokens: z.number().positive(),
-});
-
 const periodsSchema = z.strictObject({
   zone: z.string().refine(isZone, { message: 'the zone is not an IANA zone' }),
-});
-
-// twice nixie's default day and month limits
-const defaultCaps = {
-  day: { dollars: 120, tokens: 160_000_000 },
-  month: { dollars: 1200, tokens: 1_200_000_000 },
-};
-
-const capsSchema = z.strictObject({
-  day: measuresSchema.default(defaultCaps.day),
-  month: measuresSchema.default(defaultCaps.month),
 });
 
 const controlSchema = z.strictObject({
@@ -45,6 +29,17 @@ const loginSchema = z.strictObject({
   }),
 });
 
+// US dollars. The cap of a day's raise is twice the day's limit unless the route sets one.
+const routeLimitsSchema = z
+  .strictObject({
+    day: z.number().positive(),
+    month: z.number().positive(),
+    dayCap: z.number().positive().optional(),
+  })
+  .refine((limits) => limits.day <= (limits.dayCap ?? limits.day * 2), {
+    message: 'the day cap is below the day limit',
+  });
+
 const routeSchema = z.strictObject({
   api: z.enum(modelAPIs).default('anthropic-messages'),
   upstream: z.url({ protocol: /^https?$/u }),
@@ -53,6 +48,7 @@ const routeSchema = z.strictObject({
   prices: modelPricesSchema,
   maxOutputTokens: z.int().positive().optional(),
   login: loginSchema.optional(),
+  limits: routeLimitsSchema.optional(),
 });
 
 const limitsSchema = z
@@ -81,7 +77,6 @@ export const proxyConfigSchema = z
     store: z.string().min(1),
     limits: limitsSchema.optional(),
     periods: periodsSchema.optional(),
-    caps: capsSchema.optional(),
     control: controlSchema.optional(),
     countBySandbox: z.boolean().optional(),
     override: z
@@ -116,6 +111,16 @@ export const proxyConfigSchema = z
       }
     }
 
+    for (const [id, route] of Object.entries(config.routes)) {
+      if (route.limits !== undefined && config.periods === undefined) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['routes', id, 'limits'],
+          message: `the route ${id} sets limits, which need periods, and a limits config counts one total`,
+        });
+      }
+    }
+
     if (config.limits !== undefined && config.periods !== undefined) {
       ctx.addIssue({
         code: 'custom',
@@ -141,7 +146,7 @@ export const proxyConfigSchema = z
     }
 
     if (config.periods === undefined) {
-      for (const key of ['caps', 'control', 'countBySandbox', 'override'] as const) {
+      for (const key of ['control', 'countBySandbox', 'override'] as const) {
         if (config[key] !== undefined) {
           ctx.addIssue({
             code: 'custom',
@@ -164,7 +169,6 @@ export const proxyConfigSchema = z
         ? null
         : {
             zone: config.periods.zone,
-            caps: config.caps ?? defaultCaps,
             control: config.control,
             countBySandbox: config.countBySandbox ?? false,
             override: config.override ?? null,
@@ -188,6 +192,14 @@ export const proxyConfigSchema = z
           prices: route.prices,
           maxOutputTokens: route.maxOutputTokens ?? null,
           login: route.login ?? null,
+          limits:
+            route.limits === undefined
+              ? null
+              : {
+                  day: route.limits.day,
+                  month: route.limits.month,
+                  dayCap: route.limits.dayCap ?? route.limits.day * 2,
+                },
         },
       ]),
     ),

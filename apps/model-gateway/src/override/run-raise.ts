@@ -1,20 +1,20 @@
 import { periodOf } from '@heynixie/periods';
 import { loadProxyConfig } from '../proxy/load-proxy-config';
-import type { Override, PeriodName } from '../types';
-import { overrideSchema } from './override-schema';
+import type { DayOverride } from '../types';
+import { readOverride } from './read-override';
 import { writeOverride } from './write-override';
 
 export interface RaiseOptions {
   readonly configPath: string;
-  readonly period: PeriodName;
+  readonly route: string;
   readonly dollars: number;
-  readonly tokens: number;
   readonly now: () => number;
 }
 
-// The host command: writes the override for the period in force in the config's zone, and returns
-// what it wrote. The override may pass the cap, because only a host command writes it.
-export async function runRaise(options: RaiseOptions): Promise<Override> {
+// The host command: writes the route's day limit for the day in force in the config's zone, keeps
+// the other routes' overrides, and returns what it wrote. The limit may pass the cap, because only
+// a host command writes it.
+export async function runRaise(options: RaiseOptions): Promise<DayOverride> {
   const config = await loadProxyConfig(options.configPath);
 
   if (config.periods === null) {
@@ -27,13 +27,28 @@ export async function runRaise(options: RaiseOptions): Promise<Override> {
     );
   }
 
-  const override: Override = overrideSchema.parse({
-    period: options.period,
-    start: periodOf(options.period, options.now(), config.periods.zone).start,
-    limit: { dollars: options.dollars, tokens: options.tokens },
-  });
+  if (
+    !Object.hasOwn(config.routes, options.route) ||
+    config.routes[options.route]?.limits === null
+  ) {
+    throw new Error(`the config names no limits for the route ${options.route}`);
+  }
 
-  await writeOverride(config.periods.override, override);
+  if (!Number.isFinite(options.dollars) || options.dollars <= 0) {
+    throw new Error('the dollar limit is a positive number');
+  }
+
+  const override: DayOverride = {
+    start: periodOf('day', options.now(), config.periods.zone).start,
+    dollars: options.dollars,
+  };
+
+  const earlier = await readOverride(config.periods.override);
+
+  await writeOverride(config.periods.override, {
+    ...(earlier.kind === 'found' ? earlier.overrides : {}),
+    [options.route]: override,
+  });
 
   return override;
 }

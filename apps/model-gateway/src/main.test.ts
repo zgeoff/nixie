@@ -96,7 +96,7 @@ test('it exits 1 for a config with no limit', async () => {
   expect(code).toBe(1);
 });
 
-test('it writes the override for the period in force from the raise command and exits 0', async () => {
+test('it writes the override for the route and the day in force from the raise command and exits 0', async () => {
   const ctx = await setupTest();
 
   await writeFile(
@@ -112,6 +112,7 @@ test('it writes the override for the period in force from the raise command and 
       `    upstream: ${ctx.model.url}`,
       '    model: model-small',
       '    prices: { input: 1, cache_write: 1.25, cache_write_1h: 2, cached_input: 0.1, output: 5 }',
+      '    limits: { day: 40, month: 600 }',
     ].join('\n'),
   );
 
@@ -122,12 +123,10 @@ test('it writes the override for the period in force from the raise command and 
       'raise',
       '--config',
       join(ctx.directory, 'proxy.yaml'),
-      '--period',
-      'day',
+      '--route',
+      'preview',
       '--dollars',
       '200',
-      '--tokens',
-      '250000000',
     ],
     { stdin: 'ignore', stdout: 'ignore', stderr: 'ignore' },
   );
@@ -138,9 +137,7 @@ test('it writes the override for the period in force from the raise command and 
   expect(code).toBe(0);
 
   expect(written).toStrictEqual({
-    period: 'day',
-    start: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/u),
-    limit: { dollars: 200, tokens: 250_000_000 },
+    preview: { start: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/u), dollars: 200 },
   });
 });
 
@@ -168,11 +165,9 @@ test('it exits 1 from the raise command for a config with no override file', asy
       'raise',
       '--config',
       join(ctx.directory, 'proxy.yaml'),
-      '--period',
-      'day',
+      '--route',
+      'preview',
       '--dollars',
-      '1',
-      '--tokens',
       '1',
     ],
     { stdin: 'ignore', stdout: 'ignore', stderr: 'ignore' },

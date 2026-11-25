@@ -5,26 +5,31 @@ import { sandboxNameSchema } from './sandbox-name-schema';
 
 const isoDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/u);
 
-const periodCountSchema = z.strictObject({
+const routeCountSchema = z.strictObject({
   start: isoDateSchema,
-  resetsAt: z.iso.datetime().nullable().default(null),
+  resetsAt: z.iso.datetime(),
   dollars: z.number().nonnegative(),
-  tokens: z.number().nonnegative(),
-  limit: measuresSchema.nullable(),
-  raise: measuresSchema.nullable(),
+  raise: z.number().nonnegative().nullable(),
   trippedAt: z.iso.datetime().nullable(),
+});
+
+const refusalSchema = z.strictObject({
+  counter: z.enum(['route_day', 'route_month', 'sandbox']),
+  route: z.string(),
+  atMs: z.number(),
 });
 
 const sandboxCountSchema = z.strictObject({
   dollars: z.number().nonnegative(),
   tokens: z.number().nonnegative(),
   limit: measuresSchema.nullable(),
+  lastRefusal: refusalSchema.nullable().default(null),
 });
 
 const periodStoreSchema = z.strictObject({
-  version: z.literal(2),
+  version: z.literal(3),
   lost: z.literal(true).optional(),
-  periods: z.strictObject({ day: periodCountSchema, month: periodCountSchema }),
+  routes: z.record(z.string(), z.strictObject({ day: routeCountSchema, month: routeCountSchema })),
   sandboxes: z.record(sandboxNameSchema, sandboxCountSchema),
 });
 

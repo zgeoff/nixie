@@ -1,225 +1,167 @@
 import { expect, test } from 'bun:test';
-import type { Measures, Override, PeriodStore } from '../types';
+import type { Overrides, PeriodStore } from '../types';
 import { pickPeriodsRefusal } from './pick-periods-refusal';
 
 interface StoreParts {
   readonly lost?: boolean;
-  readonly day?: { spent?: Partial<Measures>; limit?: Measures | null; raise?: Measures | null };
-  readonly month?: { spent?: Partial<Measures>; limit?: Measures | null };
+  readonly plan?: { readonly day?: number; readonly month?: number; readonly raise?: number };
+  readonly metered?: { readonly day?: number };
   readonly sandboxes?: PeriodStore['sandboxes'];
 }
 
 function setupTest() {
-  const fallback = { dollars: 60, tokens: 1000 };
+  const limits = {
+    plan: { day: 40, month: 600, dayCap: 80 },
+    metered: { day: 5, month: 50, dayCap: 10 },
+    bare: null,
+  };
+
+  const resetsAt = '2026-12-01T00:00:00.000Z';
+
+  const count = (start: string, dollars: number, raise: number | null) => ({
+    start,
+    resetsAt,
+    dollars,
+    raise,
+    trippedAt: null,
+  });
 
   const buildStore = (parts: StoreParts): PeriodStore => ({
-    version: 2,
+    version: 3,
     lost: parts.lost ?? false,
-    periods: {
-      day: {
-        start: '2026-11-13',
-        resetsAt: null,
-        dollars: parts.day?.spent?.dollars ?? 0,
-        tokens: parts.day?.spent?.tokens ?? 0,
-        limit: parts.day?.limit === undefined ? fallback : parts.day.limit,
-        raise: parts.day?.raise ?? null,
-        trippedAt: null,
+    routes: {
+      plan: {
+        day: count('2026-11-13', parts.plan?.day ?? 0, parts.plan?.raise ?? null),
+        month: count('2026-11-01', parts.plan?.month ?? 0, null),
       },
-      month: {
-        start: '2026-11-01',
-        resetsAt: null,
-        dollars: parts.month?.spent?.dollars ?? 0,
-        tokens: parts.month?.spent?.tokens ?? 0,
-        limit:
-          parts.month?.limit === undefined ? { dollars: 600, tokens: 10_000 } : parts.month.limit,
-        raise: null,
-        trippedAt: null,
+      metered: {
+        day: count('2026-11-13', parts.metered?.day ?? 0, null),
+        month: count('2026-11-01', 0, null),
       },
+      bare: { day: count('2026-11-13', 0, null), month: count('2026-11-01', 0, null) },
     },
     sandboxes: parts.sandboxes ?? {},
   });
 
-  return { buildStore };
+  const ask = (
+    store: PeriodStore,
+    route: string,
+    sandbox: string | null = null,
+    overrides: Overrides = {},
+  ) =>
+    pickPeriodsRefusal({
+      store,
+      limits,
+      overrides,
+      route,
+      sandbox,
+      countBySandbox: false,
+    });
+
+  return { buildStore, ask, limits };
 }
 
-test('it lets a request through while every count is under its limit', () => {
+test('it lets a request through while the route is under its limits', () => {
   const ctx = setupTest();
-  const store = ctx.buildStore({ sandboxes: { alpha: { dollars: 0, tokens: 0, limit: null } } });
 
-  expect(pickPeriodsRefusal(store, null, 'alpha', true)).toBeNull();
+  expect(ctx.ask(ctx.buildStore({ plan: { day: 39.99 } }), 'plan')).toBeNull();
+});
+
+test('it refuses the route at its day limit and names the counter and the route', () => {
+  const ctx = setupTest();
+
+  expect(ctx.ask(ctx.buildStore({ plan: { day: 40 } }), 'plan')).toMatchObject({
+    status: 403,
+    type: 'limit_reached',
+    counter: 'route_day',
+    route: 'plan',
+  });
+});
+
+test('it goes on with another route while one route is at its day limit', () => {
+  const ctx = setupTest();
+
+  expect(ctx.ask(ctx.buildStore({ plan: { day: 40 } }), 'metered')).toBeNull();
+});
+
+test('it refuses the route at its month limit', () => {
+  const ctx = setupTest();
+
+  expect(ctx.ask(ctx.buildStore({ plan: { month: 600 } }), 'plan')).toMatchObject({
+    counter: 'route_month',
+    route: 'plan',
+  });
+});
+
+test('it lets the day go on under a raise, and under an override for the day', () => {
+  const ctx = setupTest();
+  const store = ctx.buildStore({ plan: { day: 45, raise: 60 } });
+
+  expect([
+    ctx.ask(store, 'plan'),
+    ctx.ask(ctx.buildStore({ plan: { day: 90 } }), 'plan', null, {
+      plan: { start: '2026-11-13', dollars: 100 },
+    }),
+  ]).toStrictEqual([null, null]);
+});
+
+test('it ignores an override for another day', () => {
+  const ctx = setupTest();
+
+  expect(
+    ctx.ask(ctx.buildStore({ plan: { day: 45 } }), 'plan', null, {
+      plan: { start: '2026-11-12', dollars: 100 },
+    }),
+  ).toMatchObject({ counter: 'route_day' });
+});
+
+test('it refuses with a 503 for a route with no limit', () => {
+  const ctx = setupTest();
+
+  expect(ctx.ask(ctx.buildStore({}), 'bare')).toMatchObject({ status: 503, type: 'api_error' });
 });
 
 test('it refuses with a 503 while the lost mark stands', () => {
   const ctx = setupTest();
 
-  expect(pickPeriodsRefusal(ctx.buildStore({ lost: true }), null, null, false)).toMatchObject({
-    status: 503,
+  expect(ctx.ask(ctx.buildStore({ lost: true }), 'plan')).toMatchObject({ status: 503 });
+});
+
+test('it refuses a sandbox past its own limit, on the route it asked for', () => {
+  const ctx = setupTest();
+
+  const store = ctx.buildStore({
+    sandboxes: {
+      alpha: { dollars: 2, tokens: 0, limit: { dollars: 2, tokens: 100 }, lastRefusal: null },
+    },
   });
-});
 
-test('it refuses with a 503 while the day has no limit', () => {
-  const ctx = setupTest();
-
-  expect(
-    pickPeriodsRefusal(ctx.buildStore({ day: { limit: null } }), null, null, false),
-  ).toMatchObject({
-    status: 503,
-  });
-});
-
-test('it refuses with a 503 while the month has no limit', () => {
-  const ctx = setupTest();
-
-  expect(
-    pickPeriodsRefusal(ctx.buildStore({ month: { limit: null } }), null, null, false),
-  ).toMatchObject({ status: 503 });
-});
-
-test('it refuses a 503 for a null limit even when an override names the period', () => {
-  const ctx = setupTest();
-
-  const override: Override = {
-    period: 'day',
-    start: '2026-11-13',
-    limit: { dollars: 500, tokens: 500_000 },
-  };
-
-  expect(
-    pickPeriodsRefusal(ctx.buildStore({ day: { limit: null } }), override, null, false),
-  ).toMatchObject({ status: 503 });
-});
-
-test.each([
-  ['the day dollars', { day: { spent: { dollars: 60 } } }],
-  ['the day tokens', { day: { spent: { tokens: 1000 } } }],
-  ['the month dollars', { month: { spent: { dollars: 600 } } }],
-  ['the month tokens', { month: { spent: { tokens: 10_000 } } }],
-] as const)('it refuses with the limit 403 once %s reach their limit', (_name, parts) => {
-  const ctx = setupTest();
-
-  expect(pickPeriodsRefusal(ctx.buildStore(parts), null, null, false)).toMatchObject({
+  expect(ctx.ask(store, 'metered', 'alpha')).toMatchObject({
     status: 403,
-    type: 'permission_error',
+    type: 'limit_reached',
+    counter: 'sandbox',
+    route: 'metered',
   });
 });
 
-test('it lets a request through while the count is one under the limit', () => {
-  const ctx = setupTest();
-  const store = ctx.buildStore({ day: { spent: { dollars: 59.99, tokens: 999 } } });
-
-  expect(pickPeriodsRefusal(store, null, null, false)).toBeNull();
-});
-
-test('it lets a request through once a raise lifts the day above its count', () => {
+test('it refuses a sandbox the store lacks when it counts by sandbox', () => {
   const ctx = setupTest();
 
-  const store = ctx.buildStore({
-    day: { spent: { dollars: 61 }, raise: { dollars: 90, tokens: 2000 } },
+  const refusal = pickPeriodsRefusal({
+    store: ctx.buildStore({}),
+    limits: ctx.limits,
+    overrides: {},
+    route: 'plan',
+    sandbox: 'ghost',
+    countBySandbox: true,
   });
 
-  expect(pickPeriodsRefusal(store, null, null, false)).toBeNull();
+  expect(refusal).toMatchObject({ status: 403, type: 'permission_error' });
 });
 
-test('it refuses at the raise once the count reaches it', () => {
+test('it names no dollar figure in a limit message', () => {
   const ctx = setupTest();
+  const refusal = ctx.ask(ctx.buildStore({ plan: { day: 40.1234 } }), 'plan');
 
-  const store = ctx.buildStore({
-    day: { spent: { dollars: 90 }, raise: { dollars: 90, tokens: 2000 } },
-  });
-
-  expect(pickPeriodsRefusal(store, null, null, false)).toMatchObject({ status: 403 });
-});
-
-test('it takes the base limit when a raise is lower than it', () => {
-  const ctx = setupTest();
-
-  const store = ctx.buildStore({
-    day: { spent: { dollars: 70 }, raise: { dollars: 50, tokens: 500 } },
-  });
-
-  expect(pickPeriodsRefusal(store, null, null, false)).toMatchObject({ status: 403 });
-});
-
-test('it lets a request through when an override for the day in force lifts the limit past the cap', () => {
-  const ctx = setupTest();
-  const store = ctx.buildStore({ day: { spent: { dollars: 130, tokens: 5000 } } });
-
-  const override: Override = {
-    period: 'day',
-    start: '2026-11-13',
-    limit: { dollars: 200, tokens: 250_000 },
-  };
-
-  expect(pickPeriodsRefusal(store, override, null, false)).toBeNull();
-});
-
-test('it ignores an override for a day that has ended', () => {
-  const ctx = setupTest();
-  const store = ctx.buildStore({ day: { spent: { dollars: 61 } } });
-
-  const override: Override = {
-    period: 'day',
-    start: '2026-11-12',
-    limit: { dollars: 200, tokens: 250_000 },
-  };
-
-  expect(pickPeriodsRefusal(store, override, null, false)).toMatchObject({ status: 403 });
-});
-
-test('it ignores an override for the month when the day is the one at its limit', () => {
-  const ctx = setupTest();
-  const store = ctx.buildStore({ day: { spent: { dollars: 61 } } });
-
-  const override: Override = {
-    period: 'month',
-    start: '2026-11-01',
-    limit: { dollars: 2000, tokens: 2_000_000 },
-  };
-
-  expect(pickPeriodsRefusal(store, override, null, false)).toMatchObject({ status: 403 });
-});
-
-test('it refuses with a 403 a sandbox the store lacks when it counts by sandbox', () => {
-  const ctx = setupTest();
-
-  expect(pickPeriodsRefusal(ctx.buildStore({}), null, 'ghost', true)).toMatchObject({
-    status: 403,
-  });
-});
-
-test('it refuses a sandbox that names an object property when the store lacks it', () => {
-  const ctx = setupTest();
-
-  expect(pickPeriodsRefusal(ctx.buildStore({}), null, 'constructor', true)).toMatchObject({
-    status: 403,
-  });
-});
-
-test('it lets any sandbox through when it counts by sandbox with none', () => {
-  const ctx = setupTest();
-
-  expect(pickPeriodsRefusal(ctx.buildStore({}), null, null, false)).toBeNull();
-});
-
-test('it refuses with the limit 403 a sandbox past its own limit', () => {
-  const ctx = setupTest();
-
-  const store = ctx.buildStore({
-    sandboxes: { alpha: { dollars: 2, tokens: 5, limit: { dollars: 2, tokens: 2000 } } },
-  });
-
-  expect(pickPeriodsRefusal(store, null, 'alpha', true)).toMatchObject({
-    status: 403,
-    type: 'permission_error',
-  });
-});
-
-test('it lets a sandbox with no limit of its own count past any amount below the period limits', () => {
-  const ctx = setupTest();
-
-  const store = ctx.buildStore({
-    sandboxes: { alpha: { dollars: 50, tokens: 900, limit: null } },
-  });
-
-  expect(pickPeriodsRefusal(store, null, 'alpha', true)).toBeNull();
+  expect(refusal?.message).not.toMatch(/\$|\d/u);
 });

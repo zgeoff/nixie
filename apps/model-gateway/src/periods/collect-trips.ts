@@ -1,26 +1,27 @@
-import type { Override, PeriodName, PeriodStore } from '../types';
-import { pickLimitInForce } from './pick-limit-in-force';
+import type { Overrides, PeriodName, PeriodStore, RouteLimits } from '../types';
+import { pickRouteLimit } from './pick-route-limit';
 
-export interface PeriodTrip {
+export interface RouteTrip {
+  readonly route: string;
   readonly period: PeriodName;
-  readonly measure: 'dollars' | 'tokens';
 }
 
-// every period measure whose count has reached its limit in force, the day before the month
-export function collectTrips(store: PeriodStore, override: Override | null): PeriodTrip[] {
-  const trips: PeriodTrip[] = [];
+export type RouteLimitsByID = Readonly<Record<string, RouteLimits | null>>;
 
-  for (const period of ['day', 'month'] as const) {
-    const count = store.periods[period];
-    const limit = pickLimitInForce(period, count, override);
+// every route period whose count has reached its limit in force, a route's day before its month
+export function collectTrips(
+  store: PeriodStore,
+  limits: RouteLimitsByID,
+  overrides: Overrides,
+): RouteTrip[] {
+  const trips: RouteTrip[] = [];
 
-    if (limit === null) {
-      continue;
-    }
+  for (const [route, periods] of Object.entries(store.routes)) {
+    for (const period of ['day', 'month'] as const) {
+      const limit = pickRouteLimit({ store, limits, overrides, route, period });
 
-    for (const measure of ['dollars', 'tokens'] as const) {
-      if (count[measure] >= limit[measure]) {
-        trips.push({ period, measure });
+      if (limit !== null && periods[period].dollars >= limit) {
+        trips.push({ route, period });
       }
     }
   }

@@ -1,66 +1,75 @@
-import { buildResetMs } from '../periods/build-reset-ms';
-import { collectTrips } from '../periods/collect-trips';
-import { pickLimitInForce } from '../periods/pick-limit-in-force';
-import type { Measures, Override, PeriodName, PeriodStore, PeriodsConfig } from '../types';
+import type { RouteLimitsByID } from '../periods/collect-trips';
+import { pickRouteLimit } from '../periods/pick-route-limit';
+import type { Overrides, PeriodName, PeriodStore, PeriodsConfig } from '../types';
 
-interface PeriodStatus {
+export interface PeriodStatus {
   readonly start: string;
   readonly resetsAt: string;
-  readonly spent: Measures;
-  readonly limit: Measures | null;
-  readonly cap: Measures;
+  readonly dollars: number;
+
+  // the limit in force in US dollars, null on a route with none
+  readonly limit: number | null;
+
+  // the most a raise of the day reaches, null on the month and on a route with no limit
+  readonly cap: number | null;
+  readonly tripped: boolean;
+
+  // the instant the count first reached the limit, null while it is under
+  readonly sinceMs: number | null;
 }
 
-type StatusTrip =
-  | { readonly period: PeriodName; readonly measure: 'dollars' | 'tokens'; readonly at: string }
-  | { readonly lost: true; readonly at: string };
+export interface RouteStatus {
+  readonly day: PeriodStatus;
+  readonly month: PeriodStatus;
+}
 
 export interface GatewayStatus {
   readonly zone: string;
   readonly lost: boolean;
-  readonly periods: Readonly<Record<PeriodName, PeriodStatus>>;
-  readonly tripped: StatusTrip | null;
+  readonly routes: Readonly<Record<string, RouteStatus>>;
 }
 
-// The status holds each period's limit in force. A limit trip's `at` is the instant the store first
-// saw the period at its limit. The store keeps no instant for the lost mark, which an operator
-// clears by deleting the field, so its `at` is the time of this read.
+// Each route's day and month, with the limit in force. A period's `sinceMs` is the instant the
+// store first saw it at its limit.
 export function buildStatus(
   store: PeriodStore,
-  override: Override | null,
+  limits: RouteLimitsByID,
+  overrides: Overrides,
   config: PeriodsConfig,
-  nowMs: number,
 ): GatewayStatus {
-  const buildPeriod = (name: PeriodName): PeriodStatus => {
-    const count = store.periods[name];
+  const buildPeriod = (route: string, name: PeriodName): PeriodStatus => {
+    const count = Object.hasOwn(store.routes, route) ? store.routes[route]?.[name] : undefined;
+
+    if (count === undefined) {
+      throw new Error(`the store holds no count for the route ${route}`);
+    }
+
+    const limit = pickRouteLimit({ store, limits, overrides, route, period: name });
+    const configured = Object.hasOwn(limits, route) ? limits[route] : null;
+    const isTripped = limit !== null && count.dollars >= limit;
 
     return {
       start: count.start,
-      resetsAt: formatInstant(buildResetMs(name, count)),
-      spent: { dollars: count.dollars, tokens: count.tokens },
-      limit: pickLimitInForce(name, count, override),
-      cap: config.caps[name],
+      resetsAt: formatInstant(Date.parse(count.resetsAt)),
+      dollars: count.dollars,
+      limit,
+      cap: name === 'day' ? (configured?.dayCap ?? null) : null,
+      tripped: isTripped,
+
+      // the override file can change between the store's stamp and this read
+      sinceMs: isTripped && count.trippedAt !== null ? Date.parse(count.trippedAt) : null,
     };
   };
-
-  const readAt = formatInstant(nowMs);
-  const [trip] = collectTrips(store, override);
-  let tripped: StatusTrip | null = null;
-
-  if (trip !== undefined) {
-    // the override file can change between the store's stamp and this read
-    const stamped = store.periods[trip.period].trippedAt;
-
-    tripped = { ...trip, at: stamped === null ? readAt : formatInstant(Date.parse(stamped)) };
-  } else if (store.lost) {
-    tripped = { lost: true, at: readAt };
-  }
 
   return {
     zone: config.zone,
     lost: store.lost,
-    periods: { day: buildPeriod('day'), month: buildPeriod('month') },
-    tripped,
+    routes: Object.fromEntries(
+      Object.keys(store.routes).map((route) => [
+        route,
+        { day: buildPeriod(route, 'day'), month: buildPeriod(route, 'month') },
+      ]),
+    ),
   };
 }
 

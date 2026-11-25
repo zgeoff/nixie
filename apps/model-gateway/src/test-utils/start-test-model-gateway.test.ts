@@ -122,7 +122,7 @@ test('it serves a control listener with the token it is given when it counts per
 
   expect(body).toMatchObject({
     zone: 'Europe/London',
-    periods: { day: { limit: null, cap: { dollars: 120 } } },
+    routes: { scripted: { day: { limit: 100, cap: 200 } } },
   });
 });
 
@@ -139,17 +139,6 @@ test('it reads the day count of a gateway with periods', async () => {
     periods: { zone: 'Europe/London' },
   });
 
-  const control = { authorization: `Bearer ${gateway.control?.token ?? ''}` };
-
-  await fetch(`${gateway.control?.url ?? ''}/limits`, {
-    method: 'PUT',
-    headers: control,
-    body: JSON.stringify({
-      day: { dollars: 60, tokens: 80_000_000 },
-      month: { dollars: 600, tokens: 600_000_000 },
-    }),
-  });
-
   const reply = await fetch(`${gateway.baseURL}/v1/messages`, {
     method: 'POST',
     body: JSON.stringify({ model: 'model-small', messages: [] }),
@@ -160,14 +149,14 @@ test('it reads the day count of a gateway with periods', async () => {
   const probeCounted = async () => {
     const counted = await gateway.readCount();
 
-    return counted.tokens === 1000;
+    return counted.dollars > 0;
   };
 
   await waitForCondition(probeCounted);
 
   const count = await gateway.readCount();
 
-  expect(count).toStrictEqual({ dollars: expect.toBeNumber(), tokens: 1000 });
+  expect(count).toStrictEqual({ dollars: 0.0022, tokens: 0 });
 });
 
 test('it has no control listener when it counts limits', async () => {

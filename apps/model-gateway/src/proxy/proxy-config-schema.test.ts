@@ -95,6 +95,7 @@ test('it reads a config into its typed shape, with a trailing slash cut from the
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
         maxOutputTokens: null,
         login: null,
+        limits: null,
       },
     },
   });
@@ -394,18 +395,24 @@ function setupTest() {
   };
 }
 
-test('it reads periods with the default caps, a loopback control listener and no override', () => {
+test('it reads periods with a loopback control listener, no override and the limits of each route', () => {
   const ctx = setupTest();
-  const result = proxyConfigSchema.safeParse(ctx.periodsConfig);
+
+  const result = proxyConfigSchema.safeParse({
+    ...ctx.periodsConfig,
+    routes: {
+      preview: {
+        ...ctx.periodsConfig.routes.preview,
+        limits: { day: 40, month: 600 },
+      },
+      bare: ctx.periodsConfig.routes.preview,
+    },
+  });
 
   expect(result.data).toMatchObject({
     limits: null,
     periods: {
       zone: 'Europe/London',
-      caps: {
-        day: { dollars: 120, tokens: 160_000_000 },
-        month: { dollars: 1200, tokens: 1_200_000_000 },
-      },
       control: {
         listen: { hostname: '127.0.0.1', port: 18_091 },
         tokenFile: '/run/secrets/gateway-control-token',
@@ -413,7 +420,59 @@ test('it reads periods with the default caps, a loopback control listener and no
       countBySandbox: false,
       override: null,
     },
+    routes: {
+      preview: { limits: { day: 40, month: 600, dayCap: 80 } },
+      bare: { limits: null },
+    },
   });
+});
+
+test('it reads the day cap that a route names', () => {
+  const ctx = setupTest();
+
+  const result = proxyConfigSchema.safeParse({
+    ...ctx.periodsConfig,
+    routes: {
+      preview: {
+        ...ctx.periodsConfig.routes.preview,
+        limits: { day: 40, month: 600, dayCap: 55 },
+      },
+    },
+  });
+
+  expect(result.data?.routes['preview']?.limits).toStrictEqual({ day: 40, month: 600, dayCap: 55 });
+});
+
+test.each([
+  ['a day cap below the day limit', { day: 40, month: 600, dayCap: 39 }],
+  ['a day limit of zero', { day: 0, month: 600 }],
+  ['a token limit', { day: 40, month: 600, tokens: 5 }],
+])('it rejects %s', (_name, limits) => {
+  const ctx = setupTest();
+
+  const result = proxyConfigSchema.safeParse({
+    ...ctx.periodsConfig,
+    routes: { preview: { ...ctx.periodsConfig.routes.preview, limits } },
+  });
+
+  expect(result.error?.issues).toPartiallyContain({
+    path: expect.arrayContaining(['routes', 'preview', 'limits']),
+  });
+});
+
+test('it rejects route limits in a limits config, which counts one total', () => {
+  const ctx = setupTest();
+
+  const result = proxyConfigSchema.safeParse({
+    listen: { port: 18_090 },
+    store: '/var/lib/model-gateway/counter.json',
+    limits: { dollars: 5 },
+    routes: {
+      preview: { ...ctx.periodsConfig.routes.preview, limits: { day: 1, month: 2 } },
+    },
+  });
+
+  expect(result.error?.issues).toPartiallyContain({ path: ['routes', 'preview', 'limits'] });
 });
 
 test('it reads each periods key the config names', () => {
@@ -421,13 +480,11 @@ test('it reads each periods key the config names', () => {
 
   const result = proxyConfigSchema.safeParse({
     ...ctx.periodsConfig,
-    caps: { day: { dollars: 50, tokens: 1000 } },
     countBySandbox: true,
     override: '/var/lib/model-gateway/override.json',
   });
 
   expect(result.data?.periods).toMatchObject({
-    caps: { day: { dollars: 50, tokens: 1000 }, month: { dollars: 1200 } },
     countBySandbox: true,
     override: '/var/lib/model-gateway/override.json',
   });
@@ -467,7 +524,6 @@ test('it rejects a zone that is not an IANA zone', () => {
 });
 
 test.each([
-  ['caps', { day: { dollars: 1, tokens: 1 } }],
   ['countBySandbox', true],
   ['override', '/var/lib/model-gateway/override.json'],
 ])('it rejects %s in a limits config, which sets none of the periods keys', (key, value) => {
@@ -500,17 +556,6 @@ test('it rejects a relative control token file', () => {
   });
 
   expect(result.error?.issues).toPartiallyContain({ path: ['control', 'tokenFile'] });
-});
-
-test('it rejects a cap of zero', () => {
-  const ctx = setupTest();
-
-  const result = proxyConfigSchema.safeParse({
-    ...ctx.periodsConfig,
-    caps: { month: { dollars: 0, tokens: 1 } },
-  });
-
-  expect(result.error?.issues).toPartiallyContain({ path: ['caps', 'month', 'dollars'] });
 });
 
 test('it reads the provider pin of a route', () => {

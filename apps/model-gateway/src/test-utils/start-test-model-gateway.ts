@@ -7,7 +7,6 @@ import type { LoginFile } from '../login/login-file-schema';
 import { writeLoginFile } from '../login/write-login-file';
 import { parsePeriodStore } from '../periods/parse-period-store';
 import { startModelGateway } from '../proxy/start-model-gateway';
-import type { Measures } from '../types';
 import { createCounterStore } from '../usage/create-counter-store';
 
 export interface TestModelGateway {
@@ -26,7 +25,8 @@ export interface TestModelGateway {
   // the file the host command writes to, null for a gateway with limits
   readonly overridePath: string | null;
 
-  // what it has counted so far, which a reply adds to once it has ended; with periods, the day's
+  // what it has counted so far, which a reply adds to once it has ended; with periods, the day's of
+  // the route `scripted`, whose tokens are not counted
   readonly readCount: () => Promise<{ readonly dollars: number; readonly tokens: number }>;
 }
 
@@ -58,13 +58,19 @@ export interface TestModelGatewayOptions {
   // token endpoint
   readonly planRoute?: TestPlanRoute;
 
-  // counts a day and a month in place of one total, with a control listener on a free port, and
-  // limits of null until a caller sets them through the control listener
+  // counts each route's day and month in place of one total, with a control listener on a free
+  // port
   readonly periods?: {
     readonly zone: string;
-    readonly caps?: {
-      readonly day?: Measures;
-      readonly month?: Measures;
+
+    // the limits of the route `scripted` in US dollars: 100 a day and 1000 a month unless a caller
+    // names its own, and none with null, which refuses every request on it
+    readonly limits?: { readonly day: number; readonly month: number } | null;
+
+    // a second route to the same upstream, with its own limits
+    readonly secondRoute?: {
+      readonly id: string;
+      readonly limits: { readonly day: number; readonly month: number } | null;
     };
     readonly countBySandbox?: boolean;
 
@@ -83,6 +89,8 @@ export const testGatewayPrices = {
   cached_input: 0.1,
   output: 4,
 } as const;
+
+const defaultLimits = { day: 100, month: 1000 };
 
 // An in-process gateway with one route to an upstream, counting against no real budget.
 export async function startTestModelGateway(
@@ -106,6 +114,8 @@ export async function startTestModelGateway(
 
   const planRouteLines = await writePlanRoute(directory, options.planRoute);
 
+  const scriptedLimits = periods === undefined ? null : (periods.limits ?? defaultLimits);
+
   await writeFile(
     join(directory, 'proxy.yaml'),
     [
@@ -115,7 +125,6 @@ export async function startTestModelGateway(
         ? [`limits: { ${limitEntries.join(', ')} }`]
         : [
             `periods: { zone: ${periods.zone} }`,
-            `caps: ${JSON.stringify(periods.caps ?? {})}`,
             `control: { listen: { port: 0 }, tokenFile: ${tokenFile} }`,
             `countBySandbox: ${String(periods.countBySandbox ?? false)}`,
             `override: ${overridePath}`,
@@ -128,6 +137,8 @@ export async function startTestModelGateway(
       `    model: ${options.model ?? 'claude-test-1'}`,
       `    prices: ${JSON.stringify(testGatewayPrices)}`,
       '    maxOutputTokens: 64000',
+      ...buildLimitsLines(scriptedLimits),
+      ...buildSecondRouteLines(options),
       ...planRouteLines,
     ].join('\n'),
   );
@@ -194,6 +205,32 @@ async function writePlanRoute(
   ];
 }
 
+function buildLimitsLines(
+  limits: { readonly day: number; readonly month: number } | null,
+): string[] {
+  return limits === null
+    ? []
+    : [`    limits: { day: ${String(limits.day)}, month: ${String(limits.month)} }`];
+}
+
+function buildSecondRouteLines(options: TestModelGatewayOptions): string[] {
+  const second = options.periods?.secondRoute;
+
+  if (second === undefined) {
+    return [];
+  }
+
+  return [
+    `  ${second.id}:`,
+    `    api: ${options.api ?? 'anthropic-messages'}`,
+    `    upstream: ${options.upstreamURL}`,
+    `    model: ${options.model ?? 'claude-test-1'}`,
+    `    prices: ${JSON.stringify(testGatewayPrices)}`,
+    '    maxOutputTokens: 64000',
+    ...buildLimitsLines(second.limits),
+  ];
+}
+
 async function createLimitsCountReader(path: string): Promise<TestModelGateway['readCount']> {
   const store = await createCounterStore(path);
 
@@ -211,6 +248,6 @@ function createPeriodsCountReader(path: string): TestModelGateway['readCount'] {
 
     const store = parsePeriodStore(stored);
 
-    return { dollars: store.periods.day.dollars, tokens: store.periods.day.tokens };
+    return { dollars: store.routes['scripted']?.day.dollars ?? 0, tokens: 0 };
   };
 }

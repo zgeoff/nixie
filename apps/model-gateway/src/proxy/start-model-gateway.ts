@@ -203,11 +203,16 @@ async function startPeriodsCounting(
   periods: PeriodsConfig,
   deps: PeriodsCountingDeps,
 ): Promise<Counting> {
+  const limits = Object.fromEntries(
+    Object.entries(config.routes).map(([id, route]) => [id, route.limits]),
+  );
+
   const store = await createPeriodStore({
     path: config.store,
     zone: periods.zone,
+    limits,
     now: deps.now,
-    readOverride: makeOverrideReader(periods.override, deps.log),
+    readOverrides: makeOverrideReader(periods.override, deps.log),
     log: deps.log,
   });
 
@@ -223,13 +228,16 @@ async function startPeriodsCounting(
     deps: {
       periods: {
         store,
+        limits,
         countBySandbox: periods.countBySandbox,
+        now: deps.now,
         log: deps.log,
       },
     },
     control: {
       store,
       config: periods,
+      limits,
       logins: deps.logins,
       token,
       now: deps.now,

@@ -1,24 +1,45 @@
-import type { Measures, Override, PeriodStore } from '../types';
-import { collectTrips } from './collect-trips';
-import { pickLimitInForce } from './pick-limit-in-force';
+import type { Overrides, PeriodStore, RefusalCounter } from '../types';
+import type { RouteLimitsByID } from './collect-trips';
+import { pickRouteLimit } from './pick-route-limit';
 
-export interface PeriodsRefusal {
-  readonly status: 403 | 503;
-  readonly type: 'permission_error' | 'api_error';
-  readonly message: string;
+export type PeriodsRefusal =
+  | {
+      readonly kind: 'unavailable';
+      readonly status: 503;
+      readonly type: 'api_error';
+      readonly message: string;
+    }
+  | {
+      readonly kind: 'denied';
+      readonly status: 403;
+      readonly type: 'permission_error';
+      readonly message: string;
+    }
+  | {
+      readonly kind: 'limit_reached';
+      readonly status: 403;
+      readonly type: 'limit_reached';
+      readonly counter: RefusalCounter;
+      readonly route: string;
+      readonly message: string;
+    };
+
+export interface RefusalAsk {
+  readonly store: PeriodStore;
+  readonly limits: RouteLimitsByID;
+  readonly overrides: Overrides;
+  readonly route: string;
+  readonly sandbox: string | null;
+  readonly countBySandbox: boolean;
 }
 
-// What stops a request, or null when it may pass. A store with no room for a reason the gateway
-// cannot fix, such as the lost mark or a limit the server never set, answers 503; a limit that the
-// count has reached, or a sandbox the store lacks, answers 403.
-export function pickPeriodsRefusal(
-  store: PeriodStore,
-  override: Override | null,
-  sandbox: string | null,
-  countBySandbox: boolean,
-): PeriodsRefusal | null {
-  if (store.lost) {
+// What stops a request, or null when it may pass. The lost mark and a route with no limit answer
+// 503; a limit that a count has reached answers 403 with the counter and the route. No message
+// holds a dollar figure.
+export function pickPeriodsRefusal(ask: RefusalAsk): PeriodsRefusal | null {
+  if (ask.store.lost) {
     return {
+      kind: 'unavailable',
       status: 503,
       type: 'api_error',
       message:
@@ -26,22 +47,26 @@ export function pickPeriodsRefusal(
     };
   }
 
-  if (store.periods.day.limit === null || store.periods.month.limit === null) {
+  const day = pickRouteLimit({ ...ask, period: 'day' });
+  const month = pickRouteLimit({ ...ask, period: 'month' });
+
+  if (day === null || month === null) {
     return {
+      kind: 'unavailable',
       status: 503,
       type: 'api_error',
-      message:
-        'the model gateway holds no limit for a period yet, so it refuses every request until the server sets one',
+      message: `the model gateway holds no limit for the route ${ask.route}, so it refuses every request on it`,
     };
   }
 
   const held =
-    sandbox !== null && Object.hasOwn(store.sandboxes, sandbox)
-      ? store.sandboxes[sandbox]
+    ask.sandbox !== null && Object.hasOwn(ask.store.sandboxes, ask.sandbox)
+      ? ask.store.sandboxes[ask.sandbox]
       : undefined;
 
-  if (countBySandbox && held === undefined) {
+  if (ask.countBySandbox && held === undefined) {
     return {
+      kind: 'denied',
       status: 403,
       type: 'permission_error',
       message:
@@ -49,16 +74,27 @@ export function pickPeriodsRefusal(
     };
   }
 
-  const [trip] = collectTrips(store, override);
+  const periods = Object.hasOwn(ask.store.routes, ask.route)
+    ? ask.store.routes[ask.route]
+    : undefined;
 
-  if (trip !== undefined) {
-    const count = store.periods[trip.period];
-    const limit = pickLimitInForce(trip.period, count, override);
+  const reached = (
+    [
+      ['route_day', day, periods?.day.dollars],
+      ['route_month', month, periods?.month.dollars],
+    ] as const
+  ).find(([, limit, spent]) => spent !== undefined && spent >= limit);
+
+  if (reached !== undefined) {
+    const period = reached[0] === 'route_day' ? 'day' : 'month';
 
     return {
+      kind: 'limit_reached',
       status: 403,
-      type: 'permission_error',
-      message: `the model gateway reached its ${trip.period} spending limit (${formatSpent(count, limit)}), so it refuses every further request`,
+      type: 'limit_reached',
+      counter: reached[0],
+      route: ask.route,
+      message: `the model gateway reached the ${period} limit of the route ${ask.route}, so it refuses every further request on it until the ${period} resets`,
     };
   }
 
@@ -68,18 +104,15 @@ export function pickPeriodsRefusal(
     (held.dollars >= held.limit.dollars || held.tokens >= held.limit.tokens)
   ) {
     return {
+      kind: 'limit_reached',
       status: 403,
-      type: 'permission_error',
-      message: `the model gateway reached this sandbox's spending limit (${formatSpent(held, held.limit)}), so it refuses every further request`,
+      type: 'limit_reached',
+      counter: 'sandbox',
+      route: ask.route,
+      message:
+        "the model gateway reached this sandbox's limit, so it refuses every further request",
     };
   }
 
   return null;
-}
-
-function formatSpent(count: Measures, limit: Measures | null): string {
-  const dollars = `$${count.dollars.toFixed(4)} of $${String(limit?.dollars ?? 0)}`;
-  const tokens = `${String(count.tokens)} of ${String(limit?.tokens ?? 0)} tokens`;
-
-  return `${dollars}, ${tokens}`;
 }

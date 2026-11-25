@@ -3,11 +3,11 @@ import type { Logger } from '@heynixie/logger';
 import { toErrorFields } from '@heynixie/logger';
 import { z } from 'zod';
 import type { PlanLogin } from '../login/create-plan-login';
+import type { RouteLimitsByID } from '../periods/collect-trips';
 import { sandboxNameSchema } from '../periods/sandbox-name-schema';
 import type { PeriodChange, PeriodStore, PeriodStoreHandle, PeriodsConfig } from '../types';
 import { buildStatus } from './build-status';
 import type { ControlOutcome } from './control-outcome';
-import { pickLimitsChange } from './pick-limits-change';
 import { pickRaiseChange } from './pick-raise-change';
 import { pickSandboxRemoveChange } from './pick-sandbox-remove-change';
 import { pickSandboxSetChange } from './pick-sandbox-set-change';
@@ -15,6 +15,9 @@ import { pickSandboxSetChange } from './pick-sandbox-set-change';
 export interface ControlHandlerDeps {
   readonly store: PeriodStoreHandle;
   readonly config: PeriodsConfig;
+
+  // the limits of each configured route
+  readonly limits: RouteLimitsByID;
 
   // the plan login of each plan route, by route ID
   readonly logins: Readonly<Record<string, PlanLogin>>;
@@ -30,15 +33,10 @@ const positiveMeasuresSchema = z.strictObject({
   tokens: z.number().positive(),
 });
 
-const limitsBodySchema = z.strictObject({
-  day: positiveMeasuresSchema,
-  month: positiveMeasuresSchema,
-});
-
 const raiseBodySchema = z.strictObject({
-  period: z.literal('day'),
+  route: z.string().min(1),
   start: z.string().regex(/^\d{4}-\d{2}-\d{2}$/u),
-  limit: positiveMeasuresSchema,
+  dollars: z.number().positive(),
 });
 
 const sandboxBodySchema = z.strictObject({ limit: positiveMeasuresSchema.nullable() });
@@ -49,17 +47,21 @@ export function makeControlHandler(
   const answerStatus = async (): Promise<Response> => {
     const held = await deps.store.readInForce();
 
-    return Response.json(buildStatus(held.store, held.override, deps.config, deps.now()));
+    return Response.json(buildStatus(held.store, deps.limits, held.overrides, deps.config));
   };
 
   const answerOutcome = (outcome: ControlOutcome): Promise<Response> => {
     if (outcome.kind === 'above_cap') {
       return Promise.resolve(
         Response.json(
-          { error: 'above_cap', period: outcome.period, cap: outcome.cap },
+          { error: 'above_cap', route: outcome.route, cap: outcome.cap },
           { status: 409 },
         ),
       );
+    }
+
+    if (outcome.kind === 'unknown_route') {
+      return Promise.resolve(Response.json({ error: 'unknown_route' }, { status: 404 }));
     }
 
     if (outcome.kind === 'period_ended') {
@@ -72,20 +74,6 @@ export function makeControlHandler(
   const changeStore = (decide: (store: PeriodStore) => PeriodChange<ControlOutcome>) =>
     deps.store.change(decide);
 
-  const answerLimits = async (request: Request): Promise<Response> => {
-    const body = await readBody(request, limitsBodySchema);
-
-    if (body.kind === 'invalid') {
-      return renderInvalid(body.message);
-    }
-
-    const outcome = await changeStore((store) =>
-      pickLimitsChange(store, deps.config.caps, body.data),
-    );
-
-    return answerOutcome(outcome);
-  };
-
   const answerRaise = async (request: Request): Promise<Response> => {
     const body = await readBody(request, raiseBodySchema);
 
@@ -93,9 +81,13 @@ export function makeControlHandler(
       return renderInvalid(body.message);
     }
 
-    const raise = { start: body.data.start, limit: body.data.limit };
+    const raise = body.data;
 
-    const outcome = await changeStore((store) => pickRaiseChange(store, deps.config.caps, raise));
+    const limits = Object.hasOwn(deps.limits, raise.route)
+      ? (deps.limits[raise.route] ?? null)
+      : null;
+
+    const outcome = await changeStore((store) => pickRaiseChange(store, limits, raise));
 
     return answerOutcome(outcome);
   };
@@ -116,6 +108,7 @@ export function makeControlHandler(
         held?.limit !== undefined &&
         held.limit !== null &&
         (held.dollars >= held.limit.dollars || held.tokens >= held.limit.tokens),
+      lastRefusal: held?.lastRefusal ?? null,
     });
   };
 
@@ -164,10 +157,6 @@ export function makeControlHandler(
 
     if (pathname === '/chatgpt-logins') {
       return request.method === 'GET' ? answerLogins() : renderMethodNotAllowed();
-    }
-
-    if (pathname === '/limits') {
-      return request.method === 'PUT' ? answerLimits(request) : renderMethodNotAllowed();
     }
 
     if (pathname === '/raise') {
