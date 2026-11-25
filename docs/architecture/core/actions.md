@@ -96,10 +96,10 @@ neither. The queue keys such an action by a hash of its tool and the parts that 
 under the step key it came from, so a step that runs again queues nothing new.
 
 A runner action names what caused it: a tool call, or a record on the task's thread, such as the
-message that a note carries. No model listed the action's tool, so the decision point decides each
-attempt under the declaration of the action's own tool, with the task as the caller and its sources
-as `task`. A proposal for such an action points at the record that caused it, in place of a tool
-call.
+message that a note carries. No model call names the action's tool, so the decision point decides
+each attempt under the declaration of the action's own tool, with the task as the caller and its
+sources as `task`. A proposal for such an action points at the record that caused it, in place of a
+tool call.
 
 ## Deadlines
 
@@ -205,10 +205,10 @@ A thrown call counts as ambiguous, because a timeout or a dropped connection may
 provider acted.
 
 The idempotency key is the action ID until an attempt is refused, and the ID with the count of
-refused attempts after that, such as `<action ID>.2`. A provider that refuses a call can keep its
-key and answer every retry with the same refusal, so each retry after a refusal takes a key of its
-own. An attempt after an unknown outcome keeps the last key, so a provider that acted on it answers
-with that first result.
+refused attempts after that, such as `<action ID>.2`. A provider can remember the key of a call it
+refused and answer every retry with the same refusal, so each retry after a refusal takes a key of
+its own. An attempt after an unknown outcome keeps the last key, so a provider that acted on it
+answers with that first result.
 
 ## Retries
 

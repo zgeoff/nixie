@@ -97,18 +97,18 @@ during a step makes the task ready whatever the step chose, because that input s
 read it.
 
 A step of a runner that calls no model, such as the [coding runner](./coding-tasks.md), returns the
-work it wants done in its result, and the commit does it in the same transaction. The commit queues
-each [action](./actions.md#actions-a-runner-queues) the step returned, and writes each
+work it wants done in its result, and the step's commit does that work in the same transaction. The
+commit queues each [action](./actions.md#actions-a-runner-queues) the step returned, and writes each
 [task message](./task-messages.md) the step returned with the waits, the hop-limit hold and the wake
 that every task message gets. A step marks its result final when the task is over, so a report from
 it leaves a started task done in place of waiting for its starter's next message.
 
 A runner can also act when its task ends, through an end hook that runs after a stop, a close or a
 failure commits. The hook writes its records and queues its actions in one transaction of its own,
-so a crash between the two commits leaves the task ended with the hook's work undone. The coding
-runner releases its session there, and its sweep finishes a release that a crash cut short. The
-runner can add fields of its own to each of its tasks in the `tasks.list` result, such as a coding
-task's session state.
+so a crash between the task's end and the hook's commit leaves the task ended with the hook's work
+undone. The coding runner releases its session there, and its sweep finishes a release that a crash
+cut short. The runner can add fields of its own to each of its tasks in the `tasks.list` result,
+such as a coding task's session state.
 
 A step that throws records its error and frees the lease, and the task waits a retry delay before
 its next claim. The error's message is free text, so the record keeps it in its

@@ -52,8 +52,8 @@ the action that the queue check queues at each start, and the crash tests' send 
 build.
 
 A task runner can queue actions of its own too. A [coding task](./core/coding-tasks.md) steers a
-coding session that runs in another program, and each spawn, steer, note and stop of that session is
-such an action, which the decision point decides before each attempt as it decides a tool call.
+coding session that runs in another program. Each spawn, steer, note and stop of that session is
+such an action, and the decision point decides it before each attempt, as it decides a tool call.
 
 ## The client path
 

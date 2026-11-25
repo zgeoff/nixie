@@ -2,11 +2,11 @@
 
 A coding task is a task whose steps work with a coding session that runs in another program, such as
 a coding agent on a cloud machine. The task either starts the session or joins one that already
-runs. Its steps move text and events between the task and the session, and call no model, so nixie's
-conversation reads what a step forwards and decides what the session needs next. The coding module
-holds the runner, its tools, the trigger source that reads the session's events, and the release of
-a session when its task ends. It reaches the other program only through the coding adapter
-interface, one adapter per program.
+runs. Its steps call no model. They move text and events between the task and the session, and
+nixie's conversation reads what a step forwards and decides what the session needs next. The coding
+module holds the runner, its tools, the trigger source that reads the session's events, and the
+release of a session when its task ends. It reaches the other program only through the coding
+adapter interface, one adapter per program.
 
 No adapter package exists yet, so the server builds no coding runner, tool or source.
 [The atc runner](https://linear.app/zgeoff/issue/GEO-1843) adds the first adapter and wires the
@@ -14,10 +14,10 @@ module into the server. The
 [coding session runner design](../../design/queue/coding-session-runner/README.md) covers that
 adapter.
 
-Read this doc before you change the coding module or write an adapter for it. [Tasks](./tasks.md)
-covers the state machine, the inbox and the controls that a coding task shares with every task.
-[Actions](./actions.md) covers the queue that carries each call that changes the session, and
-[triggers](./triggers.md) covers the core that lands each session event on a task's thread.
+Read this doc before you change the coding module or write an adapter for it. Read
+[tasks](./tasks.md) for the state machine, the inbox and the controls that a coding task shares with
+every task, [actions](./actions.md) for the queue that carries each call that changes the session,
+and [triggers](./triggers.md) for the core that lands each session event on a task's thread.
 
 ## The bound session
 
@@ -32,14 +32,15 @@ the module reads the binding from that row.
 The model never sees the adapter's session ID. The first time a tool lists a session, a
 `coding.session_named` record gives it a short ID, and the model names the session by that short ID
 in every later call. The [short IDs](./database.md#short-ids) section gives the reason. Each tool
-result holds the short ID alone.
+result holds the session's short ID and never the adapter's ID.
 
 ## Starting and joining
 
 The conversation starts a coding task with `task.start`, its `runner` set to the adapter's ID. A
 start names a repo and an optional target; a join names a session by its short ID. The start checks
-the input in code and writes nothing when a check fails: exactly one of a repo and a session, a repo
-URL over https or ssh, a target that the settings list, and no target, agent or model on a join.
+the input in code and writes nothing when a check fails. The input must hold exactly one of a repo
+and a session, a repo URL must use https or ssh, a target must be one that the settings list, and a
+join must name no target, agent or model.
 
 Each start and each join is the call variant `task.start/<adapter ID>`, with the effect
 `coding_start`. The starter rule `ask-coding-sessions` asks before every one, even one that the
@@ -58,24 +59,25 @@ user's own message asked for, because a session runs code under the user's accou
 ## Steps
 
 A step reads the task's inbox, takes each action outcome first, then each message and event in the
-order it arrived. A step that ends the session commits as done, with the session's last reply as the
-task's report, marked as outside content, or a fallback sentence when the adapter cannot read that
+order it arrived. A step that ends the session commits as done. The task's report is the session's
+last reply, marked as outside content, or a fallback sentence when the adapter cannot read that
 reply.
 
-**Messages.** A message to the task, from another task or from the user, goes to the session as a
-note through a `coding.message` action. A note never steers: the session's agent reads it beside its
-conversation, and can answer it. The answer comes back as an event that names the note, and the step
-replies to the sender: a reply to the task's message, or a progress message to the report target for
-the user's message. An answer can reach the task before the note's outcome does. The step then holds
-the answer in a `coding.answer_held` record, and replies once the note's outcome lands as done. A
-reply counts its hop from the message it answers, so an exchange through a session meets the
-[hop limit](./task-messages.md#the-hop-limit) as any other exchange does.
+A message to the task, from another task or from the user, goes to the session as a note through a
+`coding.message` action. A note never steers: the session's agent reads it beside its conversation,
+and can answer it. The answer comes back as an event that names the note, and the step replies to
+the sender. A message from another task gets a reply to that message, and a message from the user
+gets a progress message to the report target. An answer can reach the task before the note's outcome
+does. The step then holds the answer in a `coding.answer_held` record, and replies once the note's
+outcome lands as done. A reply counts its hop from the message it answers, so an exchange through a
+session meets the [hop limit](./task-messages.md#the-hop-limit) as any other exchange does.
 
-**Events.** The wake set names the session states and note labels that wake the task. The settings
-give each origin its default, and a start or `coding.watch` can replace it. The defaults wake a task
-that joined a session only on `waiting`, `ended` and `gone`, because the user already watches that
-session. An event in the wake set wakes the task, and the step forwards it to the report target as a
-progress message. Any other event lands on the task's thread and wakes nothing, with 2 exceptions:
+The wake set is the list of session states and note labels that wake the task. Each origin takes its
+default wake set from the settings, and a start or `coding.watch` can replace it. The defaults wake
+a task that joined a session only on `waiting`, `ended` and `gone`, because the user already watches
+that session. An event in the wake set wakes the task, and the step forwards it to the report target
+as a progress message. Any other event lands on the task's thread and wakes nothing, with 2
+exceptions:
 
 - An `ended` state wakes the task whatever the wake set holds, so the task ends with its session.
   The step forwards it only when the wake set lists `ended`.
@@ -92,10 +94,10 @@ progress message. Any other event lands on the task's thread and wakes nothing, 
 | `coding.watch`    | Replaces a coding task's wake set                                                                                      |
 
 `coding.steer` and `coding.message` queue an action on the coding task's thread and wait a short
-time for its outcome. The call itself only queues, so it declares the effect `note`. Each attempt of
-the action meets the decision point under the effect `send` to the destination
+time for its outcome. The call itself only queues, so it declares the effect `note`. The decision
+point decides each attempt of the action under the effect `send` to the destination
 `<adapter ID>:<session ID>`, which the starter rule `allow-coding-input` allows. The adapter refuses
-a steer while the session waits on a menu, because typed text would pick a menu item; the action
+a steer while the session waits on a menu, because typed text would pick a menu item. The action
 then fails, and the next step tells the report target.
 
 ## The coding source
@@ -107,21 +109,21 @@ thread, with a `wake` flag that follows the rules in [steps](#steps). The core k
 the event's own key, so an event that the source reads twice lands once.
 
 At its first start the source keeps only the cursor of its first read, so it never replays the whole
-trail. A session bound after the cursor passed its earlier events is caught up from the cursor that
-its binding stores. A failed read backs off, doubling its wait up to a cap, and the source reports
-itself unhealthy after several failures in a row.
+trail. When a task binds a session after the cursor passed that session's earlier events, the source
+catches up from the cursor that the binding stores. After a failed read, the source backs off,
+doubling its wait up to a cap, and it reports itself unhealthy after several failures in a row.
 
 ## Releasing a session
 
 The runner's end hook releases a task's session after the task's stop, close or failure commits:
 
-- **A stop** lets go of the session and queues a `coding.stop` action, with the session and its
-  origin, caused by the newest record on the task's thread. The starter rule
+- **A stop** lets go of the session and queues a `coding.stop` action with the session and its
+  origin. The action names the newest record on the task's thread as its cause. The starter rule
   `allow-stop-started-sessions` allows the stop of a started session. The stop of a joined session
   asks, because the user may still want that session.
-- **A close or a failure** lets go of a joined session and calls the adapter for nothing, so the
-  session runs on as the user's. It stops a started session through the adapter at once, then lets
-  go of it. When that stop fails, the binding stays, and the server logs `coding.stop_failed`.
+- **A close or a failure** lets go of a joined session without calling the adapter, so the session
+  runs on as the user's. It stops a started session through the adapter at once, then lets go of it.
+  When that stop fails, the binding stays, and the server logs `coding.stop_failed`.
 
 A spawn can finish after its task stopped, a stop can fail, and a crash can come between a control
 and its release, so a sweep runs when the server starts and on an interval after. It binds each
