@@ -6,6 +6,7 @@ test('it builds a spec whose origin and endpoints are the provider’s', () => {
   const provider: FakeOAuthProvider = {
     host: 'auth.test',
     origin: 'https://auth.test:4443',
+    apiOrigin: 'https://api.test:4443',
     ca: '',
     tokenURL: 'https://auth.test:4443/token',
     revokeURL: 'https://auth.test:4443/revoke',
@@ -17,7 +18,7 @@ test('it builds a spec whose origin and endpoints are the provider’s', () => {
   expect(buildHeldSpec(provider, 'oauth_token')).toStrictEqual({
     kind: 'oauth_token',
     label: 'Example account',
-    origins: ['https://auth.test:4443'],
+    origins: ['https://auth.test:4443', 'https://api.test:4443'],
     provider: {
       tokenURL: 'https://auth.test:4443/token',
       revokeURL: 'https://auth.test:4443/revoke',

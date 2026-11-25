@@ -26,3 +26,15 @@ test('it builds another hash for another input', () => {
 test('it builds a SHA-256 hash in hex', () => {
   expect(buildInputHash({ sessionID: 's-1' })).toMatch(/^[0-9a-f]{64}$/u);
 });
+
+test('it builds the same hash whatever the fields it leaves out hold', () => {
+  expect(buildInputHash({ client: 'q7m2x9k4ta', clientSecret: 'first' }, ['clientSecret'])).toBe(
+    buildInputHash({ client: 'q7m2x9k4ta', clientSecret: 'second' }, ['clientSecret']),
+  );
+});
+
+test('it builds another hash for a field it does not leave out', () => {
+  expect(buildInputHash({ client: 'q7m2x9k4ta', clientSecret: 'first' })).not.toBe(
+    buildInputHash({ client: 'q7m2x9k4ta', clientSecret: 'second' }),
+  );
+});

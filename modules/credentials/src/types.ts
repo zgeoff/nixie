@@ -49,6 +49,9 @@ export interface OAuthProvider {
   readonly tokenURL: string;
   readonly revokeURL?: string;
 
+  // where the owner consents; no request of a connection's fetcher may reach its host
+  readonly authorizeURL?: string;
+
   // the `iss` of the provider's ID tokens
   readonly issuer: string;
 

@@ -20,7 +20,7 @@ is deleted.
 | Model harnesses | [the turn-input log](turn-input-log.md)                                                           |
 | Policy          | [the decision point cutover](decision-point-cutover.md), [CEL conditions on rules](cel-rules.md)  |
 | Mail            | [mail and wake rules](mail/README.md)                                                             |
-| Connections     | [Google connections](google-connections.md), [the connection store](google-connection-store.md)   |
+| Connections     | [Google connections](google-connections.md)                                                       |
 | Google tools    | [Gmail](gmail-calendar-drive-tools.md), [Calendar and Drive](google-calendar-drive-tools.md)      |
 | MCP servers     | [the MCP proxy build](mcp-proxy-build.md)                                                         |
 | Channels        | [the push notice](push-notice.md)                                                                 |

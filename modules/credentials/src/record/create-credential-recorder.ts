@@ -28,7 +28,7 @@ const pageSize = 500;
 export function createCredentialRecorder(options: CredentialRecorderOptions): CredentialRecorder {
   return {
     write: async (event) => {
-      const input = toRecordInput(event);
+      const input = buildCredentialRecordInput(event);
 
       await writeRecords(options.log, [
         {
@@ -52,13 +52,20 @@ export function createCredentialRecorder(options: CredentialRecorderOptions): Cr
 
         for (const entry of page) {
           const record = entry.record;
-          const fields = refreshLostCodec.tryDecodePartial(record.payload);
+          const fields = refreshStartedCodec.tryDecodePartial(record.payload);
           const attemptID = fields?.attemptID;
           const credentialID = fields?.credentialID;
 
           if (attemptID !== undefined && credentialID !== undefined) {
-            if (record.kind === refreshStartedCodec.kind) {
-              open.set(attemptID, { credentialID, attemptID });
+            const newKeyID = fields?.newKeyID;
+
+            if (record.kind === refreshStartedCodec.kind && newKeyID !== undefined) {
+              open.set(attemptID, {
+                credentialID,
+                attemptID,
+                newKeyID,
+                removalCounter: fields?.removalCounter ?? null,
+              });
             } else {
               open.delete(attemptID);
             }
@@ -80,7 +87,8 @@ interface EventRecord {
   readonly payload: JSONObject;
 }
 
-function toRecordInput(event: CredentialEvent): EventRecord {
+// The record a credential event writes, for a backend that commits it inside its own transaction.
+export function buildCredentialRecordInput(event: CredentialEvent): EventRecord {
   return match(event)
     .with({ event: 'refresh_started' }, (started) => ({
       kind: refreshStartedCodec.kind,
@@ -88,6 +96,7 @@ function toRecordInput(event: CredentialEvent): EventRecord {
         credentialID: started.credentialID,
         attemptID: started.attemptID,
         newKeyID: started.newKeyID,
+        removalCounter: started.removalCounter,
       }),
     }))
     .with({ event: 'refresh_saved' }, (saved) => ({

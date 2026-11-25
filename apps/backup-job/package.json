@@ -19,6 +19,7 @@
   },
   "devDependencies": {
     "@heynixie/backup": "workspace:*",
+    "@heynixie/connections": "workspace:*",
     "@heynixie/db": "workspace:*",
     "@heynixie/log": "workspace:*",
     "@heynixie/memory": "workspace:*",

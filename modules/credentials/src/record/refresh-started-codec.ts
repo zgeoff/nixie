@@ -9,5 +9,8 @@ export const refreshStartedCodec = defineRecordCodec(
     credentialID: z.string(),
     attemptID: z.string(),
     newKeyID: z.string(),
+
+    // the credential's removal counter when the refresh began; a record from before it lacks it
+    removalCounter: z.number().nullable().default(null),
   }),
 );

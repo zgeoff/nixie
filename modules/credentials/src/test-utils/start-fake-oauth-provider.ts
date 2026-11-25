@@ -13,6 +13,9 @@ type Responder = (request: FakeProviderRequest) => Response | Promise<Response>;
 export interface FakeOAuthProvider {
   readonly host: string;
   readonly origin: string;
+
+  // another host of the same site, for the requests of a provider's APIs
+  readonly apiOrigin: string;
   readonly ca: string;
   readonly tokenURL: string;
   readonly revokeURL: string;
@@ -31,6 +34,7 @@ export async function startFakeOAuthProvider(
 ): Promise<FakeOAuthProvider> {
   const requests: FakeProviderRequest[] = [];
   const host = 'auth.test';
+  const apiHost = 'api.test';
   let issued = 0;
 
   const responders: Record<'token' | 'revoke', Responder> = {
@@ -47,7 +51,7 @@ export async function startFakeOAuthProvider(
   };
 
   const site = await startTestSite({
-    names: [host, ...(options.otherNames ?? [])],
+    names: [host, apiHost, ...(options.otherNames ?? [])],
     respond: async (request) => {
       const url = new URL(request.url);
 
@@ -73,10 +77,12 @@ export async function startFakeOAuthProvider(
   });
 
   const origin = `https://${host}:${String(site.port)}`;
+  const apiOrigin = `https://${apiHost}:${String(site.port)}`;
 
   return {
     host,
     origin,
+    apiOrigin,
     ca: site.ca,
     tokenURL: `${origin}/token`,
     revokeURL: `${origin}/revoke`,
