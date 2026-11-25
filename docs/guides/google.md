@@ -1,10 +1,12 @@
 # Connect a Google account
 
 Make an OAuth client in your own Google Cloud project, register it in nixie, and connect a Google
-account from Settings → Connections. nixie keeps the account's refresh token sealed in its database,
-and reads Gmail, Calendar and Drive live. The
-[Google connections](../architecture/connectors/google-connections.md) doc covers how consent,
-refresh and Forget work.
+account from Settings → Connections. nixie keeps the account's refresh token sealed in its database.
+The tools that read [Gmail](https://linear.app/zgeoff/issue/GEO-1825),
+[Calendar](https://linear.app/zgeoff/issue/GEO-1826) and
+[Drive](https://linear.app/zgeoff/issue/GEO-1827) come later, so a connection gives the model no
+Google tool yet. The [Google connections](../architecture/connectors/google-connections.md) doc
+covers how consent, refresh and Forget work.
 
 Settings → Connections shows the same 6 steps as this guide, with the same titles, and fills in your
 page's address where a step names it.
@@ -97,8 +99,9 @@ nixie revokes the grant at Google and deletes the connection's keys, so its toke
 once. The page then shows 3 lines:
 
 - Erasure: whether nixie deleted the keys.
-- Revocation: whether Google ended the grant. A revocation of "unknown" or "refused" leaves the
-  grant at Google, so end it by hand as the next section says.
+- Revocation: whether Google ended the grant. After "refused", Google still holds the grant. After
+  "unknown", nixie can't tell whether Google still holds it. In both cases, end it by hand as the
+  next section says.
 - Key backups: whether a published backup set no longer holds the keys. A backup set that nixie made
   before the forget stays readable until the backup job prunes the key repository.
 
