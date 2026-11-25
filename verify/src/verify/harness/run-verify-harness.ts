@@ -188,12 +188,14 @@ export async function runVerifyHarness(): Promise<void> {
     readModelInput: () => ({ text: readLastModelInput(nixie.model.requests) }),
     readActionProposals: async () => {
       const listed = await api.client.approvals.listItems();
+      const records = await nixie.readRecords();
 
       return {
         proposals: listed.items.flatMap((item) => {
-          const tool = /^Run (?<tool>\S+)/u.exec(item.body.approveLabel)?.groups?.['tool'];
+          const record = records.find((entry) => entry.sequence === item.proposal.sequence);
+          const tool = record?.payload['tool'];
 
-          return item.proposal.kind === 'action' && tool !== undefined
+          return item.proposal.kind === 'action' && typeof tool === 'string'
             ? [{ proposalID: item.proposal.proposalID, tool }]
             : [];
         }),
