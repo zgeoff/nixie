@@ -74,6 +74,14 @@ export const controlRoutes = {
       // the starter rules hold for your approval; the coding runner calls no model
       codingTask: codingTaskSchema.optional(),
 
+      // a wake rule that the model sets on its own mailbox with the mail tool before its reply, for
+      // mail from this address or `@domain`
+      mailWatch: z.strictObject({ from: z.string().min(1) }).optional(),
+
+      // the model lists its unread mail with the mail tool, then opens the first mail, before its
+      // reply
+      mailRead: z.boolean().optional(),
+
       // a picture the model draws with the image tool before its reply, the one edit it then makes
       // to that picture, and a list of its pictures
       draw: drawnPictureSchema.optional(),
@@ -127,6 +135,19 @@ export const controlRoutes = {
       text: z.string().min(1),
     }),
     output: z.strictObject({ replies: z.int().positive() }),
+  },
+  deliverMail: {
+    method: 'POST',
+    path: '/control/deliver-mail',
+    input: z.strictObject({
+      from: z.string().min(1),
+      subject: z.string().min(1),
+      text: z.string(),
+
+      // an HTML body, which the mailbox reads in place of the text
+      html: z.string().min(1).exactOptional(),
+    }),
+    output: z.strictObject({ delivered: z.literal(true) }),
   },
   modelReceived: {
     method: 'POST',

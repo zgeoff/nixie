@@ -36,6 +36,20 @@ export function buildScriptedReplies(
   const notebook =
     reply.notebook === undefined ? [] : buildNotebookReplies(reply.notebook, forConversation);
 
+  const mailWatch =
+    reply.mailWatch === undefined
+      ? []
+      : [
+          {
+            toolUse: {
+              name: 'mcp__nixie__mail_wake_set',
+              input: { from: [reply.mailWatch.from], window: '1m' },
+            },
+          },
+        ];
+
+  const mailRead = reply.mailRead === true ? buildMailReadReplies() : [];
+
   const forgetNote =
     reply.forgetNote === undefined
       ? []
@@ -80,6 +94,8 @@ export function buildScriptedReplies(
       ...memoryExport,
       ...drawing,
       ...notebook,
+      ...mailWatch,
+      ...mailRead,
       ...forgetNote,
       ...handover,
       ...codingStart,
@@ -95,6 +111,8 @@ export function buildScriptedReplies(
     ...reminder,
     ...memoryExport,
     ...notebook,
+    ...mailWatch,
+    ...mailRead,
     ...forgetNote,
     ...handover,
     { toolUse: { name: 'mcp__nixie__task_start', input: task }, ...forConversation },
@@ -266,4 +284,29 @@ function readWrittenNoteID(body: ScriptedBody, title: string): string {
   invariant(noteID !== undefined, `the write of the note "${title}" returned no note ID`);
 
   return noteID;
+}
+
+// A list of the unread mail, and the open of the first mail it lists. The open names the mail by
+// the ID that the list's result gave, so a list with no mail fails the request instead.
+function buildMailReadReplies() {
+  return [
+    { toolUse: { name: 'mcp__nixie__mail_list', input: { unread: true } } },
+    {
+      toolUse: {
+        name: 'mcp__nixie__mail_read',
+        input: (body: ScriptedBody) => ({ message: readListedMailID(body) }),
+      },
+    },
+  ];
+}
+
+function readListedMailID(body: ScriptedBody): string {
+  const seen = JSON.stringify(body.messages);
+
+  const mailID = [...seen.matchAll(/mails\\*":\[\{\\*"message\\*":\\*"(?<id>[a-z0-9]+)/gu)].at(-1)
+    ?.groups?.['id'];
+
+  invariant(mailID !== undefined, 'the result of the list names no mail');
+
+  return mailID;
 }

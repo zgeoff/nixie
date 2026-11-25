@@ -55,6 +55,7 @@ The mistakes that cost the most time:
 | policy-proposal   | Approve a call that an ask rule held unrun                    | [references/feature-policy-proposal.md](references/feature-policy-proposal.md)     |
 | task-control      | Pause and resume a task, and see its records agree            | [references/feature-task-control.md](references/feature-task-control.md)           |
 | coding-session    | Start a coding session from chat                              | [references/feature-coding-session.md](references/feature-coding-session.md)       |
+| mail-wake         | Wake the conversation with a mail, and read it                | [references/feature-mail-wake.md](references/feature-mail-wake.md)                 |
 | drawing           | Draw a picture, edit it, and list both                        | [references/feature-drawing.md](references/feature-drawing.md)                     |
 | images-page       | Browse and forget images                                      | [references/feature-images-page.md](references/feature-images-page.md)             |
 | notebook-pages    | Browse notes, open a private one, forget one                  | [references/feature-notebook-pages.md](references/feature-notebook-pages.md)       |

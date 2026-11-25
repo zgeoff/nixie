@@ -516,3 +516,52 @@ test('it fails the note of a reminder whose result names no related memory', () 
     typeof input === 'function' ? input({ messages: [{ role: 'user', content: '{}' }] }) : null,
   ).toThrow('names no related memory');
 });
+
+test('it queues the wake rule call of the mailbox before the reply', () => {
+  expect(
+    buildScriptedReplies({
+      text: 'I will watch for it.',
+      mailWatch: { from: '@library.example.org' },
+    }),
+  ).toStrictEqual([
+    {
+      toolUse: {
+        name: 'mcp__nixie__mail_wake_set',
+        input: { from: ['@library.example.org'], window: '1m' },
+      },
+    },
+    { text: 'I will watch for it.' },
+  ]);
+});
+
+test('it opens the mail that the list of unread mail named', () => {
+  const replies = buildScriptedReplies({ text: 'I read it.', mailRead: true });
+  const [list, open, closing] = replies;
+  const listCall = list !== undefined && 'toolUse' in list ? list.toolUse : null;
+  const openCall = open !== undefined && 'toolUse' in open ? open.toolUse : null;
+  const readInput = openCall?.input;
+
+  const listed = {
+    messages: [
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'tool_result',
+            content: JSON.stringify({ mails: [{ message: 'k3x9a2m1', subject: 'Reset' }] }),
+          },
+        ],
+      },
+    ],
+  };
+
+  const opened = typeof readInput === 'function' ? readInput(listed) : readInput;
+
+  expect([listCall?.name, openCall?.name, closing]).toStrictEqual([
+    'mcp__nixie__mail_list',
+    'mcp__nixie__mail_read',
+    { text: 'I read it.' },
+  ]);
+
+  expect(opened).toStrictEqual({ message: 'k3x9a2m1' });
+});
