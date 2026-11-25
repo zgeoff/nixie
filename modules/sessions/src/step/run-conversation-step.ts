@@ -9,6 +9,7 @@ import {
   readUnlistedProfiles,
 } from '@heynixie/tasks';
 import { runCompactionStep } from '../compaction/run-compaction-step';
+import { isToldWaitNotice } from '../inbox/is-told-wait-notice';
 import { runInboxStep } from '../inbox/run-inbox-step';
 import { canSessionTake } from '../session/can-session-take';
 import { isSessionLive } from '../session/is-session-live';
@@ -171,8 +172,13 @@ async function runSessionStep(step: SessionStep): Promise<StepResult> {
   // an approved call that no step ran has a result to read, though the inbox holds no record
   const hasApprovedCall = (await step.run.inStepActions?.probePending(step.input.taskID)) === true;
 
+  // a wait notice that an earlier turn's opening told needs no turn of its own
+  const isAllTold = step.input.inbox.every((record) =>
+    isToldWaitNotice(record, step.marks.waitNoticeToldThrough),
+  );
+
   if (
-    step.input.inbox.length === 0 &&
+    isAllTold &&
     !hasApprovedCall &&
     !isTaskStart(frame, step.marks) &&
     !isTaskWorkCut(frame, step.marks)
@@ -180,7 +186,7 @@ async function runSessionStep(step: SessionStep): Promise<StepResult> {
     return {
       next: 'wait',
       records: [],
-      acknowledged: [],
+      acknowledged: step.input.inbox.map((record) => record.sequence),
       sessionBoundary: step.input.sessionBoundary,
     };
   }

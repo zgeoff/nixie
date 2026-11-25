@@ -67,9 +67,15 @@ stands, and the claim filter leaves the task's work unclaimed, so a task on anot
 held step ends at once with no step commit. A failed step counts no step error when a route's stop
 explains it, or when the gateway recorded a refusal of the step's sandbox on the step's route after
 the step began, which the sandbox's `lastRefusal` holds, though the route has since reset or risen.
+
 A clear writes `spend.wait_notice` on the thread of each task that waited, and the model's next wake
-reads that it waited about so many minutes, in the first turn whose batch reaches the notice. The
-notice holds no dollar figure and no route.
+reads that it waited about so many minutes. The notice holds no dollar figure and no route. The read
+cursor moves only through an unbroken run of read records, so a notice that falls past the wake's
+batch, at the
+[batch limit or an image cap](../core/conversation-turns.md#inbox-records-as-messages), can't join
+that batch. The turn's opening message tells it instead, with no inbox ID, and the turn end records
+the newest such notice as `waitNoticeToldThrough`. A later batch that reaches a told notice takes it
+with no text, and a step whose inbox holds only told notices marks them read and runs no turn.
 
 ## The watcher
 

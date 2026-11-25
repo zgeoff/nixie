@@ -6,6 +6,7 @@ import invariant from 'tiny-invariant';
 import { renderHeldMessages } from '../held/render-held-messages';
 import { makeGapReader } from '../inbox/make-gap-reader';
 import { readLiveInbox } from '../inbox/read-live-inbox';
+import { renderToldWaitNotices } from '../inbox/render-told-wait-notices';
 import { buildStepPolicyFrame } from '../step/build-step-policy-frame';
 import type { CompletedTurn } from '../step/build-step-result';
 import { makeImageReserver } from '../task/make-image-reserver';
@@ -23,6 +24,7 @@ import type { TurnSilence } from '../utils/build-turn-silence';
 import { buildTurnSilence } from '../utils/build-turn-silence';
 import type { AssistantFrame } from '../utils/run-guest-turn';
 import { runGuestTurn } from '../utils/run-guest-turn';
+import { pickWaitTelling } from './pick-wait-telling';
 import type { OpeningBatch } from './read-opening-batch';
 import { readOpeningBatch } from './read-opening-batch';
 import { readTurnRecalledThrough } from './read-turn-recalled-through';
@@ -45,6 +47,9 @@ export interface LiveTurnPlan {
 
   // the session the turn runs on, which the turn's step token hands each tool call
   readonly session: ToolSession;
+
+  // the newest wait notice that an earlier turn's opening told
+  readonly waitNoticeToldThrough: number;
 }
 
 interface LiveWrites {
@@ -160,6 +165,7 @@ async function runTokenTurn(
   const silent = new Set(opening.batch.silent.map((record) => record.sequence));
 
   const held = renderHeldMessages(opening.batch.records, plan.times, plan.view);
+  const waits = pickWaitTelling(input.inbox, sent, plan.waitNoticeToldThrough);
 
   const live = new AbortController();
 
@@ -182,7 +188,12 @@ async function runTokenTurn(
           modelCalls: capabilities.has('turn-limit') ? (run.modelCallLimit ?? null) : null,
           toolCallWaitMs: run.harness.toolCallWaitMs,
         },
-        input: buildTurnInput(opening.batch.messages, [...plan.preamble, note?.text ?? null, held]),
+        input: buildTurnInput(opening.batch.messages, [
+          ...plan.preamble,
+          note?.text ?? null,
+          renderToldWaitNotices(waits.told, plan.times),
+          held,
+        ]),
       },
       messages:
         hasMore || !capabilities.has('live-messages')
@@ -213,6 +224,7 @@ async function runTokenTurn(
       silent,
       hasMore: hasMore || opening.images.isCapped,
       notedThrough: note?.throughSequence ?? null,
+      waitNoticeToldThrough: waits.toldThrough,
       images: opening.images.spent,
       isSilent: plan.silence.isSilent(),
       runID: buildStepRunID(input),

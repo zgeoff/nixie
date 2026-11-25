@@ -38,6 +38,9 @@ export interface SessionTurn {
 
   readonly images: ImageTally;
 
+  // the newest wait notice that an earlier turn's opening told
+  readonly waitNoticeToldThrough: number;
+
   // the key of the session the turn runs on, which each of its tool calls carries: a new one for a
   // new session, which its opening record keeps
   readonly sessionKey: string;
@@ -71,6 +74,7 @@ export async function runPlannedTurn(
     view: { messaging: turn.run.messaging, wake: turn.input.wake },
     images: turn.images,
     session: { key: turn.sessionKey, invalidatedThrough: turn.invalidatedThrough },
+    waitNoticeToldThrough: turn.waitNoticeToldThrough,
   });
 
   turn.signal.throwIfAborted();

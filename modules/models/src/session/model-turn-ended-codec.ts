@@ -35,6 +35,10 @@ export const modelTurnEndedCodec = defineRecordCodec(
     sessionImageCount: mark,
     recalledThrough: mark.exactOptional(),
     memoryNotedThrough: mark.exactOptional(),
+
+    // the newest wait notice past the turn's batch that a turn's opening told, so no later turn
+    // tells it again
+    waitNoticeToldThrough: mark.exactOptional(),
     isSilent: z.literal(true).exactOptional(),
     isInterrupted: z.literal(true).exactOptional(),
   }),

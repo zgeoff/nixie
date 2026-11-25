@@ -47,6 +47,47 @@ test('it decodes the payload a writer encodes', () => {
   });
 });
 
+test('it decodes the wait notice that a turn end told through', () => {
+  const payload = modelTurnEndedCodec.encode({
+    model: 'claude-test-1',
+    profile: 'chat-direct',
+    stopReason: 'end_turn',
+    turns: 1,
+    inputTokens: 10,
+    outputTokens: 5,
+    cacheReadTokens: 0,
+    cacheWriteTokens: 0,
+    pinnedCore: [],
+    retrieved: [],
+    invalidatedThrough: 0,
+    sessionImageBytes: 0,
+    sessionImageCount: 0,
+    waitNoticeToldThrough: 70,
+  });
+
+  expect(modelTurnEndedCodec.decode(payload).waitNoticeToldThrough).toBe(70);
+});
+
+test('it decodes a turn end written before turns told wait notices, with none told', () => {
+  const decoded = modelTurnEndedCodec.decode({
+    model: 'claude-test-1',
+    profile: 'chat-direct',
+    stopReason: 'end_turn',
+    turns: 1,
+    inputTokens: 10,
+    outputTokens: 5,
+    cacheReadTokens: 0,
+    cacheWriteTokens: 0,
+    pinnedCore: [],
+    retrieved: [],
+    invalidatedThrough: 0,
+    sessionImageBytes: 0,
+    sessionImageCount: 0,
+  });
+
+  expect(decoded.waitNoticeToldThrough).toBeUndefined();
+});
+
 test('it decodes a turn end that carries the turn thinking tokens', () => {
   const payload = modelTurnEndedCodec.encode({
     model: 'claude-test-1',

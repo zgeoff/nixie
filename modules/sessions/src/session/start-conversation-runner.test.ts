@@ -13,7 +13,7 @@ import {
 import type { FileCredentialRef } from '@heynixie/credentials';
 import { buildMockCredentialRef, createTestCredentials } from '@heynixie/credentials/test-utils';
 import type { RecordInput } from '@heynixie/log';
-import { withWriteTransaction } from '@heynixie/log';
+import { spendWaitNoticeCodec, withWriteTransaction } from '@heynixie/log';
 import { modelSessionSummarizedCodec, resolveRoleProfile } from '@heynixie/models';
 import { buildMockModelsConfig } from '@heynixie/models/test-utils';
 import { buildStubSandboxes } from '@heynixie/sandbox/test-utils';
@@ -2822,6 +2822,178 @@ test('it opens a turn with at most the batch limit of inbox records and leaves t
 
   expect(ctx.sandboxes.turns.map((turn) => turn.input.length)).toStrictEqual([64, 2]);
   expect(task.state).toBe('waiting');
+});
+
+test("it tells a wait notice past a full batch in the first turn's opening, with no inbox ID", async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: buildMockCredentialRef(),
+    toolNames: ['notes_read'],
+  });
+
+  await Promise.all(Array.from({ length: 64 }, (_, index) => ctx.writeMessage(`Note ${index}.`)));
+
+  const [notice] = await writeInboxRecords(ctx.context, [
+    {
+      kind: 'spend.wait_notice',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: spendWaitNoticeCodec.encode({
+        taskID: 'conversation',
+        sinceMs: 0,
+        untilMs: 5 * 60_000,
+      }),
+    },
+  ]);
+
+  invariant(notice !== undefined, 'the notice was written');
+
+  await ctx.runNextStep(runner);
+
+  const first = ctx.sandboxes.turns[0]?.input[0]?.text;
+
+  expect([ctx.sandboxes.turns[0]?.input.length, first]).toStrictEqual([
+    64,
+    expect.toSatisfy(
+      (text: string) =>
+        text.includes(
+          'This task waited about 5 min for a spending limit and has resumed. Nothing was lost.',
+        ) && !text.includes(`#${String(notice.sequence)}`),
+    ),
+  ]);
+});
+
+test('it tells a wait notice once, and takes it with no turn when it is all the next wake holds', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: buildMockCredentialRef(),
+    toolNames: ['notes_read'],
+  });
+
+  await Promise.all(Array.from({ length: 64 }, (_, index) => ctx.writeMessage(`Note ${index}.`)));
+
+  await writeInboxRecords(ctx.context, [
+    {
+      kind: 'spend.wait_notice',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: spendWaitNoticeCodec.encode({
+        taskID: 'conversation',
+        sinceMs: 0,
+        untilMs: 5 * 60_000,
+      }),
+    },
+  ]);
+
+  await ctx.runNextStep(runner);
+  await ctx.runNextStep(runner);
+
+  const task = await readTestTaskProgress(ctx.context, 'conversation');
+  const [notice] = await ctx.readKinds('spend.wait_notice');
+
+  invariant(notice !== undefined, 'the notice was written');
+
+  expect([ctx.sandboxes.turns.length, task.state, task.readCursor]).toStrictEqual([
+    1,
+    'waiting',
+    notice.sequence,
+  ]);
+});
+
+test('it tells a wait notice in no later turn, while later batches still fall short of it', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: buildMockCredentialRef(),
+    toolNames: ['notes_read'],
+  });
+
+  await Promise.all(Array.from({ length: 128 }, (_, index) => ctx.writeMessage(`Note ${index}.`)));
+
+  await writeInboxRecords(ctx.context, [
+    {
+      kind: 'spend.wait_notice',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: spendWaitNoticeCodec.encode({
+        taskID: 'conversation',
+        sinceMs: 0,
+        untilMs: 5 * 60_000,
+      }),
+    },
+  ]);
+
+  await ctx.writeMessage('After the wait.');
+  await ctx.runNextStep(runner);
+  await ctx.runNextStep(runner);
+  await ctx.runNextStep(runner);
+
+  const told = ctx.sandboxes.turns.map((turn) =>
+    turn.input.some((message) => message.text.includes('This task waited')),
+  );
+
+  expect(told).toStrictEqual([true, false, false]);
+});
+
+test("it tells a wait notice that sits behind more images than a turn takes in the first turn's opening", async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: buildMockCredentialRef(),
+    toolNames: ['notes_read'],
+  });
+
+  await writeInboxRecords(
+    ctx.context,
+    Array.from({ length: 26 }, () => ({
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: { images: Array.from({ length: 4 }, () => ({ mediaType: 'image/png' })) },
+      erasable: { text: 'Four more icons.' },
+      attachments: Array.from({ length: 4 }, () => new Uint8Array(6).fill(3)),
+    })),
+  );
+
+  await writeInboxRecords(ctx.context, [
+    {
+      kind: 'spend.wait_notice',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: spendWaitNoticeCodec.encode({
+        taskID: 'conversation',
+        sinceMs: 0,
+        untilMs: 5 * 60_000,
+      }),
+    },
+  ]);
+
+  await ctx.runNextStep(runner);
+  await ctx.runNextStep(runner);
+
+  const told = ctx.sandboxes.turns.map((turn) => [
+    turn.input.length,
+    turn.input.some((message) => message.text.includes('This task waited')),
+  ]);
+
+  expect(told).toStrictEqual([
+    [25, true],
+    [1, false],
+  ]);
 });
 
 test('it keeps the session boundary and runs no turn for a step with nothing unread', async () => {

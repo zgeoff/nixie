@@ -30,6 +30,9 @@ export interface CompletedTurn {
 
   readonly notedThrough: number | null;
 
+  // the newest wait notice past the batch, which the turn's opening told now or an earlier turn's did
+  readonly waitNoticeToldThrough: number | null;
+
   readonly images: ImageTally;
 
   readonly isSilent: boolean;
@@ -121,6 +124,9 @@ function buildTurnRecords(source: ModelRecordSource, completed: StepTurn): reado
         ? {}
         : { recalledThrough: completed.turn.endedMark }),
       ...(completed.notedThrough === null ? {} : { memoryNotedThrough: completed.notedThrough }),
+      ...(completed.waitNoticeToldThrough === null
+        ? {}
+        : { waitNoticeToldThrough: completed.waitNoticeToldThrough }),
     }),
   ];
 }

@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { readRecords, writeRecords } from '@heynixie/log';
+import { readRecords } from '@heynixie/log';
 import { holdTaskOnRoute, readSpendFacts, settleRouteStops } from '@heynixie/spend';
 import {
   buildMockGatewayStatus,
@@ -8,7 +8,6 @@ import {
 } from '@heynixie/spend/test-utils';
 import { buildMockTaskMessageView } from '../test-utils/build-mock-task-message-view';
 import { readTurnBatch } from '../turn/read-turn-batch';
-import { inboxBatchLimit } from './inbox-batch-limit';
 
 async function setupTest() {
   const spend = await startTestSpend();
@@ -24,11 +23,12 @@ async function setupTest() {
 
   return {
     ...spend,
-    readInbox: (inbox: Parameters<typeof readTurnBatch>[1]) =>
+    readInbox: (inbox: Parameters<typeof readTurnBatch>[1], waitNoticeToldThrough = 0) =>
       readTurnBatch({ log: spend.log, readDefinitionVersion: () => Promise.resolve(null) }, inbox, {
         times: { defaultZone: 'UTC', now: new Date(spend.clock.now()) },
         view: buildMockTaskMessageView(),
         imageBudget: { bytes: 24 * 1024 * 1024, count: 100 },
+        waitNoticeToldThrough,
       }),
     settle,
     readWaitNotices: () =>
@@ -63,18 +63,8 @@ test('it tells the model its next wake that it waited about so many minutes for 
   expect(message).not.toMatch(/\$|dollar|\bplan\b|\b41(?:\.2)?\b/u);
 });
 
-test('it tells the model in the turn after a full batch of earlier messages, not never', async () => {
+test("it takes a notice that a turn's opening told with no text, so the read cursor passes it", async () => {
   const ctx = await setupTest();
-
-  const earlier = await writeRecords(
-    ctx.log,
-    Array.from({ length: inboxBatchLimit }, (_, index) => ({
-      kind: 'owner_message',
-      definitions: { snapshotHash: 'sha256:aa11' },
-      thread: 'conversation',
-      erasable: { text: `Note ${index + 1}` },
-    })),
-  );
 
   ctx.gateway.readStatus.mockResolvedValue({ kind: 'ok', value: buildTrippedGatewayStatus() });
 
@@ -89,12 +79,9 @@ test('it tells the model in the turn after a full batch of earlier messages, not
 
   const notices = await ctx.readWaitNotices();
 
-  const inbox = [...earlier, ...notices.map((notice) => notice.record)];
+  const inbox = notices.map((notice) => notice.record);
 
-  const first = await ctx.readInbox(inbox);
-  const second = await ctx.readInbox(inbox.slice(first.records.length));
+  const batch = await ctx.readInbox(inbox, inbox.at(-1)?.sequence);
 
-  expect(second.messages.map((entry) => entry.text).join('\n')).toInclude(
-    'This task waited about 5 min',
-  );
+  expect(batch).toStrictEqual({ records: inbox, messages: [], silent: inbox });
 });
