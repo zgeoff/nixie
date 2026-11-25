@@ -9,10 +9,47 @@ import { startTestAPI } from '../test-utils/start-test-api';
 async function setupTest(options: { hasTrustedTypes?: boolean } = {}) {
   const api = await startTestAPI();
 
+  // Sits between the front and the API, and puts a script ahead of the bridge in each frame, so a
+  // page can read the window it would start with if no bridge ran.
+  const answerStart = async (request: Request): Promise<Response> => {
+    const url = new URL(request.url);
+
+    const answer = await globalThis.fetch(`${api.url}${url.pathname}${url.search}`, {
+      method: request.method,
+      headers: {
+        'x-forwarded-proto': request.headers.get('x-forwarded-proto') ?? '',
+        'x-forwarded-host': request.headers.get('x-forwarded-host') ?? '',
+      },
+    });
+
+    if (!url.pathname.includes('/frames/')) {
+      return answer;
+    }
+
+    const headers = new Headers(answer.headers);
+
+    headers.delete('content-length');
+
+    const document = await answer.text();
+
+    const probe = '<script>window.startingXSLT = typeof XSLTProcessor;</script>';
+
+    return new Response(document.replace('<script>', `${probe}<script>`), {
+      status: answer.status,
+      headers,
+    });
+  };
+
+  const start = Bun.serve({ fetch: answerStart, hostname: '127.0.0.1', port: 0 });
+
+  onTestFinished(async () => {
+    await start.stop(true);
+  });
+
   const holder = { frame: '' };
 
   const front = startPageFrameFront({
-    apiURL: api.url,
+    apiURL: `http://127.0.0.1:${String(start.port)}`,
     readFrame: () => holder.frame,
     hasTrustedTypes: options.hasTrustedTypes ?? true,
   });
@@ -151,21 +188,25 @@ test('it keeps a page from reaching the network or the device page around it', a
       });
       await attempt('deviceAPI', () => fetch('/rpc/devices/resize', { method: 'POST' }));
 
+      nixie.onMessage(() => {
+        new Image().src = evil + '/image';
+
+        const form = document.createElement('form');
+        form.action = evil + '/form';
+        form.method = 'post';
+        document.body.append(form);
+        form.submit();
+
+        location.href = evil + '/navigate';
+      });
+
       nixie.send('probed', results);
-
-      new Image().src = evil + '/image';
-
-      const form = document.createElement('form');
-      form.action = evil + '/form';
-      form.method = 'post';
-      document.body.append(form);
-      form.submit();
-
-      location.href = evil + '/navigate';
     })();
   </script>`);
 
   await ctx.waitForPost('probed');
+  await ctx.waitForFrameLoads(1);
+  await ctx.post({ nixie: true, type: 'message', data: 'leave' });
   await ctx.waitForFrameLoads(2);
 
   const posts = await ctx.readPosts();
@@ -261,22 +302,102 @@ test('it keeps a page from opening a connection by markup in a browser without t
 });
 
 test.each([
-  { route: 'document.write arguments', outcome: 'TypeError', hasTrustedTypes: true },
-  { route: 'document.write calls', outcome: 'TypeError', hasTrustedTypes: true },
-  { route: 'document.writeln arguments', outcome: 'TypeError', hasTrustedTypes: true },
-  { route: 'a prefixed element name', outcome: 'span', hasTrustedTypes: true },
-  { route: 'prefixed XML markup', outcome: 'span', hasTrustedTypes: true },
-  { route: 'a new document', outcome: 'span', hasTrustedTypes: true },
-  { route: 'an XSLT transform', outcome: 'ReferenceError', hasTrustedTypes: true },
-  { route: 'markup after replaced RegExp methods', outcome: 'span', hasTrustedTypes: true },
-  { route: 'document.write arguments', outcome: 'TypeError', hasTrustedTypes: false },
-  { route: 'document.write calls', outcome: 'TypeError', hasTrustedTypes: false },
-  { route: 'document.writeln arguments', outcome: 'TypeError', hasTrustedTypes: false },
-  { route: 'a prefixed element name', outcome: 'span', hasTrustedTypes: false },
-  { route: 'prefixed XML markup', outcome: 'span', hasTrustedTypes: false },
-  { route: 'a new document', outcome: 'span', hasTrustedTypes: false },
-  { route: 'an XSLT transform', outcome: 'ReferenceError', hasTrustedTypes: false },
-  { route: 'markup after replaced RegExp methods', outcome: 'span', hasTrustedTypes: false },
+  {
+    route: 'document.write arguments',
+    outcome: 'TypeError: a page cannot write into its document',
+    write: 'native',
+    hasTrustedTypes: true,
+  },
+  {
+    route: 'document.write calls',
+    outcome: 'TypeError: a page cannot write into its document',
+    write: 'native',
+    hasTrustedTypes: true,
+  },
+  {
+    route: 'document.writeln arguments',
+    outcome: 'TypeError: a page cannot write into its document',
+    write: 'native',
+    hasTrustedTypes: true,
+  },
+  {
+    route: 'a prefixed element name',
+    outcome: 'span',
+    write: 'native',
+    hasTrustedTypes: true,
+  },
+  {
+    route: 'prefixed XML markup',
+    outcome: 'span',
+    write: 'native',
+    hasTrustedTypes: true,
+  },
+  {
+    route: 'a new document',
+    outcome: 'span',
+    write: 'native',
+    hasTrustedTypes: true,
+  },
+  {
+    route: 'an XSLT transform',
+    outcome: 'ReferenceError: XSLTProcessor is not defined',
+    write: 'native',
+    hasTrustedTypes: true,
+  },
+  {
+    route: 'markup after replaced RegExp methods',
+    outcome: 'span',
+    write: 'native',
+    hasTrustedTypes: true,
+  },
+  {
+    route: 'document.write arguments',
+    outcome: 'TypeError: a page cannot write into its document',
+    write: 'replaced',
+    hasTrustedTypes: false,
+  },
+  {
+    route: 'document.write calls',
+    outcome: 'TypeError: a page cannot write into its document',
+    write: 'replaced',
+    hasTrustedTypes: false,
+  },
+  {
+    route: 'document.writeln arguments',
+    outcome: 'TypeError: a page cannot write into its document',
+    write: 'replaced',
+    hasTrustedTypes: false,
+  },
+  {
+    route: 'a prefixed element name',
+    outcome: 'span',
+    write: 'replaced',
+    hasTrustedTypes: false,
+  },
+  {
+    route: 'prefixed XML markup',
+    outcome: 'span',
+    write: 'replaced',
+    hasTrustedTypes: false,
+  },
+  {
+    route: 'a new document',
+    outcome: 'span',
+    write: 'replaced',
+    hasTrustedTypes: false,
+  },
+  {
+    route: 'an XSLT transform',
+    outcome: 'ReferenceError: XSLTProcessor is not defined',
+    write: 'replaced',
+    hasTrustedTypes: false,
+  },
+  {
+    route: 'markup after replaced RegExp methods',
+    outcome: 'span',
+    write: 'replaced',
+    hasTrustedTypes: false,
+  },
 ])(
   'it keeps a page from opening a connection by a resource hint made through $route, trusted types shown: $hasTrustedTypes',
   async (row) => {
@@ -316,6 +437,9 @@ test.each([
         return link.localName;
       },
       'an XSLT transform': () => {
+        if (window.startingXSLT !== 'function') {
+          return 'no XSLTProcessor before the bridge ran';
+        }
         const sheet = '<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">' +
           '<xsl:template match="/"><xsl:element name="link" namespace="' + xhtml + '">' +
           '<xsl:attribute name="rel">preconnect</xsl:attribute>' +
@@ -336,13 +460,14 @@ test.each([
       },
     };
 
+    const write = Function.prototype.toString.call(document.write).includes('[native code]') ? 'native' : 'replaced';
     let outcome;
     try {
       outcome = attacks[${JSON.stringify(row.route)}]();
     } catch (error) {
-      outcome = error.name;
+      outcome = error.name + ': ' + error.message;
     }
-    setTimeout(() => nixie.send('settled', { outcome, links: document.querySelectorAll('link').length }), 1500);
+    setTimeout(() => nixie.send('settled', { outcome, write, links: document.querySelectorAll('link').length }), 1500);
   </script>`);
 
     await ctx.waitForPost('settled');
@@ -353,7 +478,7 @@ test.each([
       posts.find((post) => post.name === 'settled')?.data,
       ctx.front.evilConnections.count,
       ctx.front.evilRequests,
-    ]).toStrictEqual([{ outcome: row.outcome, links: 0 }, 0, []]);
+    ]).toStrictEqual([{ outcome: row.outcome, write: row.write, links: 0 }, 0, []]);
   },
 );
 
