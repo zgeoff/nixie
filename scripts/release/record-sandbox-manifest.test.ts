@@ -36,6 +36,7 @@ test('it outputs the manifest of the image jobs and adds it to the summary', asy
         code: { outputs: { ref: 'ghcr.io/heynixie/nixie-code@sha256:cc33' } },
         codex: { outputs: { ref: 'ghcr.io/heynixie/nixie-codex@sha256:dd44' } },
         computer: { outputs: { ref: 'ghcr.io/heynixie/nixie-computer@sha256:ab99' } },
+        render: { outputs: { ref: 'ghcr.io/heynixie/nixie-render@sha256:ba88' } },
         conversation: { outputs: { ref: 'ghcr.io/heynixie/nixie-conversation@sha256:aa11' } },
       }),
       GITHUB_OUTPUT: ctx.outputPath,
@@ -47,11 +48,11 @@ test('it outputs the manifest of the image jobs and adds it to the summary', asy
   expect(result.exitCode).toBe(0);
 
   expect(readFileSync(ctx.outputPath, 'utf8')).toBe(
-    'json={"conversation":"ghcr.io/heynixie/nixie-conversation@sha256:aa11","fetch":"ghcr.io/heynixie/nixie-fetch@sha256:bb22","code":"ghcr.io/heynixie/nixie-code@sha256:cc33","codex":"ghcr.io/heynixie/nixie-codex@sha256:dd44","computer":"ghcr.io/heynixie/nixie-computer@sha256:ab99"}\n',
+    'json={"conversation":"ghcr.io/heynixie/nixie-conversation@sha256:aa11","fetch":"ghcr.io/heynixie/nixie-fetch@sha256:bb22","code":"ghcr.io/heynixie/nixie-code@sha256:cc33","codex":"ghcr.io/heynixie/nixie-codex@sha256:dd44","computer":"ghcr.io/heynixie/nixie-computer@sha256:ab99","render":"ghcr.io/heynixie/nixie-render@sha256:ba88"}\n',
   );
 
   expect(readFileSync(ctx.summaryPath, 'utf8')).toBe(
-    '{"conversation":"ghcr.io/heynixie/nixie-conversation@sha256:aa11","fetch":"ghcr.io/heynixie/nixie-fetch@sha256:bb22","code":"ghcr.io/heynixie/nixie-code@sha256:cc33","codex":"ghcr.io/heynixie/nixie-codex@sha256:dd44","computer":"ghcr.io/heynixie/nixie-computer@sha256:ab99"}\n',
+    '{"conversation":"ghcr.io/heynixie/nixie-conversation@sha256:aa11","fetch":"ghcr.io/heynixie/nixie-fetch@sha256:bb22","code":"ghcr.io/heynixie/nixie-code@sha256:cc33","codex":"ghcr.io/heynixie/nixie-codex@sha256:dd44","computer":"ghcr.io/heynixie/nixie-computer@sha256:ab99","render":"ghcr.io/heynixie/nixie-render@sha256:ba88"}\n',
   );
 });
 
