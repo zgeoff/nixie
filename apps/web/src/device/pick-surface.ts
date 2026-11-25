@@ -6,14 +6,16 @@ export type Surface =
   | { readonly kind: 'layout'; readonly layout: NonNullable<DeviceLayout> };
 
 // What the screen draws, in the order the design fixes: a show that has not ended, then the layout
-// while at least one region shows content, then the idle scene. Before the stream's first event the
+// while at least one region shows content or has a background, then the idle scene. Before the stream's first event the
 // screen is black.
 export function pickSurface(event: ScreenEvent | null, layout: DeviceLayout): Surface {
   if (event?.kind === 'show') {
     return { kind: 'blocks', blocks: [event.content] };
   }
 
-  const isLayoutShown = layout !== null && layout.regions.some((region) => region.content !== null);
+  const isLayoutShown =
+    layout !== null &&
+    layout.regions.some((region) => region.content !== null || region.background !== null);
 
   if (isLayoutShown) {
     return { kind: 'layout', layout };

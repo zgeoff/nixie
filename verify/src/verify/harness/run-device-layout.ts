@@ -1,11 +1,20 @@
 import type { ContractClient } from '@heynixie/contract';
 import { buildLayoutReplies } from './build-layout-replies';
+import type { LayoutStep } from './build-layout-replies';
 import type { ReplyQueue } from './run-device-show';
 
 export interface DeviceLayoutInput {
-  readonly step: 'set' | 'update';
+  readonly step: LayoutStep;
   readonly text: string;
 }
+
+const layoutMessages = {
+  set: 'Lay out the screen in the hall.',
+  update: 'Change the note on the screen in the hall.',
+  save: 'Save the layout of the screen in the hall as evening.',
+  change: 'Change the layout of the screen in the hall.',
+  restore: 'Restore the evening layout of the screen in the hall.',
+} as const satisfies Record<LayoutStep, string>;
 
 // Queues the turn that lays out the first device's screen, or updates one of its regions, then
 // sends the owner's message that starts the turn. The message is fixed for each step, so the
@@ -23,10 +32,7 @@ export async function runDeviceLayout(
     clientMessageId: crypto.randomUUID(),
     images: [],
     spans: [],
-    text:
-      layout.step === 'set'
-        ? 'Lay out the screen in the hall.'
-        : 'Change the note on the screen in the hall.',
+    text: layoutMessages[layout.step],
     thread: 'conversation',
   });
 

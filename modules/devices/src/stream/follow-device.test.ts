@@ -341,9 +341,36 @@ test('#followDevice sends a layout that the assistant sets while the stream is o
       columns: ['1fr', '2fr', '1fr'],
       rows: ['1fr'],
       regions: [
-        { name: 'pond', column: 1, row: 1, columnSpan: 1, rowSpan: 1, content: null, until: null },
-        { name: 'note', column: 2, row: 1, columnSpan: 1, rowSpan: 1, content: null, until: null },
-        { name: 'clock', column: 3, row: 1, columnSpan: 1, rowSpan: 1, content: null, until: null },
+        {
+          name: 'pond',
+          column: 1,
+          row: 1,
+          columnSpan: 1,
+          rowSpan: 1,
+          background: null,
+          content: null,
+          until: null,
+        },
+        {
+          name: 'note',
+          column: 2,
+          row: 1,
+          columnSpan: 1,
+          rowSpan: 1,
+          background: null,
+          content: null,
+          until: null,
+        },
+        {
+          name: 'clock',
+          column: 3,
+          row: 1,
+          columnSpan: 1,
+          rowSpan: 1,
+          background: null,
+          content: null,
+          until: null,
+        },
       ],
     },
   });
@@ -411,6 +438,52 @@ test('#followDevice sends a region update as a layout event and no screen event'
       regions: [
         { name: 'pond', content: { kind: 'live', live: 'clock', format: 'HH:mm' } },
         { name: 'note', content: null },
+        { name: 'clock', content: null },
+      ],
+    },
+  });
+});
+
+test('#followDevice sends a saved layout that the assistant restores while the stream is open', async () => {
+  const ctx = await setupTest();
+  const device = await ctx.seed.screenOnDevice();
+
+  const events = ctx.follow(device.deviceID);
+
+  await events.next();
+  await ctx.seed.layout(device.deviceID);
+  await events.next();
+
+  await ctx.call('device.region', {
+    device: device.deviceID,
+    region: 'note',
+    content: { kind: 'markdown', markdown: 'Bins go out tonight' },
+  });
+
+  await events.next();
+  await ctx.call('device.layout_save', { device: device.deviceID, name: 'evening' });
+
+  await ctx.call('device.layout', {
+    device: device.deviceID,
+    columns: ['1fr'],
+    rows: ['1fr'],
+    regions: [{ name: 'garden', column: 1, row: 1 }],
+  });
+
+  await events.next();
+  await ctx.call('device.layout_restore', { device: device.deviceID, name: 'evening' });
+
+  const restored = await events.next();
+
+  ctx.stop();
+
+  expect(restored.value).toMatchObject({
+    kind: 'layout',
+    layout: {
+      columns: ['1fr', '2fr', '1fr'],
+      regions: [
+        { name: 'pond', content: null },
+        { name: 'note', content: { kind: 'markdown', markdown: 'Bins go out tonight' } },
         { name: 'clock', content: null },
       ],
     },

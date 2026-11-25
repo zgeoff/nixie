@@ -14,6 +14,7 @@ test('#collectLayoutImages names the image of each region that shows one', () =>
           row: 1,
           columnSpan: 1,
           rowSpan: 1,
+          background: null,
           shown: {
             shownID: 'sh1',
             sequence: 1,
@@ -27,6 +28,7 @@ test('#collectLayoutImages names the image of each region that shows one', () =>
           row: 1,
           columnSpan: 1,
           rowSpan: 1,
+          background: null,
           shown: {
             shownID: 'sh2',
             sequence: 2,
@@ -34,7 +36,15 @@ test('#collectLayoutImages names the image of each region that shows one', () =>
             untilMs: null,
           },
         },
-        { name: 'clock', column: 3, row: 1, columnSpan: 1, rowSpan: 1, shown: null },
+        {
+          name: 'clock',
+          column: 3,
+          row: 1,
+          columnSpan: 1,
+          rowSpan: 1,
+          background: null,
+          shown: null,
+        },
       ],
     }),
   ).toStrictEqual(['k3x9m2p7qa']);

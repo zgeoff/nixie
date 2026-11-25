@@ -8,5 +8,6 @@ export async function removeDevicePointers(tx: Transaction<unknown>): Promise<vo
 
   await db.deleteFrom('device_regions').execute();
   await db.deleteFrom('device_layouts').execute();
+  await db.deleteFrom('device_saved_layouts').execute();
   await db.updateTable('devices').set({ shown_sequence: null, idle_sequence: null }).execute();
 }

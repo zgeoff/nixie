@@ -1,3 +1,4 @@
+import { regionBackgroundSchema } from '@heynixie/contract';
 import { defineRecordCodec } from '@heynixie/log';
 import { z } from 'zod';
 
@@ -7,6 +8,9 @@ const layoutRegionSchema = z.object({
   row: z.int(),
   columnSpan: z.int(),
   rowSpan: z.int(),
+
+  // a record from before backgrounds holds none
+  background: regionBackgroundSchema.nullable().default(null),
 });
 
 const layoutGridSchema = z.object({

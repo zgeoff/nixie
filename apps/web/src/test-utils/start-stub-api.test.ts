@@ -55,6 +55,39 @@ test('it holds back the answer to a delayed path and not the others', async () =
   expect([delayedMs >= 290, otherMs < 290]).toStrictEqual([true, true]);
 });
 
+test('it answers a held path only after its release, and the others meanwhile', async () => {
+  const api = startStubAPI();
+  const release = api.holdPath('/rpc/sessions/list');
+  const answered: string[] = [];
+
+  const send = async (path: string) => {
+    const response = await fetch(`${api.url}${path}`, {
+      body: '{}',
+      headers: { 'content-type': 'application/json', 'x-nixie-client': 'web' },
+      method: 'POST',
+    });
+
+    answered.push(path);
+
+    return response.status;
+  };
+
+  const held = send('/rpc/sessions/list');
+
+  await send('/rpc/tasks/list');
+
+  const beforeRelease = [...answered];
+
+  release();
+
+  await held;
+
+  expect([beforeRelease, answered]).toStrictEqual([
+    ['/rpc/tasks/list'],
+    ['/rpc/tasks/list', '/rpc/sessions/list'],
+  ]);
+});
+
 test('it stops the server when the test finishes', () => {
   const api = startStubAPI();
 

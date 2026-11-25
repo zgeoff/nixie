@@ -5,6 +5,7 @@ import { readDeviceByIdentity } from '../device/read-device-by-identity';
 import { readLayout } from '../layout/read-layout';
 import type { OpenDeviceStream } from '../stream/create-device-streams';
 import { createDeviceStreams, deviceOfflineGraceMs } from '../stream/create-device-streams';
+import { forgetTestRecord } from './forget-test-record';
 import { makeDeviceToolCaller } from './make-device-tool-caller';
 import { makeDeviceToolPreparer } from './make-device-tool-preparer';
 import { removeTestRecordKey } from './remove-test-record-key';
@@ -46,6 +47,9 @@ export async function startTestDevices() {
       await waitForCondition(() => !streams.isOnline(deviceID));
     },
     removeKey: (sequence: number) => removeTestRecordKey(log, sequence),
+
+    // a forget through the erasure runner
+    forget: (sequence: number) => forgetTestRecord(log, sequence),
     readLayout: (deviceID: string) => readLayout(log, deviceID, clock.now()),
 
     // a server that just started over the same data directory: the old writer is stopped, and no

@@ -1,3 +1,4 @@
+import type { DeviceEvent } from '@heynixie/contract';
 import { Collection } from '@msw/data';
 import { z } from 'zod';
 
@@ -11,13 +12,21 @@ const sessionsWithoutDevice = new Collection({
   schema: z.object({ sessionID: z.uuid() }),
 });
 
+// the layout the stream sends to a device, which a test sets; null sends none
+const layoutHolder: { layout: Extract<DeviceEvent, { kind: 'layout' }>['layout'] } = {
+  layout: null,
+};
+
 export const deviceStore = {
   resizes,
+  layoutHolder,
   sessionsWithoutDevice,
   hasDevice: (sessionID: string): boolean =>
     sessionsWithoutDevice.findFirst((query) => query.where({ sessionID })) === undefined,
   reset: (): void => {
     resizes.clear();
     sessionsWithoutDevice.clear();
+
+    layoutHolder.layout = null;
   },
 };
