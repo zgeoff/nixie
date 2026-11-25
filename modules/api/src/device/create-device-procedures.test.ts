@@ -1425,11 +1425,6 @@ test('it answers a page the fetch that its region declared, and refuses the othe
   const shown = page.shown ?? '';
   const url = 'https://tides.example/today';
 
-  streams.fetches.declare(
-    { deviceID: page.deviceID, region: 'pond' },
-    { shown, fetches: [{ url, refreshMinutes: undefined }], isCovered: true },
-  );
-
   const notReady = await page.client.devices
     .pageData({ region: 'pond', shown, url })
     .catch((error: unknown) => error);
@@ -1481,24 +1476,22 @@ test('it answers a refused fetch to the page as REFUSED', async () => {
   });
 
   const streams = ctx.context.clients.devices;
+  const shown = page.shown ?? '';
   const url = 'https://tides.example/today';
 
-  streams.fetches.declare(
-    { deviceID: page.deviceID, region: 'pond' },
-    { shown: page.shown ?? '', fetches: [{ url, refreshMinutes: undefined }], isCovered: true },
-  );
-
   streams.fetches.record(
-    { deviceID: page.deviceID, region: 'pond', shown: page.shown ?? '', url },
+    { deviceID: page.deviceID, region: 'pond', shown, url },
     {
       kind: 'refused',
       reason: 'the rules no longer allow it',
     },
   );
 
-  const refused = page.client.devices.pageData({ region: 'pond', shown: page.shown ?? '', url });
+  const refused = await page.client.devices
+    .pageData({ region: 'pond', shown, url })
+    .catch((error: unknown) => error);
 
   page.stop();
 
-  expect(refused).rejects.toMatchObject({ code: 'REFUSED' });
+  expect(refused).toMatchObject({ code: 'REFUSED' });
 });
