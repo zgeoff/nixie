@@ -21,6 +21,11 @@ async function setupTest() {
 
   const view = new Bun.WebView({ backend: 'chrome' });
 
+  // the screen setting that the device page stores outlives the test in the one Chrome
+  onTestFinished(async () => {
+    await view.evaluate('localStorage.clear()');
+  });
+
   onTestFinished(async () => {
     await view.cdp('Emulation.clearDeviceMetricsOverride');
   });
@@ -35,6 +40,8 @@ async function setupTest() {
   const session = await store.sessions.create({ deviceName: 'desk panel' });
 
   await setupSignedInBrowser(view, { appURL: proxy.url, token: session.token });
+
+  await view.evaluate('localStorage.clear()');
 
   return {
     appURL: proxy.url,
@@ -82,6 +89,26 @@ async function setupTest() {
         mobile: false,
       }),
     waitForPage: (expression: string) => waitForPage(view, expression, 8000),
+
+    // opens the device page with its screen off, and switches the screen on once the page hydrated
+    switchScreenOn: async () => {
+      await view.navigate(`${proxy.url}/device`);
+
+      // the button answers only once React has hydrated it, which attaches the props to its node
+      await waitForPage(
+        view,
+        `Object.keys(document.querySelector('button') ?? {}).some((key) => key.startsWith('__reactProps'))`,
+        8000,
+      );
+
+      await view.click('button');
+
+      await waitForPage(
+        view,
+        `document.querySelector('[data-testid="screen"], [data-testid="layout"]') !== null`,
+        8000,
+      );
+    },
   };
 }
 
@@ -143,4 +170,106 @@ test('it sends one resize with the new size after the window resizes', async () 
   await ctx.advancePageClock(2500);
 
   expect(ctx.readResizes()).toStrictEqual([{ width: 820, height: 610, pixelRatio: 1 }]);
+});
+
+test('it scales a live value and markdown to fill their regions', async () => {
+  const ctx = await setupTest();
+
+  deviceStore.layoutHolder.layout = {
+    columns: ['1fr'],
+    rows: ['1fr', '1fr'],
+    regions: [
+      {
+        name: 'clock',
+        column: 1,
+        row: 1,
+        columnSpan: 1,
+        rowSpan: 1,
+        background: null,
+        content: { kind: 'live', live: 'clock', format: 'HH:mm:ss' },
+        until: null,
+      },
+      {
+        name: 'note',
+        column: 1,
+        row: 2,
+        columnSpan: 1,
+        rowSpan: 1,
+        background: null,
+        content: { kind: 'markdown', markdown: 'Bins go out tonight' },
+        until: null,
+      },
+    ],
+  };
+
+  await ctx.setViewport({ width: 1000, height: 700 });
+  await ctx.switchScreenOn();
+
+  // the region is 350 px tall and 1000 px wide: the default text is 24 px, so a value that fills
+  // it is far larger and still inside it
+  await ctx.waitForPage(
+    `(() => {
+      const fits = (name) => {
+        const box = document.querySelector('[data-region="' + name + '"] [data-fit="box"]');
+        const text = box?.firstElementChild;
+        return text !== null && text !== undefined && parseFloat(getComputedStyle(text).fontSize) > 90 && text.scrollWidth <= box.clientWidth && text.scrollHeight <= box.clientHeight;
+      };
+      return fits('clock') && fits('note');
+    })()`,
+  );
+});
+
+test('it shows the background of a region', async () => {
+  const ctx = await setupTest();
+
+  deviceStore.layoutHolder.layout = {
+    columns: ['1fr', '1fr'],
+    rows: ['1fr'],
+    regions: [
+      {
+        name: 'pond',
+        column: 1,
+        row: 1,
+        columnSpan: 1,
+        rowSpan: 1,
+        background: 'teal',
+        content: { kind: 'markdown', markdown: 'ripples' },
+        until: null,
+      },
+      {
+        name: 'note',
+        column: 2,
+        row: 1,
+        columnSpan: 1,
+        rowSpan: 1,
+        background: '#102030',
+        content: { kind: 'markdown', markdown: 'Bins go out tonight' },
+        until: null,
+      },
+    ],
+  };
+
+  await ctx.switchScreenOn();
+
+  await ctx.waitForPage(
+    `getComputedStyle(document.querySelector('[data-region="pond"]')).backgroundColor === 'rgb(0, 128, 128)' && getComputedStyle(document.querySelector('[data-region="note"]')).backgroundColor === 'rgb(16, 32, 48)'`,
+  );
+});
+
+test('it hides the screen buttons until a touch, and hides them again after a few seconds', async () => {
+  const ctx = await setupTest();
+
+  await ctx.switchScreenOn();
+
+  const isShown = `[...document.querySelectorAll('button')].filter((button) => getComputedStyle(button).visibility === 'visible').map((button) => button.innerText)`;
+
+  const hidden = await ctx.view.evaluate(isShown);
+
+  await ctx.view.click('[data-testid="screen"]');
+
+  const touched = await ctx.view.evaluate(isShown);
+
+  await ctx.waitForPage(`${isShown}.length === 0`);
+
+  expect([hidden, touched]).toStrictEqual([[], ['Full screen', 'Switch off screen', 'Sign out']]);
 });

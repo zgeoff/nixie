@@ -3,7 +3,9 @@ import type { ReactNode } from 'react';
 import { ReplyText } from '../components/reply-text';
 import { css } from '../styled-system/css';
 import { DeviceImage } from './device-image';
+import { FitBox } from './fit-box';
 import { LiveValue } from './live-value';
+import { pickRegionTextColour } from './pick-region-text-colour';
 import type { DeviceLayout } from './use-device-events';
 
 export interface LayoutViewProps {
@@ -21,7 +23,8 @@ const grid = css({
 
 const cell = css({ minHeight: '0', minWidth: '0', overflow: 'hidden', position: 'relative' });
 
-// The regions of a layout in their grid, on black. A region is keyed by its name, so an update to
+// The regions of a layout in their grid, on black, each on its own background colour when it has
+// one. Markdown and live values grow to fill their region. A region is keyed by its name, so an update to
 // one region leaves the others as they are, and a blank region draws nothing.
 export function LayoutView(props: LayoutViewProps): ReactNode {
   const layout = props.layout;
@@ -41,6 +44,12 @@ export function LayoutView(props: LayoutViewProps): ReactNode {
           data-region={region.name}
           key={region.name}
           style={{
+            ...(region.background === null
+              ? {}
+              : {
+                  backgroundColor: region.background,
+                  color: pickRegionTextColour(region.background),
+                }),
             gridColumn: `${String(region.column)} / span ${String(region.columnSpan)}`,
             gridRow: `${String(region.row)} / span ${String(region.rowSpan)}`,
           }}
@@ -61,7 +70,7 @@ interface RegionBodyProps {
   readonly content: RegionContent;
 }
 
-const text = css({ fontSize: '2xl', padding: '6' });
+const text = css({ height: '100%', padding: '4' });
 
 function RegionBody(props: RegionBodyProps): ReactNode {
   const content = props.content;
@@ -69,7 +78,9 @@ function RegionBody(props: RegionBodyProps): ReactNode {
   if (content.kind === 'markdown') {
     return (
       <div className={text}>
-        <ReplyText text={content.markdown} />
+        <FitBox fitKey={content.markdown} isCentred={false}>
+          <ReplyText text={content.markdown} />
+        </FitBox>
       </div>
     );
   }
