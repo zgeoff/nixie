@@ -54,6 +54,7 @@
     "@heynixie/secret-scan": "workspace:*",
     "@heynixie/sessions": "workspace:*",
     "@heynixie/skills": "workspace:*",
+    "@heynixie/speech-gpt-live": "workspace:*",
     "@heynixie/spend": "workspace:*",
     "@heynixie/spend-model-gateway": "workspace:*",
     "@heynixie/tasks": "workspace:*",
