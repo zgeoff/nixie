@@ -304,6 +304,10 @@ export interface StepResult {
   // set by a step that the gate held for the spending stop before its turn: the step commits
   // nothing and frees its lease
   readonly isHeld?: true;
+
+  // runs in the commit's transaction after its lease check: a result it returns commits in place of
+  // this one, and null keeps this one. Its result sends messages only when this one does.
+  readonly resolveInCommit?: (tx: Transaction<unknown>) => Promise<StepResult | null>;
 }
 
 export type StepMessage = Omit<TaskMessageRequest, 'from'> & { readonly senderHop?: number };

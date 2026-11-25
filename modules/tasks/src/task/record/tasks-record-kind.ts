@@ -29,6 +29,7 @@ export type TasksRecordKind =
   | 'task.run_ended'
   | 'task_message'
   | 'task.exchange_limited'
+  | 'task.message_refused'
   | 'timer.fired'
   | 'owner_message'
   | 'action.outcome';

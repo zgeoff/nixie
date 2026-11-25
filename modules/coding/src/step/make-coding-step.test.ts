@@ -137,6 +137,37 @@ async function setupTest() {
         maxRetryDelayMs: 300_000,
       });
     },
+
+    // runs one step of the coding task, which runs the callback after the step read what it needs and
+    // before its commit: work that commits between the step's reads and its commit
+    runStepThen: async (taskID: string, after: () => Promise<unknown>) => {
+      const codingStep = makeCodingStep(ctx.coding, ctx.adapter);
+
+      const runStep: RunStep = async (input) => {
+        const result = await codingStep(input);
+
+        await after();
+
+        return result;
+      };
+
+      const taskClaim = await claimTask(ctx.context, {
+        holder: 'runner-a',
+        leaseMs: 60_000,
+        taskID,
+      });
+
+      invariant(taskClaim, 'the coding task is ready to claim');
+
+      await runTaskStep(ctx.context, taskClaim, {
+        runStep,
+        leaseMs: 60_000,
+        logger: () => {},
+        maxStepErrors: 3,
+        retryDelayMs: 30_000,
+        maxRetryDelayMs: 300_000,
+      });
+    },
     forgetEvents: async (taskID: string) => {
       const entries = await readRecords(ctx.log, {
         afterSequence: 0,
@@ -661,6 +692,57 @@ test('it ends a started task as done, and binds nothing, when another task joine
   });
 
   await ctx.runSteps();
+
+  const reports = await readRecords(ctx.log, {
+    afterSequence: 0,
+    thread: startedID,
+    kinds: ['task.run_ended'],
+  });
+
+  expect({
+    state: await ctx.readTaskState(startedID),
+    binding: await ctx.readBinding(startedID),
+    owners: await ctx.readOwners('cloud.3f9a1c2e.00000001'),
+    reports: reports.map((entry) => entry.record.erasable),
+  }).toStrictEqual({
+    state: 'done',
+    binding: null,
+    owners: new Map([['cloud.3f9a1c2e.00000001', joinedID]]),
+    reports: [
+      {
+        status: 'readable',
+        fields: {
+          body: `report:\n  summary: "The coding session started, but the task ${joinedID} joined it first, so this task let it go."`,
+        },
+      },
+    ],
+  });
+});
+
+test('it ends a started task as done, and binds nothing, when another task joins its session between the step reads and its commit', async () => {
+  const ctx = await setupTest();
+
+  const startedID = await ctx.startTask(ctx.claim, {
+    runner: 'atc',
+    name: 'Fix the flaky login test',
+    brief: 'Find why the login test fails.',
+    repo: { url: 'https://github.com/example/shop.git', ref: 'main' },
+  });
+
+  await ctx.runActions();
+
+  const session = await ctx.listSession();
+
+  let joinedID = '';
+
+  await ctx.runStepThen(startedID, async () => {
+    joinedID = await ctx.startTask(ctx.claim, {
+      runner: 'atc',
+      name: 'Watch the login fix',
+      brief: 'Watch for a question.',
+      session,
+    });
+  });
 
   const reports = await readRecords(ctx.log, {
     afterSequence: 0,

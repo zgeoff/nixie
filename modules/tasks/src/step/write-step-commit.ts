@@ -12,6 +12,7 @@ import type { RunEndCause } from '../run/run-end-cause';
 import { taskRunReportRequestedCodec } from '../run/task-run-report-requested-codec';
 import type { TaskRun } from '../run/types';
 import { writeRunEndInTransaction } from '../run/write-run-end-in-transaction';
+import { taskMessageRefusedCodec } from '../task/codec/task-message-refused-codec';
 import { writeTaskMessageInTransaction } from '../task/projection/write-task-message';
 import { readTaskMark } from '../task/read-task-mark';
 import { buildPausedRecord } from '../task/record/build-paused-record';
@@ -33,22 +34,29 @@ import { StepAlreadyCommittedError } from './step-already-committed-error';
 export async function writeStepCommit(
   context: TasksContext,
   claim: TaskClaim,
-  result: StepResult,
+  stepResult: StepResult,
 ): Promise<void> {
   const taskID = claim.lease.workID;
   const faultContext = { kind: 'task', id: taskID } as const;
 
-  requireStepResult(result);
+  requireStepResult(stepResult);
 
   if (NIXIE_TEST_BUILD) {
     await waitAtFaultPoint('step.commit.before', faultContext);
   }
 
-  const messages = result.messages ?? [];
-  const messaging = messages.length === 0 ? null : await readStepMessaging(context);
+  const messaging =
+    (stepResult.messages ?? []).length === 0 ? null : await readStepMessaging(context);
 
   await withWriteTransaction(context.log.writer, async (tx) => {
     await requireLease(tx, claim.lease, context.clock.now());
+
+    const resolved = await stepResult.resolveInCommit?.(tx);
+
+    const result = resolved ?? stepResult;
+    const messages = result.messages ?? [];
+
+    requireStepResult(result);
 
     const cursor = await readStepCursor(tx, taskID, result.acknowledged);
     const run = await readOpenRun(tx, taskID);
@@ -100,12 +108,29 @@ export async function writeStepCommit(
     for (const message of messages) {
       invariant(messaging, 'a step that sends messages has read its receivers');
 
-      await writeTaskMessageInTransaction(
+      const sent = await writeTaskMessageInTransaction(
         tx,
         context,
         { ...message, from: taskID },
         { messaging, senderHop: message.senderHop ?? claim.wake.hop, stepKey: claim.stepKey },
       );
+
+      if (sent.status === 'refused') {
+        await writeRecordsInTransaction(tx, context.log, [
+          {
+            kind: taskMessageRefusedCodec.kind,
+            definitions: context.definitions(),
+            thread: taskID,
+            payload: taskMessageRefusedCodec.encode({
+              from: taskID,
+              to: message.to,
+              kind: message.kind,
+              stepKey: claim.stepKey,
+              refusal: sent.refusal,
+            }),
+          },
+        ]);
+      }
     }
 
     const hasOpenWait = await probeOpenWait(tx, taskID);

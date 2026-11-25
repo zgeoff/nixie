@@ -57,7 +57,9 @@ async function setupTest() {
 
       return task.state;
     },
-    readKinds: async (kind: 'task.closed' | 'task_message' | 'task.run_ended') => {
+    readKinds: async (
+      kind: 'task.closed' | 'task_message' | 'task.run_ended' | 'task.message_refused',
+    ) => {
       const entries = await readRecords(tasks.context.log, { afterSequence: 0, kinds: [kind] });
 
       return entries.map((entry) => entry.record);
@@ -207,6 +209,64 @@ test('it writes the step records and the commit record with its step key', async
     ['turn_finished', claim.lease.workID, null],
     ['task.step_committed', claim.lease.workID, `${claim.lease.workID}:1`],
   ]);
+});
+
+test('it commits the result that the step resolves in the commit in place of its own', async () => {
+  const ctx = await setupTest();
+  const claim = await createTestClaim(ctx.context, 'tidy the inbox');
+
+  await writeStepCommit(ctx.context, claim, {
+    next: 'wait',
+    records: [
+      {
+        kind: 'turn_finished',
+        definitions: { snapshotHash: 'sha256:test' },
+        payload: { turns: 1 },
+      },
+    ],
+    acknowledged: [],
+    resolveInCommit: () =>
+      Promise.resolve({
+        next: 'done',
+        records: [
+          {
+            kind: 'turn_finished',
+            definitions: { snapshotHash: 'sha256:test' },
+            payload: { turns: 2 },
+          },
+        ],
+        acknowledged: [],
+      }),
+  });
+
+  const records = await readRecords(ctx.context.log, { afterSequence: 2 });
+
+  expect({
+    state: await ctx.readState(claim.lease.workID),
+    records: records.map((read) => [read.record.kind, read.record.payload]),
+  }).toStrictEqual({
+    state: 'done',
+    records: [
+      ['turn_finished', { turns: 2 }],
+      ['task.step_committed', expect.objectContaining({ nextState: 'done' })],
+    ],
+  });
+});
+
+test('it keeps the step result when the step resolves nothing in the commit', async () => {
+  const ctx = await setupTest();
+  const claim = await createTestClaim(ctx.context, 'tidy the inbox');
+
+  await writeStepCommit(ctx.context, claim, {
+    next: 'continue',
+    records: [],
+    acknowledged: [],
+    resolveInCommit: () => Promise.resolve(null),
+  });
+
+  const state = await ctx.readState(claim.lease.workID);
+
+  expect(state).toBe('ready');
 });
 
 test('it keeps the session boundary the step returned', async () => {
@@ -595,6 +655,44 @@ test('it writes the messages of a step result from the stepping task, one hop pa
         woke: true,
         opensWait: false,
         source: `task:${task.taskID}`,
+      },
+    },
+  ]);
+});
+
+test('it records a step message that the message write refuses, on the stepping task', async () => {
+  const ctx = await setupTest();
+  const task = await ctx.startTask(false);
+
+  await writeStepCommit(ctx.context, task.claim, {
+    next: 'wait',
+    records: [],
+    acknowledged: task.brief,
+    messages: [
+      {
+        to: 'no-such-task',
+        kind: 'progress',
+        body: 'The session opened a pull request.',
+        replyTo: null,
+        onBehalfOf: [],
+        wake: true,
+      },
+    ],
+  });
+
+  const refused = await ctx.readKinds('task.message_refused');
+
+  expect(
+    refused.map((record) => ({ thread: record.thread, payload: record.payload })),
+  ).toStrictEqual([
+    {
+      thread: task.taskID,
+      payload: {
+        from: task.taskID,
+        to: 'no-such-task',
+        kind: 'progress',
+        stepKey: task.claim.stepKey,
+        refusal: { reason: 'unknown_task', taskID: 'no-such-task' },
       },
     },
   ]);

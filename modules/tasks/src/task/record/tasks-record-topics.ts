@@ -33,6 +33,7 @@ export const tasksRecordTopics = {
   'task.run_ended': ['tasks'],
   task_message: ['tasks'],
   'task.exchange_limited': ['tasks'],
+  'task.message_refused': ['tasks'],
   'timer.fired': ['tasks'],
   owner_message: ['tasks'],
   'action.outcome': ['tasks', 'approvals'],

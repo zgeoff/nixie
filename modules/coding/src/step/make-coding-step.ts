@@ -1,7 +1,10 @@
 import type { RunStep, StepResult } from '@heynixie/tasks';
+import invariant from 'tiny-invariant';
+import { codingSessionBoundCodec } from '../record/coding-session-bound-codec';
 import { readBinding } from '../session/read-binding';
+import { readOpenBindings } from '../session/read-open-bindings';
 import type { CodingAdapter, CodingContext, SessionRef } from '../types';
-import type { CodingStepEnd } from './collect-coding-step';
+import type { CodingStepEnd, CodingStepFacts, CodingStepPlan } from './collect-coding-step';
 import { collectCodingStep } from './collect-coding-step';
 import { readCodingTask } from './read-coding-task';
 import { readStepFacts } from './read-step-facts';
@@ -33,7 +36,7 @@ export function makeCodingStep(context: CodingContext, adapter: CodingAdapter): 
       inbox,
     });
 
-    const plan = collectCodingStep({
+    const facts: CodingStepFacts = {
       taskID: input.taskID,
       adapterID: adapter.id,
       definitions: context.tasks.definitions(),
@@ -43,7 +46,9 @@ export function makeCodingStep(context: CodingContext, adapter: CodingAdapter): 
       binding,
       inbox,
       ...stored,
-    });
+    };
+
+    const plan = collectCodingStep(facts);
 
     const result: StepResult = {
       next: 'wait',
@@ -51,6 +56,7 @@ export function makeCodingStep(context: CodingContext, adapter: CodingAdapter): 
       acknowledged,
       actions: plan.actions,
       messages: plan.messages,
+      ...buildBindingCheck(facts, plan, acknowledged),
     };
 
     if (plan.end === null) {
@@ -67,6 +73,49 @@ export function makeCodingStep(context: CodingContext, adapter: CodingAdapter): 
       isFinal: true,
       run: { activity: 'worked', report },
     };
+  };
+}
+
+// A join can bind the session after the step read who binds it, so the commit reads the binding
+// again in its transaction, and then commits what the step does when it reads another task's
+// binding.
+function buildBindingCheck(
+  facts: CodingStepFacts,
+  plan: CodingStepPlan,
+  acknowledged: readonly number[],
+): Pick<StepResult, 'resolveInCommit'> {
+  const bound = plan.records.find((record) => record.kind === codingSessionBoundCodec.kind);
+
+  if (bound === undefined) {
+    return {};
+  }
+
+  const sessionID = codingSessionBoundCodec.decode(bound.payload ?? {}).sessionID;
+
+  return {
+    resolveInCommit: async (tx) => {
+      const owners = await readOpenBindings(tx, facts.adapterID, [sessionID]);
+
+      const owner = owners.get(sessionID);
+
+      if (owner === undefined || owner === facts.taskID) {
+        return null;
+      }
+
+      const refused = collectCodingStep({ ...facts, sessionOwners: owners });
+
+      invariant(refused.end?.kind === 'report', 'a step whose session another task binds ends');
+
+      return {
+        next: 'done',
+        isFinal: true,
+        records: refused.records,
+        acknowledged,
+        actions: refused.actions,
+        messages: refused.messages,
+        run: { activity: 'worked', report: { summary: refused.end.summary } },
+      };
+    },
   };
 }
 
