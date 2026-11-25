@@ -974,11 +974,15 @@ test('it aborts a request in flight when its credential is removed', async () =>
     expect(isData).toBeTrue();
   });
 
-  onTestFinished(() => gate.resolve());
+  onTestFinished(() => {
+    gate.resolve();
+  });
 
   await ctx.store.remove(connection.tokenRef);
 
-  await expect(sending).rejects.toBeInstanceOf(CredentialRemovedError);
+  const failure = await sending.catch((error: unknown) => error);
+
+  expect(failure).toBeInstanceOf(CredentialRemovedError);
 });
 
 test('it leaves the status of a reconnected credential alone when an older handle is rejected', async () => {

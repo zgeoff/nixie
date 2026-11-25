@@ -158,9 +158,9 @@ test.skipIf(isResticMissing)(
     expect(dataSnapshotIDs).toHaveLength(2);
     expect(sealedTokens).toStrictEqual([[true], [false]]);
 
-    expect(restoredKeyIDs).toStrictEqual(
-      expect.not.arrayContaining(forgottenRows.map((row) => row.key_id)),
-    );
+    expect(
+      restoredKeyIDs.some((keyID) => forgottenRows.some((row) => row.key_id === keyID)),
+    ).toBeFalse();
 
     expect(blobs.length).toBeGreaterThan(0);
 

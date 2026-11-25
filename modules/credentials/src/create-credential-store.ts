@@ -473,7 +473,13 @@ function waitForAbort(signal: AbortSignal, error: Error): Promise<never> {
   if (signal.aborted) {
     aborted.reject(error);
   } else {
-    signal.addEventListener('abort', () => aborted.reject(error), { once: true });
+    signal.addEventListener(
+      'abort',
+      () => {
+        aborted.reject(error);
+      },
+      { once: true },
+    );
   }
 
   return aborted.promise;
