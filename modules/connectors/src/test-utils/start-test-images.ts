@@ -38,7 +38,11 @@ export async function startTestImages(options: TestImagesOptions) {
 
   const started = await (options.log ?? startTestLog(clock));
 
-  const log: Log = { ...started, projections: [...started.projections, ...budgetProjections] };
+  const missing = budgetProjections.filter(
+    (projection) => !started.projections.includes(projection),
+  );
+
+  const log: Log = { ...started, projections: [...started.projections, ...missing] };
   const spent = { bytes: 0, count: 0 };
   const caps = options.caps ?? { bytes: 24 * 1024 * 1024, count: 100 };
 
