@@ -1,4 +1,4 @@
-import type { RegionContent, ScreenContent } from '@heynixie/contract';
+import type { RegionBackground, RegionContent, ScreenContent } from '@heynixie/contract';
 import type { CheckedTables } from '@heynixie/db';
 
 export type DeviceCapability = 'screen' | 'camera' | 'speaker' | 'microphone';
@@ -27,12 +27,24 @@ interface DeviceRegionRow {
   readonly shown_sequence: number;
 }
 
+interface DeviceSavedLayoutRow {
+  readonly saved_id: string;
+  readonly device_id: string;
+  readonly name: string;
+  readonly layout_sequence: number;
+
+  // a JSON array of `{ region, shownSequence }`
+  readonly regions: string;
+  readonly saved_at: number;
+}
+
 // mapped types, because Kysely's table map needs the index signature an interface lacks
 export type DeviceTables = CheckedTables<
   Readonly<{
     devices: DeviceRow;
     device_layouts: DeviceLayoutRow;
     device_regions: DeviceRegionRow;
+    device_saved_layouts: DeviceSavedLayoutRow;
   }>
 >;
 
@@ -65,6 +77,9 @@ export interface LayoutRegion {
   readonly row: number;
   readonly columnSpan: number;
   readonly rowSpan: number;
+
+  // null for a region with no background
+  readonly background: RegionBackground | null;
 }
 
 // The grid as the assistant set it: each track a whole number of fr, such as `2fr`.
@@ -108,6 +123,7 @@ export interface LayoutState {
       readonly row: number;
       readonly columnSpan: number;
       readonly rowSpan: number;
+      readonly background: RegionBackground | null;
       readonly content: RegionContent | null;
       readonly until: string | null;
     }[];

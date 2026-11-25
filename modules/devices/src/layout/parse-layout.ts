@@ -1,3 +1,4 @@
+import { layoutLimits, regionBackgroundNames, regionBackgroundSchema } from '@heynixie/contract';
 import type { LayoutGeometry, LayoutRegion } from '../types';
 
 export interface LayoutInput {
@@ -10,6 +11,7 @@ export interface LayoutInput {
         readonly row: number;
         readonly columnSpan?: number | undefined;
         readonly rowSpan?: number | undefined;
+        readonly background?: string | undefined;
       }[]
     | undefined;
 }
@@ -19,20 +21,33 @@ export type ParsedLayout =
   | { readonly status: 'bad'; readonly reason: string };
 
 // The grid of a layout call, or the first reason it is bad: a track that is not a whole number of
-// fr from 1 to 12, too many tracks or regions, a bad or repeated name, or a region that leaves the
-// grid or overlaps another.
+// fr from 1 to 12, too many tracks or regions, a bad or repeated name, a background that is no colour
+// of the palette, or a region that leaves the grid or overlaps another.
 export function parseLayout(input: LayoutInput): ParsedLayout {
   const columns = input.columns ?? [];
   const rows = input.rows ?? [];
   const regions = input.regions ?? [];
 
   const reason =
-    pickTrackReason('columns', columns) ??
-    pickTrackReason('rows', rows) ??
+    pickTrackReason('columns', columns, layoutLimits.columns) ??
+    pickTrackReason('rows', rows, layoutLimits.rows) ??
     pickRegionCountReason(regions.length);
 
   if (reason !== null) {
     return { status: 'bad', reason };
+  }
+
+  const badBackground = regions.find(
+    (region) =>
+      region.background !== undefined &&
+      !regionBackgroundSchema.safeParse(region.background).success,
+  );
+
+  if (badBackground !== undefined) {
+    return {
+      status: 'bad',
+      reason: `the background ${String(badBackground.background)} of the region ${badBackground.name} is not a colour of the palette (${regionBackgroundNames.join(', ')}) or #rrggbb`,
+    };
   }
 
   const placed: LayoutRegion[] = regions.map((region) => ({
@@ -41,6 +56,7 @@ export function parseLayout(input: LayoutInput): ParsedLayout {
     row: region.row,
     columnSpan: region.columnSpan ?? 1,
     rowSpan: region.rowSpan ?? 1,
+    background: regionBackgroundSchema.nullable().parse(region.background ?? null),
   }));
 
   const placement = pickPlacementReason(placed, columns.length, rows.length);
@@ -50,10 +66,13 @@ export function parseLayout(input: LayoutInput): ParsedLayout {
     : { status: 'bad', reason: placement };
 }
 
-const maxTracks = 6;
 const trackPattern = /^(?:[1-9]|1[0-2])fr$/u;
 
-function pickTrackReason(axis: string, tracks: readonly string[]): string | null {
+function pickTrackReason(
+  axis: string,
+  tracks: readonly string[],
+  maxTracks: number,
+): string | null {
   if (tracks.length === 0 || tracks.length > maxTracks) {
     return `a layout takes 1 to ${String(maxTracks)} ${axis}`;
   }
@@ -65,10 +84,10 @@ function pickTrackReason(axis: string, tracks: readonly string[]): string | null
     : `the ${axis} take a whole number of fr from 1 to 12, such as 2fr, and ${bad} is not one`;
 }
 
-const maxRegions = 12;
-
 function pickRegionCountReason(count: number): string | null {
-  return count > maxRegions ? `a layout takes up to ${String(maxRegions)} regions` : null;
+  return count > layoutLimits.regions
+    ? `a layout takes up to ${String(layoutLimits.regions)} regions`
+    : null;
 }
 
 const namePattern = /^[a-z0-9-]{1,32}$/u;

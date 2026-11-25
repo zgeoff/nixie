@@ -57,6 +57,14 @@ export type {
 
 export type { DeviceEvent } from './contract/devices-contract';
 export { deviceEventSchema } from './contract/devices-contract';
+export type { RegionBackground } from './contract/region-background-schema';
+
+export {
+  layoutLimits,
+  regionBackgroundNames,
+  regionBackgroundSchema,
+} from './contract/region-background-schema';
+
 export type { RegionContent } from './contract/region-content-schema';
 
 export {

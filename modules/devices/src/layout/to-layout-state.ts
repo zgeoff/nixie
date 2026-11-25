@@ -20,6 +20,7 @@ export function toLayoutState(layout: LayoutView | null): LayoutState {
           row: region.row,
           columnSpan: region.columnSpan,
           rowSpan: region.rowSpan,
+          background: region.background,
           content: region.shown?.content ?? null,
           until: untilMs === null ? null : new Date(untilMs).toISOString(),
         };

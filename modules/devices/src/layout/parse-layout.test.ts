@@ -24,8 +24,8 @@ test('#parseLayout gives each region a span of 1 when it leaves the span out', (
       columns: ['1fr', '2fr'],
       rows: ['1fr'],
       regions: [
-        { name: 'note', column: 1, row: 1, columnSpan: 1, rowSpan: 1 },
-        { name: 'clock', column: 2, row: 1, columnSpan: 1, rowSpan: 1 },
+        { name: 'note', column: 1, row: 1, columnSpan: 1, rowSpan: 1, background: null },
+        { name: 'clock', column: 2, row: 1, columnSpan: 1, rowSpan: 1, background: null },
       ],
     },
   });
@@ -48,20 +48,46 @@ test('#parseLayout takes a grid with no regions', () => {
   });
 });
 
+test('#parseLayout takes a grid of 12 columns, 12 rows and 36 regions', () => {
+  expect(
+    parseLayout({
+      columns: Array.from({ length: 12 }, () => '12fr'),
+      rows: Array.from({ length: 12 }, () => '1fr'),
+      regions: Array.from({ length: 36 }, (_unused, index) => ({
+        name: `r${String(index)}`,
+        column: (index % 12) + 1,
+        row: Math.floor(index / 12) + 1,
+      })),
+    }).status,
+  ).toBe('ok');
+});
+
+test.each(['teal', '#0a1B2c'])('#parseLayout keeps the background %s of a region', (background) => {
+  const parsed = parseLayout({
+    columns: ['1fr'],
+    rows: ['1fr'],
+    regions: [{ name: 'note', column: 1, row: 1, background }],
+  });
+
+  const kept = parsed.status === 'ok' ? parsed.layout.regions[0]?.background : null;
+
+  expect(kept).toBe(background);
+});
+
 test.each<BadRow>([
   {
     title: 'no columns',
     input: { columns: [], rows: ['1fr'], regions: [{ name: 'note', column: 1, row: 1 }] },
-    reason: /1 to 6 columns/u,
+    reason: /1 to 12 columns/u,
   },
   {
-    title: 'seven rows',
+    title: 'thirteen rows',
     input: {
       columns: ['1fr'],
-      rows: ['1fr', '1fr', '1fr', '1fr', '1fr', '1fr', '1fr'],
+      rows: Array.from({ length: 13 }, () => '1fr'),
       regions: [{ name: 'note', column: 1, row: 1 }],
     },
-    reason: /1 to 6 rows/u,
+    reason: /1 to 12 rows/u,
   },
   {
     title: 'a track that is not a whole number of fr',
@@ -74,17 +100,35 @@ test.each<BadRow>([
     reason: /13fr is not one/u,
   },
   {
-    title: 'thirteen regions',
+    title: 'thirteen columns',
     input: {
-      columns: ['1fr', '1fr', '1fr', '1fr', '1fr', '1fr'],
-      rows: ['1fr', '1fr', '1fr'],
-      regions: Array.from({ length: 13 }, (_unused, index) => ({
+      columns: Array.from({ length: 13 }, () => '1fr'),
+      rows: ['1fr'],
+      regions: [{ name: 'note', column: 1, row: 1 }],
+    },
+    reason: /1 to 12 columns/u,
+  },
+  {
+    title: '37 regions',
+    input: {
+      columns: Array.from({ length: 12 }, () => '1fr'),
+      rows: Array.from({ length: 4 }, () => '1fr'),
+      regions: Array.from({ length: 37 }, (_unused, index) => ({
         name: `r${String(index)}`,
-        column: (index % 6) + 1,
-        row: Math.floor(index / 6) + 1,
+        column: (index % 12) + 1,
+        row: Math.floor(index / 12) + 1,
       })),
     },
-    reason: /up to 12 regions/u,
+    reason: /up to 36 regions/u,
+  },
+  {
+    title: 'a background that is no colour of the palette',
+    input: {
+      columns: ['1fr'],
+      rows: ['1fr'],
+      regions: [{ name: 'note', column: 1, row: 1, background: 'chartreuse' }],
+    },
+    reason: /chartreuse of the region note is not a colour of the palette/u,
   },
   {
     title: 'a name with capitals',

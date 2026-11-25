@@ -103,6 +103,7 @@ function toListedLayout(layout: LayoutView | null): JSONObject | null {
         row: region.row,
         columnSpan: region.columnSpan,
         rowSpan: region.rowSpan,
+        background: region.background,
         kind: region.shown?.content.kind ?? null,
         until: untilMs === null ? null : new Date(untilMs).toISOString(),
         shown: region.shown?.shownID ?? null,

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { regionBackgroundSchema } from './region-background-schema';
 import { regionContentSchema } from './region-content-schema';
 import { reusedIDErrors } from './reused-id-errors';
 import { screenContentSchema } from './screen-content-schema';
@@ -18,6 +19,9 @@ const layoutRegionSchema = z.object({
   row: z.int(),
   columnSpan: z.int(),
   rowSpan: z.int(),
+
+  // null for a region with no background, which shows the screen's black
+  background: regionBackgroundSchema.nullable(),
 
   // null while the region is blank
   content: regionContentSchema.nullable(),

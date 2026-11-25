@@ -11,7 +11,17 @@ test('#toLayoutState gives a blank region no content and no end', () => {
       layoutID: 'ly3k7m2q9x',
       columns: ['1fr'],
       rows: ['1fr'],
-      regions: [{ name: 'pond', column: 1, row: 1, columnSpan: 1, rowSpan: 1, shown: null }],
+      regions: [
+        {
+          name: 'pond',
+          column: 1,
+          row: 1,
+          columnSpan: 1,
+          rowSpan: 1,
+          background: null,
+          shown: null,
+        },
+      ],
     }),
   ).toStrictEqual({
     kind: 'layout',
@@ -19,7 +29,16 @@ test('#toLayoutState gives a blank region no content and no end', () => {
       columns: ['1fr'],
       rows: ['1fr'],
       regions: [
-        { name: 'pond', column: 1, row: 1, columnSpan: 1, rowSpan: 1, content: null, until: null },
+        {
+          name: 'pond',
+          column: 1,
+          row: 1,
+          columnSpan: 1,
+          rowSpan: 1,
+          background: null,
+          content: null,
+          until: null,
+        },
       ],
     },
   });
@@ -38,6 +57,7 @@ test('#toLayoutState gives a region its content and the time it ends', () => {
           row: 1,
           columnSpan: 1,
           rowSpan: 1,
+          background: null,
           shown: {
             shownID: 'sh3k7m2q9x',
             sequence: 4,
@@ -59,6 +79,7 @@ test('#toLayoutState gives a region its content and the time it ends', () => {
           row: 1,
           columnSpan: 1,
           rowSpan: 1,
+          background: null,
           content: { kind: 'markdown', markdown: 'Bins go out tonight' },
           until: '2026-11-21T09:30:00.000Z',
         },

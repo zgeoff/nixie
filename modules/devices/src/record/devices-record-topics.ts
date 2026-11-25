@@ -8,6 +8,9 @@ export const devicesRecordTopics = {
   'device.capability_changed': [],
   'device.layout_set': [],
   'device.region_shown': [],
+  'device.layout_saved': [],
+  'device.layout_restored': [],
+  'device.layout_removed': [],
   'device.watch_set': [],
   'device.status_changed': ['tasks'],
 } as const satisfies Record<DevicesRecordKind, readonly LiveTopic[]>;

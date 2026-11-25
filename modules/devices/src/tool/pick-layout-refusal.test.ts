@@ -75,7 +75,7 @@ test.each<Row>([
       layout: {
         columns: ['1fr'],
         rows: ['1fr'],
-        regions: [{ name: 'pond', column: 1, row: 1, columnSpan: 1, rowSpan: 1 }],
+        regions: [{ name: 'pond', column: 1, row: 1, columnSpan: 1, rowSpan: 1, background: null }],
       },
     },
     isOnline: true,

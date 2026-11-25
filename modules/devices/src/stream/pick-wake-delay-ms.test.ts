@@ -46,6 +46,7 @@ test.each<Row>([
           row: 1,
           columnSpan: 1,
           rowSpan: 1,
+          background: null,
           shown: {
             shownID: 'sh1',
             sequence: 1,
@@ -59,6 +60,7 @@ test.each<Row>([
           row: 1,
           columnSpan: 1,
           rowSpan: 1,
+          background: null,
           shown: {
             shownID: 'sh2',
             sequence: 2,
@@ -72,6 +74,7 @@ test.each<Row>([
           row: 1,
           columnSpan: 1,
           rowSpan: 1,
+          background: null,
           shown: {
             shownID: 'sh3',
             sequence: 3,
@@ -91,13 +94,22 @@ test.each<Row>([
       columns: ['1fr'],
       rows: ['1fr'],
       regions: [
-        { name: 'pond', column: 1, row: 1, columnSpan: 1, rowSpan: 1, shown: null },
+        {
+          name: 'pond',
+          column: 1,
+          row: 1,
+          columnSpan: 1,
+          rowSpan: 1,
+          background: null,
+          shown: null,
+        },
         {
           name: 'note',
           column: 1,
           row: 1,
           columnSpan: 1,
           rowSpan: 1,
+          background: null,
           shown: {
             shownID: 'sh2',
             sequence: 2,
@@ -127,6 +139,7 @@ test.each<Row>([
           row: 1,
           columnSpan: 1,
           rowSpan: 1,
+          background: null,
           shown: {
             shownID: 'sh1',
             sequence: 1,
