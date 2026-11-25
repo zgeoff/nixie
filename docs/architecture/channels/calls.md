@@ -4,9 +4,8 @@ A call is a live voice conversation between the user and nixie. The `modules/cal
 call's state, its records, its price and the rule that a call ends when its budget runs out. It
 never talks to a speech provider. It holds the `SpeechLayer` interface, and the server passes in an
 adapter that implements it. The [voice design](../../design/platform/channels/voice.md) describes
-the whole feature. This doc covers the module, its records, the call's thread and hand-offs, its
-budget and its configuration. The server holds no speech adapter, so a server with a `voice` config
-section answers `calls.start` with `SPEECH_UNAVAILABLE`.
+the whole feature. The server holds no speech adapter, so a server with a `voice` config section
+answers `calls.start` with `SPEECH_UNAVAILABLE`.
 
 ## The speech layer
 
@@ -23,7 +22,7 @@ section answers `calls.start` with `SPEECH_UNAVAILABLE`.
 - `model` names the provider's model that speaks the call. Each `call.spoke` record carries it.
 
 The package's `test-utils` holds a fake layer in memory. It records each `open`, `answer`, `say` and
-`close`, an `open` that the layer refused too, and a test emits each `SpeechEvent` into a session by
+`close`, including an `open` that it refused. A test emits each `SpeechEvent` into a session by
 hand. A test build of the server wires the same fake and lets the test harness start a call and emit
 events.
 
@@ -150,7 +149,7 @@ through `say`. That line is not part of the answer. The module writes it as a `c
 once the speech layer has it. A second hand-off during a running turn joins that turn as a mid-turn
 message, and the turn answers it with the same text as the first.
 
-A `cut` event does one of two things:
+What a `cut` event does depends on when it arrives:
 
 - Before the module sent an answer, it interrupts the call's turn and stops the hand-off's holding
   line.
@@ -195,8 +194,8 @@ charged before.
 
 Both places that hold settings are optional.
 
-- The `voice` section of the deployment config names the `provider`, which is `gpt-live`, and the
-  `credential`, a reference to a deployment secret. Without the section, calls are off.
+- Set the `provider`, which is `gpt-live`, and the `credential`, a reference to a deployment secret,
+  in the `voice` section of the deployment config. Without the section, calls are off.
 - The `voice/` folder of the [definitions](../core/definitions.md) holds `voice.yaml`, with `voice`,
   `hold_after_ms` and `price_per_minute`, and `lines.yaml`, with the fixed lines `holding`,
   `reconnect`, `couldnt_finish` and `budget`. Every key is optional, and a missing key takes the
