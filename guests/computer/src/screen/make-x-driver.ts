@@ -23,6 +23,15 @@ export interface XDriverOptions {
 export function makeXDriver(options: XDriverOptions): DesktopDriver {
   return {
     readWindows: () => readWindows(options),
+    readTitle: async (id) => {
+      try {
+        const name = await options.runTool(['xdotool', 'getwindowname', id]);
+
+        return name.trim();
+      } catch {
+        return '';
+      }
+    },
     capture: async () => {
       await options.runTool(['scrot', '-o', '-z', options.shotPath]);
 

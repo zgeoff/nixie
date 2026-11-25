@@ -1,6 +1,8 @@
 import { ORPCError } from '@orpc/client';
 import type { ReactNode } from 'react';
 import { useEffect, useRef, useState } from 'react';
+import { bindClipboard } from '../computer/bind-clipboard';
+import { buildPasteKeys } from '../computer/build-paste-keys';
 import { runComputerWatch } from '../computer/run-computer-watch';
 import type { LoadViewer, Viewer, WatchState } from '../computer/types';
 import { css } from '../styled-system/css';
@@ -53,6 +55,10 @@ const messages = {
 
 const holdEndedMessage = 'Your hold on the computer ended.';
 
+// A paste is typed key by key, so a long one would flood the connection to the desktop.
+const maxPasteCharacters = 2000;
+const tooLongToPaste = `That text is too long to paste. Paste up to ${String(maxPasteCharacters)} characters at a time.`;
+
 export function ComputerView(props: ComputerViewProps): ReactNode {
   const nixie = useNixieClient();
   const target = useRef<HTMLDivElement>(null);
@@ -60,6 +66,11 @@ export function ComputerView(props: ComputerViewProps): ReactNode {
   const [attempt, setAttempt] = useState(0);
   const [takeover, setTakeover] = useState<TakeoverState>({ kind: 'watching' });
   const [viewer, setViewer] = useState<Viewer | null>(null);
+  const isHoldingNow = useRef(false);
+
+  // the text the desktop copied that the browser would not put on the clipboard, for the button
+  const [uncopied, setUncopied] = useState<string | null>(null);
+  const [pasteNotice, setPasteNotice] = useState<string | null>(null);
 
   // Each attempt asks for its own ticket, because a ticket opens one socket. A new attempt, and
   // leaving the page, end the run before it.
@@ -76,6 +87,11 @@ export function ComputerView(props: ComputerViewProps): ReactNode {
         signal: running.signal,
         onState: setState,
         onViewer: setViewer,
+        onCopy: (text) => {
+          if (isHoldingNow.current) {
+            void copyToClipboard(text, setUncopied);
+          }
+        },
       });
     }
 
@@ -86,11 +102,45 @@ export function ComputerView(props: ComputerViewProps): ReactNode {
 
   const isHolding = takeover.kind === 'holding';
 
+  isHoldingNow.current = isHolding;
+
   // The viewer sends the person's keys only while this device holds the desktop, and a new viewer
   // after a reconnect starts view only, so it takes the state again.
   useEffect(() => {
     viewer?.setInput(isHolding);
   }, [viewer, isHolding]);
+
+  // A paste is the one time the page hands the user's clipboard to the desktop, and only while this
+  // device holds it.
+  useEffect(() => {
+    const element = target.current;
+
+    if (viewer === null || element === null || !isHolding) {
+      return () => {};
+    }
+
+    return bindClipboard(element, {
+      onPaste: (text) => {
+        if (buildPasteKeys(text).length > maxPasteCharacters) {
+          setPasteNotice(tooLongToPaste);
+
+          return;
+        }
+
+        setPasteNotice(null);
+
+        viewer.paste(text);
+      },
+    });
+  }, [viewer, isHolding]);
+
+  // Neither the copied text nor the notice outlives the hold.
+  useEffect(() => {
+    if (!isHolding) {
+      setUncopied(null);
+      setPasteNotice(null);
+    }
+  }, [isHolding]);
 
   const isOver = state.kind === 'ended' || state.kind === 'failed';
 
@@ -169,6 +219,24 @@ export function ComputerView(props: ComputerViewProps): ReactNode {
             Take over
           </button>
         )}
+        {isHolding && uncopied !== null ? (
+          <span className={notice} role="alert">
+            Your browser would not copy the text that the computer copied.{' '}
+            <button
+              onClick={() => {
+                void copyToClipboard(uncopied, setUncopied);
+              }}
+              type="button"
+            >
+              Copy it
+            </button>
+          </span>
+        ) : null}
+        {pasteNotice === null ? null : (
+          <span className={notice} role="alert">
+            {pasteNotice}
+          </span>
+        )}
         {takeover.kind === 'refused' ? (
           <span className={notice} role="alert">
             {takeover.message}
@@ -190,6 +258,21 @@ export function ComputerView(props: ComputerViewProps): ReactNode {
       <div aria-label="The computer's desktop" className={screen} ref={target} role="img" />
     </main>
   );
+}
+
+// Puts the text on the user's clipboard. A browser may refuse a write that no gesture asked for, and
+// then the page keeps the text for a button, whose press is a gesture.
+async function copyToClipboard(
+  text: string,
+  keep: (uncopied: string | null) => void,
+): Promise<void> {
+  try {
+    await navigator.clipboard.writeText(text);
+
+    keep(null);
+  } catch {
+    keep(text);
+  }
 }
 
 const takeoverRefusals: Record<string, string> = {

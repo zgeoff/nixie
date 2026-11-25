@@ -4,9 +4,11 @@ import type { ComputerHandler, ComputerReply } from '@heynixie/wire';
 import { match } from 'ts-pattern';
 import { evaluateIsolated } from '../screen/evaluate-isolated';
 import { handleScreenRequest, readScreenFocus } from '../screen/handle-screen-request';
+import { readFocusedTitle } from '../screen/read-focused-title';
 import type { DesktopDriver, ScreenTabs } from '../screen/types';
-import { makeOriginLog } from '../takeover/make-origin-log';
+import { makeOriginLog, toOrigin } from '../takeover/make-origin-log';
 import { actOnTab } from './act-on-tab';
+import { adoptOpenPages } from './adopt-open-pages';
 import { downloadTabFile } from './download-tab-file';
 import { launchBrowser } from './launch-browser';
 import { navigateTab } from './navigate-tab';
@@ -76,6 +78,9 @@ export function makeBrowserHandler(
   const drivers = new WeakMap<BrowserState, DesktopDriver>();
 
   const originLog = makeOriginLog();
+
+  // the browser that was up when the hold began, so a different one at its end is a restart
+  const hold: { browser: BrowserState | null } = { browser: null };
 
   // the hosts with no IPv4 address that the proxy refused since the last load began
   const ipv4OnlyHosts: string[] = [];
@@ -149,6 +154,10 @@ export function makeBrowserHandler(
 
     const browser = await ensure();
 
+    if (request.op === 'takeoverEnd') {
+      adoptOpenPages(browser);
+    }
+
     const screen = options.screen;
 
     const readScreen = (): { driver: DesktopDriver; tabs: ScreenTabs } | null => {
@@ -180,6 +189,8 @@ export function makeBrowserHandler(
 
       originLog.begin(shownURL);
 
+      hold.browser = browser;
+
       return { kind: 'takeover-begun', ok: true };
     }
 
@@ -188,7 +199,21 @@ export function makeBrowserHandler(
 
       const now = await readNow(browser, options, readScreen());
 
-      return { kind: 'takeover-ended', ok: true, origins, now };
+      const isRestarted = hold.browser !== null && hold.browser !== browser;
+
+      hold.browser = null;
+
+      return {
+        kind: 'takeover-ended',
+        ok: true,
+        origins,
+        tabs: [...browser.tabs].map(([tab, open]) => ({
+          tab,
+          origin: toOrigin(open.page.url()),
+        })),
+        isRestarted,
+        now,
+      };
     }
 
     if (isScreenRequest(request)) {
@@ -244,14 +269,14 @@ const nowTextBytes = 4000;
 
 // The window that has focus as a hand-back reports it: a browser tab with its text as a page read
 // gives it, the terminal with its visible lines, or another window with nothing. A desktop that
-// cannot be read, or has no display, reports another window.
+// cannot be read, or has no display, reports another window with no title.
 async function readNow(
   browser: BrowserState,
   options: BrowserHandlerOptions,
   desktop: { driver: DesktopDriver; tabs: ScreenTabs } | null,
 ): Promise<NowReply> {
   if (desktop === null || options.screen === undefined) {
-    return { kind: 'other' };
+    return { kind: 'other', title: '' };
   }
 
   try {
@@ -266,7 +291,7 @@ async function readNow(
     const tab = focus.kind === 'browser' ? browser.tabs.get(focus.tab) : undefined;
 
     if (focus.kind !== 'browser' || tab === undefined) {
-      return { kind: 'other' };
+      return { kind: 'other', title: await readFocusedTitle(desktop.driver) };
     }
 
     const read = await readTabPage(focus.tab, tab, {
@@ -278,7 +303,7 @@ async function readNow(
 
     return { kind: 'browser', tab: focus.tab, text: read.page.text };
   } catch {
-    return { kind: 'other' };
+    return { kind: 'other', title: '' };
   }
 }
 

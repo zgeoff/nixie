@@ -26,6 +26,7 @@ export async function runComputerSession(
     text: match(session.input.kind)
       .with('browser', () => 'Open the page in your browser.')
       .with('browser-navigate', () => 'Go to the next page in the same tab, then reload it.')
+      .with('browser-two-tabs', () => 'Open the page in two tabs of your browser.')
       .with('shell', () => 'Write a note on your computer and read it back.')
       .with('shell-processes', () => 'List the processes that your shell shows.')
       .with('screen', () => 'Look at your screen and click the middle of it.')

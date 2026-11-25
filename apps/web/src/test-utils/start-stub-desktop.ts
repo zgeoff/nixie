@@ -2,28 +2,55 @@ import { onTestFinished } from 'bun:test';
 
 type Phase = 'version' | 'security' | 'init' | 'messages';
 
+interface KeyEvent {
+  readonly keysym: number;
+  readonly isDown: boolean;
+}
+
+interface Received {
+  readonly keys: KeyEvent[];
+}
+
 interface DesktopSocketData {
   phase: Phase;
   buffer: Uint8Array;
   isFrameSent: boolean;
+  readonly received: Received;
 }
 
 export interface StubDesktop {
   // the WebSocket URL that a viewer connects to
   readonly url: string;
+
+  // each key event the viewer sent, in order
+  readonly received: Received;
+
+  // sends a ServerCutText message with the text to every viewer
+  readonly sendCutText: (text: string) => void;
 }
 
 // A VNC server in the test process, for a browser suite: it speaks the 3.8 handshake with no
-// security, then answers the first whole-screen request with one raw frame of a flat colour, which
-// is enough for the viewer to show the desktop. It takes no input.
+// security, then answers the first whole-screen request with one raw frame of a flat colour. It
+// records the keys it receives.
 export function startStubDesktop(): StubDesktop {
+  const received: Received = { keys: [] };
+
+  const sockets = new Set<Bun.ServerWebSocket<DesktopSocketData>>();
+
+  const answerRequest = (request: Request, upgrading: Bun.Server<DesktopSocketData>) =>
+    answerUpgrade(request, upgrading, received);
+
   const server = Bun.serve<DesktopSocketData>({
     hostname: '127.0.0.1',
     port: 0,
-    fetch: answerUpgrade,
+    fetch: answerRequest,
     websocket: {
       open: (socket) => {
+        sockets.add(socket);
         socket.sendBinary(new TextEncoder().encode('RFB 003.008\n'));
+      },
+      close: (socket) => {
+        sockets.delete(socket);
       },
       message: (socket, message) => {
         if (typeof message === 'string') {
@@ -43,17 +70,27 @@ export function startStubDesktop(): StubDesktop {
     await server.stop(true);
   });
 
-  return { url: `ws://127.0.0.1:${String(server.port)}/` };
+  return {
+    url: `ws://127.0.0.1:${String(server.port)}/`,
+    received,
+    sendCutText: (text) => {
+      for (const socket of sockets) {
+        socket.sendBinary(buildServerCutText(text));
+      }
+    },
+  };
 }
 
 function answerUpgrade(
   request: Request,
   server: Bun.Server<DesktopSocketData>,
+  received: Received,
 ): Response | undefined {
   const data: DesktopSocketData = {
     phase: 'version',
     buffer: new Uint8Array(),
     isFrameSent: false,
+    received,
   };
 
   return server.upgrade(request, { data }) ? undefined : new Response(null, { status: 400 });
@@ -97,6 +134,12 @@ function answerNext(socket: Bun.ServerWebSocket<DesktopSocketData>): boolean {
     data.isFrameSent = true;
 
     socket.sendBinary(buildFrame());
+  } else if (message[0] === 4) {
+    const keysym = new DataView(message.buffer, message.byteOffset).getUint32(4);
+
+    const isDown = message[1] !== 0;
+
+    data.received.keys.push({ keysym, isDown });
   }
 
   return true;
@@ -125,6 +168,20 @@ function readNextSize(data: DesktopSocketData): number | null {
 
   if (type === 3) {
     return 10;
+  }
+
+  if (type === 4) {
+    return 8;
+  }
+
+  if (type === 5) {
+    return 6;
+  }
+
+  if (type === 6) {
+    return data.buffer.byteLength < 8
+      ? null
+      : 8 + new DataView(data.buffer.buffer, data.buffer.byteOffset).getUint32(4);
   }
 
   return 1;
@@ -167,4 +224,17 @@ function buildFrame(): Uint8Array {
   }
 
   return frame;
+}
+
+function buildServerCutText(text: string): Uint8Array {
+  const bytes = new TextEncoder().encode(text);
+  const message = new Uint8Array(8 + bytes.byteLength);
+
+  message[0] = 3;
+
+  new DataView(message.buffer).setUint32(4, bytes.byteLength);
+
+  message.set(bytes, 8);
+
+  return message;
 }

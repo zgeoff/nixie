@@ -45,19 +45,11 @@ test('it starts the display first, at 1280 by 800 on an abstract socket alone', 
   ]);
 });
 
-test('it listens for VNC on a Unix socket alone, with the clipboard off', () => {
+test('it listens for VNC on a Unix socket alone, with the primary selection off and no viewer setting the clipboard', () => {
   const ctx = setupTest();
   const vnc = ctx.readArgv('vnc');
 
-  expect(vnc).toIncludeAllMembers([
-    '-nosel',
-    '-noprimary',
-    '-nosetprimary',
-    '-noclipboard',
-    '-nosetclipboard',
-    '-nopw',
-  ]);
-
+  expect(vnc).toIncludeAllMembers(['-noprimary', '-nosetprimary', '-nosetclipboard', '-nopw']);
   expect(vnc[vnc.indexOf('-unixsock') + 1]).toBe(vncSocketPath);
   expect(vnc[vnc.indexOf('-rfbport') + 1]).toBe('0');
   expect(vnc[vnc.indexOf('-rfbportv6') + 1]).toBe('-1');
@@ -125,4 +117,10 @@ test('it leaves a terminal of the test build as the guest’s own user', () => {
     '-e',
     'bash',
   ]);
+});
+
+test('it lets the desktop send its clipboard text to a viewer', () => {
+  const ctx = setupTest();
+
+  expect(ctx.readArgv('vnc')).not.toIncludeAnyMembers(['-nosel', '-noclipboard']);
 });

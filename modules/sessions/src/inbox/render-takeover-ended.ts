@@ -60,26 +60,43 @@ function renderSeen(fields: EndedFields | null, mint: () => string): string[] {
   const sites =
     fields.origins.length === 0 ? [] : [`Sites: ${fields.origins.map(toSite).join(' → ')}`];
 
-  const now = fields.now;
+  const restart = fields.isRestarted
+    ? ['The browser was closed and restarted during the take-over, so its earlier tabs are gone.']
+    : [];
 
-  if (now === null) {
-    return sites;
-  }
+  const tabs =
+    fields.tabs.length === 0
+      ? []
+      : [`Tabs: ${fields.tabs.map((open) => `${open.tab} ${toTabSite(open.origin)}`).join(', ')}`];
 
-  if (now.kind === 'other') {
-    return [...sites, 'Now: another window'];
-  }
-
-  const label = now.kind === 'browser' ? `browser tab ${now.tab}` : 'the terminal';
-
-  if (now.text === '') {
-    return [...sites, `Now: ${label}`];
-  }
-
-  return [...sites, `Now: ${label}`, ...renderUntrustedText(now.text, mint)];
+  return [...sites, ...restart, ...tabs, ...renderNow(fields.now, mint)];
 }
 
 // a secure site by its host alone, and any other with its scheme, so a plain address shows as one
 function toSite(origin: string): string {
   return origin.startsWith('https://') ? origin.slice('https://'.length) : origin;
+}
+
+function toTabSite(origin: string | null): string {
+  return origin === null ? 'a blank page' : toSite(origin);
+}
+
+function renderNow(now: EndedFields['now'], mint: () => string): string[] {
+  if (now === null) {
+    return [];
+  }
+
+  if (now.kind === 'other') {
+    return now.title === undefined || now.title === ''
+      ? ['Now: another window']
+      : ['Now: window titled', ...renderUntrustedText(now.title, mint)];
+  }
+
+  const label = now.kind === 'browser' ? `browser tab ${now.tab}` : 'the terminal';
+
+  if (now.text === '') {
+    return [`Now: ${label}`];
+  }
+
+  return [`Now: ${label}`, ...renderUntrustedText(now.text, mint)];
 }

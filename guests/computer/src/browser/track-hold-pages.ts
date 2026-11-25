@@ -1,5 +1,6 @@
 import type { Page } from 'playwright-core';
 import type { OriginLog } from '../takeover/make-origin-log';
+import { adoptPage } from './adopt-page';
 import type { BrowserState } from './types';
 
 // Playwright's focus emulation makes Chromium report every tab as visible, so a tab switch fires no
@@ -26,17 +27,5 @@ export function trackHoldPages(state: BrowserState, originLog: OriginLog): void 
 
       originLog.record(page.url());
     }
-  });
-}
-
-function adoptPage(state: BrowserState, page: Page): void {
-  state.counter += 1;
-
-  const id = `t${String(state.counter)}`;
-
-  state.tabs.set(id, { page, status: 0 });
-
-  page.on('close', () => {
-    state.tabs.delete(id);
   });
 }

@@ -26,6 +26,7 @@ function setupTest() {
 
   const driver: DesktopDriver = {
     readWindows: () => Promise.resolve({ windows: desktop.windows, activeID: desktop.activeID }),
+    readTitle: () => Promise.resolve(''),
     capture: () =>
       camera.isBroken
         ? Promise.reject(new Error('the display did not answer'))

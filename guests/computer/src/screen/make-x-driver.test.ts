@@ -13,6 +13,7 @@ function setupTest() {
     'xprop -root _NET_ACTIVE_WINDOW': '_NET_ACTIVE_WINDOW(WINDOW): window id # 0x400003',
     'xprop -id 0x200004 WM_CLASS': 'WM_CLASS(STRING) = "chromium", "Chromium"',
     'xprop -id 0x400003 WM_CLASS': 'WM_CLASS(STRING) = "xterm", "XTerm"',
+    'xdotool getwindowname 0x400003': 'Save File\n',
     'xprop -id 0x500001 WM_CLASS': 'WM_CLASS(STRING) = "chromium", "Chromium"',
     'xwininfo -id 0x200004':
       'Absolute upper-left X: 0\nAbsolute upper-left Y: 0\nWidth: 1280\nHeight: 800\nMap State: IsViewable',
@@ -80,4 +81,23 @@ test('it clicks through xdotool', async () => {
   await ctx.driver.click(412, 233, 'right');
 
   expect(ctx.ran).toStrictEqual(['xdotool mousemove 412 233 click 3']);
+});
+
+test('it reads the name of a window through xdotool without its line end', async () => {
+  const ctx = setupTest();
+
+  const title = await ctx.driver.readTitle('0x400003');
+
+  expect(title).toBe('Save File');
+});
+
+test('it reads an empty title for a window that closed', async () => {
+  const driver = makeXDriver({
+    shotPath: '',
+    runTool: () => Promise.reject(new Error('no such window')),
+  });
+
+  const title = await driver.readTitle('0x9');
+
+  expect(title).toBe('');
 });

@@ -11,6 +11,8 @@ function setupTest(options: { isGuestSlow?: boolean; isGuestOpen?: boolean } = {
   const waking = Promise.withResolvers<GuestSession>();
   const watches = { count: 0 };
   const logged: string[] = [];
+  const shown: number[][] = [];
+  const desktop: { send: ((bytes: Uint8Array) => void) | null } = { send: null };
 
   // a guest whose input is gone: it takes an open and rejects every write
   const guestStream: ExecStream = {
@@ -23,8 +25,10 @@ function setupTest(options: { isGuestSlow?: boolean; isGuestOpen?: boolean } = {
   };
 
   const guest: GuestSession = {
-    openStream: () =>
-      options.isGuestOpen === true
+    openStream: (listener) => {
+      desktop.send = listener.onData;
+
+      return options.isGuestOpen === true
         ? {
             send: (bytes) => {
               streamed.push([...bytes].join(','));
@@ -42,7 +46,8 @@ function setupTest(options: { isGuestSlow?: boolean; isGuestOpen?: boolean } = {
             send: guestStream.send,
             flush: () => Promise.reject(new Error('the guest input is closed')),
             close: () => {},
-          },
+          };
+    },
     exchange: () => Promise.reject(new Error('no call runs in this test')),
     stream: guestStream,
   };
@@ -68,6 +73,47 @@ function setupTest(options: { isGuestSlow?: boolean; isGuestOpen?: boolean } = {
     logged,
     version,
     streamed,
+    shown,
+
+    // the desktop's handshake, with a ServerInit of 32 bits per pixel, and 6 bytes of copied text
+    desktopHello: [
+      ...new TextEncoder().encode('RFB 003.008\n'),
+      1,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      32,
+      24,
+      0,
+      1,
+      0,
+      255,
+      0,
+      255,
+      0,
+      255,
+      16,
+      8,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+    ],
+    copiedText: [3, 0, 0, 0, 0, 0, 0, 6, 115, 101, 99, 114, 101, 116],
+    isStreamOpen: () => desktop.send !== null,
+    sendFromDesktop: (bytes: number[]) => {
+      desktop.send?.(new Uint8Array(bytes));
+    },
     wakeGuest: () => {
       waking.resolve(guest);
     },
@@ -75,7 +121,9 @@ function setupTest(options: { isGuestSlow?: boolean; isGuestOpen?: boolean } = {
       openComputerWatch(
         host,
         {
-          send: () => {},
+          send: (bytes) => {
+            shown.push([...bytes]);
+          },
           close: () => {
             state.closed = true;
           },
@@ -205,4 +253,44 @@ test('it closes the socket after the release has gone out, when the hold ended o
   await waitForCondition(() => ctx.state.closed);
 
   expect(ctx.streamed.slice(4)).toStrictEqual(['flush', '5,0,0,10,0,20', '3,0,0,0,0,0,5,0,3,32']);
+});
+
+test('it keeps the text that the desktop copied from a viewer that only watches', async () => {
+  const ctx = setupTest({ isGuestOpen: true });
+
+  ctx.open();
+
+  await waitForCondition(ctx.isStreamOpen);
+
+  ctx.sendFromDesktop(ctx.desktopHello);
+  ctx.sendFromDesktop([...ctx.copiedText, 2]);
+
+  expect(ctx.shown.flat()).toStrictEqual([...ctx.desktopHello, 2]);
+});
+
+test('it shows the text that the desktop copied to the viewer that holds the desktop', async () => {
+  const ctx = setupTest({ isGuestOpen: true });
+
+  ctx.state.isHolding = true;
+
+  ctx.open();
+
+  await waitForCondition(ctx.isStreamOpen);
+
+  ctx.sendFromDesktop(ctx.desktopHello);
+  ctx.sendFromDesktop([...ctx.copiedText, 2]);
+
+  expect(ctx.shown.flat()).toStrictEqual([...ctx.desktopHello, ...ctx.copiedText, 2]);
+});
+
+test('it ends the watch when the desktop sends bytes that cannot be told from copied text', async () => {
+  const ctx = setupTest({ isGuestOpen: true });
+
+  ctx.open();
+
+  await waitForCondition(ctx.isStreamOpen);
+
+  ctx.sendFromDesktop([...ctx.desktopHello, 9]);
+
+  expect([ctx.state.closed, ctx.logged]).toStrictEqual([true, ['computer.watch_malformed']]);
 });

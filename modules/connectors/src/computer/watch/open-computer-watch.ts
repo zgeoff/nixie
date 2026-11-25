@@ -1,6 +1,8 @@
 import type { Logger } from '@heynixie/logger';
 import type { GuestSession, VNCStream } from '../make-guest-session';
 import { makeClientMessageFilter } from './make-client-message-filter';
+import type { ServerMessageFilter } from './make-server-message-filter';
+import { makeServerMessageFilter } from './make-server-message-filter';
 import type { WatchConnection, WatchSocket } from './types';
 
 export interface WatchHost {
@@ -49,7 +51,12 @@ export function openComputerWatch(
   host.watches.count += 1;
 
   const releaseHold = host.hold();
-  const filter = makeClientMessageFilter({ canInput: input.canInput });
+  const serverFilter = makeServerMessageFilter({ canInput: input.canInput });
+
+  const filter = makeClientMessageFilter({
+    canInput: input.canInput,
+    readPixelBits: serverFilter.readPixelBits,
+  });
 
   const state: WatchState = {
     stream: null,
@@ -76,7 +83,7 @@ export function openComputerWatch(
     socket.close();
   };
 
-  void startStream(host, { state, socket, end: endAndClose });
+  void startStream(host, { state, socket, serverFilter, end: endAndClose });
 
   return {
     end,
@@ -129,6 +136,7 @@ export function openComputerWatch(
 interface StreamStart {
   readonly state: WatchState;
   readonly socket: WatchSocket;
+  readonly serverFilter: ServerMessageFilter;
   readonly end: () => void;
 }
 
@@ -150,7 +158,7 @@ async function startStream(host: WatchHost, start: StreamStart): Promise<void> {
     const stream = guest.openStream({
       onData: (bytes) => {
         if (!start.state.isEnded) {
-          start.socket.send(bytes);
+          passToViewer(host, start, bytes);
         }
       },
       onClose: start.end,
@@ -164,6 +172,21 @@ async function startStream(host: WatchHost, start: StreamStart): Promise<void> {
     }
   } catch (error) {
     host.logger('computer.watch_failed', { reason: String(error) }, 'warn');
+    start.end();
+  }
+}
+
+// Sends the viewer what the desktop sent, less the clipboard text that it may not have. Bytes that
+// the filter cannot frame end the watch, because the clipboard text could be among them.
+function passToViewer(host: WatchHost, start: StreamStart, bytes: Uint8Array): void {
+  const result = start.serverFilter.push(bytes);
+
+  for (const message of result.forward) {
+    start.socket.send(message);
+  }
+
+  if (result.isMalformed) {
+    host.logger('computer.watch_malformed', {}, 'warn');
     start.end();
   }
 }

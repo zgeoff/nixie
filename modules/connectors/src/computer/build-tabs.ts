@@ -6,6 +6,9 @@ export interface ComputerTabs {
   // the tab the model names for a guest's tab, or null when none does
   readonly findGuest: (guestTab: string) => string | null;
   readonly remove: (tab: string) => void;
+
+  // forgets every tab, for a browser that started again
+  readonly clear: () => void;
   readonly isEmpty: () => boolean;
 
   readonly isIdleClosed: (tab: string) => boolean;
@@ -38,6 +41,9 @@ export function buildTabs(state: TabState): ComputerTabs {
     },
     remove: (tab) => {
       state.tabs.delete(tab);
+    },
+    clear: () => {
+      state.tabs.clear();
     },
     isEmpty: () => state.tabs.size === 0,
     isIdleClosed: (tab) => state.idleClosed.has(tab),

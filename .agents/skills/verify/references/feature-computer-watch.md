@@ -9,8 +9,11 @@ page says "Your input won't reach the computer until you take over." A connectio
 handshake and sends no picture stays on "The computer is waking.". The page is view only until the
 user takes over: "Take over" gives the user's device the keys and pointer of the desktop, and the
 assistant's calls that change the desktop wait. "Hand back" gives the desktop back. Each take-over
-and hand-back writes a record that the assistant reads. nixie drops clipboard messages always.
-`local`'s test build serves a fixed gradient picture in place of a real desktop.
+and hand-back writes a record that the assistant reads, and the hand-back record lists every open
+tab with its tab ID and site. While the user holds the desktop, a paste in the page reaches the
+focused field and text the desktop copies reaches the user's clipboard. nixie drops clipboard
+messages from any other viewer. `local`'s test build serves a fixed gradient picture in place of a
+real desktop.
 
 Follow the steps in [Check a change](../SKILL.md#check-a-change) for this journey. Read that section
 for the commands `up` and `done`, and for the `data` field of each command's JSON output.
@@ -20,7 +23,8 @@ Run this journey on `local` only. The stand-in desktop exists only in `local`'s 
 because it needs `local`.
 
 Before you start, run [sign-in-enrol](feature-sign-in-enrol.md) in the same `up`, when you have not
-run it since `up`.
+run it since `up`. Run [computer-browser](feature-computer-browser.md) first in the same `up`: its
+tab is `t1`, which step 8 expects the 2 new tabs to follow.
 
 After this journey, run `bun verify up --restart`, `bun verify doctor` and sign-in-enrol before any
 journey that sends a message. The hand-back record starts a conversation turn, and the journey gives
@@ -65,7 +69,33 @@ that turn no reply, so the turn fails.
 
    Expect: all three commands exit 0. The second visit watches again with a new address.
 
-5. Script the assistant's ask for a take-over, send a message, and wait for the banner. The scripted
+5. Open 2 tabs in the assistant's browser, so the hand-back in step 8 has 2 tabs to list. nixie
+   holds each open until the user approves it, and gives the model a tool result of `queued` at
+   once, so the reply arrives first. Script a reply for the turn that an approval starts, then
+   approve both held calls. The second approval's turn gets no reply, and no step checks it:
+
+   ```bash
+   bun verify action use-computer --kind browser-two-tabs --text 'The assistant opened 2 tabs.'
+   bun verify conversation turn --message 'Open the page in two tabs of your browser.' --reply 'The assistant opened 2 tabs.'
+   bun verify action script-reply --text 'Thanks, I have your answer.'
+   bun verify browser goto /proposals
+   bun verify browser snapshot
+   ```
+
+   Expect: each command exits 0, and `data.replies` of the first is 3. The snapshot shows 2 items
+   that read "Run computer.browser_open to pages.test:", then a port, then "(fetch).". For each
+   item, click the line that holds that text and `[cursor=pointer]`, take a snapshot, and click the
+   button whose name starts with `Run computer.browser_open to pages.test:`. Each snapshot gives
+   every element a new `ref`, so take each `ref` from the snapshot just before its click. Then check
+   that both calls ran:
+
+   ```bash
+   bun verify db query "select count(*) as opened from records where kind = 'action.outcome' and json_extract(payload, '$.tool') = 'computer.browser_open' and json_extract(payload, '$.status') = 'done'"
+   ```
+
+   Expect: one row, with `opened` 3: the open of computer-browser and the 2 new ones.
+
+6. Script the assistant's ask for a take-over, send a message, and wait for the banner. The scripted
    turn calls `computer.handover` with the reason, then replies:
 
    ```bash
@@ -81,7 +111,7 @@ that turn no reply, so the turn fails.
    Expect: each command exits 0, and `data.replies` of the first is 3. The snapshot shows a banner
    with the reason and a button "Take over". The query returns one row, `computer.handover_asked`.
 
-6. Answer the ask with the banner's Take over button, and check the records:
+7. Answer the ask with the banner's Take over button, and check the records:
 
    ```bash
    bun verify browser click --role button --name 'Take over'
@@ -95,16 +125,21 @@ that turn no reply, so the turn fails.
    "Hand back" and no banner. The query returns one row, `computer.takeover_started`. No
    `computer.handover_closed` record follows, because the user answered the ask by taking over.
 
-7. Hand the desktop back, and check the records:
+8. Hand the desktop back, and check the records:
 
    ```bash
    bun verify browser click --role button --name 'Hand back'
    bun verify browser snapshot --until-text 'Take over'
    bun verify db query "select kind from records where kind like 'computer.takeover_%' order by sequence"
+   bun verify model received --text ', t2 http://pages.test'
+   bun verify model received --text ', t3 http://pages.test'
    ```
 
-   Expect: all three commands exit 0. The query returns 2 rows, `computer.takeover_started` then
-   `computer.takeover_ended`.
+   Expect: all five commands exit 0. The query returns 2 rows, `computer.takeover_started` then
+   `computer.takeover_ended`. The hand-back record's fields are erasable, so the query cannot read
+   its tab list. The model's request for the turn that the record wakes lists both tabs from step 5
+   by tab ID and site, `t2` and `t3`, because the computer-browser journey holds `t1`. So each
+   `model received` finds one request.
 
 ## End state
 
@@ -112,10 +147,13 @@ that turn no reply, so the turn fails.
   the desktop image.
 - In step 3, no stored result held a watch address.
 - In step 4, a second visit watched again.
-- In step 5, the page showed the banner with the assistant's reason, and nixie held one
+- In step 5, the assistant opened 2 tabs, and nixie held 3 finished `computer.browser_open`
+  outcomes.
+- In step 6, the page showed the banner with the assistant's reason, and nixie held one
   `computer.handover_asked` record.
-- In step 6, the banner's Take over opened the computer page, which offered "Hand back" with no
+- In step 7, the banner's Take over opened the computer page, which offered "Hand back" with no
   banner, and nixie held one start record.
-- In step 7, the page offered "Take over" again and nixie held the start record and the end record.
+- In step 8, the page offered "Take over" again, nixie held the start record and the end record, and
+  the model received a hand-back that lists both tabs.
 
 Once the end state matches, run `bun verify done`.
