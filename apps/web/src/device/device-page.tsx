@@ -1,5 +1,6 @@
 import type { ContractClient } from '@heynixie/contract';
 import { ORPCError } from '@orpc/client';
+import { useNavigate } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import { EnrolForm } from '../components/enrol-form';
@@ -33,6 +34,7 @@ const page = css({
 // shows the enrolment form, and a full session with no device shows the form that names one.
 export function DevicePage(): ReactNode {
   const nixie = useNixieClient();
+  const navigate = useNavigate();
   const [phase, setPhase] = useState<Phase>({ kind: 'checking' });
   const [attempt, setAttempt] = useState(0);
 
@@ -114,6 +116,11 @@ export function DevicePage(): ReactNode {
   if (phase.isScreenOn) {
     return (
       <DeviceScreen
+        onClose={() => {
+          void closeDeviceScreen(async () => {
+            await navigate({ to: '/' });
+          });
+        }}
         onSwitchOff={() => {
           setScreen(false);
         }}
@@ -207,4 +214,17 @@ async function signOutDevice(client: ContractClient, setPhase: SetPhase): Promis
   }
 
   setPhase({ kind: 'enrol' });
+}
+
+// Full screen belongs to the document, which outlives the device page, so Close leaves it first.
+async function closeDeviceScreen(openHome: () => Promise<void>): Promise<void> {
+  if (globalThis.document.fullscreenElement !== null) {
+    try {
+      await globalThis.document.exitFullscreen();
+    } catch {
+      // a refused exit still leaves device mode
+    }
+  }
+
+  await openHome();
 }

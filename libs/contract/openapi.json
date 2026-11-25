@@ -32911,18 +32911,21 @@
                                               "properties": {
                                                 "columns": {
                                                   "type": "array",
+                                                  "maxItems": 12,
                                                   "items": {
                                                     "type": "string"
                                                   }
                                                 },
                                                 "rows": {
                                                   "type": "array",
+                                                  "maxItems": 12,
                                                   "items": {
                                                     "type": "string"
                                                   }
                                                 },
                                                 "regions": {
                                                   "type": "array",
+                                                  "maxItems": 36,
                                                   "items": {
                                                     "type": "object",
                                                     "properties": {
@@ -32948,6 +32951,39 @@
                                                         "type": "integer",
                                                         "minimum": -9007199254740991,
                                                         "maximum": 9007199254740991
+                                                      },
+                                                      "background": {
+                                                        "anyOf": [
+                                                          {
+                                                            "anyOf": [
+                                                              {
+                                                                "enum": [
+                                                                  "black",
+                                                                  "white",
+                                                                  "gray",
+                                                                  "red",
+                                                                  "orange",
+                                                                  "yellow",
+                                                                  "green",
+                                                                  "teal",
+                                                                  "blue",
+                                                                  "navy",
+                                                                  "purple",
+                                                                  "pink",
+                                                                  "brown"
+                                                                ],
+                                                                "type": "string"
+                                                              },
+                                                              {
+                                                                "type": "string",
+                                                                "pattern": "^#[0-9a-fA-F]{6}$"
+                                                              }
+                                                            ]
+                                                          },
+                                                          {
+                                                            "type": "null"
+                                                          }
+                                                        ]
                                                       },
                                                       "content": {
                                                         "anyOf": [
@@ -33069,6 +33105,7 @@
                                                       "row",
                                                       "columnSpan",
                                                       "rowSpan",
+                                                      "background",
                                                       "content",
                                                       "until"
                                                     ]

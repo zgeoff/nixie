@@ -52,7 +52,8 @@ A device is a browser that shows what the model puts on its screen. You enrol it
    bun verify db query "select name, capabilities from devices"
    ```
 
-   Expect: the buttons "Switch off screen" and "Sign out", and one row, "hall display", whose
+   Expect: no button "Switch on screen", and none of the buttons "Switch off screen", "Full screen"
+   and "Sign out", because the page hides them until a touch. One row, "hall display", whose
    `capabilities` holds `"screen":true`.
 
 4. Have the model show the photo, once for each `--fit` value. `whole` shows all of the picture and
@@ -71,11 +72,13 @@ A device is a browser that shows what the model puts on its screen. You enrol it
 5. Read the page and the device row:
 
    ```bash
+   bun verify browser click --role img --name Picture
    bun verify browser snapshot
    bun verify browser screenshot
    bun verify db query "select shown_sequence from devices"
    ```
 
+   The click is a touch, which shows the buttons for 4 seconds. Run the snapshot straight after it.
    Expect: the end state below.
 
 ## End state

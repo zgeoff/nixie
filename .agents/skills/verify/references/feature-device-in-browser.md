@@ -53,8 +53,9 @@ which needs a browser with no session.
    bun verify browser snapshot
    ```
 
-   Expect: the first snapshot shows the button "Switch on screen". The second shows the buttons
-   "Switch off screen" and "Full screen".
+   Expect: the first snapshot shows the button "Switch on screen". The second shows no "Switch on
+   screen" button, and no "Switch off screen" or "Full screen" button, because the page hides them
+   until a touch.
 
 4. Read the `devices` table and the sessions:
 

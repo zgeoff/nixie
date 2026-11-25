@@ -22,7 +22,7 @@ async function setupTest() {
   };
 }
 
-test('it registers the 5 device tools', async () => {
+test('it registers the device tools', async () => {
   const ctx = await setupTest();
 
   expect(ctx.isValid('device.layout', { device: 'dk4m7q2w9x', clear: true })).toBeTrue();

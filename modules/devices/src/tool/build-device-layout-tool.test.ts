@@ -141,7 +141,7 @@ test('it keeps the layout of a device that went offline, and lists it', async ()
   });
 });
 
-test('it clears every region when a new layout replaces the layout', async () => {
+test('it keeps the content of each region whose name the new layout keeps, and clears the rest', async () => {
   const ctx = await setupTest();
   const device = await ctx.seed.screenOnDevice();
 
@@ -155,14 +155,19 @@ test('it clears every region when a new layout replaces the layout', async () =>
     content: { kind: 'markdown', markdown: 'Bins go out **tonight**' },
   });
 
+  await ctx.call('device.region', {
+    device: device.deviceID,
+    region: 'pond',
+    content: { kind: 'markdown', markdown: 'ripples' },
+  });
+
   await ctx.call('device.layout', {
     device: device.deviceID,
-    columns: ['1fr', '2fr', '1fr'],
+    columns: ['1fr', '1fr'],
     rows: ['1fr'],
     regions: [
-      { name: 'pond', column: 1, row: 1 },
-      { name: 'note', column: 2, row: 1 },
-      { name: 'clock', column: 3, row: 1 },
+      { name: 'note', column: 1, row: 1 },
+      { name: 'garden', column: 2, row: 1 },
     ],
   });
 
@@ -174,14 +179,119 @@ test('it clears every region when a new layout replaces the layout', async () =>
         {
           layout: {
             regions: [
-              { name: 'pond', kind: null },
-              { name: 'note', kind: null },
-              { name: 'clock', kind: null },
+              { name: 'note', kind: 'markdown' },
+              { name: 'garden', kind: null },
             ],
           },
         },
       ],
     },
+  });
+});
+
+test('it blanks a region that a layout dropped when a later layout names it again', async () => {
+  const ctx = await setupTest();
+  const device = await ctx.seed.screenOnDevice();
+
+  ctx.streams.open(device.deviceID, { width: 1920, height: 480, pixelRatio: 1 });
+
+  await ctx.seed.layout(device.deviceID);
+
+  await ctx.call('device.region', {
+    device: device.deviceID,
+    region: 'pond',
+    content: { kind: 'markdown', markdown: 'ripples' },
+  });
+
+  await ctx.call('device.layout', {
+    device: device.deviceID,
+    columns: ['1fr'],
+    rows: ['1fr'],
+    regions: [{ name: 'note', column: 1, row: 1 }],
+  });
+
+  await ctx.call('device.layout', {
+    device: device.deviceID,
+    columns: ['1fr', '1fr'],
+    rows: ['1fr'],
+    regions: [
+      { name: 'pond', column: 1, row: 1 },
+      { name: 'note', column: 2, row: 1 },
+    ],
+  });
+
+  const listed = await ctx.call('devices.list', {});
+
+  expect(listed).toMatchObject({
+    result: { devices: [{ layout: { regions: [{ name: 'pond', kind: null }, {}] } }] },
+  });
+});
+
+test('it keeps the background of each region the layout sets', async () => {
+  const ctx = await setupTest();
+  const device = await ctx.seed.screenOnDevice();
+
+  ctx.streams.open(device.deviceID, { width: 1920, height: 480, pixelRatio: 1 });
+
+  await ctx.call('device.layout', {
+    device: device.deviceID,
+    columns: ['1fr', '1fr'],
+    rows: ['1fr'],
+    regions: [
+      { name: 'pond', column: 1, row: 1, background: 'teal' },
+      { name: 'note', column: 2, row: 1, background: '#102030' },
+    ],
+  });
+
+  const layout = await ctx.readLayout(device.deviceID);
+
+  expect(layout?.regions.map((region) => region.background)).toStrictEqual(['teal', '#102030']);
+});
+
+test('it takes a grid of 12 columns, 12 rows and 36 regions', async () => {
+  const ctx = await setupTest();
+  const device = await ctx.seed.screenOnDevice();
+
+  ctx.streams.open(device.deviceID, { width: 1920, height: 480, pixelRatio: 1 });
+
+  const outcome = await ctx.call('device.layout', {
+    device: device.deviceID,
+    columns: Array.from({ length: 12 }, () => '1fr'),
+    rows: Array.from({ length: 12 }, () => '1fr'),
+    regions: Array.from({ length: 36 }, (_unused, index) => ({
+      name: `r${String(index)}`,
+      column: (index % 12) + 1,
+      row: Math.floor(index / 12) + 1,
+    })),
+  });
+
+  expect(outcome).toMatchObject({ status: 'ok', result: { device: device.deviceID } });
+});
+
+test.each([
+  { title: '13 columns', columns: 13, rows: 1, regions: 1, cap: '1 to 12 columns' },
+  { title: '13 rows', columns: 1, rows: 13, regions: 1, cap: '1 to 12 rows' },
+  { title: '37 regions', columns: 12, rows: 4, regions: 37, cap: 'up to 36 regions' },
+])('it refuses $title and states the cap', async (row) => {
+  const ctx = await setupTest();
+  const device = await ctx.seed.screenOnDevice();
+
+  ctx.streams.open(device.deviceID, { width: 1920, height: 480, pixelRatio: 1 });
+
+  const outcome = await ctx.call('device.layout', {
+    device: device.deviceID,
+    columns: Array.from({ length: row.columns }, () => '1fr'),
+    rows: Array.from({ length: row.rows }, () => '1fr'),
+    regions: Array.from({ length: row.regions }, (_unused, index) => ({
+      name: `r${String(index)}`,
+      column: (index % row.columns) + 1,
+      row: Math.floor(index / row.columns) + 1,
+    })),
+  });
+
+  expect(outcome).toMatchObject({
+    refusalCode: 'BAD_LAYOUT',
+    result: { message: expect.stringContaining(row.cap) },
   });
 });
 

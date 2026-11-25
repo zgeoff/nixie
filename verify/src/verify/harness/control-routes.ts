@@ -90,7 +90,10 @@ export const controlRoutes = {
   layoutOnDevice: {
     method: 'POST',
     path: '/control/layout-on-device',
-    input: z.strictObject({ step: z.enum(['set', 'update']), text: z.string().min(1) }),
+    input: z.strictObject({
+      step: z.enum(['set', 'update', 'save', 'change', 'restore']),
+      text: z.string().min(1),
+    }),
     output: z.strictObject({ replies: z.int().positive() }),
   },
   advanceClock: {

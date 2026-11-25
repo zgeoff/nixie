@@ -1,3 +1,4 @@
+import { layoutLimits, regionBackgroundNames } from '@heynixie/contract';
 import type { ToolDefinition } from '@heynixie/tools';
 import { z } from 'zod';
 import { readDeviceByShortID } from '../device/read-device-by-short-id';
@@ -16,13 +17,12 @@ const layoutInput = {
     columns: {
       type: 'array',
       items: { type: 'string' },
-      description:
-        "the width of each column as a whole number of fr from 1 to 12, such as ['1fr', '2fr']; 1 to 6 columns",
+      description: `the width of each column as a whole number of fr from 1 to 12, such as ['1fr', '2fr']; 1 to ${String(layoutLimits.columns)} columns`,
     },
     rows: {
       type: 'array',
       items: { type: 'string' },
-      description: 'the height of each row, in the same form; 1 to 6 rows',
+      description: `the height of each row, in the same form; 1 to ${String(layoutLimits.rows)} rows`,
     },
     regions: {
       type: 'array',
@@ -37,11 +37,15 @@ const layoutInput = {
           row: { type: 'integer', description: 'the first row, counted from 1' },
           columnSpan: { type: 'integer', description: 'how many columns it covers; 1 by default' },
           rowSpan: { type: 'integer', description: 'how many rows it covers; 1 by default' },
+          background: {
+            type: 'string',
+            description: `the colour behind the region's content: ${regionBackgroundNames.join(', ')} or #rrggbb; none by default`,
+          },
         },
         required: ['name', 'column', 'row'],
         additionalProperties: false,
       },
-      description: 'up to 12 named regions, none overlapping and all inside the grid',
+      description: `up to ${String(layoutLimits.regions)} named regions, none overlapping and all inside the grid`,
     },
     clear: {
       type: 'boolean',
@@ -58,6 +62,7 @@ const regionArguments = z.object({
   row: z.int(),
   columnSpan: z.int().optional(),
   rowSpan: z.int().optional(),
+  background: z.string().optional(),
 });
 
 const layoutArguments = z.object({
@@ -84,8 +89,9 @@ export function buildDeviceLayoutTool(options: DeviceToolOptions): ToolDefinitio
     name: 'device.layout',
     description:
       "Sets a device's layout: a grid of columns and rows with named regions, each of which " +
-      'device.region fills with its own content. A new layout clears every region, so the screen ' +
-      'shows its idle scene until a region has content. The layout never times out. A show ' +
+      'device.region fills with its own content. A new layout keeps the content of each region ' +
+      'whose name it keeps and clears the rest, so the screen shows its idle scene until a region ' +
+      'has content. The layout never times out. A show ' +
       'covers the layout while it lasts, and the regions keep their own times. `clear: true` ' +
       'removes the layout. The screen must be on and the device online.',
     input: layoutInput,

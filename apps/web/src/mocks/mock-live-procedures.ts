@@ -36,6 +36,13 @@ export const mockLiveProcedures = {
           },
         };
 
+        if (deviceStore.layoutHolder.layout !== null) {
+          yield {
+            kind: 'device' as const,
+            event: { kind: 'layout' as const, layout: deviceStore.layoutHolder.layout },
+          };
+        }
+
         await waitForAbort(options.signal);
       } finally {
         mockLive.recordClose(generation);

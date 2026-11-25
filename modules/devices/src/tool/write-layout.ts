@@ -13,8 +13,8 @@ interface LayoutWrite {
   readonly layout: LayoutGeometry | null;
 }
 
-// Records a layout, points the device at it, and clears every region: a new layout starts blank. The
-// short ID of the record is the layout's.
+// Records a layout, points the device at it, and clears every region the new grid does not keep by
+// name: a region the grid keeps keeps its content. The short ID of the record is the layout's.
 export function writeLayout(options: DeviceToolOptions, write: LayoutWrite): Promise<string> {
   return withWriteTransaction(options.log.writer, async (tx) => {
     const layoutID = createShortID();
@@ -43,8 +43,13 @@ export function writeLayout(options: DeviceToolOptions, write: LayoutWrite): Pro
 
     const db = tx.$extendTables<DeviceTables>();
     const nowMs = options.clock.now();
+    const keptNames = write.layout?.regions.map((region) => region.name) ?? [];
 
-    await db.deleteFrom('device_regions').where('device_id', '=', write.deviceID).execute();
+    await db
+      .deleteFrom('device_regions')
+      .where('device_id', '=', write.deviceID)
+      .$if(keptNames.length > 0, (query) => query.where('region', 'not in', keptNames))
+      .execute();
 
     await db
       .insertInto('device_layouts')

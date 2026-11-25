@@ -7,6 +7,7 @@ const messages: Readonly<Record<string, string>> = {
   IMAGE_FORGOTTEN: 'The owner forgot this image, so it cannot be shown.',
   OFFLINE: 'The device has no open connection, so nothing can reach its screen now.',
   BAD_LAYOUT: 'The layout is not a grid of regions that fit.',
+  NO_LAYOUT: 'The device holds no layout, so there is nothing to save. device.layout sets one.',
   UNKNOWN_REGION:
     'The device has no layout with a region of this name. devices.list shows the layout.',
   PAGE_NOT_BUILT: 'A region cannot hold a page yet. Use markdown, an image or a live value.',

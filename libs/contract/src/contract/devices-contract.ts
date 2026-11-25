@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { layoutLimits, regionBackgroundSchema } from './region-background-schema';
 import { regionContentSchema } from './region-content-schema';
 import { reusedIDErrors } from './reused-id-errors';
 import { screenContentSchema } from './screen-content-schema';
@@ -19,15 +20,18 @@ const layoutRegionSchema = z.object({
   columnSpan: z.int(),
   rowSpan: z.int(),
 
+  // null for a region with no background, which shows the screen's black
+  background: regionBackgroundSchema.nullable(),
+
   // null while the region is blank
   content: regionContentSchema.nullable(),
   until: z.iso.datetime().nullable(),
 });
 
 const layoutSchema = z.object({
-  columns: z.array(z.string()),
-  rows: z.array(z.string()),
-  regions: z.array(layoutRegionSchema),
+  columns: z.array(z.string()).max(layoutLimits.columns),
+  rows: z.array(z.string()).max(layoutLimits.rows),
+  regions: z.array(layoutRegionSchema).max(layoutLimits.regions),
 });
 
 // The first screen event is what the screen shows now. A later screen event replaces it. A layout
