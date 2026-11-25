@@ -1,5 +1,6 @@
 import type { ContractClient } from '@heynixie/contract';
 import { ORPCError } from '@orpc/client';
+import { useNavigate } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import { EnrolForm } from '../components/enrol-form';
@@ -33,6 +34,7 @@ const page = css({
 // shows the enrolment form, and a full session with no device shows the form that names one.
 export function DevicePage(): ReactNode {
   const nixie = useNixieClient();
+  const navigate = useNavigate();
   const [phase, setPhase] = useState<Phase>({ kind: 'checking' });
   const [attempt, setAttempt] = useState(0);
 
@@ -114,6 +116,9 @@ export function DevicePage(): ReactNode {
   if (phase.isScreenOn) {
     return (
       <DeviceScreen
+        onClose={() => {
+          void navigate({ to: '/' });
+        }}
         onSwitchOff={() => {
           setScreen(false);
         }}

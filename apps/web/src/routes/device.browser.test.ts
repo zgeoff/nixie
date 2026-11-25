@@ -333,11 +333,34 @@ test('it hides the screen buttons until a touch', async () => {
   const hidden = await ctx.view.evaluate(ctx.shownButtons);
 
   await ctx.tap(20, 20);
-  await ctx.waitForPage(`${ctx.shownButtons}.length === 3`);
+  await ctx.waitForPage(`${ctx.shownButtons}.length === 4`);
 
   const touched = await ctx.view.evaluate(ctx.shownButtons);
 
-  expect([hidden, touched]).toStrictEqual([[], ['Full screen', 'Switch off screen', 'Sign out']]);
+  expect([hidden, touched]).toStrictEqual([
+    [],
+    ['Close', 'Full screen', 'Switch off screen', 'Sign out'],
+  ]);
+});
+
+test('it leaves the device page for the home page on Close', async () => {
+  const ctx = await setupTest();
+
+  await ctx.switchScreenOn();
+  await ctx.tap(20, 20);
+  await ctx.waitForPage(`${ctx.shownButtons}.includes('Close')`);
+
+  await ctx.view.evaluate(
+    `([...document.querySelectorAll('button')].find((button) => button.innerText === 'Close').click(), true)`,
+  );
+
+  await ctx.waitForPage(
+    `document.querySelector('[data-testid="layout"], [data-testid="screen"]') === null`,
+  );
+
+  const pathname = await ctx.view.evaluate('location.pathname');
+
+  expect(pathname).toBe('/');
 });
 
 test('it shows the screen buttons on a pointer move', async () => {
@@ -345,7 +368,7 @@ test('it shows the screen buttons on a pointer move', async () => {
 
   await ctx.switchScreenOn();
   await ctx.view.cdp('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 20, y: 20 });
-  await ctx.waitForPage(`${ctx.shownButtons}.length === 3`);
+  await ctx.waitForPage(`${ctx.shownButtons}.length === 4`);
 });
 
 test('it keeps the screen buttons hidden on a key press', async () => {
@@ -370,7 +393,7 @@ test('it hides the screen buttons 4 seconds after the latest touch', async () =>
 
   await ctx.switchScreenOn();
   await ctx.tap(20, 20);
-  await ctx.waitForPage(`${ctx.shownButtons}.length === 3`);
+  await ctx.waitForPage(`${ctx.shownButtons}.length === 4`);
   await ctx.pausePageClock();
   await ctx.advancePageClock(3500);
 
@@ -380,5 +403,8 @@ test('it hides the screen buttons 4 seconds after the latest touch', async () =>
 
   const after = await ctx.view.evaluate(ctx.shownButtons);
 
-  expect([before, after]).toStrictEqual([['Full screen', 'Switch off screen', 'Sign out'], []]);
+  expect([before, after]).toStrictEqual([
+    ['Close', 'Full screen', 'Switch off screen', 'Sign out'],
+    [],
+  ]);
 });
