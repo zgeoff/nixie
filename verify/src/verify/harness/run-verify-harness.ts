@@ -9,6 +9,7 @@ import {
 } from '@heynixie/server/test-utils';
 import type { ScriptedModel } from '@heynixie/testing';
 import { createBuiltWeb, createFrontProxy, readWebBuild } from '@heynixie/web/test-utils';
+import { approveHeldRegion } from './approve-held-region';
 import { buildScriptedReplies } from './build-scripted-replies';
 import { localMemoryConfig } from './local-memory-config';
 import { readLastModelInput } from './read-last-model-input';
@@ -145,7 +146,18 @@ export async function runVerifyHarness(): Promise<void> {
         siteURL: `http://pages.test:${String(site.port)}/`,
       }),
     showOnDevice: (show) => runDeviceShow(api.client, nixie.model, show),
-    layoutOnDevice: (layout) => runDeviceLayout(api.client, nixie.model, layout),
+    layoutOnDevice: async (layout) => {
+      // the owner's answers, which the journey's browser holds a device session too narrow to give
+      if (layout.step === 'approve') {
+        return approveHeldRegion(api.client);
+      }
+
+      if (layout.step === 'package') {
+        await server.request('approvePackage', null);
+      }
+
+      return runDeviceLayout(api.client, nixie.model, { ...layout, step: layout.step });
+    },
     runCallStep: (call) =>
       runCallStep(
         {

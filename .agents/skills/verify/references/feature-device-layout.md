@@ -2,7 +2,8 @@
 
 - [Journey](#journey): enrol a browser as a device, switch its screen on, and have the model lay it
   out in 3 regions, update one, let another time out, then save the layout, change it and restore
-  it, then have the model preview the screen, show a page in a region, and send the page a message.
+  it, then have the model preview the screen, show a page in a region, and send the page a message,
+  then show a page that loads an approved package and reads a declared fetch.
 - [End state](#end-state): what the page and the records show.
 
 Run this journey on `local` only. It needs the scripted model and the `layout-on-device` action,
@@ -173,6 +174,32 @@ under a name, lay the screen out again, and restore the saved layout in one call
     because the page gave `pond` a pointer again. When a snapshot does not list the text inside the
     frame, take a screenshot and read the page from it.
 
+11. Have the model show a page in `pond` that loads the approved package `ripple-count` and reads
+    the declared fetch of `https://tides.test/today`. The `layout-on-device` action approves the
+    package first, as the user would with a passkey, which a journey cannot give. The call is held,
+    because no rule allows the host `tides.test`. The browser holds a device session, which the
+    approvals page refuses, so the action `--step approve` gives the user's answer. Then open the
+    device page again:
+
+    ```bash
+    bun verify action layout-on-device --step package --text 'The tide page is up.'
+    bun verify conversation turn --message 'Put the tide page in the pond of the screen in the hall.' --reply 'The tide page is up.'
+    bun verify proposals --tool device.region --waiting pending
+    bun verify db query "select name, version from device_packages"
+    bun verify action script-reply --text 'Thanks, I have your answer.'
+    bun verify action layout-on-device --step approve --text 'Approved.'
+    bun verify proposals --tool device.region --waiting none
+    bun verify browser snapshot --until-text 'Tide 14:05'
+    bun verify browser screenshot
+    ```
+
+    Expect: `data.replies` of 3 from the first action, and `conversation turn` exits 0. `proposals`
+    exits 0. The query returns one row: `ripple-count` and `1.0.0`. The approve action returns
+    `data.replies` of 1. The snapshot shows "Tide 14:05 ripples 7": the page loaded the package's
+    script, which set `ripples` to 7, and read the declared fetch. When the snapshot does not list
+    the text inside the frame, read it from the screenshot. A page that shows "Failed" and a code
+    means the fetch was refused or not ready.
+
 ## End state
 
 - The last snapshot shows "Dentist at 3" and a time, and no "Ripples", no "Water the pots" and no
@@ -183,6 +210,8 @@ under a name, lay the screen out again, and restore the saved layout in one call
 - In step 9, the model's one call of `device.preview` returned a result with `picture` `shown`.
 - In step 10, the page in `pond` shows "Got hello", and `records` holds one `device.page_event`
   named `echo`.
+- In step 11, `device_packages` holds one row, `ripple-count`, and the page in `pond` shows "Tide
+  14:05 ripples 7".
 - The screenshots are evidence for the reviewer. Check nothing in them. When the snapshot in step 10
   does not list the page's text, read that text from the screenshot.
 

@@ -17,6 +17,7 @@ const layoutMessages = {
   preview: 'Show me what the screen in the hall looks like.',
   page: 'Put a page in the pond of the screen in the hall.',
   message: 'Send the page in the pond of the screen in the hall a message.',
+  package: 'Put the tide page in the pond of the screen in the hall.',
 } as const satisfies Record<LayoutStep, string>;
 
 // Queues the turn that lays out the first device's screen, or updates one of its regions, then

@@ -84,9 +84,8 @@ spans one or more tracks without overlapping another or leaving the grid. A regi
 The background belongs to the grid, so a new layout sets it again. A region holds markdown (up to
 20,000 characters), an image with `fit` `whole` or `fill`, or a live value: a clock in `HH:mm`,
 `HH:mm:ss` or `EEE d MMM`, or a countdown to a time with an optional label. A region can also hold a
-[page](#page-regions): up to 200,000 characters of HTML and up to 20 images. A call that declares
-`packages` or `fetches` for a page gets `PACKAGES_NOT_BUILT` or `FETCHES_NOT_BUILT`, and the page
-keeps what it showed before.
+[page](#page-regions): up to 200,000 characters of HTML, up to 20 images, up to 20
+[approved packages](#packages) and up to 8 [declared fetches](#declared-fetches).
 
 Two record kinds hold a layout and its content, and three tables point at those records:
 
@@ -180,10 +179,11 @@ it sends the retained message of each page region right after its first layout.
 
 ## Page regions
 
-A page is a region whose content has `kind: 'html'`: the `html` in a body, and `images`, a map from
-an ID the page names to an image-store short ID. The server keeps no copy of the markup outside the
-record that seals it, apart from the files of a preview while it draws one, and `devices.list` never
-shows it.
+A page is a region whose content has `kind: 'html'`: the `html` in a body, `images`, a list of
+image-store short IDs the page may show, `packages`, a list of `name@version` strings, and
+`fetches`, a list of URLs with an optional `refreshMinutes`. The server keeps no copy of the markup
+outside the record that seals it, apart from the files of a preview while it draws one, and
+`devices.list` never shows it.
 
 ### The frame
 
@@ -201,8 +201,10 @@ A ticket stays the same while the stream and the region show the same content. A
 layout at that moment and answers 404 unless the region still shows the content that the ticket
 names. The response carries `no-store`, `nosniff` and `no-referrer`. The frame's own policy sets
 `default-src 'none'`, scripts and styles inline, `connect-src 'none'`, `form-action 'none'`,
-`base-uri 'none'`, and images only from that page's image URLs and `data:`. So a page can't fetch,
-open a socket, submit a form or load anything else. The device page's own policy adds
+`base-uri 'none'`, and images only from that page's image URLs and `data:`. Scripts and styles may
+also load from the file paths of the [packages](#packages) that the page names, and fonts from those
+paths and `data:`. So a page can't fetch, open a socket, submit a form or load anything else, and a
+page that names a package still can't reach the network. The device page's own policy adds
 `frame-src 'self'`, which keeps a page from framing another site. A page can still navigate its own
 frame, and each test of the policy runs in a real browser in `answer-page-request.browser.test.ts`.
 
@@ -253,7 +255,11 @@ An inline script defines the frozen global `nixie` in each page:
 - `nixie.onMessage(handler)` takes each message that `device.sendToPage` sent. A message that comes
   before the handler waits for it, and the page's retained message comes first.
 - `nixie.image(id)` returns the URL of a declared image.
-- `nixie.data` and `nixie.onData` exist and answer nothing.
+- `nixie.data(url)` returns the last response of one of the page's
+  [declared fetches](#declared-fetches) as `{ status, type, body, fetchedAt }`, and rejects with an
+  error whose `code` is `NOT_DECLARED` for a URL the page did not declare, `REFUSED`, `NOT_READY` or
+  `STALE`.
+- `nixie.onData(handler)` calls the handler with the URL of each declared fetch that refreshed.
 
 The bridge takes a message only from its parent window, so a sibling frame can't send the page one.
 It reports an uncaught error to the device page, which reports it with `devices.pageError`, so
@@ -266,6 +272,76 @@ sign out.
 
 A page that replaces another page loads in a new frame, so a message for the new page never goes to
 the document of the old one.
+
+### Packages
+
+`device.addPackage({ name, version })` asks the user to approve one npm package at an exact version,
+with no range and no tag. The call declares `install_package`, an effect of the always-ask risk
+class, so the card needs the passkey and offers no always-allow, and each new version is a new
+approval. The call runs queued.
+
+1. The call reads the registry's document for that version through the fetch sandbox. The registry's
+   address is the `web_fetch.package_registry` config key, `https://registry.npmjs.org` by default.
+   A package over the unpacked size limit is refused with `TOO_BIG`.
+2. The call stores a card with its own record: the name, version, publisher, size, the publisher's
+   description and the registry's sha512 hash. The approval card shows it, and marks the description
+   as the publisher's words.
+3. The call's destination is the registry's host, and its expected URL is the tarball's address with
+   the hash after a `#`. The action hash covers the expected URL, so an approval binds the hash.
+4. After the approval, the call reads the registry's document again. A hash that differs from the
+   card returns `INTEGRITY_CHANGED` and stores nothing.
+5. The fetch sandbox downloads the tarball from the registry's own host, checks it against the
+   approved hash, and unpacks it. It refuses the whole package for a link, an absolute path, a `..`
+   segment, a path outside the package folder or a size past that limit.
+6. The server writes the files under `device-packages/<name>@<version>/` in its data folder, then a
+   `device.package_added` record and a `device_packages` row in one transaction.
+
+A page names an approved package as `name@version` in `packages`. `device.region` returns
+`UNKNOWN_PACKAGE`, and leaves the region as it was, for a package that nobody approved. The frame's
+policy opens script, style and font loading to the paths of the packages that page names, and to no
+other approved package. The API serves a file at `/rpc/device/packages/<name>@<version>/<path>` only
+when the package's file list holds the path. The route takes no session, because the frame's opaque
+origin sends no cookie, and it holds public npm code alone. A page loads a file with a `script`
+element, or with an `@import` inside a `style` element, because a page holds no `link` element.
+
+Backups leave package files out. On start, the server downloads again each package whose files are
+missing, and checks the same hash.
+
+**Why:** a page never loads code from outside nixie, and nothing updates by itself.
+
+### Declared fetches
+
+A page names the URLs it reads in `fetches`, each an `https` URL with a host that has a dot and is
+no private address, and with an optional `refreshMinutes` from 5 to 1,440. A page script can't name
+a URL of its own, so it can't put what it holds into a query string.
+
+- `device.region` declares a `read` effect with the host of each fetch as a destination. A host that
+  no rule allows asks when the call is sent, and a host the decision point denies keeps the page
+  from showing.
+- The `devices` module runs each fetch when the region shows, and every `refreshMinutes` after,
+  while the device is online. The fetch sandbox reads the response as text, up to a size limit, with
+  GET alone. A redirect to another host fails the fetch. A host that answers with a rate limit
+  pauses every fetch of that host, as the web fetch's pauses do.
+- The first fetch right after the call needs no second decision. Every later fetch, and every fetch
+  of a page that came back from a restart or a restore, asks the decision point again with the
+  stored call and no card. A fetch that the rules no longer allow never runs, and `nixie.data`
+  rejects with `REFUSED` for it.
+- The server keeps the last response of each fetch in memory, and fetches again after a restart. A
+  refresh stops when the region's content changes.
+- A refresh sends the page's open stream a `data` event with the region, the content's short ID and
+  the URL. The device page then posts `data-changed` into the frame, and the page's `nixie.onData`
+  handlers run.
+- The page's `nixie.data(url)` posts a `data` message to the device page, which calls
+  `devices.pageData({ region, shown, url })` and posts the answer back. The call returns `STALE`,
+  `NOT_DECLARED`, `REFUSED` or `NOT_READY`, or the response.
+
+A fetched response is outside content. It reaches the assistant only when the page sends it in a
+page event, which arrives inside an untrusted block, and a refused fetch reaches the assistant as a
+page error.
+
+**Why:** the decision point judges the URLs when the page is sent, and the page's script can't build
+new ones, so it can't leak what it holds to an allowed host. A declared fetch shares the web fetch's
+pause for each host.
 
 ### Events from a page
 
@@ -331,33 +407,39 @@ writes nothing. A device counts as offline once it has had no open stream for
 | `device.layout_restore` | Puts a saved layout back: its grid and every region's content                                                                                     |
 | `device.layouts`        | Lists the saved names, each with the time it was saved                                                                                            |
 | `device.layout_remove`  | Deletes a saved layout                                                                                                                            |
+| `device.addPackage`     | Asks the user to approve one npm package at an exact version, then stores its files for pages to load                                             |
 | `device.sendToPage`     | Sends a message into the page of a region, and keeps it for each load of the page with `retain`                                                   |
 | `device.preview`        | Returns a picture of the screen and the errors the device reported, as [The preview](#the-preview) describes                                      |
 
-All 12 declare the `note` effect and run direct, inside the turn. The user's rules still decide each
-call, so an ask rule can hold a call for approval. `device.show` checks in this order and returns
-the first refusal: `UNKNOWN_DEVICE`, `SCREEN_OFF`, then the image refusals `UNKNOWN_IMAGE` and
-`IMAGE_FORGOTTEN`. A show to an offline device refuses nothing: the show waits, the device shows it
-when it comes back online, and the result carries `waiting: true` with a message that says so. The
-`minutes` of a show that waits count from the time the device comes online. An image is an
-[image store](../connectors/images.md) short ID. `device.layout` returns `UNKNOWN_DEVICE`,
-`SCREEN_OFF`, `BAD_LAYOUT` with the reason, then `OFFLINE`. `device.layout_save` returns
-`UNKNOWN_DEVICE`, then `NO_LAYOUT` for a device that holds none. `device.layout_restore` returns
-`UNKNOWN_DEVICE`, `SCREEN_OFF`, `OFFLINE`, then `UNKNOWN_LAYOUT`. `device.layout_remove` and
-`device.layouts` return `UNKNOWN_DEVICE`, and the remove call returns `UNKNOWN_LAYOUT` too. An
-`UNKNOWN_LAYOUT` message lists the saved names. `device.region` returns `UNKNOWN_DEVICE`,
-`SCREEN_OFF`, `UNKNOWN_REGION`, `PACKAGES_NOT_BUILT`, `FETCHES_NOT_BUILT`, the image refusals, then
-`OFFLINE`. Its input check fails a page that holds a link, frame, object or embed element before any
-refusal. `device.region` also returns `UNKNOWN_REGION` when a layout was set after the call's own
-record. `device.sendToPage` returns `UNKNOWN_DEVICE`, `SCREEN_OFF`, `UNKNOWN_REGION`, `NOT_A_PAGE`
-for a region that holds no page, then `OFFLINE`. `device.preview` returns `UNKNOWN_DEVICE`, then
-`SCREEN_OFF`.
+All of them but `device.addPackage` declare the `note` effect and run direct, inside the turn. A
+`device.region` call that declares fetches also declares a `read` of each fetch's host. The user's
+rules still decide each call, so an ask rule can hold a call for approval. `device.addPackage`
+declares `install_package`, which no rule allows without a card, and runs queued. `device.show`
+checks in this order and returns the first refusal: `UNKNOWN_DEVICE`, `SCREEN_OFF`, then the image
+refusals `UNKNOWN_IMAGE` and `IMAGE_FORGOTTEN`. A show to an offline device refuses nothing: the
+show waits, the device shows it when it comes back online, and the result carries `waiting: true`
+with a message that says so. The `minutes` of a show that waits count from the time the device comes
+online. An image is an [image store](../connectors/images.md) short ID.
+
+`device.layout` returns `UNKNOWN_DEVICE`, `SCREEN_OFF`, `BAD_LAYOUT` with the reason, then
+`OFFLINE`. `device.layout_save` returns `UNKNOWN_DEVICE`, then `NO_LAYOUT` for a device that holds
+none. `device.layout_restore` returns `UNKNOWN_DEVICE`, `SCREEN_OFF`, `OFFLINE`, then
+`UNKNOWN_LAYOUT`. `device.layout_remove` and `device.layouts` return `UNKNOWN_DEVICE`, and the
+remove call returns `UNKNOWN_LAYOUT` too. An `UNKNOWN_LAYOUT` message lists the saved names.
+
+`device.region` returns `UNKNOWN_DEVICE`, `SCREEN_OFF`, `UNKNOWN_REGION`, `UNKNOWN_PACKAGE`,
+`BAD_FETCH`, `FETCHES_UNAVAILABLE`, the image refusals, then `OFFLINE`. Its input check fails a page
+that holds a link, frame, object or embed element before any refusal. `device.region` also returns
+`UNKNOWN_REGION` when a layout was set after the call's own record. `device.sendToPage` returns
+`UNKNOWN_DEVICE`, `SCREEN_OFF`, `UNKNOWN_REGION`, `NOT_A_PAGE` for a region that holds no page, then
+`OFFLINE`. `device.preview` returns `UNKNOWN_DEVICE`, then `SCREEN_OFF`.
 
 `devices.list` shows the layout a device holds whether or not the device is online, unlike
 `showing`, which is null while the device is offline. `showing` follows the screen's order: it is
 `layout` while no show covers the layout and at least one region shows content or has a background.
 Each region lists its kind, `until` and the short ID of its `device.region_shown` record, and never
-its content. A blank region has a null kind.
+its content. A page region also lists its packages and the URLs of its fetches, and never its HTML.
+A blank region has a null kind.
 
 ## The preview
 
@@ -416,7 +498,10 @@ sends the PNG on at that exact size, so a large screen is not shrunk, and the pi
 
 A page region draws as a sealed frame of its own, one of the preview's files, which holds the same
 document and policy as the device's frame, with its images by path and its retained message already
-in place. The guest renders it with scripts on, and the frame has the same sandbox as on the device.
+in place. The files also hold each approved package that the pages name, under `packages/`, and the
+bridge answers `nixie.data` from what each declared fetch last returned, or with `REFUSED` for a
+fetch that was refused. A fetch that has returned nothing yet answers `NOT_READY`. The guest renders
+it with scripts on, and the frame has the same sandbox as on the device.
 
 `buildPreviewPage` matches each kind of region content with no fallback, so a new kind fails the
 type check until `buildPreviewPage` has a branch for it.
@@ -432,9 +517,11 @@ the stream registry beside the open streams, so a restart forgets them. The call
 and keeps nothing, when the region no longer shows the content that `shown` names or the layout has
 no such region. The server forgets a region's errors when `device.region` writes the region, and
 forgets the errors of each region that a new grid, or a restored layout, clears. A region whose
-earlier content returns when a timed content ends therefore starts with no errors. `device.preview`
-returns each error's region, time and message in an untrusted block, because the text comes from the
-device.
+earlier content returns when a timed content ends therefore starts with no errors. A refused fetch
+of a page is one of those errors: its message names the URL and the reason, so the assistant sees
+why `nixie.data` rejects. `device.preview` returns each error's region, time and message in an
+untrusted block, because the text comes from the device. The picture counts as outside content too,
+because a page can draw text that it fetched.
 
 ## Device mode
 
