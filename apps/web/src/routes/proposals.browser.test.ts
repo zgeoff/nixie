@@ -29,6 +29,7 @@ async function setupTest() {
   await setupSignedInBrowser(view, { appURL: app.url, token: session.token });
 
   return {
+    api,
     appURL: app.url,
     session,
     view,
@@ -123,6 +124,10 @@ test('it shows what changed after an answer with a stale hash, and approves only
     `document.querySelector('button[name="approve"]:not([disabled])') !== null`,
   );
 
+  // The change tells the live stream at once, and the page reads the list again. Holding that read
+  // keeps the old hash on the card, so the tap sends a stale answer.
+  const release = ctx.api.holdPath('/rpc/approvals/listItems');
+
   await store.approvalRows.update(row, {
     data: (draft) => {
       draft.actionHash = 'sha256:changed';
@@ -132,8 +137,19 @@ test('it shows what changed after an answer with a stale hash, and approves only
 
   await ctx.view.click('button[name="approve"]');
 
+  await waitFor(
+    () => {
+      expect(ctx.api.requests.map((request) => request.path)).toContain(
+        '/rpc/approvals/answerProposal',
+      );
+    },
+    { timeout: 8000 },
+  );
+
+  release();
+
   await ctx.waitForPage(
-    `document.querySelector('[aria-label="What changed"]')?.innerText.includes('marina') === true`,
+    `document.querySelector('[aria-label="What changed"]')?.innerText.includes('marina') === true && document.querySelector('button[name="approve"]:not([disabled])') !== null`,
   );
 
   expect(ctx.findRow(row.proposalID)?.state).toBe('pending');
