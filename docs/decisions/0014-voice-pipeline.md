@@ -14,7 +14,8 @@ the answer to every request and GPT-Live speaks it.
 
 - In the [reply run](../../research/voice-latency/voice-reply.md) on the deployment host, GPT-Live
   and Grok Voice reached first audio within noise of each other, and you heard their voices as
-  equal. Both pipelines in the run spoke through Piper, which you ruled out as nixie's voice.
+  equal. Each pipeline in the run chained speech-to-text, Claude and text-to-speech, and both spoke
+  through Piper, which you ruled out as nixie's voice.
 - Claude writes every answer to a request, so a request keeps nixie's model choice, memory context
   and route through the [decision point](../architecture/policy/decision-point.md).
 - Once Claude writes the answers, Grok Voice would wait for nixie's turn the same way. What sets the
@@ -33,7 +34,9 @@ the answer to every request and GPT-Live speaks it.
 
 ## Consequences
 
-- Your audio goes to OpenAI, off the host.
+- Your audio goes to OpenAI, off the host. OpenAI keeps each call for 30 days for abuse monitoring,
+  even when the session sets `store: false`, as its
+  [data controls page](https://developers.openai.com/api/docs/guides/your-data) says.
 - Two speakers write one conversation record: GPT-Live for small talk, and nixie's turn for each
   request.
 - On a request that GPT-Live hands to nixie's turn, you wait while the turn runs. That wait is the
@@ -45,6 +48,8 @@ the answer to every request and GPT-Live speaks it.
 
 ## Changes
 
+- 2026-11-25: The 30-day abuse-monitoring retention is added, after the
+  [sideband spike](../../research/gpt-live-sideband/results.md).
 - 2026-11-25: The cost comparison follows the providers' price pages, and the region risk is added.
   The reply run had counted GPT-Live's minutes with the delegated Claude turns.
 - 2026-10-25: GPT-Live hears and speaks a call and hands each request to nixie's turn, after the

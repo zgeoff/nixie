@@ -6,6 +6,8 @@
   [nixie rings you](https://linear.app/zgeoff/issue/GEO-2864),
   [tuning on real calls](https://linear.app/zgeoff/issue/GEO-1868)
 - **Decision records:** [0014](../../../decisions/0014-voice-pipeline.md)
+- **Spikes:**
+  [GPT-Live over WebRTC with a sideband](../../../../research/gpt-live-sideband/results.md)
 
 You talk to nixie in a call in the app, and nixie can ring you. GPT-Live hears and speaks the call
 under [0014](../../../decisions/0014-voice-pipeline.md): it answers small talk itself, and it hands
@@ -58,10 +60,13 @@ await nixie.calls.hangUp({ callID, clientActionID }); // idempotent
 ```ts
 // Server side. calls module (new). Adapters: GPT-Live, and an in-memory fake for tests.
 interface SpeechLayer {
-  // Creates the session from the device's offer, with `store: false`, and opens the sideband.
+  // Creates the session from the device's offer and opens the sideband. The session sets
+  // `store: false`, client delegation, an acknowledgement delay, and a device data channel that
+  // may receive and send no event.
   open(input: OpenSpeech): Promise<{ sdpAnswer: string; sessionID: string } | SpeechRefused>;
-  // Sends one part of nixie's answer for a hand-off; the speech layer speaks it. The last part sets
-  // `final`, which closes the hand-off.
+  // Sends one part of nixie's answer for a hand-off; the speech layer speaks it in its own words.
+  // Each part is a complete statement, never empty and never a lead-in to more text. A hand-off
+  // never closes on the provider's side: `final` marks the end inside nixie.
   answer(sessionID: string, handOffID: string, text: string, final: boolean): Promise<void>;
   // Sends a line for the speech layer to say now, such as the reconnect line.
   say(sessionID: string, text: string): Promise<void>;
@@ -80,13 +85,19 @@ interface OpenSpeech {
 type SpeechRefused = { error: 'VOICE_CREDENTIAL_REFUSED' | 'SPEECH_UNAVAILABLE' };
 
 type SpeechEvent =
-  | { kind: 'heard'; text: string; startedAtMs: number; endedAtMs: number } // your speech
-  | { kind: 'spoke'; text: string; heardUntilMs: number } // the speech layer's own small talk
+  // Your speech: the input transcript's slices up to a hand-off's offset, or up to 1 s of quiet.
+  | { kind: 'heard'; text: string; startedAtMs: number; endedAtMs: number }
+  | { kind: 'spoke'; text: string; heardChars: number } // the speech layer's own small talk
+  // The provider's delegation holds no request text, so `request` is your speech since the last
+  // hand-off, up to the delegation's offset.
   | { kind: 'hand_off'; handOffID: string; request: string }
-  // You talked over a reply and it stopped. The adapter counts heardChars from the timing of the
-  // speech layer's output transcript.
+  // You talked over a reply and it stopped. The provider reports no cut: the adapter raises one on
+  // the first input slice while an answer plays, and estimates heardChars by aligning the output
+  // transcript's words to the text it sent.
   | { kind: 'cut'; handOffID: string; heardChars: number }
-  | { kind: 'session_ending' } // the provider's session limit is near
+  // The provider sends no warning before its session limit: the adapter raises this from a timer,
+  // 5 minutes before the session's expiry.
+  | { kind: 'session_ending' }
   | { kind: 'dropped' };
 ```
 
@@ -127,11 +138,11 @@ type CallTaskStart = {
   conversation's profile.
 - Each `heard` event becomes one `owner_message` record on the call thread, with a short ID and one
   span of source `dictated` over its text. A `hand_off` starts a turn over the messages since the
-  last turn. `call.handed_off` keeps the speech layer's wording of the request, for timing and
-  fidelity checks.
-- The calls module sends a turn's reply text to the speech layer in parts as the turn writes it, and
-  sends `final: true` with the last part. Every hand-off gets a final part, even when the turn wrote
-  no text, so the speech layer never waits on it.
+  last turn. `call.handed_off` keeps the request as the adapter built it from your speech, for
+  timing checks.
+- The calls module sends a turn's reply text to the speech layer one whole sentence at a time, as
+  the turn finishes each one, and sends `final: true` with the last. A turn that ends with no text
+  sends a fixed line instead, because an empty part makes the speech layer invent an answer.
 - A turn that fails, ends on a proposal or passes a limit sends the speech layer a fixed line that
   claims no outcome, such as "I couldn't finish that one". The fixed lines live in `voice/` in the
   definitions, and each one spoken is a `call.spoke` record.
@@ -154,8 +165,13 @@ started_at, ended_at
 
 Every new speech-layer session needs a fresh offer from the device. When the session limit is near,
 a session drops or the server restarts, the server sends `call.reconnect` on the device's live
-stream, and the device answers with a fresh `calls.connect`. After a restart, the device reconnects
-on its own when its live stream returns. The calls module keeps the call for 30 s while it waits.
+stream. The device makes an ICE-restart offer on its open peer connection, so the microphone grant
+and the audio path stay, and sends it with a fresh `calls.connect`. The old session then closes
+itself. After a restart, the device reconnects on its own when its live stream returns. The calls
+module keeps the call for 30 s while it waits.
+
+The call screen's captions come from nixie's live stream, because the provider's data channel stays
+bound to the first session after a reconnect.
 
 ```text
 call record kinds (log module; each holds plain payload fields only, unless marked erasable)
@@ -182,9 +198,10 @@ call.turn_timed  callID, handOffID, firstAudioMs, handOffWaitMs, cutOffByLayer, 
   record does. `call.spoke` carries the speech layer's model, so you can tell who spoke each line of
   a call.
 - When you talk over a reply, `call.heard_cut` marks how much of it you heard, counted in characters
-  of the reply text the calls module sent the speech layer. A reader that feeds the model shows the
-  reply up to that point and marks the rest unheard. A cut that arrives after the turn committed
-  marks the committed reply.
+  of the reply text the calls module sent the speech layer. The count is an estimate, because the
+  speech layer paraphrases, and the device can play up to about 2 s past the start of your speech. A
+  reader that feeds the model shows the reply up to that point and marks the rest unheard. A cut
+  that arrives after the turn committed marks the committed reply.
 - The turn reads `call.spoke` lines as the speech layer's words, never as nixie's own answers or
   promises.
 
@@ -226,8 +243,10 @@ models:
 ```text
 definitions (excerpt)
 voice/prompt.md   the voice-call prompt; nixie ships a default, a deployment's copy replaces it
-voice/voice.yaml  voice: <provider voice name>
-budgets/call-day.yaml, budgets/call-month.yaml   counts: tool:call, limit in dollars
+voice/voice.yaml  voice: <provider voice name>, hold_after_ms: 1500
+voice/lines.yaml  the fixed lines: holding, reconnect, couldn't finish, budget
+budgets/call-day.yaml, budgets/call-month.yaml   optional; each replaces the built-in budget of
+                                                 its ID, as for a paid tool
 ```
 
 ### The conversation during a call
@@ -246,19 +265,25 @@ budgets/call-day.yaml, budgets/call-month.yaml   counts: tool:call, limit in dol
 
 - Your call audio goes to OpenAI, off the host, as
   [0014](../../../decisions/0014-voice-pipeline.md#consequences) accepts.
-- The deployment's speech credential never reaches a device. The server creates every session.
+- The deployment's speech credential never reaches a device. The server creates every session, and
+  the device's data channel carries no event either way, so a device can neither read the
+  instructions nor send a command to the session.
 - A missing or refused speech credential stops a call at `calls.connect` with
   `VOICE_CREDENTIAL_REFUSED`, the call ends with `endedBy: 'dropped'`, and nixie keeps running.
 - `calls.start` makes the caller's session the carrying session. A refused start writes nothing.
-- The adapter takes a hand-off's request from GPT-Live's delegation event. When the event holds no
-  request text, the adapter uses your speech since the last hand-off.
+- GPT-Live's delegation event holds no request text. The adapter builds the request from the input
+  transcript since the last hand-off, up to the delegation's offset.
 - One call runs at a time, because nixie works for one person. A second start or ring gets
   `CALL_RUNNING`.
 - The speech layer answers small talk only, and hands every request to nixie's turn.
 - The speech layer never sees memory: its instructions hold the voice-call prompt and the call so
   far. Small talk saves nothing to memory, and `dictated` text never counts as memory evidence.
-- The speech layer's filler never says yes, never claims a result and never makes a promise. On a
-  long turn, nixie's turn may send one interim line.
+- The speech layer's filler never says yes, never claims a result and never makes a promise. Its own
+  acknowledgement of a hand-off can promise, so the adapter holds it with the acknowledgement delay
+  and an empty thinking part, and the speech layer stays quiet while nixie's turn runs.
+- When nixie's answer has not started `hold_after_ms` after a hand-off, the calls module sends the
+  fixed holding line from `voice/`, such as "One moment." On a long turn, nixie's turn may send one
+  interim line.
 - The speech layer may speak nixie's answer as a close paraphrase. The tuning pass measures how far
   its wording drifts.
 - A second request during a running hand-off joins that turn as a mid-turn message.
@@ -271,8 +296,9 @@ budgets/call-day.yaml, budgets/call-month.yaml   counts: tool:call, limit in dol
   second", and a hand-off that was running reruns as its step does. You hear the rerun's answer in
   full, even a part you heard before the drop, and the record keeps only the answer its step
   committed.
-- When the provider's session limit is near, the calls module opens the next session inside the same
-  call, and you hear no gap beyond the reconnect line.
+- A provider session lasts at most 2 hours. 5 minutes before it ends, the calls module moves the
+  call to a new session through the device, between hand-offs, and the speech layer says the
+  reconnect line.
 - When 3 attempts to open the next session fail, or the device and the speech session are both gone
   for 30 s, the call ends with `endedBy: 'dropped'`, and a new call can start.
 - The calls module charges `price_per_minute` as one `budget.charged` record for each started
@@ -286,7 +312,9 @@ budgets/call-day.yaml, budgets/call-month.yaml   counts: tool:call, limit in dol
 - A config without the `voice` key turns calls off: `calls.start` answers `VOICE_OFF`, and nixie
   holds no `call.ring` tool.
 - A call that stays `connecting` for 30 s with no `calls.connect` ends with `endedBy: 'dropped'`.
-- Every speech-layer session sets `store: false`, so OpenAI keeps no copy of the call for later use.
+- Every speech-layer session sets `store: false`, so OpenAI keeps no session to fork or download.
+  OpenAI still keeps the call for 30 days for abuse monitoring, as
+  [0014](../../../decisions/0014-voice-pipeline.md#consequences) accepts.
 - A changed voice, prompt or call setting applies from the next call.
 - The turn-input log can cover the `call` role. The speech layer's own traffic never passes the
   model gateway and stays outside the log.
