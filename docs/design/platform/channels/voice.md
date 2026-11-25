@@ -170,8 +170,8 @@ and the audio path stay, and sends it with a fresh `calls.connect`. The old sess
 itself. After a restart, the device reconnects on its own when its live stream returns. The calls
 module keeps the call for 30 s while it waits.
 
-The call screen's captions come from nixie's live stream, never from the provider's data channel,
-because that channel stays bound to the first session after a reconnect.
+The call screen's captions come from nixie's live stream, because the provider's data channel stays
+bound to the first session after a reconnect.
 
 ```text
 call record kinds (log module; each holds plain payload fields only, unless marked erasable)
