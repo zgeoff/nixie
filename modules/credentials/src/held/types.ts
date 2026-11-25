@@ -40,6 +40,38 @@ export interface HeldClient {
 
 export type WriteTokenResult = 'saved' | 'removed';
 
+// The OAuth client that issued a token, and the removal counter the caller read for it. A token
+// write checks it in the write transaction, so a client removed after the caller's last check never
+// gets a token saved.
+export interface ClientGuard {
+  readonly credentialID: string;
+  readonly expectedCounter: number;
+}
+
+// What a token write checks in its transaction: the token credential's removal counter, and its
+// client's.
+export interface TokenGuard {
+  readonly expectedCounter: number;
+  readonly client: ClientGuard;
+}
+
+// What a revocation needs of a token that a removal already refuses to every other reader.
+export interface RevocableToken {
+  readonly refreshToken: string | null;
+  readonly accessToken: string;
+  readonly clientCredentialID: string;
+}
+
+export type RevokeOutcome = 'confirmed' | 'refused' | 'unknown' | 'not_attempted';
+
+// What one revocation at the provider came to: the HTTP status, and the provider's error code when
+// it is one of a fixed set, never free text.
+export interface RevokeResult {
+  readonly outcome: RevokeOutcome;
+  readonly status: number | null;
+  readonly providerError: string | null;
+}
+
 // What the database backend implements: sealed values under a key of their own for each token, and
 // the removal counter. The database backend itself is built apart from the store.
 export interface HeldBackend {
@@ -49,14 +81,18 @@ export interface HeldBackend {
   readonly readToken: (credentialID: string) => Promise<HeldToken | null>;
 
   // Saves the token and its state, and the record when one is given, in one transaction, and only
-  // when the credential's removal counter still equals the expected one. A crash leaves both or
-  // neither, so a start never finds a saved token whose refresh reads as lost.
+  // when the credential's removal counter and its client's still equal the expected ones. A crash
+  // leaves both or neither, so a start never finds a saved token whose refresh reads as lost.
   readonly writeToken: (
     credentialID: string,
     token: HeldToken,
-    expectedCounter: number,
+    guard: TokenGuard,
     record: CredentialEvent | null,
   ) => Promise<WriteTokenResult>;
+
+  // The token of a credential whose removal began and whose key has not gone yet, which only a
+  // revocation reads. Null once the key is gone, such as after a restore.
+  readonly readTokenForRevocation: (credentialID: string) => Promise<RevocableToken | null>;
 
   // Changes the state of a credential that is held, only when its removal counter still equals the
   // expected one, and does nothing for one that is not held.
@@ -113,6 +149,7 @@ export type CredentialEvent =
 export interface OpenRefresh {
   readonly credentialID: string;
   readonly attemptID: string;
+  readonly newKeyID: string;
 }
 
 export interface CredentialRecorder {

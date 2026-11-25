@@ -59,6 +59,14 @@ export async function runErasureTree(context: ErasureRunContext, root: OpenErasu
     }
 
     for (const erasure of pending) {
+      await getEntry(context, erasure.started.kind).revoke(toTarget(erasure));
+    }
+
+    if (NIXIE_TEST_BUILD) {
+      await effects.reachFaultPoint('erasure.revoked', root.started.erasureID);
+    }
+
+    for (const erasure of pending) {
       await removeErasureKeys(context.log, erasure.started.capture);
 
       removed.add(erasure.started.erasureID);

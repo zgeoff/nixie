@@ -34,11 +34,17 @@ export type {
   CredentialStore,
   CredentialStoreOptions,
   GrantedSecret,
+  HeldWiring,
 } from './create-credential-store';
 
 export { createCredentialStore } from './create-credential-store';
 export type { CredentialRecorderOptions } from './record/create-credential-recorder';
-export { createCredentialRecorder } from './record/create-credential-recorder';
+
+export {
+  buildCredentialRecordInput,
+  createCredentialRecorder,
+} from './record/create-credential-recorder';
+
 export { credentialRecordTopics } from './record/credential-record-topics';
 export type { CredentialRecordKind } from './record/credential-record-kind';
 export { CredentialRemovedError } from './held/credential-removed-error';
@@ -55,7 +61,12 @@ export type {
   HeldState,
   HeldToken,
   OpenRefresh,
+  ClientGuard,
   RefreshOutcome,
+  RevocableToken,
+  TokenGuard,
+  RevokeOutcome,
+  RevokeResult,
   TokenExchange,
   TokenResult,
   WriteTokenResult,

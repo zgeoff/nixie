@@ -4,6 +4,7 @@ import type { ErasureCapture } from './erasure-capture-schema';
 export type ErasureFaultPoint =
   | 'erasure.begun'
   | 'erasure.sandboxes_destroyed'
+  | 'erasure.revoked'
   | 'erasure.keys_removed'
   | 'erasure.cleaned'
   | 'erasure.turn_inputs_removed';

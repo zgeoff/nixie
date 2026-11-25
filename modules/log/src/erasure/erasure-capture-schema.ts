@@ -9,7 +9,16 @@ const noteCause = z.strictObject({ noteID: z.string() });
 const momentCause = z.strictObject({ momentID: z.string() });
 const itemCause = z.strictObject({ itemID: z.string() });
 const recordCause = z.strictObject({ recordSequence: z.int() });
-const sessionCauseSchema = z.union([noteCause, momentCause, itemCause, recordCause]);
+const connectionCause = z.strictObject({ connectionID: z.string() });
+
+const sessionCauseSchema = z.union([
+  noteCause,
+  momentCause,
+  itemCause,
+  recordCause,
+  connectionCause,
+]);
+
 const purgeSchema = z.strictObject({ recordSequence: z.int(), itemIDs: z.array(z.string()) });
 const threadList = z.array(z.string());
 const allThreads = z.literal('all');

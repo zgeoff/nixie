@@ -89,6 +89,25 @@ export interface NixieTables {
     readonly bytes: number;
     readonly media_type: string;
   };
+  readonly connections: {
+    readonly connection_id: string;
+    readonly short_id: string;
+    readonly connector_id: string;
+    readonly oauth_client_id: string;
+    readonly key_id: string;
+    readonly account_sealed: Uint8Array<ArrayBuffer> | null;
+    readonly token_key_id: string | null;
+    readonly refresh_token_sealed: Uint8Array<ArrayBuffer> | null;
+    readonly status: string;
+    readonly status_reason: string | null;
+    readonly status_since: number;
+    readonly last_success_at: number | null;
+    readonly failures: number;
+    readonly retry_at: number | null;
+    readonly binding: string;
+    readonly removal_counter: number;
+    readonly created_at: number;
+  };
   readonly definition_rules: {
     readonly rule_id: string;
     readonly rule_hash: string;
@@ -191,6 +210,10 @@ export interface NixieTables {
     readonly size: string;
     readonly byte_count: number;
     readonly created_at: number;
+  };
+  readonly key_marks: {
+    readonly key_id: string;
+    readonly marked_at: number;
   };
   readonly known_contacts: {
     readonly contact_id: string;
@@ -412,6 +435,15 @@ export interface NixieTables {
     readonly model: string;
     readonly chars: number;
     readonly created_at: number;
+  };
+  readonly oauth_clients: {
+    readonly oauth_client_id: string;
+    readonly connector_id: string;
+    readonly key_id: string;
+    readonly secret_sealed: Uint8Array<ArrayBuffer> | null;
+    readonly removal_counter: number;
+    readonly created_at: number;
+    readonly removed_at: number | null;
   };
   readonly passkeys: {
     readonly passkey_id: string;
