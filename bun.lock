@@ -782,6 +782,30 @@
         "@zgeoff/testing": "catalog:",
       },
     },
+    "modules/mail": {
+      "name": "@heynixie/mail",
+      "version": "0.0.0",
+      "dependencies": {
+        "@heynixie/actions": "workspace:*",
+        "@heynixie/clock": "workspace:*",
+        "@heynixie/connectors": "workspace:*",
+        "@heynixie/db": "workspace:*",
+        "@heynixie/log": "workspace:*",
+        "@heynixie/logger": "workspace:*",
+        "@heynixie/policy": "workspace:*",
+        "@heynixie/tasks": "workspace:*",
+        "@heynixie/tools": "workspace:*",
+        "@heynixie/triggers": "workspace:*",
+        "kysely": "catalog:",
+        "tiny-invariant": "catalog:",
+        "ts-pattern": "catalog:",
+        "zod": "catalog:",
+      },
+      "devDependencies": {
+        "@heynixie/testing": "workspace:*",
+        "@zgeoff/testing": "catalog:",
+      },
+    },
     "modules/memory": {
       "name": "@heynixie/memory",
       "version": "0.0.0",
@@ -1675,6 +1699,8 @@
     "@heynixie/log": ["@heynixie/log@workspace:modules/log"],
 
     "@heynixie/logger": ["@heynixie/logger@workspace:libs/logger"],
+
+    "@heynixie/mail": ["@heynixie/mail@workspace:modules/mail"],
 
     "@heynixie/memory": ["@heynixie/memory@workspace:modules/memory"],
 

@@ -1,0 +1,76 @@
+import type { MailAttachment } from '../types';
+import { decodeBodyBytes } from './decode-body-bytes';
+import { decodeBodyText } from './decode-body-text';
+import { parseContentType } from './parse-content-type';
+import { parseHeaders } from './parse-headers';
+import { renderHtmlText } from './render-html-text';
+import { splitMessage } from './split-message';
+
+export interface MailParts {
+  readonly texts: readonly string[];
+  readonly htmls: readonly string[];
+  readonly attachments: readonly MailAttachment[];
+}
+
+// Walks a message or a part of one, and gathers its plain texts, its HTML texts and its
+// attachments. The input is the latin1 reading of the raw bytes.
+export function collectParts(raw: string): MailParts {
+  const split = splitMessage(raw);
+  const headers = parseHeaders(split.head);
+  const contentType = parseContentType(headers.get('content-type')?.[0]);
+  const boundary = contentType.parameters.get('boundary');
+
+  if (contentType.type.startsWith('multipart/') && boundary !== undefined) {
+    return collectMultipart(split.body, boundary);
+  }
+
+  const disposition = parseContentType(headers.get('content-disposition')?.[0]);
+  const name = disposition.parameters.get('filename') ?? contentType.parameters.get('name') ?? null;
+  const encoding = headers.get('content-transfer-encoding')?.[0] ?? '7bit';
+
+  if (name !== null || disposition.type === 'attachment') {
+    return {
+      texts: [],
+      htmls: [],
+      attachments: [
+        { name: name ?? 'attachment', bytes: decodeBodyBytes(split.body, encoding).length },
+      ],
+    };
+  }
+
+  const charset = contentType.parameters.get('charset') ?? 'utf8';
+  const text = decodeBodyText(split.body, encoding, charset);
+
+  if (contentType.type === 'text/html') {
+    return { texts: [], htmls: [renderHtmlText(text)], attachments: [] };
+  }
+
+  return {
+    texts: contentType.type === '' || contentType.type === 'text/plain' ? [text] : [],
+    htmls: [],
+    attachments: [],
+  };
+}
+
+function collectMultipart(body: string, boundary: string): MailParts {
+  const escaped = boundary.replaceAll(/[.*+?^${}()|[\]\\]/gu, String.raw`\$&`);
+
+  const pieces = body.split(
+    new RegExp(`(?:^|\\r?\\n)--${escaped}(?:--)?[ \\t]*(?:\\r?\\n|$)`, 'u'),
+  );
+
+  const texts: string[] = [];
+  const htmls: string[] = [];
+  const attachments: MailAttachment[] = [];
+
+  // the first piece is the preamble
+  for (const piece of pieces.slice(1)) {
+    const part = collectParts(piece);
+
+    texts.push(...part.texts);
+    htmls.push(...part.htmls);
+    attachments.push(...part.attachments);
+  }
+
+  return { texts, htmls, attachments };
+}
