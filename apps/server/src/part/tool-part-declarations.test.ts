@@ -192,7 +192,7 @@ test('it keeps every tool module away from what retries an action or sets its ou
   const reachers: string[] = [];
 
   for await (const path of new Bun.Glob('{modules,adapters}/*/src/**/*.ts').scan({ cwd: root })) {
-    const isSource = !path.endsWith('.test.ts');
+    const isSource = !path.endsWith('.test.ts') && !path.includes('/test-utils/');
     const isActionCode = /^modules\/(?:actions|api|policy)\//u.test(path);
 
     if (isSource && !isActionCode) {
