@@ -374,9 +374,13 @@ test('it joins a reply that reaches the host during the send to the sent mail, a
   const readsBeforeSend = seen.reads;
   const running = connectors.get('mail.reply')?.run(attempt);
 
-  // the source has handled the hint of the reply, so it is asking to read while the send holds the host
   await waitFor(() => {
     expect(seen.hints).toBe(1);
+  });
+
+  // the hint ended the source's wait, so the source now needs the host that the send holds
+  await waitFor(() => {
+    expect(ctx.clock.countPending()).toBe(0);
   });
 
   expect(seen.reads).toBe(readsBeforeSend);
@@ -460,9 +464,13 @@ test('it stores the sent mail and its reply rule before the source reads a reply
   const readsBeforeSend = seen.reads;
   const running = connectors.get('mail.reply')?.run(attempt);
 
-  // the source has handled the hint of the reply, so it is asking to read while the send holds the host
   await waitFor(() => {
     expect(seen.hints).toBe(1);
+  });
+
+  // the hint ended the source's wait, so the source now needs the host that the send holds
+  await waitFor(() => {
+    expect(ctx.clock.countPending()).toBe(0);
   });
 
   expect(seen.reads).toBe(readsBeforeSend);

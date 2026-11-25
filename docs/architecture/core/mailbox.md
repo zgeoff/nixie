@@ -196,9 +196,10 @@ drops it when the dedupe key is held. Then it reads the live rules and matches t
 2. With a match, it writes one `trigger.mail_arrived` record. Its sender and subject are erasable.
 3. A rule that never woke, or whose last wake is a window ago or more, is ready. For each target
    that has a ready rule, the core writes one `trigger.mail_woke` record to the target's inbox,
-   which wakes it. The record names the rules, and the mails of every held match too.
+   which wakes it. The record names the rules and holds the arriving mail only.
 4. A match that no ready rule takes is held in `wake_held`. The wake flush runs on a short interval
-   and wakes the target of each held match whose rule is ready, with the held mail in one record.
+   and wakes the target of each held match whose rule is ready, with every held mail of that target
+   in one record.
 
 `trigger.mail_woke` renders for the model as the rules that matched, a mail count, and each sender
 and subject as outside content, with the mail's short ID. A mail forgotten since shows as forgotten.
