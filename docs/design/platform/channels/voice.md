@@ -64,9 +64,9 @@ interface SpeechLayer {
   // `store: false`, client delegation, an acknowledgement delay, and a device data channel that
   // may receive and send no event.
   open(input: OpenSpeech): Promise<{ sdpAnswer: string; sessionID: string } | SpeechRefused>;
-  // Sends one part of nixie's answer for a hand-off; the speech layer speaks it in its own words.
-  // Each part is a complete statement, never empty and never a lead-in to more text. A hand-off
-  // never closes on the provider's side: `final` marks the end inside nixie.
+  // Sends nixie's whole answer for a hand-off; the speech layer speaks it in its own words. The
+  // text is never empty. A hand-off never closes on the provider's side: `final` marks the end
+  // inside nixie, and the calls module always sends `true`.
   answer(sessionID: string, handOffID: string, text: string, final: boolean): Promise<void>;
   // Sends a line for the speech layer to say now, such as the reconnect line.
   say(sessionID: string, text: string): Promise<void>;
@@ -107,8 +107,8 @@ A call runs on a runner of its own, `call`, which runs the conversation's turn c
 task. Each hand-off is one turn of the call's thread, which commits at its end as every step does.
 The `call` runner gives a call what a started task lacks:
 
-- A turn writes reply records, and the calls module sends their text to the speech layer as the turn
-  writes it.
+- A turn writes reply records, and the calls module sends their text to the speech layer when the
+  turn ends.
 - A message that lands during a turn reaches it as a mid-turn message, and your speech cuts a model
   call in flight, as in the conversation.
 - The runner claims from a pool of its own, so a call's turn never waits behind a conversation turn.
@@ -140,9 +140,11 @@ type CallTaskStart = {
   span of source `dictated` over its text. A `hand_off` starts a turn over the messages since the
   last turn. `call.handed_off` keeps the request as the adapter built it from your speech, for
   timing checks.
-- The calls module sends a turn's reply text to the speech layer one whole sentence at a time, as
-  the turn finishes each one, and sends `final: true` with the last. A turn that ends with no text
-  sends a fixed line instead, because an empty part makes the speech layer invent an answer.
+- The calls module sends a turn's reply text to the speech layer in one `answer` call when the turn
+  ends. The speech layer invents facts after a lead-in sentence that waits alone for the next one,
+  as the [sentence parts measurement](../../../../research/gpt-live-sideband/results.md) found. The
+  holding line covers a slow turn. A turn that ends with no text sends a fixed line instead, because
+  an empty answer makes the speech layer invent one.
 - A turn that fails, ends on a proposal or passes a limit sends the speech layer a fixed line that
   claims no outcome, such as "I couldn't finish that one". The fixed lines live in `voice/` in the
   definitions, and each one spoken is a `call.spoke` record.
@@ -283,7 +285,7 @@ budgets/call-day.yaml, budgets/call-month.yaml   optional; each replaces the bui
   and an empty thinking part, and the speech layer stays quiet while nixie's turn runs.
 - When nixie's answer has not started `hold_after_ms` after a hand-off, the calls module sends the
   fixed holding line from `voice/`, such as "One moment." On a long turn, nixie's turn may send one
-  interim line.
+  interim line through `say`, which never makes a promise and is never part of the answer.
 - The speech layer may speak nixie's answer as a close paraphrase. The tuning pass measures how far
   its wording drifts.
 - A second request during a running hand-off joins that turn as a mid-turn message.
@@ -294,7 +296,7 @@ budgets/call-day.yaml, budgets/call-month.yaml   optional; each replaces the bui
 - A crash or a dropped provider session never replays a hand-off that committed. The calls module
   opens a new speech-layer session with the call so far, the speech layer says "I dropped out for a
   second", and a hand-off that was running reruns as its step does. You hear the rerun's answer in
-  full, even a part you heard before the drop, and the record keeps only the answer its step
+  full, even what you heard before the drop, and the record keeps only the answer its step
   committed.
 - A provider session lasts at most 2 hours. 5 minutes before it ends, the calls module moves the
   call to a new session through the device, between hand-offs, and the speech layer says the
