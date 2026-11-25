@@ -41,11 +41,11 @@ act on the caller's own row. A full session with no row gets `NOT_A_DEVICE` and 
 first. A device session whose row a revoke removed gets the refusal of a missing session.
 
 `create-api-app.ts` refuses with 403 each call from a device session except `live.follow` in its
-device form, `devices.resize`, `devices.setCapability`, `devices.readImage` and `sessions.signOut`.
-The test in `create-device-procedures.test.ts` walks every contract path to keep that list true. A
-revoke or a sign-out of a session, full or device, removes its device row and ends its open streams.
-A full session's revoke also closes its computer watch sockets. A reset keeps the device rows and
-clears what they show.
+device form, `devices.resize`, `devices.pageError`, `devices.setCapability`, `devices.readImage` and
+`sessions.signOut`. The test in `create-device-procedures.test.ts` walks every contract path to keep
+that list true. A revoke or a sign-out of a session, full or device, removes its device row and ends
+its open streams. A full session's revoke also closes its computer watch sockets. A reset keeps the
+device rows and clears what they show.
 
 ## The device record
 
@@ -155,11 +155,13 @@ in both calls. The stream sends `opened` first, then what the screen shows now. 
 follows a commit that touches the device, and the stream sends an event only when the state changes.
 The event of a show carries the `fit` of an image, `whole` or `fill`.
 
-The layout travels in its own `layout` events, separate from the `show` and `idle` events. A stream
-sends one when the device holds a layout, and again when the grid or a region's content changes, a
-region's minutes pass or a forget blanks a region. A clear sends a `layout` event with no layout. A
-stream that opens on a device with no layout sends no `layout` event. The stream wakes at the
-earliest end among the show and the regions, including while a show covers the layout.
+A region's `layout` event carries the short ID of the region's `device.region_shown` record as
+`shown`, which the device names in the errors it reports. The layout travels in its own `layout`
+events, separate from the `show` and `idle` events. A stream sends one when the device holds a
+layout, and again when the grid or a region's content changes, a region's minutes pass or a forget
+blanks a region. A clear sends a `layout` event with no layout. A stream that opens on a device with
+no layout sends no `layout` event. The stream wakes at the earliest end among the show and the
+regions, including while a show covers the layout.
 
 `devices.readImage` serves an image only while it is in the current show, the idle scene or a region
 of the layout, and returns `NOT_SHOWN` otherwise.
@@ -188,8 +190,9 @@ writes nothing. A device counts as offline once it has had no open stream for
 | `device.layout_restore` | Puts a saved layout back: its grid and every region's content                                                                                     |
 | `device.layouts`        | Lists the saved names, each with the time it was saved                                                                                            |
 | `device.layout_remove`  | Deletes a saved layout                                                                                                                            |
+| `device.preview`        | Returns a picture of the screen and the errors the device reported, as [The preview](#the-preview) describes                                      |
 
-All 10 declare the `note` effect and run direct, inside the turn. The user's rules still decide each
+All 11 declare the `note` effect and run direct, inside the turn. The user's rules still decide each
 call, so an ask rule can hold a call for approval. `device.show` checks in this order and returns
 the first refusal: `UNKNOWN_DEVICE`, `SCREEN_OFF`, then the image refusals `UNKNOWN_IMAGE` and
 `IMAGE_FORGOTTEN`. A show to an offline device refuses nothing: the show waits, the device shows it
@@ -202,12 +205,71 @@ when it comes back online, and the result carries `waiting: true` with a message
 `device.layouts` return `UNKNOWN_DEVICE`, and the remove call returns `UNKNOWN_LAYOUT` too. An
 `UNKNOWN_LAYOUT` message lists the saved names. `device.region` returns `UNKNOWN_DEVICE`,
 `SCREEN_OFF`, `UNKNOWN_REGION`, `PAGE_NOT_BUILT`, the image refusals, then `OFFLINE`.
+`device.preview` returns `UNKNOWN_DEVICE`, then `SCREEN_OFF`.
 
 `devices.list` shows the layout a device holds whether or not the device is online, unlike
 `showing`, which is null while the device is offline. `showing` follows the screen's order: it is
 `layout` while no show covers the layout and at least one region shows content or has a background.
 Each region lists its kind, `until` and the short ID of its `device.region_shown` record, and never
 its content. A blank region has a null kind.
+
+## The preview
+
+`device.preview` shows the assistant what a screen looks like and what went wrong on it. A web page
+cannot take a picture of its own screen without a prompt on the device, so the picture is a render
+of the same layout at the same size, which the device did not make.
+
+```mermaid
+flowchart LR
+  tool[device.preview] -->|"layout files, CSS size, pixel ratio"| render[render sandbox]
+  render -->|"PNG"| tool
+  device[device page] -->|"devices.pageError"| errors[errors in memory]
+  tool --> errors
+```
+
+The result holds the screen size in device pixels and the pixel ratio, the errors, and `picture`:
+`shown` with the picture beside the result, or `unavailable` with none. The size is null while the
+device is offline, and an offline device still returns its last errors. The picture is `unavailable`
+when the device is offline, when the render fails or passes its time limit, when the model's image
+caps have no room for it, and when nixie has no render sandbox. The tool's description tells the
+assistant that the picture proves nothing about what the device shows, because fonts and drawing can
+differ.
+
+### The render
+
+`startRenderSandbox` in the `connectors` module runs each render in a new sandbox of the `render`
+kind, which has no network, no grant and no tool route, and destroys the sandbox when the render
+ends. A second render waits for the first, so one render runs at a time, and a render never touches
+the assistant's computer.
+
+The `devices` module builds the page that the sandbox opens. It picks what the screen draws as the
+device page does: a show, then the layout while a region shows content or has a background, then the
+idle scene. `buildPreviewPage` turns that surface into `index.html` and one file for each image the
+surface shows. A markdown region keeps raw HTML as text and shows a link as its words. A clock or a
+countdown shows the time of the render, in the deployment's default time zone. A script in the page
+grows the text of each region to the largest size that fits, as the device page does.
+
+The server sends the files and the screen's size in CSS pixels, which is the device's width and
+height divided by its pixel ratio, with the pixel ratio itself. The render guest in `guests/render`
+starts Chromium on an empty profile in a folder that it removes after the render. It answers each
+request for one of the page's files from the files it received, refuses every other request and
+every WebSocket, and lists the refused URLs in its reply. It waits for the page to say that its text
+has fitted, takes a PNG at the CSS size times the pixel ratio, and exits. The server fits the PNG to
+the long edge of the images the model reads before it reaches the assistant.
+
+`buildPreviewPage` matches each kind of region content with no fallback, so the kind that pages add
+fails the type check until the page has a branch for it.
+
+### The errors
+
+The device reports an error that a region's content raised with
+`devices.pageError({ region, shown, message })`, which a device session may call. The device page
+reports an image that a region cannot read. The server keeps the last 20 errors of each region, in
+memory, in the stream registry beside the open streams, so a restart forgets them. The call returns
+`STALE`, and keeps nothing, when the region no longer shows the content that `shown` names or the
+layout has no such region. An error of earlier content is dropped when the region reports an error
+of its new content, and `device.preview` leaves it out. `device.preview` returns each error's
+region, time and message in an untrusted block, because the text comes from the device.
 
 ## Device mode
 
