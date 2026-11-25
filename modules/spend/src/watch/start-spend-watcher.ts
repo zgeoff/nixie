@@ -4,6 +4,7 @@ import { pickRaiseResend } from '../raise/pick-raise-resend';
 import type { SpendFacts } from '../stop/pick-spend-stop';
 import { readSpendFacts } from '../stop/read-spend-facts';
 import { settleSpendStop } from '../stop/settle-spend-stop';
+import { takeSettleOrder } from '../stop/take-settle-order';
 import type { GatewayStatus, SpendContext } from '../types';
 import { publishSpendChange } from './publish-spend-change';
 
@@ -107,22 +108,25 @@ async function readAnsweredFacts(options: SpendWatcherOptions): Promise<SpendFac
 }
 
 // A raise that the gateway has not applied goes out again, and the status that it answers with
-// replaces the one read, so the stop clears in the same poll.
+// replaces the one read, so the stop clears in the same poll. That status takes a place in line
+// after the raise answers, so a read that began before the raise took effect never settles after it.
 async function sendWhatIsMissing(
   options: SpendWatcherOptions,
   facts: SpendFacts & { readonly status: GatewayStatus },
 ): Promise<SpendFacts> {
-  const gateway = options.context.gateway;
-  const resends = pickRaiseResend({ ...facts, status: facts.status }, options.context.zone);
-  let status = facts.status;
+  const context = options.context;
+  const resends = pickRaiseResend({ ...facts, status: facts.status }, context.zone);
+  let answer: Pick<SpendFacts, 'status' | 'statusAtMs' | 'order'> | null = null;
 
   for (const resend of resends) {
-    const raised = await gateway.postRaise(resend);
+    const postedAtMs = context.clock.now();
+
+    const raised = await context.gateway.postRaise(resend);
 
     if (raised.kind === 'ok') {
-      status = raised.value;
+      answer = { status: raised.value, statusAtMs: postedAtMs, order: takeSettleOrder(context) };
     }
   }
 
-  return { ...facts, status };
+  return answer === null ? facts : { ...facts, ...answer };
 }

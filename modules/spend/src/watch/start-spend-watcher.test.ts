@@ -9,6 +9,7 @@ import type { Logger } from '@heynixie/logger';
 import { waitForCondition } from '@heynixie/testing';
 import { sql } from 'kysely';
 import { spendLimitRaisedCodec } from '../record/spend-limit-raised-codec';
+import { holdTaskOnRefusal } from '../route/hold-task-on-refusal';
 import type { SpendRaise } from '../stop/read-spend-raise';
 import { readSpendRouteStops } from '../stop/read-spend-route-stops';
 import { readSpendStopRow } from '../stop/read-spend-stop-row';
@@ -224,6 +225,44 @@ test('it sends a standing raise that the gateway has not applied, and clears the
   expect(ctx.gateway.postRaise.mock.calls).toStrictEqual([
     [{ route: 'plan', start: '2026-11-13', dollars: 60 }],
   ]);
+
+  const routeStops = await readSpendRouteStops(ctx.writer.db);
+
+  expect(routeStops).toStrictEqual([]);
+});
+
+test('it keeps the route stop cleared when a task read the route before the raise took effect and its answer comes after', async () => {
+  const ctx = await setupTest();
+
+  const state = { noAnswerSince: null, lastStopKey: null };
+  const staleStatus = Promise.withResolvers<Awaited<ReturnType<typeof ctx.gateway.readStatus>>>();
+  let staleRead: Promise<boolean> = Promise.resolve(false);
+
+  ctx.gateway.readStatus.mockResolvedValue({ kind: 'ok', value: buildTrippedGatewayStatus() });
+
+  await ctx.poll(state);
+  await ctx.writeRaise({ dollars: 60, by: 'session-a' });
+
+  ctx.gateway.readStatus
+    .mockResolvedValueOnce({ kind: 'ok', value: buildTrippedGatewayStatus() })
+    .mockReturnValueOnce(staleStatus.promise);
+
+  ctx.gateway.postRaise.mockImplementationOnce(() => {
+    staleRead = holdTaskOnRefusal(ctx.context, {
+      taskID: 'task-a',
+      route: 'plan',
+      sandboxName: 'sandbox-a',
+      startedAtMs: 0,
+    });
+
+    return Promise.resolve({ kind: 'ok', value: buildMockGatewayStatus() });
+  });
+
+  await ctx.poll(state);
+
+  staleStatus.resolve({ kind: 'ok', value: buildTrippedGatewayStatus() });
+
+  await staleRead;
 
   const routeStops = await readSpendRouteStops(ctx.writer.db);
 
