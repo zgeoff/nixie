@@ -125,6 +125,7 @@ export interface LayoutState {
       readonly rowSpan: number;
       readonly background: RegionBackground | null;
       readonly content: RegionContent | null;
+      readonly shown: string | null;
       readonly until: string | null;
     }[];
   } | null;
