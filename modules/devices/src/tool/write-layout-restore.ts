@@ -2,7 +2,9 @@ import { createShortID } from '@heynixie/db';
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import invariant from 'tiny-invariant';
 import { pickLayoutRestore } from '../layout/pick-layout-restore';
+import { pickSavedLayout } from '../layout/pick-saved-layout';
 import { readLayoutRestoreInput } from '../layout/read-layout-restore-input';
+import { readSavedLayouts } from '../layout/read-saved-layouts';
 import { deviceLayoutRestoredCodec } from '../record/device-layout-restored-codec';
 import { deviceLayoutSetCodec } from '../record/device-layout-set-codec';
 import type { DeviceTables } from '../types';
@@ -36,14 +38,17 @@ export function writeLayoutRestore(
     const inTransaction = { ...options.log, writer: { ...options.log.writer, db: tx } };
     const nowMs = options.clock.now();
 
-    const layouts = await readLayoutRestoreInput(inTransaction, write.deviceID, nowMs);
+    const saved = await readSavedLayouts(tx, write.deviceID);
 
-    const plan = pickLayoutRestore(layouts, write.name);
+    const choice = pickSavedLayout(saved, write.name);
 
-    if (plan.status === 'unknown') {
-      return plan;
+    if (choice.status === 'unknown') {
+      return choice;
     }
 
+    const restoreInput = await readLayoutRestoreInput(inTransaction, choice.layout, nowMs);
+
+    const plan = pickLayoutRestore(restoreInput);
     const layoutID = createShortID();
 
     const [layoutSet, restored] = await writeRecordsInTransaction(tx, options.log, [
