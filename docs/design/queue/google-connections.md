@@ -13,8 +13,8 @@ lives only in that call's record. The connection itself is built. Read
 [Google connections](../../architecture/connectors/google-connections.md) for the client, the
 consent, the fewer-scopes check and the fetcher, and follow
 [the setup guide](../../guides/google.md) for the steps you take. The rest of this page sets out
-what the Google tools need from the connection. Build each tool work item on these contracts,
-starting with Gmail.
+what the Google tools need from the connection. Build each remaining tool work item on these
+contracts.
 
 | Part                                                                            | What it holds                                                                        |
 | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
@@ -26,21 +26,22 @@ starting with Gmail.
 | [the calendar poll](mail-and-calendar-polls.md)                                 | calendar changes that wake a task                                                    |
 
 The connection argument shipped with the Gmail tools, in the
-[Gmail](https://linear.app/zgeoff/issue/GEO-1825) work item. Job pins, the model's status line and
-the pin rules in [Tasks in flight](#tasks-in-flight) are not built yet. With no pin on a job run, a
-tool resolves each call against every live Google connection.
+[Gmail](https://linear.app/zgeoff/issue/GEO-1825) work item. Job pins and the model's status line
+are not built yet. Read [Tasks in flight](#tasks-in-flight) for the pin rules. With no pin on a job
+run, a tool resolves each call against every live Google connection.
 
 ## Contracts
 
 ### The connector
 
 ```ts
-// connectors module. The Google connector holds no action yet: each tool work item adds its actions.
+// connectors module. The Google connector holds the Gmail actions. Add each later tool's actions
+// here in its own work item.
 const googleConnector: Connector = {
   id: 'google',
   auth: googleOAuth, // built
   setup: googleSetup, // built
-  actions: [], // the Gmail, Calendar and Drive tools join here
+  actions, // the Gmail tools; the Calendar and Drive tools join here
   check: checkGoogleScopes, // built: one read per scope, reports `missing`
 };
 
