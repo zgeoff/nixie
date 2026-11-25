@@ -27,8 +27,9 @@ contracts.
 
 The connection argument shipped with the Gmail tools, in the
 [Gmail](https://linear.app/zgeoff/issue/GEO-1825) work item. Job pins and the model's status line
-are not built yet. Read [Tasks in flight](#tasks-in-flight) for the pin rules. With no pin on a job
-run, a tool resolves each call against every live Google connection.
+are not built yet. Read
+[the connection argument](../platform/connectors/connector.md#the-connection-argument) for the pin
+rules. With no pin on a job run, a tool resolves each call against every live Google connection.
 
 ## Contracts
 
