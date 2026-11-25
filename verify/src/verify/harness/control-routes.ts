@@ -67,7 +67,7 @@ export const controlRoutes = {
       // for your approval
       export: z.boolean().optional(),
 
-      // a task the model starts with the coding start tool before its reply, and the task's first reply
+      // a task the model starts with the task start tool before its reply, and the task's first reply
       task: startedTaskSchema.optional(),
 
       // a coding task the model starts on the atc runner with the coding start tool before its reply, which
