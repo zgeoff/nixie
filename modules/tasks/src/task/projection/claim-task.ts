@@ -3,6 +3,8 @@ import { parseJSONObject, writeRecordsInTransaction } from '@heynixie/log';
 import type { Transaction } from 'kysely';
 import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
+import { match } from 'ts-pattern';
+import { callRunnerKey } from '../../call/call-task-options';
 import { buildGateFilter } from '../../gate/build-gate-filter';
 import { claimLease } from '../../lease/claim-lease';
 import { writeRunOpenInTransaction } from '../../run/write-run-open-in-transaction';
@@ -20,7 +22,7 @@ import { resetLease } from '../../utils/reset-lease';
 import { taskStepInterruptedCodec } from '../../utils/task-step-interrupted-codec';
 import { buildPausedRecord } from '../record/build-paused-record';
 
-type ClaimedTasks = 'started' | 'unstarted';
+type ClaimedTasks = 'started' | 'unstarted' | 'call';
 
 export interface ClaimTaskOptions {
   readonly holder: string;
@@ -81,7 +83,19 @@ async function readClaimableTask(
           eb('tasks.definition_id', 'is not', null),
         ]);
 
-        return tasks === 'started' ? isStarted : eb.not(isStarted);
+        // A call's task names its runner in its created record, so the call pool claims by it.
+        const isCall = eb.exists(
+          eb
+            .selectFrom('records as created')
+            .select('created.sequence')
+            .whereRef('created.sequence', '=', 'tasks.created_sequence')
+            .where(sql`json_extract(created.payload, '$.runner')`, '=', callRunnerKey),
+        );
+
+        return match(tasks)
+          .with('call', () => isCall)
+          .with('started', () => eb.and([isStarted, eb.not(isCall)]))
+          .otherwise(() => eb.not(isStarted));
       }),
     )
     .where((eb) =>

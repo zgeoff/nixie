@@ -8,6 +8,7 @@ import {
   writeRecords,
 } from '@heynixie/log';
 import invariant from 'tiny-invariant';
+import { writeCallTask } from '../../call/write-call-task';
 import { createConversationTask } from '../../conversation/create-conversation-task';
 import { readRunRows } from '../../run/read-run-rows';
 import { writeStepCommit } from '../../step/write-step-commit';
@@ -284,6 +285,36 @@ test('it never claims a started task for the unstarted tasks', async () => {
   });
 
   expect(claim).toBeNull();
+});
+
+test('it claims a call task for the call tasks and for no other pool', async () => {
+  const ctx = await setupTest();
+  const starter = await seedConversationStep(ctx.context);
+
+  await seedTask(ctx.context, {
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+  });
+
+  const callTaskID = await withWriteTransaction(ctx.context.log.writer, (tx) =>
+    writeCallTask(tx, ctx.context, { callID: 'c7q2', seedThrough: 4 }),
+  );
+
+  const asStarted = await claimTask(ctx.context, {
+    holder: 'runner-a',
+    leaseMs: 60_000,
+    tasks: 'started',
+  });
+
+  const asCall = await claimTask(ctx.context, {
+    holder: 'runner-b',
+    leaseMs: 60_000,
+    tasks: 'call',
+  });
+
+  expect(asStarted?.lease.workID).not.toBe(callTaskID);
+  expect(asCall?.lease.workID).toBe(callTaskID);
 });
 
 test.each<[string, Pick<ClaimTaskOptions, 'tasks'>]>([

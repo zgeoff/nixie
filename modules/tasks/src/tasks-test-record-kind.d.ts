@@ -5,7 +5,10 @@ export type TasksTestRecordKind =
   | 'call.rang'
   | 'call.started'
   | 'call.answered'
-  | 'call.ended';
+  | 'call.ended'
+  | 'call.spoke'
+  | 'call.handed_off'
+  | 'call.heard_cut';
 
 declare module '@heynixie/log' {
   // oxlint-disable-next-line typescript/no-empty-interface -- the merge adds the kinds above to the registry
