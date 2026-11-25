@@ -84,6 +84,10 @@ check, the challenge and the registration rules. Each call reads the `Origin` he
 ID is the hostname of the origin the client runs on. The API keeps its challenges, its registration
 options and the host's code in memory, so a restart drops them.
 
+`passkeys.window` takes a check and tells whether the session's open window covers it, so the client
+knows whether to ask the passkey. It reports `false` for adding or removing a passkey. See
+[the window](../policy/passkeys.md#the-window) for how a tap opens and closes it.
+
 ## Checked actions
 
 Enrolment, code issue, revoke, message send, record forget, the changes of the

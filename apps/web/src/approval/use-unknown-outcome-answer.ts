@@ -2,8 +2,10 @@ import type { ContractInputs } from '@heynixie/contract';
 import { ORPCError } from '@orpc/client';
 import { useMutation } from '@tanstack/react-query';
 import { useRef } from 'react';
-import { askPasskey } from '../passkey/ask-passkey';
+import { writeWithPasskey } from '../passkey/write-with-passkey';
 import { useNixieClient } from '../utils/use-nixie-client';
+
+type Assertion = NonNullable<ContractInputs['approvals']['answerUnknownOutcome']['passkey']>;
 
 type UnknownChoice = ContractInputs['approvals']['answerUnknownOutcome']['choice'];
 
@@ -26,8 +28,8 @@ export interface UnknownOutcomeAnswerOptions {
 }
 
 // Answers the question about an action whose outcome is unknown. A choice that takes a passkey asks
-// for a fresh assertion on each send, and a second send of the same choice reuses its client action
-// ID, so a retry after a lost reply settles once.
+// for an assertion unless the session's last tap still covers it, and a second send of the same
+// choice reuses its client action ID, so a retry after a lost reply settles once.
 export function useUnknownOutcomeAnswer(
   options: UnknownOutcomeAnswerOptions,
 ): UnknownOutcomeAnswerer {
@@ -45,20 +47,23 @@ export function useUnknownOutcomeAnswer(
       last.current = { choice, clientActionID };
 
       try {
-        const passkey = options.passkeyChoices.includes(choice)
-          ? await askPasskey(client, {
-              kind: 'unknown_outcome',
-              actionID: options.actionID,
-              choice: 'retry',
-            })
-          : undefined;
+        const answer = (passkey: Assertion | undefined) =>
+          client.approvals.answerUnknownOutcome({
+            actionID: options.actionID,
+            choice,
+            clientActionID,
+            ...(passkey === undefined ? {} : { passkey }),
+          });
 
-        await client.approvals.answerUnknownOutcome({
-          actionID: options.actionID,
-          choice,
-          clientActionID,
-          ...(passkey === undefined ? {} : { passkey }),
-        });
+        if (options.passkeyChoices.includes(choice)) {
+          await writeWithPasskey(
+            client,
+            { kind: 'unknown_outcome', actionID: options.actionID, choice: 'retry' },
+            answer,
+          );
+        } else {
+          await answer(undefined);
+        }
 
         return { status: 'answered' };
       } catch (error) {

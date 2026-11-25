@@ -37,6 +37,10 @@ export const passkeyContract = {
     .input(z.object({ for: challengeForSchema }))
     .output(z.object({ options: requestOptionsSchema })),
 
+  window: signedIn
+    .input(z.object({ for: challengeForSchema }))
+    .output(z.object({ isOpen: z.boolean() })),
+
   registrationOptions: signedIn
     .errors(registrationErrors)
     .errors({
@@ -76,12 +80,15 @@ export const passkeyContract = {
   revoke: signedIn
     .errors(reusedIDErrors)
     .errors(passkeyFailedError)
-    .errors({ NOT_FOUND: { message: 'No passkey has this ID', status: 404 } })
+    .errors({
+      NOT_FOUND: { message: 'No passkey has this ID', status: 404 },
+      PASSKEY_REQUIRED: { message: 'A revoke needs a passkey check', status: 403 },
+    })
     .input(
       z.object({
         clientActionID: clientActionIDSchema,
         passkeyID: z.string().min(1).max(200),
-        passkey: authenticationResponseSchema,
+        passkey: authenticationResponseSchema.optional(),
       }),
     )
     .output(z.object({ revokedAt: z.date() })),

@@ -100,7 +100,10 @@ test('it reads every section, with the default of each setting the file leaves o
       proposedRules: { approvals: 3, windowDays: 30, quietDays: 30 },
       mandates: { maxHours: 24 },
     },
-    approvals: { defer: { default_minutes: 60, evening_at: '18:00', morning_at: '08:00' } },
+    approvals: {
+      defer: { default_minutes: 60, evening_at: '18:00', morning_at: '08:00' },
+      passkey_window_minutes: 10,
+    },
     skills: { catalogShare: 0.02 },
     backup: { isEnabled: true, intervalMs: 3_600_000 },
   });
@@ -352,6 +355,38 @@ test('it reads the quiet hours and the defer settings the file sets', async () =
     quiet: { start: '22:00', end: '07:00' },
     defer: { default_minutes: 30, evening_at: '19:00', morning_at: '08:00' },
   });
+});
+
+test('it reads the passkey window the file sets, in minutes', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(
+    ctx.path,
+    [
+      'approvals:',
+      '  passkey_window_minutes: 3',
+      'models:',
+      '  profiles:',
+      '    chat-direct:',
+      '      harness: agent-sdk',
+      '      base_url: https://api.anthropic.com',
+      '      credential: deployment:anthropic',
+      '      auth_header: x-api-key',
+      '      model: claude-test-1',
+      '      effort: medium',
+      '      prices: { input: 1, cache_write: 1, cache_write_1h: 1, cached_input: 0.1, output: 4 }',
+      '  roles:',
+      '    conversation: chat-direct',
+      'imp:',
+      '  url: http://127.0.0.1:7070',
+      'definitions:',
+      '  source: { kind: path, path: /etc/nixie/definitions }',
+    ].join('\n'),
+  );
+
+  const config = await loadDeploymentConfig(ctx.path);
+
+  expect(config.approvals.passkey_window_minutes).toBe(3);
 });
 
 test('it refuses a log level nixie has no name for', async () => {
