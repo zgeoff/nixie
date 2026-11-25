@@ -54,20 +54,22 @@ body shows which declaration the tool would run under.
 ## Reconcile
 
 An override's `reconcile` becomes the reconcile of the tool's connector, which `findConnector`
-answers. With `idempotencyKey`, the connector fills that argument with the action's ID at each run,
+returns. With `idempotencyKey`, the connector fills that argument with the action's ID at each run,
 so a retry of an interrupted call is the same call to the server, and the action runners keep the
-key for as long as servers are assumed to keep it. The argument is no part of the input schema the
-model sees, so a call needs no value for it, even when the server's schema requires one. With
-`check`, the connector calls the named read tool with the call's arguments after an interruption,
-and a result with content counts as found, and an empty one as not found, so the action runs again.
-The check runs only when that tool is itself declared as a read and is exposed.
+key for the time that `keyKeptForMs` in
+[`build-action-connector.ts`](../../../modules/mcp/src/call/build-action-connector.ts) sets. The
+argument is no part of the input schema the model sees, so a call needs no value for it, even when
+the server's schema requires one. With `check`, the connector calls the named read tool with the
+call's arguments after an interruption, and a result with content counts as found, and an empty one
+as not found, so the action runs again. The check runs only when that tool is itself declared as a
+read and is exposed.
 
 A check that does not run, fails or ends in a server error is inconclusive, and the action comes to
 the user. A tool with no `reconcile` has neither, and an ambiguous action comes to the user.
 
 A recovery runs only under the definitions snapshot that the action's first attempt ran under. A
-later snapshot may name another key argument or another check tool, or none, and the first attempt
-went out under the earlier one. After a snapshot change, a retry ends as ambiguous with nothing
-sent, and a check is inconclusive, so the action comes to the user. A tool whose override left the
-definitions after its first attempt declares no key, so it never sends a second attempt. A result of
-images alone is inconclusive too, because it proves no absence.
+later snapshot may set another key argument, a check in place of a key, or no reconcile, and the
+first attempt went out under the earlier one. After a snapshot change, a retry ends as ambiguous
+with nothing sent, and a check is inconclusive, so the action comes to the user. A tool whose
+override left the definitions after its first attempt declares no key, so it never sends a second
+attempt. A result of images alone is inconclusive too, because it proves no absence.

@@ -168,20 +168,20 @@ blocks the proxy drops. A tool with an output schema returns the server's struct
 the connector and the registry check against the pinned schema, so an answer outside it is never a
 done action. A server's own error keeps its text and sets the call's error flag.
 
-The tool's definition names its pinned hash, and the call record keeps it. A call runs only under
+The tool's definition holds its pinned hash, and the call record keeps it. A call runs only under
 the form it loaded. When a listing moves the pin after the call loaded the tool, nothing runs and
 the call returns an error that asks the model to call again. A call checks its input and its result
 against the pin hash it loaded, never the newest one. The proxy reads the pin again once the call's
 session is open and before `tools/call` leaves, so a listing that lands while the session opens
 cannot move it between the check and the send.
 
-A tool declared by an override names the snapshot that held the override, and a call that would
-record another snapshot runs nothing and asks the model to call again, because the declaration it
-decided under is no longer in force. A direct call reads both the pin and the snapshot again after
-its clearance and its policy decision, right before it runs. An approved call of a direct tool does
-so after its stored call and its prepared facts are read, and it runs only when the pin is still the
-one the call record names. A seed that changes only an override cannot let a call run under the old
-declaration.
+A tool declared by an override carries the hash of the snapshot that held the override, and a call
+that would record another snapshot runs nothing and asks the model to call again, because the
+declaration it decided under is no longer in force. A direct call reads both the pin and the
+snapshot again after its clearance and its policy decision, right before it runs. An approved call
+of a direct tool does so after its stored call and its prepared facts are read, and it runs only
+when the pin is still the one in the call record. A seed that changes only an override cannot let a
+call run under the old declaration.
 
 An approved call of a queued tool runs only when the current pin accepts its saved arguments, the
 argument that an idempotency key fills included, and otherwise settles as refused.
@@ -196,16 +196,16 @@ and a proxied call reserves them from that budget. Text that nixie writes itself
 carries no markers.
 
 An approved call of a queued tool reaches the action runners through the connector that
-`findConnector` answers for it. The connector clears the call again before it runs. A refusal or a
+`findConnector` returns for it. The connector clears the call again before it runs. A refusal or a
 server error settles the action as refused, and a call that fails after it left settles as
 ambiguous, as does an answer that nixie cannot read or that breaks the output schema. Unless the
 tool's override sets a reconcile, an ambiguous action comes to the user.
 
-A retry of a keyed call runs only under the declaration its first attempt ran under. The action
-runner hands the connector the snapshot of that first attempt, and a connector whose declaration
-came from another snapshot, or that declares no key any more, sends nothing and leaves the action
-ambiguous. A check whose read tool answers only with pictures, or outside its output schema, is
-inconclusive and never schedules a retry.
+A retry runs only under the declaration its first attempt ran under. The action runner hands the
+connector the snapshot of that first attempt. A connector whose declaration came from another
+snapshot sends nothing and leaves the action ambiguous, whether the new declaration sets a key or a
+check, and so does a connector that declares no reconcile any more. A check whose read tool answers
+only with pictures, or outside its output schema, is inconclusive and never schedules a retry.
 
 The reason of a refused action holds the server's own words, so a call that waits for it, and a
 queued or approved call that ends in a server error, gets the reason inside the markers, as an
@@ -216,8 +216,9 @@ error.
 The proxy keeps one health state per server in memory, shared by every task run: the failed listings
 in a row, the next try, the last error and whether the newest listing passed. The last error is one
 of `refused`, `error`, `unparsable`, `timeout` or `unauthorised`. Failed listings back off, doubling
-at each failure up to a limit, and the proxy makes each try on that schedule. A task run that starts
-during the backoff skips the listing.
+at each failure between the first and the longest wait that `healthDefaults` in
+[`types.ts`](../../../modules/mcp/src/health/types.ts) sets, and the proxy makes each try on that
+schedule. A task run that starts during the backoff skips the listing.
 
 After 3 failed listings in a row the server is unhealthy, and the proxy writes one
 `mcp.health_changed` record with the last error and the next try. The next passed listing writes one
