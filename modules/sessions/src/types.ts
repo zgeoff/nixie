@@ -2,6 +2,7 @@ import type { CompactionSettings } from '@heynixie/compaction';
 import type { ContentSource, LogRecord, RecordInput } from '@heynixie/log';
 import type { Logger } from '@heynixie/logger';
 import type { Harness, ResolvedProfile } from '@heynixie/models';
+import type { RuleSource } from '@heynixie/policy';
 import type { PromptOverrides } from '@heynixie/prompts';
 import type { GuestCommand, Sandbox } from '@heynixie/sandbox';
 import type { SpendContext } from '@heynixie/spend';
@@ -311,6 +312,9 @@ export interface TurnNote {
   readonly throughSequence: number;
 
   readonly eventCount: number;
+
+  // where the content of the events that the note lists came from
+  readonly sources: readonly RuleSource[];
 }
 
 export type SessionStart =
@@ -359,6 +363,10 @@ export interface EventKind<Detail> {
   readonly isUncapped?: boolean;
 
   readonly isSessionBound?: boolean;
+
+  // where the text of the kind's events came from, when it is content from outside the owner's own
+  // messages; a turn that lists one of these events counts the source as read
+  readonly source?: RuleSource;
 }
 
 export interface ReadEvent {
@@ -379,6 +387,7 @@ export type EventRegistry = readonly {
   readonly complete: (events: readonly ReadEvent[]) => Promise<readonly BoundEvent[]>;
   readonly isUncapped: boolean;
   readonly isSessionBound: boolean;
+  readonly source: RuleSource | null;
 }[];
 
 // A message for the running turn. cutsCall is true when it cuts the model call in flight.

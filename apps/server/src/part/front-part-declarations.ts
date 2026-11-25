@@ -111,6 +111,7 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
         mail,
         apiContext: {
           ...context.apiContext,
+          logger: options.log,
           readCodeCleanup: () => parts.find('code_run')?.cleanup.destroyForRecords ?? null,
           readNotebook: () => parts.find('notebook') ?? null,
           readConnections: () => parts.find('connections') ?? null,

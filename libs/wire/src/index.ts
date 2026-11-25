@@ -1,3 +1,5 @@
+export type { PageFrame, PageFrameInput } from './page/build-page-frame';
+export { buildPageFrame } from './page/build-page-frame';
 export type { CheckReply, CheckRequest } from './fetch/check-request-schema';
 export { checkReplySchema, checkRequestSchema } from './fetch/check-request-schema';
 export { defaultFetchTextBytes } from './fetch/default-fetch-text-bytes';
@@ -148,6 +150,7 @@ export type { RenderFile, RenderReply, RenderRequest } from './render/render-req
 export {
   renderEntryPath,
   renderFrameLimitBytes,
+  renderOrigin,
   renderReplySchema,
   renderRequestSchema,
 } from './render/render-request';

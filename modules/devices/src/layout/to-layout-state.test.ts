@@ -89,3 +89,62 @@ test('#toLayoutState gives a region its content and the time it ends', () => {
     },
   });
 });
+
+test('#toLayoutState gives a page the tickets of its frame and images, never its markup', () => {
+  const state = toLayoutState(
+    {
+      layoutID: 'ly3k7m2q9x',
+      columns: ['1fr'],
+      rows: ['1fr'],
+      regions: [
+        {
+          name: 'pond',
+          column: 1,
+          row: 1,
+          columnSpan: 1,
+          rowSpan: 1,
+          background: null,
+          shown: {
+            shownID: 'sh3k7m2q9x',
+            sequence: 5,
+            untilMs: null,
+            content: { kind: 'html', html: '<p>secret-markup</p>', images: ['k3x9m2p7qa'] },
+          },
+        },
+      ],
+    },
+    new Map([['pond', { frame: 'frame-1', images: [{ image: 'k3x9m2p7qa', ticket: 'image-1' }] }]]),
+  );
+
+  expect(state.layout?.regions[0]?.content).toStrictEqual({
+    kind: 'html',
+    frame: 'frame-1',
+    images: [{ image: 'k3x9m2p7qa', ticket: 'image-1' }],
+  });
+});
+
+test('#toLayoutState gives a page that holds no tickets no content', () => {
+  const state = toLayoutState({
+    layoutID: 'ly3k7m2q9x',
+    columns: ['1fr'],
+    rows: ['1fr'],
+    regions: [
+      {
+        name: 'pond',
+        column: 1,
+        row: 1,
+        columnSpan: 1,
+        rowSpan: 1,
+        background: null,
+        shown: {
+          shownID: 'sh3k7m2q9x',
+          sequence: 5,
+          untilMs: null,
+          content: { kind: 'html', html: '<p>ripples</p>' },
+        },
+      },
+    ],
+  });
+
+  expect(state.layout?.regions[0]?.content).toBeNull();
+});

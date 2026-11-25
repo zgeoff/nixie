@@ -3,11 +3,15 @@ import type { RefObject } from 'react';
 import { useEffect, useState } from 'react';
 import { startPlatformTimer } from '../utils/start-platform-timer';
 import { useNixieClient } from '../utils/use-nixie-client';
+import { applyDeviceEvent } from './apply-device-event';
 import type { ScreenPixels } from './read-screen-pixels';
 import { readScreenPixels } from './read-screen-pixels';
 import { subscribeToDeviceEvents } from './subscribe-to-device-events';
 
-export type ScreenEvent = Exclude<DeviceEvent, { kind: 'layout' }>;
+export type ScreenEvent = Exclude<DeviceEvent, { kind: 'layout' | 'message' }>;
+
+// a message that the assistant sent into a page, numbered in the order the stream sent it
+export type PageDelivery = Extract<DeviceEvent, { kind: 'message' }> & { readonly id: number };
 
 export type DeviceLayout = Extract<DeviceEvent, { kind: 'layout' }>['layout'];
 
@@ -17,6 +21,9 @@ export interface DeviceEvents {
 
   // the layout the device holds, which a show covers and the screen event leaves alone
   readonly layout: DeviceLayout;
+
+  // each message since the stream opened, which a page takes when its frame is ready
+  readonly messages: readonly PageDelivery[];
   readonly connection: 'connecting' | 'open' | 'lost' | 'refused';
 }
 
@@ -31,6 +38,7 @@ export function useDeviceEvents(
   const [events, setEvents] = useState<DeviceEvents>({
     event: null,
     layout: null,
+    messages: [],
     connection: 'connecting',
   });
 
@@ -41,7 +49,7 @@ export function useDeviceEvents(
 
     const controller = new AbortController();
 
-    setEvents({ event: null, layout: null, connection: 'connecting' });
+    setEvents({ event: null, layout: null, messages: [], connection: 'connecting' });
 
     void subscribeToDeviceEvents({
       client: nixie.client,
@@ -56,9 +64,7 @@ export function useDeviceEvents(
         setEvents((current) => ({ ...current, connection }));
       },
       onEvent: (event) => {
-        setEvents((current) =>
-          event.kind === 'layout' ? { ...current, layout: event.layout } : { ...current, event },
-        );
+        setEvents((current) => applyDeviceEvent(current, event));
       },
       signal: controller.signal,
       startTimer: startPlatformTimer,

@@ -56,6 +56,24 @@ export const mockDeviceProcedures = {
     return {};
   }),
 
+  pageEvent: os.devices.pageEvent.handler(async (options) => {
+    const session = requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+    if (!deviceStore.hasDevice(session.sessionID)) {
+      throw options.errors.NOT_A_DEVICE();
+    }
+
+    await deviceStore.pageEvents.create({
+      region: options.input.region,
+      shown: options.input.shown,
+      name: options.input.name,
+      data: options.input.data ?? null,
+      wake: options.input.wake,
+    });
+
+    return {};
+  }),
+
   setCapability: os.devices.setCapability.handler((options) => {
     const session = requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
 

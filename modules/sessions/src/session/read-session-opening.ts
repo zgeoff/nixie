@@ -1,5 +1,6 @@
 import { readSessionSummary } from '@heynixie/compaction';
 import type { LogRecord } from '@heynixie/log';
+import type { RuleSource } from '@heynixie/policy';
 import type { TaskBrief, TaskMessaging, TasksContext } from '@heynixie/tasks';
 import type { SystemMessageType } from '@heynixie/wire';
 import { mintBlockID, renderSystemMessage } from '@heynixie/wire';
@@ -85,6 +86,9 @@ export interface OpeningRecord {
 export interface SessionOpening {
   readonly blocks: readonly string[];
   readonly record: OpeningRecord;
+
+  // where the content of the events that the opening replays came from
+  readonly sources: readonly RuleSource[];
 }
 
 const summaryCue =
@@ -188,6 +192,7 @@ export async function readSessionOpening(
       briefSequence: brief.briefSequence,
       status: Object.fromEntries(allStatus.map((read) => [read.name, read.line.value])),
     },
+    sources: replayed?.sources ?? [],
   };
 }
 

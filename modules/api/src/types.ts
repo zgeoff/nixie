@@ -116,6 +116,10 @@ export interface APIContext extends TasksContext {
   // presence and the open device streams, which a restart drops
   readonly clients: ClientRegistry;
 
+  // the server's own log, which a page event that a limit drops writes a line to; absent, the
+  // server holds none
+  readonly logger?: Logger;
+
   // challenges, registration options and the host code, which a restart drops
   readonly passkeys: PasskeyState;
 

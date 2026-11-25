@@ -1,4 +1,5 @@
 import type { LogRecord } from '@heynixie/log';
+import type { RuleSource } from '@heynixie/policy';
 import type { StepInput } from '@heynixie/tasks';
 import { LeaseLostError, buildStepRunID, conversationTaskID } from '@heynixie/tasks';
 import type { ToolSession } from '@heynixie/tools';
@@ -10,6 +11,8 @@ import { readLiveInbox } from '../inbox/read-live-inbox';
 import { renderToldWaitNotices } from '../inbox/render-told-wait-notices';
 import { buildStepPolicyFrame } from '../step/build-step-policy-frame';
 import type { CompletedTurn, WaitTelling } from '../step/build-step-result';
+import { collectRecordSources } from '../step/collect-record-sources';
+import { takeSources } from '../step/take-sources';
 import { makeImageReserver } from '../task/make-image-reserver';
 import { makeImageRoomHolder } from '../task/make-image-room-holder';
 import { makeImageRoomReader } from '../task/make-image-room-reader';
@@ -51,6 +54,9 @@ export interface LiveTurnPlan {
 
   // the wait notices in the inbox that an earlier turn's opening told
   readonly toldWaitNotices: ReadonlySet<number>;
+
+  // where the content of the events that a new session's opening replays came from
+  readonly openingSources: readonly RuleSource[];
 }
 
 interface LiveWrites {
@@ -80,6 +86,11 @@ export async function runLiveTurn(
   const silence = buildTurnSilence(opening.batch.records);
   const taskRun = buildTaskRun(input);
 
+  // grows as the turn reads more: its events block, and each message that lands while it runs
+  const sources = collectRecordSources(opening.batch.records);
+
+  takeSources(sources, plan.openingSources);
+
   const stepToken = run.endpoint.startStep(
     buildStepRunID(input),
     {
@@ -88,7 +99,7 @@ export async function runLiveTurn(
       readImageRoom: makeImageRoomReader(opening.images),
       ...makeImageRoomHolder(opening.images),
       endSilently: silence.end,
-      policy: buildStepPolicyFrame(run.frame, opening.batch.records),
+      policy: buildStepPolicyFrame(run.frame, opening.batch.records, sources),
       step: buildStepHold(run, input, plan.signal),
     },
     taskRun,
@@ -103,6 +114,7 @@ export async function runLiveTurn(
       opening,
       silence,
       live,
+      sources,
       ...(gaps === undefined ? {} : { gaps }),
     });
   } catch (error) {
@@ -119,6 +131,9 @@ interface TokenTurnPlan extends LiveTurnPlan {
   readonly opening: OpeningBatch;
   readonly silence: TurnSilence;
   readonly live: LiveWrites;
+
+  // the sources that the step's policy frame holds
+  readonly sources: RuleSource[];
   readonly gaps?: GapReader;
 }
 
@@ -159,6 +174,8 @@ async function runTokenTurn(
     readToolURL(run, plan.signal),
     readTurnNote(run, plan.resume === null),
   ]);
+
+  takeSources(plan.sources, note?.sources ?? []);
 
   const opening = plan.opening;
 
@@ -211,6 +228,7 @@ async function runTokenTurn(
               view: plan.view,
               images: opening.images,
               silence: plan.silence,
+              sources: plan.sources,
               ...(plan.gaps === undefined ? {} : { gaps: plan.gaps }),
               log: run.log,
             }),

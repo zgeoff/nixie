@@ -10,7 +10,10 @@ const messages: Readonly<Record<string, string>> = {
   NO_LAYOUT: 'The device holds no layout, so there is nothing to save. device.layout sets one.',
   UNKNOWN_REGION:
     'The device has no layout with a region of this name. devices.list shows the layout.',
-  PAGE_NOT_BUILT: 'A region cannot hold a page yet. Use markdown, an image or a live value.',
+  PACKAGES_NOT_BUILT:
+    'A page cannot load packages yet. Write the page with no packages, using inline script and style.',
+  FETCHES_NOT_BUILT: 'A page cannot declare fetches yet. Write the page with no fetches.',
+  NOT_A_PAGE: 'This region does not show a page. device.region with kind html puts one there.',
 };
 
 // A refusal that changed nothing: the code, and a sentence that says why. A detail replaces the

@@ -43,6 +43,10 @@ export const mockLiveProcedures = {
           };
         }
 
+        for (const message of deviceStore.messageHolder.messages) {
+          yield { kind: 'device' as const, event: message };
+        }
+
         await waitForAbort(options.signal);
       } finally {
         mockLive.recordClose(generation);
