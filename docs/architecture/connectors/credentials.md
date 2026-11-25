@@ -15,9 +15,9 @@ outside the store.
 A release server's store has one backend, the secrets file, which the
 [server](../deployment/server.md#configuration-and-secrets) decrypts at start. It holds the search,
 image and model credentials, the spend gateway's token, and the user's name and pronouns, settings
-the prompt shows by design. Only the test build adds a held backend, for the
-[OAuth tokens](#oauth-tokens) that nixie changes at runtime.
-[The credential database](credential-database.md) holds those tokens on a release server.
+the prompt shows by design. A held backend adds the [OAuth tokens](#oauth-tokens) that nixie changes
+at runtime. Every build of the server runs it over
+[the credential database](credential-database.md).
 
 ```mermaid
 flowchart LR
@@ -186,9 +186,9 @@ spent one may not end it, so `recover` marks the credential `needs_consent` and 
 `credential.refresh_lost` for the refresh. A credential whose removal counter moved since the
 refresh began was connected again, so `recover` leaves its status and only closes the refresh. The
 next start finds nothing. The check reads the log alone, so it holds after a crash that loses the
-held backend's memory. A test build of the server runs `recover` at each start, over a backend in a
-file of the data directory, and the crash suite `recover-credential-refresh.test.ts` kills the
-process during a refresh and checks the status after the restart.
+held backend's memory. The server runs `recover` at each start, over the credential database, and
+the crash suite `recover-credential-refresh.test.ts` kills the process during a refresh and checks
+the status after the restart.
 
 ## Grants
 
