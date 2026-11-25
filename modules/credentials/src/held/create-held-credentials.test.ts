@@ -1,5 +1,4 @@
 import { expect, onTestFinished, spyOn, test } from 'bun:test';
-import { formatWithOptions } from 'node:util';
 import { CredentialRefusalError } from '@heynixie/egress';
 import { readRecords } from '@heynixie/log';
 import { waitFor } from '@zgeoff/testing';
@@ -7,6 +6,7 @@ import { createFakeClock } from '@zgeoff/testing/clock';
 import { buildHeldSpec } from '../test-utils/build-held-spec';
 import { buildIDToken } from '../test-utils/build-id-token';
 import { createHeldTestStore } from '../test-utils/create-held-test-store';
+import { formatConsoleArgs } from '../test-utils/format-console-args';
 import { seedHeldConnection } from '../test-utils/seed-held-connection';
 import { startCredentialTestLog } from '../test-utils/start-credential-test-log';
 import { startFakeOAuthProvider } from '../test-utils/start-fake-oauth-provider';
@@ -51,10 +51,8 @@ async function setupTest() {
 
   const logOutput: string[] = [];
 
-  // The arguments are formatted as the console formats them, format strings included, with no depth
-  // limit, so a value inside an object field or split across `%s` parts shows in the output.
   const captureOutput = (...args: readonly unknown[]) => {
-    logOutput.push(formatWithOptions({ depth: Number.POSITIVE_INFINITY }, ...args));
+    logOutput.push(formatConsoleArgs(args));
   };
 
   for (const level of ['log', 'info', 'warn', 'error', 'debug'] as const) {
@@ -808,6 +806,16 @@ test('it finds a token that the log output joins from parts of a format string',
   const ctx = await setupTest();
 
   console.error('%s%s', 'fake-access', '-token-planted');
+
+  const leaks = await ctx.readLeakFlags('');
+
+  expect(leaks).toStrictEqual([true, false, false, false]);
+});
+
+test('it finds a token that the log output joins from an array and a string under a format string', async () => {
+  const ctx = await setupTest();
+
+  console.error('%s%s', ['fake-access'], '-token-planted');
 
   const leaks = await ctx.readLeakFlags('');
 
