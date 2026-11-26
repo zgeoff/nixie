@@ -87,6 +87,7 @@ test('it reads every topic again when its first stream opens', async () => {
   expect(ctx.invalidate).toHaveBeenCalledWith([
     'approvals',
     'backups',
+    'calls',
     'computer',
     'connections',
     'definitions',

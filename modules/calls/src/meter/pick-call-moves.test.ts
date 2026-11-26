@@ -56,12 +56,30 @@ test.each([
     minutes: row.minutes,
   } as const;
 
-  const moves = pickCallMoves([call], { nowMs: row.nowMs, sessionCallIDs: new Set(['c1']) });
+  const moves = pickCallMoves([call], {
+    nowMs: row.nowMs,
+    sessionCallIDs: new Set(['c1']),
+    reconnectSinceMs: new Map(),
+  });
 
   expect(moves).toStrictEqual(row.moves);
 });
 
-test('#pickCallMoves ends a live call that holds no speech session as dropped', () => {
+test.each([
+  {
+    name: 'starts to wait when no wait began',
+    sinceMs: null,
+    nowMs: 1000,
+    moves: [{ kind: 'wait', callID: 'c1' }],
+  },
+  { name: 'leaves it alone 29 s into the wait', sinceMs: 1000, nowMs: 30_999, moves: [] },
+  {
+    name: 'ends it as dropped 30 s into the wait',
+    sinceMs: 1000,
+    nowMs: 31_000,
+    moves: [{ kind: 'end', callID: 'c1', endedBy: 'dropped' }],
+  },
+] as const)('#pickCallMoves for a live call with no speech session $name', (row) => {
   const call = {
     callID: 'c1',
     taskID: 't1',
@@ -75,7 +93,13 @@ test('#pickCallMoves ends a live call that holds no speech session as dropped', 
     minutes: 1,
   } as const;
 
-  const moves = pickCallMoves([call], { nowMs: 1000, sessionCallIDs: new Set() });
+  const waits: [string, number][] = row.sinceMs === null ? [] : [['c1', row.sinceMs]];
 
-  expect(moves).toStrictEqual([{ kind: 'end', callID: 'c1', endedBy: 'dropped' }]);
+  const moves = pickCallMoves([call], {
+    nowMs: row.nowMs,
+    sessionCallIDs: new Set(),
+    reconnectSinceMs: new Map(waits),
+  });
+
+  expect(moves).toStrictEqual(row.moves);
 });

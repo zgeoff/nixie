@@ -1,4 +1,4 @@
-import type { Call, CallsContext } from '../types';
+import type { Call, CallsContext, SpeechOrigin } from '../types';
 import { runSpeechEvent } from './run-speech-event';
 
 // Reads the call's speech session until it closes, one event at a time, and stops when the call
@@ -13,23 +13,23 @@ export function startCallWatch(context: CallsContext, call: Call, sessionID: str
   const stopping = new AbortController();
 
   context.runtime.watches.set(call.callID, stopping);
-  void runWatch(context, call, speech.events(sessionID), stopping.signal);
+  void runWatch(context, call, speech.events(sessionID), { sessionID, signal: stopping.signal });
 }
 
 async function runWatch(
   context: CallsContext,
   call: Call,
   events: AsyncIterable<Parameters<typeof runSpeechEvent>[2]>,
-  signal: AbortSignal,
+  origin: SpeechOrigin,
 ): Promise<void> {
   try {
     for await (const event of events) {
-      if (signal.aborted) {
+      if (origin.signal.aborted) {
         return;
       }
 
       try {
-        await runSpeechEvent(context, call, event, signal);
+        await runSpeechEvent(context, call, event, origin);
       } catch (error) {
         context.logEvent('calls.speech_event_failed', {
           callID: call.callID,

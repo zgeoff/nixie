@@ -9,6 +9,9 @@ export interface FrontProxyTargets {
 
   // runs with the path of each request the proxy sends to the API, a WebSocket upgrade included
   readonly onAPIRequest?: (pathname: string) => void;
+
+  // a script that every HTML page runs before the page's own scripts, such as a microphone stand-in
+  readonly headScript?: string;
 }
 
 interface BridgeData {
@@ -54,6 +57,12 @@ export function createFrontProxy(targets: FrontProxyTargets): Bun.Server<BridgeD
       response = await fetch(forwarded, { redirect: 'manual' });
     } catch {
       return new Response(null, { status: 502 });
+    }
+
+    if (targets.headScript !== undefined && isHTML(response)) {
+      const injected = await injectHeadScript(response, targets.headScript);
+
+      return buildEndingResponse(injected);
     }
 
     return buildEndingResponse(response);
@@ -119,4 +128,21 @@ export function createFrontProxy(targets: FrontProxyTargets): Bun.Server<BridgeD
       },
     },
   });
+}
+
+function isHTML(response: Response): boolean {
+  return response.headers.get('content-type')?.includes('text/html') ?? false;
+}
+
+async function injectHeadScript(response: Response, script: string): Promise<Response> {
+  const html = await response.text();
+
+  const injected = html.replace(/<head[^>]*>/u, (head) => `${head}<script>${script}</script>`);
+
+  const headers = new Headers(response.headers);
+
+  headers.delete('content-length');
+  headers.delete('content-encoding');
+
+  return new Response(injected, { status: response.status, headers });
 }

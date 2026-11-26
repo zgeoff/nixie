@@ -23,12 +23,22 @@ export async function sendTurnAnswer(context: CallsContext, answer: TurnAnswer):
   const sessionID = context.sessions.get(answer.callID);
   const handOff = context.runtime.handOffs.get(answer.callID)?.get(answer.handOffID);
 
-  if (
-    context.speech === null ||
-    sessionID === undefined ||
-    handOff === undefined ||
-    handOff.isAnswered
-  ) {
+  if (context.speech === null || sessionID === undefined) {
+    return;
+  }
+
+  // A hand-off of another speech session, or one this process never held, as after a restart,
+  // belongs to a session that never heard the request, so the answer goes nowhere.
+  if (handOff === undefined || handOff.sessionID !== sessionID) {
+    context.logEvent('calls.answer_dropped', {
+      callID: answer.callID,
+      handOffID: answer.handOffID,
+    });
+
+    return;
+  }
+
+  if (handOff.isAnswered) {
     return;
   }
 

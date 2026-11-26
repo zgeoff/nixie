@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AddDeviceRouteImport } from './routes/add-device'
+import { Route as CallRouteImport } from './routes/call'
 import { Route as ComputerRouteImport } from './routes/computer'
 import { Route as DefinitionsRouteImport } from './routes/definitions'
 import { Route as DeviceRouteImport } from './routes/device'
@@ -43,6 +44,11 @@ const IndexRoute = IndexRouteImport.update({
 const AddDeviceRoute = AddDeviceRouteImport.update({
   id: '/add-device',
   path: '/add-device',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CallRoute = CallRouteImport.update({
+  id: '/call',
+  path: '/call',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ComputerRoute = ComputerRouteImport.update({
@@ -166,6 +172,7 @@ const SettingsConnectionsConnectionRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/add-device': typeof AddDeviceRoute
+  '/call': typeof CallRoute
   '/computer': typeof ComputerRoute
   '/definitions': typeof DefinitionsRoute
   '/device': typeof DeviceRoute
@@ -193,6 +200,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/add-device': typeof AddDeviceRoute
+  '/call': typeof CallRoute
   '/computer': typeof ComputerRoute
   '/definitions': typeof DefinitionsRoute
   '/device': typeof DeviceRoute
@@ -220,6 +228,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/add-device': typeof AddDeviceRoute
+  '/call': typeof CallRoute
   '/computer': typeof ComputerRoute
   '/definitions': typeof DefinitionsRoute
   '/device': typeof DeviceRoute
@@ -249,6 +258,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/add-device'
+    | '/call'
     | '/computer'
     | '/definitions'
     | '/device'
@@ -276,6 +286,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/add-device'
+    | '/call'
     | '/computer'
     | '/definitions'
     | '/device'
@@ -302,6 +313,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/add-device'
+    | '/call'
     | '/computer'
     | '/definitions'
     | '/device'
@@ -330,6 +342,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AddDeviceRoute: typeof AddDeviceRoute
+  CallRoute: typeof CallRoute
   ComputerRoute: typeof ComputerRoute
   DefinitionsRoute: typeof DefinitionsRoute
   DeviceRoute: typeof DeviceRoute
@@ -366,6 +379,13 @@ declare module '@tanstack/react-router' {
       path: '/add-device'
       fullPath: '/add-device'
       preLoaderRoute: typeof AddDeviceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/call': {
+      id: '/call'
+      path: '/call'
+      fullPath: '/call'
+      preLoaderRoute: typeof CallRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/computer': {
@@ -551,6 +571,7 @@ const NotebookRouteWithChildren = NotebookRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AddDeviceRoute: AddDeviceRoute,
+  CallRoute: CallRoute,
   ComputerRoute: ComputerRoute,
   DefinitionsRoute: DefinitionsRoute,
   DeviceRoute: DeviceRoute,

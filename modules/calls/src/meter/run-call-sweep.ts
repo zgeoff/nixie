@@ -3,6 +3,7 @@ import type { CallsContext } from '../types';
 import { chargeOwedMinutes } from '../utils/charge-owed-minutes';
 import { endCall } from '../utils/end-call';
 import { readEndedCallsSince, readOpenCalls } from '../utils/read-call';
+import { startReconnectWait } from '../utils/start-reconnect-wait';
 import { pickCallMoves } from './pick-call-moves';
 import type { CallMove } from './pick-call-moves';
 
@@ -18,6 +19,9 @@ export async function runCallSweep(context: CallsContext): Promise<void> {
   const moves = pickCallMoves(calls, {
     nowMs: context.clock.now(),
     sessionCallIDs: new Set(context.sessions.keys()),
+    reconnectSinceMs: new Map(
+      [...context.runtime.reconnects].map(([callID, wait]) => [callID, wait.sinceMs]),
+    ),
   });
 
   for (const move of moves) {
@@ -39,6 +43,12 @@ export async function runCallSweep(context: CallsContext): Promise<void> {
 async function runMove(context: CallsContext, move: CallMove): Promise<void> {
   if (move.kind === 'end') {
     await endCall(context, move.callID, move.endedBy);
+
+    return;
+  }
+
+  if (move.kind === 'wait') {
+    startReconnectWait(context, move.callID, 'restart');
 
     return;
   }

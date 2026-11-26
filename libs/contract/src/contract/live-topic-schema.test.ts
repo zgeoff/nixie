@@ -11,7 +11,6 @@ import { liveTopicSchema } from './live-topic-schema';
 function setupTest() {
   // The roots whose reads no topic keeps fresh. A new root joins this list or gets a topic.
   const unfollowedRoots = [
-    'calls',
     'conversation',
     'devices',
     'erasure',

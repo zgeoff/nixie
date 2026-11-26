@@ -1,4 +1,6 @@
 export { store } from '../mocks/store';
+export { buildFakeMicrophoneScript } from './build-fake-microphone-script';
+export { buildLoopbackPeerScript } from './build-loopback-peer-script';
 export { buildEndingResponse } from './build-ending-response';
 export { createBuiltWeb } from './create-built-web';
 export { createFrontProxy } from './create-front-proxy';

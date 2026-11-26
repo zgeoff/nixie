@@ -5,10 +5,10 @@ import type { CallRecordKind } from './call-record-kind';
 // so the 4 kinds that open, answer, reconnect or end it change what the task list shows.
 export const callRecordTopics = {
   'call.rang': [],
-  'call.started': ['tasks'],
-  'call.answered': ['tasks'],
-  'call.reconnected': [],
-  'call.ended': ['tasks'],
+  'call.started': ['tasks', 'calls'],
+  'call.answered': ['tasks', 'calls'],
+  'call.reconnected': ['calls'],
+  'call.ended': ['tasks', 'calls'],
   'call.spoke': [],
   'call.handed_off': [],
   'call.heard_cut': [],

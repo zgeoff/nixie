@@ -193,8 +193,8 @@ export const controlRoutes = {
     path: '/control/call-step',
     input: z.strictObject({ step: callStepSchema }),
 
-    // the call's ID, and each call that nixie made on the fake speech layer, oldest first
-    output: z.strictObject({ callID: z.string(), speech: z.array(speechCallSchema) }),
+    // the call's ID, or null for a call that the browser started, and each call that nixie made on the fake speech layer, oldest first
+    output: z.strictObject({ callID: z.string().nullable(), speech: z.array(speechCallSchema) }),
   },
   deliverMail: {
     method: 'POST',

@@ -1,6 +1,6 @@
 # Voice calls
 
-- **Status:** agreed
+- **Status:** agreed. The intro below says which part is built.
 - **Work items:** [the call screen](https://linear.app/zgeoff/issue/GEO-2863),
   [nixie rings you](https://linear.app/zgeoff/issue/GEO-2864),
   [tuning on real calls](https://linear.app/zgeoff/issue/GEO-1868)
@@ -14,18 +14,27 @@ each request to nixie's own turn, so Claude writes the answer to every request a
 it. A call runs as its own thread beside the conversation, with nixie's persona and memory, and
 posts a summary to the conversation when it ends.
 
-The call thread, the speech layer and its GPT-Live adapter, the hand-offs, the call records and the
-per-minute charge are built: [Voice calls](../../../architecture/channels/calls.md) describes them.
-This design holds what is left to build: the device's side of a call, and ringing you. The work
-items [the call screen](https://linear.app/zgeoff/issue/GEO-2863) and
-[nixie rings you](https://linear.app/zgeoff/issue/GEO-2864) build it from the contracts and
-constraints below. [Tuning on real calls](https://linear.app/zgeoff/issue/GEO-1868) has a work item
-of its own.
+The call thread, the speech layer and its GPT-Live adapter, the hand-offs, the call records, the
+per-minute charge, the call screen without captions, the call bar and a call's reconnect are built.
+Read [Voice calls](../../../architecture/channels/calls.md) and
+[the client](../../../architecture/channels/client.md#the-call) for them. Three things are left to
+build: answering a ring, captions on the built call screen, and ringing you.
+
+Build those three under the work item [nixie rings you](https://linear.app/zgeoff/issue/GEO-2864),
+from the contracts and constraints below. The owner reviews the design here. The screen that is
+already built belongs to the work item [the call screen](https://linear.app/zgeoff/issue/GEO-2863).
+[Tuning on real calls](https://linear.app/zgeoff/issue/GEO-1868) has a work item of its own and
+follows the build.
 
 Terms:
 
 - **The speech layer** is GPT-Live's session: it hears you, takes turns and speaks.
 - **A hand-off** is one request that the speech layer passes to nixie's turn.
+- **`say`** is the speech layer's method that sends one line for it to speak as its own words. It is
+  not part of a hand-off's answer. [Voice calls](../../../architecture/channels/calls.md) holds its
+  contract.
+- **The decision point** is the host's check that every tool call passes before it runs. Read
+  [the decision point](../../../architecture/policy/decision-point.md) for it.
 - **The carrying device** is the device that started or answered the call. It holds the call's audio
   and its call screen.
 
@@ -40,7 +49,7 @@ flowchart LR
   call -->|"reply text"| server
   call -->|"summary at the end"| convo[conversation]
   convo -->|"task.message"| call
-  server -->|"call.reconnect, ring"| device
+  server -->|"ring"| device
 ```
 
 ## Contracts
@@ -48,31 +57,33 @@ flowchart LR
 ### The device's side of a call
 
 ```ts
-// You answer a ring, or start a call from the call screen. `calls.start`, `calls.connect` and
-// `calls.hangUp` are built.
+// You answer a ring. `calls.start`, `calls.connect` and `calls.hangUp` are built, and the call
+// screen starts a call with them.
 await nixie.calls.answer({ callID, clientActionID }); // → { callID, state: 'connecting' }
 ```
 
-Every new speech-layer session needs a fresh offer from the device. When the session limit is near
-or a session drops, the server sends `call.reconnect` on the device's live stream. The device makes
-an ICE-restart offer on its open peer connection, so the microphone grant and the audio path stay,
-and sends it with a fresh `calls.connect`. The old session then closes itself. After a server
-restart, the server sends no `call.reconnect`, and the device makes the same offer on its own when
-its live stream returns. The calls module keeps the call for 30 s while it waits.
+The call screen shows each caption as its record arrives on nixie's live stream for the call's
+thread. It never reads a caption from the provider's data channel, which stays bound to the first
+session after a reconnect. A reconnect therefore cannot cut the captions off. The captions come from
+two records, so they need no new record kind and no new method:
 
-The call screen's captions come from nixie's live stream, because the provider's data channel stays
-bound to the first session after a reconnect.
+- what you said is the dictated `owner_message` that each `heard` event becomes, as
+  [Voice calls](../../../architecture/channels/calls.md) describes;
+- what the speech layer said in its own words is a `call.spoke` record.
 
 ```text
-call record kinds not written yet (log module; plain payload fields only, unless marked erasable)
+call record kinds not written yet (log module). Every field is plain except `reason`, which is erasable.
 call.rang        callID, reason (erasable), deviceCount
-call.reconnected callID, cause: 'session_limit' | 'dropped' | 'restart'
 call.turn_timed  callID, handOffID, firstAudioMs, handOffWaitMs, cutOffByLayer, interruptedByYou
 ```
 
-- `call.rang` sits on the thread that rang. `call.reconnected` and `call.turn_timed` sit on the
-  call's thread.
-- `call.turn_timed` holds timings and flags only, never audio or text.
+- nixie writes `call.rang` on the thread that rang, so that thread's history shows it, and
+  `call.turn_timed` on the call's thread, beside the turns it times.
+- `reason` is the text the model passed to `tools.call.ring`. When you ask nixie to forget it, the
+  record keeps its call ID and device count, and the reason shows as forgotten.
+  [Erasable fields](../../../architecture/core/erasable-fields.md) explains how a field is erased.
+- `call.turn_timed` holds timings and flags only, never audio or text, so the tuning pass can read
+  it without reading what you said.
 
 ### Ringing you
 
@@ -85,8 +96,9 @@ await tools.call.ring({ reason: 'Your 3pm moved to 4pm and the venue changed' })
 ```
 
 - A ring sends a web push, "nixie is calling", to every device session with a push subscription.
-  Opening it opens the answer screen. The web client registers a service worker, and each device
-  session saves its subscription with `nixie.push.subscribe({ subscription, clientActionID })`.
+  Opening it shows the answer screen for the ringing call, and the screen answers with
+  `calls.answer`. The web client registers a service worker, and each device session saves its
+  subscription with `nixie.push.subscribe({ subscription, clientActionID })`.
 - A refused ring tells the model why, so it sends a message instead.
 - An unanswered ring ends after `ring_seconds` as `missed`. The outcome reaches the ringing thread
   as a wake.
@@ -105,18 +117,6 @@ voice:
 
 ## Constraints
 
-- A proposal made during a call shows its card on the carrying device's call screen, as
-  [approvals in the client](approvals.md#during-a-voice-call) describes.
-- A crash or a dropped provider session never replays a hand-off that committed. The calls module
-  opens a new speech-layer session with the call so far, the speech layer says "I dropped out for a
-  second", and a hand-off that was running reruns as its step does. You hear the rerun's answer in
-  full, even what you heard before the drop, and the record keeps only the answer its step
-  committed.
-- A provider session lasts at most 2 hours. 5 minutes before it ends, the calls module moves the
-  call to a new session through the device, between hand-offs, and the speech layer says the
-  reconnect line.
-- When 3 attempts to open the next session fail, or the device and the speech session are both gone
-  for 30 s, the call ends with `endedBy: 'dropped'`, and a new call can start.
 - On a long turn, nixie's turn may send one interim line through `say`, which never makes a promise
   and is never part of the answer.
 - The speech layer may speak nixie's answer as a close paraphrase. The tuning pass measures how far

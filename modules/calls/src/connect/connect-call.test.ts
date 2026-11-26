@@ -1,18 +1,37 @@
-import { expect, test } from 'bun:test';
+import { expect, onTestFinished, test } from 'bun:test';
 import { readBudgetLedger } from '@heynixie/budgets';
 import { seedBudgetInForce } from '@heynixie/budgets/test-utils';
+import { readRecords, subscribeToChanged } from '@heynixie/log';
+import { waitFor } from '@zgeoff/testing';
 import invariant from 'tiny-invariant';
+import { sendTurnAnswer } from '../hand-off/send-turn-answer';
 import { hangUpCall } from '../hang-up/hang-up-call';
 import { startCall } from '../start/start-call';
-import { probeStubbedCaller, startTestCalls } from '../test-utils';
+import { buildTestCallsContext, probeStubbedCaller, startTestCalls } from '../test-utils';
 import { readCall } from '../utils/read-call';
 import { connectCall } from './connect-call';
+import { readCallView } from './read-call-view';
 
 async function setupTest() {
   const ctx = await startTestCalls();
 
   return {
     ...ctx,
+
+    // Starts to listen as a device does, and settles when the calls topic next changes.
+    listenForCallsChange: () => {
+      const changed = Promise.withResolvers<void>();
+
+      const stop = subscribeToChanged(ctx.writer, (topics) => {
+        if (topics.includes('calls')) {
+          changed.resolve();
+        }
+      });
+
+      onTestFinished(stop);
+
+      return changed.promise;
+    },
     startRingingCall: async () => {
       const started = await startCall(ctx.context, { carryingSession: 'identity-1' });
 
@@ -386,4 +405,229 @@ test('it closes the speech session when the session is revoked while the provide
   ]);
 
   expect(ctx.speech.calls.map((entry) => entry.method)).toStrictEqual(['open', 'close']);
+});
+
+test('it moves a live call to a new session on a new offer after the speech session dropped, and charges nothing again', async () => {
+  const ctx = await setupTest();
+  const callID = await ctx.startRingingCall();
+
+  const request = {
+    callID,
+    session: 'identity-1',
+    sdpOffer: 'offer',
+    probeCaller: probeStubbedCaller,
+  };
+
+  await connectCall(ctx.context, request);
+
+  const signal = ctx.listenForCallsChange();
+
+  ctx.speech.emit('fake-session-1', { kind: 'dropped' });
+
+  // the device reads the call on the signal, and sends its new offer only to a call that waits
+  const waiting = await signal.then(() => readCallView(ctx.context, callID));
+
+  expect(waiting?.reconnect).toBe('dropped');
+
+  const result = await connectCall(ctx.context, { ...request, sdpOffer: 'offer-2' });
+  const ledger = await readBudgetLedger(ctx.writer.db, ctx.context.budgets, 'call-day');
+  const view = await readCallView(ctx.context, callID);
+
+  expect({
+    result,
+    methods: ctx.speech.calls.map((entry) => entry.method),
+    charges: ledger?.charges.length,
+    reconnect: view?.reconnect,
+  }).toStrictEqual({
+    result: { status: 'connected', sdpAnswer: 'fake-answer-2' },
+    methods: ['open', 'open', 'say'],
+    charges: 1,
+    reconnect: null,
+  });
+});
+
+test('it takes a new offer for a live call that this process holds no session for, as after a restart', async () => {
+  const ctx = await setupTest();
+  const callID = await ctx.startRingingCall();
+
+  const request = {
+    callID,
+    session: 'identity-1',
+    sdpOffer: 'offer',
+    probeCaller: probeStubbedCaller,
+  };
+
+  await connectCall(ctx.context, request);
+
+  const restarted = buildTestCallsContext({ log: ctx.log, clock: ctx.clock });
+
+  const result = await connectCall(restarted.context, request);
+  const records = await readRecords(ctx.log, { afterSequence: 0 });
+
+  expect({
+    status: result.status,
+    reconnected: records
+      .map((entry) => entry.record)
+      .filter((record) => record.kind === 'call.reconnected')
+      .map((record) => record.payload),
+  }).toStrictEqual({ status: 'connected', reconnected: [{ callID, cause: 'restart' }] });
+});
+
+test('it closes the old session once a session that is near its limit gets its new one', async () => {
+  const ctx = await setupTest();
+  const callID = await ctx.startRingingCall();
+
+  const request = {
+    callID,
+    session: 'identity-1',
+    sdpOffer: 'offer',
+    probeCaller: probeStubbedCaller,
+  };
+
+  await connectCall(ctx.context, request);
+
+  const signal = ctx.listenForCallsChange();
+
+  ctx.speech.emit('fake-session-1', { kind: 'session_ending' });
+
+  await signal;
+
+  const waiting = await readCallView(ctx.context, callID);
+
+  expect(waiting?.reconnect).toBe('session_limit');
+
+  await connectCall(ctx.context, request);
+
+  expect(
+    ctx.speech.calls.map(
+      (entry) => `${entry.method}:${entry.method === 'open' ? entry.sessionID : entry.sessionID}`,
+    ),
+  ).toStrictEqual([
+    'open:fake-session-1',
+    'open:fake-session-2',
+    'close:fake-session-1',
+    'say:fake-session-2',
+  ]);
+});
+
+test('it refuses a new offer for a live call that holds its session and waits for none', async () => {
+  const ctx = await setupTest();
+  const callID = await ctx.startRingingCall();
+
+  const request = {
+    callID,
+    session: 'identity-1',
+    sdpOffer: 'offer',
+    probeCaller: probeStubbedCaller,
+  };
+
+  await connectCall(ctx.context, request);
+
+  const result = await connectCall(ctx.context, request);
+
+  expect(result).toStrictEqual({ status: 'refused', error: 'CALL_CONNECTED' });
+});
+
+test('it sends no answer to the new session for a turn of the old session that ends while the sessions swap', async () => {
+  const ctx = await setupTest();
+  const callID = await ctx.startRingingCall();
+
+  const taskID = ctx.createdTasks[0]?.taskID;
+
+  invariant(taskID !== undefined, 'the call created its task');
+
+  const request = {
+    callID,
+    session: 'identity-1',
+    sdpOffer: 'offer',
+    probeCaller: probeStubbedCaller,
+  };
+
+  await connectCall(ctx.context, request);
+
+  ctx.speech.emit('fake-session-1', { kind: 'hand_off', handOffID: 'h1', request: 'what is on' });
+
+  await waitFor(async () => {
+    const thread = await readRecords(ctx.log, { afterSequence: 0, thread: taskID });
+
+    expect(thread).toHaveLength(1);
+  });
+
+  ctx.speech.emit('fake-session-1', { kind: 'session_ending' });
+
+  await waitFor(async () => {
+    const waiting = await readCallView(ctx.context, callID);
+
+    expect(waiting?.reconnect).toBe('session_limit');
+  });
+
+  const answering: Promise<void>[] = [];
+
+  // the record write of the swap reads the definitions after the new session is installed
+  const reconnected = await connectCall(
+    {
+      ...ctx.context,
+      definitions: () => {
+        answering.push(
+          sendTurnAnswer(ctx.context, {
+            callID,
+            taskID,
+            handOffID: 'h1',
+            replies: ['You have two things today.'],
+            replyRecordID: '12',
+            isFailed: false,
+          }),
+        );
+
+        return ctx.context.definitions();
+      },
+    },
+    request,
+  );
+
+  await Promise.all(answering);
+
+  expect({
+    status: reconnected.status,
+    answers: ctx.speech.calls.filter((entry) => entry.method === 'answer'),
+    dropped: ctx.logged
+      .map((entry) => entry.event)
+      .filter((event) => event === 'calls.answer_dropped'),
+  }).toStrictEqual({ status: 'connected', answers: [], dropped: ['calls.answer_dropped'] });
+});
+
+test('it sends no answer for a turn that ends after a restart, which no hand-off of this process holds', async () => {
+  const ctx = await setupTest();
+  const callID = await ctx.startRingingCall();
+
+  const taskID = ctx.createdTasks[0]?.taskID;
+
+  invariant(taskID !== undefined, 'the call created its task');
+
+  const request = {
+    callID,
+    session: 'identity-1',
+    sdpOffer: 'offer',
+    probeCaller: probeStubbedCaller,
+  };
+
+  await connectCall(ctx.context, request);
+
+  const restarted = buildTestCallsContext({ log: ctx.log, clock: ctx.clock });
+
+  await connectCall(restarted.context, request);
+
+  await sendTurnAnswer(restarted.context, {
+    callID,
+    taskID,
+    handOffID: 'h1',
+    replies: ['You have two things today.'],
+    replyRecordID: '12',
+    isFailed: false,
+  });
+
+  expect({
+    answers: restarted.speech.calls.filter((entry) => entry.method === 'answer'),
+    logged: restarted.logged.map((entry) => entry.event),
+  }).toStrictEqual({ answers: [], logged: ['calls.answer_dropped'] });
 });
