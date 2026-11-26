@@ -14,13 +14,13 @@ the rules for ports, providers and adapters, and lists where the code departs fr
 
 ## When a port fits
 
-- An outside service that the server reaches plugs in as an adapter behind an interface that a nixie
-  module owns, and nixie's core never names an outside service or an optional feature. Each optional
-  feature is on only when its section is in the deployment config, and the config key of a feature
-  that is off leaves no trace in nixie. A key that picks a test-only provider is allowed under rule
-  7: the sandbox config's `adapter` key, `imp` or `test`, is one.
-  [Feature switches](deployment/server.md#feature-switches) covers the switches and the two checks
-  that hold the rule.
+- Plug each outside service that the server reaches in as an adapter, behind an interface that a
+  nixie module owns. nixie's core never names an outside service or an optional feature. Each
+  optional feature is on only when its section is in the deployment config, and the config key of a
+  feature that is off leaves no trace in nixie. A key that picks a test-only provider is allowed
+  under rule 7: the sandbox config's `adapter` key, `imp` or `test`, is one. Read
+  [Feature switches](deployment/server.md#feature-switches) for the switches and the two checks that
+  hold the rule.
 - Search has `SearchProvider` and one real provider, so the config has no provider key for search,
   and its `search` section turns the feature on.
 - The memory checker's model has no port: the `checker` role needs `structured-output`, and only the
