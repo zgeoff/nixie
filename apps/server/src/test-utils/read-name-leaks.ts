@@ -1,6 +1,7 @@
 import { readFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { collectNameHits } from './collect-name-hits';
+import { readSyntaxTrees } from './read-syntax-trees';
 import type { NameLeak } from './types';
 
 // Each name that a core package holds as an identifier or a string literal in a file that
@@ -11,7 +12,7 @@ export async function readNameLeaks(
   names: readonly string[],
   skip: readonly string[],
 ): Promise<NameLeak[]> {
-  const leaks: NameLeak[] = [];
+  const files: string[] = [];
 
   for (const directory of corePackageDirs) {
     const entries = await readdir(join(root, directory, 'src'), { recursive: true });
@@ -20,16 +21,23 @@ export async function readNameLeaks(
       const file = `${directory}/src/${entry}`;
 
       if (isProductionSource(entry) && !skip.includes(file)) {
-        const source = await readFile(join(root, file), 'utf8');
-
-        for (const name of collectNameHits(source, names)) {
-          leaks.push({ file, name });
-        }
+        files.push(file);
       }
     }
   }
 
-  return leaks;
+  const sources = await Promise.all(
+    files.map(async (file) => ({
+      path: `/${file}`,
+      source: await readFile(join(root, file), 'utf8'),
+    })),
+  );
+
+  const trees = await readSyntaxTrees(sources);
+
+  return trees.flatMap((tree) =>
+    collectNameHits(tree, names).map((name) => ({ file: tree.fileName.slice(1), name })),
+  );
 }
 
 function isProductionSource(entry: string): boolean {

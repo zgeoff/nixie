@@ -32,18 +32,15 @@ async function setupTest() {
   };
 }
 
-test('it finds no feature ID or outside-service name in a core module or the contract, beyond the exceptions', async () => {
+// One test reads the names for both answers, because parsing every core file takes seconds.
+test('it finds no feature ID or outside-service name in a core module or the contract beyond the exceptions, and no name exception that matches nothing', async () => {
   const ctx = await setupTest();
   const leaks = await ctx.readNameLeaks();
 
-  expect(collectNameFaults(leaks, leakExceptions.names)).toStrictEqual([]);
-});
-
-test('it finds no name exception that matches nothing', async () => {
-  const ctx = await setupTest();
-  const leaks = await ctx.readNameLeaks();
-
-  expect(collectStaleNameExceptions(leaks, leakExceptions.names)).toStrictEqual([]);
+  expect({
+    faults: collectNameFaults(leaks, leakExceptions.names),
+    stale: collectStaleNameExceptions(leaks, leakExceptions.names),
+  }).toStrictEqual({ faults: [], stale: [] });
 });
 
 test('it finds no core module that depends on a feature module, beyond the exceptions', async () => {
