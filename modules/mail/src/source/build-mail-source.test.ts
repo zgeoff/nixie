@@ -126,6 +126,7 @@ test('it wakes the conversation with a mail that a rule matches, and the assista
   const ctx = await setupTest();
 
   await ctx.startSource();
+  await ctx.waitForCursor(0);
 
   const rule = await ctx.callTool('mail.wake_set', {
     from: ['@library.example.org'],
@@ -339,6 +340,7 @@ test('it reads the host at once when the host gives a hint', async () => {
   const ctx = await setupTest();
 
   await ctx.startSource();
+  await ctx.waitForCursor(0);
 
   ctx.poll();
   ctx.host.deliver({ from: 'hello@library.example.org', subject: 'Hint', text: 'Hello.' });
@@ -352,4 +354,38 @@ test('it reads the host at once when the host gives a hint', async () => {
   });
 
   expect(stored.mails).toHaveLength(1);
+});
+
+test('it reads the host again at once for a hint that came while it read the host', async () => {
+  const ctx = await setupTest();
+
+  const arrivals = [
+    () => ctx.host.deliver({ from: 'hello@library.example.org', subject: 'Late', text: 'Hi.' }),
+  ];
+
+  // the mail lands after the host answered the read, so only the hint it gives can bring it in
+  const host: MailHost = {
+    ...ctx.host,
+    readChanges: async (cursor) => {
+      const changes = await ctx.host.readChanges(cursor);
+
+      arrivals.shift()?.();
+
+      return changes;
+    },
+  };
+
+  const sources = await startTriggerSources([buildMailSource(ctx.context, host)], ctx.core);
+
+  onTestFinished(() => sources.stop());
+
+  const stored = await waitFor(async () => {
+    const page = await ctx.readStored();
+
+    expect(page.mails).toHaveLength(1);
+
+    return page;
+  });
+
+  expect(stored.mails.map((entry) => entry.subject)).toStrictEqual(['Late']);
 });

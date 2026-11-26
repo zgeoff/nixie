@@ -14,6 +14,9 @@ interface MailRun {
 
   // ends the sleep between 2 reads, for a hint from the host
   wake: () => void;
+
+  // a hint came after the latest read began, so the mail it tells of may be past what that read saw
+  isHinted: boolean;
 }
 
 // The trigger source of the assistant's own mailbox. It reads the host every poll interval, and at
@@ -38,6 +41,7 @@ export function buildMailSource(context: MailContext, host: MailHost): TriggerSo
         signal: AbortSignal.any([running.signal, trigger.signal]),
         cursor: trigger.cursor,
         wake: () => {},
+        isHinted: false,
       };
 
       loops = Promise.all([runMailLoop(run), runHintLoop(run)]);
@@ -60,6 +64,8 @@ async function runMailLoop(run: MailRun): Promise<void> {
   while (!run.signal.aborted) {
     let delayMs = run.context.settings.hostPollIntervalMs;
     let isHintable = true;
+
+    run.isHinted = false;
 
     try {
       const read = await withHostLock(run.host, () => readHostOnce(run));
@@ -160,8 +166,9 @@ function buildBackoffMs(failures: number): number {
 }
 
 // After a failed read the wait is the backoff or the host's own retry time, which a hint never ends.
+// A hint that came during a read that worked skips the wait.
 async function sleepUntilHint(run: MailRun, delayMs: number, isHintable: boolean): Promise<void> {
-  if (run.signal.aborted) {
+  if (run.signal.aborted || (isHintable && run.isHinted)) {
     return;
   }
 
@@ -188,6 +195,8 @@ async function runHintLoop(run: MailRun): Promise<void> {
     const hints = run.host.watch(run.signal)[Symbol.asyncIterator]();
 
     for (let next = await hints.next(); next.done !== true; next = await hints.next()) {
+      run.isHinted = true;
+
       run.wake();
     }
   } catch (error) {
