@@ -54,6 +54,19 @@ export function buildScriptedReplies(
         ];
 
   const mailRead = reply.mailRead === undefined ? [] : buildMailReadReplies(reply.mailRead.from);
+
+  const gmailWatch =
+    reply.gmailWatch === undefined
+      ? []
+      : [
+          {
+            toolUse: {
+              name: 'mcp__nixie__gmail_wake_set',
+              input: { from: [reply.gmailWatch.from], window: '1m' },
+            },
+          },
+        ];
+
   const gmailReply = reply.gmailReply === undefined ? [] : buildGmailReplyReplies(reply.gmailReply);
 
   const forgetNote =
@@ -102,6 +115,7 @@ export function buildScriptedReplies(
       ...notebook,
       ...mailWatch,
       ...mailRead,
+      ...gmailWatch,
       ...gmailReply,
       ...forgetNote,
       ...handover,
@@ -120,6 +134,7 @@ export function buildScriptedReplies(
     ...notebook,
     ...mailWatch,
     ...mailRead,
+    ...gmailWatch,
     ...gmailReply,
     ...forgetNote,
     ...handover,

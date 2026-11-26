@@ -94,6 +94,10 @@ export const controlRoutes = {
       // mail the search lists, and replies to it with this text, before its own reply
       gmailReply: z.strictObject({ query: z.string().min(1), text: z.string().min(1) }).optional(),
 
+      // a wake rule that the model sets on the connected Google account's mail with the Gmail
+      // tool before its reply, for mail from this address or `@domain`
+      gmailWatch: z.strictObject({ from: z.string().min(1) }).optional(),
+
       // a picture the model draws with the image tool before its reply, the one edit it then makes
       // to that picture, and a list of its pictures
       draw: drawnPictureSchema.optional(),
@@ -184,6 +188,12 @@ export const controlRoutes = {
       // an HTML body, which the mailbox reads in place of the text
       html: z.string().min(1).exactOptional(),
     }),
+    output: z.strictObject({ delivered: z.literal(true) }),
+  },
+  deliverGmail: {
+    method: 'POST',
+    path: '/control/deliver-gmail',
+    input: z.strictObject({ from: z.string().min(1), subject: z.string().min(1) }),
     output: z.strictObject({ delivered: z.literal(true) }),
   },
   modelReceived: {
