@@ -48,7 +48,9 @@ Every family goes through the same steps, in the proposals module:
 5. The proposer hears the settlement: a conversation reads it in the note of its next turn, and a
    task reads it as an inbox record that wakes it. An action's settlement is never an inbox record:
    the task hears `action.outcome`. A proposer's own withdrawal writes the record and leaves out the
-   note, because the call's result holds the outcome.
+   note, because the call's result holds the outcome. A finished task keeps the settlement on its
+   thread, as a plain record that wakes nothing, so its audit thread stays whole. Settlements that
+   land in one batch read as one message.
 
 Every close of a row goes through the lifecycle, so each writes `proposals.settled`: an answer, a
 lapse, a proposer's withdrawal, a decline of an ask that withdraws the suggested rule resting on it,
@@ -64,9 +66,11 @@ short ID. Rows made before the lifecycle keep the short IDs they hold.
 The model lists and withdraws its proposals with 2 tools. `proposals.pending` lists the open rows
 that the caller proposed, and those of the tasks the caller started itself, closed tasks included: a
 memory row shows its change, gist, topic, reason and, on request, its text, and any other row shows
-the card's sentence. `proposals.withdraw` withdraws an open row that the caller proposed, or that it
-merged a memory proposal into, and reports a row that closed already. A merged proposer's withdrawal
-withdraws the whole proposal, and every other proposer hears the settlement.
+the card's sentence. `proposals.withdraw` withdraws the caller's own stake in an open row, one that
+it proposed or that it merged a memory proposal into, and reports a row that closed already. The row
+stays open for the other proposers, and `proposals.proposer_left` records that this proposer no
+longer holds a stake. The last proposer to withdraw closes the row, and the settlement reaches no
+thread of a proposer that left.
 
 A family's handler supplies `lapseIntervalMs(config, cause)`, which reads `approvals.lapse_days`
 from the server config, and `discard`, which undoes what the proposal held for a decline, a lapse or
