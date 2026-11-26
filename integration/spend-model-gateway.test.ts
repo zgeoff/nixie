@@ -122,9 +122,11 @@ test('it raises the day of a route for its start', async () => {
     dollars: 150,
   });
 
-  invariant(raised.kind === 'ok');
+  const after = await ctx.spend.readStatus();
 
-  expect(raised.value.routes['scripted']?.day.limit).toBe(150);
+  invariant(after.kind === 'ok');
+
+  expect([raised, after.value.routes['scripted']?.day.limit]).toStrictEqual([{ kind: 'ok' }, 150]);
 });
 
 test('it returns above_cap with the route and its cap for a raise past the cap', async () => {
@@ -177,10 +179,12 @@ test('it raises the day of a provider and names the provider when the raise is p
 
   const raised = await ctx.spend.postRaise({ target, start: day.start, dollars: 150 });
   const past = await ctx.spend.postRaise({ target, start: day.start, dollars: 201 });
+  const after = await ctx.spend.readStatus();
 
-  invariant(raised.kind === 'ok');
+  invariant(after.kind === 'ok');
 
-  expect([raised.value.providers['test']?.day.limit, past]).toStrictEqual([
+  expect([raised, after.value.providers['test']?.day.limit, past]).toStrictEqual([
+    { kind: 'ok' },
     150,
     { kind: 'above_cap', route: null, provider: 'test', cap: 200 },
   ]);
@@ -238,7 +242,7 @@ test('it sets the count of a provider with a count change, and answers period_en
   });
 
   expect([set, ended, ghost]).toStrictEqual([
-    { kind: 'ok' },
+    { kind: 'ok', value: { replacedDollars: 0 } },
     { kind: 'period_ended' },
     { kind: 'not_found' },
   ]);

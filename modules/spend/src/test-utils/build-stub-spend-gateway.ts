@@ -36,10 +36,10 @@ export function buildStubSpendGateway() {
     readChatGPTLogins: mock<SpendGateway['readChatGPTLogins']>(() =>
       Promise.resolve({ kind: 'ok', value: {} }),
     ),
-    postRaise: mock<SpendGateway['postRaise']>(() =>
-      Promise.resolve({ kind: 'ok', value: buildMockGatewayStatus() }),
+    postRaise: mock<SpendGateway['postRaise']>(() => Promise.resolve({ kind: 'ok' })),
+    postCount: mock<SpendGateway['postCount']>(() =>
+      Promise.resolve({ kind: 'ok', value: { replacedDollars: 0 } }),
     ),
-    postCount: mock<SpendGateway['postCount']>(() => Promise.resolve({ kind: 'ok' })),
     putSandbox: mock<SpendGateway['putSandbox']>(() => Promise.resolve({ kind: 'ok' })),
     patchSandbox: mock<SpendGateway['patchSandbox']>(() => Promise.resolve({ kind: 'ok' })),
     readSandbox: mock<SpendGateway['readSandbox']>(() =>
@@ -67,28 +67,6 @@ export function buildTrippedGatewayStatus(): GatewayStatus {
         day: {
           ...plan.day,
           dollars: 41.2,
-          tripped: true,
-          sinceMs: Date.parse('2026-11-13T08:42:07Z'),
-        },
-      },
-    },
-  });
-}
-
-// The provider `main` passed its day limit of 100 dollars, and each route of it is under its own.
-export function buildProviderTrippedGatewayStatus(): GatewayStatus {
-  const status = buildMockGatewayStatus();
-  const main = status.providers['main'];
-
-  invariant(main !== undefined, 'the mock status holds the provider main');
-
-  return buildMockGatewayStatus({
-    providers: {
-      main: {
-        ...main,
-        day: {
-          ...main.day,
-          dollars: 101.5,
           tripped: true,
           sinceMs: Date.parse('2026-11-13T08:42:07Z'),
         },

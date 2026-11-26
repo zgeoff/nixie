@@ -396,3 +396,31 @@ test('it restates a provider stop at another limit and keeps its holds', async (
 
   expect([restated.length, holds.map((hold) => hold.taskID)]).toStrictEqual([1, ['task-a']]);
 });
+
+test('it restates a standing provider stop that gains a route and holds a task on that route', async () => {
+  const ctx = await setupTest();
+
+  const tripped = buildProviderTrippedGatewayStatus();
+  const plan = tripped.routes['plan'];
+
+  invariant(plan !== undefined, 'the mock status holds the route plan');
+
+  ctx.gateway.readStatus.mockResolvedValue({ kind: 'ok', value: tripped });
+
+  await ctx.settle();
+
+  ctx.gateway.readStatus.mockResolvedValue({
+    kind: 'ok',
+    value: { ...tripped, routes: { ...tripped.routes, added: plan } },
+  });
+
+  await ctx.settle();
+
+  const stops = await readSpendProviderStops(ctx.writer.db);
+  const isHeld = await holdTaskOnRoute(ctx.context, 'task-a', 'added');
+
+  expect([stops.map((stop) => stop.routes), isHeld]).toStrictEqual([
+    [['plan', 'metered', 'added']],
+    true,
+  ]);
+});

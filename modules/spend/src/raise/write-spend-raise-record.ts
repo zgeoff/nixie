@@ -5,6 +5,7 @@ import { readSpendProviderRaises } from '../stop/read-spend-provider-raises';
 import { readSpendRaise } from '../stop/read-spend-raise';
 import { readSpendRouteRaises } from '../stop/read-spend-route-raises';
 import type { SpendContext } from '../types';
+import { pickEarlierRaise } from './pick-earlier-raise';
 import type { RaiseRequest } from './pick-raise-refusal';
 
 export interface WrittenRaise {
@@ -60,7 +61,7 @@ async function readRaisedTotals(
       : {
           start: request.start,
           route: request.route,
-          dollars: Math.max(request.dollars, routeRaises[request.route] ?? 0),
+          dollars: Math.max(request.dollars, pickEarlierRaise(routeRaises, request.route)),
         };
 
   const provider =
@@ -69,7 +70,7 @@ async function readRaisedTotals(
       : {
           start: request.start,
           provider: request.provider,
-          dollars: Math.max(request.dollars, providerRaises[request.provider] ?? 0),
+          dollars: Math.max(request.dollars, pickEarlierRaise(providerRaises, request.provider)),
         };
 
   const turns =

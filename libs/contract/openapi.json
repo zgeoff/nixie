@@ -27935,36 +27935,69 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "properties": {
-                  "route": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "provider": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "period": {
-                    "enum": [
-                      "day",
-                      "month"
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "period": {
+                        "enum": [
+                          "day",
+                          "month"
+                        ],
+                        "type": "string"
+                      },
+                      "start": {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                      },
+                      "dollars": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "route": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "required": [
+                      "period",
+                      "start",
+                      "dollars",
+                      "route"
                     ],
-                    "type": "string"
+                    "additionalProperties": false
                   },
-                  "start": {
-                    "type": "string",
-                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
-                  },
-                  "dollars": {
-                    "type": "number",
-                    "minimum": 0
+                  {
+                    "type": "object",
+                    "properties": {
+                      "period": {
+                        "enum": [
+                          "day",
+                          "month"
+                        ],
+                        "type": "string"
+                      },
+                      "start": {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                      },
+                      "dollars": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "provider": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "required": [
+                      "period",
+                      "start",
+                      "dollars",
+                      "provider"
+                    ],
+                    "additionalProperties": false
                   }
-                },
-                "required": [
-                  "period",
-                  "start",
-                  "dollars"
                 ]
               }
             }

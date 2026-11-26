@@ -23,8 +23,8 @@ export type SpendCountSetResult =
   | { readonly error: 'unreachable' };
 
 // A person's correction of one period's count, such as a reset to zero. It tells the gateway, records
-// the old and new dollars once the gateway took it, and settles the stops. A gateway that does not
-// answer changes nothing.
+// the dollars the gateway replaced and the new dollars once it took it, and settles the stops. A
+// gateway that does not answer changes nothing.
 export async function writeSpendCountSet(
   context: SpendContext,
   request: SpendCountSetRequest,
@@ -35,9 +35,7 @@ export async function writeSpendCountSet(
     return { error: 'unreachable' };
   }
 
-  const before = pickPeriodDollars(read.value, request);
-
-  if (before === null) {
+  if (!isTargetHeld(read.value, request)) {
     return { error: request.target.kind === 'route' ? 'unknown_route' : 'unknown_provider' };
   }
 
@@ -60,7 +58,7 @@ export async function writeSpendCountSet(
     return { error: 'period_ended' };
   }
 
-  await writeCountSetRecord(context, request, before);
+  await writeCountSetRecord(context, request, posted.value.replacedDollars);
 
   const facts = await readSpendFacts(context);
   const stop = await settleSpendStop(context, { ...facts, roomReason: 'corrected' });
@@ -74,13 +72,11 @@ export async function writeSpendCountSet(
   return { state: stop.state === 'clear' && !isLimitTripped ? 'clear' : 'stopped' };
 }
 
-// the dollars the period held before the change, or null for a route or provider the status lacks
-function pickPeriodDollars(status: GatewayStatus, request: SpendCountSetRequest): number | null {
+// whether the status holds the route or the provider
+function isTargetHeld(status: GatewayStatus, request: SpendCountSetRequest): boolean {
   const held = request.target.kind === 'route' ? status.routes : status.providers;
-  const id = request.target.id;
-  const periods = Object.hasOwn(held, id) ? held[id] : undefined;
 
-  return periods === undefined ? null : periods[request.period].dollars;
+  return Object.hasOwn(held, request.target.id);
 }
 
 async function writeCountSetRecord(

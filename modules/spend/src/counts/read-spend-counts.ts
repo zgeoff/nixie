@@ -1,29 +1,7 @@
-import type { DisplayRates, GatewayStatus, SpendContext } from '../types';
-
-export interface PeriodCount {
-  // the ISO date of the period's first day, which a count change names
-  readonly start: string;
-  readonly dollars: number;
-
-  // the limit in force in US dollars, null on a route with none
-  readonly limit: number | null;
-  readonly tripped: boolean;
-}
-
-export interface ProviderCounts {
-  readonly provider: string;
-  readonly day: PeriodCount;
-  readonly month: PeriodCount;
-}
-
-export interface RouteCounts {
-  readonly route: string;
-
-  // the provider whose limits bind the route
-  readonly provider: string;
-  readonly day: PeriodCount;
-  readonly month: PeriodCount;
-}
+import type { DisplayRates, SpendContext } from '../types';
+import { collectProviderCounts } from './collect-provider-counts';
+import { collectRouteCounts } from './collect-route-counts';
+import type { ProviderCounts, RouteCounts } from './types';
 
 export interface SpendCounts {
   readonly providers: ProviderCounts[];
@@ -46,32 +24,6 @@ export async function readSpendCounts(context: SpendContext): Promise<SpendCount
     providers: status.kind === 'ok' ? collectProviderCounts(status.value) : [],
     routes: status.kind === 'ok' ? collectRouteCounts(status.value) : [],
     display,
-  };
-}
-
-export function collectRouteCounts(status: GatewayStatus): RouteCounts[] {
-  return Object.entries(status.routes).map(([route, periods]) => ({
-    route,
-    provider: periods.provider,
-    day: toPeriodCount(periods.day),
-    month: toPeriodCount(periods.month),
-  }));
-}
-
-export function collectProviderCounts(status: GatewayStatus): ProviderCounts[] {
-  return Object.entries(status.providers).map(([provider, periods]) => ({
-    provider,
-    day: toPeriodCount(periods.day),
-    month: toPeriodCount(periods.month),
-  }));
-}
-
-function toPeriodCount(period: GatewayStatus['routes'][string]['day']): PeriodCount {
-  return {
-    start: period.start,
-    dollars: period.dollars,
-    limit: period.limit,
-    tripped: period.tripped,
   };
 }
 

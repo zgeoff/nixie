@@ -1253,3 +1253,35 @@ test('it refuses a model whose entry asks, because no worker runs on it', async 
       'There is no model careful to run a worker on; choose one of big, so nixie started none.',
   });
 });
+
+test('it writes the provider limit that refused the worker on its end record', async () => {
+  const ctx = await setupTest({ isGatewayOn: true });
+
+  ctx.gateway.readSandbox.mockResolvedValue({
+    kind: 'ok',
+    value: {
+      dollars: 0.01,
+      tokens: 10,
+      tripped: false,
+      lastRefusal: {
+        counter: 'provider_day',
+        route: 'worker-model',
+        provider: 'main',
+        atMs: ctx.clock.now() + 1000,
+      },
+      limitRevision: 0,
+    },
+  });
+
+  ctx.guest.addKindReplies('worker', { text: 'Done.' });
+
+  await ctx.callWorker({ question: 'Which cafes are open?' });
+
+  const [ended] = await ctx.readKinds(['worker.run_ended']);
+
+  expect(ended?.payload).toMatchObject({
+    counter: 'provider_day',
+    route: 'worker-model',
+    provider: 'main',
+  });
+});

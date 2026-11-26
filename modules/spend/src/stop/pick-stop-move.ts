@@ -7,6 +7,9 @@ export interface StopLimit {
   readonly period: PeriodName;
   readonly limit: number;
   readonly resetsAt: number;
+
+  // the routes that a provider's stop stops, which a route's stop leaves out
+  readonly routes?: readonly string[];
 }
 
 export interface StopMove<Trip> {
@@ -30,8 +33,8 @@ export interface StopMoveAsk<Field extends string, Trip extends StopLimit & Reco
 }
 
 // The writes that bring the standing stops in line with the routes or providers at their limits. A
-// stop that stands writes nothing, a changed one is restated, and a stop with room again clears as
-// `reset` once its period ended, and otherwise as `roomReason`.
+// stop that stands writes nothing, a changed one, or a provider's that gains or loses a route, is
+// restated, and a stop with room again clears as `reset` once its period ended, else `roomReason`.
 export function pickStopMove<Field extends string, Trip extends StopLimit & Record<Field, string>>(
   ask: StopMoveAsk<Field, Trip>,
 ): StopMove<Trip> {
@@ -64,5 +67,21 @@ export function pickStopMove<Field extends string, Trip extends StopLimit & Reco
 }
 
 function isSameStop(row: StopLimit, trip: StopLimit): boolean {
-  return row.period === trip.period && row.limit === trip.limit && row.resetsAt === trip.resetsAt;
+  return (
+    row.period === trip.period &&
+    row.limit === trip.limit &&
+    row.resetsAt === trip.resetsAt &&
+    isSameRoutes(row.routes, trip.routes)
+  );
+}
+
+function isSameRoutes(
+  earlier: readonly string[] | undefined,
+  later: readonly string[] | undefined,
+): boolean {
+  if (earlier === undefined || later === undefined) {
+    return earlier === later;
+  }
+
+  return earlier.length === later.length && later.every((route) => earlier.includes(route));
 }

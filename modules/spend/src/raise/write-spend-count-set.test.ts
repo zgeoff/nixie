@@ -68,7 +68,7 @@ test('it resets a provider count: it tells the gateway, records the old and new 
   ctx.gateway.postCount.mockImplementation(() => {
     ctx.gateway.readStatus.mockResolvedValue({ kind: 'ok', value: buildMockGatewayStatus() });
 
-    return Promise.resolve({ kind: 'ok' });
+    return Promise.resolve({ kind: 'ok', value: { replacedDollars: 101.5 } });
   });
 
   const result = await ctx.resetProvider();
@@ -111,7 +111,7 @@ test('it resets a route count and clears the route stop with the reason correcte
   ctx.gateway.postCount.mockImplementation(() => {
     ctx.gateway.readStatus.mockResolvedValue({ kind: 'ok', value: buildMockGatewayStatus() });
 
-    return Promise.resolve({ kind: 'ok' });
+    return Promise.resolve({ kind: 'ok', value: { replacedDollars: 101.5 } });
   });
 
   const result = await ctx.resetRoute();
@@ -135,7 +135,7 @@ test('it writes a wait notice for a task that the cleared provider held', async 
   ctx.gateway.postCount.mockImplementation(() => {
     ctx.gateway.readStatus.mockResolvedValue({ kind: 'ok', value: buildMockGatewayStatus() });
 
-    return Promise.resolve({ kind: 'ok' });
+    return Promise.resolve({ kind: 'ok', value: { replacedDollars: 101.5 } });
   });
 
   await ctx.resetProvider();
@@ -151,7 +151,7 @@ test('it keeps the stop standing when the new count is still over the limit', as
 
   await ctx.trip(buildProviderTrippedGatewayStatus());
 
-  ctx.gateway.postCount.mockResolvedValue({ kind: 'ok' });
+  ctx.gateway.postCount.mockResolvedValue({ kind: 'ok', value: { replacedDollars: 101.5 } });
 
   const result = await ctx.resetProvider();
   const stops = await readSpendProviderStops(ctx.writer.db);
@@ -218,4 +218,18 @@ test('it answers unknown_provider without telling the gateway for a provider the
     { error: 'unknown_provider' },
     [],
   ]);
+});
+
+test('it records the dollars the gateway replaced, not the dollars an earlier status read held', async () => {
+  const ctx = await setupTest();
+
+  await ctx.trip(buildProviderTrippedGatewayStatus());
+
+  ctx.gateway.postCount.mockResolvedValue({ kind: 'ok', value: { replacedDollars: 102.5 } });
+
+  await ctx.resetProvider();
+
+  const records = await ctx.readRecords('spend.count_set');
+
+  expect(records).toMatchObject([{ payload: expect.stringContaining('"from":102.5') }]);
 });

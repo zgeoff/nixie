@@ -5,6 +5,7 @@ import { readSpendRouteRaises } from '../stop/read-spend-route-raises';
 import { settleSpendStop } from '../stop/settle-spend-stop';
 import { takeSettleOrder } from '../stop/take-settle-order';
 import type { SpendContext } from '../types';
+import { pickEarlierRaise } from './pick-earlier-raise';
 import type { RaiseRequest } from './pick-raise-refusal';
 import { pickRaiseRefusal } from './pick-raise-refusal';
 import { writeSpendRaiseRecord } from './write-spend-raise-record';
@@ -68,8 +69,15 @@ export async function writeSpendRaise(
 
   const facts = await readSpendFacts(context);
 
-  const after = posted?.kind === 'ok' ? posted.value : status.value;
-  const statusAtMs = posted?.kind === 'ok' ? postedAtMs : readAtMs;
+  // A raise the gateway took answers no status, so the status after it is one more read.
+  const reread = posted?.kind === 'ok' ? await context.gateway.readStatus() : null;
+
+  if (reread !== null && reread.kind !== 'ok') {
+    return { error: 'unanswered' };
+  }
+
+  const after = reread === null ? status.value : reread.value;
+  const statusAtMs = reread === null ? readAtMs : postedAtMs;
 
   const stop = await settleSpendStop(context, { ...facts, status: after, statusAtMs, order });
 
@@ -93,7 +101,7 @@ async function postDollarsRaise(context: SpendContext, request: RaiseRequest) {
     return context.gateway.postRaise({
       target: { kind: 'route', id: request.route },
       start: request.start,
-      dollars: Math.max(request.dollars, earlier[request.route] ?? 0),
+      dollars: Math.max(request.dollars, pickEarlierRaise(earlier, request.route)),
     });
   }
 
@@ -106,7 +114,7 @@ async function postDollarsRaise(context: SpendContext, request: RaiseRequest) {
   return context.gateway.postRaise({
     target: { kind: 'provider', id: request.provider },
     start: request.start,
-    dollars: Math.max(request.dollars, earlier[request.provider] ?? 0),
+    dollars: Math.max(request.dollars, pickEarlierRaise(earlier, request.provider)),
   });
 }
 

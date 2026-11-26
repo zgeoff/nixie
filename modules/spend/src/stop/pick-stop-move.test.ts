@@ -154,3 +154,28 @@ test('it clears a stop before its reset with the reason the caller names for the
     restates: [],
   });
 });
+
+test.each([
+  { name: 'gains a route', standing: ['plan'], tripped: ['plan', 'metered'], isRestated: true },
+  { name: 'loses a route', standing: ['plan', 'metered'], tripped: ['plan'], isRestated: true },
+  {
+    name: 'lists the same routes in another order',
+    standing: ['plan', 'metered'],
+    tripped: ['metered', 'plan'],
+    isRestated: false,
+  },
+])('it answers whether a provider stop that $name is restated', (row) => {
+  const ctx = setupTest();
+  const trip = { ...ctx.trip, provider: 'main', routes: row.tripped };
+  const standing = { ...ctx.row, provider: 'main', routes: row.standing };
+
+  const move = pickStopMove({
+    field: 'provider',
+    standing: [standing],
+    trips: [trip],
+    nowMs: 10,
+    roomReason: 'raised',
+  });
+
+  expect(move).toStrictEqual({ clears: [], trips: [], restates: row.isRestated ? [trip] : [] });
+});

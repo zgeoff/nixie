@@ -12,6 +12,7 @@ import {
   buildTrippedGatewayStatus,
   startTestSpend,
 } from '../test-utils';
+import type { GatewayStatus } from '../types';
 import type { RaiseRequest } from './pick-raise-refusal';
 import { writeHostSpendRaise } from './write-host-spend-raise';
 import { writeSpendRaise } from './write-spend-raise';
@@ -49,6 +50,13 @@ async function setupTest() {
         dollars,
         by: 'session-a',
       }),
+    acceptRaise: (after: GatewayStatus) => {
+      spend.gateway.postRaise.mockImplementation(() => {
+        spend.gateway.readStatus.mockResolvedValue({ kind: 'ok', value: after });
+
+        return Promise.resolve({ kind: 'ok' });
+      });
+    },
     hostRaise: (turns: number) => writeHostSpendRaise(spend.context, { turns }),
     readPaused: () => withWriteTransaction(spend.writer, (tx) => readPause(tx)),
     tripProvider: async () => {
@@ -92,7 +100,7 @@ test('it lifts a route trip with one call: it records the raise, tells the gatew
 
   await ctx.trip();
 
-  ctx.gateway.postRaise.mockResolvedValue({ kind: 'ok', value: buildMockGatewayStatus() });
+  ctx.acceptRaise(buildMockGatewayStatus());
 
   const result = await ctx.raise();
   const stops = await readSpendRouteStops(ctx.writer.db);
@@ -128,8 +136,9 @@ test('it keeps the day stop of a route whose month is at its limit too, when mid
 
   ctx.gateway.postRaise.mockImplementation(() => {
     ctx.clock.advance(16 * 3_600_000);
+    ctx.gateway.readStatus.mockResolvedValue({ kind: 'ok', value: both });
 
-    return Promise.resolve({ kind: 'ok', value: both });
+    return Promise.resolve({ kind: 'ok' });
   });
 
   await ctx.raise();
@@ -144,7 +153,7 @@ test('it never pauses nixie for a raise of a route', async () => {
 
   await ctx.trip();
 
-  ctx.gateway.postRaise.mockResolvedValue({ kind: 'ok', value: buildMockGatewayStatus() });
+  ctx.acceptRaise(buildMockGatewayStatus());
 
   await ctx.raise();
 
@@ -158,7 +167,7 @@ test('it leaves the route stop standing when the raise does not lift the route',
 
   await ctx.trip();
 
-  ctx.gateway.postRaise.mockResolvedValue({ kind: 'ok', value: buildTrippedGatewayStatus() });
+  ctx.acceptRaise(buildTrippedGatewayStatus());
 
   const result = await ctx.raise();
   const stops = await readSpendRouteStops(ctx.writer.db);
@@ -290,7 +299,7 @@ test('it keeps the larger dollars when two raises of a route land at once', asyn
 
   await ctx.trip();
 
-  ctx.gateway.postRaise.mockResolvedValue({ kind: 'ok', value: buildMockGatewayStatus() });
+  ctx.acceptRaise(buildMockGatewayStatus());
 
   await Promise.all([ctx.raise({ dollars: 60 }), ctx.raise({ dollars: 45 })]);
 
@@ -313,6 +322,8 @@ test('it puts back no route stop that a raise of the route cleared while a raise
     turns: 1500,
     by: 'session-a',
   });
+
+  ctx.acceptRaise(buildMockGatewayStatus());
 
   await ctx.raise({ dollars: 60 });
 
@@ -346,7 +357,7 @@ test('it lifts a provider trip with one call: it records the raise, tells the ga
 
   await ctx.tripProvider();
 
-  ctx.gateway.postRaise.mockResolvedValue({ kind: 'ok', value: buildMockGatewayStatus() });
+  ctx.acceptRaise(buildMockGatewayStatus());
 
   const result = await ctx.raiseProvider('main', 150);
   const stops = await readSpendProviderStops(ctx.writer.db);
@@ -365,15 +376,34 @@ test('it lifts a provider trip with one call: it records the raise, tells the ga
   ]);
 });
 
+test('it sends the dollars of the first raise for a provider named constructor', async () => {
+  const ctx = await setupTest();
+
+  const status = buildMockGatewayStatus();
+  const main = status.providers['main'];
+
+  invariant(main !== undefined, 'the mock status holds the provider main');
+
+  ctx.gateway.readStatus.mockResolvedValue({
+    kind: 'ok',
+    value: { ...status, providers: { ...status.providers, constructor: main } },
+  });
+
+  ctx.acceptRaise(status);
+
+  await ctx.raiseProvider('constructor', 150);
+
+  expect(ctx.gateway.postRaise.mock.calls).toStrictEqual([
+    [{ target: { kind: 'provider', id: 'constructor' }, start: '2026-11-13', dollars: 150 }],
+  ]);
+});
+
 test('it leaves the provider stop standing when the raise does not lift the provider', async () => {
   const ctx = await setupTest();
 
   await ctx.tripProvider();
 
-  ctx.gateway.postRaise.mockResolvedValue({
-    kind: 'ok',
-    value: buildProviderTrippedGatewayStatus(),
-  });
+  ctx.acceptRaise(buildProviderTrippedGatewayStatus());
 
   const result = await ctx.raiseProvider('main', 110);
   const stops = await readSpendProviderStops(ctx.writer.db);

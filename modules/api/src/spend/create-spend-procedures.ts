@@ -77,9 +77,9 @@ export function createSpendProcedures(context: APIContext) {
 
       return writeSpendCountSet(context.spend, {
         target:
-          input.route === undefined
-            ? { kind: 'provider', id: input.provider ?? '' }
-            : { kind: 'route', id: input.route },
+          'route' in input
+            ? { kind: 'route', id: input.route }
+            : { kind: 'provider', id: input.provider },
         period: input.period,
         start: input.start,
         dollars: input.dollars,

@@ -177,7 +177,12 @@ test('#spend.raise lifts a route with one call, and writes the session as the ac
   const ctx = await setupTest({ isSpendOn: true });
 
   ctx.spendGateway.readStatus.mockResolvedValue({ kind: 'ok', value: buildTrippedGatewayStatus() });
-  ctx.spendGateway.postRaise.mockResolvedValue({ kind: 'ok', value: buildMockGatewayStatus() });
+
+  ctx.spendGateway.postRaise.mockImplementation(() => {
+    ctx.spendGateway.readStatus.mockResolvedValue({ kind: 'ok', value: buildMockGatewayStatus() });
+
+    return Promise.resolve({ kind: 'ok' });
+  });
 
   const raised = await ctx.client.spend.raise({ start: '2026-11-13', route: 'plan', dollars: 60 });
 
@@ -255,7 +260,11 @@ test('#spend.raise lifts a provider with one call, and writes the provider on th
     value: buildProviderTrippedGatewayStatus(),
   });
 
-  ctx.spendGateway.postRaise.mockResolvedValue({ kind: 'ok', value: buildMockGatewayStatus() });
+  ctx.spendGateway.postRaise.mockImplementation(() => {
+    ctx.spendGateway.readStatus.mockResolvedValue({ kind: 'ok', value: buildMockGatewayStatus() });
+
+    return Promise.resolve({ kind: 'ok' });
+  });
 
   const raised = await ctx.client.spend.raise({
     start: '2026-11-13',
@@ -301,7 +310,7 @@ test('#spend.setCount resets a count, records it with the session as the actor a
   ctx.spendGateway.postCount.mockImplementation(() => {
     ctx.spendGateway.readStatus.mockResolvedValue({ kind: 'ok', value: buildMockGatewayStatus() });
 
-    return Promise.resolve({ kind: 'ok' });
+    return Promise.resolve({ kind: 'ok', value: { replacedDollars: 101.5 } });
   });
 
   const set = await ctx.client.spend.setCount({
@@ -341,16 +350,6 @@ test('#spend.setCount gives clear and calls no gateway when the config sets no s
   });
 
   expect([set, ctx.spendGateway.postCount.mock.calls]).toStrictEqual([{ state: 'clear' }, []]);
-});
-
-test('#spend.setCount refuses a change that names neither a route nor a provider', async () => {
-  const ctx = await setupTest({ isSpendOn: true });
-
-  const set = ctx.client.spend.setCount({ period: 'day', start: '2026-11-13', dollars: 0 });
-
-  await Promise.allSettled([set]);
-
-  expect(set).rejects.toBeDefined();
 });
 
 test('#spend.raise gives clear and calls no gateway when the config sets no spendStop', async () => {

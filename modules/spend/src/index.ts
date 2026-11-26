@@ -67,6 +67,7 @@ export { writeSpendTrip } from './stop/write-spend-trip';
 
 export type {
   AboveCap,
+  CountReplaced,
   Done,
   GatewayCountSet,
   GatewayRaise,
@@ -102,18 +103,9 @@ export type {
 } from './types';
 
 export { spendRecordTopics } from './record/spend-record-topics';
-
-export {
-  readSpendCounts,
-  collectProviderCounts,
-  collectRouteCounts,
-} from './counts/read-spend-counts';
-
-export type {
-  PeriodCount,
-  ProviderCounts,
-  RouteCounts,
-  SpendCounts,
-} from './counts/read-spend-counts';
-
+export { collectProviderCounts } from './counts/collect-provider-counts';
+export { collectRouteCounts } from './counts/collect-route-counts';
+export { readSpendCounts } from './counts/read-spend-counts';
+export type { SpendCounts } from './counts/read-spend-counts';
+export type { PeriodCount, ProviderCounts, RouteCounts } from './counts/types';
 export { createDisplayRates } from './rate/create-display-rates';

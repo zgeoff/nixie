@@ -132,31 +132,6 @@ export const spendRaiseOutputSchema = z.union([
   z.object({ error: z.literal('unanswered') }),
 ]);
 
-// A correction of one period's count of a route or a provider, such as a reset to zero. It changes
-// no limit.
-export const spendSetCountInputSchema = z
-  .object({
-    route: z.string().min(1).optional(),
-    provider: z.string().min(1).optional(),
-    period: z.enum(['day', 'month']),
-
-    // the ISO date of the period's first day, in the default zone
-    start: z.string().regex(/^\d{4}-\d{2}-\d{2}$/u),
-    dollars: z.number().min(0),
-  })
-  .refine((input) => (input.route === undefined) !== (input.provider === undefined), {
-    message: 'a count change names a route or a provider, never both',
-  });
-
-export const spendSetCountOutputSchema = z.union([
-  z.object({ state: z.literal('clear') }),
-  z.object({ state: z.literal('stopped') }),
-  z.object({ error: z.literal('period_ended') }),
-  z.object({ error: z.literal('unknown_route') }),
-  z.object({ error: z.literal('unknown_provider') }),
-  z.object({ error: z.literal('unreachable') }),
-]);
-
 export const spendStopStandsError = {
   message: 'Model spending is stopped, and nixie resumes when the stop clears',
   status: 409,

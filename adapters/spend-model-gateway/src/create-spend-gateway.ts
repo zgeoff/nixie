@@ -9,7 +9,7 @@ import type {
   SpendGateway,
   Unreachable,
 } from '@heynixie/spend';
-import type { z } from 'zod';
+import { z } from 'zod';
 import { aboveCapSchema } from './above-cap-schema';
 import { chatgptLoginsSchema } from './chatgpt-logins-schema';
 import { gatewayStatusSchema } from './gateway-status-schema';
@@ -33,6 +33,7 @@ interface Answer {
 }
 
 const defaultTimeoutMs = 5000;
+const countReplacedSchema = z.strictObject({ replacedDollars: z.number().nonnegative() });
 
 export function createSpendGateway(options: SpendGatewayOptions): SpendGateway {
   const origin = options.url.replace(/\/+$/u, '');
@@ -85,7 +86,7 @@ export function createSpendGateway(options: SpendGatewayOptions): SpendGateway {
         return { kind: 'not_found' };
       }
 
-      return parseNoRouteLimit(answer) ?? parseAboveCap(answer) ?? parseStatusAnswer(answer);
+      return parseNoRouteLimit(answer) ?? parseAboveCap(answer) ?? parseNoContent(answer);
     },
     postCount: async (change) => {
       const answer = await send('POST', '/count', {
@@ -103,7 +104,9 @@ export function createSpendGateway(options: SpendGatewayOptions): SpendGateway {
         return { kind: 'not_found' };
       }
 
-      return parseNoContent(answer);
+      const parsed = parseBody(answer, countReplacedSchema);
+
+      return parsed.kind === 'ok' ? { kind: 'ok', value: parsed.value } : parsed;
     },
     putSandbox: async (name, limit) => {
       const answer = await send('PUT', `/sandboxes/${encodeURIComponent(name)}`, { limit });

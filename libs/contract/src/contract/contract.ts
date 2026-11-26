@@ -38,12 +38,12 @@ import { reusedIDErrors } from './reused-id-errors';
 import { ruleContract } from './rule-contract';
 import { sequenceSchema } from './sequence-schema';
 import { signedIn } from './signed-in';
+import { spendSetCountInputSchema } from './spend-set-count-input-schema';
+import { spendSetCountOutputSchema } from './spend-set-count-output-schema';
 import {
   spendCountsSchema,
   spendRaiseInputSchema,
   spendRaiseOutputSchema,
-  spendSetCountInputSchema,
-  spendSetCountOutputSchema,
   spendStopSchema,
   spendStopStandsError,
 } from './spend-stop-schema';

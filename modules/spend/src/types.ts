@@ -254,6 +254,10 @@ export interface RevisionChanged {
   readonly kind: 'revision_changed';
 }
 
+export interface CountReplaced {
+  readonly replacedDollars: number;
+}
+
 export type Done<Value = undefined> = Value extends undefined
   ? { readonly kind: 'ok' }
   : { readonly kind: 'ok'; readonly value: Value };
@@ -269,14 +273,13 @@ export interface SpendGateway {
   >;
   readonly postRaise: (
     raise: GatewayRaise,
-  ) => Promise<
-    Done<GatewayStatus> | AboveCap | NoRouteLimit | NotFound | PeriodEnded | Unreachable
-  >;
+  ) => Promise<Done | AboveCap | NoRouteLimit | NotFound | PeriodEnded | Unreachable>;
 
-  // sets one period's count of a route or a provider, and changes no limit
+  // sets one period's count of a route or a provider, and changes no limit. It answers the dollars
+  // the period held when the gateway replaced them.
   readonly postCount: (
     change: GatewayCountSet,
-  ) => Promise<Done | NotFound | PeriodEnded | Unreachable>;
+  ) => Promise<Done<CountReplaced> | NotFound | PeriodEnded | Unreachable>;
 
   // sets the sandbox's limit, or null to count only, and sets its count to zero
   readonly putSandbox: (name: string, limit: Measures | null) => Promise<Done | Unreachable>;
