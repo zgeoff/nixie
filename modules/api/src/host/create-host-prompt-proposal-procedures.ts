@@ -5,6 +5,7 @@ import { readPendingPromptProposals } from '@heynixie/prompts';
 import type { AnswerSettlement } from '@heynixie/proposals';
 import { readProposal } from '@heynixie/proposals';
 import { sql } from 'kysely';
+import invariant from 'tiny-invariant';
 import { z } from 'zod';
 import type { LegacyAnswer } from '../proposal/answer-legacy-proposal';
 import { answerLegacyProposal } from '../proposal/answer-legacy-proposal';
@@ -38,7 +39,9 @@ export function createHostPromptProposalProcedures(context: HostPromptContext) {
 
       await throwPromptRefusal(context, settled, input, options.errors);
 
-      const approval = await readPromptApprovalRecord(context, input.proposalID);
+      invariant(settled.status === 'answered', 'a refusal threw');
+
+      const approval = await readPromptApprovalRecord(context, settled.result.proposalID);
 
       return { proposalID: input.proposalID, ...approval };
     }),
