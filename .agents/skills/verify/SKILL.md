@@ -11,12 +11,12 @@ metadata:
 
 # Verify nixie
 
-Use `bun verify` to start the app, use each feature your change touches the way a user would, and
+Run `bun verify` to start the app, try each feature your change touches the way a user would, and
 record a verdict that it works. Put the report in the PR with step 10 of
 [Check a change](#check-a-change). You are done once the report is published and the run is ended.
-Hand back the PR link and each feature you could not verify, with the detail the **Reply** line at
-the end asks for. Leave `bun verify gate` to CI: it fails a PR that changes a feature with no
-verdict in its description.
+Hand back the PR link and each feature you could not verify, as the **Reply** line at the end says.
+Leave `bun verify gate` to CI: it fails a PR that changes a feature with no verdict in its
+description.
 
 The mistakes that cost the most time:
 

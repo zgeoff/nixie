@@ -1,14 +1,13 @@
 # The queue design
 
-This folder holds the designs for work that nixie has not built yet. Each design is the contract
-that two or more pieces of work build on, so those pieces fit together when different people or
-agents build them. A contributor or agent who holds the Linear issue for such work reads the issue
-first, then the sections of the design that the issue links. A reader with no issue finds a design
-by area in the table below.
+These are the designs for work that nixie has not built yet. Each design is the contract that two or
+more pieces of work build on, so those pieces fit together when different people or agents build
+them. When you hold the Linear issue for such work, read the issue first, then the sections of the
+design that it links. With no issue, find the design by area in the table below.
 
-A design is written as code sketches, constraint bullets and a diagram, and it lists the Linear
-issues that build on it. It stays a draft until the owner approves it, and it lists the questions
-still open. Every design in this folder has a row in the table.
+Write a design as code sketches, constraint bullets and a diagram. List the Linear issues that build
+on it and the questions still open. It stays a draft until the owner approves it. Give every design
+in this folder a row in the table.
 
 When the work is built, move the design's lasting facts to
 [`docs/architecture/`](../../architecture/) and delete the design. A built design left here would

@@ -21,12 +21,11 @@ tool's own contract from the architecture doc for its connector. For a missing p
 tools, start from "Not built yet". The
 [Calendar and Drive tools](../../architecture/connectors/calendar-drive-tools.md) are built and
 follow these rules; their per-tool contracts are in that doc. The Google tools are the `gmail.*`,
-`calendar.*` and `drive.*` tools, and the rules below bind all three families alike. The `mail.*`
-tools belong to the assistant's own mailbox, in the
+`calendar.*` and `drive.*` tools. The `mail.*` tools belong to the assistant's own mailbox, in the
 [mail design](https://github.com/zgeoff/nixie/pull/1420). That design also defines `gmail.wake_set`,
 `gmail.wake_list` and `gmail.wake_cancel`, and the `replyWake` argument of `gmail.send` and
-`gmail.reply`. The mail polls work item builds them. The tokens, the consent and the scopes belong
-to the [Google connection](google-connections.md). For how a call and its errors reach the model,
+`gmail.reply`. Build those in the mail polls work item. For the tokens, the consent and the scopes,
+see the [Google connection](google-connections.md). For how a call and its errors reach the model,
 see [tool calls](../../architecture/connectors/tool-calls.md).
 
 ## Shape
@@ -49,8 +48,8 @@ flowchart LR
 
 The connector's `actions`, the tool endpoint's `resolveInput` and `prepare`, the reply targets, and
 the item and connection IDs are built; see the
-[Gmail tools](../../architecture/connectors/gmail-tools.md) doc. The Calendar and Drive tools use
-them, and so must any later Google tool:
+[Gmail tools](../../architecture/connectors/gmail-tools.md) doc. Use them in every Google tool, as
+the Calendar and Drive tools do, and follow these rules:
 
 - Every event and file ID a Google tool returns starts with its connection's short ID and a dot.
   When a tool takes an item ID, resolve its connection from that prefix. Give every other tool the

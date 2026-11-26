@@ -12,9 +12,9 @@ that connection. nixie keeps no copy of your mail, events or files, and the text
 lives only in that call's record. The connection itself is built. Read
 [Google connections](../../architecture/connectors/google-connections.md) for the client, the
 consent, the fewer-scopes check and the fetcher, and follow
-[the setup guide](../../guides/google.md) for the steps you take. Below is what the Google tools
-need from the connection. The Gmail, Calendar and Drive tools are all built on these contracts, and
-a new Google tool follows them too.
+[the setup guide](../../guides/google.md) for the steps you take. Below are the contracts the Google
+tools need from the connection. Build a new Google tool on these contracts, as the Gmail, Calendar
+and Drive tools are.
 
 | Part                                                                              | What it holds                                                                        |
 | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
@@ -27,9 +27,9 @@ a new Google tool follows them too.
 
 The connection argument shipped with the Gmail tools, in the
 [Gmail](https://linear.app/zgeoff/issue/GEO-1825) work item. Job pins and the model's status line
-are not built yet, so the two pin rules under Tasks in flight apply once pins land. Read
-[the connection argument](../platform/connectors/connector.md#the-connection-argument) for the pin
-rules. With no pin on a job run, a tool resolves each call against every live Google connection.
+are not built yet, so the two pin rules under Tasks in flight apply once pins land. For the pin
+rules, read [the connection argument](../platform/connectors/connector.md#the-connection-argument).
+With no pin on a job run, a tool resolves each call against every live Google connection.
 
 ## Contracts
 
@@ -65,7 +65,7 @@ The default label of a Google connection is the ID token's `email`.
 
 ### Scopes and tools
 
-| Scope                            | The tools it holds                                                             |
+| Scope                            | Tools that need it                                                             |
 | -------------------------------- | ------------------------------------------------------------------------------ |
 | `gmail.modify`                   | every `gmail.*` tool                                                           |
 | `calendar.events`                | every `calendar.*` tool except `calendar.list_calendars`                       |
@@ -74,8 +74,8 @@ The default label of a Google connection is the ID token's `email`.
 
 - The tool endpoint of each task run and worker run leaves out each tool whose scope is in
   `missing`.
-- A connection with only the identity scopes still connects, so you can add scopes later, and lists
-  no tools.
+- A connection with only the identity scopes still connects and lists no tools. You can add scopes
+  later.
 - Each action lists its scopes in `ConnectorAction.scopes`, and the filter holds back an action
   whose scope is missing.
 

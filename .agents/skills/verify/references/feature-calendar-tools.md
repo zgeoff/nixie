@@ -10,8 +10,8 @@ for an event with no guests reaches no one, and asks Google to email no one.
 
 Follow the steps in [Check a change](../SKILL.md#check-a-change) for this journey. Read that section
 for the commands `up` and `done`, and for the `data` field of each command's JSON output. When a
-command in a step fails, do what its row in [Exit codes](exit-codes.md) says, then start the journey
-again as "Before you start" describes.
+command in a step fails, follow its row in [Exit codes](exit-codes.md), then start the journey again
+as "Before you start" describes.
 
 Run this journey on `local` only. There, the test build reaches Google's endpoints at a fake Google
 that the harness serves. The fake holds one event, "Team standup", and no other. `preview` and
@@ -21,7 +21,7 @@ feature as not verified there.
 Before you start:
 
 - When you have not run [sign-in-enrol](feature-sign-in-enrol.md) since `up`, run it first.
-- Run this journey once per `up`, because a deployment registers one client and the card of step 5
+- Run this journey once per `up`, because a deployment registers one client and the card of step 6
   must be the only held call. Before you run it again, even after a failed pass, run
   `bun verify up --restart` and `bun verify doctor`. Then run sign-in-enrol. Run this journey and
   [drive-tools](feature-drive-tools.md) in either order, with that restart between them.
@@ -124,4 +124,5 @@ Before you start:
 - Step 7: the invitation is approved and its action is done, and the fake Calendar holds one write
   that emails the guests.
 
-When steps 4, 6 and 7 all match, run `bun verify done` as Check a change says.
+When steps 4, 6 and 7 all match, run `bun verify done`, as in
+[Check a change](../SKILL.md#check-a-change).

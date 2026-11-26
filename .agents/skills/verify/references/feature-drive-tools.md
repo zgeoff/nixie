@@ -11,9 +11,9 @@ Follow the steps in [Check a change](../SKILL.md#check-a-change) for this journe
 for the commands `up` and `done`, and for the `data` field of each command's JSON output.
 
 Run this journey on `local` only. There, the test build reaches Google's endpoints at a fake Google
-that the harness serves. The fake holds one Google Doc, "Trip plan". Google's own file picker pop-up
-cannot run in a local journey, so the journey skips choosing files. `preview` and `prod` reach the
-real Google. On them, skip this journey and run no `done`. In your reply, list the feature as not
+that the harness serves. The fake holds one Google Doc, "Trip plan". Skip choosing files, because
+Google's own file picker pop-up cannot run in a local journey. `preview` and `prod` reach the real
+Google. On them, skip this journey and run no `done`. In your reply, list the feature as not
 verified there.
 
 Before you start:

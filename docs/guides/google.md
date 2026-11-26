@@ -1,8 +1,8 @@
 # Connect a Google account
 
-This guide is for the person nixie works for. Make an OAuth client in your own Google Cloud project,
-register it in nixie, and connect a Google account from Settings → Connections. nixie keeps the
-account's refresh token sealed in its database. Once you connect an account, the model can use the
+Make an OAuth client in your own Google Cloud project, register it in nixie, and connect a Google
+account from Settings → Connections. nixie keeps the account's refresh token sealed in its database.
+Once you connect an account, the model can use the
 [Gmail tools](../architecture/connectors/gmail-tools.md) to search, read and label your mail, write
 drafts and send mail. It can also wake the conversation or a task when new mail matches a rule it
 sets. With the [Calendar and Drive tools](../architecture/connectors/calendar-drive-tools.md) it can
@@ -173,7 +173,7 @@ steps in Settings → Connections the same.
 - All 4 APIs are on, or the scope shows as missing.
 - Remove the client is refused while a connection that is not forgotten uses it.
 - Reads need no card. A send to an address you haven't allowed, and a Calendar change with guests or
-  an answer to an invitation that your policy doesn't already allow, wait for your answer on a card.
+  an answer to an invitation that your policy doesn't allow, wait for your answer on a card.
 - nixie never changes an event that someone else organizes, apart from your answer to its
   invitation. It replaces a Drive file's content only when no one else can read the file.
 - After a send or change whose outcome is unclear, nixie waits 5 minutes and looks for it. A change

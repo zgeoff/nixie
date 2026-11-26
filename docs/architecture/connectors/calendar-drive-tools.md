@@ -5,8 +5,8 @@ The Google connector holds 10 `calendar.*` tools and 4 `drive.*` tools beside th
 cards and untrusted words, which the Gmail tools page sets out under
 [Items and connections](gmail-tools.md#items-and-connections), [Sends](gmail-tools.md#sends) and
 [The card](gmail-tools.md#the-card). This page covers only what Calendar and Drive add. For the
-consent and the scopes, see [Google connections](google-connections.md). The
-[Google guide](../../guides/google.md) covers the picker setup.
+consent and the scopes, see [Google connections](google-connections.md). For the picker setup, see
+the [Google guide](../../guides/google.md).
 
 ## The tools
 
@@ -178,11 +178,12 @@ With the `drive.file` scope, nixie sees only the files it made and the files the
 user chooses files on a connection's page with "Choose Drive files":
 
 1. The page loads Google's sign-in script when it shows, and enables the button once the script has
-   loaded, because a popup that waits for the script can miss the browser's time after a click. On
-   the click it asks Google's sign-in for an access token of its own, with the scope `drive.file`,
-   `include_granted_scopes` false, the connection's OAuth client ID and its account as `login_hint`.
-   The page drops a token whose scope holds anything besides `drive.file`, with an error. The button
-   shows for a connection that holds the `drive.file` scope, whatever other scopes it lacks.
+   loaded, because a browser blocks a popup that opens only after the click's short window for
+   popups has passed. On the click it asks Google's sign-in for an access token of its own, with the
+   scope `drive.file`, `include_granted_scopes` false, the connection's OAuth client ID and its
+   account as `login_hint`. The page drops a token whose scope holds anything besides `drive.file`,
+   with an error. The button shows for a connection that holds the `drive.file` scope, whatever
+   other scopes it lacks.
 2. The page opens Google Picker with that token, the client's picker key and its project number as
    the app ID.
 3. The page sends the chosen file IDs to `connections.checkPicked`, which
