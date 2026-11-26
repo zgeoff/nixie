@@ -605,3 +605,37 @@ test('it reads 2 settlements that land before a task wake as one message with a 
   expect(turn.messages[0]?.text).toInclude('k3x9m2p7qa');
   expect(turn.messages[0]?.text).toInclude('w7tn4c9rhz');
 });
+
+test('it reads settlements around an owner message as one note and leaves the later ones to the host to acknowledge', async () => {
+  const ctx = await setupTest();
+
+  const records = await writeRecords(ctx.log, [
+    ctx.buildSettled('k3x9m2p7qa', 'approved'),
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'task-a',
+      erasable: { text: 'Carry on with the shelf.' },
+    },
+    ctx.buildSettled('w7tn4c9rhz', 'declined'),
+  ]);
+
+  const turn = await readTurnBatch(ctx.context, records, {
+    times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
+    view: buildMockTaskMessageView(),
+    imageBudget: { bytes: 1024, count: 100 },
+  });
+
+  expect(turn.records.map((record) => record.sequence)).toStrictEqual(
+    records.map((record) => record.sequence),
+  );
+
+  expect(turn.messages).toHaveLength(2);
+  expect(turn.messages[0]?.text).toInclude('k3x9m2p7qa');
+  expect(turn.messages[0]?.text).toInclude('w7tn4c9rhz');
+  expect(turn.messages[1]?.text).toInclude('Carry on with the shelf.');
+
+  expect(turn.silent.map((record) => record.sequence)).toStrictEqual(
+    records.slice(-1).map((record) => record.sequence),
+  );
+});

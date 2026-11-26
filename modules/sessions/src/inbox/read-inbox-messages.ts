@@ -45,7 +45,8 @@ export interface InboxMessages {
   readonly records: readonly LogRecord[];
   readonly messages: readonly InboxMessage[];
 
-  // the records among them that render no message
+  // the records among them that render no message of their own, which the host acknowledges itself:
+  // the silent ones, and every settlement after the first that its note carries
   readonly silent: readonly LogRecord[];
 }
 
@@ -76,36 +77,39 @@ export async function readInboxMessages(
     const images = countImages(message);
 
     if (messages.length > 0 && isPastImageBudget(spent, images, read.imageBudget)) {
-      return { records: taken, messages, silent };
+      return { records: sortBySequence(taken), messages, silent };
     }
 
     spent = mergeImageTallies(spent, images);
 
+    const [, ...followers] = group;
+
     taken.push(...group);
+    silent.push(...followers);
     messages.push(message);
   }
 
-  return { records: taken, messages, silent };
+  return { records: sortBySequence(taken), messages, silent };
 }
 
-// The settlements that land before a wake read as one note, so a run of them is one group. Any other
+// The settlements that land before a wake read as one note, so all of them are one group, even when
+// an owner message sits between them. The note stands where the first settlement stands. Any other
 // record is a group of its own.
 function groupSettlements(
   records: readonly LogRecord[],
 ): readonly (readonly [LogRecord, ...LogRecord[]])[] {
   const groups: [LogRecord, ...LogRecord[]][] = [];
+  let note: [LogRecord, ...LogRecord[]] | undefined;
 
   for (const record of records) {
-    const last = groups.at(-1);
-
-    if (
-      last !== undefined &&
-      record.kind === 'proposals.settled' &&
-      last[0].kind === 'proposals.settled'
-    ) {
-      last.push(record);
-    } else {
+    if (record.kind !== 'proposals.settled') {
       groups.push([record]);
+    } else if (note === undefined) {
+      note = [record];
+
+      groups.push(note);
+    } else {
+      note.push(record);
     }
   }
 
@@ -165,4 +169,8 @@ async function readInboxMessage(
     cut,
     ...(gaps === undefined ? {} : { gaps }),
   });
+}
+
+function sortBySequence(records: readonly LogRecord[]): readonly LogRecord[] {
+  return records.toSorted((first, second) => first.sequence - second.sequence);
 }
