@@ -113,6 +113,20 @@ test('it marks the current page in the bar, and its parent on a detail page', as
   const reached: string[] = [];
 
   for (const stop of stops) {
+    // The bar scrolls sideways, so a link past its right edge needs a scroll before a click lands.
+    await runInPage(
+      ctx.view,
+      (href: string) => {
+        document
+          .querySelector(`header > nav a[href="${href}"]`)
+          ?.scrollIntoView({ inline: 'center' });
+
+        return true;
+      },
+      stop.path,
+      z.boolean(),
+    );
+
     await ctx.view.click(`header > nav a[href="${stop.path}"]`);
 
     await waitFor(
