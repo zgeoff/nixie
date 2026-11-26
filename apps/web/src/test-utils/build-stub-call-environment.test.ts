@@ -9,10 +9,10 @@ test('#buildStubCallEnvironment opens a microphone with one live track', async (
   expect([microphone.getTracks().length, stub.microphoneRequests()]).toStrictEqual([1, 1]);
 });
 
-test('#buildStubCallEnvironment refuses the microphone with the error it is given', async () => {
+test('#buildStubCallEnvironment refuses the microphone with the error it is given', () => {
   const stub = buildStubCallEnvironment({ microphoneError: new Error('blocked') });
 
-  await expect(stub.environment.openMicrophone()).rejects.toThrow('blocked');
+  expect(stub.environment.openMicrophone()).rejects.toThrow('blocked');
 });
 
 test('#buildStubCallEnvironment numbers the offers of a peer and records each answer', async () => {
