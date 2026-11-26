@@ -1,5 +1,34 @@
 # Changelog
 
+## [0.121.0](https://github.com/zgeoff/nixie/compare/v0.120.0...v0.121.0) (2026-11-26)
+
+
+### ⚠ BREAKING CHANGES
+
+* **spend:** limit model spend per provider ([#1507](https://github.com/zgeoff/nixie/issues/1507))
+* **tasks:** meter task and worker runs by the gateway's count ([#1498](https://github.com/zgeoff/nixie/issues/1498))
+* **mcp:** proxy the tools of outside mcp servers ([#1494](https://github.com/zgeoff/nixie/issues/1494))
+
+### Features
+
+* **calls:** add the gpt-live speech adapter ([#1492](https://github.com/zgeoff/nixie/issues/1492)) ([c26c08f](https://github.com/zgeoff/nixie/commit/c26c08f6214b4f89ed2be1133b21ebe148c72f30))
+* **connectors:** add the calendar and drive tools ([#1506](https://github.com/zgeoff/nixie/issues/1506)) ([15e7222](https://github.com/zgeoff/nixie/commit/15e722291454362c86e4072fe11e8bdef1745716))
+* **devices:** add approved packages and declared fetches to pages ([#1491](https://github.com/zgeoff/nixie/issues/1491)) ([5aa6a14](https://github.com/zgeoff/nixie/commit/5aa6a14c04ec449874abd437cf92a195c5aee79c))
+* **gmail:** poll for new mail and wake a task when a wake rule matches ([#1502](https://github.com/zgeoff/nixie/issues/1502)) ([b161e33](https://github.com/zgeoff/nixie/commit/b161e33fdb50c7e4097154c3efc527cdf0a5c338))
+* **mcp:** add the servers page, guide and journey ([#1504](https://github.com/zgeoff/nixie/issues/1504)) ([e63835b](https://github.com/zgeoff/nixie/commit/e63835bc686c3e7de5e4f127346cf172b45bbe65))
+* **mcp:** proxy the tools of outside mcp servers ([#1494](https://github.com/zgeoff/nixie/issues/1494)) ([09b122b](https://github.com/zgeoff/nixie/commit/09b122b916db13413683e299e9ac0241f271dc1e))
+* **spend:** limit model spend per provider ([#1507](https://github.com/zgeoff/nixie/issues/1507)) ([a6bc59a](https://github.com/zgeoff/nixie/commit/a6bc59a18c0d8735f3d05f0bb61fcaae465cdb4e))
+* **tasks:** meter task and worker runs by the gateway's count ([#1498](https://github.com/zgeoff/nixie/issues/1498)) ([10499a6](https://github.com/zgeoff/nixie/commit/10499a63813cea06e19b1d082f019fca934f855f))
+* **web:** add the call screen and reconnect a live call ([#1505](https://github.com/zgeoff/nixie/issues/1505)) ([0187066](https://github.com/zgeoff/nixie/commit/01870665713b15ed199bca780a88af723f952e7a))
+
+
+### Bug Fixes
+
+* **deps:** update @anthropic-ai/claude-agent-sdk to v0.3.328 ([#1495](https://github.com/zgeoff/nixie/issues/1495)) ([c302d32](https://github.com/zgeoff/nixie/commit/c302d32fcb0a6e480784919a9a91b7d3c000bc34))
+* **deps:** update @tanstack/react-start to v1.169.6 ([#1499](https://github.com/zgeoff/nixie/issues/1499)) ([ae066f3](https://github.com/zgeoff/nixie/commit/ae066f3bf6a94b84ad25c9393c7d644d561cfe96))
+* remove the causes of five flaky tests on main ([#1500](https://github.com/zgeoff/nixie/issues/1500)) ([48a6e71](https://github.com/zgeoff/nixie/commit/48a6e7153cd8bf9c1a3991957aa7d4c55d9b8d3b))
+* **verify:** bring the verify skill under its word limit ([#1509](https://github.com/zgeoff/nixie/issues/1509)) ([edf4993](https://github.com/zgeoff/nixie/commit/edf4993c51ecf206ce9dd3149c7670f61bcdb807))
+
 ## [0.120.0](https://github.com/zgeoff/nixie/compare/v0.119.0...v0.120.0) (2026-11-26)
 
 
