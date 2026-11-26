@@ -41,8 +41,8 @@ Before you start:
    bun verify conversation turn --message 'Watch my Gmail for the library.' --reply 'I will watch for the mail.'
    ```
 
-   Expect: `data.replies` is 2 for the script, and `conversation turn` exits 0. The `gmail.wake_set`
-   call is queued and no starter rule allows it, so it waits as a card on the approvals page. Open
+   Expect: `data.replies` is 2 for the script, and `conversation turn` exits 0. No starter rule
+   allows the `gmail.wake_set` call, so nixie queues it as a card on the approvals page. Open
    `/proposals`, expand the one item and approve it with its button, as in steps 5 and 6 of
    [gmail-tools](feature-gmail-tools.md). Then run
    `bun verify proposals --tool gmail.wake_set --waiting none`, which exits 0.

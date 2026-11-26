@@ -2,9 +2,9 @@
 
 The Google connector holds 11 `gmail.*` tools. They reach a connected Google account only through
 the credential store's fetcher, which adds the credential on the way out, so no tool ever holds a
-token. [Google connections](google-connections.md) covers the consent, the scopes and the
-connection; [tool calls](tool-calls.md) covers how a call and its errors reach the model. The
-`mail.*` tools belong to the assistant's own mailbox.
+token. For the consent, the scopes and the connection, see
+[Google connections](google-connections.md); for how a call and its errors reach the model, see
+[tool calls](tool-calls.md). The `mail.*` tools belong to the assistant's own mailbox.
 
 ## The tools
 
@@ -181,27 +181,27 @@ the decision point.
   moves only when the call commits. Because each poll writes the poll time into the cursor, each
   poll leaves a `trigger.delivered` record, even with no mail.
 - When Google answers 404 for the stored history ID, the source reads the profile's history ID, and
-  only then lists the mail that arrived since a margin before the last good poll, the `lookbackMs`
-  of
+  only then lists the mail that arrived since a margin before the last good poll. The margin is
+  `lookbackMs` in
   [`read-gmail-changes.ts`](../../../modules/connectors/src/google/gmail/poll/read-gmail-changes.ts).
   A mail that arrives between the two reads is in the list or after the new cursor. The dedupe keys
   drop each mail already recorded.
-- The source reads again the mail since each reply rule's send, so a rule still wakes on a reply
-  that arrived, and was dropped, before the rule existed. Each poll reads the live reply rules of
-  the connection from the log, and lists the mail since the earliest start among those whose ID the
-  connection's cursor entry does not hold in `replayed`, as a resync does. The delivery that commits
-  adds the rule IDs to `replayed`. The rules live in the log and `replayed` in the cursor, so a
-  restart between the rule and the next poll loses nothing.
-- A failed poll keeps the cursor. The source polls again after a backoff that doubles after each
-  further failure up to a cap, both set in
-  [`build-poll-retry-ms.ts`](../../../modules/connectors/src/google/gmail/poll/build-poll-retry-ms.ts),
-  and waits for Google's retry time when that is longer. After 3 failed polls in a row of any polled
-  connection it reports `unhealthy`, and it reports `running` once the last poll of every polled
-  connection succeeded. A connection that needs a new consent is skipped and counts for neither. The
-  loop never sleeps past `gmail.poll_interval`, so a connection that joins the list gets its first
-  poll within an interval while another backs off.
+- The source rereads the mail since each reply rule's send, so a rule still wakes on a reply that
+  arrived, and was dropped, before the rule existed. Each poll reads the connection's live reply
+  rules from the log and takes those whose IDs are not yet in `replayed` in the connection's cursor
+  entry. As a resync does, it lists the mail since the earliest start among them. The delivery that
+  commits adds the rule IDs to `replayed`. The rules live in the log and `replayed` in the cursor,
+  so a restart between setting the rule and the next poll loses nothing.
+- A failed poll keeps the cursor. The source polls again after a backoff, or after Google's retry
+  time when that is longer. The backoff doubles after each further failure up to a cap, and both
+  live in
+  [`build-poll-retry-ms.ts`](../../../modules/connectors/src/google/gmail/poll/build-poll-retry-ms.ts).
+  After 3 failed polls in a row of any polled connection it reports `unhealthy`, and it reports
+  `running` once the last poll of every polled connection succeeded. A connection that needs a new
+  consent is skipped and counts for neither. The loop never sleeps past `gmail.poll_interval`, so a
+  connection that joins the list gets its first poll within an interval while another backs off.
 - A stop aborts each request in flight through the connection's context, so a shutdown never waits
-  on Gmail, and an aborted poll counts as no failure.
+  on Gmail, and an aborted poll doesn't count as a failure.
 - A mail's arrival ID is the connection's short ID, a dot and Google's message ID, as in the tools.
   Its mailbox is `gmail:<connection ID>`, so a rule on one connection never matches another's mail.
 - At its next delivery, the source drops the cursor entry of each connection that is no longer live.
@@ -214,11 +214,12 @@ and `window` as [the mailbox's wake tools](../core/mailbox.md#wake-rules), with 
 
 - `gmail.wake_set` declares the effects `schedule` and `write`. An allow rule covers a call only
   when it lists every effect of the call, and no starter rule lists `schedule`, so a call asks the
-  user unless a rule covers it. The effect `write` makes the call queued, so under an allow rule too
-  it runs as an action. The rule starts when the action runs, and the action fails with `TASK_ENDED`
-  when the target task has ended by then. The tool answers `BAD_DURATION` for a duration under a
-  minute, and sets no upper limit. It answers `NOT_POLLED` for a connection that the poll does not
-  read, which holds no `gmail.modify` or needs a new consent, because a rule there would never fire.
+  user unless the user adds an allow rule that lists both effects. Because of the effect `write`,
+  the call is queued, and it runs as an action even under an allow rule. The rule starts when the
+  action runs, and the action fails with `TASK_ENDED` when the target task has ended by then. The
+  tool answers `BAD_DURATION` for a duration under a minute, and sets no upper limit. It answers
+  `NOT_POLLED` for a connection that the poll skips, one that lacks `gmail.modify` or needs a new
+  consent, because a rule there would never fire.
 - A rule write checks in its own write transaction that the connection is still live, so a call that
   read the connection before a forget refuses after it, and no rule outlives the forget.
 - `gmail.wake_list` lists every live rule of the connection, and `gmail.wake_cancel` answers
@@ -229,12 +230,12 @@ and `window` as [the mailbox's wake tools](../core/mailbox.md#wake-rules), with 
   A send that `gmail.find_sent` later finds gets the same rule, unless the rule's expiry has passed
   by then. The result holds the rule's short ID as `replyRule`, or null. The send's card shows the
   expiry. A send whose rule cannot be written answers `ambiguous`, so the check finds the mail and
-  writes the rule again, and a check whose rule write fails answers `inconclusive`. The rule has a
-  write transaction of its own, before the action's outcome, because the action queue runs no
+  writes the rule again, and a check whose rule write fails answers `inconclusive`. nixie writes the
+  rule in its own transaction, before the action's outcome, because the action queue runs no
   connector write inside the outcome's transaction. A restart between the two leaves the action
   unsettled, and the same check replaces the rule in place, so one rule stays. A send that the user
-  drops after such a restart keeps its rule, which
-  [GEO-2871](https://linear.app/zgeoff/issue/GEO-2871) asks the owner to settle.
+  drops after such a restart keeps its rule. Whether it should is open for the owner in
+  [GEO-2871](https://linear.app/zgeoff/issue/GEO-2871).
 
 ### Forgetting
 
@@ -242,9 +243,9 @@ Forgetting a connection calls the trigger module's `eraseGmailMailbox` twice, on
 connection is hidden and once when its indexes clean. Each call ends the connection's rules as
 `connection_forgotten`, drops the matches they held, and destroys the sender and subject of every
 arrival and wake of that mailbox. A wake keeps its record, which renders each mail as forgotten. The
-forget also captures the wakes that show the connection's mail. It cleans the sessions on each
-wake's thread, as a forgotten record does, and removes every logged request on those threads, so no
-sender or subject outlives the forget in a session or in a turn input.
+forget also finds the wakes that show the connection's mail. It cleans the sessions on each wake's
+thread, as a forgotten record does, and removes every logged request on those threads, so no sender
+or subject outlives the forget in a session or in a turn input.
 
 ## Testing
 
