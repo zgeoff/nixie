@@ -181,21 +181,25 @@ the decision point.
   moves only when the call commits. Because each poll writes the poll time into the cursor, each
   poll leaves a `trigger.delivered` record, even with no mail.
 - When Google answers 404 for the stored history ID, the source reads the profile's history ID, and
-  only then lists the mail that arrived since 10 minutes before the last good poll. A mail that
-  arrives between the two reads is in the list or after the new cursor. The dedupe keys drop each
-  mail already recorded.
+  only then lists the mail that arrived since a margin before the last good poll, the `lookbackMs`
+  of
+  [`read-gmail-changes.ts`](../../../modules/connectors/src/google/gmail/poll/read-gmail-changes.ts).
+  A mail that arrives between the two reads is in the list or after the new cursor. The dedupe keys
+  drop each mail already recorded.
 - A reply rule asks the source to read again the mail since its send. Each poll reads the live reply
   rules of the connection from the log, and lists the mail since the earliest start among those
   whose ID the connection's cursor entry does not hold in `replayed`, as a resync does. The delivery
   that commits adds the rule IDs to `replayed`. A reply that arrived before the rule existed was
   dropped, and this is how the rule still wakes on it. The request lives in the log and the cursor,
   so a restart between the rule and the next poll loses nothing.
-- A failed poll keeps the cursor. The source polls again after 1 minute, doubles the wait after each
-  further failure up to 1 hour, and waits for Google's retry time when that is longer. After 3
-  failed polls in a row of any polled connection it reports `unhealthy`, and it reports `running`
-  once the last poll of every polled connection succeeded. A connection that needs a new consent is
-  skipped and counts for neither. The loop never sleeps past `gmail.poll_interval`, so a connection
-  that joins the list gets its first poll within an interval while another backs off.
+- A failed poll keeps the cursor. The source polls again after a backoff that doubles after each
+  further failure up to a cap, both set in
+  [`build-poll-retry-ms.ts`](../../../modules/connectors/src/google/gmail/poll/build-poll-retry-ms.ts),
+  and waits for Google's retry time when that is longer. After 3 failed polls in a row of any polled
+  connection it reports `unhealthy`, and it reports `running` once the last poll of every polled
+  connection succeeded. A connection that needs a new consent is skipped and counts for neither. The
+  loop never sleeps past `gmail.poll_interval`, so a connection that joins the list gets its first
+  poll within an interval while another backs off.
 - A stop aborts each request in flight through the connection's context, so a shutdown never waits
   on Gmail, and an aborted poll counts as no failure.
 - A mail's arrival ID is the connection's short ID, a dot and Google's message ID, as in the tools.
