@@ -82,6 +82,7 @@ no topic.
 | `spend`       | `spend.read`                                     |
 | `backups`     | `backups.readNotice`                             |
 | `approvals`   | `approvals.listItems`, `approvals.readProposals` |
+| `calls`       | `calls.get`                                      |
 | `computer`    | `computer.readHandover`                          |
 | `tasks`       | `tasks.list`, `tasks.read`, `tasks.listEnded`    |
 | `triggers`    | `triggers.report`                                |
