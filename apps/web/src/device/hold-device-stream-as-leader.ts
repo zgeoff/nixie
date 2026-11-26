@@ -6,7 +6,7 @@ import { parseDeviceRelayMessage } from './parse-device-relay-message';
 import type { RelayAction } from './pick-relay-actions';
 import { pickRelayActions } from './pick-relay-actions';
 
-export interface DeviceLockOptions {
+interface DeviceLockOptions {
   readonly signal: AbortSignal;
 }
 
