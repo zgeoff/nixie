@@ -1,6 +1,7 @@
 import type { Overrides, PeriodStore, RefusalCounter } from '../types';
 import type { RouteLimitsByID } from './collect-trips';
 import { isLimitReached } from './is-limit-reached';
+import { isSandboxLimitReached } from './is-sandbox-limit-reached';
 import { pickRouteLimit } from './pick-route-limit';
 
 export type PeriodsRefusal =
@@ -99,11 +100,7 @@ export function pickPeriodsRefusal(ask: RefusalAsk): PeriodsRefusal | null {
     };
   }
 
-  if (
-    held?.limit !== undefined &&
-    held.limit !== null &&
-    (isLimitReached(held.micros, held.limit.dollars) || held.tokens >= held.limit.tokens)
-  ) {
+  if (held !== undefined && isSandboxLimitReached(held)) {
     return {
       kind: 'limit_reached',
       status: 403,

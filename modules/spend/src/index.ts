@@ -4,6 +4,16 @@ export { createPlanLoginsHolder } from './login/create-plan-logins-holder';
 export { readPlanLogins } from './login/read-plan-logins';
 export { checkSpendStart } from './start/check-spend-start';
 export type { SpendStartOptions } from './start/check-spend-start';
+
+export type {
+  PatchLimitOptions,
+  PatchLimitOutcome,
+  SandboxLimitPatch,
+} from './limit/patch-limit-until-set';
+
+export type { SandboxLimitFacts } from './limit/pick-sandbox-limit';
+export { pickSandboxLimit } from './limit/pick-sandbox-limit';
+export { patchLimitUntilSet } from './limit/patch-limit-until-set';
 export { holdTaskOnRefusal } from './route/hold-task-on-refusal';
 export { holdTaskOnRoute } from './route/hold-task-on-route';
 export { settleRouteStops } from './stop/settle-route-stops';
@@ -64,6 +74,7 @@ export type {
   DisplayRates,
   RateSource,
   SandboxCount,
+  SandboxLimit,
   SpendContext,
   SpendGateway,
   SpendMeasure,

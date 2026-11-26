@@ -1,30 +1,34 @@
 import type { Logger } from '@heynixie/logger';
 import type { Sandbox, SandboxAdapter, SandboxSpec } from '@heynixie/sandbox';
 import { sandboxKinds, workerRunOwnerPrefix } from '@heynixie/sandbox';
-import type { SpendGateway } from '../types';
+import type { Done, NotFound, SpendGateway, Unreachable } from '../types';
 
 export interface SandboxCountsOptions {
   readonly gateway: SpendGateway;
   readonly log: Logger;
 }
 
-// A worker run's sandbox is left to the run, which registers it with the worker's limits. A sandbox
-// that an earlier process made registers once per process, so a kept one has its count.
+// A worker run's sandbox is left to the run, which registers it. A new sandbox registers with a PUT
+// that starts its count at zero. A kept one registers once per process, keeping its count.
 export function withSandboxCounts(
   adapter: SandboxAdapter,
   options: SandboxCountsOptions,
 ): SandboxAdapter {
   const registered = new Set<string>();
 
-  const register = async (sandbox: Sandbox): Promise<void> => {
+  const register = async (sandbox: Sandbox, isNew: boolean): Promise<void> => {
     if (!isCounted(sandbox.spec) || registered.has(sandbox.id)) {
       return;
     }
 
-    const put = await options.gateway.putSandbox(sandbox.id, null);
+    const answer = isNew
+      ? await options.gateway.putSandbox(sandbox.id, null)
+      : await registerKept(options.gateway, sandbox.id);
 
-    if (put.kind !== 'ok') {
-      throw new Error(`the gateway did not register the sandbox ${sandbox.id}: ${put.reason}`);
+    if (answer.kind !== 'ok') {
+      throw new Error(
+        `the gateway did not register the sandbox ${sandbox.id}: ${answer.kind === 'unreachable' ? answer.reason : answer.kind}`,
+      );
     }
 
     registered.add(sandbox.id);
@@ -61,7 +65,7 @@ export function withSandboxCounts(
       const sandbox = await adapter.create(spec);
 
       try {
-        await register(sandbox);
+        await register(sandbox, true);
       } catch (error) {
         await sandbox.destroy().catch(() => {});
 
@@ -77,14 +81,14 @@ export function withSandboxCounts(
         return null;
       }
 
-      await register(sandbox);
+      await register(sandbox, false);
 
       return wrap(sandbox);
     },
     list: async (owner) => {
       const sandboxes = await adapter.list(owner);
 
-      await Promise.all(sandboxes.map((sandbox) => register(sandbox)));
+      await Promise.all(sandboxes.map((sandbox) => register(sandbox, false)));
 
       return sandboxes.map((sandbox) => wrap(sandbox));
     },
@@ -97,6 +101,23 @@ export function withSandboxCounts(
 
 function isCounted(spec: SandboxSpec): boolean {
   return sandboxKinds[spec.kind].hasModelGrant && !spec.owner.startsWith(workerRunOwnerPrefix);
+}
+
+async function registerKept(
+  gateway: SpendGateway,
+  name: string,
+): Promise<Done | NotFound | Unreachable> {
+  const read = await gateway.readSandbox(name);
+
+  if (read.kind === 'not_found') {
+    return gateway.putSandbox(name, null);
+  }
+
+  if (read.kind === 'unreachable') {
+    return read;
+  }
+
+  return gateway.patchSandbox(name, null);
 }
 
 async function removeCount(options: SandboxCountsOptions, sandbox: Sandbox): Promise<void> {

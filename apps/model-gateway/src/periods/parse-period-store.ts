@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { PeriodStore } from '../types';
-import { measuresSchema } from './measures-schema';
+import { sandboxLimitSchema } from './sandbox-limit-schema';
 import { sandboxNameSchema } from './sandbox-name-schema';
 
 const isoDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/u);
@@ -22,7 +22,7 @@ const refusalSchema = z.strictObject({
 const sandboxCountSchema = z.strictObject({
   micros: z.int().nonnegative(),
   tokens: z.number().nonnegative(),
-  limit: measuresSchema.nullable(),
+  limit: sandboxLimitSchema.nullable(),
   lastRefusal: refusalSchema.nullable().default(null),
 });
 

@@ -108,6 +108,8 @@ test('it logs a failed removal and still destroys the sandbox', async () => {
 test('it registers a kept sandbox that a list returns once', async () => {
   const ctx = setupTest();
 
+  ctx.gateway.readSandbox.mockResolvedValue({ kind: 'not_found' });
+
   const first = await ctx.sandboxes.adapter.create(
     buildMockSandboxSpec({ kind: 'conversation', owner: 'c' }),
   );
@@ -116,4 +118,30 @@ test('it registers a kept sandbox that a list returns once', async () => {
   await ctx.adapter.list('c');
 
   expect(ctx.gateway.putSandbox.mock.calls).toStrictEqual([[first.id, null]]);
+});
+
+test('it patches the limit of a kept sandbox that the gateway holds, and puts none', async () => {
+  const ctx = setupTest();
+
+  const kept = await ctx.sandboxes.adapter.create(
+    buildMockSandboxSpec({ kind: 'conversation', owner: 'c' }),
+  );
+
+  await ctx.adapter.read(kept.id);
+  await ctx.adapter.list('c');
+
+  expect(ctx.gateway.patchSandbox.mock.calls).toStrictEqual([[kept.id, null]]);
+  expect(ctx.gateway.putSandbox.mock.calls).toStrictEqual([]);
+});
+
+test('it fails the read of a kept sandbox when the gateway does not answer', async () => {
+  const ctx = setupTest();
+
+  const kept = await ctx.sandboxes.adapter.create(
+    buildMockSandboxSpec({ kind: 'conversation', owner: 'c' }),
+  );
+
+  ctx.gateway.readSandbox.mockResolvedValue({ kind: 'unreachable', reason: 'no answer' });
+
+  expect(ctx.adapter.read(kept.id)).rejects.toThrow(/did not register the sandbox/u);
 });

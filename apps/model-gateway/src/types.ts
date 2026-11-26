@@ -50,6 +50,12 @@ export interface Measures {
   readonly tokens: number;
 }
 
+// A sandbox's own limit. A limit with no tokens sets no token limit.
+export interface SandboxLimit {
+  readonly dollars: number;
+  readonly tokens?: number;
+}
+
 export type PeriodName = 'day' | 'month';
 
 export interface PeriodsConfig {
@@ -131,7 +137,7 @@ interface SandboxCount {
   readonly tokens: number;
 
   // null counts only
-  readonly limit: Measures | null;
+  readonly limit: SandboxLimit | null;
   readonly lastRefusal: Refusal | null;
 }
 

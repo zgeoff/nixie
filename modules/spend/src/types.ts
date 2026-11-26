@@ -154,6 +154,12 @@ export interface SandboxCount {
   readonly lastRefusal: SandboxRefusal | null;
 }
 
+// A sandbox's own limit in the gateway. A limit with no tokens sets no token limit.
+export interface SandboxLimit {
+  readonly dollars: number;
+  readonly tokens?: number;
+}
+
 export interface GatewayRaise {
   readonly route: string;
   readonly start: string;
@@ -200,6 +206,12 @@ export interface SpendGateway {
 
   // sets the sandbox's limit, or null to count only, and sets its count to zero
   readonly putSandbox: (name: string, limit: Measures | null) => Promise<Done | Unreachable>;
+
+  // sets the sandbox's limit whole, or null to count only, and keeps its count
+  readonly patchSandbox: (
+    name: string,
+    limit: SandboxLimit | null,
+  ) => Promise<Done | NotFound | Unreachable>;
 
   readonly readSandbox: (name: string) => Promise<Done<SandboxCount> | NotFound | Unreachable>;
   readonly removeSandbox: (name: string) => Promise<Done | Unreachable>;

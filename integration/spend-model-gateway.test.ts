@@ -139,6 +139,18 @@ test('it registers a sandbox as count only', async () => {
   expect(put).toStrictEqual({ kind: 'ok' });
 });
 
+test('it patches the limit of a sandbox and answers not_found for one the gateway lacks', async () => {
+  const ctx = await setupTest();
+
+  await ctx.spend.putSandbox('nixie-abc', null);
+
+  const patched = await ctx.spend.patchSandbox('nixie-abc', { dollars: 0.000001 });
+  const lacking = await ctx.spend.patchSandbox('nixie-none', { dollars: 1 });
+
+  expect(patched).toStrictEqual({ kind: 'ok' });
+  expect(lacking).toStrictEqual({ kind: 'not_found' });
+});
+
 test('it removes a sandbox that the gateway lacks', async () => {
   const ctx = await setupTest();
   const answer = await ctx.spend.removeSandbox('nixie-none');
