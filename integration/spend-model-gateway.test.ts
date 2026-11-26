@@ -19,7 +19,12 @@ async function setupTest() {
 
   const gateway = await startTestModelGateway({
     upstreamURL: model.url,
-    periods: { zone: 'UTC', countBySandbox: true },
+    periods: {
+      zone: 'UTC',
+      countBySandbox: true,
+      providerLimits: { day: 100, month: 1000 },
+      secondRoute: { id: 'bare', limits: null },
+    },
     planRoute: {
       routeID: 'codex-plan',
       login: {
@@ -46,7 +51,7 @@ async function setupTest() {
   };
 }
 
-test('it reads the status of each route with its limit and its cap', async () => {
+test('it reads the status of each provider and each route with its limit and its cap', async () => {
   const ctx = await setupTest();
   const status = await ctx.spend.readStatus();
 
@@ -55,9 +60,28 @@ test('it reads the status of each route with its limit and its cap', async () =>
     value: {
       zone: 'UTC',
       lost: false,
+      providers: {
+        test: {
+          day: {
+            start: expect.toBeString(),
+            resetsAt: expect.toBeString(),
+            dollars: 0,
+            limit: 100,
+            cap: 200,
+            tripped: false,
+            sinceMs: null,
+          },
+          month: expect.objectContaining({ limit: 1000, cap: null }),
+        },
+      },
       routes: {
-        'codex-plan': expect.objectContaining({}),
+        'codex-plan': expect.objectContaining({ provider: 'test' }),
+        bare: expect.objectContaining({
+          provider: 'test',
+          day: expect.objectContaining({ limit: null, cap: null, tripped: false }),
+        }),
         scripted: {
+          provider: 'test',
           day: {
             start: expect.toBeString(),
             resetsAt: expect.toBeString(),
@@ -92,7 +116,11 @@ test('it raises the day of a route for its start', async () => {
 
   invariant(day !== undefined);
 
-  const raised = await ctx.spend.postRaise({ route: 'scripted', start: day.start, dollars: 150 });
+  const raised = await ctx.spend.postRaise({
+    target: { kind: 'route', id: 'scripted' },
+    start: day.start,
+    dollars: 150,
+  });
 
   invariant(raised.kind === 'ok');
 
@@ -109,16 +137,111 @@ test('it returns above_cap with the route and its cap for a raise past the cap',
 
   invariant(day !== undefined);
 
-  const raised = await ctx.spend.postRaise({ route: 'scripted', start: day.start, dollars: 999 });
+  const raised = await ctx.spend.postRaise({
+    target: { kind: 'route', id: 'scripted' },
+    start: day.start,
+    dollars: 999,
+  });
 
-  expect(raised).toStrictEqual({ kind: 'above_cap', route: 'scripted', cap: 200 });
+  expect(raised).toStrictEqual({
+    kind: 'above_cap',
+    route: 'scripted',
+    provider: null,
+    cap: 200,
+  });
 });
 
 test('it returns period_ended for a raise of another start', async () => {
   const ctx = await setupTest();
-  const raised = await ctx.spend.postRaise({ route: 'scripted', start: '2000-01-01', dollars: 90 });
+
+  const raised = await ctx.spend.postRaise({
+    target: { kind: 'route', id: 'scripted' },
+    start: '2000-01-01',
+    dollars: 90,
+  });
 
   expect(raised).toStrictEqual({ kind: 'period_ended' });
+});
+
+test('it raises the day of a provider and names the provider when the raise is past its cap', async () => {
+  const ctx = await setupTest();
+  const status = await ctx.spend.readStatus();
+
+  invariant(status.kind === 'ok');
+
+  const day = status.value.providers['test']?.day;
+
+  invariant(day !== undefined);
+
+  const target = { kind: 'provider', id: 'test' } as const;
+
+  const raised = await ctx.spend.postRaise({ target, start: day.start, dollars: 150 });
+  const past = await ctx.spend.postRaise({ target, start: day.start, dollars: 201 });
+
+  invariant(raised.kind === 'ok');
+
+  expect([raised.value.providers['test']?.day.limit, past]).toStrictEqual([
+    150,
+    { kind: 'above_cap', route: null, provider: 'test', cap: 200 },
+  ]);
+});
+
+test('it answers not_found for a raise of a provider the gateway lacks, and no_route_limit for a route with no limit of its own', async () => {
+  const ctx = await setupTest();
+  const status = await ctx.spend.readStatus();
+
+  invariant(status.kind === 'ok');
+
+  const start = status.value.providers['test']?.day.start ?? '';
+
+  const ghost = await ctx.spend.postRaise({
+    target: { kind: 'provider', id: 'ghost' },
+    start,
+    dollars: 5,
+  });
+
+  const bare = await ctx.spend.postRaise({
+    target: { kind: 'route', id: 'bare' },
+    start,
+    dollars: 5,
+  });
+
+  expect([ghost, bare]).toStrictEqual([
+    { kind: 'not_found' },
+    { kind: 'no_route_limit', route: 'bare' },
+  ]);
+});
+
+test('it sets the count of a provider with a count change, and answers period_ended for another start', async () => {
+  const ctx = await setupTest();
+  const status = await ctx.spend.readStatus();
+
+  invariant(status.kind === 'ok');
+
+  const start = status.value.providers['test']?.day.start ?? '';
+  const target = { kind: 'provider', id: 'test' } as const;
+
+  const set = await ctx.spend.postCount({ target, period: 'day', start, dollars: 0 });
+
+  const ended = await ctx.spend.postCount({
+    target,
+    period: 'day',
+    start: '2000-01-01',
+    dollars: 0,
+  });
+
+  const ghost = await ctx.spend.postCount({
+    target: { kind: 'route', id: 'ghost' },
+    period: 'day',
+    start,
+    dollars: 0,
+  });
+
+  expect([set, ended, ghost]).toStrictEqual([
+    { kind: 'ok' },
+    { kind: 'period_ended' },
+    { kind: 'not_found' },
+  ]);
 });
 
 test('it registers, reads and removes a sandbox', async () => {

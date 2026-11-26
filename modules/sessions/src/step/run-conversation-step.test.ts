@@ -1071,6 +1071,7 @@ test('it counts no step error for a step that the gateway refused on its route, 
       lastRefusal: {
         counter: 'route_day',
         route: ctx.profile.id,
+        provider: 'main',
         atMs: spend.clock.now() + 60_000,
       },
       limitRevision: 0,

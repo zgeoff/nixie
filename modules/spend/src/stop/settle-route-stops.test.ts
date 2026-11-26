@@ -3,8 +3,15 @@ import { readRecords, spendWaitNoticeCodec } from '@heynixie/log';
 import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
 import { holdTaskOnRoute } from '../route/hold-task-on-route';
-import { buildMockGatewayStatus, buildTrippedGatewayStatus, startTestSpend } from '../test-utils';
+import {
+  buildMockGatewayStatus,
+  buildProviderTrippedGatewayStatus,
+  buildTrippedGatewayStatus,
+  startTestSpend,
+} from '../test-utils';
 import { readSpendFacts } from './read-spend-facts';
+import { readSpendProviderHolds } from './read-spend-provider-holds';
+import { readSpendProviderStops } from './read-spend-provider-stops';
 import { readSpendRouteHolds } from './read-spend-route-holds';
 import { readSpendRouteStops } from './read-spend-route-stops';
 import { settleRouteStops } from './settle-route-stops';
@@ -231,4 +238,161 @@ test('it clears the stop with newer facts after an older settle that found the s
   const stops = await readSpendRouteStops(ctx.writer.db);
 
   expect(stops).toStrictEqual([]);
+});
+
+test('it sends the owner one notice that names the provider and its routes, however many polls find it stopped', async () => {
+  const ctx = await setupTest();
+
+  ctx.gateway.readStatus.mockResolvedValue({
+    kind: 'ok',
+    value: buildProviderTrippedGatewayStatus(),
+  });
+
+  await ctx.settle();
+  await ctx.settle();
+
+  const notices = await ctx.readRecords('spend.provider_stopped');
+  const routeNotices = await ctx.readRecords('spend.route_stopped');
+
+  expect([notices, routeNotices]).toStrictEqual([
+    [
+      {
+        thread: null,
+        payload: JSON.stringify({
+          provider: 'main',
+          routes: ['plan', 'metered'],
+          period: 'day',
+          limit: 100,
+          spent: 101.5,
+          at: Date.parse('2026-11-13T08:42:07Z'),
+          resetsAt: Date.parse('2026-11-14T00:00:00Z'),
+        }),
+      },
+    ],
+    [],
+  ]);
+});
+
+test('it stops the provider and leaves the routes with room unstopped', async () => {
+  const ctx = await setupTest();
+
+  ctx.gateway.readStatus.mockResolvedValue({
+    kind: 'ok',
+    value: buildProviderTrippedGatewayStatus(),
+  });
+
+  await ctx.settle();
+
+  const providers = await readSpendProviderStops(ctx.writer.db);
+  const routes = await readSpendRouteStops(ctx.writer.db);
+
+  expect([providers.map((stop) => stop.provider), routes]).toStrictEqual([['main'], []]);
+});
+
+test('it writes a trip of a route and a trip of its provider in one settle, each once', async () => {
+  const ctx = await setupTest();
+
+  const providerTripped = buildProviderTrippedGatewayStatus();
+  const routeTripped = buildTrippedGatewayStatus();
+
+  ctx.gateway.readStatus.mockResolvedValue({
+    kind: 'ok',
+    value: { ...routeTripped, providers: providerTripped.providers },
+  });
+
+  await ctx.settle();
+  await ctx.settle();
+
+  const routes = await readSpendRouteStops(ctx.writer.db);
+  const providers = await readSpendProviderStops(ctx.writer.db);
+
+  expect([routes.map((stop) => stop.route), providers.map((stop) => stop.provider)]).toStrictEqual([
+    ['plan'],
+    ['main'],
+  ]);
+});
+
+test('it writes a wait notice for each task that waited when the provider clears', async () => {
+  const ctx = await setupTest();
+
+  ctx.gateway.readStatus.mockResolvedValue({
+    kind: 'ok',
+    value: buildProviderTrippedGatewayStatus(),
+  });
+
+  await ctx.settle();
+
+  await holdTaskOnRoute(ctx.context, 'task-a', 'metered');
+
+  const heldAt = ctx.clock.now();
+
+  ctx.clock.advance(5 * 60_000);
+  ctx.gateway.readStatus.mockResolvedValue({ kind: 'ok', value: buildMockGatewayStatus() });
+
+  await ctx.settle();
+
+  const notices = await readRecords(ctx.log, { afterSequence: 0, kinds: ['spend.wait_notice'] });
+  const holds = await readSpendProviderHolds(ctx.writer.db, 'main');
+  const cleared = await ctx.readRecords('spend.provider_cleared');
+
+  expect(notices.map((notice) => spendWaitNoticeCodec.decode(notice.record.payload))).toStrictEqual(
+    [{ shortID: expect.any(String), taskID: 'task-a', sinceMs: heldAt, untilMs: ctx.clock.now() }],
+  );
+
+  expect([holds, cleared]).toStrictEqual([
+    [],
+    [{ thread: null, payload: JSON.stringify({ provider: 'main', reason: 'raised' }) }],
+  ]);
+});
+
+test('it clears a provider stop with the reason reset once its day has ended', async () => {
+  const ctx = await setupTest();
+
+  ctx.gateway.readStatus.mockResolvedValue({
+    kind: 'ok',
+    value: buildProviderTrippedGatewayStatus(),
+  });
+
+  await ctx.settle();
+
+  ctx.clock.advance(24 * 3_600_000);
+  ctx.gateway.readStatus.mockResolvedValue({ kind: 'ok', value: buildMockGatewayStatus() });
+
+  await ctx.settle();
+
+  const cleared = await ctx.readRecords('spend.provider_cleared');
+
+  expect(cleared).toStrictEqual([
+    { thread: null, payload: JSON.stringify({ provider: 'main', reason: 'reset' }) },
+  ]);
+});
+
+test('it restates a provider stop at another limit and keeps its holds', async () => {
+  const ctx = await setupTest();
+
+  const tripped = buildProviderTrippedGatewayStatus();
+  const main = tripped.providers['main'];
+
+  invariant(main !== undefined, 'the mock status holds the provider main');
+
+  ctx.gateway.readStatus.mockResolvedValue({ kind: 'ok', value: tripped });
+
+  await ctx.settle();
+
+  await holdTaskOnRoute(ctx.context, 'task-a', 'plan');
+
+  ctx.gateway.readStatus.mockResolvedValue({
+    kind: 'ok',
+    value: {
+      ...tripped,
+      providers: { main: { ...main, day: { ...main.day, limit: 101, dollars: 101.5 } } },
+    },
+  });
+
+  await ctx.settle();
+
+  const restated = await ctx.readRecords('spend.provider_restated');
+  const holds = await readSpendProviderHolds(ctx.writer.db, 'main');
+
+  expect([restated.length, holds.map((hold) => hold.taskID)]).toStrictEqual([1, ['task-a']]);
 });

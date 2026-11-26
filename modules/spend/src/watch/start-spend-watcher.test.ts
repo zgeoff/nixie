@@ -258,7 +258,7 @@ test('it sends a standing raise that the gateway has not applied, and clears the
   await ctx.poll({ noAnswerSince: null, lastStopKey: null });
 
   expect(ctx.gateway.postRaise.mock.calls).toStrictEqual([
-    [{ route: 'plan', start: '2026-11-13', dollars: 60 }],
+    [{ target: { kind: 'route', id: 'plan' }, start: '2026-11-13', dollars: 60 }],
   ]);
 
   const routeStops = await readSpendRouteStops(ctx.writer.db);

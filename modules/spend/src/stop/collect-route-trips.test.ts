@@ -34,7 +34,7 @@ test('it holds the day when a route reached both limits, because only the day ca
 
   const both: GatewayStatus = {
     ...status,
-    routes: { plan: { day: plan.day, month: { ...plan.month, tripped: true } } },
+    routes: { plan: { provider: 'main', day: plan.day, month: { ...plan.month, tripped: true } } },
   };
 
   expect(collectRouteTrips(both, 1000).map((trip) => trip.period)).toStrictEqual(['day']);
@@ -48,7 +48,7 @@ test('it cannot raise a route whose day limit is at its cap', () => {
 
   const capped: GatewayStatus = {
     ...status,
-    routes: { plan: { month: plan.month, day: { ...plan.day, limit: 80 } } },
+    routes: { plan: { provider: 'main', month: plan.month, day: { ...plan.day, limit: 80 } } },
   };
 
   expect(collectRouteTrips(capped, 1000)[0]?.canRaise).toBe(false);

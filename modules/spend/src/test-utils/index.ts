@@ -4,6 +4,7 @@ export { buildSpendStopRow } from './build-spend-stop-row';
 
 export {
   buildMockGatewayStatus,
+  buildProviderTrippedGatewayStatus,
   buildStubSpendGateway,
   buildTrippedGatewayStatus,
 } from './build-stub-spend-gateway';

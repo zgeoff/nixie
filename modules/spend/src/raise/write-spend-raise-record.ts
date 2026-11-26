@@ -1,6 +1,7 @@
 import type { WriteTransaction } from '@heynixie/log';
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import { spendLimitRaisedCodec } from '../record/spend-limit-raised-codec';
+import { readSpendProviderRaises } from '../stop/read-spend-provider-raises';
 import { readSpendRaise } from '../stop/read-spend-raise';
 import { readSpendRouteRaises } from '../stop/read-spend-route-raises';
 import type { SpendContext } from '../types';
@@ -9,13 +10,13 @@ import type { RaiseRequest } from './pick-raise-refusal';
 export interface WrittenRaise {
   readonly start: string;
   readonly route?: string;
+  readonly provider?: string;
   readonly dollars?: number;
   readonly turns?: number;
 }
 
 // A raise that the gateway did not answer stands, and the watcher sends it again until the day ends.
-// The earlier raise is read in the transaction, so two raises at once leave the larger totals. A
-// raise of a route's dollars and a raise of the turns are records of their own.
+// The earlier raise is read in the transaction, so two raises at once leave the larger totals.
 export function writeSpendRaiseRecord(
   context: SpendContext,
   request: RaiseRequest & { readonly by: string },
@@ -26,7 +27,7 @@ export function writeSpendRaiseRecord(
     await writeRecordsInTransaction(
       tx,
       context.log,
-      [raised.route, raised.turns]
+      [raised.route, raised.provider, raised.turns]
         .filter((totals) => totals !== null)
         .map((totals) => ({
           kind: spendLimitRaisedCodec.kind,
@@ -35,12 +36,13 @@ export function writeSpendRaiseRecord(
         })),
     );
 
-    return { start: request.start, ...raised.route, ...raised.turns };
+    return { start: request.start, ...raised.route, ...raised.provider, ...raised.turns };
   });
 }
 
 interface RaisedTotals {
   readonly route: { start: string; route: string; dollars: number } | null;
+  readonly provider: { start: string; provider: string; dollars: number } | null;
   readonly turns: { start: string; turns: number } | null;
 }
 
@@ -49,6 +51,7 @@ async function readRaisedTotals(
   request: RaiseRequest,
 ): Promise<RaisedTotals> {
   const routeRaises = await readSpendRouteRaises(tx, request.start);
+  const providerRaises = await readSpendProviderRaises(tx, request.start);
   const earlier = await readSpendRaise(tx, request.start);
 
   const route =
@@ -60,10 +63,19 @@ async function readRaisedTotals(
           dollars: Math.max(request.dollars, routeRaises[request.route] ?? 0),
         };
 
+  const provider =
+    request.provider === undefined || request.dollars === undefined
+      ? null
+      : {
+          start: request.start,
+          provider: request.provider,
+          dollars: Math.max(request.dollars, providerRaises[request.provider] ?? 0),
+        };
+
   const turns =
     request.turns === undefined
       ? null
       : { start: request.start, turns: Math.max(request.turns, earlier?.turns ?? 0) };
 
-  return { route, turns };
+  return { route, provider, turns };
 }

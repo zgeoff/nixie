@@ -16,7 +16,13 @@ export function buildMockGatewayStatus(overrides: Partial<GatewayStatus> = {}): 
   return {
     zone: 'UTC',
     lost: false,
-    routes: { plan: { day, month }, metered: { day: { ...day, limit: 5, cap: 10 }, month } },
+    providers: {
+      main: { day: { ...day, limit: 100, cap: 200 }, month: { ...month, limit: 1000 } },
+    },
+    routes: {
+      plan: { provider: 'main', day, month },
+      metered: { provider: 'main', day: { ...day, limit: 5, cap: 10 }, month },
+    },
     ...overrides,
   };
 }
@@ -33,6 +39,7 @@ export function buildStubSpendGateway() {
     postRaise: mock<SpendGateway['postRaise']>(() =>
       Promise.resolve({ kind: 'ok', value: buildMockGatewayStatus() }),
     ),
+    postCount: mock<SpendGateway['postCount']>(() => Promise.resolve({ kind: 'ok' })),
     putSandbox: mock<SpendGateway['putSandbox']>(() => Promise.resolve({ kind: 'ok' })),
     patchSandbox: mock<SpendGateway['patchSandbox']>(() => Promise.resolve({ kind: 'ok' })),
     readSandbox: mock<SpendGateway['readSandbox']>(() =>
@@ -60,6 +67,28 @@ export function buildTrippedGatewayStatus(): GatewayStatus {
         day: {
           ...plan.day,
           dollars: 41.2,
+          tripped: true,
+          sinceMs: Date.parse('2026-11-13T08:42:07Z'),
+        },
+      },
+    },
+  });
+}
+
+// The provider `main` passed its day limit of 100 dollars, and each route of it is under its own.
+export function buildProviderTrippedGatewayStatus(): GatewayStatus {
+  const status = buildMockGatewayStatus();
+  const main = status.providers['main'];
+
+  invariant(main !== undefined, 'the mock status holds the provider main');
+
+  return buildMockGatewayStatus({
+    providers: {
+      main: {
+        ...main,
+        day: {
+          ...main.day,
+          dollars: 101.5,
           tripped: true,
           sinceMs: Date.parse('2026-11-13T08:42:07Z'),
         },

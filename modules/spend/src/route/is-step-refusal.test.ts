@@ -17,28 +17,33 @@ function setupTest() {
 test.each([
   {
     name: 'a day refusal of the route since the step began',
-    refusal: { counter: 'route_day', route: 'plan', atMs: 2000 },
+    refusal: { counter: 'route_day', route: 'plan', provider: 'main', atMs: 2000 },
     expected: true,
   },
   {
     name: 'a month refusal of the route since the step began',
-    refusal: { counter: 'route_month', route: 'plan', atMs: 1000 },
+    refusal: { counter: 'route_month', route: 'plan', provider: 'main', atMs: 1000 },
     expected: true,
   },
   {
     name: 'a refusal before the step began',
-    refusal: { counter: 'route_day', route: 'plan', atMs: 999 },
+    refusal: { counter: 'route_day', route: 'plan', provider: 'main', atMs: 999 },
     expected: false,
   },
   {
     name: 'a refusal of another route',
-    refusal: { counter: 'route_day', route: 'metered', atMs: 2000 },
+    refusal: { counter: 'route_day', route: 'metered', provider: 'main', atMs: 2000 },
     expected: false,
   },
   {
     name: "a refusal at the sandbox's own limit",
-    refusal: { counter: 'sandbox', route: 'plan', atMs: 2000 },
+    refusal: { counter: 'sandbox', route: 'plan', provider: 'main', atMs: 2000 },
     expected: false,
+  },
+  {
+    name: 'a provider day refusal of the route since the step began',
+    refusal: { counter: 'provider_day', route: 'plan', provider: 'main', atMs: 2000 },
+    expected: true,
   },
   { name: 'no refusal', refusal: null, expected: false },
 ] as const)('#isStepRefusal answers $expected for $name', (row) => {

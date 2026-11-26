@@ -140,6 +140,10 @@ export interface RecordKinds {
   'spend.route_restated': true;
   'spend.route_cleared': true;
   'spend.route_held': true;
+  'spend.provider_stopped': true;
+  'spend.provider_restated': true;
+  'spend.provider_cleared': true;
+  'spend.provider_held': true;
   'spend.wait_notice': true;
 }
 
@@ -323,6 +327,23 @@ interface SpendRouteStopRow {
   readonly updated_sequence: number;
 }
 
+interface SpendProviderStopRow {
+  readonly provider_id: string;
+  readonly period: string;
+  readonly limit_amount: number;
+  readonly spent_amount: number;
+  readonly at: number;
+  readonly resets_at: number;
+  readonly routes: string;
+  readonly updated_sequence: number;
+}
+
+interface SpendProviderHoldRow {
+  readonly task_id: string;
+  readonly provider_id: string;
+  readonly updated_sequence: number;
+}
+
 interface SpendRouteHoldRow {
   readonly task_id: string;
   readonly route_id: string;
@@ -365,6 +386,8 @@ export type LogTables = CheckedTables<
     spend_stop: SpendStopRow;
     spend_route_stops: SpendRouteStopRow;
     spend_route_holds: SpendRouteHoldRow;
+    spend_provider_stops: SpendProviderStopRow;
+    spend_provider_holds: SpendProviderHoldRow;
     recoveries: RecoveryRow;
   }>
 >;

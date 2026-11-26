@@ -26,6 +26,8 @@ test('it starts a log with the tasks, sandboxes and memory projections and a fre
     'spend_stop',
     'spend_route_stops',
     'spend_route_holds',
+    'spend_provider_stops',
+    'spend_provider_holds',
     'tasks',
     'timers',
     'task_messages',

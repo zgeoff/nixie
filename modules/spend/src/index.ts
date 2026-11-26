@@ -21,16 +21,22 @@ export { holdTaskOnRefusal } from './route/hold-task-on-refusal';
 export { holdTaskOnRoute } from './route/hold-task-on-route';
 export { settleRouteStops } from './stop/settle-route-stops';
 export { collectRouteTrips } from './stop/collect-route-trips';
+export { collectProviderTrips } from './stop/collect-provider-trips';
 export { readSpendRouteStops } from './stop/read-spend-route-stops';
 export type { SpendRouteStopRow } from './stop/read-spend-route-stops';
 export { readSpendRouteRaises } from './stop/read-spend-route-raises';
+export { readSpendProviderRaises } from './stop/read-spend-provider-raises';
+export { readSpendProviderStops } from './stop/read-spend-provider-stops';
+export type { SpendProviderStopRow } from './stop/read-spend-provider-stops';
 export { spendProjections } from './projection/spend-projections';
 export { writeMissedTurns } from './projection/write-missed-turns';
 export { spendLimitRaisedCodec } from './record/spend-limit-raised-codec';
+export { spendCountSetCodec } from './record/spend-count-set-codec';
 export type { SpendRecordKind, SpendTurnKind } from './record/spend-record-kind';
 export { buildSpendPeriods } from './time/build-spend-periods';
 export { readSpendStop } from './stop/read-spend-stop';
-export { readSpendRoutes } from './stop/read-spend-routes';
+export { readSpendTrips } from './stop/read-spend-trips';
+export type { SpendTrips } from './stop/read-spend-trips';
 export { readSpendFacts } from './stop/read-spend-facts';
 export { pickSpendStop } from './stop/pick-spend-stop';
 export type { SpendFacts } from './stop/pick-spend-stop';
@@ -51,6 +57,8 @@ export { pickRaiseRefusal } from './raise/pick-raise-refusal';
 export type { RaiseRefusal, RaiseRequest } from './raise/pick-raise-refusal';
 export { writeHostSpendRaise } from './raise/write-host-spend-raise';
 export type { HostSpendRaise } from './raise/write-host-spend-raise';
+export { writeSpendCountSet } from './raise/write-spend-count-set';
+export type { SpendCountSetRequest, SpendCountSetResult } from './raise/write-spend-count-set';
 export { writeSpendRaise } from './raise/write-spend-raise';
 export type { SpendRaiseResult } from './raise/write-spend-raise';
 export { settleSpendStop } from './stop/settle-spend-stop';
@@ -60,7 +68,12 @@ export { writeSpendTrip } from './stop/write-spend-trip';
 export type {
   AboveCap,
   Done,
+  GatewayCountSet,
   GatewayRaise,
+  LimitTarget,
+  NoRouteLimit,
+  ProviderStatus,
+  ProviderTrip,
   GatewayStatus,
   Measures,
   NotFound,
@@ -89,6 +102,18 @@ export type {
 } from './types';
 
 export { spendRecordTopics } from './record/spend-record-topics';
-export { readSpendCounts, collectRouteCounts } from './counts/read-spend-counts';
-export type { PeriodCount, RouteCounts, SpendCounts } from './counts/read-spend-counts';
+
+export {
+  readSpendCounts,
+  collectProviderCounts,
+  collectRouteCounts,
+} from './counts/read-spend-counts';
+
+export type {
+  PeriodCount,
+  ProviderCounts,
+  RouteCounts,
+  SpendCounts,
+} from './counts/read-spend-counts';
+
 export { createDisplayRates } from './rate/create-display-rates';

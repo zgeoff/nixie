@@ -42,6 +42,8 @@ import {
   spendCountsSchema,
   spendRaiseInputSchema,
   spendRaiseOutputSchema,
+  spendSetCountInputSchema,
+  spendSetCountOutputSchema,
   spendStopSchema,
   spendStopStandsError,
 } from './spend-stop-schema';
@@ -348,6 +350,7 @@ export const contract = {
     read: signedIn.output(spendStopSchema),
     counts: signedIn.output(spendCountsSchema),
     raise: signedIn.input(spendRaiseInputSchema).output(spendRaiseOutputSchema),
+    setCount: signedIn.input(spendSetCountInputSchema).output(spendSetCountOutputSchema),
   },
   recovery: {
     read: signedIn.output(z.object({ recovery: recoverySchema })),
