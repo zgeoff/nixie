@@ -2,12 +2,22 @@ import type { Clock } from '@heynixie/clock';
 import type { Log } from '@heynixie/log';
 import type { WakeRuleContext } from '@heynixie/triggers';
 import type { FetchReply } from '@heynixie/wire';
+import type { Transaction } from 'kysely';
 import type { ConnectorContext } from '../../types';
 import type { GoogleHosts } from '../google-hosts';
+import type { GmailRewinds } from './poll/gmail-rewinds';
 
 // How the Gmail tools reach a connection. A short ID names one live connection; none lists them all.
 export interface GmailAccess {
   readonly readLiveContexts: (connection?: string) => Promise<readonly ConnectorContext[]>;
+
+  // the short ID of each live connection that the Gmail poll covers: one granted gmail.modify that
+  // needs no new consent. A wake rule on any other connection would never fire.
+  readonly readPolledConnections: () => Promise<readonly string[]>;
+
+  // whether the connection is still live, read in the caller's write transaction, so a rule writer
+  // that held a connection before a forget wrote it refuses once the forget has committed
+  readonly probeLive: (tx: Transaction<unknown>, connectionID: string) => Promise<boolean>;
 }
 
 // What the wake tools need of the triggers module: the context of a rule write, which binds with
@@ -20,6 +30,9 @@ export interface GmailWakePort {
 
   // the expiry of the rule that a send registers, when the call gives none
   readonly replyExpiryMs: number;
+
+  // where a reply rule asks the poll to read again the mail since its send
+  readonly rewinds: GmailRewinds;
 }
 
 export interface GmailDeps {

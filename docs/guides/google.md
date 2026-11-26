@@ -121,8 +121,9 @@ an unverified app in production keeps working.
 2. Select Forget this connection, then Forget for good.
 
 nixie revokes the grant at Google, ends the connection's wake rules, erases the sender and subject
-it kept of its mail, and deletes the connection's keys, so the tokens in its database are unreadable
-at once. The page then shows 3 lines:
+it kept of its mail, including in the conversation's history and in logged requests, and deletes the
+connection's keys, so the tokens in its database are unreadable at once. The page then shows 3
+lines:
 
 - Erasure: whether nixie deleted the keys.
 - Revocation: whether Google ended the grant. After "refused", Google still holds the grant. After

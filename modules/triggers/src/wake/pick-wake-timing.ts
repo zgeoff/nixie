@@ -1,5 +1,5 @@
 import { parseDuration } from '@heynixie/clock';
-import { maxWakeDurationMs, minWakeDurationMs } from './constants';
+import { minWakeDurationMs } from './constants';
 
 export interface WakeTimingRequest {
   readonly expires: string | undefined;
@@ -14,9 +14,9 @@ export type WakeTiming =
   | { readonly status: 'ok'; readonly expiresAt: number | null; readonly windowMs: number }
   | { readonly status: 'bad' };
 
-// The expiry and the window of a rule. A duration is bad when it is no duration, runs under a
-// minute or over 3650 days, or puts the expiry past the last date a Date holds. The window is at most the expiry, so
-// the default window shrinks to a short expiry, and a window that the call names never passes it.
+// The expiry and the window of a rule, with no upper limit. A duration is bad when it is no duration
+// or runs under a minute, or an expiry passes the last date a Date holds. The window is at most the
+// expiry, and the default window shrinks to a short expiry.
 export function pickWakeTiming(request: WakeTimingRequest): WakeTiming {
   const expiresMs = request.expires === undefined ? null : parseDuration(request.expires);
   const windowMs = request.window === undefined ? null : parseDuration(request.window);
@@ -45,5 +45,5 @@ export function pickWakeTiming(request: WakeTimingRequest): WakeTiming {
 }
 
 function isUsable(durationMs: number | null): durationMs is number {
-  return durationMs !== null && durationMs >= minWakeDurationMs && durationMs <= maxWakeDurationMs;
+  return durationMs !== null && durationMs >= minWakeDurationMs;
 }

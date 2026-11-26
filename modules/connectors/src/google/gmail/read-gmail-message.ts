@@ -7,7 +7,13 @@ import type { GmailMessage } from './types';
 export type GmailMessageRead =
   | { readonly kind: 'message'; readonly message: GmailMessage }
   | { readonly kind: 'missing' }
-  | { readonly kind: 'failed'; readonly reason: string };
+  | {
+      readonly kind: 'failed';
+      readonly reason: string;
+
+      // the retry time that Gmail gave, in ms
+      readonly retryAfterMs: number | null;
+    };
 
 const metadataHeaders = [
   'From',
@@ -38,12 +44,14 @@ export async function readGmailMessage(
   });
 
   if (reply.kind === 'error') {
-    return reply.status === 404 ? { kind: 'missing' } : { kind: 'failed', reason: reply.reason };
+    return reply.status === 404
+      ? { kind: 'missing' }
+      : { kind: 'failed', reason: reply.reason, retryAfterMs: reply.retryAfterMs };
   }
 
   const message = parseGmailMessage(reply.body);
 
   return message === null
-    ? { kind: 'failed', reason: 'Gmail answered with no message' }
+    ? { kind: 'failed', reason: 'Gmail answered with no message', retryAfterMs: null }
     : { kind: 'message', message };
 }

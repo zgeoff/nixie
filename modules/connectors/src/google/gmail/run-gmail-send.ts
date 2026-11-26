@@ -69,10 +69,15 @@ export async function runGmailSend(
 
   const threadID = readField(sent.body, 'threadId') ?? id;
 
-  // the mail is out, so a rule that cannot be written leaves the send done, with no rule
+  // The mail is out. A rule that cannot be written leaves the outcome open, and the check of the
+  // send finds the mail and writes the rule again.
   const replyRule = await writeGmailReplyRule(deps, context, { attempt, threadID }).catch(
-    () => null,
+    () => false as const,
   );
+
+  if (replyRule === false) {
+    return { kind: 'ambiguous', reason: 'Gmail took the mail, but its reply rule was not written' };
+  }
 
   return {
     kind: 'success',

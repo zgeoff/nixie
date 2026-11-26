@@ -179,13 +179,22 @@ that holds `gmail.modify` and is not waiting for a new consent, one at a time, e
 - A poll is one `deliver` call, with its arrivals and the cursor of every connection. The cursor
   moves only when the call commits. Because each poll writes the poll time into the cursor, each
   poll leaves a `trigger.delivered` record, even with no mail.
-- When Google answers 404 for the stored history ID, the source lists the mail that arrived since 10
-  minutes before the last good poll, and takes a fresh history ID. The dedupe keys drop each mail
-  already recorded.
+- When Google answers 404 for the stored history ID, the source reads the profile's history ID, and
+  only then lists the mail that arrived since 10 minutes before the last good poll. A mail that
+  arrives between the two reads is in the list or after the new cursor. The dedupe keys drop each
+  mail already recorded.
+- A reply rule asks the source to read again the mail since its send, through the shared
+  `GmailRewinds` that the tools and the source hold. The next poll of the connection then lists that
+  mail as a resync does, and clears the request once its delivery commits. A reply that arrived
+  before the rule existed was dropped, and this is how the rule still wakes on it.
 - A failed poll keeps the cursor. The source polls again after 1 minute, doubles the wait after each
   further failure up to 1 hour, and waits for Google's retry time when that is longer. After 3
-  failed polls in a row of any connection it reports `unhealthy`, and it reports `running` once the
-  last poll of every connection succeeded.
+  failed polls in a row of any polled connection it reports `unhealthy`, and it reports `running`
+  once the last poll of every polled connection succeeded. A connection that needs a new consent is
+  skipped and counts for neither. The loop never sleeps past `gmail.poll_interval`, so a connection
+  that joins the list gets its first poll within an interval while another backs off.
+- A stop aborts each request in flight through the connection's context, so a shutdown never waits
+  on Gmail, and an aborted poll counts as no failure.
 - A mail's arrival ID is the connection's short ID, a dot and Google's message ID, as in the tools.
   Its mailbox is `gmail:<connection ID>`, so a rule on one connection never matches another's mail.
 - At its next delivery, the source drops the cursor entry of each connection that is no longer live.
@@ -199,21 +208,30 @@ and `window` as [the mailbox's wake tools](../core/mailbox.md#wake-rules), with 
 - `gmail.wake_set` declares the effect `schedule`, which no starter rule allows, so a call asks the
   user unless a rule covers it. It runs direct, as an approved call, because `schedule` alone does
   not queue. The rule starts when the call runs, and the call fails with `TASK_ENDED` when the
-  target task has ended by then. It answers `BAD_DURATION` for a duration outside the range.
+  target task has ended by then. It answers `BAD_DURATION` for a duration under a minute, and sets
+  no upper limit. It answers `NOT_POLLED` for a connection that the poll does not read, which holds
+  no `gmail.modify` or needs a new consent, because a rule there would never fire.
+- A rule write checks in its own write transaction that the connection is still live, so a call that
+  read the connection before a forget refuses after it, and no rule outlives the forget.
 - `gmail.wake_list` lists every live rule of the connection, and `gmail.wake_cancel` answers
   `UNKNOWN_RULE` for a rule of another mailbox. Neither asks.
 - `gmail.send` and `gmail.reply` take `replyWake`, as `mail.send` does: a duration, or `off`. When
   the send is done, nixie sets a rule on the sent mail's Gmail thread that wakes the caller that
   queued the send, from the start of the send, for `replyWake` (default `wake_rules.reply_expiry`).
   A send that `gmail.find_sent` later finds gets the same rule. The result holds the rule's short ID
-  as `replyRule`, or null. The send's card shows the expiry.
+  as `replyRule`, or null. The send's card shows the expiry. A send whose rule cannot be written
+  answers `ambiguous`, so the check finds the mail and writes the rule again, and a check whose rule
+  write fails answers `inconclusive`.
 
 ### Forgetting
 
 Forgetting a connection calls the trigger module's `eraseGmailMailbox` twice, once when the
 connection is hidden and once when its indexes clean. It ends the connection's rules as
 `connection_forgotten`, drops the matches they held, and destroys the sender and subject of every
-arrival and wake of that mailbox. A wake keeps its record, which renders each mail as forgotten.
+arrival and wake of that mailbox. A wake keeps its record, which renders each mail as forgotten. The
+forget also captures the wakes that show the connection's mail. It cleans the sessions on each
+wake's thread, as a forgotten record does, and removes every logged request on those threads, so no
+sender or subject outlives the forget in a session or in a turn input.
 
 ## Testing
 

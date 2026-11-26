@@ -12,16 +12,15 @@ const listSchema = z.object({
   nextPageToken: z.string().optional(),
 });
 
-const lookbackMs = 10 * 60_000;
-
-// The IDs of the mail that Gmail holds from 10 minutes before the last good poll, outside Sent and
-// Drafts, over every page. A resync reads these when Gmail no longer keeps the history.
+// The IDs of the mail that Gmail holds from a time on, outside Sent and Drafts, over every page. A
+// resync reads these when Gmail no longer keeps the history, or when a reply rule asks for the mail
+// since its send.
 export async function readGmailRecentIDs(
   hosts: GoogleHosts,
   context: ConnectorContext,
-  polledAtMs: number,
+  sinceMs: number,
 ): Promise<string[]> {
-  const after = Math.floor((polledAtMs - lookbackMs) / 1000);
+  const after = Math.floor(sinceMs / 1000);
   const ids: string[] = [];
   let pageToken: string | null = null;
 

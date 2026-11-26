@@ -1,10 +1,8 @@
-import type { LogTables } from '@heynixie/log';
 import { removeRecordKey, withWriteTransaction } from '@heynixie/log';
-import { triggerMailWokeCodec } from '@heynixie/tasks';
-import { sql } from 'kysely';
 import type { TriggersTables } from '../types';
 import { buildMailboxKey } from './build-mailbox-key';
 import { endWakeRuleInTransaction } from './end-wake-rule-in-transaction';
+import { readGmailWakeRecords } from './read-gmail-wake-records';
 import { releaseHeldInTransaction } from './release-held-in-transaction';
 import { removeSpentArrivalKeys } from './remove-spent-arrival-keys';
 import type { WakeRuleContext } from './set-wake-rule-in-transaction';
@@ -35,18 +33,11 @@ export async function eraseGmailMailbox(
 
   await removeSpentArrivalKeys(context);
 
-  const wakes = await context.log.writer.db
-    .$extendTables<LogTables>()
-    .selectFrom('records')
-    .select('key_id')
-    .where('kind', '=', triggerMailWokeCodec.kind)
-    .where(sql`json_extract(payload, '$.mailbox')`, '=', mailbox)
-    .where('key_id', 'is not', null)
-    .execute();
+  const wakes = await readGmailWakeRecords(context.log.writer.db, connectionID);
 
   for (const wake of wakes) {
-    if (wake.key_id !== null) {
-      await removeRecordKey(context.log, wake.key_id);
+    if (wake.keyID !== null) {
+      await removeRecordKey(context.log, wake.keyID);
     }
   }
 }

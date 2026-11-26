@@ -88,9 +88,8 @@ test('it wakes the conversation with the mail that a rule matches', async () => 
 
   expect(woke?.payload).toMatchObject({
     taskID: 'conversation',
-    mailbox: 'mail',
     rules: [{ ruleID: rule.ruleID, shortID: rule.shortID }],
-    mails: [{ messageID: 'mz4k8q2w7p', threadID: 'th6p2k9w4x' }],
+    mails: [{ mailbox: 'mail', messageID: 'mz4k8q2w7p', threadID: 'th6p2k9w4x' }],
   });
 
   expect(woke?.erasable).toMatchObject({
@@ -322,9 +321,8 @@ test('it wakes on a Gmail arrival through the rule of that connection only', asy
   expect(result).toStrictEqual({ delivered: 1 });
 
   expect(woke?.payload).toMatchObject({
-    mailbox: 'gmail:conn-1',
     rules: [{ ruleID: own.ruleID }],
-    mails: [{ messageID: 'k3x9m2p7qa.m1' }],
+    mails: [{ mailbox: 'gmail:conn-1', messageID: 'k3x9m2p7qa.m1' }],
   });
 });
 

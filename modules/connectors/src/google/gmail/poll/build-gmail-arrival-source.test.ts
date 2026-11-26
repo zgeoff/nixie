@@ -8,15 +8,19 @@ import {
   startTestTriggers,
 } from '@heynixie/triggers/test-utils';
 import { waitFor } from '@zgeoff/testing';
+import invariant from 'tiny-invariant';
 import { startFakeGmailSite } from '../../../test-utils/fake-gmail/start-fake-gmail-site';
-import type { GmailConnection } from './build-gmail-arrival-source';
+import { startGmailTools } from '../../../test-utils/start-gmail-tools';
 import { buildGmailArrivalSource } from './build-gmail-arrival-source';
+import { createGmailRewinds } from './gmail-rewinds';
+import type { GmailConnection } from './types';
 
 async function setupTest() {
   const triggers = await startTestTriggers();
   const site = await startFakeGmailSite();
 
   const pollIntervalMs = 120_000;
+  const rewinds = createGmailRewinds();
 
   await buildTaskSeeder({ context: triggers.context }).conversationStep();
 
@@ -32,6 +36,7 @@ async function setupTest() {
       hosts: site.hosts,
       logEvent: () => {},
       pollIntervalMs,
+      rewinds,
       listConnections: () => Promise.resolve(state.connections),
       readContext: (id) => Promise.resolve(readContext(id)),
     });
@@ -56,6 +61,8 @@ async function setupTest() {
     const sources = await startTriggerSources([source], triggers.core);
 
     onTestFinished(() => sources.stop());
+
+    return sources;
   };
 
   return {
@@ -64,6 +71,7 @@ async function setupTest() {
     state,
     connectionID,
     pollIntervalMs,
+    rewinds,
     readCursor,
     readKinds,
     startSources,
@@ -136,8 +144,13 @@ test('it wakes the conversation with a new mail that a rule matches, as the mode
   const [woke] = await ctx.readKinds('trigger.mail_woke');
 
   expect(woke?.payload).toMatchObject({
-    mailbox: `gmail:${ctx.connectionID}`,
-    mails: [{ messageID: 'k3x9m2p7qa.m0001', threadID: 't0001' }],
+    mails: [
+      {
+        mailbox: `gmail:${ctx.connectionID}`,
+        messageID: 'k3x9m2p7qa.m0001',
+        threadID: 't0001',
+      },
+    ],
   });
 
   expect(woke?.erasable).toMatchObject({
@@ -168,10 +181,18 @@ test('it keeps nothing of a mail that no rule matches', async () => {
   expect([arrivals, wakes, rows.keys, rows.held]).toStrictEqual([[], [], [], []]);
 });
 
-test('it reads a mail that arrived before the rule was set, so a rule set during the poll window misses nothing', async () => {
+test('it matches a mail that arrives while a poll is under way to a rule set after that poll began', async () => {
   const ctx = await setupTest();
 
   await ctx.start();
+
+  const hold = ctx.site.gmail.hold('GET /history');
+
+  ctx.clock.advance(ctx.pollIntervalMs);
+
+  await hold.reached;
+
+  await ctx.addRule();
 
   ctx.clock.advance(1000);
 
@@ -181,12 +202,13 @@ test('it reads a mail that arrived before the rule was set, so a rule set during
     sentAtMs: ctx.clock.now(),
   });
 
-  await ctx.addRule();
-  await ctx.pollAgain(ctx.pollIntervalMs);
+  hold.release();
 
-  const wakes = await ctx.readKinds('trigger.mail_woke');
+  await waitFor(async () => {
+    const wakes = await ctx.readKinds('trigger.mail_woke');
 
-  expect(wakes).toHaveLength(1);
+    expect(wakes).toHaveLength(1);
+  });
 });
 
 test.each([['SENT'], ['DRAFT'], ['SPAM'], ['TRASH']])(
@@ -303,23 +325,42 @@ test('it keeps the cursor of a failed poll and polls again after a minute, then 
   expect(after).toStrictEqual(cursor);
 });
 
-test('it waits for the retry time that Google gives when that is longer than the backoff', async () => {
-  const ctx = await setupTest();
+test.each([['GET /history'], ['GET /messages/m0001']])(
+  'it waits for the retry time that Gmail gives to a %s, when that is longer than the backoff',
+  async (line) => {
+    const ctx = await setupTest();
 
-  await ctx.start();
+    await ctx.start();
 
-  const before = ctx.clock.delays.length;
+    ctx.clock.advance(1000);
 
-  ctx.site.gmail.failures.push({
-    line: 'GET /history',
-    status: 429,
-    body: '{"error":{"errors":[{"reason":"rateLimitExceeded"}]}}',
-  });
+    ctx.site.gmail.seed({
+      id: 'm0001',
+      from: 'a@example.org',
+      subject: 'Hi',
+      sentAtMs: ctx.clock.now(),
+    });
 
-  await ctx.pollAgain(ctx.pollIntervalMs);
+    ctx.site.gmail.failures.push({
+      line,
+      status: 429,
+      body: '{"error":{"errors":[{"reason":"rateLimitExceeded"}]}}',
+      headers: { 'retry-after': '600' },
+    });
 
-  expect(ctx.clock.delays.slice(before)).toStrictEqual([60_000]);
-});
+    await ctx.pollAgain(ctx.pollIntervalMs);
+
+    const failed = ctx.site.gmail.requests.length;
+
+    await ctx.pollAgain(4 * ctx.pollIntervalMs);
+
+    const waiting = ctx.site.gmail.requests.length;
+
+    await ctx.pollAgain(ctx.pollIntervalMs);
+
+    expect([waiting - failed, ctx.site.gmail.requests.length > waiting]).toStrictEqual([0, true]);
+  },
+);
 
 test('it reports unhealthy after 3 failed polls in a row and running once a poll succeeds', async () => {
   const ctx = await setupTest();
@@ -399,4 +440,229 @@ test('it makes read calls only', async () => {
   const writes = ctx.site.gmail.requests.filter((line) => !line.startsWith('GET '));
 
   expect(writes).toStrictEqual([]);
+});
+
+test('it delivers a mail that arrives between the profile read and the list of a resync', async () => {
+  const ctx = await setupTest();
+
+  await ctx.start();
+  await ctx.addRule({ windowMs: 60_000 });
+
+  ctx.clock.advance(1000);
+  ctx.site.gmail.expireHistory();
+
+  const hold = ctx.site.gmail.hold('GET /profile');
+
+  ctx.clock.advance(ctx.pollIntervalMs);
+
+  await hold.reached;
+
+  ctx.site.gmail.seed({
+    id: 'm-during',
+    from: 'a@example.org',
+    subject: 'During the resync',
+    sentAtMs: ctx.clock.now(),
+  });
+
+  hold.release();
+
+  await waitFor(async () => {
+    const arrivals = await ctx.readKinds('trigger.mail_arrived');
+
+    expect(arrivals.map((record) => record.payload['messageID'])).toStrictEqual([
+      'k3x9m2p7qa.m-during',
+    ]);
+  });
+});
+
+test('it reads every page of history.list', async () => {
+  const ctx = await setupTest();
+
+  await ctx.start();
+  await ctx.addRule({ windowMs: 60_000 });
+
+  ctx.clock.advance(1000);
+
+  ctx.site.gmail.maxPage = 2;
+
+  for (const id of ['m0001', 'm0002', 'm0003']) {
+    ctx.site.gmail.seed({ id, from: 'a@example.org', subject: id, sentAtMs: ctx.clock.now() });
+  }
+
+  await ctx.pollAgain(ctx.pollIntervalMs);
+
+  const arrivals = await ctx.readKinds('trigger.mail_arrived');
+
+  const pages = ctx.site.gmail.requests.filter((line) => line.startsWith('GET /history?'));
+
+  expect([arrivals, pages.some((line) => line.includes('pageToken='))]).toStrictEqual([
+    expect.toBeArrayOfSize(3),
+    true,
+  ]);
+});
+
+test('it reads every page of the list of a resync', async () => {
+  const ctx = await setupTest();
+
+  await ctx.start();
+  await ctx.addRule({ windowMs: 60_000 });
+
+  ctx.clock.advance(1000);
+
+  ctx.site.gmail.maxPage = 2;
+
+  for (const id of ['m0001', 'm0002', 'm0003']) {
+    ctx.site.gmail.seed({ id, from: 'a@example.org', subject: id, sentAtMs: ctx.clock.now() });
+  }
+
+  ctx.site.gmail.expireHistory();
+
+  await ctx.pollAgain(ctx.pollIntervalMs);
+
+  const arrivals = await ctx.readKinds('trigger.mail_arrived');
+
+  const pages = ctx.site.gmail.requests.filter((line) => line.startsWith('GET /messages?'));
+
+  expect([arrivals, pages.some((line) => line.includes('pageToken='))]).toStrictEqual([
+    expect.toBeArrayOfSize(3),
+    true,
+  ]);
+});
+
+test('it polls a connection that joins the list at the next interval, while another backs off for an hour', async () => {
+  const ctx = await setupTest();
+
+  await ctx.start();
+
+  ctx.site.gmail.failures.push({
+    line: 'GET /history',
+    status: 429,
+    body: '{"error":{"errors":[{"reason":"rateLimitExceeded"}]}}',
+    headers: { 'retry-after': '3600' },
+  });
+
+  await ctx.pollAgain(ctx.pollIntervalMs);
+
+  ctx.state.connections.push({
+    connectionID: 'conn-two',
+    connection: 'zz9y8x7w6v',
+    status: 'active',
+  });
+
+  ctx.clock.advance(ctx.pollIntervalMs);
+
+  await waitFor(async () => {
+    const cursor = await ctx.readCursor();
+
+    expect(Object.keys(cursor)).toContain('conn-two');
+  });
+});
+
+test('it leaves a connection that needs consent out of the health of the source', async () => {
+  const ctx = await setupTest();
+
+  await ctx.start();
+
+  ctx.site.gmail.failures.push(
+    { line: 'GET /history', status: 503 },
+    { line: 'GET /history', status: 503 },
+    { line: 'GET /history', status: 503 },
+  );
+
+  await ctx.pollAgain(ctx.pollIntervalMs);
+  await ctx.pollAgain(60_000);
+  await ctx.pollAgain(120_000);
+
+  ctx.state.connections = [
+    { connectionID: ctx.connectionID, connection: 'k3x9m2p7qa', status: 'needs_consent' },
+    { connectionID: 'conn-two', connection: 'zz9y8x7w6v', status: 'active' },
+  ];
+
+  await ctx.pollAgain(ctx.pollIntervalMs);
+
+  const healths = ctx.logged
+    .filter((entry) => entry.event === 'trigger_source.health')
+    .map((entry) => entry.fields);
+
+  expect(healths.at(-1)).toMatchObject({ source: 'gmail', health: 'running' });
+});
+
+test('it stops at once while a request waits on Gmail', async () => {
+  const ctx = await setupTest();
+  const sources = await ctx.startSources(ctx.buildSource(() => ctx.site.context));
+
+  await waitFor(async () => {
+    const cursor = await ctx.readCursor();
+
+    expect(cursor).not.toBeNull();
+  });
+
+  const hold = ctx.site.gmail.hold('GET /history');
+
+  onTestFinished(() => hold.release());
+
+  ctx.clock.advance(ctx.pollIntervalMs);
+
+  await hold.reached;
+
+  await expect(sources.stop()).toResolve();
+});
+
+test('it wakes the sender on a reply that arrived before the check of an unknown send wrote the reply rule', async () => {
+  const ctx = await setupTest();
+  const tools = await startGmailTools({ triggers: ctx, site: ctx.site, rewinds: ctx.rewinds });
+
+  await ctx.start();
+
+  ctx.clock.advance(1000);
+  ctx.site.gmail.sendOutcomes.push('error_after_send');
+
+  const attempt = {
+    actionID: '0b9d3c4e-7a21-4f0e-8c55-1e6f2a9d4c03',
+    tool: 'gmail.send',
+    arguments: {
+      connection: ctx.site.context.connection,
+      to: ['sam@example.org'],
+      subject: 'Q3 numbers',
+      text: 'Hi Sam.',
+    },
+    attempt: 1,
+    idempotencyKey: 'key-1',
+    destinations: ['sam@example.org'],
+    attemptStartedAt: ctx.clock.now(),
+    actionHash: 'hash-1',
+    deadlineAt: null,
+  };
+
+  const queued = tools.findAction('gmail.send').queued;
+
+  invariant(queued?.check, 'gmail.send runs queued, with a check');
+
+  await queued.run(attempt);
+
+  const [sent] = ctx.site.gmail.sent;
+
+  ctx.clock.advance(1000);
+
+  ctx.site.gmail.seed({
+    id: 'm-reply',
+    threadID: sent?.threadID ?? '',
+    from: 'Sam <sam@example.org>',
+    subject: 'Re: Q3 numbers',
+    sentAtMs: ctx.clock.now(),
+  });
+
+  await ctx.pollAgain(ctx.pollIntervalMs);
+
+  const beforeCheck = await ctx.readKinds('trigger.mail_arrived');
+
+  await queued.check(attempt);
+  await ctx.pollAgain(ctx.pollIntervalMs);
+
+  const wakes = await ctx.readKinds('trigger.mail_woke');
+
+  expect([beforeCheck, wakes]).toStrictEqual([
+    [],
+    [expect.objectContaining({ payload: expect.objectContaining({ taskID: 'conversation' }) })],
+  ]);
 });

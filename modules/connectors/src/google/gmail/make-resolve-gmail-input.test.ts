@@ -19,6 +19,8 @@ function setupTest(live: readonly string[]) {
           .filter((connection) => wanted === undefined || wanted === connection)
           .map((connection) => buildContext(connection)),
       ),
+    readPolledConnections: () => Promise.resolve(live),
+    probeLive: () => Promise.resolve(true),
   });
 
   return {

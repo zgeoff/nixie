@@ -21,7 +21,10 @@ import { startConsent } from './consent/start-consent';
 import { sweepConsents } from './consent/sweep-consents';
 import { buildConnectionErasable } from './erasure/build-connection-erasable';
 import { connectionErasableDescriptor } from './erasure/connection-erasable-descriptor';
-import type { ConnectionErasureRequest } from './erasure/start-connection-erasure';
+import type {
+  ConnectionErasureRequest,
+  ReadConnectionWakes,
+} from './erasure/start-connection-erasure';
 import { makeSerialLock } from './make-serial-lock';
 import type { ProviderEndpoints } from './provider/google-endpoints';
 import { buildProviderEndpoints, googleEndpoints } from './provider/google-endpoints';
@@ -62,6 +65,10 @@ export interface ConnectionsOptions {
   // wakes. A forget calls it twice, once right after it begins and once after the keys go, so it
   // must be safe to repeat.
   readonly eraseDependents?: (connectionID: string) => Promise<void>;
+
+  // The wakes that show mail of a connection, read in the transaction that begins its forget, so
+  // the forget cleans the sessions and the turn inputs that hold their text.
+  readonly readWakes?: ReadConnectionWakes;
 
   // how long a consent request lives, in ms; 10 minutes by default
   readonly consentLifetimeMs?: number;
@@ -164,6 +171,7 @@ export function startConnections(options: ConnectionsOptions): Connections {
       attempted: new Set(),
       now: options.now,
       eraseDependents: options.eraseDependents ?? (() => Promise.resolve()),
+      readWakes: options.readWakes ?? (() => Promise.resolve([])),
     }),
   });
 

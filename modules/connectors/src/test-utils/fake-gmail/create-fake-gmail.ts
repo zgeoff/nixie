@@ -1,5 +1,7 @@
 import { z } from 'zod';
 import { answerFakeHistory } from './answer-fake-history';
+import type { FakeHold } from './build-fake-hold';
+import { buildFakeHold } from './build-fake-hold';
 import { buildSeededMail } from './build-seeded-mail';
 import type { FakePart } from './parse-fake-raw';
 import { parseFakeRaw } from './parse-fake-raw';
@@ -45,6 +47,7 @@ export interface FakeFailure {
   readonly line: string;
   readonly status: number;
   readonly body?: string;
+  readonly headers?: Readonly<Record<string, string>>;
 }
 
 export interface FakeGmail {
@@ -61,6 +64,15 @@ export interface FakeGmail {
 
   // each message the account added, as history.list reports it; the ID is the history ID
   readonly history: { readonly id: number; readonly messageID: string }[];
+
+  // the most items that a page of a list or of history.list holds; a request may ask for fewer
+  maxPage: number;
+
+  // the requests that wait for a release
+  readonly holds: FakeHold[];
+
+  // stops the next request whose line starts with `line` before it answers
+  readonly hold: (line: string) => FakeHold;
 
   // makes every history ID so far unreadable, so history.list answers 404 as Gmail does
   readonly expireHistory: () => void;
@@ -90,6 +102,15 @@ export function createFakeGmail(account = 'me@example.test'): FakeGmail {
     sendOutcomes: [],
     failures: [],
     history: [],
+    maxPage: Number.POSITIVE_INFINITY,
+    holds: [],
+    hold: (line) => {
+      const hold = buildFakeHold(line);
+
+      gmail.holds.push(hold);
+
+      return hold;
+    },
     expireHistory: () => {
       state.historyFloor = state.historyCounter + 1;
     },
@@ -102,11 +123,11 @@ export function createFakeGmail(account = 'me@example.test'): FakeGmail {
 
       return { id: stored.id, threadID: stored.threadID };
     },
-    serve: (request) => {
+    serve: async (request) => {
       const url = new URL(request.url);
 
       if (!url.pathname.startsWith(prefix)) {
-        return Promise.resolve(null);
+        return null;
       }
 
       const path = url.pathname.slice(prefix.length);
@@ -114,16 +135,23 @@ export function createFakeGmail(account = 'me@example.test'): FakeGmail {
 
       gmail.requests.push(line);
 
+      const held = gmail.holds.find((entry) => line.startsWith(entry.line));
+
+      if (held !== undefined) {
+        gmail.holds.splice(gmail.holds.indexOf(held), 1);
+
+        await held.arrive();
+      }
+
       const failure = gmail.failures.find((entry) => line.startsWith(entry.line));
 
       if (failure !== undefined) {
         gmail.failures.splice(gmail.failures.indexOf(failure), 1);
 
-        return Promise.resolve(
-          new Response(failure.body ?? '{"error":{"errors":[{"reason":"backendError"}]}}', {
-            status: failure.status,
-          }),
-        );
+        return new Response(failure.body ?? '{"error":{"errors":[{"reason":"backendError"}]}}', {
+          status: failure.status,
+          ...(failure.headers === undefined ? {} : { headers: failure.headers }),
+        });
       }
 
       return answer(gmail, state, { request, url, path });
@@ -169,7 +197,7 @@ async function answer(gmail: FakeGmail, state: Counters, call: Call): Promise<Re
     return answerFakeHistory(
       kind,
       gmail,
-      { counter: state.historyCounter, floor: state.historyFloor },
+      { counter: state.historyCounter, floor: state.historyFloor, maxPage: gmail.maxPage },
       url,
     );
   }
@@ -225,7 +253,7 @@ function listMessages(gmail: FakeGmail, url: URL): Response {
   const query = url.searchParams.get('q') ?? '';
   const labelIDs = url.searchParams.getAll('labelIds');
   const includeSpamTrash = url.searchParams.get('includeSpamTrash') === 'true';
-  const limit = Number(url.searchParams.get('maxResults') ?? 100);
+  const limit = Math.min(Number(url.searchParams.get('maxResults') ?? 100), gmail.maxPage);
   const offset = Number(url.searchParams.get('pageToken') ?? 0);
 
   const matching = [...gmail.messages.values()]

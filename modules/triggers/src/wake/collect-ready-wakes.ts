@@ -1,5 +1,4 @@
-import type { Mailbox, WakeRule } from '../types';
-import { buildMailboxKey } from './build-mailbox-key';
+import type { WakeRule } from '../types';
 import { isWakeRuleReady } from './is-wake-rule-ready';
 import type { LiveWakeRule } from './read-live-wake-rules';
 
@@ -12,9 +11,6 @@ export interface HeldMatch {
 export interface ReadyWake {
   readonly targetTaskID: string;
 
-  // the mailbox of every rule of the wake: a wake shows the mail of one mailbox
-  readonly mailbox: Mailbox;
-
   // every rule of the matches, each once
   readonly rules: readonly WakeRule[];
 
@@ -22,8 +18,8 @@ export interface ReadyWake {
   readonly arrived: readonly number[];
 }
 
-// A held match is ready when one of its rules is. A target wakes once for each mailbox, with every
-// ready match of that mailbox, oldest first.
+// A held match is ready when one of its rules is. A target wakes once, with every ready match of
+// its own, oldest first.
 export function collectReadyWakes(
   held: readonly HeldMatch[],
   rules: ReadonlyMap<string, LiveWakeRule>,
@@ -43,27 +39,16 @@ export function collectReadyWakes(
     matches.set(key, { ...match, ruleIDs: [...match.ruleIDs, entry.ruleID] });
   }
 
-  const wakes = new Map<
-    string,
-    { targetTaskID: string; mailbox: Mailbox; arrived: number[]; ruleIDs: Set<string> }
-  >();
+  const wakes = new Map<string, { arrived: number[]; ruleIDs: Set<string> }>();
 
   for (const match of matches.values()) {
     const entries = match.ruleIDs.flatMap((ruleID) => rules.get(ruleID) ?? []);
-    const [first] = entries;
 
-    if (first === undefined || !entries.some((entry) => isWakeRuleReady(entry, nowMs))) {
+    if (!entries.some((entry) => isWakeRuleReady(entry, nowMs))) {
       continue;
     }
 
-    const key = `${match.targetTaskID}\n${buildMailboxKey(first.rule.mailbox)}`;
-
-    const wake = wakes.get(key) ?? {
-      targetTaskID: match.targetTaskID,
-      mailbox: first.rule.mailbox,
-      arrived: [],
-      ruleIDs: new Set<string>(),
-    };
+    const wake = wakes.get(match.targetTaskID) ?? { arrived: [], ruleIDs: new Set<string>() };
 
     wake.arrived.push(match.arrived);
 
@@ -71,12 +56,11 @@ export function collectReadyWakes(
       wake.ruleIDs.add(ruleID);
     }
 
-    wakes.set(key, wake);
+    wakes.set(match.targetTaskID, wake);
   }
 
-  return [...wakes.values()].map((wake) => ({
-    targetTaskID: wake.targetTaskID,
-    mailbox: wake.mailbox,
+  return [...wakes].map(([targetTaskID, wake]) => ({
+    targetTaskID,
     rules: [...wake.ruleIDs].flatMap((ruleID) => rules.get(ruleID)?.rule ?? []),
     arrived: wake.arrived.toSorted((left, right) => left - right),
   }));

@@ -25,11 +25,22 @@ test('#buildStepPolicyFrame names the mail whose arrival woke the step, and mark
     contentSource: 'untrusted',
     payload: triggerMailWokeCodec.encode({
       taskID: 'conversation',
-      mailbox: 'mail',
       rules: [],
       mails: [
-        { arrived: 1, messageID: 'mz4k8q2w7p', threadID: 'th6p2k9w4x', receivedAt: 1000 },
-        { arrived: 2, messageID: 'ma1b2c3d4e', threadID: 'th6p2k9w4x', receivedAt: 1000 },
+        {
+          arrived: 1,
+          mailbox: 'mail',
+          messageID: 'mz4k8q2w7p',
+          threadID: 'th6p2k9w4x',
+          receivedAt: 1000,
+        },
+        {
+          arrived: 2,
+          mailbox: 'mail',
+          messageID: 'ma1b2c3d4e',
+          threadID: 'th6p2k9w4x',
+          receivedAt: 1000,
+        },
       ],
     }),
   });

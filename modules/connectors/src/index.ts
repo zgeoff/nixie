@@ -166,11 +166,10 @@ export type {
 
 export { renderSandboxOwner, startRenderSandbox } from './render/start-render-sandbox';
 export type { GmailWakePort } from './google/gmail/types';
-
-export type {
-  GmailArrivalSourceInput,
-  GmailConnection,
-} from './google/gmail/poll/build-gmail-arrival-source';
-
+export type { GmailArrivalSourceInput, GmailConnection } from './google/gmail/poll/types';
 export { buildGmailArrivalSource } from './google/gmail/poll/build-gmail-arrival-source';
+export type { GmailRewinds } from './google/gmail/poll/gmail-rewinds';
+export { createGmailRewinds } from './google/gmail/poll/gmail-rewinds';
+export { collectGmailConnections } from './google/gmail/poll/collect-gmail-connections';
+export { isGmailPolled } from './google/gmail/poll/is-gmail-polled';
 export { gmailConfigSchema } from './google/gmail/gmail-config-schema';

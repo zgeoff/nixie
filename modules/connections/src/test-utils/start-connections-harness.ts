@@ -10,6 +10,7 @@ import type { ErasureRunnerControl, KeyStoreTables, Log, RecordKind } from '@hey
 import { makeErasureRunner, readRecords } from '@heynixie/log';
 import { createFakeClock } from '@zgeoff/testing/clock';
 import type { FakeClock } from '@zgeoff/testing/clock';
+import type { ReadConnectionWakes } from '../erasure/start-connection-erasure';
 import type { Connections } from '../start-connections';
 import { startConnections } from '../start-connections';
 import type { DatabaseTestStore } from '../test-build/create-database-test-store';
@@ -49,6 +50,9 @@ export interface ConnectionsHarnessOptions {
 
   // what a forget erases besides the connection's keys
   readonly eraseDependents?: (connectionID: string) => Promise<void>;
+
+  // the wakes that show mail of a connection
+  readonly readWakes?: ReadConnectionWakes;
 }
 
 export interface ConnectionsHarness {
@@ -158,6 +162,7 @@ export async function startConnectionsHarness(
     forgetWaitMs: options.forgetWaitMs ?? 200,
     forgetPollMs: 20,
     ...(options.eraseDependents === undefined ? {} : { eraseDependents: options.eraseDependents }),
+    ...(options.readWakes === undefined ? {} : { readWakes: options.readWakes }),
   });
 
   return {

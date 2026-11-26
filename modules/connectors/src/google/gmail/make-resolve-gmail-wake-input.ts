@@ -2,12 +2,13 @@ import type { JSONObject } from '@heynixie/log';
 import { conversationTaskID } from '@heynixie/tasks';
 import type { InputResolution, ToolResolveContext } from '@heynixie/tools';
 import { pickWakeTiming, resolveWakeTarget } from '@heynixie/triggers';
+import { findTextField } from './find-text-field';
 import { makeResolveGmailInput } from './make-resolve-gmail-input';
 import { parseItemID } from './parse-item-id';
 import type { GmailDeps } from './types';
 
-// Resolves a gmail.wake_set call on the host before anything reads it: the connection, the target
-// that has not ended, the task that called, and the durations. The input it returns names all of
+// Resolves a gmail.wake_set call on the host before anything reads it: the connection, which the poll
+// must read, the target that has not ended, the task that called, and the durations. The input it returns names all of
 // them, so the decision and the approved call carry them.
 export function makeResolveGmailWakeInput(
   deps: GmailDeps,
@@ -35,9 +36,20 @@ export function makeResolveGmailWakeInput(
       return resolved;
     }
 
+    const polled = await deps.access.readPolledConnections();
+
+    if (!polled.includes(String(resolved.input['connection']))) {
+      return {
+        status: 'error',
+        message:
+          'NOT_POLLED: this account is not granted Gmail access, or needs a new consent, so no ' +
+          'rule on it could fire. Ask the owner to reconnect it.',
+      };
+    }
+
     const timing = pickWakeTiming({
-      expires: readText(resolved.input['expires']),
-      window: readText(resolved.input['window']),
+      expires: findTextField(resolved.input['expires']),
+      window: findTextField(resolved.input['window']),
       nowMs: deps.clock.now(),
       defaultWindowMs: deps.wake.defaultWindowMs,
     });
@@ -46,14 +58,14 @@ export function makeResolveGmailWakeInput(
       return {
         status: 'error',
         message:
-          'BAD_DURATION: expires and window take a duration such as 1m, 30m or 7d, from 1m to ' +
-          '3650d, and the window is at most the expiry',
+          'BAD_DURATION: expires and window take a duration such as 1m, 30m or 7d, from 1m, and ' +
+          'the window is at most the expiry',
       };
     }
 
     const caller = context.run.thread === '' ? conversationTaskID : context.run.thread;
 
-    const target = await resolveWakeTarget(deps.log, caller, readText(resolved.input['wake']));
+    const target = await resolveWakeTarget(deps.log, caller, findTextField(resolved.input['wake']));
 
     if (target.status === 'refused') {
       return { status: 'error', message: target.message };
@@ -69,8 +81,4 @@ export function makeResolveGmailWakeInput(
       },
     };
   };
-}
-
-function readText(value: unknown): string | undefined {
-  return typeof value === 'string' ? value : undefined;
 }

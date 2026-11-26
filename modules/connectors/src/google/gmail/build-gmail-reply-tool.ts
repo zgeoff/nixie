@@ -1,7 +1,7 @@
 import type { PrepareRefusal, Prepared, ToolDefinition } from '@heynixie/tools';
 import { z } from 'zod';
 import { decodeHeaderWords } from './decode-header-words';
-import { describeReplyWake } from './describe-reply-wake';
+import { formatReplyWake } from './format-reply-wake';
 import { buildCardAttachment, formatCardFiles, joinCardList } from './gmail-card';
 import { gmailDeclarations } from './gmail-declarations';
 import { gmailToolNames } from './gmail-tool-names';
@@ -100,7 +100,7 @@ export function buildGmailReplyTool(deps: GmailDeps): ToolDefinition {
             subject: plan.subject,
             inReplyTo: `${plan.sender}, ${formatDay(original.internalDateMs)}, "${decodeHeaderWords(original.payload.headers.get('subject') ?? '')}"`,
             files: formatCardFiles(files.files),
-            replyWake: describeReplyWake(parsed.data.replyWake, deps.wake.replyExpiryMs),
+            replyWake: formatReplyWake(parsed.data.replyWake, deps.wake.replyExpiryMs),
           }),
         ],
       };

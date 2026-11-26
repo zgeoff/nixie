@@ -41,10 +41,16 @@ export async function checkGmailSent(
   if (found.kind === 'found') {
     const threadID = found.message.threadID;
 
-    // a send of unknown outcome that the check finds gets its reply rule now
+    // A send of unknown outcome that the check finds gets its reply rule now, and the poll reads the
+    // mail since the send again. A rule that cannot be written leaves the check inconclusive, so the
+    // owner is asked rather than told the send had no rule.
     const replyRule = await writeGmailReplyRule(deps, context, { attempt, threadID }).catch(
-      () => null,
+      () => false as const,
     );
+
+    if (replyRule === false) {
+      return { kind: 'inconclusive' };
+    }
 
     return {
       kind: 'found',

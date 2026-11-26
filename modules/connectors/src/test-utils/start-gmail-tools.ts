@@ -2,7 +2,10 @@ import type { ToolContext } from '@heynixie/tools';
 import type { TestTriggers } from '@heynixie/triggers/test-utils';
 import type { FetchReply } from '@heynixie/wire';
 import { createFakeClock } from '@zgeoff/testing/clock';
+import invariant from 'tiny-invariant';
 import { buildGmailActions } from '../google/gmail/build-gmail-actions';
+import type { GmailRewinds } from '../google/gmail/poll/gmail-rewinds';
+import { createGmailRewinds } from '../google/gmail/poll/gmail-rewinds';
 import type { GmailDeps } from '../google/gmail/types';
 import type { ConnectorAction } from '../types';
 import type { FakeGmailSite } from './fake-gmail/start-fake-gmail-site';
@@ -17,6 +20,10 @@ export interface GmailToolsOptions {
   // the log, clock and trigger core of a test that sets wake rules; the tools use them in place of
   // a log of their own
   readonly triggers?: TestTriggers;
+
+  // the fake account to reach, and where reply rules ask for a read again, when a test also polls it
+  readonly site?: FakeGmailSite;
+  readonly rewinds?: GmailRewinds;
 }
 
 export interface GmailTools {
@@ -34,11 +41,15 @@ export interface GmailTools {
 
 // The Gmail tools over a fake Gmail account on a loopback port, with a real log for the link IDs.
 export async function startGmailTools(options: GmailToolsOptions = {}): Promise<GmailTools> {
-  const site = await startFakeGmailSite();
+  const started = options.site === undefined ? await startFakeGmailSite() : null;
+  const site = options.site ?? started;
+
+  invariant(site, 'the tools reach a fake account');
 
   const triggers = options.triggers;
   const log = triggers === undefined ? await startTestLog() : triggers.context.log;
   const clock = triggers?.clock ?? createFakeClock({ startMs: Date.parse('2026-11-20T09:00:00Z') });
+  const rewinds = options.rewinds ?? createGmailRewinds();
 
   const deps: GmailDeps = {
     hosts: site.hosts,
@@ -49,6 +60,7 @@ export async function startGmailTools(options: GmailToolsOptions = {}): Promise<
       context: () => ({ log, clock, definitions: () => ({ snapshotHash: 'sha256:test' }) }),
       defaultWindowMs: 15 * 60_000,
       replyExpiryMs: 7 * 86_400_000,
+      rewinds,
     },
     readHTML: options.readHTML ?? ((html) => Promise.resolve(buildTextReply(html))),
     textBytes: options.textBytes ?? 20_000,

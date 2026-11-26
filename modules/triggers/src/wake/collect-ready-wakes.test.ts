@@ -80,7 +80,7 @@ test('#collectReadyWakes lets a rule that is not ready join the wake of a ready 
   expect(wakes.map((wake) => wake.rules.map((rule) => rule.ruleID))).toStrictEqual([['a', 'b']]);
 });
 
-test('#collectReadyWakes wakes a target once for each mailbox that holds a ready match', () => {
+test('#collectReadyWakes wakes a target once with the ready matches of two mailboxes', () => {
   const ctx = setupTest();
 
   const rules = new Map([
@@ -97,8 +97,10 @@ test('#collectReadyWakes wakes a target once for each mailbox that holds a ready
     60_000,
   );
 
-  expect(wakes.map((wake) => [wake.mailbox, wake.arrived])).toStrictEqual([
-    [{ kind: 'mail' }, [4]],
-    [{ kind: 'gmail', connectionID: 'c1' }, [5]],
+  expect(wakes.map((wake) => [wake.rules.map((rule) => rule.ruleID), wake.arrived])).toStrictEqual([
+    [
+      ['a', 'b'],
+      [4, 5],
+    ],
   ]);
 });

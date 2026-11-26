@@ -1,24 +1,15 @@
-import type { JSONObject } from '@heynixie/log';
-import { withWriteTransaction } from '@heynixie/log';
-import type { ToolDefinition, ToolOutcome } from '@heynixie/tools';
-import {
-  formatDurationText,
-  pickWakeTiming,
-  resolveWakeTarget,
-  setWakeRuleInTransaction,
-} from '@heynixie/triggers';
+import type { ToolDefinition } from '@heynixie/tools';
 import { gmailDeclarations } from './gmail-declarations';
 import { gmailToolNames } from './gmail-tool-names';
 import { makeResolveGmailWakeInput } from './make-resolve-gmail-wake-input';
-import { readCallContext } from './read-call-context';
+import { runGmailWakeSet } from './run-gmail-wake-set';
 import type { GmailDeps } from './types';
-import { wakeSetArgumentsSchema } from './wake-set-arguments-schema';
 
 const durationPattern = '^[1-9][0-9]{0,6}(ms|s|m|h|d)$';
 const addressPattern = String.raw`^(@[^@\s]+\.[^@\s]+|[^@\s]+@[^@\s]+\.[^@\s]+)$`;
 
-// gmail.wake_set: a wake rule on a connected Gmail account, as a queued call that asks by default.
-// Gmail stays at Google, so a rule keeps nothing of a mail that it does not match.
+// gmail.wake_set: a wake rule on a connected Gmail account, as a call under policy that asks by
+// default. Gmail stays at Google, so a rule keeps nothing of a mail that it does not match.
 export function buildGmailWakeSetTool(deps: GmailDeps): ToolDefinition {
   return {
     name: gmailToolNames.wakeSet,
@@ -66,75 +57,6 @@ export function buildGmailWakeSetTool(deps: GmailDeps): ToolDefinition {
     declaration: gmailDeclarations.wakeSet,
     execution: 'direct',
     resolveInput: makeResolveGmailWakeInput(deps),
-    run: (call) => runWakeSet(deps, call.input),
-  };
-}
-
-// Writes the rule when the call runs: at once under an allow rule, or once the owner approved it. The
-// rule starts now and its expiry counts from now. A target task that ended since the call refuses
-// with TASK_ENDED. A rule with the same match and target is replaced in place, so a repeat is safe.
-async function runWakeSet(deps: GmailDeps, input: JSONObject): Promise<ToolOutcome> {
-  const context = await readCallContext(deps.access, input);
-
-  if (context === null) {
-    return { status: 'error', message: 'UNKNOWN_CONNECTION: no live connection has that ID' };
-  }
-
-  const parsed = wakeSetArgumentsSchema.safeParse(input);
-
-  if (!parsed.success) {
-    return { status: 'error', message: 'BAD_RULE: the arguments of the rule are unreadable' };
-  }
-
-  const args = parsed.data;
-  const now = deps.clock.now();
-
-  const timing = pickWakeTiming({
-    expires: args.expires,
-    window: args.window,
-    nowMs: now,
-    defaultWindowMs: deps.wake.defaultWindowMs,
-  });
-
-  if (timing.status === 'bad') {
-    return { status: 'error', message: 'BAD_DURATION: the expiry or the window is out of range' };
-  }
-
-  const target = await resolveWakeTarget(deps.log, args.setBy, args.wake);
-
-  if (target.status === 'refused') {
-    return {
-      status: 'ok',
-      result: { refused: { code: 'TASK_ENDED', message: target.message } },
-      refusalCode: 'TASK_ENDED',
-    };
-  }
-
-  const match = {
-    ...(args.from === undefined ? {} : { from: args.from }),
-    ...(args.subject === undefined ? {} : { subject: args.subject }),
-    ...(args.thread === undefined ? {} : { thread: args.thread }),
-  };
-
-  const rule = await withWriteTransaction(deps.log.writer, (tx) =>
-    setWakeRuleInTransaction(tx, deps.wake.context(), {
-      mailbox: { kind: 'gmail', connectionID: context.connectionID },
-      match,
-      target: target.target,
-      setBy: args.setBy,
-      expiresAt: timing.expiresAt,
-      windowMs: timing.windowMs,
-      origin: 'tool',
-    }),
-  );
-
-  return {
-    status: 'ok',
-    result: {
-      rule: rule.shortID,
-      expiresAt: timing.expiresAt === null ? null : new Date(timing.expiresAt).toISOString(),
-      window: formatDurationText(rule.windowMs),
-      replaced: rule.replaced,
-    },
+    run: (call) => runGmailWakeSet(deps, call.input),
   };
 }

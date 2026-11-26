@@ -202,7 +202,8 @@ drops it when the dedupe key is held. Then it reads the live rules and matches t
    which wakes it. The record names the rules and holds the arriving mail only.
 4. A match that no ready rule takes is held in `wake_held`. The wake flush runs on a short interval
    and wakes the target of each held match whose rule is ready, with every held mail of that target
-   in one record.
+   in one record, whichever mailbox the mail came from. Each mail in the record names its mailbox,
+   so a forget of one Gmail connection finds the wakes that show its mail.
 
 `trigger.mail_woke` renders for the model as the rules that matched, a mail count, and each sender
 and subject as outside content, with the mail's short ID. A mail forgotten since shows as forgotten.

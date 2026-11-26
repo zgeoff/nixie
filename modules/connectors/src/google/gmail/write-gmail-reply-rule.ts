@@ -1,12 +1,12 @@
-import { withWriteTransaction } from '@heynixie/log';
 import { conversationTaskID } from '@heynixie/tasks';
-import { resolveWakeTarget, setWakeRuleInTransaction } from '@heynixie/triggers';
+import { resolveWakeTarget } from '@heynixie/triggers';
 import { z } from 'zod';
 import type { ActionAttempt, ConnectorContext } from '../../types';
 import { gmailToolNames } from './gmail-tool-names';
 import { pickReplyExpiry } from './pick-reply-expiry';
 import { readActionFacts } from './read-action-facts';
 import type { GmailDeps } from './types';
+import { writeGmailWakeRule } from './write-gmail-wake-rule';
 
 interface SentMail {
   readonly attempt: ActionAttempt;
@@ -18,8 +18,8 @@ const argumentsSchema = z.object({ replyWake: z.string().exactOptional() });
 const answeredTools: ReadonlySet<string> = new Set([gmailToolNames.send, gmailToolNames.reply]);
 
 // Registers the reply rule of a sent mail: a rule on its Gmail thread that wakes the sender until
-// `replyWake` from the start of the send. It starts with the send, so a reply that beats this write
-// still matches. A draft, a sent draft, `replyWake: off` and an ended sender register none.
+// `replyWake` from the start of the send, and asks the poll to read the mail since then again.
+// Returns the rule's short ID, or null when the send registers none. A write that fails throws.
 export async function writeGmailReplyRule(
   deps: GmailDeps,
   context: ConnectorContext,
@@ -42,7 +42,7 @@ export async function writeGmailReplyRule(
   const facts = await readActionFacts(deps.log, attempt.actionID);
 
   const senderTaskID = facts?.thread ?? conversationTaskID;
-  const sentAt = facts?.firstAttemptAt ?? deps.clock.now();
+  const sentAt = facts?.firstAttemptAt ?? attempt.attemptStartedAt ?? deps.clock.now();
 
   const target = await resolveWakeTarget(deps.log, senderTaskID, undefined);
 
@@ -50,18 +50,22 @@ export async function writeGmailReplyRule(
     return null;
   }
 
-  const rule = await withWriteTransaction(deps.log.writer, (tx) =>
-    setWakeRuleInTransaction(tx, deps.wake.context(), {
-      mailbox: { kind: 'gmail', connectionID: context.connectionID },
-      match: { thread: sent.threadID },
-      target: target.target,
-      setBy: senderTaskID,
-      expiresAt: sentAt + expiryMs,
-      windowMs: Math.min(deps.wake.defaultWindowMs, expiryMs),
-      origin: 'reply',
-      createdAt: sentAt,
-    }),
-  );
+  const rule = await writeGmailWakeRule(deps, {
+    connectionID: context.connectionID,
+    match: { thread: sent.threadID },
+    target: target.target,
+    setBy: senderTaskID,
+    expiresAt: sentAt + expiryMs,
+    windowMs: Math.min(deps.wake.defaultWindowMs, expiryMs),
+    origin: 'reply',
+    createdAt: sentAt,
+  });
+
+  if (rule === null) {
+    return null;
+  }
+
+  deps.wake.rewinds.request(context.connectionID, sentAt);
 
   return rule.shortID;
 }

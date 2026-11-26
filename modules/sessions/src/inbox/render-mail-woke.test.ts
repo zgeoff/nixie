@@ -12,9 +12,10 @@ function setupTest() {
         kind: 'trigger.mail_woke',
         payload: triggerMailWokeCodec.encode({
           taskID: 'conversation',
-          mailbox: 'mail',
           rules: [],
-          mails: [{ arrived: 12, messageID: 'm1', threadID: 't1', receivedAt: 1000 }],
+          mails: [
+            { arrived: 12, mailbox: 'mail', messageID: 'm1', threadID: 't1', receivedAt: 1000 },
+          ],
         }),
         erasable,
       }),

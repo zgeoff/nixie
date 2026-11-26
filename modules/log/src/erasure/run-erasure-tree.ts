@@ -263,8 +263,16 @@ async function cleanErasure(context: ErasureRunContext, erasure: OpenErasure): P
 
   await getEntry(context, erasure.started.kind).cleanIndexes(toTarget(erasure));
 
-  if (!('connectionID' in capture.sessionCause)) {
-    await context.effects.cleanupSessions(capture.sessionCause);
+  const cause = capture.sessionCause;
+
+  // A connection's token reaches no session, but the mail that its wakes showed does. Each wake
+  // cleans the sessions of its thread as a forgotten record does.
+  if ('connectionID' in cause) {
+    for (const sequence of cause.wakeSequences ?? []) {
+      await context.effects.cleanupSessions({ recordSequence: sequence });
+    }
+  } else {
+    await context.effects.cleanupSessions(cause);
   }
 
   for (const purge of capture.purges) {

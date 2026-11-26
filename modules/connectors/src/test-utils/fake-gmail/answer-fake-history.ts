@@ -6,6 +6,9 @@ export interface FakeHistoryState {
 
   // a start ID below it is one that Gmail no longer keeps
   readonly floor: number;
+
+  // the most records of a page
+  readonly maxPage: number;
 }
 
 // The answers of Gmail's profile and history.list: the profile's history ID, and each message added
@@ -21,7 +24,7 @@ export function answerFakeHistory(
   }
 
   const start = Number(url.searchParams.get('startHistoryId'));
-  const limit = Number(url.searchParams.get('maxResults') ?? 100);
+  const limit = Math.min(Number(url.searchParams.get('maxResults') ?? 100), state.maxPage);
   const offset = Number(url.searchParams.get('pageToken') ?? 0);
 
   if (!Number.isFinite(start) || start < state.floor) {

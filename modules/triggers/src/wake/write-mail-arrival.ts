@@ -96,9 +96,8 @@ export async function writeMailArrival(
       now.map((target) =>
         buildMailWokeInput(core, {
           targetTaskID: target.targetTaskID,
-          mailbox: event.mailbox,
           rules: target.rules,
-          mails: [{ arrived: arrived.sequence, ...mail }],
+          mails: [{ arrived: arrived.sequence, mailbox: buildMailboxKey(event.mailbox), ...mail }],
         }),
       ),
     );

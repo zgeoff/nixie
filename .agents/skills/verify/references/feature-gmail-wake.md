@@ -53,11 +53,21 @@ Before you start:
    Expect: one row, with `from_match` `["@library.example.org"]` and a `mailbox` that starts with
    `gmail:`.
 
-4. Deliver a mail that no rule matches, let the account poll, and check that nothing was kept:
+4. Deliver a mail that no rule matches, and let the account poll. Read the poll's cursor before and
+   after, so you know the poll committed before you count anything:
 
    ```bash
+   bun verify db query "select cursor from trigger_sources where source_id = 'gmail'"
    bun verify action deliver-gmail --from news@school.example.org --subject 'Term dates'
    bun verify action advance-clock --minutes 3
+   bun verify db query "select cursor from trigger_sources where source_id = 'gmail'"
+   ```
+
+   Expect: the `polledAt` in the cursor of the second query is later than in the first. When it is
+   the same, wait a few seconds and run the second query again. Count only once it has moved: a poll
+   that has not committed leaves every count at 0 whatever the code does. Then:
+
+   ```bash
    bun verify db query "select count(*) as arrivals from records where kind = 'trigger.mail_arrived'"
    bun verify db query "select count(*) as wakes from records where kind = 'trigger.mail_woke'"
    ```
@@ -87,5 +97,5 @@ Before you start:
 ## End state
 
 - Step 3: the rule is on the Gmail mailbox of the connection, for the library's domain.
-- Step 4: the mail that no rule matches left no arrival and no wake.
+- Step 4: the poll committed, and the mail that no rule matches left no arrival and no wake.
 - Step 6: the matching mail woke the conversation once, and the model received its subject.

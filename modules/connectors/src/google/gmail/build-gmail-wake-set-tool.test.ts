@@ -1,8 +1,9 @@
 import { expect, test } from 'bun:test';
 import type { JSONObject } from '@heynixie/log';
 import { buildTaskSeeder } from '@heynixie/tasks/test-utils';
-import { readWakeRules } from '@heynixie/triggers';
+import { eraseGmailMailbox, readWakeRules } from '@heynixie/triggers';
 import { startTestTriggers } from '@heynixie/triggers/test-utils';
+import invariant from 'tiny-invariant';
 import { startGmailTools } from '../../test-utils/start-gmail-tools';
 import { readGmailBodyFields } from './read-gmail-body-fields';
 
@@ -14,37 +15,42 @@ async function setupTest() {
   const starter = await taskSeed.conversationStep();
   const tools = await startGmailTools({ triggers });
 
-  const call = async (name: string, input: JSONObject) => {
-    const tool = tools.findAction(name).tool;
-    const context = tools.buildContext();
+  const resolve = (input: JSONObject) => {
+    const tool = tools.findAction('gmail.wake_set').tool;
 
-    const resolved = await tool.resolveInput?.(input, context);
-
-    if (resolved?.status === 'error') {
-      return { status: 'error' as const, message: resolved.message };
-    }
-
-    const resolvedInput = resolved?.status === 'ok' ? resolved.input : input;
-
-    return tool.run(
-      { callID: 'call-1', tool: name, input: resolvedInput, toolUseID: null },
-      context,
-    );
+    return tool.resolveInput?.(input, tools.buildContext());
   };
 
-  const readRules = () =>
+  const attempt = (args: JSONObject) =>
+    tools
+      .findAction('gmail.wake_set')
+      .tool.run(
+        { callID: 'call-1', tool: 'gmail.wake_set', input: args, toolUseID: null },
+        tools.buildContext(),
+      );
+
+  // the call as the turn makes it: the host resolves the input, and the run takes the resolved one
+  const setRule = async (input: JSONObject) => {
+    const resolved = await resolve(input);
+
+    invariant(resolved?.status === 'ok', 'the input resolves');
+
+    return attempt(resolved.input);
+  };
+
+  const readRules = (connectionID = tools.site.context.connectionID) =>
     readWakeRules(triggers.writer.db, {
-      mailbox: { kind: 'gmail', connectionID: tools.site.context.connectionID },
+      mailbox: { kind: 'gmail', connectionID },
       at: triggers.clock.now(),
     });
 
-  return { ...tools, triggers, taskSeed, starter, call, readRules };
+  return { ...tools, triggers, taskSeed, starter, resolve, attempt, setRule, readRules };
 }
 
 test('it sets a wake rule on the connection, starting now and expiring from now', async () => {
   const ctx = await setupTest();
 
-  const outcome = await ctx.call('gmail.wake_set', {
+  const response = await ctx.setRule({
     from: ['@bank.example.org'],
     expires: '3d',
     window: '1h',
@@ -52,7 +58,7 @@ test('it sets a wake rule on the connection, starting now and expiring from now'
 
   const [rule] = await ctx.readRules();
 
-  expect(outcome).toStrictEqual({
+  expect(response).toStrictEqual({
     status: 'ok',
     result: {
       rule: rule?.shortID ?? '',
@@ -70,10 +76,20 @@ test('it sets a wake rule on the connection, starting now and expiring from now'
   });
 });
 
+test('it takes an expiry past 3650 days', async () => {
+  const ctx = await setupTest();
+  const response = await ctx.setRule({ subject: 'invoice', expires: '3651d' });
+
+  expect(response).toMatchObject({
+    status: 'ok',
+    result: { expiresAt: new Date(ctx.clock.now() + 3651 * 86_400_000).toISOString() },
+  });
+});
+
 test('it replaces a live rule that has the same match and target, and says so', async () => {
   const ctx = await setupTest();
-  const first = await ctx.call('gmail.wake_set', { subject: 'invoice', expires: '1d' });
-  const second = await ctx.call('gmail.wake_set', { subject: 'invoice', expires: '2d' });
+  const first = await ctx.setRule({ subject: 'invoice', expires: '1d' });
+  const second = await ctx.setRule({ subject: 'invoice', expires: '2d' });
   const rules = await ctx.readRules();
 
   expect(first).toMatchObject({ status: 'ok', result: { replaced: false } });
@@ -84,7 +100,7 @@ test('it replaces a live rule that has the same match and target, and says so', 
 test('it takes the connection from the prefix of a thread ID and stores Gmail’s own thread ID', async () => {
   const ctx = await setupTest();
 
-  await ctx.call('gmail.wake_set', { thread: 'k3x9m2p7qa.18c2f0a9b3d4e5f6' });
+  await ctx.setRule({ thread: 'k3x9m2p7qa.18c2f0a9b3d4e5f6' });
 
   const [rule] = await ctx.readRules();
 
@@ -94,7 +110,7 @@ test('it takes the connection from the prefix of a thread ID and stores Gmail’
 test('it takes a bare thread ID of Gmail for the connection that is named', async () => {
   const ctx = await setupTest();
 
-  await ctx.call('gmail.wake_set', { thread: '18c2f0a9b3d4e5f6', connection: 'k3x9m2p7qa' });
+  await ctx.setRule({ thread: '18c2f0a9b3d4e5f6', connection: 'k3x9m2p7qa' });
 
   const [rule] = await ctx.readRules();
 
@@ -106,9 +122,9 @@ test.each([
   ['a window past the expiry', { expires: '5m', window: '1h' }],
 ])('it refuses %s with BAD_DURATION', async (_title, input) => {
   const ctx = await setupTest();
-  const outcome = await ctx.call('gmail.wake_set', input);
+  const resolved = await ctx.resolve(input);
 
-  expect(outcome).toMatchObject({
+  expect(resolved).toMatchObject({
     status: 'error',
     message: expect.stringContaining('BAD_DURATION'),
   });
@@ -116,9 +132,9 @@ test.each([
 
 test('it refuses a target that is no task with UNKNOWN_TASK', async () => {
   const ctx = await setupTest();
-  const outcome = await ctx.call('gmail.wake_set', { wake: 'no-such-task' });
+  const resolved = await ctx.resolve({ wake: 'no-such-task' });
 
-  expect(outcome).toMatchObject({
+  expect(resolved).toMatchObject({
     status: 'error',
     message: expect.stringContaining('UNKNOWN_TASK'),
   });
@@ -133,7 +149,7 @@ test('it wakes the task that the call names', async () => {
     brief: 'Wait for the bank.',
   });
 
-  await ctx.call('gmail.wake_set', { wake: taskID });
+  await ctx.setRule({ wake: taskID });
 
   const [rule] = await ctx.readRules();
 
@@ -149,22 +165,56 @@ test('it refuses with TASK_ENDED when the target task ended before the approved 
     brief: 'Wait for the bank.',
   });
 
-  const tool = ctx.findAction('gmail.wake_set').tool;
-
-  const outcome = await tool.run(
-    {
-      callID: 'call-1',
-      tool: 'gmail.wake_set',
-      input: { connection: 'k3x9m2p7qa', wake: taskID, setBy: taskID },
-      toolUseID: null,
-    },
-    ctx.buildContext(),
-  );
-
+  const response = await ctx.attempt({ connection: 'k3x9m2p7qa', wake: taskID, setBy: taskID });
   const rules = await ctx.readRules();
 
-  expect(outcome).toMatchObject({ status: 'ok', refusalCode: 'TASK_ENDED' });
-  expect(rules).toStrictEqual([]);
+  expect([response, rules]).toMatchObject([{ status: 'ok', refusalCode: 'TASK_ENDED' }, []]);
+});
+
+test('it refuses an account that the poll does not read, and writes no rule', async () => {
+  const ctx = await setupTest();
+
+  ctx.site.addConnection('zz9y8x7w6v', { isPolled: false });
+
+  const resolved = await ctx.resolve({ subject: 'invoice', connection: 'zz9y8x7w6v' });
+  const named = await ctx.readRules('zz9y8x7w6v-id');
+  const first = await ctx.readRules();
+
+  expect([resolved, named, first]).toStrictEqual([
+    { status: 'error', message: expect.stringContaining('NOT_POLLED') },
+    [],
+    [],
+  ]);
+});
+
+test('it writes no rule for a connection that was forgotten after the call read it', async () => {
+  const ctx = await setupTest();
+
+  const connectionID = ctx.site.context.connectionID;
+  const hold = ctx.site.holdLiveRead();
+
+  const attempting = ctx.attempt({
+    connection: 'k3x9m2p7qa',
+    wake: 'conversation',
+    setBy: 'conversation',
+    subject: 'invoice',
+  });
+
+  await hold.reached;
+
+  ctx.site.forget(connectionID);
+
+  await eraseGmailMailbox(ctx.deps.wake.context(), connectionID);
+
+  hold.release();
+
+  const response = await attempting;
+  const rules = await ctx.readRules();
+
+  expect([response, rules]).toMatchObject([
+    { status: 'error', message: expect.stringContaining('UNKNOWN_CONNECTION') },
+    [],
+  ]);
 });
 
 test('it shows the rule on the approval card of a call', async () => {

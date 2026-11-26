@@ -7,6 +7,7 @@ import { startCallSweep } from '@heynixie/calls';
 import { buildCodingSource, startCodingSweep } from '@heynixie/coding';
 import {
   buildGmailArrivalSource,
+  collectGmailConnections,
   endTakeoverCutByRestart,
   makeTakeoverRecords,
   resumeOpenHandover,
@@ -193,16 +194,11 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
         hosts: reader.get('google_tools').hosts,
         logEvent: parts.log,
         pollIntervalMs: parts.config.gmail.poll_interval,
+        rewinds: reader.get('google_tools').rewinds,
         listConnections: async () => {
           const states = await connections.readStates();
 
-          return states
-            .filter((state) => state.scopes.includes('gmail.modify'))
-            .map((state) => ({
-              connectionID: state.connectionID,
-              connection: state.connection,
-              status: state.status,
-            }));
+          return collectGmailConnections(states);
         },
         readContext: (connectionID) => connections.readContext(connectionID),
       });

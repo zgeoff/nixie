@@ -1,9 +1,10 @@
 import { expect, test } from 'bun:test';
 import { buildTaskSeeder } from '@heynixie/tasks/test-utils';
-import { readWakeRules } from '@heynixie/triggers';
+import { eraseGmailMailbox, readWakeRules } from '@heynixie/triggers';
 import { startTestTriggers } from '@heynixie/triggers/test-utils';
 import invariant from 'tiny-invariant';
 import { startGmailTools } from '../../test-utils/start-gmail-tools';
+import type { ActionAttempt } from '../../types';
 
 async function setupTest() {
   const triggers = await startTestTriggers();
@@ -12,28 +13,38 @@ async function setupTest() {
 
   const ctx = await startGmailTools({ triggers });
 
+  const buildAttempt = (args: Record<string, string | string[]>): ActionAttempt => ({
+    actionID: '0b9d3c4e-7a21-4f0e-8c55-1e6f2a9d4c03',
+    tool: 'gmail.send',
+    arguments: {
+      connection: 'k3x9m2p7qa',
+      to: ['sam@example.org'],
+      subject: 'Q3 numbers',
+      text: 'Hi Sam.',
+      ...args,
+    },
+    attempt: 1,
+    idempotencyKey: 'key-1',
+    destinations: ['sam@example.org'],
+    attemptStartedAt: ctx.clock.now(),
+    actionHash: 'hash-1',
+    deadlineAt: null,
+  });
+
   const send = (args: Record<string, string | string[]>) => {
     const queued = ctx.findAction('gmail.send').queued;
 
     invariant(queued, 'gmail.send runs queued');
 
-    return queued.run({
-      actionID: '0b9d3c4e-7a21-4f0e-8c55-1e6f2a9d4c03',
-      tool: 'gmail.send',
-      arguments: {
-        connection: 'k3x9m2p7qa',
-        to: ['sam@example.org'],
-        subject: 'Q3 numbers',
-        text: 'Hi Sam.',
-        ...args,
-      },
-      attempt: 1,
-      idempotencyKey: 'key-1',
-      destinations: ['sam@example.org'],
-      attemptStartedAt: ctx.clock.now(),
-      actionHash: 'hash-1',
-      deadlineAt: null,
-    });
+    return queued.run(buildAttempt(args));
+  };
+
+  const check = (args: Record<string, string | string[]>) => {
+    const queued = ctx.findAction('gmail.send').queued;
+
+    invariant(queued?.check, 'gmail.send has a check');
+
+    return queued.check(buildAttempt(args));
   };
 
   const readRules = () =>
@@ -42,7 +53,7 @@ async function setupTest() {
       at: ctx.clock.now(),
     });
 
-  return { ...ctx, triggers, send, readRules };
+  return { ...ctx, triggers, send, check, readRules };
 }
 
 test('it wakes the conversation on a reply to a sent mail, for the default expiry', async () => {
@@ -142,4 +153,83 @@ test('it shows the reply rule and its expiry on the card of a send', async () =>
       : '';
 
   expect(JSON.parse(card)).toMatchObject({ replyWake: '7d, the default' });
+});
+
+test('it leaves the outcome open when the rule cannot be written, and the check of the send writes it', async () => {
+  const ctx = await setupTest();
+
+  ctx.site.breakNextLiveProbe();
+
+  const response = await ctx.send({});
+  const before = await ctx.readRules();
+  const checked = await ctx.check({});
+  const [rule] = await ctx.readRules();
+
+  expect([response.kind, before, checked]).toStrictEqual([
+    'ambiguous',
+    [],
+    {
+      kind: 'found',
+      result: {
+        message: expect.any(String),
+        thread: expect.any(String),
+        replyRule: rule?.shortID ?? '',
+      },
+    },
+  ]);
+});
+
+test('it leaves the check inconclusive when the rule cannot be written, so no send is told it had none', async () => {
+  const ctx = await setupTest();
+
+  await ctx.send({});
+
+  ctx.site.breakNextLiveProbe();
+
+  const checked = await ctx.check({});
+
+  expect(checked).toStrictEqual({ kind: 'inconclusive' });
+});
+
+test('it finds the rule of a send whose outcome stayed open after the rule was written, and keeps one rule', async () => {
+  const ctx = await setupTest();
+  const sent = await ctx.send({});
+  const checked = await ctx.check({});
+  const rules = await ctx.readRules();
+
+  expect(checked).toMatchObject({
+    kind: 'found',
+    result: { replyRule: sent.kind === 'success' ? sent.result['replyRule'] : '' },
+  });
+
+  expect(rules).toHaveLength(1);
+});
+
+test('it asks the poll to read again the mail since the send', async () => {
+  const ctx = await setupTest();
+
+  await ctx.send({});
+
+  expect(ctx.deps.wake.rewinds.read(ctx.site.context.connectionID)).toBe(ctx.clock.now());
+});
+
+test('it writes no rule for a connection that was forgotten after the send read it', async () => {
+  const ctx = await setupTest();
+
+  const connectionID = ctx.site.context.connectionID;
+  const hold = ctx.site.holdLiveRead();
+  const sending = ctx.send({});
+
+  await hold.reached;
+
+  ctx.site.forget(connectionID);
+
+  await eraseGmailMailbox(ctx.deps.wake.context(), connectionID);
+
+  hold.release();
+
+  const response = await sending;
+  const rules = await ctx.readRules();
+
+  expect([response, rules]).toMatchObject([{ kind: 'success', result: { replyRule: null } }, []]);
 });
