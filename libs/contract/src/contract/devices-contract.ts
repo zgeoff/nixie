@@ -74,10 +74,11 @@ export const deviceEventSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('idle'), scene: z.array(screenContentSchema) }),
   z.object({ kind: z.literal('layout'), layout: layoutSchema.nullable() }),
 
-  // A message that the assistant sent into a page region, which the device hands to the page. The
-  // server sends each region's retained message again when a stream opens.
   // A declared fetch of a page refreshed, so the page's nixie.onData fires for its URL
   z.object({ kind: z.literal('data'), region: z.string(), shown: z.string(), url: z.string() }),
+
+  // A message that the assistant sent into a page region, which the device hands to the page. The
+  // server sends each region's retained message again when a stream opens.
   z.object({
     kind: z.literal('message'),
     region: z.string(),
