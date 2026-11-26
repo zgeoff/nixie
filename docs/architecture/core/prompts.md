@@ -1,13 +1,14 @@
 # Prompts
 
-Five built-in prompts start nixie's model calls: the content checker's, the retirement checker's,
-the conversation's session prompt, the compaction instruction, and the task prompt of each
+nixie starts each model call from one of its built-in prompts: the content checker's, the retirement
+checker's, the conversation's session prompt, the compaction instruction, or the task prompt of a
 [started task](./started-tasks.md). Each prompt is a set of named parts and a template that arranges
 them. A deployment can override any part or the template of any prompt from its definitions, and
 every part or template it leaves unset keeps nixie's built-in text. Each prompt has a part named
 `safety` that holds its rules against pasted text, fetched pages and other input that tries to steer
-the model. An override can replace or drop that part. The operator log records each prompt that runs
-without it, and the pull request of an override that the model proposed notes it too.
+the model. An override can replace or drop that part. nixie records each prompt that runs without it
+in the operator log, and notes the missing part in the pull request of any override the model
+proposed.
 
 ## Parts, templates and paths
 

@@ -1,10 +1,9 @@
 # Approvals
 
-Every proposal that waits for the user's answer, whatever it proposes, has one row in the
-`proposals` table, and every answer to it goes through the same checks. A proposal is a tool call
-that policy holds, a memory write, a skill change, a rule change, an MCP server change or a prompt
-override. A client lists the rows, shows each with the choices the host offers, and sends one
-answer. The host checks the answer the same way for every kind.
+Every proposal that waits for the user's answer has one row in the `proposals` table. A proposal is
+a tool call that policy holds, a memory write, a skill change, a rule change, an MCP server change
+or a prompt override. A client lists the rows, shows each with the choices the host offers, and
+sends one answer. The host checks the answer the same way for every kind.
 
 ## The shared row
 
@@ -41,10 +40,10 @@ Every family goes through the same steps, in the proposals module:
 2. A proposal replaces an open one of the same family, the same proposer and the same `sameThing`
    key: the core withdraws the old one in the same transaction. A proposal with no proposer, and a
    family with no key (memory, action), never replaces.
-3. One sweep lapses the open rows of every family once their lapse passes, through each family's
-   `discard`. A row whose family has no handler stays open. The sweep hands each row of a family
-   that owns its transaction, such as memory, to that family, which lapses it in a transaction of
-   its own.
+3. One sweep lapses the open rows of every family once their lapse time passes, through each
+   family's `discard`. A row whose family has no handler stays open. When a family's writes open
+   their own transaction, as memory's do, the sweep hands each of its rows to that family, which
+   lapses the row in a transaction of its own.
 4. An approve or a discard that succeeds writes `proposals.settled` in the same transaction, on the
    thread of each proposer. A refusal writes none, and the row stays open.
 5. Each proposer hears the settlement. A conversation reads it in the note of its next turn, and a
@@ -52,10 +51,10 @@ Every family goes through the same steps, in the proposals module:
    settlement, and hears `action.outcome` instead. When a proposer's own withdrawal closes the row,
    that proposer's note leaves the settlement out, because the withdraw call's result holds the
    outcome. A finished task takes no input, so its settlement goes to the report target of the task
-   run that opened or merged into the proposal, else to the task's starter, and carries the task's
-   ID. When a finished task has neither, its settlement stays on its own thread as a plain record
-   that wakes nothing, so its audit thread stays whole. Settlements that land in one batch read as
-   one message.
+   run that opened or merged into the proposal, or else to the task's starter. That settlement
+   carries the task's ID. When a finished task has neither, its settlement stays on its own thread
+   as a plain record that wakes nothing, so its audit thread stays whole. Settlements that land in
+   one batch read as one message.
 
 Every close of a row goes through the lifecycle, so each writes `proposals.settled`: an answer, a
 lapse, a proposer's withdrawal, a decline of an ask that withdraws the suggested rule resting on it,
@@ -110,8 +109,9 @@ item has no fields when a forget removed the arguments. The list sits apart so t
 release before still reads every row it knows.
 
 Within each risk class, every group but routine lists its oldest row first. The call leaves out a
-closed row, a row past its lapse and a row whose body is gone. A row whose kind has no handler, such
-as after a rollback of that kind, stays out of the list and refuses every answer as not allowed.
+closed row, a row past its lapse time and a row whose body is gone. A row whose kind has no handler,
+such as after a rollback of that kind, stays out of the list, and the host refuses every answer to
+it as not allowed.
 
 `approvals.readProposals` takes up to 100 proposal IDs, full or short, and returns each row in any
 state with its body, its task, the device name of the identity that answered it and whether the
@@ -167,12 +167,12 @@ the call's own records and never the model's words.
 | `waiting`    | Approved, waiting to run   | the action is still pending                                                                         |
 | `unknown`    | Approved, outcome unknown  | the action's outcome is unknown and waits on the user                                               |
 
-The reason of a failed call is the provider's message from the outcome record, else the error text
-of the result record that the outcome names, else a plain sentence for the outcome's reason code.
+A failed call's reason is the provider's message from the outcome record, or else the error text of
+the result record that the outcome names, or else a plain sentence for the outcome's reason code.
 After a forget removes the erasable fields, the sentence for the code remains. The card cuts the
-reason to 300 characters. Memory, skill and rule approvals have no call, so their cards keep
+reason to 300 characters. Memory, skill and rule approvals have no call, so their cards show only
 "Approved". A card that follows a task's thread reads its rows again when a record lands there, and
-the digest polls a departed row again while its call waits.
+the digest reads a row that has left the list again while its call waits.
 
 ## Answering an unknown outcome
 
