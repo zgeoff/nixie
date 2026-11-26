@@ -1,4 +1,4 @@
-export interface SettlementRun {
+interface SettlementRun {
   readonly openedSequence: number;
 
   // the report target the run pinned, or null when it pinned none
