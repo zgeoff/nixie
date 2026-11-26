@@ -150,8 +150,9 @@ and `test.send_checked`, declare one each, so the crash tests cover every path.
 
 The model reads a failed or unknown action as a result, never as a tool error, because the call was
 allowed and the action ran. The one exception is an action of a proxied tool: when it fails, is
-cancelled or ends with an unknown outcome, the model receives the reason as an error, fenced as
-`untrusted`, as [calls and results](mcp-proxy.md#calls-and-results) in the MCP proxy doc covers.
+cancelled or ends with an unknown outcome, the model receives the reason as an error inside the
+`tool-result` markers, as [calls and results](mcp-proxy.md#calls-and-results) in the MCP proxy doc
+covers.
 
 ## Records
 
