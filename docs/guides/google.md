@@ -96,8 +96,8 @@ scope, and a button to ask Google again. The conversation never shows that notic
   service. When you add a rule that asks first, nixie asks you. A draft stays in your account for
   you to open.
 - Before nixie sends mail to an address you haven't allowed, it waits for your answer on a card that
-  shows the account, each recipient, the subject and the whole text. nixie replies to the sender of
-  the mail it answers without asking you. A reply to any other address waits on a card.
+  shows the account, each recipient, the subject and the whole text. The sender of a mail counts as
+  allowed for a reply to that mail, so such a reply needs no card.
 - When nixie can't tell whether a send went through, it waits 5 minutes, then looks for the mail in
   your Sent folder. When it finds the mail, the send counts as done. Otherwise nixie shows you the
   send on a card, and doesn't send it again until you answer.

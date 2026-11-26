@@ -23,13 +23,13 @@ every host.
 | `findSent(messageID)`     | finds a sent mail by the Message-ID header that the send set, or null                                                                                                          |
 | `watch(signal)`, optional | yields a hint when mail may have arrived, so the source reads at once                                                                                                          |
 
-A test build serves the one host built so far, which keeps mail in memory. The server starts it when
-the config holds a `mail` section, and the harness operation `deliverMail` puts a mail in it. A
-release build with a `mail` section refuses to start, and a deployment with no `mail` section starts
-with no mailbox, as it does without a coding runner. The `mail` section holds the assistant's
-`address` and `host_poll_interval`. The host in memory keeps its mail, its sent mail and its IDs in
-a file in the data folder, so a restart of nixie loses none of them, and a cursor from before the
-restart still reads only the mail after it.
+A test build serves the one host built so far, the host in memory. The server starts it when the
+config holds a `mail` section, and the harness operation `deliverMail` puts a mail in it. A release
+build with a `mail` section refuses to start, and a deployment with no `mail` section starts with no
+mailbox, as it does without a coding runner. The `mail` section holds the assistant's `address` and
+`host_poll_interval`. The host in memory keeps its mail, its sent mail and its IDs in a file in the
+data folder, so a restart of nixie loses none of them, and a cursor from before the restart still
+reads only the mail after it.
 
 The mail module never imports the connectors module, which owns the web tools and the code files. It
 takes the files of a thread, the link IDs of a session and the stored file of an attachment as ports
@@ -80,10 +80,11 @@ and keeps each name as its last path segment with no control character.
 `mail.read` numbers each link of a plain text as a link ID of the session, such as
 `[L1 · example.org/reset]`, and the model opens it with `web_fetch` by that ID. An address that
 stands alone on its line is taken whole, with any punctuation at its end, and any other address
-loses the punctuation that ends its sentence. The text the model sees never holds the address of a
-link, so a link with a token stays out of the model's input until it opens the link. The numbers
-belong to the conversation session, or the task run, that reads the mail, and the same address keeps
-its number there.
+loses the punctuation that ends its sentence. The text the model sees holds only a link's host and
+the start of its path, as [link IDs](../connectors/web-fetch.md#link-ids) shows, so a token in a
+link's query stays out of the model's input until it opens the link. The numbers belong to the
+conversation session, or the task run, that reads the mail, and the same address keeps its number
+there.
 
 ### HTML mail
 
