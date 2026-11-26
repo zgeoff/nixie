@@ -33,6 +33,9 @@ export interface CallSnapshot {
   // the peer connection's state, or 'new' while there is none
   readonly connection: RTCPeerConnectionState;
   readonly startedAtMs: number | null;
+
+  // when the last reconnect finished, so a read of the call from before it is no longer true
+  readonly reconnectedAtMs: number | null;
   readonly endedBy: CallEndedBy | null;
   readonly refusal: CallRefusal | null;
 

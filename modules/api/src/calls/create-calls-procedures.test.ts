@@ -1,6 +1,10 @@
 import { expect, test } from 'bun:test';
-import { readCall } from '@heynixie/calls';
+import { readCall, startCall } from '@heynixie/calls';
 import { registerFaultPointAction } from '@heynixie/memory/test-utils';
+import invariant from 'tiny-invariant';
+import { z } from 'zod';
+import { runComputerAction } from '../computer/run-computer-action';
+import { verifySessionToken } from '../session/verify-session-token';
 import { buildTestClient } from '../test-utils/build-test-client';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { startTestAPI } from '../test-utils/start-test-api';
@@ -117,7 +121,7 @@ test('#calls.connect answers the offer of the carrying session', async () => {
   expect(connected).toStrictEqual({ sdpAnswer: 'fake-answer-1' });
 });
 
-test('#calls.get reads a live call as one that waits for no offer, then as one that waits for a restart offer', async () => {
+test('#calls.get reads a live call as one that waits for no offer', async () => {
   const ctx = await setupTest();
   const started = await ctx.client.calls.start({ clientActionID: crypto.randomUUID() });
 
@@ -125,14 +129,46 @@ test('#calls.get reads a live call as one that waits for no offer, then as one t
 
   const connected = await ctx.client.calls.get({ callID: started.callID });
 
-  ctx.calls?.context.sessions.clear();
+  expect(connected).toStrictEqual({
+    callID: started.callID,
+    state: 'live',
+    endedBy: null,
+    reconnect: null,
+  });
+});
 
-  const restarted = await ctx.client.calls.get({ callID: started.callID });
+test('#calls.start answers a retry of a call started before the call screen with the thread of the call', async () => {
+  const ctx = await setupTest();
 
-  expect([connected, restarted]).toStrictEqual([
-    { callID: started.callID, state: 'live', endedBy: null, reconnect: null },
-    { callID: started.callID, state: 'live', endedBy: null, reconnect: 'restart' },
-  ]);
+  const clientActionID = crypto.randomUUID();
+
+  const caller = await verifySessionToken(ctx.context, ctx.owner.token);
+
+  const calls = ctx.calls?.context;
+
+  invariant(caller !== null && calls !== undefined, 'the owner session verifies');
+
+  const earlier = await runComputerAction(
+    ctx.context,
+    caller,
+    { procedure: 'calls.start', clientActionID, input: {} },
+    async () => {
+      const result = await startCall(calls, { carryingSession: caller.identityID });
+
+      invariant(result.status === 'started', 'the test call starts');
+
+      return { callID: result.callID };
+    },
+  );
+
+  invariant(earlier.status === 'done', 'the earlier start finished');
+
+  const call = await readCall(ctx.writer.db, z.string().parse(earlier.result['callID']));
+  const retry = await ctx.client.calls.start({ clientActionID });
+
+  invariant(call !== null, 'the earlier start made a call');
+
+  expect(retry).toStrictEqual({ callID: call.callID, state: 'connecting', thread: call.taskID });
 });
 
 test('#calls.get reads who ended a call', async () => {

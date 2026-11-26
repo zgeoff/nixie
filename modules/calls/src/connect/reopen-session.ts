@@ -69,6 +69,7 @@ export async function reopenSession(
 
   context.runtime.reconnects.delete(input.callID);
   context.runtime.watches.get(input.callID)?.abort();
+  dropHandOffs(context, input.callID);
 
   const live = await readCall(context.log.writer.db, input.callID);
 
@@ -140,6 +141,17 @@ function restoreSession(
   } else {
     context.sessions.set(callID, oldSessionID);
   }
+}
+
+// A hand-off belongs to the speech session that made it, and the new session knows none of them.
+// Its answer is never sent, as after a restart, so no request is answered in a session that never
+// heard it.
+function dropHandOffs(context: CallsContext, callID: string): void {
+  for (const handOff of context.runtime.handOffs.get(callID)?.values() ?? []) {
+    handOff.holding.abort();
+  }
+
+  context.runtime.handOffs.delete(callID);
 }
 
 async function sayReconnectLine(

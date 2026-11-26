@@ -13,6 +13,7 @@ export function formatCallStatus(snapshot: Pick<CallSnapshot, 'phase' | 'connect
     .with({ phase: 'refused' }, () => 'The call did not start')
     .with({ phase: 'live', connection: 'disconnected' }, () => 'Connection unstable')
     .with({ phase: 'live', connection: 'failed' }, () => 'Connection lost')
-    .with({ phase: 'live' }, () => 'Connected')
+    .with({ phase: 'live', connection: 'connected' }, () => 'Connected')
+    .with({ phase: 'live' }, () => 'Connecting')
     .exhaustive();
 }

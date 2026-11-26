@@ -115,19 +115,27 @@ speech layer and its state. A change of route never ends the call, and a page lo
   ends on the screen with the reason.
 - **Reconnect.** When `calls.get` names a `reconnect` cause, or the peer connection fails, the
   client sends an ICE-restart offer on the open peer connection, or on a new one when the old one
-  failed, with a fresh `calls.connect`. A refusal gets another try after 2 s. A `CALL_CONNECTED`
-  answer means the server already holds a session, so the client withdraws the offer and goes on.
-  After a server restart the live stream's first open reads every topic again, which is how the
-  client learns that the call waits.
+  failed, with a fresh `calls.connect`. A refusal, `CALL_CONNECTED` included, gets another try after
+  a pause, and the call is live again only once an answer is applied. A call that is not back within
+  the reconnect limit ends on the screen as `dropped`, and the client releases the microphone and
+  the peer, and hangs up the call on the server. A read of the call from before a reconnect is read
+  again and never taken, so a finished reconnect does not start another. After a server restart the
+  live stream's first open reads every topic again, which is how the client learns that the call
+  waits.
 - **Approvals during a call.** The call screen lists the cards of the proposals on the call's
   thread, read through `approvals.listItems` and `approvals.readProposals`, so a card follows its
   proposal through an answer. Only the device that carries the call has the call's thread, so the
   card shows on its call screen and on no other device's. The card stays on the approval digest.
   nixie sends no push for it.
 
+The state reads "Connected" only while the peer connection reports `connected`, and "Connecting"
+before that. A call that a hang-up, an end or a give-up closed ignores each answer that arrives
+later, and a page that goes away with the call open stops the microphone and the peer.
+
 The microphone and the peer connection come from a `CallEnvironment`, so a test gives the client a
-stand-in for each. A browser suite gives the page a silent microphone through a script that the test
-front proxy puts at the head of each HTML page.
+stand-in for each. A browser suite gives the page a silent microphone, and a second peer connection
+in the page that answers the first, through scripts that the test front proxy puts at the head of
+each HTML page. The page's peer then reaches `connected` only when its offer really works.
 
 ## The live stream
 

@@ -1,5 +1,6 @@
 // oxlint-disable new-cap -- oRPC names a procedure's typed errors by their upper-case codes
-import { connectCall, hangUpCall, readCallView, startCall } from '@heynixie/calls';
+import { connectCall, hangUpCall, readCall, readCallView, startCall } from '@heynixie/calls';
+import invariant from 'tiny-invariant';
 import { match } from 'ts-pattern';
 import { z } from 'zod';
 import { runComputerAction } from '../computer/run-computer-action';
@@ -72,11 +73,16 @@ export function createCallsProcedures(context: APIContext) {
           .exhaustive();
       }
 
-      return {
-        callID: z.string().parse(run.result['callID']),
-        state: 'connecting' as const,
-        thread: z.string().parse(run.result['thread']),
-      };
+      const callID = z.string().parse(run.result['callID']);
+      const storedThread = z.string().safeParse(run.result['thread']);
+
+      // a result stored before the call screen holds no thread, so it comes from the call
+      const call = storedThread.success ? null : await readCall(calls.log.writer.db, callID);
+      const thread = storedThread.success ? storedThread.data : call?.taskID;
+
+      invariant(thread !== undefined, 'a started call has a record');
+
+      return { callID, state: 'connecting' as const, thread };
     }),
 
     get: apiImplementer.calls.get.handler(async (options) => {

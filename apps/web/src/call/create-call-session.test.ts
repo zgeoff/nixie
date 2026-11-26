@@ -11,9 +11,17 @@ interface Calls {
   readonly hangUps: string[];
 }
 
-function setupTest(
-  options: { readonly microphoneError?: Error; readonly connectErrors?: (string | null)[] } = {},
-) {
+interface SetupOptions {
+  readonly microphoneError?: Error;
+
+  // the error each connect fails with, in order; null is a connect that works
+  readonly connectErrors?: (string | null)[];
+
+  // the answer to one connect, held until the test settles it
+  readonly heldConnect?: { readonly call: number; readonly result: Promise<{ sdpAnswer: string }> };
+}
+
+function setupTest(options: SetupOptions = {}) {
   const stub = buildStubCallEnvironment({ microphoneError: options.microphoneError ?? null });
   const timer = buildStubTimer();
 
@@ -33,6 +41,10 @@ function setupTest(
     },
     connect: (input) => {
       record.connects.push(input.sdpOffer);
+
+      if (record.connects.length === options.heldConnect?.call) {
+        return options.heldConnect.result;
+      }
 
       const code = connectErrors.shift();
 
@@ -181,7 +193,7 @@ test('#observe sends the new offer again after the timer when the server refuses
   ctx.session.observe({ state: 'live', endedBy: null, reconnect: 'dropped' });
 
   await waitFor(() => {
-    expect(ctx.timer.countPending()).toBe(1);
+    expect(ctx.timer.countPending()).toBe(2);
   });
 
   const waiting = ctx.session.getSnapshot().phase;
@@ -198,7 +210,7 @@ test('#observe sends the new offer again after the timer when the server refuses
   ]);
 });
 
-test('#observe keeps the call live when the server already holds a session from an earlier offer', async () => {
+test('#observe keeps the call reconnecting while the server refuses the new offer as already connected', async () => {
   const ctx = setupTest({ connectErrors: [null, 'CALL_CONNECTED'] });
 
   await ctx.session.start();
@@ -206,10 +218,115 @@ test('#observe keeps the call live when the server already holds a session from 
   ctx.session.observe({ state: 'live', endedBy: null, reconnect: 'dropped' });
 
   await waitFor(() => {
-    expect(ctx.session.getSnapshot().phase).toBe('live');
+    expect(ctx.timer.countPending()).toBe(2);
   });
 
-  expect(ctx.readCalls().connects).toStrictEqual(['offer-1', 'offer-2']);
+  expect([ctx.session.getSnapshot().phase, ctx.readCalls().connects]).toStrictEqual([
+    'reconnecting',
+    ['offer-1', 'offer-2'],
+  ]);
+});
+
+test('#observe gives up a call that is not back after 30 s, stops the microphone and the peer, and ends it on the server', async () => {
+  const ctx = setupTest({
+    connectErrors: [null, 'SPEECH_UNAVAILABLE', 'SPEECH_UNAVAILABLE', 'SPEECH_UNAVAILABLE'],
+  });
+
+  await ctx.session.start();
+
+  ctx.session.observe({ state: 'live', endedBy: null, reconnect: 'dropped' });
+
+  await waitFor(() => {
+    expect(ctx.timer.countPending()).toBe(2);
+  });
+
+  ctx.timer.advance(30_000);
+
+  expect({
+    phase: ctx.session.getSnapshot().phase,
+    endedBy: ctx.session.getSnapshot().endedBy,
+    isClosed: ctx.peers[0]?.isClosed(),
+    stoppedTracks: ctx.stoppedTracks(),
+    hangUps: ctx.readCalls().hangUps,
+  }).toStrictEqual({
+    phase: 'ended',
+    endedBy: 'dropped',
+    isClosed: true,
+    stoppedTracks: 1,
+    hangUps: ['c1'],
+  });
+});
+
+test('#hangUp during a pending first connect keeps the call ended when the connect then fails', async () => {
+  const held = Promise.withResolvers<{ sdpAnswer: string }>();
+  const ctx = setupTest({ heldConnect: { call: 1, result: held.promise } });
+  const starting = ctx.session.start();
+
+  await waitFor(() => {
+    expect(ctx.readCalls().connects).toHaveLength(1);
+  });
+
+  await ctx.session.hangUp();
+
+  held.reject(Object.assign(new Error('SPEECH_UNAVAILABLE'), { code: 'SPEECH_UNAVAILABLE' }));
+
+  await starting;
+
+  expect([ctx.session.getSnapshot().phase, ctx.session.getSnapshot().endedBy]).toStrictEqual([
+    'ended',
+    'you',
+  ]);
+});
+
+test('#hangUp during a pending first connect keeps the call ended when the connect then succeeds', async () => {
+  const held = Promise.withResolvers<{ sdpAnswer: string }>();
+  const ctx = setupTest({ heldConnect: { call: 1, result: held.promise } });
+  const starting = ctx.session.start();
+
+  await waitFor(() => {
+    expect(ctx.readCalls().connects).toHaveLength(1);
+  });
+
+  await ctx.session.hangUp();
+
+  held.resolve({ sdpAnswer: 'late-answer' });
+
+  await starting;
+
+  expect(ctx.session.getSnapshot().phase).toBe('ended');
+});
+
+test('#hangUp during a pending reconnect keeps the call ended when the reconnect then succeeds', async () => {
+  const held = Promise.withResolvers<{ sdpAnswer: string }>();
+  const ctx = setupTest({ heldConnect: { call: 2, result: held.promise } });
+
+  await ctx.session.start();
+
+  ctx.session.observe({ state: 'live', endedBy: null, reconnect: 'restart' });
+
+  await waitFor(() => {
+    expect(ctx.readCalls().connects).toHaveLength(2);
+  });
+
+  await ctx.session.hangUp();
+
+  held.resolve({ sdpAnswer: 'late-answer' });
+
+  await waitFor(() => {
+    expect(ctx.timer.countPending()).toBe(0);
+  });
+
+  expect(ctx.session.getSnapshot().phase).toBe('ended');
+});
+
+test('#dispose stops the microphone and the peer of a call that is still open', async () => {
+  const ctx = setupTest();
+
+  await ctx.session.start();
+
+  ctx.session.dispose();
+
+  expect([ctx.peers[0]?.isClosed(), ctx.stoppedTracks()]).toStrictEqual([true, 1]);
 });
 
 test('#observe reconnects on a new peer when the connection failed', async () => {
@@ -252,4 +369,20 @@ test('#dismiss readies the screen for a new call after the last one ended', asyn
   ctx.session.dismiss();
 
   expect(ctx.session.getSnapshot().phase).toBe('idle');
+});
+
+test('#observe notes when the reconnect finished, so a read of the call from before it can be told apart', async () => {
+  const ctx = setupTest();
+
+  await ctx.session.start();
+
+  const before = ctx.session.getSnapshot().reconnectedAtMs;
+
+  ctx.session.observe({ state: 'live', endedBy: null, reconnect: 'restart' });
+
+  await waitFor(() => {
+    expect(ctx.session.getSnapshot().reconnectedAtMs).toBe(1000);
+  });
+
+  expect(before).toBeNull();
 });

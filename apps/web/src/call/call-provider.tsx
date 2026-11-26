@@ -26,6 +26,8 @@ export function CallProvider(props: CallProviderProps): ReactNode {
     createCallSession({ calls: nixie.client.calls, environment, startTimer, now: Date.now }),
   );
 
+  useEffect(() => session.dispose, [session]);
+
   const snapshot = useSyncExternalStore(
     session.subscribe,
     session.getSnapshot,
@@ -46,13 +48,24 @@ export function CallProvider(props: CallProviderProps): ReactNode {
   });
 
   const viewData = view.data;
+  const viewUpdatedAtMs = view.dataUpdatedAt;
+  const refetchView = view.refetch;
   const phase = snapshot.phase;
+  const reconnectedAtMs = snapshot.reconnectedAtMs;
+
+  // a read of the call from before a reconnect still says it waits for an offer, so the read is made
+  // again, and the old one is never taken
+  useEffect(() => {
+    if (reconnectedAtMs !== null) {
+      void refetchView();
+    }
+  }, [reconnectedAtMs, refetchView]);
 
   useEffect(() => {
-    if (viewData !== undefined && isFollowing) {
+    if (viewData !== undefined && isFollowing && viewUpdatedAtMs >= (reconnectedAtMs ?? 0)) {
       session.observe(viewData);
     }
-  }, [session, viewData, isFollowing, phase]);
+  }, [session, viewData, viewUpdatedAtMs, isFollowing, phase, reconnectedAtMs]);
 
   return (
     <CallContext value={{ session, snapshot }}>

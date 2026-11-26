@@ -47,6 +47,6 @@ export { closeCutHandOffs } from './hand-off/close-cut-hand-offs';
 export { renderNoSummaryReport } from './utils/render-no-summary-report';
 export { startCallSweep } from './meter/start-call-sweep';
 export { readCall } from './utils/read-call';
-export type { CallView } from './utils/read-call-view';
-export { readCallView } from './utils/read-call-view';
+export type { CallView } from './connect/read-call-view';
+export { readCallView } from './connect/read-call-view';
 export { reconnectLimitMs } from './meter/pick-call-moves';

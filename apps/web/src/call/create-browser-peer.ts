@@ -26,7 +26,6 @@ export function createBrowserPeer(): CallPeer {
       return connection.localDescription?.sdp ?? '';
     },
     applyAnswer: (sdp) => connection.setRemoteDescription({ type: 'answer', sdp }),
-    dropOffer: () => connection.setLocalDescription({ type: 'rollback' }),
     onSpeech: (listener) => {
       connection.addEventListener('track', (event) => {
         const [stream] = event.streams;

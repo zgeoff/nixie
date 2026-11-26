@@ -3,7 +3,6 @@ import type { CallEnvironment, CallPeer, CallTrack, OfferOptions } from '../call
 export interface StubCallPeer extends CallPeer {
   readonly offers: readonly OfferOptions[];
   readonly answers: readonly string[];
-  readonly dropped: () => number;
   readonly emitConnectionState: (state: RTCPeerConnectionState) => void;
   readonly isClosed: () => boolean;
 }
@@ -13,6 +12,9 @@ export interface StubCallEnvironment {
   readonly peers: readonly StubCallPeer[];
   readonly tracks: readonly CallTrack[];
   readonly microphoneRequests: () => number;
+
+  // how many tracks the call has stopped
+  readonly stoppedTracks: () => number;
 }
 
 export interface StubCallEnvironmentOptions {
@@ -25,7 +27,7 @@ export interface StubCallEnvironmentOptions {
 export function buildStubCallEnvironment(options: StubCallEnvironmentOptions): StubCallEnvironment {
   const peers: StubCallPeer[] = [];
   const tracks: CallTrack[] = [];
-  const counts = { microphoneRequests: 0 };
+  const counts = { microphoneRequests: 0, stoppedTracks: 0 };
 
   const environment: CallEnvironment = {
     openMicrophone: () => {
@@ -35,7 +37,12 @@ export function buildStubCallEnvironment(options: StubCallEnvironmentOptions): S
         return Promise.reject(options.microphoneError);
       }
 
-      const track: CallTrack = { enabled: true, stop: () => {} };
+      const track: CallTrack = {
+        enabled: true,
+        stop: () => {
+          counts.stoppedTracks += 1;
+        },
+      };
 
       tracks.push(track);
 
@@ -50,7 +57,13 @@ export function buildStubCallEnvironment(options: StubCallEnvironmentOptions): S
     },
   };
 
-  return { environment, peers, tracks, microphoneRequests: () => counts.microphoneRequests };
+  return {
+    environment,
+    peers,
+    tracks,
+    microphoneRequests: () => counts.microphoneRequests,
+    stoppedTracks: () => counts.stoppedTracks,
+  };
 }
 
 function buildStubPeer(): StubCallPeer {
@@ -58,16 +71,14 @@ function buildStubPeer(): StubCallPeer {
   const answers: string[] = [];
   const listeners: ((state: RTCPeerConnectionState) => void)[] = [];
 
-  const state: { isClosed: boolean; dropped: number; connection: RTCPeerConnectionState } = {
+  const state: { isClosed: boolean; connection: RTCPeerConnectionState } = {
     isClosed: false,
-    dropped: 0,
     connection: 'new',
   };
 
   return {
     offers,
     answers,
-    dropped: () => state.dropped,
     readConnectionState: () => state.connection,
     addTrack: () => {},
     makeOffer: (offerOptions) => {
@@ -77,11 +88,6 @@ function buildStubPeer(): StubCallPeer {
     },
     applyAnswer: (sdp) => {
       answers.push(sdp);
-
-      return Promise.resolve();
-    },
-    dropOffer: () => {
-      state.dropped += 1;
 
       return Promise.resolve();
     },

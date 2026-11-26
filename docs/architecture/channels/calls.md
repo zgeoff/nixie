@@ -95,13 +95,13 @@ in order. CI holds no model credential, so a person runs it by hand with `NIXIE_
 A call is `ringing`, `connecting`, `live` or `ended`. An ended call carries who ended it: `you`,
 `nixie`, `budget`, `missed`, `declined` or `dropped`.
 
-| Step            | What happens                                                                                                                                                                                                                                            |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `calls.start`   | A full-scope session starts a call. One write transaction checks the refusals, creates the call, asks the server to create the call task, and writes `call.started` and `call.answered`. The call is `connecting`, and the starting session carries it. |
-| `calls.connect` | The carrying session sends its SDP offer. The module opens a speech session, and the transaction that makes the call `live` charges its first minute.                                                                                                   |
-| `calls.get`     | Reads the call as the carrying device needs it: its state, who ended it, and `reconnect`, which names why the call waits for a new offer.                                                                                                               |
-| `calls.hangUp`  | Ends the call with `endedBy: 'you'`. A second hang up of an ended call returns the same result.                                                                                                                                                         |
-| `call.hang_up`  | The call's turn asks to end the call. Once the turn's answers have gone to the speech layer, the call ends with `endedBy: 'nixie'`.                                                                                                                     |
+| Step            | What happens                                                                                                                                                                                                                                                                                                         |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `calls.start`   | A full-scope session starts a call, and a retry of one action ID answers with the call's thread. One write transaction checks the refusals, creates the call, asks the server to create the call task, and writes `call.started` and `call.answered`. The call is `connecting`, and the starting session carries it. |
+| `calls.connect` | The carrying session sends its SDP offer. The module opens a speech session, and the transaction that makes the call `live` charges its first minute.                                                                                                                                                                |
+| `calls.get`     | Reads the call as the carrying device needs it: its state, who ended it, and `reconnect`, which names why the call waits for a new offer.                                                                                                                                                                            |
+| `calls.hangUp`  | Ends the call with `endedBy: 'you'`. A second hang up of an ended call returns the same result.                                                                                                                                                                                                                      |
+| `call.hang_up`  | The call's turn asks to end the call. Once the turn's answers have gone to the speech layer, the call ends with `endedBy: 'nixie'`.                                                                                                                                                                                  |
 
 `calls.start` refuses with one of these errors, checked in this order:
 
@@ -140,9 +140,14 @@ wait starts, so the device reads the call again at once. The device answers with
 offer on its open peer connection and a fresh `calls.connect`. A connect on a live call that waits
 opens a new speech session from the call's instructions, charges nothing, writes `call.reconnected`
 with the cause, closes the old session, starts the watch of the new one and has the speech layer say
-the `reconnect` line. A connect that fails leaves the call waiting, so the device may send another.
-The sweep ends a live call as `dropped` once it has held no session for 30 s. A call that holds its
-session while it waits for a `session_limit` offer keeps charging its minutes.
+the `reconnect` line.
+
+The old session's hand-offs go with it: the new session never heard them, so the answer to a request
+still in progress is not sent, as after a restart. A connect that fails leaves the call waiting, so
+the device may send another. A device whose connection failed while the module still holds the
+session gets `CALL_CONNECTED` until the speech layer reports `dropped`. The sweep ends a live call
+as `dropped` once it has held no session for the reconnect limit. A call that holds its session
+while it waits for a `session_limit` offer keeps charging its minutes.
 
 Every end of a call, hang-up included, first charges each started minute that is still unpaid, so a
 hang-up between sweeps costs the minute the call had started. A call whose budget has no room for
@@ -151,9 +156,9 @@ charge reads the call inside its own transaction, so a call that ended since a s
 charged. A budget line that fails to speak never keeps the speech session open.
 
 A sweep closes the gaps that a crash or a silent provider leaves. On a short interval it ends a call
-that stayed `connecting` past its limit, starts the 30 s wait of a `live` call whose speech session
-is gone and ends the call when the wait runs out, and charges each further started minute of a live
-call. It also writes the report of a call whose task stopped before its last turn, as
+that stayed `connecting` past its limit, starts the reconnect wait of a `live` call whose speech
+session is gone and ends the call when the wait runs out, and charges each further started minute of
+a live call. It also writes the report of a call whose task stopped before its last turn, as
 [the call's last turn](#hand-offs) describes.
 
 ## Records

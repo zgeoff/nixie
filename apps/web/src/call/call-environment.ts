@@ -22,9 +22,6 @@ export interface CallPeer {
   readonly addTrack: (track: CallTrack, stream: CallMicrophone) => void;
   readonly makeOffer: (options: OfferOptions) => Promise<string>;
   readonly applyAnswer: (sdp: string) => Promise<void>;
-
-  // withdraws an offer that no answer will follow
-  readonly dropOffer: () => Promise<void>;
   readonly onSpeech: (listener: (stream: MediaStream) => void) => void;
   readonly onConnectionState: (listener: (state: RTCPeerConnectionState) => void) => void;
   readonly close: () => void;

@@ -1,6 +1,6 @@
 import type { CallState, CallsContext, ReconnectCause } from '../types';
-import type { CallEndedBy } from './call-ended-by';
-import { readCall } from './read-call';
+import type { CallEndedBy } from '../utils/call-ended-by';
+import { readCall } from '../utils/read-call';
 
 export interface CallView {
   readonly callID: string;

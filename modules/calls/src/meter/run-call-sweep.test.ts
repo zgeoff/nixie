@@ -5,7 +5,7 @@ import invariant from 'tiny-invariant';
 import { connectCall } from '../connect/connect-call';
 import { hangUpCall } from '../hang-up/hang-up-call';
 import { startCall } from '../start/start-call';
-import { probeStubbedCaller, startTestCalls } from '../test-utils';
+import { buildTestCallsContext, probeStubbedCaller, startTestCalls } from '../test-utils';
 import { readCall } from '../utils/read-call';
 import { runCallSweep } from './run-call-sweep';
 
@@ -130,19 +130,19 @@ test('it keeps a live call whose speech session this process lost for 30 s, then
 
   await ctx.connect();
 
-  ctx.context.sessions.clear();
+  const restarted = buildTestCallsContext({ log: ctx.log, clock: ctx.clock });
 
-  await runCallSweep(ctx.context);
+  await runCallSweep(restarted.context);
 
   ctx.clock.advance(29_000);
 
-  await runCallSweep(ctx.context);
+  await runCallSweep(restarted.context);
 
   const waiting = await readCall(ctx.writer.db, ctx.callID);
 
   ctx.clock.advance(1000);
 
-  await runCallSweep(ctx.context);
+  await runCallSweep(restarted.context);
 
   const ended = await readCall(ctx.writer.db, ctx.callID);
 

@@ -6,9 +6,10 @@ import { waitFor } from '@zgeoff/testing';
 import invariant from 'tiny-invariant';
 import { hangUpCall } from '../hang-up/hang-up-call';
 import { startCall } from '../start/start-call';
-import { probeStubbedCaller, startTestCalls } from '../test-utils';
+import { buildTestCallsContext, probeStubbedCaller, startTestCalls } from '../test-utils';
 import { readCall } from '../utils/read-call';
 import { connectCall } from './connect-call';
+import { readCallView } from './read-call-view';
 
 async function setupTest() {
   const ctx = await startTestCalls();
@@ -405,21 +406,26 @@ test('it moves a live call to a new session on a new offer after the speech sess
 
   ctx.speech.emit('fake-session-1', { kind: 'dropped' });
 
-  await waitFor(() => expect(ctx.context.runtime.reconnects.get(callID)?.cause).toBe('dropped'));
+  await waitFor(async () => {
+    const view = await readCallView(ctx.context, callID);
+
+    expect(view?.reconnect).toBe('dropped');
+  });
 
   const result = await connectCall(ctx.context, { ...request, sdpOffer: 'offer-2' });
   const ledger = await readBudgetLedger(ctx.writer.db, ctx.context.budgets, 'call-day');
+  const view = await readCallView(ctx.context, callID);
 
   expect({
     result,
     methods: ctx.speech.calls.map((entry) => entry.method),
     charges: ledger?.charges.length,
-    waits: ctx.context.runtime.reconnects.size,
+    reconnect: view?.reconnect,
   }).toStrictEqual({
     result: { status: 'connected', sdpAnswer: 'fake-answer-2' },
     methods: ['open', 'open', 'say'],
     charges: 1,
-    waits: 0,
+    reconnect: null,
   });
 });
 
@@ -436,9 +442,9 @@ test('it takes a new offer for a live call that this process holds no session fo
 
   await connectCall(ctx.context, request);
 
-  ctx.context.sessions.clear();
+  const restarted = buildTestCallsContext({ log: ctx.log, clock: ctx.clock });
 
-  const result = await connectCall(ctx.context, request);
+  const result = await connectCall(restarted.context, request);
   const records = await readRecords(ctx.log, { afterSequence: 0 });
 
   expect({
@@ -465,9 +471,11 @@ test('it closes the old session once a session that is near its limit gets its n
 
   ctx.speech.emit('fake-session-1', { kind: 'session_ending' });
 
-  await waitFor(() =>
-    expect(ctx.context.runtime.reconnects.get(callID)?.cause).toBe('session_limit'),
-  );
+  await waitFor(async () => {
+    const view = await readCallView(ctx.context, callID);
+
+    expect(view?.reconnect).toBe('session_limit');
+  });
 
   await connectCall(ctx.context, request);
 

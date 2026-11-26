@@ -17,6 +17,7 @@ import {
 import type { ScriptedModel } from '@heynixie/testing';
 import {
   buildFakeMicrophoneScript,
+  buildLoopbackPeerScript,
   createBuiltWeb,
   createFrontProxy,
   readWebBuild,
@@ -180,8 +181,13 @@ export async function runVerifyHarness(): Promise<void> {
     apiURL: api.url,
     webURL: web.url,
 
-    // a browser that has no microphone gets a silent one, so a call can start in the browser
-    ...(isCallsOn ? { headScript: buildFakeMicrophoneScript({ answer: 'allow' }) } : {}),
+    // a browser that has no microphone gets a silent one, and its peer connection an end that
+    // answers, so a call can start and connect in the browser
+    ...(isCallsOn
+      ? {
+          headScript: `${buildFakeMicrophoneScript({ answer: 'allow' })}\n${buildLoopbackPeerScript()}`,
+        }
+      : {}),
     onAPIRequest: (pathname) => {
       if (pathname === '/rpc/live/follow') {
         liveOpens.count += 1;

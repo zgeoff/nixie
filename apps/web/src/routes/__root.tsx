@@ -48,15 +48,15 @@ function RootDocument(): ReactNode {
       <body className={css({ fontFamily: 'sans', lineHeight: 'relaxed' })}>
         <NixieClientContext value={{ client: context.client, queryUtils: context.queryUtils }}>
           <LiveProvider>
-            {pathname === '/device' ? (
-              <Outlet />
-            ) : (
-              <CallProvider>
+            <CallProvider>
+              {pathname === '/device' ? (
+                <Outlet />
+              ) : (
                 <AppShell>
                   <Outlet />
                 </AppShell>
-              </CallProvider>
-            )}
+              )}
+            </CallProvider>
           </LiveProvider>
         </NixieClientContext>
         <Scripts />

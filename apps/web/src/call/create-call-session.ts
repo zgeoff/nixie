@@ -5,10 +5,13 @@ import type { CallEnvironment, CallMicrophone, CallPeer } from './call-environme
 import { isCallError } from './is-call-error';
 import { pickMicrophoneRefusal } from './pick-microphone-refusal';
 import { pickStartRefusal } from './pick-start-refusal';
-import type { CallPhase, CallSnapshot, CallView } from './types';
+import type { CallSnapshot, CallView } from './types';
 
 // the pause before the device sends its new offer again, while the server still waits for one
 const retryMs = 2000;
+
+// how long a lost connection may take to come back before the call is given up
+const reconnectLimitMs = 30_000;
 
 export interface CallSessionDependencies {
   readonly calls: ContractClient['calls'];
@@ -29,6 +32,9 @@ export interface CallSession {
 
   // takes what the server says of the call: that it ended, or that it waits for a new offer
   readonly observe: (view: CallView) => void;
+
+  // stops the microphone and the peer, for a page that goes away with the call still open
+  readonly dispose: () => void;
 }
 
 const idleSnapshot: CallSnapshot = {
@@ -38,6 +44,7 @@ const idleSnapshot: CallSnapshot = {
   isMuted: false,
   connection: 'new',
   startedAtMs: null,
+  reconnectedAtMs: null,
   endedBy: null,
   refusal: null,
   remoteStream: null,
@@ -52,7 +59,10 @@ export function createCallSession(dependencies: CallSessionDependencies): CallSe
   let microphone: CallMicrophone | null = null;
   let peer: CallPeer | null = null;
   let isReconnecting = false;
-  const readPhase = (): CallPhase => snapshot.phase;
+
+  // Counts each release of the microphone and the peer, so an answer that arrives after a hang-up,
+  // an end or a give-up finds the call changed and does nothing.
+  let epoch = 0;
 
   const change = (patch: Partial<CallSnapshot>): void => {
     snapshot = { ...snapshot, ...patch };
@@ -63,8 +73,10 @@ export function createCallSession(dependencies: CallSessionDependencies): CallSe
   };
 
   const release = (): void => {
-    for (const track of microphone?.getTracks() ?? []) {
-      track.stop();
+    epoch += 1;
+
+    if (microphone !== null) {
+      stopTracks(microphone);
     }
 
     microphone = null;
@@ -125,7 +137,15 @@ export function createCallSession(dependencies: CallSessionDependencies): CallSe
     return openPeer();
   };
 
-  // Sends a new offer on the open peer connection, so the microphone and the audio path stay.
+  // Gives up a call that did not come back in time, and ends it on the server when it still runs.
+  const giveUp = async (callID: string): Promise<void> => {
+    finish('dropped');
+
+    await hangUpQuietly(dependencies.calls, callID);
+  };
+
+  // Sends a new offer on the open peer connection, so the microphone and the audio path stay. The
+  // call is given up when the connection is not back within the limit.
   const reconnect = async (): Promise<void> => {
     if (isReconnecting || snapshot.callID === null || snapshot.phase === 'ended') {
       return;
@@ -134,10 +154,29 @@ export function createCallSession(dependencies: CallSessionDependencies): CallSe
     isReconnecting = true;
 
     const callID = snapshot.callID;
+    const mine = epoch;
 
     change({ phase: 'reconnecting' });
 
+    const stopDeadline = dependencies.startTimer(() => {
+      if (epoch === mine) {
+        void giveUp(callID);
+      }
+    }, reconnectLimitMs);
+
+    try {
+      await retryOffers(callID, mine);
+    } finally {
+      stopDeadline();
+    }
+  };
+
+  const retryOffers = async (callID: string, mine: number): Promise<void> => {
     for (;;) {
+      if (epoch !== mine) {
+        return;
+      }
+
       const target = resolvePeerToRestart();
 
       try {
@@ -146,37 +185,29 @@ export function createCallSession(dependencies: CallSessionDependencies): CallSe
 
         await target.applyAnswer(answer.sdpAnswer);
 
+        if (epoch !== mine) {
+          return;
+        }
+
         isReconnecting = false;
 
-        change({ phase: 'live', connection: target.readConnectionState() });
+        change({
+          phase: 'live',
+          connection: target.readConnectionState(),
+          reconnectedAtMs: dependencies.now(),
+        });
 
         return;
       } catch (error) {
-        if (
-          readPhase() === 'ended' ||
-          isCallError(error, ['CALL_NOT_FOUND', 'NOT_CARRYING_SESSION'])
-        ) {
+        if (epoch !== mine || isCallError(error, ['CALL_NOT_FOUND', 'NOT_CARRYING_SESSION'])) {
           return;
         }
 
-        if (isCallError(error, ['CALL_CONNECTED'])) {
-          // the server already holds a session from an earlier offer, so this one is withdrawn
-          await target.dropOffer();
-
-          isReconnecting = false;
-
-          change({ phase: 'live', connection: target.readConnectionState() });
-
-          return;
-        }
-
+        // any other refusal, a held session included, is tried again after a pause: the call is
+        // live only once an answer is in place
         await new Promise<void>((resolve) => {
           dependencies.startTimer(resolve, retryMs);
         });
-
-        if (readPhase() === 'ended') {
-          return;
-        }
       }
     }
   };
@@ -188,13 +219,26 @@ export function createCallSession(dependencies: CallSessionDependencies): CallSe
 
     change({ phase: 'asking' });
 
+    const mine = epoch;
+    let opened: CallMicrophone;
+
     try {
-      microphone = await dependencies.environment.openMicrophone();
+      opened = await dependencies.environment.openMicrophone();
     } catch (error) {
-      change({ phase: 'refused', refusal: pickMicrophoneRefusal(error) });
+      if (epoch === mine) {
+        change({ phase: 'refused', refusal: pickMicrophoneRefusal(error) });
+      }
 
       return;
     }
+
+    if (epoch !== mine) {
+      stopTracks(opened);
+
+      return;
+    }
+
+    microphone = opened;
 
     change({ phase: 'starting' });
 
@@ -203,8 +247,16 @@ export function createCallSession(dependencies: CallSessionDependencies): CallSe
     try {
       started = await dependencies.calls.start({ clientActionID: crypto.randomUUID() });
     } catch (error) {
-      release();
-      change({ phase: 'refused', refusal: pickStartRefusal(error) });
+      if (epoch === mine) {
+        release();
+        change({ phase: 'refused', refusal: pickStartRefusal(error) });
+      }
+
+      return;
+    }
+
+    if (epoch !== mine) {
+      await hangUpQuietly(dependencies.calls, started.callID);
 
       return;
     }
@@ -219,11 +271,20 @@ export function createCallSession(dependencies: CallSessionDependencies): CallSe
 
       await target.applyAnswer(answer.sdpAnswer);
     } catch (error) {
+      // a hang-up or an end while the connect was pending already ended the call
+      if (epoch !== mine) {
+        return;
+      }
+
       release();
       change({ phase: 'refused', refusal: pickStartRefusal(error) });
 
-      await endUnconnectedCall(dependencies.calls, started.callID);
+      await hangUpQuietly(dependencies.calls, started.callID);
 
+      return;
+    }
+
+    if (epoch !== mine) {
       return;
     }
 
@@ -266,6 +327,7 @@ export function createCallSession(dependencies: CallSessionDependencies): CallSe
 
       change({ isMuted });
     },
+    dispose: release,
     dismiss: () => {
       if (snapshot.phase === 'ended' || snapshot.phase === 'refused') {
         snapshot = idleSnapshot;
@@ -290,8 +352,15 @@ export function createCallSession(dependencies: CallSessionDependencies): CallSe
   };
 }
 
-// A call that never connected is ended, so no call is left to wait out its limit.
-async function endUnconnectedCall(calls: ContractClient['calls'], callID: string): Promise<void> {
+function stopTracks(source: CallMicrophone): void {
+  for (const track of source.getTracks()) {
+    track.stop();
+  }
+}
+
+// A call that never connected, or that this device gave up, is ended, so no call is left to wait
+// out its limit.
+async function hangUpQuietly(calls: ContractClient['calls'], callID: string): Promise<void> {
   try {
     await calls.hangUp({ callID, clientActionID: crypto.randomUUID() });
   } catch {

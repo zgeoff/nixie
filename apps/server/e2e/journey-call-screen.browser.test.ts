@@ -1,8 +1,9 @@
-import { expect, test } from 'bun:test';
+import { expect, onTestFinished, test } from 'bun:test';
 import { createTestClient } from '@heynixie/server/test-utils';
 import type { ScriptedModelRequest } from '@heynixie/testing';
 import {
   buildFakeMicrophoneScript,
+  buildLoopbackPeerScript,
   setupSignedInBrowser,
   waitForPage,
 } from '@heynixie/web/test-utils';
@@ -15,7 +16,7 @@ type ScriptedBody = NonNullable<ScriptedModelRequest['body']>;
 async function setupTest(answer: 'allow' | 'block' = 'allow') {
   const journey = await startWebJourney({
     voicePricePerMinute: 0.05,
-    headScript: buildFakeMicrophoneScript({ answer }),
+    headScript: `${buildFakeMicrophoneScript({ answer })}\n${buildLoopbackPeerScript()}`,
   });
 
   const api = await createTestClient(journey.server);
@@ -43,6 +44,50 @@ async function setupTest(answer: 'allow' | 'block' = 'allow') {
       );
 
       await journey.view.click('button[name="start-call"]');
+    },
+
+    // A second device of the same user, on its own page of its own host name, because the browser's
+    // views share one cookie jar per host. Its observer is in place before the page loads.
+    openSecondDevice: async () => {
+      const code = await api.client.sessions.issueCode({
+        clientActionID: crypto.randomUUID(),
+        scope: 'full',
+      });
+
+      const second = await api.signedOut.sessions.enrol({
+        clientActionID: crypto.randomUUID(),
+        code: code.code,
+        deviceName: 'tablet',
+        tokenDelivery: 'bearer',
+      });
+
+      const otherURL = new URL(journey.appURL);
+
+      otherURL.hostname = 'localhost';
+
+      const other = new Bun.WebView({ backend: 'chrome' });
+
+      onTestFinished(() => {
+        other.close();
+      });
+
+      await other.navigate('about:blank');
+
+      await other.cdp('Page.addScriptToEvaluateOnNewDocument', {
+        source:
+          'window.shownNotifications = []; window.Notification = class { constructor(title) { window.shownNotifications.push(title); } };',
+      });
+
+      await setupSignedInBrowser(other, { appURL: otherURL.origin, token: second.token ?? '' });
+
+      await other.navigate(`${otherURL.origin}/call`);
+
+      await waitForPage(
+        other,
+        'document.querySelector(\'button[name="start-call"]:not([disabled])\') !== null',
+      );
+
+      return other;
     },
     waitForConnected: () =>
       waitForPage(
@@ -153,6 +198,8 @@ test('it shows the card of a proposal made during the call on the carrying devic
   await ctx.startCall();
   await ctx.waitForConnected();
 
+  const other = await ctx.openSecondDevice();
+
   await ctx.server.request('emitSpeech', {
     sessionID: 'fake-session-1',
     event: { kind: 'hand_off', handOffID: 'h1', request: 'remember my bees' },
@@ -164,36 +211,7 @@ test('it shows the card of a proposal made during the call on the carrying devic
     8000,
   );
 
-  // a second device of the same user, which watches for any notification it is shown
-  const code = await ctx.api.client.sessions.issueCode({
-    clientActionID: crypto.randomUUID(),
-    scope: 'full',
-  });
-
-  const second = await ctx.api.signedOut.sessions.enrol({
-    clientActionID: crypto.randomUUID(),
-    code: code.code,
-    deviceName: 'tablet',
-    tokenDelivery: 'bearer',
-  });
-
-  await ctx.view.cdp('Network.clearBrowserCookies');
-
-  await ctx.view.cdp('Page.addScriptToEvaluateOnNewDocument', {
-    source:
-      'window.shownNotifications = []; window.Notification = class { constructor(title) { window.shownNotifications.push(title); } };',
-  });
-
-  await setupSignedInBrowser(ctx.view, { appURL: ctx.appURL, token: second.token ?? '' });
-
-  await ctx.view.navigate(`${ctx.appURL}/call`);
-
-  await waitForPage(
-    ctx.view,
-    'document.querySelector(\'button[name="start-call"]:not([disabled])\') !== null',
-  );
-
-  const other: unknown = await ctx.view.evaluate(
+  const seen: unknown = await other.evaluate(
     `JSON.stringify({
       card: document.querySelector('[aria-label="Proposals from this call"]') !== null,
       notifications: window.shownNotifications,
@@ -201,7 +219,34 @@ test('it shows the card of a proposal made during the call on the carrying devic
     })`,
   );
 
-  expect(JSON.parse(String(other))).toStrictEqual({ card: false, notifications: [], workers: 0 });
+  expect(JSON.parse(String(seen))).toStrictEqual({
+    card: false,
+    notifications: [],
+    workers: 0,
+  });
+});
+
+test('it keeps the call live on the device route, which has no app shell, and shows the call bar there', async () => {
+  const ctx = await setupTest();
+
+  await ctx.startCall();
+  await ctx.waitForConnected();
+
+  // the router client-side navigates, which a new page load would not
+  await ctx.view.evaluate("window.__TSR_ROUTER__.navigate({ to: '/device' })");
+
+  await waitForPage(
+    ctx.view,
+    "location.pathname === '/device' && document.querySelector('[aria-label=\"Call in progress\"]') !== null",
+    8000,
+  );
+
+  await ctx.view.evaluate("window.__TSR_ROUTER__.navigate({ to: '/call' })");
+  await ctx.waitForConnected();
+
+  const records = await ctx.nixie.readRecords();
+
+  expect(records.filter((record) => record.kind === 'call.ended')).toStrictEqual([]);
 });
 
 test('it reconnects the call with an ICE-restart offer and a fresh connect within 30 s after a server restart', async () => {
