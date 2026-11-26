@@ -59,43 +59,67 @@ async function setupTest() {
   };
 }
 
-test('it stops keeping a device session fresh once its stream stops, though nothing reads the stream again', async () => {
-  const ctx = await setupTest();
-  const stopped = await ctx.enrolPanel('hall panel');
-  const open = await ctx.enrolPanel('desk panel');
+test.each([
+  {
+    when: 'once it opened',
+    stop: async (events: AsyncGenerator<unknown>, stopping: AbortController) => {
+      await events.next();
 
-  const stopping = new AbortController();
+      stopping.abort();
+    },
+  },
+  {
+    when: 'before it opened',
+    stop: async (events: AsyncGenerator<unknown>, stopping: AbortController) => {
+      stopping.abort();
 
-  const stoppedEvents = ctx.follow(stopped, stopping.signal);
-  const openEvents = ctx.follow(open);
+      await events.next();
+    },
+  },
+])(
+  'it stops keeping a device session fresh when its stream stops $when, though nothing reads the stream again',
+  async (row) => {
+    const ctx = await setupTest();
+    const stopped = await ctx.enrolPanel('hall panel');
+    const open = await ctx.enrolPanel('desk panel');
 
-  onTestFinished(() => openEvents.return(undefined));
+    const stopping = new AbortController();
 
-  await stoppedEvents.next();
-  await openEvents.next();
+    const stoppedEvents = ctx.follow(stopped, stopping.signal);
+    const openEvents = ctx.follow(open);
 
-  const before = await ctx.readLastUsedMs(stopped.sessionID);
+    onTestFinished(() => openEvents.return(undefined));
+    onTestFinished(() => stopping.abort());
 
-  stopping.abort();
+    await openEvents.next();
 
-  // each refresh of the open stream's session marks one more interval in which a stream that still
-  // kept its session fresh would have refreshed it too
-  for (let interval = 1; interval <= 3; interval += 1) {
-    ctx.clock.advance(ctx.context.settings.lastSeenIntervalMs);
+    const before = await ctx.readLastUsedMs(stopped.sessionID);
 
-    const nowMs = ctx.clock.now();
+    await row.stop(stoppedEvents, stopping);
 
-    await waitFor(async () => {
-      const lastUsedMs = await ctx.readLastUsedMs(open.sessionID);
+    // each refresh of the open stream's session marks one more interval in which a stream that
+    // still kept its session fresh would have refreshed it too
+    const waitForOpenRefresh = async () => {
+      ctx.clock.advance(ctx.context.settings.lastSeenIntervalMs);
 
-      expect(lastUsedMs).toBe(nowMs);
-    });
-  }
+      const nowMs = ctx.clock.now();
 
-  const after = await ctx.readLastUsedMs(stopped.sessionID);
+      await waitFor(async () => {
+        const lastUsedMs = await ctx.readLastUsedMs(open.sessionID);
 
-  expect(after).toBe(before);
-});
+        expect(lastUsedMs).toBe(nowMs);
+      });
+    };
+
+    await waitForOpenRefresh();
+    await waitForOpenRefresh();
+    await waitForOpenRefresh();
+
+    const after = await ctx.readLastUsedMs(stopped.sessionID);
+
+    expect(after).toBe(before);
+  },
+);
 
 test('it logs a refresh of the device session that fails, with the ID of the device', async () => {
   const ctx = await setupTest();

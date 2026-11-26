@@ -325,6 +325,30 @@ test('#followDevice lets the device go offline 60 s after its stream stops, thou
   expect(ctx.streams.isOnline(device.deviceID)).toBeFalse();
 });
 
+test('#followDevice dates the device offline from the stop of its stream, though the stream ends later', async () => {
+  const ctx = await setupTest();
+  const device = await ctx.seed.screenOnDevice();
+
+  const events = ctx.follow(device.deviceID);
+
+  await events.next();
+
+  const stoppedAtMs = ctx.clock.now();
+
+  ctx.stop();
+  ctx.clock.advance(30_000);
+
+  await events.return(undefined);
+
+  ctx.clock.advance(30_000);
+
+  await waitFor(() => {
+    expect(ctx.streams.isOnline(device.deviceID)).toBeFalse();
+  });
+
+  expect(ctx.streams.readOfflineSinceMs(device.deviceID)).toBe(stoppedAtMs);
+});
+
 test('#followDevice ends when the row of the device goes', async () => {
   const ctx = await setupTest();
   const device = await ctx.seed.screenOnDevice();

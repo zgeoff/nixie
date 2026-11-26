@@ -27,15 +27,17 @@ export async function* streamLiveDevice(
     void writeKeepActive(context, stream);
   }, context.settings.lastSeenIntervalMs);
 
+  const stopKeepActive = (): void => {
+    clearInterval(keepActive);
+  };
+
   // A consumer that stops reading after an abort never resumes the generator, so its finally may
-  // never run: the abort ends the interval too.
-  stream.signal?.addEventListener(
-    'abort',
-    () => {
-      clearInterval(keepActive);
-    },
-    { once: true },
-  );
+  // never run: the abort ends the interval too, and so does a signal that aborted already.
+  stream.signal?.addEventListener('abort', stopKeepActive, { once: true });
+
+  if (stream.signal?.aborted === true) {
+    stopKeepActive();
+  }
 
   const events = followDevice({
     log: context.log,
@@ -62,7 +64,8 @@ export async function* streamLiveDevice(
       yield { kind: 'device', event };
     }
   } finally {
-    clearInterval(keepActive);
+    stream.signal?.removeEventListener('abort', stopKeepActive);
+    stopKeepActive();
 
     await events.return(undefined);
   }
