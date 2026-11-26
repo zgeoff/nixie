@@ -136,13 +136,13 @@ window before the attempt, read to its last page, with the `Message-ID` and
 `X-Google-Original-Message-ID` headers of each message. Gmail can replace a `Message-ID` that a
 client set and keep the old one in `X-Google-Original-Message-ID`.
 
-| What the check sees                                             | It answers                           |
-| --------------------------------------------------------------- | ------------------------------------ |
-| Either way finds a message whose header holds the Message-ID    | found; this row wins over the others |
-| Both ways finish and find none                                  | not found                            |
-| The list holds more than 200 messages                           | inconclusive                         |
-| Any call fails, or Gmail answers in a way the check cannot read | inconclusive                         |
-| A listed message is gone when the check reads it                | inconclusive                         |
+| What the check sees                                             | It answers                                                                                     |
+| --------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| Either way finds a message whose header holds the Message-ID    | found, and wins over the rows below; inconclusive when the send's reply rule cannot be written |
+| Both ways finish and find none                                  | not found                                                                                      |
+| The list holds more than 200 messages                           | inconclusive                                                                                   |
+| Any call fails, or Gmail answers in a way the check cannot read | inconclusive                                                                                   |
+| A listed message is gone when the check reads it                | inconclusive                                                                                   |
 
 Found makes the action done, with the found message and thread as its result. Not found and
 inconclusive bring the action to the user on a card, and nothing sends again until the user answers,
@@ -231,11 +231,10 @@ and `window` as [the mailbox's wake tools](../core/mailbox.md#wake-rules), with 
   by then. The result holds the rule's short ID as `replyRule`, or null. The send's card shows the
   expiry. A send whose rule cannot be written answers `ambiguous`, so the check finds the mail and
   writes the rule again. A check that finds the mail but cannot write its rule answers
-  `inconclusive`, in place of the found that the [sent-folder check](#sent-folder-check) table
-  gives, so the queue never settles a send without its rule. nixie writes the rule in its own
-  transaction, before the action's outcome, because the action queue runs no connector write inside
-  the outcome's transaction. A restart between the two leaves the action unsettled, and the same
-  check replaces the rule in place, so one rule stays. A send that the user drops after such a
+  `inconclusive`, so the queue never settles a send without its rule. nixie writes the rule in its
+  own transaction, before the action's outcome, because the action queue runs no connector write
+  inside the outcome's transaction. A restart between the two leaves the action unsettled, and the
+  same check replaces the rule in place, so one rule stays. A send that the user drops after such a
   restart keeps its rule. Whether it should is open for the owner in
   [GEO-2871](https://linear.app/zgeoff/issue/GEO-2871).
 

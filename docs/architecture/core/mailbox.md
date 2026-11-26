@@ -72,7 +72,7 @@ a thread lookup needs no text.
 The parser reads UTF-8, Latin-1 and Windows-1252 text, quoted-printable and base64 bodies, encoded
 subject words and multipart mail. The sender is the address in angle brackets, so an address inside
 a display name never counts. A mail keeps its plain text and its HTML as they came, the HTML cut at
-1,000,000 characters, and the module never reads the HTML itself. `mail.list` searches the text and
+1,000,000 characters, and the module never parses the HTML itself. `mail.list` searches the text and
 the source of the HTML. A mail with attachments lists each by name and size. The parser reads a
 quoted name that holds a semicolon and an extended name such as `filename*=UTF-8''caf%C3%A9.pdf`,
 and keeps each name as its last path segment with no control character.
@@ -177,9 +177,8 @@ stores each in a `trigger.wake_rule_set` record, and the `wake_rules` table fold
   substring; and `thread`. Each field present must match, with case ignored. A `@domain` entry
   matches that domain and no subdomain. The From header proves nothing about who sent a mail, so a
   match filters and never checks trust.
-- **Target.** A rule wakes one target, the conversation or a task, given in the call that sets it.
-  When a task sets a rule with no target, the rule wakes that task. A rule whose task ended ends
-  with it.
+- **Target.** A rule wakes one target, the conversation or a task. The call that sets the rule names
+  it, and a call from a task that names none sets that task. A rule whose task ended ends with it.
 - **Expiry.** The expiry is optional, so a rule can stay for good. The tool's schema sets the
   longest expiry. A rule matches the mail received before its expiry.
 - **Window.** The window is the shortest time between two wakes by one rule. The deployment's

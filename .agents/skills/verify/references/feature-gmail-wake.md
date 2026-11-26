@@ -15,9 +15,9 @@ your reply, list the feature as not verified there.
 
 Before you start:
 
-- Start from an `up` that no other journey has used, because a deployment registers one OAuth
-  client, and the counts below start at 0. After any other journey, run `bun verify up --restart`
-  and `bun verify doctor` first.
+- Start from an `up` that no journey but sign-in-enrol has used, because a deployment registers one
+  OAuth client, and the counts below start at 0. After any other journey, run
+  `bun verify up --restart` and `bun verify doctor` first.
 - Run [sign-in-enrol](feature-sign-in-enrol.md) first, after each `up`.
 
 ## Journey
