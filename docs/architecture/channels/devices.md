@@ -40,13 +40,13 @@ registers.
 act on the caller's own row. A full session with no row gets `NOT_A_DEVICE` and has to register
 first. A device session whose row a revoke removed gets the refusal of a missing session.
 
-`create-api-app.ts` refuses with 403 each call from a device session except `live.follow` in its
-device form, `devices.resize`, `devices.pageError`, `devices.pageEvent`, `devices.pageData`,
-`devices.setCapability`, `devices.readImage` and `sessions.signOut`. The test in
-`create-device-procedures.test.ts` walks every contract path to keep that list true. A revoke or a
-sign-out of a session, full or device, removes its device row and ends its open streams. A full
-session's revoke also closes its computer watch sockets. A reset keeps the device rows and clears
-what they show.
+A device session may call only `live.follow` in its device form, `devices.resize`,
+`devices.pageError`, `devices.pageEvent`, `devices.pageData`, `devices.setCapability`,
+`devices.readImage` and `sessions.signOut`. `create-api-app.ts` refuses every other call from a
+device session with 403. The test in `create-device-procedures.test.ts` walks every contract path to
+keep that list true. A revoke or a sign-out of a session, full or device, removes its device row and
+ends its open streams. A full session's revoke also closes its computer watch sockets. A reset keeps
+the device rows and clears what they show.
 
 ## The device record
 
@@ -205,9 +205,9 @@ names. The response carries `no-store`, `nosniff` and `no-referrer`. The frame's
 `base-uri 'none'`, and images only from that page's image URLs and `data:`. Scripts and styles may
 also load from the file paths of the [packages](#packages) that the page names, and fonts from those
 paths and `data:`. So the policy keeps a page from fetching, opening a socket, submitting a form or
-loading anything else, and the bridge closes the ways out it leaves open, as below. The device
-page's own policy adds `frame-src 'self'`, which keeps a page from framing another site. A page can
-still navigate its own frame. Each test of the policy runs in a real browser, in
+loading anything else, and the bridge closes the ways out that the policy leaves open, as below. The
+device page's own policy adds `frame-src 'self'`, which keeps a page from framing another site. A
+page can still navigate its own frame. Each test of the policy runs in a real browser, in
 `answer-page-request.browser.test.ts`.
 
 The policy also sets `sandbox allow-scripts`. A person who opens the frame's address in a tab gets
@@ -222,8 +222,8 @@ don't run. nixie closes them this way:
 - The input check of `device.region` fails a page that holds a link, frame, object or embed element.
   A page needs none of them: it has no network, and its styles go in a style element.
 - The bridge removes `RTCPeerConnection` and `XSLTProcessor`, which builds elements by name. It
-  makes `createElement`, `createElementNS` and `createDocument` build a span for each of those
-  elements, with a namespace prefix or without.
+  makes `createElement`, `createElementNS` and `createDocument` build a span in place of a link,
+  frame, object or embed element, with a namespace prefix or without.
 - The bridge refuses `document.write` and `document.writeln`, because a page can split a start tag
   across 2 writes, and no check of each write sees the whole tag.
 - The bridge cleans each string that the page turns into markup, so a string never brings the
@@ -258,9 +258,9 @@ An inline script defines the frozen global `nixie` in each page:
   before the handler waits for it, and the page's retained message comes first.
 - `nixie.image(id)` returns the URL of a declared image.
 - `nixie.data(url)` returns the last response of one of the page's
-  [declared fetches](#declared-fetches) as `{ status, type, body, fetchedAt }`, and rejects with an
-  error whose `code` says why: `NOT_DECLARED`, `REFUSED`, `NOT_READY` or `STALE`, as
-  [declared fetches](#declared-fetches) explains.
+  [declared fetches](#declared-fetches) as `{ status, type, body, fetchedAt }`. Otherwise it rejects
+  with an error whose `code` is `NOT_DECLARED`, `REFUSED`, `NOT_READY` or `STALE`. See
+  [Declared fetches](#declared-fetches) for when each code applies.
 - `nixie.onData(handler)` calls the handler with the URL of each declared fetch that refreshed.
 
 The bridge takes a message only from its parent window, so a sibling frame can't send the page one.
@@ -319,9 +319,9 @@ missing, and checks the same hash.
 
 ### Declared fetches
 
-A page names the URLs it reads in `fetches`, each an `https` URL with a host that has a dot and is
-no private address, and with an optional `refreshMinutes` from 5 to 1,440. A page script can't name
-a URL of its own, so it can't put what it holds into a query string.
+A page's `fetches` holds the URLs the page reads, each an `https` URL with a host that has a dot and
+is no private address, and with an optional `refreshMinutes` from 5 to 1,440. A page script can't
+name a URL of its own, so it can't put what it holds into a query string.
 
 - `device.region` declares a `read` effect with the host of each fetch as a destination. When the
   call is sent, it asks the user about each host that no rule allows, and the page never shows when
@@ -329,8 +329,8 @@ a URL of its own, so it can't put what it holds into a query string.
 - The `devices` module runs each fetch when the region shows, and every `refreshMinutes` after,
   while the device is online. The fetch sandbox reads the response as text, up to a size limit, with
   GET alone. The fetch follows at most 3 redirects, each on the declared host and on `https`. A
-  redirect to another host or to `http` fails the fetch. A host that answers with a rate limit
-  pauses every fetch of that host, as the web fetch's pauses do.
+  redirect to another host or to `http` fails the fetch. When a host answers with a rate limit, the
+  server pauses every fetch of that host, as the web fetch does.
 - The fetch refuses a declared URL or a redirect that holds a secret the web fetch's own scan
   refuses, and `nixie.data` rejects with `REFUSED` for it.
 - The first fetch right after the call needs no second decision. Every later fetch, and every fetch
@@ -338,11 +338,11 @@ a URL of its own, so it can't put what it holds into a query string.
   stored call and no card. A fetch that the rules no longer allow never runs, and `nixie.data`
   rejects with `REFUSED` for it.
 - The server keeps the last response of each fetch in memory, and fetches again after a restart.
-  Before each fetch, the runner reads the layout again, so a page that a call replaced, that a
-  temporary replacement's expiry ended, or that a forget erased, starts no further fetch, and the
-  runner drops what a gone page held. A device that is offline or has its screen off keeps the
-  schedules of its pages, so when the device is back, a fetch that has run once asks the decision
-  point again.
+  Before each fetch, the `devices` module reads the layout again. It starts no further fetch for a
+  page that a call replaced, that a temporary replacement's expiry ended or that a forget erased,
+  and drops what that page held. The server keeps the fetch schedules of a device's pages while the
+  device is offline or has its screen off. When the device is back, each fetch that has run once
+  asks the decision point again.
 - A refresh sends the page's open stream a `data` event with the region, the content's short ID and
   the URL. The device page then posts `data-changed` into the frame, and the page's `nixie.onData`
   handlers run.
@@ -450,12 +450,12 @@ that holds a link, frame, object or embed element before any refusal. `device.re
 `UNKNOWN_DEVICE`, `SCREEN_OFF`, `UNKNOWN_REGION`, `NOT_A_PAGE` for a region that holds no page, then
 `OFFLINE`. `device.preview` returns `UNKNOWN_DEVICE`, then `SCREEN_OFF`.
 
-`devices.list` shows the layout a device holds whether or not the device is online, unlike
-`showing`, which is null while the device is offline. `showing` follows the screen's order: it is
-`layout` while no show covers the layout and at least one region shows content or has a background.
-Each region lists its kind, `until` and the short ID of its `device.region_shown` record. A page
-region also lists its packages and the URLs of its fetches. No region lists the rest of its content,
-such as its text, its image or its HTML. A blank region has a null kind.
+`devices.list` shows the layout a device holds even while the device is offline. Its `showing` is
+null while the device is offline, and otherwise follows the screen's order: it is `layout` while no
+show covers the layout and at least one region shows content or has a background. For each region,
+`devices.list` gives the kind, `until` and the short ID of its `device.region_shown` record, and for
+a page region also its packages and the URLs of its fetches. It gives none of the rest of a region's
+content, such as its text, its image or its HTML. A blank region has a null kind.
 
 ## The preview
 
@@ -494,12 +494,12 @@ without one still boots, and each preview of it has `picture: unavailable`.
 The `devices` module builds the page that the sandbox opens. It picks what the screen draws as the
 device page does: a show, then the layout while a region shows content or has a background, then the
 idle scene. `buildPreviewPage` turns that choice into `index.html` and the files that the screen
-draws, such as one for each image, so an image that a show covers is never sent. A markdown region
-keeps raw HTML as text, shows a link as underlined words with no address, and shows an image as the
-device does, a link labelled `image: <alt>`. A clock or a countdown shows the time of the render, in
-the time zone that the device's browser sent beside its size, or in the deployment's default time
-zone when the device sent none. A script in the page grows the text of each region to the largest
-size that fits, as the device page does.
+draws, such as one for each image, so an image that a show covers is never sent. In a markdown
+region, the preview keeps raw HTML as text, shows a link as underlined words with no address, and
+shows an image as the device does, as a link labelled `image: <alt>`. A clock or a countdown shows
+the time of the render, in the time zone that the device's browser sent beside its size, or in the
+deployment's default time zone when the device sent none. A script in the page grows the text of
+each region to the largest size that fits, as the device page does.
 
 The server sends the files, the screen's size in device pixels and the pixel ratio. The render guest
 in `guests/render` starts Chromium on an empty profile in a folder that it removes after the render.
@@ -512,13 +512,13 @@ is cut to the exact size, so a device with an odd width gets a picture of its ow
 sends the PNG on at that exact size, so a large screen is not shrunk. The picture is `unavailable`
 when the PNG passes the byte limit that the model takes.
 
-A page region draws as a sealed frame of its own, one of the preview's files, which holds the same
-document and policy as the device's frame, with its images by path and its retained message already
-in place. The files also hold each approved package that the pages name, under `packages/`, and the
-preview rewrites the device's package path in a page to that folder. The bridge answers `nixie.data`
-with what each declared fetch last returned, with `REFUSED` for a fetch that was refused, and with
-`NOT_READY` for a fetch that has returned nothing yet. The guest renders the page with scripts on,
-and the frame has the same sandbox as on the device.
+A page region draws as a sandboxed frame of its own, from one of the preview's files. That file
+holds the same document and policy as the device's frame, with its images by path and its retained
+message already in place. The files also hold each approved package that the pages name, under
+`packages/`, and the preview rewrites the device's package path in a page to that folder. The bridge
+answers `nixie.data` with what each declared fetch last returned, with `REFUSED` for a fetch that
+was refused, and with `NOT_READY` for a fetch that has returned nothing yet. The guest renders the
+page with scripts on, and the frame has the same sandbox as on the device.
 
 `buildPreviewPage` matches each kind of region content with no fallback, so a new kind fails the
 type check until `buildPreviewPage` has a branch for it.
