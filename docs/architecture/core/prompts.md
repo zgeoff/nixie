@@ -6,8 +6,8 @@ the conversation's session prompt, the compaction instruction, and the task prom
 them. A deployment can override any part or the template of any prompt from its definitions, and
 every part or template it leaves unset keeps nixie's built-in text. Each prompt has a part named
 `safety` that holds its rules against pasted text, fetched pages and other input that tries to steer
-the model. An override can replace or drop that part, and the operator log is the one place that
-shows it.
+the model. An override can replace or drop that part, and while the prompt runs, only the operator
+log shows it.
 
 ## Parts, templates and paths
 

@@ -11,8 +11,8 @@ the rules for ports, providers and adapters, and lists where the code departs fr
   issue plans it.
 - A **provider** is one implementation of an interface. A real provider does the work in a release.
   A fake provider stands in for it in a test.
-- An **adapter** is a provider that reaches a system outside nixie, as a package of its own. An
-  outside native runtime, such as the ONNX runtime, counts as an outside system.
+- An **adapter** is a provider that reaches a system outside nixie from the server, as a package of
+  its own. An outside native runtime, such as the ONNX runtime, counts as an outside system.
 
 ## When a port fits
 
@@ -33,12 +33,12 @@ the rules for ports, providers and adapters, and lists where the code departs fr
 1. The module that calls an interface owns its type. When the caller cannot depend on the provider's
    module, the composition root passes the provider in, as for `ConversationMemory` and `ReadPage`.
    The caller states what it needs, so a provider changes without a change to the caller.
-2. A provider that reaches an outside system is an adapter package named `<interface>-<system>`, for
-   any interface a module owns. A provider that reaches nothing outside lives in its module. One
-   package then holds all of nixie's code for one outside system. A provider that reaches its system
-   from inside a sandbox is a guest: its contract is its message types in the wire lib, and its
-   host-side record lives in the module that owns the interface. A guest imports only libs, so it
-   cannot import a module's interface.
+2. A provider that reaches an outside system from the server is an adapter package named
+   `<interface>-<system>`, for any interface a module owns. A provider that reaches nothing outside
+   lives in its module. One package then holds all of nixie's code for one outside system. A
+   provider that reaches its system from inside a sandbox is a guest: its contract is its message
+   types in the wire lib, and its host-side record lives in the module that owns the interface. A
+   guest imports only libs, so it cannot import a module's interface.
 3. An adapter imports only the module that owns its interface, plus libs, and review enforces it,
    because the boundary tags allow any module. An adapter that imports a second module ties 2
    domains together through an outside system.
