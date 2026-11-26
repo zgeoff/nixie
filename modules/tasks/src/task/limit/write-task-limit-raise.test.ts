@@ -192,7 +192,7 @@ test('it names the sandbox that the gateway counts, with its last count and what
 
   expect(raised).toMatchObject({
     status: 'raised',
-    sandboxLimit: { sandbox: 'sandbox-1', countMicros: 730_000, leftDollars: 4 },
+    sandboxLimit: { sandbox: 'sandbox-1', countMicros: 730_000, readCount: 2, leftDollars: 4 },
   });
 });
 

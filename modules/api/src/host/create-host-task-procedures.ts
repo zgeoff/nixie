@@ -2,7 +2,12 @@
 import { toErrorFields } from '@heynixie/logger';
 import { patchLimitUntilSet, pickSandboxLimit } from '@heynixie/spend';
 import type { RaisedSandboxLimit, TaskControl } from '@heynixie/tasks';
-import { writeTaskControl, writeTaskLimitRaise, writeTaskResume } from '@heynixie/tasks';
+import {
+  readRaisedSandboxLimit,
+  writeTaskControl,
+  writeTaskLimitRaise,
+  writeTaskResume,
+} from '@heynixie/tasks';
 import { match } from 'ts-pattern';
 import { readResumeRefusal } from '../spend/read-resume-refusal';
 import type { APIContext } from '../types';
@@ -35,7 +40,7 @@ export function createHostTaskProcedures(context: APIContext) {
 
       return match(outcome)
         .with({ status: 'raised' }, (raised) => {
-          startRaisedLimitPatch(context, raised.sandboxLimit);
+          startRaisedLimitPatch(context, taskID, raised.sandboxLimit);
 
           return {
             taskID,
@@ -134,12 +139,16 @@ function toHostControlled(
 // The raise has committed. The sandbox's limit follows it off the call that raised, and goes again
 // until the gateway takes it, because a raise the gateway cannot hear still resumes the task, and the
 // next task run's start sets the limit too.
-function startRaisedLimitPatch(context: APIContext, sandboxLimit: RaisedSandboxLimit | null): void {
+function startRaisedLimitPatch(
+  context: APIContext,
+  taskID: string,
+  sandboxLimit: RaisedSandboxLimit | null,
+): void {
   if (sandboxLimit === null || context.spend === undefined) {
     return;
   }
 
-  void runRaisedLimitPatch(context, context.spend, sandboxLimit);
+  void runRaisedLimitPatch(context, context.spend, sandboxLimit, taskID);
 }
 
 const raisedLimitRetryMs = 5000;
@@ -147,19 +156,36 @@ const raisedLimitRetryMs = 5000;
 async function runRaisedLimitPatch(
   context: APIContext,
   spend: NonNullable<APIContext['spend']>,
-  sandboxLimit: RaisedSandboxLimit,
+  raised: RaisedSandboxLimit,
+  taskID: string,
 ): Promise<void> {
   const logger = context.logger ?? (() => {});
 
-  const limit = pickSandboxLimit({
-    startMicros: sandboxLimit.countMicros,
-    leftDollars: sandboxLimit.leftDollars,
-  });
+  // A step that began after the raise reads a newer count, and sets the limit itself from the same
+  // log, so this patch goes only while no newer read exists.
+  const readLimit = async () => {
+    const current = await readRaisedSandboxLimit(context, taskID);
+
+    if (
+      current === null ||
+      current.sandbox !== raised.sandbox ||
+      current.readCount !== raised.readCount
+    ) {
+      return null;
+    }
+
+    return {
+      limit: pickSandboxLimit({
+        startMicros: current.countMicros,
+        leftDollars: current.leftDollars,
+      }),
+    };
+  };
 
   try {
     await patchLimitUntilSet(
       spend,
-      { sandbox: sandboxLimit.sandbox, limit },
+      { sandbox: raised.sandbox, readLimit },
       { retryMs: raisedLimitRetryMs, logger },
     );
   } catch (error) {

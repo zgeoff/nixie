@@ -3,7 +3,10 @@ import type { SandboxLimit, SpendContext } from '../types';
 
 export interface SandboxLimitPatch {
   readonly sandbox: string;
-  readonly limit: SandboxLimit | null;
+
+  // the limit to set now, read again before each call, or null when a newer limit has replaced the
+  // one this patch is for
+  readonly readLimit: () => Promise<{ readonly limit: SandboxLimit | null } | null>;
 }
 
 export interface PatchLimitOptions {
@@ -14,18 +17,28 @@ export interface PatchLimitOptions {
 }
 
 // 'set': the gateway took the limit. 'gone': the gateway holds no such sandbox, so no limit is
-// stale. 'stopped': the signal aborted before the gateway took it.
-export type PatchLimitOutcome = 'set' | 'gone' | 'stopped';
+// stale. 'stale': a newer limit replaced this one. 'stopped': the signal aborted before the gateway
+// took it.
+export type PatchLimitOutcome = 'set' | 'gone' | 'stale' | 'stopped';
 
 // Sets a sandbox's limit and goes again until the gateway takes it, because a limit that stays lower
-// than the task run's would refuse the task's next request.
+// than the task run's would refuse the task's next request. Each call sets the limit as it stands
+// then, so a retry never overwrites a limit that a step set meanwhile.
 export async function patchLimitUntilSet(
   context: Pick<SpendContext, 'gateway' | 'clock'>,
   patch: SandboxLimitPatch,
   options: PatchLimitOptions,
 ): Promise<PatchLimitOutcome> {
   while (options.signal?.aborted !== true) {
-    const answer = await context.gateway.patchSandbox(patch.sandbox, patch.limit);
+    const current = await patch.readLimit();
+
+    if (current === null) {
+      options.logger('spend.sandbox_limit_stale', { sandboxID: patch.sandbox }, 'info');
+
+      return 'stale';
+    }
+
+    const answer = await context.gateway.patchSandbox(patch.sandbox, current.limit);
 
     if (answer.kind === 'ok') {
       return 'set';

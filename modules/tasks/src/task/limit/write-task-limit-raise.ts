@@ -1,29 +1,16 @@
 import { withWriteTransaction } from '@heynixie/log';
 import { readLimitRecords } from '../../limit/read-limit-records';
-import { pickCarriedLimits } from '../../run/pick-carried-limits';
-import { readMeterReads } from '../../run/read-meter-reads';
-import { readPieceCounts } from '../../run/read-piece-counts';
-import { readRunRows } from '../../run/read-run-rows';
 import type { TaskLimits, TaskState, TasksContext, TasksTables } from '../../types';
 import { writeTaskControlInTransaction } from '../write-task-control-in-transaction';
 import type { AskedLimits, TaskLimitRaiseRefusal } from './plan-task-limit-raise';
 import { planTaskLimitRaise } from './plan-task-limit-raise';
+import { readRaisedSandboxLimit } from './read-raised-sandbox-limit';
+import type { RaisedSandboxLimit } from './types';
 import { writeTaskLimitHoldInTransaction } from './write-task-limit-hold-in-transaction';
 
 export interface TaskLimitRaise {
   readonly taskID: string;
   readonly limits: AskedLimits;
-}
-
-export interface RaisedSandboxLimit {
-  readonly sandbox: string;
-
-  // the sandbox's count at its last read, in whole micros
-  readonly countMicros: number;
-
-  // what the raised piece of work may still spend: its new totals less what it used since its newest
-  // restart, as the task run that the raise carries holds
-  readonly leftDollars: number;
 }
 
 export type TaskLimitRaiseOutcome =
@@ -106,46 +93,4 @@ function writeRaise(
       limits: plan.limits,
     };
   });
-}
-
-async function readRaisedSandboxLimit(
-  context: Pick<TasksContext, 'log' | 'runSettings' | 'runners'>,
-  taskID: string,
-): Promise<RaisedSandboxLimit | null> {
-  const db = context.log.writer.db;
-
-  const runs = await readRunRows(db, taskID);
-
-  const last = runs.at(-1);
-
-  if (last?.opened.meter !== 'gateway') {
-    return null;
-  }
-
-  const reads = await readMeterReads(context, last);
-
-  const newest = reads.at(-1);
-
-  if (newest === undefined) {
-    return null;
-  }
-
-  const counts = await withWriteTransaction(context.log.writer, (tx) =>
-    readPieceCounts(tx, context, runs, last),
-  );
-
-  const carried = pickCarriedLimits({
-    kind: 'raise',
-    first: counts.first,
-    raised: counts.raised,
-    used: counts.used,
-  });
-
-  return {
-    sandbox: newest.sandbox,
-    countMicros: Math.max(
-      ...reads.filter((read) => read.sandbox === newest.sandbox).map((read) => read.countMicros),
-    ),
-    leftDollars: carried.dollars,
-  };
 }

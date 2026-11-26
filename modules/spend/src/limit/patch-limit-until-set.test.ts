@@ -9,13 +9,18 @@ async function setupTest() {
 
   const logger = mock<Logger>(() => {});
 
+  const readLimit = mock<() => Promise<{ limit: { dollars: number } } | null>>(() =>
+    Promise.resolve({ limit: { dollars: 4 } }),
+  );
+
   return {
     ...spend,
     logger,
+    readLimit,
     patch: (signal?: AbortSignal) =>
       patchLimitUntilSet(
         spend.context,
-        { sandbox: 'sandbox-1', limit: { dollars: 4 } },
+        { sandbox: 'sandbox-1', readLimit },
         { retryMs: 5000, logger, ...(signal === undefined ? {} : { signal }) },
       ),
   };
@@ -48,6 +53,44 @@ test('it goes again after the retry delay when the gateway did not answer', asyn
   expect(ctx.logger.mock.calls).toStrictEqual([
     ['spend.sandbox_limit_unset', { sandboxID: 'sandbox-1', reason: 'no answer' }, 'warn'],
   ]);
+});
+
+test('it sets the limit as it stands at the retry, and not the one it began with', async () => {
+  const ctx = await setupTest();
+
+  ctx.gateway.patchSandbox.mockResolvedValueOnce({ kind: 'unreachable', reason: 'no answer' });
+
+  const patching = ctx.patch();
+
+  await waitForCondition(() => ctx.clock.countPending() === 1);
+
+  ctx.readLimit.mockResolvedValue({ limit: { dollars: 3 } });
+  ctx.clock.advance(5000);
+
+  await patching;
+
+  expect(ctx.gateway.patchSandbox.mock.calls).toStrictEqual([
+    ['sandbox-1', { dollars: 4 }],
+    ['sandbox-1', { dollars: 3 }],
+  ]);
+});
+
+test('it sets nothing more once a newer limit has replaced its own', async () => {
+  const ctx = await setupTest();
+
+  ctx.gateway.patchSandbox.mockResolvedValueOnce({ kind: 'unreachable', reason: 'no answer' });
+
+  const patching = ctx.patch();
+
+  await waitForCondition(() => ctx.clock.countPending() === 1);
+
+  ctx.readLimit.mockResolvedValue(null);
+  ctx.clock.advance(5000);
+
+  const outcome = await patching;
+
+  expect(outcome).toBe('stale');
+  expect(ctx.gateway.patchSandbox.mock.calls).toHaveLength(1);
 });
 
 test('it stops for a sandbox the gateway no longer holds', async () => {

@@ -294,6 +294,52 @@ test('#raise sets the limit again after the gateway did not answer the first cal
   ]);
 });
 
+test('#raise sets no limit on the retry once a step has read the sandbox again and set its own', async () => {
+  const clock = createFakeClock({ startMs: 1_000_000 });
+
+  const ctx = await setupTest({ isSpendOn: true, isGatewayMetered: true, writerClock: clock });
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.pausedTask({
+    starter: starter.claim,
+    limits: { turns: 3, dollars: 1 },
+  });
+
+  const [run] = await readEndedRuns(ctx.context, { taskID, limit: 1 });
+
+  invariant(run);
+
+  await writeMeterRead(ctx.context, {
+    taskID,
+    taskRunID: run.runID,
+    sandbox: 'sandbox-1',
+    reason: 'step_end',
+    countMicros: 250_000,
+  });
+
+  ctx.spendGateway.patchSandbox.mockResolvedValueOnce({ kind: 'unreachable', reason: 'no answer' });
+
+  await ctx.client.raise({ taskID, dollars: 3 });
+
+  await waitForCondition(() => clock.countPending() === 1);
+
+  await writeMeterRead(ctx.context, {
+    taskID,
+    taskRunID: run.runID,
+    sandbox: 'sandbox-1',
+    reason: 'step_start',
+    countMicros: 300_000,
+  });
+
+  clock.advance(5000);
+
+  await waitForCondition(() => ctx.logged.some((line) => line.includes('sandbox_limit_stale')));
+
+  expect(ctx.spendGateway.patchSandbox.mock.calls).toStrictEqual([
+    ['sandbox-1', { dollars: 3.25 }],
+  ]);
+});
+
 test('#raise sets no sandbox limit for a task run that no gateway counts', async () => {
   const ctx = await setupTest({ isSpendOn: true });
   const starter = await ctx.seed.conversationStep();

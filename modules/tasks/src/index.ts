@@ -159,13 +159,9 @@ export { taskMeterReadCodec, taskMeterReadReasons } from './run/task-meter-read-
 export { readMeterReads } from './run/read-meter-reads';
 export type { MeterReadWrite } from './run/write-meter-read';
 export { writeMeterRead } from './run/write-meter-read';
-
-export type {
-  RaisedSandboxLimit,
-  TaskLimitRaise,
-  TaskLimitRaiseOutcome,
-} from './task/limit/write-task-limit-raise';
-
+export type { TaskLimitRaise, TaskLimitRaiseOutcome } from './task/limit/write-task-limit-raise';
+export type { RaisedSandboxLimit } from './task/limit/types';
+export { readRaisedSandboxLimit } from './task/limit/read-raised-sandbox-limit';
 export { writeTaskLimitRaise } from './task/limit/write-task-limit-raise';
 export { readSessionBoundary } from './task/read-session-boundary';
 export { readRunningStep } from './task/read-running-step';
