@@ -1850,7 +1850,6 @@ test('it withdraws a rule change proposal that an earlier release left pending, 
     records: [
       ['proposals.settled', proposal.proposalID],
       ['definitions_seeded', null],
-      ['rules.change_withdrawn', proposal.proposalID],
     ],
   });
 });

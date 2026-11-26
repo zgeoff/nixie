@@ -6,7 +6,12 @@ import {
 } from '@heynixie/api';
 import { startTestRules } from '@heynixie/api/test-utils';
 import { runSuggestedRuleChecks, writeProposedRule } from '@heynixie/definitions';
-import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
+import {
+  readRecords,
+  runProjectionRebuild,
+  withWriteTransaction,
+  writeRecordsInTransaction,
+} from '@heynixie/log';
 import {
   answerProposal,
   readOpenProposals,
@@ -94,6 +99,7 @@ async function setupTest(apiSettings = defaultAPISettings) {
     readProposedRules,
     approveSend,
     approveWithoutCheck,
+    rebuild: () => runProjectionRebuild(rules.log),
     runStartChecks: () =>
       runSuggestedRuleChecks(
         { ...rules.context, proposalConfig: buildApprovalsProposalConfig(rules.context.settings) },
@@ -453,6 +459,39 @@ test('it checks no group again at start once its last answer was checked', async
   const checked = await ctx.runStartChecks();
 
   expect(checked).toBe(0);
+});
+
+test('it names the rule that an approval put in force on the row, the settlement and a rebuilt row', async () => {
+  const ctx = await setupTest();
+
+  await ctx.approveSend();
+  await ctx.approveSend();
+  await ctx.approveSend();
+
+  const [proposed] = await ctx.readProposedRules();
+
+  invariant(proposed, 'the 3 approvals opened a proposal');
+
+  await ctx.answer(proposed.row.id, 'approve');
+
+  const live = await readProposal(ctx.log.writer.db, proposed.row.id);
+
+  const settled = await readRecords(ctx.log, {
+    afterSequence: 0,
+    kinds: ['proposals.settled'],
+  });
+
+  await ctx.rebuild();
+
+  const rebuilt = await readProposal(ctx.log.writer.db, proposed.row.id);
+
+  const settlements = settled
+    .map((entry) => entry.record.payload)
+    .filter((payload) => payload['proposalID'] === proposed.row.id)
+    .map((payload) => payload['usedBy']);
+
+  expect(live?.usedBy).toStartWith('proposed-');
+  expect([settlements, rebuilt?.usedBy]).toStrictEqual([[live?.usedBy], live?.usedBy]);
 });
 
 test('it puts the approved rule in force with the reason that the export carries', async () => {

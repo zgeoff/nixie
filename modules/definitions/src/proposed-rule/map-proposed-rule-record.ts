@@ -36,7 +36,7 @@ export function mapProposedRuleRecord(record: EnvelopeRecord): ProposalChange | 
       type: 'close',
       proposalID: answered.proposalID,
       state: answered.answer === 'approved' ? 'approved' : 'declined',
-      usedBy: null,
+      usedBy: answered.ruleID ?? null,
       answeredBy: answered.identityID ?? null,
     };
   }

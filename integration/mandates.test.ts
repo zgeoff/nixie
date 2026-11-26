@@ -11,7 +11,7 @@ import {
   writeRuntimeRule,
 } from '@heynixie/definitions';
 import { seedLegacyRuleProposal } from '@heynixie/definitions/test-utils';
-import { readRecords, withWriteTransaction } from '@heynixie/log';
+import { readRecords, runProjectionRebuild, withWriteTransaction } from '@heynixie/log';
 import { readProposal, runProposalLapses } from '@heynixie/proposals';
 import { waitForCondition } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
@@ -60,6 +60,15 @@ async function setupTest() {
     sendCall,
     startMandate,
     countEnded,
+    rebuild: () => runProjectionRebuild(rules.log),
+    readSettlements: async () => {
+      const settled = await readRecords(rules.log, {
+        afterSequence: 0,
+        kinds: ['proposals.settled'],
+      });
+
+      return settled.map((entry) => entry.record.payload['usedBy']);
+    },
     readActive: () => readActiveMandates(rules.log.writer.db),
     readEndReason: (mandateID: string) => readMandateEndReason(rules.log, mandateID),
     readChangeStates: async () => {
@@ -89,6 +98,23 @@ async function setupTest() {
       }),
   };
 }
+
+test('it names the mandate that an approval started on the row, the settlement and a rebuilt row', async () => {
+  const ctx = await setupTest();
+  const started = await ctx.startMandate();
+  const live = await readProposal(ctx.log.writer.db, started.proposalID);
+  const settlements = await ctx.readSettlements();
+
+  await ctx.rebuild();
+
+  const rebuilt = await readProposal(ctx.log.writer.db, started.proposalID);
+
+  expect([live?.usedBy, settlements, rebuilt?.usedBy]).toStrictEqual([
+    started.mandateID,
+    [started.mandateID],
+    started.mandateID,
+  ]);
+});
 
 test('it proposes a mandate that ends at the next midnight in your zone by default', async () => {
   const ctx = await setupTest();
@@ -394,10 +420,12 @@ test('it leaves another mandate and a proposed rule pending when a mandate appro
     readProposal(ctx.log.writer.db, proposedRule.proposalID),
   ]);
 
-  const withdrawn = await readRecords(ctx.log, {
+  const settled = await readRecords(ctx.log, {
     afterSequence: 0,
-    kinds: ['rules.change_withdrawn'],
+    kinds: ['proposals.settled'],
   });
+
+  const withdrawn = settled.filter((entry) => entry.record.payload['outcome'] === 'withdrawn');
 
   expect({ states: rows.map((row) => row?.state), withdrawn: withdrawn.length }).toStrictEqual({
     states: ['pending', 'pending'],

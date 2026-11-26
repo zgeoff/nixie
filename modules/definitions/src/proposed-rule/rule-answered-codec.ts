@@ -9,6 +9,9 @@ export const ruleAnsweredCodec = defineRecordCodec(
     answer: z.enum(['approved', 'declined']),
     identityID: z.string().exactOptional(),
 
+    // the rule an approval put in force, which the shared row names as what the approval made
+    ruleID: z.string().exactOptional(),
+
     // set by Not now, so a rebuild of the projection never reads the current settings
     quietUntil: z.number().exactOptional(),
   }),

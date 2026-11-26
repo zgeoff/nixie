@@ -20,7 +20,6 @@ import type {
 } from '../types';
 import type { BudgetSeedPlan } from '../utils/build-budget-seed-plan';
 import type { SkillOverlay } from '../utils/build-skill-overlay';
-import { rulesChangeWithdrawnCodec } from '../utils/rules-change-withdrawn-codec';
 import { toMcpOverridesForm } from '../utils/to-mcp-overrides-form';
 import { writeBudgetsInForce } from '../utils/write-budgets-in-force';
 
@@ -270,7 +269,6 @@ async function writeSeedRecord(
         },
       },
     },
-    ...buildProposalRecords(plan),
     ...plan.taskRecords,
   ]);
 
@@ -281,19 +279,6 @@ async function writeSeedRecord(
 
 function toSkillRef(skill: SkillRef): SkillRef {
   return { name: skill.name, skillHash: skill.skillHash, origin: skill.origin };
-}
-
-function buildProposalRecords(plan: SeedPlan): readonly RecordInput[] {
-  const definitions = {
-    snapshotHash: plan.built.snapshotHash,
-    personaVersion: plan.built.personaVersion,
-  };
-
-  return plan.withdrawnProposalIDs.map((proposalID) => ({
-    kind: rulesChangeWithdrawnCodec.kind,
-    definitions,
-    payload: rulesChangeWithdrawnCodec.encode({ proposalID, replacedBy: null }),
-  }));
 }
 
 async function writeSeedRow(tx: Transaction<unknown>, inForce: DefinitionsInForce): Promise<void> {

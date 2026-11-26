@@ -34,7 +34,7 @@ export function mapMandateRecord(record: EnvelopeRecord): ProposalChange | null 
       type: 'close',
       proposalID: started.proposalID,
       state: 'approved',
-      usedBy: null,
+      usedBy: started.mandateID,
       answeredBy: started.identityID ?? null,
     };
   }

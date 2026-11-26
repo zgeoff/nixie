@@ -165,6 +165,7 @@ async function writeApproval(
         groupHash,
         answer: 'approved',
         identityID: answer.identityID,
+        ruleID,
       }),
     },
   ]);
