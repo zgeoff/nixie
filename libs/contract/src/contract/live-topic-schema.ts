@@ -4,6 +4,7 @@ import { z } from 'zod';
 export const liveTopicSchema = z.enum([
   'approvals',
   'backups',
+  'calls',
   'computer',
   'connections',
   'definitions',

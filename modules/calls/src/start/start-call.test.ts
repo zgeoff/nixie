@@ -29,6 +29,7 @@ test('it opens a call that the calling session carries', async () => {
   expect(result).toStrictEqual({
     status: 'started',
     callID: expect.stringMatching(/^[a-z0-9]{10}$/u),
+    taskID: expect.any(String),
   });
 
   const records = await ctx.readCallRecords();

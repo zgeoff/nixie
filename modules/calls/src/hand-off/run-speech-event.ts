@@ -1,6 +1,6 @@
 import { match } from 'ts-pattern';
 import type { Call, CallsContext, HandOff, SpeechEvent } from '../types';
-import { endCall } from '../utils/end-call';
+import { startReconnectWait } from '../utils/start-reconnect-wait';
 import { startHoldingLine } from './start-holding-line';
 import { writeHandOff } from './write-hand-off';
 import { writeHeardCut } from './write-heard-cut';
@@ -8,7 +8,7 @@ import { writeHeardLine } from './write-heard-line';
 
 // Takes one event of the call's speech session into the call's thread: a `heard` line is the user's
 // message, small talk waits for the next hand-off, a hand-off starts the turn, a cut interrupts it
-// or marks the reply, and a dropped session ends the call.
+// or marks the reply, and a dropped session or one near its limit waits for the device's new offer.
 export function runSpeechEvent(
   context: CallsContext,
   call: Call,
@@ -29,9 +29,18 @@ export function runSpeechEvent(
     })
     .with({ kind: 'hand_off' }, (handOff) => runHandOff(context, call, handOff, signal))
     .with({ kind: 'cut' }, (cut) => runCut(context, call, cut))
-    .with({ kind: 'session_ending' }, () => Promise.resolve())
-    .with({ kind: 'dropped' }, async () => {
-      await endCall(context, call.callID, 'dropped');
+    .with({ kind: 'session_ending' }, () => {
+      startReconnectWait(context, call.callID, 'session_limit');
+
+      return Promise.resolve();
+    })
+    .with({ kind: 'dropped' }, () => {
+      // the carrying device gets 30 s to send a new offer before the sweep ends the call
+      context.sessions.delete(call.callID);
+
+      startReconnectWait(context, call.callID, 'dropped');
+
+      return Promise.resolve();
     })
     .exhaustive();
 }

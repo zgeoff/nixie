@@ -495,26 +495,25 @@ test('it records the fixed line of a failed turn as speech layer speech on the c
   expect(spoke?.erasable).toMatchObject({ fields: { text: "I couldn't finish that one." } });
 });
 
-test('it ends the call as dropped, and stops its charges, when the speech session drops', async () => {
+test('it waits 30 s for a new offer when the speech session drops, then ends the call as dropped with no more charges', async () => {
   const ctx = await setupTest();
 
   ctx.speech.emit(ctx.sessionID, { kind: 'dropped' });
 
-  await waitFor(async () => {
-    const call = await readCall(ctx.writer.db, ctx.callID);
-
-    expect(call?.state).toBe('ended');
+  await waitFor(() => {
+    expect(ctx.context.runtime.reconnects.get(ctx.callID)?.cause).toBe('dropped');
   });
 
-  ctx.clock.advance(180_000);
+  ctx.clock.advance(30_000);
 
   await runCallSweep(ctx.context);
 
   const call = await readCall(ctx.writer.db, ctx.callID);
 
-  expect([call?.endedBy, call?.minutes, ctx.context.sessions.has(ctx.callID)]).toStrictEqual([
-    'dropped',
-    1,
-    false,
-  ]);
+  expect([
+    call?.state,
+    call?.endedBy,
+    call?.minutes,
+    ctx.context.sessions.has(ctx.callID),
+  ]).toStrictEqual(['ended', 'dropped', 1, false]);
 });

@@ -1,6 +1,8 @@
 import { expect, test } from 'bun:test';
 import { readBudgetLedger } from '@heynixie/budgets';
 import { seedBudgetInForce } from '@heynixie/budgets/test-utils';
+import { readRecords } from '@heynixie/log';
+import { waitFor } from '@zgeoff/testing';
 import invariant from 'tiny-invariant';
 import { hangUpCall } from '../hang-up/hang-up-call';
 import { startCall } from '../start/start-call';
@@ -386,4 +388,115 @@ test('it closes the speech session when the session is revoked while the provide
   ]);
 
   expect(ctx.speech.calls.map((entry) => entry.method)).toStrictEqual(['open', 'close']);
+});
+
+test('it moves a live call to a new session on a new offer after the speech session dropped, and charges nothing again', async () => {
+  const ctx = await setupTest();
+  const callID = await ctx.startRingingCall();
+
+  const request = {
+    callID,
+    session: 'identity-1',
+    sdpOffer: 'offer',
+    probeCaller: probeStubbedCaller,
+  };
+
+  await connectCall(ctx.context, request);
+
+  ctx.speech.emit('fake-session-1', { kind: 'dropped' });
+
+  await waitFor(() => expect(ctx.context.runtime.reconnects.get(callID)?.cause).toBe('dropped'));
+
+  const result = await connectCall(ctx.context, { ...request, sdpOffer: 'offer-2' });
+  const ledger = await readBudgetLedger(ctx.writer.db, ctx.context.budgets, 'call-day');
+
+  expect({
+    result,
+    methods: ctx.speech.calls.map((entry) => entry.method),
+    charges: ledger?.charges.length,
+    waits: ctx.context.runtime.reconnects.size,
+  }).toStrictEqual({
+    result: { status: 'connected', sdpAnswer: 'fake-answer-2' },
+    methods: ['open', 'open', 'say'],
+    charges: 1,
+    waits: 0,
+  });
+});
+
+test('it takes a new offer for a live call that this process holds no session for, as after a restart', async () => {
+  const ctx = await setupTest();
+  const callID = await ctx.startRingingCall();
+
+  const request = {
+    callID,
+    session: 'identity-1',
+    sdpOffer: 'offer',
+    probeCaller: probeStubbedCaller,
+  };
+
+  await connectCall(ctx.context, request);
+
+  ctx.context.sessions.clear();
+
+  const result = await connectCall(ctx.context, request);
+  const records = await readRecords(ctx.log, { afterSequence: 0 });
+
+  expect({
+    status: result.status,
+    reconnected: records
+      .map((entry) => entry.record)
+      .filter((record) => record.kind === 'call.reconnected')
+      .map((record) => record.payload),
+  }).toStrictEqual({ status: 'connected', reconnected: [{ callID, cause: 'restart' }] });
+});
+
+test('it closes the old session once a session that is near its limit gets its new one', async () => {
+  const ctx = await setupTest();
+  const callID = await ctx.startRingingCall();
+
+  const request = {
+    callID,
+    session: 'identity-1',
+    sdpOffer: 'offer',
+    probeCaller: probeStubbedCaller,
+  };
+
+  await connectCall(ctx.context, request);
+
+  ctx.speech.emit('fake-session-1', { kind: 'session_ending' });
+
+  await waitFor(() =>
+    expect(ctx.context.runtime.reconnects.get(callID)?.cause).toBe('session_limit'),
+  );
+
+  await connectCall(ctx.context, request);
+
+  expect(
+    ctx.speech.calls.map(
+      (entry) => `${entry.method}:${entry.method === 'open' ? entry.sessionID : entry.sessionID}`,
+    ),
+  ).toStrictEqual([
+    'open:fake-session-1',
+    'open:fake-session-2',
+    'close:fake-session-1',
+    'say:fake-session-2',
+  ]);
+});
+
+test('it refuses a new offer for a live call that holds its session and waits for none', async () => {
+  const ctx = await setupTest();
+  const callID = await ctx.startRingingCall();
+
+  const request = {
+    callID,
+    session: 'identity-1',
+    sdpOffer: 'offer',
+    probeCaller: probeStubbedCaller,
+  };
+
+  await connectCall(ctx.context, request);
+
+  const result = await connectCall(ctx.context, request);
+
+  expect(result).toStrictEqual({ status: 'refused', error: 'CALL_CONNECTED' });
 });

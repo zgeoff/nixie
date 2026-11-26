@@ -1,5 +1,5 @@
 // oxlint-disable new-cap -- oRPC names a procedure's typed errors by their upper-case codes
-import { connectCall, hangUpCall, startCall } from '@heynixie/calls';
+import { connectCall, hangUpCall, readCallView, startCall } from '@heynixie/calls';
 import { match } from 'ts-pattern';
 import { z } from 'zod';
 import { runComputerAction } from '../computer/run-computer-action';
@@ -47,7 +47,7 @@ export function createCallsProcedures(context: APIContext) {
           const result = await startCall(calls, { carryingSession: caller.identityID });
 
           return result.status === 'started'
-            ? { callID: result.callID }
+            ? { callID: result.callID, thread: result.taskID }
             : { refused: result.error };
         },
       );
@@ -72,7 +72,34 @@ export function createCallsProcedures(context: APIContext) {
           .exhaustive();
       }
 
-      return { callID: z.string().parse(run.result['callID']), state: 'connecting' as const };
+      return {
+        callID: z.string().parse(run.result['callID']),
+        state: 'connecting' as const,
+        thread: z.string().parse(run.result['thread']),
+      };
+    }),
+
+    get: apiImplementer.calls.get.handler(async (options) => {
+      const caller = await requireCaller(
+        context,
+        options.context.sessionToken,
+        options.errors.UNAUTHORIZED,
+      );
+
+      if (caller.scope !== 'full') {
+        throw options.errors.UNAUTHORIZED();
+      }
+
+      const view =
+        context.calls === undefined
+          ? null
+          : await readCallView(context.calls, options.input.callID);
+
+      if (view === null) {
+        throw options.errors.CALL_NOT_FOUND();
+      }
+
+      return view;
     }),
 
     connect: apiImplementer.calls.connect.handler(async (options) => {

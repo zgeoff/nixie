@@ -8,6 +8,10 @@ export const mockCallsProcedures = {
     requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
     throw options.errors.VOICE_OFF();
   }),
+  get: mockImplementer.calls.get.handler((options) => {
+    requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
+    throw options.errors.CALL_NOT_FOUND();
+  }),
   connect: mockImplementer.calls.connect.handler((options) => {
     requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
     throw options.errors.CALL_NOT_FOUND();

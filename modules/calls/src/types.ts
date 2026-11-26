@@ -114,6 +114,16 @@ export interface CallRuntime {
 
   // the calls whose turn asked to hang up, which end once the turn's answer is sent
   readonly hangUps: Set<string>;
+
+  // the live calls that wait for a new offer from the carrying device, by call ID
+  readonly reconnects: Map<string, ReconnectWait>;
+}
+
+export type ReconnectCause = 'session_limit' | 'dropped' | 'restart';
+
+export interface ReconnectWait {
+  readonly cause: ReconnectCause;
+  readonly sinceMs: number;
 }
 
 export interface HandOff {
