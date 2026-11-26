@@ -40,8 +40,6 @@ export function createHostPromptProposalProcedures(context: HostPromptContext) {
 
       const approval = await readPromptApprovalRecord(context, input.proposalID);
 
-      context.wakeExports();
-
       return { proposalID: input.proposalID, ...approval };
     }),
 
@@ -91,6 +89,7 @@ function answerPromptProposal(context: HostPromptContext, answer: LegacyAnswer) 
       findPrompts: () => ({
         readInForce: context.readInForce,
         checkProposal: context.checkProposal,
+        wakeExports: context.wakeExports,
       }),
     },
     'prompt',

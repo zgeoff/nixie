@@ -99,6 +99,9 @@ export interface PromptToolsContext {
 export interface PromptAnswerContext extends ProposalContext {
   readonly readInForce: () => PromptsInForce | null;
   readonly checkProposal: CheckPromptProposal;
+
+  // wakes the export of the approved override to the definitions repo
+  readonly wakeExports?: (() => void) | undefined;
 }
 
 type PromptProposal = ReturnType<typeof promptsOverrideProposedCodec.decode>;

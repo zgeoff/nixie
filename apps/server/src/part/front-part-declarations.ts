@@ -185,6 +185,7 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
         findPrompts: () => ({
           readInForce: () => parts.find('server_parts')?.inForce.read() ?? null,
           checkProposal: checkPromptProposal,
+          wakeExports: () => parts.find('definitions_exports')?.wake(),
         }),
       });
 

@@ -43,7 +43,7 @@ export interface ProposalParts {
   // the prompts in force and their check, which a prompt override answers against; with none, an
   // override waits for a release that has them
   readonly findPrompts?:
-    | (() => Pick<PromptAnswerContext, 'readInForce' | 'checkProposal'> | null)
+    | (() => Pick<PromptAnswerContext, 'readInForce' | 'checkProposal' | 'wakeExports'> | null)
     | undefined;
 
   readonly runInForceSeed: () => Promise<unknown>;

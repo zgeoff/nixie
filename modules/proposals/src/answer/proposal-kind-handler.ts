@@ -49,6 +49,9 @@ export interface ProposalAnswerInput {
   readonly note?: string | undefined;
   readonly identityID: string;
 
+  // where the answer came from; a host command when absent
+  readonly channel?: 'host' | 'browser' | undefined;
+
   // an edit of a skill's files, on approve
   readonly files?: readonly { readonly path: string; readonly text: string }[] | undefined;
 

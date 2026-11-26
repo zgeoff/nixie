@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import { writeRecordsInTransaction } from '@heynixie/log';
 import type {
   ApplyOutcome,
@@ -55,24 +54,13 @@ export function makePromptProposalHandler(context: PromptAnswerContext): Proposa
 
       return new Map(rows.map((row) => [row.id, bodies.get(row.id) ?? null]));
     },
-    readHashes: async (db, row) => {
-      const [state] = await readPromptProposals(db, [row.id]);
-
-      const isStale =
-        state !== undefined &&
-        buildPromptOverrideHash(context.readInForce()?.prompts[state.proposal.promptID]) !==
-          state.proposal.baseHash;
-
-      return { action: isStale ? buildStaleHash(row.actionHash) : row.actionHash, rule: null };
-    },
+    readHashes: (_db, row) => Promise.resolve({ action: row.actionHash, rule: null }),
     approve: (run, row, answer) => writeApproval(context, run, row, answer),
     discard: (_run, row, outcome) => Promise.resolve(buildDiscardedOutcome(row, outcome)),
   };
 }
 
-function buildStaleHash(actionHash: string): string {
-  return createHash('sha256').update(`${actionHash}:stale`).digest('hex');
-}
+const promptStaleBaseHash = 'stale-base';
 
 async function writeApproval(
   context: PromptAnswerContext,
@@ -89,6 +77,21 @@ async function writeApproval(
   invariant(state, 'a prompt proposal has its record');
 
   const proposal = state.proposal;
+
+  const isStale =
+    buildPromptOverrideHash(context.readInForce()?.prompts[proposal.promptID]) !==
+    proposal.baseHash;
+
+  if (isStale) {
+    return {
+      status: 'refused',
+      refusal: {
+        error: 'CONFLICT',
+        current: { actionHash: promptStaleBaseHash, ruleHash: null },
+      },
+    };
+  }
+
   const entry = answer.prompt?.entry ?? proposal.entry;
   const files = answer.prompt?.files ?? proposal.files;
   const problems = context.checkProposal({ id: proposal.promptID, entry, files });
@@ -102,6 +105,7 @@ async function writeApproval(
     entry,
     files,
     identityID: answer.identityID,
+    ...(answer.channel === undefined ? {} : { channel: answer.channel }),
   });
 
   return {
@@ -112,6 +116,17 @@ async function writeApproval(
       'nixie opens a pull request to the definitions repo with it, and the override applies only ' +
       'after that pull request merges and live is promoted',
     otherThreads: [],
+    ...(context.wakeExports === undefined
+      ? {}
+      : { afterCommit: wakeAfterCommit(context.wakeExports) }),
+  };
+}
+
+function wakeAfterCommit(wake: () => void): () => Promise<void> {
+  return () => {
+    wake();
+
+    return Promise.resolve();
   };
 }
 
@@ -120,6 +135,7 @@ interface Approval {
   readonly entry: Readonly<Record<string, string>>;
   readonly files: readonly PromptPartFile[];
   readonly identityID: string;
+  readonly channel?: 'host' | 'browser';
 }
 
 // Writes the approval of an override: the row in force, the one it supersedes and the record.
@@ -181,7 +197,7 @@ export async function writePromptApproval(
         proposalHash,
         isEdited: proposalHash !== proposal.proposalHash,
         approver: 'owner',
-        channel: 'host',
+        channel: approval.channel ?? 'host',
         identityID: approval.identityID,
       }),
     },

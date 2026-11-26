@@ -141,6 +141,7 @@ function buildAnswerInput(answer: ApprovalAnswer, caller: Identity) {
     ...(answer.note === undefined ? {} : { note: answer.note }),
     ...(answer.memory === undefined ? {} : { memory: answer.memory }),
     identityID: caller.identityID,
+    channel: 'browser' as const,
   };
 }
 

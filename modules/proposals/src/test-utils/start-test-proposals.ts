@@ -17,6 +17,9 @@ export interface TestProposalsOptions {
 
   // the families that have a handler; the handler of each approves and discards with nothing to undo
   readonly families?: readonly ProposalKindHandler['family'][];
+
+  // real handlers, which take the place of a stand-in of the same family
+  readonly handlers?: readonly ProposalKindHandler[];
 }
 
 // A real log with the shared proposals row, and the core's deps with a handler that holds nothing
@@ -43,9 +46,12 @@ export async function startTestProposals(options: TestProposalsOptions = {}) {
   const log: Log = { writer, deploymentKey, projections: [...logProjections, projection] };
   const clock = createFakeClock({ startMs: Date.parse('2026-11-02T09:00:00Z') });
 
-  const handlers = new Map(
-    (options.families ?? ['skill']).map((family) => [family, buildHandler(family)] as const),
-  );
+  const handlers = new Map<ProposalKindHandler['family'], ProposalKindHandler>([
+    ...(options.families ?? (options.handlers === undefined ? ['skill'] : [])).map(
+      (family) => [family, buildHandler(family)] as const,
+    ),
+    ...(options.handlers ?? []).map((handler) => [handler.family, handler] as const),
+  ]);
 
   const deps: ProposalCoreDeps = {
     log,
