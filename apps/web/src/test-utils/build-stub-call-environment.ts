@@ -1,6 +1,6 @@
 import type { CallEnvironment, CallPeer, CallTrack, OfferOptions } from '../call/call-environment';
 
-export interface StubCallPeer extends CallPeer {
+interface StubCallPeer extends CallPeer {
   readonly offers: readonly OfferOptions[];
   readonly answers: readonly string[];
   readonly emitConnectionState: (state: RTCPeerConnectionState) => void;

@@ -121,7 +121,7 @@ export interface CallRuntime {
 
 export type ReconnectCause = 'session_limit' | 'dropped' | 'restart';
 
-export interface ReconnectWait {
+interface ReconnectWait {
   readonly cause: ReconnectCause;
   readonly sinceMs: number;
 }

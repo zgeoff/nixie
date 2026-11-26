@@ -34,7 +34,7 @@ export interface CallEnvironment {
   readonly createPeer: () => CallPeer;
 }
 
-export const browserCallEnvironment: CallEnvironment = {
+const browserCallEnvironment: CallEnvironment = {
   openMicrophone: () =>
     globalThis.navigator.mediaDevices.getUserMedia({
       audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },

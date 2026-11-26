@@ -1,4 +1,4 @@
-export type CallPhase =
+type CallPhase =
   | 'idle'
   | 'asking'
   | 'starting'
