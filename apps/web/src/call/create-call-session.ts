@@ -222,11 +222,10 @@ export function createCallSession(dependencies: CallSessionDependencies): CallSe
         }
 
         isReconnecting = false;
-        isRestartAnswered = true;
 
-        if (target.readConnectionState() === 'connected') {
-          settleReconnect();
-        }
+        // a same-peer restart can still report the connected state from before the loss, so only a
+        // state change that follows the answer settles the call
+        isRestartAnswered = true;
 
         return;
       } catch (error) {

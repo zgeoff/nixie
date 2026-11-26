@@ -615,3 +615,60 @@ test('#hangUp keeps the reason from the hang-up reply when the server ended the 
     'budget',
   ]);
 });
+
+test('#observe keeps the call reconnecting when the peer still reports the connected state from before the restart', async () => {
+  const ctx = setupTest();
+
+  await ctx.session.start();
+
+  ctx.peers[0]?.emitConnectionState('connected');
+  ctx.session.observe({ state: 'live', endedBy: null, reconnect: 'restart' });
+
+  await waitFor(() => {
+    expect(ctx.peers[0]?.answers).toHaveLength(2);
+  });
+
+  const afterAnswer = ctx.session.getSnapshot().phase;
+
+  ctx.peers[0]?.emitConnectionState('connected');
+  expect([afterAnswer, ctx.session.getSnapshot().phase]).toStrictEqual(['reconnecting', 'live']);
+});
+
+test('#observe gives up 30 s after the first loss, however many offers and losses came between', async () => {
+  const ctx = setupTest({ connectErrors: [null, 'SPEECH_UNAVAILABLE', null] });
+
+  await ctx.session.start();
+
+  ctx.session.observe({ state: 'live', endedBy: null, reconnect: 'dropped' });
+
+  await waitFor(() => {
+    expect(ctx.timer.countPending()).toBe(2);
+  });
+
+  ctx.timer.advance(2000);
+
+  await waitFor(() => {
+    expect(ctx.peers[0]?.answers).toHaveLength(2);
+  });
+
+  ctx.timer.advance(18_000);
+  ctx.peers[0]?.emitConnectionState('failed');
+
+  await waitFor(() => {
+    expect(ctx.peers[1]?.answers).toHaveLength(1);
+  });
+
+  const before = ctx.session.getSnapshot().phase;
+
+  ctx.timer.advance(9999);
+
+  const justBefore = ctx.session.getSnapshot().phase;
+
+  ctx.timer.advance(1);
+
+  expect([before, justBefore, ctx.session.getSnapshot().phase]).toStrictEqual([
+    'reconnecting',
+    'reconnecting',
+    'ended',
+  ]);
+});

@@ -43,7 +43,7 @@ export function useCallApprovals(thread: string | null): CallApprovals {
 
   // one read takes at most a hundred proposals
   const reads = useQueries({
-    queries: chunk(seenIDs, readLimit).map((proposalIDs) =>
+    queries: buildIDChunks(seenIDs, readLimit).map((proposalIDs) =>
       nixie.queryUtils.approvals.readProposals.queryOptions({ input: { proposalIDs } }),
     ),
   });
@@ -63,7 +63,7 @@ export function useCallApprovals(thread: string | null): CallApprovals {
   };
 }
 
-function chunk(ids: readonly string[], size: number): string[][] {
+function buildIDChunks(ids: readonly string[], size: number): string[][] {
   const chunks: string[][] = [];
 
   for (let start = 0; start < ids.length; start += size) {

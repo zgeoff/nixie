@@ -257,9 +257,14 @@ test('it signals a dropped speech session on the live stream, and a new offer se
   while (!signalled) {
     const event = await stream.next();
 
-    signalled =
-      event.done !== true && event.value.kind === 'changed' && event.value.topics.includes('calls');
+    if (event.done === true) {
+      break;
+    }
+
+    signalled = event.value.kind === 'changed' && event.value.topics.includes('calls');
   }
+
+  expect(signalled).toBe(true);
 
   const waiting = await ctx.client.calls.get({ callID: started.callID });
   const answer = await ctx.client.calls.connect({ callID: started.callID, sdpOffer: 'offer-2' });

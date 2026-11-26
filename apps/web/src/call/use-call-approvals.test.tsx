@@ -8,8 +8,9 @@ import {
   createRoute,
   createRouter,
 } from '@tanstack/react-router';
-import { act, fireEvent } from '@testing-library/react';
+import { act, fireEvent, within } from '@testing-library/react';
 import type { ReactNode } from 'react';
+import { ApprovalCard } from '../approval/approval-card';
 import { store } from '../mocks/store';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { render } from '../test-utils/render';
@@ -37,7 +38,8 @@ function setupTest() {
           <ul aria-label="Cards">
             {approvals.items.map((item) => (
               <li key={item.proposal.proposalID}>
-                {`${item.proposal.shortID} is ${item.proposal.state}`}
+                <p>{`${item.proposal.shortID} is ${item.proposal.state}`}</p>
+                <ApprovalCard defer={approvals.defer} item={item} onRefresh={approvals.refresh} />
               </li>
             ))}
           </ul>
@@ -97,6 +99,42 @@ test('#useCallApprovals keeps a card that settled while the user was on another 
   });
 
   fireEvent.click(rendered.getByText('Refresh'));
+
+  await rendered.findByText('Open items: 0');
+
+  act(() => {
+    ctx.router.history.push('/call');
+  });
+
+  const card = await rendered.findByText('k3x9m2p7qa is declined');
+
+  expect(card).toBeTruthy();
+});
+
+test('#useCallApprovals keeps a card that the user declined on the call screen, once the user leaves the page and returns', async () => {
+  await createDeviceSession();
+
+  const ctx = setupTest();
+
+  await store.approvalRows.create({ shortID: 'k3x9m2p7qa', thread: 't1' });
+
+  const rendered = ctx.mount();
+
+  await rendered.findByText('k3x9m2p7qa is pending');
+
+  fireEvent.click(rendered.getByRole('button', { name: 'Decline' }));
+
+  fireEvent.click(
+    within(rendered.getByRole('group', { name: 'Decline this proposal' })).getByRole('button', {
+      name: 'Decline',
+    }),
+  );
+
+  await rendered.findByText('k3x9m2p7qa is declined');
+
+  act(() => {
+    ctx.router.history.push('/elsewhere');
+  });
 
   await rendered.findByText('Open items: 0');
 
