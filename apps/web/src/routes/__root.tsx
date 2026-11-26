@@ -8,6 +8,7 @@ import {
   useLocation,
 } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
+import { CallProvider } from '../call/call-provider';
 import { AppShell } from '../components/app-shell';
 import { LiveProvider } from '../live/live-provider';
 import { css } from '../styled-system/css';
@@ -50,9 +51,11 @@ function RootDocument(): ReactNode {
             {pathname === '/device' ? (
               <Outlet />
             ) : (
-              <AppShell>
-                <Outlet />
-              </AppShell>
+              <CallProvider>
+                <AppShell>
+                  <Outlet />
+                </AppShell>
+              </CallProvider>
             )}
           </LiveProvider>
         </NixieClientContext>
