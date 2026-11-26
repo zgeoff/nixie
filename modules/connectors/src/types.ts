@@ -1,5 +1,5 @@
 import type { JSONObject } from '@heynixie/log';
-import type { ToolCall, ToolDefinition, ToolImage } from '@heynixie/tools';
+import type { ToolDefinition, ToolImage } from '@heynixie/tools';
 import type { ImageSize } from './image/image-size';
 
 export type ProviderResponse =
@@ -31,6 +31,12 @@ export interface ActionAttempt {
 
   // the destinations the policy checked for the call
   readonly destinations: readonly string[];
+
+  // the destinations among them that the message being answered named, which only that reply may reach
+  readonly replyTargets?: readonly string[];
+
+  // epoch ms when the attempt began; a check of an earlier attempt gets the time of that attempt
+  readonly attemptStartedAt?: number;
 
   // the hash the queue holds the action under, and the deadline it covers, so a connector can tell
   // which of its prepared calls the owner answered
@@ -75,23 +81,15 @@ export type Reconcile =
 
 export const defaultTrustNegativeAfterMs = 60_000;
 
-export type ActionResponse =
-  | { readonly kind: 'done'; readonly result: JSONObject }
-  | { readonly kind: 'refused'; readonly reason: string }
-  | { readonly kind: 'retry'; readonly reason: string; readonly after?: string }
-  | { readonly kind: 'ambiguous'; readonly reason: string };
-
-export interface ActionCall {
-  readonly call: ToolCall;
-  readonly actionID: string | null;
-}
-
+// One tool of a connector. The tool endpoint leaves the tool out when a scope is missing, and the
+// action queue runs `queued` for a tool that runs as an action.
 export interface ConnectorAction {
-  readonly tool: Omit<ToolDefinition, 'run'>;
+  // a read's run returns a ToolOutcome, so it can carry an image or link IDs as web_fetch does
+  readonly tool: ToolDefinition;
 
   readonly scopes: readonly string[];
   readonly reconcile: Reconcile;
-  readonly run: (call: ActionCall) => Promise<ActionResponse>;
+  readonly queued?: ActionConnector;
 }
 
 export interface MissingScope {

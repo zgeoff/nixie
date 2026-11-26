@@ -155,7 +155,15 @@ export interface ToolDefinition {
   readonly prepare?: (
     input: JSONObject,
     context: ToolResolveContext,
-  ) => Promise<Prepared | DirectResult>;
+  ) => Promise<Prepared | DirectResult | PrepareRefusal>;
+
+  // Rewrites the call's input on the host before anything else reads it, such as a tool that names
+  // its connection by default. The decision, the action hash and the queued action all carry the
+  // input it returns.
+  readonly resolveInput?: (
+    input: JSONObject,
+    context: ToolResolveContext,
+  ) => Promise<InputResolution>;
 
   // Runs before prepare and the decision point. A sentence it returns ends the call as plain error
   // text, so a call that cannot run asks for no approval. Null lets the call go on.
@@ -193,6 +201,10 @@ export interface ToolDefinition {
 export interface Prepared {
   readonly destinations: readonly string[];
 
+  // the destinations among them that the message being answered named; a reply may reach that
+  // address on its own authority
+  readonly replyTargets?: readonly string[];
+
   // joins the effects in force for the tool for this call
   readonly effects?: readonly Effect[];
 
@@ -213,6 +225,13 @@ export interface Prepared {
   // Runs once the call's record holds the attachments, with its sequence, so a tool can erase them
   // when what they show changed since it prepared them.
   readonly settleAttachments?: (callSequence: number) => Promise<void>;
+}
+
+// A prepare step that cannot read what its call needs, such as a message that no longer exists. The
+// call fails as a call with a bad input does, and never reaches the decision point.
+export interface PrepareRefusal {
+  readonly status: 'error';
+  readonly message: string;
 }
 
 export interface PaidTool {
@@ -269,6 +288,10 @@ export type PolicyFactsResolution =
       readonly sources: readonly RuleSource[];
       readonly args: JSONObject;
     }
+  | { readonly status: 'error'; readonly message: string };
+
+export type InputResolution =
+  | { readonly status: 'ok'; readonly input: JSONObject }
   | { readonly status: 'error'; readonly message: string };
 
 export type DeadlineResolution =

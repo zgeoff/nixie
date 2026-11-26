@@ -38,6 +38,7 @@ import type {
   DirectResult,
   MemoryWriteVerdict,
   OpenRepeat,
+  PrepareRefusal,
   Prepared,
   RegisteredTool,
   SchemaCheck,
@@ -89,31 +90,43 @@ export async function runToolCall(
   options: ToolCallOptions,
 ): Promise<CallToolResult> {
   const { parent, ...fields } = request;
-  const call: ToolCall = { ...fields, callID: crypto.randomUUID() };
+  const requested: ToolCall = { ...fields, callID: crypto.randomUUID() };
   const definitions = options.definitions();
-  const found = options.registry.findTool(call.tool);
+  const found = options.registry.findTool(requested.tool);
   const pinHash = found?.definition.pinHash;
-  const recorder = makeCallRecorder(call, run, options, { definitions, parent, pinHash });
+  const recordedFields = { definitions, parent, pinHash };
+  const requestRecorder = makeCallRecorder(requested, run, options, recordedFields);
   const loaded = { pinHash, definitionsHash: found?.definition.definitionsHash };
 
-  // The declaration came from one snapshot, and the call records the snapshot it started under, so
-  // a call records the snapshot that supplied the declaration it ran under.
   if (
     found !== null &&
-    run.tools.includes(call.tool) &&
+    run.tools.includes(requested.tool) &&
     found.definition.definitionsHash !== undefined &&
     found.definition.definitionsHash !== definitions.snapshotHash
   ) {
-    return writeRefusedCall(recorder, renderChangedSentence(call.tool));
+    return writeRefusedCall(requestRecorder, renderChangedSentence(requested.tool));
   }
 
-  const inputCheck = checkListedInput(found, call, run);
+  const inputCheck = checkListedInput(found, requested, run);
 
   if (!inputCheck.isValid) {
-    return writeInvalidCall(recorder, inputCheck.errors);
+    return writeInvalidCall(requestRecorder, inputCheck.errors);
   }
 
-  const isListed = found !== null && run.tools.includes(call.tool);
+  const isListed = found !== null && run.tools.includes(requested.tool);
+  const inputResolver = found !== null && isListed ? found.definition.resolveInput : undefined;
+
+  const inputResolution =
+    inputResolver === undefined
+      ? { status: 'ok' as const, input: requested.input }
+      : await inputResolver(requested.input, { run });
+
+  if (inputResolution.status === 'error') {
+    return writeInvalidCall(requestRecorder, inputResolution.message);
+  }
+
+  const call: ToolCall = { ...requested, input: inputResolution.input };
+  const recorder = makeCallRecorder(call, run, options, recordedFields);
   const variant = isListed ? pickVariant(found, call) : null;
 
   if (variant?.status === 'error') {
@@ -144,6 +157,10 @@ export async function runToolCall(
   const prepare = registered !== null && isListed ? registered.definition.prepare : undefined;
   const prepared = prepare === undefined ? null : await prepare(call.input, { run });
 
+  if (prepared !== null && isPrepareRefusal(prepared)) {
+    return writeInvalidCall(recorder, prepared.message);
+  }
+
   if (prepared !== null && !isPrepared(prepared)) {
     invariant(registered, 'a prepare step belongs to a registered tool');
 
@@ -156,7 +173,7 @@ export async function runToolCall(
       ? resolution.destinations
       : prepared.destinations.map((value) => ({
           value: value.normalize('NFC'),
-          replyTarget: false,
+          replyTarget: prepared.replyTargets?.includes(value) ?? false,
         }));
 
   const effects = prepared?.effects;
@@ -318,7 +335,13 @@ async function writeInvalidCall(recorder: CallRecorder, errors: string): Promise
   return toCallToolResult(invalid.settled);
 }
 
-function isPrepared(value: Prepared | DirectResult): value is Prepared {
+function isPrepareRefusal(
+  value: Prepared | DirectResult | PrepareRefusal,
+): value is PrepareRefusal {
+  return 'status' in value && value.status === 'error';
+}
+
+function isPrepared(value: Prepared | DirectResult | PrepareRefusal): value is Prepared {
   return 'destinations' in value;
 }
 

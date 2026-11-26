@@ -90,6 +90,8 @@ test('it calls the provider with the action ID as the idempotency key', async ()
       idempotencyKey: queued.actionID,
       snapshotHash: 'sha256:test',
       destinations: [],
+      replyTargets: [],
+      attemptStartedAt: expect.any(Number),
       actionHash: expect.any(String),
       deadlineAt: null,
     },
