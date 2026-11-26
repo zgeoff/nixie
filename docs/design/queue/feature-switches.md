@@ -123,8 +123,8 @@ type WakeMailSource = { source: string; key: string }; // triggers; replaces { k
     libs and the features it `requires`. Adapters and apps keep their rules.
 - Each check fails with a message that names the file, the name or import it found, and the fix:
   move the code into the feature's package, or fill a core list from the composition root.
-- An exception is rare and visible: it is an entry in the ports doc's list of places the code breaks
-  a rule, with its reason, and a per-package override that the check reads. A PR that adds one says
+- Keep exceptions rare. Record each as an entry in the ports doc's list of places the code breaks a
+  rule, with its reason, and as a per-package override that the check reads. A PR that adds one says
   so in its description. Before the retrofit lands, each existing leak is such an exception, so the
   checks pass from the day they land and each retrofit removes its own entries.
 - Tests and test utilities follow the import rule too. A test that needs a core module and a feature
