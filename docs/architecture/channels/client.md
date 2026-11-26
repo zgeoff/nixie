@@ -147,8 +147,8 @@ each HTML page. The page's peer then reaches `connected` only when its offer rea
 ## The live stream
 
 The web client holds one `live.follow` stream in each tab, above every page, so a change of route
-keeps it open. A signed-in page keeps it open, and the `/device` page, which holds a device-form
-stream of its own, never opens a page stream. The stream is a page form: it carries the records of
+keeps it open. A signed-in page keeps it open, and the `/device` page, which retains the tab's
+device feed itself, never opens a page stream. The stream is a page form: it carries the records of
 the thread on screen, from the sequence that page read at, and every topic's `changed` events. Each
 signed-in page also enters its tab in the choice of the one tab that holds the
 [device stream](#the-device-view), so a browser holds one device stream however many tabs it opens,
