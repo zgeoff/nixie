@@ -304,6 +304,35 @@ test('it fails the rest of a transaction that SQLite rolled back on its own, and
   expect(notes.rows).toStrictEqual([]);
 });
 
+test('it rejects the next query of a transaction that was open when the database closed', async () => {
+  const ctx = await setupTest();
+
+  await sql`create table notes (id text primary key)`.execute(ctx.db);
+
+  const opened = Promise.withResolvers<void>();
+  const closed = Promise.withResolvers<void>();
+
+  const transaction = ctx.db.transaction().execute(async (tx) => {
+    await sql`insert into notes (id) values ('first')`.execute(tx);
+
+    opened.resolve();
+
+    await closed.promise;
+
+    await sql`insert into notes (id) values ('second')`.execute(tx);
+  });
+
+  await opened.promise;
+
+  await ctx.db.destroy();
+
+  closed.resolve();
+
+  await transaction.catch(() => {});
+
+  expect(transaction).rejects.toThrowWithMessage(Error, 'the SQLite worker has stopped');
+});
+
 test('it runs every statement of a block of SQL without parameters', async () => {
   const ctx = await setupTest();
 

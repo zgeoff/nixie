@@ -88,8 +88,15 @@ function startSqliteWorker(): SqliteWorker {
     pending.clear();
   });
 
+  const life = { isStopped: false };
+
   return {
     send(request) {
+      // a terminated worker answers nothing, so a request it can't take fails at once
+      if (life.isStopped) {
+        return Promise.reject(new Error('the SQLite worker has stopped'));
+      }
+
       const id = ids.next;
       const promise = Promise.withResolvers<WorkerQueryResult>();
 
@@ -105,7 +112,17 @@ function startSqliteWorker(): SqliteWorker {
     async stop() {
       await this.send({ kind: 'close' });
 
+      life.isStopped = true;
+
       worker.terminate();
+
+      const error = new Error('the SQLite worker has stopped');
+
+      for (const request of pending.values()) {
+        request.reject(error);
+      }
+
+      pending.clear();
     },
   };
 }
