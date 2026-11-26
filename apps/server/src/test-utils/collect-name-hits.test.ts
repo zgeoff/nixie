@@ -1,3 +1,4 @@
+// oxlint-disable eslint/no-template-curly-in-string -- the sources are code under test, with template substitutions
 import { expect, test } from 'bun:test';
 import { collectNameHits } from './collect-name-hits';
 
@@ -7,6 +8,17 @@ test.each<{ title: string; source: string; hits: string[] }>([
   {
     title: 'the first word of a snake case identifier',
     source: 'const spend_stop = 1;',
+    hits: ['spend'],
+  },
+  { title: 'an identifier that is the name alone', source: 'const google = 1;', hits: ['google'] },
+  {
+    title: 'the code of a template substitution',
+    source: 'const text = `a ${googleToken} b`;',
+    hits: ['google'],
+  },
+  {
+    title: 'the text of a template after a substitution',
+    source: 'const text = `${prefix}spend`;',
     hits: ['spend'],
   },
   { title: 'a string literal', source: "const kind = 'spend';", hits: ['spend'] },
@@ -24,7 +36,11 @@ test.each([
   { title: 'a block comment', source: '/* the mcp proxy */ const a = 1;' },
   { title: 'a word of a string', source: "const text = 'the google account';" },
   { title: 'the last word of an identifier', source: 'const readGoogle = 1;' },
-  { title: 'an identifier that is the name alone', source: 'const google = 1;' },
+  { title: 'a plain English word as an identifier', source: 'const spend = error.code;' },
+  { title: 'the body of a regex literal', source: 'const pattern = /googleToken/u;' },
+  { title: 'the text of a JSX element', source: 'const view = <p>googleToken</p>;' },
+  { title: 'the text of a template', source: 'const text = `the ${a} google account`;' },
+  { title: 'a division before a comment', source: 'const half = total / 2; // google' },
   { title: 'the operand of in', source: "const has = 'google' in error;" },
   { title: 'the key of an indexed access type', source: "type Kind = Refusal['google'];" },
   { title: 'the key of an element access', source: "const kind = refusal['mcp'];" },

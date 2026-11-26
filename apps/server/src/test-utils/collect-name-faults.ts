@@ -3,7 +3,7 @@ import { isInside } from './is-inside';
 import type { NameLeak } from './types';
 
 const namesRule =
-  'A name is found in a string literal that equals a feature ID or the system of an adapter, ignoring case, `_` and `-`, and in an identifier of 2 or more words whose first word is that name. A string that is the operand of `in` or the key of an indexed access, and the platform identifiers `codePoint`, `codePointAt`, `fromCodePoint` and `searchParams`, are not hits. Comments, prose, test files and test utilities are not read.';
+  'A name is found in a string literal, or in the text of a template literal, that equals a feature ID or the system of an adapter, ignoring case, `_` and `-`. It is found in an identifier that equals the name alone, unless the name is an ordinary English word or a glossary term, such as `code` or `imp`, and in an identifier of 2 or more words whose leading words are the name, such as `googleToken`, even inside a template substitution. A name in a later word, such as `readGoogle`, is not found. A string that is the operand of `in` or the key of an indexed access, the platform identifiers `codePoint`, `codePointAt`, `fromCodePoint` and `searchParams`, the body of a regex literal and the text of a JSX element are not hits. Comments, prose, test files and test utilities are not read.';
 
 // One fault per name that no exception covers. Each says what to do: move the code into the
 // feature's package, or fill a core list from the composition root.
