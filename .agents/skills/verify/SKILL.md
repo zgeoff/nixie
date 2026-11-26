@@ -145,8 +145,10 @@ and do what that row says.
 ## Targets
 
 Start a launch target's app with `bun verify up`, and stop it with `bun verify down`. Connect to an
-attach target, whose app runs apart from `bun verify`, with `attach`; `detach` leaves it running.
-Your edits never reach an attach target's app, so check a change on a launch target.
+attach target, whose app runs apart from `bun verify`, with `attach`; `detach` leaves it running. An
+attach target runs code that was pushed or released, so your local edits never reach it. Check a
+change you are still editing on a launch target. Attach to `preview` only to check the commit you
+pushed, and to `prod` only after a release.
 
 Run `bun verify use --target <target>` to point every later command at a target. `use` saves the
 choice in this worktree's `.wringer/`. `--target` on one command points that command alone. A

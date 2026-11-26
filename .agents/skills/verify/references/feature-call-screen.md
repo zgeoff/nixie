@@ -22,7 +22,8 @@ Before you start:
 - Run this journey last, after every other feature's journey, because it needs an `up` with
   `NIXIE_VERIFY_CALLS=1`.
 - Run `NIXIE_VERIFY_CALLS=1 bun verify up --restart` and `bun verify doctor`. Then run
-  [sign-in-enrol](feature-sign-in-enrol.md), which signs the browser in.
+  [sign-in-enrol](feature-sign-in-enrol.md) again as set-up, which signs the browser in. It is not
+  part of this journey.
 - Run this journey once per `up`, because each step expects the first call since that `up`. To run
   it again, run the `up --restart` and `doctor` above first.
 
@@ -55,7 +56,7 @@ Expect line, and do the same comparison.
    ```
 
    Expect: the snapshot holds the text "Connected" and the buttons "Mute" and "Hang up". When it
-   still holds "Connecting", take another, as the retry rule above says.
+   still holds "Connecting", take another snapshot, up to 5 times, about a second apart.
 
 3. Check that the speech layer holds the call's one session.
 
@@ -64,7 +65,8 @@ Expect line, and do the same comparison.
    ```
 
    Expect: exit 0, `data.callID` is null, and `data.speech` holds one `open` call and no `answer` or
-   `say`.
+   `say`. The `callID` is null because only the `call-step` action sets it, when it starts a call
+   itself, and here the browser started the call.
 
 4. Have the speech layer hand off a request whose reply proposes a memory item, then look at the
    call screen.
@@ -75,7 +77,8 @@ Expect line, and do the same comparison.
    ```
 
    Expect: a snapshot holds the region "Proposals from this call" with the card of "The user keeps
-   bees on the allotment.". When the snapshot lacks it, take another, as the retry rule above says.
+   bees on the allotment.". When the snapshot lacks it, take another snapshot, up to 5 times, about
+   a second apart.
 
 5. Leave the call screen by a link of the app.
 

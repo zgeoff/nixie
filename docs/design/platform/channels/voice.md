@@ -15,16 +15,17 @@ it. A call runs as its own thread beside the conversation, with nixie's persona 
 posts a summary to the conversation when it ends.
 
 The call thread, the speech layer and its GPT-Live adapter, the hand-offs, the call records, the
-per-minute charge, the call screen, the call bar and a call's reconnect are built. Read
-[Voice calls](../../../architecture/channels/calls.md) and
-[the client](../../../architecture/channels/client.md#the-call) for them. What is left to build is
-answering a ring, the captions on the call screen, and ringing you.
+per-minute charge, the call screen without captions, the call bar and a call's reconnect are built.
+Read [Voice calls](../../../architecture/channels/calls.md) and
+[the client](../../../architecture/channels/client.md#the-call) for them. Three things are left to
+build: answering a ring, captions on the built call screen, and ringing you.
 
-This doc is for the agent that builds that rest, and for the owner who reviews it. Build it from the
-contracts and constraints below, under the work item
-[nixie rings you](https://linear.app/zgeoff/issue/GEO-2864). The call screen's other work item,
-[the call screen](https://linear.app/zgeoff/issue/GEO-2863), covers the built screen.
-[Tuning on real calls](https://linear.app/zgeoff/issue/GEO-1868) has a work item of its own.
+This doc is for the agent that builds those three, and for the owner who reviews the design. Build
+them from the contracts and constraints below, under the work item
+[nixie rings you](https://linear.app/zgeoff/issue/GEO-2864). The work item
+[the call screen](https://linear.app/zgeoff/issue/GEO-2863) covers the screen that is already built.
+[Tuning on real calls](https://linear.app/zgeoff/issue/GEO-1868) has a work item of its own and
+follows the build.
 
 Terms:
 
@@ -72,8 +73,7 @@ captions, and they need no new record kind and no new method:
 - what the speech layer said in its own words is a `call.spoke` record.
 
 ```text
-call record kinds not written yet (log module; plain payload fields only, unless marked erasable, which
-[erasable fields](../../../architecture/core/erasable-fields.md) explains)
+call record kinds not written yet (log module). Every field is plain except `reason`, which is erasable.
 call.rang        callID, reason (erasable), deviceCount
 call.turn_timed  callID, handOffID, firstAudioMs, handOffWaitMs, cutOffByLayer, interruptedByYou
 ```
@@ -82,6 +82,7 @@ call.turn_timed  callID, handOffID, firstAudioMs, handOffWaitMs, cutOffByLayer, 
   sits on the call's thread, beside the turns it times.
 - `reason` is the text the model passed to `tools.call.ring`. When you ask nixie to forget it, the
   record keeps its call ID and device count, and the reason shows as forgotten.
+  [Erasable fields](../../../architecture/core/erasable-fields.md) explains how a field is erased.
 - `call.turn_timed` holds timings and flags only, never audio or text, so the tuning pass can read
   it without reading what you said.
 

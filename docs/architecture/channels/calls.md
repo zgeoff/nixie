@@ -58,7 +58,7 @@ The adapter turns the provider's events into `SpeechEvent`s:
 | output transcript slices, then a short quiet gap    | `spoke` with the speech layer's own small talk, never a line that the module sent through `say` or `answer`                                                       |
 | the first input slice while an answer plays         | `cut`, counted after a short wait for the last words' transcript, in characters of the sent answer. The provider reports no cut.                                  |
 | a timer, a warning time before the session's expiry | `session_ending`. The provider sends no warning, and the expiry comes from `session.started`, or the provider's standard limit after the open when it gives none. |
-| `session.closed`, or a sideband that ends           | `dropped`, unless a `close` asked for it. The module ends the call as `dropped`, which closes its session and stops its charges.                                  |
+| `session.closed`, or a sideband that ends           | `dropped`, unless a `close` asked for it. The module starts a [reconnect](#reconnect) wait, and the sweep ends the call as `dropped` when the wait runs out.      |
 
 The cut counts what the user heard by aligning the words that the speech layer said before the
 user's speech to the words of the sent answer, and takes the sent text up to the last aligned word.

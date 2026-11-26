@@ -1,17 +1,19 @@
 # Live updates
 
-Every client tab learns of a change in one way: the tab holds one server-sent stream, `live.follow`,
-and reads again what the stream says changed. The stream carries the records of the one thread on
-screen, and a `changed` event that names each kind of state a commit touched, such as the pause, the
-task list or a backup notice. A device screen opens the same procedure in its own form, which
-carries only its screen.
+A client tab holds one server-sent stream, `live.follow`, and reads again what the stream says
+changed. The stream carries the records of the one thread on screen, and a `changed` event that
+names each kind of state a commit touched, such as the pause, the task list or a backup notice. A
+device screen opens the same procedure in its own form, which carries only its screen.
 
-A change that writes no record, or that no write makes, still reaches the tab. A backup notice marks
-its topic in the transaction that writes it, and the spend watcher publishes `spend` when the
-gateway's stop differs from its last read. The tab reads a covered read again on its topic's
-`changed` event, and reads every topic again when a stream opens, because `changed` has no event ID
-and a closed stream misses it. The task list also reads again at the time its own answer gives,
-because a task that wakes on a schedule changes with no write. [Topics](#topics) explains it.
+A change that writes no record, or that no write makes, still reaches the tab through a topic. A
+backup notice marks its topic in the transaction that writes it, and the spend watcher publishes
+`spend` when the gateway's stop differs from its last read. The tab reads a topic's reads again on
+its `changed` event, and reads every topic again when a stream opens, because `changed` has no event
+ID and a closed stream misses it.
+
+Two reads change with no write and have no topic of their own, so the tab reads them again on a
+timer: the task list, at the time its own answer gives, and the stuck forgets. Roots such as
+`sessions` and `devices` have no topic at all. [Topics](#topics) explains each.
 
 ```mermaid
 flowchart LR
@@ -73,9 +75,10 @@ interval and the idle limit, and a test asserts that 3 keepalive intervals fit i
 
 ## Topics
 
-A topic is a root of the web client's query keys, one to one. The contract's `liveTopicSchema` lists
-them, and a test fails when a topic matches no query-key root, or when a root that a topic covers
-has no topic.
+A topic is the name of one root of the web client's query keys, and each topic names a different
+root. The contract's `liveTopicSchema` lists them. A root can lack a topic: the contract test keeps
+a list of unfollowed roots, `erasure` among them. The test fails when a topic matches no root, or
+when a root has neither a topic nor a place on that list.
 
 | Topic         | Reads under the root                             |
 | ------------- | ------------------------------------------------ |
@@ -114,10 +117,10 @@ other topic, and the client reads `calls.get` again on it.
 
 A task that comes due on a schedule changes the task list with no write, so no topic announces it.
 `tasks.list` returns `changesAt`, the earliest next run of a listed task, and the client reads the
-list again at that time.
+list again at that time, besides reading it on the `tasks` topic.
 
-A forget turns stuck once it stays open long enough, with no write, so the `erasure` root has no
-topic, and the web client reads `erasure.readStuck` again on a timer.
+A forget turns stuck once it stays open long enough, with no write. The `erasure` root has no topic,
+and the web client reads `erasure.readStuck` again on a timer.
 
 ## The client registry
 
