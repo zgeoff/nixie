@@ -33,6 +33,7 @@ async function setupTest() {
     runSettings: buildTestRunSettings(),
     taskRunLimits: { turns: 25, dollars: 2 },
     defaultZone: 'Europe/Lisbon',
+    features: [],
     runners: buildTestTaskRunners(),
   });
 

@@ -22,7 +22,9 @@
       // an app's e2e suite runs the other deployables as programs and reads their test helpers, so
       // an app also depends on them as dev dependencies
       "app": {
-        "dependencies": { "allow": ["app", "client", "sidecar", "module", "adapter", "lib"] }
+        "dependencies": {
+          "allow": ["app", "client", "sidecar", "core", "leaking", "feature", "adapter", "lib"]
+        }
       },
       "client": {
         "dependencies": { "allow": ["lib"] }
@@ -30,13 +32,25 @@
       // the backup job's own source imports libs alone; its e2e suites seed real log data, so its
       // dev dependencies reach the modules
       "sidecar": {
-        "dependencies": { "allow": ["module", "lib"] }
+        "dependencies": { "allow": ["core", "leaking", "feature", "lib"] }
       },
-      "module": {
-        "dependencies": { "allow": ["module", "lib"] }
+      // a core module depends only on core modules and libs, so no core module can name a feature
+      "core": {
+        "dependencies": { "allow": ["core", "leaking", "lib"] }
+      },
+      // a core module that reaches a feature module today, directly or through the modules it
+      // depends on. It has no dependency rule of its own, because turbo checks a package's
+      // transitive dependencies and so cannot take a rule per exception. The exceptions file holds
+      // each direct import, and a test in apps/server fails on a direct dependency that it lacks.
+      // The retrofits remove the tag, so a package tagged core is checked in full
+      "leaking": {},
+      // a feature module may also depend on core modules; the tags cannot say which other feature
+      // modules it may reach, so review holds the rule that it reaches only the features it requires
+      "feature": {
+        "dependencies": { "allow": ["core", "leaking", "feature", "lib"] }
       },
       "adapter": {
-        "dependencies": { "allow": ["module", "lib"] }
+        "dependencies": { "allow": ["core", "leaking", "feature", "lib"] }
       },
       "guest": {
         "dependencies": { "allow": ["lib"] }
@@ -54,18 +68,32 @@
       // layer the server wires
       "eval": {
         "dependencies": {
-          "allow": ["app", "client", "sidecar", "module", "adapter", "guest", "lib"]
+          "allow": [
+            "app",
+            "client",
+            "sidecar",
+            "core",
+            "leaking",
+            "feature",
+            "adapter",
+            "guest",
+            "lib"
+          ]
         }
       },
       // the verify CLI starts the server and the web client behind one origin, and nothing depends
       // on it
       "verify": {
-        "dependencies": { "allow": ["app", "client", "sidecar", "module", "adapter", "lib"] }
+        "dependencies": {
+          "allow": ["app", "client", "sidecar", "core", "leaking", "feature", "adapter", "lib"]
+        }
       },
       // the in-process suites run one flow across several packages on the server's test harnesses,
       // and nothing depends on them
       "integration": {
-        "dependencies": { "allow": ["app", "client", "sidecar", "module", "adapter", "lib"] }
+        "dependencies": {
+          "allow": ["app", "client", "sidecar", "core", "leaking", "feature", "adapter", "lib"]
+        }
       },
       // the notebook depends on memory and never the other way, so no path that builds a turn's
       // context can reach a note
@@ -77,7 +105,9 @@
           "allow": [
             "app",
             "sidecar",
-            "module",
+            "core",
+            "leaking",
+            "feature",
             "adapter",
             "server-only",
             "eval",

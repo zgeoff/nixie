@@ -1,18 +1,25 @@
 import { waitForSettled } from '@heynixie/async';
+import type { FeatureID } from '@heynixie/contract';
+import { featureIDs } from '@heynixie/contract';
 import type { AnyPartDeclaration, PartDeclaration, PartGraph, PartReader } from '../types';
 import { MissingPartError } from './missing-part-error';
 import { PartCycleError } from './part-cycle-error';
 import { PartNotStartedError } from './part-not-started-error';
+import { planParts } from './plan-parts';
 
 export interface PartGraphOptions {
   readonly signal?: AbortSignal;
+
+  // the features that are on; every feature when unset
+  readonly features?: readonly FeatureID[];
 }
 
 export function startPartGraph<Values>(
   declarations: readonly AnyPartDeclaration<Values>[],
   options: PartGraphOptions = {},
 ): PartGraph<Values> {
-  const order = planPartOrder(declarations);
+  const plan = planParts(options.features ?? featureIDs, declarations);
+  const order = planPartOrder(plan.parts, plan.leftOut);
   const state = buildGraphState(order);
   const done = runParts(order, state, options);
 
@@ -26,12 +33,13 @@ export function startPartGraph<Values>(
 
 function planPartOrder<Values>(
   declarations: readonly AnyPartDeclaration<Values>[],
+  leftOut: ReadonlySet<keyof Values>,
 ): readonly AnyPartDeclaration<Values>[] {
   const named = new Set(declarations.map((declaration) => declaration.name));
 
   for (const declaration of declarations) {
     for (const name of [...declaration.needs, ...(declaration.uses ?? [])]) {
-      if (!named.has(name)) {
+      if (!named.has(name) && !leftOut.has(name)) {
         throw new MissingPartError(String(declaration.name), String(name));
       }
     }

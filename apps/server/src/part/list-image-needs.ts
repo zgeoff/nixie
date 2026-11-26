@@ -2,7 +2,9 @@ import { bindHarness, modelRoles, resolveRoleProfile } from '@heynixie/models';
 import type { HarnessProfile } from '@heynixie/models';
 import type { SandboxImageKey } from '@heynixie/sandbox';
 import type { DeploymentConfig } from '../deployment/deployment-config-schema';
+import { listFeaturesOn } from '../feature/list-features-on';
 import type { AnyPartDeclaration } from '../types';
+import { planParts } from './plan-parts';
 import type { ServerPartValues } from './server-part-values';
 
 export interface ImageNeed {
@@ -16,8 +18,8 @@ export interface ImageNeed {
   readonly isOptional?: true;
 }
 
-// One need per configured profile, from its harness record, then one per key that a part
-// declaration names. A configured profile is the profile each role resolves to and each profile a
+// One need per configured profile, from its harness record, then one per key that a part in the
+// plan names. A configured profile is the profile each role resolves to and each profile a
 // selectable model names.
 export function listImageNeeds(
   config: DeploymentConfig,
@@ -48,7 +50,9 @@ export function listImageNeeds(
     };
   });
 
-  for (const declaration of declarations) {
+  const planned = planParts(listFeaturesOn(config), declarations).parts;
+
+  for (const declaration of planned) {
     for (const key of declaration.images?.(config) ?? []) {
       needs.push({ key, neededBy: `the ${declaration.name} part` });
     }

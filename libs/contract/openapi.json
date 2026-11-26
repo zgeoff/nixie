@@ -26733,10 +26733,30 @@
                           "type": "null"
                         }
                       ]
+                    },
+                    "features": {
+                      "type": "array",
+                      "items": {
+                        "enum": [
+                          "computer",
+                          "code",
+                          "voice",
+                          "devices",
+                          "google",
+                          "mcp",
+                          "coding",
+                          "search",
+                          "images",
+                          "mail",
+                          "spend"
+                        ],
+                        "type": "string"
+                      }
                     }
                   },
                   "required": [
-                    "paused"
+                    "paused",
+                    "features"
                   ]
                 }
               }

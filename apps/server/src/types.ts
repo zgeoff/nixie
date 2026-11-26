@@ -1,7 +1,7 @@
 import type { APIContext } from '@heynixie/api';
 import type { SpeechLayer } from '@heynixie/calls';
 import type { CodingStartParts } from '@heynixie/coding';
-import type { HostContractClient } from '@heynixie/contract';
+import type { FeatureID, HostContractClient } from '@heynixie/contract';
 import type { DefinitionsInForce, DefinitionsSource } from '@heynixie/definitions';
 import type { Logger } from '@heynixie/logger';
 import type { Encoder } from '@heynixie/memory';
@@ -166,6 +166,13 @@ export interface PartDeclaration<Values, Name extends keyof Values> {
   readonly needs: readonly (keyof Values)[];
   readonly uses?: readonly (keyof Values)[];
 
+  // The feature this part belongs to. The part plan leaves the part out, and its images, when the
+  // feature is off. A part with no feature is core.
+  readonly feature?: FeatureID;
+
+  // The other features whose parts this part needs. The plan fails when one of them is off.
+  readonly requires?: readonly FeatureID[];
+
   // The image keys this part picks for itself, so nixie adds them and refuses to start without
   // them. A part whose image comes from a harness record declares none: its profile's need
   // covers it.
@@ -198,3 +205,26 @@ export type StartOutage = Readonly<{
 
 // Builds the `coding.start` tool from what the conversation holds that it shares with `task.start`.
 export type BuildCodingStart = (start: CodingStartParts) => ToolDefinition;
+
+export interface NameException {
+  // a package folder, such as modules/api, or one file
+  readonly where: string;
+
+  // the feature IDs and outside-service names that the code there holds
+  readonly names: readonly string[];
+  readonly removedBy: 'GEO-2878' | 'GEO-2879' | 'GEO-2880' | 'GEO-2881';
+}
+
+export interface ImportException {
+  // a package folder, such as modules/api
+  readonly where: string;
+
+  // the feature modules that the package depends on
+  readonly imports: readonly string[];
+  readonly removedBy: 'GEO-2878' | 'GEO-2879' | 'GEO-2880' | 'GEO-2881';
+}
+
+export interface LeakExceptions {
+  readonly names: readonly NameException[];
+  readonly imports: readonly ImportException[];
+}

@@ -6,9 +6,7 @@ the rules for ports, providers and adapters, and lists where the code departs fr
 
 ## The terms
 
-- A **port** is an interface that one module owns and that has a second real provider in sight. A
-  second provider is in sight when it is built, or when a design, a decision record or a tracker
-  issue plans it.
+- A **port** is an interface that one module owns and that a provider implements.
 - A **provider** is one implementation of an interface. A real provider does the work in a release.
   A fake provider stands in for it in a test.
 - An **adapter** is a provider that reaches a system outside nixie, as a package of its own. An
@@ -16,10 +14,15 @@ the rules for ports, providers and adapters, and lists where the code departs fr
 
 ## When a port fits
 
-- A port exists only when a second real provider is in sight, because with one provider a provider
-  key in the config selects nothing. A key that picks a test-only provider is allowed under rule 7:
-  the sandbox config's `adapter` key, `imp` or `test`, is one.
-- Search has `SearchProvider` and one real provider, so the config has no provider key for search.
+- An outside service plugs in as an adapter behind an interface that a nixie module owns, and
+  nixie's core never names an outside service or an optional feature. Each optional feature is on
+  only when its section is in the deployment config, and the config key of a feature that is off
+  leaves no trace in nixie. A key that picks a test-only provider is allowed under rule 7: the
+  sandbox config's `adapter` key, `imp` or `test`, is one.
+  [Feature switches](deployment/server.md#feature-switches) covers the switches and the two checks
+  that hold the rule.
+- Search has `SearchProvider` and one real provider, so the config has no provider key for search,
+  and its `search` section turns the feature on.
 - The memory checker's model has no port: the `checker` role needs `structured-output`, and only the
   Agent SDK harness declares it.
 - The backup schedule and the definitions poll each keep their own loop on the clock. Every other
@@ -89,3 +92,16 @@ The code breaks a rule in these places. New code follows the rules.
 
 The wire lib's `harnessIDs` is a second list of the models module's `harnesses`, which rule 10
 allows: a test in the models module fails when the two lists differ.
+
+These places name a feature or an outside service in a core module, or depend on a feature module
+from one. Each is an entry in `apps/server/src/leak/leak-exceptions.ts`, and the retrofit of its
+feature removes it:
+
+- Core modules that name a feature ID or the system of an adapter: `libs/contract`, and the modules
+  `api`, `backup`, `budgets`, `credentials`, `definitions`, `log`, `memory`, `models`, `notebook`,
+  `policy`, `prompts`, `proposals`, `reminders`, `sandbox`, `sessions`, `tasks`, `tools`, `triggers`
+  and `skills` hold such names, which the retrofits of the computer and code, Google, calls and
+  devices, and MCP, spend, search and images remove.
+- Core modules that depend on a feature module: `actions` on connectors; `api` on calls, coding,
+  connections, connectors, devices, mail, MCP and spend; `definitions` on calls; and `sessions` on
+  calls, connectors, devices and spend.

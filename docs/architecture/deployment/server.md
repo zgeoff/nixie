@@ -104,6 +104,36 @@ part starts, and the error names the parts. A part that reads a used part before
 absent: the API leaves a forget pending until the conversation's session cleanup is ready, and a
 memory host command answers that memory has not started.
 
+## Feature switches
+
+A feature is an optional part of nixie, such as the computer, calls or Google. Each is on only when
+its section is in the deployment config. A feature that is off starts none of its parts, needs none
+of its images and offers none of its tools or pages.
+[The design](../../design/queue/feature-switches.md) holds the full rules, and
+[the ports doc](../ports.md) lists the places where the code still breaks them.
+
+- `featureIDs` in `libs/contract` is the one list of features. Every union and schema that names a
+  feature derives from it.
+- `listFeaturesOn` in `apps/server` works out the features that are on from the config. It is the
+  only place that maps a config section to a feature, and `nixie.read` reports its answer to the web
+  client.
+- A part declaration sets `feature` to the feature it belongs to, and `requires` to the other
+  features whose parts it needs. The part plan leaves out each part whose feature is off, and the
+  images of that part. `parts.find` answers null for a part left out, so a core part lists a feature
+  part in `uses` and never in `needs`. The plan fails at config load, naming both features, when a
+  part requires a feature that is off, and when a core part lists a feature part in `needs`.
+- `FEATURE_OFF` is the typed error that the procedures of a feature that is off answer.
+  `requireFeature` in `modules/api` is the one guard that throws it.
+- Two checks keep a feature from leaking into a core module. The names check, a test in
+  `apps/server`, fails when a core module or the contract holds a feature ID or the outside-service
+  name of an adapter, as an identifier or a string literal. The imports check is `turbo boundaries`,
+  which splits the `module` tag into `core` and `feature`: a `core` module depends only on `core`
+  modules and libs.
+- `apps/server/src/leak/leak-exceptions.ts` lists each leak that the code still holds, with the work
+  item whose retrofit removes it. Both checks read it, and a test fails when an exception matches
+  nothing. A module that reaches a feature module today carries the `leaking` tag in place of
+  `core`, and the retrofit that removes its last leak changes the tag back.
+
 A start whose database already holds a seed never waits on the definitions. When its seed is
 refused, the runners start on the definitions in force, the definitions part stays unready, and the
 definitions poll probes again after a short wait instead of a full interval. The wait doubles after
