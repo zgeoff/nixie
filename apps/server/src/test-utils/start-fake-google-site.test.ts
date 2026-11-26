@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { startFakeGoogleSite } from './start-fake-google-site';
 
 test('it sends the browser back to the redirect URI with the state and a code', async () => {
-  const site = startFakeGoogleSite();
+  const site = await startFakeGoogleSite();
 
   onTestFinished(() => site.stop());
 
@@ -21,12 +21,13 @@ test('it sends the browser back to the redirect URI with the state and a code', 
 });
 
 test('it answers a code with a refresh token, every scope, and an ID token for the client', async () => {
-  const site = startFakeGoogleSite();
+  const site = await startFakeGoogleSite();
 
   onTestFinished(() => site.stop());
 
-  const response = await fetch(`${site.url}/token`, {
+  const response = await fetch(`${site.api.url}/token`, {
     method: 'POST',
+    tls: { ca: site.api.ca },
     body: new URLSearchParams({
       grant_type: 'authorization_code',
       code: 'verify-code',
@@ -56,11 +57,45 @@ test('it answers a code with a refresh token, every scope, and an ID token for t
 });
 
 test('it answers a read call of a scope with 200', async () => {
-  const site = startFakeGoogleSite();
+  const site = await startFakeGoogleSite();
 
   onTestFinished(() => site.stop());
 
-  const response = await fetch(`${site.url}/gmail/v1/users/me/labels`);
+  const response = await fetch(`${site.api.url}/gmail/v1/users/me/labels`, {
+    tls: { ca: site.api.ca },
+  });
 
   expect(response.status).toBe(200);
+});
+
+test('it answers a Gmail search with the one mail in its mailbox', async () => {
+  const site = await startFakeGoogleSite();
+
+  onTestFinished(() => site.stop());
+
+  const response = await fetch(`${site.api.url}/gmail/v1/users/me/messages?q=numbers`, {
+    tls: { ca: site.api.ca },
+  });
+
+  const body: unknown = await response.json();
+
+  expect(body).toStrictEqual({ messages: [expect.objectContaining({ id: expect.any(String) })] });
+});
+
+test('it keeps a mail that Gmail sends in the mailbox it hands back', async () => {
+  const site = await startFakeGoogleSite();
+
+  onTestFinished(() => site.stop());
+
+  const raw = Buffer.from(
+    'From: verify@example.test\r\nTo: sam@example.org\r\nSubject: Hi\r\nMessage-ID: <a@example.test>\r\n\r\nHello',
+  ).toString('base64url');
+
+  await fetch(`${site.api.url}/gmail/v1/users/me/messages/send`, {
+    method: 'POST',
+    tls: { ca: site.api.ca },
+    body: JSON.stringify({ raw }),
+  });
+
+  expect(site.gmail.sent).toHaveLength(1);
 });

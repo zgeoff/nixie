@@ -2,11 +2,11 @@
 
 Make an OAuth client in your own Google Cloud project, register it in nixie, and connect a Google
 account from Settings → Connections. nixie keeps the account's refresh token sealed in its database.
-The tools that read [Gmail](https://linear.app/zgeoff/issue/GEO-1825),
-[Calendar](https://linear.app/zgeoff/issue/GEO-1826) and
-[Drive](https://linear.app/zgeoff/issue/GEO-1827) come later, so a connection gives the model no
-Google tool yet. To learn how consent, refresh and Forget work, read the
-[Google connections](../architecture/connectors/google-connections.md) doc.
+Once you connect an account, the model can use the
+[Gmail tools](../architecture/connectors/gmail-tools.md) to search, read and label your mail, write
+drafts and send mail. The tools for [Calendar](https://linear.app/zgeoff/issue/GEO-1826) and
+[Drive](https://linear.app/zgeoff/issue/GEO-1827) come later. To learn how consent, refresh and
+Forget work, read the [Google connections](../architecture/connectors/google-connections.md) doc.
 
 Settings → Connections lists 6 steps, titled like the sections of this guide from "Create a Google
 Cloud project" to "Connect an account", and fills in your page's address where a step names it.
@@ -86,6 +86,21 @@ The setup ends here. Come back to this guide when you want to forget the connect
 
 When you untick a scope on Google's page, the connection still works. Its page lists each missing
 scope, and a button to ask Google again. The conversation never shows that notice.
+
+## What the assistant does with your mail
+
+- nixie searches and reads your mail without asking you. It asks Gmail at each call and keeps no
+  copy of your mail beyond what a call returned.
+- nixie labels mail and writes drafts without asking you, because a starter rule allows writes to a
+  service. When you add a rule that asks first, nixie asks you. A draft stays in your account for
+  you to open.
+- Before nixie sends mail to an address you haven't allowed, it waits for your answer on a card that
+  shows the account, each recipient, the subject and the whole text. A reply to the sender of the
+  mail it answers has that sender's permission. A reply to any other address waits on a card.
+- When nixie can't tell whether a send went through, it waits 5 minutes, then looks for the mail in
+  your Sent folder. When it finds the mail, the send counts as done. Otherwise nixie shows you the
+  send on a card, and doesn't send it again until you answer.
+- A mail nixie sends carries no header with nixie's name in it.
 
 ## The unverified-app warning
 

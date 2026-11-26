@@ -455,7 +455,11 @@ test.each([
       proposalID: action.action_id,
     });
 
-    expect(verdict).toStrictEqual({ kind: 'go', destinations: [...destinations] });
+    expect(verdict).toStrictEqual({
+      kind: 'go',
+      destinations: [...destinations],
+      replyTargets: [],
+    });
   },
 );
 

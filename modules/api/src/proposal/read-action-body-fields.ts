@@ -1,3 +1,4 @@
+import { readGmailBodyFields } from '@heynixie/connectors';
 import type { Log } from '@heynixie/log';
 import { readMailBodyFields } from '@heynixie/mail';
 import type { BodyFields, BodyFieldsRequest } from '@heynixie/policy';
@@ -22,6 +23,12 @@ export async function readActionBodyFields(
 
   if (sends !== null && sends.status !== 'none') {
     return sends;
+  }
+
+  const gmail = await readGmailBodyFields(log, request);
+
+  if (gmail.status !== 'none') {
+    return gmail;
   }
 
   const forget = await readForgetBodyFields(log, request);

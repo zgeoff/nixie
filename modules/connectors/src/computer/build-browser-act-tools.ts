@@ -1,6 +1,6 @@
 import type { JSONObject } from '@heynixie/log';
 import { actionProposalLapseMs } from '@heynixie/policy';
-import type { DirectResult, ToolDefinition, ToolResolveContext } from '@heynixie/tools';
+import type { DirectResult, Prepared, ToolDefinition, ToolResolveContext } from '@heynixie/tools';
 import { z } from 'zod';
 import { buildIdleNote } from './build-idle-note';
 import type { ComputerState } from './computer-state';
@@ -131,9 +131,7 @@ async function prepareAct(
   options: ComputerToolOptions,
   state: ComputerState,
   preparation: ActPreparation,
-): Promise<
-  DirectResult | { readonly destinations: readonly string[]; readonly expectURL: string }
-> {
+): Promise<DirectResult | Prepared> {
   const tab = z.object({ tab: z.string() }).parse(preparation.input).tab;
   const guestTab = options.computer.tabs.find(tab);
 
