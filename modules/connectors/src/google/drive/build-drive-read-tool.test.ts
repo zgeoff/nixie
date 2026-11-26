@@ -101,6 +101,45 @@ test('it refuses a later part when the file changed version but kept its time of
   ]);
 });
 
+test('it refuses a later part that names no version when the version moved since the first part', async () => {
+  const ctx = await setupTest();
+
+  const seeded = ctx.site.drive.seed({
+    name: 'Log',
+    text: 'line one\nline two\nline three\nline four\n',
+  });
+
+  const first = await ctx.runRead({ file: `k3x9m2p7qa.${seeded.id}`, part: 1 });
+
+  const stored = ctx.site.drive.files.get(seeded.id);
+
+  invariant(stored, 'the seeded file is stored');
+
+  stored.version = '99';
+
+  const second = await ctx.runRead({ file: `k3x9m2p7qa.${seeded.id}`, part: 2 });
+
+  expect([first.status, second]).toStrictEqual([
+    'ok',
+    { status: 'error', message: expect.stringContaining('FILE_CHANGED') },
+  ]);
+});
+
+test('it reads a later part that names no version when the version has not moved', async () => {
+  const ctx = await setupTest();
+
+  const seeded = ctx.site.drive.seed({
+    name: 'Log',
+    text: 'line one\nline two\nline three\nline four\n',
+  });
+
+  await ctx.runRead({ file: `k3x9m2p7qa.${seeded.id}`, part: 1 });
+
+  const second = await ctx.runRead({ file: `k3x9m2p7qa.${seeded.id}`, part: 2 });
+
+  expect(second).toMatchObject({ status: 'ok', result: { part: 2 } });
+});
+
 test('it refuses a later part that names no version, so it cannot mix versions', async () => {
   const ctx = await setupTest();
 

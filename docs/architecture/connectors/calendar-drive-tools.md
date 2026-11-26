@@ -116,12 +116,13 @@ the same request as its change. Calendar keeps it in `extendedProperties.private
 - `drive.read` exports a Google Doc as Markdown, a Sheet's first sheet as CSV and a Slides file as
   plain text. It reads other text files and images as `gmail.read_attachment` does, and answers
   `unsupported` for every other type. A file over the reader's size limit answers `too_large`
-  without a download. Each part returns the file's `modifiedAt` and `version`. A later part must
-  pass an earlier part's `version`, and answers `VERSION_NEEDED` when it passes none and
-  `FILE_CHANGED` when the file's version differs, even when its `modifiedAt` is the same. A read
-  downloads the content between 2 reads of the file's metadata, and answers `FILE_CHANGED` when its
-  `version` moved, so no part carries a time that belongs to other content.
-- `drive.search` matches the start of a word in a file's name and a whole word of its content, as
+  without a download. Each part returns the file's `modifiedAt` and `version`. A later part is
+  compared with the `version` of an earlier part, which the caller passes or the tool remembers for
+  the session. It answers `VERSION_NEEDED` when it has neither and `FILE_CHANGED` when the file's
+  version differs, even when its `modifiedAt` is the same. A read downloads the content between 2
+  reads of the file's metadata, and answers `FILE_CHANGED` when its `version` moved, so no part
+  carries a time that belongs to other content.
+- `drive.search` matches the start of a file's name and a whole word of its name or content, as
   Drive's `name contains` and `fullText contains` do, and escapes each quote in it, so the query's
   text cannot widen the search. A search that finds nothing tells the model that it searched only
   the files you chose and the files nixie made.

@@ -71,6 +71,16 @@ test('it finds a file by the start of a word in its name', async () => {
   expect(outcome).toMatchObject({ status: 'ok', record: { files: [{ name: 'Itinerary' }] } });
 });
 
+test('it finds a file by the start of its whole name, spaces included', async () => {
+  const ctx = await setupTest();
+
+  ctx.site.drive.seed({ name: 'Trip plan', text: 'Flights and hotels' });
+
+  const outcome = await ctx.runSearch({ query: 'Trip pl' });
+
+  expect(outcome).toMatchObject({ status: 'ok', record: { files: [{ name: 'Trip plan' }] } });
+});
+
 test('it finds no file whose name holds the query only inside a word', async () => {
   const ctx = await setupTest();
 

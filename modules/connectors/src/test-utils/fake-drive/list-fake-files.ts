@@ -2,8 +2,8 @@ import { buildFakeFileJSON } from './build-fake-file-json';
 import type { FakeDrive, StoredFile } from './types';
 
 // The files.list of the fake: the files that match the `q`, the newest first, in pages. It reads
-// `trashed = false`, `name contains` (the start of a word of the name), `fullText contains` (a whole
-// word of the content) and `appProperties has`.
+// `trashed = false`, `name contains` (the start of the name), `fullText contains` (a whole
+// word of the name or the content) and `appProperties has`.
 export function listFakeFiles(drive: FakeDrive, url: URL): Response {
   const query = url.searchParams.get('q') ?? '';
   const limit = Number(url.searchParams.get('pageSize') ?? 100);
@@ -45,10 +45,11 @@ function isMatchingQuery(file: StoredFile, query: string): boolean {
   const text = findTerm(query, 'fullText');
 
   if (name !== undefined || text !== undefined) {
-    const isNameMatch = name !== undefined && isPrefixMatch(file.name, name);
+    const isNameMatch = name !== undefined && file.name.toLowerCase().startsWith(name);
 
     const isTextMatch =
-      text !== undefined && isTokenMatch(new TextDecoder().decode(file.bytes), text);
+      text !== undefined &&
+      isTokenMatch(`${file.name} ${new TextDecoder().decode(file.bytes)}`, text);
 
     if (!isNameMatch && !isTextMatch) {
       return false;
@@ -72,8 +73,8 @@ function findTerm(query: string, field: string): string | undefined {
   return term?.replaceAll(/\\(?<char>.)/gu, '$<char>').toLowerCase();
 }
 
-function isPrefixMatch(text: string, term: string): boolean {
-  return toWords(text).some((word) => word.startsWith(term));
+function isTokenMatch(text: string, term: string): boolean {
+  return toWords(text).includes(term);
 }
 
 function toWords(text: string): string[] {
@@ -81,8 +82,4 @@ function toWords(text: string): string[] {
     .toLowerCase()
     .split(/[^\p{L}\p{N}]+/u)
     .filter((word) => word !== '');
-}
-
-function isTokenMatch(text: string, term: string): boolean {
-  return toWords(text).includes(term);
 }

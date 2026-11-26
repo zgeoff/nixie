@@ -25,10 +25,12 @@ const inputSchema = z.strictObject({
   connection: z.string().exactOptional(),
 });
 
-// drive.read: one file's text, live, in parts. A Google Doc reads as Markdown, a Sheet's first sheet
-// as CSV and a Slides file as plain text. Another file reads as a Gmail attachment does. Every part
-// carries `modifiedAt` and `version`; a later part must pass the earlier `version`, and refuses on a move.
+// drive.read: one file's text, live, in parts. Every part carries `modifiedAt` and `version`; a later
+// part refuses when the version moved since the earlier part, which the caller passes or the tool
+// remembers for the session. The architecture doc says how each type reads.
 export function buildDriveReadTool(deps: GoogleDeps): ToolDefinition {
+  const versions = new Map<string, string>();
+
   return {
     name: driveToolNames.read,
     description:
@@ -117,8 +119,10 @@ export function buildDriveReadTool(deps: GoogleDeps): ToolDefinition {
       }
 
       const file = read.file;
+      const memoryKey = `${toolContext.run.session?.key ?? ''}|${file.id}`;
+      const expected = parsed.data.version ?? versions.get(memoryKey);
 
-      if (parsed.data.version === undefined && (parsed.data.part ?? 1) > 1) {
+      if (expected === undefined && (parsed.data.part ?? 1) > 1) {
         return {
           status: 'error',
           message:
@@ -126,9 +130,11 @@ export function buildDriveReadTool(deps: GoogleDeps): ToolDefinition {
         };
       }
 
-      if (parsed.data.version !== undefined && parsed.data.version !== file.version) {
+      if (expected !== undefined && expected !== file.version) {
         return { status: 'error', message: fileChangedMessage };
       }
+
+      rememberVersion(versions, memoryKey, file.version);
 
       const request = pickDriveContentRequest(file);
 
@@ -251,4 +257,18 @@ export function buildDriveReadTool(deps: GoogleDeps): ToolDefinition {
       };
     },
   };
+}
+
+// the cap keeps the map from growing without bound
+const maxRememberedVersions = 500;
+
+function rememberVersion(versions: Map<string, string>, key: string, version: string): void {
+  versions.delete(key);
+  versions.set(key, version);
+
+  const oldest = versions.keys().next();
+
+  if (versions.size > maxRememberedVersions && oldest.done !== true) {
+    versions.delete(oldest.value);
+  }
 }
