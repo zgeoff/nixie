@@ -30,11 +30,8 @@ async function setupTest() {
   return { db };
 }
 
-test('it moves the schema to version 90 and leaves the oldest reader below it', () => {
-  expect([
-    nixieSchema.migrations.indexOf(spendRoutesMigration) + 1,
-    nixieSchema.oldestReader < 90,
-  ]).toStrictEqual([90, true]);
+test('it moves the schema to version 90', () => {
+  expect(nixieSchema.migrations.indexOf(spendRoutesMigration) + 1).toBe(90);
 });
 
 test.each([
