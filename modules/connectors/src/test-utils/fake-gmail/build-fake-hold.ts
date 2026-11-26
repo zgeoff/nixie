@@ -21,7 +21,9 @@ export function buildFakeHold(line: string): FakeHold {
   return {
     line,
     reached: reached.promise,
-    release: () => released.resolve(),
+    release: () => {
+      released.resolve();
+    },
     arrive: () => {
       reached.resolve();
 

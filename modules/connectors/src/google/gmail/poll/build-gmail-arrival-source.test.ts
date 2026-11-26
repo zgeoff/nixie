@@ -1,5 +1,5 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { readRecords } from '@heynixie/log';
+import { parseJSONObject, readRecords } from '@heynixie/log';
 import { buildTaskSeeder } from '@heynixie/tasks/test-utils';
 import { startTriggerSources } from '@heynixie/triggers';
 import {
@@ -12,6 +12,7 @@ import invariant from 'tiny-invariant';
 import { startFakeGmailSite } from '../../../test-utils/fake-gmail/start-fake-gmail-site';
 import { startGmailTools } from '../../../test-utils/start-gmail-tools';
 import { buildGmailArrivalSource } from './build-gmail-arrival-source';
+import { parseGmailSourceCursor } from './gmail-source-cursor';
 import type { GmailConnection } from './types';
 
 async function setupTest() {
@@ -44,7 +45,9 @@ async function setupTest() {
 
     const cursor = rows.sources.find((row) => row.source_id === 'gmail')?.cursor;
 
-    return cursor === null || cursor === undefined ? null : JSON.parse(cursor);
+    return cursor === null || cursor === undefined
+      ? null
+      : parseGmailSourceCursor(parseJSONObject(cursor));
   };
 
   const readKinds = async (
@@ -551,7 +554,7 @@ test('it polls a connection that joins the list at the next interval, while anot
   await waitFor(async () => {
     const cursor = await ctx.readCursor();
 
-    expect(Object.keys(cursor)).toContain('conn-two');
+    expect(Object.keys(cursor ?? {})).toContain('conn-two');
   });
 });
 
@@ -596,7 +599,9 @@ test('it stops at once while a request waits on Gmail', async () => {
 
   const hold = ctx.site.gmail.hold('GET /history');
 
-  onTestFinished(() => hold.release());
+  onTestFinished(() => {
+    hold.release();
+  });
 
   ctx.clock.advance(ctx.pollIntervalMs);
 
@@ -737,7 +742,7 @@ test('it reads a reply rule\u2019s mail again once, and keeps the rule in the cu
   const cursor = await ctx.readCursor();
 
   expect([
-    cursor[ctx.connectionID].replayed,
+    cursor?.[ctx.connectionID]?.replayed,
     ctx.site.gmail.requests.filter((line) => line.startsWith('GET /messages?')).length,
   ]).toStrictEqual([[rule.ruleID], listsAfterReplay]);
 });

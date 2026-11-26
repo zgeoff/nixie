@@ -38,7 +38,9 @@ export function makeResolveGmailWakeInput(
 
     const polled = await deps.access.readPolledConnections();
 
-    if (!polled.includes(String(resolved.input['connection']))) {
+    const resolvedConnection = resolved.input['connection'];
+
+    if (typeof resolvedConnection !== 'string' || !polled.includes(resolvedConnection)) {
       return {
         status: 'error',
         message:
