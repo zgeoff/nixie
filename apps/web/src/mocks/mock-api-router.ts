@@ -25,6 +25,7 @@ import { mockSpendProcedures } from './mock-spend-procedures';
 import { readMockBackupNotice } from './read-mock-backup-notice';
 import { readMockDefinitions } from './read-mock-definitions';
 import { readMockEndedRuns } from './read-mock-ended-runs';
+import { readMockFeatures } from './read-mock-features';
 import { readMockPause } from './read-mock-pause';
 import { readMockRecordForgetPreview } from './read-mock-record-forget-preview';
 import { readMockRecovery } from './read-mock-recovery';
@@ -200,7 +201,7 @@ export const mockAPIRouter = os.router({
     read: os.nixie.read.handler((options) => {
       requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
 
-      return { paused: readMockPause() };
+      return { paused: readMockPause(), features: readMockFeatures() };
     }),
     pause: os.nixie.pause.handler((options) => runMockNixieControl('pause', options)),
     resume: os.nixie.resume.handler((options) => runMockNixieControl('resume', options)),

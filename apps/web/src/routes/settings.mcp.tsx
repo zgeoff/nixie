@@ -2,6 +2,7 @@ import { createFileRoute, useRouter } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { SignedInPage } from '../components/signed-in-page';
 import { readRouteSession, routeDataStaleTimeMs } from '../conversation/read-route-session';
+import { FeatureGate } from '../features/feature-gate';
 import { McpServersPage } from '../mcp/mcp-servers-page';
 
 export const Route = createFileRoute('/settings/mcp')({
@@ -27,7 +28,9 @@ function McpServers(): ReactNode {
       }}
       session={data.session}
     >
-      <McpServersPage />
+      <FeatureGate feature="mcp">
+        <McpServersPage />
+      </FeatureGate>
     </SignedInPage>
   );
 }

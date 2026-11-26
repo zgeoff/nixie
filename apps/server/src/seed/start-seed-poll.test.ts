@@ -74,6 +74,7 @@ test('it reports the definitions ready again once the source returns to its last
     runSettings: buildTestRunSettings(),
     taskRunLimits: { turns: 25, dollars: 2 },
     defaultZone: 'Europe/Lisbon',
+    features: [],
     runners: buildTestTaskRunners(),
   });
 

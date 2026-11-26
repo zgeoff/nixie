@@ -95,3 +95,6 @@ export {
 
 export type { ScreenContent } from './contract/screen-content-schema';
 export { screenContentSchema, screenMarkdownLimit } from './contract/screen-content-schema';
+export type { FeatureID } from './contract/feature-ids';
+export { featureIDs } from './contract/feature-ids';
+export { featureOffErrors } from './contract/feature-off-errors';

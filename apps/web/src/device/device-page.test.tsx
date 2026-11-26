@@ -38,7 +38,7 @@ function setupTest(path = '/device') {
 
       return (
         <CallEnvironmentContext value={stub.environment}>
-          <CallProvider>
+          <CallProvider isOn>
             <output aria-label="Feed reader">
               {JSON.stringify({ event: events.event, connection: events.connection })}
             </output>

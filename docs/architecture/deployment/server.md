@@ -112,14 +112,59 @@ so the next probe seeds whatever revision it finds, the last good one included, 
 applies clears the refusal. A definitions checkout that lands a moment after nixie starts, as a sync
 sidecar's first checkout can, therefore seeds within seconds.
 
+## Feature switches
+
+A feature is an optional part of nixie, such as the computer, calls or Google. Each is on only when
+its section is in the deployment config. A feature that is off starts none of its parts, needs none
+of its images and offers none of its tools or pages. Read
+[the design](../../design/queue/feature-switches.md) for the full rules, and
+[the ports doc](../ports.md) for the places where the code still breaks them.
+
+- `featureIDs` in `libs/contract` is the one list of features. Derive every union and schema that
+  names a feature from it.
+- `listFeaturesOn` in `apps/server` works out the features that are on from the config. It is the
+  only place that maps a config section to a feature, and `nixie.read` reports its answer to the web
+  client.
+- Set `feature` on a part declaration to the feature it belongs to, and `requires` to the other
+  features whose parts it needs. The part plan leaves out each part whose feature is off, and the
+  images of that part. `parts.find` answers null for a part left out, so list a feature part in a
+  core part's `uses`, never its `needs`. The plan fails at config load, with a message that names
+  each feature involved, when:
+  - a part requires a feature that is off;
+  - a feature part lists another feature's part in `needs` without that feature in its `requires`;
+  - a core part lists a feature part in `needs`.
+- A procedure of a feature that is off answers `FEATURE_OFF`, a typed error. `requireFeature` in
+  `modules/api` is the one guard that throws it.
+- The leak test in `apps/server/src/leak/` runs these checks to keep each feature out of the core:
+  - The names check fails when a core module or the contract holds a feature ID or the name of an
+    adapter's outside service, as an identifier or a string literal. The TypeScript compiler parses
+    each file, so comments, regex literals and JSX text never count. A string that is the operand of
+    `in` or the key of an indexed access is not a hit. An adapter's service is the last word of its
+    folder name, such as `github` from `definitions-repo-github`. The check takes 2 services from an
+    override instead: `gpt-live` for `speech-gpt-live`, and `model-gateway` for
+    `spend-model-gateway`, because the model gateway is core.
+  - The imports check fails when a module that is not tagged `feature` depends on one that is.
+- List each leak that the code still holds in `apps/server/src/leak/leak-exceptions.ts`, with the
+  work item whose retrofit removes it. Only the leak test reads the file, and the test fails when an
+  exception matches nothing.
+- `turbo boundaries` reads no exceptions. It checks each module's tags in its `turbo.json` against
+  the root `turbo.json`:
+  - A `core` module depends only on `core` modules and libs.
+  - A `feature` module depends on `core`, `leaking` and `feature` modules and libs.
+  - A `leaking` module is a core module that reaches a feature module today, directly or through
+    another `leaking` module. turbo checks every dependency down the tree and cannot take a rule for
+    each leak, so the tag sets no allow list. The tag only denies apps, adapters, guests and the
+    other outer packages. When a retrofit removes a module's last leak, tag the module `core` again.
+
 ## Health
 
 The health endpoint serves liveness and readiness, each as a report with one entry per part. An
 unready part carries a short reason, never an error's message, because a message can quote what the
 part was working on. A part can also carry details, named values that a deployment alerts on, such
 as the backups part's age of the newest set and time of the last upload
-([backup health](backups.md#backup-health)). Liveness answers 200 when every part is ready and 503
-when one is not. It holds when the process answers and the database answers a query.
+([backup health](backups.md#backup-health)). Liveness checks only the process and a `SELECT 1` on
+the database, and answers 200 when both pass and 503 when either fails or runs past its timeout. The
+readiness parts never change the liveness answer.
 
 Readiness sorts its parts into three tiers, because the probe that reads it takes nixie out of its
 Service, and nixie runs as the only endpoint there:
@@ -188,8 +233,7 @@ another level. The server section of the deployment configuration sets the lowes
 writes, info by default, and nixie applies it once the configuration loads, so a failure to start
 before then still logs. A line names its level unless the level is info, so an info line reads the
 same as a line from before nixie had levels. A field named level never reaches a line, so an info
-line cannot pass for another level. Every event logs at info today, so a level above info leaves
-only a command's failure in the log.
+line cannot pass for another level.
 
 Most events log only when nixie acts, such as a start, a seed or a check, so a conversation turn and
 an idle nixie write no line. The definitions poll logs each probe, whether or not the definitions

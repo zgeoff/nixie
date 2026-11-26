@@ -2,6 +2,7 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { waitFor } from '@testing-library/react';
 import { runInPage } from '@zgeoff/rig';
 import { z } from 'zod';
+import { featureStore } from '../mocks/feature-store';
 import { store } from '../mocks/store';
 import { setupSignedInBrowser } from '../test-utils/setup-signed-in-browser';
 import { startBuiltWeb } from '../test-utils/start-built-web';
@@ -66,6 +67,18 @@ async function setupTest() {
           width: z.number(),
         }),
       ),
+    readNavLabels: () =>
+      runInPage(
+        view,
+        () =>
+          Array.from(document.querySelectorAll('header > nav a'), (link) => link.textContent ?? ''),
+        undefined,
+        z.array(z.string()),
+      ),
+    readAudioCount: () =>
+      runInPage(view, () => document.querySelectorAll('audio').length, undefined, z.number()),
+    readPageText: () =>
+      runInPage(view, () => document.body.textContent ?? '', undefined, z.string()),
     readMarks: () =>
       runInPage(
         view,
@@ -347,6 +360,87 @@ test.each([
 
       expect(read.bottom).toBeLessThanOrEqual(read.height);
       expect(read.scrollHeight).toBeLessThanOrEqual(read.height);
+    },
+    { timeout: 10_000 },
+  );
+});
+
+test('it hides the nav entry of a feature that is off', async () => {
+  const ctx = await setupTest();
+
+  await featureStore.featuresOff.create({ feature: 'voice' });
+  await ctx.setViewport(1280, 800);
+  await ctx.signIn();
+
+  await waitFor(
+    async () => {
+      const labels = await ctx.readNavLabels();
+
+      expect(labels).toContain('Memory');
+      expect(labels).not.toContain('Call');
+    },
+    { timeout: 10_000 },
+  );
+});
+
+test('it shows the nav entry of a feature that is on', async () => {
+  const ctx = await setupTest();
+
+  await ctx.setViewport(1280, 800);
+  await ctx.signIn();
+
+  await waitFor(
+    async () => {
+      const labels = await ctx.readNavLabels();
+
+      expect(labels).toContain('Call');
+    },
+    { timeout: 10_000 },
+  );
+});
+
+test('it says a feature is off on a direct visit to its route', async () => {
+  const ctx = await setupTest();
+
+  await featureStore.featuresOff.create({ feature: 'voice' });
+  await ctx.setViewport(1280, 800);
+  await ctx.signIn();
+  await ctx.view.navigate(`${ctx.appURL}/call`);
+
+  await waitFor(
+    async () => {
+      const text = await ctx.readPageText();
+
+      expect(text).toContain('This feature is off in this nixie');
+    },
+    { timeout: 10_000 },
+  );
+});
+
+test.each([
+  { voice: 'off', featuresOff: ['voice' as const], audioCount: 0, hasCall: false },
+  { voice: 'on', featuresOff: [], audioCount: 1, hasCall: true },
+])('it renders the call provider only while voice is $voice', async (row) => {
+  const ctx = await setupTest();
+
+  await Promise.all(row.featuresOff.map((feature) => featureStore.featuresOff.create({ feature })));
+  await ctx.setViewport(1280, 800);
+  await ctx.signIn();
+
+  await waitFor(
+    async () => {
+      const labels = await ctx.readNavLabels();
+      const audioCount = await ctx.readAudioCount();
+
+      expect({
+        hasMemory: labels.includes('Memory'),
+        hasCall: labels.includes('Call'),
+        audioCount,
+      }).toStrictEqual({
+        hasMemory: true,
+        hasCall: row.hasCall,
+        audioCount: row.audioCount,
+      });
     },
     { timeout: 10_000 },
   );

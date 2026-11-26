@@ -34,6 +34,7 @@ async function setupTest() {
     settings: defaultAPISettings,
     readSessionCleanup: () => null,
     readZone: () => Promise.resolve('UTC'),
+    features: [],
     passkeys: createPasskeyState(),
     clients: createClientRegistry({ clock: server.context.clock }),
   };
@@ -247,6 +248,7 @@ test('it refuses a reset before any definitions are in force, and stops no work'
       settings: defaultAPISettings,
       readSessionCleanup: () => null,
       readZone: () => Promise.resolve('UTC'),
+      features: [],
       passkeys: createPasskeyState(),
       clients: createClientRegistry({ clock: server.context.clock }),
     },

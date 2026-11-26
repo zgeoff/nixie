@@ -1,5 +1,6 @@
 import { waitForSettled } from '@heynixie/async';
 import { toErrorFields } from '@heynixie/logger';
+import { listFeaturesOn } from '../feature/list-features-on';
 import { serverPartDeclarations } from '../part/server-part-declarations';
 import type { ServerPartValues } from '../part/server-part-values';
 import { startPartGraph } from '../part/start-part-graph';
@@ -19,6 +20,7 @@ export async function startServerWork(options: ServerPartsOptions): Promise<Serv
 
   const graph = startPartGraph<ServerPartValues>([inputs, ...serverPartDeclarations], {
     signal: work.signal,
+    features: listFeaturesOn(options.config),
   });
 
   const reset = await graph.waitFor('reset');

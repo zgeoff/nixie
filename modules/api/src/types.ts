@@ -7,7 +7,7 @@ import type {
   WatchConnection,
   WatchSocket,
 } from '@heynixie/connectors';
-import type { DefinitionNotice, ImageMediaType } from '@heynixie/contract';
+import type { DefinitionNotice, FeatureID, ImageMediaType } from '@heynixie/contract';
 import type { CheckedTables } from '@heynixie/db';
 import type { DefinitionsContext } from '@heynixie/definitions';
 import type { RecordKind } from '@heynixie/log';
@@ -116,6 +116,9 @@ export interface ErasureStuckPort {
 
 export interface APIContext extends TasksContext {
   readonly settings: APISettings;
+
+  // the features that are on in this deployment, which nixie.read reports
+  readonly features: readonly FeatureID[];
 
   // the gateway's spending stop; absent when the deployment sets no spendStop
   readonly spend?: SpendContext;

@@ -8,7 +8,7 @@ import {
   useLocation,
 } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
-import { CallProvider } from '../call/call-provider';
+import { CallGate } from '../call/call-gate';
 import { AppShell } from '../components/app-shell';
 import { DeviceFeedProvider } from '../device/device-feed-provider';
 import { LiveProvider } from '../live/live-provider';
@@ -50,7 +50,7 @@ function RootDocument(): ReactNode {
         <NixieClientContext value={{ client: context.client, queryUtils: context.queryUtils }}>
           <LiveProvider>
             <DeviceFeedProvider>
-              <CallProvider>
+              <CallGate>
                 {pathname === '/device' ? (
                   <Outlet />
                 ) : (
@@ -58,7 +58,7 @@ function RootDocument(): ReactNode {
                     <Outlet />
                   </AppShell>
                 )}
-              </CallProvider>
+              </CallGate>
             </DeviceFeedProvider>
           </LiveProvider>
         </NixieClientContext>

@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import type { FeatureID } from '@heynixie/contract';
 import {
   pauseNixieInTransaction,
   readRecords,
@@ -9,8 +10,8 @@ import { buildTestClient } from '../test-utils/build-test-client';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { startTestAPI } from '../test-utils/start-test-api';
 
-async function setupTest() {
-  const api = await startTestAPI();
+async function setupTest(features: readonly FeatureID[] = []) {
+  const api = await startTestAPI(undefined, { features });
   const laptop = await createDeviceSession(api.context, 'laptop');
 
   return {
@@ -39,7 +40,14 @@ test('#nixie.read gives null while nixie runs', async () => {
   const ctx = await setupTest();
   const read = await ctx.client.nixie.read({});
 
-  expect(read).toStrictEqual({ paused: null });
+  expect(read).toStrictEqual({ paused: null, features: [] });
+});
+
+test('#nixie.read reports the features that are on', async () => {
+  const ctx = await setupTest(['voice', 'spend']);
+  const read = await ctx.client.nixie.read({});
+
+  expect(read).toStrictEqual({ paused: null, features: ['voice', 'spend'] });
 });
 
 test('#nixie.read refuses a caller with no session', async () => {
@@ -77,7 +85,7 @@ test('#nixie.read gives the pause that #nixie.pause wrote', async () => {
 
   const read = await ctx.client.nixie.read({});
 
-  expect(read).toStrictEqual(paused);
+  expect(read).toStrictEqual({ ...paused, features: [] });
 });
 
 test('#nixie.resume resumes nixie, and writes the session as the actor', async () => {
@@ -248,5 +256,8 @@ test('#nixie.read gives the cause restore for a restore pause', async () => {
 
   const read = await ctx.client.nixie.read({});
 
-  expect(read).toStrictEqual({ paused: { cause: 'restore', since: expect.toBeValidDate() } });
+  expect(read).toStrictEqual({
+    paused: { cause: 'restore', since: expect.toBeValidDate() },
+    features: [],
+  });
 });

@@ -6,6 +6,7 @@ import { IDBFactory } from 'fake-indexeddb';
 import { createRoot } from 'react-dom/client';
 import { browserCookies } from './browser-cookies';
 import { connectionStore } from './connection-store';
+import { featureStore } from './feature-store';
 import { handlers } from './handlers';
 import { mcpStore } from './mcp-store';
 import { mockLive } from './mock-live';
@@ -46,6 +47,7 @@ addMockHandlers(...handlers);
 afterEach(() => {
   store.reset();
   connectionStore.reset();
+  featureStore.reset();
   mcpStore.reset();
   mockLive.reset();
   browserCookies.clear();

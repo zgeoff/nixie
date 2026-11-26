@@ -4,6 +4,7 @@ import { createClientRegistry, createPasskeyState, defaultAPISettings } from '@h
 import { buildBuiltInBudgets } from '@heynixie/budgets';
 import type { SpeechLayer, VoiceConfig } from '@heynixie/calls';
 import { callBudgetName } from '@heynixie/calls';
+import type { FeatureID } from '@heynixie/contract';
 import {
   makeReadDefinitionRunPolicy,
   readDefinitionNotices,
@@ -41,6 +42,9 @@ export interface ServerContextOptions {
   // the zone that 'owner' resolves to until the owner has sent a message that carries one
   readonly defaultZone: string;
   readonly settings?: APISettings;
+
+  // the features that are on, which nixie.read reports
+  readonly features: readonly FeatureID[];
 
   // the voice section of the config, or null without it, and the logger of the calls module
   // Absent, calls are off and the module logs nothing.
@@ -146,6 +150,7 @@ export async function createServerContext(
           readZone: makeReadZone(writer, db, options.defaultZone),
         }),
       settings: options.settings ?? defaultAPISettings,
+      features: options.features,
       passkeys: createPasskeyState(),
       clients: createClientRegistry({ clock: writer.clock }),
       readZone: makeReadZone(writer, writer.db, options.defaultZone),
