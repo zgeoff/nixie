@@ -3,7 +3,8 @@
 The Google connector holds 10 `calendar.*` tools and 4 `drive.*` tools beside the
 [Gmail tools](gmail-tools.md). They share the Gmail tools' rules for connections, item IDs, effects,
 cards and untrusted words, so this page covers only what Calendar and Drive add. For the consent and
-the scopes, see [Google connections](google-connections.md).
+the scopes, see [Google connections](google-connections.md). The
+[Google guide](../../guides/google.md) covers the picker setup.
 
 ## The tools
 
@@ -132,12 +133,12 @@ the same request as its change. Calendar keeps it in `extendedProperties.private
   it imports the text as Markdown into a Google Doc, and with `text` it makes a plain text file.
 - `drive.change` replaces the whole content and optionally the name. It reads the file in `prepare`
   and in its attempt, and refuses with `shared_file` for a file that is shared with anyone or sits
-  in a shared drive, so a Drive write never reaches another person. It also refuses `trashed` and
-  `unsupported_type`. The attempt reads the file again right before the upload, and refuses a file
-  that became shared by then. Drive takes no precondition on a write, so it also reads the file the
-  upload answers with, and refuses with `shared_file` when the file became shared in between. A
-  window remains: Drive v3 offers no conditional or atomic upload against sharing, so a file shared
-  between that last read and the upload still gets the change.
+  in a shared drive, so a Drive write reaches another person only through the window below. It also
+  refuses `trashed` and `unsupported_type`. The attempt reads the file again right before the
+  upload, and refuses a file that became shared by then. Drive takes no precondition on a write, so
+  it also reads the file the upload answers with, and refuses with `shared_file` when the file
+  became shared in between. A window remains: Drive v3 offers no conditional or atomic upload
+  against sharing, so a file shared between that last read and the upload still gets the change.
 - A check of a `drive.create` follows every page of the marker search, because Drive can answer a
   page with no file and a token for the next.
 

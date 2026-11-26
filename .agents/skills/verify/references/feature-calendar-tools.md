@@ -9,7 +9,9 @@ no permission, nixie holds the call on a card, and Google emails the guests once
 for an event with no guests reaches no one, and asks Google to email no one.
 
 Follow the steps in [Check a change](../SKILL.md#check-a-change) for this journey. Read that section
-for the commands `up` and `done`, and for the `data` field of each command's JSON output.
+for the commands `up` and `done`, and for the `data` field of each command's JSON output. When a
+command in a step fails, do what its row in [Exit codes](exit-codes.md) says, then start the journey
+again as "Before you start" describes.
 
 Run this journey on `local` only. There, the test build reaches Google's endpoints at a fake Google
 that the harness serves. The fake holds one event, "Team standup", and no other. `preview` and
@@ -121,3 +123,5 @@ Before you start:
 - Step 6: the card shows the whole event and its guest, who has no permission.
 - Step 7: the invitation is approved and its action is done, and the fake Calendar holds one write
   that emails the guests.
+
+When steps 4, 6 and 7 all match, run `bun verify done` as Check a change says.

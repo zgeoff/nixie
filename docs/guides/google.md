@@ -1,8 +1,8 @@
 # Connect a Google account
 
-Make an OAuth client in your own Google Cloud project, register it in nixie, and connect a Google
-account from Settings → Connections. nixie keeps the account's refresh token sealed in its database.
-Once you connect an account, the model can use the
+This guide is for the person nixie works for. Make an OAuth client in your own Google Cloud project,
+register it in nixie, and connect a Google account from Settings → Connections. nixie keeps the
+account's refresh token sealed in its database. Once you connect an account, the model can use the
 [Gmail tools](../architecture/connectors/gmail-tools.md) to search, read and label your mail, write
 drafts and send mail. It can also wake the conversation or a task when new mail matches a rule it
 sets. With the [Calendar and Drive tools](../architecture/connectors/calendar-drive-tools.md) it can
@@ -158,3 +158,26 @@ To use the account again, consent again.
 
 After a Forget whose revocation reads "refused" or "unknown", open your Google Account's third-party
 access page, find the app by the name you gave it, and remove its access.
+
+## What a change to this guide must keep true
+
+Change this guide only together with the code that makes these facts true, and keep the matching
+steps in Settings → Connections the same.
+
+- nixie's address starts with `https://`, has a domain name and matches the OAuth client exactly,
+  because Google checks it.
+- The only authorised redirect URI is the nixie address plus `/connections/google/return`.
+- The app is published to production, because testing status ends each consent after 7 days.
+- One Google Cloud project serves one nixie, because a revocation reaches every client of a project.
+- All 4 APIs are on, or the scope shows as missing.
+- Remove the client is refused while a connection that is not forgotten uses it.
+- Reads need no card. A send to an address you haven't allowed, and a Calendar change with guests or
+  an answer to an invitation that your policy doesn't already allow, wait for your answer on a card.
+- nixie never changes an event that someone else organizes, apart from your answer to its
+  invitation. It replaces a Drive file's content only when no one else can read the file.
+- After a send or change whose outcome is unclear, nixie waits 5 minutes and looks for it. A change
+  to an event with guests that it can't find goes to you on a card and isn't sent again until you
+  answer.
+- The poll interval is 2 minutes and the wake rule after a send lasts 7 days, both by default.
+- Forget revokes the grant, ends the wake rules, erases the kept sender and subject, deletes the
+  keys, and reports Erasure, Revocation and Key backups.

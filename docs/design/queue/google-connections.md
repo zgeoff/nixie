@@ -26,7 +26,7 @@ need from the connection. Build each remaining tool work item on these contracts
 
 The connection argument shipped with the Gmail tools, in the
 [Gmail](https://linear.app/zgeoff/issue/GEO-1825) work item. Job pins and the model's status line
-are not built yet. Read
+are not built yet, so the two pin rules under Tasks in flight apply once pins land. Read
 [the connection argument](../platform/connectors/connector.md#the-connection-argument) for the pin
 rules. With no pin on a job run, a tool resolves each call against every live Google connection.
 
@@ -81,11 +81,12 @@ The default label of a Google connection is the ID token's `email`.
 
 - The conversation's endpoint builds its tool list at each turn from the live connections, so a new
   connection, a Forget or a change in `missing` reaches the conversation at its next turn. A worker
-  run keeps its list for its life, and a job run keeps its pins, as
+  run keeps its list for its life. Once pins are built, a job run keeps its pins, as
   [the connection argument](../platform/connectors/connector.md#the-connection-argument) sets.
 - Every call checks the connection at the time of the call. A call to a forgotten connection fails
   with the error for a `forgotten` credential, which never holds the connection's label or status.
-- A job whose pins all name forgotten connections lists none of the connector's tools.
+- Once pins are built, a job whose pins all name forgotten connections lists none of the connector's
+  tools.
 - Forget erases a connection's Gmail wake rules and held arrivals as children of the connection,
   through the `readChildren` of its erasable, which returns none until the
   [mail design](https://github.com/zgeoff/nixie/pull/1420) is built.

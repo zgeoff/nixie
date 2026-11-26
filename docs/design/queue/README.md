@@ -21,7 +21,7 @@ delete the design.
 | Policy          | [the decision point cutover](decision-point-cutover.md), [CEL conditions on rules](cel-rules.md), [provider limits](provider-limits.md) |
 | Mail            | [mail and wake rules](mail/README.md)                                                                                                   |
 | Connections     | [Google connections](google-connections.md)                                                                                             |
-| Google tools    | [Gmail](gmail-calendar-drive-tools.md)                                                                                                  |
+| Google tools    | [the Google tool rules and the Gmail tools not built yet](gmail-calendar-drive-tools.md)                                                |
 | Channels        | [the push notice](push-notice.md)                                                                                                       |
 | Devices         | [the camera, the speaker and the microphone](devices.md), [client devices](client-devices.md)                                           |
 | Accounts        | [accounts and sign-in](accounts.md), [the wallet](wallet.md), [mail and phone](mail-and-phone.md)                                       |

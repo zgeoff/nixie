@@ -21,7 +21,10 @@ Before you start:
 - When you have not run [sign-in-enrol](feature-sign-in-enrol.md) since `up`, run it first.
 - Run this journey once per `up`, because a deployment registers one client. Before you run it
   again, even after a failed pass, run `bun verify up --restart` and `bun verify doctor`. Then run
-  sign-in-enrol. Restart between this journey and [calendar-tools](feature-calendar-tools.md).
+  sign-in-enrol. Run this journey and [calendar-tools](feature-calendar-tools.md) in either order,
+  with that restart between them.
+- When an expectation in a step does not hold, stop the pass, report what you got against what you
+  expected, and restart as above before any rerun.
 
 ## Journey
 
@@ -72,6 +75,8 @@ Before you start:
    Expect: `proposals` exits 0. The query returns one row with `status` `done`. `drive files` exits
    0: the fake Drive holds exactly one file named "Packing list", with that text. It fails with
    `check-failed` for no file, for a double create and for other text.
+
+5. Once step 4 matches, run `bun verify done`. Expect: `ok: true`.
 
 ## End state
 
