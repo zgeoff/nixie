@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { budgetProjections, readSpendLedger } from '@heynixie/budgets';
+import { readSpendLedger } from '@heynixie/budgets';
 import { createTestCredentials } from '@heynixie/credentials/test-utils';
 import type { JSONObject, RecordKinds } from '@heynixie/log';
 import { readRecords, writeRecords } from '@heynixie/log';
@@ -54,7 +54,7 @@ async function setupTest(config: SetupConfig = {}) {
   const host = await startTestSessionHost({
     clock,
     tools: [fetchTool],
-    projections: [...spendProjections, ...budgetProjections],
+    projections: spendProjections,
   });
 
   const prices = { input: 3, cache_write: 3.75, cache_write_1h: 6, cached_input: 0.3, output: 15 };

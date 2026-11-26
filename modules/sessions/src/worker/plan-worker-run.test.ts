@@ -1,5 +1,7 @@
 import { expect, test } from 'bun:test';
 import { buildMockToolContext } from '@heynixie/tools/test-utils';
+import invariant from 'tiny-invariant';
+import { createGatewayBudget } from '../task/meter/create-gateway-budget';
 import { buildMockWorkerTarget } from '../test-utils/build-mock-worker-target';
 import type { WorkerRunFacts } from './plan-worker-run';
 import { planWorkerRun } from './plan-worker-run';
@@ -61,6 +63,25 @@ test('it caps the dollars at what the caller has left, and says so', () => {
   expect(planned).toMatchObject({
     status: 'planned',
     plan: { limits: { dollars: 0.5 }, isTaskLimit: true },
+  });
+});
+
+test('it caps the dollars at what the task run has left after the worker run already going', async () => {
+  const budget = createGatewayBudget({
+    leftDollars: 3,
+    setLeftDollars: () => Promise.resolve(true),
+    readWorkerEnd: () => Promise.resolve(),
+  });
+
+  invariant(budget.onWorkerStart, 'a gateway budget takes worker runs');
+
+  await budget.onWorkerStart(2);
+
+  const planned = planWorkerRun(setupTest({}, budget.getLeftDollars()));
+
+  expect(planned).toMatchObject({
+    status: 'planned',
+    plan: { limits: { dollars: 1 }, isTaskLimit: true },
   });
 });
 

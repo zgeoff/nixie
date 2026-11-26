@@ -18,7 +18,6 @@ import { writeStepHeld } from '../step/write-step-held';
 import type { RunStep, StartedClaim, StepErrored, StepResult, TasksContext } from '../types';
 import { LeaseLostError } from '../utils/lease-lost-error';
 import { readSessionBoundary } from './read-session-boundary';
-import { withTurnSpendOnFailure } from './with-turn-spend-on-failure';
 
 export interface TaskStepOptions extends StepErrorOptions {
   readonly runStep: RunStep;
@@ -92,18 +91,7 @@ async function tryCommitStep(
       return null;
     }
 
-    const spend =
-      result.spentDollars === undefined
-        ? null
-        : {
-            taskID: claim.lease.workID,
-            dollars: result.spentDollars,
-            ...(run === null ? {} : { taskRunID: run.runID }),
-          };
-
-    await withTurnSpendOnFailure(context, { spend, logger: options.logger }, () =>
-      writeStepCommit(context, claim, result),
-    );
+    await writeStepCommit(context, claim, result);
 
     return null;
   } catch (error) {

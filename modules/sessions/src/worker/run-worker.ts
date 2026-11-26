@@ -55,6 +55,9 @@ interface Held {
   // the gateway counts the sandbox, so the run may have spent on it
   isRegistered: boolean;
   isStarted: boolean;
+
+  // the calling task's sandbox gave this run's planned dollars up, which the end gives back
+  isReserved: boolean;
   stage: 'starting' | 'running';
 }
 
@@ -63,6 +66,9 @@ interface WorkerRun {
   readonly stops: WorkerStops;
   readonly tally: Tally;
   readonly held: Held;
+
+  // what the run charges the calling task, which the end of the run sets
+  chargedDollars: number;
 }
 
 // Runs one worker for the call that planWorkerRun planned. Every way out passes the one block at
@@ -85,13 +91,16 @@ export async function runWorker(deps: WorkerDeps, plan: WorkerPlan): Promise<Wor
       endpoint: null,
       isRegistered: false,
       isStarted: false,
+      isReserved: false,
       stage: 'starting',
     },
+    chargedDollars: 0,
   };
 
   try {
     return await runOpenWorker(deps, plan, run);
   } finally {
+    await giveBackReservation(plan, run);
     await releaseWorkerRun(deps, run);
   }
 }
@@ -100,6 +109,12 @@ const spendStoppedResult: WorkerResult = {
   kind: 'stopped',
   sentence:
     'Model spending is stopped, so nixie started no worker. Every task resumes when the stop clears.',
+};
+
+const unreservedResult: WorkerResult = {
+  kind: 'stopped',
+  sentence:
+    'The model gateway did not answer, so nixie could not set aside the dollars of a worker and started none.',
 };
 
 async function runOpenWorker(
@@ -135,6 +150,10 @@ async function runOpenWorker(
 
   await ensureStarted(deps, plan, run);
 
+  if (grant !== 'stopped' && !(await reserveDollars(plan, run))) {
+    return unreservedResult;
+  }
+
   const stagesEnd =
     grant === 'stopped'
       ? pickWorkerEnd({
@@ -151,6 +170,8 @@ async function runOpenWorker(
   const count = await readGatewayCount(deps, plan, run);
 
   await chargeGatewayExcess(deps, plan, run, count);
+
+  run.chargedDollars = Math.max(run.tally.dollars, count?.dollars ?? 0);
 
   const end = pickGatewayEnd(stagesEnd, count, plan.limits);
   const used = buildUsed(deps, plan, run, count);
@@ -192,6 +213,20 @@ async function ensureStarted(deps: WorkerDeps, plan: WorkerPlan, run: WorkerRun)
 
     await writeWorkerRunStarted(deps, plan, run.names);
   }
+}
+
+// The calling task's sandbox gives the run's planned dollars up before the run starts, so the task
+// and its worker never spend the same dollars.
+async function reserveDollars(plan: WorkerPlan, run: WorkerRun): Promise<boolean> {
+  if (plan.hold.onWorkerStart === undefined) {
+    return true;
+  }
+
+  const isReserved = await plan.hold.onWorkerStart(plan.limits.dollars);
+
+  run.held.isReserved = isReserved;
+
+  return isReserved;
 }
 
 // Never throws: each way the stages end is a worker end.
@@ -496,6 +531,20 @@ function toResult(
       isTaskLimit: plan.isTaskLimit,
     }),
   };
+}
+
+// Every way out of a run that reserved dollars gives them back, and takes off what the run charged.
+async function giveBackReservation(plan: WorkerPlan, run: WorkerRun): Promise<void> {
+  if (!run.held.isReserved) {
+    return;
+  }
+
+  run.held.isReserved = false;
+
+  await plan.hold.onWorkerEnd?.({
+    plannedDollars: plan.limits.dollars,
+    chargedDollars: Math.max(run.chargedDollars, run.tally.dollars),
+  });
 }
 
 // Safe to run twice. The tool run stops first, so no call of the worker lands after the end record,

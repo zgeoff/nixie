@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import { readSpendLedger } from '@heynixie/budgets';
 import type { RecordKind } from '@heynixie/log';
-import { readRecords } from '@heynixie/log';
+import { readRecords, writeRecords } from '@heynixie/log';
 import invariant from 'tiny-invariant';
 import { writeStepCommit } from '../step/write-step-commit';
 import { writeTaskLimitRaise } from '../task/limit/write-task-limit-raise';
@@ -16,6 +16,8 @@ import { writeTestTriggerFire } from '../test-utils/write-test-trigger-fire';
 import type { StartedClaim, TaskRunOptions } from '../types';
 import { readEndedRuns } from './read-ended-runs';
 import { readOpenRun } from './read-open-run';
+import { taskRunEndedCodec } from './task-run-ended-codec';
+import { taskRunOpenedCodec } from './task-run-opened-codec';
 
 async function setupTest() {
   const tasks = await startTestTasks();
@@ -69,7 +71,7 @@ test('it opens one task run at the claim of a started task, and joins it on a re
   expect(run?.opened.report).toStrictEqual({ mode: 'wake', target: 'conversation' });
 });
 
-test('it sets the ledger row of the task run to its dollars in the transaction of its end', async () => {
+test('it sets no ledger row at the end of a task run that carries a meter', async () => {
   const ctx = await setupTest();
   const taskID = await ctx.startTask();
   const claim = await ctx.claim(taskID);
@@ -86,17 +88,60 @@ test('it sets the ledger row of the task run to its dollars in the transaction o
     run: { activity: 'worked', report: { summary: 'High tide is at 06:42.' } },
   });
 
-  const [ended] = await ctx.readKinds('task.run_ended');
+  const ledger = await readSpendLedger(ctx.writer.db);
 
-  const runID = ended?.payload['runID'];
+  expect(ledger).toStrictEqual([]);
+});
 
-  invariant(typeof runID === 'string');
+test('it sets the ledger row of a task run that began before the meter from the dollars of its end', async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.context.log, [
+    {
+      kind: taskRunOpenedCodec.kind,
+      definitions: ctx.context.definitions(),
+      thread: 'legacy-task',
+      payload: taskRunOpenedCodec.encode({
+        taskID: 'legacy-task',
+        runID: 'legacy-run',
+        openedByStep: 'legacy-task:1',
+        origin: { kind: 'message', sequence: null },
+        definitionID: null,
+        definitionHash: null,
+        triggerKey: null,
+        carriesRunID: null,
+        briefID: null,
+        report: { mode: 'none', target: null },
+        reportShape: null,
+        limits: { turns: 5, dollars: 2, calls: {} },
+      }),
+    },
+    {
+      kind: taskRunEndedCodec.kind,
+      definitions: ctx.context.definitions(),
+      thread: 'legacy-task',
+      payload: taskRunEndedCodec.encode({
+        taskID: 'legacy-task',
+        runID: 'legacy-run',
+        cause: 'reported',
+        detail: {},
+        endedBy: 'step:legacy-task:1',
+        definitionID: null,
+        triggerKey: null,
+        carriesRunID: null,
+        used: { turns: 3, dollars: 0.41, calls: {} },
+        reportID: 'r1',
+        reportTo: null,
+        delivery: 'kept',
+      }),
+    },
+  ]);
 
   const ledger = await readSpendLedger(ctx.writer.db);
 
   expect(ledger).toStrictEqual([
     {
-      counter: `task_run:${runID}`,
+      counter: 'task_run:legacy-run',
       unit: 'micros:USD',
       periodKind: 'none',
       periodStart: '',

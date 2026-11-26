@@ -1,3 +1,4 @@
+import { pickTaskRunMicros } from '@heynixie/budgets';
 import type { LogRecord } from '@heynixie/log';
 import type { ModelPrices, TokenCounts } from '@heynixie/models';
 import {
@@ -5,8 +6,13 @@ import {
   modelSessionSummarizedCodec,
   modelTurnEndedCodec,
 } from '@heynixie/models';
-import type { RunMeter } from '@heynixie/tasks';
-import { readRunRecords, readTaskSetup, taskFailedTurnSpentCodec } from '@heynixie/tasks';
+import type { RunMeter, TaskRun, TasksContext } from '@heynixie/tasks';
+import {
+  readMeterReads,
+  readRunRecords,
+  readTaskSetup,
+  taskFailedTurnSpentCodec,
+} from '@heynixie/tasks';
 import { workerGatewayChargedCodec } from '../worker/worker-gateway-charged-codec';
 import { workerTurnEndedCodec } from '../worker/worker-turn-ended-codec';
 
@@ -14,13 +20,17 @@ import { workerTurnEndedCodec } from '../worker/worker-turn-ended-codec';
 // task role's.
 export type ReadRunPrices = (profile: string | null) => ModelPrices | null;
 
-// A turn and the summary of a session count by their tokens, and a turn with no turn record counts
-// through its failed turn's spend. A tally beside a turn record counts only what exceeds it. A worker
-// call counts by the dollars its record stores, and another task run's spend never counts.
+// A task run whose start record names a meter counts the reads of its sandboxes and the dollars of
+// its worker runs. An earlier task run keeps pricing its records, a tally beside a turn record
+// counting only what exceeds it, and another task run's spend never counts.
 export function buildDollarsMeter(readPrices: ReadRunPrices): RunMeter {
   return {
     name: 'dollars',
     read: async (context, run) => {
+      if (run.opened.meter !== undefined) {
+        return readMeteredDollars(context, run);
+      }
+
       const setup = await readTaskSetup(context, run.taskID);
 
       const options = setup?.kind === 'started' ? setup.options : null;
@@ -56,6 +66,26 @@ export function buildDollarsMeter(readPrices: ReadRunPrices): RunMeter {
     },
     render: (limit) => `$${limit.toFixed(2)}`,
   };
+}
+
+async function readMeteredDollars(
+  context: Pick<TasksContext, 'log' | 'runners'>,
+  run: TaskRun,
+): Promise<number> {
+  const reads = await readMeterReads(context, run);
+
+  const workers = await readRunRecords(context, run, [
+    workerTurnEndedCodec.kind,
+    workerGatewayChargedCodec.kind,
+  ]);
+
+  let workerDollars = 0;
+
+  for (const record of workers) {
+    workerDollars += buildRecordDollars(record, null);
+  }
+
+  return pickTaskRunMicros(reads, workerDollars) / 1_000_000;
 }
 
 // A turn and a summary hold the dollars of their tokens at the prices when they were written, so a

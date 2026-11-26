@@ -8,6 +8,9 @@ export interface RunSettingsOptions {
   readonly models: ModelsConfig;
   readonly credentials: ModelCredentials;
   readonly hopLimit: number;
+
+  // whether the gateway counts every model request, which makes it the meter of a new task run
+  readonly isGatewayMetered: boolean;
 }
 
 // The server builds the settings once, and the claim, the start and the end of a task run read
@@ -22,6 +25,7 @@ export function buildRunSettings(options: RunSettingsOptions): RunSettings {
 
   return {
     reportDefaults: { start: 'wake', definition: 'next_turn' },
+    meter: options.isGatewayMetered ? 'gateway' : 'records',
     meters: [buildTurnsMeter(), buildDollarsMeter(readPrices)],
     hopLimit: options.hopLimit,
   };

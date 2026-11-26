@@ -25,6 +25,7 @@ export const tasksRecordTopics = {
   'task.interrupted': ['tasks'],
   'task.limit_reached': ['tasks'],
   'task.failed_turn_spent': ['tasks'],
+  'task.meter_read': ['tasks'],
   'task.limit_notice': ['tasks'],
   'recovery.notice': ['tasks'],
   'task.limits_raised': ['tasks'],

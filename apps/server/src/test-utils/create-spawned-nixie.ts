@@ -344,6 +344,7 @@ function buildBootExtras(options: SpawnedNixieOptions, doubles: TestDoubles) {
     hasStarterRules: true,
     ...(options.logLevel === undefined ? {} : { logLevel: options.logLevel }),
     ...(options.modelCredential === undefined ? {} : { modelCredential: options.modelCredential }),
+    ...((options.extraConfig ?? []).includes('spendStop:') ? { isGatewayPriced: true } : {}),
     ...buildRoleModelExtras(options, doubles),
     ...(options.release === undefined ? {} : { sandboxAdapter: 'imp' as const }),
     ...(options.backups === undefined ? {} : { isBackupOn: options.backups }),

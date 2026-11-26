@@ -46,6 +46,9 @@ export interface RunMeter {
 
 // The server builds it once and passes it to the claim, the start and the end of a task run.
 export interface RunSettings {
+  // where a new task run's dollars come from, which its start record keeps
+  readonly meter: 'gateway' | 'records';
+
   readonly reportDefaults: { readonly start: TaskReport; readonly definition: TaskReport };
   readonly meters: readonly [RunMeter, RunMeter];
 

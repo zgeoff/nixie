@@ -84,6 +84,8 @@ export function buildStepHold(
     onSpend: (dollars) => {
       run.budget?.onSpend(dollars);
     },
+    ...(run.budget?.onWorkerStart === undefined ? {} : { onWorkerStart: run.budget.onWorkerStart }),
+    ...(run.budget?.onWorkerEnd === undefined ? {} : { onWorkerEnd: run.budget.onWorkerEnd }),
   };
 }
 

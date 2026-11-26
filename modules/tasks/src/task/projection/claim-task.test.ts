@@ -466,6 +466,7 @@ test('it opens a task run of origin trigger that pins the hash of the fire it cl
     report: { mode: 'next_turn', target: 'conversation' },
     reportShape: null,
     limits: { turns: 3, dollars: 1, calls: {} },
+    meter: 'records',
   });
 });
 
