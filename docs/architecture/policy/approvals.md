@@ -14,13 +14,13 @@ what each means for the row, so the approvals module imports no kind module and 
 from the log. The migration that creates the table folds the records that already exist, and a test
 holds that fold equal to the live one.
 
-A row's family is `action`, `memory`, `skill` or `rule_change`. A `rule_change` row takes one of 3
-causes, and its cause picks the handler: `rule_widening` for a change from the definitions repo, and
-`proposed_rule` and `mandate`, which the [rules](rules.md#proposed-rules) doc covers. The 3 share
-one family so the release before still reads the proposals table. That release lapses every
-`rule_change` row with `rules.change_lapsed`, and refuses an answer to a row it has no record for.
-The host's rule answer route answers only a `rule_widening` row, because the other 2 take the
-passkey.
+A row's family is `action`, `memory`, `skill`, `rule_change`, `mcp` or `prompt`. A `rule_change` row
+takes one of 3 causes, and its cause picks the handler: `rule_widening` for a change from the
+definitions repo, and `proposed_rule` and `mandate`, which the [rules](rules.md#proposed-rules) doc
+covers. The 3 share one family so the release before still reads the proposals table. That release
+lapses every `rule_change` row with `rules.change_lapsed`, and refuses an answer to a row it has no
+record for. The host's rule answer route answers only a `rule_widening` row, because the other 2
+take the passkey.
 
 A closed row never reopens. A row is pending, deferred, approved, declined, lapsed or withdrawn.
 
@@ -28,6 +28,38 @@ The row names the identity that answered it in `answered_by`, set when the kind'
 folds in. An approve, an always allow and a decline set it, and a defer does not, because a deferred
 row is still open. A lapse and a withdrawal set none. A migration backfills the column from the same
 records, and a test holds the backfill equal to the fold.
+
+## One lifecycle
+
+Every family goes through the same steps, in the proposals module:
+
+1. `proposeInTransaction` draws the short ID and writes `proposals.proposed`, which creates the row.
+   The family writes its body record, such as `skills.write_proposed`, in the same transaction, with
+   the same proposal ID. A body record creates a row only when no `proposals.proposed` came before
+   it, so a log written before the lifecycle rebuilds to one row per proposal.
+2. A proposal replaces an open one of the same family, the same proposer and the same `sameThing`
+   key: the core withdraws the old one in the same transaction. A proposal with no proposer, and a
+   family with no key (memory, action), never replaces.
+3. One sweep lapses the open rows of every family once their lapse passes, through each family's
+   `discard`. A row whose family has no handler stays open. A family that owns its transaction, such
+   as memory, lapses one row at a time in its own.
+4. An approve or a discard that succeeds writes `proposals.settled` in the same transaction, on the
+   thread of each proposer. A refusal writes none, and the row stays open.
+5. The proposer hears the settlement: a conversation reads it in the note of its next turn, and a
+   task reads it as an inbox record that wakes it. An action's settlement is never an inbox record:
+   the task hears `action.outcome`. A proposer's own withdrawal writes the record and leaves out the
+   note, because the call's result holds the outcome.
+
+A family's handler supplies `lapseIntervalMs(config, cause)`, which reads `approvals.lapse_days`
+from the server config, and `discard`, which undoes what the proposal held for a decline, a lapse or
+a withdrawal. A cause that lapses only at its deadline, such as a mandate, returns no interval.
+`approvals.lapse_days` holds the days per family: 3 for an action and 14 for each other family. The
+key `memory.proposal_lapse_days` is no longer accepted, and the server refuses to start while a
+config holds it.
+
+A prompt override takes the `prompt` family, risk class `always_ask`, so approving it needs a
+passkey. Its action hash is the override's hash, and `readHashes` folds in the base it replaces, so
+an approval after the override in force moved is refused as a conflict.
 
 ## Listing and reading
 
