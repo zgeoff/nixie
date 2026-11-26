@@ -1,10 +1,10 @@
 # Google tools
 
 - **Status:** agreed
-- **Work items:** [Calendar and Drive](https://linear.app/zgeoff/issue/GEO-1826), which built the
-  Calendar and Drive tools on the [Google connection](google-connections.md) and the built
-  [Gmail tools](../../architecture/connectors/gmail-tools.md). Nothing is left to build for those
-  tools; the parts of the Gmail tools still to build are under "Not built yet".
+- **Built on:** the [Google connection](google-connections.md) and the built
+  [Gmail tools](../../architecture/connectors/gmail-tools.md). The Calendar and Drive tools are
+  built, so nothing is left to build for them. The parts of the Gmail tools still to build are under
+  "Not built yet".
 
 nixie reads, searches and labels your Gmail, sends mail, and reads and changes your calendar and the
 Drive files you give it, through one Google connection. Every read asks Google live, inside the
@@ -15,8 +15,10 @@ a send runs as an [action](../../architecture/core/actions.md), and the
 the effects the tool declares and the destinations nixie reads from Google. When an attempt's
 outcome is unknown, a read-only check at Google settles it, and nixie never repeats a send blind.
 
-Below are the rules every Google tool follows, which a change to a Google tool or a new one must
-keep, and the parts of the Gmail tools not built yet. The
+Read this when you change a Google tool, add one, or build a part of the Gmail tools that is not
+built yet. For a change or a new tool, keep each rule under "Every Google tool", then take the
+tool's own contract from the architecture doc for its connector. For a missing part of the Gmail
+tools, start from "Not built yet". The
 [Calendar and Drive tools](../../architecture/connectors/calendar-drive-tools.md) are built and
 follow these rules; their per-tool contracts are in that doc. The Gmail tools are `gmail.*`. The
 `mail.*` tools belong to the assistant's own mailbox, in the

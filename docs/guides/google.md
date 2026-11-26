@@ -91,7 +91,8 @@ scope, and a button to ask Google again. The conversation never shows that notic
 ## What the assistant does with your mail
 
 - nixie searches and reads your mail without asking you. It asks Gmail at each call and keeps no
-  copy of your mail beyond what a call returned.
+  copy of your mail beyond what a call returned. The one exception is the sender and subject of a
+  mail that matches a wake rule, described below.
 - nixie labels mail and writes drafts without asking you, because a starter rule allows writes to a
   service. When you add a rule that asks first, nixie asks you. A draft stays in your account for
   you to open.

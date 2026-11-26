@@ -13,7 +13,8 @@ lives only in that call's record. The connection itself is built. Read
 [Google connections](../../architecture/connectors/google-connections.md) for the client, the
 consent, the fewer-scopes check and the fetcher, and follow
 [the setup guide](../../guides/google.md) for the steps you take. Below is what the Google tools
-need from the connection. Build each remaining tool work item on these contracts.
+need from the connection. The Gmail tools are built. Calendar and Drive are the remaining work
+items: build each on these contracts, and describe its tools in the architecture doc once built.
 
 | Part                                                                              | What it holds                                                                        |
 | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
@@ -41,7 +42,7 @@ const googleConnector: Connector = {
   id: 'google',
   auth: googleOAuth, // built
   setup: googleSetup, // built
-  actions, // the Gmail tools; the Calendar and Drive tools join here
+  actions, // the Gmail tools; the Calendar and Drive tools join here as each work item lands
   check: checkGoogleScopes, // built: one read per scope, reports `missing`
 };
 
@@ -64,16 +65,17 @@ The default label of a Google connection is the ID token's `email`.
 
 ### Scopes and tools
 
-| Scope                            | The tools it holds                                       |
-| -------------------------------- | -------------------------------------------------------- |
-| `gmail.modify`                   | every `gmail.*` tool                                     |
-| `calendar.events`                | every `calendar.*` tool except `calendar.list_calendars` |
-| `calendar.calendarlist.readonly` | `calendar.list_calendars`                                |
-| `drive.file`                     | every `drive.*` tool, and the Drive picker               |
+| Scope                            | The tools it holds                                                             |
+| -------------------------------- | ------------------------------------------------------------------------------ |
+| `gmail.modify`                   | every `gmail.*` tool                                                           |
+| `calendar.events`                | every `calendar.*` tool except `calendar.list_calendars`                       |
+| `calendar.calendarlist.readonly` | `calendar.list_calendars` (`calendar.events` does not cover the calendar list) |
+| `drive.file`                     | every `drive.*` tool, and the Drive picker                                     |
 
 - The tool endpoint of each task run and worker run leaves out each tool whose scope is in
   `missing`.
-- A connection with only the identity scopes still connects, and lists no tools.
+- A connection with only the identity scopes still connects, so you can add scopes later, and lists
+  no tools.
 - Each action lists its scopes in `ConnectorAction.scopes`, and the filter holds back an action
   whose scope is missing.
 
@@ -84,7 +86,8 @@ The default label of a Google connection is the ID token's `email`.
   run keeps its list for its life. Once pins are built, a job run keeps its pins, as
   [the connection argument](../platform/connectors/connector.md#the-connection-argument) sets.
 - Every call checks the connection at the time of the call. A call to a forgotten connection fails
-  with the error for a `forgotten` credential, which never holds the connection's label or status.
+  with the error for a `forgotten` credential, which never holds the connection's label or status,
+  because Forget erases them.
 - Once pins are built, a job whose pins all name forgotten connections lists none of the connector's
   tools.
 - Forget erases a connection's Gmail wake rules and held arrivals as children of the connection,

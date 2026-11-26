@@ -23,8 +23,9 @@ Before you start:
   again, even after a failed pass, run `bun verify up --restart` and `bun verify doctor`. Then run
   sign-in-enrol. Run this journey and [calendar-tools](feature-calendar-tools.md) in either order,
   with that restart between them.
-- When an expectation in a step does not hold, stop the pass, report what you got against what you
-  expected, and restart as above before any rerun.
+- When an expectation in a step does not hold, or a command exits non-zero, stop the pass, report
+  what you got against what you expected, and restart as above before any rerun. Never retry a
+  single step: the OAuth client is already registered, and the create may have run.
 
 ## Journey
 

@@ -23,8 +23,8 @@ Before you start:
 - When you have not run [sign-in-enrol](feature-sign-in-enrol.md) since `up`, run it first.
 - Run this journey once per `up`, because a deployment registers one client and the card of step 5
   must be the only held call. Before you run it again, even after a failed pass, run
-  `bun verify up --restart` and `bun verify doctor`. Then run sign-in-enrol. Run it before
-  [drive-tools](feature-drive-tools.md), or restart between them.
+  `bun verify up --restart` and `bun verify doctor`. Then run sign-in-enrol. Run this journey and
+  [drive-tools](feature-drive-tools.md) in either order, with that restart between them.
 
 ## Journey
 
@@ -73,8 +73,8 @@ Before you start:
    bun verify calendar written --count 0
    ```
 
-   Expect: the last 2 rows of `data.rows` have `outcome` `result` and `queued`. Both commands exit
-   0: the fake Calendar took no write yet.
+   Expect: the last 2 rows of `data.rows` have `outcome` `result` and `queued`. `proposals` and
+   `calendar written` exit 0: the fake Calendar took no write yet.
 
 5. Script a text reply for the turn that the call's outcome starts, then open the approvals page:
 

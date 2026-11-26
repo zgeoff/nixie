@@ -1,13 +1,18 @@
 # The queue design
 
-This folder holds the designs for work that nixie has not built yet. Each design covers a contract
-that two or more pieces of work build on. Write the contract as code sketches, constraint bullets
-and a diagram, and list the Linear issues that build on it. Read the issue first, then the sections
-of the design it links.
+This folder holds the designs for work that nixie has not built yet. Each design is the contract
+that two or more pieces of work build on, so those pieces fit together when different people or
+agents build them. A contributor or agent who holds the Linear issue for such work reads the issue
+first, then the sections of the design that the issue links. A reader with no issue finds a design
+by area in the table below.
 
-Treat each design as a draft until the owner approves it, and list the questions still open in it.
-When the work is built, move its lasting facts to [`docs/architecture/`](../../architecture/) and
-delete the design.
+A design is written as code sketches, constraint bullets and a diagram, and it lists the Linear
+issues that build on it. It stays a draft until the owner approves it, and it lists the questions
+still open. Every design in this folder has a row in the table.
+
+When the work is built, move the design's lasting facts to
+[`docs/architecture/`](../../architecture/) and delete the design. A built design left here would
+describe code that has since changed, and a reader could not tell it from one still to build.
 
 | Area            | Designs                                                                                                                                 |
 | --------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
@@ -27,5 +32,5 @@ delete the design.
 | Accounts        | [accounts and sign-in](accounts.md), [the wallet](wallet.md), [mail and phone](mail-and-phone.md)                                       |
 
 Work that no design covers, such as the port rules and the voice and typing design sessions, lives
-in its Linear issue alone. The decision records these designs follow are in
+in its Linear issue alone, and so has no row here. The decision records these designs follow are in
 [`docs/decisions/`](../../decisions/).

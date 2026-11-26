@@ -186,8 +186,8 @@ The connection's tokens carry `gmail.modify` and never reach the browser, and th
 never reaches the server. The web server sends
 `Cross-Origin-Opener-Policy: same-origin-allow-popups` on every page, so Google's sign-in window can
 reach back to the page that opened it. A client with no picker key or project number hides the
-button and links the setup step. The client's public ID comes back with the setup reading for this
-purpose.
+button and links the [guide's web client step](../../guides/google.md#create-a-web-client). The
+client's public ID comes back with the setup reading for this purpose.
 
 ## Testing
 
