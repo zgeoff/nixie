@@ -23,6 +23,10 @@ export async function readGmailBodyFields(
     return buildLabelFields(request.input);
   }
 
+  if (request.tool === gmailToolNames.wakeSet) {
+    return buildWakeFields(request.input);
+  }
+
   if (!sendTools.has(request.tool)) {
     return { status: 'none' };
   }
@@ -59,4 +63,31 @@ function formatNames(value: unknown): string {
     : [];
 
   return names.length === 0 ? 'none' : names.join(', ');
+}
+
+function buildWakeFields(input: JSONObject): BodyFields {
+  const parts: string[] = [];
+  const from: unknown = input['from'];
+
+  if (Array.isArray(from)) {
+    parts.push(`from ${formatNames(from)}`);
+  }
+
+  if (typeof input['subject'] === 'string') {
+    parts.push(`subject ${JSON.stringify(input['subject'])}`);
+  }
+
+  if (typeof input['thread'] === 'string') {
+    parts.push(`thread ${input['thread']}`);
+  }
+
+  const match = parts.length === 0 ? 'every mail' : parts.join(', ');
+  const expires = typeof input['expires'] === 'string' ? `, for ${input['expires']}` : '';
+
+  return {
+    status: 'fields',
+    fields: {},
+    sentence: `Wake the assistant on Gmail mail matching ${match}${expires}`,
+    approveLabel: 'Set wake rule',
+  };
 }

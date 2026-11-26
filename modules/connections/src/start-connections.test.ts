@@ -517,3 +517,29 @@ test('it ends a fetch that waits on a refresh when a forget begins, before the p
 
   expect(result).toMatchObject({ status: 'rejected', reason: expect.any(CredentialRemovedError) });
 });
+
+test('it erases what other modules keep of a connection after the forget begins and after its keys go', async () => {
+  const erased: string[] = [];
+
+  const ctx = await setupTest({
+    eraseDependents: (connectionID) => {
+      erased.push(connectionID);
+
+      return Promise.resolve();
+    },
+  });
+
+  const connection = await ctx.seedConnection();
+
+  await ctx.connections.forget.begin(
+    { connection: connection.tokenRef.credentialID },
+    { by: 'user' },
+  );
+
+  await ctx.connections.forget.finish(connection.tokenRef.credentialID);
+
+  expect(erased).toStrictEqual([
+    connection.tokenRef.credentialID,
+    connection.tokenRef.credentialID,
+  ]);
+});

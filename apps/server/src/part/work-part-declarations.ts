@@ -6,6 +6,7 @@ import {
 import { startCallSweep } from '@heynixie/calls';
 import { buildCodingSource, startCodingSweep } from '@heynixie/coding';
 import {
+  buildGmailArrivalSource,
   endTakeoverCutByRestart,
   makeTakeoverRecords,
   resumeOpenHandover,
@@ -153,7 +154,14 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
   },
   {
     name: 'trigger_sources',
-    needs: ['server_parts', 'context', 'conversation_task', 'reminder_moves'],
+    needs: [
+      'server_parts',
+      'context',
+      'conversation_task',
+      'reminder_moves',
+      'connections',
+      'google_tools',
+    ],
     start: async (reader) => {
       const parts = reader.get('server_parts');
       const writer = parts.context.log.writer;
@@ -178,9 +186,31 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
         retireOneShot: makeRetireOneShot(parts.context),
       };
 
+      const connections = reader.get('connections');
+
+      const gmailSource = buildGmailArrivalSource({
+        clock: parts.context.clock,
+        hosts: reader.get('google_tools').hosts,
+        logEvent: parts.log,
+        pollIntervalMs: parts.config.gmail.poll_interval,
+        listConnections: async () => {
+          const states = await connections.readStates();
+
+          return states
+            .filter((state) => state.scopes.includes('gmail.modify'))
+            .map((state) => ({
+              connectionID: state.connectionID,
+              connection: state.connection,
+              status: state.status,
+            }));
+        },
+        readContext: (connectionID) => connections.readContext(connectionID),
+      });
+
       const sources = await startTriggerSources(
         [
           scheduleSource,
+          gmailSource,
           ...(coding === null ? [] : [buildCodingSource(coding.context, coding.adapter)]),
           ...(mail === null || mailContext === null
             ? []

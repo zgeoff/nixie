@@ -165,3 +165,12 @@ export type {
 } from './render/start-render-sandbox';
 
 export { renderSandboxOwner, startRenderSandbox } from './render/start-render-sandbox';
+export type { GmailWakePort } from './google/gmail/types';
+
+export type {
+  GmailArrivalSourceInput,
+  GmailConnection,
+} from './google/gmail/poll/build-gmail-arrival-source';
+
+export { buildGmailArrivalSource } from './google/gmail/poll/build-gmail-arrival-source';
+export { gmailConfigSchema } from './google/gmail/gmail-config-schema';

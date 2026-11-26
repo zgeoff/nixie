@@ -80,3 +80,8 @@ export { maxWakeDurationMs, minWakeDurationMs } from './wake/constants';
 export { wakeRulesConfigSchema } from './wake/wake-rules-config-schema';
 export { buildMailboxKey } from './wake/build-mailbox-key';
 export { eraseGmailMailbox } from './wake/erase-gmail-mailbox';
+export { formatDurationText } from './wake/format-duration-text';
+export type { WakeTiming, WakeTimingRequest } from './wake/pick-wake-timing';
+export { pickWakeTiming } from './wake/pick-wake-timing';
+export type { WakeTargetResolution } from './wake/resolve-wake-target';
+export { resolveWakeTarget } from './wake/resolve-wake-target';

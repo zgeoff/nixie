@@ -6,6 +6,9 @@ import { buildGmailReplyTool } from './build-gmail-reply-tool';
 import { buildGmailSearchTool } from './build-gmail-search-tool';
 import { buildGmailSendDraftTool } from './build-gmail-send-draft-tool';
 import { buildGmailSendTool } from './build-gmail-send-tool';
+import { buildGmailWakeCancelTool } from './build-gmail-wake-cancel-tool';
+import { buildGmailWakeListTool } from './build-gmail-wake-list-tool';
+import { buildGmailWakeSetTool } from './build-gmail-wake-set-tool';
 import { checkGmailDraft } from './check-gmail-draft';
 import { checkGmailLabels } from './check-gmail-labels';
 import { checkGmailSent } from './check-gmail-sent';
@@ -37,13 +40,15 @@ const draftReconcile: Reconcile = {
 };
 
 // The Gmail tools as actions of the Google connector, each needing the scope gmail.modify. The
-// reads run in the turn; the label, the draft and the sends run as queued actions that reach Gmail
-// only through the connection's fetcher.
+// reads and the wake tools run in the turn; the label, the draft and the sends run queued.
 export function buildGmailActions(deps: GmailDeps): ConnectorAction[] {
   const reads = [
     buildGmailSearchTool(deps),
     buildGmailReadTool(deps),
     buildGmailReadAttachmentTool(deps),
+    buildGmailWakeSetTool(deps),
+    buildGmailWakeListTool(deps),
+    buildGmailWakeCancelTool(deps),
   ].map((tool): ConnectorAction => ({
     tool,
     scopes: [gmailScope],

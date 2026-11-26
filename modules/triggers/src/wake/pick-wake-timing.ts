@@ -1,5 +1,5 @@
 import { parseDuration } from '@heynixie/clock';
-import { maxWakeDurationMs, minWakeDurationMs } from '@heynixie/triggers';
+import { maxWakeDurationMs, minWakeDurationMs } from './constants';
 
 export interface WakeTimingRequest {
   readonly expires: string | undefined;

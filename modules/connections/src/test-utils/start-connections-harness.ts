@@ -46,6 +46,9 @@ export interface ConnectionsHarnessOptions {
 
   // wraps the connector's check, so a test can act while a check is under way
   readonly wrapCheck?: (check: Connector['check']) => Connector['check'];
+
+  // what a forget erases besides the connection's keys
+  readonly eraseDependents?: (connectionID: string) => Promise<void>;
 }
 
 export interface ConnectionsHarness {
@@ -154,6 +157,7 @@ export async function startConnectionsHarness(
     connector,
     forgetWaitMs: options.forgetWaitMs ?? 200,
     forgetPollMs: 20,
+    ...(options.eraseDependents === undefined ? {} : { eraseDependents: options.eraseDependents }),
   });
 
   return {

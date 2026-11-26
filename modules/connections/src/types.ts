@@ -177,6 +177,16 @@ export interface ForgetState {
   readonly revocation: 'pending' | 'confirmed' | 'refused' | 'unknown' | 'not_attempted';
 }
 
+// A connection that is not forgotten, as a background reader sees it.
+export interface ConnectionState {
+  readonly connectionID: string;
+
+  // the short ID
+  readonly connection: string;
+  readonly status: 'active' | 'failing' | 'needs_consent' | 'expiring';
+  readonly scopes: readonly string[];
+}
+
 export interface ListedConnection {
   readonly connection: string;
   readonly connector: string;

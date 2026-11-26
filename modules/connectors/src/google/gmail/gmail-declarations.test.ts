@@ -51,6 +51,13 @@ test.each([
     effects: ['send'],
     results: { message: 'owner_data', thread: 'owner_data' },
   },
+  {
+    tool: 'gmail.wake_set',
+    effects: ['schedule'],
+    results: { rule: 'owner_data', expiresAt: 'owner_data' },
+  },
+  { tool: 'gmail.wake_list', effects: ['read'], results: { rules: 'owner_data' } },
+  { tool: 'gmail.wake_cancel', effects: ['note'], results: { rule: 'owner_data' } },
 ])('it declares the effects and result sources of $tool', async (row) => {
   const ctx = await startGmailTools();
 
@@ -102,6 +109,9 @@ test.each([
   { tool: 'gmail.send', execution: 'queued' },
   { tool: 'gmail.reply', execution: 'queued' },
   { tool: 'gmail.send_draft', execution: 'queued' },
+  { tool: 'gmail.wake_set', execution: 'direct' },
+  { tool: 'gmail.wake_list', execution: 'direct' },
+  { tool: 'gmail.wake_cancel', execution: 'direct' },
 ])('it runs $tool as $execution', async (row) => {
   const ctx = await startGmailTools();
 
@@ -113,5 +123,5 @@ test('it registers every Gmail tool, each result field with a source', async () 
 
   const registry = buildToolRegistry(ctx.actions.map((action) => action.tool));
 
-  expect(registry.toolNames).toHaveLength(8);
+  expect(registry.toolNames).toHaveLength(11);
 });

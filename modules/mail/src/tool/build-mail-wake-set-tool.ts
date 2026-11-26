@@ -1,16 +1,18 @@
 import { withWriteTransaction } from '@heynixie/log';
 import { conversationTaskID } from '@heynixie/tasks';
 import type { ToolDefinition } from '@heynixie/tools';
-import { setWakeRuleInTransaction } from '@heynixie/triggers';
+import {
+  formatDurationText,
+  pickWakeTiming,
+  resolveWakeTarget,
+  setWakeRuleInTransaction,
+} from '@heynixie/triggers';
 import { z } from 'zod';
 import { mailDeclarations } from '../connector/mail-declarations';
 import { mailToolNames } from '../connector/mail-tool-names';
 import { readMailPage } from '../store/read-mail-page';
 import type { MailToolContext } from '../types';
-import { formatDurationText } from './format-duration-text';
-import { pickWakeTiming } from './pick-wake-timing';
 import { renderOutsideText } from './render-outside-text';
-import { resolveWakeTarget } from './resolve-wake-target';
 
 const recentMs = 10 * 60_000;
 const durationPattern = '^[1-9][0-9]{0,6}(ms|s|m|h|d)$';

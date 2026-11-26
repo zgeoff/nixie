@@ -13,6 +13,7 @@ export { startConnections } from './start-connections';
 export type {
   BackendHooks,
   ConnectionContext,
+  ConnectionState,
   ConnectionMissingScope,
   ConnectionTables,
   FinishConsentInput,

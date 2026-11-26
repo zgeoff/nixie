@@ -1,6 +1,8 @@
+import type { Clock } from '@heynixie/clock';
 import type { ConnectionContext } from '@heynixie/connections';
-import type { ConnectorAction, GmailDeps, GoogleHosts } from '@heynixie/connectors';
+import type { ConnectorAction, GoogleHosts } from '@heynixie/connectors';
 import { buildGmailActions, googleHosts } from '@heynixie/connectors';
+import type { Definitions, Log } from '@heynixie/log';
 import type { FetchReply } from '@heynixie/wire';
 import invariant from 'tiny-invariant';
 import { buildTestGoogleHosts } from '../test/build-test-google-hosts';
@@ -14,8 +16,9 @@ type LiveReader = (connection?: string) => Promise<readonly ConnectionContext[]>
 
 interface GoogleRuntime {
   readonly readLiveContexts: LiveReader;
-  readonly log: GmailDeps['log'];
-  readonly clock: GmailDeps['clock'];
+  readonly log: Log;
+  readonly clock: Clock;
+  readonly definitions: () => Definitions;
 }
 
 export interface GoogleToolsPart {
@@ -75,6 +78,15 @@ export function startGoogleToolsPart(inputs: ServerInputs): GoogleToolsPart {
       },
     },
     clock: { now: () => readRuntime().clock.now() },
+    wake: {
+      context: () => {
+        const runtime = readRuntime();
+
+        return { log: runtime.log, clock: runtime.clock, definitions: runtime.definitions };
+      },
+      defaultWindowMs: inputs.options.config.wake_rules.window,
+      replyExpiryMs: inputs.options.config.wake_rules.reply_expiry,
+    },
     readHTML: (html) => readMailHTML(bound.readHTML, html),
     textBytes: webFetch.limits.textBytes,
     linkPathChars: webFetch.linkPathChars,

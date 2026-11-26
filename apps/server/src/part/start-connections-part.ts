@@ -5,6 +5,7 @@ import { createGoogleConnector } from '@heynixie/connectors';
 import { createCredentialRecorder } from '@heynixie/credentials';
 import type { ErasureRegistry } from '@heynixie/log';
 import { toErrorFields } from '@heynixie/logger';
+import { eraseGmailMailbox } from '@heynixie/triggers';
 import type { ServerParts } from '../types';
 import type { GoogleToolsPart } from './start-google-tools-part';
 
@@ -40,12 +41,15 @@ export async function startConnectionsPart(
     erasure,
     now,
     connector: createGoogleConnector(google.hosts, [...google.actions]),
+    eraseDependents: (connectionID) =>
+      eraseGmailMailbox({ log, clock: parts.context.clock, definitions }, connectionID),
   });
 
   google.bindRuntime({
     readLiveContexts: (connection) => connections.readLiveContexts(connection),
     log,
     clock: parts.context.clock,
+    definitions,
   });
 
   await store.recover();

@@ -1,5 +1,6 @@
 import type { Clock } from '@heynixie/clock';
 import type { Log } from '@heynixie/log';
+import type { WakeRuleContext } from '@heynixie/triggers';
 import type { FetchReply } from '@heynixie/wire';
 import type { ConnectorContext } from '../../types';
 import type { GoogleHosts } from '../google-hosts';
@@ -9,11 +10,24 @@ export interface GmailAccess {
   readonly readLiveContexts: (connection?: string) => Promise<readonly ConnectorContext[]>;
 }
 
+// What the wake tools need of the triggers module: the context of a rule write, which binds with
+// the connections, and the settings of the `wake_rules` config section.
+export interface GmailWakePort {
+  readonly context: () => WakeRuleContext;
+
+  // a rule's window when the call gives none
+  readonly defaultWindowMs: number;
+
+  // the expiry of the rule that a send registers, when the call gives none
+  readonly replyExpiryMs: number;
+}
+
 export interface GmailDeps {
   readonly hosts: GoogleHosts;
   readonly access: GmailAccess;
   readonly log: Pick<Log, 'deploymentKey' | 'writer'>;
   readonly clock: Pick<Clock, 'now'>;
+  readonly wake: GmailWakePort;
 
   // reads the text and the links of a mail's HTML in the fetch sandbox, which makes no request
   readonly readHTML: (html: string) => Promise<FetchReply>;

@@ -1,9 +1,8 @@
 import type { ToolDefinition } from '@heynixie/tools';
-import { readWakeRules } from '@heynixie/triggers';
+import { formatDurationText, readWakeRules } from '@heynixie/triggers';
 import { mailDeclarations } from '../connector/mail-declarations';
 import { mailToolNames } from '../connector/mail-tool-names';
 import type { MailContext } from '../types';
-import { formatDurationText } from './format-duration-text';
 
 // mail.wake_list: every live rule of the assistant's own mailbox, whoever set it.
 export function buildMailWakeListTool(context: MailContext): ToolDefinition {

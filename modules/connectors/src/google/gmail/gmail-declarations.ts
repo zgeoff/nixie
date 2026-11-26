@@ -86,4 +86,31 @@ export const gmailDeclarations = {
     content: [],
     results: { message: 'owner_data', thread: 'owner_data' },
   },
+  wakeSet: {
+    effects: ['schedule'],
+    destinations: [],
+    amount: null,
+    content: [],
+    results: {
+      rule: 'owner_data',
+      expiresAt: 'owner_data',
+      window: 'owner_data',
+      replaced: 'owner_data',
+      refused: 'owner_data',
+    },
+  },
+  wakeList: {
+    effects: ['read'],
+    destinations: [],
+    amount: null,
+    content: [],
+    results: { rules: 'owner_data' },
+  },
+  wakeCancel: {
+    effects: ['note'],
+    destinations: [],
+    amount: null,
+    content: [],
+    results: { rule: 'owner_data', ended: 'owner_data' },
+  },
 } as const satisfies Readonly<Record<string, Declaration>>;
