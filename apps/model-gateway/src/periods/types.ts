@@ -21,7 +21,7 @@ export interface LegacyPeriod {
   readonly trippedAt?: string | null | undefined;
 }
 
-export interface LegacySandbox {
+interface LegacySandbox {
   readonly dollars: number;
   readonly tokens: number;
   readonly limit: { readonly dollars: number; readonly tokens: number } | null;

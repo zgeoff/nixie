@@ -30,7 +30,7 @@ export interface ProxyRoute {
 }
 
 // A provider is one place the model requests go. Its limits are required and bind every route of it.
-export interface ProxyProvider {
+interface ProxyProvider {
   readonly limits: RouteLimits;
 }
 

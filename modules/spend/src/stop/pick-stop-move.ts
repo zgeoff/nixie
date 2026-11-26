@@ -1,6 +1,6 @@
 import type { PeriodName } from '../types';
 
-export type StopClearReason = 'reset' | 'raised' | 'corrected';
+type StopClearReason = 'reset' | 'raised' | 'corrected';
 
 // A standing stop or a trip, with the limit it stands at
 export interface StopLimit {
