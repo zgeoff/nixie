@@ -813,6 +813,72 @@ test('it frees the slot of a run whose sandbox create never returns, when its mi
   });
 });
 
+test('it starts no run, and holds no slot, when the task sandbox gives up none of its dollars', async () => {
+  const ctx = await setupTest({ workerRuns: { max: 1, whenFull: 'error' } });
+
+  ctx.guest.addKindReplies('worker', { text: 'Second.' });
+
+  const first = await ctx.callWorker(
+    { question: 'First?' },
+    { hold: { onWorkerStart: () => Promise.resolve(0) } },
+  );
+
+  const second = await ctx.callWorker({ question: 'Second?' });
+  const started = await ctx.readKinds(['worker.run_started']);
+  const ended = await ctx.readKinds(['worker.run_ended']);
+
+  expect(first).toStrictEqual({
+    status: 'error',
+    message: expect.toInclude('could not set aside the dollars of a worker'),
+  });
+
+  expect(second.status).toBe('ok');
+  expect(started).toHaveLength(1);
+
+  expect(ended.map((record) => record.payload['workerRunID'])).toStrictEqual(
+    started.map((record) => record.payload['workerRunID']),
+  );
+});
+
+test('it runs a worker on the dollars that the task sandbox gave up when they fall short of the plan', async () => {
+  const ctx = await setupTest();
+
+  ctx.guest.addKindReplies('worker', { text: 'Done.' });
+
+  await ctx.callWorker(
+    { question: 'Which cafes are open?' },
+    { hold: { onWorkerStart: () => Promise.resolve(0.25) } },
+  );
+
+  const [started] = await ctx.readKinds(['worker.run_started']);
+
+  expect(started?.payload).toMatchObject({ limits: { dollars: 0.25 }, isTaskLimit: true });
+});
+
+test('it frees the sandbox and the slot of a run when the task cannot take its planned dollars back', async () => {
+  const ctx = await setupTest({ workerRuns: { max: 1, whenFull: 'error' } });
+
+  ctx.guest.addKindReplies('worker', { text: 'First.' }, { text: 'Second.' });
+
+  const [first] = await Promise.allSettled([
+    ctx.callWorker(
+      { question: 'First?' },
+      {
+        hold: {
+          onWorkerStart: (requested) => Promise.resolve(requested),
+          onWorkerEnd: () => Promise.reject(new Error('the task sandbox did not answer')),
+        },
+      },
+    ),
+  ]);
+
+  const second = await ctx.callWorker({ question: 'Second?' });
+
+  expect(first.status).toBe('rejected');
+  expect(second.status).toBe('ok');
+  expect(ctx.destroys).toHaveLength(2);
+});
+
 test('it frees the tool run, the stops, the sandbox and the slot when the end record fails to write', async () => {
   const ctx = await setupTest({
     isEndWriteFailing: true,

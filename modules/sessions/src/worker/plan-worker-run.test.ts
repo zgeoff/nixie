@@ -69,6 +69,8 @@ test('it caps the dollars at what the caller has left, and says so', () => {
 test('it caps the dollars at what the task run has left after the worker run already going', async () => {
   const budget = createGatewayBudget({
     leftDollars: 3,
+    startMicros: 0,
+    readCountMicros: () => Promise.resolve(0),
     setLeftDollars: () => Promise.resolve(true),
     readWorkerEnd: () => Promise.resolve(),
   });

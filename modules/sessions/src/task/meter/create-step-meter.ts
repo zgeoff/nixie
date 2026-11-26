@@ -96,7 +96,7 @@ function createGatewayStepMeter(deps: GatewayMeterDeps, facts: StepMeterFacts): 
     });
 
   // The count that the gateway holds for the sandbox, or null when it did not answer
-  const readCount = async (sandboxID: string, reason: TaskMeterReadReason) => {
+  const readCount = async (sandboxID: string, reason: TaskMeterReadReason | 'worker_start') => {
     const read = await deps.gateway.readSandbox(sandboxID);
 
     if (read.kind !== 'ok') {
@@ -172,9 +172,21 @@ function createGatewayStepMeter(deps: GatewayMeterDeps, facts: StepMeterFacts): 
         }
       };
 
+      const readCountMicros = async () => {
+        const read = await readCount(sandboxID, 'worker_start');
+
+        return read === null ? null : toMicrosUp(read.dollars);
+      };
+
       return {
         kind: 'ready',
-        budget: createGatewayBudget({ leftDollars, setLeftDollars, readWorkerEnd }),
+        budget: createGatewayBudget({
+          leftDollars,
+          startMicros,
+          readCountMicros,
+          setLeftDollars,
+          readWorkerEnd,
+        }),
       };
     },
     end: async (sandboxID, startedAtMs) => {
@@ -264,7 +276,7 @@ function createRecordsStepMeter(
         kind: 'ready',
         budget: {
           ...called,
-          onWorkerStart: () => Promise.resolve(true),
+          onWorkerStart: (requestedDollars) => Promise.resolve(requestedDollars),
           onWorkerEnd: () => write('worker_end', readTallyMicros()),
         },
       };

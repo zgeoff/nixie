@@ -15,12 +15,14 @@ import type { GuestTurn } from '../utils/run-guest-turn';
 import { runGuestTurn } from '../utils/run-guest-turn';
 import type { WorkerStops } from './create-worker-stops';
 import { createWorkerStops } from './create-worker-stops';
+import { giveBackWorkerDollars } from './give-back-worker-dollars';
 import { pickGatewayEnd } from './pick-gateway-end';
 import type { WorkerTurnFacts } from './pick-worker-end';
 import { pickWorkerEnd } from './pick-worker-end';
 import { raceStop } from './race-stop';
 import { removeFailedDestroys } from './remove-failed-destroys';
 import { renderWorkerEnd } from './render-worker-end';
+import { reserveWorkerDollars } from './reserve-worker-dollars';
 import { startWorkerRemoval } from './start-worker-removal';
 import type {
   WorkerDeps,
@@ -56,8 +58,8 @@ interface Held {
   isRegistered: boolean;
   isStarted: boolean;
 
-  // the calling task's sandbox gave this run's planned dollars up, which the end gives back
-  isReserved: boolean;
+  // the dollars that the calling task's sandbox gave this run up, which the end gives back
+  reservedDollars: number;
   stage: 'starting' | 'running';
 }
 
@@ -91,7 +93,7 @@ export async function runWorker(deps: WorkerDeps, plan: WorkerPlan): Promise<Wor
       endpoint: null,
       isRegistered: false,
       isStarted: false,
-      isReserved: false,
+      reservedDollars: 0,
       stage: 'starting',
     },
     chargedDollars: 0,
@@ -100,8 +102,11 @@ export async function runWorker(deps: WorkerDeps, plan: WorkerPlan): Promise<Wor
   try {
     return await runOpenWorker(deps, plan, run);
   } finally {
-    await giveBackReservation(plan, run);
-    await releaseWorkerRun(deps, run);
+    try {
+      await giveBackWorkerDollars(plan, run);
+    } finally {
+      await releaseWorkerRun(deps, run);
+    }
   }
 }
 
@@ -148,37 +153,16 @@ async function runOpenWorker(
     }
   }
 
-  await ensureStarted(deps, plan, run);
+  const reserved =
+    grant === 'stopped' ? { plan, reservedDollars: 0 } : await reserveWorkerDollars(plan);
 
-  if (grant !== 'stopped' && !(await reserveDollars(plan, run))) {
+  if (reserved === null) {
     return unreservedResult;
   }
 
-  const stagesEnd =
-    grant === 'stopped'
-      ? pickWorkerEnd({
-          isAborted: plan.hold.signal.aborted,
-          isMinutesUp: run.stops.isMinutesUp(),
-          tripped: null,
-          isInterrupted: false,
-          stage: 'starting',
-          error: null,
-          turn: null,
-        })
-      : await runStages(deps, plan, run);
+  run.held.reservedDollars = reserved.reservedDollars;
 
-  const count = await readGatewayCount(deps, plan, run);
-
-  await chargeGatewayExcess(deps, plan, run, count);
-
-  run.chargedDollars = Math.max(run.tally.dollars, count?.dollars ?? 0);
-
-  const end = pickGatewayEnd(stagesEnd, count, plan.limits);
-  const used = buildUsed(deps, plan, run, count);
-
-  await writeWorkerRunEnded(deps, plan, run.names, { end, used });
-
-  return toResult(plan, run, end, used);
+  return runReservedWorker(deps, reserved.plan, run, grant === 'stopped');
 }
 
 // The gate of the task whose step started the worker: for a conversation step, the conversation's.
@@ -205,6 +189,41 @@ async function waitForSlot(deps: WorkerDeps, run: WorkerRun): Promise<WorkerSlot
   }
 }
 
+// A run that a stop ended while it waited for its slot still has a start and an end record.
+async function runReservedWorker(
+  deps: WorkerDeps,
+  plan: WorkerPlan,
+  run: WorkerRun,
+  isStopped: boolean,
+): Promise<WorkerResult> {
+  await ensureStarted(deps, plan, run);
+
+  const stagesEnd = isStopped
+    ? pickWorkerEnd({
+        isAborted: plan.hold.signal.aborted,
+        isMinutesUp: run.stops.isMinutesUp(),
+        tripped: null,
+        isInterrupted: false,
+        stage: 'starting',
+        error: null,
+        turn: null,
+      })
+    : await runStages(deps, plan, run);
+
+  const count = await readGatewayCount(deps, plan, run);
+
+  await chargeGatewayExcess(deps, plan, run, count);
+
+  run.chargedDollars = Math.max(run.tally.dollars, count?.dollars ?? 0);
+
+  const end = pickGatewayEnd(stagesEnd, count, plan.limits);
+  const used = buildUsed(deps, plan, run, count);
+
+  await writeWorkerRunEnded(deps, plan, run.names, { end, used });
+
+  return toResult(plan, run, end, used);
+}
+
 // The start record goes in before the sandbox's create, and a run that a stop ended while it
 // waited for its slot still leaves one, so its end record has a start.
 async function ensureStarted(deps: WorkerDeps, plan: WorkerPlan, run: WorkerRun): Promise<void> {
@@ -213,20 +232,6 @@ async function ensureStarted(deps: WorkerDeps, plan: WorkerPlan, run: WorkerRun)
 
     await writeWorkerRunStarted(deps, plan, run.names);
   }
-}
-
-// The calling task's sandbox gives the run's planned dollars up before the run starts, so the task
-// and its worker never spend the same dollars.
-async function reserveDollars(plan: WorkerPlan, run: WorkerRun): Promise<boolean> {
-  if (plan.hold.onWorkerStart === undefined) {
-    return true;
-  }
-
-  const isReserved = await plan.hold.onWorkerStart(plan.limits.dollars);
-
-  run.held.isReserved = isReserved;
-
-  return isReserved;
 }
 
 // Never throws: each way the stages end is a worker end.
@@ -531,20 +536,6 @@ function toResult(
       isTaskLimit: plan.isTaskLimit,
     }),
   };
-}
-
-// Every way out of a run that reserved dollars gives them back, and takes off what the run charged.
-async function giveBackReservation(plan: WorkerPlan, run: WorkerRun): Promise<void> {
-  if (!run.held.isReserved) {
-    return;
-  }
-
-  run.held.isReserved = false;
-
-  await plan.hold.onWorkerEnd?.({
-    plannedDollars: plan.limits.dollars,
-    chargedDollars: Math.max(run.chargedDollars, run.tally.dollars),
-  });
 }
 
 // Safe to run twice. The tool run stops first, so no call of the worker lands after the end record,
