@@ -8,7 +8,7 @@ import { runMigrations } from '../migration/run-migrations';
 import { nixieSchema } from '../schema/nixie-schema';
 import { buildSqliteWorkerDialect } from '../sqlite/build-sqlite-worker-dialect';
 import { readRunPrefix } from '../test-utils/read-run-prefix';
-import { wakeMailboxIndexMigration } from './0091-wake-mailbox-index-migration';
+import { wakeMailboxIndexMigration } from './0092-wake-mailbox-index-migration';
 
 async function setupTest() {
   const stack = new AsyncDisposableStack();
@@ -32,7 +32,7 @@ async function setupTest() {
 }
 
 test('it moves the schema to version 91', () => {
-  expect(nixieSchema.migrations.indexOf(wakeMailboxIndexMigration) + 1).toBe(91);
+  expect(nixieSchema.migrations.indexOf(wakeMailboxIndexMigration) + 1).toBe(92);
 });
 
 test('it answers a lookup of the wakes of one mailbox from the index', async () => {
