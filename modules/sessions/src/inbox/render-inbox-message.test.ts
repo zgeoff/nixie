@@ -339,7 +339,7 @@ test("it renders a limit notice as a task-limit system message in one sentence, 
   expect(message).toStartWith('<system-message type="task-limit"');
 
   expect(message).toInclude(
-    '[#51020] Task k3x9m2p7qa paused at its limit: it used 25 of its 25 turns and $1.50 of its $2.00.\n',
+    '[#51020] Task k3x9m2p7qa paused at its limit after 25 of its 25 turns.\n',
   );
 
   expect(message).not.toInclude('Send the pinned memory');

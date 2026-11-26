@@ -333,3 +333,9 @@ test("it counts a metered task run by its sandbox's count less the start count, 
 
   expect(dollars).toBeCloseTo(0.75, 10);
 });
+
+test('it renders its limit with no dollar figure, for the code-made summary of a limit end', () => {
+  const meter = buildDollarsMeter(() => null);
+
+  expect(meter.render(2)).toBe('dollar');
+});

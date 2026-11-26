@@ -12,6 +12,7 @@ import {
 } from '@heynixie/models';
 import type { GrantSpec } from '@heynixie/sandbox';
 import { readSandboxOwners } from '@heynixie/sandbox';
+import { SandboxCountsUnreachableError } from '@heynixie/spend';
 import type { RunStep, StepInput, StepResult, TaskLimits, TaskRun } from '@heynixie/tasks';
 import {
   conversationTaskID,
@@ -35,10 +36,11 @@ import type { SessionGuard } from '../utils/make-session-guard';
 import { makeSessionGuard } from '../utils/make-session-guard';
 import { runGuestPurge } from '../utils/run-guest-purge';
 import { waitForStepEnd } from '../utils/wait-for-step-end';
-import type { ReachedLimit } from './build-reached-limit';
+import { buildLimitResult } from './build-limit-result';
 import { buildReachedLimit } from './build-reached-limit';
 import { buildTaskRun } from './build-task-run';
 import { getHarnessImage } from './get-harness-image';
+import { holdTaskStep } from './hold-task-step';
 import type { SystemTaskSession } from './make-system-task-runner';
 import { makeSystemTaskRunner } from './make-system-task-runner';
 import { createStepMeter } from './meter/create-step-meter';
@@ -380,21 +382,10 @@ async function runGuardedStep(
       await releaseTaskImp(held);
     }
 
-    return buildLimitResult(input, buildReachedLimit(plan.meter, usage.used, limits));
+    return buildLimitResult(input, buildReachedLimit(plan.meter, usage.used, limits), 'none');
   }
 
   return runTaskTurn(runner, input, { run, taskRun, invalidated, ...usage });
-}
-
-// The step had work when its runner claimed it, so the task keeps that work for the raise.
-function buildLimitResult(input: StepInput, limit: ReachedLimit): StepResult {
-  return {
-    next: 'continue',
-    records: [],
-    acknowledged: [],
-    sessionBoundary: input.sessionBoundary,
-    run: { activity: 'none', limit },
-  };
 }
 
 interface TaskTurnParts {
@@ -403,9 +394,6 @@ interface TaskTurnParts {
   readonly invalidated: AbortSignal;
   readonly used: TaskLimits;
 }
-
-// How long a step that the gateway did not answer waits before its task is claimed again.
-const gatewayRetryMs = 5000;
 
 async function runTaskTurn(
   runner: TaskRunner,
@@ -419,7 +407,17 @@ async function runTaskTurn(
 
   imp.send({ type: 'acquire', reply: acquired });
 
-  const held = await acquired.promise;
+  let held: TaskImp;
+
+  try {
+    held = await acquired.promise;
+  } catch (error) {
+    if (error instanceof SandboxCountsUnreachableError) {
+      return holdTaskStep(runner.options.context.clock, input);
+    }
+
+    throw error;
+  }
 
   const context = runner.options.context;
   const limits = parts.taskRun.opened.limits;
@@ -437,21 +435,13 @@ async function runTaskTurn(
   const begun = await meter.begin(held.sandbox.id);
 
   if (begun.kind === 'held') {
-    await context.clock.sleep(gatewayRetryMs, input.signal).catch(() => {});
-
-    return {
-      next: 'continue',
-      records: [],
-      acknowledged: [],
-      sessionBoundary: input.sessionBoundary,
-      isHeld: true,
-    };
+    return holdTaskStep(runner.options.context.clock, input);
   }
 
   if (begun.kind === 'limit') {
     await releaseTaskImp(imp);
 
-    return buildLimitResult(input, buildReachedLimit('dollars', begun.used, limits));
+    return buildLimitResult(input, buildReachedLimit('dollars', begun.used, limits), 'none');
   }
 
   const budget = begun.budget;
@@ -480,6 +470,10 @@ async function runTaskTurn(
   }
 
   if (ended.result === null) {
+    if (spent.isRefused) {
+      return buildLimitResult(input, buildReachedLimit('dollars', spent.used, limits), 'worked');
+    }
+
     throw ended.error;
   }
 

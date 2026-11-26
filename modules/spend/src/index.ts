@@ -1,5 +1,6 @@
 export { buildGatewayBaseURL } from './route/build-gateway-base-url';
 export { withSandboxCounts } from './sandbox/with-sandbox-counts';
+export { SandboxCountsUnreachableError } from './sandbox/sandbox-counts-unreachable-error';
 export { createPlanLoginsHolder } from './login/create-plan-logins-holder';
 export { readPlanLogins } from './login/read-plan-logins';
 export { checkSpendStart } from './start/check-spend-start';

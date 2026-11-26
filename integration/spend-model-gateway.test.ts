@@ -1,6 +1,7 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
 import { makeKeyedFetch } from '@heynixie/egress/test-utils';
 import { startTestModelGateway } from '@heynixie/model-gateway/test-utils';
+import { pickSandboxLimit } from '@heynixie/spend';
 import { createSpendGateway } from '@heynixie/spend-model-gateway';
 import { startScriptedModel } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
@@ -149,6 +150,26 @@ test('it patches the limit of a sandbox and answers not_found for one the gatewa
 
   expect(patched).toStrictEqual({ kind: 'ok' });
   expect(lacking).toStrictEqual({ kind: 'not_found' });
+});
+
+test('it takes a limit of zero dollars for a sandbox that has the whole of its task run reserved', async () => {
+  const ctx = await setupTest();
+
+  await ctx.spend.putSandbox('nixie-abc', null);
+
+  const patched = await ctx.spend.patchSandbox(
+    'nixie-abc',
+    pickSandboxLimit({ startMicros: 0, leftDollars: 0 }),
+  );
+
+  const read = await ctx.spend.readSandbox('nixie-abc');
+
+  expect(patched).toStrictEqual({ kind: 'ok' });
+
+  expect(read).toStrictEqual({
+    kind: 'ok',
+    value: { dollars: 0, tokens: 0, tripped: true, lastRefusal: null },
+  });
 });
 
 test('it removes a sandbox that the gateway lacks', async () => {

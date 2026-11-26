@@ -2,6 +2,7 @@ import type { Logger } from '@heynixie/logger';
 import type { Sandbox, SandboxAdapter, SandboxSpec } from '@heynixie/sandbox';
 import { sandboxKinds, workerRunOwnerPrefix } from '@heynixie/sandbox';
 import type { Done, NotFound, SpendGateway, Unreachable } from '../types';
+import { SandboxCountsUnreachableError } from './sandbox-counts-unreachable-error';
 
 export interface SandboxCountsOptions {
   readonly gateway: SpendGateway;
@@ -25,10 +26,12 @@ export function withSandboxCounts(
       ? await options.gateway.putSandbox(sandbox.id, null)
       : await registerKept(options.gateway, sandbox.id);
 
+    if (answer.kind === 'unreachable') {
+      throw new SandboxCountsUnreachableError(sandbox.id, answer.reason);
+    }
+
     if (answer.kind !== 'ok') {
-      throw new Error(
-        `the gateway did not register the sandbox ${sandbox.id}: ${answer.kind === 'unreachable' ? answer.reason : answer.kind}`,
-      );
+      throw new Error(`the gateway did not register the sandbox ${sandbox.id}: ${answer.kind}`);
     }
 
     registered.add(sandbox.id);

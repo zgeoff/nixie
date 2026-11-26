@@ -351,7 +351,6 @@ test("it answers with the worker's last reply and the use of its calls, after a 
         minutes: 0,
         turns: expect.toBeNumber(),
         tokens: expect.toBeNumber(),
-        dollars: expect.toBeNumber(),
       },
     },
   });
@@ -470,7 +469,7 @@ test.each([
     'dollars',
     { dollars: 0.001 },
     { uncachedInputTokens: 1000, outputTokens: 0 },
-    'stopped at its dollars limit of $0.00',
+    'stopped at its dollar limit and gave no answer',
   ],
 ])(
   'it stops a run at its %s limit, with the sentence of that limit',
@@ -809,7 +808,6 @@ test('it frees the slot of a run whose sandbox create never returns, when its mi
         minutes: 0,
         turns: expect.toBeNumber(),
         tokens: expect.toBeNumber(),
-        dollars: expect.toBeNumber(),
       },
     },
   });
@@ -957,7 +955,7 @@ test('it states the gateway numbers in the result of an answered run', async () 
     result: {
       workerRunID: expect.toBeString(),
       answer: 'Done.',
-      used: { minutes: 0, turns: 0, tokens: 7777, dollars: 0.42 },
+      used: { minutes: 0, turns: 0, tokens: 7777 },
     },
   });
 
@@ -1022,7 +1020,7 @@ test('it charges the calling task the planned dollars when the gateway does not 
     result: {
       workerRunID: expect.toBeString(),
       answer: 'Done.',
-      used: { minutes: 0, turns: 0, tokens: 9000, dollars: 0.75 },
+      used: { minutes: 0, turns: 0, tokens: 9000 },
     },
   });
 
@@ -1055,7 +1053,7 @@ test('it ends a run at a dollar limit when the gateway found its sandbox past it
 
   expect(outcome).toStrictEqual({
     status: 'error',
-    message: expect.toInclude('stopped at its dollars limit of $1.00'),
+    message: expect.toInclude('stopped at its dollar limit and gave no answer'),
   });
 });
 

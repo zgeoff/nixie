@@ -5,6 +5,7 @@ import { createTestCredentials } from '@heynixie/credentials/test-utils';
 import type { Definitions, RecordInput } from '@heynixie/log';
 import { writeRecords } from '@heynixie/log';
 import { modelsConfigSchema } from '@heynixie/models';
+import { withSandboxCounts } from '@heynixie/spend';
 import { buildStubSpendGateway } from '@heynixie/spend/test-utils';
 import {
   claimTask,
@@ -107,14 +108,17 @@ async function setupTest(options: { readonly isGatewayMetered?: boolean } = {}) 
 
   const startRunner = async (
     parts: Partial<
-      Pick<SandboxRunnerOptions, 'tools' | 'memory' | 'gateway' | 'turnInputs' | 'inStepActions'>
+      Pick<
+        SandboxRunnerOptions,
+        'tools' | 'memory' | 'gateway' | 'turnInputs' | 'inStepActions' | 'sandboxes'
+      >
     > = {},
   ) => {
     const runner = await startSandboxRunner({
       context: host.context,
       models,
       credentials,
-      sandboxes: host.sandboxes,
+      sandboxes: parts.sandboxes ?? host.sandboxes,
       images: { conversation: 'nixie-conversation-0123456789ab' },
       tools: parts.tools ?? tools.endpoint,
       memory: parts.memory ?? (() => noMemory),
@@ -3576,6 +3580,62 @@ test('it ends a step that its sandbox refused at its limit with the dollar limit
 
   expect(ended?.payload).toMatchObject({ taskID, cause: 'limit', detail: { meter: 'dollars' } });
   expect(limit?.payload).toMatchObject({ taskID });
+});
+
+test('it ends at the dollar limit a step whose guest threw after its sandbox refused a request, with no step error', async () => {
+  const ctx = await setupTest({ isGatewayMetered: true });
+  const taskID = await ctx.seed.meteredTask(3);
+
+  const gateway = buildStubSpendGateway();
+
+  gateway.readSandbox
+    .mockResolvedValueOnce(buildCountAnswer(0))
+    .mockResolvedValueOnce(
+      buildCountAnswer(2.5, { counter: 'sandbox', route: 'router-b', atMs: 9_000_000 }),
+    );
+
+  ctx.guest.addKindReplies('worker', { failure: 'the guest lost its model stream' });
+
+  const runner = await ctx.startRunner({ gateway });
+
+  await ctx.runNextStep(runner);
+
+  const [ended] = await ctx.readKinds('task.run_ended');
+  const errored = await ctx.readKinds('task.step_errored');
+
+  expect(ended?.payload).toMatchObject({ taskID, cause: 'limit', detail: { meter: 'dollars' } });
+  expect(errored).toStrictEqual([]);
+});
+
+test('it holds a step whose kept sandbox the gateway cannot register, and runs no turn and records no step error', async () => {
+  const ctx = await setupTest({ isGatewayMetered: true });
+  const taskID = await ctx.seed.meteredTask(3);
+  const first = await ctx.startRunner({ gateway: buildStubSpendGateway() });
+
+  await ctx.runNextStep(first);
+  await ctx.writeMessage(taskID, 'Only the morning tide, please.');
+
+  const down = buildStubSpendGateway();
+
+  down.readSandbox.mockResolvedValueOnce({ kind: 'unreachable', reason: 'no answer' });
+
+  const restarted = await ctx.startRunner({
+    gateway: buildStubSpendGateway(),
+    sandboxes: withSandboxCounts(ctx.sandboxes, { gateway: down, log: () => {} }),
+  });
+
+  const stepping = ctx.runNextStep(restarted);
+
+  await waitForCondition(() => ctx.clock.delays.includes(5000));
+
+  const errored = await ctx.readKinds('task.step_errored');
+
+  ctx.clock.advance(5000);
+
+  await stepping;
+
+  expect(errored).toStrictEqual([]);
+  expect(ctx.guest.turns).toHaveLength(1);
 });
 
 test('it ends no step at the limit for a refusal that came before the step began', async () => {

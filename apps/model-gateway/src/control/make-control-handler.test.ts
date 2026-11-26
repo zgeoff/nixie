@@ -541,6 +541,28 @@ test('it sets the limit of a sandbox whole with a patch and keeps its count', as
   });
 });
 
+test('it takes a patched limit of zero dollars and refuses the sandbox at once', async () => {
+  const ctx = await setupTest();
+
+  await ctx.call('PUT', '/sandboxes/alpha', { limit: null });
+
+  const patch = await ctx.call('PATCH', '/sandboxes/alpha', { limit: { dollars: 0 } });
+  const get = await ctx.call('GET', '/sandboxes/alpha');
+
+  expect(patch).toStrictEqual({ status: 204, body: null });
+  expect(get.body).toStrictEqual({ dollars: 0, tokens: 0, tripped: true, lastRefusal: null });
+});
+
+test('it rejects a patched limit below zero dollars', async () => {
+  const ctx = await setupTest();
+
+  await ctx.call('PUT', '/sandboxes/alpha', { limit: null });
+
+  const patch = await ctx.call('PATCH', '/sandboxes/alpha', { limit: { dollars: -1 } });
+
+  expect(patch.status).toBe(400);
+});
+
 test('it sets no token limit for a patched limit with no tokens', async () => {
   const ctx = await setupTest();
 

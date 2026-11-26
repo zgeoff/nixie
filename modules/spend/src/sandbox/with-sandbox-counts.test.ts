@@ -3,6 +3,7 @@ import type { Logger } from '@heynixie/logger';
 import { buildWorkerRunOwner } from '@heynixie/sandbox';
 import { buildMockSandboxSpec, buildStubSandboxes } from '@heynixie/sandbox/test-utils';
 import { buildStubSpendGateway } from '../test-utils';
+import { SandboxCountsUnreachableError } from './sandbox-counts-unreachable-error';
 import { withSandboxCounts } from './with-sandbox-counts';
 
 function setupTest() {
@@ -143,5 +144,5 @@ test('it fails the read of a kept sandbox when the gateway does not answer', asy
 
   ctx.gateway.readSandbox.mockResolvedValue({ kind: 'unreachable', reason: 'no answer' });
 
-  expect(ctx.adapter.read(kept.id)).rejects.toThrow(/did not register the sandbox/u);
+  expect(ctx.adapter.read(kept.id)).rejects.toBeInstanceOf(SandboxCountsUnreachableError);
 });

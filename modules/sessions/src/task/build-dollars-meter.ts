@@ -64,7 +64,7 @@ export function buildDollarsMeter(readPrices: ReadRunPrices): RunMeter {
 
       return total;
     },
-    render: (limit) => `$${limit.toFixed(2)}`,
+    render: () => 'dollar',
   };
 }
 

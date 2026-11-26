@@ -37,6 +37,10 @@ export type StepBegin =
 
 export interface StepEnd {
   readonly isLimitReached: boolean;
+
+  // whether the gateway's sandbox refused a request since the step began, which ends the step at the
+  // dollar limit even when its guest turn threw
+  readonly isRefused: boolean;
   readonly used: TaskLimits;
 }
 
@@ -156,7 +160,9 @@ function createGatewayStepMeter(deps: GatewayMeterDeps, facts: StepMeterFacts): 
 
       const usage = await readRunUsage(deps.context, taskRun);
 
-      return { isLimitReached: isRefusedBySandbox(count, startedAtMs), used: usage.used };
+      const isRefused = isRefusedBySandbox(count, startedAtMs);
+
+      return { isLimitReached: isRefused, isRefused, used: usage.used };
     },
   };
 }
@@ -246,7 +252,7 @@ function createRecordsStepMeter(
         dollars: facts.used.dollars + budget.getSpentDollars(),
       };
 
-      return { isLimitReached: budget.signal.aborted, used };
+      return { isLimitReached: budget.signal.aborted, isRefused: false, used };
     },
   };
 }

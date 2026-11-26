@@ -446,8 +446,8 @@ function formatLimitReason(detail: Readonly<Record<string, string | number>>): s
   const used = detail['used'];
   const limit = detail['limit'];
 
-  if (meter === 'dollars' && typeof used === 'number' && typeof limit === 'number') {
-    return `the run used $${used.toFixed(2)} of its limit of $${limit.toFixed(2)}`;
+  if (meter === 'dollars') {
+    return 'the run reached its dollar limit';
   }
 
   return `the run used ${String(used)} ${String(meter)} of its limit of ${String(limit)}`;

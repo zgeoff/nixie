@@ -32,7 +32,7 @@ export interface ControlHandlerDeps {
 }
 
 const sandboxLimitBodySchema = z.strictObject({
-  dollars: z.number().positive(),
+  dollars: z.number().min(0),
   tokens: z.number().positive().exactOptional(),
 });
 
