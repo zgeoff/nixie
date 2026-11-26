@@ -48,13 +48,15 @@ test('it shows no proposal on a tool once its proposal lapsed', async () => {
   const ctx = await setupTest();
   const row = await readToolRow(ctx.mcp.log.writer.db, 'tracker.item_get');
 
-  invariant(row?.proposal_id, 'the tool waits for an allow');
+  const proposalID = row?.proposal_id ?? null;
+
+  invariant(proposalID !== null, 'the tool waits for an allow');
 
   const before = await ctx.readToolProposals();
 
-  await ctx.lapse(row.proposal_id);
+  await ctx.lapse(proposalID);
 
   const after = await ctx.readToolProposals();
 
-  expect([before, after]).toStrictEqual([[row.proposal_id], [null]]);
+  expect([before, after]).toStrictEqual([[proposalID], [null]]);
 });

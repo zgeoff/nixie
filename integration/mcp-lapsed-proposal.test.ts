@@ -30,9 +30,11 @@ async function setupTest() {
     lapseToolProposal: async () => {
       const [tool] = await readTools();
 
-      invariant(tool?.proposalID, 'the tool waits for an allow');
+      const proposalID = tool?.proposalID ?? null;
 
-      const proposal = await readProposal(standIn.test.log.writer.db, tool.proposalID);
+      invariant(proposalID !== null, 'the tool waits for an allow');
+
+      const proposal = await readProposal(standIn.test.log.writer.db, proposalID);
 
       invariant(proposal, 'the proposal exists');
 
