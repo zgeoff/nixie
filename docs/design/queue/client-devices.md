@@ -1,6 +1,6 @@
 # Client devices
 
-- **Status:** draft
+- **Status:** agreed
 - **Work items:** [client devices](https://linear.app/zgeoff/issue/GEO-2872), after
   [the call screen](https://linear.app/zgeoff/issue/GEO-2863)
 
@@ -86,8 +86,8 @@ call turn's prompt (calls module), one added rule. The speech layer's own prompt
   until the device switches it on.
 - The web client follows its own device's stream while any tab is open, so the device is online
   whenever nixie is open. The device view draws what the stream holds.
-- The device view is a page you open from the app's navigation, as you open the computer page. nixie
-  never opens it, and never pops up, badges or notifies when the device's content changes.
+- The device view is its own page, which you open from the app's navigation, as you open the
+  computer page. This build adds no pop-up, badge or notice when the device's content changes.
 - During a call, the call bar's back button returns from the device view to the call screen.
 - `onCall` is true for the device whose session is the call's carrying session while the call is
   `live`, and false for every other device.
@@ -113,3 +113,5 @@ call turn's prompt (calls module), one added rule. The speech layer's own prompt
 - Moving a live call to another session, ringing a device, and voice tuning.
 - A camera or a microphone on a client device.
 - Ending a client device that went unused; a sign-out or a revoke ends it.
+- Showing the device view or the computer beside the chat, and any cue that new content is waiting.
+  Later UI work can add both, because the device view reads only the device's stream.
