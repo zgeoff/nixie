@@ -1,5 +1,5 @@
 import { withWriteTransaction } from '@heynixie/log';
-import { readMergedThreads } from '@heynixie/memory';
+import { readMergedStakes } from '@heynixie/memory';
 import { readProposal, withdrawStakeInTransaction } from '@heynixie/proposals';
 import type { ToolDefinition } from '@heynixie/tools';
 import { z } from 'zod';
@@ -48,10 +48,12 @@ export function buildProposalsWithdrawTool(deps: ProposalsToolDeps): ToolDefinit
           return { status: 'error' as const, message: 'you have no proposal with that ID' };
         }
 
+        const merged = await readMergedStakes(tx, row.id);
+
         const withdrawn = await withdrawStakeInTransaction(core, tx, {
           row,
           caller,
-          mergedThreads: await readMergedThreads(tx, row.id),
+          mergedThreads: merged.map((stake) => stake.thread),
         });
 
         if (withdrawn.status === 'not_proposer') {

@@ -82,7 +82,7 @@ function buildHandler(family: ProposalKindHandler['family']): ProposalKindHandle
         result: { proposalID: row.id, state: 'approved' },
         usedBy: 'made-1',
         detail: 'call skill_reload',
-        otherThreads: [],
+        otherStakes: [],
       }),
     discard: (_run, row, outcome) => Promise.resolve(buildDiscardedOutcome(row, outcome)),
   };

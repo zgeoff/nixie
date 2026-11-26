@@ -6,7 +6,7 @@ import {
   writeThreadRecordInTransaction,
 } from '@heynixie/tasks';
 import type { Transaction } from 'kysely';
-import { readMergedThreads } from '../proposal/read-merged-threads';
+import { readMergedStakes } from '../proposal/read-merged-stakes';
 import type { StoreParts } from '../types';
 import type { PurgeFacts } from './read-purge-facts';
 
@@ -42,7 +42,7 @@ export async function writeProposalLapses(
         usedBy: null,
         reason: null,
         detail: null,
-        otherThreads: await readMergedThreads(tx, proposal.proposalID),
+        otherStakes: await readMergedStakes(tx, proposal.proposalID),
         byProposer: false,
       });
     }

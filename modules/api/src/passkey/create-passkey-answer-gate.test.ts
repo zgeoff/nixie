@@ -104,7 +104,7 @@ async function setupTest() {
           result: { proposalID: row.id, state: 'approved' },
           usedBy: null,
           detail: null,
-          otherThreads: [],
+          otherStakes: [],
         };
       }),
   };

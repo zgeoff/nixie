@@ -144,7 +144,7 @@ async function answerServer(
     result: { proposalID, state: request.isApproved ? 'approved' : 'declined' },
     usedBy: null,
     detail: null,
-    otherThreads: [],
+    otherStakes: [],
     ...(forget.length === 0 || context.removeCredentials === undefined
       ? {}
       : { afterCommit: () => context.removeCredentials?.(forget) ?? Promise.resolve() }),
@@ -224,7 +224,7 @@ async function answerAllow(
     result: { proposalID, state: request.isApproved ? 'approved' : 'declined' },
     usedBy: null,
     detail: null,
-    otherThreads: [],
+    otherStakes: [],
   };
 }
 

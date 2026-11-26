@@ -42,7 +42,7 @@ export function buildApplyRun(
         usedBy: outcome.usedBy,
         reason: facts.answer?.note ?? null,
         detail: outcome.detail,
-        otherThreads: outcome.otherThreads,
+        otherStakes: outcome.otherStakes,
         byProposer: facts.byProposer,
       });
     },

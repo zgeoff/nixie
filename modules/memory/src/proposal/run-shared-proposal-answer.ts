@@ -26,7 +26,7 @@ import { MemoryProposalNotFoundError } from '../utils/error/memory-proposal-not-
 import { ProposalClosedError } from '../utils/error/proposal-closed-error';
 import { ProposalHashError } from '../utils/error/proposal-hash-error';
 import { mapMemoryProposalRecord } from './map-memory-proposal-record';
-import { readMergedThreads } from './read-merged-threads';
+import { readMergedStakes } from './read-merged-stakes';
 import { writeProposalApproval } from './write-proposal-approval';
 import { writeProposalRejection } from './write-proposal-rejection';
 
@@ -135,7 +135,7 @@ async function writeAnswer(
         result: { proposalID: row.id, state: 'declined' },
         usedBy: null,
         detail: null,
-        otherThreads: await readMergedThreads(tx, row.id),
+        otherStakes: await readMergedStakes(tx, row.id),
       });
     }
 
@@ -154,7 +154,7 @@ async function writeAnswer(
       result: { proposalID: row.id, state: 'declined' },
       usedBy: null,
       detail: null,
-      otherThreads: [],
+      otherStakes: [],
     };
   }
 
@@ -171,7 +171,7 @@ async function writeAnswer(
         result: { proposalID: row.id, state: 'approved' },
         usedBy: approvalID,
         detail: null,
-        otherThreads: await readMergedThreads(tx, row.id),
+        otherStakes: await readMergedStakes(tx, row.id),
       });
     }
   };
@@ -190,14 +190,14 @@ async function writeAnswer(
         result: { proposalID: row.id, state: 'pending', closeMatch: result.item },
         usedBy: null,
         detail: null,
-        otherThreads: [],
+        otherStakes: [],
       }
     : {
         status: 'done',
         result: { proposalID: row.id, state: 'approved' },
         usedBy: null,
         detail: null,
-        otherThreads: [],
+        otherStakes: [],
       };
 }
 

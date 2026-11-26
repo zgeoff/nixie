@@ -60,7 +60,15 @@ export { readProposalsByID } from './rows/read-proposals-by-id';
 export { readProposalLapses } from './rows/read-proposal-lapses';
 export { runProposalLapses } from './sweeps/run-proposal-lapses';
 export { runProposalReturns } from './sweeps/run-proposal-returns';
-export type { ProposalContext, ProposalOutcome, ProposalState, ProposalStatus } from './types';
+
+export type {
+  ProposalContext,
+  ProposalOutcome,
+  ProposalStake,
+  ProposalState,
+  ProposalStatus,
+} from './types';
+
 export { pickNextMidnight } from './sweeps/pick-next-midnight';
 export { proposalRecordTopics } from './records/proposal-record-topics';
 export { proposalsProposedCodec } from './records/proposals-proposed-codec';

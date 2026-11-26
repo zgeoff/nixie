@@ -175,7 +175,7 @@ async function writeApproval(
     result: { proposalID: row.id, state: 'approved', rule: { id: ruleID, revision: 1 } },
     usedBy: ruleID,
     detail: null,
-    otherThreads: [],
+    otherStakes: [],
     afterCommit: async () => {
       await deps.runInForceSeed();
     },

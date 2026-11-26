@@ -5,13 +5,14 @@ import type {
   DoneOutcome,
   ProposalAnswerInput,
   ProposalKindHandler,
+  ProposalStake,
   SharedProposal,
 } from '@heynixie/proposals';
 import type { Transaction } from 'kysely';
 import invariant from 'tiny-invariant';
 import type { MemoryProposals } from '../gate/gate-context';
 import { pickProposalRefusal } from '../proposal/pick-proposal-refusal';
-import { readMergedThreads } from '../proposal/read-merged-threads';
+import { readMergedStakes } from '../proposal/read-merged-stakes';
 import type { MemoryTables } from '../types';
 
 export interface MemoryAnswerPort {
@@ -93,7 +94,7 @@ export function makeMemoryProposalHandler(
       if (outcome === 'withdrawn') {
         invariant(run.tx, 'a withdrawal runs in the transaction of the caller that withdraws');
 
-        const merged = await readMergedThreads(run.tx, row.id);
+        const merged = await readMergedStakes(run.tx, row.id);
 
         return doneWith(row, 'withdrawn', merged);
       }
@@ -198,7 +199,7 @@ async function applyAnswer(
           result: { proposalID: row.id, state: 'pending', closeMatch: approved.item },
           usedBy: null,
           detail: null,
-          otherThreads: [],
+          otherStakes: [],
         }
       : doneWith(row, 'approved', []);
   } catch (error) {
@@ -225,10 +226,10 @@ async function settleInTransaction(
   row: SharedProposal,
   settlement: Settlement,
 ): Promise<void> {
-  const threads = await readMergedThreads(tx, row.id);
+  const stakes = await readMergedStakes(tx, row.id);
 
   await run.settle(tx, {
-    ...doneWith(row, settlement.outcome, threads),
+    ...doneWith(row, settlement.outcome, stakes),
     usedBy: settlement.usedBy,
   });
 }
@@ -236,13 +237,13 @@ async function settleInTransaction(
 function doneWith(
   row: SharedProposal,
   outcome: 'approved' | 'declined' | 'lapsed' | 'withdrawn',
-  otherThreads: readonly string[],
+  otherStakes: readonly ProposalStake[],
 ): DoneOutcome {
   return {
     status: 'done',
     result: { proposalID: row.id, state: outcome },
     usedBy: null,
     detail: null,
-    otherThreads,
+    otherStakes,
   };
 }

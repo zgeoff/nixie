@@ -5,6 +5,7 @@ import type {
   ProposalRiskClass,
   SharedProposalState,
 } from '../rows/proposal-tables';
+import type { ProposalStake } from '../types';
 
 export interface SharedProposal {
   readonly id: string;
@@ -117,8 +118,8 @@ export type ApplyOutcome =
       // the family's own line for the proposer, such as "call skill_reload"
       readonly detail: string | null;
 
-      // the threads of the other proposers of a merged proposal, which also hear the settlement
-      readonly otherThreads: readonly string[];
+      // the stakes of the other proposers of a merged proposal, which also hear the settlement
+      readonly otherStakes: readonly ProposalStake[];
     }
   | { readonly status: 'refused'; readonly refusal: ProposalRefusal };
 

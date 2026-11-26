@@ -34,7 +34,7 @@ export { buildHostMemory } from './memory/build-host-memory';
 export type { LapseSweep } from './lapse/start-lapse-sweep';
 export { startLapseSweep } from './lapse/start-lapse-sweep';
 export { buildProposalMergeKind } from './proposal/build-proposal-merge-kind';
-export { readMergedThreads } from './proposal/read-merged-threads';
+export { readMergedStakes } from './proposal/read-merged-stakes';
 export { readMergedProposalIDs } from './proposal/read-merged-proposal-ids';
 export type { VersionTextResult } from './version/read-version-texts';
 export { readVersionTexts } from './version/read-version-texts';

@@ -122,7 +122,7 @@ async function writeApproval(
     result: { proposalID: row.id, state: 'approved' },
     usedBy: proposed.mandateID,
     detail: null,
-    otherThreads: [],
+    otherStakes: [],
     afterCommit: async () => {
       await context.runInForceSeed();
     },

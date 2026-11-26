@@ -113,7 +113,7 @@ async function writeAnswer(
       result: { proposalID: decided.proposalID, state: 'approved' },
       usedBy: decided.approvalID,
       detail: `call skill_reload with ${state.proposal.name}`,
-      otherThreads: [],
+      otherStakes: [],
       afterCommit: () => context.runInForceSeed(),
     };
   } catch (error) {

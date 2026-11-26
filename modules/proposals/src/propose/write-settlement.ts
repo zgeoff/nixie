@@ -6,7 +6,7 @@ import type { ProposeDeps } from '../answer/types';
 import { proposalsSettledCodec } from '../records/proposals-settled-codec';
 import type { ProposalTables } from '../rows/proposal-tables';
 import { readLeftThreads } from '../rows/read-left-threads';
-import type { ProposalOutcome } from '../types';
+import type { ProposalOutcome, ProposalStake } from '../types';
 
 export interface SettlementFacts {
   readonly row: SharedProposal;
@@ -15,7 +15,9 @@ export interface SettlementFacts {
   readonly usedBy: string | null;
   readonly reason: string | null;
   readonly detail: string | null;
-  readonly otherThreads: readonly string[];
+
+  // the other proposers of a merged proposal, each with the sequence of its own merge
+  readonly otherStakes: readonly ProposalStake[];
 
   // true when the proposer's own call withdrew the proposal
   readonly byProposer: boolean;
@@ -35,9 +37,7 @@ export async function writeSettlement(
 
   const left = new Set(leftThreads);
 
-  const proposers = [...new Set([...pickOwnThreads(deps, facts), ...facts.otherThreads])].filter(
-    (thread) => !left.has(thread),
-  );
+  const proposers = pickStakes(deps, facts).filter((stake) => !left.has(stake.thread));
 
   const replaced = await readReplacedShortID(tx, row);
   const sentence = await readSentence(deps, tx, row);
@@ -46,7 +46,7 @@ export async function writeSettlement(
     proposers.length === 0
       ? [{ thread: null, task: null }]
       : await Promise.all(
-          proposers.map((thread) => deps.readSettlementTarget(tx, thread, row.createdSequence)),
+          proposers.map((stake) => deps.readSettlementTarget(tx, stake.thread, stake.sequence)),
         );
 
   for (const target of targets) {
@@ -78,14 +78,36 @@ export async function writeSettlement(
   }
 }
 
-// The thread of the proposer. A proposal with no proposer takes a lapse on the conversation's
-// thread, and any other outcome with no thread.
-function pickOwnThreads(deps: ProposeDeps, facts: SettlementFacts): readonly string[] {
-  if (facts.row.thread !== null) {
-    return [facts.row.thread];
+// The stakes that hear the settlement: the proposal's own thread at the record that opened it, then
+// each merged proposer at its own merge. A proposal with no proposer takes a lapse on the
+// conversation's thread, and any other outcome with no thread.
+function pickStakes(deps: ProposeDeps, facts: SettlementFacts): readonly ProposalStake[] {
+  const own = pickOwnStakes(deps, facts);
+
+  const seen = new Set(own.map((stake) => stake.thread));
+
+  return [
+    ...own,
+    ...facts.otherStakes.filter((stake) => {
+      const isNew = !seen.has(stake.thread);
+
+      seen.add(stake.thread);
+
+      return isNew;
+    }),
+  ];
+}
+
+function pickOwnStakes(deps: ProposeDeps, facts: SettlementFacts): readonly ProposalStake[] {
+  const row = facts.row;
+
+  if (row.thread === null) {
+    return facts.outcome === 'lapsed'
+      ? [{ thread: deps.conversationThread, sequence: row.createdSequence }]
+      : [];
   }
 
-  return facts.outcome === 'lapsed' ? [deps.conversationThread] : [];
+  return [{ thread: row.thread, sequence: row.createdSequence }];
 }
 
 const replacesSchema = z.object({ replaces: z.string().nullable().default(null) });

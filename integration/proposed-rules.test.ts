@@ -70,7 +70,7 @@ async function setupTest(apiSettings = defaultAPISettings) {
                     result: applied.result,
                     usedBy: applied.usedBy,
                     detail: applied.detail,
-                    otherThreads: applied.otherThreads,
+                    otherStakes: applied.otherStakes,
                   }
                 : applied;
             },

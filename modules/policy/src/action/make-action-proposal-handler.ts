@@ -396,7 +396,7 @@ async function writeAnswer(
       result: { proposalID: row.id, state: 'declined' },
       usedBy: null,
       detail: null,
-      otherThreads: [],
+      otherStakes: [],
       afterCommit: afterSuggestedRule,
     };
   }
@@ -407,7 +407,7 @@ async function writeAnswer(
       result: { proposalID: row.id, state: 'approved' },
       usedBy: queued?.status === 'queued' ? queued.actionID : null,
       detail: null,
-      otherThreads: [],
+      otherStakes: [],
       afterCommit: afterSuggestedRule,
     };
   }
@@ -423,7 +423,7 @@ async function writeAnswer(
     result: { proposalID: row.id, state: 'approved', rule: { id: rule.ruleID, revision: 1 } },
     usedBy: queued?.status === 'queued' ? queued.actionID : null,
     detail: null,
-    otherThreads: [],
+    otherStakes: [],
     afterCommit: async () => {
       await deps.runAfterRule();
     },

@@ -115,7 +115,7 @@ async function writeApproval(
     detail:
       'nixie opens a pull request to the definitions repo with it, and the override applies only ' +
       'after that pull request merges and live is promoted',
-    otherThreads: [],
+    otherStakes: [],
     ...(context.wakeExports === undefined
       ? {}
       : { afterCommit: wakeAfterCommit(context.wakeExports) }),

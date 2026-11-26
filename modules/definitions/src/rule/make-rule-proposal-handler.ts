@@ -93,7 +93,7 @@ async function writeAnswer(
     result: { proposalID: row.id, state: 'approved' },
     usedBy: null,
     detail: null,
-    otherThreads: [],
+    otherStakes: [],
     afterCommit: async () => {
       await context.runInForceSeed();
     },

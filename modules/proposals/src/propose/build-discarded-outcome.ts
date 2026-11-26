@@ -11,6 +11,6 @@ export function buildDiscardedOutcome(
     result: { proposalID: row.id, state: outcome },
     usedBy: null,
     detail: null,
-    otherThreads: [],
+    otherStakes: [],
   };
 }
