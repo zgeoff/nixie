@@ -25,12 +25,19 @@ export function buildLoopbackPeerScript(): string {
     if (description.type !== 'answer') {
       return applyRemote.call(this, description);
     }
+    const isRestart = remotes.has(this);
     const remote = remotes.get(this) ?? new Peer();
     remotes.set(this, remote);
     await remote.setRemoteDescription(this.localDescription);
     await remote.setLocalDescription(await remote.createAnswer());
     await waitForGathering(remote);
-    return applyRemote.call(this, remote.localDescription);
+    const applied = await applyRemote.call(this, remote.localDescription);
+    // a real network loss moves the state off connected and back, and a loopback never loses its
+    // network, so the page reports the change that a restart's recovery would bring
+    if (isRestart) {
+      setTimeout(() => this.dispatchEvent(new Event('connectionstatechange')), 0);
+    }
+    return applied;
   };
 })()`;
 }

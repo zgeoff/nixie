@@ -58,6 +58,31 @@ test('it connects a peer again after an ICE-restart offer, with a new answer fro
   expect(JSON.parse(String(answerIDs))).toStrictEqual([false]);
 });
 
+test('it reports a connection state change on a connected peer once its ICE-restart answer is applied', async () => {
+  const ctx = await setupTest();
+
+  await ctx.view.evaluate(
+    "window.peer.setRemoteDescription({ type: 'answer', sdp: 'not an answer' })",
+  );
+
+  await waitForPage(ctx.view, "window.peer.connectionState === 'connected'", 8000);
+
+  await ctx.view.evaluate(`(async () => {
+    window.changes = [];
+    window.peer.addEventListener('connectionstatechange', () => {
+      window.changes.push(window.peer.connectionState);
+    });
+    await window.peer.setLocalDescription(await window.peer.createOffer({ iceRestart: true }));
+    await window.peer.setRemoteDescription({ type: 'answer', sdp: 'not an answer' });
+  })()`);
+
+  await waitForPage(ctx.view, 'window.changes.length > 0', 8000);
+
+  const changes: unknown = await ctx.view.evaluate('window.changes.at(-1)');
+
+  expect(changes).toBe('connected');
+});
+
 test('it leaves a peer that was never given an answer unconnected', async () => {
   const ctx = await setupTest();
   const state: unknown = await ctx.view.evaluate('window.peer.connectionState');
