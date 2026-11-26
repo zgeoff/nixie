@@ -10,6 +10,7 @@ import {
 import { act, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
+import { useSyncExternalStore } from 'react';
 import { CallEnvironmentContext } from '../call/call-environment';
 import { CallProvider } from '../call/call-provider';
 import { CallScreen } from '../call/call-screen';
@@ -23,18 +24,29 @@ import { createFullSession } from '../test-utils/create-full-session';
 import { createScreenSession } from '../test-utils/create-screen-session';
 import { render } from '../test-utils/render';
 import { DevicePage } from './device-page';
+import { useDeviceFeed } from './use-device-feed';
 
 function setupTest(path = '/device') {
   const stub = buildStubCallEnvironment({ microphoneError: null });
 
+  // The root also reads the tab's one device feed, beside the device page, and shows what the feed
+  // holds for every other part of the tab.
   const rootRoute = createRootRoute({
-    component: () => (
-      <CallEnvironmentContext value={stub.environment}>
-        <CallProvider>
-          <Outlet />
-        </CallProvider>
-      </CallEnvironmentContext>
-    ),
+    component: () => {
+      const feed = useDeviceFeed();
+      const events = useSyncExternalStore(feed.subscribe, feed.getSnapshot, feed.getSnapshot);
+
+      return (
+        <CallEnvironmentContext value={stub.environment}>
+          <CallProvider>
+            <output aria-label="Feed reader">
+              {JSON.stringify({ event: events.event, connection: events.connection })}
+            </output>
+            <Outlet />
+          </CallProvider>
+        </CallEnvironmentContext>
+      );
+    },
   });
 
   const routeTree = rootRoute.addChildren([
@@ -175,6 +187,10 @@ test('it drops what the full-screen device showed once its session is revoked', 
 
   // the screen still stands, so the shared feed dropped the content, and no unmount did
   expect(rendered.queryByText('Sign out')).not.toBeNull();
+
+  expect(rendered.getByRole('status', { name: 'Feed reader' }).textContent).toBe(
+    JSON.stringify({ event: null, connection: 'refused' }),
+  );
 });
 
 test('it signs the device out and shows the enrolment form', async () => {
