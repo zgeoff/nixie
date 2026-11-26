@@ -138,8 +138,10 @@ that turn no reply, so the turn fails.
    Expect: all five commands exit 0. The query returns 2 rows, `computer.takeover_started` then
    `computer.takeover_ended`. The hand-back record's fields are erasable, so the query cannot read
    its tab list. The model's request for the turn that the record wakes lists both tabs from step 5
-   by tab ID and site, `t2` and `t3`, because the computer-browser journey holds `t1`. So each
-   `model received` finds one request.
+   by tab ID and site, `t2` and `t3`, because the computer-browser journey opened `t1`. Each
+   `model received` counts every request that holds its text, and `data.requests` is 1 or more for
+   each. The journey gives that turn no reply, so nixie retries it, and each retry sends the same
+   request.
 
 ## End state
 

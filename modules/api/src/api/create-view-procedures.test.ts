@@ -317,7 +317,7 @@ test(
       },
     ]);
   },
-  // oxlint-disable-next-line zgeoff/max-test-timeout -- 9 s locally; floor: 1,001 tasks write 4 log records each at about 1.5 ms a record
+  // oxlint-disable-next-line zgeoff/max-test-timeout -- 8-11 s; floor: 1,001 tasks write 4 log records each, at about 2 ms a record through every projection
   { timeout: 15_000 },
 );
 

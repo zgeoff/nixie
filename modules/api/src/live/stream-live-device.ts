@@ -1,6 +1,7 @@
 import type { DeviceEvent } from '@heynixie/contract';
 import type { Device, ScreenPixels } from '@heynixie/devices';
 import { followDevice } from '@heynixie/devices';
+import { toErrorFields } from '@heynixie/logger';
 import { verifySessionToken } from '../session/verify-session-token';
 import type { APIContext } from '../types';
 
@@ -23,8 +24,20 @@ export async function* streamLiveDevice(
   stream: DeviceStream,
 ): AsyncGenerator<DeviceStreamEvent, void, undefined> {
   const keepActive = setInterval(() => {
-    void verifySessionToken(context, stream.token);
+    void writeKeepActive(context, stream);
   }, context.settings.lastSeenIntervalMs);
+
+  const stopKeepActive = (): void => {
+    clearInterval(keepActive);
+  };
+
+  // A consumer that stops reading after an abort never resumes the generator, so its finally may
+  // never run: the abort ends the interval too, and so does a signal that aborted already.
+  if (stream.signal?.aborted === true) {
+    stopKeepActive();
+  } else {
+    stream.signal?.addEventListener('abort', stopKeepActive, { once: true });
+  }
 
   const events = followDevice({
     log: context.log,
@@ -51,8 +64,20 @@ export async function* streamLiveDevice(
       yield { kind: 'device', event };
     }
   } finally {
-    clearInterval(keepActive);
+    stream.signal?.removeEventListener('abort', stopKeepActive);
+    stopKeepActive();
 
     await events.return(undefined);
+  }
+}
+
+async function writeKeepActive(context: APIContext, stream: DeviceStream): Promise<void> {
+  try {
+    await verifySessionToken(context, stream.token);
+  } catch (error) {
+    context.logger?.('live.keep_active_failed', {
+      deviceID: stream.device.deviceID,
+      ...toErrorFields(error),
+    });
   }
 }
