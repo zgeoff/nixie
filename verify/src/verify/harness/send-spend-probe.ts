@@ -7,19 +7,23 @@ const errorFields = z.object({
   type: z.string(),
   counter: z.string().optional(),
   route: z.string().optional(),
+  provider: z.string().optional(),
 });
 
 const errorSchema = z.object({ error: errorFields });
 const dayCount = z.object({ tripped: z.boolean() });
-const statusSchema = z.object({ routes: z.record(z.string(), z.object({ day: dayCount })) });
+const providersSchema = z.record(z.string(), z.object({ day: dayCount }));
+const routesSchema = z.record(z.string(), z.object({ provider: z.string(), day: dayCount }));
+const statusSchema = z.object({ providers: providersSchema, routes: routesSchema });
 
 export interface RouteProbe {
   readonly status: number;
   readonly error: z.output<typeof errorSchema>['error'] | null;
 }
 
-// The reply that the model gives costs 2 dollars, more than the day limit of the route `second`,
-// so the next request on the route is refused. A route already at its limit gets no reply queued.
+// The reply that the model gives costs 2 dollars, more than the day limit of the provider that the
+// route `second` is on, so the next request on the route is refused. A route held by its own limit
+// or its provider's gets no reply queued.
 export async function sendSpendProbe(
   gateway: TestModelGateway | null,
   model: ScriptedModel,
@@ -42,8 +46,12 @@ export async function sendSpendProbe(
   const statusBody: unknown = await statusResponse.json();
 
   const counts = statusSchema.parse(statusBody);
+  const provider = counts.routes[route]?.provider ?? '';
 
-  if (counts.routes[route]?.day.tripped !== true) {
+  const isStopped =
+    counts.routes[route]?.day.tripped === true || counts.providers[provider]?.day.tripped === true;
+
+  if (!isStopped) {
     model.addReplies({ text: 'probe', usage: { input_tokens: 1_000_000, output_tokens: 250_000 } });
   }
 

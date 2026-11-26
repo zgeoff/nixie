@@ -59,8 +59,12 @@ async function setupTest() {
           'periods: { zone: Europe/London }',
           `control: { listen: { port: 0 }, tokenFile: ${join(directory, 'token')} }`,
           'countBySandbox: true',
+          'providers:',
+          '  main:',
+          '    limits: { day: 1000, month: 10000 }',
           'routes:',
           '  codex-plan:',
+          '    provider: main',
           '    api: openai-responses',
           `    upstream: ${model.url}/v1`,
           '    model: model-o',
@@ -112,21 +116,35 @@ async function setupTest() {
           'countBySandbox: true',
           `override: ${join(directory, 'override.json')}`,
           ...extra,
+          'providers:',
+          '  main:',
+          '    limits: { day: 1000, month: 10000 }',
+          '  side:',
+          '    limits: { day: 0.002, month: 60 }',
           'routes:',
           '  preview:',
+          '    provider: main',
           `    upstream: ${model.url}`,
           '    model: model-small',
           '    prices: { input: 1, cache_write: 1.25, cache_write_1h: 2, cached_input: 0.1, output: 5 }',
           '    limits: { day: 0.002, month: 60 }',
           '  other:',
+          '    provider: main',
           `    upstream: ${model.url}`,
           '    model: model-small',
           '    prices: { input: 1, cache_write: 1.25, cache_write_1h: 2, cached_input: 0.1, output: 5 }',
           '    limits: { day: 60, month: 600 }',
           '  bare:',
+          '    provider: side',
           `    upstream: ${model.url}`,
           '    model: model-small',
           '    prices: { input: 1, cache_write: 1.25, cache_write_1h: 2, cached_input: 0.1, output: 5 }',
+          '  roomy:',
+          '    provider: side',
+          `    upstream: ${model.url}`,
+          '    model: model-small',
+          '    prices: { input: 1, cache_write: 1.25, cache_write_1h: 2, cached_input: 0.1, output: 5 }',
+          '    limits: { day: 60, month: 600 }',
         ].join('\n'),
       );
 
@@ -186,8 +204,12 @@ test('it serves its routes from a config file and writes the count of each route
       'listen: { port: 0 }',
       `store: ${join(ctx.directory, 'counter.json')}`,
       ...ctx.periodsHeader,
+      'providers:',
+      '  main:',
+      '    limits: { day: 1000, month: 10000 }',
       'routes:',
       '  preview:',
+      '    provider: main',
       `    upstream: ${ctx.model.url}`,
       '    model: model-small',
       '    prices: { input: 1, cache_write: 1.25, cache_write_1h: 2, cached_input: 0.1, output: 5 }',
@@ -234,8 +256,12 @@ test('it refuses every request on the route once long prompts priced at their lo
       'listen: { port: 0 }',
       `store: ${join(ctx.directory, 'counter.json')}`,
       ...ctx.periodsHeader,
+      'providers:',
+      '  main:',
+      '    limits: { day: 1000, month: 10000 }',
       'routes:',
       '  preview:',
+      '    provider: main',
       `    upstream: ${ctx.model.url}`,
       '    model: claude-haiku-5-5',
       '    prices:',
@@ -289,7 +315,7 @@ test('it refuses every request on the route once long prompts priced at their lo
   expect(ctx.model.requests).toHaveLength(2);
 });
 
-test('it refuses to start from a config with a limit that spans routes', async () => {
+test('it refuses to start from a config with a limit that spans providers', async () => {
   const ctx = await setupTest();
 
   await writeFile(
@@ -299,8 +325,12 @@ test('it refuses to start from a config with a limit that spans routes', async (
       `store: ${join(ctx.directory, 'counter.json')}`,
       'limits: { dollars: 1 }',
       ...ctx.periodsHeader,
+      'providers:',
+      '  main:',
+      '    limits: { day: 1000, month: 10000 }',
       'routes:',
       '  preview:',
+      '    provider: main',
       `    upstream: ${ctx.model.url}`,
       '    model: model-small',
       '    prices: { input: 1, cache_write: 1.25, cache_write_1h: 2, cached_input: 0.1, output: 5 }',
@@ -314,7 +344,7 @@ test('it refuses to start from a config with a limit that spans routes', async (
       log: ctx.log,
       waitForDrainDeadline: () => Promise.resolve(),
     }),
-  ).rejects.toThrow('no limit spans routes');
+  ).rejects.toThrow('no limit spans providers');
 });
 
 test('it lets a streamed reply under way finish and counts it before a stop resolves', async () => {
@@ -334,8 +364,12 @@ test('it lets a streamed reply under way finish and counts it before a stop reso
       'listen: { port: 0 }',
       `store: ${join(ctx.directory, 'counter.json')}`,
       ...ctx.periodsHeader,
+      'providers:',
+      '  main:',
+      '    limits: { day: 1000, month: 10000 }',
       'routes:',
       '  preview:',
+      '    provider: main',
       `    upstream: ${ctx.model.url}`,
       '    model: model-small',
       '    prices: { input: 1, cache_write: 1.25, cache_write_1h: 2, cached_input: 0.1, output: 5 }',
@@ -402,8 +436,12 @@ test('it closes a reply that outlasts the drain deadline and resolves the stop',
       'listen: { port: 0 }',
       `store: ${join(ctx.directory, 'counter.json')}`,
       ...ctx.periodsHeader,
+      'providers:',
+      '  main:',
+      '    limits: { day: 1000, month: 10000 }',
       'routes:',
       '  preview:',
+      '    provider: main',
       `    upstream: ${ctx.model.url}`,
       '    model: model-small',
       '    prices: { input: 1, cache_write: 1.25, cache_write_1h: 2, cached_input: 0.1, output: 5 }',
@@ -464,8 +502,12 @@ test('it charges the estimate of a reply a stop cut off at the drain deadline, a
       'listen: { port: 0 }',
       `store: ${join(ctx.directory, 'counter.json')}`,
       ...ctx.periodsHeader,
+      'providers:',
+      '  main:',
+      '    limits: { day: 1000, month: 10000 }',
       'routes:',
       '  preview:',
+      '    provider: main',
       `    upstream: ${ctx.model.url}`,
       '    model: model-small',
       '    prices: { input: 1, cache_write: 1.25, cache_write_1h: 2, cached_input: 0.1, output: 5 }',
@@ -539,8 +581,12 @@ test('it leaves the count unmarked when a stop finds no reply under way', async 
       'listen: { port: 0 }',
       `store: ${join(ctx.directory, 'counter.json')}`,
       ...ctx.periodsHeader,
+      'providers:',
+      '  main:',
+      '    limits: { day: 1000, month: 10000 }',
       'routes:',
       '  preview:',
+      '    provider: main',
       `    upstream: ${ctx.model.url}`,
       '    model: model-small',
       '    prices: { input: 1, cache_write: 1.25, cache_write_1h: 2, cached_input: 0.1, output: 5 }',
@@ -559,7 +605,8 @@ test('it leaves the count unmarked when a stop finds no reply under way', async 
   const stored = await readFile(join(ctx.directory, 'counter.json'), 'utf8');
 
   expect(JSON.parse(stored)).toMatchObject({
-    version: 3,
+    version: 4,
+    providers: { main: { day: { micros: 0 }, month: { micros: 0 } } },
     routes: { preview: { day: { micros: 0 }, month: { micros: 0 } } },
     sandboxes: {},
   });
@@ -584,8 +631,12 @@ test('it captures a tagged request to its spool, answers the capture ask, and lo
       ...ctx.periodsHeader,
       'capture:',
       `  spool: ${spool}`,
+      'providers:',
+      '  main:',
+      '    limits: { day: 1000, month: 10000 }',
       'routes:',
       '  preview:',
+      '    provider: main',
       `    upstream: ${ctx.model.url}`,
       '    model: model-small',
       '    prices: { input: 1, cache_write: 1.25, cache_write_1h: 2, cached_input: 0.1, output: 5 }',
@@ -633,8 +684,12 @@ test('it refuses to start when its capture spool is not a folder it can write', 
       ...ctx.periodsHeader,
       'capture:',
       `  spool: ${join(ctx.directory, 'missing')}`,
+      'providers:',
+      '  main:',
+      '    limits: { day: 1000, month: 10000 }',
       'routes:',
       '  preview:',
+      '    provider: main',
       `    upstream: ${ctx.model.url}`,
       '    model: model-small',
       '    prices: { input: 1, cache_write: 1.25, cache_write_1h: 2, cached_input: 0.1, output: 5 }',
@@ -651,16 +706,166 @@ test('it refuses to start when its capture spool is not a folder it can write', 
   expect(starting).rejects.toThrow();
 });
 
-test('it refuses every request on a route with no limit with a 503 and sends nothing upstream', async () => {
+test('it holds a route with no limit of its own by its provider alone, and refuses every route of that provider at its limit', async () => {
   const ctx = await setupTest();
   const gateway = await ctx.startPeriods();
 
+  ctx.model.addReplies(
+    { text: 'first', usage: { input_tokens: 600, output_tokens: 400 } },
+    { text: 'main route', usage: { input_tokens: 1, output_tokens: 1 } },
+  );
+
   await gateway.control('PUT', '/sandboxes/alpha', { limit: null });
 
-  const response = await gateway.send('alpha', 'bare/v1/messages');
+  const first = await gateway.send('alpha', 'bare/v1/messages');
 
-  expect(response.status).toBe(503);
-  expect(ctx.model.requests).toHaveLength(0);
+  await first.text();
+
+  const bare = await gateway.send('alpha', 'bare/v1/messages');
+  const bareBody: unknown = await bare.json();
+  const roomy = await gateway.send('alpha', 'roomy/v1/messages');
+  const roomyBody: unknown = await roomy.json();
+  const mainRoute = await gateway.send('alpha', 'other/v1/messages');
+
+  expect([
+    first.status,
+    bare.status,
+    bareBody,
+    roomy.status,
+    roomyBody,
+    mainRoute.status,
+  ]).toStrictEqual([
+    200,
+    403,
+    {
+      type: 'error',
+      error: {
+        type: 'limit_reached',
+        counter: 'provider_day',
+        route: 'bare',
+        provider: 'side',
+        message: expect.stringContaining('side'),
+      },
+    },
+    403,
+    {
+      type: 'error',
+      error: {
+        type: 'limit_reached',
+        counter: 'provider_day',
+        route: 'roomy',
+        provider: 'side',
+        message: expect.stringContaining('side'),
+      },
+    },
+    200,
+  ]);
+
+  expect(ctx.model.requests).toHaveLength(2);
+});
+
+test('it counts a reply on its provider as well as its route, in the one write', async () => {
+  const ctx = await setupTest();
+  const gateway = await ctx.startPeriods();
+
+  ctx.model.addReplies({ text: 'counted', usage: { input_tokens: 600, output_tokens: 400 } });
+
+  await gateway.control('PUT', '/sandboxes/alpha', { limit: null });
+  await gateway.exchange('alpha', 'other/v1/messages');
+
+  const stored = await gateway.readStore();
+
+  expect(stored).toMatchObject({
+    providers: {
+      main: { day: { micros: 2600 }, month: { micros: 2600 } },
+      side: { day: { micros: 0 } },
+    },
+    routes: { other: { day: { micros: 2600 } } },
+  });
+});
+
+test('it reports the provider of each route and the trip of a provider on the status', async () => {
+  const ctx = await setupTest();
+  const gateway = await ctx.startPeriods();
+
+  ctx.model.addReplies({ text: 'first', usage: { input_tokens: 600, output_tokens: 400 } });
+
+  await gateway.control('PUT', '/sandboxes/alpha', { limit: null });
+  await gateway.exchange('alpha', 'bare/v1/messages');
+  await gateway.send('alpha', 'roomy/v1/messages');
+
+  const sandbox = await gateway.control('GET', '/sandboxes/alpha');
+  const status = await gateway.control('GET', '/status');
+
+  expect([JSON.parse(sandbox.body), JSON.parse(status.body)]).toMatchObject([
+    { lastRefusal: { counter: 'provider_day', route: 'roomy', provider: 'side' } },
+    {
+      providers: {
+        side: { day: { tripped: true, limit: 0.002 } },
+        main: { day: { tripped: false } },
+      },
+      routes: {
+        bare: { provider: 'side', day: { limit: null, tripped: false } },
+        roomy: { provider: 'side', day: { tripped: false, limit: 60 } },
+      },
+    },
+  ]);
+});
+
+test('it passes again once a raise of the provider lifts its day limit', async () => {
+  const ctx = await setupTest();
+  const gateway = await ctx.startPeriods();
+
+  ctx.model.addReplies(
+    { text: 'first', usage: { input_tokens: 600, output_tokens: 400 } },
+    { text: 'second', usage: { input_tokens: 1, output_tokens: 1 } },
+  );
+
+  await gateway.control('PUT', '/sandboxes/alpha', { limit: null });
+  await gateway.exchange('alpha', 'bare/v1/messages');
+
+  const refused = await gateway.send('alpha', 'bare/v1/messages');
+
+  await gateway.control('POST', '/raise', {
+    provider: 'side',
+    start: '2026-11-13',
+    dollars: 0.004,
+  });
+
+  const passed = await gateway.send('alpha', 'bare/v1/messages');
+
+  expect([refused.status, passed.status]).toStrictEqual([403, 200]);
+});
+
+test('it passes again once POST /count lowers the count of the provider, and its trip clears', async () => {
+  const ctx = await setupTest();
+  const gateway = await ctx.startPeriods();
+
+  ctx.model.addReplies(
+    { text: 'first', usage: { input_tokens: 600, output_tokens: 400 } },
+    { text: 'second', usage: { input_tokens: 1, output_tokens: 1 } },
+  );
+
+  await gateway.control('PUT', '/sandboxes/alpha', { limit: null });
+  await gateway.exchange('alpha', 'bare/v1/messages');
+
+  const refused = await gateway.send('alpha', 'bare/v1/messages');
+
+  const set = await gateway.control('POST', '/count', {
+    provider: 'side',
+    period: 'day',
+    start: '2026-11-13',
+    dollars: 0,
+  });
+
+  const passed = await gateway.send('alpha', 'bare/v1/messages');
+  const status = await gateway.control('GET', '/status');
+
+  expect([refused.status, set.status, passed.status]).toStrictEqual([403, 200, 200]);
+
+  expect(JSON.parse(status.body)).toMatchObject({
+    providers: { side: { day: { tripped: false } } },
+  });
 });
 
 test('it counts a reply on its route day and month and on its sandbox in one write', async () => {
@@ -750,6 +955,7 @@ test('it refuses the route at its day limit with limit_reached naming the route,
         type: 'limit_reached',
         counter: 'route_day',
         route: 'preview',
+        provider: 'main',
         message: expect.stringContaining('preview'),
       },
     },
@@ -777,6 +983,7 @@ test('it reports the refusal on the sandbox count and the trip on the route stat
       lastRefusal: {
         counter: 'route_day',
         route: 'preview',
+        provider: 'main',
         atMs: Date.parse('2026-11-13T10:00:00Z'),
       },
     },
@@ -849,7 +1056,7 @@ test('it lets a request pass above the cap once the host override lifts the limi
 
   await writeFile(
     join(ctx.directory, 'override.json'),
-    JSON.stringify({ preview: { start: '2026-11-13', dollars: 500 } }),
+    JSON.stringify({ routes: { preview: { start: '2026-11-13', dollars: 500 } } }),
   );
 
   const lifted = await gateway.send('alpha');
@@ -882,7 +1089,7 @@ test('it refuses again a day later at the configured limit once a stale override
 
   await writeFile(
     join(ctx.directory, 'override.json'),
-    JSON.stringify({ preview: { start: '2026-11-13', dollars: 500 } }),
+    JSON.stringify({ routes: { preview: { start: '2026-11-13', dollars: 500 } } }),
   );
 
   await gateway.exchange('alpha');
@@ -994,8 +1201,12 @@ test('it refuses to start when the control token file holds no token', async () 
       `store: ${join(ctx.directory, 'counter.json')}`,
       'periods: { zone: Europe/London }',
       `control: { listen: { port: 0 }, tokenFile: ${join(ctx.directory, 'token')} }`,
+      'providers:',
+      '  main:',
+      '    limits: { day: 1000, month: 10000 }',
       'routes:',
       '  preview:',
+      '    provider: main',
       `    upstream: ${ctx.model.url}`,
       '    model: model-small',
       '    prices: { input: 1, cache_write: 1.25, cache_write_1h: 2, cached_input: 0.1, output: 5 }',

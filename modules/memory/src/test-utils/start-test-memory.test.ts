@@ -17,6 +17,8 @@ test('it starts a store over a log that folds the memory projections, with no re
     'spend_stop',
     'spend_route_stops',
     'spend_route_holds',
+    'spend_provider_stops',
+    'spend_provider_holds',
     'memory_items',
     'memory_versions',
     'memory_labels',

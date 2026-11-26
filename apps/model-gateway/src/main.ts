@@ -46,22 +46,35 @@ const serve = define({
 const raise = define({
   name: 'raise',
   description:
-    "Writes the override file that raises a route's day limit past its cap, for the day now in force",
+    "Writes the override file that raises a route's or a provider's day limit past its cap, for the day now in force",
   args: {
     config: { type: 'string', required: true, description: 'the proxy config file' },
-    route: { type: 'string', required: true, description: 'the route whose day limit to raise' },
+    route: { type: 'string', description: 'the route whose day limit to raise' },
+    provider: { type: 'string', description: 'the provider whose day limit to raise' },
     dollars: { type: 'number', required: true, description: 'the dollar limit to set' },
   },
   run: async (ctx) => {
+    const route = ctx.values.route;
+    const provider = ctx.values.provider;
+
+    if ((route === undefined) === (provider === undefined)) {
+      throw new Error('name a route or a provider to raise, and never both');
+    }
+
+    const target =
+      route === undefined
+        ? { kind: 'provider' as const, id: provider ?? '' }
+        : { kind: 'route' as const, id: route };
+
     const override = await runRaise({
       configPath: ctx.values.config,
-      route: ctx.values.route,
+      target,
       dollars: ctx.values.dollars,
       now: Date.now,
     });
 
     log('override.written', {
-      route: ctx.values.route,
+      [target.kind]: target.id,
       start: override.start,
       dollars: override.dollars,
     });

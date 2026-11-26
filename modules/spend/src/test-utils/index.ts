@@ -1,4 +1,5 @@
 export { buildMockPeriodStatus } from './build-mock-period-status';
+export { buildProviderTrippedGatewayStatus } from './build-provider-tripped-gateway-status';
 export { buildSpendFacts } from './build-spend-facts';
 export { buildSpendStopRow } from './build-spend-stop-row';
 

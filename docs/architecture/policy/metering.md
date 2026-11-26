@@ -1,12 +1,12 @@
 # Metering
 
 nixie counts what it spends against a day, a month, a week or a budget, in three kinds of count: the
-model gateway's count of model dollars on each route, the ledger of every other money count, and the
-turn count. Three parts keep those counts agreeing with each other: one helper that gives the start
-of each period, one source for each price, and one table that holds the money counts nixie writes.
-[The model gateway](model-gateway.md) and [the spending stop](spending-stop.md) cover the gateway's
-own count and the limit of each route, and [budgets](budgets.md) covers what a budget charge
-refuses.
+model gateway's count of model dollars on each provider and route, the ledger of every other money
+count, and the turn count. Three parts keep those counts agreeing with each other: one helper that
+gives the start of each period, one source for each price, and one table that holds the money counts
+nixie writes. [The model gateway](model-gateway.md) and [the spending stop](spending-stop.md) cover
+the gateway's own count and the limit of each provider and route, and [budgets](budgets.md) covers
+what a budget charge refuses.
 
 ## Periods
 
@@ -172,20 +172,21 @@ the model never reads a rate or a dollar figure.
 
 ## What counts where
 
-| Spend        | The gateway's count                | The ledger                                                                         |
-| ------------ | ---------------------------------- | ---------------------------------------------------------------------------------- |
-| a model call | the day and the month of its route | a task run's calls: `task_run`; a worker run's: `worker_run`; a conversation's: no |
-| a search     | no                                 | `budget:search-day`, `budget:search-month`                                         |
-| a picture    | no                                 | `budget:image.draw-day`, `budget:image.draw-month`                                 |
+| Spend        | The gateway's count                                 | The ledger                                                                         |
+| ------------ | --------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| a model call | the day and the month of its route and its provider | a task run's calls: `task_run`; a worker run's: `worker_run`; a conversation's: no |
+| a search     | no                                                  | `budget:search-day`, `budget:search-month`                                         |
+| a picture    | no                                                  | `budget:image.draw-day`, `budget:image.draw-month`                                 |
 
-A model reply charges the gateway's count of its route when it arrives. A task run's row follows the
-`task.meter_read` records of the task run, and a worker run's row is set when the run ends. A
-conversation reply has no row, because the gateway's count of its route is the one place that holds
-it.
+A model reply charges the gateway's count of its route and of its provider when it arrives. A task
+run's row follows the `task.meter_read` records of the task run, and a worker run's row is set when
+the run ends. A conversation reply has no row, because the gateway's count of its route is the one
+place that holds it.
 
-The gateway limits each route on its own, and no gateway limit spans routes. The spending stop reads
-the gateway's counts of the routes and the turn count: a route at its limit holds only its own work,
-and the turn count stops nixie. A paid tool counts against its budget and never against the stop,
-because model dollars on a plan stay notional while tool dollars are real. The daily search call
-count in `search_calls` and the turn count stay in their own tables, because each counts calls or
-turns and its limit reads that table.
+The gateway limits each provider and each route on its own, and no gateway limit spans providers.
+The spending stop reads the gateway's counts and the turn count: a route at its limit holds only its
+own work, a provider at its limit holds the work on every route of the provider, and the turn count
+stops nixie. A paid tool counts against its budget and never against the stop, because model dollars
+on a plan stay notional while tool dollars are real. The daily search call count in `search_calls`
+and the turn count stay in their own tables, because each counts calls or turns and its limit reads
+that table.

@@ -9,7 +9,7 @@ export function makeOverrideReader(path: string | null, log: Logger): () => Prom
 
   return async () => {
     if (path === null) {
-      return {};
+      return { routes: {}, providers: {} };
     }
 
     const read = await readOverride(path);
@@ -20,6 +20,6 @@ export function makeOverrideReader(path: string | null, log: Logger): () => Prom
       log('override.unreadable', { reason: read.reason }, 'error');
     }
 
-    return read.kind === 'found' ? read.overrides : {};
+    return read.kind === 'found' ? read.overrides : { routes: {}, providers: {} };
   };
 }

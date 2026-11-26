@@ -817,6 +817,29 @@ export interface NixieTables {
     readonly period_start: string;
     readonly amount: number;
   };
+  readonly spend_provider_holds: {
+    readonly task_id: string;
+    readonly provider_id: string;
+    readonly updated_sequence: number;
+  };
+  readonly spend_provider_raises: {
+    readonly provider_id: string;
+    readonly start: string;
+    readonly dollars: number;
+    readonly raised_by: string;
+    readonly at: number;
+    readonly updated_sequence: number;
+  };
+  readonly spend_provider_stops: {
+    readonly provider_id: string;
+    readonly period: string;
+    readonly limit_amount: number;
+    readonly spent_amount: number;
+    readonly at: number;
+    readonly resets_at: number;
+    readonly routes: string;
+    readonly updated_sequence: number;
+  };
   readonly spend_raises: {
     readonly start: string;
     readonly dollars: number;

@@ -19,6 +19,7 @@ import { giveBackWorkerDollars } from './give-back-worker-dollars';
 import { pickGatewayEnd } from './pick-gateway-end';
 import type { WorkerTurnFacts } from './pick-worker-end';
 import { pickWorkerEnd } from './pick-worker-end';
+import { pickWorkerRefusal } from './pick-worker-refusal';
 import { raceStop } from './race-stop';
 import { removeFailedDestroys } from './remove-failed-destroys';
 import { renderWorkerEnd } from './render-worker-end';
@@ -219,7 +220,11 @@ async function runReservedWorker(
   const end = pickGatewayEnd(stagesEnd, count, plan.limits);
   const used = buildUsed(deps, plan, run, count);
 
-  await writeWorkerRunEnded(deps, plan, run.names, { end, used });
+  await writeWorkerRunEnded(deps, plan, run.names, {
+    end,
+    used,
+    refusal: pickWorkerRefusal(count, plan.calledAt),
+  });
 
   return toResult(plan, run, end, used);
 }

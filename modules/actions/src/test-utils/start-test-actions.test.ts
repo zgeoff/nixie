@@ -15,6 +15,8 @@ test('it starts a writer whose log folds the tasks and actions projections, on a
     'spend_stop',
     'spend_route_stops',
     'spend_route_holds',
+    'spend_provider_stops',
+    'spend_provider_holds',
     'tasks',
     'timers',
     'task_messages',

@@ -12,6 +12,7 @@ export function buildSpendFacts(overrides: Partial<SpendFacts> = {}): SpendFacts
     turns: { day: 0, month: 0 },
     raise: null,
     routeRaises: {},
+    providerRaises: {},
     limits: { dayTurns: 1000, dayTurnCap: 2000, monthTurns: 20_000 },
     now,
     statusAtMs: now,

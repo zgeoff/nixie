@@ -2,7 +2,7 @@ import { isAbsolute } from 'node:path';
 import { modelPricesSchema } from '@heynixie/models/prices';
 import { modelAPIs } from '@heynixie/wire';
 import { z } from 'zod';
-import type { ProxyConfig } from '../types';
+import type { ProxyConfig, RouteLimits } from '../types';
 
 const periodsSchema = z.strictObject({
   zone: z.string().refine(isZone, { message: 'the zone is not an IANA zone' }),
@@ -19,6 +19,10 @@ const controlSchema = z.strictObject({
 });
 
 const routeIDSchema = z.string().regex(/^[a-z0-9][a-z0-9-]*$/u, 'a route ID is a lowercase slug');
+
+const providerIDSchema = z
+  .string()
+  .regex(/^[a-z0-9][a-z0-9-]*$/u, 'a provider ID is a lowercase slug');
 
 const loginSchema = z.strictObject({
   file: z.string().refine((path) => isAbsolute(path), {
@@ -40,7 +44,11 @@ const routeLimitsSchema = z
     message: 'the day cap is below the day limit',
   });
 
+// a provider's limits are required, because they cap what nixie spends however many models it adds
+const providerSchema = z.strictObject({ limits: routeLimitsSchema });
+
 const routeSchema = z.strictObject({
+  provider: providerIDSchema,
   api: z.enum(modelAPIs).default('anthropic-messages'),
   upstream: z.url({ protocol: /^https?$/u }),
   model: z.string().min(1),
@@ -69,7 +77,7 @@ export const proxyConfigSchema = z
     limits: z
       .never({
         error:
-          'the config sets limits for all routes, and no limit spans routes: set limits under routes.<id>.limits',
+          'the config sets limits for all routes, and no limit spans providers: set limits under providers.<id>.limits',
       })
       .optional(),
     periods: periodsSchema,
@@ -80,6 +88,11 @@ export const proxyConfigSchema = z
       .refine((path) => isAbsolute(path), { message: 'the override file is an absolute path' })
       .optional(),
     capture: captureSchema.optional(),
+    providers: z
+      .record(providerIDSchema, providerSchema)
+      .refine((providers) => Object.keys(providers).length > 0, {
+        message: 'the proxy names no provider',
+      }),
     routes: z
       .record(routeIDSchema, routeSchema)
       .refine((routes) => Object.keys(routes).length > 0, {
@@ -88,6 +101,14 @@ export const proxyConfigSchema = z
   })
   .superRefine((config, ctx) => {
     for (const [id, route] of Object.entries(config.routes)) {
+      if (!Object.hasOwn(config.providers, route.provider)) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['routes', id, 'provider'],
+          message: `the route ${id} names the provider ${route.provider}, which the config's providers lack`,
+        });
+      }
+
       if (route.api === 'openai-responses' && route.maxOutputTokens === undefined) {
         ctx.addIssue({
           code: 'custom',
@@ -114,10 +135,17 @@ export const proxyConfigSchema = z
             maxBytes: config.capture.max_bytes,
             maxPending: config.capture.max_pending,
           },
+    providers: Object.fromEntries(
+      Object.entries(config.providers).map(([id, provider]) => [
+        id,
+        { limits: buildLimits(provider.limits) },
+      ]),
+    ),
     routes: Object.fromEntries(
       Object.entries(config.routes).map(([id, route]) => [
         id,
         {
+          provider: route.provider,
           api: route.api,
           upstream: route.upstream.replace(/\/+$/u, ''),
           model: route.model,
@@ -125,14 +153,7 @@ export const proxyConfigSchema = z
           prices: route.prices,
           maxOutputTokens: route.maxOutputTokens ?? null,
           login: route.login ?? null,
-          limits:
-            route.limits === undefined
-              ? null
-              : {
-                  day: route.limits.day,
-                  month: route.limits.month,
-                  dayCap: route.limits.dayCap ?? route.limits.day * 2,
-                },
+          limits: route.limits === undefined ? null : buildLimits(route.limits),
         },
       ]),
     ),
@@ -146,4 +167,12 @@ function isZone(zone: string): boolean {
   } catch {
     return false;
   }
+}
+
+function buildLimits(limits: z.infer<typeof routeLimitsSchema>): RouteLimits {
+  return {
+    day: limits.day,
+    month: limits.month,
+    dayCap: limits.dayCap ?? limits.day * 2,
+  };
 }

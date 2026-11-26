@@ -15,7 +15,10 @@ async function setupTest() {
 test('it reads a valid override', async () => {
   const ctx = await setupTest();
 
-  const override = { preview: { start: '2026-11-13', dollars: 200 } };
+  const override = {
+    routes: { preview: { start: '2026-11-13', dollars: 200 } },
+    providers: { main: { start: '2026-11-13', dollars: 50 } },
+  };
 
   await writeFile(ctx.path, JSON.stringify(override));
 
@@ -33,9 +36,15 @@ test('it reads no override from a missing file', async () => {
 
 test.each([
   ['a file that is not JSON', 'nope'],
-  ['an override of a day that is not a date', '{"preview":{"start":"today","dollars":1}}'],
-  ['an override with an unknown field', '{"preview":{"start":"2026-11-13","dollars":1,"x":1}}'],
-  ['an override with a limit of zero', '{"preview":{"start":"2026-11-13","dollars":0}}'],
+  [
+    'an override of a day that is not a date',
+    '{"routes":{"preview":{"start":"today","dollars":1}}}',
+  ],
+  [
+    'an override with an unknown field',
+    '{"routes":{"preview":{"start":"2026-11-13","dollars":1,"x":1}}}',
+  ],
+  ['an override with a limit of zero', '{"providers":{"main":{"start":"2026-11-13","dollars":0}}}'],
 ])('it reports %s as unreadable, so it binds nothing', async (_name, text) => {
   const ctx = await setupTest();
 

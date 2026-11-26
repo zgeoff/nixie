@@ -13,6 +13,13 @@ export interface SpendFacts {
 
   // each route's raise of today's dollars, by route ID
   readonly routeRaises: Readonly<Record<string, number>>;
+
+  // each provider's raise of today's dollars, by provider ID
+  readonly providerRaises: Readonly<Record<string, number>>;
+
+  // why a stop that has room again clears, when it is not the end of its period: a count that a
+  // person corrected says so, and anything else is a raise
+  readonly roomReason?: 'raised' | 'corrected';
   readonly limits: SpendTurnLimits;
   readonly now: number;
 

@@ -1,7 +1,8 @@
 import type { Overrides, PeriodStore, RefusalCounter } from '../types';
-import type { RouteLimitsByID } from './collect-trips';
 import { isLimitReached } from './is-limit-reached';
 import { isSandboxLimitReached } from './is-sandbox-limit-reached';
+import type { LimitTable } from './limit-table';
+import { pickProviderLimit } from './pick-provider-limit';
 import { pickRouteLimit } from './pick-route-limit';
 
 export type PeriodsRefusal =
@@ -23,21 +24,22 @@ export type PeriodsRefusal =
       readonly type: 'limit_reached';
       readonly counter: RefusalCounter;
       readonly route: string;
+      readonly provider: string;
       readonly message: string;
     };
 
 export interface RefusalAsk {
   readonly store: PeriodStore;
-  readonly limits: RouteLimitsByID;
+  readonly limits: LimitTable;
   readonly overrides: Overrides;
   readonly route: string;
   readonly sandbox: string | null;
   readonly countBySandbox: boolean;
 }
 
-// What stops a request, or null when it may pass. The lost mark and a route with no limit answer
-// 503; a limit that a count has reached answers 403 with the counter and the route. No message
-// holds a dollar figure.
+// What stops a request, or null when it may pass. The checks run in this order: the lost mark, a
+// sandbox the store lacks, the route's limits, the provider's limits, then the sandbox's own limit.
+// No message holds a dollar figure.
 export function pickPeriodsRefusal(ask: RefusalAsk): PeriodsRefusal | null {
   if (ask.store.lost) {
     return {
@@ -49,17 +51,7 @@ export function pickPeriodsRefusal(ask: RefusalAsk): PeriodsRefusal | null {
     };
   }
 
-  const day = pickRouteLimit({ ...ask, period: 'day' });
-  const month = pickRouteLimit({ ...ask, period: 'month' });
-
-  if (day === null || month === null) {
-    return {
-      kind: 'unavailable',
-      status: 503,
-      type: 'api_error',
-      message: `the model gateway holds no limit for the route ${ask.route}, so it refuses every request on it`,
-    };
-  }
+  const provider = ask.limits.providerOf[ask.route] ?? '';
 
   const held =
     ask.sandbox !== null && Object.hasOwn(ask.store.sandboxes, ask.sandbox)
@@ -76,27 +68,20 @@ export function pickPeriodsRefusal(ask: RefusalAsk): PeriodsRefusal | null {
     };
   }
 
-  const periods = Object.hasOwn(ask.store.routes, ask.route)
-    ? ask.store.routes[ask.route]
-    : undefined;
+  const reached = findReachedLimit(ask, provider);
 
-  const reached = (
-    [
-      ['route_day', day, periods?.day.micros],
-      ['route_month', month, periods?.month.micros],
-    ] as const
-  ).find(([, limit, spent]) => spent !== undefined && isLimitReached(spent, limit));
-
-  if (reached !== undefined) {
-    const period = reached[0] === 'route_day' ? 'day' : 'month';
-
+  if (reached !== null) {
     return {
       kind: 'limit_reached',
       status: 403,
       type: 'limit_reached',
-      counter: reached[0],
+      counter: reached.counter,
       route: ask.route,
-      message: `the model gateway reached the ${period} limit of the route ${ask.route}, so it refuses every further request on it until the ${period} resets`,
+      provider,
+      message:
+        reached.scope === 'route'
+          ? `the model gateway reached the ${reached.period} limit of the route ${ask.route}, so it refuses every further request on it until the ${reached.period} resets`
+          : `the model gateway reached the ${reached.period} limit of the provider ${provider}, so it refuses every further request on every route of it until the ${reached.period} resets`,
     };
   }
 
@@ -107,9 +92,55 @@ export function pickPeriodsRefusal(ask: RefusalAsk): PeriodsRefusal | null {
       type: 'limit_reached',
       counter: 'sandbox',
       route: ask.route,
+      provider,
       message:
         "the model gateway reached this sandbox's limit, so it refuses every further request",
     };
+  }
+
+  return null;
+}
+
+interface ReachedLimit {
+  readonly scope: 'route' | 'provider';
+  readonly period: 'day' | 'month';
+  readonly counter: RefusalCounter;
+}
+
+const routeCounters = { day: 'route_day', month: 'route_month' } as const;
+const providerCounters = { day: 'provider_day', month: 'provider_month' } as const;
+
+// the first limit at its count, a route's before its provider's and a day before its month
+function findReachedLimit(ask: RefusalAsk, provider: string): ReachedLimit | null {
+  const scopes = [
+    { scope: 'route', id: ask.route, held: ask.store.routes },
+    { scope: 'provider', id: provider, held: ask.store.providers },
+  ] as const;
+
+  for (const entry of scopes) {
+    const scope = entry.scope;
+    const id = entry.id;
+    const held = entry.held;
+    const periods = Object.hasOwn(held, id) ? held[id] : undefined;
+
+    for (const period of ['day', 'month'] as const) {
+      const limitAsk = {
+        store: ask.store,
+        limits: ask.limits,
+        overrides: ask.overrides,
+        id,
+        period,
+      };
+
+      const limit = scope === 'route' ? pickRouteLimit(limitAsk) : pickProviderLimit(limitAsk);
+      const spent = periods?.[period].micros;
+
+      if (limit !== null && spent !== undefined && isLimitReached(spent, limit)) {
+        const counter = scope === 'route' ? routeCounters[period] : providerCounters[period];
+
+        return { scope, period, counter };
+      }
+    }
   }
 
   return null;
