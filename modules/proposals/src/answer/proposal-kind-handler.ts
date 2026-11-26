@@ -29,6 +29,9 @@ export interface SharedProposal {
   readonly deferGeneration: number;
   readonly deferUntil: number | null;
   readonly returnAt: number | null;
+
+  // the key that makes a new proposal replace this one, null for a family that never replaces
+  readonly sameThing: string | null;
 }
 
 export type ProposalChoice = 'approve' | 'always_allow' | 'defer' | 'decline';
@@ -48,6 +51,14 @@ export interface ProposalAnswerInput {
 
   // an edit of a skill's files, on approve
   readonly files?: readonly { readonly path: string; readonly text: string }[] | undefined;
+
+  // an edit of a prompt override's entry and part files, on approve
+  readonly prompt?:
+    | {
+        readonly entry?: Readonly<Record<string, string>> | undefined;
+        readonly files?: readonly { readonly path: string; readonly text: string }[] | undefined;
+      }
+    | undefined;
   readonly memory?:
     | {
         readonly editedText?: string | undefined;
@@ -83,11 +94,28 @@ export type ProposalRefusal =
     }
   | { readonly error: 'NOT_ALLOWED'; readonly reason: string };
 
+export type DoneOutcome = Extract<ApplyOutcome, { readonly status: 'done' }>;
+
+// The result of a lapse or a withdrawal, which no answer returns.
+export interface ClosedResult {
+  readonly proposalID: string;
+  readonly state: 'lapsed' | 'withdrawn';
+}
+
 export type ApplyOutcome =
   | {
       readonly status: 'done';
-      readonly result: AnswerResult;
+      readonly result: AnswerResult | ClosedResult;
       readonly afterCommit?: () => Promise<void>;
+
+      // the ID the apply made, such as memory's approval; goes into the settlement
+      readonly usedBy: string | null;
+
+      // the family's own line for the proposer, such as "call skill_reload"
+      readonly detail: string | null;
+
+      // the threads of the other proposers of a merged proposal, which also hear the settlement
+      readonly otherThreads: readonly string[];
     }
   | { readonly status: 'refused'; readonly refusal: ProposalRefusal };
 
@@ -95,6 +123,10 @@ export interface ApplyRun {
   // null for a kind that owns its transaction: the kind then calls guard inside its own
   readonly tx: Transaction<unknown> | null;
   readonly guard: (tx: Transaction<unknown>) => Promise<void>;
+
+  // Writes proposals.settled from a done outcome. A family that owns its transaction calls it
+  // inside that transaction, after its apply; for any other family the core calls it.
+  readonly settle: (tx: Transaction<unknown>, outcome: DoneOutcome) => Promise<void>;
 }
 
 export interface ProposalBody {
@@ -135,7 +167,11 @@ export interface ProposalHashes {
 // actions, memory, skills and the rule changes of definitions each register one
 export interface ProposalKindHandler {
   readonly family: ProposalFamily;
-  readonly lapseIntervalMs: number;
+
+  // Replaces a fixed lapse time. The server loads the config at start, so a changed value applies
+  // after a restart, to the next proposal and the next defer. Null for a cause that lapses only
+  // at its deadline, such as a mandate.
+  readonly lapseIntervalMs: (config: ProposalConfig, cause: string) => number | null;
 
   // A kind whose writes open their own transaction. It runs apply with no transaction and calls
   // the guard from inside its own.
@@ -144,18 +180,31 @@ export interface ProposalKindHandler {
     db: Kysely<unknown>,
     rows: readonly SharedProposal[],
   ) => Promise<ReadonlyMap<string, ProposalBody | null>>;
+
+  // The one-line description that a settlement carries, for a family whose bodies read outside the
+  // transaction that settles. The settlement reads the body instead when this is absent.
+  readonly readSentence?: (db: Kysely<unknown>, row: SharedProposal) => Promise<string | null>;
   readonly readHashes: (db: Kysely<unknown>, row: SharedProposal) => Promise<ProposalHashes>;
   readonly approve: (
     run: ApplyRun,
     row: SharedProposal,
     answer: ProposalAnswerInput,
   ) => Promise<ApplyOutcome>;
-  readonly decline: (
+
+  // Undoes what the proposal held, such as a held action or a sealed body. It runs where approve
+  // runs. On a decline it may refuse, and a refusal leaves the row open; on a lapse or a
+  // withdrawal it never refuses. The answer is null on a lapse or a withdrawal.
+  readonly discard: (
     run: ApplyRun,
     row: SharedProposal,
-    answer: ProposalAnswerInput,
+    outcome: DiscardOutcome,
+    answer: ProposalAnswerInput | null,
   ) => Promise<ApplyOutcome>;
+}
 
-  // writes the kind's own lapse record
-  readonly lapse: (tx: Transaction<unknown>, row: SharedProposal) => Promise<void>;
+export type DiscardOutcome = 'declined' | 'lapsed' | 'withdrawn';
+
+export interface ProposalConfig {
+  // days a proposal of each family waits before it lapses
+  readonly lapseDays: Readonly<Record<ProposalFamily, number>>;
 }

@@ -25,5 +25,6 @@ export function toSharedProposal(row: ProposalRow): SharedProposal {
     deferGeneration: row.defer_generation,
     deferUntil: row.defer_until,
     returnAt: row.return_at,
+    sameThing: row.same_thing,
   };
 }

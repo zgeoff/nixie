@@ -1,6 +1,6 @@
 import type { CheckedTables } from '@heynixie/db';
 
-export type ProposalFamily = 'action' | 'memory' | 'skill' | 'rule_change' | 'mcp';
+export type ProposalFamily = 'action' | 'memory' | 'skill' | 'rule_change' | 'mcp' | 'prompt';
 
 export type ProposalKind = 'action' | 'memory_write' | 'internal_change';
 
@@ -37,6 +37,7 @@ export type ProposalTables = CheckedTables<
       readonly defer_generation: number;
       readonly defer_until: number | null;
       readonly return_at: number | null;
+      readonly same_thing: string | null;
     };
   }>
 >;

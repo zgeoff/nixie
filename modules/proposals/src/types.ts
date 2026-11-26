@@ -1,7 +1,7 @@
 import type { Clock } from '@heynixie/clock';
 import type { Definitions, Log } from '@heynixie/log';
 
-export type ProposalOutcome = 'approved' | 'rejected' | 'lapsed';
+export type ProposalOutcome = 'approved' | 'declined' | 'lapsed' | 'withdrawn';
 
 export type ProposalStatus = 'pending' | ProposalOutcome;
 

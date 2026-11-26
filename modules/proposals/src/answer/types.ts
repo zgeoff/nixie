@@ -6,6 +6,7 @@ import type { QuietHours } from '../sweeps/pick-return-at';
 import type {
   AnswerResult,
   ProposalAnswerInput,
+  ProposalConfig,
   ProposalKindHandler,
   ProposalRefusal,
   SharedProposal,
@@ -26,9 +27,36 @@ export interface ProposalCoreDeps {
     readonly zone: string;
   }>;
 
+  // the lapse of each family, as the server config sets it
+  readonly config: ProposalConfig;
+
+  // the thread of nixie's one conversation, which hears the lapse of a proposal with no proposer
+  readonly conversationThread: string;
+
+  // Where a settlement for a proposer's thread goes. A task that has closed sends it to the report
+  // target of its run, with the task's name.
+  readonly readSettlementTarget: (
+    tx: Transaction<unknown>,
+    thread: string,
+  ) => Promise<{ readonly thread: string; readonly task: string | null }>;
+
   // Writes a record on a row's thread. A task that is still open takes it as an inbox record.
   readonly writeThreadRecord: (tx: Transaction<unknown>, input: RecordInput) => Promise<void>;
 }
+
+// What a family needs to propose, withdraw and settle a proposal, without the answer path's own
+// parts.
+export type ProposeDeps = Pick<
+  ProposalCoreDeps,
+  | 'log'
+  | 'clock'
+  | 'definitions'
+  | 'config'
+  | 'handlers'
+  | 'writeThreadRecord'
+  | 'readSettlementTarget'
+  | 'conversationThread'
+>;
 
 export type AnswerSettlement =
   | { readonly status: 'answered'; readonly result: AnswerResult }

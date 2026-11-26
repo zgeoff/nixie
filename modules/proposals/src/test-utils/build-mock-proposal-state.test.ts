@@ -11,10 +11,10 @@ test('it builds a default proposal state', () => {
 });
 
 test('it applies overrides on top of the defaults', () => {
-  expect(buildMockProposalState({ thread: null, outcome: 'rejected' })).toStrictEqual({
+  expect(buildMockProposalState({ thread: null, outcome: 'declined' })).toStrictEqual({
     proposalID: expect.toBeString(),
     thread: null,
     proposedAt: expect.toBeNumber(),
-    outcome: 'rejected',
+    outcome: 'declined',
   });
 });

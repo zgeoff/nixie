@@ -1,9 +1,17 @@
 import { withWriteTransaction } from '@heynixie/log';
 import type { Transaction } from 'kysely';
+import invariant from 'tiny-invariant';
+import { buildApplyRun } from '../propose/build-apply-run';
 import { checkAnswer } from './check-answer';
 import { checkPasskey } from './check-passkey';
 import { PasskeyRefusedError } from './passkey-refused-error';
-import type { ApplyOutcome, ApplyRun, ProposalAnswerInput } from './proposal-kind-handler';
+import type {
+  AnswerResult,
+  ApplyOutcome,
+  ApplyRun,
+  ClosedResult,
+  ProposalAnswerInput,
+} from './proposal-kind-handler';
 import { RefusedError } from './refused-error';
 import type {
   AnswerHooks,
@@ -99,7 +107,17 @@ async function decideAnswer(
     return { status: 'owned', ready: checked };
   }
 
-  const applied = await applyChoice(checked, answer, { tx, guard: () => Promise.resolve() });
+  const run = buildApplyRun(
+    deps,
+    { row: checked.row, outcome: pickOutcome(answer), answer, byProposer: false },
+    { tx, guard: () => Promise.resolve() },
+  );
+
+  const applied = await applyChoice(checked, answer, run);
+
+  if (applied.status === 'done') {
+    await run.settle(tx, applied);
+  }
 
   return settleApplied(tx, hooks, applied);
 }
@@ -114,13 +132,17 @@ async function settle(
   return settlement;
 }
 
+function pickOutcome(answer: ProposalAnswerInput): 'approved' | 'declined' {
+  return answer.choice === 'decline' ? 'declined' : 'approved';
+}
+
 function applyChoice(
   ready: Ready,
   answer: ProposalAnswerInput,
   run: ApplyRun,
 ): Promise<ApplyOutcome> {
   return answer.choice === 'decline'
-    ? ready.handler.decline(run, ready.row, answer)
+    ? ready.handler.discard(run, ready.row, 'declined', answer)
     : ready.handler.approve(run, ready.row, answer);
 }
 
@@ -133,11 +155,23 @@ async function settleApplied(
     return settle(tx, hooks, { status: 'refused', refusal: applied.refusal });
   }
 
-  const settled = await settle(tx, hooks, { status: 'answered', result: applied.result });
+  const result = toAnswerResult(applied.result);
+
+  const settled = await settle(tx, hooks, { status: 'answered', result });
 
   return applied.afterCommit === undefined
     ? settled
     : { ...settled, afterCommit: applied.afterCommit };
+}
+
+function toAnswerResult(result: AnswerResult | ClosedResult): AnswerResult {
+  invariant(isAnswerResult(result), 'an answer never lapses or withdraws a proposal');
+
+  return result;
+}
+
+function isAnswerResult(result: AnswerResult | ClosedResult): result is AnswerResult {
+  return result.state !== 'lapsed' && result.state !== 'withdrawn';
 }
 
 // A kind that owns its transaction applies the choice in its own. The guard runs there, so the
@@ -180,7 +214,13 @@ async function runOwnedApply(
     await hooks.writeSettlement?.(tx, predicted);
   };
 
-  const applied = await applyOwned(ready, answer, guard);
+  const run = buildApplyRun(
+    deps,
+    { row: ready.row, outcome: pickOutcome(answer), answer, byProposer: false },
+    { tx: null, guard },
+  );
+
+  const applied = await applyOwned(ready, answer, run);
 
   if (applied.status === 'unauthorized' || applied.status === 'passkey_refused') {
     return applied;
@@ -192,22 +232,24 @@ async function runOwnedApply(
     return withWriteTransaction(deps.log.writer, (tx) => settle(tx, hooks, refused));
   }
 
+  const result = toAnswerResult(applied.result);
+
   await applied.afterCommit?.();
 
-  return { status: 'answered', result: applied.result };
+  return { status: 'answered', result };
 }
 
 async function applyOwned(
   ready: Ready,
   answer: ProposalAnswerInput,
-  guard: ApplyRun['guard'],
+  run: ApplyRun,
 ): Promise<
   | ApplyOutcome
   | { readonly status: 'unauthorized' }
   | { readonly status: 'passkey_refused'; readonly refusal: PasskeyRefusal }
 > {
   try {
-    return await applyChoice(ready, answer, { tx: null, guard });
+    return await applyChoice(ready, answer, run);
   } catch (error) {
     if (error instanceof UnauthorizedError) {
       return { status: 'unauthorized' };
