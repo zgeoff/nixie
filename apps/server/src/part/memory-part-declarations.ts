@@ -43,6 +43,7 @@ export const memoryPartDeclarations: readonly AnyPartDeclaration<ServerPartValue
     // The MCP proxy: the servers of the config, their sign-ins and the tools their pins allow.
     name: 'mcp',
     needs: ['inputs', 'server_parts', 'connections'],
+    uses: ['tools'],
     start: makeRetriedStart('mcp', (parts, reader) =>
       startMcpPart(parts, reader.get('inputs').options.config.mcp, reader),
     ),

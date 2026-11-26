@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { publishChanged } from '@heynixie/log';
+import { publishChanged, subscribeToChanged } from '@heynixie/log';
 import { startStandInMcp } from './test-utils/start-stand-in-mcp';
 
 async function setupTest() {
@@ -18,6 +18,12 @@ async function setupTest() {
 
   return {
     hold,
+    writer: standIn.test.log.writer,
+    list: () => standIn.mcp.list('tracker'),
+    refuseRefresh: () => {
+      standIn.site.refuseRefresh(true);
+      standIn.site.expireAccessTokens();
+    },
     publishChanged: (topics: Parameters<typeof publishChanged>[1]) => {
       publishChanged(standIn.test.log.writer, topics);
     },
@@ -152,4 +158,23 @@ test('it waits for the refit that a definitions change started before its stop r
   await stopping;
 
   expect(order).toStrictEqual(['released', 'stopped']);
+});
+
+test('it tells an open page that a server needs a sign-in again once its refresh is refused', async () => {
+  const ctx = await setupTest();
+
+  const topics: (readonly string[])[] = [];
+
+  const unsubscribe = subscribeToChanged(ctx.writer, (changed) => {
+    topics.push(changed);
+  });
+
+  ctx.refuseRefresh();
+
+  await ctx.list();
+  await ctx.stop();
+
+  unsubscribe();
+
+  expect(topics.flat()).toContain('mcp');
 });

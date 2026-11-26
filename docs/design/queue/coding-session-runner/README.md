@@ -26,8 +26,8 @@ These sibling designs touch this one:
 
 - The [code tool](../../../architecture/connectors/code-tool.md) owns the code tool section of the
   coding design.
-- The [MCP proxy build](../mcp-proxy-build.md) leaves atc out: the proxy carries none of atc's
-  tools, because this runner calls atc-gateway directly.
+- The [MCP proxy](../../../architecture/connectors/mcp-proxy.md) leaves atc out: the proxy carries
+  none of atc's tools, because this runner calls atc-gateway directly.
 - The [decision point cutover](../decision-point-cutover.md) builds the policy stages that decide
   each start of a coding session and each line typed into one.
 

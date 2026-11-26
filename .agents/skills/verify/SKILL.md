@@ -61,6 +61,7 @@ The mistakes that cost the most time:
 | images-page        | Browse and forget images                                                  | [references/feature-images-page.md](references/feature-images-page.md)               |
 | notebook-pages     | Browse notes, open a private one, forget one                              | [references/feature-notebook-pages.md](references/feature-notebook-pages.md)         |
 | google-connections | Connect a Google account and forget it                                    | [references/feature-google-connections.md](references/feature-google-connections.md) |
+| mcp-servers        | Connect an MCP server, see its tools and approve one                      | [references/feature-mcp-servers.md](references/feature-mcp-servers.md)               |
 | computer-shell     | Write and read back a shell file                                          | [references/feature-computer-shell.md](references/feature-computer-shell.md)         |
 | computer-browser   | Open a page in the assistant's browser                                    | [references/feature-computer-browser.md](references/feature-computer-browser.md)     |
 | computer-screen    | Click a point of the assistant's desktop                                  | [references/feature-computer-screen.md](references/feature-computer-screen.md)       |

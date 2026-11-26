@@ -243,6 +243,25 @@ The `mcp.servers` tool lists every server that is not removed, with its state, i
 health and the count of its tools that are exposed, stopped and hidden. The conversation holds it
 beside the proxied tools. The config load refuses `mcp` as a server ID.
 
+## The servers page
+
+Settings → MCP servers in the web client lists every server that is not removed. `mcp.listServers`
+feeds it, and the page refreshes when the `mcp` live topic changes. Each server shows:
+
+- its state: held while its facts wait for approval, added after;
+- its sign-in: not added, not signed in, needs sign-in, or signed in;
+- its health, and for an unhealthy server the last error and the next try;
+- its tools by name, each with its pin state.
+
+A server that is added and has no recorded sign-in has no grant, and its card shows Connect. A
+server whose newest listing found its grant marked `needs_consent`, or moved to another
+authorization server, shows Sign in again. Both buttons call `mcp.connect` with the page's origin
+and send the browser to the authorize URL that comes back. The OAuth return route then sends the
+browser to this page. A held server shows a link to its proposal in place of a button. The proposals
+of the `mcp` family, for a server and for a tool, show on the same approval cards as every other
+proposal, with the cause worded as "your config adds an MCP server or widens what one may do" or "an
+MCP server lists a tool that you have not allowed in this form".
+
 ## Notices to the user
 
 A trusted server's change to a tool, and a tool that a listing drops, each write an `mcp.notice`

@@ -208,6 +208,35 @@ test('it refuses http for a service that is not the deployment own', async () =>
   ).rejects.toThrow(CredentialRefusalError);
 });
 
+test('it takes http to the host that a pairing names in a test build', async () => {
+  const ctx = await setupTest();
+
+  const local = ctx.serveLocal(() => new Response('paired'));
+  const origin = `http://127.0.0.1:${local.port}`;
+
+  const fetchWith = ctx.store.fetcher(null, [origin], {
+    pairing: { host: '127.0.0.1', range: '127.0.0.0/8' },
+  });
+
+  const reply = await fetchWith(`${origin}/x`);
+  const text = await reply.text();
+
+  expect(text).toBe('paired');
+});
+
+test('it refuses http to a host that a pairing names when the host is not loopback', async () => {
+  const ctx = await setupTest();
+
+  const fetchWith = ctx.store.fetcher(null, ['http://paired.example.test'], {
+    pairing: { host: 'paired.example.test', range: '127.0.0.0/8' },
+  });
+
+  expect(fetchWith('http://paired.example.test/x')).rejects.toThrowWithMessage(
+    CredentialRefusalError,
+    'http://paired.example.test is not an https origin',
+  );
+});
+
 test.each(['Authorization', 'proxy-authorization', 'Cookie', 'X-Api-Key'])(
   'it refuses a request that sets the %s header',
   async (header) => {

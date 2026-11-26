@@ -6,8 +6,8 @@ Every external server, your own included, reaches the model only through nixie's
 MCP client, and each of the server's tools becomes one of nixie's tools, with a pinned hash, an
 effect declaration you make, and a name prefixed with the server's ID. The proxy uses the v2
 TypeScript MCP client and arrives with its first 2 servers, a work tracker and a delivery-metrics
-server of your own, reached over HTTPS. The [MCP proxy build](../../queue/mcp-proxy-build.md) holds
-the contracts.
+server of your own, reached over HTTPS. The
+[MCP proxy](../../../architecture/connectors/mcp-proxy.md) architecture doc holds the contracts.
 
 ## Adding a server
 

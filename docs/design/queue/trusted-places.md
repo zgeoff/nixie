@@ -477,4 +477,5 @@ and when a call last used it. You add, change and remove entries there. The host
 
 - Groups of places, such as "every bank". A later design can add them over the same keys.
 - A place's history beyond its records.
-- Trust for MCP servers, which the [MCP proxy design](mcp-proxy-build.md) keeps in its own config.
+- Trust for MCP servers, which the [MCP proxy](../../architecture/connectors/mcp-proxy.md) keeps in
+  its own config.

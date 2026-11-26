@@ -91,13 +91,19 @@ interface SiteState {
   latestAccessToken: string | null;
 }
 
-// A real local HTTPS site that plays one MCP server and the authorization server that guards it:
-// Streamable HTTP at /mcp, OAuth 2.1 with the authorization code grant and PKCE, a public client,
-// and a refresh token that rotates at each use. A test reaches it over the pinned connection.
-export async function startStandInMcpSite(
-  options: StandInMcpSiteOptions = {},
-): Promise<StandInMcpSite> {
-  const host = 'mcp.test';
+// The stand-in MCP server and its authorization server without a listener: Streamable HTTP at /mcp,
+// OAuth 2.1 with the authorization code grant and PKCE, a public client, and a refresh token that
+// rotates at each use. A site serves `respond`, then sets the origin it listens at.
+export type StandInMcpControls = Omit<StandInMcpSite, 'host' | 'origin' | 'mcpURL' | 'ca'>;
+
+export interface StandInMcpHandler {
+  readonly controls: StandInMcpControls;
+  readonly clientID: string;
+  readonly setOrigin: (origin: string) => void;
+  readonly respond: (request: Request) => Promise<Response> | Response;
+}
+
+export function createStandInMcpHandler(options: StandInMcpSiteOptions = {}): StandInMcpHandler {
   const clientID = 'nixie-stand-in';
 
   const state: SiteState = {
@@ -122,52 +128,65 @@ export async function startStandInMcpSite(
   const tokenRequests: Record<string, string>[] = [];
   const origin = { value: '' };
 
-  const site = await startTestSite({
-    names: [host],
+  return {
+    clientID,
+    setOrigin: (value) => {
+      origin.value = value;
+    },
     respond: (request) =>
       answerRequest({ request, origin: origin.value, state, calls, tokenRequests, clientID }),
-  });
-
-  origin.value = `https://${host}:${String(site.port)}`;
-
-  return {
-    host,
-    origin: origin.value,
-    mcpURL: `${origin.value}/mcp`,
-    ca: site.ca,
-    clientID,
-    setTools: (tools) => {
-      state.tools = tools;
+    controls: {
+      clientID,
+      setTools: (tools) => {
+        state.tools = tools;
+      },
+      onCall: (hook) => {
+        state.callHook = hook;
+      },
+      onInitialize: (hook) => {
+        state.initializeHook = hook;
+      },
+      failListings: (isFailing) => {
+        state.isListingFailing = isFailing;
+      },
+      rejectTokens: (isRejecting) => {
+        state.isRejectingTokens = isRejecting;
+      },
+      refuseRefresh: (isRefusing) => {
+        state.isRefreshRefused = isRefusing;
+      },
+      moveTokenEndpoint: (isMoved) => {
+        state.isTokenEndpointMoved = isMoved;
+      },
+      serveEndlessPages: (delayMs) => {
+        state.endlessPageDelayMs = delayMs;
+      },
+      expireAccessTokens: () => {
+        state.accessTokens.clear();
+      },
+      calls,
+      tokenRequests,
+      readLatestAccessToken: () => state.latestAccessToken,
+      readListingCount: () => state.listings,
     },
-    onCall: (hook) => {
-      state.callHook = hook;
-    },
-    onInitialize: (hook) => {
-      state.initializeHook = hook;
-    },
-    failListings: (isFailing) => {
-      state.isListingFailing = isFailing;
-    },
-    rejectTokens: (isRejecting) => {
-      state.isRejectingTokens = isRejecting;
-    },
-    refuseRefresh: (isRefusing) => {
-      state.isRefreshRefused = isRefusing;
-    },
-    moveTokenEndpoint: (isMoved) => {
-      state.isTokenEndpointMoved = isMoved;
-    },
-    serveEndlessPages: (delayMs) => {
-      state.endlessPageDelayMs = delayMs;
-    },
-    expireAccessTokens: () => {
-      state.accessTokens.clear();
-    },
-    calls,
-    tokenRequests,
-    readLatestAccessToken: () => state.latestAccessToken,
-    readListingCount: () => state.listings,
   };
+}
+
+// A real local HTTPS site that plays the stand-in MCP server. A test reaches it over the pinned
+// connection.
+export async function startStandInMcpSite(
+  options: StandInMcpSiteOptions = {},
+): Promise<StandInMcpSite> {
+  const host = 'mcp.test';
+  const handler = createStandInMcpHandler(options);
+
+  const site = await startTestSite({ names: [host], respond: handler.respond });
+
+  const origin = `https://${host}:${String(site.port)}`;
+
+  handler.setOrigin(origin);
+
+  return { ...handler.controls, host, origin, mcpURL: `${origin}/mcp`, ca: site.ca };
 }
 
 interface SiteRequest {
