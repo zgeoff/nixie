@@ -41,6 +41,8 @@ async function setupTest() {
 
   const session = await store.sessions.create({ deviceName: 'desk panel' });
 
+  await deviceStore.screenSessions.create({ sessionID: session.sessionID });
+
   await setupSignedInBrowser(view, { appURL: proxy.url, token: session.token });
 
   await view.evaluate('localStorage.clear()');
