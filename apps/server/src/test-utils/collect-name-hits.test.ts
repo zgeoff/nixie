@@ -25,7 +25,17 @@ test.each([
   { title: 'a word of a string', source: "const text = 'the google account';" },
   { title: 'the last word of an identifier', source: 'const readGoogle = 1;' },
   { title: 'an identifier that is the name alone', source: 'const google = 1;' },
+  { title: 'the operand of in', source: "const has = 'google' in error;" },
+  { title: 'the key of an indexed access type', source: "type Kind = Refusal['google'];" },
+  { title: 'the key of an element access', source: "const kind = refusal['mcp'];" },
   { title: 'a comment marker inside a string', source: "const url = 'https://x.test'; // google" },
 ])('it leaves out a name that is only $title', (row) => {
   expect(collectNameHits(row.source, ['google', 'mcp'])).toStrictEqual([]);
 });
+
+test.each(['text.searchParams', 'text.codePointAt(0)'])(
+  'it leaves out the platform identifier in %s',
+  (source) => {
+    expect(collectNameHits(source, ['search', 'code'])).toStrictEqual([]);
+  },
+);

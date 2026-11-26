@@ -98,10 +98,12 @@ from one. Each is an entry in `apps/server/src/leak/leak-exceptions.ts`, and the
 feature removes it:
 
 - Core modules that name a feature ID or the system of an adapter: `libs/contract`, and the modules
-  `api`, `backup`, `budgets`, `credentials`, `definitions`, `log`, `memory`, `models`, `notebook`,
-  `policy`, `prompts`, `proposals`, `reminders`, `sandbox`, `sessions`, `tasks`, `tools`, `triggers`
-  and `skills` hold such names, which the retrofits of the computer and code, Google, calls and
-  devices, and MCP, spend, search and images remove.
+  `api`, `budgets`, `definitions`, `log`, `models`, `policy`, `proposals`, `sandbox`, `sessions`,
+  `tasks`, `tools` and `triggers` hold such names, which the retrofits of the computer and code,
+  Google, calls and devices, and MCP, spend and images remove.
+- Ordinary words that match a feature ID and stay, each with its reason in the exceptions file: the
+  sign-in and enrolment codes, the OAuth code verifier, and the search mode of memory recall and the
+  note index, which are not the code or web search features.
 - Core modules that depend on a feature module: `actions` on connectors; `api` on calls, coding,
   connections, connectors, devices, mail, MCP and spend; `definitions` on calls; and `sessions` on
   calls, connectors, devices and spend.

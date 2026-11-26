@@ -40,10 +40,25 @@
       },
       // a core module that reaches a feature module today, directly or through the modules it
       // depends on. It has no dependency rule of its own, because turbo checks a package's
-      // transitive dependencies and so cannot take a rule per exception. The exceptions file holds
-      // each direct import, and a test in apps/server fails on a direct dependency that it lacks.
-      // The retrofits remove the tag, so a package tagged core is checked in full
-      "leaking": {},
+      // transitive dependencies and so cannot take a rule per exception. The deny list keeps what a
+      // module never reaches. The exceptions file holds each direct import of a feature module, and
+      // a test in apps/server fails on a direct dependency that it lacks. The retrofits remove the
+      // tag, so a package tagged core is checked in full
+      "leaking": {
+        "dependencies": {
+          "deny": [
+            "app",
+            "client",
+            "sidecar",
+            "adapter",
+            "guest",
+            "eval",
+            "verify",
+            "integration",
+            "deploy"
+          ]
+        }
+      },
       // a feature module may also depend on core modules; the tags cannot say which other feature
       // modules it may reach, so review holds the rule that it reaches only the features it requires
       "feature": {

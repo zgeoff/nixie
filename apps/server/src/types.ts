@@ -206,14 +206,26 @@ export type StartOutage = Readonly<{
 // Builds the `coding.start` tool from what the conversation holds that it shares with `task.start`.
 export type BuildCodingStart = (start: CodingStartParts) => ToolDefinition;
 
-export interface NameException {
+interface NameExceptionBase {
   // a package folder, such as modules/api, or one file
   readonly where: string;
 
   // the feature IDs and outside-service names that the code there holds
   readonly names: readonly string[];
+}
+
+// A name that a retrofit removes
+interface RetrofitNameException extends NameExceptionBase {
   readonly removedBy: 'GEO-2878' | 'GEO-2879' | 'GEO-2880' | 'GEO-2881';
 }
+
+// An ordinary word that has nothing to do with the feature it matches, so no retrofit removes it
+interface CoincidenceNameException extends NameExceptionBase {
+  readonly removedBy: 'never';
+  readonly reason: string;
+}
+
+export type NameException = RetrofitNameException | CoincidenceNameException;
 
 export interface ImportException {
   // a package folder, such as modules/api

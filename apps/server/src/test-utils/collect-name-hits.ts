@@ -1,3 +1,11 @@
+// Identifiers that the platform defines, which say nothing about a feature
+const platformIdentifiers: ReadonlySet<string> = new Set([
+  'codePoint',
+  'codePointAt',
+  'fromCodePoint',
+  'searchParams',
+]);
+
 const tokenPattern =
   /\/\*[\s\S]*?\*\/|\/\/[^\n]*|(?<quote>['"`])(?<text>(?:\\.|(?!\k<quote>)[^\\])*)\k<quote>|[A-Za-z_$][\w$]*/gu;
 
@@ -9,17 +17,28 @@ export function collectNameHits(source: string, names: readonly string[]): strin
     const text = match.groups?.['text'];
 
     if (text !== undefined) {
-      found.add(toComparable(text));
+      if (!isPropertyName(source, match.index, match[0].length)) {
+        found.add(toComparable(text));
+      }
     } else if (!match[0].startsWith('/')) {
       const words = splitWords(match[0]);
 
-      if (words.length > 1) {
+      if (words.length > 1 && !platformIdentifiers.has(match[0])) {
         found.add(toComparable(words[0] ?? ''));
       }
     }
   }
 
   return names.filter((name) => found.has(toComparable(name)));
+}
+
+// A string that names a property, as the operand of `in` or the key of an indexed access, holds a
+// word of the data it describes and never a feature.
+function isPropertyName(source: string, index: number, length: number): boolean {
+  const after = source.slice(index + length);
+  const before = source.slice(0, index);
+
+  return /^\s+in\s/u.test(after) || (after.startsWith(']') && /[\w\])]\[$/u.test(before));
 }
 
 function toComparable(text: string): string {

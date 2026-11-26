@@ -1,13 +1,36 @@
 import type { LeakExceptions } from '../types';
 
 // The places where the code breaks the feature rules today. Each entry names the work item whose
-// retrofit removes it, and a test fails on an entry that matches nothing.
+// retrofit removes it, or says why an ordinary word that matches a feature stays. A test fails on an
+// entry that matches nothing.
 export const leakExceptions: LeakExceptions = {
   names: [
     {
       where: 'libs/contract',
-      names: ['code', 'computer'],
+      names: ['computer'],
       removedBy: 'GEO-2878',
+    },
+    {
+      where: 'libs/contract/src/contract/contract.ts',
+      names: ['code'],
+      removedBy: 'GEO-2878',
+    },
+    {
+      where: 'libs/contract/src/file/code-file-schema.ts',
+      names: ['code'],
+      removedBy: 'GEO-2878',
+    },
+    {
+      where: 'libs/contract/src/contract/passkey-contract.ts',
+      names: ['code'],
+      removedBy: 'never',
+      reason: 'the host sign-in code, a one-time code and no sandbox',
+    },
+    {
+      where: 'libs/contract/src/contract/memory-view-contract.ts',
+      names: ['search'],
+      removedBy: 'never',
+      reason: 'the search mode of the memory view, and not the web search feature',
     },
     {
       where: 'libs/contract',
@@ -21,13 +44,46 @@ export const leakExceptions: LeakExceptions = {
     },
     {
       where: 'libs/contract',
-      names: ['images', 'mcp', 'search', 'spend'],
+      names: ['images', 'mcp', 'spend'],
       removedBy: 'GEO-2881',
     },
     {
       where: 'modules/api',
-      names: ['code', 'computer'],
+      names: ['computer'],
       removedBy: 'GEO-2878',
+    },
+    {
+      where: 'modules/api/src/image/write-image-forget.ts',
+      names: ['code'],
+      removedBy: 'GEO-2878',
+    },
+    {
+      where: 'modules/api/src/record/write-record-forget.ts',
+      names: ['code'],
+      removedBy: 'GEO-2878',
+    },
+    {
+      where: 'modules/api/src/types.ts',
+      names: ['code'],
+      removedBy: 'GEO-2878',
+    },
+    {
+      where: 'modules/api/src/enrolment',
+      names: ['code'],
+      removedBy: 'never',
+      reason: 'the enrolment code, a one-time code and no sandbox',
+    },
+    {
+      where: 'modules/api/src/passkey',
+      names: ['code'],
+      removedBy: 'never',
+      reason: 'the sign-in code, a one-time code and no sandbox',
+    },
+    {
+      where: 'modules/api/src/memory/create-memory-view-procedures.ts',
+      names: ['search'],
+      removedBy: 'never',
+      reason: 'the search mode of the memory view, and not the web search feature',
     },
     {
       where: 'modules/api',
@@ -41,13 +97,8 @@ export const leakExceptions: LeakExceptions = {
     },
     {
       where: 'modules/api',
-      names: ['coding', 'images', 'mcp', 'search', 'spend'],
+      names: ['coding', 'images', 'mcp', 'spend'],
       removedBy: 'GEO-2881',
-    },
-    {
-      where: 'modules/backup',
-      names: ['code'],
-      removedBy: 'GEO-2878',
     },
     {
       where: 'modules/budgets',
@@ -57,17 +108,13 @@ export const leakExceptions: LeakExceptions = {
     {
       where: 'modules/credentials',
       names: ['code'],
-      removedBy: 'GEO-2878',
+      removedBy: 'never',
+      reason: 'the OAuth code verifier, and no sandbox',
     },
     {
       where: 'modules/credentials',
       names: ['atc'],
       removedBy: 'GEO-2881',
-    },
-    {
-      where: 'modules/definitions',
-      names: ['code'],
-      removedBy: 'GEO-2878',
     },
     {
       where: 'modules/definitions',
@@ -91,13 +138,9 @@ export const leakExceptions: LeakExceptions = {
     },
     {
       where: 'modules/memory',
-      names: ['code'],
-      removedBy: 'GEO-2878',
-    },
-    {
-      where: 'modules/memory',
       names: ['search'],
-      removedBy: 'GEO-2881',
+      removedBy: 'never',
+      reason: 'the search mode of memory recall, and not the web search feature',
     },
     {
       where: 'modules/models',
@@ -106,13 +149,9 @@ export const leakExceptions: LeakExceptions = {
     },
     {
       where: 'modules/notebook',
-      names: ['code'],
-      removedBy: 'GEO-2878',
-    },
-    {
-      where: 'modules/notebook',
       names: ['search'],
-      removedBy: 'GEO-2881',
+      removedBy: 'never',
+      reason: 'the search mode of the note index, and not the web search feature',
     },
     {
       where: 'modules/policy',
@@ -125,19 +164,9 @@ export const leakExceptions: LeakExceptions = {
       removedBy: 'GEO-2881',
     },
     {
-      where: 'modules/prompts',
-      names: ['code'],
-      removedBy: 'GEO-2878',
-    },
-    {
       where: 'modules/proposals',
       names: ['mcp'],
       removedBy: 'GEO-2881',
-    },
-    {
-      where: 'modules/reminders',
-      names: ['code'],
-      removedBy: 'GEO-2878',
     },
     {
       where: 'modules/sandbox',
@@ -166,8 +195,14 @@ export const leakExceptions: LeakExceptions = {
     },
     {
       where: 'modules/sessions',
-      names: ['images', 'mcp', 'search', 'spend'],
+      names: ['images', 'mcp', 'spend'],
       removedBy: 'GEO-2881',
+    },
+    {
+      where: 'modules/sessions/src/utils/memory-recalled-codec.ts',
+      names: ['search'],
+      removedBy: 'never',
+      reason: 'the search mode of memory recall, and not the web search feature',
     },
     {
       where: 'modules/tasks',

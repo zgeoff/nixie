@@ -126,9 +126,10 @@ of its images and offers none of its tools or pages.
   `requireFeature` in `modules/api` is the one guard that throws it.
 - Two checks keep a feature from leaking into a core module. The names check, a test in
   `apps/server`, fails when a core module or the contract holds a feature ID or the outside-service
-  name of an adapter, as an identifier or a string literal. The imports check is `turbo boundaries`,
-  which splits the `module` tag into `core` and `feature`: a `core` module depends only on `core`
-  modules and libs.
+  name of an adapter, as an identifier or a string literal. A string that is the operand of `in` or
+  the key of an indexed access is not a hit. The imports check is `turbo boundaries`, which splits
+  the `module` tag into `core` and `feature`: a `core` module depends only on `core` modules and
+  libs.
 - `apps/server/src/leak/leak-exceptions.ts` lists each leak that the code still holds, with the work
   item whose retrofit removes it. Both checks read it, and a test fails when an exception matches
   nothing. A module that reaches a feature module today carries the `leaking` tag in place of
