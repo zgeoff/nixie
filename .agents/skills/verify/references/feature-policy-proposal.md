@@ -113,7 +113,7 @@ Before you start:
    ```bash
    bun verify proposals --tool memory.export --waiting none
    bun verify db query "select state from proposals where family = 'action'"
-   bun verify db query "select json_extract(payload, '$.outcome') as outcome, json_extract(payload, '$.family') as family from records where kind = 'proposals.settled'"
+   bun verify db query "select json_extract(payload, '$.outcome') as outcome, json_extract(payload, '$.family') as family from records where kind = 'proposals.settled' and json_extract(payload, '$.family') = 'action'"
    ```
 
    Expect: `proposals` exits 0. The first query returns one row with `state` `approved`. The second
