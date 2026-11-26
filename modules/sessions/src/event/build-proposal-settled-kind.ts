@@ -19,6 +19,9 @@ export function buildProposalSettledKind(
 ): EventKind<ProposalSettledEvent> {
   return {
     name: 'proposals_settled',
+
+    // a settlement is one the owner's answer made, so none of them drops past the cap
+    isUncapped: true,
     read: async (range) => {
       const records = await readRecords(log, {
         afterSequence: range.after,

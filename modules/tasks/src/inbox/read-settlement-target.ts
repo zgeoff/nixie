@@ -1,20 +1,17 @@
 import { isFinishedState } from '@heynixie/task-control';
 import type { Transaction } from 'kysely';
-import { z } from 'zod';
+import { readRunRows } from '../run/read-run-rows';
 import type { TasksTables } from '../types';
 
 export interface SettlementTarget {
   readonly thread: string;
 
-  // the proposing task's name, when it had closed and the settlement went to its starter
+  // the proposing task's ID, when it had closed and the settlement went to another thread
   readonly task: string | null;
 }
 
-const createdSchema = z.object({ name: z.string() });
-
-// Where a settlement for a proposer's thread goes. A task that has closed takes no input, so its
-// settlement goes to the thread of its starter, with the task's name. A task with no starter keeps
-// the settlement on its own thread, where it wakes nothing.
+// A closed task takes no input, so its settlement goes to the report target its latest task run
+// pinned, else to its starter, and names the task by ID: its name is erasable in the log.
 export async function readSettlementTarget(
   tx: Transaction<unknown>,
   thread: string,
@@ -22,16 +19,20 @@ export async function readSettlementTarget(
   const task = await tx
     .$extendTables<TasksTables>()
     .selectFrom('tasks')
-    .innerJoin('records', 'records.sequence', 'tasks.created_sequence')
-    .select(['tasks.state', 'tasks.started_by', 'records.payload'])
-    .where('tasks.task_id', '=', thread)
+    .select(['state', 'started_by'])
+    .where('task_id', '=', thread)
     .executeTakeFirst();
 
-  if (task === undefined || !isFinishedState(task.state) || task.started_by === null) {
+  if (task === undefined || !isFinishedState(task.state)) {
     return { thread, task: null };
   }
 
-  const created = createdSchema.safeParse(JSON.parse(task.payload));
+  const runs = await readRunRows(tx, thread);
 
-  return { thread: task.started_by, task: created.success ? created.data.name : thread };
+  const pinned = runs.findLast((run) => run.opened.report.target !== null)?.opened.report.target;
+  const target = pinned ?? task.started_by;
+
+  return target === null || target === undefined
+    ? { thread, task: null }
+    : { thread: target, task: thread };
 }
