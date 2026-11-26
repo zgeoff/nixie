@@ -4,6 +4,7 @@ export type { IPAddress } from './parse-ip-address';
 export { parseIPAddress } from './parse-ip-address';
 export type { HostLookups } from './resolve-host-addresses';
 export { resolveHostAddresses } from './resolve-host-addresses';
+export { isLoopbackHost } from './range/is-loopback-host';
 export { toBareHost } from './to-bare-host';
 export type { CheckingProxy, CheckingProxyOptions, SocketProxy } from './start-checking-proxy';
 export { startCheckingProxy, startSocketProxy } from './start-checking-proxy';

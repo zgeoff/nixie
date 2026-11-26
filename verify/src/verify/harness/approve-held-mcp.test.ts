@@ -1,23 +1,33 @@
 import { expect, test } from 'bun:test';
 import { approveHeldMcp } from './approve-held-mcp';
 
+function setupTest() {
+  const asked: unknown[] = [];
+
+  return {
+    asked,
+    approveWith: (approved: number, label: 'Add the server' | 'Allow the tool') =>
+      approveHeldMcp((operation, args) => {
+        asked.push([operation, args]);
+
+        return Promise.resolve(approved);
+      }, label),
+  };
+}
+
 test.each([
   { label: 'Add the server', change: 'server' },
   { label: 'Allow the tool', change: 'tool' },
 ] as const)('it asks the server to approve the $change cards of the label $label', async (row) => {
-  const asked: unknown[] = [];
+  const ctx = setupTest();
 
-  const approved = await approveHeldMcp((operation, args) => {
-    asked.push([operation, args]);
+  const approved = await ctx.approveWith(2, row.label);
 
-    return Promise.resolve(2);
-  }, row.label);
-
-  expect([approved, asked]).toStrictEqual([2, [['approveMcp', { change: row.change }]]]);
+  expect([approved, ctx.asked]).toStrictEqual([2, [['approveMcp', { change: row.change }]]]);
 });
 
 test('it fails when the server approved no card', () => {
-  const approval = approveHeldMcp(() => Promise.resolve(0), 'Add the server');
+  const ctx = setupTest();
 
-  expect(approval).rejects.toThrow();
+  expect(ctx.approveWith(0, 'Add the server')).rejects.toThrow();
 });

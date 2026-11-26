@@ -1,4 +1,4 @@
-import { expect, test } from 'bun:test';
+import { expect, onTestFinished, spyOn, test } from 'bun:test';
 import { waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { mcpStore } from '../mocks/mcp-store';
@@ -6,10 +6,22 @@ import { publishMockChanged } from '../mocks/mock-live';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { renderRoute } from '../test-utils/render-route';
 
-test('it says no server is configured when the proxy holds none', async () => {
+async function setupTest() {
+  const assign = spyOn(globalThis.location, 'assign').mockImplementation(() => {});
+
+  onTestFinished(() => {
+    assign.mockRestore();
+  });
+
   await createDeviceSession();
 
-  const rendered = renderRoute('/settings/mcp');
+  return { assign, user: userEvent.setup(), render: () => renderRoute('/settings/mcp') };
+}
+
+test('it says no server is configured when the proxy holds none', async () => {
+  const ctx = await setupTest();
+
+  const rendered = ctx.render();
 
   const found = await rendered.findByText('No MCP server is configured.');
 
@@ -17,29 +29,30 @@ test('it says no server is configured when the proxy holds none', async () => {
 });
 
 test('it offers Connect for a server with no grant, and starts its sign-in', async () => {
-  const user = userEvent.setup();
-
-  await createDeviceSession();
+  const ctx = await setupTest();
 
   mcpStore.add({ server: 'tracker', signIn: 'no_grant' });
 
-  const rendered = renderRoute('/settings/mcp');
+  const rendered = ctx.render();
 
   const card = await rendered.findByRole('listitem', { name: 'tracker' });
 
-  await user.click(within(card).getByRole('button', { name: 'Connect to tracker' }));
+  await ctx.user.click(within(card).getByRole('button', { name: 'Connect to tracker' }));
 
   await waitFor(() => {
-    expect(mcpStore.connects).toStrictEqual([{ server: 'tracker', origin: 'https://nixie.test' }]);
+    expect([mcpStore.connects, ctx.assign.mock.calls]).toStrictEqual([
+      [{ server: 'tracker', origin: 'https://nixie.test' }],
+      [['/mock-mcp/authorize?server=tracker']],
+    ]);
   });
 });
 
 test('it shows a signed-in server with no sign-in button', async () => {
-  await createDeviceSession();
+  const ctx = await setupTest();
 
   mcpStore.add({ server: 'tracker', signIn: 'ok' });
 
-  const rendered = renderRoute('/settings/mcp');
+  const rendered = ctx.render();
 
   const card = await rendered.findByRole('listitem', { name: 'tracker' });
 
@@ -51,29 +64,30 @@ test('it shows a signed-in server with no sign-in button', async () => {
 });
 
 test('it offers Sign in again for a server whose grant needs consent', async () => {
-  const user = userEvent.setup();
-
-  await createDeviceSession();
+  const ctx = await setupTest();
 
   mcpStore.add({ server: 'tracker', signIn: 'needs_consent' });
 
-  const rendered = renderRoute('/settings/mcp');
+  const rendered = ctx.render();
 
   const card = await rendered.findByRole('listitem', { name: 'tracker' });
 
-  await user.click(within(card).getByRole('button', { name: 'Sign in again to tracker' }));
+  await ctx.user.click(within(card).getByRole('button', { name: 'Sign in again to tracker' }));
 
   await waitFor(() => {
-    expect(mcpStore.connects.map((connect) => connect.server)).toStrictEqual(['tracker']);
+    expect([
+      mcpStore.connects.map((connect) => connect.server),
+      ctx.assign.mock.calls,
+    ]).toStrictEqual([['tracker'], [['/mock-mcp/authorize?server=tracker']]]);
   });
 });
 
 test('it shows an unhealthy server with its last error', async () => {
-  await createDeviceSession();
+  const ctx = await setupTest();
 
   mcpStore.add({ server: 'tracker', health: 'unhealthy', lastError: 'timeout' });
 
-  const rendered = renderRoute('/settings/mcp');
+  const rendered = ctx.render();
 
   const card = await rendered.findByRole('listitem', { name: 'tracker' });
 
@@ -81,7 +95,7 @@ test('it shows an unhealthy server with its last error', async () => {
 });
 
 test('it lists the tools of a server with the state of each', async () => {
-  await createDeviceSession();
+  const ctx = await setupTest();
 
   mcpStore.add({
     server: 'tracker',
@@ -91,7 +105,7 @@ test('it lists the tools of a server with the state of each', async () => {
     ],
   });
 
-  const rendered = renderRoute('/settings/mcp');
+  const rendered = ctx.render();
 
   const tools = await rendered.findByRole('list', { name: 'Tools of tracker' });
 
@@ -102,11 +116,11 @@ test('it lists the tools of a server with the state of each', async () => {
 });
 
 test('it points a held server at its proposal and offers no sign-in', async () => {
-  await createDeviceSession();
+  const ctx = await setupTest();
 
   mcpStore.add({ server: 'tracker', state: 'held', signIn: 'not_added', proposalID: 'p1' });
 
-  const rendered = renderRoute('/settings/mcp');
+  const rendered = ctx.render();
 
   const card = await rendered.findByRole('listitem', { name: 'tracker' });
 
@@ -117,9 +131,9 @@ test('it points a held server at its proposal and offers no sign-in', async () =
 });
 
 test('it shows a server that joins while the page is open', async () => {
-  await createDeviceSession();
+  const ctx = await setupTest();
 
-  const rendered = renderRoute('/settings/mcp');
+  const rendered = ctx.render();
 
   await rendered.findByText('No MCP server is configured.');
 
@@ -130,4 +144,26 @@ test('it shows a server that joins while the page is open', async () => {
   const card = await rendered.findByRole('listitem', { name: 'metrics' });
 
   expect(card).toBeVisible();
+});
+
+test('it says a hidden tool with no open proposal is not waiting, with the reason it is hidden', async () => {
+  const ctx = await setupTest();
+
+  mcpStore.add({
+    server: 'tracker',
+    tools: [
+      {
+        tool: 'tracker.item_set',
+        state: 'hidden_new',
+        hiddenReason: 'its form is refused',
+        proposalID: null,
+      },
+    ],
+  });
+
+  const rendered = ctx.render();
+
+  const tools = await rendered.findByRole('list', { name: 'Tools of tracker' });
+
+  expect(tools).toHaveTextContent('tracker.item_set Hidden: its form is refused');
 });

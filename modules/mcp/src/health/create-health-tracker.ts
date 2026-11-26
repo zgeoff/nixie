@@ -1,6 +1,7 @@
 import { readRecords, withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import { mcpHealthChangedCodec } from '../record/mcp-health-changed-codec';
 import type { McpContext } from '../types';
+import { hasHealthViewChanged } from './has-health-view-changed';
 import { planHealth } from './plan-health';
 import type { HealthChange, ListingOutcome } from './plan-health';
 import { initialHealth } from './types';
@@ -25,6 +26,9 @@ export interface HealthTracker {
 export function createHealthTracker(
   context: McpContext,
   listAgain: (serverID: string) => Promise<unknown>,
+
+  // called when the page of the servers would show another health
+  onViewChanged: () => void,
 ): HealthTracker {
   const states = new Map<string, ServerHealth>();
   const timers = new Map<string, ReturnType<typeof setTimeout>>();
@@ -71,7 +75,8 @@ export function createHealthTracker(
   return {
     read: (serverID) => states.get(serverID) ?? initialHealth,
     record: async (serverID, outcome) => {
-      const plan = planHealth(states.get(serverID) ?? initialHealth, outcome, context.now());
+      const previous = states.get(serverID) ?? initialHealth;
+      const plan = planHealth(previous, outcome, context.now());
 
       states.set(serverID, plan.next);
 
@@ -79,6 +84,10 @@ export function createHealthTracker(
 
       if (plan.change !== null) {
         await writeHealthChange(context, serverID, plan.change);
+      }
+
+      if (hasHealthViewChanged(previous, plan.next)) {
+        onViewChanged();
       }
 
       return plan.next;

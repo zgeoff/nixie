@@ -98,13 +98,19 @@ export function registerHarnessOperations(
   });
 
   link.registerOperation('approveMcp', schemas.approveMcp, async (request) => {
-    const approved = await runMcpProposalAnswer(context, request.change);
+    const answers = await runMcpProposalAnswer(context, request.change);
 
-    if (approved === 0) {
+    if (answers.refused.length > 0) {
+      throw new Error(
+        `an MCP ${request.change} proposal was refused: ${answers.refused.join(', ')}`,
+      );
+    }
+
+    if (answers.approved === 0) {
       throw new Error(`no MCP ${request.change} proposal waits for an answer`);
     }
 
-    return approved;
+    return answers.approved;
   });
 
   link.registerOperation('releaseWriterLock', schemas.releaseWriterLock, () => {

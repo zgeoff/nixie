@@ -40,19 +40,27 @@ Before you start:
    approval · Healthy" and the link "Review the proposal to add this server". No button "Connect to
    tracker" shows.
 
-2. Read the server's card among the approvals, then approve it:
+2. Open the server's card among the approvals, check its fields, then approve it. For `<item_ref>`,
+   pass the `ref` of the line in the first snapshot that holds "Connect to the MCP server tracker."
+   and `[cursor=pointer]`. Take no other snapshot before the click, because each snapshot gives
+   every element a new `ref`.
 
    ```bash
    bun verify browser goto /proposals
    bun verify browser snapshot --until-text 'Connect to the MCP server'
+   bun verify browser click --ref '<item_ref>'
+   bun verify browser snapshot
    bun verify action approve-held-mcp --label 'Add the server'
    bun verify browser goto /settings/mcp
    bun verify browser snapshot
    ```
 
-   Expect: the first snapshot lists "Connect to the MCP server tracker." under "Always asks".
-   `approve-held-mcp` returns `data.approved` of 1. The second snapshot shows "Added · Not signed in
-   · Healthy", the button "Connect to tracker" and "No tools listed yet."
+   Expect: the first snapshot lists "Connect to the MCP server tracker." under "Always asks". After
+   the click, the second snapshot shows the card with the fields `url` (the stand-in's loopback
+   address ending in `/mcp`), `clientID`, `scopes` `read write`, `trusted` `no` and `privateRange`
+   `127.0.0.0/8`, and a button "Add the server". `approve-held-mcp` returns `data.approved` of 1.
+   The last snapshot shows "Added · Not signed in · Healthy", the button "Connect to tracker" and
+   "No tools listed yet."
 
 3. Press Connect. The browser goes to the stand-in's sign-in page, which sends it back to nixie's
    return route:
@@ -66,11 +74,15 @@ Before you start:
    Healthy" and no Connect button. The list "Tools of tracker" holds one item, "tracker.lookup
    Hidden: waits for your approval".
 
-4. Read the tool's card among the approvals, then approve it:
+4. Open the tool's card among the approvals, check its form, then approve it. For `<item_ref>`, pass
+   the `ref` of the line in the first snapshot that holds "Allow the tool tracker.lookup" and
+   `[cursor=pointer]`. Take no other snapshot before the click.
 
    ```bash
    bun verify browser goto /proposals
    bun verify browser snapshot --until-text 'Allow the tool'
+   bun verify browser click --ref '<item_ref>'
+   bun verify browser snapshot
    bun verify action approve-held-mcp --label 'Allow the tool'
    bun verify browser goto /settings/mcp
    bun verify browser snapshot --until-text 'Allowed'
@@ -79,16 +91,21 @@ Before you start:
    ```
 
    Expect: the first snapshot lists "Allow the tool tracker.lookup in the form the server lists
-   now." under "Routine". `approve-held-mcp` returns `data.approved` of 1. The last snapshot shows
-   "tracker.lookup Allowed". The query lists one row, `added`. The screenshot is evidence for the
-   reviewer.
+   now." under "Routine". After the click, the second snapshot shows the card with the field
+   `newForm`, whose JSON holds the name `lookup`, the description "Look up an issue by its number"
+   and the input property `number`, the fields `effects` `read` and `declaredBy` "the tool
+   annotations", and a button "Allow the tool". `approve-held-mcp` returns `data.approved` of 1. The
+   last snapshot shows "tracker.lookup Allowed". The query lists one row, `added`. The screenshot is
+   evidence for the reviewer.
 
 ## End state
 
 - Step 1: the server is held, with no Connect button, and a link to its proposal.
-- Step 2: the card names the server, and approving it adds the server with no sign-in.
+- Step 2: the opened card shows each fact the approval widens, and approving it adds the server with
+  no sign-in.
 - Step 3: the return route sends the browser back to the page, the server is signed in and healthy,
   and its one tool waits for approval.
-- Step 4: the tool's card shows the whole form, and approving it shows the tool as allowed.
+- Step 4: the opened card shows the whole form and the effects, and approving it shows the tool as
+  allowed.
 
 Once the end state matches, run `bun verify done`.

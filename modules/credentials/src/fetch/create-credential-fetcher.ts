@@ -5,6 +5,7 @@ import {
   CredentialRefusalError,
   buildValueForms,
   findRefusedHeader,
+  isLoopbackHost,
   makeRangeCheck,
   planHop,
   scrubBytes,
@@ -196,11 +197,12 @@ function refuseOrigin(target: FetcherTarget, url: URL): void {
     throw new CredentialRefusalError(`${url.origin} is not an origin this credential may reach`);
   }
 
-  // A test build also takes http to the host that a pairing names, for the stand-in MCP server on a
-  // loopback port.
+  // A test build also takes http to a loopback host that a pairing names, for the stand-in MCP
+  // server on a loopback port.
   const isHTTP =
     NIXIE_TEST_BUILD &&
     url.protocol === 'http:' &&
+    isLoopbackHost(url.hostname) &&
     target.options.pairing !== undefined &&
     toBareHost(url.hostname) === target.options.pairing.host;
 

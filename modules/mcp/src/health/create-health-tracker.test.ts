@@ -1,4 +1,5 @@
 import { expect, jest, onTestFinished, test } from 'bun:test';
+import { subscribeToChanged } from '@heynixie/log';
 import invariant from 'tiny-invariant';
 import { startStandInMcp } from '../test-utils/start-stand-in-mcp';
 
@@ -14,8 +15,17 @@ async function setupTest() {
   await standIn.approveServer();
   await standIn.signIn(standIn.mcp);
 
+  const changedTopics: (readonly string[])[] = [];
+
+  onTestFinished(
+    subscribeToChanged(standIn.test.log.writer, (topics) => {
+      changedTopics.push(topics);
+    }),
+  );
+
   return {
     ...standIn,
+    changedTopics,
     readHealthChangeCount: async () => {
       const changes = await standIn.test.readHealthChanges();
 
@@ -198,4 +208,25 @@ test('it schedules no retry for a listing that fails while the stop waits for it
   }
 
   expect(ctx.site.readListingCount()).toBe(listingsBefore);
+});
+
+test('it tells an open page of the changed error and next try of a server that fails a 4th listing', async () => {
+  const ctx = await setupTest();
+
+  ctx.site.failListings(true);
+
+  await ctx.mcp.list('tracker');
+  await ctx.mcp.list('tracker');
+  await ctx.mcp.list('tracker');
+
+  const afterThree = ctx.changedTopics.length;
+  const nextTryAfterThree = ctx.mcp.readHealth('tracker').nextTryAtMs;
+
+  await ctx.mcp.list('tracker');
+  await ctx.mcp.stop();
+
+  expect([
+    ctx.changedTopics.length > afterThree,
+    ctx.mcp.readHealth('tracker').nextTryAtMs === nextTryAfterThree,
+  ]).toStrictEqual([true, false]);
 });

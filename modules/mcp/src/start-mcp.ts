@@ -1,7 +1,7 @@
 import type { ActionConnector } from '@heynixie/connectors';
 import type { CredentialStore, HeldBackend } from '@heynixie/credentials';
 import type { Definitions, JSONObject, Log } from '@heynixie/log';
-import { subscribeToChanged } from '@heynixie/log';
+import { publishChanged, subscribeToChanged } from '@heynixie/log';
 import type { ProposalKindHandler } from '@heynixie/proposals';
 import { renderChangedSentence } from '@heynixie/tools';
 import { buildActionConnector } from './call/build-action-connector';
@@ -153,6 +153,32 @@ export function startMcp(options: McpOptions): Mcp {
   // whether the newest listing of each server found its grant signed in
   const signIns = new Map<string, 'ok' | 'needs_sign_in'>();
 
+  // The tool catalog reads none of what the page shows, so the proxy's own subscription skips the
+  // change that this publishes.
+  let isPublishingView = false;
+
+  const publishViewChanged = () => {
+    isPublishingView = true;
+
+    try {
+      publishChanged(options.log.writer, ['mcp']);
+    } finally {
+      isPublishingView = false;
+    }
+  };
+
+  // Records whether the newest listing found the grant signed in, and tells an open page when that
+  // changes.
+  const writeSignIn = (serverID: string, signIn: 'ok' | 'needs_sign_in') => {
+    const previous = signIns.get(serverID);
+
+    signIns.set(serverID, signIn);
+
+    if (previous !== signIn) {
+      publishViewChanged();
+    }
+  };
+
   const removeCredentials = (ids: readonly string[]) => forgetGrants({ store: options.store }, ids);
   const formatTime = options.formatTime ?? formatUTCTime;
 
@@ -170,7 +196,7 @@ export function startMcp(options: McpOptions): Mcp {
     return started;
   };
 
-  const health = createHealthTracker(context, list);
+  const health = createHealthTracker(context, list, publishViewChanged);
 
   const runOneListing = async (serverID: string): Promise<ListResult> => {
     try {
@@ -187,7 +213,7 @@ export function startMcp(options: McpOptions): Mcp {
     const server = servers.find((row) => row.server_id === serverID);
 
     if (server?.state !== 'added') {
-      signIns.set(serverID, 'ok');
+      writeSignIn(serverID, 'ok');
 
       return { kind: 'skipped' as const, reason: 'not_added' as const };
     }
@@ -203,18 +229,18 @@ export function startMcp(options: McpOptions): Mcp {
     const status = await options.store.readStatus(bindings.grant);
 
     if (status === null) {
-      signIns.set(serverID, 'needs_sign_in');
+      writeSignIn(serverID, 'needs_sign_in');
 
       return { kind: 'skipped' as const, reason: 'no_grant' as const };
     }
 
     if (status.status === 'needs_consent' || bindings.hasMoved) {
-      signIns.set(serverID, 'needs_sign_in');
+      writeSignIn(serverID, 'needs_sign_in');
 
       return { kind: 'skipped' as const, reason: 'needs_sign_in' as const };
     }
 
-    signIns.set(serverID, 'ok');
+    writeSignIn(serverID, 'ok');
 
     return {
       kind: 'open' as const,
@@ -480,6 +506,10 @@ export function startMcp(options: McpOptions): Mcp {
       await refreshTools();
 
       subscription.stop = subscribeToChanged(options.log.writer, (topics) => {
+        if (isPublishingView) {
+          return;
+        }
+
         if (topics.includes('definitions')) {
           void runRefresh(refit);
         } else if (topics.includes('mcp')) {

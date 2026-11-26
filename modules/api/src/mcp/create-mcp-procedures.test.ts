@@ -51,13 +51,17 @@ test('#mcp.listServers lists a signed-in server with its tools', async () => {
   const laptop = await createDeviceSession(ctx.context, 'laptop');
   const servers = await buildTestClient(ctx.url, laptop.token).mcp.listServers();
 
-  expect(servers).toMatchObject([
+  expect(servers).toStrictEqual([
     {
       server: 'tracker',
       state: 'added',
       signIn: 'ok',
       health: 'healthy',
-      tools: [{ tool: 'tracker.item_get', state: 'exposed' }],
+      lastError: null,
+      nextTryAtMs: null,
+      url: ctx.standIn.facts.url,
+      proposalID: null,
+      tools: [{ tool: 'tracker.item_get', state: 'exposed', hiddenReason: null, proposalID: null }],
     },
   ]);
 });

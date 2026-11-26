@@ -90,7 +90,7 @@ function ServerCard(props: ServerCardProps): ReactNode {
         <ul aria-label={`Tools of ${server.server}`}>
           {server.tools.map((tool) => (
             <li key={tool.tool}>
-              {tool.tool} <span className={meta}>{describeToolState(tool.state)}</span>
+              {tool.tool} <span className={meta}>{describeToolState(tool)}</span>
             </li>
           ))}
         </ul>
