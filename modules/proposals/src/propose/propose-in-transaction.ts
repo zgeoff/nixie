@@ -45,7 +45,7 @@ export interface Proposed {
   readonly replaced: string | null;
 }
 
-// Writes proposals.proposed, which creates the row. An open proposal of the same family, the same
+// Writes proposals.proposed, which creates the row. Each open proposal of the same family, the same
 // proposer and the same key is withdrawn first, in the same transaction.
 export async function proposeInTransaction(
   deps: ProposeDeps,
@@ -114,17 +114,20 @@ async function withdrawSameThing(
     .where('same_thing', '=', input.sameThing)
     .where('state', 'in', ['pending', 'deferred'])
     .orderBy('created_sequence', 'desc')
-    .executeTakeFirst();
+    .execute();
 
-  if (open === undefined) {
-    return null;
+  // A release before this one let several open proposals of one thing stand, so each one closes.
+  const withdrawn: { readonly proposalID: string; readonly shortID: string }[] = [];
+
+  for (const row of open) {
+    const result = await withdrawInTransaction(deps, tx, row.proposal_id, { byProposer: true });
+
+    if (result.status === 'withdrawn') {
+      withdrawn.push({ proposalID: row.proposal_id, shortID: row.short_id });
+    }
   }
 
-  const withdrawn = await withdrawInTransaction(deps, tx, open.proposal_id, { byProposer: true });
-
-  return withdrawn.status === 'withdrawn'
-    ? { proposalID: open.proposal_id, shortID: open.short_id }
-    : null;
+  return withdrawn[0] ?? null;
 }
 
 // A new short ID differs from that of every proposal ever made, open or settled.
