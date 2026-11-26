@@ -116,5 +116,6 @@ function buildFreshOpened(
     report: { mode, target: mode === 'none' ? null : setup.startedBy },
     reportShape: setup.reportShape,
     limits: { ...setup.limits, calls: {} },
+    meter: context.runSettings.meter,
   };
 }

@@ -44,10 +44,23 @@ export interface RunMeter {
   readonly render: (limit: number) => string;
 }
 
+// The gateway's count of one sandbox in whole micros. 'gone' is a sandbox that the gateway no longer
+// holds, and 'unreachable' an answer that did not come.
+export type SandboxMicrosRead =
+  | { readonly kind: 'ok'; readonly micros: number }
+  | { readonly kind: 'gone' }
+  | { readonly kind: 'unreachable' };
+
 // The server builds it once and passes it to the claim, the start and the end of a task run.
 export interface RunSettings {
+  // where a new task run's dollars come from, which its start record keeps
+  readonly meter: 'gateway' | 'records';
+
   readonly reportDefaults: { readonly start: TaskReport; readonly definition: TaskReport };
   readonly meters: readonly [RunMeter, RunMeter];
+
+  // the read that a task run's end makes of each sandbox it used, before the task run ends
+  readonly readSandboxMicros: (sandbox: string) => Promise<SandboxMicrosRead>;
 
   // the count of task messages in one exchange past which a message no longer wakes its receiver
   readonly hopLimit: number;

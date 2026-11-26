@@ -520,7 +520,6 @@ test('it clips a listed report to its first line, and gives the whole report for
           cause: 'reported',
           steps: 1,
           turns: 0,
-          dollars: 0,
         },
       ],
       nextCursor: null,
@@ -593,6 +592,38 @@ test('it names the meter, the amount used and the limit as the reason a run that
       nextCursor: null,
     },
   });
+});
+
+test('it gives no dollar figure as the reason a run that hit its dollar limit gives', async () => {
+  const ctx = await setupTest();
+  const started = await ctx.startRun('Tide check');
+
+  await writeStepCommit(ctx.context, started.claim, {
+    next: 'continue',
+    records: [],
+    acknowledged: [],
+    run: { activity: 'worked', limit: { meter: 'dollars', used: 2, limit: 2 } },
+  });
+
+  const listed = await ctx.readListed({});
+
+  const runID = listed.runs[0]?.run;
+
+  invariant(runID !== undefined, 'a run is listed');
+
+  const one = await ctx.callRuns({ run: runID });
+
+  expect(one).toStrictEqual({
+    status: 'ok',
+    result: {
+      runs: [
+        expect.objectContaining({ cause: 'limit', reason: 'the run reached its dollar limit' }),
+      ],
+      nextCursor: null,
+    },
+  });
+
+  expect(JSON.stringify(one)).not.toContain('dollars');
 });
 
 test('it returns a tool error for a run ID that no ended run has', async () => {

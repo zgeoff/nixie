@@ -4,13 +4,14 @@ import { toErrorFields } from '@heynixie/logger';
 import { z } from 'zod';
 import type { PlanLogin } from '../login/create-plan-login';
 import type { RouteLimitsByID } from '../periods/collect-trips';
-import { isLimitReached } from '../periods/is-limit-reached';
+import { isSandboxLimitReached } from '../periods/is-sandbox-limit-reached';
 import { sandboxNameSchema } from '../periods/sandbox-name-schema';
 import { toDollars } from '../periods/to-dollars';
 import type { PeriodChange, PeriodStore, PeriodStoreHandle, PeriodsConfig } from '../types';
 import { buildStatus } from './build-status';
 import type { ControlOutcome } from './control-outcome';
 import { pickRaiseChange } from './pick-raise-change';
+import { pickSandboxLimitChange } from './pick-sandbox-limit-change';
 import { pickSandboxRemoveChange } from './pick-sandbox-remove-change';
 import { pickSandboxSetChange } from './pick-sandbox-set-change';
 
@@ -30,9 +31,9 @@ export interface ControlHandlerDeps {
   readonly log: Logger;
 }
 
-const positiveMeasuresSchema = z.strictObject({
-  dollars: z.number().positive(),
-  tokens: z.number().positive(),
+const sandboxLimitBodySchema = z.strictObject({
+  dollars: z.number().min(0),
+  tokens: z.number().positive().exactOptional(),
 });
 
 const raiseBodySchema = z.strictObject({
@@ -41,7 +42,12 @@ const raiseBodySchema = z.strictObject({
   dollars: z.number().positive(),
 });
 
-const sandboxBodySchema = z.strictObject({ limit: positiveMeasuresSchema.nullable() });
+const sandboxBodySchema = z.strictObject({ limit: sandboxLimitBodySchema.nullable() });
+
+const sandboxPatchBodySchema = z.strictObject({
+  limit: sandboxLimitBodySchema.nullable(),
+  revision: z.int().nonnegative().exactOptional(),
+});
 
 export function makeControlHandler(
   deps: ControlHandlerDeps,
@@ -106,11 +112,9 @@ export function makeControlHandler(
     return Response.json({
       dollars: toDollars(held?.micros ?? 0),
       tokens: held?.tokens ?? 0,
-      tripped:
-        held?.limit !== undefined &&
-        held.limit !== null &&
-        (isLimitReached(held.micros, held.limit.dollars) || held.tokens >= held.limit.tokens),
+      tripped: held !== undefined && isSandboxLimitReached(held),
       lastRefusal: held?.lastRefusal ?? null,
+      limitRevision: held?.limitRevision ?? 0,
     });
   };
 
@@ -131,6 +135,26 @@ export function makeControlHandler(
       await changeStore((store) => pickSandboxSetChange(store, name.data, body.data.limit));
 
       return new Response(null, { status: 204 });
+    }
+
+    if (request.method === 'PATCH') {
+      const body = await readBody(request, sandboxPatchBodySchema);
+
+      if (body.kind === 'invalid') {
+        return renderInvalid(body.message);
+      }
+
+      const outcome = await changeStore((store) =>
+        pickSandboxLimitChange(store, name.data, body.data),
+      );
+
+      if (outcome.kind === 'unknown_sandbox') {
+        return Response.json({ error: 'not_found' }, { status: 404 });
+      }
+
+      return outcome.kind === 'revision_changed'
+        ? Response.json({ error: 'revision_changed' }, { status: 409 })
+        : new Response(null, { status: 204 });
     }
 
     if (request.method === 'DELETE') {

@@ -30,7 +30,9 @@ async function setupTest() {
   await store.change((held) => ({
     store: {
       ...held,
-      sandboxes: { alpha: { micros: 0, tokens: 0, limit: null, lastRefusal: null } },
+      sandboxes: {
+        alpha: { micros: 0, tokens: 0, limit: null, lastRefusal: null, limitRevision: 0 },
+      },
     },
     result: undefined,
   }));

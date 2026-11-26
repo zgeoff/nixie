@@ -2,6 +2,7 @@ import { onTestFinished } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { budgetProjections } from '@heynixie/budgets';
 import type { Clock } from '@heynixie/clock';
 import { countTextTokens } from '@heynixie/compaction';
 import type { Log, Projection } from '@heynixie/log';
@@ -90,6 +91,7 @@ export async function startTestSessionHost(
     deploymentKey,
     projections: [
       ...logProjections,
+      ...budgetProjections,
       ...tasksProjections,
       sandboxesProjection,
       ...(options.projections ?? []),

@@ -58,6 +58,22 @@ Before you start:
    bun verify browser snapshot
    ```
 
+4. Start a task on the route `scripted`, and read the dollars of its task run. The gateway counts
+   the task's sandbox, so the task run's dollars are that count, which the task meter writes:
+
+   ```bash
+   bun verify action script-reply --text 'I started the tide tables.' --task '{"name":"Tide tables","brief":"Write down the tides.","reply":"Tides noted."}'
+   bun verify browser goto /
+   bun verify browser type --role textbox --name Message --value 'Start a task that writes down the tides.'
+   bun verify browser click --role button --name Send
+   bun verify conversation turn --message 'Start a task that writes down the tides.' --reply 'I started the tide tables.'
+   bun verify task --name 'Tide tables' --state waiting --record task.step_committed
+   bun verify db query "select json_extract(payload, '$.reason') as reason, json_extract(payload, '$.countMicros') as micros from records where kind = 'task.meter_read' order by sequence"
+   bun verify db query "select counter, amount from spend_ledger where counter like 'task_run:%'"
+   ```
+
+   Expect: `task` exits 0, and on exit 1 run it again, up to 5 runs in all.
+
 ## End state
 
 - Under the heading "scripted", the page reads "Today: $0.50 (about A$0.76) of $100.00 (about
@@ -66,3 +82,6 @@ Before you start:
 - Under the heading "second", the page reads "Today: $2.00 (about A$3.04) of $1.50 (about A$2.28)
   (limit reached)" and "This month: $2.00 (about A$3.04) of $50.00 (about A$76)".
 - The page says that the figures in Australian dollars are approximate.
+- The first query shows a `run_start` read of 0 and a `step_end` read above 0, in that order. The
+  second shows one row, whose `amount` equals the `step_end` micros, so the task run's dollars are
+  the gateway's count of its sandbox.

@@ -15,6 +15,34 @@ const httpURLPattern = '^[Hh][Tt][Tt][Pp][Ss]?://';
 const releaseRules: readonly ReleaseRule[] = [
   { path: ['properties', 'sandbox', 'properties', 'adapter'], keywords: () => ({ enum: ['imp'] }) },
   { path: [], keywords: (node) => ({ required: [...toStrings(node['required']), 'imp'] }) },
+
+  // With a gateway, the gateway prices each reply, so a profile beside the spendStop section sets
+  // no prices. The anyOf reads: no spendStop section, or no profile with prices.
+  {
+    path: [],
+    keywords: () => ({
+      anyOf: [
+        { not: { type: 'object', properties: { spendStop: {} }, required: ['spendStop'] } },
+        {
+          type: 'object',
+          properties: {
+            models: {
+              type: 'object',
+              properties: {
+                profiles: {
+                  type: 'object',
+                  additionalProperties: {
+                    type: 'object',
+                    not: { type: 'object', properties: { prices: {} }, required: ['prices'] },
+                  },
+                },
+              },
+            },
+          },
+        },
+      ],
+    }),
+  },
   {
     path: ['properties', 'models', 'properties', 'roles'],
     keywords: () => ({ required: ['conversation'] }),

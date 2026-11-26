@@ -422,6 +422,19 @@ export interface ToolStepHold {
 
   // lowers what is left of the calling turn's budget
   readonly onSpend: (dollars: number) => void;
+
+  // set when the gateway counts the calling task's sandbox: a worker run takes its dollars off that
+  // sandbox's limit when it starts. The answer is the dollars it took, at most what the run asked
+  // for, and 0 when the sandbox has none to give or the gateway did not take them.
+  readonly onWorkerStart?: (requestedDollars: number) => Promise<number>;
+
+  // gives the planned dollars back when the worker run ends, less what it charged to the task
+  readonly onWorkerEnd?: (worker: WorkerEnded) => Promise<void>;
+}
+
+export interface WorkerEnded {
+  readonly plannedDollars: number;
+  readonly chargedDollars: number;
 }
 
 export interface StepPolicyFrame {

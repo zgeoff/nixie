@@ -630,6 +630,7 @@ test('it raises the limit of a task that a limit end paused, and claims it again
     state: 'ready',
     isPauseRequested: false,
     limits: { turns: 40, dollars: 2 },
+    sandboxLimit: null,
   });
 
   expect(claim?.lease.workID).toBe('t8q6');

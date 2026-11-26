@@ -12,9 +12,9 @@ import {
 } from '@heynixie/models';
 import type { GrantSpec } from '@heynixie/sandbox';
 import { readSandboxOwners } from '@heynixie/sandbox';
+import { SandboxCountsUnreachableError } from '@heynixie/spend';
 import type { RunStep, StepInput, StepResult, TaskLimits, TaskRun } from '@heynixie/tasks';
 import {
-  buildStepRunID,
   conversationTaskID,
   probePauseRequested,
   readStartedTaskIDs,
@@ -36,25 +36,25 @@ import type { SessionGuard } from '../utils/make-session-guard';
 import { makeSessionGuard } from '../utils/make-session-guard';
 import { runGuestPurge } from '../utils/run-guest-purge';
 import { waitForStepEnd } from '../utils/wait-for-step-end';
+import { buildLimitResult } from './build-limit-result';
 import { buildReachedLimit } from './build-reached-limit';
-import { buildSpendRecord } from './build-spend-record';
 import { buildTaskRun } from './build-task-run';
-import { createCallBudget } from './create-call-budget';
 import { getHarnessImage } from './get-harness-image';
+import { holdTaskStep } from './hold-task-step';
 import type { SystemTaskSession } from './make-system-task-runner';
 import { makeSystemTaskRunner } from './make-system-task-runner';
+import { collectCompactionDollars } from './meter/collect-compaction-dollars';
+import { createStepMeter } from './meter/create-step-meter';
 import { isGuestPurged } from './pick-cleaned-task-ids';
 import { planTaskStep } from './plan-task-step';
 import { planTaskTurnEnd } from './plan-task-turn-end';
 import { readCleanedTaskIDs } from './read-cleaned-task-ids';
-import { readLateSpend } from './read-late-spend';
 import { readRunUsage } from './read-run-usage';
 import type { StartedRun } from './read-started-run';
 import { readStartedRun } from './read-started-run';
 import { releaseTaskImp } from './release-task-imp';
 import { removeTaskSandboxes } from './remove-task-sandboxes';
 import type { SandboxRunnerOptions } from './sandbox-runner-options';
-import { writeTaskTurnSpend } from './write-task-turn-spend';
 
 export interface SandboxRunner {
   readonly runStep: RunStep;
@@ -202,9 +202,11 @@ async function removeEndedTasks(runner: TaskRunner): Promise<void> {
 
   const owners = await readSandboxOwners(options.context.log, options.sandboxes.id);
 
+  const candidates = [...new Set([...owners, ...runner.imps.keys()])];
+
   const ended = await readStartedTaskIDs(options.context, {
     end: 'ended',
-    among: [...new Set([...owners, ...runner.imps.keys()])],
+    among: candidates,
   });
 
   // One task whose removal fails stays ended, so it is in the next sweep, and the rest go now.
@@ -370,17 +372,7 @@ async function runGuardedStep(
       await releaseTaskImp(held);
     }
 
-    // The step had work when its runner claimed it, so the task keeps that work for the raise.
-    return {
-      next: 'continue',
-      records: [],
-      acknowledged: [],
-      sessionBoundary: input.sessionBoundary,
-      run: {
-        activity: 'none',
-        limit: buildReachedLimit(plan.meter, usage.used, limits),
-      },
-    };
+    return buildLimitResult(input, buildReachedLimit(plan.meter, usage.used, limits), 'none');
   }
 
   return runTaskTurn(runner, input, { run, taskRun, invalidated, ...usage });
@@ -391,7 +383,6 @@ interface TaskTurnParts {
   readonly taskRun: TaskRun;
   readonly invalidated: AbortSignal;
   readonly used: TaskLimits;
-  readonly throughSequence: number;
 }
 
 async function runTaskTurn(
@@ -399,10 +390,6 @@ async function runTaskTurn(
   input: StepInput,
   parts: TaskTurnParts,
 ): Promise<StepResult> {
-  const prices = parts.run.profile.profile.prices;
-
-  invariant(prices !== null, `the profile of task ${input.taskID} sets no prices`);
-
   await renewStaleImp(runner, input.taskID, parts.run.definitionHash);
 
   const imp = resolveTaskImp(runner, input.taskID);
@@ -410,14 +397,44 @@ async function runTaskTurn(
 
   imp.send({ type: 'acquire', reply: acquired });
 
-  const held = await acquired.promise;
+  let held: TaskImp;
+
+  try {
+    held = await acquired.promise;
+  } catch (error) {
+    if (error instanceof SandboxCountsUnreachableError) {
+      return holdTaskStep(runner.options.context.clock, input);
+    }
+
+    throw error;
+  }
 
   const context = runner.options.context;
   const limits = parts.taskRun.opened.limits;
+  const startedAtMs = context.clock.now();
 
-  const budget = createCallBudget(prices, limits.dollars - parts.used.dollars, () =>
-    readLateSpend(context, parts.taskRun, parts.throughSequence, buildStepRunID(input)),
+  const meter = createStepMeter(
+    { context, gateway: runner.options.gateway, logger: runner.options.log },
+    {
+      taskRun: parts.taskRun,
+      used: parts.used,
+      prices: parts.run.profile.profile.prices,
+    },
   );
+
+  const begun = await meter.begin(held.sandbox.id);
+
+  if (begun.kind === 'held') {
+    return holdTaskStep(runner.options.context.clock, input);
+  }
+
+  if (begun.kind === 'limit') {
+    await releaseTaskImp(imp);
+
+    return buildLimitResult(input, buildReachedLimit('dollars', begun.used, limits), 'none');
+  }
+
+  const budget = begun.budget;
 
   const ended = await runConversationStep(
     buildTaskRun(runner.options, { ...parts, ...held, budget }),
@@ -429,11 +446,16 @@ async function runTaskTurn(
     .then((result) => ({ result, error: null }))
     .catch((error: unknown) => ({ result: null, error }));
 
+  const spent = await meter.end(
+    held.sandbox.id,
+    startedAtMs,
+    collectCompactionDollars(ended.result?.records ?? []),
+  );
+
   const isPauseRequested = await probePauseRequested(context.log.writer.db, input.taskID);
 
   const plan = planTaskTurnEnd({
-    isBudgetReached: budget.signal.aborted,
-    spentDollars: budget.getSpentDollars(),
+    isLimitReached: spent.isLimitReached,
     isPauseRequested,
     next: ended.result?.next ?? null,
   });
@@ -442,45 +464,19 @@ async function runTaskTurn(
     await releaseTaskImp(imp);
   }
 
-  await writeTaskTurnSpend(
-    { ...context, logger: runner.options.log },
-    { taskID: input.taskID, taskRunID: parts.taskRun.runID },
-    plan,
-  );
-
   if (ended.result === null) {
+    if (spent.isRefused) {
+      return buildLimitResult(input, buildReachedLimit('dollars', spent.used, limits), 'worked');
+    }
+
     throw ended.error;
   }
 
-  // The turn's records underprice a turn cut short, so its commit carries the budget's tally.
   return {
     ...ended.result,
-    records:
-      plan.limitDollars === null
-        ? ended.result.records
-        : [
-            ...ended.result.records,
-            buildSpendRecord(context, {
-              taskID: input.taskID,
-              taskRunID: parts.taskRun.runID,
-              dollars: plan.limitDollars,
-            }),
-          ],
-    ...(plan.commitDollars === null ? {} : { spentDollars: plan.commitDollars }),
     run: {
       activity: 'worked',
-      ...(plan.isLimitReached
-        ? {
-            limit: buildReachedLimit(
-              'dollars',
-              {
-                turns: parts.used.turns,
-                dollars: parts.used.dollars + budget.getSpentDollars(),
-              },
-              limits,
-            ),
-          }
-        : {}),
+      ...(plan.isLimitReached ? { limit: buildReachedLimit('dollars', spent.used, limits) } : {}),
     },
   };
 }

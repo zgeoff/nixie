@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { budgetProjections, readSpendLedger } from '@heynixie/budgets';
+import { readSpendLedger } from '@heynixie/budgets';
 import { createTestCredentials } from '@heynixie/credentials/test-utils';
 import type { JSONObject, RecordKinds } from '@heynixie/log';
 import { readRecords, writeRecords } from '@heynixie/log';
@@ -54,7 +54,7 @@ async function setupTest(config: SetupConfig = {}) {
   const host = await startTestSessionHost({
     clock,
     tools: [fetchTool],
-    projections: [...spendProjections, ...budgetProjections],
+    projections: spendProjections,
   });
 
   const prices = { input: 3, cache_write: 3.75, cache_write_1h: 6, cached_input: 0.3, output: 15 };
@@ -351,7 +351,6 @@ test("it answers with the worker's last reply and the use of its calls, after a 
         minutes: 0,
         turns: expect.toBeNumber(),
         tokens: expect.toBeNumber(),
-        dollars: expect.toBeNumber(),
       },
     },
   });
@@ -470,7 +469,7 @@ test.each([
     'dollars',
     { dollars: 0.001 },
     { uncachedInputTokens: 1000, outputTokens: 0 },
-    'stopped at its dollars limit of $0.00',
+    'stopped at its dollar limit and gave no answer',
   ],
 ])(
   'it stops a run at its %s limit, with the sentence of that limit',
@@ -809,10 +808,75 @@ test('it frees the slot of a run whose sandbox create never returns, when its mi
         minutes: 0,
         turns: expect.toBeNumber(),
         tokens: expect.toBeNumber(),
-        dollars: expect.toBeNumber(),
       },
     },
   });
+});
+
+test('it starts no run, and holds no slot, when the task sandbox gives up none of its dollars', async () => {
+  const ctx = await setupTest({ workerRuns: { max: 1, whenFull: 'error' } });
+
+  ctx.guest.addKindReplies('worker', { text: 'Second.' });
+
+  const first = await ctx.callWorker(
+    { question: 'First?' },
+    { hold: { onWorkerStart: () => Promise.resolve(0) } },
+  );
+
+  const second = await ctx.callWorker({ question: 'Second?' });
+  const started = await ctx.readKinds(['worker.run_started']);
+  const ended = await ctx.readKinds(['worker.run_ended']);
+
+  expect(first).toStrictEqual({
+    status: 'error',
+    message: expect.toInclude('could not set aside the dollars of a worker'),
+  });
+
+  expect(second.status).toBe('ok');
+  expect(started).toHaveLength(1);
+
+  expect(ended.map((record) => record.payload['workerRunID'])).toStrictEqual(
+    started.map((record) => record.payload['workerRunID']),
+  );
+});
+
+test('it runs a worker on the dollars that the task sandbox gave up when they fall short of the plan', async () => {
+  const ctx = await setupTest();
+
+  ctx.guest.addKindReplies('worker', { text: 'Done.' });
+
+  await ctx.callWorker(
+    { question: 'Which cafes are open?' },
+    { hold: { onWorkerStart: () => Promise.resolve(0.25) } },
+  );
+
+  const [started] = await ctx.readKinds(['worker.run_started']);
+
+  expect(started?.payload).toMatchObject({ limits: { dollars: 0.25 }, isTaskLimit: true });
+});
+
+test('it frees the sandbox and the slot of a run when the task cannot take its planned dollars back', async () => {
+  const ctx = await setupTest({ workerRuns: { max: 1, whenFull: 'error' } });
+
+  ctx.guest.addKindReplies('worker', { text: 'First.' }, { text: 'Second.' });
+
+  const [first] = await Promise.allSettled([
+    ctx.callWorker(
+      { question: 'First?' },
+      {
+        hold: {
+          onWorkerStart: (requested) => Promise.resolve(requested),
+          onWorkerEnd: () => Promise.reject(new Error('the task sandbox did not answer')),
+        },
+      },
+    ),
+  ]);
+
+  const second = await ctx.callWorker({ question: 'Second?' });
+
+  expect(first.status).toBe('rejected');
+  expect(second.status).toBe('ok');
+  expect(ctx.destroys).toHaveLength(2);
 });
 
 test('it frees the tool run, the stops, the sandbox and the slot when the end record fails to write', async () => {
@@ -945,7 +1009,7 @@ test('it states the gateway numbers in the result of an answered run', async () 
 
   ctx.gateway.readSandbox.mockResolvedValue({
     kind: 'ok',
-    value: { dollars: 0.42, tokens: 7777, tripped: false, lastRefusal: null },
+    value: { dollars: 0.42, tokens: 7777, tripped: false, lastRefusal: null, limitRevision: 0 },
   });
 
   ctx.guest.addKindReplies('worker', { text: 'Done.' });
@@ -957,7 +1021,7 @@ test('it states the gateway numbers in the result of an answered run', async () 
     result: {
       workerRunID: expect.toBeString(),
       answer: 'Done.',
-      used: { minutes: 0, turns: 0, tokens: 7777, dollars: 0.42 },
+      used: { minutes: 0, turns: 0, tokens: 7777 },
     },
   });
 
@@ -969,7 +1033,7 @@ test('it records the dollars the gateway counted beyond the priced calls of the 
 
   ctx.gateway.readSandbox.mockResolvedValue({
     kind: 'ok',
-    value: { dollars: 0.42, tokens: 7777, tripped: false, lastRefusal: null },
+    value: { dollars: 0.42, tokens: 7777, tripped: false, lastRefusal: null, limitRevision: 0 },
   });
 
   ctx.guest.addKindReplies('worker', { text: 'Done.' });
@@ -986,7 +1050,7 @@ test('it sets the ledger rows of a run to the dollars and tokens the gateway cou
 
   ctx.gateway.readSandbox.mockResolvedValue({
     kind: 'ok',
-    value: { dollars: 0.42, tokens: 7777, tripped: false, lastRefusal: null },
+    value: { dollars: 0.42, tokens: 7777, tripped: false, lastRefusal: null, limitRevision: 0 },
   });
 
   ctx.guest.addKindReplies('worker', { text: 'Done.' });
@@ -1022,7 +1086,7 @@ test('it charges the calling task the planned dollars when the gateway does not 
     result: {
       workerRunID: expect.toBeString(),
       answer: 'Done.',
-      used: { minutes: 0, turns: 0, tokens: 9000, dollars: 0.75 },
+      used: { minutes: 0, turns: 0, tokens: 9000 },
     },
   });
 
@@ -1046,7 +1110,7 @@ test('it ends a run at a dollar limit when the gateway found its sandbox past it
 
   ctx.gateway.readSandbox.mockResolvedValue({
     kind: 'ok',
-    value: { dollars: 1.2, tokens: 10, tripped: true, lastRefusal: null },
+    value: { dollars: 1.2, tokens: 10, tripped: true, lastRefusal: null, limitRevision: 0 },
   });
 
   ctx.guest.addKindReplies('worker', { text: '', stopReason: 'tool_use' });
@@ -1055,7 +1119,7 @@ test('it ends a run at a dollar limit when the gateway found its sandbox past it
 
   expect(outcome).toStrictEqual({
     status: 'error',
-    message: expect.toInclude('stopped at its dollars limit of $1.00'),
+    message: expect.toInclude('stopped at its dollar limit and gave no answer'),
   });
 });
 
@@ -1064,7 +1128,7 @@ test('it ends a run at a token limit when the gateway found its sandbox past it'
 
   ctx.gateway.readSandbox.mockResolvedValue({
     kind: 'ok',
-    value: { dollars: 0.01, tokens: 1500, tripped: true, lastRefusal: null },
+    value: { dollars: 0.01, tokens: 1500, tripped: true, lastRefusal: null, limitRevision: 0 },
   });
 
   ctx.guest.addKindReplies('worker', { text: '', stopReason: 'tool_use' });

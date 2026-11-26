@@ -31,6 +31,7 @@ export async function readCarriedOpened(
     openedByStep: opening.stepKey,
     origin: opening.origin,
     carriesRunID: carries.runID,
+    meter: context.runSettings.meter,
     limits: pickCarriedLimits({
       kind: opening.origin.kind === 'restart' ? 'restart' : 'raise',
       first: counts.first,

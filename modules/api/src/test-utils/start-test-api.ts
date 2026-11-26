@@ -98,6 +98,9 @@ interface TestAPIOptions {
   // gives the context a spending stop on a stub gateway, with turn limits of 3 a day (cap 5) and 4 a month
   readonly isSpendOn?: boolean;
 
+  // makes the gateway the meter of each task run that opens
+  readonly isGatewayMetered?: boolean;
+
   // the clock that the log's writer and the spending stop read, the system's when unset
   readonly writerClock?: Clock;
 
@@ -160,6 +163,7 @@ export async function startTestAPI(
       logged.push(JSON.stringify({ event, fields }));
     },
     spendGateway: options.isSpendOn === true ? spendGateway : null,
+    isGatewayMetered: options.isGatewayMetered === true,
     calls: options.calls ?? null,
   });
 
@@ -214,6 +218,7 @@ interface TestContextDeps {
   readonly readTakeover: ComputerWatchPort['readTakeover'];
   readonly logger: ComputerWatchPort['logger'];
   readonly spendGateway: ReturnType<typeof buildStubSpendGateway> | null;
+  readonly isGatewayMetered: boolean;
   readonly calls: TestCallsOptions | null;
 }
 
@@ -285,7 +290,7 @@ async function createTestContext(
             display: { currency: 'AUD', readRate: () => Promise.resolve(1.52) },
           },
         }),
-    runSettings: buildTestRunSettings(),
+    runSettings: buildTestRunSettings({ meter: deps.isGatewayMetered ? 'gateway' : 'records' }),
     readDefinitionNotices: (db: Kysely<unknown>, changeIDs: readonly string[]) =>
       readDefinitionNotices(db, changeIDs, {
         now: writer.clock.now(),

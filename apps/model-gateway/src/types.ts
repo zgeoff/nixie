@@ -50,6 +50,12 @@ export interface Measures {
   readonly tokens: number;
 }
 
+// A sandbox's own limit. A limit with no tokens sets no token limit.
+export interface SandboxLimit {
+  readonly dollars: number;
+  readonly tokens?: number;
+}
+
 export type PeriodName = 'day' | 'month';
 
 export interface PeriodsConfig {
@@ -131,8 +137,11 @@ interface SandboxCount {
   readonly tokens: number;
 
   // null counts only
-  readonly limit: Measures | null;
+  readonly limit: SandboxLimit | null;
   readonly lastRefusal: Refusal | null;
+
+  // goes up by one at each write of the limit, so a conditional patch can tell a newer write
+  readonly limitRevision: number;
 }
 
 export interface PeriodStore {
@@ -140,6 +149,10 @@ export interface PeriodStore {
   readonly lost: boolean;
   readonly routes: Readonly<Record<string, RoutePeriods>>;
   readonly sandboxes: Readonly<Record<string, SandboxCount>>;
+
+  // the highest limit revision that any sandbox took, kept after its sandbox goes, so a name that
+  // registers again never takes a revision that a late patch could name
+  readonly lastLimitRevision?: number;
 }
 
 // A route's day limit, which the host command writes and which may pass the cap

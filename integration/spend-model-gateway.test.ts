@@ -1,8 +1,15 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
 import { makeKeyedFetch } from '@heynixie/egress/test-utils';
 import { startTestModelGateway } from '@heynixie/model-gateway/test-utils';
+import {
+  patchLimitUntilSet,
+  pickSandboxLimit,
+  withSandboxLimitLock,
+  writeSandboxLimit,
+} from '@heynixie/spend';
 import { createSpendGateway } from '@heynixie/spend-model-gateway';
 import { startScriptedModel } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import invariant from 'tiny-invariant';
 
 async function setupTest() {
@@ -125,7 +132,7 @@ test('it registers, reads and removes a sandbox', async () => {
 
   expect(read).toStrictEqual({
     kind: 'ok',
-    value: { dollars: 0, tokens: 0, tripped: false, lastRefusal: null },
+    value: { dollars: 0, tokens: 0, tripped: false, lastRefusal: null, limitRevision: 1 },
   });
 
   expect(removed).toStrictEqual({ kind: 'ok' });
@@ -137,6 +144,101 @@ test('it registers a sandbox as count only', async () => {
   const put = await ctx.spend.putSandbox('nixie-abc', null);
 
   expect(put).toStrictEqual({ kind: 'ok' });
+});
+
+test('it patches the limit of a sandbox and answers not_found for one the gateway lacks', async () => {
+  const ctx = await setupTest();
+
+  await ctx.spend.putSandbox('nixie-abc', null);
+
+  const patched = await ctx.spend.patchSandbox('nixie-abc', { dollars: 0.000001 });
+  const lacking = await ctx.spend.patchSandbox('nixie-none', { dollars: 1 });
+
+  expect(patched).toStrictEqual({ kind: 'ok' });
+  expect(lacking).toStrictEqual({ kind: 'not_found' });
+});
+
+test('it takes a limit of zero dollars for a sandbox that has the whole of its task run reserved', async () => {
+  const ctx = await setupTest();
+
+  await ctx.spend.putSandbox('nixie-abc', null);
+
+  const patched = await ctx.spend.patchSandbox(
+    'nixie-abc',
+    pickSandboxLimit({ startMicros: 0, leftDollars: 0 }),
+  );
+
+  const read = await ctx.spend.readSandbox('nixie-abc');
+
+  expect(patched).toStrictEqual({ kind: 'ok' });
+
+  expect(read).toStrictEqual({
+    kind: 'ok',
+    value: { dollars: 0, tokens: 0, tripped: true, lastRefusal: null, limitRevision: 2 },
+  });
+});
+
+test('it keeps a newer limit when a raise call that timed out reaches the gateway after it', async () => {
+  const ctx = await setupTest();
+
+  const keyed = makeKeyedFetch('authorization', `Bearer ${ctx.control.token}`);
+  const held = Promise.withResolvers<() => Promise<Response>>();
+
+  const sendOrHoldRaise = (input: string, init?: RequestInit): Promise<Response> => {
+    if (
+      init?.method === 'PATCH' &&
+      typeof init.body === 'string' &&
+      init.body.includes('"dollars":4')
+    ) {
+      const { signal: _, ...unbounded } = init;
+
+      held.resolve(() => keyed(input, unbounded));
+
+      return Promise.reject(new DOMException('The operation timed out.', 'TimeoutError'));
+    }
+
+    return keyed(input, init);
+  };
+
+  const spend = createSpendGateway({ url: ctx.control.url, fetch: sendOrHoldRaise });
+  const clock = createFakeClock();
+
+  const stopped = new AbortController();
+
+  await spend.putSandbox('nixie-abc', null);
+
+  const raising = patchLimitUntilSet(
+    { gateway: spend, clock },
+    { sandbox: 'nixie-abc', readLimit: () => Promise.resolve({ limit: { dollars: 4 } }) },
+    { retryMs: 5000, logger: () => {}, signal: stopped.signal },
+  );
+
+  const sendLate = await held.promise;
+
+  await withSandboxLimitLock('nixie-abc', () =>
+    writeSandboxLimit(spend, 'nixie-abc', pickSandboxLimit({ startMicros: 0, leftDollars: 0 })),
+  );
+
+  const late = await sendLate();
+
+  stopped.abort();
+
+  await raising;
+
+  const read = await spend.readSandbox('nixie-abc');
+
+  expect(late.status).toBe(409);
+
+  expect(read).toStrictEqual({
+    kind: 'ok',
+    value: {
+      dollars: 0,
+      tokens: 0,
+      tripped: true,
+      lastRefusal: null,
+      limitRevision: expect.toBeNumber(),
+    },
+  });
 });
 
 test('it removes a sandbox that the gateway lacks', async () => {

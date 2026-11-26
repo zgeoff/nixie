@@ -49,6 +49,8 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
             models: options.config.models,
             credentials: options.credentials,
             hopLimit: options.config.tasks.messaging.hopLimit,
+            ...(options.spend === null ? {} : { gateway: options.spend.gateway }),
+            logger: options.log,
           }),
           runners: buildServerTaskRunners({ coding: coding?.runner.definition ?? null }),
           taskRunLimits: options.config.models.limits.taskRun.default,

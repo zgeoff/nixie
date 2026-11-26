@@ -88,6 +88,53 @@ test('it accepts a configuration with only the required sections', () => {
   expect(ctx.validate.errors).toBeNull();
 });
 
+test.each([
+  {
+    name: 'with prices',
+    prices: { input: 1, cache_write: 1, cache_write_1h: 1, cached_input: 0.1, output: 4 },
+    isAccepted: false,
+  },
+  { name: 'with no prices', prices: undefined, isAccepted: true },
+])('it agrees with the runtime check on a profile $name beside a spendStop section', (row) => {
+  Object.assign(globalThis, { NIXIE_TEST_BUILD: false });
+
+  onTestFinished(() => {
+    Object.assign(globalThis, { NIXIE_TEST_BUILD: true });
+  });
+
+  const ctx = setupTest();
+
+  const config = {
+    models: {
+      profiles: {
+        main: {
+          harness: 'agent-sdk',
+          base_url: 'https://models.example.com',
+          credential: 'deployment:models',
+          auth_header: 'bearer',
+          model: 'model-large',
+          outside_claude: false,
+          effort: 'medium',
+          ...(row.prices === undefined ? {} : { prices: row.prices }),
+        },
+      },
+      roles: { conversation: 'main' },
+    },
+    imp: { url: 'https://impd.example.com', host_addresses: ['192.0.2.10/32'] },
+    definitions: { source: { kind: 'path', path: '/definitions' } },
+    spendStop: {
+      control: 'https://gateway.example.com:9000',
+      token: 'deployment:gateway_token',
+      modelURL: 'https://gateway.example.com',
+    },
+  };
+
+  const isPublished = ctx.validate(config);
+  const isRuntime = deploymentConfigSchema.safeParse(config).success;
+
+  expect([isPublished, isRuntime]).toStrictEqual([row.isAccepted, row.isAccepted]);
+});
+
 test('it refuses an unknown key in a section', () => {
   Object.assign(globalThis, { NIXIE_TEST_BUILD: false });
 

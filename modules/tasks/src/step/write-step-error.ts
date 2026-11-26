@@ -1,5 +1,6 @@
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import { requireLease } from '../lease/require-lease';
+import { withRunEndSettled } from '../run/with-run-end-settled';
 import { writeRunEndInTransaction } from '../run/write-run-end-in-transaction';
 import { runEndedHook } from '../runner/run-ended-hook';
 import type { StartedClaim, StepErrored, TasksContext, TasksTables } from '../types';
@@ -12,8 +13,13 @@ export async function writeStepError(
   context: TasksContext,
   claim: StartedClaim,
   failure: StepErrorOptions & { readonly error: unknown },
+  signal?: AbortSignal,
 ): Promise<StepErrored> {
-  const errored = await writeStepErrorTransaction(context, claim, failure);
+  const errored = await withRunEndSettled(
+    context,
+    () => writeStepErrorTransaction(context, claim, failure),
+    { lease: claim.lease, ...(signal === undefined ? {} : { signal }) },
+  );
 
   if (errored.nextState === 'failed') {
     await runEndedHook(context, errored.taskID, 'failed');
