@@ -55,4 +55,9 @@ afterEach(() => {
 
   globalThis.happyDOM.settings.device.prefersColorScheme = 'light';
   delete globalThis.document.documentElement.dataset['theme'];
+
+  // The connection page adds Google's scripts to the shared document, which outlives each test.
+  for (const script of globalThis.document.querySelectorAll('script')) {
+    script.remove();
+  }
 });
