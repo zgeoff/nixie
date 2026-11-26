@@ -1,10 +1,10 @@
 # Approvals
 
 Every proposal that waits for the user's answer, whatever it proposes, has one row in the
-`proposals` table and one answer path. A proposal is a tool call that policy holds, a memory write,
-a skill change, a rule change, an MCP server change or a prompt override. A client lists the rows,
-shows each with the choices the host offers, and sends one answer. The host checks the answer the
-same way for every kind.
+`proposals` table, and every answer to it goes through the same checks. A proposal is a tool call
+that policy holds, a memory write, a skill change, a rule change, an MCP server change or a prompt
+override. A client lists the rows, shows each with the choices the host offers, and sends one
+answer. The host checks the answer the same way for every kind.
 
 ## The shared row
 
