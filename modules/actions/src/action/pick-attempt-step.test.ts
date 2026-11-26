@@ -8,7 +8,7 @@ test('it goes ahead on an allow verdict', () => {
       { kind: 'go', destinations: ['team'] },
       { is_approved: 0, risk_class: 'routine' },
     ),
-  ).toStrictEqual({ kind: 'go', destinations: ['team'] });
+  ).toStrictEqual({ kind: 'go', destinations: ['team'], replyTargets: [] });
 });
 
 test('it denies on a deny verdict', () => {
@@ -62,6 +62,7 @@ test('it goes ahead with an approved routine action that a rule only asks about'
   expect(pickAttemptStep(verdict, { is_approved: 1, risk_class: 'routine' })).toStrictEqual({
     kind: 'go',
     destinations: ['team'],
+    replyTargets: [],
   });
 });
 
@@ -77,5 +78,23 @@ test('it goes ahead with an action approved under the always-ask class', () => {
   expect(pickAttemptStep(verdict, { is_approved: 1, risk_class: 'always_ask' })).toStrictEqual({
     kind: 'go',
     destinations: ['team'],
+    replyTargets: [],
+  });
+});
+
+test('it keeps the reply targets of an approved action that goes ahead', () => {
+  const verdict: AttemptVerdict = {
+    kind: 'ask',
+    cause: 'ask_rule',
+    destinations: ['sam@example.org', 'kim@example.org'],
+    replyTargets: ['sam@example.org'],
+    proposalID: 'proposal-1',
+    record: { kind: 'recovery.started', definitions: { snapshotHash: 'sha256:x' } },
+  };
+
+  expect(pickAttemptStep(verdict, { is_approved: 1, risk_class: 'routine' })).toStrictEqual({
+    kind: 'go',
+    destinations: ['sam@example.org', 'kim@example.org'],
+    replyTargets: ['sam@example.org'],
   });
 });

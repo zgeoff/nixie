@@ -5,13 +5,10 @@ import invariant from 'tiny-invariant';
 import { startGoogleConnections } from '../test-utils/start-google-connections';
 
 async function setupTest() {
-  const { run: _, ...tool } = buildMockToolDefinition({ name: 'stub.read_file' });
-
   const action: ConnectorAction = {
-    tool,
+    tool: buildMockToolDefinition({ name: 'stub.read_file' }),
     scopes: ['drive.file'],
     reconcile: { kind: 'none' },
-    run: () => Promise.resolve({ kind: 'done', result: {} }),
   };
 
   const ctx = await startGoogleConnections({ actions: [action] });

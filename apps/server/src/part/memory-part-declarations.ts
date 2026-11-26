@@ -9,6 +9,7 @@ import { makeRetriedStart } from './make-retried-start';
 import type { ServerPartValues } from './server-part-values';
 import { startChecker } from './start-checker';
 import { startConnectionsPart } from './start-connections-part';
+import { startGoogleToolsPart } from './start-google-tools-part';
 import { startNotebookPart } from './start-notebook-part';
 
 export const memoryPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>[] = [
@@ -24,15 +25,17 @@ export const memoryPartDeclarations: readonly AnyPartDeclaration<ServerPartValue
     start: (reader) => Promise.resolve(startErasureRunner(reader.get('server_parts'), reader)),
   },
   {
+    // The Gmail tools, on late-bound ports for the connections and the fetch sandbox.
+    name: 'google_tools',
+    needs: ['inputs'],
+    start: (reader) => Promise.resolve(startGoogleToolsPart(reader.get('inputs'))),
+  },
+  {
     // The credential store's database backend, and the connection's forget on the runner.
     name: 'connections',
-    needs: ['inputs', 'server_parts', 'erasure'],
+    needs: ['inputs', 'server_parts', 'erasure', 'google_tools'],
     start: makeRetriedStart('connections', (parts, reader) =>
-      startConnectionsPart(
-        parts,
-        reader.get('erasure'),
-        reader.get('inputs').options.harness?.googleURL ?? null,
-      ),
+      startConnectionsPart(parts, reader.get('erasure'), reader.get('google_tools')),
     ),
   },
   {

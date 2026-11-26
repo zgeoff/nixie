@@ -16,6 +16,7 @@ import type { APIGate } from '../utils/build-api-gate';
 import type { DecisionPointFactory } from '../utils/make-server-decisions';
 import type { ServerInputs } from './server-inputs';
 import type { CodeRunPart } from './start-code-run-part';
+import type { GoogleToolsPart } from './start-google-tools-part';
 import type { Tools } from './tools';
 
 export interface ServerPartValues {
@@ -51,6 +52,7 @@ export interface ServerPartValues {
   readonly checker: CheckerTask;
   readonly erasure: ErasureRunnerControl;
   readonly connections: Connections;
+  readonly google_tools: GoogleToolsPart;
   readonly erasure_catch_up: void;
   readonly erasure_watch: void;
   readonly turn_input_work: void;

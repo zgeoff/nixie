@@ -14,8 +14,10 @@ import { checkHarness } from './check-harness';
 import { conversationRecordSchema } from './collect-conversation-records';
 import { computerFeatures } from './computer-features';
 import { featurePaths, ignoredPaths, sharedPaths } from './feature-paths';
+import { gmailSentCommand } from './gmail-sent-command';
 import { controlRoutes } from './harness/control-routes';
 import { lastFeatures } from './last-features';
+import { liveOpensCommand } from './live-opens-command';
 import { pickTaskRefusal } from './pick-task-refusal';
 import { postControl } from './post-control';
 import { checkPreviewCommit } from './preview/check-preview-commit';
@@ -31,7 +33,6 @@ import { readProdHealth } from './prod/read-prod-health';
 import { readProdVersion } from './prod/read-prod-version';
 import { readConversationTurn } from './read-conversation-turn';
 import { readHarnessReady } from './read-harness-ready';
-import { readLiveOpens } from './read-live-opens';
 import { readModelReceived } from './read-model-received';
 import { readSessionCheck } from './read-session-check';
 import { refuseHarnessless } from './refuse-harnessless';
@@ -152,7 +153,7 @@ export function createVerifyRegistry(): Wringer {
     .action({
       name: 'script-reply',
       summary:
-        "Queue the scripted model's next reply. With --memory it first proposes that memory, with --reminder it first sets that reminder and writes a note of the memory that the result names as related, with --export it first asks to export memory, with --task it first starts that task, with --coding-task it first starts that coding task on atc, with --mail-watch it first sets a wake rule on the assistant's mailbox for mail from that address, with --mail-read it first lists the unread mail from that address and opens the newest, with --handover it first asks the user to take over the computer, for that reason, with --notebook it first writes 2 notes, one private, and links them, and with --forget-note it first forgets the note with that short ID, and with --output-tokens the closing reply reports that many output tokens, which a spending gateway prices",
+        "Queue the scripted model's next reply. With --memory it first proposes that memory, with --reminder it first sets that reminder and writes a note of the memory that the result names as related, with --export it first asks to export memory, with --task it first starts that task, with --coding-task it first starts that coding task on atc, with --mail-watch it first sets a wake rule on the assistant's mailbox for mail from that address, with --mail-read it first lists the unread mail from that address and opens the newest, with --gmail-reply it first searches the connected Google account's mail, opens the first mail and replies to it, with --handover it first asks the user to take over the computer, for that reason, with --notebook it first writes 2 notes, one private, and links them, and with --forget-note it first forgets the note with that short ID, and with --output-tokens the closing reply reports that many output tokens, which a spending gateway prices",
       effect: 'write',
       targets: ['local'],
       input: controlRoutes.addReply.input,
@@ -327,14 +328,8 @@ export function createVerifyRegistry(): Wringer {
         );
       },
     })
-    .command({
-      path: ['live', 'opens'],
-      summary: 'Count the live streams the browser opened since `up`; --opened checks the count',
-      effect: 'read',
-      args: z.strictObject({ opened: z.int().nonnegative().optional() }),
-      data: controlRoutes.liveOpens.output,
-      run: (args, ctx) => readLiveOpens(ctx, args.opened),
-    })
+    .command(gmailSentCommand)
+    .command(liveOpensCommand)
     .command({
       path: ['prod', 'conversation'],
       summary:

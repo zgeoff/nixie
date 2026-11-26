@@ -65,12 +65,17 @@ export type { SetupPlaceholders } from './google/fill-setup-steps';
 export { googleSetupSteps } from './google/google-setup-steps';
 export { collectHeldBackTools, pickAvailableActions } from './google/pick-available-actions';
 export { ScopeCheckError } from './google/check-google-scopes';
+export type { GmailAccess, GmailDeps } from './google/gmail/types';
+export { buildGmailActions } from './google/gmail/build-gmail-actions';
+export { gmailCheckNames, gmailToolNames } from './google/gmail/gmail-tool-names';
+export { gmailDeclarations } from './google/gmail/gmail-declarations';
+export { readGmailBodyFields } from './google/gmail/read-gmail-body-fields';
+export { readAttachmentContent, maxAttachmentBytes } from './google/read-attachment-content';
+export type { AttachmentContent } from './google/read-attachment-content';
 
 export type {
   ActionAttempt,
-  ActionCall,
   ActionConnector,
-  ActionResponse,
   CheckResponse,
   Connector,
   ConnectorAction,

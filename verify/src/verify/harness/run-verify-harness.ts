@@ -69,7 +69,7 @@ export async function runVerifyHarness(): Promise<void> {
   const hasMail = process.env['NIXIE_VERIFY_MAIL'] === '1';
 
   // the test build reaches Google's endpoints at this site, so no journey reaches Google
-  const google = startFakeGoogleSite();
+  const google = await startFakeGoogleSite();
 
   stack.defer(() => google.stop());
 
@@ -87,6 +87,7 @@ export async function runVerifyHarness(): Promise<void> {
     ...(isCallsOn ? { voicePricePerMinute: 0.05 } : {}),
     googleURL: google.url,
     fetchSiteURL: deviceSite.url,
+    googleAPI: google.api,
     ...(gateway === null ? {} : { atcURL: gateway.url }),
     memoryConfig: localMemoryConfig,
     ...(rates === null
@@ -251,18 +252,26 @@ export async function runVerifyHarness(): Promise<void> {
     readModelInput: () => ({ text: readLastModelInput(nixie.model.requests) }),
     readActionProposals: async () => {
       const listed = await api.client.approvals.listItems();
+      const records = await nixie.readRecords();
 
       return {
         proposals: listed.items.flatMap((item) => {
-          const tool = /^Run (?<tool>\S+)/u.exec(item.body.approveLabel)?.groups?.['tool'];
+          const record = records.find((entry) => entry.sequence === item.proposal.sequence);
+          const tool = record?.payload['tool'];
 
-          return item.proposal.kind === 'action' && tool !== undefined
+          return item.proposal.kind === 'action' && typeof tool === 'string'
             ? [{ proposalID: item.proposal.proposalID, tool }]
             : [];
         }),
       };
     },
     readLiveOpens: () => liveOpens.count,
+    readGmailSent: () => ({
+      sent: google.gmail.sent.map((mail) => ({
+        to: mail.headers.find(([name]) => name.toLowerCase() === 'to')?.[1] ?? '',
+        messageID: mail.headers.find(([name]) => name.toLowerCase() === 'message-id')?.[1] ?? '',
+      })),
+    }),
   });
 
   stack.defer(() => control.stop(true));

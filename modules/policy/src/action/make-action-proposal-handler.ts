@@ -72,6 +72,9 @@ export type BodyFields =
       // replaces the card's sentence, for a tool that says in its own words what the call does
       readonly sentence?: string;
 
+      // replaces the card's approve button, such as 'Send reply'
+      readonly approveLabel?: string;
+
       // the IDs of stored images the card shows beside its fields
       readonly images?: string[];
 
@@ -257,7 +260,9 @@ function toBody(
     ...(extra.status === 'fields' && extra.images !== undefined ? { images: extra.images } : {}),
     ...(extra.status === 'fields' && extra.screen !== undefined ? { screen: extra.screen } : {}),
     ...(extra.status === 'fields' && extra.package !== undefined ? { package: extra.package } : {}),
-    approveLabel: buildActionApproveLabel(payload.tool, destinations[0]),
+    approveLabel:
+      (extra.status === 'fields' ? extra.approveLabel : undefined) ??
+      buildActionApproveLabel(payload.tool, destinations[0]),
   };
 }
 

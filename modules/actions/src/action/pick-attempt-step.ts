@@ -2,7 +2,11 @@ import type { ActionRow } from '../types';
 import type { AttemptVerdict } from './attempt-check';
 
 export type AttemptStep =
-  | { readonly kind: 'go'; readonly destinations: readonly string[] }
+  | {
+      readonly kind: 'go';
+      readonly destinations: readonly string[];
+      readonly replyTargets: readonly string[];
+    }
   | { readonly kind: 'deny'; readonly verdict: Extract<AttemptVerdict, { kind: 'deny' }> }
   | { readonly kind: 'hold'; readonly verdict: Extract<AttemptVerdict, { kind: 'ask' }> };
 
@@ -14,7 +18,11 @@ export function pickAttemptStep(
   action: Pick<ActionRow, 'is_approved' | 'risk_class'>,
 ): AttemptStep {
   if (verdict.kind === 'go') {
-    return { kind: 'go', destinations: verdict.destinations };
+    return {
+      kind: 'go',
+      destinations: verdict.destinations,
+      replyTargets: verdict.replyTargets ?? [],
+    };
   }
 
   if (verdict.kind === 'deny') {
@@ -25,6 +33,10 @@ export function pickAttemptStep(
   const isNewlyAlwaysAsk = verdict.cause === 'always_ask' && action.risk_class === 'routine';
 
   return isAnswered && !isNewlyAlwaysAsk
-    ? { kind: 'go', destinations: verdict.destinations }
+    ? {
+        kind: 'go',
+        destinations: verdict.destinations,
+        replyTargets: verdict.replyTargets ?? [],
+      }
     : { kind: 'hold', verdict };
 }

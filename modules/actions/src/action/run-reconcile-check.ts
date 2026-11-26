@@ -73,6 +73,8 @@ async function runCheck(
       attempt: claimed.action.attempt_count,
       idempotencyKey: buildAttemptKey(claimed.action),
       destinations: [],
+      replyTargets: [],
+      attemptStartedAt: claimed.action.last_attempt_at ?? claimed.action.first_attempt_at ?? 0,
       actionHash: claimed.action.action_hash,
       deadlineAt: claimed.action.deadline_at,
     });

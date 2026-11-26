@@ -5,8 +5,8 @@ import { createGoogleConnector } from '@heynixie/connectors';
 import { createCredentialRecorder } from '@heynixie/credentials';
 import type { ErasureRegistry } from '@heynixie/log';
 import { toErrorFields } from '@heynixie/logger';
-import { buildTestGoogleHosts } from '../test/build-test-google-hosts';
 import type { ServerParts } from '../types';
+import type { GoogleToolsPart } from './start-google-tools-part';
 
 const sweepIntervalMs = 60 * 60 * 1000;
 const checkIntervalMs = 24 * 60 * 60 * 1000;
@@ -17,7 +17,7 @@ const checkIntervalMs = 24 * 60 * 60 * 1000;
 export async function startConnectionsPart(
   parts: ServerParts,
   erasure: ErasureRegistry,
-  googleURL: string | null,
+  google: GoogleToolsPart,
 ): Promise<Connections> {
   const log = parts.context.log;
   const definitions = parts.context.definitions;
@@ -39,9 +39,13 @@ export async function startConnectionsPart(
     backend,
     erasure,
     now,
-    ...(!NIXIE_TEST_BUILD || googleURL === null
-      ? {}
-      : { connector: createGoogleConnector(buildTestGoogleHosts(googleURL)) }),
+    connector: createGoogleConnector(google.hosts, [...google.actions]),
+  });
+
+  google.bindRuntime({
+    readLiveContexts: (connection) => connections.readLiveContexts(connection),
+    log,
+    clock: parts.context.clock,
   });
 
   await store.recover();

@@ -11,16 +11,11 @@ function setupTest() {
     ['stub.copy_attachment', ['gmail.modify', 'drive.file']],
   ];
 
-  const actions = specs.map(([name, scopes]): ConnectorAction => {
-    const { run: _, ...tool } = buildMockToolDefinition({ name });
-
-    return {
-      tool,
-      scopes,
-      reconcile: { kind: 'none' },
-      run: () => Promise.resolve({ kind: 'done', result: {} }),
-    };
-  });
+  const actions = specs.map(([name, scopes]): ConnectorAction => ({
+    tool: buildMockToolDefinition({ name }),
+    scopes,
+    reconcile: { kind: 'none' },
+  }));
 
   return { actions };
 }

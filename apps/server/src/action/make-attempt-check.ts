@@ -164,8 +164,12 @@ function buildVerdict(options: AttemptCheckOptions, facts: VerdictFacts): Attemp
     };
   }
 
+  const replyTargets = facts.destinations
+    .filter((destination) => destination.replyTarget)
+    .map((destination) => destination.value);
+
   if (decision.outcome !== 'ask' || facts.declaration === null) {
-    return { kind: 'go', destinations };
+    return { kind: 'go', destinations, replyTargets };
   }
 
   const cause: AskCause = decision.cause ?? 'no_rule';
@@ -196,6 +200,7 @@ function buildVerdict(options: AttemptCheckOptions, facts: VerdictFacts): Attemp
     kind: 'ask',
     cause,
     destinations,
+    replyTargets,
     proposalID: facts.input.proposalID,
     record: proposal.record,
   };

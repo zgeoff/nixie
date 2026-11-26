@@ -54,6 +54,7 @@ export function buildScriptedReplies(
         ];
 
   const mailRead = reply.mailRead === undefined ? [] : buildMailReadReplies(reply.mailRead.from);
+  const gmailReply = reply.gmailReply === undefined ? [] : buildGmailReplyReplies(reply.gmailReply);
 
   const forgetNote =
     reply.forgetNote === undefined
@@ -101,6 +102,7 @@ export function buildScriptedReplies(
       ...notebook,
       ...mailWatch,
       ...mailRead,
+      ...gmailReply,
       ...forgetNote,
       ...handover,
       ...codingStart,
@@ -118,6 +120,7 @@ export function buildScriptedReplies(
     ...notebook,
     ...mailWatch,
     ...mailRead,
+    ...gmailReply,
     ...forgetNote,
     ...handover,
     { toolUse: { name: 'mcp__nixie__task_start', input: task }, ...forConversation },
@@ -320,6 +323,41 @@ function readListedMailID(body: ScriptedBody): string {
   const mailID = /mails\\*":\[\{\\*"message\\*":\\*"(?<id>[a-z0-9]+)/u.exec(listed)?.groups?.['id'];
 
   invariant(mailID !== undefined, 'the result of the list names no mail');
+
+  return mailID;
+}
+
+// A search of the connected Google account's mail, the open of the first mail it lists, and a reply
+// to that mail. Both later calls name the mail by the ID that the search's result gave, so a search
+// that lists no mail fails the request instead.
+function buildGmailReplyReplies(
+  gmail: NonNullable<z.output<typeof controlRoutes.addReply.input>['gmailReply']>,
+) {
+  return [
+    { toolUse: { name: 'mcp__nixie__gmail_search', input: { query: gmail.query } } },
+    {
+      toolUse: {
+        name: 'mcp__nixie__gmail_read',
+        input: (body: ScriptedBody) => ({ message: readSearchedMailID(body) }),
+      },
+    },
+    {
+      toolUse: {
+        name: 'mcp__nixie__gmail_reply',
+        input: (body: ScriptedBody) => ({ message: readSearchedMailID(body), text: gmail.text }),
+      },
+    },
+  ];
+}
+
+function readSearchedMailID(body: ScriptedBody): string {
+  const seen = JSON.stringify(body.messages);
+
+  const mailID = /messages\\*":\[\{\\*"message\\*":\\*"(?<id>[a-z0-9.]+)/u.exec(seen)?.groups?.[
+    'id'
+  ];
+
+  invariant(mailID !== undefined, 'the result of the search names no mail');
 
   return mailID;
 }
