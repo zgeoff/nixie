@@ -152,10 +152,10 @@ never runs a turn twice.
 
 ## Pause, stop and close
 
-The user controls a task with 6 [checked actions](../channels/api.md) of the API: pause, resume,
-stop, restart, close and interrupt. Each one writes its own record on the task's thread. The tasks
-module checks each control against a transition table of the task's states, so a refused control
-writes nothing and returns the state it met.
+The user controls a task with the pause, resume, stop, restart, close and interrupt
+[checked actions](../channels/api.md) of the API. Each one writes its own record on the task's
+thread. The tasks module checks each control against a transition table of the task's states. A
+refused control writes nothing and returns the state it met.
 
 While a step runs, its runner watches the task's thread for controls, so a stop or an interrupt
 reaches the step at once.
@@ -169,11 +169,10 @@ reaches the step at once.
 - **Resume** of a paused task returns it to the state it left, or to ready when waking input arrived
   while it was paused. A resume of a running task withdraws its pause request. A resume refuses a
   started task that its [limit](./started-tasks.md#limits) holds. While nixie is paused, a resume
-  exempts the task from nixie's pause, so that task runs alone, and a task the user paused is
-  resumed in the same transaction, as [pausing nixie](pause.md) describes. Resume nixie ends every
-  exemption, and a task the user paused stays paused after it. The
-  [API](../channels/api.md#pausing-nixie), the host and the web client pause and resume nixie. A
-  raise of a limit never exempts a task.
+  exempts the task from nixie's pause, so that task runs alone. A task the user paused is resumed in
+  the same transaction, as [pausing nixie](pause.md) describes. Resuming nixie ends every exemption,
+  and a task the user paused stays paused after it. The [API](../channels/api.md#pausing-nixie), the
+  host and the web client pause and resume nixie. A raise of a limit never exempts a task.
 - **Stop** ends the current task run. It frees the lease, so the running step's commit fails as a
   lost lease, and the runner aborts the step at once. A stop withdraws the task's pending timers, so
   they never fire, and releases each message wait that the task has open on another task. A stopped
@@ -186,14 +185,15 @@ reaches the step at once.
   resume does.
 - **Close** ends a task for good, from any state but closed. It frees the lease, withdraws the
   pending timers and releases every message wait that names the task, on either side, and the inbox
-  refuses later input. The conversation refuses a close, because every deployment needs it to
-  answer, but it takes a stop and a restart. The `task.closed` record names who closed the task in
-  `closedBy`: `owner` for the user's close control, `nixie` for the `task.close` tool, and
-  `disposable` for the commit that closes a disposable task after its report. A record with no
-  `closedBy` reads as `owner`. The [started tasks](./started-tasks.md#the-mark-and-closing) doc
-  describes the tool and the auto-close. A close sends the closer no report message when the closer
-  is the task run's report target: the report stays on the `task.run_ended` record, as a kept report
-  does. A close by any other actor, and the auto-close, keep their message.
+  refuses later input. nixie refuses to close the conversation, because every deployment needs it to
+  answer, but the conversation takes a stop and a restart. The `closedBy` field of the `task.closed`
+  record holds who closed the task: `owner` for the user's close control, `nixie` for the
+  `task.close` tool, and `disposable` for the commit that closes a disposable task after its report.
+  A record with no `closedBy` reads as `owner`. The
+  [started tasks](./started-tasks.md#the-mark-and-closing) doc describes the tool and the
+  auto-close. A close sends the closer no report message when the closer is the task run's report
+  target: the report stays on the `task.run_ended` record, as a kept report does. A close by any
+  other actor, and the auto-close, keep their message.
 - **Interrupt** of a running task records the step it interrupts, and the runner fires the step's
   interrupt signal. A conversation turn then ends at the last entry of its Agent SDK session and
   commits as usual, as [conversation turns](./conversation-turns.md#interrupts) describes. A started
@@ -218,10 +218,10 @@ and `no_work`, `closed` for `closed` and `stopped`, and `failed` for `failed`, `
 no release knows. The ID of a task run is its report ID, the short ID that the delivered report
 message carries, because the model never sees the UUID. A task that left the definitions list keeps
 its name from the version its newest ended task run pinned. The filters are `definition`, `outcome`
-and `since`, and `cursor` pages by the sequence of the end through a page that fills to the byte
-budget of a recall page. Its `run` input gives one task run with the whole report, its fields, the
-stored cause, the reason a failed task run failed, and its steps and turns. Only the conversation
-holds the tool: a started task and a worker never hold it.
+and `since`. `cursor` pages in the order the task runs ended, and each page fills to the byte budget
+of a recall page. Its `run` input gives one task run with the whole report, its fields, the stored
+cause, the reason a failed task run failed, and its steps and turns. Only the conversation holds the
+tool: a started task and a worker never hold it.
 
 While a task is paused or closed, nixie claims none of its [actions](./actions.md) that have not
 started an attempt, so a pause keeps the queued actions with the task. A stop
@@ -258,7 +258,7 @@ the start tool offers, with the same names and descriptions, and leaves out each
 `ask: true`. A worker that names a model runs on that model's profile. A worker that names none runs
 on the worker role's profile. A call that names any other model gets an error sentence that lists
 the choices and starts nothing. The option is absent when the deployment lists no selectable model.
-`worker.run_started` names the model ID and profile the worker ran on, and the task page's worker
+`worker.run_started` holds the model ID and profile the worker ran on, and the task page's worker
 line shows that model ID.
 
 A worker holds only tools that its caller holds. It never holds a tool that starts a task, sends a
@@ -266,7 +266,8 @@ message, closes a task, lists tasks or task definitions, reports, ends a turn si
 worker, and it never holds a memory tool or a conversation-only tool. A call that names such a tool,
 or one that its caller does not hold, gets an error sentence and starts nothing.
 
-Four limits stop a worker, each with a sentence that tells the caller which limit it reached:
+These limits stop a worker, each with a sentence that tells the caller which limit the worker
+reached:
 
 - `limits.workerRun` in the models config sets the minutes, turns, tokens and dollars. The config
   refuses a worker role whose profile sets no prices or no tool call wait, and a minutes limit that
@@ -274,7 +275,7 @@ Four limits stop a worker, each with a sentence that tells the caller which limi
 - The limits, the price table and the gateway's count apply on the profile the worker runs on, and
   one pool of slots covers every model.
 - A worker's dollar limit is the smaller of its own limit and what its caller's task run has left.
-  Where a gateway counts the task's sandbox, the run asks the sandbox for its dollars when it
+  Where a gateway counts the task's sandbox, the run asks the sandbox for its dollars when the run
   starts, and gets at most what the sandbox has left then. Workers that start together never get the
   same dollars, and the run starts no record, sandbox or slot when the sandbox gives none.
 - `tasks.workerRuns` sets how many workers run at once, and whether a call past that cap waits for a
@@ -282,18 +283,18 @@ Four limits stop a worker, each with a sentence that tells the caller which limi
 - A call that the calling step's signal aborts rejects, so the step ends as it would for any call
   that loses its lease.
 
-A worker run writes 3 kinds of record on its caller's thread, each with the calling `tool_called`
-record as its parent: `worker.run_started`, one `worker.turn_ended` after each model call, and one
-`worker.run_ended`. A run that starts at all writes its end record, and the call's result and the
+A worker run writes these records on its caller's thread, each with the calling `tool_called` record
+as its parent: `worker.run_started`, one `worker.turn_ended` after each model call, and one
+`worker.run_ended`. A run that starts at all writes its end record. The call's result and the
 model's limit sentences state no dollar figure. A run that the gateway counted past its priced calls
-also writes one `worker.gateway_charged` with the excess dollars, before `worker.run_ended`. Every
-way out of a worker run writes the end record once, stops the worker's tool run, destroys its
+also writes one `worker.gateway_charged` with the excess dollars, before `worker.run_ended`. However
+a worker run ends, nixie writes the end record once, stops the worker's tool run, destroys its
 sandbox and frees its slot. The destroy runs after the call has its result, and a destroy that fails
 is tried again before the next worker creates its sandbox. A rebuilt session leaves the worker
 records out.
 
 A worker's model calls count in the dollars of the caller's task run, and in no turn. A worker run's
-planned dollars come off the calling turn's budget while it goes, and what it charged stays off, so
+planned dollars come off the calling turn's budget while it runs, and what it charged stays off, so
 a worker can end the turn at its dollar limit. The task run's dollars add the dollars of each of its
 worker runs, whichever step started it.
 [Sandboxes](../connectors/sandboxes.md#records-and-the-restart-sweep) covers how the restart sweep

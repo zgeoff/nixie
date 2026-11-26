@@ -44,31 +44,30 @@ Each price that nixie counts has one source in nixie's config:
 A search provider sets no price. The search tool charges `search.price_micros` to its budgets and
 records the same value as the call's cost, so the charge and the record never differ. A changed
 price applies to the calls after the process that holds it reads it. A turn record and a session
-summary record hold the dollars of their tokens at the profile's prices when the record was written,
-and the task's dollar meter sums those dollars, so a changed price never reprices them. A record
-written with no dollars, by a release before records held them, takes the profile's prices in force
-when the meter reads it.
+summary record hold the dollars of their tokens at the profile's prices when the record was written.
+The task's dollar meter sums those dollars, so a changed price never reprices them. A record written
+with no dollars, by a release before records held them, takes the profile's prices in force when the
+meter reads it.
 
-A profile that a task, a selectable model or the worker role runs on needs `prices` when the
-deployment has no gateway, because the task runner then counts the task's calls itself. With a
-gateway, a profile sets no `prices`: the gateway prices each reply with its route's table, and a
-config file that sets `prices` on a profile beside a gateway fails to load, with an error that names
-the profile. Both price a reply with `buildCallCost` from `@heynixie/models/prices`, so one function
-turns a reply's usage into dollars, and each count converts to whole micros, never rounding a
-positive amount to nothing.
+Without a gateway, set `prices` on each profile that a task, a selectable model or the worker role
+runs on, because the task runner then counts the task's calls itself. With a gateway, set no
+`prices` on a profile. The gateway prices each reply with its route's table, and a config file that
+sets `prices` on a profile beside a gateway fails to load, with an error that names the profile. The
+gateway and the task runner both price a reply with `buildCallCost` from `@heynixie/models/prices`.
+Each count converts to whole micros, and never rounds a positive amount to nothing.
 
 ## The spend ledger
 
 The `spend_ledger` table holds the money counts that nixie writes, one row per counter, unit, period
 kind and period start. A row's `ledger_key` joins the four, such as
-`budget:search-day|micros:USD|day|2026-10-16`. The row's `amount` is an integer. The
-`budget.charged` and `budget.credited` records on no thread write the ledger, through a projection,
-so a rebuild from the records reproduces every row.
+`budget:search-day|micros:USD|day|2026-10-16`. The row's `amount` is an integer. A projection writes
+the ledger from the `budget.charged` and `budget.credited` records on no thread, so a rebuild from
+the records reproduces every row.
 
 A budget charge adds its amount to the row of its key, and a credit subtracts from the row its
 charge added to. The charge record holds its `ledgerKey`, and the `budget_charges` projection keeps
 it, so a credit lands on the charge's row even when the budget's period has changed since. A charge
-recorded before the ledger holds no key, so its key takes the period kind that the migration kept
+recorded before the ledger holds no key. Its key comes from the period kind that the migration kept
 for it in `legacy_charge_kinds`. The migration keeps a kind only when the old rows prove it:
 
 - The charge's record comes after the last change of its budget in force, which
@@ -77,9 +76,9 @@ for it in `legacy_charge_kinds`. The migration keeps a kind only when the old ro
   the charge took the period its ID ends with.
 - The charge's period start is neither a Monday nor the 1st, so only a day can start there.
 
-Any other charge keeps no kind, gets no key and counts in no row, and its credit changes no row: its
-budget may have changed its period since the charge. A rebuild reads the kept kind, so a budget that
-changes its period afterwards never moves the charge to another key.
+Any other charge keeps no kind, gets no key and counts in no row, and its credit changes no row,
+because its budget may have changed its period since the charge. A rebuild reads the kept kind, so a
+budget that changes its period afterwards never moves the charge to another key.
 
 A task run's row, `task_run:<ID>`, and a worker run's row, `worker_run:<ID>`, sit under the period
 `none` and hold the run's dollars in micros, rounded up. A worker run ends once, and
@@ -97,7 +96,7 @@ writer writes, so two charges never both fit in the last of a budget.
 
 A migration replaces the `budget_ledger` table with `spend_ledger`. It gives each earlier charge its
 key when it can, and sets each row to the total of the uncredited charges with that key, as a
-rebuild does. So a period under way starts at zero for each charge with no key. The start that runs
+rebuild does. A row in a period under way leaves out each charge with no key. The start that runs
 the migration logs `spend.ledger_uncounted` once for each budget period of those charges, with the
 uncredited total in micros that no row counts.
 
@@ -183,7 +182,7 @@ it.
 
 The gateway limits each route on its own, and no gateway limit spans routes. The spending stop reads
 the gateway's counts of the routes and the turn count: a route at its limit holds only its own work,
-and the turn count stops nixie. A paid tool counts against its budget and never against the stop, so
-model dollars on a plan stay notional while tool dollars are real. The daily search call count in
-`search_calls` and the turn count stay in their own tables, because each counts calls or turns and
-its limit reads that table.
+and the turn count stops nixie. A paid tool counts against its budget and never against the stop,
+because model dollars on a plan stay notional while tool dollars are real. The daily search call
+count in `search_calls` and the turn count stay in their own tables, because each counts calls or
+turns and its limit reads that table.

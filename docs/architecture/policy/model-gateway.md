@@ -444,12 +444,12 @@ listener serves no control path.
 | `GET /sandboxes/<name>`    | the sandbox's count, whether it is past its limit, its last refusal and its `limitRevision`; 404 for a name the store lacks                                                                                                                                                              |
 | `DELETE /sandboxes/<name>` | removes the sandbox; 204 also for a name the store lacks                                                                                                                                                                                                                                 |
 
-A refused call changes nothing. A raise body is `{ route, start, dollars }`, and the raise is for
-the day only: the month's limit moves only in the gateway's config. A period's `tripped` is true
-while its dollars are at its limit in force, and its `sinceMs` is the period's trip time. The status
-holds the lost mark apart from the routes, and a lost gateway answers its routes as they stand. The
-status lists only the routes in the config: the store keeps the count of a route the config dropped,
-and the status leaves that route out. A count reaches a limit in whole micros of a dollar, so ten
+A refused call changes nothing. A raise body is `{ route, start, dollars }`, and a raise changes the
+day's limit only. To change the month's limit, edit the gateway's config. A period's `tripped` is
+true while its dollars are at its limit in force, and its `sinceMs` is the period's trip time. The
+status gives the lost mark on its own, apart from the routes, and still shows each route's count
+while the lost mark stands. The status lists only the routes in the config, and the store keeps the
+count of a route the config dropped. A count reaches a limit in whole micros of a dollar, so ten
 replies of 0.1 dollars reach a limit of 1 dollar. The status and the sandbox read answer in dollars,
 worked out from the micros.
 
@@ -514,31 +514,34 @@ own profile, so a sandbox cannot send its model credential to another profile's 
 
 Before a sandbox's first model request, the server registers it with `PUT /sandboxes/<name>`:
 
-| Sandbox                        | Limit                                                    |
-| ------------------------------ | -------------------------------------------------------- |
-| a worker run's sandbox         | the run's planned dollars and tokens                     |
-| the conversation and the check | none: the gateway counts it and sets no limit of its own |
-| a task's sandbox               | none at registration; each task run's start sets it      |
+| Sandbox                                  | Limit                                                    |
+| ---------------------------------------- | -------------------------------------------------------- |
+| a worker run's sandbox                   | the run's planned dollars and tokens                     |
+| the conversation and the consent checker | none: the gateway counts it and sets no limit of its own |
+| a task's sandbox                         | none at registration; each task run's start sets it      |
 
-A sandbox with no limit of its own still gets the limit 403 once the day or month count reaches its
-limit. At the start of a task run, the server sets the task's sandbox limit to its count plus the
-task run's dollar limit with `PATCH`, so the gateway ends a turn at the task's limit. While a worker
-run goes, the limit drops by the run's planned dollars, and a raise of the task's limit patches it
-after the raise commits, as [the task meter](metering.md#the-task-meter) says. A sandbox that
-reached its own limit refuses each request, and its last refusal names the counter `sandbox`.
+The gateway still answers a sandbox with no limit of its own with the limit 403 once its route's day
+or month count reaches that period's limit. At the start of a task run, the server uses `PATCH` to
+set the limit of the task's sandbox to the sandbox's count plus the task run's dollar limit, so the
+gateway ends a turn at the task's limit. While a worker run goes, that limit is lower by the run's
+planned dollars, and the server patches it after a raise of the task's limit commits, as
+[the task meter](metering.md#the-task-meter) says. Once a sandbox reaches its own limit, the gateway
+refuses each of its requests, and its last refusal names the counter `sandbox`.
 
-Each `PUT` or `PATCH` of a sandbox's limit adds one to its `limitRevision`. The server patches a
-task's sandbox with the revision it read just before, so a patch whose call timed out and that
-reaches the gateway after a newer one gets 409 and leaves the newer limit in force. The server then
-reads the sandbox again and decides the limit afresh.
+Each `PUT` or `PATCH` of a sandbox's limit gives it a `limitRevision` higher than any the store has
+given, to this name or to a sandbox it has removed. The server patches a task's sandbox with the
+revision it read just before, so a patch whose call timed out and that reaches the gateway after a
+newer one gets 409 and leaves the newer limit in force. On a 409, the server reads the sandbox again
+and patches on the new revision. It holds the sandbox's lock from that read through every retry of a
+step's patch, so no newer limit of its own lands in between.
 
 A worker run's planned limit is the worker's configured limit, held to what the calling task run has
-left, so the gateway and nixie hold one number. A registration that fails fails the sandbox's start.
-A sandbox that an earlier server process made registers the first time this process reads it: with
-`PUT` only when the gateway lacks the name, and with `PATCH` of its limit otherwise, so a sandbox
-kept across a restart keeps its count. Once a sandbox's destroy succeeds, the server deletes its
-entry. A sandbox whose destroy fails keeps its entry, because it may still run. A delete that fails
-is logged.
+left. The gateway and nixie use that same number. When a registration fails, the sandbox fails to
+start. The server registers a sandbox that an earlier server process made the first time it reads
+that sandbox: with `PUT` only when the gateway lacks the name, and with `PATCH` of its limit
+otherwise, so a sandbox kept across a restart keeps its count. Once a sandbox's destroy succeeds,
+the server deletes its entry. When the destroy fails, the server keeps the entry, because the
+sandbox may still run. The server logs a delete that fails.
 
 ### Worker limits
 

@@ -286,12 +286,12 @@ its limits. A raise or a restart opens a task run that carries the one before it
 so a crash after an action ran and a rerun of the step give exactly one report.
 
 A record belongs to a task run by the `taskRunID` it carries, or, for a record with none, by its
-place between the opening and the end of a task run. A step writes a tool call's records and each
-`task.meter_read` with no lease check, so they can land after their task run ended, and they carry
-the ID. A failed turn's spend record from an older release carries it too. A record that lands
-between one task run's end and the next one's opening, such as a message after a report, belongs to
-no task run until a claim opens one for it. Every count of a task run's use reads its records
-through one function, so the meters and the caps agree.
+place between the opening and the end of a task run. nixie writes a tool call's records and each
+`task.meter_read` with no lease check, so a step's call or read can land after its task run ended,
+and each of these records carries the ID. A failed turn's spend record from an older release carries
+it too. A record that lands between one task run's end and the next one's opening, such as a message
+after a report, belongs to no task run until a claim opens one for it. Every count of a task run's
+use reads its records through one function, so the meters and the caps agree.
 
 Each tool call in a task run carries the ID, and a tool can have a cap of calls per task run: a call
 past the cap is a `tool_result` with the outcome `denied` and no decision, and a call that was
@@ -300,14 +300,14 @@ only narrows what a task run may do. A call counts when its outcome is `result`,
 `unknown`, or while it has not returned, and the tools module counts by `taskRunID` alone, so it
 imports nothing from the tasks module. A carried task run takes the caps of the first task run, and
 each cap counts only the carried task run's own calls. A call cap denies the call and never pauses
-the task, so the rest of the work goes on.
+the task.
 
 ### Opening a task run
 
-A task run is pending, then open, then ended. The projection has a row only from the claim, so a
-task has a pending task run when it has unread waking input and no open task run, and a started
-task's brief is its first waking input. A claim that finds the task with no open task run checks, in
-this order:
+A task run is pending, then open, then ended. The projection writes a row only at the claim. Until
+then, a task has a pending task run when it has unread waking input and no open task run, and a
+started task's brief is its first waking input. A claim that finds the task with no open task run
+checks, in this order:
 
 1. The limit hold: the task has reached a limit and the user has not raised it. A held task opens no
    task run, and the claim pauses it.
@@ -333,8 +333,8 @@ task run, and null only under the mode `none`.
 
 One function, which the tasks module does not export, ends every task run and writes its report. It
 runs in the transaction of the step's commit, the stop, the close or the failure that ends the task
-run, and writes nothing when the task has no open task run. When a step commits, the first row that
-applies decides:
+run, and writes nothing when the task has no open task run. When a step commits, the end cause and
+the task's next state come from the first row that applies:
 
 | The commit finds                           | End cause   | The task's next state                        |
 | ------------------------------------------ | ----------- | -------------------------------------------- |
@@ -359,7 +359,7 @@ a report request runs no further model turn, so when the lease of a step that ca
 expires, the rerun does no work and its commit sends the first summary and fields under the first
 report ID.
 
-The end writer delivers the report, and the first row that applies decides:
+The same function delivers the report as the first row that applies sets out:
 
 | The case                                    | What nixie writes                               | Delivery    |
 | ------------------------------------------- | ----------------------------------------------- | ----------- |
@@ -471,17 +471,17 @@ A started task has a limit of turns and of dollars, which its start set or took 
   record's `meter` names who counts: the gateway for its sandboxes, or the runner, which prices the
   guest's call frames with the profile's `prices` when the deployment has no gateway.
 
-A task run whose start record names no meter began before the meter reads. Its dollars meter adds
-the dollars that each turn record and each session summary of the task holds, priced when the record
-was written, and adds each `task.failed_turn_spent` record of the task run. The records stay
-readable, and nothing writes them any more. When such a task run resumes behind a gateway, its first
-step reads the sandbox as a task run's start does, and writes the dollars that its records hold as a
-read under the task's ID, so the task run keeps what it spent and counts the gateway's count from
-then on.
+A task run whose start record names no meter began before nixie wrote `task.meter_read` records. Its
+dollars meter adds the dollars that each turn record and each session summary of the task holds,
+priced when the record was written, and adds each `task.failed_turn_spent` record of the task run.
+The records stay readable, and nothing writes them any more. When such a task run resumes behind a
+gateway, its first step reads the sandbox as a task run's start does, and writes the dollars that
+its records hold as a read under the task's ID, so the task run keeps what it spent and counts the
+gateway's count from then on.
 
-The config schema refuses a profile with no price table for a profile a task can run on when the
-deployment has no gateway, as [selectable models](./model-profiles.md#selectable-models) describes,
-and refuses a profile that sets prices beside a gateway.
+When the deployment has no gateway, the config schema refuses a profile that a task can run on and
+that has no price table, as [selectable models](./model-profiles.md#selectable-models) describes. It
+also refuses a profile that sets prices beside a gateway.
 
 Before each step runs a turn, the runner reads both meters, and reads the sandbox's count when the
 gateway counts. When either has reached its limit, the step runs no turn and returns the limit as
