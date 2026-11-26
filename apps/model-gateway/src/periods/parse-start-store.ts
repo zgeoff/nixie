@@ -2,7 +2,9 @@ import invariant from 'tiny-invariant';
 import { z } from 'zod';
 import type { PeriodStore, RouteCount } from '../types';
 import { buildFreshStore } from './build-fresh-store';
-import { parsePeriodStore } from './parse-period-store';
+import type { LimitTable } from './limit-table';
+import { parsePeriodStore, routeCountSchema } from './parse-period-store';
+import { sandboxLimitSchema } from './sandbox-limit-schema';
 import { sandboxNameSchema } from './sandbox-name-schema';
 import { toMicros } from './to-micros';
 
@@ -38,6 +40,31 @@ const legacySandboxSchema = z.looseObject({
     .nullable(),
 });
 
+// the store of version 3, which counted routes only and named no provider in a refusal
+const routeRefusalSchema = z.strictObject({
+  counter: z.enum(['route_day', 'route_month', 'sandbox']),
+  route: z.string(),
+  atMs: z.number(),
+});
+
+const routeSandboxSchema = z.strictObject({
+  micros: z.int().nonnegative(),
+  tokens: z.number().nonnegative(),
+  limit: sandboxLimitSchema.nullable(),
+  lastRefusal: routeRefusalSchema.nullable().default(null),
+  limitRevision: z.int().nonnegative().default(0),
+});
+
+const routePeriodsSchema = z.strictObject({ day: routeCountSchema, month: routeCountSchema });
+
+const routeStoreSchema = z.strictObject({
+  version: z.literal(3),
+  lost: z.literal(true).optional(),
+  routes: z.record(z.string(), routePeriodsSchema),
+  sandboxes: z.record(sandboxNameSchema, routeSandboxSchema),
+  lastLimitRevision: z.int().nonnegative().exactOptional(),
+});
+
 const periodsCountSchema = z.looseObject({
   version: z.literal(2),
   lost: z.literal(true).optional(),
@@ -45,16 +72,42 @@ const periodsCountSchema = z.looseObject({
   sandboxes: z.record(sandboxNameSchema, legacySandboxSchema),
 });
 
-// A count of one total starts every route at zero. A version 2 store did not split its count by
-// route, so every route takes the whole count of each period under way, which never reopens a
-// limit. The lost mark and the sandboxes carry over. Any other shape throws.
+// A count of one total starts every route at zero. A version 2 store gives every route the whole
+// count of each period under way. A version 3 store keeps its routes. Each moves to version 4 with
+// every provider at zero, because a route count can hold that copied total. Any other shape throws.
 export function parseStartStore(
   stored: unknown,
   nowMs: number,
   zone: string,
-  routeIDs: readonly string[],
+  table: LimitTable,
 ): StartStore {
-  const fresh = buildFreshStore(nowMs, zone, routeIDs);
+  const routeIDs = Object.keys(table.routes);
+  const fresh = buildFreshStore(nowMs, zone, routeIDs, Object.keys(table.providers));
+  const version3 = routeStoreSchema.safeParse(stored);
+
+  if (version3.success) {
+    const earlier = version3.data;
+
+    return {
+      kind: 'moved',
+      store: {
+        ...fresh,
+        lost: earlier.lost === true,
+        routes: earlier.routes,
+        sandboxes: Object.fromEntries(
+          Object.entries(earlier.sandboxes).map(([name, held]) => [
+            name,
+            { ...held, lastRefusal: moveRefusal(held.lastRefusal, table) },
+          ]),
+        ),
+        ...(earlier.lastLimitRevision === undefined
+          ? {}
+          : { lastLimitRevision: earlier.lastLimitRevision }),
+      },
+      old: { version: 3 },
+    };
+  }
+
   const limits = limitsCountSchema.safeParse(stored);
 
   if (limits.success) {
@@ -110,6 +163,23 @@ export function parseStartStore(
   }
 
   return { kind: 'routes', store: parsePeriodStore(stored) };
+}
+
+type RouteRefusal = z.infer<typeof routeStoreSchema>['sandboxes'][string]['lastRefusal'];
+
+// A refusal names its route's provider from the config. One of a route the config dropped has no
+// provider to name, so it goes.
+function moveRefusal(
+  refusal: RouteRefusal,
+  limits: LimitTable,
+): PeriodStore['sandboxes'][string]['lastRefusal'] {
+  if (refusal === null || !Object.hasOwn(limits.providerOf, refusal.route)) {
+    return null;
+  }
+
+  const provider = limits.providerOf[refusal.route];
+
+  return provider === undefined ? null : { ...refusal, provider };
 }
 
 type LegacyPeriod = z.infer<typeof legacyPeriodSchema>;

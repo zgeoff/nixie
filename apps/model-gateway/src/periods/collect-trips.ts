@@ -1,28 +1,39 @@
-import type { Overrides, PeriodName, PeriodStore, RouteLimits } from '../types';
+import type { Overrides, PeriodName, PeriodStore } from '../types';
 import { isLimitReached } from './is-limit-reached';
-import { pickRouteLimit } from './pick-route-limit';
+import type { LimitTable } from './limit-table';
+import { pickProviderLimit, pickRouteLimit } from './pick-route-limit';
 
-export interface RouteTrip {
-  readonly route: string;
+export interface LimitTrip {
+  readonly scope: 'route' | 'provider';
+  readonly id: string;
   readonly period: PeriodName;
 }
 
-export type RouteLimitsByID = Readonly<Record<string, RouteLimits | null>>;
-
-// every route period whose count has reached its limit in force, a route's day before its month
+// every period whose count has reached its limit in force: the routes' before the providers', a
+// day before its month
 export function collectTrips(
   store: PeriodStore,
-  limits: RouteLimitsByID,
+  limits: LimitTable,
   overrides: Overrides,
-): RouteTrip[] {
-  const trips: RouteTrip[] = [];
+): LimitTrip[] {
+  const trips: LimitTrip[] = [];
 
-  for (const [route, periods] of Object.entries(store.routes)) {
+  for (const [id, periods] of Object.entries(store.routes)) {
     for (const period of ['day', 'month'] as const) {
-      const limit = pickRouteLimit({ store, limits, overrides, route, period });
+      const limit = pickRouteLimit({ store, limits, overrides, id, period });
 
       if (limit !== null && isLimitReached(periods[period].micros, limit)) {
-        trips.push({ route, period });
+        trips.push({ scope: 'route', id, period });
+      }
+    }
+  }
+
+  for (const [id, periods] of Object.entries(store.providers)) {
+    for (const period of ['day', 'month'] as const) {
+      const limit = pickProviderLimit({ store, limits, overrides, id, period });
+
+      if (limit !== null && isLimitReached(periods[period].micros, limit)) {
+        trips.push({ scope: 'provider', id, period });
       }
     }
   }

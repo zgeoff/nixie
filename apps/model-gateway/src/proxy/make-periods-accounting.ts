@@ -1,7 +1,7 @@
 import type { Logger } from '@heynixie/logger';
 import { toErrorFields } from '@heynixie/logger';
-import type { RouteLimitsByID } from '../periods/collect-trips';
 import { collectTrips } from '../periods/collect-trips';
+import type { LimitTable } from '../periods/limit-table';
 import { pickPeriodsRefusal } from '../periods/pick-periods-refusal';
 import type { PeriodStoreHandle } from '../types';
 import type { Accounting } from './accounting';
@@ -12,14 +12,14 @@ import { writeReplyChargeLog } from './write-reply-charge-log';
 
 export interface PeriodsAccountingDeps {
   readonly store: PeriodStoreHandle;
-  readonly limits: RouteLimitsByID;
+  readonly limits: LimitTable;
   readonly countBySandbox: boolean;
   readonly now: () => number;
   readonly log: Logger;
 }
 
-// the count of a config with periods: each route's day and month, and each sandbox, read before each
-// admission
+// the count of a config with periods: each provider's and each route's day and month, and each
+// sandbox, read before each admission
 export function makePeriodsAccounting(deps: PeriodsAccountingDeps): Accounting {
   let tripLogged = '';
   const latch = makeLostLatch(deps.store.markLost, deps.log);
@@ -61,7 +61,12 @@ export function makePeriodsAccounting(deps: PeriodsAccountingDeps): Accounting {
     // the refusal is the reason a step that began before it stopped, so the sandbox's count keeps it
     if (sandbox !== null) {
       await deps.store
-        .writeRefusal(sandbox, { counter: refusal.counter, route, atMs: deps.now() })
+        .writeRefusal(sandbox, {
+          counter: refusal.counter,
+          route,
+          provider: refusal.provider,
+          atMs: deps.now(),
+        })
         .catch((error: unknown) => {
           deps.log('counter.write_failed', toErrorFields(error), 'error');
         });
@@ -70,6 +75,7 @@ export function makePeriodsAccounting(deps: PeriodsAccountingDeps): Accounting {
     return renderAPIError(refusal.status, refusal.type, refusal.message, {
       counter: refusal.counter,
       route: refusal.route,
+      provider: refusal.provider,
     });
   };
 
@@ -89,10 +95,21 @@ export function makePeriodsAccounting(deps: PeriodsAccountingDeps): Accounting {
     }
 
     try {
-      const counted = await deps.store.addSpend(reply.routeID, reply.sandbox, charge.spend);
+      const counted = await deps.store.addSpend(
+        { route: reply.routeID, provider: reply.route.provider },
+        reply.sandbox,
+        charge.spend,
+      );
 
       const trips = collectTrips(counted.store, deps.limits, counted.overrides);
-      const key = trips.map((trip) => `${trip.route}:${trip.period}`).join(',');
+
+      const key = trips
+        .map((trip) =>
+          trip.scope === 'route'
+            ? `${trip.id}:${trip.period}`
+            : `provider:${trip.id}:${trip.period}`,
+        )
+        .join(',');
 
       if (key !== '' && key !== tripLogged) {
         deps.log('limit.reached', { trips: key }, 'warn');

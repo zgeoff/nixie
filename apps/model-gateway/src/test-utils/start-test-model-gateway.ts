@@ -62,13 +62,25 @@ export interface TestModelGatewayOptions {
     readonly zone: string;
 
     // the limits of the route `scripted` in US dollars: 100 a day and 1000 a month unless a caller
-    // names its own, and none with null, which refuses every request on it
+    // names its own, and none with null, which leaves the route to its provider's limits
     readonly limits?: { readonly day: number; readonly month: number } | null;
 
-    // a second route to the same upstream, with its own limits
+    // the limits of the provider `test`, which every route is on unless it names another:
+    // 10000 a day and 100000 a month unless a caller names its own
+    readonly providerLimits?: { readonly day: number; readonly month: number };
+
+    // a second provider, whose limits a second route may name
+    readonly secondProvider?: {
+      readonly id: string;
+      readonly limits: { readonly day: number; readonly month: number };
+    };
+
+    // a second route to the same upstream, with its own limits, on the provider `test` unless it
+    // names another
     readonly secondRoute?: {
       readonly id: string;
       readonly limits: { readonly day: number; readonly month: number } | null;
+      readonly provider?: string;
     };
     readonly countBySandbox?: boolean;
 
@@ -89,6 +101,9 @@ export const testGatewayPrices = {
 } as const;
 
 const defaultLimits = { day: 100, month: 1000 };
+const defaultProviderLimits = { day: 10_000, month: 100_000 };
+
+export const testGatewayProvider = 'test';
 
 // An in-process gateway with one route to an upstream, counting against no real budget. It stops
 // when the test ends.
@@ -135,8 +150,13 @@ export async function createTestModelGateway(
       `countBySandbox: ${String(periods.countBySandbox ?? false)}`,
       `override: ${overridePath}`,
       ...(options.capture === false ? [] : ['capture:', `  spool: ${spoolDir}`]),
+      'providers:',
+      `  ${testGatewayProvider}:`,
+      ...buildLimitsLines(periods.providerLimits ?? defaultProviderLimits),
+      ...buildSecondProviderLines(options),
       'routes:',
       '  scripted:',
+      `    provider: ${testGatewayProvider}`,
       `    api: ${options.api ?? 'anthropic-messages'}`,
       `    upstream: ${options.upstreamURL}`,
       `    model: ${options.model ?? 'claude-test-1'}`,
@@ -192,6 +212,7 @@ async function writePlanRoute(
 
   return [
     `  ${plan.routeID}:`,
+    `    provider: ${testGatewayProvider}`,
     '    api: openai-responses',
     '    upstream: https://chatgpt.example.test/backend-api/codex',
     '    model: gpt-test-1',
@@ -211,6 +232,12 @@ function buildLimitsLines(
     : [`    limits: { day: ${String(limits.day)}, month: ${String(limits.month)} }`];
 }
 
+function buildSecondProviderLines(options: TestModelGatewayOptions): string[] {
+  const second = options.periods?.secondProvider;
+
+  return second === undefined ? [] : [`  ${second.id}:`, ...buildLimitsLines(second.limits)];
+}
+
 function buildSecondRouteLines(options: TestModelGatewayOptions): string[] {
   const second = options.periods?.secondRoute;
 
@@ -220,6 +247,7 @@ function buildSecondRouteLines(options: TestModelGatewayOptions): string[] {
 
   return [
     `  ${second.id}:`,
+    `    provider: ${second.provider ?? testGatewayProvider}`,
     `    api: ${options.api ?? 'anthropic-messages'}`,
     `    upstream: ${options.upstreamURL}`,
     `    model: ${options.model ?? 'claude-test-1'}`,

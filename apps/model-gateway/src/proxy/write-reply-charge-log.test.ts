@@ -15,6 +15,7 @@ function setupTest() {
         api: 'anthropic-messages',
         upstream: 'http://model.test',
         model: 'model-small',
+        provider: 'test',
         providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
         maxOutputTokens: null,

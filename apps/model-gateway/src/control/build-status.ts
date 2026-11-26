@@ -1,6 +1,6 @@
-import type { RouteLimitsByID } from '../periods/collect-trips';
 import { isLimitReached } from '../periods/is-limit-reached';
-import { pickRouteLimit } from '../periods/pick-route-limit';
+import type { LimitTable } from '../periods/limit-table';
+import { pickProviderLimit, pickRouteLimit } from '../periods/pick-route-limit';
 import { toDollars } from '../periods/to-dollars';
 import type { Overrides, PeriodName, PeriodStore, PeriodsConfig } from '../types';
 
@@ -20,7 +20,13 @@ interface PeriodStatus {
   readonly sinceMs: number | null;
 }
 
+interface ProviderStatus {
+  readonly day: PeriodStatus;
+  readonly month: PeriodStatus;
+}
+
 interface RouteStatus {
+  readonly provider: string;
   readonly day: PeriodStatus;
   readonly month: PeriodStatus;
 }
@@ -28,27 +34,31 @@ interface RouteStatus {
 export interface GatewayStatus {
   readonly zone: string;
   readonly lost: boolean;
+  readonly providers: Readonly<Record<string, ProviderStatus>>;
   readonly routes: Readonly<Record<string, RouteStatus>>;
 }
 
-// Each configured route's day and month, with the limit in force. The store keeps the count of a
-// route that the config dropped, which the status leaves out. A period's `sinceMs` is the instant
-// the store first saw it at its limit.
+// Each configured provider's and route's day and month, with the limit in force. The store keeps
+// the count of a route or provider that the config dropped, which the status leaves out. A period's
+// `sinceMs` is the instant the store first saw it at its limit.
 export function buildStatus(
   store: PeriodStore,
-  limits: RouteLimitsByID,
+  limits: LimitTable,
   overrides: Overrides,
   config: PeriodsConfig,
 ): GatewayStatus {
-  const buildPeriod = (route: string, name: PeriodName): PeriodStatus => {
-    const count = Object.hasOwn(store.routes, route) ? store.routes[route]?.[name] : undefined;
+  const buildPeriod = (scope: 'route' | 'provider', id: string, name: PeriodName): PeriodStatus => {
+    const held = scope === 'route' ? store.routes : store.providers;
+    const count = Object.hasOwn(held, id) ? held[id]?.[name] : undefined;
 
     if (count === undefined) {
-      throw new Error(`the store holds no count for the route ${route}`);
+      throw new Error(`the store holds no count for the ${scope} ${id}`);
     }
 
-    const limit = pickRouteLimit({ store, limits, overrides, route, period: name });
-    const configured = Object.hasOwn(limits, route) ? limits[route] : null;
+    const ask = { store, limits, overrides, id, period: name };
+    const limit = scope === 'route' ? pickRouteLimit(ask) : pickProviderLimit(ask);
+    const configuredLimits = scope === 'route' ? limits.routes : limits.providers;
+    const configured = Object.hasOwn(configuredLimits, id) ? configuredLimits[id] : null;
     const isTripped = limit !== null && isLimitReached(count.micros, limit);
 
     return {
@@ -67,12 +77,24 @@ export function buildStatus(
   return {
     zone: config.zone,
     lost: store.lost,
+    providers: Object.fromEntries(
+      Object.keys(store.providers)
+        .filter((id) => Object.hasOwn(limits.providers, id))
+        .map((id) => [
+          id,
+          { day: buildPeriod('provider', id, 'day'), month: buildPeriod('provider', id, 'month') },
+        ]),
+    ),
     routes: Object.fromEntries(
       Object.keys(store.routes)
-        .filter((route) => Object.hasOwn(limits, route))
-        .map((route) => [
-          route,
-          { day: buildPeriod(route, 'day'), month: buildPeriod(route, 'month') },
+        .filter((id) => Object.hasOwn(limits.routes, id))
+        .map((id) => [
+          id,
+          {
+            provider: limits.providerOf[id] ?? '',
+            day: buildPeriod('route', id, 'day'),
+            month: buildPeriod('route', id, 'month'),
+          },
         ]),
     ),
   };

@@ -17,7 +17,7 @@ async function setupTest() {
   return { directory, model, binary: await readModelGatewayBinary() };
 }
 
-test('it serves a periods config, refuses until the limits are set, and exits 0 on SIGINT, as a compiled binary', async () => {
+test('it serves a periods config, sends a request on a route with no limits of its own to the model, and exits 0 on SIGINT, as a compiled binary', async () => {
   const ctx = await setupTest();
 
   await writeFile(join(ctx.directory, 'token'), 'control-secret\n');
@@ -29,8 +29,12 @@ test('it serves a periods config, refuses until the limits are set, and exits 0 
       `store: ${join(ctx.directory, 'counter.json')}`,
       'periods: { zone: Europe/London }',
       `control: { listen: { port: 0 }, tokenFile: ${join(ctx.directory, 'token')} }`,
+      'providers:',
+      '  main:',
+      '    limits: { day: 1000, month: 10000 }',
       'routes:',
       '  preview:',
+      '    provider: main',
       `    upstream: ${ctx.model.url}`,
       '    model: model-small',
       '    prices: { input: 1, cache_write: 1.25, cache_write_1h: 2, cached_input: 0.1, output: 5 }',
@@ -68,5 +72,5 @@ test('it serves a periods config, refuses until the limits are set, and exits 0 
 
   const code = await child.exited;
 
-  expect([response.status, code]).toStrictEqual([503, 0]);
+  expect([response.status, code]).toStrictEqual([400, 0]);
 });

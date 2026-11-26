@@ -5,12 +5,14 @@ import { join } from 'node:path';
 import type { Logger } from '@heynixie/logger';
 import { z } from 'zod';
 import { createPeriodStore } from '../periods/create-period-store';
+import { buildMockLimitTable } from '../test-utils/build-mock-limit-table';
 import { buildReplyEstimate } from '../usage/build-reply-estimate';
 import type { CountedReply } from './accounting';
 import { makePeriodsAccounting } from './make-periods-accounting';
 
 async function setupTest() {
-  const limits = { preview: { day: 0.002, month: 10, dayCap: 1 } };
+  const previewLimits = { day: 0.002, month: 10, dayCap: 1 };
+  const limits = buildMockLimitTable({ preview: previewLimits });
 
   const directory = await mkdtemp(join(tmpdir(), 'model-gateway-accounting-'));
 
@@ -23,7 +25,7 @@ async function setupTest() {
     zone: 'Europe/London',
     limits,
     now: () => Date.parse('2026-11-13T10:00:00Z'),
-    readOverrides: () => Promise.resolve({}),
+    readOverrides: () => Promise.resolve({ routes: {}, providers: {} }),
     log: mock<Logger>(() => {}),
   });
 
@@ -43,11 +45,12 @@ async function setupTest() {
     api: 'anthropic-messages',
     upstream: 'http://model.test',
     model: 'model-small',
+    provider: 'test',
     providerPin: null,
     prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
     maxOutputTokens: null,
     login: null,
-    limits: limits.preview,
+    limits: previewLimits,
   } as const;
 
   return {
@@ -89,6 +92,14 @@ async function setupTest() {
       now: () => Date.parse('2026-11-13T10:00:00Z'),
       log,
     }),
+    makeAccounting: (held: typeof limits) =>
+      makePeriodsAccounting({
+        store,
+        limits: held,
+        countBySandbox: true,
+        now: () => Date.parse('2026-11-13T10:00:00Z'),
+        log,
+      }),
   };
 }
 
@@ -302,9 +313,53 @@ test('it names the counter and the route in the limit 403 and keeps the refusal 
         type: 'limit_reached',
         counter: 'route_day',
         route: 'preview',
+        provider: 'test',
         message: expect.stringContaining('preview'),
       },
     },
-    { counter: 'route_day', route: 'preview', atMs: Date.parse('2026-11-13T10:00:00Z') },
+    {
+      counter: 'route_day',
+      route: 'preview',
+      provider: 'test',
+      atMs: Date.parse('2026-11-13T10:00:00Z'),
+    },
+  ]);
+});
+
+test('it refuses a route with room once its provider reaches its day limit, names the provider and logs the trip', async () => {
+  const ctx = await setupTest();
+
+  const accounting = ctx.makeAccounting(
+    buildMockLimitTable(
+      { preview: { day: 60, month: 600, dayCap: 120 } },
+      { day: 0.002, month: 10, dayCap: 1 },
+    ),
+  );
+
+  await accounting.count(ctx.reply({ usage: ctx.usage(600, 400) }));
+
+  const refusal = await accounting.admit('preview', 'alpha');
+  const body: unknown = await refusal?.json();
+  const stored = await ctx.store.read();
+
+  expect([refusal?.status, body, stored.sandboxes['alpha']?.lastRefusal?.counter]).toStrictEqual([
+    403,
+    {
+      type: 'error',
+      error: {
+        type: 'limit_reached',
+        counter: 'provider_day',
+        route: 'preview',
+        provider: 'test',
+        message: expect.stringContaining('test'),
+      },
+    },
+    'provider_day',
+  ]);
+
+  expect(ctx.log.mock.calls).toContainEqual([
+    'limit.reached',
+    { trips: 'provider:test:day' },
+    'warn',
   ]);
 });

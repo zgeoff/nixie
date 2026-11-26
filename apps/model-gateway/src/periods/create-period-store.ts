@@ -8,11 +8,13 @@ import type {
   PeriodStore,
   PeriodStoreHandle,
   Refusal,
+  RoutePeriods,
+  SpendTarget,
 } from '../types';
 import { buildEmptyRoute, buildFreshStore } from './build-fresh-store';
 import { buildResetStore } from './build-reset-store';
 import { buildTrippedStore } from './build-tripped-store';
-import type { RouteLimitsByID } from './collect-trips';
+import type { LimitTable } from './limit-table';
 import { parsePeriodStore } from './parse-period-store';
 import { parseStartStore } from './parse-start-store';
 import { toMicros } from './to-micros';
@@ -21,8 +23,8 @@ export interface PeriodStoreOptions {
   readonly path: string;
   readonly zone: string;
 
-  // the limits of each configured route, which the store stamps a trip against
-  readonly limits: RouteLimitsByID;
+  // the limits of each configured route and provider, which the store stamps a trip against
+  readonly limits: LimitTable;
   readonly now: () => number;
   readonly readOverrides: () => Promise<Overrides>;
   readonly log: Logger;
@@ -30,7 +32,8 @@ export interface PeriodStoreOptions {
 
 export async function createPeriodStore(options: PeriodStoreOptions): Promise<PeriodStoreHandle> {
   const path = options.path;
-  const routeIDs = Object.keys(options.limits);
+  const routeIDs = Object.keys(options.limits.routes);
+  const providerIDs = Object.keys(options.limits.providers);
 
   const exists = await Bun.file(path).exists();
 
@@ -38,7 +41,7 @@ export async function createPeriodStore(options: PeriodStoreOptions): Promise<Pe
     const stored: unknown = await Bun.file(path).json();
 
     // the count of an earlier store moves to the route form in one write; any other shape throws
-    const start = parseStartStore(stored, options.now(), options.zone, routeIDs);
+    const start = parseStartStore(stored, options.now(), options.zone, options.limits);
 
     if (start.kind === 'moved') {
       await writeStore(path, start.store);
@@ -46,7 +49,7 @@ export async function createPeriodStore(options: PeriodStoreOptions): Promise<Pe
       options.log('store.moved', { ...start.old, lost: start.store.lost }, 'warn');
     }
   } else {
-    await writeStore(path, buildFreshStore(options.now(), options.zone, routeIDs));
+    await writeStore(path, buildFreshStore(options.now(), options.zone, routeIDs, providerIDs));
   }
 
   // one change at a time, so two replies that end together never write over each other's count,
@@ -69,21 +72,28 @@ export async function createPeriodStore(options: PeriodStoreOptions): Promise<Pe
   };
 
   // the reset reaches the file before any caller sees it, so a read after midnight needs no reply.
-  // A route that the config gained since the last write starts at zero.
+  // A route or a provider that the config gained since the last write starts at zero.
   const readReset = async (): Promise<{ store: PeriodStore; didChange: boolean }> => {
     const stored = await readStore(path);
 
-    const added = routeIDs.filter((id) => !Object.hasOwn(stored.routes, id));
+    const addedRoutes = routeIDs.filter((id) => !Object.hasOwn(stored.routes, id));
+    const addedProviders = providerIDs.filter((id) => !Object.hasOwn(stored.providers, id));
 
     const complete =
-      added.length === 0
+      addedRoutes.length === 0 && addedProviders.length === 0
         ? stored
         : {
             ...stored,
             routes: {
               ...stored.routes,
               ...Object.fromEntries(
-                added.map((id) => [id, buildEmptyRoute(options.now(), options.zone)]),
+                addedRoutes.map((id) => [id, buildEmptyRoute(options.now(), options.zone)]),
+              ),
+            },
+            providers: {
+              ...stored.providers,
+              ...Object.fromEntries(
+                addedProviders.map((id) => [id, buildEmptyRoute(options.now(), options.zone)]),
               ),
             },
           };
@@ -136,12 +146,12 @@ export async function createPeriodStore(options: PeriodStoreOptions): Promise<Pe
   };
 
   const addSpend = async (
-    route: string,
+    target: SpendTarget,
     sandbox: string | null,
     spend: Measures,
   ): Promise<PeriodRead> => {
     const changed = await changeAndRead((store) => ({
-      store: buildSpentStore(store, route, sandbox, spend),
+      store: buildSpentStore(store, target, sandbox, spend),
       result: undefined,
     }));
 
@@ -204,7 +214,7 @@ async function readStore(path: string): Promise<PeriodStore> {
 
 function buildSpentStore(
   store: PeriodStore,
-  route: string,
+  target: SpendTarget,
   sandbox: string | null,
   spend: Measures,
 ): PeriodStore {
@@ -213,24 +223,12 @@ function buildSpentStore(
       ? store.sandboxes[sandbox]
       : undefined;
 
-  const periods = Object.hasOwn(store.routes, route) ? store.routes[route] : undefined;
   const micros = toMicros(spend.dollars);
 
   return {
     ...store,
-    routes:
-      periods === undefined
-        ? store.routes
-        : {
-            ...store.routes,
-            [route]: {
-              day: { ...periods.day, micros: periods.day.micros + micros },
-              month: {
-                ...periods.month,
-                micros: periods.month.micros + micros,
-              },
-            },
-          },
+    routes: addMicros(store.routes, target.route, micros),
+    providers: addMicros(store.providers, target.provider, micros),
     sandboxes:
       sandbox === null || held === undefined
         ? store.sandboxes
@@ -243,4 +241,23 @@ function buildSpentStore(
             },
           },
   };
+}
+
+// the periods of one route or provider, with the dollars added to its day and its month
+function addMicros(
+  held: Readonly<Record<string, RoutePeriods>>,
+  id: string,
+  micros: number,
+): Readonly<Record<string, RoutePeriods>> {
+  const periods = Object.hasOwn(held, id) ? held[id] : undefined;
+
+  return periods === undefined
+    ? held
+    : {
+        ...held,
+        [id]: {
+          day: { ...periods.day, micros: periods.day.micros + micros },
+          month: { ...periods.month, micros: periods.month.micros + micros },
+        },
+      };
 }
