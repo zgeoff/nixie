@@ -162,8 +162,9 @@ The health endpoint serves liveness and readiness, each as a report with one ent
 unready part carries a short reason, never an error's message, because a message can quote what the
 part was working on. A part can also carry details, named values that a deployment alerts on, such
 as the backups part's age of the newest set and time of the last upload
-([backup health](backups.md#backup-health)). Liveness answers 200 when every part is ready and 503
-when one is not. It holds when the process answers and the database answers a query.
+([backup health](backups.md#backup-health)). Liveness checks only the process and a `SELECT 1` on
+the database, and answers 200 when both pass and 503 when either fails or runs past its timeout. The
+readiness parts never change the liveness answer.
 
 Readiness sorts its parts into three tiers, because the probe that reads it takes nixie out of its
 Service, and nixie runs as the only endpoint there:
