@@ -86,7 +86,7 @@ test('it ends at the bottom of the window when a row sits above it, and reports 
 test('it scrolls long material to its last line on a window shorter than the material', async () => {
   const ctx = await setupTest();
 
-  const isLastLineReachable = await ctx.view.evaluate(
+  await ctx.view.evaluate(
     `(() => {
       const screen = document.querySelector('[data-testid="screen"]');
       const list = document.createElement('ul');
@@ -99,14 +99,22 @@ test('it scrolls long material to its last line on a window shorter than the mat
       }
 
       screen.append(list);
-      screen.scrollTop = screen.scrollHeight;
 
-      const last = list.lastElementChild.getBoundingClientRect();
-      const frame = screen.getBoundingClientRect();
-
-      return screen.scrollHeight > screen.clientHeight && last.bottom <= frame.bottom;
+      return true;
     })()`,
   );
 
-  expect(isLastLineReachable).toBeTrue();
+  await ctx.view.scroll(0, 100_000);
+
+  await waitForPage(
+    ctx.view,
+    `(() => {
+      const screen = document.querySelector('[data-testid="screen"]');
+      const last = screen.querySelector('li:last-child').getBoundingClientRect();
+      const frame = screen.getBoundingClientRect();
+
+      return screen.scrollTop > 0 && last.bottom <= frame.bottom;
+    })()`,
+    8000,
+  );
 });

@@ -60,11 +60,15 @@ Expect line.
    ```bash
    bun verify browser click --role link --name 'Device view'
    bun verify browser snapshot
+   bun verify browser screenshot
    ```
 
    Expect: the snapshot holds the region "Call in progress" with the text "On a call", the region
    "Device view", and in it the heading "This week" and the text "Monday: dentist at 9, then the
-   allotment", then each later day of the week, ending with "Friday: tidy the shed".
+   allotment", then each later day of the week, ending with "Friday: tidy the shed". The screenshot
+   shows the heading and every line of the plans whole, with the last line above the bottom edge of
+   the window and no line cut off or hidden behind the call bar. A snapshot holds clipped text too,
+   so only the screenshot shows that the page does not clip.
 
 4. Go back to the call, hang up, and read how the call ended.
 

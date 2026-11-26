@@ -172,6 +172,9 @@ test('it drops what the full-screen device showed once its session is revoked', 
     },
     { timeout: 10_000 },
   );
+
+  // the screen still stands, so the shared feed dropped the content, and no unmount did
+  expect(rendered.queryByText('Sign out')).not.toBeNull();
 });
 
 test('it signs the device out and shows the enrolment form', async () => {

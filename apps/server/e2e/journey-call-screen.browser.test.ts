@@ -270,7 +270,7 @@ test('it keeps the call live on the device route, which has no app shell, and sh
   expect(recordsBefore.filter((record) => record.kind === 'call.ended')).toStrictEqual([]);
 });
 
-test('it keeps the call live on the device view, whose size leaves room for the call bar, and hears the call end there', async () => {
+test('it keeps the call live on the device view, whose size leaves room for the call bar, and ends it when another client hangs up', async () => {
   const ctx = await setupTest();
 
   await ctx.startCall();
@@ -292,8 +292,6 @@ test('it keeps the call live on the device view, whose size leaves room for the 
   );
 
   const requests: unknown = await ctx.view.evaluate('window.microphoneRequests');
-
-  // another client ends the call, so only the page's own live stream can tell the page
   const started = await ctx.nixie.waitForRecord((record) => record.kind === 'call.started');
 
   await ctx.api.client.calls.hangUp({

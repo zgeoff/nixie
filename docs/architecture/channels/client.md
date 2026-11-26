@@ -150,9 +150,10 @@ The web client holds one `live.follow` stream in each tab, above every page, so 
 keeps it open. A signed-in page keeps it open, and the `/device` page, which holds a device-form
 stream of its own, never opens a page stream. The stream is a page form: it carries the records of
 the thread on screen, from the sequence that page read at, and every topic's `changed` events. Each
-signed-in page also keeps the tab's [device stream](#the-device-view) open, so a tab holds 2
-streams. A browser limits an HTTP/1.1 origin to 6 connections, so serve nixie over HTTP/2: on
-HTTP/1.1, 3 tabs fill the slots and queue each later request.
+signed-in page also asks to keep the [device stream](#the-device-view) open, and a browser lock
+grants it to one tab at a time, so only one tab of a browser holds a device stream, and the device
+view's tab holds its own. A browser limits an HTTP/1.1 origin to 6 connections, so serve nixie over
+HTTP/2: on HTTP/1.1, 5 tabs fill the slots and queue each later request.
 
 - **A topic invalidates its reads.** A `changed` event invalidates the reads under each topic's
   query-key root, so no page sets a poll on a read that a topic covers. The topic roots and their
@@ -453,9 +454,12 @@ device's content changes, so what the assistant put on the screen shows only whe
 page.
 
 - **The device stream.** A `DeviceFeed` above the router follows the device form of `live.follow`
-  while any signed-in page of the tab shows, so the device is online whenever nixie is open. The
-  feed closes the stream once no signed-in page retains it, and a route change that drops one page
-  and mounts the next keeps it open. A full session follows its device stream and its conversation
+  while it is retained. Each signed-in page asks for it through a lock that the browser grants to
+  one tab at a time, and the next waiting tab takes over when the holder closes, so the device is
+  online whenever nixie is open. The device view retains the feed in its own tab, whatever the lock
+  says. The feed closes the stream once nothing retains it, and a route change that drops one page
+  and mounts the next keeps it open. A page with no lock manager, such as one served over plain
+  HTTP, retains the feed itself. A full session follows its device stream and its conversation
   stream on one session. A refusal ends the feed's reconnects and drops what the feed held, so a
   revoked tab shows nothing the device showed.
 - **What it draws.** The page draws what the feed holds, in the order the screen draws it: a show,

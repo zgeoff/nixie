@@ -92,7 +92,6 @@ export function createDeviceFeed(options: DeviceFeedOptions): DeviceFeed {
       state.resizedPixels = pixels;
     }
 
-    // a failed call leaves the old size, and the next change sends the size again
     if (isSent) {
       scheduleSize();
     }
