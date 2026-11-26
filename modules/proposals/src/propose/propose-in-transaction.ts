@@ -53,9 +53,7 @@ export async function proposeInTransaction(
   input: ProposeInput,
 ): Promise<Proposed> {
   const replaced = await withdrawSameThing(deps, tx, input);
-
-  const shortID =
-    input.shortID === undefined ? await createUnusedShortID(tx, createShortID) : input.shortID;
+  const shortID = await createProposalShortID(tx, input.shortID);
 
   const proposalID = input.proposalID ?? crypto.randomUUID();
 
@@ -130,6 +128,18 @@ async function withdrawSameThing(
   }
 
   return withdrawn[0] ?? null;
+}
+
+// The short ID the family already holds, else a new one.
+function createProposalShortID(
+  tx: Transaction<unknown>,
+  held: string | undefined,
+): Promise<string> {
+  if (held !== undefined) {
+    return Promise.resolve(held);
+  }
+
+  return createUnusedShortID(tx, createShortID);
 }
 
 // A new short ID differs from that of every proposal ever made, open or settled. A draw that names

@@ -46,7 +46,7 @@ async function setupTest() {
     keyColumn: 'proposal_id',
     fold: async (tx, record) => {
       const payload = record.payload;
-      const proposalID = String(payload['proposalID']);
+      const proposalID = z.string().parse(payload['proposalID']);
 
       if (record.kind === 'skills.write_proposed') {
         await sql`insert into proposals (
@@ -54,7 +54,7 @@ async function setupTest() {
             thread, created_sequence, created_at, lapses_at, deadline_at, state
           ) values (
             ${proposalID}, ${proposalID}, 'skill', 'internal_change', 'routine',
-            ${String(payload['skillHash'])}, null, 'skill_write', null, ${record.thread},
+            ${z.string().parse(payload['skillHash'])}, null, 'skill_write', null, ${record.thread},
             ${record.sequence}, ${record.recordedAt.getTime()},
             ${record.recordedAt.getTime() + lapseMs}, null, 'pending'
           )`.execute(tx);

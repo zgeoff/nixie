@@ -30,9 +30,7 @@ export async function readPurgeSet(
       .execute(),
   ]);
 
-  const pendingIDs = new Set(
-    proposals.filter((row) => Boolean(row.is_open)).map((row) => row.item_id),
-  );
+  const pendingIDs = new Set(proposals.filter((row) => row.is_open).map((row) => row.item_id));
 
   const candidates = [
     ...new Set([...versions.map((row) => row.item_id), ...proposals.map((row) => row.item_id)]),

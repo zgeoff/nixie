@@ -50,7 +50,7 @@ test('it lapses a deferred proposal one lapse interval after its return time', a
 
   const row = await ctx.read(proposed.proposalID);
 
-  invariant(row?.returnAt, 'a deferred row has its return time');
+  invariant(row !== null && row.returnAt !== null, 'a deferred row has its return time');
 
   expect([row.state, row.lapsesAt]).toStrictEqual([
     'deferred',

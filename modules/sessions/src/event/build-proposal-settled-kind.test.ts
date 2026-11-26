@@ -46,7 +46,8 @@ test('it lists every settlement of a proposer past the cap of 10 events', async 
 
   const block = await ctx.readBlock(11);
 
-  expect([block.count, block.text]).toStrictEqual([11, expect.not.stringContaining('…and')]);
+  expect(block.count).toBe(11);
+  expect(block.text).not.toContain('…and');
 });
 
 test('it lists a settlement past the first 1000 that the turn boundary covers', async () => {

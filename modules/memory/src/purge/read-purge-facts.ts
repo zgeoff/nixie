@@ -90,11 +90,11 @@ export async function readPurgeFacts(
     currentVersion: currentVersion ?? null,
     keyRows,
     pendingProposals: proposals
-      .filter((proposal) => Boolean(proposal.is_open))
+      .filter((proposal) => proposal.is_open)
       .map((proposal) => ({ proposalID: proposal.proposal_id, thread: proposal.thread })),
     rejectionKeyIDs: await readRejectionKeyIDs(
       db,
-      proposals.filter((proposal) => Boolean(proposal.is_declined)).map((row) => row.proposal_id),
+      proposals.filter((proposal) => proposal.is_declined).map((row) => row.proposal_id),
     ),
   };
 }
