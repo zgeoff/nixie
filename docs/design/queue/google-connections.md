@@ -16,14 +16,14 @@ consent, the fewer-scopes check and the fetcher, and follow
 what the Google tools need from the connection. Build each remaining tool work item on these
 contracts.
 
-| Part                                                                            | What it holds                                                                        |
-| ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| this page                                                                       | what a tool gets from a connection, the scope each tool needs, runs in flight        |
-| [the credential database](../../architecture/connectors/credential-database.md) | the tables, the records, refresh, Forget and resets                                  |
-| [the Google tools](gmail-calendar-drive-tools.md)                               | the rules every Google tool keeps, and the `gmail.*` tools                           |
-| [Calendar and Drive tools](google-calendar-drive-tools.md)                      | the `calendar.*` and `drive.*` tools, their checks and the Drive picker              |
-| [Gmail arrivals](https://github.com/zgeoff/nixie/pull/1420)                     | the Gmail source that wakes a task, and the `gmail.wake_*` tools, in the mail design |
-| [the calendar poll](mail-and-calendar-polls.md)                                 | calendar changes that wake a task                                                    |
+| Part                                                                              | What it holds                                                                        |
+| --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| this page                                                                         | what a tool gets from a connection, the scope each tool needs, runs in flight        |
+| [the credential database](../../architecture/connectors/credential-database.md)   | the tables, the records, refresh, Forget and resets                                  |
+| [the Google tools](gmail-calendar-drive-tools.md)                                 | the rules every Google tool keeps, and the `gmail.*` tools                           |
+| [Calendar and Drive tools](../../architecture/connectors/calendar-drive-tools.md) | the `calendar.*` and `drive.*` tools, their checks and the Drive picker              |
+| [Gmail arrivals](https://github.com/zgeoff/nixie/pull/1420)                       | the Gmail source that wakes a task, and the `gmail.wake_*` tools, in the mail design |
+| [the calendar poll](mail-and-calendar-polls.md)                                   | calendar changes that wake a task                                                    |
 
 The connection argument shipped with the Gmail tools, in the
 [Gmail](https://linear.app/zgeoff/issue/GEO-1825) work item. Job pins and the model's status line

@@ -5,9 +5,9 @@ account from Settings → Connections. nixie keeps the account's refresh token s
 Once you connect an account, the model can use the
 [Gmail tools](../architecture/connectors/gmail-tools.md) to search, read and label your mail, write
 drafts and send mail. It can also wake the conversation or a task when new mail matches a rule it
-sets. The tools for [Calendar](https://linear.app/zgeoff/issue/GEO-1826) and
-[Drive](https://linear.app/zgeoff/issue/GEO-1827) come later. To learn how consent, refresh and
-Forget work, read the [Google connections](../architecture/connectors/google-connections.md) doc.
+sets. The [Calendar and Drive tools](../architecture/connectors/calendar-drive-tools.md) let it read
+and change your events and the Drive files you choose. To learn how consent, refresh and Forget
+work, read the [Google connections](../architecture/connectors/google-connections.md) doc.
 
 Settings → Connections shows the same 6 steps as this guide, from "Create a Google Cloud project" to
 "Connect an account", with your nixie address filled in where a step needs it.
@@ -108,6 +108,25 @@ scope, and a button to ask Google again. The conversation never shows that notic
 - When nixie sends a mail, it also sets a wake rule for a reply in that thread, for 7 days by
   default. The card shows when that rule expires.
 - A mail nixie sends carries no header with nixie's name in it.
+
+## What the assistant does with your calendar and Drive
+
+- nixie reads your calendars and events without asking you, and asks Google at each call.
+- nixie adds, changes and cancels an event that has no guest without asking you, because a starter
+  rule allows writes to a service. Google emails no one for these.
+- Before nixie invites, changes or cancels an event with guests, or answers an invitation, it waits
+  for your answer on a card that shows the event and each guest. Google emails the guests only after
+  you approve. nixie never changes an event that someone else organizes, apart from your answer to
+  its invitation.
+- nixie sees only the Drive files that you choose and the files it makes. On a connection's page,
+  select Choose Drive files, which needs the picker key and the project number from your client, and
+  pick the files in Google's window. The page lists each file that nixie cannot see, which is
+  usually a file chosen under another Google account.
+- nixie creates a Drive file in your My Drive, shared with no one. It replaces the content of a file
+  it can see only when no one else can read the file.
+- When nixie can't tell whether an event or file change went through, it waits 5 minutes, then looks
+  for it. A change to an event with guests that it can't find goes to you on a card, and nixie
+  doesn't send it again until you answer.
 
 ## The unverified-app warning
 

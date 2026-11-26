@@ -14,17 +14,14 @@ a send runs as an [action](../../architecture/core/actions.md), and the
 the effects the tool declares and the destinations nixie reads from Google. When an attempt's
 outcome is unknown, a read-only check at Google settles it, and nixie never repeats a send blind.
 
-Below are the rules for every Google tool, and the parts of the Gmail tools not built yet. Find the
-rest in [Calendar and Drive tools](google-calendar-drive-tools.md). The Gmail tools are `gmail.*`.
-The `mail.*` tools belong to the assistant's own mailbox, in the
+Below are the rules for every Google tool, and the parts of the Gmail tools not built yet. The
+[Calendar and Drive tools](../../architecture/connectors/calendar-drive-tools.md) are built. The
+Gmail tools are `gmail.*`. The `mail.*` tools belong to the assistant's own mailbox, in the
 [mail design](https://github.com/zgeoff/nixie/pull/1420). That design also holds `gmail.wake_set`,
 `gmail.wake_list` and `gmail.wake_cancel`, and the `replyWake` argument of `gmail.send` and
 `gmail.reply`. They are built in the mail polls work item. The tokens, the consent and the scopes
 belong to the [Google connection](google-connections.md). How a call and its errors reach the model
 is in [tool calls](../../architecture/connectors/tool-calls.md).
-
-Build the [Calendar and Drive](https://linear.app/zgeoff/issue/GEO-1826) work item from this page,
-and leave the open questions in that issue to the owner.
 
 ## Shape
 
@@ -108,8 +105,8 @@ These parts of the Gmail tools are not built yet:
 
 - **The Google tools are `gmail.*`, `calendar.*` and `drive.*`, with the names in
   [the Gmail tools](../../architecture/connectors/gmail-tools.md#the-tools) and
-  [Calendar and Drive tools](google-calendar-drive-tools.md#the-tools).** `mail.*` names only the
-  assistant's own mailbox.
+  [Calendar and Drive tools](../../architecture/connectors/calendar-drive-tools.md#the-tools).**
+  `mail.*` names only the assistant's own mailbox.
 - **The card sentences and approve buttons are those in the
   [Gmail card table](../../architecture/connectors/gmail-tools.md#the-card).**
 - **Reads are live.** With no store, nixie has no sync to keep and no new forget path.
