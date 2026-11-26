@@ -4,5 +4,5 @@ import type { BuildSchema } from '../types';
 
 export const nixieSchema: BuildSchema = {
   migrations: await readMigrations(join(import.meta.dir, '..', 'migrations')),
-  oldestReader: 89,
+  oldestReader: 92,
 };

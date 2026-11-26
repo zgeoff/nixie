@@ -30,8 +30,9 @@ async function setupTest() {
   return { db };
 }
 
-test('it moves the schema to version 92', () => {
+test('it moves the schema to version 92, which the release before cannot read', () => {
   expect(nixieSchema.migrations.indexOf(proposalsMcpFamilyMigration) + 1).toBe(92);
+  expect(nixieSchema.oldestReader).toBeGreaterThanOrEqual(92);
 });
 
 test('it lets a proposal take the mcp family', async () => {
