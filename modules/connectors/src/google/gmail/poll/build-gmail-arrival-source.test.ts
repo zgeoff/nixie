@@ -634,6 +634,7 @@ test('it wakes the sender on a reply that arrived before the check of an unknown
     attemptStartedAt: ctx.clock.now(),
     actionHash: 'hash-1',
     deadlineAt: null,
+    snapshotHash: 'sha256:test',
   };
 
   const queued = tools.findAction('gmail.send').queued;
@@ -692,6 +693,7 @@ test('it wakes the sender on a reply that the poll dropped, after a restart befo
     attemptStartedAt: ctx.clock.now(),
     actionHash: 'hash-1',
     deadlineAt: null,
+    snapshotHash: 'sha256:test',
   };
 
   const queued = tools.findAction('gmail.send').queued;

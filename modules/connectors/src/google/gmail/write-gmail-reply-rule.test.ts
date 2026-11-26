@@ -29,6 +29,7 @@ async function setupTest() {
     attemptStartedAt: ctx.clock.now(),
     actionHash: 'hash-1',
     deadlineAt: null,
+    snapshotHash: 'sha256:test',
   });
 
   const send = (args: Record<string, string | string[]>) => {
@@ -110,6 +111,7 @@ test('it registers no rule for a draft', async () => {
     attemptStartedAt: ctx.clock.now(),
     actionHash: 'hash-1',
     deadlineAt: null,
+    snapshotHash: 'sha256:test',
   });
 
   const rules = await ctx.readRules();

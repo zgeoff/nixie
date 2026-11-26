@@ -37,6 +37,7 @@ async function setupTest() {
       attemptStartedAt: tools.clock.now(),
       actionHash: 'hash-1',
       deadlineAt: null,
+      snapshotHash: 'sha256:test',
     });
   };
 
