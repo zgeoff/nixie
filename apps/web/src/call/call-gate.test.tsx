@@ -8,6 +8,8 @@ import {
   createRouter,
 } from '@tanstack/react-router';
 import { render } from '@testing-library/react';
+import type { ReactNode } from 'react';
+import { useEffect } from 'react';
 import { buildBrowserClient } from '../client/build-browser-client';
 import { featureStore } from '../mocks/feature-store';
 import { createDeviceSession } from '../test-utils/create-device-session';
@@ -30,11 +32,23 @@ async function setupTest() {
     staleTime: 'static',
   });
 
+  const mounts: string[] = [];
+
+  // Records each mount, so a test sees the subtree under the gate mount again.
+  const MountProbe = (): ReactNode => {
+    useEffect(() => {
+      mounts.push('mounted');
+    }, []);
+
+    return null;
+  };
+
   const router = createRouter({
     history: createMemoryHistory({ initialEntries: ['/'] }),
     routeTree: createRootRoute({
       component: () => (
         <CallGate>
+          <MountProbe />
           <CallContext.Consumer>
             {(call) => <p>{call === undefined ? 'no call provider' : 'call provider'}</p>}
           </CallContext.Consumer>
@@ -44,6 +58,7 @@ async function setupTest() {
   });
 
   return {
+    mounts,
     renderGate: () =>
       render(
         <QueryClientProvider client={queryClient}>
@@ -75,4 +90,16 @@ test('it mounts the call provider while voice is on', async () => {
   const probe = await rendered.findByText('call provider');
 
   expect(probe).toBeInTheDocument();
+});
+
+test('it keeps the tree under the gate mounted when nixie answers that voice is off', async () => {
+  const ctx = await setupTest();
+
+  await featureStore.featuresOff.create({ feature: 'voice' });
+
+  const rendered = ctx.renderGate();
+
+  await rendered.findByText('no call provider');
+
+  expect(ctx.mounts).toStrictEqual(['mounted']);
 });

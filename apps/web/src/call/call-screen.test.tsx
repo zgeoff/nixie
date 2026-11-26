@@ -23,7 +23,7 @@ function setupTest() {
   const rootRoute = createRootRoute({
     component: () => (
       <CallEnvironmentContext value={stub.environment}>
-        <CallProvider>
+        <CallProvider isOn>
           <Outlet />
         </CallProvider>
       </CallEnvironmentContext>

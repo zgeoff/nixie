@@ -7,13 +7,9 @@ export interface CallGateProps {
   readonly children: ReactNode;
 }
 
-// Mounts the call provider only while the voice feature is on.
+// Turns the call provider off while the voice feature is off.
 export function CallGate(props: CallGateProps): ReactNode {
   const features = useFeatures();
 
-  return isFeatureOn(features, 'voice') ? (
-    <CallProvider>{props.children}</CallProvider>
-  ) : (
-    props.children
-  );
+  return <CallProvider isOn={isFeatureOn(features, 'voice')}>{props.children}</CallProvider>;
 }

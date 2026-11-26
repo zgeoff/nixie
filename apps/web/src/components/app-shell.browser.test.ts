@@ -75,6 +75,8 @@ async function setupTest() {
         undefined,
         z.array(z.string()),
       ),
+    readAudioCount: () =>
+      runInPage(view, () => document.querySelectorAll('audio').length, undefined, z.number()),
     readPageText: () =>
       runInPage(view, () => document.body.textContent ?? '', undefined, z.string()),
     readMarks: () =>
@@ -410,6 +412,35 @@ test('it says a feature is off on a direct visit to its route', async () => {
       const text = await ctx.readPageText();
 
       expect(text).toContain('This feature is off in this nixie');
+    },
+    { timeout: 10_000 },
+  );
+});
+
+test.each([
+  { voice: 'off', featuresOff: ['voice' as const], audioCount: 0, hasCall: false },
+  { voice: 'on', featuresOff: [], audioCount: 1, hasCall: true },
+])('it renders the call provider only while voice is $voice', async (row) => {
+  const ctx = await setupTest();
+
+  await Promise.all(row.featuresOff.map((feature) => featureStore.featuresOff.create({ feature })));
+  await ctx.setViewport(1280, 800);
+  await ctx.signIn();
+
+  await waitFor(
+    async () => {
+      const labels = await ctx.readNavLabels();
+      const audioCount = await ctx.readAudioCount();
+
+      expect({
+        hasMemory: labels.includes('Memory'),
+        hasCall: labels.includes('Call'),
+        audioCount,
+      }).toStrictEqual({
+        hasMemory: true,
+        hasCall: row.hasCall,
+        audioCount: row.audioCount,
+      });
     },
     { timeout: 10_000 },
   );
