@@ -39,7 +39,7 @@ export async function writeWorkerRunEnded(
         profile: names.profile,
         outcome: end.outcome,
         ...(end.outcome === 'limit' ? { limit: end.limit } : {}),
-        ...(ended.refusal === null ? {} : ended.refusal),
+        ...ended.refusal,
         used: ended.used,
       }),
       ...(detail === null ? {} : { erasable: { detail } }),

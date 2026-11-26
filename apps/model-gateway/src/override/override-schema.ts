@@ -10,4 +10,4 @@ const dayOverrideSchema = z.strictObject({
 export const overrideSchema = z.strictObject({
   routes: z.record(z.string().min(1), dayOverrideSchema).default({}),
   providers: z.record(z.string().min(1), dayOverrideSchema).default({}),
-}) satisfies z.ZodType<Overrides, unknown>;
+}) satisfies z.ZodType<Overrides>;
