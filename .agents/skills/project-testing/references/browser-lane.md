@@ -49,11 +49,21 @@ another in one test process. Every file shares one Chrome and one global object:
   `RIG_BROWSER_BUILD_DIR`. A suite reads the build through
   [`readBrowserBuild`](../../../../apps/web/src/test-utils/read-browser-build.ts), which throws when
   that variable is not set.
-- **When the browser preload fails because Chrome did not start, point Bun at a browser or let CI
-  run the lane.** Bun looks for Chrome or Chromium on `PATH`, in a standard install location, and at
-  `BUN_CHROME_PATH`. Set `BUN_CHROME_PATH` when the browser is installed somewhere else. With no
-  browser on the host, push the branch and read the `pr / test-browser` check, which runs
-  `bun run test:browser`, and the `journeys` check, which runs `bun run test:journeys`.
+- **Change the Chrome version only in
+  [`chrome-pin.json`](../../../../scripts/test-utils/chrome-pin.json), together with the
+  `playwright-core` version, in a pull request of its own.** The browser tests depend on exact
+  Chrome behaviour, so both lane commands run through
+  [`run-with-pinned-chrome.ts`](../../../../scripts/test-utils/run-with-pinned-chrome.ts). On Linux
+  on x64 the script downloads the pinned Chrome for Testing build, refuses a build whose SHA-256 or
+  version differs from the pin, and sets `BUN_CHROME_PATH` to it. The computer and render guests run
+  the Chrome that `playwright-core` installs, and
+  `bun scripts/test-utils/check-playwright-chrome.ts` fails when that Chrome differs from the pin.
+  Run both browser lanes after a change.
+- **When the browser preload fails because Chrome did not start on another host, point Bun at a
+  browser or let CI run the lane.** On such a host Bun starts the Chrome it finds on `PATH`, in a
+  standard install location, or at `BUN_CHROME_PATH`. With no browser on the host, push the branch
+  and read the `pr / test-browser` check, which runs `bun run test:browser`, and the `journeys`
+  check, which runs `bun run test:journeys`.
 - **Open every view with `new Bun.WebView({ backend: 'chrome' })`.** `backend: 'chrome'` picks
   Chrome as the view's engine. Pass no other option: Bun ignores the start options, such as the
   viewport size, of every view after the first view, which the browser preload opens. Set the

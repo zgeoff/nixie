@@ -20,6 +20,12 @@ jobs:
     with:
       paths: |
         .github/workflows/journeys.yml
+        scripts/test-utils/chrome-pin.json
+        scripts/test-utils/run-with-pinned-chrome.ts
+        scripts/test-utils/check-playwright-chrome.ts
+        scripts/test-utils/check-chrome-version.ts
+        scripts/test-utils/parse-chrome-pin.ts
+        scripts/test-utils/parse-chrome-version.ts
         .bun-version
         bun.lock
         bunfig.toml

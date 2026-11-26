@@ -1,5 +1,6 @@
 import type { CredentialStoreOptions } from '@heynixie/credentials';
 import { makeGoogleTransport } from '../test/make-google-transport';
+import type { GoogleAPISite } from '../test/types';
 import { resolveTestHostAddresses } from './resolve-test-host-addresses';
 
 // A loopback HTTPS site that a test serves in place of an outside service.
@@ -13,16 +14,16 @@ export interface TestCredentialSite {
 type TestCredentialChecks = Pick<CredentialStoreOptions, 'resolveHost' | 'test'>;
 
 // Without a site, each request goes to the mock network, except a request to a Google test host,
-// which goes to the fake Google site at `googleURL` when there is one. With a site, each request
+// which goes to the fake Google site's HTTPS address when there is one. With a site, each request
 // takes the pinned connection a release build takes, to the site alone, so no other host is reached.
 export function buildTestCredentialChecks(
   site: TestCredentialSite | null,
-  googleURL: string | null,
+  googleAPI: GoogleAPISite | null,
 ): TestCredentialChecks {
   if (site === null) {
     return {
       resolveHost: resolveTestHostAddresses,
-      test: { transport: makeGoogleTransport(googleURL) },
+      test: { transport: makeGoogleTransport(googleAPI) },
     };
   }
 

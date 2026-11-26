@@ -63,7 +63,7 @@ export async function loadServerInputs(options: ServerOptions): Promise<ServerIn
     ...(NIXIE_TEST_BUILD
       ? buildTestCredentialChecks(
           options.credentialSite ?? null,
-          options.harness?.googleURL ?? null,
+          options.harness?.googleAPI ?? null,
         )
       : { resolveHost: resolveHostAddresses }),
   });

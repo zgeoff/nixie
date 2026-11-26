@@ -141,10 +141,12 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
   {
     name: 'decisions',
     needs: ['inputs', 'context'],
-    uses: ['checker'],
+    uses: ['checker', 'google_tools'],
     start: (parts) =>
       Promise.resolve(
         makeServerDecisions({
+          readOwnerDestinations: () =>
+            parts.find('google_tools')?.readAccounts() ?? Promise.resolve([]),
           log: parts.get('context').apiContext.log,
           linkMaxAgeMs: parts.get('inputs').options.config.policy.consent.linkMaxAgeMs,
           readCheck: () => parts.find('checker')?.check ?? null,

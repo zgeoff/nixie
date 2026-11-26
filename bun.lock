@@ -800,6 +800,7 @@
       },
       "devDependencies": {
         "@heynixie/budgets": "workspace:*",
+        "@heynixie/egress": "workspace:*",
         "@heynixie/policy": "workspace:*",
         "@heynixie/testing": "workspace:*",
         "@modelcontextprotocol/server": "catalog:",

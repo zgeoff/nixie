@@ -27,6 +27,10 @@ export interface ServerDecisionsOptions {
 
   // the consent checker, which starts after the decision points do
   readonly readCheck: () => RunConsentCheck | null;
+
+  // the addresses that are you, such as each connected Google account's own: a mail to one needs no
+  // card, and forgetting the connection takes the address away
+  readonly readOwnerDestinations: () => Promise<readonly string[]>;
 }
 
 const unavailable: ConsentAnswer = { verdict: 'unsure', failure: 'error' };
@@ -43,7 +47,7 @@ export function makeServerDecisions(options: ServerDecisionsOptions): DecisionPo
           rules: read.rules,
           contacts,
           tools: read.tools,
-          ownerDestinations: [],
+          ownerDestinations: await options.readOwnerDestinations(),
         };
       },
       findTaskDestinations: () => [],

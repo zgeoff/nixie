@@ -12,6 +12,7 @@ import { forgetConnection, readConnectionForgetState } from './connection/forget
 import { listConnections } from './connection/list-connections';
 import { readConnectionContext } from './connection/read-connection-context';
 import { readHeldBackTools } from './connection/read-held-back-tools';
+import { readLiveContexts } from './connection/read-live-contexts';
 import { readSetup } from './connection/read-setup';
 import { runConnectionCheck, runDailyChecks } from './connection/run-connection-check';
 import { finishConsent } from './consent/finish-consent';
@@ -106,6 +107,12 @@ export interface Connections extends ConnectionsPort {
   // what a Google tool, attempt or check gets for one connection; null when it is not live
   readonly readContext: (connectionID: string) => Promise<ConnectionContext | null>;
 
+  // the context of each live connection, or of the one that the short ID names
+  readonly readLiveContexts: (connection?: string) => Promise<ConnectionContext[]>;
+
+  // the tools that the Google connector holds
+  readonly actions: Connector['actions'];
+
   // reads each scope of a live connection again and keeps what it found
   readonly runCheck: (connectionID: string) => Promise<'checked' | 'failed' | 'skipped'>;
 
@@ -184,6 +191,8 @@ export function startConnections(options: ConnectionsOptions): Connections {
     runCheck: (connectionID) => runConnectionCheck(context, connectionID),
     runDailyChecks: () => runDailyChecks(context),
     readHeldBackTools: () => readHeldBackTools(context),
+    readLiveContexts: (connection) => readLiveContexts(context, connection ?? null),
+    actions: connector.actions,
     sweepConsents: () => sweepConsents(context),
   };
 }

@@ -12,7 +12,11 @@ export interface AttemptCheckInput {
 
 // What the decision point says about an attempt, from the stored call and the current rules.
 export type AttemptVerdict =
-  | { readonly kind: 'go'; readonly destinations: readonly string[] }
+  | {
+      readonly kind: 'go';
+      readonly destinations: readonly string[];
+      readonly replyTargets?: readonly string[];
+    }
   | {
       readonly kind: 'deny';
       readonly rule: { readonly id: string; readonly revision: number } | null;
@@ -22,6 +26,7 @@ export type AttemptVerdict =
       readonly kind: 'ask';
       readonly cause: AskCause;
       readonly destinations: readonly string[];
+      readonly replyTargets?: readonly string[];
       readonly proposalID: string;
 
       // the proposal that opens the owner's question about this action

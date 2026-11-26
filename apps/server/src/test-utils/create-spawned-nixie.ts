@@ -35,6 +35,7 @@ import {
 import { z } from 'zod';
 import type { NixieOperationArgs } from '../part/build-nixie-operation-schemas';
 import { getSandboxRootDir } from '../part/get-sandbox-root-dir';
+import type { GoogleAPISite } from '../test/types';
 import { buildAdvanceHelpers } from './build-advance-helpers';
 import { readDataFiles } from './read-data-files';
 import { readTestBundle } from './read-test-bundle';
@@ -154,6 +155,9 @@ export interface SpawnedNixieOptions {
   // the address of a fake Google, which a test build reaches Google's endpoints at
   readonly googleURL?: string;
 
+  // the HTTPS site of that fake Google, which the credential store's fetcher sends API requests to
+  readonly googleAPI?: GoogleAPISite;
+
   // the URL of a double of atc-gateway that the coding runner calls in place of the configured one
   readonly atcURL?: string;
 
@@ -236,6 +240,12 @@ export async function createSpawnedNixie(
       NIXIE_TEST_FETCHER: join(import.meta.dir, 'run-stub-fetcher.ts'),
       ...(options.atcURL === undefined ? {} : { NIXIE_TEST_ATC_URL: options.atcURL }),
       ...(options.googleURL === undefined ? {} : { NIXIE_TEST_GOOGLE_URL: options.googleURL }),
+      ...(options.googleAPI === undefined
+        ? {}
+        : {
+            NIXIE_TEST_GOOGLE_API_URL: options.googleAPI.url,
+            NIXIE_TEST_GOOGLE_API_CA: options.googleAPI.ca,
+          }),
     },
     files,
   };

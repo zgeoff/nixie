@@ -62,3 +62,37 @@ test('it lists each file of a mail send by name and size on the card', async () 
     fields: { replyWake: '2d', files: 'plan.txt (9 B)' },
   });
 });
+
+test('it words the card of a Gmail label change with its thread count and each label', async () => {
+  const memory = await startTestMemory();
+
+  const fields = await readActionBodyFields(
+    memory.log,
+    {
+      tool: 'gmail.label',
+      thread: 'conversation',
+      input: { threads: ['k3x9m2p7qa.a1', 'k3x9m2p7qa.b2'], add: ['Reports'], remove: ['INBOX'] },
+      callSequence: 1,
+    },
+    undefined,
+  );
+
+  expect(fields).toStrictEqual({
+    status: 'fields',
+    fields: {},
+    sentence: 'Label 2 threads: add Reports, remove INBOX',
+    approveLabel: 'Label',
+  });
+});
+
+test('it leaves the card of a Gmail send without a body when its facts are gone', async () => {
+  const memory = await startTestMemory();
+
+  const fields = await readActionBodyFields(
+    memory.log,
+    { tool: 'gmail.send', thread: 'conversation', input: {}, callSequence: 1 },
+    undefined,
+  );
+
+  expect(fields).toStrictEqual({ status: 'unreadable' });
+});

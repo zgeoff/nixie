@@ -1,7 +1,7 @@
 import { featurePaths } from './feature-paths';
 
-// The features that use a device, a second client or the assistant's own mailbox, which the registry
-// lists after the others.
+// The features that use a device, a second client, the assistant's own mailbox or Gmail, which the
+// registry lists after the others.
 export const lastFeatures = [
   {
     name: 'spend-routes',
@@ -32,5 +32,10 @@ export const lastFeatures = [
     name: 'mail-wake',
     summary: 'Mail wakes the chat',
     paths: featurePaths['mail-wake'],
+  },
+  {
+    name: 'gmail-tools',
+    summary: 'Search and read a mail, and approve the reply the assistant writes',
+    paths: featurePaths['gmail-tools'],
   },
 ] as const;
