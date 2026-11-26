@@ -52,6 +52,9 @@ export interface McpOptions {
 
   // a time as the owner reads it in an error to the model, such as 14:05; UTC when absent
   readonly formatTime?: (timeMs: number) => string;
+
+  // a refresh that a change started and that failed, with nobody waiting on it
+  readonly onRefreshFailed: (error: unknown) => void;
 }
 
 export type ListResult =
@@ -84,8 +87,9 @@ export interface Mcp {
   // At start: compares each config entry with the facts in use, and reads the tool rows.
   readonly start: () => Promise<readonly ServerStartStep[]>;
 
-  // stops the retries of failed servers
-  readonly stop: () => void;
+  // Stops the retries of failed servers and the refreshes that changes start, and returns once the
+  // refreshes and listings in flight end, so none reads the log after it closes.
+  readonly stop: () => Promise<void>;
   readonly connect: (serverID: string, origin: string) => Promise<ConnectResult>;
   readonly finishSignIn: (input: FinishInput) => Promise<FinishResult>;
 
@@ -353,6 +357,25 @@ export function startMcp(options: McpOptions): Mcp {
     await tools.refresh();
   };
 
+  // the refreshes that a change started, which a stop waits for
+  const refreshes = new Set<Promise<void>>();
+
+  const subscription = { stop: () => {} };
+
+  const runRefresh = async (refresh: () => Promise<void>) => {
+    const running = refresh();
+
+    refreshes.add(running);
+
+    try {
+      await running;
+    } catch (error) {
+      options.onRefreshFailed(error);
+    } finally {
+      refreshes.delete(running);
+    }
+  };
+
   const makeApprovedCall = (tool: string) => async (input: JSONObject) => {
     const result = await tools.runApproved(tool, input);
 
@@ -444,18 +467,21 @@ export function startMcp(options: McpOptions): Mcp {
 
       await tools.refresh();
 
-      subscribeToChanged(options.log.writer, (topics) => {
+      subscription.stop = subscribeToChanged(options.log.writer, (topics) => {
         if (topics.includes('definitions')) {
-          void refit();
+          void runRefresh(refit);
         } else if (topics.includes('mcp')) {
-          void tools.refresh();
+          void runRefresh(tools.refresh);
         }
       });
 
       return steps;
     },
-    stop: () => {
+    stop: async () => {
+      subscription.stop();
       health.stop();
+
+      await Promise.allSettled([...refreshes, ...listings.values()]);
     },
     connect: signIn.connect,
     finishSignIn: signIn.finish,

@@ -23,6 +23,9 @@ export interface StandInMcpOptions {
   readonly advertisesIssuer?: boolean;
   readonly onPinMoved?: OnPinMoved;
   readonly extraProjections?: TestMcpOptions['extraProjections'];
+
+  // awaited by each read of the override files, so a test can hold a refresh in flight
+  readonly holdOverrides?: () => Promise<void>;
 }
 
 export interface StandInMcp {
@@ -103,11 +106,17 @@ export async function startStandInMcp(options: StandInMcpOptions = {}): Promise<
       servers: { tracker: { ...facts, ...changed } },
       listingTimeoutSeconds: options.listingTimeoutSeconds ?? 5,
       takenModelNames: () => new Set(),
-      readOverrides: () =>
-        Promise.resolve({
+      readOverrides: async () => {
+        await options.holdOverrides?.();
+
+        return {
           definitionsHash: test.context.definitions().snapshotHash,
           servers: overrides.servers,
-        }),
+        };
+      },
+      onRefreshFailed: (error) => {
+        throw error;
+      },
       ...(options.onPinMoved === undefined ? {} : { onPinMoved: options.onPinMoved }),
     });
 

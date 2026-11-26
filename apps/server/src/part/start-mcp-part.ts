@@ -54,13 +54,13 @@ export async function startMcpPart(
           toSDKToolName(definition.name),
         ),
       ),
+    onRefreshFailed: (error) => {
+      parts.log('mcp.refresh_failed', toErrorFields(error), 'warn');
+    },
   });
 
   await mcp.start();
-
-  await parts.cleanup.defer(() => {
-    mcp.stop();
-  });
+  await parts.cleanup.defer(() => mcp.stop());
 
   const servers = await mcp.readServers();
 
