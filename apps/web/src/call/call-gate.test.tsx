@@ -27,7 +27,7 @@ async function setupTest() {
   const queryUtils = buildQueryUtils(client);
 
   // a signed-in page has read the session, which is what lets the features read start
-  await queryClient.prefetchQuery({
+  await queryClient.query({
     ...queryUtils.sessions.list.queryOptions(),
     staleTime: 'static',
   });

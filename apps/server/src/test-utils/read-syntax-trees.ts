@@ -32,7 +32,7 @@ export async function readSyntaxTrees(sources: readonly SourceText[]): Promise<S
   });
 
   try {
-    const snapshot = await api.updateSnapshot({ openProject: '/tsconfig.json' });
+    const snapshot = await api.updateSnapshot({ openProjects: ['/tsconfig.json'] });
 
     const project = snapshot.getProject('/tsconfig.json');
 

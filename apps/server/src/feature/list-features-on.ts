@@ -3,11 +3,11 @@ import type { FeatureID } from '@heynixie/contract';
 
 // The parts of the deployment config that decide a feature. DeploymentConfig satisfies it.
 export interface FeatureConfig {
-  readonly voice?: unknown | undefined;
+  readonly voice?: unknown;
   readonly images: unknown;
-  readonly mail?: unknown | undefined;
-  readonly coding?: { readonly atc?: unknown | undefined } | undefined;
-  readonly spendStop?: unknown | undefined;
+  readonly mail?: unknown;
+  readonly coding?: { readonly atc?: unknown } | undefined;
+  readonly spendStop?: unknown;
   readonly search: { readonly credential: unknown };
 }
 
