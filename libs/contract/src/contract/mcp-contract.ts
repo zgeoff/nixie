@@ -9,7 +9,29 @@ const mcpProcedure = signedIn.errors({
   },
 });
 
+const mcpToolSchema = z.object({
+  tool: z.string(),
+  state: z.enum(['exposed', 'stopped_changed', 'stopped_unfit', 'hidden_new', 'removed']),
+  hiddenReason: z.string().nullable(),
+  proposalID: z.string().nullable(),
+});
+
+export const mcpServerSchema = z.object({
+  server: z.string(),
+  state: z.enum(['held', 'added']),
+  signIn: z.enum(['not_added', 'no_grant', 'needs_consent', 'ok']),
+  health: z.enum(['healthy', 'unhealthy']),
+  lastError: z.enum(['refused', 'error', 'unparsable', 'timeout', 'unauthorised']).nullable(),
+  nextTryAtMs: z.number().int().nullable(),
+  url: z.string().nullable(),
+  proposalID: z.string().nullable(),
+  tools: z.array(mcpToolSchema),
+});
+
 export const mcpContract = {
+  // every server that is not removed, with its state, sign-in, health and tools
+  listServers: mcpProcedure.output(z.array(mcpServerSchema)),
+
   connect: mcpProcedure
     .errors({
       SERVER_NOT_FOUND: { message: 'No MCP server has this ID', status: 404 },

@@ -20,6 +20,8 @@ import type { AllowResult } from './proposal/allow-tool';
 import { makeMcpProposalHandler } from './proposal/make-mcp-proposal-handler';
 import { createToolCatalog } from './registry/create-tool-catalog';
 import type { ToolCatalog } from './registry/create-tool-catalog';
+import { buildServerViews } from './rows/build-server-views';
+import type { McpServerView } from './rows/build-server-views';
 import type { McpServerRow, McpToolRow } from './rows/mcp-tables';
 import { readServerRows } from './rows/read-server-rows';
 import { readToolRows } from './rows/read-tool-rows';
@@ -65,7 +67,7 @@ export type ListResult =
 // What the API reaches: the two steps of a sign-in, and the forget of a server's credentials.
 export type McpPort = Pick<
   Mcp,
-  'connect' | 'finishSignIn' | 'forgetGrants' | 'allow' | 'readNotices'
+  'connect' | 'finishSignIn' | 'forgetGrants' | 'allow' | 'readNotices' | 'readServerViews'
 >;
 
 // One line of the model's view of the servers.
@@ -114,6 +116,9 @@ export interface Mcp {
   // what the proxy knows of the newest server listings of one server: how many failed in a row, the
   // next try and the last error
   readonly readHealth: (serverID: string) => ServerHealth;
+
+  // every server that is not removed, as its page in the client shows it
+  readonly readServerViews: () => Promise<McpServerView[]>;
 
   // every server that is not removed, as the model reads it
   readonly readSummaries: () => Promise<McpServerSummary[]>;
@@ -500,6 +505,14 @@ export function startMcp(options: McpOptions): Mcp {
     readServers: () => readServerRows(options.log.writer.db),
     readHealth: health.read,
     readTools: (serverID) => readToolRows(options.log.writer.db, serverID),
+    readServerViews: async () => {
+      const [servers, rows] = await Promise.all([
+        readServerRows(options.log.writer.db),
+        readToolRows(options.log.writer.db),
+      ]);
+
+      return buildServerViews({ servers, tools: rows, signIns, getHealth: health.read });
+    },
     readSummaries: async () => {
       const [servers, rows] = await Promise.all([
         readServerRows(options.log.writer.db),

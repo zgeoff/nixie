@@ -45,3 +45,27 @@ test('#mcp.readNotices refuses a caller with no session', async () => {
 
   expect(read).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
 });
+
+test('#mcp.listServers lists a signed-in server with its tools', async () => {
+  const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+  const servers = await buildTestClient(ctx.url, laptop.token).mcp.listServers();
+
+  expect(servers).toMatchObject([
+    {
+      server: 'tracker',
+      state: 'added',
+      signIn: 'ok',
+      health: 'healthy',
+      tools: [{ tool: 'tracker.item_get', state: 'exposed' }],
+    },
+  ]);
+});
+
+test('#mcp.listServers refuses a caller with no session', async () => {
+  const ctx = await setupTest();
+
+  const read = buildTestClient(ctx.url, 'no-such-token').mcp.listServers();
+
+  expect(read).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
+});

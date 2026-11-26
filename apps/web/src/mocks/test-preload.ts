@@ -7,6 +7,7 @@ import { createRoot } from 'react-dom/client';
 import { browserCookies } from './browser-cookies';
 import { connectionStore } from './connection-store';
 import { handlers } from './handlers';
+import { mcpStore } from './mcp-store';
 import { mockLive } from './mock-live';
 import { store } from './store';
 import { webOrigin } from './web-origin';
@@ -45,6 +46,7 @@ addMockHandlers(...handlers);
 afterEach(() => {
   store.reset();
   connectionStore.reset();
+  mcpStore.reset();
   mockLive.reset();
   browserCookies.clear();
   globalThis.localStorage.clear();
