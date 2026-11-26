@@ -148,10 +148,10 @@ which sends the outcome to the user. The test build's 3 send tools, `test.send`,
 and `test.send_checked`, declare one each, so the crash tests cover every path.
 [Actions](../core/actions.md#reconciling-an-unknown-outcome) covers the paths.
 
-An action that failed or went unknown never counts as a tool error: the call was allowed and the
-action ran, so the model reads its outcome as a result. A proxied tool's action that the server
-refused is the one exception, as [calls and results](mcp-proxy.md#calls-and-results) in the MCP
-proxy doc covers: the model reads the server's reason as an error.
+The model reads a failed or unknown action as a result, never as a tool error, because the call was
+allowed and the action ran. The one exception is an action of a proxied tool that the server
+refused: the model receives the server's reason as an error, as
+[calls and results](mcp-proxy.md#calls-and-results) in the MCP proxy doc covers.
 
 ## Records
 
