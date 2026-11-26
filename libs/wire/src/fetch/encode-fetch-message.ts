@@ -11,7 +11,10 @@ export function encodeFetchMessage(
     return encoder.encode(JSON.stringify(message));
   }
 
-  const html = message.html === undefined ? {} : { html: message.html };
+  const html = {
+    ...(message.html === undefined ? {} : { html: message.html }),
+    ...(message.mode === undefined ? {} : { mode: message.mode }),
+  };
 
   if (message.hops === 'none') {
     return encoder.encode(

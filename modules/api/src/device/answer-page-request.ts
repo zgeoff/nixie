@@ -1,5 +1,5 @@
 import { devicePagePaths } from '@heynixie/contract';
-import { readPageFrame, readPageImage } from '@heynixie/devices';
+import { readPackageFile, readPageFrame, readPageImage } from '@heynixie/devices';
 import type { APIContext } from '../types';
 
 // Answers a request for a page's frame or one of its images, or returns null for any other path.
@@ -17,6 +17,12 @@ export function answerPageRequest(context: APIContext, request: Request): Promis
   if (url.pathname.startsWith(devicePagePaths.images)) {
     return request.method === 'GET'
       ? serveImage(context, url.pathname.slice(devicePagePaths.images.length))
+      : Promise.resolve(new Response('not found', { status: 404 }));
+  }
+
+  if (url.pathname.startsWith(devicePagePaths.packages)) {
+    return request.method === 'GET'
+      ? servePackageFile(context, url.pathname.slice(devicePagePaths.packages.length))
       : Promise.resolve(new Response('not found', { status: 404 }));
   }
 
@@ -92,4 +98,51 @@ async function serveImage(context: APIContext, ticket: string): Promise<Response
       'content-security-policy': "default-src 'none'; sandbox",
     },
   });
+}
+
+// the name, the version and the path of a package file: `chart.js@4.4.6/dist/chart.umd.js`, or
+// `@scope/pkg@1.0.0/index.js` for a scoped name
+const packagePathPattern = /^(?<name>(?:@[^/@]+\/)?[^/@]+)@(?<version>[^/]+)\/(?<path>.+)$/u;
+
+// A file of an approved package. The page's opaque origin sends no session cookie, and nothing but
+// public npm code lives here, so the route asks for nothing and any origin may load a file, as a
+// module script or a font needs. The file is found by its path in the package's stored list.
+async function servePackageFile(context: APIContext, requested: string): Promise<Response> {
+  const groups = packagePathPattern.exec(decodeRequestPath(requested))?.groups;
+
+  if (
+    groups?.['name'] === undefined ||
+    groups['version'] === undefined ||
+    groups['path'] === undefined
+  ) {
+    return new Response('not found', { status: 404 });
+  }
+
+  const file = await readPackageFile(
+    { db: context.log.writer.db, dataDir: context.log.writer.dataDir },
+    { name: groups['name'], version: groups['version'], path: groups['path'] },
+  );
+
+  if (file === null) {
+    return new Response('not found', { status: 404 });
+  }
+
+  return new Response(file.bytes, {
+    headers: {
+      'cache-control': 'public, max-age=31536000, immutable',
+      'x-content-type-options': 'nosniff',
+      'referrer-policy': 'no-referrer',
+      'access-control-allow-origin': '*',
+      'content-type': file.mediaType,
+      'content-security-policy': "default-src 'none'; sandbox",
+    },
+  });
+}
+
+function decodeRequestPath(path: string): string {
+  try {
+    return decodeURIComponent(path);
+  } catch {
+    return '';
+  }
 }

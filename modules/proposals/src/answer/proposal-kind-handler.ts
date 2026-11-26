@@ -109,6 +109,17 @@ export interface ProposalBody {
   // picture's ID is read through the same route as an image's.
   readonly screen?: { readonly x: number; readonly y: number; readonly picture: string };
 
+  // The package that a package install adds, which the card shows beside its fields: the
+  // publisher's own words in `description` are marked as such.
+  readonly package?: {
+    readonly name: string;
+    readonly version: string;
+    readonly unpackedBytes: number | null;
+    readonly publisher: string;
+    readonly description: string;
+    readonly integrity: string;
+  };
+
   // the approve button's text, built from the kind's template and never from a model
   readonly approveLabel: string;
 

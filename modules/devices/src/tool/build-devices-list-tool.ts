@@ -86,7 +86,8 @@ function toShowing(state: ScreenState, layout: LayoutView | null): JSONObject {
     : { kind: 'markdown', until: state.until };
 }
 
-// The saved layout without any content: each region's kind, end and ID, never its text.
+// The saved layout without any content: each region's kind, end and ID, and the packages and fetch
+// URLs of a page, never its text or markup.
 function toListedLayout(layout: LayoutView | null): JSONObject | null {
   if (layout === null) {
     return null;
@@ -98,6 +99,7 @@ function toListedLayout(layout: LayoutView | null): JSONObject | null {
     rows: [...layout.rows],
     regions: layout.regions.map((region) => {
       const untilMs = region.shown?.untilMs ?? null;
+      const content = region.shown?.content;
 
       return {
         name: region.name,
@@ -109,6 +111,12 @@ function toListedLayout(layout: LayoutView | null): JSONObject | null {
         kind: region.shown?.content.kind ?? null,
         until: untilMs === null ? null : new Date(untilMs).toISOString(),
         shown: region.shown?.shownID ?? null,
+        ...(content?.kind === 'html' && content.packages !== undefined
+          ? { packages: [...content.packages] }
+          : {}),
+        ...(content?.kind === 'html' && content.fetches !== undefined
+          ? { fetches: content.fetches.map((fetch) => fetch.url) }
+          : {}),
       };
     }),
   };

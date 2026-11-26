@@ -10,9 +10,18 @@ const messages: Readonly<Record<string, string>> = {
   NO_LAYOUT: 'The device holds no layout, so there is nothing to save. device.layout sets one.',
   UNKNOWN_REGION:
     'The device has no layout with a region of this name. devices.list shows the layout.',
-  PACKAGES_NOT_BUILT:
-    'A page cannot load packages yet. Write the page with no packages, using inline script and style.',
-  FETCHES_NOT_BUILT: 'A page cannot declare fetches yet. Write the page with no fetches.',
+  UNKNOWN_PACKAGE:
+    'No approved package matches. device.addPackage asks the owner to approve one, and the page names it as name@version.',
+  TOO_BIG: 'The package holds more than 5 MiB once unpacked.',
+  PACKAGE_KNOWN: 'The owner already approved this version of the package.',
+  INTEGRITY_CHANGED:
+    'The registry now lists another hash for this version than the one the owner approved, so nothing was installed.',
+  BAD_PACKAGE: 'The package was refused, so nothing of it was installed.',
+  REGISTRY_UNAVAILABLE: 'The package registry did not answer, so nothing was installed.',
+  PACKAGES_UNAVAILABLE: 'This nixie has no fetch sandbox, so it can install no package.',
+  FETCHES_UNAVAILABLE: 'This nixie has no fetch sandbox, so a page can declare no fetch.',
+  BAD_FETCH:
+    'A declared fetch is not a public https URL, or two of them name the same URL. Each URL needs a host that is no address of a private network.',
   NOT_A_PAGE: 'This region does not show a page. device.region with kind html puts one there.',
 };
 

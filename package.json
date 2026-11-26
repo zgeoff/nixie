@@ -70,7 +70,7 @@
       "@wringer/browser": "0.2.1",
       "@wringer/core": "0.4.1",
       "@wringer/db": "0.1.8",
-      "@wringer/gunshi": "0.3.10",
+      "@wringer/gunshi": "0.3.11",
       "@wringer/http": "0.1.9",
       "@wringer/stream": "0.1.8",
       "@wringer/terminal": "0.1.5",

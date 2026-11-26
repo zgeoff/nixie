@@ -11,6 +11,16 @@ export interface FetchLimits {
   readonly imageBytes: number;
 }
 
+// What the fetcher returns for the URL. A page is the default. A body is the response's text as
+// the site sent it, with no reading of HTML. A package is an npm tarball that the fetcher checks
+// against `integrity`, unpacks and refuses past `unpackedBytes`.
+export type FetchMode =
+  | { readonly kind: 'body' }
+  | { readonly kind: 'package'; readonly integrity: string; readonly unpackedBytes: number };
+
+// The most files of one unpacked package, so a reply holds each path.
+export const maxPackageFiles = 2000;
+
 export interface FetchRequest {
   readonly url: string;
   readonly limits: FetchLimits;
@@ -24,6 +34,9 @@ export interface FetchRequest {
   // text and its links the way it reads a page, makes no request, and takes `url` as the address
   // that relative links resolve against.
   readonly html?: string;
+
+  // absent for a page
+  readonly mode?: FetchMode;
 }
 
 // The most bytes of one request frame. A request that carries HTML needs room for the document.

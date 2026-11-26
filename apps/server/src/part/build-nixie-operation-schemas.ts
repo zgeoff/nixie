@@ -65,6 +65,9 @@ export function buildNixieOperationSchemas() {
     // what the speech layer was asked to do, in order
     readSpeechCalls: z.null(),
 
+    // the owner's approval of a device page package, which a journey cannot give with a passkey
+    approvePackage: z.null(),
+
     // a mail that arrives at the assistant's own mailbox, on the in-memory host of a test build
     deliverMail: z.object({
       from: z.string(),

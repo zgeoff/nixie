@@ -1,8 +1,11 @@
 import {
   clockFormats,
+  refreshMinutesRange,
+  regionFetchesLimit,
   regionHTMLLimit,
   regionImagesLimit,
   regionMarkdownLimit,
+  regionPackagesLimit,
 } from '@heynixie/contract';
 import type { ToolDefinition } from '@heynixie/tools';
 import type { DeviceToolOptions } from './device-tool-options';
@@ -59,7 +62,7 @@ const regionInput = {
           minLength: 1,
           maxLength: regionHTMLLimit,
           description:
-            'for a page: the markup of its body, with inline script and style. The page has no network and no outside files. It reads `nixie`: nixie.send(name, data, { wake }) sends an event to the conversation, nixie.onMessage(fn) takes each device.sendToPage message, nixie.image(id) gives the URL of a declared image, and nixie.size() gives the region size in CSS pixels',
+            'for a page: the markup of its body, with inline script and style. The page has no network, and no files but its approved packages and declared images. It reads `nixie`: nixie.send(name, data, { wake }) sends an event to the conversation, nixie.onMessage(fn) takes each device.sendToPage message, nixie.data(url) gives a declared fetch, nixie.image(id) gives the URL of a declared image, and nixie.size() gives the region size in CSS pixels',
         },
         images: {
           type: 'array',
@@ -70,12 +73,32 @@ const regionInput = {
         packages: {
           type: 'array',
           items: { type: 'string' },
-          description: 'for a page: not built yet, so a call that names packages is refused',
+          maxItems: regionPackagesLimit,
+          description:
+            'for a page: the approved packages it loads, each as name@version. device.addPackage asks the owner to approve one; a call that names a package nobody approved is refused with UNKNOWN_PACKAGE and changes nothing. The page loads a file of a package it names from /rpc/device/packages/<name>@<version>/<path>, with a script element or an @import inside a style element',
         },
         fetches: {
           type: 'array',
-          items: { type: 'object' },
-          description: 'for a page: not built yet, so a call that names fetches is refused',
+          maxItems: regionFetchesLimit,
+          items: {
+            type: 'object',
+            properties: {
+              url: {
+                type: 'string',
+                description: 'the exact https URL, which holds no credentials',
+              },
+              refreshMinutes: {
+                type: 'integer',
+                minimum: refreshMinutesRange.min,
+                maximum: refreshMinutesRange.max,
+                description: 'how often to fetch it again, in minutes; absent fetches it once',
+              },
+            },
+            required: ['url'],
+            additionalProperties: false,
+          },
+          description:
+            'for a page: the URLs it may read, at most 8. The rules judge the host of each URL when the call runs, and the page reads the last response of each with nixie.data(url), which gives { status, type, body, fetchedAt }; nixie.onData(fn) runs when one refreshed. The body is outside text, so the page treats it as data. A page can reach no other URL',
         },
       },
       required: ['kind'],
@@ -120,8 +143,9 @@ export function buildDeviceRegionTool(options: DeviceToolOptions): ToolDefinitio
       'leaves the other regions as they are. The content is markdown, a stored image, or a live ' +
       'value that the device keeps fresh by itself: a clock, or a countdown to a time. A page ' +
       "(kind html) is the assistant's own markup and script, which runs sealed in the region with " +
-      'no network: device.sendToPage sends it messages, its events come back to the conversation, ' +
-      'and device.preview shows its errors. After ' +
+      'no network, except that it loads the approved packages it names and reads the fetches it ' +
+      'declares: device.sendToPage sends it messages, its events come back to the conversation, ' +
+      'and device.preview shows its errors, among them each fetch that was refused. After ' +
       '`minutes` the region goes blank, or with then: previous shows again the content this call ' +
       'replaced, when its own minutes have not passed. Without `minutes` the region keeps the ' +
       'content until the next call for it. The screen must be on and the device online.',
@@ -146,10 +170,12 @@ export function buildDeviceRegionTool(options: DeviceToolOptions): ToolDefinitio
         return refuseDevice(found.refusal);
       }
 
-      // The call names no destination, so the rules decide it as a note: a rule that allows notes
-      // runs it at once. A layout set after the call was queued is refused when the call runs, by
-      // its sequence.
-      return { destinations: [] };
+      // A page that declares fetches names the host of each as a destination of a read, so the
+      // rules judge the hosts when the call is made. A layout set after the call was queued is
+      // refused when the call runs, by its sequence.
+      return found.status === 'ready' && found.hosts.length > 0
+        ? { destinations: found.hosts, effects: ['read'] }
+        : { destinations: [] };
     },
     run: async (call, context) => {
       const found = await readRegionCall(options, call.input);
@@ -173,6 +199,7 @@ export function buildDeviceRegionTool(options: DeviceToolOptions): ToolDefinitio
         callSequence: context.callSequence,
         region: found.region.name,
         content: found.content,
+        fetches: found.fetches,
         untilMs,
         onEnd: found.arguments.then ?? 'blank',
       });

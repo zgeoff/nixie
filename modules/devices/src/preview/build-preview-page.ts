@@ -63,5 +63,6 @@ export function buildPreviewPage(input: PreviewPageInput): RenderFile[] {
     },
     ...input.images.values(),
     ...pages.values(),
+    ...[...(input.packages?.values() ?? [])].flat(),
   ];
 }

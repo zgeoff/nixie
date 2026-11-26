@@ -808,6 +808,11 @@
             "redirects"
           ]
         },
+        "package_registry": {
+          "default": "https://registry.npmjs.org",
+          "type": "string",
+          "format": "uri"
+        },
         "secret_own_values": {
           "default": [
             "deployment_key",

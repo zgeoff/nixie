@@ -7,7 +7,7 @@ import { buildStubDefinitionsRepo, buildTestTaskSeed } from '@heynixie/definitio
 import { startWriter } from '@heynixie/log';
 import { buildMockCheckerAnswer } from '@heynixie/memory/test-utils';
 import { waitForCondition } from '@heynixie/testing';
-import type { FetchReply } from '@heynixie/wire';
+import type { PageReply } from '@heynixie/wire';
 import { $ } from 'bun';
 import invariant from 'tiny-invariant';
 import { createStubGitHubRepo } from '../test-utils/create-stub-github-repo';
@@ -194,7 +194,7 @@ test.each([
   const ctx = await setupTest();
 
   const readPage = mock(() =>
-    Promise.resolve<FetchReply>({ kind: 'failed', reason: 'no fetch expected', isGated: false }),
+    Promise.resolve<PageReply>({ kind: 'failed', reason: 'no fetch expected', isGated: false }),
   );
 
   const tool = buildSkillVendorTool({ readPage, repo: ctx.definitions, readReviewer: () => null });
@@ -343,7 +343,7 @@ test('it refuses a review when no review model runs, before it fetches', async (
   const ctx = await setupTest();
 
   const readPage = mock(() =>
-    Promise.resolve<FetchReply>({ kind: 'failed', reason: 'no fetch expected', isGated: false }),
+    Promise.resolve<PageReply>({ kind: 'failed', reason: 'no fetch expected', isGated: false }),
   );
 
   const tool = buildSkillVendorTool({ readPage, repo: ctx.definitions, readReviewer: () => null });

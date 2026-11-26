@@ -382,3 +382,36 @@ test('it refuses an isGated that is not a boolean', () => {
 
   expect(() => decodeFetchReply(bytes)).toThrowWithMessage(TypeError, /isGated/u);
 });
+
+test('it decodes a package reply with its files', () => {
+  const bytes = new TextEncoder().encode(
+    JSON.stringify({
+      kind: 'package',
+      url: 'https://registry.example/a.tgz',
+      files: [{ path: 'dist/a.js', base64: 'YQ==' }],
+    }),
+  );
+
+  expect(decodeFetchReply(bytes)).toStrictEqual({
+    kind: 'package',
+    url: 'https://registry.example/a.tgz',
+    files: [{ path: 'dist/a.js', base64: 'YQ==' }],
+    isGated: false,
+  });
+});
+
+test('it decodes a body reply', () => {
+  const bytes = new TextEncoder().encode(
+    JSON.stringify({
+      kind: 'body',
+      url: 'https://site.example/a.json',
+      status: 200,
+      contentType: 'application/json',
+      text: '{}',
+      isTruncated: false,
+      retryAfterMs: null,
+    }),
+  );
+
+  expect(decodeFetchReply(bytes)).toMatchObject({ kind: 'body', text: '{}', status: 200 });
+});

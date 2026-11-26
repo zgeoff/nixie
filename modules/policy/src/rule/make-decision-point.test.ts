@@ -345,7 +345,7 @@ test('it asks at stage 6 for a lifted purchase that an ask rule matches', async 
   expect(decided.decision).toMatchObject({ outcome: 'ask', stage: 6 });
 });
 
-test.each(['policy_widen', 'budget_raise'] as const)(
+test.each(['policy_widen', 'budget_raise', 'install_package'] as const)(
   'it asks at stage 4 for the effect %s',
   async (effect) => {
     const ctx = buildTestDecisionPoint({
@@ -377,6 +377,26 @@ test('it asks at stage 5 for a destination with no permission, past an ask and a
     cause: 'outside_steering',
     destinations: [{ value: 'sam@example.org', permission: null }],
     snapshot: 'snapshot-1',
+  });
+});
+
+test('it asks at stage 5 for a read of a host that no rule allows, as a page with a declared fetch is sent', async () => {
+  const ctx = buildTestDecisionPoint({
+    declaration: buildTestDeclaration({ effects: ['read'], destinations: [] }),
+  });
+
+  const decided = await ctx.decide(
+    buildPolicyCall({
+      destinations: [{ value: 'tides.example', replyTarget: false }],
+      effects: ['read'],
+    }),
+  );
+
+  expect(decided.decision).toMatchObject({
+    outcome: 'ask',
+    stage: 5,
+    cause: 'outside_steering',
+    destinations: [{ value: 'tides.example', permission: null }],
   });
 });
 

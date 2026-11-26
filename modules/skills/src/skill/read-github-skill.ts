@@ -1,10 +1,10 @@
 import type { SizeLimits } from '@heynixie/definitions';
-import type { FetchReply } from '@heynixie/wire';
+import type { PageReply } from '@heynixie/wire';
 import { parseJSONOrNull } from '@heynixie/wire';
 import { z } from 'zod';
 import type { SkillVendorSource } from './parse-skill-vendor-input';
 
-export type ReadPage = (url: string) => Promise<FetchReply>;
+export type ReadPage = (url: string) => Promise<PageReply>;
 
 export type CommitSignature =
   | { readonly status: 'unsigned' }

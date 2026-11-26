@@ -4,3 +4,5 @@ export type { DeviceSeed, DeviceSeedDeps, SeededDevice } from './seed-device';
 export { seedDevice } from './seed-device';
 export { seedScreenOnDevice } from './seed-screen-on-device';
 export { readPreviewPage } from './read-preview-page';
+export { buildTestFetching, testRegistry, toTestIntegrity } from './build-test-fetching';
+export { seedDevicePackage } from './seed-device-package';

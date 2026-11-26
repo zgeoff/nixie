@@ -1,8 +1,9 @@
 # device-layout
 
-- [Journey](#journey): enrol a browser as a device, switch its screen on, and have the model lay it
-  out in 3 regions, update one, let another time out, then save the layout, change it and restore
-  it, then have the model preview the screen, show a page in a region, and send the page a message.
+- [Journey](#journey): enrol a browser as a device and switch its screen on. Have the model lay the
+  screen out in 3 regions, update one and let another time out. Have it save the layout, change it
+  and restore it. Have it preview the screen, show a page in a region and send the page a message.
+  Then install an approved package, and show a page that loads it and reads a declared fetch.
 - [End state](#end-state): what the page and the records show.
 
 Run this journey on `local` only. It needs the scripted model and the `layout-on-device` action,
@@ -173,17 +174,62 @@ under a name, lay the screen out again, and restore the saved layout in one call
     because the page gave `pond` a pointer again. When a snapshot does not list the text inside the
     frame, take a screenshot and read the page from it.
 
+11. Have the model ask for the package `ripple-count` 1.0.0, and approve it as the user would. The
+    install runs in full: nixie reads the registry's document, the user approves the card, and the
+    fetch sandbox downloads the tarball, checks its hash and unpacks it. The registry is a test site
+    on a loopback address. The approval takes a passkey, which a journey cannot give, so approve
+    with the action `--step approve-install`, which answers as nixie's host command does:
+
+    ```bash
+    bun verify action layout-on-device --step install --text 'The package is asked for.'
+    bun verify conversation turn --message 'Get the ripple counter package approved for the pages.' --reply 'The package is asked for.'
+    bun verify proposals --tool device.addPackage --waiting pending
+    bun verify action layout-on-device --step approve-install --text 'Approved.'
+    bun verify db query "select name, version from device_packages"
+    ```
+
+    Expect: `data.replies` of 2 from the first action, and `conversation turn` exits 0. `proposals`
+    exits 0. The approve action returns `data.replies` of 1, once the package is stored. The query
+    returns one row: `ripple-count` and `1.0.0`.
+
+12. Have the model show a page in `pond` that loads the approved package and reads the declared
+    fetch of `https://tides.test/today`, which the test site serves. nixie holds the model's
+    `device.region` call, because no rule allows the host `tides.test`. The approvals page refuses
+    the browser's device session, so give the user's answer with the action `--step approve`. Before
+    the approve action, script the model's text for the turn that the approval starts, with
+    `action script-reply`:
+
+    ```bash
+    bun verify action layout-on-device --step package --text 'The tide page is up.'
+    bun verify conversation turn --message 'Put the tide page in the pond of the screen in the hall.' --reply 'The tide page is up.'
+    bun verify proposals --tool device.region --waiting pending
+    bun verify action script-reply --text 'Thanks, I have your answer.'
+    bun verify action layout-on-device --step approve --text 'Approved.'
+    bun verify proposals --tool device.region --waiting none
+    bun verify browser snapshot --until-text 'Tide 14:05'
+    bun verify browser screenshot
+    ```
+
+    Expect: `data.replies` of 3 from the first action, and `conversation turn` exits 0. `proposals`
+    exits 0. The approve action returns `data.replies` of 1. The snapshot shows "Tide 14:05 ripples
+    7": the page loaded the package's script, which set `ripples` to 7, and read the declared fetch
+    from the test site. When the snapshot does not list the text inside the frame, read it from the
+    screenshot. When the page shows "Failed" and a code, the fetch was refused or not ready: skip
+    `done`, and report the code.
+
 ## End state
 
-- The last snapshot shows "Dentist at 3" and a time, and no "Ripples", no "Water the pots" and no
-  "Bins go out tonight".
+- The snapshot of step 8 shows "Dentist at 3" and a time, and no "Ripples", no "Water the pots" and
+  no "Bins go out tonight".
 - After step 8, `device_regions` holds 2 rows, `clock` and `note`, the regions of the restored
   layout that hold content. After step 10 it holds 3, `clock`, `note` and `pond`.
 - `device_saved_layouts` holds the one row, `evening`.
 - In step 9, the model's one call of `device.preview` returned a result with `picture` `shown`.
 - In step 10, the page in `pond` shows "Got hello", and `records` holds one `device.page_event`
   named `echo`.
-- The screenshots are evidence for the reviewer. Check nothing in them. When the snapshot in step 10
-  does not list the page's text, read that text from the screenshot.
+- After step 11, `device_packages` holds one row, `ripple-count`. In step 12, the page in `pond`
+  shows "Tide 14:05 ripples 7".
+- Take the screenshots for the reviewer, and check nothing in them, except to read the page's text
+  in step 10 or 12 when its snapshot does not list it.
 
 Once the end state matches, run `bun verify done`.
