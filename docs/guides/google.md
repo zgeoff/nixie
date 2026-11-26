@@ -5,8 +5,8 @@ account from Settings → Connections. nixie keeps the account's refresh token s
 Once you connect an account, the model can use the
 [Gmail tools](../architecture/connectors/gmail-tools.md) to search, read and label your mail, write
 drafts and send mail. It can also wake the conversation or a task when new mail matches a rule it
-sets. The [Calendar and Drive tools](../architecture/connectors/calendar-drive-tools.md) let it read
-and change your events and the Drive files you choose. To learn how consent, refresh and Forget
+sets. With the [Calendar and Drive tools](../architecture/connectors/calendar-drive-tools.md) it can
+read and change your events and the Drive files you choose. To learn how consent, refresh and Forget
 work, read the [Google connections](../architecture/connectors/google-connections.md) doc.
 
 Settings → Connections shows the same 6 steps as this guide, from "Create a Google Cloud project" to
@@ -119,10 +119,10 @@ scope, and a button to ask Google again. The conversation never shows that notic
   destinations, such as the organizer of an event you answer. Google emails the guests only after
   you approve or the policy allows it. nixie never changes an event that someone else organizes,
   apart from your answer to its invitation.
-- nixie sees only the Drive files that you choose and the files it makes. On a connection's page,
-  select Choose Drive files, which needs the picker key and the project number from your client, and
-  pick the files in Google's window. The page lists each file that nixie cannot see, which is
-  usually a file chosen under another Google account.
+- nixie sees only the Drive files that you choose and the files it makes. To choose files, select
+  Choose Drive files on a connection's page and pick them in Google's window. The button needs the
+  picker key and the project number from your client. The page lists each file that nixie cannot
+  see, which is usually a file chosen under another Google account.
 - nixie creates a Drive file in your My Drive, shared with no one. It replaces the content of a file
   it can see only when no one else can read the file.
 - When nixie can't tell whether an event or file change went through, it waits 5 minutes, then looks

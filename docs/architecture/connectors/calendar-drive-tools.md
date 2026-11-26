@@ -26,8 +26,8 @@ the scopes, see [Google connections](google-connections.md).
 
 Each check is read-only, runs only from the action queue, and trusts a negative answer only after
 the check's wait has passed. A write that a check does not find runs again, because it reaches no
-one else. A send that a check does not find goes to you on a card and runs again only after you
-answer, because Google may have emailed the guests.
+one else. A send that a check does not find goes to the user on a card and runs again only after the
+user answers, because Google may have emailed the guests.
 
 `buildGoogleActions` builds the Gmail, Calendar and Drive actions together, and the `google_tools`
 part holds them. Every Calendar and Drive tool is one entry of the connector's `actions`, so the
@@ -65,7 +65,7 @@ another resource counts, because Google emails its owner.
   calendar that the account owns has that calendar's address as its organizer, so the check also
   accepts an event whose organizer is `self` and whose organizer address is the calendar it was read
   from, when Google's answer to an event list names the account's role on that calendar as owner.
-  The `self` flag alone proves nothing, because a calendar the account can only write also shows it.
+  The `self` flag alone is not enough, because a calendar the account can only write also shows it.
 - A change that sends the guest list back keeps every attendee field that Google holds, such as the
   comment and the extra guests, because a patch replaces the whole array.
 - A change or cancel with guests sends the `etag` of the attempt's read in `If-Match`. On a 412 the
@@ -77,8 +77,7 @@ another resource counts, because Google emails its owner.
   call that names only that account refuses with `no_guests`. A change drops the account from
   `addGuests` the same way.
 - An attempt compares the event's guests with the checked destinations before it applies any other
-  refusal, so a guest that left after the approval answers `destinations_changed`, never
-  `no_guests`.
+  refusal, so a guest that left after the approval answers `destinations_changed`.
 
 ## Markers
 
@@ -111,8 +110,8 @@ the same request as its change. Calendar keeps it in `extendedProperties.private
   descriptions, organizers, guests, calendar names and file names and text. The tool wraps each as
   outside content, and the call's record keeps the plain text.
 - Fields that nixie re-emits from a fixed shape stay `untrusted` in the declaration and carry
-  `x-endorsed` in the output schema: an event's start, end, all-day flag, status and your response,
-  and a file's type, size and time of change.
+  `x-endorsed` in the output schema: an event's start, end, all-day flag, status and the user's
+  response, and a file's type, size and time of change.
 - `drive.read` exports a Google Doc as Markdown, a Sheet's first sheet as CSV and a Slides file as
   plain text. It reads other text files and images as `gmail.read_attachment` does, and answers
   `unsupported` for every other type. A file over the reader's size limit answers `too_large`
@@ -125,12 +124,12 @@ the same request as its change. Calendar keeps it in `extendedProperties.private
 - `drive.search` matches the start of a file's name and a whole word of its name or content, as
   Drive's `name contains` and `fullText contains` do, and escapes each quote in it, so the query's
   text cannot widen the search. A search that finds nothing tells the model that it searched only
-  the files you chose and the files nixie made.
+  the files the user chose and the files nixie made.
 
 ## Drive writes
 
-- `drive.create` makes the file in your My Drive root, shared with no one. With `google_doc` it
-  imports the text as Markdown into a Google Doc, and with `text` it makes a plain text file.
+- `drive.create` makes the file in the user's My Drive root, shared with no one. With `google_doc`
+  it imports the text as Markdown into a Google Doc, and with `text` it makes a plain text file.
 - `drive.change` replaces the whole content and optionally the name. It reads the file in `prepare`
   and in its attempt, and refuses with `shared_file` for a file that is shared with anyone or sits
   in a shared drive, so a Drive write never reaches another person. It also refuses `trashed` and
@@ -144,7 +143,7 @@ the same request as its change. Calendar keeps it in `extendedProperties.private
 
 ## The cards
 
-Each tool's card is built in `prepare` or from the call's input. The cards and the destinations:
+Each tool's card is built in `prepare` or from the call's input.
 
 | Tool                                | Sentence                                             | Approve button   |
 | ----------------------------------- | ---------------------------------------------------- | ---------------- |
@@ -162,13 +161,13 @@ A calendar card shows the title, the times with their zone, the calendar, the lo
 guest. A change card shows each changed field before and after, a description in full. The card's
 facts of a change, a cancel and a response are sealed on the call's record when `prepare` reads
 them, so a forget of the record removes them, and the card reads them from there. A time shows in
-the zone of your newest message, else the deployment's default zone. `readGoogleBodyFields` chains
-the Gmail, Calendar and Drive cards for the approvals API.
+the zone of the user's newest message, else the deployment's default zone. `readGoogleBodyFields`
+chains the Gmail, Calendar and Drive cards for the approvals API.
 
 ## The Drive picker
 
-`drive.file` lets nixie see only the files it made and the files you choose. You choose files on a
-connection's page with "Choose Drive files":
+With the `drive.file` scope, nixie sees only the files it made and the files the user chooses. The
+user chooses files on a connection's page with "Choose Drive files":
 
 1. The page loads Google's sign-in script when it shows, and enables the button once the script has
    loaded, because a popup that waits for the script can miss the browser's time after a click. On
