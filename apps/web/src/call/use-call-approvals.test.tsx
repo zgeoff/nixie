@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { useQuery } from '@tanstack/react-query';
 import {
   Outlet,
   RouterProvider,
@@ -7,11 +8,12 @@ import {
   createRoute,
   createRouter,
 } from '@tanstack/react-router';
-import { act } from '@testing-library/react';
+import { act, fireEvent } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { store } from '../mocks/store';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { render } from '../test-utils/render';
+import { useNixieClient } from '../utils/use-nixie-client';
 import { CallProvider } from './call-provider';
 import { useCallApprovals } from './use-call-approvals';
 
@@ -45,7 +47,21 @@ function setupTest() {
     createRoute({
       getParentRoute: () => rootRoute,
       path: '/elsewhere',
-      component: () => <p>Another page</p>,
+      component: (): ReactNode => {
+        const nixie = useNixieClient();
+        const listed = useQuery(nixie.queryUtils.approvals.listItems.queryOptions());
+
+        // a page that keeps the list of open items fresh, so the list the call screen reads on
+        // return no longer holds a proposal that settled
+        return (
+          <div>
+            <p>{`Open items: ${listed.data?.items.length ?? 'unknown'}`}</p>
+            <button type="button" onClick={() => void listed.refetch()}>
+              Refresh
+            </button>
+          </div>
+        );
+      },
     }),
   ]);
 
@@ -72,13 +88,17 @@ test('#useCallApprovals keeps a card that settled while the user was on another 
     ctx.router.history.push('/elsewhere');
   });
 
-  await rendered.findByText('Another page');
+  await rendered.findByText('Open items: 1');
 
   await store.approvalRows.update(row, {
     data: (draft) => {
       draft.state = 'declined';
     },
   });
+
+  fireEvent.click(rendered.getByText('Refresh'));
+
+  await rendered.findByText('Open items: 0');
 
   act(() => {
     ctx.router.history.push('/call');

@@ -73,23 +73,6 @@ async function setupTest(answer: 'allow' | 'block' = 'allow') {
 
       await other.navigate('about:blank');
 
-      // Records each way a push could reach this page, from before the page loads, so a push sent
-      // at any moment of the test shows in the list.
-      await other.cdp('Page.addScriptToEvaluateOnNewDocument', {
-        source: `
-          window.pushActivity = [];
-          window.Notification = class { constructor(title) { window.pushActivity.push('notification:' + title); } };
-          const record = (target, name, label) => {
-            const original = target?.[name];
-            if (typeof original !== 'function') return;
-            target[name] = function (...args) { window.pushActivity.push(label); return original.apply(this, args); };
-          };
-          record(ServiceWorkerContainer.prototype, 'register', 'register-service-worker');
-          record(ServiceWorkerRegistration.prototype, 'showNotification', 'show-notification');
-          record(window.PushManager?.prototype, 'subscribe', 'subscribe-to-push');
-        `,
-      });
-
       await setupSignedInBrowser(other, { appURL: otherURL.origin, token: second.token ?? '' });
 
       await other.navigate(`${otherURL.origin}/call`);
@@ -189,7 +172,7 @@ test('it keeps the call live across a route change, shows the call bar on each r
   ]);
 });
 
-test('it shows the card of a proposal made during the call on the carrying device only', async () => {
+test('it shows the card of a proposal made during the call on the carrying device only, and routes it to that device alone', async () => {
   const ctx = await setupTest();
 
   ctx.nixie.model.addReplies(
@@ -223,18 +206,36 @@ test('it shows the card of a proposal made during the call on the carrying devic
     8000,
   );
 
-  const seen: unknown = await other.evaluate(
-    `JSON.stringify({
-      card: document.querySelector('[aria-label="Proposals from this call"]') !== null,
-      pushActivity: window.pushActivity,
-      workers: (await navigator.serviceWorker?.getRegistrations())?.length ?? 0,
-    })`,
+  const otherShowsCard: unknown = await other.evaluate(
+    `document.querySelector('[aria-label="Proposals from this call"]') !== null`,
   );
 
-  expect(JSON.parse(String(seen))).toStrictEqual({
-    card: false,
-    pushActivity: [],
-    workers: 0,
+  const started = await ctx.nixie.waitForRecord((record) => record.kind === 'call.started');
+  const listed = await ctx.api.client.sessions.list();
+
+  const carrying = listed.sessions.find((session) => session.current);
+  const tablet = listed.sessions.find((session) => session.deviceName === 'tablet');
+
+  const records = await ctx.nixie.readRecords();
+
+  // the server names the carrying device on the call and puts the proposal on the call's own task
+  // thread, and no record names the other device
+  expect({
+    otherShowsCard,
+    carryingSession: started.payload['carryingSession'] === carrying?.sessionID,
+    proposalOnCallThread: records.some(
+      (record) => record.thread === started.payload['taskID'] && record.kind.includes('proposal'),
+    ),
+    namesOtherDevice: records
+      .filter(
+        (record) => record.kind.startsWith('call.') || record.thread === started.payload['taskID'],
+      )
+      .some((record) => JSON.stringify(record).includes(tablet?.sessionID ?? 'no-such-session')),
+  }).toStrictEqual({
+    otherShowsCard: false,
+    carryingSession: true,
+    proposalOnCallThread: true,
+    namesOtherDevice: false,
   });
 });
 
