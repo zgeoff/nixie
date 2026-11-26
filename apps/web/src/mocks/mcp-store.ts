@@ -4,12 +4,14 @@ export type MockMcpServer = ContractOutputs['mcp']['listServers'][number];
 
 const servers: MockMcpServer[] = [];
 const connects: { server: string; origin: string }[] = [];
+const finishes: string[] = [];
 
-// The MCP servers that the mock proxy holds, and the sign-ins that a page started. A test puts a
+// The MCP servers that the mock proxy holds, and the sign-ins that a page started, and the state of each return that finished one. A test puts a
 // server in with `add`, and the mock's connect answers any server that is in.
 export const mcpStore = {
   servers,
   connects,
+  finishes,
   add: (server: Partial<MockMcpServer> & Pick<MockMcpServer, 'server'>): MockMcpServer => {
     const added: MockMcpServer = {
       state: 'added',
@@ -30,5 +32,6 @@ export const mcpStore = {
   reset: (): void => {
     servers.length = 0;
     connects.length = 0;
+    finishes.length = 0;
   },
 };

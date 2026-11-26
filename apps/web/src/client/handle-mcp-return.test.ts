@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { mcpStore } from '../mocks/mcp-store';
 import { store } from '../mocks/store';
 import { startStubAPI } from '../test-utils/start-stub-api';
 import { handleMcpReturn } from './handle-mcp-return';
@@ -63,4 +64,20 @@ test('it answers 400 without calling the API when the state is missing', async (
   const response = await ctx.handleReturn('?code=4%2F0Ab', ctx.cookie);
 
   expect([response.status, ctx.api.requests]).toStrictEqual([400, []]);
+});
+
+test('it redirects to the servers page when the sign-in finishes', async () => {
+  const ctx = await setupTest();
+
+  mcpStore.add({ server: 'tracker', signIn: 'no_grant' });
+  mcpStore.connects.push({ server: 'tracker', origin: 'http://web.test' });
+
+  const response = await ctx.handleReturn('?state=tracker&code=4%2F0Ab', ctx.cookie);
+
+  expect([
+    response.status,
+    response.headers.get('location'),
+    response.headers.get('cache-control'),
+    mcpStore.finishes,
+  ]).toStrictEqual([303, '/settings/mcp', 'no-store', ['tracker']]);
 });
