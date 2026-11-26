@@ -7,8 +7,8 @@
 Every client you sign in is a device, so the assistant can show something on the screen you're
 using. A client is one signed-in browser or app and its session, so ten tabs of one browser are one
 device. On a call, the assistant keeps its spoken reply short and puts a long answer, such as this
-week's plans, on the call's device, then says "I've put that on your screen". You open it from the
-call bar and go back to the call, which stays live the whole time.
+week's plans, on the call's device, then says "I've put that on your screen". You open the device
+view from the app's navigation and go back to the call, which stays live the whole time.
 
 A real GPT-Live session summarised or cut short a 2,400-character answer in 3 of 3 tries, and short
 answers worked every time. The server needs no new call machinery for this: the call's turn already
@@ -23,8 +23,8 @@ flowchart LR
   enrol[full enrolment] -->|"writes the device row"| device[client device]
   turn[call turn] -->|"devices.list: onCall"| device
   turn -->|"device.region or device.show"| device
-  device -->|"new content during a call"| bar[call bar: View]
-  bar --> view[device view in the app]
+  you -->|"opens it, like the computer page"| view[device view in the app]
+  view --> device
 ```
 
 ## Contracts
@@ -66,7 +66,7 @@ call turn's prompt (calls module), one added rule. The speech layer's own prompt
 <CallProvider>
   {/* holds the peer connection, the microphone and the call's live stream */}
   <CallBar />
-  {/* on every route while a call is live: time, mute, hang up, back to the call, View */}
+  {/* on every route while a call is live: time, mute, hang up, back to the call */}
   <Router />
   {/* the call screen, the chat and the device view are routes under it */}
 </CallProvider>
@@ -81,12 +81,14 @@ call turn's prompt (calls module), one added rule. The speech layer's own prompt
   `deviceName`, with the screen on. A row that `devices.register` wrote becomes a client row and
   keeps its name and screen.
 - `devices.register` renames the session's row and leaves its screen as it is.
-- A client device starts with the screen on. A screen device keeps the existing rule: its screen
-  stays off until the device switches it on.
+- A client device starts with the screen on, so the assistant may draw on it; you see what it drew
+  only when you open the device view. A screen device keeps the existing rule: its screen stays off
+  until the device switches it on.
 - The web client follows its own device's stream while any tab is open, so the device is online
   whenever nixie is open. The device view draws what the stream holds.
-- While a call is live and the call's device gets new content, the call bar shows View. One tap
-  opens the device view, and the call bar's back button returns to the call screen.
+- The device view is a page you open from the app's navigation, as you open the computer page. nixie
+  never opens it, and never pops up, badges or notifies when the device's content changes.
+- During a call, the call bar's back button returns from the device view to the call screen.
 - `onCall` is true for the device whose session is the call's carrying session while the call is
   `live`, and false for every other device.
 - No tool takes "the call's device" as a target. The assistant passes the device's short ID from
@@ -102,14 +104,8 @@ call turn's prompt (calls module), one added rule. The speech layer's own prompt
 ## Builder decides
 
 - Where the device view sits in the app's navigation, and its icon.
-- The call bar's layout, and how View looks.
+- The call bar's layout.
 - The migration's number and the tests.
-
-## Open questions
-
-- Whether a client device's screen starts on, as the
-  [work item](https://linear.app/zgeoff/issue/GEO-2872) asks. On lets the assistant show on any
-  client you're signed in on, which only you see. Until the owner chooses, it starts on.
 
 ## Out of scope
 
