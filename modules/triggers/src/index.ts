@@ -78,3 +78,5 @@ export { startWakeFlush } from './wake/start-wake-flush';
 export type { WakeRulesConfig } from './wake/wake-rules-config-schema';
 export { maxWakeDurationMs, minWakeDurationMs } from './wake/constants';
 export { wakeRulesConfigSchema } from './wake/wake-rules-config-schema';
+export { buildMailboxKey } from './wake/build-mailbox-key';
+export { eraseGmailMailbox } from './wake/erase-gmail-mailbox';

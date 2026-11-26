@@ -33,7 +33,7 @@ export async function writeMailArrival(
     .where('source_key', '=', sourceKey)
     .executeTakeFirst();
 
-  if (key !== undefined || buildMailboxKey(event.mailbox) !== sourceID) {
+  if (key !== undefined || event.mailbox.kind !== sourceID) {
     return false;
   }
 
@@ -96,6 +96,7 @@ export async function writeMailArrival(
       now.map((target) =>
         buildMailWokeInput(core, {
           targetTaskID: target.targetTaskID,
+          mailbox: event.mailbox,
           rules: target.rules,
           mails: [{ arrived: arrived.sequence, ...mail }],
         }),

@@ -287,3 +287,65 @@ test('it keeps the key of an arrival that a held match names', async () => {
     'readable',
   ]);
 });
+
+test('it wakes on a Gmail arrival through the rule of that connection only', async () => {
+  const ctx = await setupTest();
+
+  await ctx.taskSeed.conversationStep();
+
+  const own = await seedWakeRule(ctx, {
+    mailbox: { kind: 'gmail', connectionID: 'conn-1' },
+    match: { thread: '18c2f0a9b3d4e5f6' },
+  });
+
+  await seedWakeRule(ctx, { mailbox: { kind: 'gmail', connectionID: 'conn-2' } });
+
+  ctx.clock.advance(1000);
+
+  const result = await deliverTriggerBatch(ctx.core, 'gmail', {
+    cursor: null,
+    events: [
+      buildTestMailEvent({
+        mailbox: { kind: 'gmail', connectionID: 'conn-1' },
+        dedupeKey: 'conn-1|m1',
+        payload: {
+          receivedAt: ctx.clock.now(),
+          messageID: 'k3x9m2p7qa.m1',
+          threadID: '18c2f0a9b3d4e5f6',
+        },
+      }),
+    ],
+  });
+
+  const [woke] = await ctx.readKinds('trigger.mail_woke');
+
+  expect(result).toStrictEqual({ delivered: 1 });
+
+  expect(woke?.payload).toMatchObject({
+    mailbox: 'gmail:conn-1',
+    rules: [{ ruleID: own.ruleID }],
+    mails: [{ messageID: 'k3x9m2p7qa.m1' }],
+  });
+});
+
+test('it drops a Gmail arrival that names another source than its own', async () => {
+  const ctx = await setupTest();
+
+  await ctx.taskSeed.conversationStep();
+
+  await seedWakeRule(ctx, { mailbox: { kind: 'gmail', connectionID: 'conn-1' } });
+
+  ctx.clock.advance(1000);
+
+  const result = await deliverTriggerBatch(ctx.core, 'mail', {
+    cursor: null,
+    events: [
+      buildTestMailEvent({
+        mailbox: { kind: 'gmail', connectionID: 'conn-1' },
+        payload: { receivedAt: ctx.clock.now() },
+      }),
+    ],
+  });
+
+  expect(result).toStrictEqual({ delivered: 0 });
+});

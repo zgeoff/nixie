@@ -1,7 +1,7 @@
 import type { RecordInput } from '@heynixie/log';
 import { triggerMailWokeCodec } from '@heynixie/tasks';
 import { wakeMatchSchema } from '../record/wake-match-schema';
-import type { TriggerCoreContext, WakeRule } from '../types';
+import type { Mailbox, TriggerCoreContext, WakeRule } from '../types';
 import { buildMailboxKey } from './build-mailbox-key';
 
 export interface WokeMail {
@@ -16,6 +16,7 @@ export interface WokeMail {
 
 export interface MailWake {
   readonly targetTaskID: string;
+  readonly mailbox: Mailbox;
   readonly rules: readonly WakeRule[];
 
   // oldest first
@@ -34,7 +35,7 @@ export function buildMailWokeInput(
     contentSource: 'untrusted',
     payload: triggerMailWokeCodec.encode({
       taskID: wake.targetTaskID,
-      mailbox: buildMailboxKey({ kind: 'mail' }),
+      mailbox: buildMailboxKey(wake.mailbox),
       rules: wake.rules.map((rule) => ({
         ruleID: rule.ruleID,
         shortID: rule.shortID,

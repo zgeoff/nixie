@@ -55,7 +55,14 @@ export async function runWakeFlush(core: TriggerCoreContext): Promise<number> {
 
       return mails.length === 0
         ? []
-        : [buildMailWokeInput(core, { targetTaskID: wake.targetTaskID, rules: wake.rules, mails })];
+        : [
+            buildMailWokeInput(core, {
+              targetTaskID: wake.targetTaskID,
+              mailbox: wake.mailbox,
+              rules: wake.rules,
+              mails,
+            }),
+          ];
     });
 
     await writeInboxRecordsInTransaction(tx, core, inputs);
