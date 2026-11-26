@@ -47,6 +47,8 @@ export async function startTestDevices(options: StartTestDevicesOptions = {}) {
 
   const streams = createDeviceStreams({ clock });
   const deps = { log, clock };
+  const call: { session: string | null } = { session: null };
+  const readCallSession = () => Promise.resolve(call.session);
 
   const site = buildTestFetching({
     clock,
@@ -55,6 +57,7 @@ export async function startTestDevices(options: StartTestDevicesOptions = {}) {
   });
 
   const preview = {
+    readCallSession,
     ...(options.preview === undefined ? {} : { preview: options.preview }),
     ...(options.fetching === undefined ? {} : { fetching: site.fetching }),
   };
@@ -68,12 +71,20 @@ export async function startTestDevices(options: StartTestDevicesOptions = {}) {
     streams,
     definitions,
 
+    // the identity ID of the session that carries the live call, or null for no live call
+    setCallSession: (identityID: string | null) => {
+      call.session = identityID;
+    },
+
+    readCallSession,
+
     // the fake registry and sites behind the page tools, and the record of what they were asked
     site,
     seed: {
       device: (input?: Partial<DeviceSeed>) => seedDevice(deps, input),
       screenOnDevice: (input?: Partial<DeviceSeed>) => seedScreenOnDevice(deps, input),
-      layout: (deviceID: string) => seedLayout({ log, definitions, clock, streams }, deviceID),
+      layout: (deviceID: string) =>
+        seedLayout({ log, definitions, clock, streams, readCallSession }, deviceID),
 
       // an approved package, stored as an install leaves it, with the files by path
       package: (spec: string, files: Readonly<Record<string, string>>) =>

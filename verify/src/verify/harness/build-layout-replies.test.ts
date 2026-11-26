@@ -3,7 +3,13 @@ import { buildLayoutReplies } from './build-layout-replies';
 
 test('it queues a layout of 3 regions and the content of each, naming the listed device', () => {
   const body = {
-    messages: [{ role: 'user', content: '{"result":{"devices":[{"shortID":"dk4m7q2w9x"}]}}' }],
+    messages: [
+      {
+        role: 'user',
+        content:
+          '{"result":{"devices":[{"shortID":"dk4m7q2w9x","name":"hall display","deviceKind":"screen"}]}}',
+      },
+    ],
   };
 
   const calls = buildLayoutReplies('set').map((reply) => {
@@ -57,7 +63,13 @@ test('it queues a layout of 3 regions and the content of each, naming the listed
 
 test('it queues a replacement of the text of the second region', () => {
   const body = {
-    messages: [{ role: 'user', content: '{"result":{"devices":[{"shortID":"dk4m7q2w9x"}]}}' }],
+    messages: [
+      {
+        role: 'user',
+        content:
+          '{"result":{"devices":[{"shortID":"dk4m7q2w9x","name":"hall display","deviceKind":"screen"}]}}',
+      },
+    ],
   };
 
   const calls = buildLayoutReplies('update').map((reply) => {
@@ -84,7 +96,13 @@ test.each([
   { step: 'restore', tool: 'mcp__nixie__device_layout_restore' },
 ] as const)('it queues the $step of the layout named evening on the listed device', (row) => {
   const body = {
-    messages: [{ role: 'user', content: '{"result":{"devices":[{"shortID":"dk4m7q2w9x"}]}}' }],
+    messages: [
+      {
+        role: 'user',
+        content:
+          '{"result":{"devices":[{"shortID":"dk4m7q2w9x","name":"hall display","deviceKind":"screen"}]}}',
+      },
+    ],
   };
 
   const calls = buildLayoutReplies(row.step).map((reply) => {
@@ -101,7 +119,13 @@ test.each([
 
 test('it queues a layout of 2 regions that keeps the note, and fills the new one', () => {
   const body = {
-    messages: [{ role: 'user', content: '{"result":{"devices":[{"shortID":"dk4m7q2w9x"}]}}' }],
+    messages: [
+      {
+        role: 'user',
+        content:
+          '{"result":{"devices":[{"shortID":"dk4m7q2w9x","name":"hall display","deviceKind":"screen"}]}}',
+      },
+    ],
   };
 
   const calls = buildLayoutReplies('change').map((reply) => {
@@ -137,7 +161,13 @@ test('it queues a layout of 2 regions that keeps the note, and fills the new one
 
 test('it queues a preview of the listed device', () => {
   const body = {
-    messages: [{ role: 'user', content: '{"result":{"devices":[{"shortID":"dk4m7q2w9x"}]}}' }],
+    messages: [
+      {
+        role: 'user',
+        content:
+          '{"result":{"devices":[{"shortID":"dk4m7q2w9x","name":"hall display","deviceKind":"screen"}]}}',
+      },
+    ],
   };
 
   const calls = buildLayoutReplies('preview').map((reply) => {
@@ -154,7 +184,13 @@ test('it queues a preview of the listed device', () => {
 
 test('it queues a page for the pond, and a retained message into it', () => {
   const body = {
-    messages: [{ role: 'user', content: '{"result":{"devices":[{"shortID":"dk4m7q2w9x"}]}}' }],
+    messages: [
+      {
+        role: 'user',
+        content:
+          '{"result":{"devices":[{"shortID":"dk4m7q2w9x","name":"hall display","deviceKind":"screen"}]}}',
+      },
+    ],
   };
 
   const calls = [...buildLayoutReplies('page'), ...buildLayoutReplies('message')].map((reply) => {
@@ -183,7 +219,13 @@ test('it queues a page for the pond, and a retained message into it', () => {
 
 test('it queues a page for the pond that names the approved package and the declared fetch', () => {
   const body = {
-    messages: [{ role: 'user', content: '{"result":{"devices":[{"shortID":"dk4m7q2w9x"}]}}' }],
+    messages: [
+      {
+        role: 'user',
+        content:
+          '{"result":{"devices":[{"shortID":"dk4m7q2w9x","name":"hall display","deviceKind":"screen"}]}}',
+      },
+    ],
   };
 
   const calls = buildLayoutReplies('package').map((reply) => {

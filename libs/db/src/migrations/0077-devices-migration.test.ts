@@ -49,6 +49,7 @@ test('it creates the table that holds each enrolled device', async () => {
     { name: 'shown_sequence' },
     { name: 'idle_sequence' },
     { name: 'updated_at' },
+    { name: 'device_kind' },
   ]);
 });
 

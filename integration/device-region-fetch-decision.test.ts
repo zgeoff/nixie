@@ -25,6 +25,7 @@ async function setupTest(rules: readonly RuleEntry[]) {
     definitions: ctx.definitions,
     clock: ctx.clock,
     streams: ctx.streams,
+    readCallSession: ctx.readCallSession,
     fetching: ctx.site.fetching,
   });
 

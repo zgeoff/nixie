@@ -6,7 +6,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { css } from '../styled-system/css';
 import { useNixieClient } from '../utils/use-nixie-client';
 import { parseFrameMessage } from './parse-frame-message';
-import type { PageDataNotice, PageDelivery } from './use-device-events';
+import type { PageDataNotice, PageDelivery } from './types';
 import { useSendPageEvent } from './use-send-page-event';
 
 export interface PageRegionProps {

@@ -10,6 +10,7 @@ test('#seedDevice enrols a device with its screen off and nothing shown', async 
     deviceID: seeded.deviceID,
     identityID: seeded.identityID,
     name: 'desk panel',
+    deviceKind: 'screen',
     capabilities: { screen: false, camera: false, speaker: false, microphone: false },
     shownSequence: null,
     idleSequence: null,

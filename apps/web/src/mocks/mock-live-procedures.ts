@@ -3,7 +3,7 @@ import type { LiveTopic } from '@heynixie/contract';
 import { withEventMeta } from '@orpc/server';
 import { deviceStore } from './device-store';
 import { mockImplementer } from './mock-implementer';
-import { mockLive, subscribeToMockChanged } from './mock-live';
+import { mockLive, subscribeToMockChanged, waitForMockDeviceEnd } from './mock-live';
 import { requireMockSession } from './require-mock-session';
 import { startMockChangeBridge } from './start-mock-change-bridge';
 import { store } from './store';
@@ -23,7 +23,7 @@ export const mockLiveProcedures = {
         throw options.errors.NOT_A_DEVICE();
       }
 
-      const generation = mockLive.recordOpen(undefined);
+      const generation = mockLive.recordDeviceOpen();
 
       try {
         yield { kind: 'opened' as const };
@@ -47,9 +47,9 @@ export const mockLiveProcedures = {
           yield { kind: 'device' as const, event: message };
         }
 
-        await waitForAbort(options.signal);
+        await waitForMockDeviceEnd(options.signal);
       } finally {
-        mockLive.recordClose(generation);
+        mockLive.recordDeviceClose(generation);
       }
 
       return;
@@ -64,14 +64,6 @@ export const mockLiveProcedures = {
     }
   }),
 };
-
-async function waitForAbort(signal: AbortSignal | undefined): Promise<void> {
-  await new Promise<void>((resolve) => {
-    signal?.addEventListener('abort', () => {
-      resolve();
-    });
-  });
-}
 
 interface PageStream {
   readonly afterSequence?: number | undefined;

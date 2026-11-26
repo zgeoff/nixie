@@ -85,13 +85,12 @@ async function writeEnrolment(
     scope: code.scope,
   });
 
-  if (code.scope === 'device') {
-    await writeDevice(tx, {
-      identityID: session.sessionID,
-      name: pending.input.deviceName,
-      nowMs: context.clock.now(),
-    });
-  }
+  await writeDevice(tx, {
+    identityID: session.sessionID,
+    name: pending.input.deviceName,
+    nowMs: context.clock.now(),
+    deviceKind: code.scope === 'device' ? 'screen' : 'client',
+  });
 
   await tx
     .$extendTables<APITables>()

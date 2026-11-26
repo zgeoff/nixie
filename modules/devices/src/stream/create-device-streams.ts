@@ -53,7 +53,9 @@ export interface DeviceStreams {
   // process started
   readonly readOfflineSinceMs: (deviceID: string) => number | null;
 
-  // the size the device's newest open stream sent, or null while it holds no open stream
+  // The size the device's newest open stream sent, unless a resize came after the streams that are
+  // open opened, which keeps its size against a stream that another tab opens, until each stream
+  // that was open at the resize has closed. Null while the device holds no open stream.
   readonly readPixels: (deviceID: string) => ScreenPixels | null;
 
   // gives every open stream of the device a new size, and does nothing while it is offline
@@ -98,6 +100,9 @@ interface HeldDevice {
   isOnline: boolean;
   closedAtMs: number | null;
   grace: AbortController | null;
+
+  // the size of the last resize and the streams that were open for it, or null
+  resized: { readonly pixels: ScreenPixels; readonly streams: Set<HeldStream> } | null;
 }
 
 export interface DeviceStreamsOptions {
@@ -122,6 +127,7 @@ export function createDeviceStreams(options: DeviceStreamsOptions): DeviceStream
       isOnline: false,
       closedAtMs: null,
       grace: null,
+      resized: null,
     };
 
     devices.set(deviceID, held);
@@ -133,6 +139,11 @@ export function createDeviceStreams(options: DeviceStreamsOptions): DeviceStream
     const held = hold(deviceID);
 
     held.streams = held.streams.filter((open) => open !== stream);
+    held.resized?.streams.delete(stream);
+
+    if (held.resized?.streams.size === 0) {
+      held.resized = null;
+    }
 
     if (held.streams.length > 0) {
       return;
@@ -243,9 +254,21 @@ export function createDeviceStreams(options: DeviceStreamsOptions): DeviceStream
 
       return held === undefined || held.isOnline ? null : held.closedAtMs;
     },
-    readPixels: (deviceID) => devices.get(deviceID)?.streams.at(-1)?.pixels ?? null,
+    readPixels: (deviceID) => {
+      const held = devices.get(deviceID);
+
+      return held?.resized?.pixels ?? held?.streams.at(-1)?.pixels ?? null;
+    },
     resize: (deviceID, pixels) => {
-      for (const stream of devices.get(deviceID)?.streams ?? []) {
+      const held = devices.get(deviceID);
+
+      if (held === undefined || held.streams.length === 0) {
+        return;
+      }
+
+      held.resized = { pixels, streams: new Set(held.streams) };
+
+      for (const stream of held.streams) {
         stream.pixels = pixels;
       }
     },

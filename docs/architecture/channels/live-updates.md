@@ -54,8 +54,8 @@ The API reads the head of the log, then checks the session, and refuses a missin
 with a plain 401. The head comes first, so a revoke that commits after the check lies past the head,
 where the stream replays it. A `session.revoked` record that names the caller ends a page stream
 with `UNAUTHORIZED`, whether or not it sends records. A device-scope session may open the device
-form only, and the page form answers `FORBIDDEN`. A full session with no device row gets
-`NOT_A_DEVICE` from the device form.
+form only, and the page form answers `FORBIDDEN`. A full session may hold a page stream and a device
+stream at once. A full session whose device row is missing gets `NOT_A_DEVICE` from the device form.
 
 The stream answers at `/rpc/live/follow`. A content blocker's default filter list blocks a path with
 a `log` segment, so the stream has none.
@@ -130,8 +130,9 @@ The API holds one registry in memory, and a restart forgets it. It keeps two fac
   background tab holds a stream open. The push notifier reads `presence.isPresent(withinMs)`.
 - A device is online while one or more of its device-form streams are open, and for
   `deviceOfflineGraceMs` after its last one closes, so a reconnect never reads as offline. The
-  devices module reads the registry's `DeviceStreams`. A device-form stream keeps its session's last
-  seen time fresh, and a page stream never does.
+  devices module reads the registry's `DeviceStreams`. A device-form stream of a device session
+  keeps its session's last seen time fresh. A page stream never does, and neither does the
+  device-form stream of a full session, so an idle tab's session lapses on schedule.
 
 When a client goes away, the server ends its stream within 2 keepalive intervals and drops a
 device-form stream from the registry in the same step.

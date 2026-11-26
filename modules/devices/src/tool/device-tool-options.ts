@@ -4,12 +4,18 @@ import type { AddressCheck } from '@heynixie/egress';
 import type { Definitions, Log } from '@heynixie/log';
 import type { DeviceStreams } from '../stream/create-device-streams';
 
+// The server wires it from the calls module, so neither module imports the other.
+export type ReadCallSession = () => Promise<string | null>;
+
 // The wiring every device tool takes.
 export interface DeviceToolOptions {
   readonly log: Log;
   readonly definitions: () => Definitions;
   readonly clock: Clock;
   readonly streams: DeviceStreams;
+
+  // the identity ID of the session that carries the live call, or null while no call is live
+  readonly readCallSession: ReadCallSession;
 
   // absent when no render sandbox is set up, so device.preview returns no picture
   readonly preview?: DevicePreviewOptions;

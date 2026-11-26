@@ -7,7 +7,7 @@ import { FitBox } from './fit-box';
 import { LiveValue } from './live-value';
 import { PageRegion } from './page-region';
 import { pickRegionTextColour } from './pick-region-text-colour';
-import type { DeviceLayout, PageDataNotice, PageDelivery } from './use-device-events';
+import type { DeviceLayout, PageDataNotice, PageDelivery } from './types';
 import { useReportRegionError } from './use-report-region-error';
 
 export interface LayoutViewProps {
@@ -25,9 +25,9 @@ const grid = css({
   backgroundColor: 'black',
   color: 'white',
   display: 'grid',
-  height: '100dvh',
+  height: '100%',
   overflow: 'hidden',
-  width: '100vw',
+  width: '100%',
 });
 
 const cell = css({ minHeight: '0', minWidth: '0', overflow: 'hidden', position: 'relative' });

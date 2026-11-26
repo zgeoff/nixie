@@ -1,4 +1,6 @@
 import type { ScriptedModelRequest, ScriptedReply } from '@heynixie/testing';
+import { getDeviceID } from './get-device-id';
+import type { DeviceSelector } from './get-device-id';
 import { getResultID } from './get-result-id';
 
 type ScriptedBody = NonNullable<ScriptedModelRequest['body']>;
@@ -6,6 +8,9 @@ type ScriptedBody = NonNullable<ScriptedModelRequest['body']>;
 export interface DeviceShowInput {
   readonly fit: 'whole' | 'fill';
   readonly text: string;
+
+  // the name of the device to show it on, or absent for the first device enrolled with a code
+  readonly device?: string | undefined;
 }
 
 export interface SentPhoto {
@@ -20,6 +25,9 @@ export interface SentPhoto {
 export function buildDeviceShowReplies(input: DeviceShowInput, photo: SentPhoto): ScriptedReply[] {
   // The first reply waits for the photo's record, so the second reply, which names the photo by the
   // record's sequence, reads it when the model asks for it.
+  const selector: DeviceSelector =
+    input.device === undefined ? { kind: 'screen' } : { name: input.device };
+
   return [
     { toolUse: { name: 'mcp__nixie__devices_list', input: {} }, gate: photo.isSent },
     {
@@ -32,7 +40,7 @@ export function buildDeviceShowReplies(input: DeviceShowInput, photo: SentPhoto)
       toolUse: {
         name: 'mcp__nixie__device_show',
         input: (body: ScriptedBody) => ({
-          device: getResultID(body, 'shortID'),
+          device: getDeviceID(body, selector),
           content: { kind: 'image', image: getResultID(body, 'image'), fit: input.fit },
         }),
       },

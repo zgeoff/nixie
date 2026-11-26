@@ -185,7 +185,7 @@ export function createVerifyRegistry(): Wringer {
     .action({
       name: 'show-on-device',
       summary:
-        'Send the owner message with a photo, and queue the scripted model turn that keeps the photo and shows it on the first device it lists, with the fit --fit and the closing reply --text',
+        'Send the owner message with a photo, and queue the scripted model turn that keeps the photo and shows it on the device named --device, or on the first device enrolled with a code, with the fit --fit and the closing reply --text',
       effect: 'write',
       targets: ['local'],
       input: controlRoutes.showOnDevice.input,
@@ -195,7 +195,7 @@ export function createVerifyRegistry(): Wringer {
     .action({
       name: 'layout-on-device',
       summary:
-        'Send an owner message, and queue the scripted model turn that works on the first device it lists: --step set lays its screen out in 3 regions and fills them, the first for 1 minute, and --step update replaces the text of the second region, --step save saves the layout as evening, --step change lays the screen out again in 2 regions, the second on a teal background, --step restore restores evening, --step preview previews its screen, and --step install asks for the package ripple-count 1.0.0, --step approve-install approves that held call as the owner would and returns once the package is stored, --step package fills the second region with a page that loads it and reads the declared fetch of https://tides.test/today, and --step approve approves the held device.region call as the owner would. --text is the closing reply',
+        'Send an owner message, and queue the scripted model turn that works on the first device enrolled with a code: --step set lays its screen out in 3 regions and fills them, the first for 1 minute, and --step update replaces the text of the second region, --step save saves the layout as evening, --step change lays the screen out again in 2 regions, the second on a teal background, --step restore restores evening, --step preview previews its screen, and --step install asks for the package ripple-count 1.0.0, --step approve-install approves that held call as the owner would and returns once the package is stored, --step package fills the second region with a page that loads it and reads the declared fetch of https://tides.test/today, and --step approve approves the held device.region call as the owner would. --text is the closing reply',
       effect: 'write',
       targets: ['local'],
       input: controlRoutes.layoutOnDevice.input,
@@ -463,7 +463,7 @@ export function createVerifyRegistry(): Wringer {
       },
       {
         name: 'task-control',
-        summary: 'Pause and resume a task, and see its records agree',
+        summary: 'Pause and resume a task',
         paths: featurePaths['task-control'],
       },
       {
@@ -494,7 +494,7 @@ export function createVerifyRegistry(): Wringer {
       },
       {
         name: 'mcp-servers',
-        summary: 'Connect an MCP server, see its tools and approve one',
+        summary: 'Connect an MCP server, and approve a tool',
         paths: featurePaths['mcp-servers'],
       },
       ...computerFeatures,

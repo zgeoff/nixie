@@ -20,6 +20,9 @@ interface SetupOptions {
   // the answer to one connect, held until the test settles it
   readonly heldConnect?: { readonly call: number; readonly result: Promise<{ sdpAnswer: string }> };
 
+  // the answer to the start, held until the test settles it
+  readonly heldStart?: Promise<void>;
+
   // the answer to the hang-up, held until the test settles it
   readonly heldHangUp?: Promise<void>;
 
@@ -43,7 +46,11 @@ function setupTest(options: SetupOptions = {}) {
     start: () => {
       record.started += 1;
 
-      return Promise.resolve({ callID: 'c1', state: 'connecting', thread: 't1' });
+      return (options.heldStart ?? Promise.resolve()).then(() => ({
+        callID: 'c1',
+        state: 'connecting',
+        thread: 't1',
+      }));
     },
     connect: (input) => {
       record.connects.push(input.sdpOffer);
@@ -271,6 +278,62 @@ test('#observe gives up a call that is not back after 30 s, stops the microphone
     stoppedTracks: 1,
     hangUps: ['c1'],
   });
+});
+
+test('#hangUp while the call starts stops the microphone, and ends the call that then opens', async () => {
+  const held = Promise.withResolvers<void>();
+  const ctx = setupTest({ heldStart: held.promise });
+  const starting = ctx.session.start();
+
+  await waitFor(() => {
+    expect(ctx.session.getSnapshot().phase).toBe('starting');
+  });
+
+  const hangingUp = ctx.session.hangUp();
+  const stoppedBeforeStart = ctx.stoppedTracks();
+
+  held.resolve();
+
+  await hangingUp;
+  await starting;
+
+  await waitFor(() => {
+    expect(ctx.readCalls().hangUps).toStrictEqual(['c1']);
+  });
+
+  expect({
+    stoppedBeforeStart,
+    phase: ctx.session.getSnapshot().phase,
+    connects: ctx.readCalls().connects,
+  }).toStrictEqual({ stoppedBeforeStart: 1, phase: 'idle', connects: [] });
+});
+
+test('#hangUp while the call starts settles only after the call that opens is hung up', async () => {
+  const held = Promise.withResolvers<void>();
+  const heldHangUp = Promise.withResolvers<void>();
+  const ctx = setupTest({ heldStart: held.promise, heldHangUp: heldHangUp.promise });
+  const starting = ctx.session.start();
+
+  await waitFor(() => {
+    expect(ctx.session.getSnapshot().phase).toBe('starting');
+  });
+
+  const hangingUp = ctx.session.hangUp();
+
+  held.resolve();
+
+  await waitFor(() => {
+    expect(ctx.readCalls().hangUps).toStrictEqual(['c1']);
+  });
+
+  const whileHangUpHeld = await Promise.race([hangingUp, Promise.resolve('pending' as const)]);
+
+  heldHangUp.resolve();
+
+  await hangingUp;
+  await starting;
+
+  expect(whileHangUpHeld).toBe('pending');
 });
 
 test('#hangUp during a pending first connect keeps the call ended when the connect then fails', async () => {

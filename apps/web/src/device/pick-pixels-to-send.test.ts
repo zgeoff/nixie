@@ -23,3 +23,11 @@ test.each([
     expected,
   );
 });
+
+test('#pickPixelsToSend sends the size when none went to the server yet', () => {
+  expect(pickPixelsToSend(null, { width: 800, height: 600, pixelRatio: 2 })).toStrictEqual({
+    width: 800,
+    height: 600,
+    pixelRatio: 2,
+  });
+});

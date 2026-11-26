@@ -335,3 +335,14 @@ test('#calls.hangUp refuses an action ID that an earlier hang-up of another call
   expect(reused).rejects.toMatchObject({ code: 'CLIENT_ACTION_ID_REUSED' });
   expect(call?.state).toBe('connecting');
 });
+
+test('#sessions.signOut ends the call that the signing out session carries', async () => {
+  const ctx = await setupTest();
+  const started = await ctx.client.calls.start({ clientActionID: crypto.randomUUID() });
+
+  await ctx.client.sessions.signOut({});
+
+  const call = await readCall(ctx.context.log.writer.db, started.callID);
+
+  expect(call).toMatchObject({ state: 'ended', endedBy: 'you' });
+});
