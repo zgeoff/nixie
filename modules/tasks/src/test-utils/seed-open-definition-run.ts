@@ -1,6 +1,6 @@
 import invariant from 'tiny-invariant';
 import { claimTask } from '../task/projection/claim-task';
-import type { TaskClaim, TasksContext } from '../types';
+import type { StartedClaim, TasksContext } from '../types';
 import { writeTestTriggerFire } from './write-test-trigger-fire';
 
 export interface DefinitionRunSeed {
@@ -16,7 +16,7 @@ export interface DefinitionRunSeed {
 export async function seedOpenDefinitionRun(
   context: TasksContext,
   seed: DefinitionRunSeed,
-): Promise<TaskClaim> {
+): Promise<StartedClaim> {
   await writeTestTriggerFire(context, seed.taskID, {
     definitionID: seed.definitionID,
     definitionHash: seed.definitionHash,
