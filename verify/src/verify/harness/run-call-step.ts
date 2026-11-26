@@ -3,6 +3,7 @@ import type { ScriptedModelRequest, ScriptedReply } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
 import { isConversationTurn } from './build-scripted-replies';
+import { getOnCallDeviceID } from './get-on-call-device-id';
 
 export const callStepSchema = z.enum([
   'start',
@@ -11,6 +12,7 @@ export const callStepSchema = z.enum([
   'hold',
   'release',
   'propose',
+  'show',
   'hang-up',
   'read',
 ]);
@@ -65,6 +67,8 @@ export async function runCallStep(
     await waitForSpeech(deps, 'answer');
   } else if (step === 'propose') {
     await propose(deps);
+  } else if (step === 'show') {
+    await showOnDevice(deps);
   } else if (step === 'hang-up') {
     await hangUp(deps, state);
   }
@@ -177,6 +181,40 @@ async function propose(deps: CallStepDependencies): Promise<void> {
   );
 
   await deps.emitSpeech({ kind: 'hand_off', handOffID: 'ask-2', request: 'Remember my bees' });
+}
+
+// The call's turn answers in one short line and puts the long answer on the device that the device
+// list marks as the call's.
+const planText = [
+  '# This week',
+  '',
+  '- Monday: dentist at 9, then the allotment',
+  '- Tuesday: write up the bee inspection',
+  '- Wednesday: pick up the parcel from the depot',
+  '- Thursday: lunch with Sam, then the library',
+  '- Friday: tidy the shed',
+].join('\n');
+
+async function showOnDevice(deps: CallStepDependencies): Promise<void> {
+  deps.model.addReplies(
+    { toolUse: { name: 'mcp__nixie__devices_list', input: {} }, when: isCallTurn },
+    {
+      toolUse: {
+        name: 'mcp__nixie__device_show',
+        input: (body: ScriptedModelBody) => ({
+          device: getOnCallDeviceID(body),
+          content: { kind: 'markdown', text: planText },
+          minutes: 60,
+        }),
+      },
+      when: isCallTurn,
+    },
+    { text: "I've put that on your screen.", when: isCallTurn },
+  );
+
+  await deps.emitSpeech({ kind: 'hand_off', handOffID: 'ask-3', request: 'What are my plans?' });
+
+  await waitForSpeech(deps, 'answer');
 }
 
 async function hangUp(deps: CallStepDependencies, state: CallState): Promise<void> {

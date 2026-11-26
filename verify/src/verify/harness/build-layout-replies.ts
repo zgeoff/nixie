@@ -1,5 +1,5 @@
 import type { ScriptedModelRequest } from '@heynixie/testing';
-import { getResultID } from './get-result-id';
+import { getDeviceID } from './get-device-id';
 
 type ScriptedBody = NonNullable<ScriptedModelRequest['body']>;
 
@@ -35,7 +35,7 @@ export function buildLayoutReplies(step: LayoutStep): readonly LayoutReply[] {
       {
         toolUse: {
           name: 'mcp__nixie__device_preview',
-          input: (body: ScriptedBody) => ({ device: getResultID(body, 'shortID') }),
+          input: (body: ScriptedBody) => ({ device: getDeviceID(body, { kind: 'screen' }) }),
         },
       },
     ];
@@ -81,7 +81,7 @@ export function buildLayoutReplies(step: LayoutStep): readonly LayoutReply[] {
         toolUse: {
           name: 'mcp__nixie__device_sendToPage',
           input: (body: ScriptedBody) => ({
-            device: getResultID(body, 'shortID'),
+            device: getDeviceID(body, { kind: 'screen' }),
             region: 'pond',
             data: { text: 'hello' },
             retain: true,
@@ -110,7 +110,7 @@ export function buildLayoutReplies(step: LayoutStep): readonly LayoutReply[] {
         toolUse: {
           name: 'mcp__nixie__device_layout',
           input: (body: ScriptedBody) => ({
-            device: getResultID(body, 'shortID'),
+            device: getDeviceID(body, { kind: 'screen' }),
             columns: ['1fr', '1fr'],
             rows: ['1fr'],
             regions: [
@@ -130,7 +130,7 @@ export function buildLayoutReplies(step: LayoutStep): readonly LayoutReply[] {
       toolUse: {
         name: 'mcp__nixie__device_layout',
         input: (body: ScriptedBody) => ({
-          device: getResultID(body, 'shortID'),
+          device: getDeviceID(body, { kind: 'screen' }),
           columns: ['1fr', '2fr', '1fr'],
           rows: ['1fr'],
           regions: [
@@ -152,7 +152,7 @@ function buildRegionReply(region: string, content: object, minutes?: number): La
     toolUse: {
       name: 'mcp__nixie__device_region',
       input: (body: ScriptedBody) => ({
-        device: getResultID(body, 'shortID'),
+        device: getDeviceID(body, { kind: 'screen' }),
         region,
         content,
         ...(minutes === undefined ? {} : { minutes }),
@@ -166,7 +166,7 @@ function buildSavedLayoutReply(name: string): LayoutReply {
     toolUse: {
       name,
       input: (body: ScriptedBody) => ({
-        device: getResultID(body, 'shortID'),
+        device: getDeviceID(body, { kind: 'screen' }),
         name: 'evening',
       }),
     },
