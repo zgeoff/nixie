@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.120.0](https://github.com/zgeoff/nixie/compare/v0.119.0...v0.120.0) (2026-11-26)
+
+
+### ⚠ BREAKING CHANGES
+
+* **budgets:** add the spend ledger and one source for each price ([#1476](https://github.com/zgeoff/nixie/issues/1476))
+
+### Features
+
+* **budgets:** add the spend ledger and one source for each price ([#1476](https://github.com/zgeoff/nixie/issues/1476)) ([384aa1d](https://github.com/zgeoff/nixie/commit/384aa1dcdaa3187f10102fbf4a4c1eb4652bd49c))
+* **calls:** add the calls module on a fake speech layer ([#1479](https://github.com/zgeoff/nixie/issues/1479)) ([b6b13bc](https://github.com/zgeoff/nixie/commit/b6b13bc1b9248541b9bc761d6ddfd3753748f6a5))
+* **coding:** start coding sessions from their own coding.start tool ([#1482](https://github.com/zgeoff/nixie/issues/1482)) ([ca86628](https://github.com/zgeoff/nixie/commit/ca8662802272964c72c21ee21c7487b20d05654b))
+* **connectors:** add the gmail tools to the google connector ([#1489](https://github.com/zgeoff/nixie/issues/1489)) ([e2b800b](https://github.com/zgeoff/nixie/commit/e2b800be1af2a7eea689b52e96aaa4f16d60ce0a))
+
 ## [0.119.0](https://github.com/zgeoff/nixie/compare/v0.118.0...v0.119.0) (2026-11-25)
 
 
