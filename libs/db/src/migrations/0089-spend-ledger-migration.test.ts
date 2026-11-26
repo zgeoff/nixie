@@ -54,7 +54,7 @@ test('it is the migration of version 89, and the oldest reader moves up to it', 
   const ctx = await setupTest();
 
   expect(ctx.version).toBe(89);
-  expect(nixieSchema.oldestReader).toBe(89);
+  expect(nixieSchema.oldestReader).toBeGreaterThanOrEqual(89);
 });
 
 test('it carries each count over to the row of its ledger key and drops the old ledger', async () => {

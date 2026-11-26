@@ -32,32 +32,34 @@ export async function startToolEndpoint(options: ToolEndpointOptions): Promise<T
     join(options.socketDir, buildSocketName(`${String(options.log.writer.epoch)}:${runID}`));
 
   return {
-    startRun: (run) =>
-      Promise.try(() => {
-        if (runs.has(run.runID)) {
-          throw new Error(`the run ${run.runID} already has a tool endpoint`);
-        }
+    startRun: async (run) => {
+      // a source lists its servers first, so the run reads the newest pins; it never rejects
+      await options.registry.prepareTaskRun(run.tools);
 
-        const names = collectHeldToolNames(run.tools, options.registry.toolNames);
+      if (runs.has(run.runID)) {
+        throw new Error(`the run ${run.runID} already has a tool endpoint`);
+      }
 
-        // The endpoint lists only registered tools, so a name it drops would vanish from the run.
-        for (const tool of names.unknown) {
-          options.logger('tools.run_tool_unknown', { runID: run.runID, tool }, 'warn');
-        }
+      const names = collectHeldToolNames(run.tools, options.registry.toolNames);
 
-        const endpoint = startRunEndpoint({
-          run: { ...run, tools: [...names.held] },
-          socketPath: getSocketPath(run.runID),
-          options: callOptions,
-          onStop: () => {
-            runs.delete(run.runID);
-          },
-        });
+      // The endpoint lists only registered tools, so a name it drops would vanish from the run.
+      for (const tool of names.unknown) {
+        options.logger('tools.run_tool_unknown', { runID: run.runID, tool }, 'warn');
+      }
 
-        runs.set(run.runID, endpoint);
+      const endpoint = startRunEndpoint({
+        run: { ...run, tools: [...names.held] },
+        socketPath: getSocketPath(run.runID),
+        options: callOptions,
+        onStop: () => {
+          runs.delete(run.runID);
+        },
+      });
 
-        return endpoint;
-      }),
+      runs.set(run.runID, endpoint);
+
+      return endpoint;
+    },
 
     // A worker's sandbox is owned by its worker run, whose tool run takes the run's UUID.
     getToolTarget: (sandbox) => ({

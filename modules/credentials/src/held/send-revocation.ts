@@ -1,4 +1,5 @@
 import type { CredentialFetch, OAuthProvider } from '../types';
+import { buildClientFields } from './build-client-fields';
 import type { RevokeResult } from './types';
 
 export interface RevocationSender {
@@ -26,11 +27,7 @@ export async function sendRevocation(
   try {
     const response = await send(provider.revokeURL, {
       method: 'POST',
-      body: new URLSearchParams({
-        token,
-        client_id: provider.clientID,
-        client_secret: clientSecret,
-      }),
+      body: new URLSearchParams({ token, ...buildClientFields(provider, clientSecret) }),
       signal: AbortSignal.timeout(sender.requestTimeoutMs),
     });
 

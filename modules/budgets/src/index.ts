@@ -24,6 +24,9 @@ export type { BudgetLedger, LedgerCharge } from './read/read-budget-ledger';
 export { readBudgetLedger } from './read/read-budget-ledger';
 export type { SpendLedgerEntry } from './read/read-spend-ledger';
 export { readSpendLedger } from './read/read-spend-ledger';
+export type { MeterRead } from './ledger/pick-task-run-micros';
+export { pickTaskRunMicros } from './ledger/pick-task-run-micros';
+export { toMicrosUp } from './ledger/to-micros-up';
 export type { UncountedCharge } from './read/read-uncounted-charges';
 export { readUncountedCharges } from './read/read-uncounted-charges';
 

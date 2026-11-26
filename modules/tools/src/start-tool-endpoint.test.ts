@@ -9,17 +9,18 @@ import { startToolEndpoint } from './start-tool-endpoint';
 import { buildMockToolDefinition } from './test-utils/build-mock-tool-definition';
 import { setupTestLog } from './test-utils/setup-test-log';
 import { startRunClient } from './test-utils/start-run-client';
-import type { ToolContext, ToolDefinition } from './types';
+import type { ToolContext, ToolDefinition, ToolSource } from './types';
 
 interface SetupConfig {
   readonly tools: readonly ToolDefinition[];
   readonly heldBack?: readonly string[];
+  readonly sources?: readonly ToolSource[];
 }
 
 async function setupTest(config: SetupConfig) {
   const testLog = await setupTestLog();
 
-  const registry = buildToolRegistry(config.tools);
+  const registry = buildToolRegistry(config.tools, config.sources);
   const heldBack = { names: config.heldBack ?? [] };
 
   const logLines: { event: string; fields: LogFields | undefined; level: LogLevel | undefined }[] =
@@ -71,6 +72,46 @@ test('it lists and runs a tool that the run names by its SDK name under the regi
 
   expect(listed.tools.map((tool) => tool.name)).toStrictEqual(['notes.read']);
   expect(result.structuredContent).toStrictEqual({ text: 'a note' });
+});
+
+test('it lets a source ready the tools a run names before it reads the run its tool list', async () => {
+  const tool = buildToolRegistry([buildMockToolDefinition({ name: 'notes.read' })]).findTool(
+    'notes.read',
+  );
+
+  const asked: string[] = [];
+  const state = { isReady: false };
+
+  const source: ToolSource = {
+    toolNames: () => (state.isReady ? ['notes.read'] : []),
+    findTool: () => (state.isReady ? tool : null),
+    prepareTaskRun: (names) => {
+      asked.push(...names);
+
+      state.isReady = true;
+
+      return Promise.resolve();
+    },
+  };
+
+  const ctx = await setupTest({ tools: [], sources: [source] });
+
+  const run = await ctx.endpoint.startRun({
+    toolUseMetaKey: null,
+    runID: 'run-1',
+    thread: 'task-1',
+    logThread: 'task-1',
+    tools: ['notes.read'],
+    model: { model: 'model-a', profile: 'chat-direct' },
+  });
+
+  const client = await startRunClient(run);
+  const listed = await client.listTools();
+
+  expect([asked, listed.tools.map((listedTool) => listedTool.name)]).toStrictEqual([
+    ['notes.read'],
+    ['notes.read'],
+  ]);
 });
 
 test('it leaves out of a run the tools that are held back, and lists the others', async () => {

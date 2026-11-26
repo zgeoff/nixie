@@ -13,8 +13,7 @@ export function renderLimitNotice(record: LogRecord, times: MessageTimeOptions):
     type: 'task-limit',
     at: formatMessageTime(record.recordedAt, null, times),
     body:
-      `[#${record.sequence}] Task ${notice.taskID} paused at its limit: it used ` +
-      `${String(notice.used.turns)} of its ${String(notice.limits.turns)} turns and ` +
-      `$${notice.used.dollars.toFixed(2)} of its $${notice.limits.dollars.toFixed(2)}.`,
+      `[#${record.sequence}] Task ${notice.taskID} paused at its limit after ` +
+      `${String(notice.used.turns)} of its ${String(notice.limits.turns)} turns.`,
   });
 }

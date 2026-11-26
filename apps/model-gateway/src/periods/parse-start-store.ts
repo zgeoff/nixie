@@ -95,6 +95,7 @@ export function parseStartStore(
               tokens: held.tokens,
               limit: held.limit,
               lastRefusal: null,
+              limitRevision: 0,
             },
           ]),
         ),

@@ -8,6 +8,7 @@ export const liveTopicSchema = z.enum([
   'connections',
   'definitions',
   'images',
+  'mcp',
   'memory',
   'nixie',
   'notebook',

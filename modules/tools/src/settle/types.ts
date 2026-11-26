@@ -20,8 +20,16 @@ export interface Settled {
         readonly kind: 'typed';
         readonly result: JSONObject;
         readonly images: readonly ToolImage[];
+        readonly isError?: true;
       }
-    | { readonly kind: 'text'; readonly text: string; readonly isError: boolean };
+    | {
+        readonly kind: 'text';
+        readonly text: string;
+        readonly isError: boolean;
+
+        // the text came from outside nixie, so the reply fences it
+        readonly isOutside?: true;
+      };
 
   // the model's loop ends its turn after this result
   readonly endsTurn?: true;

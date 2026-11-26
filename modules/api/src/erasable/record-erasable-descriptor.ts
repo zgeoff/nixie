@@ -21,6 +21,7 @@ export const recordErasableDescriptor = {
       'device.region_shown',
       'device.shown',
       'image.named',
+      'mcp.tool_listed',
       'mail.received',
       'mail.sent',
       'model.compaction_failed',

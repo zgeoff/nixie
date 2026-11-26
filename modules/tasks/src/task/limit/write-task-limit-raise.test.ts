@@ -1,5 +1,8 @@
 import { expect, test } from 'bun:test';
 import invariant from 'tiny-invariant';
+import { readEndedRuns } from '../../run/read-ended-runs';
+import { writeMeterRead } from '../../run/write-meter-read';
+import { buildTestRunSettings } from '../../test-utils/build-test-run-settings';
 import { seedConversationStep } from '../../test-utils/seed-conversation-step';
 import { seedPausedTask } from '../../test-utils/seed-paused-task';
 import { seedTask } from '../../test-utils/seed-task';
@@ -28,6 +31,7 @@ test('it resumes a task that its limit paused, under the raised limit', async ()
     state: 'ready',
     isPauseRequested: false,
     limits: { turns: 10, dollars: 1 },
+    sandboxLimit: null,
   });
 
   const setup = await readTaskSetup(ctx.context, taskID);
@@ -77,6 +81,7 @@ test('it raises the limit of a held task that the user stopped, and leaves the t
     state: 'stopped',
     isPauseRequested: false,
     limits: { turns: 10, dollars: 1 },
+    sandboxLimit: null,
   });
 });
 
@@ -150,4 +155,57 @@ test('it refuses a raise of an unknown task', async () => {
   });
 
   expect(raised).toStrictEqual({ status: 'refused', reason: 'unknown_task' });
+});
+
+test('it names the sandbox that the gateway counts, with its last count and what the raise leaves to spend', async () => {
+  const ctx = await setupTest();
+  const starter = await seedConversationStep(ctx.context);
+
+  const metered = { ...ctx.context, runSettings: buildTestRunSettings({ meter: 'gateway' }) };
+
+  const taskID = await seedPausedTask(metered, {
+    starter: starter.claim,
+    limits: { turns: 3, dollars: 1 },
+  });
+
+  const [run] = await readEndedRuns(metered, { taskID, limit: 1 });
+
+  invariant(run);
+
+  await writeMeterRead(metered, {
+    taskID,
+    taskRunID: run.runID,
+    sandbox: 'sandbox-1',
+    reason: 'run_start',
+    countMicros: 200_000,
+  });
+
+  await writeMeterRead(metered, {
+    taskID,
+    taskRunID: run.runID,
+    sandbox: 'sandbox-1',
+    reason: 'step_end',
+    countMicros: 730_000,
+  });
+
+  const raised = await writeTaskLimitRaise(metered, { taskID, limits: { dollars: 4 } });
+
+  expect(raised).toMatchObject({
+    status: 'raised',
+    sandboxLimit: { sandbox: 'sandbox-1', countMicros: 730_000, readCount: 2, leftDollars: 4 },
+  });
+});
+
+test('it names no sandbox for a task run that no gateway counts', async () => {
+  const ctx = await setupTest();
+  const starter = await seedConversationStep(ctx.context);
+
+  const taskID = await seedPausedTask(ctx.context, {
+    starter: starter.claim,
+    limits: { turns: 3, dollars: 1 },
+  });
+
+  const raised = await writeTaskLimitRaise(ctx.context, { taskID, limits: { dollars: 4 } });
+
+  expect(raised).toMatchObject({ status: 'raised', sandboxLimit: null });
 });

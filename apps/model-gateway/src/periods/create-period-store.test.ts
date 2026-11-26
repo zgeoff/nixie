@@ -136,7 +136,9 @@ test('it gives every route the whole count of a version 2 store, keeps its sandb
           month: { ...ctx.emptyMonth, micros: 9_000_000 },
         },
       },
-      sandboxes: { alpha: { micros: 1_000_000, tokens: 2, limit: null, lastRefusal: null } },
+      sandboxes: {
+        alpha: { micros: 1_000_000, tokens: 2, limit: null, lastRefusal: null, limitRevision: 0 },
+      },
     },
     [
       'store.moved',
@@ -300,7 +302,9 @@ test('it keeps the last refusal on a sandbox the store holds, and on no other', 
   await ctx.store.change((held) => ({
     store: {
       ...held,
-      sandboxes: { alpha: { micros: 0, tokens: 0, limit: null, lastRefusal: null } },
+      sandboxes: {
+        alpha: { micros: 0, tokens: 0, limit: null, lastRefusal: null, limitRevision: 0 },
+      },
     },
     result: undefined,
   }));
@@ -316,6 +320,33 @@ test('it keeps the last refusal on a sandbox the store holds, and on no other', 
     counter: 'route_day',
     route: 'plan',
     atMs: 5,
+  });
+});
+
+test('it loads a sandbox stored with no limit revision at revision 0', async () => {
+  const ctx = await setupTest('2026-11-13T10:00:00Z');
+
+  await writeFile(
+    ctx.path,
+    JSON.stringify({
+      version: 3,
+      routes: {
+        plan: { day: ctx.emptyDay, month: ctx.emptyMonth },
+        metered: { day: ctx.emptyDay, month: ctx.emptyMonth },
+      },
+      sandboxes: { alpha: { micros: 5, tokens: 1, limit: { dollars: 2 }, lastRefusal: null } },
+    }),
+  );
+
+  const store = await ctx.start(ctx.limits);
+  const held = await store.read();
+
+  expect(held.sandboxes['alpha']).toStrictEqual({
+    micros: 5,
+    tokens: 1,
+    limit: { dollars: 2 },
+    lastRefusal: null,
+    limitRevision: 0,
   });
 });
 

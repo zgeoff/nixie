@@ -22,6 +22,7 @@ const inboxKinds: ReadonlySet<string> = new Set([
   'computer.handover_asked',
   'computer.handover_closed',
   'device.status_changed',
+  'tool_changed',
   'call.started',
   'call.answered',
   'call.ended',

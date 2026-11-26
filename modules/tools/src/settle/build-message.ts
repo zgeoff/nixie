@@ -7,6 +7,9 @@ interface MessageOptions {
   readonly isError?: boolean;
   readonly actionID?: string;
   readonly hidden?: JSONObject | undefined;
+
+  // the reply fences the text as outside content
+  readonly isOutside?: true;
 }
 
 export function buildMessage(
@@ -19,6 +22,11 @@ export function buildMessage(
     actionID: messageOptions.actionID ?? null,
     sources: { message: messageOptions.source ?? 'owner_data' },
     content: buildHiddenFields({ message }, messageOptions.hidden),
-    reply: { kind: 'text', text: message, isError: messageOptions.isError ?? true },
+    reply: {
+      kind: 'text',
+      text: message,
+      isError: messageOptions.isError ?? true,
+      ...(messageOptions.isOutside === true ? { isOutside: true as const } : {}),
+    },
   };
 }

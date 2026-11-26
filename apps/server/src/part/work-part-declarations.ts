@@ -243,6 +243,7 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
       'erasure_catch_up',
       'turn_input_work',
     ],
+    uses: ['mcp'],
     start: async (reader) => {
       const parts = reader.get('server_parts');
       const harness = reader.get('inputs').options.harness;
@@ -271,7 +272,7 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
         otherStep,
       );
 
-      await startRunners(parts, runStep);
+      await startRunners(parts, runStep, () => reader.find('mcp'));
 
       parts.state.update({ areRunnersStarted: true });
     },

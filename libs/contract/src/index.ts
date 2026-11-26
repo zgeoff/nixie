@@ -25,6 +25,7 @@ export type {
 export { repeatScheduleSchema, scheduleSchema } from './contract/schedule-schema';
 export type { Trigger } from './contract/trigger-schema';
 export { triggerAtSchema, triggerSchema } from './contract/trigger-schema';
+export { mcpSignInStatePrefix } from './contract/mcp-sign-in-state-prefix';
 export { liveStreamTiming } from './contract/live-stream-timing';
 export type { LiveTopic } from './contract/live-topic-schema';
 export { liveTopicSchema } from './contract/live-topic-schema';

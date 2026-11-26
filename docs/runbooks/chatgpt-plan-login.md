@@ -20,14 +20,15 @@ Two people take part:
 ## Before you start
 
 Check that both configs have the sections the plan route needs. When one lacks a section, set it up
-first with the doc that the item links.
+first with the doc that its item links to.
 
 - nixie's `config.yaml` has a `spendStop` section. With it, nixie sends every model request through
   the gateway and reads the gateway's status
   ([how nixie uses the gateway](../architecture/policy/model-gateway.md#how-nixie-uses-the-gateway)).
 - The gateway's config has a `periods` section, and a `control` section
   ([the periods](../architecture/policy/model-gateway.md#the-periods)). nixie reads the plan login's
-  status from the control listener, the gateway's second address, which only the nixie server calls.
+  status from the control listener, the gateway's second address. Only a caller with the control
+  token reaches it: the nixie server, or you on the gateway host.
 
 ## Placeholders
 
@@ -151,16 +152,12 @@ answer holds no token and no email.
          chatgpt_login: true
          model: <model>
          effort: low
-         prices:
-           input: <input>
-           cache_write: <cache_write>
-           cache_write_1h: <cache_write_1h>
-           cached_input: <cached_input>
-           output: <output>
    ```
 
    Set `effort` to the reasoning effort the tasks need
-   ([model profiles](../architecture/core/model-profiles.md#harnesses)). Add nothing to nixie's
+   ([model profiles](../architecture/core/model-profiles.md#harnesses)). Set no `prices` on the
+   profile: with `spendStop` set, the nixie server refuses to start when a profile sets them, and
+   the gateway prices each request from the route's `prices` in step 3. Add nothing to nixie's
    secrets file for `deployment:<route>`. With `spendStop` set, the nixie server refuses to start
    when the secrets file has a `model_credentials` entry, and impd holds the route key
    ([credentials with a spending gateway](../architecture/core/model-profiles.md#credentials-with-a-spending-gateway)).

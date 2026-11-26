@@ -15,12 +15,14 @@ import type { GuestTurn } from '../utils/run-guest-turn';
 import { runGuestTurn } from '../utils/run-guest-turn';
 import type { WorkerStops } from './create-worker-stops';
 import { createWorkerStops } from './create-worker-stops';
+import { giveBackWorkerDollars } from './give-back-worker-dollars';
 import { pickGatewayEnd } from './pick-gateway-end';
 import type { WorkerTurnFacts } from './pick-worker-end';
 import { pickWorkerEnd } from './pick-worker-end';
 import { raceStop } from './race-stop';
 import { removeFailedDestroys } from './remove-failed-destroys';
 import { renderWorkerEnd } from './render-worker-end';
+import { reserveWorkerDollars } from './reserve-worker-dollars';
 import { startWorkerRemoval } from './start-worker-removal';
 import type {
   WorkerDeps,
@@ -55,6 +57,9 @@ interface Held {
   // the gateway counts the sandbox, so the run may have spent on it
   isRegistered: boolean;
   isStarted: boolean;
+
+  // the dollars that the calling task's sandbox gave this run up, which the end gives back
+  reservedDollars: number;
   stage: 'starting' | 'running';
 }
 
@@ -63,6 +68,9 @@ interface WorkerRun {
   readonly stops: WorkerStops;
   readonly tally: Tally;
   readonly held: Held;
+
+  // what the run charges the calling task, which the end of the run sets
+  chargedDollars: number;
 }
 
 // Runs one worker for the call that planWorkerRun planned. Every way out passes the one block at
@@ -85,14 +93,20 @@ export async function runWorker(deps: WorkerDeps, plan: WorkerPlan): Promise<Wor
       endpoint: null,
       isRegistered: false,
       isStarted: false,
+      reservedDollars: 0,
       stage: 'starting',
     },
+    chargedDollars: 0,
   };
 
   try {
     return await runOpenWorker(deps, plan, run);
   } finally {
-    await releaseWorkerRun(deps, run);
+    try {
+      await giveBackWorkerDollars(plan, run);
+    } finally {
+      await releaseWorkerRun(deps, run);
+    }
   }
 }
 
@@ -100,6 +114,12 @@ const spendStoppedResult: WorkerResult = {
   kind: 'stopped',
   sentence:
     'Model spending is stopped, so nixie started no worker. Every task resumes when the stop clears.',
+};
+
+const unreservedResult: WorkerResult = {
+  kind: 'stopped',
+  sentence:
+    'The model gateway did not answer, so nixie could not set aside the dollars of a worker and started none.',
 };
 
 async function runOpenWorker(
@@ -133,31 +153,16 @@ async function runOpenWorker(
     }
   }
 
-  await ensureStarted(deps, plan, run);
+  const reserved =
+    grant === 'stopped' ? { plan, reservedDollars: 0 } : await reserveWorkerDollars(plan);
 
-  const stagesEnd =
-    grant === 'stopped'
-      ? pickWorkerEnd({
-          isAborted: plan.hold.signal.aborted,
-          isMinutesUp: run.stops.isMinutesUp(),
-          tripped: null,
-          isInterrupted: false,
-          stage: 'starting',
-          error: null,
-          turn: null,
-        })
-      : await runStages(deps, plan, run);
+  if (reserved === null) {
+    return unreservedResult;
+  }
 
-  const count = await readGatewayCount(deps, plan, run);
+  run.held.reservedDollars = reserved.reservedDollars;
 
-  await chargeGatewayExcess(deps, plan, run, count);
-
-  const end = pickGatewayEnd(stagesEnd, count, plan.limits);
-  const used = buildUsed(deps, plan, run, count);
-
-  await writeWorkerRunEnded(deps, plan, run.names, { end, used });
-
-  return toResult(plan, run, end, used);
+  return runReservedWorker(deps, reserved.plan, run, grant === 'stopped');
 }
 
 // The gate of the task whose step started the worker: for a conversation step, the conversation's.
@@ -182,6 +187,41 @@ async function waitForSlot(deps: WorkerDeps, run: WorkerRun): Promise<WorkerSlot
 
     throw error;
   }
+}
+
+// A run that a stop ended while it waited for its slot still has a start and an end record.
+async function runReservedWorker(
+  deps: WorkerDeps,
+  plan: WorkerPlan,
+  run: WorkerRun,
+  isStopped: boolean,
+): Promise<WorkerResult> {
+  await ensureStarted(deps, plan, run);
+
+  const stagesEnd = isStopped
+    ? pickWorkerEnd({
+        isAborted: plan.hold.signal.aborted,
+        isMinutesUp: run.stops.isMinutesUp(),
+        tripped: null,
+        isInterrupted: false,
+        stage: 'starting',
+        error: null,
+        turn: null,
+      })
+    : await runStages(deps, plan, run);
+
+  const count = await readGatewayCount(deps, plan, run);
+
+  await chargeGatewayExcess(deps, plan, run, count);
+
+  run.chargedDollars = Math.max(run.tally.dollars, count?.dollars ?? 0);
+
+  const end = pickGatewayEnd(stagesEnd, count, plan.limits);
+  const used = buildUsed(deps, plan, run, count);
+
+  await writeWorkerRunEnded(deps, plan, run.names, { end, used });
+
+  return toResult(plan, run, end, used);
 }
 
 // The start record goes in before the sandbox's create, and a run that a stop ended while it
@@ -434,6 +474,7 @@ async function readGatewayCount(
     tokens: Math.max(plan.limits.tokens, run.tally.tokens),
     tripped: false,
     lastRefusal: null,
+    limitRevision: 0,
   };
 }
 

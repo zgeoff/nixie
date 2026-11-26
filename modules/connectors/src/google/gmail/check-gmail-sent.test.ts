@@ -21,6 +21,7 @@ async function setupTest() {
         tool: 'gmail.send',
         arguments: { connection: 'k3x9m2p7qa' },
         attempt: 1,
+        snapshotHash: 'sha256:test',
         idempotencyKey: 'key-1',
         destinations: [],
         attemptStartedAt: ctx.clock.now(),

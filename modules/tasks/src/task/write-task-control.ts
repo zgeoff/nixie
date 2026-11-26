@@ -1,4 +1,5 @@
 import { withWriteTransaction } from '@heynixie/log';
+import { withRunEndSettled } from '../run/with-run-end-settled';
 import { runEndedHook } from '../runner/run-ended-hook';
 import type { TasksContext } from '../types';
 import type { TaskControlOutcome, TaskControlRequest } from './write-task-control-in-transaction';
@@ -11,8 +12,10 @@ export async function writeTaskControl(
   >,
   request: TaskControlRequest,
 ): Promise<TaskControlOutcome> {
-  const outcome = await withWriteTransaction(context.log.writer, (tx) =>
-    writeTaskControlInTransaction(tx, context, request),
+  const outcome = await withRunEndSettled(context, () =>
+    withWriteTransaction(context.log.writer, (tx) =>
+      writeTaskControlInTransaction(tx, context, request),
+    ),
   );
 
   if (outcome.status === 'controlled') {

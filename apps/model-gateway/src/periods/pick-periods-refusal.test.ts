@@ -137,6 +137,7 @@ test('it refuses a sandbox past its own limit, on the route it asked for', () =>
         tokens: 0,
         limit: { dollars: 2, tokens: 100 },
         lastRefusal: null,
+        limitRevision: 1,
       },
     },
   });

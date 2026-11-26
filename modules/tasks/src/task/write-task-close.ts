@@ -1,4 +1,5 @@
 import { withWriteTransaction } from '@heynixie/log';
+import { withRunEndSettled } from '../run/with-run-end-settled';
 import { runEndedHook } from '../runner/run-ended-hook';
 import { readLeasedStepHop } from '../step/read-leased-step-hop';
 import type { TasksContext, TasksTables } from '../types';
@@ -24,7 +25,9 @@ export async function writeTaskClose(
   >,
   request: TaskCloseRequest,
 ): Promise<TaskCloseOutcome> {
-  const outcome = await writeTaskCloseTransaction(context, request);
+  const outcome = await withRunEndSettled(context, () =>
+    writeTaskCloseTransaction(context, request),
+  );
 
   if (outcome.status === 'closed' && !outcome.wasClosed) {
     await runEndedHook(context, request.taskID, 'closed');

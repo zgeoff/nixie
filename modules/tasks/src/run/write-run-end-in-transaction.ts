@@ -25,6 +25,7 @@ import { taskRunEndedCodec } from './task-run-ended-codec';
 import { taskRunReportRequestedCodec } from './task-run-report-requested-codec';
 import { toTransactionContext } from './to-transaction-context';
 import type { TaskRun } from './types';
+import { writeRunEndReadsInTransaction } from './write-run-end-reads-in-transaction';
 
 export interface RunEndRequest {
   readonly taskID: string;
@@ -64,6 +65,8 @@ export async function writeRunEndInTransaction(
 
   const inTransaction = toTransactionContext(context, tx);
   const db = tx.$extendTables<TasksTables>();
+
+  await writeRunEndReadsInTransaction(tx, context, run);
 
   const task = await db
     .selectFrom('tasks')

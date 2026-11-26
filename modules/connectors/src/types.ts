@@ -21,6 +21,11 @@ export interface ActionAttempt {
   readonly actionID: string;
   readonly tool: string;
   readonly arguments: JSONObject;
+
+  // The definitions snapshot the action's first attempt ran under, or the one the queued call was
+  // recorded under before an attempt has started. A connector whose declaration comes from the
+  // definitions compares it with the snapshot of its own.
+  readonly snapshotHash: string;
   readonly attempt: number;
   readonly idempotencyKey: string;
 
@@ -54,6 +59,12 @@ export interface ActionConnector {
 
   // Reads the provider and never writes to it. A connector that declares a check has it.
   readonly check?: (attempt: ActionAttempt) => Promise<CheckResponse>;
+}
+
+// Where the action runners find the connector of a tool. A map answers it, and so does a source
+// whose tools come and go, such as the MCP proxy.
+export interface ConnectorLookup {
+  readonly get: (tool: string) => ActionConnector | undefined;
 }
 
 // How a connector action settles an unknown outcome: a retry under the provider's idempotency key, a

@@ -297,10 +297,6 @@ export interface StepResult {
 
   readonly sessionBoundary?: string | null;
 
-  // the dollars that only the step's records count, which a commit that fails records as spend
-  // instead
-  readonly spentDollars?: number;
-
   // set by a step that the gate held for the spending stop before its turn: the step commits
   // nothing and frees its lease
   readonly isHeld?: true;

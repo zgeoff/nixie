@@ -35,10 +35,17 @@ export async function readQueuedResult(
 
   // The record codec lists no cancel, so the result record keeps it under failed and the text names it.
   const recorded = outcome.outcome === 'cancelled' ? 'failed' : outcome.outcome;
+  const text = `action ${actionID} ${outcome.outcome}: ${outcome.reason}`;
 
-  return buildMessage(recorded, `action ${actionID} ${outcome.outcome}: ${outcome.reason}`, {
-    source: 'untrusted',
-    isError: false,
-    actionID,
-  });
+  // a failed action of an outside service holds the service's own words in its reason
+  if (registered.definition.outsideErrors === true) {
+    return buildMessage(recorded, text, {
+      source: 'untrusted',
+      isError: true,
+      isOutside: true,
+      actionID,
+    });
+  }
+
+  return buildMessage(recorded, text, { source: 'untrusted', isError: false, actionID });
 }

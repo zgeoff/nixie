@@ -34,6 +34,7 @@ export type {
   RunMeterName,
   RunSettings,
   RunState,
+  SandboxMicrosRead,
   TaskRun,
   TaskRunEnded,
   TaskRunOpened,
@@ -152,12 +153,18 @@ export { readDefinitionRunContext } from './task/read-definition-run-context';
 export { startedTaskBaseTools, startedTaskDefaultTools } from './task/started-task-default-tools';
 export { taskFailedTurnSpentCodec } from './task/codec/task-failed-turn-spent-codec';
 export { taskLimitNoticeCodec } from './limit/task-limit-notice-codec';
+export { toolChangedCodec } from './inbox/tool-changed-codec';
 export { taskLimitReachedCodec } from './limit/task-limit-reached-codec';
 export { taskLimitsRaisedCodec } from './limit/task-limits-raised-codec';
-export type { FailedTurnSpend } from './task/write-failed-turn-spend';
-export { withTurnSpendOnFailure } from './task/with-turn-spend-on-failure';
-export { writeFailedTurnSpend } from './task/write-failed-turn-spend';
+export type { TaskMeterReadReason } from './run/task-meter-read-codec';
+export { taskMeterReadCodec, taskMeterReadReasons } from './run/task-meter-read-codec';
+export { readMeterReads } from './run/read-meter-reads';
+export type { MeterReadWrite } from './run/write-meter-read';
+export { withRunEndSettled } from './run/with-run-end-settled';
+export { writeMeterRead } from './run/write-meter-read';
 export type { TaskLimitRaise, TaskLimitRaiseOutcome } from './task/limit/write-task-limit-raise';
+export type { RaisedSandboxLimit } from './task/limit/types';
+export { readRaisedSandboxLimit } from './task/limit/read-raised-sandbox-limit';
 export { writeTaskLimitRaise } from './task/limit/write-task-limit-raise';
 export { readSessionBoundary } from './task/read-session-boundary';
 export { readRunningStep } from './task/read-running-step';
@@ -283,6 +290,7 @@ export { waitAtFaultPoint } from './lease/wait-at-fault-point';
 export { writeInboxRecords } from './task/projection/write-inbox-records';
 export { writeInboxRecordsInTransaction } from './inbox/write-inbox-records-in-transaction';
 export { writeThreadRecordInTransaction } from './inbox/write-thread-record-in-transaction';
+export { readToolHolders } from './inbox/read-tool-holders';
 export { writeStepCommit } from './step/write-step-commit';
 export { writeTaskControl } from './task/write-task-control';
 

@@ -13,6 +13,7 @@ import type {
   ApprovedRun,
   RunEndpoint,
   ToolRunModel,
+  ToolStepHold,
 } from '@heynixie/tools';
 import type { InboxMessage, ModelCallUsage, SessionPoint, TurnProfile } from '@heynixie/wire';
 import type { StatusRegistry } from './session/build-status-registry';
@@ -174,6 +175,8 @@ export type SessionFrame =
 interface TurnBudget {
   readonly getLeftDollars: () => number;
   readonly onSpend: (dollars: number) => void;
+  readonly onWorkerStart?: ToolStepHold['onWorkerStart'];
+  readonly onWorkerEnd?: ToolStepHold['onWorkerEnd'];
 }
 
 export interface InStepSettled {

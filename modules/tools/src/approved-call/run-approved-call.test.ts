@@ -24,6 +24,14 @@ interface ApprovalOverrides {
 
 // A direct tool that asks, so its call is stored and waits for the owner.
 async function setupTest(outcome?: ToolOutcome, paid?: PaidTool) {
+  const pin = { current: 'pin-a' };
+
+  // the definitions snapshot in force, and the one that supplied the tool's declaration
+  const snapshot = { current: 'sha256:test', declaredBy: 'sha256:test' };
+
+  // runs while the tool prepares, as a seed that lands while the approved call waits does
+  const prepared: { onPrepare: (() => void) | null } = { onPrepare: null };
+
   const run: ToolRun = {
     runID: 'run-1',
     thread: 'task-1',
@@ -48,6 +56,11 @@ async function setupTest(outcome?: ToolOutcome, paid?: PaidTool) {
     name: 'notes_wipe',
     ...(paid === undefined ? {} : { paid }),
     declaration: { effects: ['export'], results: { text: 'untrusted' } },
+    prepare: () => {
+      prepared.onPrepare?.();
+
+      return Promise.resolve({ destinations: [] });
+    },
     run: (_call, context) => {
       contexts.push(context);
 
@@ -55,7 +68,19 @@ async function setupTest(outcome?: ToolOutcome, paid?: PaidTool) {
     },
   });
 
-  const registry = buildToolRegistry([tool]);
+  // a tool whose pin can move is read from a source, as a proxied tool is
+  const registry = buildToolRegistry(
+    [],
+    [
+      {
+        toolNames: () => ['notes_wipe'],
+        findTool: (name) =>
+          buildToolRegistry([
+            { ...tool, pinHash: pin.current, definitionsHash: snapshot.declaredBy },
+          ]).findTool(name),
+      },
+    ],
+  );
 
   const budgets: BudgetsContext = {
     log: testLog.log,
@@ -69,7 +94,7 @@ async function setupTest(outcome?: ToolOutcome, paid?: PaidTool) {
     registry,
     decide: readStarterDecisionPoint((name) => findToolDeclaration(registry, name)),
     log: testLog.log,
-    definitions: () => ({ snapshotHash: 'sha256:test' }),
+    definitions: () => ({ snapshotHash: snapshot.current }),
     queue: buildStubActionQueue().queue,
     queuedWaitMs: 10_000,
     budgets,
@@ -82,6 +107,9 @@ async function setupTest(outcome?: ToolOutcome, paid?: PaidTool) {
   );
 
   return {
+    pin,
+    snapshot,
+    prepared,
     options,
     budgets,
     log: testLog.log,
@@ -350,4 +378,39 @@ test('it refuses the approved call of a paid tool whose budget is full, and runs
 
   expect(approved).toStrictEqual({ status: 'failed', resultSequence: 4 });
   expect(ctx.contexts).toStrictEqual([]);
+});
+
+test('it fails an approved call whose tool reported its own failure, and never counts it done', async () => {
+  const ctx = await setupTest({
+    status: 'ok',
+    result: { text: 'no such item' },
+    isError: true,
+  });
+
+  const approved = await ctx.approve({});
+
+  expect(approved).toStrictEqual({ status: 'failed', resultSequence: 4 });
+});
+
+test('it runs nothing for an approved call whose tool changed its pin after the call', async () => {
+  const ctx = await setupTest();
+
+  ctx.pin.current = 'pin-b';
+
+  const approved = await ctx.approve({});
+
+  expect([approved, ctx.contexts]).toStrictEqual([{ status: 'changed' }, []]);
+});
+
+test('it runs nothing for an approved call whose declaration moved to another snapshot while the call was preparing', async () => {
+  const ctx = await setupTest();
+
+  ctx.prepared.onPrepare = () => {
+    ctx.snapshot.current = 'sha256:seeded';
+    ctx.snapshot.declaredBy = 'sha256:seeded';
+  };
+
+  const approved = await ctx.approve({});
+
+  expect([approved, ctx.contexts]).toStrictEqual([{ status: 'changed' }, []]);
 });

@@ -10,12 +10,15 @@ import {
   writeRuntimeRuleInTransaction,
 } from '@heynixie/definitions';
 import type { RecordInput } from '@heynixie/log';
+import { makeMcpProposalHandler } from '@heynixie/mcp';
+import type { McpPort } from '@heynixie/mcp';
 import { makeMemoryProposalHandler } from '@heynixie/memory';
 import { makeActionProposalHandler } from '@heynixie/policy';
 import type { ProposalContext, ProposalCoreDeps, ProposalKindHandler } from '@heynixie/proposals';
 import { makeSkillProposalHandler } from '@heynixie/skills';
 import { writeThreadRecordInTransaction } from '@heynixie/tasks';
 import type { Transaction } from 'kysely';
+import invariant from 'tiny-invariant';
 import type { APISettings, ReadViewMemory } from '../types';
 import { defaultApprovalSettings, defaultPolicySettings } from '../utils/default-api-settings';
 import { proposalsProjection } from './proposals-projection';
@@ -23,10 +26,14 @@ import { readActionBodyFields } from './read-action-body-fields';
 
 export type ProposalAPIContext = ProposalContext & {
   readonly settings?: Pick<APISettings, 'approvals' | 'mail' | 'policy'>;
+
+  // Null before the MCP proxy starts. A server's removal waits for it.
+  readonly readMcp?: () => McpPort | null;
 };
 
 export interface ProposalParts {
   readonly readMemory: ReadViewMemory;
+
   readonly runInForceSeed: () => Promise<unknown>;
 }
 
@@ -82,6 +89,18 @@ export function buildProposalCoreDeps(
                 return new Map(listed.map((proposal) => [proposal.proposalID, proposal.text]));
               },
             };
+      },
+    }),
+    makeMcpProposalHandler({
+      log: context.log,
+      definitions: context.definitions,
+      now: () => context.clock.now(),
+      removeCredentials: async (credentialIDs) => {
+        const port = context.readMcp?.() ?? null;
+
+        invariant(port, 'an mcp proposal that removes credentials answers after the proxy starts');
+
+        await port.forgetGrants(credentialIDs);
       },
     }),
     makeSkillProposalHandler({
