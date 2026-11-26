@@ -7,7 +7,7 @@ import { runMigrations } from '../migration/run-migrations';
 import { nixieSchema } from '../schema/nixie-schema';
 import { buildSqliteWorkerDialect } from '../sqlite/build-sqlite-worker-dialect';
 import { readRunPrefix } from '../test-utils/read-run-prefix';
-import { devicePackagesMigration } from './0089-device-packages-migration';
+import { devicePackagesMigration } from './0091-device-packages-migration';
 
 async function setupTest() {
   const stack = new AsyncDisposableStack();
@@ -30,8 +30,8 @@ async function setupTest() {
   return { db };
 }
 
-test('it moves the schema to version 89', () => {
-  expect(nixieSchema.migrations.indexOf(devicePackagesMigration) + 1).toBe(89);
+test('it moves the schema to version 91', () => {
+  expect(nixieSchema.migrations.indexOf(devicePackagesMigration) + 1).toBe(91);
 });
 
 test('it creates the table that holds the approved packages', async () => {
