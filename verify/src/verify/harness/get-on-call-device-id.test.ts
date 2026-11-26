@@ -29,3 +29,19 @@ test('it returns an empty string when no device is onCall', () => {
 
   expect(getOnCallDeviceID(body)).toBe('');
 });
+
+test('it picks the onCall device when its name holds quotes', () => {
+  const ctx = setupTest();
+
+  const body = ctx.buildBody(
+    JSON.stringify({
+      shortID: 'eee555',
+      name: 'the "big" screen',
+      deviceKind: 'client',
+      onCall: true,
+      screen: 'on',
+    }),
+  );
+
+  expect(getOnCallDeviceID(body)).toBe('eee555');
+});

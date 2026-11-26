@@ -1,4 +1,5 @@
 import type { ScriptedModelRequest } from '@heynixie/testing';
+import { collectListedDevices } from './collect-listed-devices';
 
 type ScriptedBody = NonNullable<ScriptedModelRequest['body']>;
 
@@ -8,18 +9,9 @@ type ScriptedBody = NonNullable<ScriptedModelRequest['body']>;
 export type DeviceSelector = { readonly name: string } | { readonly kind: 'screen' };
 
 export function getDeviceID(body: ScriptedBody, selector: DeviceSelector): string {
-  const text = JSON.stringify(body.messages ?? []).replaceAll(String.raw`\"`, '"');
-  const name = 'name' in selector ? escapeName(selector.name) : '[^"]*';
-  const kind = 'kind' in selector ? selector.kind : '[a-z]+';
+  const device = collectListedDevices(body).find((listed) =>
+    'name' in selector ? listed.name === selector.name : listed.deviceKind === selector.kind,
+  );
 
-  const device = new RegExp(
-    `"shortID":"(?<id>[a-z0-9]+)","name":"${name}","deviceKind":"${kind}"`,
-    'u',
-  ).exec(text);
-
-  return device?.groups?.['id'] ?? '';
-}
-
-function escapeName(name: string): string {
-  return name.replaceAll(/[.*+?^${}()|[\]\\]/gu, String.raw`\$&`);
+  return device?.shortID ?? '';
 }

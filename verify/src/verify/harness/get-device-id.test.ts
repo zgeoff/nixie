@@ -34,3 +34,21 @@ test('it returns an empty string for a name no device has', () => {
 
   expect(getDeviceID(ctx.body, { name: 'kitchen' })).toBe('');
 });
+
+test('it finds a device whose name holds quotes', () => {
+  const body = {
+    messages: [
+      {
+        role: 'user',
+        content: JSON.stringify({
+          devices: [
+            { shortID: 'aaa111', name: 'laptop', deviceKind: 'client', onCall: false },
+            { shortID: 'ddd444', name: 'the "big" screen', deviceKind: 'screen', onCall: false },
+          ],
+        }),
+      },
+    ],
+  };
+
+  expect(getDeviceID(body, { name: 'the "big" screen' })).toBe('ddd444');
+});
