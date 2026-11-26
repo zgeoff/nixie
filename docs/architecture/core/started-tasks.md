@@ -272,10 +272,10 @@ paused or stopped keeps its state.
 
 A task run is one stretch of a started task's work that ends in one report. A claim opens a task run
 when the task has none open and a waking message, a raise or a restart is waiting, and the task run
-ends when the task reports, reaches a limit, stops, closes or fails. The 3 records
-`task.run_opened`, `task.run_report_requested` and `task.run_ended` hold it, and the `task_runs`
-projection folds them into one row per task run, with the open task run in the unique
-`task_runs_open` index.
+ends when the task reports, reaches a limit, stops, closes or fails, or when a claim ends an idle
+task run. The 3 records `task.run_opened`, `task.run_report_requested` and `task.run_ended` hold it,
+and the `task_runs` projection folds them into one row per task run, with the open task run in the
+unique `task_runs_open` index.
 
 A definition's task opens its task runs on a fire, as
 [the task of a definition](definitions.md#the-task-of-a-definition) describes.
@@ -332,9 +332,9 @@ task run, and null only under the mode `none`.
 ### Ending a task run
 
 One function, which the tasks module does not export, ends every task run and writes its report. It
-runs in the transaction of the step's commit, the stop, the close or the failure that ends the task
-run, and writes nothing when the task has no open task run. When a step commits, the end cause and
-the task's next state come from the first row that applies:
+runs in the transaction of the step's commit, the stop, the close, the failure or the claim that
+ends the task run, and writes nothing when the task has no open task run. When a step commits, the
+end cause and the task's next state come from the first row that applies:
 
 | The commit finds                           | End cause   | The task's next state                        |
 | ------------------------------------------ | ----------- | -------------------------------------------- |

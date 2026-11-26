@@ -359,10 +359,11 @@ last whole count. It adds one reply at a time, so two replies that end together 
 ## The periods
 
 The gateway counts the day and the month of each route in US dollars, and limits each route on its
-own. No limit spans routes, and the gateway holds no limit in tokens. Each period resets at local
-midnight in `periods.zone`, an IANA zone that equals the deployment's default time zone, and
+own. No limit spans routes, and no route limit is in tokens. Each period resets at local midnight in
+`periods.zone`, an IANA zone that equals the deployment's default time zone, and
 [`periodOf`](metering.md#periods) works out each start. The route's limits and the cap above its day
-limit sit in the gateway's own config, so code in the deployment cannot move a limit or a cap.
+limit sit in the gateway's own config, so code in the deployment cannot lower a limit or move a cap.
+It can only raise a day's limit within the cap, with `POST /raise`.
 
 ```yaml
 periods:

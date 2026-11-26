@@ -121,23 +121,25 @@ task.meter_read  { taskRunID, sandbox, reason, countMicros }
 - What a task run has left is its limit less its dollars.
 - A `task.meter_read` sets its task run's ledger row to the task run's dollars, in the transaction
   that writes the record, so a fault between the read and its row leaves both or neither. Every
-  counter has one writer: the meter read for a task run, and `worker.run_ended` for a worker run.
+  counter has one writer: the meter reads for a task run that has them, `task.run_ended` for an
+  older task run with none, and `worker.run_ended` for a worker run.
 - At a task run's start, the server sets the sandbox's limit to its count plus the task run's limit,
   with `PATCH /sandboxes/<name>`. When a worker run starts, the limit drops by the worker run's
   planned limit. When the worker run ends, the planned limit comes back and what the worker run
   spent comes off. A worker run's planned limit is at most what the task run has left after the
   planned limits of the worker runs already going.
-- A `task-raise` patches the sandbox's limit after its commit, and retries the patch until the
-  gateway takes it. The next task run's start sets the limit too.
+- A `task-raise` patches the sandbox's limit after its commit. It retries the patch until the
+  gateway takes it, or until a step has read the sandbox again and set its own limit. The next task
+  run's start sets the limit too.
 - The server reads before a step starts, after a step ends, after each worker run ends and when a
   task run ends. When the read before a step, or the patch that follows it, gets no answer, the step
   does not start and tries again after a wait. When any other read gets no answer, the next read
   catches up. `task.run_ended`, and every record that would end a task run, commits only once each
   sandbox the task run read has its end read. While the gateway gives no answer, nothing of that
   commit lands, and the commit tries again after a wait. A sandbox the gateway no longer holds ends
-  at its last count. The task's sandbox stays until the task run ends.
-- A `task-raise` patch reads the limit as the log stands before each try, and stops once a step has
-  read the sandbox again and set its own limit, so a late retry never lowers a newer limit.
+  at its last count. The server never removes the task's sandbox while a task run is open.
+- A `task-raise` patch reads the limit as the log stands before each try, so a late retry never
+  lowers a newer limit.
 - Every patch of a task's sandbox names the `limitRevision` that the server read just before it, as
   [the count of a sandbox](model-gateway.md#the-count-of-a-sandbox) says. A call that timed out and
   reaches the gateway after a newer patch changes nothing, so it never puts back an older limit.

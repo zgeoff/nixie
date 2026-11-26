@@ -27,7 +27,8 @@ first with the doc that the item links.
   ([how nixie uses the gateway](../architecture/policy/model-gateway.md#how-nixie-uses-the-gateway)).
 - The gateway's config has a `periods` section, and a `control` section
   ([the periods](../architecture/policy/model-gateway.md#the-periods)). nixie reads the plan login's
-  status from the control listener, the gateway's second address, which only the nixie server calls.
+  status from the control listener, the gateway's second address. Only a caller with the control
+  token reaches it: the nixie server, or you on the gateway host.
 
 ## Placeholders
 

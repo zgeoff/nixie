@@ -177,9 +177,9 @@ forgets a memory item, the session cleanup sends a `purge` frame to the guest of
 reads memory, on every harness. A guest sends `failed` and never `ended` after it: with
 `tools_not_connected` when the tool server is not connected, `model_auth` or `model_api` when the
 model API refuses, and `error` when the loop errors or its stream closes. A call frame holds its
-usage in one schema, the host prices it with the profile's price table, and the turn's usage is
-their sum. Each step starts the guest, runs one turn and ends the guest. A guest resumes, takes live
-messages and compacts only when its harness declares the capability.
+usage in one schema, and the turn's usage is their sum. Without a gateway, the host prices each call
+frame with the profile's price table. Each step starts the guest, runs one turn and ends the guest.
+A guest resumes, takes live messages and compacts only when its harness declares the capability.
 
 ### Turn outcomes and the session position
 

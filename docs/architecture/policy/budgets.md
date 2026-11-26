@@ -59,7 +59,8 @@ describes.
 A charge lists every budget it touches and lands in one transaction, or does not land. Every write
 goes through the one writer, so two charges at the same moment never both fit in a budget's last
 room. A charge that does not fit returns the first budget without room, with what it spent, its
-limit and its reset.
+limit and its reset. The charge of an approved paid call is the one exception, as
+[paid tools](#paid-tools) describes.
 
 ## Paid tools
 
