@@ -172,7 +172,7 @@ of the result record that the outcome names, else a plain sentence for the outco
 After a forget removes the erasable fields, the sentence for the code remains. The card cuts the
 reason to 300 characters. Memory, skill and rule approvals have no call, so their cards keep
 "Approved". A card that follows a task's thread reads its rows again when a record lands there, and
-the digest reads a departed row again every 15 seconds while its call waits.
+the digest polls a departed row again while its call waits.
 
 ## Answering an unknown outcome
 
