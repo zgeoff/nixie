@@ -166,10 +166,11 @@ rule that asks, or a call that follows outside content, can still hold one on a 
 
 ## Arrivals
 
-The `google_tools` part also builds the Gmail arrival source, which the trigger core runs beside the
-other sources. The source has the id `gmail` and the kind `mail`. It polls each Google connection
-that holds `gmail.modify` and is not waiting for a new consent, one at a time, every
-`gmail.poll_interval` (default `2m`). It reads Gmail and never reaches the decision point.
+The `trigger_sources` part builds the Gmail arrival source beside the other sources that the trigger
+core runs, with the Google hosts of the `google_tools` part. The source has the id `gmail` and the
+kind `mail`. It polls each Google connection that holds `gmail.modify` and is not waiting for a new
+consent, one at a time, every `gmail.poll_interval` (default `2m`). It reads Gmail and never reaches
+the decision point.
 
 - The first poll of a connection reads the profile's history ID and delivers no mail.
 - Each later poll reads `history.list` from the stored history ID, over every page, for added
@@ -221,12 +222,15 @@ and `window` as [the mailbox's wake tools](../core/mailbox.md#wake-rules), with 
 - `gmail.send` and `gmail.reply` take `replyWake`, as `mail.send` does: a duration, or `off`. When
   the send is done, nixie sets a rule on the sent mail's Gmail thread that wakes the caller that
   queued the send, from the start of the send, for `replyWake` (default `wake_rules.reply_expiry`).
-  A send that `gmail.find_sent` later finds gets the same rule. The result holds the rule's short ID
-  as `replyRule`, or null. The send's card shows the expiry. A send whose rule cannot be written
-  answers `ambiguous`, so the check finds the mail and writes the rule again, and a check whose rule
-  write fails answers `inconclusive`. A restart after the rule write and before the action records
-  its outcome leaves the action unsettled, and the same check replaces the rule in place, so one
-  rule stays.
+  A send that `gmail.find_sent` later finds gets the same rule, unless the rule's expiry has passed
+  by then. The result holds the rule's short ID as `replyRule`, or null. The send's card shows the
+  expiry. A send whose rule cannot be written answers `ambiguous`, so the check finds the mail and
+  writes the rule again, and a check whose rule write fails answers `inconclusive`. The rule has a
+  write transaction of its own, before the action's outcome, because the action queue runs no
+  connector write inside the outcome's transaction. A restart between the two leaves the action
+  unsettled, and the same check replaces the rule in place, so one rule stays. A send that the user
+  drops after such a restart keeps its rule, which
+  [GEO-2871](https://linear.app/zgeoff/issue/GEO-2871) asks the owner to settle.
 
 ### Forgetting
 

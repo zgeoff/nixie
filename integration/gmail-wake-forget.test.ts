@@ -56,7 +56,7 @@ async function setupTest() {
   return { ...triggers, site, google, connectionID, readWakes };
 }
 
-test('it erases the subject of a Gmail mail that woke the conversation from the wake and from the requests the turn took in, when the account is forgotten', async () => {
+test('it erases the subject of a Gmail mail from its wake record, and hands the wake to the session and request cleanup, when the account is forgotten', async () => {
   const ctx = await setupTest();
 
   await waitFor(() => {

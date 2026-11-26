@@ -211,6 +211,33 @@ test('it finds the rule of a send whose outcome stayed open after a restart, and
   expect(rules).toHaveLength(1);
 });
 
+test('it writes no second rule when the check of a send runs after its reply rule expired', async () => {
+  const ctx = await setupTest();
+
+  const sentAt = ctx.clock.now();
+
+  await ctx.send({ replyWake: '1m' });
+
+  ctx.clock.advance(5 * 60_000);
+
+  const queued = ctx.findAction('gmail.send').queued;
+
+  invariant(queued?.check, 'gmail.send has a check');
+
+  const checked = await queued.check({
+    ...ctx.buildAttempt({ replyWake: '1m' }),
+    attemptStartedAt: sentAt,
+  });
+
+  const rules = await readWakeRules(ctx.triggers.writer.db, {
+    mailbox: { kind: 'gmail', connectionID: ctx.site.context.connectionID },
+    at: sentAt,
+  });
+
+  expect(checked).toMatchObject({ kind: 'found', result: { replyRule: null } });
+  expect(rules).toHaveLength(1);
+});
+
 test('it writes no rule for a connection that was forgotten after the send read it', async () => {
   const ctx = await setupTest();
 

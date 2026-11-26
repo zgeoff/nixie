@@ -19,7 +19,7 @@ const answeredTools: ReadonlySet<string> = new Set([gmailToolNames.send, gmailTo
 
 // Registers the reply rule of a sent mail: a rule on its Gmail thread that wakes the sender until
 // `replyWake` from the start of the send. Returns the rule's short ID, or null when the send
-// registers none. A write that fails throws.
+// registers none or a check runs after the rule's expiry. A write that fails throws.
 export async function writeGmailReplyRule(
   deps: GmailDeps,
   context: ConnectorContext,
@@ -43,6 +43,10 @@ export async function writeGmailReplyRule(
 
   const senderTaskID = facts?.thread ?? conversationTaskID;
   const sentAt = facts?.firstAttemptAt ?? attempt.attemptStartedAt ?? deps.clock.now();
+
+  if (sentAt + expiryMs <= deps.clock.now()) {
+    return null;
+  }
 
   const target = await resolveWakeTarget(deps.log, senderTaskID, undefined);
 
