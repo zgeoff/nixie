@@ -222,6 +222,10 @@ test('it reads every sandbox again at the retry when one sandbox did not answer 
   await stopping;
 
   const reads = await readMeterReads(ctx.context, ctx.run);
+  const open = await readOpenRun(ctx.context.log.writer.db, ctx.taskID);
+  const ended = await readEndedRuns(ctx.context, { taskID: ctx.taskID, limit: 1 });
+
+  expect([open, ended.map((run) => run.runID)]).toStrictEqual([null, [ctx.run.runID]]);
 
   expect(ctx.readSandboxMicros.mock.calls).toStrictEqual([
     ['sandbox-a'],

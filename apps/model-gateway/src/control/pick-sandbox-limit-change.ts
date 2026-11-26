@@ -1,5 +1,6 @@
 import type { PeriodChange, PeriodStore, SandboxLimit } from '../types';
 import type { ControlOutcome } from './control-outcome';
+import { pickNextLimitRevision } from './pick-next-limit-revision';
 
 export interface SandboxLimitPatch {
   readonly limit: SandboxLimit | null;
@@ -26,13 +27,13 @@ export function pickSandboxLimitChange(
     return { store: null, result: { kind: 'revision_changed' } };
   }
 
+  const limitRevision = pickNextLimitRevision(store, name);
+
   return {
     store: {
       ...store,
-      sandboxes: {
-        ...store.sandboxes,
-        [name]: { ...held, limit: patch.limit, limitRevision: held.limitRevision + 1 },
-      },
+      lastLimitRevision: limitRevision,
+      sandboxes: { ...store.sandboxes, [name]: { ...held, limit: patch.limit, limitRevision } },
     },
     result: { kind: 'done' },
   };

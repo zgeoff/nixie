@@ -149,6 +149,10 @@ export interface PeriodStore {
   readonly lost: boolean;
   readonly routes: Readonly<Record<string, RoutePeriods>>;
   readonly sandboxes: Readonly<Record<string, SandboxCount>>;
+
+  // the highest limit revision that any sandbox took, kept after its sandbox goes, so a name that
+  // registers again never takes a revision that a late patch could name
+  readonly lastLimitRevision?: number;
 }
 
 // A route's day limit, which the host command writes and which may pass the cap

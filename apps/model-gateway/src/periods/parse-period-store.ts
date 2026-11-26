@@ -32,6 +32,7 @@ const periodStoreSchema = z.strictObject({
   lost: z.literal(true).optional(),
   routes: z.record(z.string(), z.strictObject({ day: routeCountSchema, month: routeCountSchema })),
   sandboxes: z.record(sandboxNameSchema, sandboxCountSchema),
+  lastLimitRevision: z.int().nonnegative().exactOptional(),
 });
 
 export function parsePeriodStore(stored: unknown): PeriodStore {

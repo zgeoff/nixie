@@ -577,7 +577,14 @@ test('it sets a patched limit that names the revision the sandbox holds', async 
   const get = await ctx.call('GET', '/sandboxes/alpha');
 
   expect(patch).toStrictEqual({ status: 204, body: null });
-  expect(get.body).toMatchObject({ tripped: true, limitRevision: 2 });
+
+  expect(get.body).toStrictEqual({
+    dollars: 0,
+    tokens: 0,
+    tripped: true,
+    lastRefusal: null,
+    limitRevision: 2,
+  });
 });
 
 test('it refuses with a 409 a patch that names a revision a newer write replaced, and keeps the newer limit', async () => {
@@ -594,7 +601,39 @@ test('it refuses with a 409 a patch that names a revision a newer write replaced
   const get = await ctx.call('GET', '/sandboxes/alpha');
 
   expect(late).toStrictEqual({ status: 409, body: { error: 'revision_changed' } });
-  expect(get.body).toMatchObject({ tripped: true, limitRevision: 2 });
+
+  expect(get.body).toStrictEqual({
+    dollars: 0,
+    tokens: 0,
+    tripped: true,
+    lastRefusal: null,
+    limitRevision: 2,
+  });
+});
+
+test('it refuses with a 409 a patch that names a revision of a sandbox removed and registered again under its name', async () => {
+  const ctx = await setupTest();
+
+  await ctx.call('PUT', '/sandboxes/alpha', { limit: null });
+  await ctx.call('DELETE', '/sandboxes/alpha');
+  await ctx.call('PUT', '/sandboxes/alpha', { limit: { dollars: 0 } });
+
+  const late = await ctx.call('PATCH', '/sandboxes/alpha', {
+    limit: { dollars: 4 },
+    revision: 1,
+  });
+
+  const get = await ctx.call('GET', '/sandboxes/alpha');
+
+  expect(late).toStrictEqual({ status: 409, body: { error: 'revision_changed' } });
+
+  expect(get.body).toStrictEqual({
+    dollars: 0,
+    tokens: 0,
+    tripped: true,
+    lastRefusal: null,
+    limitRevision: 2,
+  });
 });
 
 test('it goes on from the revision of the entry that a registration replaces', async () => {

@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import { buildStubSpendGateway } from '@heynixie/spend/test-utils';
+import { waitForCondition } from '@heynixie/testing';
 import { patchSandboxLimit } from './patch-sandbox-limit';
 
 test('it patches the limit once when the gateway answers', async () => {
@@ -67,6 +68,29 @@ test('it does not go again for a sandbox the gateway lacks', async () => {
 
   expect(isPatched).toBe(false);
   expect(gateway.patchSandbox.mock.calls).toHaveLength(1);
+});
+
+test('it sends a newer limit only after every retry of an earlier one, so no retry lands on top of it', async () => {
+  const gateway = buildStubSpendGateway();
+  const timeout = Promise.withResolvers<{ kind: 'unreachable'; reason: string }>();
+
+  gateway.patchSandbox.mockImplementationOnce(() => timeout.promise);
+
+  const earlier = patchSandboxLimit(gateway, 's1', { dollars: 4 });
+
+  await waitForCondition(() => gateway.patchSandbox.mock.calls.length === 1);
+
+  const newer = patchSandboxLimit(gateway, 's1', { dollars: 0 });
+
+  timeout.resolve({ kind: 'unreachable', reason: 'timed out' });
+
+  await Promise.all([earlier, newer]);
+
+  expect(gateway.patchSandbox.mock.calls).toStrictEqual([
+    ['s1', { dollars: 4 }, 0],
+    ['s1', { dollars: 4 }, 0],
+    ['s1', { dollars: 0 }, 0],
+  ]);
 });
 
 test('it sends a limit only after the write in flight for the sandbox was answered', async () => {
