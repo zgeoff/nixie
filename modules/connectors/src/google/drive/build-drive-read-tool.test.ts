@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import invariant from 'tiny-invariant';
 import { encodeTestImage } from '../../test-utils/encode-test-image';
 import { startGmailTools } from '../../test-utils/start-gmail-tools';
 
@@ -33,6 +34,33 @@ test('it refuses a part whose file changed between the metadata read and the dow
   await hold.reached;
 
   ctx.site.drive.seed({ id: seeded.id, name: 'Notes', text: 'new text' });
+  hold.release();
+
+  const outcome = await pending;
+
+  expect(outcome).toStrictEqual({
+    status: 'error',
+    message: expect.stringContaining('FILE_CHANGED'),
+  });
+});
+
+test('it refuses a part whose content changed while its time of change stayed the same', async () => {
+  const ctx = await setupTest();
+
+  const seeded = ctx.site.drive.seed({ name: 'Notes', text: 'old text' });
+  const hold = ctx.site.drive.hold(`GET /drive/v3/files/${seeded.id}?alt=media`);
+  const pending = ctx.runRead({ file: `k3x9m2p7qa.${seeded.id}` });
+
+  await hold.reached;
+
+  const stored = ctx.site.drive.files.get(seeded.id);
+
+  invariant(stored, 'the seeded file is stored');
+
+  stored.bytes = new TextEncoder().encode('different version');
+
+  stored.version = '99';
+
   hold.release();
 
   const outcome = await pending;

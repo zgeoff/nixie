@@ -10,6 +10,9 @@ export interface DriveFile {
   // RFC 3339, as Drive gives it
   readonly modifiedTime: string;
 
+  // Drive's version number, which advances on every change of the file, whatever its modifiedTime
+  readonly version: string;
+
   // whether the file is shared with anyone
   readonly isShared: boolean;
 

@@ -25,6 +25,9 @@ export interface StoredFile {
   readonly mimeType: string;
   bytes: Uint8Array;
   modifiedTime: string;
+
+  // advances on every change, as Drive's version does
+  version: string;
   isShared: boolean;
   readonly driveID: string | null;
   readonly isTrashed: boolean;

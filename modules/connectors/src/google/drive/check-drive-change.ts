@@ -69,20 +69,19 @@ export async function checkDriveChange(
     : { kind: 'inconclusive' };
 }
 
-// the pages of the marker search that a check follows, which no real search needs more than a few of
-const maxSearchPages = 10;
-
 // The file that holds the marker, found by a search of the app properties through every page: Drive
 // can answer a page with no file and a token for the next. Null when the search ends with none, and
-// 'failed' when a page cannot be read or the pages run out of the limit.
+// 'failed' when a page cannot be read or Drive repeats a token.
 async function readMarkedFile(
   deps: GoogleDeps,
   context: ConnectorContext,
   marker: ActionMarker,
 ): Promise<DriveFile | 'failed' | null> {
+  const seen = new Set<string>();
+
   let pageToken: string | undefined;
 
-  for (let page = 0; page < maxSearchPages; page += 1) {
+  do {
     const query = buildDriveListQuery(
       `appProperties has { key='${marker.key}' and value='${marker.value}' }`,
       {
@@ -111,10 +110,14 @@ async function readMarkedFile(
 
     pageToken = files.data.nextPageToken;
 
-    if (pageToken === undefined) {
-      return null;
+    if (pageToken !== undefined && seen.has(pageToken)) {
+      return 'failed';
     }
-  }
 
-  return 'failed';
+    if (pageToken !== undefined) {
+      seen.add(pageToken);
+    }
+  } while (pageToken !== undefined);
+
+  return null;
 }

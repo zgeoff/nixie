@@ -43,6 +43,22 @@ test('it finds a created file on a later page of the marker search after a page 
   expect(outcome).toMatchObject({ kind: 'found', result: { file: `k3x9m2p7qa.${seeded.id}` } });
 });
 
+test('it finds a created file on a page after more than 10 pages with no file', async () => {
+  const ctx = await setupTest();
+
+  ctx.site.drive.emptyListPages = 12;
+
+  const seeded = ctx.site.drive.seed({
+    name: 'Plan',
+    text: 'x',
+    appProperties: { nixie0b9d3c4e7a214f0e8c551e6f2a9d4c03: '1795165200' },
+  });
+
+  const outcome = await ctx.check('drive.create', { name: 'Plan', text: 'x', as: 'text' });
+
+  expect(outcome).toMatchObject({ kind: 'found', result: { file: `k3x9m2p7qa.${seeded.id}` } });
+});
+
 test('it finds a created file by the marker in its app properties', async () => {
   const ctx = await setupTest();
 

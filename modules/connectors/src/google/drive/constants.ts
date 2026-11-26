@@ -7,7 +7,7 @@ export const driveListSchema = z.object({
 
 // the fields to ask Drive for, which every file read and list names
 export const driveFileFields =
-  'id,name,mimeType,size,modifiedTime,shared,driveId,trashed,webViewLink,appProperties';
+  'id,name,mimeType,size,modifiedTime,version,shared,driveId,trashed,webViewLink,appProperties';
 
 export const googleDocType = 'application/vnd.google-apps.document';
 export const googleSheetType = 'application/vnd.google-apps.spreadsheet';

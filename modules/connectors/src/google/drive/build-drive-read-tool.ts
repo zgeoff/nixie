@@ -140,7 +140,7 @@ export function buildDriveReadTool(deps: GoogleDeps): ToolDefinition {
 
       const after = await readDriveFile(deps.hosts, context, file.id);
 
-      if (after.kind !== 'file' || after.file.modifiedTime !== file.modifiedTime) {
+      if (after.kind !== 'file' || after.file.version !== file.version) {
         return {
           status: 'error',
           message:

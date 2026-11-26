@@ -43,6 +43,7 @@ export async function uploadFakeFile(
       mimeType: metadata.data.mimeType ?? multipart.mediaType,
       bytes,
       modifiedTime,
+      version: String(state.counter),
       isShared: false,
       driveID: null,
       isTrashed: false,
@@ -63,6 +64,7 @@ export async function uploadFakeFile(
   stored.name = metadata.data.name ?? stored.name;
   stored.bytes = bytes;
   stored.modifiedTime = modifiedTime;
+  stored.version = String(state.counter);
 
   for (const [key, value] of Object.entries(properties)) {
     if (value === null) {

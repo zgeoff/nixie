@@ -10,6 +10,7 @@ export function buildFakeFileJSON(file: StoredFile): Record<string, unknown> {
     mimeType: file.mimeType,
     ...(isGoogleFile ? {} : { size: String(file.bytes.byteLength) }),
     modifiedTime: file.modifiedTime,
+    version: file.version,
     shared: file.isShared,
     ...(file.driveID === null ? {} : { driveId: file.driveID }),
     trashed: file.isTrashed,

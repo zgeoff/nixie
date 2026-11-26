@@ -57,6 +57,41 @@ test('it refuses when the file becomes shared between its read and the upload', 
   });
 });
 
+test('it refuses with no upload when the file becomes shared after its first read', async () => {
+  const ctx = await setupTest();
+
+  const seeded = ctx.site.drive.seed({ name: 'Notes', text: 'old' });
+  const line = `GET /drive/v3/files/${seeded.id}?`;
+  const firstRead = ctx.site.drive.hold(line);
+  const pending = ctx.attempt({ file: `k3x9m2p7qa.${seeded.id}`, name: null, text: 'new' });
+
+  await firstRead.reached;
+
+  const secondRead = ctx.site.drive.hold(line);
+
+  firstRead.release();
+
+  await secondRead.reached;
+
+  const stored = ctx.site.drive.files.get(seeded.id);
+
+  invariant(stored, 'the seeded file is stored');
+
+  stored.isShared = true;
+
+  secondRead.release();
+
+  const response = await pending;
+
+  expect(response).toStrictEqual({
+    kind: 'refused',
+    reason: expect.stringContaining('SHARED_FILE'),
+  });
+
+  expect(ctx.site.drive.requests.some((request) => request.startsWith('PATCH'))).toBeFalse();
+  expect(new TextDecoder().decode(stored.bytes)).toBe('old');
+});
+
 test('it replaces the whole content of a Google Doc with Markdown and keeps its name', async () => {
   const ctx = await setupTest();
 

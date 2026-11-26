@@ -31,6 +31,7 @@ export function createFakeDrive(): FakeDrive {
         mimeType: seed.mimeType ?? 'text/plain',
         bytes: seed.bytes ?? new TextEncoder().encode(seed.text ?? ''),
         modifiedTime,
+        version: String(state.counter),
         isShared: seed.isShared ?? false,
         driveID: seed.driveID ?? null,
         isTrashed: seed.isTrashed ?? false,
