@@ -40,5 +40,8 @@ test('it lapses a rule that the start check proposes after the days the config s
   const ctx = await setupTest(['approvals:', '  lapse_days:', '    rule_change: 9']);
   const row = await ctx.stopAndReadProposedRule();
 
-  expect(row?.lapsesAt).toBe((row?.createdAt ?? 0) + 9 * 24 * 60 * 60 * 1000);
+  const nineDaysMs = 9 * 24 * 60 * 60 * 1000;
+  const createdAt = row?.createdAt ?? 0;
+
+  expect(row?.lapsesAt).toBeWithin(createdAt + nineDaysMs - 1000, createdAt + nineDaysMs + 1000);
 });

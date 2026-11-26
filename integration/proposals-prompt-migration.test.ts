@@ -291,10 +291,8 @@ test('it closes every open prompt override of one thing at the upgrade when the 
   expect(open).toStrictEqual([{ family: 'prompt', same_thing: 'compaction' }]);
 });
 
-test('it starts the upgraded database at the spending migration, the one before the proposals migration', async () => {
+test('it starts the upgraded database at the client devices migration, the one before the proposals migration', async () => {
   const ctx = await setupTest();
 
-  expect(ctx.readPreviousMigration()).toBe(
-    'add the provider stops, the provider holds and the provider raises of the spending stop',
-  );
+  expect(ctx.readPreviousMigration()).toBe('give each full session a client device row');
 });
