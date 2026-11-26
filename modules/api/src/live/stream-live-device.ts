@@ -33,10 +33,10 @@ export async function* streamLiveDevice(
 
   // A consumer that stops reading after an abort never resumes the generator, so its finally may
   // never run: the abort ends the interval too, and so does a signal that aborted already.
-  stream.signal?.addEventListener('abort', stopKeepActive, { once: true });
-
   if (stream.signal?.aborted === true) {
     stopKeepActive();
+  } else {
+    stream.signal?.addEventListener('abort', stopKeepActive, { once: true });
   }
 
   const events = followDevice({
