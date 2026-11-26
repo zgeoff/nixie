@@ -71,6 +71,36 @@ test('it refuses a part whose content changed while its time of change stayed th
   });
 });
 
+test('it refuses a later part when the file changed version but kept its time of change', async () => {
+  const ctx = await setupTest();
+
+  const seeded = ctx.site.drive.seed({
+    name: 'Log',
+    text: 'line one\nline two\nline three\nline four\n',
+  });
+
+  const first = await ctx.runRead({ file: `k3x9m2p7qa.${seeded.id}`, part: 1 });
+
+  const stored = ctx.site.drive.files.get(seeded.id);
+
+  invariant(stored, 'the seeded file is stored');
+
+  const firstVersion = stored.version;
+
+  stored.version = '99';
+
+  const second = await ctx.runRead({
+    file: `k3x9m2p7qa.${seeded.id}`,
+    part: 2,
+    version: firstVersion,
+  });
+
+  expect([first, second]).toMatchObject([
+    { status: 'ok', result: { version: firstVersion, modifiedAt: '2026-11-20T09:01:00.000Z' } },
+    { status: 'error', message: expect.stringContaining('FILE_CHANGED') },
+  ]);
+});
+
 test('it reads a Google Doc as Markdown with the name sealed and the time of change plain', async () => {
   const ctx = await setupTest();
 
@@ -86,6 +116,7 @@ test('it reads a Google Doc as Markdown with the name sealed and the time of cha
       type: 'google_doc',
       bytes: 11,
       modifiedAt: '2026-11-20T09:01:00.000Z',
+      version: expect.any(String),
       text: expect.stringContaining('# Trip plan'),
       part: 1,
       parts: 1,

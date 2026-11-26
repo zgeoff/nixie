@@ -114,10 +114,11 @@ scope, and a button to ask Google again. The conversation never shows that notic
 - nixie reads your calendars and events without asking you, and asks Google at each call.
 - nixie adds, changes and cancels an event that has no guest without asking you, because a starter
   rule allows writes to a service. Google emails no one for these.
-- Before nixie invites, changes or cancels an event with guests, or answers an invitation, it waits
-  for your answer on a card that shows the event and each guest. Google emails the guests only after
-  you approve. nixie never changes an event that someone else organizes, apart from your answer to
-  its invitation.
+- Before nixie invites, changes or cancels an event with guests, or answers an invitation, it asks
+  you on a card that shows the event and each guest, unless your policy already allows the
+  destinations, such as the organizer of an event you answer. Google emails the guests only after
+  you approve or the policy allows it. nixie never changes an event that someone else organizes,
+  apart from your answer to its invitation.
 - nixie sees only the Drive files that you choose and the files it makes. On a connection's page,
   select Choose Drive files, which needs the picker key and the project number from your client, and
   pick the files in Google's window. The page lists each file that nixie cannot see, which is

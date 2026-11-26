@@ -109,10 +109,11 @@ the same request as its change. Calendar keeps it in `extendedProperties.private
 - `drive.read` exports a Google Doc as Markdown, a Sheet's first sheet as CSV and a Slides file as
   plain text. It reads other text files and images as `gmail.read_attachment` does, and answers
   `unsupported` for every other type. A file over the reader's size limit answers `too_large`
-  without a download. Each part returns the file's `modifiedAt`, so the model can tell when 2 parts
-  come from different versions. A read downloads the content between 2 reads of the file's metadata,
-  and answers `FILE_CHANGED` when its `version` moved, so no part carries a time that belongs to
-  other content.
+  without a download. Each part returns the file's `modifiedAt` and `version`. A later part that
+  passes an earlier part's `version` answers `FILE_CHANGED` when the file's version differs, even
+  when its `modifiedAt` is the same. A read downloads the content between 2 reads of the file's
+  metadata, and answers `FILE_CHANGED` when its `version` moved, so no part carries a time that
+  belongs to other content.
 - `drive.search` runs a full-text query, and escapes each quote in it, so the query's text cannot
   widen the search. A search that finds nothing tells the model that it searched only the files you
   chose and the files nixie made.
@@ -126,7 +127,9 @@ the same request as its change. Calendar keeps it in `extendedProperties.private
   in a shared drive, so a Drive write never reaches another person. It also refuses `trashed` and
   `unsupported_type`. The attempt reads the file again right before the upload, and refuses a file
   that became shared by then. Drive takes no precondition on a write, so it also reads the file the
-  upload answers with, and refuses with `shared_file` when the file became shared in between.
+  upload answers with, and refuses with `shared_file` when the file became shared in between. A
+  window remains: Drive v3 offers no conditional or atomic upload against sharing, so a file shared
+  between that last read and the upload still gets the change.
 - A check of a `drive.create` follows every page of the marker search, because Drive can answer a
   page with no file and a token for the next.
 
