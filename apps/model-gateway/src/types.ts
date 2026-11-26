@@ -8,6 +8,8 @@ export interface PlanLoginConfig {
 }
 
 export interface ProxyRoute {
+  // a key of the config's providers, whose limits bind this route beside its own
+  readonly provider: string;
   readonly api: ModelAPI;
   readonly upstream: string;
   readonly model: string;
@@ -22,8 +24,14 @@ export interface ProxyRoute {
   // null on a route that holds no plan login
   readonly login: PlanLoginConfig | null;
 
-  // the day and month limits in US dollars, null on a route with none, which refuses every request
+  // the day and month limits in US dollars, null on a route with none, which its provider limits
+  // alone
   readonly limits: RouteLimits | null;
+}
+
+// A provider is one place the model requests go. Its limits are required and bind every route of it.
+interface ProxyProvider {
+  readonly limits: RouteLimits;
 }
 
 export interface RouteLimits {
@@ -78,6 +86,7 @@ export interface ProxyConfig {
 
   readonly periods: PeriodsConfig;
   readonly capture: CaptureConfig | null;
+  readonly providers: Readonly<Record<string, ProxyProvider>>;
   readonly routes: Readonly<Record<string, ProxyRoute>>;
 }
 
@@ -122,12 +131,18 @@ export interface RoutePeriods {
   readonly month: RouteCount;
 }
 
-export type RefusalCounter = 'route_day' | 'route_month' | 'sandbox';
+export type RefusalCounter =
+  | 'route_day'
+  | 'route_month'
+  | 'provider_day'
+  | 'provider_month'
+  | 'sandbox';
 
 // the last request a sandbox's count refused
 export interface Refusal {
   readonly counter: RefusalCounter;
   readonly route: string;
+  readonly provider: string;
   readonly atMs: number;
 }
 
@@ -145,8 +160,11 @@ interface SandboxCount {
 }
 
 export interface PeriodStore {
-  readonly version: 3;
+  readonly version: 4;
   readonly lost: boolean;
+
+  // each provider's day and month, summed from the replies of its routes
+  readonly providers: Readonly<Record<string, RoutePeriods>>;
   readonly routes: Readonly<Record<string, RoutePeriods>>;
   readonly sandboxes: Readonly<Record<string, SandboxCount>>;
 
@@ -155,13 +173,17 @@ export interface PeriodStore {
   readonly lastLimitRevision?: number;
 }
 
-// A route's day limit, which the host command writes and which may pass the cap
+// A day limit, which the host command writes and which may pass the cap
 export interface DayOverride {
   readonly start: string;
   readonly dollars: number;
 }
 
-export type Overrides = Readonly<Record<string, DayOverride>>;
+// the day limit of each route and of each provider, by ID, so a route and a provider may share one
+export interface Overrides {
+  readonly routes: Readonly<Record<string, DayOverride>>;
+  readonly providers: Readonly<Record<string, DayOverride>>;
+}
 
 export interface PeriodChange<T> {
   // null writes nothing, for a refused change
@@ -175,6 +197,12 @@ export interface PeriodRead {
   readonly overrides: Overrides;
 }
 
+// the route a reply came from and the provider of that route
+export interface SpendTarget {
+  readonly route: string;
+  readonly provider: string;
+}
+
 export interface PeriodStoreHandle {
   // the store after each period that ended has reset
   readonly read: () => Promise<PeriodStore>;
@@ -183,10 +211,11 @@ export interface PeriodStoreHandle {
   // reads, resets, decides and writes in one turn
   readonly change: <T>(decide: (store: PeriodStore) => PeriodChange<T>) => Promise<T>;
 
-  // adds the spend's dollars, in whole micros, to the route's day and month, and the spend to the sandbox, in one write; a
-  // sandbox the store lacks, or null, counts on the route only
+  // adds the spend's dollars, in whole micros, to the route's and the provider's day and month, and
+  // the spend to the sandbox, in one write; a sandbox the store lacks, or null, counts on the route
+  // and the provider only
   readonly addSpend: (
-    route: string,
+    target: SpendTarget,
     sandbox: string | null,
     spend: Measures,
   ) => Promise<PeriodRead>;

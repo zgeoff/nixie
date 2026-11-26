@@ -223,3 +223,38 @@ test('it bridges a WebSocket on an /rpc path to the API with its cookie', async 
 
   expect([await reply.promise, received]).toStrictEqual(['echo hello', ['session=abc']]);
 });
+
+test('it puts the head script first in each HTML page of the web server, and leaves other answers alone', async () => {
+  const ctx = setupTest();
+
+  const page = Bun.serve({
+    routes: {
+      '/page': new Response('<html><head><title>x</title></head></html>', {
+        headers: { 'content-type': 'text/html' },
+      }),
+      '/*': new Response('plain'),
+    },
+    hostname: '127.0.0.1',
+    port: 0,
+  });
+
+  onTestFinished(async () => {
+    await page.stop(true);
+  });
+
+  const proxy = startFrontProxy({
+    apiURL: ctx.apiURL,
+    webURL: `http://127.0.0.1:${page.port}`,
+    headScript: 'window.marked = true;',
+  });
+
+  const pageResponse = await fetch(`${proxy.url}/page`);
+  const otherResponse = await fetch(`${proxy.url}/other`);
+  const html = await pageResponse.text();
+  const plain = await otherResponse.text();
+
+  expect([html, plain]).toStrictEqual([
+    '<html><head><script>window.marked = true;</script><title>x</title></head></html>',
+    'plain',
+  ]);
+});

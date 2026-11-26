@@ -1,5 +1,6 @@
 // oxlint-disable new-cap -- oRPC names a procedure's typed errors by their upper-case codes
-import { connectCall, hangUpCall, startCall } from '@heynixie/calls';
+import { connectCall, hangUpCall, readCall, readCallView, startCall } from '@heynixie/calls';
+import invariant from 'tiny-invariant';
 import { match } from 'ts-pattern';
 import { z } from 'zod';
 import { runComputerAction } from '../computer/run-computer-action';
@@ -17,6 +18,7 @@ const startRefusalSchema = z.enum([
 ]);
 
 const callStateSchema = z.enum(['ringing', 'connecting', 'live', 'ended']);
+const endedBySchema = z.enum(['you', 'nixie', 'budget', 'missed', 'declined', 'dropped']);
 
 // Only a signed-in session of the full scope starts, connects or ends a call, because a call spends
 // the deployment's money and speaks as the assistant.
@@ -47,7 +49,7 @@ export function createCallsProcedures(context: APIContext) {
           const result = await startCall(calls, { carryingSession: caller.identityID });
 
           return result.status === 'started'
-            ? { callID: result.callID }
+            ? { callID: result.callID, thread: result.taskID }
             : { refused: result.error };
         },
       );
@@ -72,7 +74,39 @@ export function createCallsProcedures(context: APIContext) {
           .exhaustive();
       }
 
-      return { callID: z.string().parse(run.result['callID']), state: 'connecting' as const };
+      const callID = z.string().parse(run.result['callID']);
+      const storedThread = z.string().safeParse(run.result['thread']);
+
+      // a result stored before the call screen holds no thread, so it comes from the call
+      const call = storedThread.success ? null : await readCall(calls.log.writer.db, callID);
+      const thread = storedThread.success ? storedThread.data : call?.taskID;
+
+      invariant(thread !== undefined, 'a started call has a record');
+
+      return { callID, state: 'connecting' as const, thread };
+    }),
+
+    get: apiImplementer.calls.get.handler(async (options) => {
+      const caller = await requireCaller(
+        context,
+        options.context.sessionToken,
+        options.errors.UNAUTHORIZED,
+      );
+
+      if (caller.scope !== 'full') {
+        throw options.errors.UNAUTHORIZED();
+      }
+
+      const view =
+        context.calls === undefined
+          ? null
+          : await readCallView(context.calls, options.input.callID);
+
+      if (view === null) {
+        throw options.errors.CALL_NOT_FOUND();
+      }
+
+      return view;
     }),
 
     connect: apiImplementer.calls.connect.handler(async (options) => {
@@ -143,7 +177,9 @@ export function createCallsProcedures(context: APIContext) {
         async () => {
           const result = await hangUpCall(calls, options.input.callID);
 
-          return result.status === 'done' ? { state: result.state } : { refused: result.error };
+          return result.status === 'done'
+            ? { state: result.state, endedBy: result.endedBy }
+            : { refused: result.error };
         },
       );
 
@@ -162,6 +198,7 @@ export function createCallsProcedures(context: APIContext) {
       return {
         callID: options.input.callID,
         state: callStateSchema.parse(run.result['state']),
+        endedBy: endedBySchema.parse(run.result['endedBy']),
       };
     }),
   };

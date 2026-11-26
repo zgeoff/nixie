@@ -46,8 +46,8 @@ The adapter creates each session with these settings:
   which keeps the speech layer silent while nixie's turn runs, so it never claims a result or
   promises one;
 - `store: false`;
-- a data channel that lets the device neither send an event nor receive one, so the device reads no
-  instructions and sends no command.
+- a data channel that carries no event in either direction, so the device reads no instructions and
+  sends no command.
 
 The adapter turns the provider's events into `SpeechEvent`s:
 
@@ -58,7 +58,7 @@ The adapter turns the provider's events into `SpeechEvent`s:
 | output transcript slices, then a short quiet gap    | `spoke` with the speech layer's own small talk, never a line that the module sent through `say` or `answer`                                                       |
 | the first input slice while an answer plays         | `cut`, counted after a short wait for the last words' transcript, in characters of the sent answer. The provider reports no cut.                                  |
 | a timer, a warning time before the session's expiry | `session_ending`. The provider sends no warning, and the expiry comes from `session.started`, or the provider's standard limit after the open when it gives none. |
-| `session.closed`, or a sideband that ends           | `dropped`, unless a `close` asked for it. The module ends the call as `dropped`, which closes its session and stops its charges.                                  |
+| `session.closed`, or a sideband that ends           | `dropped`, unless a `close` asked for it. The module starts a [reconnect](#reconnect) wait, and the sweep ends the call as `dropped` when the wait runs out.      |
 
 The cut counts what the user heard by aligning the words that the speech layer said before the
 user's speech to the words of the sent answer, and takes the sent text up to the last aligned word.
@@ -95,31 +95,62 @@ in order. CI holds no model credential, so a person runs it by hand with `NIXIE_
 A call is `ringing`, `connecting`, `live` or `ended`. An ended call carries who ended it: `you`,
 `nixie`, `budget`, `missed`, `declined` or `dropped`.
 
-| Step            | What happens                                                                                                                                                                                                                                            |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `calls.start`   | A full-scope session starts a call. One write transaction checks the refusals, creates the call, asks the server to create the call task, and writes `call.started` and `call.answered`. The call is `connecting`, and the starting session carries it. |
-| `calls.connect` | The carrying session sends its SDP offer. The module opens a speech session, and the transaction that makes the call `live` charges its first minute.                                                                                                   |
-| `calls.hangUp`  | Ends the call with `endedBy: 'you'`. A second hang up of an ended call returns the same result.                                                                                                                                                         |
-| `call.hang_up`  | The call's turn asks to end the call. Once the turn's answers have gone to the speech layer, the call ends with `endedBy: 'nixie'`.                                                                                                                     |
+| Step            | What happens                                                                                                                                                                                                                                                                                                         |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `calls.start`   | A full-scope session starts a call, and a retry of one action ID answers with the call's thread. One write transaction checks the refusals, creates the call, asks the server to create the call task, and writes `call.started` and `call.answered`. The call is `connecting`, and the starting session carries it. |
+| `calls.connect` | The carrying session sends its SDP offer. The module opens a speech session, and the transaction that makes the call `live` charges its first minute.                                                                                                                                                                |
+| `calls.get`     | Reads the call as the carrying device needs it: its state, who ended it, and `reconnect`, the reason the call waits for a new offer.                                                                                                                                                                                 |
+| `calls.hangUp`  | Ends the call with `endedBy: 'you'`, and answers with the call's `endedBy`. A call that the server ended first, as `budget` for one, answers with that reason, so the device never shows its own hang up for it. A second hang up of an ended call returns the same result.                                          |
+| `call.hang_up`  | The call's turn asks to end the call. Once the turn's answers have gone to the speech layer, the call ends with `endedBy: 'nixie'`.                                                                                                                                                                                  |
 
 `calls.start` refuses with one of these errors, checked in this order:
 
-| Error                 | When                                                                       |
-| --------------------- | -------------------------------------------------------------------------- |
-| `VOICE_OFF`           | The config holds no `voice` section.                                       |
-| `SPEECH_UNAVAILABLE`  | The config holds `voice`, and the server wired no speech adapter.          |
-| `VOICE_PRICE_MISSING` | `voice/voice.yaml` sets no `price_per_minute`. The message names the file. |
-| `CALL_RUNNING`        | Another call has not ended.                                                |
-| `CALL_BUDGET_REACHED` | `call-day` or `call-month` has no room for a minute.                       |
+| Error                 | When                                                                               |
+| --------------------- | ---------------------------------------------------------------------------------- |
+| `VOICE_OFF`           | The config holds no `voice` section.                                               |
+| `SPEECH_UNAVAILABLE`  | The config holds `voice`, and the server wired no speech adapter.                  |
+| `VOICE_PRICE_MISSING` | `price_per_minute` is missing from `voice/voice.yaml`. The message names the file. |
+| `CALL_RUNNING`        | Another call has not ended.                                                        |
+| `CALL_BUDGET_REACHED` | `call-day` or `call-month` has no room for a minute.                               |
+
+`calls.start` returns the call's `thread`, which is its task's ID, so the carrying device can find
+the proposals that the call's turn makes.
 
 `calls.connect` refuses a call that does not exist or has ended, a session that does not carry the
-call, and a call that is connected or that another connect is opening. A connect claims the call
-before it opens a speech session, so one call never holds two sessions. The API checks that the
-calling session is live after the instructions are read and before the session opens and again in
-the transaction that makes the call `live`, and a session revoked in between is refused as
-`UNAUTHORIZED` with its speech session closed. A speech session that no connect keeps, because the
-call ended or the charge failed, is closed. When the provider refuses its credential, the call ends
-as `dropped`.
+call, and a call that is connected and waits for no new offer, or that another connect is opening. A
+connect claims the call before it opens a speech session, so one call never holds two sessions. The
+API checks that the calling session is live after the instructions are read and before the session
+opens and again in the transaction that makes the call `live`, and a session revoked in between is
+refused as `UNAUTHORIZED` with its speech session closed. A speech session that no connect keeps,
+because the call ended or the charge failed, is closed. When the provider refuses its credential,
+the call ends as `dropped`.
+
+## Reconnect
+
+A live call waits for a new offer from the carrying device in these cases, each with a `cause`:
+
+| Cause           | When                                                                                          |
+| --------------- | --------------------------------------------------------------------------------------------- |
+| `session_limit` | The speech layer raises `session_ending`, a warning time before the provider's session limit. |
+| `dropped`       | The speech layer raises `dropped`. The module forgets the session.                            |
+| `restart`       | The call is live and this process holds no session for it, as after a server restart.         |
+
+`calls.get` reports the cause in `reconnect`, and the module publishes the `calls` live topic when a
+wait starts, so the device reads the call again at once. The device answers with an ICE-restart
+offer on its open peer connection and a fresh `calls.connect`. A connect on a live call that waits
+opens a new speech session from the call's instructions, charges nothing, writes `call.reconnected`
+with the cause, closes the old session, starts the watch of the new one and has the speech layer say
+the `reconnect` line.
+
+The old session's hand-offs go with it: the new session never heard them, so the answer to a request
+still in progress is not sent, as after a restart. Each hand-off holds the speech session that made
+it, and an answer goes only to that session, so a turn that ends while the sessions swap sends
+nothing to the new one. An answer that finds no hand-off of the current session logs
+`calls.answer_dropped`. A connect that fails leaves the call waiting, so the device may send
+another. A device whose connection failed while the module still holds the session gets
+`CALL_CONNECTED` until the speech layer reports `dropped`. The sweep ends a live call as `dropped`
+once it has held no session for the reconnect limit. A call that holds its session while it waits
+for a `session_limit` offer keeps charging its minutes.
 
 Every end of a call, hang-up included, first charges each started minute that is still unpaid, so a
 hang-up between sweeps costs the minute the call had started. A call whose budget has no room for
@@ -127,19 +158,37 @@ one of those minutes ends as `budget`, with the budget line, in place of the way
 charge reads the call inside its own transaction, so a call that ended since a sweep looked is never
 charged. A budget line that fails to speak never keeps the speech session open.
 
-A sweep closes the gaps that a crash or a silent provider leaves. On a short interval it ends a call
-that stayed `connecting` past its limit, ends a `live` call whose speech session is gone, and
-charges each further started minute of a live call. It also writes the report of a call whose task
-stopped before its last turn, as [the call's last turn](#hand-offs) describes.
+A sweep runs on a short interval and cleans up after a crash or a silent provider. It ends a call
+that stayed `connecting` past its limit, starts the reconnect wait of a `live` call whose speech
+session is gone and ends the call when the wait runs out, and charges each further started minute of
+a live call. It also writes the report of a call whose task stopped before its last turn, as
+[the call's last turn](#hand-offs) describes.
+
+## The device
+
+The web client carries the call: the audio, the microphone and the peer connection live in the
+browser, and the server never reads them. For the call screen, the call bar and the reconnect from
+the device's side, read the client's [call section](./client.md#the-call). Three of its facts rest
+on this module:
+
+- The device ends a call it hangs up, and reads `endedBy` from the `calls.hangUp` answer, so a call
+  that the server ended first shows its own reason.
+- A device that cannot bring a call back within its own reconnect limit, counted from the first
+  loss, shows it as `dropped` and hangs it up on the server, which records the end as `you` unless
+  the sweep ended it first.
+- A proposal that the call's turn makes shows as a card on the call screen of the carrying device
+  only, because only that device holds the call's thread. The card stays on the approval digest, and
+  nixie sends no push for it, as
+  [the approvals design](../../design/platform/channels/approvals.md#during-a-voice-call) describes.
 
 ## Records
 
 Each call writes these record kinds. The model sees `call.started`, `call.answered` and `call.ended`
-on the conversation's thread, and `call.handed_off`, `call.heard_cut` and `call.closing` on the
-call's thread. It reads each `call.spoke` line beside the hand-off that follows it. Of these kinds,
-only `call.rang`, `call.spoke` and `call.handed_off` hold text that the user can ask nixie to
-forget. The user's dictated speech is an `owner_message`, whose text sits in its
-[erasable fields](../core/erasable-fields.md) as every message's text does.
+on the conversation's thread, and `call.handed_off`, `call.heard_cut`, `call.reconnected` and
+`call.closing` on the call's thread. It reads each `call.spoke` line beside the hand-off that
+follows it. Of these kinds, only `call.rang`, `call.spoke` and `call.handed_off` hold text that the
+user can ask nixie to forget. The user's dictated speech is an `owner_message`, whose text sits in
+its [erasable fields](../core/erasable-fields.md) as every message's text does.
 
 | Kind               | Thread       | What it records                                                                                                                                      |
 | ------------------ | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -151,7 +200,7 @@ forget. The user's dictated speech is an `owner_message`, whose text sits in its
 | `call.heard_cut`   | call         | The user talked over a reply, and how many characters of it they heard.                                                                              |
 | `call.closing`     | call         | The call ended, and its thread now runs a last turn that writes the summary.                                                                         |
 | `call.rang`        | none yet     | nixie rang the user. The kind has a codec, and no code writes it yet.                                                                                |
-| `call.reconnected` | none yet     | The speech session came back. The kind has a codec, and no code writes it yet.                                                                       |
+| `call.reconnected` | call         | The call moved to a new speech session, with the cause.                                                                                              |
 | `call.turn_timed`  | none yet     | How long a turn took. The kind has a codec, and no code writes it yet.                                                                               |
 
 The `calls` projection folds `call.started`, `call.rang`, `call.answered`, `call.ended` and
@@ -160,7 +209,8 @@ started is `ringing` until `call.answered` makes it `connecting`, and a call tha
 is `connecting` at once. A call is `live` once its first `call_minute` charge exists, and its minute
 count is the number of those charges, so no record marks the connection. The kinds `call.started`,
 `call.answered` and `call.ended` change the `tasks` live topic, because a call is a task in the task
-list.
+list. Every call kind that changes a call's state, and `call.reconnected`, also changes the `calls`
+topic, which `calls.get` reads under.
 
 ## The call thread
 

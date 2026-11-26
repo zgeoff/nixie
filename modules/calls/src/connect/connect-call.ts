@@ -6,6 +6,7 @@ import { chargeCallMinute } from '../utils/charge-call-minute';
 import { closeSpeechSession } from '../utils/close-speech-session';
 import { endCall } from '../utils/end-call';
 import { readCall } from '../utils/read-call';
+import { reopenSession } from './reopen-session';
 
 export type ConnectRefusal =
   | 'CALL_NOT_FOUND'
@@ -53,9 +54,14 @@ export async function connectCall(
     return { status: 'refused', error: 'NOT_CARRYING_SESSION' };
   }
 
+  // a live call whose session ended, or is about to, takes a new offer in place of the old session
+  const isReconnect =
+    call.state === 'live' &&
+    (!context.sessions.has(input.callID) || context.runtime.reconnects.has(input.callID));
+
   if (
-    call.state === 'live' ||
-    context.sessions.has(input.callID) ||
+    (call.state === 'live' && !isReconnect) ||
+    (call.state !== 'live' && context.sessions.has(input.callID)) ||
     context.openings.has(input.callID)
   ) {
     return { status: 'refused', error: 'CALL_CONNECTED' };
@@ -72,11 +78,12 @@ export async function connectCall(
   // The claim follows the check with no wait between, so 2 connects never both pass it.
   context.openings.add(input.callID);
 
+  const terms = { voice: voice.voice, pricePerMinuteMicros: voice.pricePerMinuteMicros };
+
   try {
-    return await openAndCharge(context, context.speech, input, {
-      voice: voice.voice,
-      pricePerMinuteMicros: voice.pricePerMinuteMicros,
-    });
+    return isReconnect
+      ? await reopenSession(context, context.speech, input, terms)
+      : await openAndCharge(context, context.speech, input, terms);
   } finally {
     context.openings.delete(input.callID);
   }

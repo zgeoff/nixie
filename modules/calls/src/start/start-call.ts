@@ -11,7 +11,7 @@ import { readCallBudgets } from './read-call-budgets';
 import { readHeadSequence } from './read-head-sequence';
 
 export type StartResult =
-  | { readonly status: 'started'; readonly callID: string }
+  | { readonly status: 'started'; readonly callID: string; readonly taskID: string }
   | { readonly status: 'refused'; readonly error: StartRefusal };
 
 export interface StartCall {
@@ -63,6 +63,6 @@ export function startCall(context: CallsContext, input: StartCall): Promise<Star
       },
     ]);
 
-    return { status: 'started', callID };
+    return { status: 'started', callID, taskID };
   });
 }

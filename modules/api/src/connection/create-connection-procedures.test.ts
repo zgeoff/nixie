@@ -659,6 +659,46 @@ test('#connections.readForgetStatus answers the state of each forget it names', 
   ]);
 });
 
+test('#connections.checkPicked answers the name and visibility of each file the read names', async () => {
+  const ctx = await setupTest();
+
+  ctx.setConnections(ctx.port);
+
+  ctx.setPickedFiles((connection, files) => {
+    const picked = files.map((file) =>
+      file === 'a1'
+        ? { file, name: 'Trip plan', isVisible: true }
+        : { file, name: null, isVisible: false },
+    );
+
+    const answer = connection === 'k3x9m2p7qa' ? picked : null;
+
+    return Promise.resolve(answer);
+  });
+
+  const checked = await ctx.client.connections.checkPicked({
+    connection: 'k3x9m2p7qa',
+    files: ['a1', 'b2'],
+  });
+
+  expect(checked).toStrictEqual([
+    { file: 'a1', name: 'Trip plan', isVisible: true },
+    { file: 'b2', name: null, isVisible: false },
+  ]);
+});
+
+test('#connections.checkPicked refuses a connection that is not live', async () => {
+  const ctx = await setupTest();
+
+  ctx.setConnections(ctx.port);
+
+  const refused = ctx.client.connections.checkPicked({ connection: 'zzzzzzzzzz', files: ['a1'] });
+
+  await refused.catch(() => {});
+
+  expect(refused).rejects.toMatchObject({ code: 'CONNECTION_NOT_FOUND' });
+});
+
 test('#connections.list refuses until the connections start', async () => {
   const ctx = await setupTest();
 

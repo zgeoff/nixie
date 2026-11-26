@@ -106,7 +106,7 @@ async function readAnsweredFacts(options: SpendWatcherOptions): Promise<SpendFac
   return { ...facts, status: null };
 }
 
-// A raise that the gateway has not applied goes out again, and the status that it answers with
+// A raise that the gateway has not applied goes out again, and the status read after it
 // replaces the one read, so the stop clears in the same poll. That status keeps the poll's place in
 // line, which it took before the raise went out, and counts from the instant before the raise.
 async function sendWhatIsMissing(
@@ -123,7 +123,12 @@ async function sendWhatIsMissing(
     const raised = await context.gateway.postRaise(resend);
 
     if (raised.kind === 'ok') {
-      answer = { status: raised.value, statusAtMs: postedAtMs };
+      // the raise answers no status, so the status after it is one more read
+      const reread = await context.gateway.readStatus();
+
+      if (reread.kind === 'ok') {
+        answer = { status: reread.value, statusAtMs: postedAtMs };
+      }
     }
   }
 

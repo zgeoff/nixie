@@ -1,11 +1,12 @@
 import type { Clock } from '@heynixie/clock';
 import type { ConnectionContext, ConnectionState } from '@heynixie/connections';
-import type { ConnectorAction, GoogleHosts } from '@heynixie/connectors';
+import type { ConnectorAction, GoogleHosts, PickedFile } from '@heynixie/connectors';
 import {
-  buildGmailActions,
+  buildGoogleActions,
   collectGmailConnections,
   googleHosts,
   isGmailPolled,
+  readPickedFiles,
 } from '@heynixie/connectors';
 import type { Definitions, Log, WriteTransaction } from '@heynixie/log';
 import type { FetchReply } from '@heynixie/wire';
@@ -34,6 +35,13 @@ export interface GoogleToolsPart {
   // the Google connector's tools, which the tool list and the action queue need before the
   // connections and the fetch sandbox have started
   readonly actions: readonly ConnectorAction[];
+
+  // reads each file that the owner picked in Drive's picker with the connection's own token; null
+  // when the connection is not live
+  readonly readPickedFiles: (
+    connection: string,
+    files: readonly string[],
+  ) => Promise<readonly PickedFile[] | null>;
 
   // the address of each live Google connection, in lowercase NFC; none before the connections run
   readonly readAccounts: () => Promise<readonly string[]>;
@@ -67,7 +75,7 @@ export function startGoogleToolsPart(inputs: ServerInputs): GoogleToolsPart {
 
   const webFetch = inputs.options.config.web_fetch;
 
-  const actions = buildGmailActions({
+  const actions = buildGoogleActions({
     hosts,
     access: {
       readLiveContexts: (connection) => {
@@ -112,6 +120,21 @@ export function startGoogleToolsPart(inputs: ServerInputs): GoogleToolsPart {
   return {
     hosts,
     actions,
+    readPickedFiles: (connection, files) =>
+      readPickedFiles(
+        {
+          hosts,
+          access: {
+            readLiveContexts: (name) => {
+              const runtime = bound.runtime;
+
+              return runtime === null ? Promise.resolve([]) : runtime.readLiveContexts(name);
+            },
+          },
+        },
+        connection,
+        files,
+      ),
     readAccounts: async () => {
       const live = bound.runtime === null ? [] : await bound.runtime.readLiveContexts();
 

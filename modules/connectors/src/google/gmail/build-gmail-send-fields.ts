@@ -1,5 +1,6 @@
 import type { DestinationPermission } from '@heynixie/log';
 import type { BodyFields } from '@heynixie/policy';
+import { annotateRecipients } from './annotate-recipients';
 import type { GmailCard } from './gmail-card';
 import { gmailToolNames } from './gmail-tool-names';
 
@@ -50,34 +51,4 @@ export function buildGmailSendFields(
         : `Send an email from ${from} to ${everyone.join(', ')}: "${subject}"`,
     approveLabel: 'Send email',
   };
-}
-
-const permissionWords: Readonly<Record<DestinationPermission, string>> = {
-  owner: 'you',
-  reply_target: 'reply target',
-  known_contact: 'known contact',
-  task: 'task',
-  rule: 'allow rule',
-};
-
-function annotateRecipients(
-  list: string | undefined,
-  permissions: ReadonlyMap<string, DestinationPermission | null>,
-): string | undefined {
-  if (list === undefined || list === '') {
-    return list;
-  }
-
-  return list
-    .split(', ')
-    .map((address) => {
-      const permission = permissions.get(address);
-
-      if (permission === undefined) {
-        return address;
-      }
-
-      return `${address} (${permission === null ? 'no permission' : permissionWords[permission]})`;
-    })
-    .join(', ');
 }

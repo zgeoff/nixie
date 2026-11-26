@@ -10,3 +10,5 @@ export {
   testGatewayControlToken,
   testGatewayPrices,
 } from './start-test-model-gateway';
+
+export { testGatewayProvider } from './constants';

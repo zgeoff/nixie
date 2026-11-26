@@ -8,6 +8,7 @@ import {
   useLocation,
 } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
+import { CallProvider } from '../call/call-provider';
 import { AppShell } from '../components/app-shell';
 import { LiveProvider } from '../live/live-provider';
 import { css } from '../styled-system/css';
@@ -47,13 +48,15 @@ function RootDocument(): ReactNode {
       <body className={css({ fontFamily: 'sans', lineHeight: 'relaxed' })}>
         <NixieClientContext value={{ client: context.client, queryUtils: context.queryUtils }}>
           <LiveProvider>
-            {pathname === '/device' ? (
-              <Outlet />
-            ) : (
-              <AppShell>
+            <CallProvider>
+              {pathname === '/device' ? (
                 <Outlet />
-              </AppShell>
-            )}
+              ) : (
+                <AppShell>
+                  <Outlet />
+                </AppShell>
+              )}
+            </CallProvider>
           </LiveProvider>
         </NixieClientContext>
         <Scripts />

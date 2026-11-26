@@ -25,7 +25,7 @@ test.each([
     4,
   ],
 ] as const)('it picks the next revision of %s as %p', (_, parts, expected) => {
-  const store = { ...buildFreshStore(0, 'UTC', []), ...parts };
+  const store = { ...buildFreshStore(0, 'UTC', [], []), ...parts };
 
   expect(pickNextLimitRevision(store, 'alpha')).toBe(expected);
 });

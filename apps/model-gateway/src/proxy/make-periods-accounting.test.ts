@@ -3,27 +3,32 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Logger } from '@heynixie/logger';
+import invariant from 'tiny-invariant';
 import { z } from 'zod';
 import { createPeriodStore } from '../periods/create-period-store';
+import { buildMockLimitTable } from '../test-utils/build-mock-limit-table';
+import type { RouteLimits } from '../types';
 import { buildReplyEstimate } from '../usage/build-reply-estimate';
 import type { CountedReply } from './accounting';
 import { makePeriodsAccounting } from './make-periods-accounting';
 
-async function setupTest() {
-  const limits = { preview: { day: 0.002, month: 10, dayCap: 1 } };
+async function setupTest(providerLimits?: RouteLimits) {
+  const previewLimits = { day: 0.002, month: 10, dayCap: 1 };
+  const limits = buildMockLimitTable({ preview: previewLimits }, providerLimits);
 
   const directory = await mkdtemp(join(tmpdir(), 'model-gateway-accounting-'));
 
   onTestFinished(() => rm(directory, { recursive: true, force: true }));
 
   const storePath = join(directory, 'counter.json');
+  const currentMs = Date.parse('2026-11-13T10:00:00Z');
 
   const store = await createPeriodStore({
     path: storePath,
     zone: 'Europe/London',
     limits,
-    now: () => Date.parse('2026-11-13T10:00:00Z'),
-    readOverrides: () => Promise.resolve({}),
+    now: () => currentMs,
+    readOverrides: () => Promise.resolve({ routes: {}, providers: {} }),
     log: mock<Logger>(() => {}),
   });
 
@@ -43,16 +48,31 @@ async function setupTest() {
     api: 'anthropic-messages',
     upstream: 'http://model.test',
     model: 'model-small',
+    provider: 'test',
     providerPin: null,
     prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
     maxOutputTokens: null,
     login: null,
-    limits: limits.preview,
+    limits: previewLimits,
   } as const;
 
   return {
     store,
     storePath,
+    clearDayCount: () =>
+      store.change((held) => {
+        const preview = held.routes['preview'];
+
+        invariant(preview !== undefined, 'the store holds the route preview');
+
+        return {
+          store: {
+            ...held,
+            routes: { ...held.routes, preview: { ...preview, day: { ...preview.day, micros: 0 } } },
+          },
+          result: undefined,
+        };
+      }),
     log,
     route,
     usage: (input: number, output: number) => ({
@@ -89,6 +109,14 @@ async function setupTest() {
       now: () => Date.parse('2026-11-13T10:00:00Z'),
       log,
     }),
+    makeAccounting: (held: typeof limits) =>
+      makePeriodsAccounting({
+        store,
+        limits: held,
+        countBySandbox: true,
+        now: () => Date.parse('2026-11-13T10:00:00Z'),
+        log,
+      }),
   };
 }
 
@@ -276,6 +304,50 @@ test('it logs once that a limit was reached', async () => {
   expect(ctx.log.mock.calls.filter(([event]) => event === 'limit.reached')).toHaveLength(1);
 });
 
+test('it logs a limit reached again when a correction cleared the trip and the period trips a second time in the same millisecond', async () => {
+  const ctx = await setupTest();
+
+  await ctx.accounting.count(ctx.reply({ usage: ctx.usage(600, 500) }));
+  await ctx.clearDayCount();
+  await ctx.accounting.count(ctx.reply({ usage: ctx.usage(600, 500) }));
+
+  expect(ctx.log.mock.calls.filter(([event]) => event === 'limit.reached')).toHaveLength(2);
+});
+
+test('it logs a provider limit reached again when a correction cleared the trip and the provider trips a second time in the same millisecond', async () => {
+  const ctx = await setupTest({ day: 0.002, month: 10, dayCap: 1 });
+
+  await ctx.accounting.count(ctx.reply({ usage: ctx.usage(600, 500) }));
+
+  await ctx.store.change((held) => {
+    const provider = held.providers['test'];
+
+    invariant(provider !== undefined, 'the store holds the provider test');
+
+    return {
+      store: {
+        ...held,
+        providers: {
+          ...held.providers,
+          test: { ...provider, day: { ...provider.day, micros: 0 } },
+        },
+      },
+      result: undefined,
+    };
+  });
+
+  await ctx.clearDayCount();
+  await ctx.accounting.count(ctx.reply({ usage: ctx.usage(600, 500) }));
+
+  const logged = ctx.log.mock.calls.filter(
+    ([event, fields]) =>
+      event === 'limit.reached' &&
+      z.string().parse(fields?.['trips']).includes('provider:test:day'),
+  );
+
+  expect(logged).toHaveLength(2);
+});
+
 test('it refuses a request with the limit 403 once the day reaches its limit', async () => {
   const ctx = await setupTest();
 
@@ -302,9 +374,53 @@ test('it names the counter and the route in the limit 403 and keeps the refusal 
         type: 'limit_reached',
         counter: 'route_day',
         route: 'preview',
+        provider: 'test',
         message: expect.stringContaining('preview'),
       },
     },
-    { counter: 'route_day', route: 'preview', atMs: Date.parse('2026-11-13T10:00:00Z') },
+    {
+      counter: 'route_day',
+      route: 'preview',
+      provider: 'test',
+      atMs: Date.parse('2026-11-13T10:00:00Z'),
+    },
+  ]);
+});
+
+test('it refuses a route with room once its provider reaches its day limit, names the provider and logs the trip', async () => {
+  const ctx = await setupTest();
+
+  const accounting = ctx.makeAccounting(
+    buildMockLimitTable(
+      { preview: { day: 60, month: 600, dayCap: 120 } },
+      { day: 0.002, month: 10, dayCap: 1 },
+    ),
+  );
+
+  await accounting.count(ctx.reply({ usage: ctx.usage(600, 400) }));
+
+  const refusal = await accounting.admit('preview', 'alpha');
+  const body: unknown = await refusal?.json();
+  const stored = await ctx.store.read();
+
+  expect([refusal?.status, body, stored.sandboxes['alpha']?.lastRefusal?.counter]).toStrictEqual([
+    403,
+    {
+      type: 'error',
+      error: {
+        type: 'limit_reached',
+        counter: 'provider_day',
+        route: 'preview',
+        provider: 'test',
+        message: expect.stringContaining('test'),
+      },
+    },
+    'provider_day',
+  ]);
+
+  expect(ctx.log.mock.calls).toContainEqual([
+    'limit.reached',
+    { trips: 'provider:test:day' },
+    'warn',
   ]);
 });

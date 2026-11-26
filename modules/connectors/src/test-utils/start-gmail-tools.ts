@@ -3,6 +3,8 @@ import type { TestTriggers } from '@heynixie/triggers/test-utils';
 import type { FetchReply } from '@heynixie/wire';
 import { createFakeClock } from '@zgeoff/testing/clock';
 import invariant from 'tiny-invariant';
+import { buildCalendarActions } from '../google/calendar/build-calendar-actions';
+import { buildDriveActions } from '../google/drive/build-drive-actions';
 import { buildGmailActions } from '../google/gmail/build-gmail-actions';
 import type { GmailDeps } from '../google/gmail/types';
 import type { ConnectorAction } from '../types';
@@ -27,6 +29,10 @@ export interface GmailTools {
   readonly site: FakeGmailSite;
   readonly deps: GmailDeps;
   readonly actions: readonly ConnectorAction[];
+
+  // the Calendar and Drive tools on the same fake account
+  readonly calendarActions: readonly ConnectorAction[];
+  readonly driveActions: readonly ConnectorAction[];
   readonly clock: ReturnType<typeof createFakeClock>;
 
   // the action of a tool, by its name
@@ -36,7 +42,7 @@ export interface GmailTools {
   readonly buildContext: () => ToolContext;
 }
 
-// The Gmail tools over a fake Gmail account on a loopback port, with a real log for the link IDs.
+// The Gmail, Calendar and Drive tools over a fake Google account on a loopback port, with a real log for the link IDs.
 export async function startGmailTools(options: GmailToolsOptions = {}): Promise<GmailTools> {
   const started = options.site === undefined ? await startFakeGmailSite() : null;
   const site = options.site ?? started;
@@ -64,17 +70,23 @@ export async function startGmailTools(options: GmailToolsOptions = {}): Promise<
   };
 
   const actions = buildGmailActions(deps);
+  const calendarActions = buildCalendarActions(deps);
+  const driveActions = buildDriveActions(deps);
 
   return {
     site,
     deps,
     actions,
+    calendarActions,
+    driveActions,
     clock,
     findAction: (name) => {
-      const found = actions.find((action) => action.tool.name === name);
+      const found = [...actions, ...calendarActions, ...driveActions].find(
+        (action) => action.tool.name === name,
+      );
 
       if (found === undefined) {
-        throw new Error(`no Gmail tool is named ${name}`);
+        throw new Error(`no Google tool is named ${name}`);
       }
 
       return found;

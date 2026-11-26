@@ -15,6 +15,7 @@ test('it shows the reply rule that a send with no reply wake sets, from the depl
       callSequence: 1,
     },
     { replyExpiryMs: 604_800_000 },
+    'UTC',
   );
 
   expect(fields).toStrictEqual({ status: 'fields', fields: { replyWake: '7d, the default' } });
@@ -27,6 +28,7 @@ test('it adds no field to a mail send in a deployment with no mailbox', async ()
     memory.log,
     { tool: 'mail.send', thread: 'conversation', input: {}, callSequence: 1 },
     undefined,
+    'UTC',
   );
 
   expect(fields).toStrictEqual({ status: 'none' });
@@ -55,6 +57,7 @@ test('it lists each file of a mail send by name and size on the card', async () 
       callSequence: 1,
     },
     { replyExpiryMs: 604_800_000 },
+    'UTC',
   );
 
   expect(fields).toStrictEqual({
@@ -75,6 +78,7 @@ test('it words the card of a Gmail label change with its thread count and each l
       callSequence: 1,
     },
     undefined,
+    'UTC',
   );
 
   expect(fields).toStrictEqual({
@@ -92,7 +96,35 @@ test('it leaves the card of a Gmail send without a body when its facts are gone'
     memory.log,
     { tool: 'gmail.send', thread: 'conversation', input: {}, callSequence: 1 },
     undefined,
+    'UTC',
   );
 
   expect(fields).toStrictEqual({ status: 'unreadable' });
+});
+
+test('it words the card of a calendar invitation in the default zone of the deployment', async () => {
+  const memory = await startTestMemory();
+
+  const fields = await readActionBodyFields(
+    memory.log,
+    {
+      tool: 'calendar.create_event_with_guests',
+      thread: 'conversation',
+      input: {
+        title: 'Lunch',
+        start: '2026-12-02T12:00:00+11:00',
+        end: '2026-12-02T13:00:00+11:00',
+        guests: ['lee@example.org'],
+      },
+      callSequence: 1,
+    },
+    undefined,
+    'Australia/Sydney',
+  );
+
+  expect(fields).toMatchObject({
+    status: 'fields',
+    sentence: 'Invite lee@example.org to "Lunch" on Wed 2 Dec 2026, 12:00 Sydney',
+    approveLabel: 'Send invitations',
+  });
 });

@@ -129,6 +129,8 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
           readCodeCleanup: () => parts.find('code_run')?.cleanup.destroyForRecords ?? null,
           readNotebook: () => parts.find('notebook') ?? null,
           readConnections: () => parts.find('connections') ?? null,
+          readPickedFiles: (connection, files) =>
+            parts.find('google_tools')?.readPickedFiles(connection, files) ?? Promise.resolve(null),
           readMcp: () => parts.find('mcp') ?? null,
           readErasure: makeReadErasureStuckPort(() => parts.find('erasure'), {
             nowMs: () => context.apiContext.clock.now(),

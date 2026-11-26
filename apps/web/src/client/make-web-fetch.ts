@@ -38,7 +38,19 @@ export function makeWebFetch(options: WebFetchOptions) {
 
     const page = await options.startFetch(request);
 
-    return pathname === '/device' ? toDeviceResponse(page) : toPrivateResponse(page);
+    if (pathname === '/device') {
+      return toDeviceResponse(page);
+    }
+
+    const privatePage = toPrivateResponse(page);
+
+    if (pathname.startsWith('/settings/connections')) {
+      // Google's sign-in window, which the Drive picker opens, must reach back to its opener.
+      // Sent on every page, it closed the view of the browser tests on the device page.
+      privatePage.headers.set('cross-origin-opener-policy', 'same-origin-allow-popups');
+    }
+
+    return privatePage;
   };
 }
 

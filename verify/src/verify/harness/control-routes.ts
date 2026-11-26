@@ -24,6 +24,19 @@ const codingTaskSchema = z.strictObject({
 
 const sentMailSchema = z.strictObject({ to: z.string(), messageID: z.string() });
 
+const calendarWriteSchema = z.strictObject({
+  method: z.string(),
+  sendUpdates: z.string(),
+  title: z.string(),
+  guests: z.array(z.string()),
+});
+
+const driveFileSchema = z.strictObject({
+  name: z.string(),
+  mimeType: z.string(),
+  text: z.string(),
+});
+
 const drawnPictureSchema = z.strictObject({
   prompt: z.string().min(1),
   edit: z.string().min(1),
@@ -93,6 +106,27 @@ export const controlRoutes = {
       // the model searches the connected Google account's mail with this query, opens the first
       // mail the search lists, and replies to it with this text, before its own reply
       gmailReply: z.strictObject({ query: z.string().min(1), text: z.string().min(1) }).optional(),
+
+      // the model lists the connected Google account's events between `start` and `end` and then
+      // invites `guest` to a new event with that title and times, before its own reply
+      calendarInvite: z
+        .strictObject({
+          title: z.string().min(1),
+          start: z.string().min(1),
+          end: z.string().min(1),
+          guest: z.string().min(1),
+        })
+        .optional(),
+
+      // the model searches the connected Google account's files with `query` and then creates a
+      // text file with that name and text, before its own reply
+      driveCreate: z
+        .strictObject({
+          query: z.string().min(1),
+          name: z.string().min(1),
+          text: z.string().min(1),
+        })
+        .optional(),
 
       // a wake rule that the model sets on the connected Google account's mail with the Gmail
       // tool before its reply, for mail from this address or `@domain`
@@ -184,6 +218,7 @@ export const controlRoutes = {
           type: z.string(),
           counter: z.string().optional(),
           route: z.string().optional(),
+          provider: z.string().optional(),
         })
         .nullable(),
     }),
@@ -193,8 +228,8 @@ export const controlRoutes = {
     path: '/control/call-step',
     input: z.strictObject({ step: callStepSchema }),
 
-    // the call's ID, and each call that nixie made on the fake speech layer, oldest first
-    output: z.strictObject({ callID: z.string(), speech: z.array(speechCallSchema) }),
+    // the call's ID, or null for a call that the browser started, and each call that nixie made on the fake speech layer, oldest first
+    output: z.strictObject({ callID: z.string().nullable(), speech: z.array(speechCallSchema) }),
   },
   deliverMail: {
     method: 'POST',
@@ -250,6 +285,22 @@ export const controlRoutes = {
 
     // each mail that the fake Gmail took through its send call, oldest first
     output: z.strictObject({ sent: z.array(sentMailSchema) }),
+  },
+  calendarWrites: {
+    method: 'GET',
+    path: '/control/calendar-writes',
+    input: z.strictObject({}),
+
+    // each event write that the fake Calendar took, oldest first, with the event as it now stands
+    output: z.strictObject({ writes: z.array(calendarWriteSchema) }),
+  },
+  driveFiles: {
+    method: 'GET',
+    path: '/control/drive-files',
+    input: z.strictObject({}),
+
+    // each file that the fake Drive holds
+    output: z.strictObject({ files: z.array(driveFileSchema) }),
   },
   liveOpens: {
     method: 'GET',

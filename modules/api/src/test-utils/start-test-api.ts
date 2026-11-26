@@ -62,6 +62,9 @@ interface TestAPI {
   // the Google connections that a running nixie sets once its connections start
   readonly setConnections: (port: ConnectionsPort) => void;
 
+  // the read of a Drive pick that a running nixie sets once its Google tools start
+  readonly setPickedFiles: (read: NonNullable<APIContext['readPickedFiles']>) => void;
+
   // the MCP proxy that a running nixie sets once it starts
   readonly setMcp: (port: McpPort) => void;
 
@@ -136,6 +139,7 @@ export async function startTestAPI(
   const notebook: { store: ViewNotebookStore | null } = { store: null };
   const erasure: { port: ErasureStuckPort | null } = { port: null };
   const connections: { port: ConnectionsPort | null } = { port: null };
+  const picked: { read: APIContext['readPickedFiles'] } = { read: undefined };
   const mcp: { port: McpPort | null } = { port: null };
   const spendGateway = buildStubSpendGateway();
 
@@ -152,6 +156,8 @@ export async function startTestAPI(
     readNotebook: () => notebook.store,
     readErasure: () => erasure.port,
     readConnections: () => connections.port,
+    readPickedFiles: (connection, files) =>
+      picked.read === undefined ? Promise.resolve(null) : picked.read(connection, files),
     readMcp: () => mcp.port,
     readWatch: () => watching.open,
     readTakeover: () => {
@@ -191,6 +197,9 @@ export async function startTestAPI(
     setConnections: (port) => {
       connections.port = port;
     },
+    setPickedFiles: (read) => {
+      picked.read = read;
+    },
     setMcp: (port) => {
       mcp.port = port;
     },
@@ -213,6 +222,7 @@ interface TestContextDeps {
   readonly readNotebook: NonNullable<APIContext['readNotebook']>;
   readonly readErasure: NonNullable<APIContext['readErasure']>;
   readonly readConnections: NonNullable<APIContext['readConnections']>;
+  readonly readPickedFiles?: APIContext['readPickedFiles'];
   readonly readMcp: NonNullable<APIContext['readMcp']>;
   readonly readWatch: ComputerWatchPort['readWatch'];
   readonly readTakeover: ComputerWatchPort['readTakeover'];
@@ -310,6 +320,7 @@ async function createTestContext(
     readErasure: deps.readErasure,
     ...(calls === null ? {} : { calls: calls.context }),
     readConnections: deps.readConnections,
+    ...(deps.readPickedFiles === undefined ? {} : { readPickedFiles: deps.readPickedFiles }),
     readMcp: deps.readMcp,
   };
 

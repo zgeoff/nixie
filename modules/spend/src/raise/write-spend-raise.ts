@@ -1,9 +1,11 @@
 import { readPlanLogins } from '../login/read-plan-logins';
 import { readSpendFacts } from '../stop/read-spend-facts';
+import { readSpendProviderRaises } from '../stop/read-spend-provider-raises';
 import { readSpendRouteRaises } from '../stop/read-spend-route-raises';
 import { settleSpendStop } from '../stop/settle-spend-stop';
 import { takeSettleOrder } from '../stop/take-settle-order';
 import type { SpendContext } from '../types';
+import { pickEarlierRaise } from './pick-earlier-raise';
 import type { RaiseRequest } from './pick-raise-refusal';
 import { pickRaiseRefusal } from './pick-raise-refusal';
 import { writeSpendRaiseRecord } from './write-spend-raise-record';
@@ -15,10 +17,13 @@ export type SpendRaiseResult =
       readonly error: 'above_cap';
       readonly measure: 'dollars' | 'turns';
       readonly route: string | null;
+      readonly provider: string | null;
       readonly cap: number;
     }
   | { readonly error: 'period_ended' }
   | { readonly error: 'unknown_route' }
+  | { readonly error: 'unknown_provider' }
+  | { readonly error: 'no_route_limit'; readonly route: string }
   | { readonly error: 'unreachable' }
   | { readonly error: 'unanswered' };
 
@@ -48,12 +53,10 @@ export async function writeSpendRaise(
 
   const postedAtMs = context.clock.now();
 
-  const posted = await postRouteRaise(context, request);
+  const posted = await postDollarsRaise(context, request);
 
   if (posted !== null && posted.kind !== 'ok' && posted.kind !== 'unreachable') {
-    return posted.kind === 'above_cap'
-      ? { error: 'above_cap', measure: 'dollars', route: posted.route, cap: posted.cap }
-      : { error: posted.kind };
+    return renderPostedRefusal(posted, request);
   }
 
   // A raise the gateway refused never stands, because the turns it holds would lift the turn limit
@@ -66,28 +69,78 @@ export async function writeSpendRaise(
 
   const facts = await readSpendFacts(context);
 
-  const after = posted?.kind === 'ok' ? posted.value : status.value;
-  const statusAtMs = posted?.kind === 'ok' ? postedAtMs : readAtMs;
+  // A raise the gateway took answers no status, so the status after it is one more read.
+  const reread = posted?.kind === 'ok' ? await context.gateway.readStatus() : null;
+
+  if (reread !== null && reread.kind !== 'ok') {
+    return { error: 'unanswered' };
+  }
+
+  const after = reread === null ? status.value : reread.value;
+  const statusAtMs = reread === null ? readAtMs : postedAtMs;
 
   const stop = await settleSpendStop(context, { ...facts, status: after, statusAtMs, order });
 
-  const isRouteTripped = Object.values(after.routes).some(
-    (route) => route.day.tripped || route.month.tripped,
+  const isLimitTripped = [...Object.values(after.routes), ...Object.values(after.providers)].some(
+    (held) => held.day.tripped || held.month.tripped,
   );
 
-  return { state: stop.state === 'clear' && !isRouteTripped ? 'clear' : 'stopped' };
+  return { state: stop.state === 'clear' && !isLimitTripped ? 'clear' : 'stopped' };
 }
 
-async function postRouteRaise(context: SpendContext, request: RaiseRequest) {
-  if (request.route === undefined || request.dollars === undefined) {
+async function postDollarsRaise(context: SpendContext, request: RaiseRequest) {
+  if (request.dollars === undefined) {
     return null;
   }
 
-  const earlier = await readSpendRouteRaises(context.log.writer.db, request.start);
+  const db = context.log.writer.db;
+
+  if (request.route !== undefined) {
+    const earlier = await readSpendRouteRaises(db, request.start);
+
+    return context.gateway.postRaise({
+      target: { kind: 'route', id: request.route },
+      start: request.start,
+      dollars: Math.max(request.dollars, pickEarlierRaise(earlier, request.route)),
+    });
+  }
+
+  if (request.provider === undefined) {
+    return null;
+  }
+
+  const earlier = await readSpendProviderRaises(db, request.start);
 
   return context.gateway.postRaise({
-    route: request.route,
+    target: { kind: 'provider', id: request.provider },
     start: request.start,
-    dollars: Math.max(request.dollars, earlier[request.route] ?? 0),
+    dollars: Math.max(request.dollars, pickEarlierRaise(earlier, request.provider)),
   });
+}
+
+type Posted = NonNullable<Awaited<ReturnType<typeof postDollarsRaise>>>;
+
+function renderPostedRefusal(
+  posted: Exclude<Posted, { readonly kind: 'ok' | 'unreachable' }>,
+  request: RaiseRequest,
+): SpendRaiseResult {
+  if (posted.kind === 'above_cap') {
+    return {
+      error: 'above_cap',
+      measure: 'dollars',
+      route: posted.route,
+      provider: posted.provider,
+      cap: posted.cap,
+    };
+  }
+
+  if (posted.kind === 'no_route_limit') {
+    return { error: 'no_route_limit', route: posted.route };
+  }
+
+  if (posted.kind === 'not_found') {
+    return { error: request.provider === undefined ? 'unknown_route' : 'unknown_provider' };
+  }
+
+  return { error: posted.kind };
 }

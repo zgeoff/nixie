@@ -92,9 +92,45 @@ test('it calls the provider with the action ID as the idempotency key', async ()
       destinations: [],
       replyTargets: [],
       attemptStartedAt: expect.any(Number),
+      queuedAt: expect.any(Number),
       actionHash: expect.any(String),
       deadlineAt: null,
     },
+  ]);
+});
+
+test('it gives the provider the time the queue recorded the action', async () => {
+  const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
+
+  await queueTestAction(ctx.context, {
+    step,
+    tool: 'test.send',
+    actionHash: 'sha256:send-1',
+    arguments: { to: 'team' },
+    decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
+  });
+
+  const action = await ctx.db.selectFrom('actions').selectAll().executeTakeFirstOrThrow();
+
+  const [queuedRecord] = await readRecords(ctx.context.log, {
+    afterSequence: action.queued_sequence - 1,
+    limit: 1,
+  });
+
+  invariant(queuedRecord, 'the queue wrote the action record');
+
+  const lease = await claimTestAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  const stub = buildStubConnector(() => ({ kind: 'success', result: { messageID: 'm-1' } }));
+
+  await runActionAttempt(ctx.context, lease, {
+    connectors: new Map([['test.send', stub.connector]]),
+    leaseMs: 60_000,
+  });
+
+  expect(stub.calls.map((call) => call.queuedAt)).toStrictEqual([
+    queuedRecord.record.recordedAt.getTime(),
   ]);
 });
 

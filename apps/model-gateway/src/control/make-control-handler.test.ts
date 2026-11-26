@@ -8,13 +8,22 @@ import { writeLoginFile } from '../login/write-login-file';
 import { makeOverrideReader } from '../override/make-override-reader';
 import { writeOverride } from '../override/write-override';
 import { createPeriodStore } from '../periods/create-period-store';
+import type { LimitTable } from '../periods/limit-table';
 import { buildLoginFile } from '../test-utils/build-login-file';
 import { makeControlHandler } from './make-control-handler';
 
 async function setupTest() {
-  const limits = {
-    plan: { day: 40, month: 600, dayCap: 80 },
-    metered: { day: 5, month: 50, dayCap: 10 },
+  const limits: LimitTable = {
+    routes: {
+      plan: { day: 40, month: 600, dayCap: 80 },
+      metered: { day: 5, month: 50, dayCap: 10 },
+      bare: null,
+    },
+    providers: {
+      main: { day: 100, month: 1000, dayCap: 200 },
+      side: { day: 3, month: 30, dayCap: 6 },
+    },
+    providerOf: { plan: 'main', metered: 'main', bare: 'side' },
   };
 
   const directory = await mkdtemp(join(tmpdir(), 'model-gateway-control-'));
@@ -67,6 +76,9 @@ async function setupTest() {
 
   return {
     store,
+    plan: { route: 'plan', provider: 'main' },
+    metered: { route: 'metered', provider: 'main' },
+    bare: { route: 'bare', provider: 'side' },
     today: '2026-11-13',
     overridePath,
     writeLogin: (overrides: Parameters<typeof buildLoginFile>[0]) =>
@@ -101,6 +113,7 @@ test.each([
   ['GET', '/status'],
   ['GET', '/chatgpt-logins'],
   ['POST', '/raise'],
+  ['POST', '/count'],
   ['PUT', '/sandboxes/alpha'],
   ['GET', '/sandboxes/alpha'],
   ['PATCH', '/sandboxes/alpha'],
@@ -178,11 +191,11 @@ test('it answers a request with no authorization header with a 401', async () =>
   expect(response.status).toBe(401);
 });
 
-test('it reports each route with its count, limit and cap', async () => {
+test('it reports each provider and each route with its provider, count, limit and cap', async () => {
   const ctx = await setupTest();
   const response = await ctx.call('GET', '/status');
 
-  const day = (limit: number, cap: number) => ({
+  const day = (limit: number | null, cap: number | null) => ({
     start: ctx.today,
     resetsAt: '2026-11-14T00:00:00Z',
     dollars: 0,
@@ -192,7 +205,7 @@ test('it reports each route with its count, limit and cap', async () => {
     sinceMs: null,
   });
 
-  const month = (limit: number) => ({
+  const month = (limit: number | null) => ({
     start: ctx.today.replace(/-\d{2}$/u, '-01'),
     resetsAt: '2026-12-01T00:00:00Z',
     dollars: 0,
@@ -207,9 +220,14 @@ test('it reports each route with its count, limit and cap', async () => {
     body: {
       zone: 'Europe/London',
       lost: false,
+      providers: {
+        main: { day: day(100, 200), month: month(1000) },
+        side: { day: day(3, 6), month: month(30) },
+      },
       routes: {
-        plan: { day: day(40, 80), month: month(600) },
-        metered: { day: day(5, 10), month: month(50) },
+        plan: { provider: 'main', day: day(40, 80), month: month(600) },
+        metered: { provider: 'main', day: day(5, 10), month: month(50) },
+        bare: { provider: 'side', day: day(null, null), month: month(null) },
       },
     },
   });
@@ -231,11 +249,12 @@ test('it raises the day of the route it names and no other route', async () => {
     dollars: 60,
   });
 
-  expect(response).toMatchObject({
-    status: 200,
-    body: {
-      routes: { plan: { day: { limit: 60 } }, metered: { day: { limit: 5 } } },
-    },
+  const status = await ctx.call('GET', '/status');
+
+  expect(response).toStrictEqual({ status: 204, body: null });
+
+  expect(status.body).toMatchObject({
+    routes: { plan: { day: { limit: 60 } }, metered: { day: { limit: 5 } } },
   });
 });
 
@@ -243,14 +262,11 @@ test('it keeps the larger of 2 raises of the same day, whatever their order', as
   const ctx = await setupTest();
 
   await ctx.call('POST', '/raise', { route: 'plan', start: '2026-11-13', dollars: 70 });
+  await ctx.call('POST', '/raise', { route: 'plan', start: '2026-11-13', dollars: 60 });
 
-  const response = await ctx.call('POST', '/raise', {
-    route: 'plan',
-    start: '2026-11-13',
-    dollars: 60,
-  });
+  const status = await ctx.call('GET', '/status');
 
-  expect(response).toMatchObject({ body: { routes: { plan: { day: { limit: 70 } } } } });
+  expect(status.body).toMatchObject({ routes: { plan: { day: { limit: 70 } } } });
 });
 
 test('it refuses a raise past the route cap with a 409 and keeps the limit', async () => {
@@ -266,7 +282,7 @@ test('it refuses a raise past the route cap with a 409 and keeps the limit', asy
 
   expect(response).toStrictEqual({
     status: 409,
-    body: { error: 'above_cap', route: 'metered', cap: 10 },
+    body: { error: 'above_cap', route: 'metered', provider: null, cap: 10 },
   });
 
   expect(held.routes['metered']?.day.raise).toBeNull();
@@ -313,6 +329,253 @@ test('it refuses a raise for a route the gateway does not hold with a 404', asyn
   expect(response).toStrictEqual({ status: 404, body: { error: 'unknown_route' } });
 });
 
+test('it raises the day of the provider it names and no route', async () => {
+  const ctx = await setupTest();
+
+  const response = await ctx.call('POST', '/raise', {
+    provider: 'main',
+    start: '2026-11-13',
+    dollars: 150,
+  });
+
+  const status = await ctx.call('GET', '/status');
+
+  expect(response).toStrictEqual({ status: 204, body: null });
+
+  expect(status.body).toMatchObject({
+    providers: { main: { day: { limit: 150 } }, side: { day: { limit: 3 } } },
+    routes: { plan: { day: { limit: 40 } } },
+  });
+});
+
+test('it refuses a raise past the provider cap with a 409 that names the provider', async () => {
+  const ctx = await setupTest();
+
+  const response = await ctx.call('POST', '/raise', {
+    provider: 'side',
+    start: '2026-11-13',
+    dollars: 6.01,
+  });
+
+  expect(response).toStrictEqual({
+    status: 409,
+    body: { error: 'above_cap', route: null, provider: 'side', cap: 6 },
+  });
+});
+
+test('it refuses a raise for a provider the gateway does not hold with a 404', async () => {
+  const ctx = await setupTest();
+
+  const response = await ctx.call('POST', '/raise', {
+    provider: 'ghost',
+    start: '2026-11-13',
+    dollars: 5,
+  });
+
+  expect(response).toStrictEqual({ status: 404, body: { error: 'unknown_provider' } });
+});
+
+test('it refuses a raise for a route with no limit of its own with a 409', async () => {
+  const ctx = await setupTest();
+
+  const response = await ctx.call('POST', '/raise', {
+    route: 'bare',
+    start: '2026-11-13',
+    dollars: 5,
+  });
+
+  expect(response).toStrictEqual({ status: 409, body: { error: 'no_route_limit', route: 'bare' } });
+});
+
+test.each([
+  ['both a route and a provider', { route: 'plan', provider: 'main' }],
+  ['neither', {}],
+])('it refuses a raise that names %s with a 400', async (_name, target) => {
+  const ctx = await setupTest();
+
+  const response = await ctx.call('POST', '/raise', {
+    ...target,
+    start: '2026-11-13',
+    dollars: 5,
+  });
+
+  expect(response).toStrictEqual({ status: 400, body: { error: 'bad_target' } });
+});
+
+test('it reports a trip on the provider that reached its day limit, and on its routes never', async () => {
+  const ctx = await setupTest();
+
+  await ctx.store.addSpend(ctx.bare, null, { dollars: 3, tokens: 1 });
+
+  const response = await ctx.call('GET', '/status');
+
+  expect(response.body).toMatchObject({
+    providers: {
+      side: { day: { dollars: 3, tripped: true, sinceMs: Date.parse('2026-11-13T16:42:07Z') } },
+      main: { day: { tripped: false } },
+    },
+    routes: { bare: { day: { tripped: false, sinceMs: null } } },
+  });
+});
+
+test('it lowers the count of a route with POST /count and clears its trip', async () => {
+  const ctx = await setupTest();
+
+  await ctx.store.addSpend(ctx.metered, null, { dollars: 5.2, tokens: 1 });
+
+  const response = await ctx.call('POST', '/count', {
+    route: 'metered',
+    period: 'day',
+    start: '2026-11-13',
+    dollars: 0,
+  });
+
+  const status = await ctx.call('GET', '/status');
+
+  expect(response).toStrictEqual({ status: 200, body: { replacedDollars: 5.2 } });
+
+  expect(status.body).toMatchObject({
+    routes: { metered: { day: { dollars: 0, limit: 5, tripped: false, sinceMs: null } } },
+  });
+});
+
+test('it lowers the count of a provider with POST /count, clears its trip and leaves its routes', async () => {
+  const ctx = await setupTest();
+
+  await ctx.store.addSpend(ctx.bare, null, { dollars: 3, tokens: 1 });
+
+  const response = await ctx.call('POST', '/count', {
+    provider: 'side',
+    period: 'day',
+    start: '2026-11-13',
+    dollars: 1,
+  });
+
+  const status = await ctx.call('GET', '/status');
+
+  expect(response).toStrictEqual({ status: 200, body: { replacedDollars: 3 } });
+
+  expect(status.body).toMatchObject({
+    providers: { side: { day: { dollars: 1, limit: 3, tripped: false, sinceMs: null } } },
+    routes: { bare: { day: { dollars: 3 } } },
+  });
+});
+
+test('it sets the count of the month and keeps the day', async () => {
+  const ctx = await setupTest();
+
+  await ctx.store.addSpend(ctx.plan, null, { dollars: 4, tokens: 1 });
+
+  await ctx.call('POST', '/count', {
+    route: 'plan',
+    period: 'month',
+    start: '2026-11-01',
+    dollars: 1.5,
+  });
+
+  const held = await ctx.store.read();
+
+  expect([held.routes['plan']?.day.micros, held.routes['plan']?.month.micros]).toStrictEqual([
+    4_000_000, 1_500_000,
+  ]);
+});
+
+test('it changes no limit with POST /count', async () => {
+  const ctx = await setupTest();
+
+  await ctx.call('POST', '/count', {
+    provider: 'main',
+    period: 'day',
+    start: '2026-11-13',
+    dollars: 500,
+  });
+
+  const status = await ctx.call('GET', '/status');
+
+  expect(status.body).toMatchObject({
+    providers: { main: { day: { dollars: 500, limit: 100, tripped: true } } },
+  });
+});
+
+test.each([
+  [
+    'a period that ended',
+    { route: 'plan', period: 'day', start: '2026-11-12', dollars: 0 },
+    409,
+    { error: 'period_ended' },
+  ],
+  [
+    'a route the gateway does not hold',
+    { route: 'ghost', period: 'day', start: '2026-11-13', dollars: 0 },
+    404,
+    { error: 'unknown_route' },
+  ],
+  [
+    'a provider the gateway does not hold',
+    { provider: 'ghost', period: 'day', start: '2026-11-13', dollars: 0 },
+    404,
+    { error: 'unknown_provider' },
+  ],
+  [
+    'both a route and a provider',
+    { route: 'plan', provider: 'main', period: 'day', start: '2026-11-13', dollars: 0 },
+    400,
+    { error: 'bad_target' },
+  ],
+  [
+    'neither a route nor a provider',
+    { period: 'day', start: '2026-11-13', dollars: 0 },
+    400,
+    { error: 'bad_target' },
+  ],
+])('it refuses POST /count for %s', async (_name, body, status, answer) => {
+  const ctx = await setupTest();
+
+  await ctx.store.addSpend(ctx.plan, null, { dollars: 4, tokens: 1 });
+
+  const response = await ctx.call('POST', '/count', body);
+  const held = await ctx.store.read();
+
+  expect(response).toStrictEqual({ status, body: answer });
+  expect(held.routes['plan']?.day.micros).toBe(4_000_000);
+});
+
+test('it refuses a negative count with a 400', async () => {
+  const ctx = await setupTest();
+
+  const response = await ctx.call('POST', '/count', {
+    route: 'plan',
+    period: 'day',
+    start: '2026-11-13',
+    dollars: -1,
+  });
+
+  expect(response.status).toBe(400);
+});
+
+test.each([
+  ['the largest count that holds in micros', 9_007_199_254, 200, 9_007_199_254_000_000],
+  ['a count past what the store holds', 10_000_000_000, 400, 0],
+])('it answers POST /count for %s', async (_name, dollars, status, micros) => {
+  const ctx = await setupTest();
+
+  const response = await ctx.call('POST', '/count', {
+    route: 'plan',
+    period: 'day',
+    start: '2026-11-13',
+    dollars,
+  });
+
+  const held = await ctx.store.read();
+  const reread = await ctx.call('GET', '/status');
+
+  expect([response.status, held.routes['plan']?.day.micros, reread.status]).toStrictEqual([
+    status,
+    micros,
+    200,
+  ]);
+});
+
 test('it refuses a raise of the month with a 400', async () => {
   const ctx = await setupTest();
 
@@ -329,7 +592,7 @@ test('it refuses a raise of the month with a 400', async () => {
 test('it reports a trip on the route that reached its day limit and on no other', async () => {
   const ctx = await setupTest();
 
-  await ctx.store.addSpend('metered', null, { dollars: 5.2, tokens: 1 });
+  await ctx.store.addSpend(ctx.metered, null, { dollars: 5.2, tokens: 1 });
 
   const response = await ctx.call('GET', '/status');
 
@@ -346,11 +609,11 @@ test('it reports a trip on the route that reached its day limit and on no other'
 test('it reports the instant the day first reached its limit on a status read made later', async () => {
   const ctx = await setupTest();
 
-  await ctx.store.addSpend('metered', null, { dollars: 5.2, tokens: 1 });
+  await ctx.store.addSpend(ctx.metered, null, { dollars: 5.2, tokens: 1 });
 
   ctx.moveTo('2026-11-13T18:05:00Z');
 
-  await ctx.store.addSpend('metered', null, { dollars: 1, tokens: 1 });
+  await ctx.store.addSpend(ctx.metered, null, { dollars: 1, tokens: 1 });
 
   const response = await ctx.call('GET', '/status');
 
@@ -362,7 +625,7 @@ test('it reports the instant the day first reached its limit on a status read ma
 test('it clears a trip once a raise lifts the limit above the count', async () => {
   const ctx = await setupTest();
 
-  await ctx.store.addSpend('metered', null, { dollars: 5.2, tokens: 1 });
+  await ctx.store.addSpend(ctx.metered, null, { dollars: 5.2, tokens: 1 });
   await ctx.call('POST', '/raise', { route: 'metered', start: '2026-11-13', dollars: 9 });
 
   const response = await ctx.call('GET', '/status');
@@ -375,7 +638,7 @@ test('it clears a trip once a raise lifts the limit above the count', async () =
 test('it reports a trip that no longer holds once midnight has reset the day', async () => {
   const ctx = await setupTest();
 
-  await ctx.store.addSpend('metered', null, { dollars: 5.2, tokens: 1 });
+  await ctx.store.addSpend(ctx.metered, null, { dollars: 5.2, tokens: 1 });
 
   ctx.moveTo('2026-11-14T00:00:00Z');
 
@@ -399,7 +662,10 @@ test('it reports the lost mark', async () => {
 test('it reports the override as the limit in force while it applies to the day in force', async () => {
   const ctx = await setupTest();
 
-  await writeOverride(ctx.overridePath, { plan: { start: '2026-11-13', dollars: 200 } });
+  await writeOverride(ctx.overridePath, {
+    routes: { plan: { start: '2026-11-13', dollars: 200 } },
+    providers: {},
+  });
 
   const response = await ctx.call('GET', '/status');
 
@@ -409,7 +675,10 @@ test('it reports the override as the limit in force while it applies to the day 
 test('it ignores an override for a day that has ended', async () => {
   const ctx = await setupTest();
 
-  await writeOverride(ctx.overridePath, { plan: { start: '2026-11-12', dollars: 200 } });
+  await writeOverride(ctx.overridePath, {
+    routes: { plan: { start: '2026-11-12', dollars: 200 } },
+    providers: {},
+  });
 
   const response = await ctx.call('GET', '/status');
 
@@ -437,7 +706,7 @@ test('it sets the count of a sandbox that it already holds back to zero', async 
   const ctx = await setupTest();
 
   await ctx.call('PUT', '/sandboxes/alpha', { limit: null });
-  await ctx.store.addSpend('plan', 'alpha', { dollars: 0.41, tokens: 380_000 });
+  await ctx.store.addSpend(ctx.plan, 'alpha', { dollars: 0.41, tokens: 380_000 });
   await ctx.call('PUT', '/sandboxes/alpha', { limit: { dollars: 2, tokens: 2_000_000 } });
 
   const get = await ctx.call('GET', '/sandboxes/alpha');
@@ -455,7 +724,7 @@ test('it reports a sandbox past its limit as tripped', async () => {
   const ctx = await setupTest();
 
   await ctx.call('PUT', '/sandboxes/alpha', { limit: { dollars: 2, tokens: 2_000_000 } });
-  await ctx.store.addSpend('plan', 'alpha', { dollars: 2.5, tokens: 10 });
+  await ctx.store.addSpend(ctx.plan, 'alpha', { dollars: 2.5, tokens: 10 });
 
   const get = await ctx.call('GET', '/sandboxes/alpha');
 
@@ -472,7 +741,7 @@ test('it reports a sandbox with no limit as never tripped', async () => {
   const ctx = await setupTest();
 
   await ctx.call('PUT', '/sandboxes/alpha', { limit: null });
-  await ctx.store.addSpend('plan', 'alpha', { dollars: 500, tokens: 10 });
+  await ctx.store.addSpend(ctx.plan, 'alpha', { dollars: 500, tokens: 10 });
 
   const get = await ctx.call('GET', '/sandboxes/alpha');
 
@@ -489,12 +758,18 @@ test('it reports the last refusal of a sandbox', async () => {
   const ctx = await setupTest();
 
   await ctx.call('PUT', '/sandboxes/alpha', { limit: null });
-  await ctx.store.writeRefusal('alpha', { counter: 'route_day', route: 'plan', atMs: 99 });
+
+  await ctx.store.writeRefusal('alpha', {
+    counter: 'route_day',
+    route: 'plan',
+    provider: 'main',
+    atMs: 99,
+  });
 
   const get = await ctx.call('GET', '/sandboxes/alpha');
 
   expect(get.body).toMatchObject({
-    lastRefusal: { counter: 'route_day', route: 'plan', atMs: 99 },
+    lastRefusal: { counter: 'route_day', route: 'plan', provider: 'main', atMs: 99 },
   });
 });
 
@@ -528,8 +803,14 @@ test('it sets the limit of a sandbox whole with a patch and keeps its count', as
   const ctx = await setupTest();
 
   await ctx.call('PUT', '/sandboxes/alpha', { limit: { dollars: 2, tokens: 2_000_000 } });
-  await ctx.store.addSpend('plan', 'alpha', { dollars: 0.5, tokens: 40 });
-  await ctx.store.writeRefusal('alpha', { counter: 'route_day', route: 'plan', atMs: 99 });
+  await ctx.store.addSpend(ctx.plan, 'alpha', { dollars: 0.5, tokens: 40 });
+
+  await ctx.store.writeRefusal('alpha', {
+    counter: 'route_day',
+    route: 'plan',
+    provider: 'main',
+    atMs: 99,
+  });
 
   const patch = await ctx.call('PATCH', '/sandboxes/alpha', { limit: { dollars: 0.5 } });
   const get = await ctx.call('GET', '/sandboxes/alpha');
@@ -540,7 +821,7 @@ test('it sets the limit of a sandbox whole with a patch and keeps its count', as
     dollars: 0.5,
     tokens: 40,
     tripped: true,
-    lastRefusal: { counter: 'route_day', route: 'plan', atMs: 99 },
+    lastRefusal: { counter: 'route_day', route: 'plan', provider: 'main', atMs: 99 },
     limitRevision: 2,
   });
 });
@@ -664,7 +945,7 @@ test('it sets no token limit for a patched limit with no tokens', async () => {
   const ctx = await setupTest();
 
   await ctx.call('PUT', '/sandboxes/alpha', { limit: null });
-  await ctx.store.addSpend('plan', 'alpha', { dollars: 0.1, tokens: 900_000_000 });
+  await ctx.store.addSpend(ctx.plan, 'alpha', { dollars: 0.1, tokens: 900_000_000 });
   await ctx.call('PATCH', '/sandboxes/alpha', { limit: { dollars: 5 } });
 
   const get = await ctx.call('GET', '/sandboxes/alpha');
@@ -676,7 +957,7 @@ test('it clears the limit of a sandbox with a patch of null', async () => {
   const ctx = await setupTest();
 
   await ctx.call('PUT', '/sandboxes/alpha', { limit: { dollars: 1 } });
-  await ctx.store.addSpend('plan', 'alpha', { dollars: 3, tokens: 1 });
+  await ctx.store.addSpend(ctx.plan, 'alpha', { dollars: 3, tokens: 1 });
   await ctx.call('PATCH', '/sandboxes/alpha', { limit: null });
 
   const get = await ctx.call('GET', '/sandboxes/alpha');

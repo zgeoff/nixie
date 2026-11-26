@@ -165,6 +165,10 @@
         "@heynixie/spend": "workspace:*",
         "zod": "catalog:",
       },
+      "devDependencies": {
+        "@heynixie/mock-server": "workspace:*",
+        "msw": "catalog:",
+      },
     },
     "apps/backup-job": {
       "name": "@heynixie/backup-job",

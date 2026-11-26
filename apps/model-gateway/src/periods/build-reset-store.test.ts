@@ -41,8 +41,9 @@ function setupTest() {
   };
 
   const store: PeriodStore = {
-    version: 3,
+    version: 4,
     lost: false,
+    providers: { main: metered },
     routes: { plan, metered },
     sandboxes: {},
   };
@@ -57,7 +58,7 @@ test('#buildResetStore keeps the count of a period that began in another zone un
   expect(reset).toBe(ctx.store);
 });
 
-test('#buildResetStore resets the day of every route at its end, in the new zone, and keeps the month', () => {
+test('#buildResetStore resets the day of every route and provider at its end, in the new zone, and keeps the month', () => {
   const ctx = setupTest();
   const reset = buildResetStore(ctx.store, Date.parse('2026-11-25T00:00:00Z'), 'Pacific/Auckland');
 
@@ -69,8 +70,11 @@ test('#buildResetStore resets the day of every route at its end, in the new zone
     trippedAt: null,
   };
 
-  expect(reset.routes).toStrictEqual({
-    plan: { day: fresh, month: ctx.plan.month },
-    metered: { day: fresh, month: ctx.metered.month },
-  });
+  expect([reset.routes, reset.providers]).toStrictEqual([
+    {
+      plan: { day: fresh, month: ctx.plan.month },
+      metered: { day: fresh, month: ctx.metered.month },
+    },
+    { main: { day: fresh, month: ctx.metered.month } },
+  ]);
 });

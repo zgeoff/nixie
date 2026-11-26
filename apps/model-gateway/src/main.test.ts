@@ -39,8 +39,12 @@ test('it serves the routes of its config until SIGINT, then exits 0', async () =
       'listen: { port: 0 }',
       `store: ${join(ctx.directory, 'counter.json')}`,
       ...ctx.periodsLines,
+      'providers:',
+      '  main:',
+      '    limits: { day: 1000, month: 10000 }',
       'routes:',
       '  preview:',
+      '    provider: main',
       `    upstream: ${ctx.model.url}`,
       '    model: model-small',
       '    prices: { input: 1, cache_write: 1.25, cache_write_1h: 2, cached_input: 0.1, output: 5 }',
@@ -82,6 +86,7 @@ test('it serves the routes of its config until SIGINT, then exits 0', async () =
 
   expect(stored).toMatchObject({
     routes: { preview: { day: { micros: 2600 }, month: { micros: 2600 } } },
+    providers: { main: { day: { micros: 2600 }, month: { micros: 2600 } } },
   });
 });
 
@@ -95,8 +100,12 @@ test('it exits 1 for a config with a limit that spans routes', async () => {
       `store: ${join(ctx.directory, 'counter.json')}`,
       'limits: { dollars: 1 }',
       ...ctx.periodsLines,
+      'providers:',
+      '  main:',
+      '    limits: { day: 1000, month: 10000 }',
       'routes:',
       '  preview:',
+      '    provider: main',
       `    upstream: ${ctx.model.url}`,
       '    model: model-small',
       '    prices: { input: 1, cache_write: 1.25, cache_write_1h: 2, cached_input: 0.1, output: 5 }',
@@ -124,8 +133,12 @@ test('it writes the override for the route and the day in force from the raise c
       'periods: { zone: Europe/London }',
       `control: { listen: { port: 0 }, tokenFile: ${join(ctx.directory, 'token')} }`,
       `override: ${join(ctx.directory, 'override.json')}`,
+      'providers:',
+      '  main:',
+      '    limits: { day: 1000, month: 10000 }',
       'routes:',
       '  preview:',
+      '    provider: main',
       `    upstream: ${ctx.model.url}`,
       '    model: model-small',
       '    prices: { input: 1, cache_write: 1.25, cache_write_1h: 2, cached_input: 0.1, output: 5 }',
@@ -154,7 +167,57 @@ test('it writes the override for the route and the day in force from the raise c
   expect(code).toBe(0);
 
   expect(written).toStrictEqual({
-    preview: { start: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/u), dollars: 200 },
+    routes: { preview: { start: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/u), dollars: 200 } },
+    providers: {},
+  });
+});
+
+test('it writes the override for a provider from the raise command with --provider and exits 0', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(
+    join(ctx.directory, 'proxy.yaml'),
+    [
+      'listen: { port: 0 }',
+      `store: ${join(ctx.directory, 'counter.json')}`,
+      'periods: { zone: Europe/London }',
+      `control: { listen: { port: 0 }, tokenFile: ${join(ctx.directory, 'token')} }`,
+      `override: ${join(ctx.directory, 'override.json')}`,
+      'providers:',
+      '  main:',
+      '    limits: { day: 10, month: 100 }',
+      'routes:',
+      '  preview:',
+      '    provider: main',
+      `    upstream: ${ctx.model.url}`,
+      '    model: model-small',
+      '    prices: { input: 1, cache_write: 1.25, cache_write_1h: 2, cached_input: 0.1, output: 5 }',
+    ].join('\n'),
+  );
+
+  const child = Bun.spawn(
+    [
+      process.execPath,
+      ctx.entry,
+      'raise',
+      '--config',
+      join(ctx.directory, 'proxy.yaml'),
+      '--provider',
+      'main',
+      '--dollars',
+      '50',
+    ],
+    { stdin: 'ignore', stdout: 'ignore', stderr: 'ignore' },
+  );
+
+  const code = await child.exited;
+  const written: unknown = await Bun.file(join(ctx.directory, 'override.json')).json();
+
+  expect(code).toBe(0);
+
+  expect(written).toStrictEqual({
+    routes: {},
+    providers: { main: { start: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/u), dollars: 50 } },
   });
 });
 
@@ -167,8 +230,12 @@ test('it exits 1 from the raise command for a config with no override file', asy
       'listen: { port: 0 }',
       `store: ${join(ctx.directory, 'counter.json')}`,
       ...ctx.periodsLines,
+      'providers:',
+      '  main:',
+      '    limits: { day: 1000, month: 10000 }',
       'routes:',
       '  preview:',
+      '    provider: main',
       `    upstream: ${ctx.model.url}`,
       '    model: model-small',
       '    prices: { input: 1, cache_write: 1.25, cache_write_1h: 2, cached_input: 0.1, output: 5 }',
@@ -207,8 +274,12 @@ test.each(['chatgpt-login', 'chatgpt-logout'])(
         'listen: { port: 0 }',
         `store: ${join(ctx.directory, 'counter.json')}`,
         ...ctx.periodsLines,
+        'providers:',
+        '  main:',
+        '    limits: { day: 1000, month: 10000 }',
         'routes:',
         '  preview:',
+        '    provider: main',
         `    upstream: ${ctx.model.url}`,
         '    model: model-small',
         '    prices: { input: 1, cache_write: 1.25, cache_write_1h: 2, cached_input: 0.1, output: 5 }',
@@ -249,8 +320,12 @@ test('it removes the login file of a route from the chatgpt-logout command and e
       `store: ${join(ctx.directory, 'counter.json')}`,
       'periods: { zone: Europe/London }',
       `control: { listen: { port: 0 }, tokenFile: ${join(ctx.directory, 'token')} }`,
+      'providers:',
+      '  main:',
+      '    limits: { day: 1000, month: 10000 }',
       'routes:',
       '  codex-plan:',
+      '    provider: main',
       '    api: openai-responses',
       `    upstream: ${ctx.model.url}`,
       '    model: model-o',

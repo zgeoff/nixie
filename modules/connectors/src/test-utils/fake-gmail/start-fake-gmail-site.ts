@@ -1,6 +1,11 @@
 import { startTestSite } from '@heynixie/egress/test-utils';
 import type { GmailAccess, GmailDeps } from '../../google/gmail/types';
 import type { ConnectorContext } from '../../types';
+import { createFakeCalendar } from '../fake-calendar/create-fake-calendar';
+import type { FakeCalendar } from '../fake-calendar/types';
+import { createFakeDrive } from '../fake-drive/create-fake-drive';
+import type { FakeDrive } from '../fake-drive/types';
+import { serveFakeGoogle } from '../serve-fake-google';
 import type { FakeHold } from './build-fake-hold';
 import { buildFakeHold } from './build-fake-hold';
 import type { FakeGmail } from './create-fake-gmail';
@@ -12,6 +17,10 @@ interface FakeConnectionOptions {
 
 export interface FakeGmailSite {
   readonly gmail: FakeGmail;
+
+  // the Calendar and Drive of the same account, which answer on Google's API paths
+  readonly calendar: FakeCalendar;
+  readonly drive: FakeDrive;
   readonly origin: string;
   readonly context: ConnectorContext;
   readonly access: GmailAccess;
@@ -38,11 +47,13 @@ export interface FakeGmailSite {
 // store's fetcher does for Google's host.
 export async function startFakeGmailSite(connection = 'k3x9m2p7qa'): Promise<FakeGmailSite> {
   const gmail = createFakeGmail();
+  const calendar = createFakeCalendar(gmail.account);
+  const drive = createFakeDrive();
 
   const site = await startTestSite({
     names: ['localhost'],
     respond: async (request) => {
-      const answered = await gmail.serve(request);
+      const answered = await serveFakeGoogle(request, [gmail, calendar, drive]);
 
       return answered ?? new Response('Not found.', { status: 404 });
     },
@@ -67,6 +78,8 @@ export async function startFakeGmailSite(connection = 'k3x9m2p7qa'): Promise<Fak
 
   return {
     gmail,
+    calendar,
+    drive,
     origin,
     context,
     addConnection: (added, options) => {

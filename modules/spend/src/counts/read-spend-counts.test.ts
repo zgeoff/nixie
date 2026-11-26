@@ -3,7 +3,7 @@ import { buildMockGatewayStatus } from '../test-utils/build-stub-spend-gateway';
 import { startTestSpend } from '../test-utils/start-test-spend';
 import { readSpendCounts } from './read-spend-counts';
 
-test('it gives each route its day and month count and limit in US dollars', async () => {
+test('it gives each provider and each route its day and month count and limit in US dollars', async () => {
   const ctx = await startTestSpend();
 
   ctx.gateway.readStatus.mockResolvedValue({
@@ -14,16 +14,25 @@ test('it gives each route its day and month count and limit in US dollars', asyn
   const counts = await readSpendCounts(ctx.context);
 
   expect(counts).toStrictEqual({
+    providers: [
+      {
+        provider: 'main',
+        day: { start: '2026-11-13', dollars: 0, limit: 100, tripped: false },
+        month: { start: '2026-11-01', dollars: 0, limit: 1000, tripped: false },
+      },
+    ],
     routes: [
       {
         route: 'plan',
-        day: { dollars: 0, limit: 40, tripped: false },
-        month: { dollars: 0, limit: 600, tripped: false },
+        provider: 'main',
+        day: { start: '2026-11-13', dollars: 0, limit: 40, tripped: false },
+        month: { start: '2026-11-01', dollars: 0, limit: 600, tripped: false },
       },
       {
         route: 'metered',
-        day: { dollars: 0, limit: 5, tripped: false },
-        month: { dollars: 0, limit: 600, tripped: false },
+        provider: 'main',
+        day: { start: '2026-11-13', dollars: 0, limit: 5, tripped: false },
+        month: { start: '2026-11-01', dollars: 0, limit: 600, tripped: false },
       },
     ],
     display: null,
@@ -37,7 +46,7 @@ test('it gives no route when the gateway does not answer', async () => {
 
   const counts = await readSpendCounts(ctx.context);
 
-  expect(counts.routes).toStrictEqual([]);
+  expect([counts.routes, counts.providers]).toStrictEqual([[], []]);
 });
 
 test('it names the display currency with its rate', async () => {

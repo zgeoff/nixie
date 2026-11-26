@@ -3,6 +3,7 @@ import { readRecords } from '@heynixie/log';
 import { waitFor } from '@zgeoff/testing';
 import invariant from 'tiny-invariant';
 import { connectCall } from '../connect/connect-call';
+import { readCallView } from '../connect/read-call-view';
 import { runCallSweep } from '../meter/run-call-sweep';
 import { startCall } from '../start/start-call';
 import { probeStubbedCaller, startTestCalls } from '../test-utils';
@@ -495,26 +496,69 @@ test('it records the fixed line of a failed turn as speech layer speech on the c
   expect(spoke?.erasable).toMatchObject({ fields: { text: "I couldn't finish that one." } });
 });
 
-test('it ends the call as dropped, and stops its charges, when the speech session drops', async () => {
+test('it waits 30 s for a new offer when the speech session drops, then ends the call as dropped with no more charges', async () => {
   const ctx = await setupTest();
 
   ctx.speech.emit(ctx.sessionID, { kind: 'dropped' });
 
   await waitFor(async () => {
-    const call = await readCall(ctx.writer.db, ctx.callID);
+    const view = await readCallView(ctx.context, ctx.callID);
 
-    expect(call?.state).toBe('ended');
+    expect(view?.reconnect).toBe('dropped');
   });
 
-  ctx.clock.advance(180_000);
+  ctx.clock.advance(30_000);
 
   await runCallSweep(ctx.context);
 
   const call = await readCall(ctx.writer.db, ctx.callID);
 
-  expect([call?.endedBy, call?.minutes, ctx.context.sessions.has(ctx.callID)]).toStrictEqual([
-    'dropped',
-    1,
-    false,
-  ]);
+  expect([
+    call?.state,
+    call?.endedBy,
+    call?.minutes,
+    ctx.context.sessions.has(ctx.callID),
+  ]).toStrictEqual(['ended', 'dropped', 1, false]);
+});
+
+test('it sends no answer to the new speech session for a hand-off that the old session made', async () => {
+  const ctx = await setupTest();
+
+  ctx.speech.emit(ctx.sessionID, {
+    kind: 'hand_off',
+    handOffID: 'h1',
+    request: 'what is on today',
+  });
+
+  await waitFor(async () => {
+    const thread = await ctx.readThread();
+
+    expect(thread).toHaveLength(1);
+  });
+
+  ctx.speech.emit(ctx.sessionID, { kind: 'dropped' });
+
+  await waitFor(async () => {
+    const view = await readCallView(ctx.context, ctx.callID);
+
+    expect(view?.reconnect).toBe('dropped');
+  });
+
+  await connectCall(ctx.context, {
+    callID: ctx.callID,
+    session: 'identity-1',
+    sdpOffer: 'offer-2',
+    probeCaller: probeStubbedCaller,
+  });
+
+  await sendTurnAnswer(ctx.context, {
+    callID: ctx.callID,
+    taskID: ctx.taskID,
+    handOffID: 'h1',
+    replies: ['You have two things today.'],
+    replyRecordID: '12',
+    isFailed: false,
+  });
+
+  expect(ctx.speech.calls.filter((call) => call.method === 'answer')).toStrictEqual([]);
 });

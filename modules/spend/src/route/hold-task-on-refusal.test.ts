@@ -58,7 +58,12 @@ test('it answers that the gateway refused the step when the limit has reset sinc
       dollars: 0,
       tokens: 0,
       tripped: false,
-      lastRefusal: { counter: 'route_day', route: 'plan', atMs: startedAtMs + 1000 },
+      lastRefusal: {
+        counter: 'route_day',
+        route: 'plan',
+        provider: 'main',
+        atMs: startedAtMs + 1000,
+      },
       limitRevision: 0,
     },
   });
@@ -86,7 +91,12 @@ test('it ignores a refusal that the gateway recorded before the step began', asy
       dollars: 0,
       tokens: 0,
       tripped: false,
-      lastRefusal: { counter: 'route_day', route: 'plan', atMs: startedAtMs - 1000 },
+      lastRefusal: {
+        counter: 'route_day',
+        route: 'plan',
+        provider: 'main',
+        atMs: startedAtMs - 1000,
+      },
       limitRevision: 0,
     },
   });

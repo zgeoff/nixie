@@ -5,7 +5,7 @@ import invariant from 'tiny-invariant';
 import { connectCall } from '../connect/connect-call';
 import { hangUpCall } from '../hang-up/hang-up-call';
 import { startCall } from '../start/start-call';
-import { probeStubbedCaller, startTestCalls } from '../test-utils';
+import { buildTestCallsContext, probeStubbedCaller, startTestCalls } from '../test-utils';
 import { readCall } from '../utils/read-call';
 import { runCallSweep } from './run-call-sweep';
 
@@ -125,18 +125,32 @@ test('it leaves a call that connects within 30 s alone', async () => {
   expect([call?.state, call?.minutes]).toStrictEqual(['live', 1]);
 });
 
-test('it ends a live call whose speech session this process lost as dropped', async () => {
+test('it keeps a live call whose speech session this process lost for 30 s, then ends it as dropped', async () => {
   const ctx = await setupTest();
 
   await ctx.connect();
 
-  ctx.context.sessions.clear();
+  const restarted = buildTestCallsContext({ log: ctx.log, clock: ctx.clock });
 
-  await runCallSweep(ctx.context);
+  await runCallSweep(restarted.context);
 
-  const call = await readCall(ctx.writer.db, ctx.callID);
+  ctx.clock.advance(29_000);
 
-  expect([call?.state, call?.endedBy]).toStrictEqual(['ended', 'dropped']);
+  await runCallSweep(restarted.context);
+
+  const waiting = await readCall(ctx.writer.db, ctx.callID);
+
+  ctx.clock.advance(1000);
+
+  await runCallSweep(restarted.context);
+
+  const ended = await readCall(ctx.writer.db, ctx.callID);
+
+  expect([waiting?.state, ended?.state, ended?.endedBy]).toStrictEqual([
+    'live',
+    'ended',
+    'dropped',
+  ]);
 });
 
 test('it closes the speech session of a budget end when the budget line fails, and logs the failure', async () => {

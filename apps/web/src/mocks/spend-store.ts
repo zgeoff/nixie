@@ -12,16 +12,29 @@ const raises = new Collection({
   schema: z.object({
     start: z.string(),
     route: z.string().optional(),
+    provider: z.string().optional(),
     dollars: z.number().optional(),
     turns: z.number().optional(),
   }),
 });
 
+const countSets = new Collection({
+  schema: z.object({
+    route: z.string().optional(),
+    provider: z.string().optional(),
+    period: z.enum(['day', 'month']),
+    start: z.string(),
+    dollars: z.number(),
+  }),
+});
+
 export const spendStore = {
+  countSets,
   raises,
   reset: (): void => {
     stops.clear();
     raises.clear();
+    countSets.clear();
     counts.clear();
   },
   counts,

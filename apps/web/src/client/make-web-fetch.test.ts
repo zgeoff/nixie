@@ -308,6 +308,20 @@ test.each(['/', '/computer', '/device'])(
   },
 );
 
+test('it lets a page keep the window of Google sign-in that it opens', async () => {
+  const ctx = await setupTest();
+
+  const webFetch = makeWebFetch({
+    apiURL: 'http://127.0.0.1:9',
+    clientDir: ctx.clientDir,
+    startFetch: () => new Response('page'),
+  });
+
+  const response = await webFetch(new Request('http://web.test/settings/connections'));
+
+  expect(response.headers.get('cross-origin-opener-policy')).toBe('same-origin-allow-popups');
+});
+
 test('it keeps the conversation page to the frame rule alone in its content security policy', async () => {
   const ctx = await setupTest();
 

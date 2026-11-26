@@ -38,6 +38,9 @@ export interface ActionAttempt {
   // epoch ms when the attempt began; a check of an earlier attempt gets the time of that attempt
   readonly attemptStartedAt?: number;
 
+  // epoch ms when the queue recorded the action, the same for every attempt and check of it
+  readonly queuedAt?: number;
+
   // the hash the queue holds the action under, and the deadline it covers, so a connector can tell
   // which of its prepared calls the owner answered
   readonly actionHash: string;

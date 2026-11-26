@@ -69,6 +69,27 @@ export type SpendStop =
       readonly cap: number;
     };
 
+// A provider that reached its day or month limit in US dollars. The work on every route of the
+// provider waits.
+export interface ProviderTrip {
+  readonly provider: string;
+
+  // the provider's routes in the gateway's status, which the stop holds
+  readonly routes: readonly string[];
+  readonly period: PeriodName;
+
+  // the ISO date of the period's first day, which a raise names
+  readonly start: string;
+  readonly limit: number;
+  readonly spent: number;
+  readonly at: number;
+  readonly resetsAt: number;
+  readonly canRaise: boolean;
+
+  // the most a raise of the day reaches, null on the month
+  readonly cap: number | null;
+}
+
 // A route that reached its day or month limit in US dollars. Only the work on the route waits.
 export interface RouteTrip {
   readonly route: string;
@@ -108,7 +129,14 @@ export interface RoutePeriodStatus {
   readonly sinceMs: number | null;
 }
 
+export interface ProviderStatus {
+  readonly day: RoutePeriodStatus;
+  readonly month: RoutePeriodStatus;
+}
+
 export interface RouteStatus {
+  // the provider whose limits bind the route, empty from a gateway that names none
+  readonly provider: string;
   readonly day: RoutePeriodStatus;
   readonly month: RoutePeriodStatus;
 }
@@ -116,6 +144,9 @@ export interface RouteStatus {
 export interface GatewayStatus {
   readonly zone: string;
   readonly lost: boolean;
+
+  // none from a gateway that holds no provider
+  readonly providers: Readonly<Record<string, ProviderStatus>>;
   readonly routes: Readonly<Record<string, RouteStatus>>;
 }
 
@@ -138,12 +169,20 @@ export interface PlanLoginsHolder {
   readonly write: (logins: PlanLogins) => void;
 }
 
-export type RefusalCounter = 'route_day' | 'route_month' | 'sandbox';
+export type RefusalCounter =
+  | 'route_day'
+  | 'route_month'
+  | 'provider_day'
+  | 'provider_month'
+  | 'sandbox';
 
 // The last request that a sandbox's count refused
 export interface SandboxRefusal {
   readonly counter: RefusalCounter;
   readonly route: string;
+
+  // the route's provider, empty on a refusal that an older gateway stored
+  readonly provider: string;
   readonly atMs: number;
 }
 
@@ -163,8 +202,21 @@ export interface SandboxLimit {
   readonly tokens?: number;
 }
 
+// The one route or provider that a raise or a count change names
+export type LimitTarget =
+  | { readonly kind: 'route'; readonly id: string }
+  | { readonly kind: 'provider'; readonly id: string };
+
 export interface GatewayRaise {
-  readonly route: string;
+  readonly target: LimitTarget;
+  readonly start: string;
+  readonly dollars: number;
+}
+
+// One period's count, set to the dollars given
+export interface GatewayCountSet {
+  readonly target: LimitTarget;
+  readonly period: PeriodName;
   readonly start: string;
   readonly dollars: number;
 }
@@ -178,8 +230,15 @@ export interface Unreachable {
 
 export interface AboveCap {
   readonly kind: 'above_cap';
-  readonly route: string;
+  readonly route: string | null;
+  readonly provider: string | null;
   readonly cap: number;
+}
+
+// A raise named a route that has no limit of its own, which its provider's limits bind
+export interface NoRouteLimit {
+  readonly kind: 'no_route_limit';
+  readonly route: string;
 }
 
 export interface PeriodEnded {
@@ -193,6 +252,10 @@ export interface NotFound {
 // A write of the sandbox's limit landed after the read that a conditional patch named
 export interface RevisionChanged {
   readonly kind: 'revision_changed';
+}
+
+export interface CountReplaced {
+  readonly replacedDollars: number;
 }
 
 export type Done<Value = undefined> = Value extends undefined
@@ -210,7 +273,13 @@ export interface SpendGateway {
   >;
   readonly postRaise: (
     raise: GatewayRaise,
-  ) => Promise<Done<GatewayStatus> | AboveCap | PeriodEnded | Unreachable>;
+  ) => Promise<Done | AboveCap | NoRouteLimit | NotFound | PeriodEnded | Unreachable>;
+
+  // sets one period's count of a route or a provider, and changes no limit. It answers the dollars
+  // the period held when the gateway replaced them.
+  readonly postCount: (
+    change: GatewayCountSet,
+  ) => Promise<Done<CountReplaced> | NotFound | PeriodEnded | Unreachable>;
 
   // sets the sandbox's limit, or null to count only, and sets its count to zero
   readonly putSandbox: (name: string, limit: Measures | null) => Promise<Done | Unreachable>;
@@ -232,6 +301,15 @@ interface SpendRaiseTable {
   readonly dollars: number;
   readonly tokens: number;
   readonly turns: number;
+  readonly raised_by: string;
+  readonly at: number;
+  readonly updated_sequence: number;
+}
+
+interface SpendProviderRaiseTable {
+  readonly provider_id: string;
+  readonly start: string;
+  readonly dollars: number;
   readonly raised_by: string;
   readonly at: number;
   readonly updated_sequence: number;
@@ -260,6 +338,7 @@ export type SpendTables = CheckedTables<
   Readonly<{
     spend_raises: SpendRaiseTable;
     spend_route_raises: SpendRouteRaiseTable;
+    spend_provider_raises: SpendProviderRaiseTable;
     spend_turns: SpendTurnTable;
     spend_turns_folded: SpendTurnsFoldedTable;
   }>
