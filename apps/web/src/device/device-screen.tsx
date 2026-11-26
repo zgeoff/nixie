@@ -59,7 +59,12 @@ export function DeviceScreen(props: DeviceScreenProps): ReactNode {
     <>
       {events.layout === null ? null : (
         <div className={surface.kind === 'layout' ? undefined : covered}>
-          <LayoutView layout={events.layout} messages={events.messages} onTouch={touch.reveal} />
+          <LayoutView
+            layout={events.layout}
+            messages={events.messages}
+            notices={events.notices}
+            onTouch={touch.reveal}
+          />
         </div>
       )}
       {surface.kind === 'layout' ? null : <ScreenView blocks={surface.blocks} />}

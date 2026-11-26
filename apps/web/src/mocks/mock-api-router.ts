@@ -14,6 +14,7 @@ import { mockImageProcedures } from './mock-image-procedures';
 import { mockImplementer } from './mock-implementer';
 import { mockLiveProcedures } from './mock-live-procedures';
 import { mockMandateProcedures } from './mock-mandate-procedures';
+import { mockMcpProcedures } from './mock-mcp-procedures';
 import { mockMemoryRouter } from './mock-memory-router';
 import { mockNotebookProcedures } from './mock-notebook-procedures';
 import { mockPasskeyProcedures } from './mock-passkey-procedures';
@@ -55,6 +56,7 @@ export const mockAPIRouter = os.router({
   calls: mockCallsProcedures,
   computer: mockComputerProcedures,
   connections: mockConnectionProcedures,
+  mcp: mockMcpProcedures,
   devices: mockDeviceProcedures,
   erasure: mockErasureProcedures,
   notebook: mockNotebookProcedures,

@@ -2,7 +2,11 @@ import { expect, test } from 'bun:test';
 import { seedImage } from '@heynixie/connectors/test-utils';
 import { clientHeaderName, contract, sessionCookieName } from '@heynixie/contract';
 import { readDeviceByIdentity } from '@heynixie/devices';
-import { makeDeviceToolCaller } from '@heynixie/devices/test-utils';
+import {
+  buildTestFetching,
+  makeDeviceToolCaller,
+  seedDevicePackage,
+} from '@heynixie/devices/test-utils';
 import type { JSONObject } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
 import { createConversationTask } from '@heynixie/tasks';
@@ -49,6 +53,10 @@ async function setupTest() {
     definitions: api.context.definitions,
     clock: api.context.clock,
     streams: api.context.clients.devices,
+    fetching: buildTestFetching({
+      clock: api.context.clock,
+      allowedHosts: ['tides.example'],
+    }).fetching,
   });
 
   // a device whose screen is on and follows its stream, with a layout of one region that holds
@@ -614,6 +622,7 @@ test('it lets a device session reach only the paths of its own device', async ()
     '/rpc/devices/resize',
     '/rpc/devices/pageError',
     '/rpc/devices/pageEvent',
+    '/rpc/devices/pageData',
     '/rpc/devices/setCapability',
     '/rpc/devices/readImage',
     '/rpc/live/follow',
@@ -1328,4 +1337,161 @@ test('it serves a declared image by its image ticket and no other image', async 
   const bytes = new Uint8Array(buffer);
 
   expect([image.status, bytes, other.status]).toStrictEqual([200, new Uint8Array([1, 2, 3]), 404]);
+});
+
+test('it serves a file of an approved package, with no session and a long cache', async () => {
+  const ctx = await setupTest();
+
+  await seedDevicePackage(
+    {
+      log: ctx.context.log,
+      definitions: ctx.context.definitions,
+      clock: ctx.context.clock,
+      streams: ctx.context.clients.devices,
+    },
+    'chart.js@4.4.6',
+    { 'dist/chart.js': 'var Chart = 1;' },
+  );
+
+  const response = await fetch(`${ctx.url}/rpc/device/packages/chart.js@4.4.6/dist/chart.js`);
+
+  expect([
+    response.status,
+    await response.text(),
+    response.headers.get('content-type'),
+    response.headers.get('x-content-type-options'),
+    response.headers.get('cache-control'),
+  ]).toStrictEqual([
+    200,
+    'var Chart = 1;',
+    'text/javascript; charset=utf-8',
+    'nosniff',
+    'public, max-age=31536000, immutable',
+  ]);
+});
+
+test('it serves a file of a scoped package', async () => {
+  const ctx = await setupTest();
+
+  await seedDevicePackage(
+    {
+      log: ctx.context.log,
+      definitions: ctx.context.definitions,
+      clock: ctx.context.clock,
+      streams: ctx.context.clients.devices,
+    },
+    '@scope/pkg@1.0.0',
+    { 'index.js': 'var scoped = 1;' },
+  );
+
+  const response = await fetch(`${ctx.url}/rpc/device/packages/@scope/pkg@1.0.0/index.js`);
+
+  expect([response.status, await response.text()]).toStrictEqual([200, 'var scoped = 1;']);
+});
+
+test.each([
+  ['a package nobody approved', '/rpc/device/packages/d3@7.9.0/dist/d3.js'],
+  ['a version nobody approved', '/rpc/device/packages/chart.js@4.4.5/dist/chart.js'],
+  ['a path that the package does not hold', '/rpc/device/packages/chart.js@4.4.6/secret.js'],
+])('it answers 404 for %s', async (_title, path) => {
+  const ctx = await setupTest();
+
+  await seedDevicePackage(
+    {
+      log: ctx.context.log,
+      definitions: ctx.context.definitions,
+      clock: ctx.context.clock,
+      streams: ctx.context.clients.devices,
+    },
+    'chart.js@4.4.6',
+    { 'dist/chart.js': 'var Chart = 1;' },
+  );
+
+  const response = await fetch(`${ctx.url}${path}`);
+
+  expect(response.status).toBe(404);
+});
+
+test('it answers a page the fetch that its region declared, and refuses the others', async () => {
+  const ctx = await setupTest();
+
+  const page = await ctx.startRegionDevice({
+    kind: 'html',
+    html: '<p>tides</p>',
+    fetches: [{ url: 'https://tides.example/today' }],
+  });
+
+  const streams = ctx.context.clients.devices;
+  const shown = page.shown ?? '';
+  const url = 'https://tides.example/today';
+
+  const notReady = await page.client.devices
+    .pageData({ region: 'pond', shown, url })
+    .catch((error: unknown) => error);
+
+  streams.fetches.record(
+    { deviceID: page.deviceID, region: 'pond', shown, url },
+    {
+      kind: 'body',
+      status: 200,
+      type: 'application/json',
+      body: '{"high":"14:05"}',
+      fetchedAtMs: Date.parse('2026-11-21T08:00:00.000Z'),
+    },
+  );
+
+  const answered = await page.client.devices.pageData({ region: 'pond', shown, url });
+
+  const undeclared = await page.client.devices
+    .pageData({ region: 'pond', shown, url: 'https://other.example/x' })
+    .catch((error: unknown) => error);
+
+  const stale = await page.client.devices
+    .pageData({ region: 'pond', shown: 'zzzzzzzzzz', url })
+    .catch((error: unknown) => error);
+
+  page.stop();
+
+  expect([notReady, undeclared, stale]).toMatchObject([
+    { code: 'NOT_READY' },
+    { code: 'NOT_DECLARED' },
+    { code: 'STALE' },
+  ]);
+
+  expect(answered).toStrictEqual({
+    status: 200,
+    type: 'application/json',
+    body: '{"high":"14:05"}',
+    fetchedAt: '2026-11-21T08:00:00.000Z',
+  });
+});
+
+test('it answers a refused fetch to the page as REFUSED', async () => {
+  const ctx = await setupTest();
+
+  const page = await ctx.startRegionDevice({
+    kind: 'html',
+    html: '<p>tides</p>',
+    fetches: [{ url: 'https://tides.example/today' }],
+  });
+
+  const streams = ctx.context.clients.devices;
+  const shown = page.shown ?? '';
+  const url = 'https://tides.example/today';
+
+  streams.fetches.record(
+    { deviceID: page.deviceID, region: 'pond', shown, url },
+    {
+      kind: 'refused',
+      reason: 'the rules no longer allow it',
+    },
+  );
+
+  const refused = await page.client.devices
+    .pageData({ region: 'pond', shown, url })
+    .catch((error: unknown) => error);
+
+  page.stop();
+
+  expect(refused).toMatchObject({ code: 'REFUSED' });
 });

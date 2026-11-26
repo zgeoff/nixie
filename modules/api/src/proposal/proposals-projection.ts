@@ -3,6 +3,7 @@ import {
   mapProposedRuleRecord,
   mapRuleProposalRecord,
 } from '@heynixie/definitions';
+import { mapMcpProposalRecord } from '@heynixie/mcp';
 import { mapMemoryProposalRecord } from '@heynixie/memory';
 import { mapActionProposalRecord } from '@heynixie/policy';
 import { buildProposalsProjection } from '@heynixie/proposals';
@@ -16,4 +17,5 @@ export const proposalsProjection = buildProposalsProjection([
   mapRuleProposalRecord,
   mapProposedRuleRecord,
   mapMandateRecord,
+  mapMcpProposalRecord,
 ]);

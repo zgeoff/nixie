@@ -78,6 +78,7 @@ export type {
   ActionConnector,
   CheckResponse,
   Connector,
+  ConnectorLookup,
   ConnectorAction,
   ConnectionRef,
   ConnectorContext,
@@ -107,6 +108,7 @@ export { webFetchConfigSchema } from './web/web-fetch-config-schema';
 export type { WebFetchConfig } from './web/web-fetch-defaults';
 export { webFetchDefaults } from './web/web-fetch-defaults';
 export type { IsOwnerTyped } from './page/secret-scan';
+export type { HopVerdict } from './page/gate-page-hops';
 export type { ComputerTools } from './computer/build-computer-tools';
 
 export {

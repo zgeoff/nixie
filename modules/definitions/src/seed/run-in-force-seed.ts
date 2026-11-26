@@ -1,6 +1,6 @@
 import type { Log } from '@heynixie/log';
 import { withWriteTransaction } from '@heynixie/log';
-import { effectNames } from '@heynixie/policy';
+import { effectNames, mcpOverridesFormSchema } from '@heynixie/policy';
 import type { PromptOverrides } from '@heynixie/prompts';
 import type { Transaction } from 'kysely';
 import { z } from 'zod';
@@ -107,6 +107,7 @@ export async function seedInForceInTransaction(
     conversationSkills: overlay.conversationSkills,
     tasks: taskPlan.tasks,
     budgets: budgets.inForce,
+    mcp: lists.mcp,
     voice: inForce.voice,
   });
 
@@ -148,6 +149,7 @@ export async function seedInForceInTransaction(
     },
     formatVersion: inForce.formatVersion,
     effects: lists.effects,
+    mcp: lists.mcp,
     unapplied: lists.unapplied,
     skipped: lists.skipped,
     versions: [],
@@ -186,6 +188,7 @@ const seedLists = z.object({
     .record(z.string(), overrideSchema)
     .default({})
     .transform((overrides) => new Map(Object.entries(overrides))),
+  mcp: mcpOverridesFormSchema.default({}),
 });
 
 type SeedRecordTables = Readonly<{

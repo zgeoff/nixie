@@ -14,4 +14,5 @@ export const devicesRecordTopics = {
   'device.watch_set': [],
   'device.status_changed': ['tasks'],
   'device.page_event': ['tasks'],
+  'device.package_added': [],
 } as const satisfies Record<DevicesRecordKind, readonly LiveTopic[]>;

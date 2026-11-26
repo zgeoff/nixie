@@ -15,6 +15,7 @@ import invariant from 'tiny-invariant';
 import { claimAction, runActionAttempt } from '../index';
 import { buildActionSeeder } from '../test-utils/build-action-seeder';
 import { buildStubConnector } from '../test-utils/build-stub-connector';
+import { buildTestActionsContext } from '../test-utils/build-test-actions-context';
 import { claimTestAction } from '../test-utils/claim-test-action';
 import { createTestStep } from '../test-utils/create-test-step';
 import { queueTestAction } from '../test-utils/queue-test-action';
@@ -87,6 +88,7 @@ test('it calls the provider with the action ID as the idempotency key', async ()
       arguments: { to: 'team' },
       attempt: 1,
       idempotencyKey: queued.actionID,
+      snapshotHash: 'sha256:test',
       destinations: [],
       replyTargets: [],
       attemptStartedAt: expect.any(Number),
@@ -1218,4 +1220,57 @@ test('it settles nothing when a task limit lands while the policy check runs, an
     holder: null,
     generation: 1,
   });
+});
+
+test('it hands a retry the snapshot that its first attempt ran under, and not the one that queued the call', async () => {
+  const ctx = await setupTest();
+
+  const snapshot = { current: 'sha256:queued' };
+
+  const context = buildTestActionsContext({
+    log: ctx.context.log,
+    clock: ctx.clock,
+    definitions: () => ({ snapshotHash: snapshot.current }),
+  });
+
+  const step = await createTestStep(context);
+
+  await queueTestAction(context, {
+    step,
+    tool: 'test.send',
+    actionHash: 'sha256:send-1',
+    arguments: { to: 'team' },
+    decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
+  });
+
+  const stub = buildStubConnector(
+    (call) =>
+      call.attempt === 1
+        ? { kind: 'ambiguous', reason: 'timed out' }
+        : { kind: 'success', result: { messageID: 'm-1' } },
+    { reconcile: { kind: 'idempotency_key', where: 'key', keptForMs: 86_400_000 } },
+  );
+
+  snapshot.current = 'sha256:first-attempt';
+
+  const first = await claimTestAction(context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  await runActionAttempt(context, first, {
+    connectors: new Map([['test.send', stub.connector]]),
+    leaseMs: 60_000,
+  });
+
+  snapshot.current = 'sha256:later';
+
+  const second = await claimTestAction(context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  await runActionAttempt(context, second, {
+    connectors: new Map([['test.send', stub.connector]]),
+    leaseMs: 60_000,
+  });
+
+  expect(stub.calls.map((call) => [call.attempt, call.snapshotHash])).toStrictEqual([
+    [1, 'sha256:queued'],
+    [2, 'sha256:first-attempt'],
+  ]);
 });

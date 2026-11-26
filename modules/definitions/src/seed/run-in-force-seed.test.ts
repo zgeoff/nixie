@@ -13,6 +13,7 @@ import { createPathSource } from '../definition/create-path-source';
 import { readDefinitionsInForce } from '../definition/read-definitions-in-force';
 import { runSeed } from '../rule/run-seed';
 import { checkSkillFiles } from '../skill/check-skill-files';
+import { readSnapshotMcpOverrides } from '../snapshot/read-snapshot-mcp-overrides';
 import { buildTestTaskSeed } from '../test-utils/build-test-task-seed';
 import { writeWrittenSkill } from '../written/write-written-skill';
 import { writeWrittenSkillState } from '../written/write-written-skill-state';
@@ -481,4 +482,60 @@ test('it withdraws a one-shot that fired between 2 seeds from both hooks', async
     definitionID: 'dentist',
     definitionHash: null,
   });
+});
+
+test('it keeps the MCP overrides of the repo in the snapshot of a seed that only adopts a skill', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 6\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await mkdir(join(ctx.root, 'mcp'));
+  await writeFile(join(ctx.root, 'mcp', 'tracker.yaml'), 'item_get:\n  effects: [read]\n');
+
+  const policy = { rules: [], tools: [] };
+
+  const first = await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => policy,
+  });
+
+  const skill = checkSkillFiles('tide-tables', [
+    { path: 'SKILL.md', text: '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n' },
+  ]);
+
+  invariant('skillHash' in skill);
+  invariant(first.inForce);
+
+  await withWriteTransaction(ctx.writer, (tx) =>
+    writeWrittenSkill(tx, {
+      approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
+      proposalID: 'k3vq8m2xpa',
+      skill,
+      approvedAt: 1,
+    }),
+  );
+
+  const second = await runInForceSeed({ log: ctx.log, buildPolicy: () => policy });
+
+  invariant(second.status === 'seeded');
+
+  const overrides = {
+    tracker: {
+      item_get: {
+        effects: ['read' as const],
+        destinations: [],
+        amount: null,
+        content: null,
+        reconcile: null,
+      },
+    },
+  };
+
+  expect([
+    first.inForce.snapshotHash === second.inForce.snapshotHash,
+    await readSnapshotMcpOverrides(ctx.writer.db, first.inForce.snapshotHash),
+    await readSnapshotMcpOverrides(ctx.writer.db, second.inForce.snapshotHash),
+  ]).toStrictEqual([false, overrides, overrides]);
 });

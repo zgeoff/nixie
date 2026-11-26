@@ -10,6 +10,12 @@ import { z } from 'zod';
 const frameMessageSchema = z.discriminatedUnion('type', [
   z.object({ nixie: z.literal(true), type: z.literal('ready') }),
   z.object({ nixie: z.literal(true), type: z.literal('touch') }),
+  z.object({
+    nixie: z.literal(true),
+    type: z.literal('data'),
+    id: z.int(),
+    url: z.string().min(1).max(2000),
+  }),
   z.object({ nixie: z.literal(true), type: z.literal('error'), message: z.string() }),
   z.object({
     nixie: z.literal(true),
@@ -23,6 +29,7 @@ const frameMessageSchema = z.discriminatedUnion('type', [
 type FrameMessage =
   | { readonly type: 'ready' }
   | { readonly type: 'touch' }
+  | { readonly type: 'data'; readonly id: number; readonly url: string }
   | { readonly type: 'error'; readonly message: string }
   | {
       readonly type: 'event';
@@ -63,6 +70,10 @@ export function parseFrameMessage(raw: unknown): ParsedFrameMessage {
 
   if (message.type === 'error') {
     return { status: 'message', message: { type: 'error', message: message.message } };
+  }
+
+  if (message.type === 'data') {
+    return { status: 'message', message: { type: 'data', id: message.id, url: message.url } };
   }
 
   return { status: 'message', message: { type: message.type } };

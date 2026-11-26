@@ -1,5 +1,6 @@
 import type { VoiceDefinitions } from '@heynixie/calls';
 import type { JSONObject } from '@heynixie/log';
+import type { McpOverrides } from '@heynixie/policy';
 import type { PromptOverrides } from '@heynixie/prompts';
 import type {
   DefinitionBudget,
@@ -12,6 +13,7 @@ import type {
 } from '../types';
 import { buildSHA256 } from '../utils/build-sha256';
 import { toCanonicalJSON } from '../utils/to-canonical-json';
+import { toMcpOverridesForm } from '../utils/to-mcp-overrides-form';
 import { normalizeInstructions } from './normalize-instructions';
 
 type SnapshotSkillInput = SkillRef & { readonly approvalID?: string | null };
@@ -27,6 +29,9 @@ export interface DefinitionsSnapshotInput {
 
   // the budgets in force, which a raised limit joins only once you approve it
   readonly budgets?: readonly DefinitionBudget[];
+
+  // the override files of the MCP proxy, by server ID, which a call of a proxied tool runs under
+  readonly mcp?: McpOverrides;
 
   // the voice settings, which enter the snapshot only when the definitions hold some
   readonly voice?: VoiceDefinitions | null;
@@ -75,6 +80,9 @@ export function buildDefinitionsSnapshot(input: DefinitionsSnapshotInput): Defin
     tasks,
     ...(Object.keys(prompts).length === 0 ? {} : { prompts }),
     ...(budgets.length === 0 ? {} : { budgets }),
+    ...(Object.keys(input.mcp ?? {}).length === 0
+      ? {}
+      : { mcp: toMcpOverridesForm(input.mcp ?? {}) }),
     ...(voice === null ? {} : { voice: buildVoiceForm(voice) }),
   });
 

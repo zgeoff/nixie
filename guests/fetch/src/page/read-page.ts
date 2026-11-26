@@ -1,7 +1,9 @@
 import type { IncomingMessage } from 'node:http';
 import type { AddressCheck } from '@heynixie/egress';
 import { planHop } from '@heynixie/egress';
-import type { AskHop, FetchLimits, FetchReply } from '@heynixie/wire';
+import type { AskHop, FetchLimits, FetchMode, FetchReply } from '@heynixie/wire';
+import { readResponseBody } from '../response/read-response-body';
+import { readResponsePackage } from '../response/read-response-package';
 import { readResponsePage } from '../response/read-response-page';
 import { ConnectionNotOpenError } from './connection-not-open-error';
 import type { WebTransports } from './create-web-transports';
@@ -20,6 +22,9 @@ export interface PageReaderOptions {
 
   readonly ca?: string;
   readonly defaultPorts?: DefaultPorts;
+
+  // absent for a page
+  readonly mode?: FetchMode;
 }
 
 export async function readPage(url: string, options: PageReaderOptions): Promise<FetchReply> {
@@ -102,7 +107,7 @@ async function readHop(
   const location = answered.response.headers.location;
 
   if (!redirectStatuses.has(answered.response.statusCode ?? 0) || location === undefined) {
-    return readResponsePage(answered.url, answered.response, options.limits);
+    return readAnswer(answered.url, answered.response, options);
   }
 
   answered.response.destroy();
@@ -172,4 +177,20 @@ async function sendHopAttempt(
       response: await sendPinnedRequest({ url: attempt.fallbackURL, address }, options),
     };
   }
+}
+
+function readAnswer(
+  url: URL,
+  response: IncomingMessage,
+  options: PageReaderOptions,
+): Promise<FetchReply> {
+  if (options.mode?.kind === 'body') {
+    return readResponseBody(url, response, options.limits);
+  }
+
+  if (options.mode?.kind === 'package') {
+    return readResponsePackage(url, response, { ...options.mode, limits: options.limits });
+  }
+
+  return readResponsePage(url, response, options.limits);
 }

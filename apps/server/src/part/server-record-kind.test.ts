@@ -24,6 +24,7 @@ function setupTest() {
     'memory.fold_ordered': ['topic'],
     'memory.image_offered': ['text'],
     'memory.proposal_rejected': ['reason'],
+    'mcp.tool_listed': ['form'],
     'model.compaction_failed': ['message'],
     'model.reply': ['text', 'summary'],
     'model.session_summarized': ['text'],

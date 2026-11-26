@@ -37,7 +37,12 @@ export interface HeldToken {
 export interface HeldClient {
   // the OAuth client's public ID, which is no secret
   readonly clientID: string;
+
+  // empty for a public client, which sends none
   readonly clientSecret: string;
+
+  // The connector that owns the client's row, such as `mcp`. A client with none belongs to Google.
+  readonly connectorID?: string;
 }
 
 export type WriteTokenResult = 'saved' | 'removed';

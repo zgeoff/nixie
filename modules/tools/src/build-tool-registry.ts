@@ -1,9 +1,14 @@
 import type { EffectDeclaration } from '@heynixie/policy';
 import { hasQueuedEffect } from '@heynixie/policy';
 import { buildSchemaParser } from './schema/build-schema-parser';
-import type { RegisteredTool, ToolDefinition, ToolRegistry } from './types';
+import type { RegisteredTool, ToolDefinition, ToolRegistry, ToolSource } from './types';
 
-export function buildToolRegistry(definitions: readonly ToolDefinition[]): ToolRegistry {
+// The registry of nixie's own tools and of each source's tools. nixie's own tool wins a name clash,
+// and a source's names are read again each time the registry's names are.
+export function buildToolRegistry(
+  definitions: readonly ToolDefinition[],
+  sources: readonly ToolSource[] = [],
+): ToolRegistry {
   const tools = new Map<string, RegisteredTool>();
 
   for (const definition of definitions) {
@@ -20,7 +25,24 @@ export function buildToolRegistry(definitions: readonly ToolDefinition[]): ToolR
     });
   }
 
-  return { toolNames: [...tools.keys()], findTool: (name) => tools.get(name) ?? null };
+  return {
+    get toolNames() {
+      const own = [...tools.keys()];
+
+      const known = new Set(own);
+
+      return [
+        ...own,
+        ...sources.flatMap((source) => source.toolNames()).filter((name) => !known.has(name)),
+      ];
+    },
+    findTool: (name) => tools.get(name) ?? findInSources(sources, name),
+    prepareTaskRun: async (names) => {
+      await Promise.all(
+        sources.map((source) => source.prepareTaskRun?.(names) ?? Promise.resolve()),
+      );
+    },
+  };
 }
 
 function assertDefinition(definition: ToolDefinition): void {
@@ -97,6 +119,18 @@ function assertPaid(definition: ToolDefinition): void {
   if (definition.execution !== 'direct') {
     throw new Error(`the paid tool ${definition.name} runs direct, and a queued tool is not paid`);
   }
+}
+
+function findInSources(sources: readonly ToolSource[], name: string): RegisteredTool | null {
+  for (const source of sources) {
+    const found = source.findTool(name);
+
+    if (found !== null) {
+      return found;
+    }
+  }
+
+  return null;
 }
 
 export function isPriceMicros(price: number): boolean {

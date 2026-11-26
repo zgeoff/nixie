@@ -9,6 +9,7 @@ test('it writes one log line with the action ID and the attempt, and reports suc
     tool: 'actions.log',
     arguments: { wake: 12 },
     attempt: 2,
+    snapshotHash: 'sha256:test',
     idempotencyKey: 'action-7',
     destinations: [],
     actionHash: 'hash-1',

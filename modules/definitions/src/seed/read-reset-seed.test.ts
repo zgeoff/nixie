@@ -72,6 +72,7 @@ test('it reads the seed in force with its snapshot row and the payload of its re
       writtenSkills: [],
       adoptedSkills: [],
       effects: {},
+      mcp: {},
       repoBudgets: [],
       repoTasks: [],
       unapplied: [],

@@ -20,3 +20,6 @@ export { findRefusedHeader } from './credential/find-refused-header';
 export { removedMarker, scrubBytes } from './credential/scrub-bytes';
 export { toCaseInsensitiveForms } from './credential/to-case-insensitive-forms';
 export { scrubText } from './credential/scrub-text';
+export type { CIDRRange } from './range/parse-cidr';
+export { parseCIDR } from './range/parse-cidr';
+export { makeRangeCheck } from './range/make-range-check';

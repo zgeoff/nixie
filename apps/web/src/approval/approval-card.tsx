@@ -10,6 +10,7 @@ import { ApprovalChanges } from './approval-changes';
 import { ApprovalControls } from './approval-controls';
 import { ApprovalImages } from './approval-images';
 import { ApprovalMemoryBody } from './approval-memory-body';
+import { ApprovalPackage } from './approval-package';
 import { ApprovalRuleEditor } from './approval-rule-editor';
 import { ApprovalRuleNotice } from './approval-rule-notice';
 import { ApprovalScreen } from './approval-screen';
@@ -144,6 +145,7 @@ export function ApprovalCard(props: ApprovalCardProps): ReactNode {
           {body.images === undefined || body.images.length === 0 ? null : (
             <ApprovalImages imageIDs={body.images} />
           )}
+          {body.package === undefined ? null : <ApprovalPackage package={body.package} />}
           {body.screen === undefined ? null : <ApprovalScreen screen={body.screen} />}
           <p className={meta}>Asked because: {formatApprovalCause({ proposal, body })}</p>
         </>

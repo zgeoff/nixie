@@ -57,6 +57,14 @@ export interface OAuthProvider {
 
   // the OAuth client's public ID, which is the `aud` of its ID tokens
   readonly clientID: string;
+
+  // The protected resource that every token request names, as RFC 8707 sets, such as an MCP
+  // server's URL.
+  readonly resource?: string;
+
+  // A host on a private network, as a fetch option names it. Token and revoke requests to this host
+  // pass on an address in the range, and every other host still needs a public address.
+  readonly pairing?: { readonly host: string; readonly range: string };
 }
 
 export interface CredentialSpec {
@@ -84,6 +92,14 @@ export interface FetchOptions {
 
   // the deployment's own service, such as the spend gateway: http and a private address pass
   readonly deploymentService?: true;
+
+  // A host on a private network: a hop to this host passes when its resolved address falls in the
+  // range, and every other host still needs a public address.
+  readonly pairing?: { readonly host: string; readonly range: string };
+
+  // The response may be a server-sent event stream. The fetcher then removes the value from each
+  // event as it arrives, and never buffers the whole body.
+  readonly stream?: true;
 }
 
 export type CredentialFetch = (input: string | URL, init?: RequestInit) => Promise<Response>;

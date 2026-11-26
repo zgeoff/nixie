@@ -10,6 +10,7 @@ import { createErasureProcedures } from '../erasure/create-erasure-procedures';
 import { createFilesProcedures } from '../file/create-files-procedures';
 import { createImagesProcedures } from '../image/create-images-procedures';
 import { createLiveProcedures } from '../live/create-live-procedures';
+import { createMcpProcedures } from '../mcp/create-mcp-procedures';
 import { createMemoryProcedures } from '../memory/create-memory-procedures';
 import { createMemoryViewRouter } from '../memory/create-memory-view-router';
 import { createNotebookProcedures } from '../notebook/create-notebook-procedures';
@@ -45,6 +46,7 @@ export function createAPIRouter(
     calls: createCallsProcedures(context),
     computer: createComputerProcedures(context),
     connections: createConnectionProcedures(context),
+    mcp: createMcpProcedures(context),
     conversation: createConversationProcedures(context),
     definitions: { ...createDefinitionProcedures(context, readDefinitions), ...views.definitions },
     devices: createDeviceProcedures(context),

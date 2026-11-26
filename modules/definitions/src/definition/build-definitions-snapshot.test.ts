@@ -323,3 +323,42 @@ test('it refuses a policy with 2 tools under one name', () => {
     }),
   ).toThrowWithMessage(Error, 'the policy holds 2 entries with name web_fetch');
 });
+
+test('it keeps the MCP overrides in the form and gives a changed override another snapshot hash', () => {
+  const base = {
+    skills: [],
+    conversationSkills: [],
+    tasks: [],
+    persona: '# Persona\n',
+    prompts: {},
+    policy: { rules: [], tools: [] },
+  };
+
+  const override = {
+    effects: ['send' as const],
+    destinations: ['assignee_email'],
+    amount: null,
+    content: null,
+    reconcile: { check: 'item_get' },
+  };
+
+  const without = buildDefinitionsSnapshot(base);
+  const first = buildDefinitionsSnapshot({ ...base, mcp: { tracker: { item_notify: override } } });
+
+  const second = buildDefinitionsSnapshot({
+    ...base,
+    mcp: { tracker: { item_notify: { ...override, destinations: ['owner_email'] } } },
+  });
+
+  const parsed: unknown = JSON.parse(first.form);
+
+  expect([
+    parsed,
+    without.form.includes('"mcp"'),
+    new Set([without.snapshotHash, first.snapshotHash, second.snapshotHash]).size,
+  ]).toStrictEqual([
+    expect.objectContaining({ mcp: { tracker: { item_notify: override } } }),
+    false,
+    3,
+  ]);
+});

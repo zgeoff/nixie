@@ -6,6 +6,7 @@ test.each([
   ['timer.fired', 'task-1', true],
   ['task.limit_notice', 'conversation', true],
   ['recovery.notice', 'conversation', false],
+  ['tool_changed', 'conversation', false],
   ['task.step_committed', 'task-1', false],
   ['owner_message', null, false],
   ['call.started', 'conversation', true],

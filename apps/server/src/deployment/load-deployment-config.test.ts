@@ -76,6 +76,7 @@ test('it reads every section, with the default of each setting the file leaves o
       cacheMs: 300_000,
       backoff: { backoffMs: 30_000, backoffCapMs: 300_000, backoffWaitMs: 5000 },
       secretTypedURLCovers: 'redirects',
+      packageRegistry: 'https://registry.npmjs.org',
       secretOwnValues: [
         'deployment_key',
         'impd_token',
@@ -102,6 +103,7 @@ test('it reads every section, with the default of each setting the file leaves o
     notebook: { noteChars: 50_000, maxNotes: 250, checkReasonRepeats: 3 },
     forget_notices: { note: true },
     erasure: { stuckAfterMs: 300_000 },
+    mcp: { listingTimeoutSeconds: 10, servers: {} },
     policy: {
       consent: { linkMaxAgeMs: 86_400_000 },
       proposedRules: { approvals: 3, windowDays: 30, quietDays: 30 },

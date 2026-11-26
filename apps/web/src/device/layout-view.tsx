@@ -7,7 +7,7 @@ import { FitBox } from './fit-box';
 import { LiveValue } from './live-value';
 import { PageRegion } from './page-region';
 import { pickRegionTextColour } from './pick-region-text-colour';
-import type { DeviceLayout, PageDelivery } from './use-device-events';
+import type { DeviceLayout, PageDataNotice, PageDelivery } from './use-device-events';
 import { useReportRegionError } from './use-report-region-error';
 
 export interface LayoutViewProps {
@@ -15,6 +15,7 @@ export interface LayoutViewProps {
 
   // each message that the assistant sent into a page since the stream opened
   readonly messages?: readonly PageDelivery[];
+  readonly notices?: readonly PageDataNotice[];
 
   // called when a page's frame sees a touch, which its own window keeps from the device page
   readonly onTouch?: () => void;
@@ -67,6 +68,7 @@ export function LayoutView(props: LayoutViewProps): ReactNode {
             <RegionBody
               content={region.content}
               messages={props.messages ?? []}
+              notices={props.notices ?? []}
               onTouch={props.onTouch}
               onFail={(message) => {
                 if (region.shown !== null) {
@@ -93,6 +95,7 @@ interface RegionBodyProps {
   readonly region: string;
   readonly shown: string | null;
   readonly messages: readonly PageDelivery[];
+  readonly notices: readonly PageDataNotice[];
   readonly onFail: (message: string) => void;
   readonly onTouch: (() => void) | undefined;
 }
@@ -126,6 +129,7 @@ function RegionBody(props: RegionBodyProps): ReactNode {
         frame={content.frame}
         key={`${props.shown}/${content.frame}`}
         messages={props.messages}
+        notices={props.notices}
         onFail={props.onFail}
         onTouch={props.onTouch}
         region={props.region}

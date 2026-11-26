@@ -103,6 +103,8 @@ holds the design for a piece of work that is not built yet: `design/platform/` i
   the tool route, the imp adapter and the test sandbox
 - [Memory kills](architecture/connectors/memory-kills.md) — the read of a guest's count of memory
   kills, and the log line for each kill
+- [MCP proxy](architecture/connectors/mcp-proxy.md) — outside MCP servers, their facts and
+  approvals, sign-in, pinned tools and the registry
 - [Web fetch](architecture/connectors/web-fetch.md) — the fetch sandbox, the fetcher's address
   checks, the limits and the result
 - [Web fetch images](architecture/connectors/web-fetch-images.md) — a fetched image as image
@@ -217,7 +219,7 @@ rests on.
 
 ### Core
 
-- [Core design index](design/platform/core/README.md) — the 6 core docs
+- [Core design index](design/platform/core/README.md) — the core docs
 - [The event log and records](design/platform/core/event-log.md) — what a record holds, append-only
   semantics, projections, the data behind the dashboard and the live view, export and retention
 - [Tasks](design/platform/core/tasks.md) — tasks as state machines with leases and an inbox, waits,

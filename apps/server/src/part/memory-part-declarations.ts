@@ -10,6 +10,7 @@ import type { ServerPartValues } from './server-part-values';
 import { startChecker } from './start-checker';
 import { startConnectionsPart } from './start-connections-part';
 import { startGoogleToolsPart } from './start-google-tools-part';
+import { startMcpPart } from './start-mcp-part';
 import { startNotebookPart } from './start-notebook-part';
 
 export const memoryPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>[] = [
@@ -36,6 +37,14 @@ export const memoryPartDeclarations: readonly AnyPartDeclaration<ServerPartValue
     needs: ['inputs', 'server_parts', 'erasure', 'google_tools'],
     start: makeRetriedStart('connections', (parts, reader) =>
       startConnectionsPart(parts, reader.get('erasure'), reader.get('google_tools')),
+    ),
+  },
+  {
+    // The MCP proxy: the servers of the config, their sign-ins and the tools their pins allow.
+    name: 'mcp',
+    needs: ['inputs', 'server_parts', 'connections'],
+    start: makeRetriedStart('mcp', (parts, reader) =>
+      startMcpPart(parts, reader.get('inputs').options.config.mcp, reader),
     ),
   },
   {

@@ -46,6 +46,7 @@ export async function sweepConsents(context: ServiceContext): Promise<SweptConse
   const orphans = await tables
     .selectFrom('connections')
     .selectAll()
+    .where('connector_id', '=', context.connector.id)
     .where('token_fingerprint', 'is', null)
     .where('binding', '=', 'enabled')
     .where('created_at', '<=', nowMs - context.consentLifetimeMs)

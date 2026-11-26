@@ -153,3 +153,32 @@ test('it builds no rule for a destination that holds a wildcard character', () =
 
   expect(buildProposedRule([star, star, star])).toBeNull();
 });
+
+test('it never checks a nested argument of free text', () => {
+  const ctx = setupTest();
+
+  const rule = buildProposedRule([
+    ctx.call({
+      content: ['details.body'],
+      input: { to: { address: 'sam@example.org' }, details: { body: 'Hello', kind: 'note' } },
+    }),
+  ]);
+
+  expect(rule?.checks).toStrictEqual([
+    { arg: 'to.address', op: 'eq', value: 'sam@example.org' },
+    { arg: 'details.kind', op: 'eq', value: 'note' },
+  ]);
+});
+
+test('it never checks a free key of an object of free text', () => {
+  const ctx = setupTest();
+
+  const rule = buildProposedRule([
+    ctx.call({
+      content: ['labels.*'],
+      input: { to: { address: 'sam@example.org' }, labels: { first: 'Hello' } },
+    }),
+  ]);
+
+  expect(rule?.checks).toStrictEqual([{ arg: 'to.address', op: 'eq', value: 'sam@example.org' }]);
+});

@@ -164,14 +164,7 @@ test('it refuses a region that the layout does not name', async () => {
   expect(outcome).toMatchObject({ status: 'ok', refusalCode: 'UNKNOWN_REGION' });
 });
 
-test.each([
-  { title: 'packages', extra: { packages: ['chart.js@4.4.6'] }, code: 'PACKAGES_NOT_BUILT' },
-  {
-    title: 'fetches',
-    extra: { fetches: [{ url: 'https://example.com/tides' }] },
-    code: 'FETCHES_NOT_BUILT',
-  },
-])('it refuses a page that names $title, which are not built yet', async (row) => {
+test('it refuses a page that names a package nobody approved, and leaves the region as it was', async () => {
   const ctx = await setupTest();
   const device = await ctx.seed.screenOnDevice();
 
@@ -182,14 +175,31 @@ test.each([
   const outcome = await ctx.call('device.region', {
     device: device.deviceID,
     region: 'pond',
-    content: { kind: 'html', html: '<p>ripples</p>', ...row.extra },
+    content: { kind: 'html', html: '<p>ripples</p>', packages: ['chart.js@4.4.6'] },
   });
 
   expect(outcome).toMatchObject({
     status: 'ok',
-    refusalCode: row.code,
-    result: { refused: row.code },
+    refusalCode: 'UNKNOWN_PACKAGE',
+    result: { refused: 'UNKNOWN_PACKAGE' },
   });
+});
+
+test('it refuses a page that declares fetches when the server holds no fetch sandbox', async () => {
+  const ctx = await setupTest();
+  const device = await ctx.seed.screenOnDevice();
+
+  ctx.streams.open(device.deviceID, { width: 1920, height: 480, pixelRatio: 1 });
+
+  await ctx.seed.layout(device.deviceID);
+
+  const outcome = await ctx.call('device.region', {
+    device: device.deviceID,
+    region: 'pond',
+    content: { kind: 'html', html: '<p>x</p>', fetches: [{ url: 'https://tides.example/today' }] },
+  });
+
+  expect(outcome).toMatchObject({ status: 'ok', refusalCode: 'FETCHES_UNAVAILABLE' });
 });
 
 test('it leaves a region as it was when a page that names packages is refused', async () => {
@@ -950,6 +960,7 @@ test('it never fills a region of a layout that replaced the one the write read',
       content: { kind: 'markdown', markdown: 'Dentist at 3' },
       untilMs: null,
       onEnd: 'blank',
+      fetches: [],
     },
   );
 

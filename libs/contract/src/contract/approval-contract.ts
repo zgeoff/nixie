@@ -32,6 +32,21 @@ const proposalSchema = z.object({
   sequence: z.int().positive(),
 });
 
+const proposalPackageSchema = z.object({
+  name: z.string(),
+  version: z.string(),
+
+  // null when the registry leaves the size out
+  unpackedBytes: z.int().nonnegative().nullable(),
+  publisher: z.string(),
+
+  // the publisher's own words, which the card marks as theirs
+  description: z.string(),
+
+  // the registry's sha512, which the approval binds
+  integrity: z.string(),
+});
+
 const bodySchema = z.object({
   sentence: z.string(),
   fields: z.record(z.string(), z.string()),
@@ -46,6 +61,7 @@ const bodySchema = z.object({
   approveLabel: z.string(),
   rule: z.record(z.string(), z.unknown()).optional(),
   memory: memoryProposalSchema.optional(),
+  package: proposalPackageSchema.optional(),
 });
 
 const itemSchema = z.object({

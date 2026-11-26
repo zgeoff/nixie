@@ -64,6 +64,7 @@ export type {
   ToolImage,
   ToolOutcome,
   ToolRegistry,
+  ToolSource,
   ToolRun,
   ToolResolveContext,
   ToolRunModel,
@@ -79,3 +80,4 @@ export type {
 export { ToolResultRefusedError } from './types';
 export type { ToolsRecordKind } from './tools-record-kind';
 export { toolsRecordTopics } from './tools-record-topics';
+export { renderChangedSentence } from './call-record/render-changed-sentence';

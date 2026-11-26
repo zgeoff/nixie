@@ -151,6 +151,7 @@ export async function runSeed(options: SeedOptions): Promise<SeedResult> {
       conversationSkills: overlay.conversationSkills,
       tasks: taskPlan.tasks,
       budgets: budgets.inForce,
+      mcp: read.parsed.mcp,
       voice: read.parsed.voice,
     });
 
@@ -193,6 +194,7 @@ export async function runSeed(options: SeedOptions): Promise<SeedResult> {
       },
       formatVersion: read.parsed.formatVersion,
       effects: read.parsed.effects,
+      mcp: read.parsed.mcp,
       unapplied: read.parsed.unapplied,
       skipped: read.snapshot.skipped,
       versions: read.parsed.skills,

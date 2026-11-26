@@ -137,6 +137,7 @@ export interface CLIFlags {
   readonly definitionID?: string;
   readonly mandateID?: string;
   readonly budgetID?: string;
+  readonly tool?: string;
   readonly proposalID?: string;
 }
 

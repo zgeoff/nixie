@@ -1,18 +1,24 @@
 import type { ContractClient } from '@heynixie/contract';
-import { clientHeaderName, sessionCookieName } from '@heynixie/contract';
+import { clientHeaderName, mcpSignInStatePrefix, sessionCookieName } from '@heynixie/contract';
 import { ORPCError, createORPCClient } from '@orpc/client';
 import { RPCLink } from '@orpc/client/fetch';
 import { z } from 'zod';
 import { buildForwardHeaders } from './build-forward-headers';
+import { handleMcpReturn } from './handle-mcp-return';
 import { renderReturnError } from './render-return-error';
 
 export const googleReturnPath = '/connections/google/return';
 const returnHeaders = { 'cache-control': 'no-store', 'referrer-policy': 'no-referrer' } as const;
 
 // Finishes a consent that Google sent the browser back from, as the browser's own session. The
-// query string holds the state and the code, so nothing here logs the URL.
+// route is the one OAuth return of nixie: a state that starts with the MCP prefix is the sign-in of
+// an MCP server. The query string holds the state and the code, so nothing here logs the URL.
 export async function handleGoogleReturn(apiURL: string, request: Request): Promise<Response> {
   const query = new URL(request.url).searchParams;
+
+  if (query.get('state')?.startsWith(mcpSignInStatePrefix) === true) {
+    return handleMcpReturn(apiURL, request);
+  }
 
   const sessionToken = new Bun.CookieMap(request.headers.get('cookie') ?? '').get(
     sessionCookieName,

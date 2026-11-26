@@ -192,6 +192,16 @@ export interface NixieTables {
     readonly layout_sequence: number;
     readonly updated_at: number;
   };
+  readonly device_packages: {
+    readonly package_id: string;
+    readonly name: string;
+    readonly version: string;
+    readonly integrity: string;
+    readonly unpacked_bytes: number;
+    readonly publisher: string;
+    readonly files: string;
+    readonly added_sequence: number;
+  };
   readonly device_regions: {
     readonly device_id: string;
     readonly region: string;
@@ -296,6 +306,35 @@ export interface NixieTables {
     readonly unread: number;
     readonly header_hash: string;
     readonly record_sequence: number;
+    readonly updated_sequence: number;
+  };
+  readonly mcp_servers: {
+    readonly server_id: string;
+    readonly state: string;
+    readonly url: string | null;
+    readonly client_id: string | null;
+    readonly scope: string | null;
+    readonly trusted: number | null;
+    readonly private_range: string | null;
+    readonly requested: string | null;
+    readonly proposal_id: string | null;
+    readonly client_credential_id: string | null;
+    readonly grant_credential_id: string | null;
+    readonly grant_binding: string | null;
+    readonly updated_sequence: number;
+  };
+  readonly mcp_tool_forms: {
+    readonly hash: string;
+    readonly listed_seq: number;
+  };
+  readonly mcp_tools: {
+    readonly tool: string;
+    readonly server_id: string;
+    readonly pinned_hash: string | null;
+    readonly latest_hash: string;
+    readonly state: string;
+    readonly hidden_reason: string | null;
+    readonly proposal_id: string | null;
     readonly updated_sequence: number;
   };
   readonly memory_change_notices: {

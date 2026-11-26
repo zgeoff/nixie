@@ -1,4 +1,5 @@
 import type { ToolDefinition } from '@heynixie/tools';
+import { buildDeviceAddPackageTool } from './build-device-add-package-tool';
 import { buildDeviceLayoutRemoveTool } from './build-device-layout-remove-tool';
 import { buildDeviceLayoutRestoreTool } from './build-device-layout-restore-tool';
 import { buildDeviceLayoutSaveTool } from './build-device-layout-save-tool';
@@ -13,9 +14,9 @@ import { buildDeviceWatchTool } from './build-device-watch-tool';
 import { buildDevicesListTool } from './build-devices-list-tool';
 import type { DeviceToolOptions } from './device-tool-options';
 
-// The 12 tools for devices: one that lists them, one that sets which of their changes wake the
+// The 13 tools for devices: one that lists them, one that sets which of their changes wake the
 // model, one that shows content, one that sets the idle scene, two that set a layout and fill its
-// regions, four that save, restore, list and remove saved layouts, one that previews a screen, and one that sends a message into a page.
+// regions, four that save, restore, list and remove saved layouts, one that previews a screen, and one that sends a message into a page, and one that asks the owner to approve a package for pages.
 export function buildDeviceTools(options: DeviceToolOptions): readonly ToolDefinition[] {
   return [
     buildDevicesListTool(options),
@@ -30,5 +31,6 @@ export function buildDeviceTools(options: DeviceToolOptions): readonly ToolDefin
     buildDeviceLayoutRemoveTool(options),
     buildDevicePreviewTool(options),
     buildDeviceSendToPageTool(options),
+    buildDeviceAddPackageTool(options),
   ];
 }

@@ -109,9 +109,10 @@ the model that the tool exists and what it takes. The action queue is an interfa
 module declares and its caller passes in, so tools never imports actions.
 
 A typed result reaches the model as structured content with no content blocks, and every other
-outcome as one text block. Claude Code serializes structured content as JSON for the model and drops
-any content blocks beside it, so a tool cannot send the model a typed object and a different text
-rendering of it:
+outcome as one text block. A result with images, and a result whose fields are all `untrusted`, are
+the 2 exceptions, which the paragraphs after the table cover. Claude Code serializes structured
+content as JSON for the model and drops any content blocks beside it, so a tool cannot send the
+model a typed object and a different text rendering of it:
 
 | Outcome           | What the model receives                                             | Error |
 | ----------------- | ------------------------------------------------------------------- | ----- |
@@ -119,6 +120,7 @@ rendering of it:
 | Allowed, queued   | The action's typed result once it is done                           | No    |
 | Queued, not done  | The action ID, once the wait runs out                               | No    |
 | Queued, failed    | The action ID and its reason                                        | No    |
+| Proxied, refused  | The server's reason inside `tool-result` markers                    | Yes   |
 | Denied            | The decision point's sentence                                       | Yes   |
 | Asked             | "Waiting for approval as `<shortID>`", with the proposal's short ID | No    |
 | Invalid input     | The schema errors                                                   | Yes   |
@@ -131,6 +133,10 @@ each image. The result record holds the typed result alone, so an image's bytes 
 Claude Code also saves each image to a file in the session's config directory, which a
 [forget](../core/erasable-fields.md#forgetting-a-record) removes with the rest of the session state.
 
+A typed result whose fields are all `untrusted` gets no structured content either. The model
+receives it as one text block inside `tool-result` markers, then one image block for each image.
+[Calls and results](mcp-proxy.md#calls-and-results) in the MCP proxy doc covers the markers.
+
 A tool that queues can declare `resolveDeadline`, which the endpoint calls when the call arrives to
 read the time after which the effect must not start. An error from it ends the call with the Invalid
 input outcome, with that error as the message. The deadline joins the action hash and the call
@@ -142,8 +148,11 @@ which sends the outcome to the user. The test build's 3 send tools, `test.send`,
 and `test.send_checked`, declare one each, so the crash tests cover every path.
 [Actions](../core/actions.md#reconciling-an-unknown-outcome) covers the paths.
 
-An action that failed or went unknown never counts as a tool error: the call was allowed and the
-action ran, so the model reads its outcome as a result.
+The model reads a failed or unknown action as a result, never as a tool error, because the call was
+allowed and the action ran. The one exception is an action of a proxied tool: when it fails, is
+cancelled or ends with an unknown outcome, the model receives the reason as an error inside the
+`tool-result` markers, as [calls and results](mcp-proxy.md#calls-and-results) in the MCP proxy doc
+covers.
 
 ## Records
 

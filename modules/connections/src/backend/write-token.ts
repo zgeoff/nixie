@@ -156,7 +156,7 @@ async function writeInTransaction(
 
   const client = await tables
     .selectFrom('oauth_clients')
-    .select('removal_counter')
+    .select(['removal_counter', 'connector_id'])
     .where('oauth_client_id', '=', write.guard.client.credentialID)
     .executeTakeFirst();
 
@@ -198,6 +198,7 @@ async function writeInTransaction(
       .values({
         connection_id: write.credentialID,
         short_id: createShortID(),
+        ...(client?.connector_id === undefined ? {} : { connector_id: client.connector_id }),
         ...columns,
         created_at: context.now(),
       })

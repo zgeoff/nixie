@@ -91,6 +91,7 @@ test('it reads every topic again when its first stream opens', async () => {
     'connections',
     'definitions',
     'images',
+    'mcp',
     'memory',
     'nixie',
     'notebook',

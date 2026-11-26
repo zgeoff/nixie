@@ -12,6 +12,7 @@ import { readDefinitionNotices, readDefinitionVersion } from '@heynixie/definiti
 import { definitionTaskProjections } from '@heynixie/definitions/test-utils';
 import type { Writer } from '@heynixie/log';
 import { logProjections, registerRecordTopics, startWriter } from '@heynixie/log';
+import type { McpPort } from '@heynixie/mcp';
 import { memoryProjections } from '@heynixie/memory';
 import { notebookProjections } from '@heynixie/notebook';
 import { createPlanLoginsHolder, spendProjections } from '@heynixie/spend';
@@ -60,6 +61,9 @@ interface TestAPI {
 
   // the Google connections that a running nixie sets once its connections start
   readonly setConnections: (port: ConnectionsPort) => void;
+
+  // the MCP proxy that a running nixie sets once it starts
+  readonly setMcp: (port: McpPort) => void;
 
   // the session cleanup that a running nixie gives a record forget once memory starts
   readonly setSessionCleanup: (cleanup: CleanupRecordSessions) => void;
@@ -129,6 +133,7 @@ export async function startTestAPI(
   const notebook: { store: ViewNotebookStore | null } = { store: null };
   const erasure: { port: ErasureStuckPort | null } = { port: null };
   const connections: { port: ConnectionsPort | null } = { port: null };
+  const mcp: { port: McpPort | null } = { port: null };
   const spendGateway = buildStubSpendGateway();
 
   const watching: {
@@ -144,6 +149,7 @@ export async function startTestAPI(
     readNotebook: () => notebook.store,
     readErasure: () => erasure.port,
     readConnections: () => connections.port,
+    readMcp: () => mcp.port,
     readWatch: () => watching.open,
     readTakeover: () => {
       watching.takeoverReads += 1;
@@ -181,6 +187,9 @@ export async function startTestAPI(
     setConnections: (port) => {
       connections.port = port;
     },
+    setMcp: (port) => {
+      mcp.port = port;
+    },
     setSessionCleanup: (cleanup) => {
       sessions.cleanup = cleanup;
     },
@@ -200,6 +209,7 @@ interface TestContextDeps {
   readonly readNotebook: NonNullable<APIContext['readNotebook']>;
   readonly readErasure: NonNullable<APIContext['readErasure']>;
   readonly readConnections: NonNullable<APIContext['readConnections']>;
+  readonly readMcp: NonNullable<APIContext['readMcp']>;
   readonly readWatch: ComputerWatchPort['readWatch'];
   readonly readTakeover: ComputerWatchPort['readTakeover'];
   readonly logger: ComputerWatchPort['logger'];
@@ -295,6 +305,7 @@ async function createTestContext(
     readErasure: deps.readErasure,
     ...(calls === null ? {} : { calls: calls.context }),
     readConnections: deps.readConnections,
+    readMcp: deps.readMcp,
   };
 
   return { context, calls };

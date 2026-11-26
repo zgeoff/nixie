@@ -39,3 +39,5 @@ export { seedBegunNoteForget } from './seed-begun-note-forget';
 export type { BegunNoteForgetSeed } from './seed-begun-note-forget';
 export { seedBudgetRecords } from './seed-budget-records';
 export { seedMemoryItems } from './seed-memory-items';
+export { startDeviceTestSite } from './start-device-test-site';
+export type { DeviceTestSite } from './start-device-test-site';

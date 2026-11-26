@@ -1,8 +1,12 @@
 import { z } from 'zod';
+import { packageSpecSchema } from './package-spec';
 
 export const regionMarkdownLimit = 20_000;
 export const regionHTMLLimit = 200_000;
 export const regionImagesLimit = 20;
+export const regionPackagesLimit = 20;
+export const regionFetchesLimit = 8;
+export const refreshMinutesRange = { min: 5, max: 1440 } as const;
 export const clockFormats = ['HH:mm', 'HH:mm:ss', 'EEE d MMM'] as const;
 
 // A region's kinds of content that the device page draws from the event alone. A live value runs in
@@ -31,6 +35,16 @@ const plainContentSchemas = [
 ] as const;
 
 const imageIDSchema = z.string().min(1).max(100);
+
+const declaredFetchSchema = z.object({
+  url: z
+    .string()
+    .min(1)
+    .max(2000)
+    .refine((url) => URL.canParse(url) && new URL(url).protocol === 'https:', 'an https URL'),
+  refreshMinutes: z.int().min(refreshMinutesRange.min).max(refreshMinutesRange.max).optional(),
+});
+
 const declaredImagesSchema = z.array(imageIDSchema).max(regionImagesLimit);
 const ticketedImageSchema = z.object({ image: z.string(), ticket: z.string() });
 const ticketedImagesSchema = z.array(ticketedImageSchema).max(regionImagesLimit);
@@ -55,6 +69,8 @@ export const regionContentSchema = z.union([
           'a page cannot hold a link, frame, object or embed element: it has no network, and its styles go in a style element',
       }),
     images: declaredImagesSchema.optional(),
+    packages: z.array(packageSpecSchema).max(regionPackagesLimit).optional(),
+    fetches: z.array(declaredFetchSchema).max(regionFetchesLimit).optional(),
   }),
 ]);
 

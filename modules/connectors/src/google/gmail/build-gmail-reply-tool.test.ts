@@ -30,6 +30,7 @@ async function setupTest() {
       tool: 'gmail.reply',
       arguments: { connection: 'k3x9m2p7qa', text: 'Thanks, got it.', ...input },
       attempt: 1,
+      snapshotHash: 'sha256:test',
       idempotencyKey: 'key-1',
       destinations: prepared.destinations,
       replyTargets: prepared.replyTargets ?? [],

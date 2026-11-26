@@ -1,12 +1,13 @@
 import type { ActionConnector, CheckResponse } from '@heynixie/connectors';
-import type { JSONObject, RecordInput } from '@heynixie/log';
+import type { RecordInput } from '@heynixie/log';
 import type { Lease, TasksContext } from '@heynixie/tasks';
 import { startLeaseRenewal } from '@heynixie/tasks';
 import type { ActionRow } from '../types';
 import type { ActionAttemptOptions } from './action-attempt-options';
 import { buildAttemptKey } from './build-attempt-key';
 import { defaultRetryDelaysMs } from './default-retry-delays-ms';
-import { buildOutcomeRecord, readArguments, writeLeasedRecords } from './leased-records';
+import type { QueuedCall } from './leased-records';
+import { buildOutcomeRecord, readQueuedCall, writeLeasedRecords } from './leased-records';
 import { pickCheckStep } from './pick-check-step';
 import type { CheckStep } from './pick-check-step';
 
@@ -25,11 +26,11 @@ export async function runReconcileCheck(
   const action = claimed.action;
   const connector = options.connectors.get(action.tool);
 
-  const args = await readArguments(context, action.queued_sequence);
+  const queued = await readQueuedCall(context, action);
 
   const response = await runCheck(context, claimed, {
     connector,
-    args,
+    queued,
     leaseMs: options.leaseMs,
   });
 
@@ -48,7 +49,7 @@ export async function runReconcileCheck(
 
 interface CheckCall {
   readonly connector: ActionConnector | undefined;
-  readonly args: JSONObject | null;
+  readonly queued: QueuedCall | null;
   readonly leaseMs: number;
 }
 
@@ -59,7 +60,7 @@ async function runCheck(
 ): Promise<CheckResponse> {
   const check = call.connector?.check;
 
-  if (check === undefined || call.args === null) {
+  if (check === undefined || call.queued === null) {
     return { kind: 'inconclusive' };
   }
 
@@ -69,7 +70,8 @@ async function runCheck(
     return await check({
       actionID: claimed.action.action_id,
       tool: claimed.action.tool,
-      arguments: call.args,
+      arguments: call.queued.arguments,
+      snapshotHash: call.queued.snapshotHash,
       attempt: claimed.action.attempt_count,
       idempotencyKey: buildAttemptKey(claimed.action),
       destinations: [],

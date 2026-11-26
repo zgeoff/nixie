@@ -7,6 +7,7 @@ import type { CheckedTables } from '@heynixie/db';
 import type { DefinitionsContext } from '@heynixie/definitions';
 import type { RecordKind } from '@heynixie/log';
 import type { Logger } from '@heynixie/logger';
+import type { McpPort } from '@heynixie/mcp';
 import type {
   HostMemoryStore,
   ItemIDStore,
@@ -142,6 +143,10 @@ export interface APIContext extends TasksContext {
   // The Google connections, which start after the API context. Null before they start, and absent
   // where the server holds none.
   readonly readConnections?: () => ConnectionsPort | null;
+
+  // The MCP proxy, which starts after the API context. Null before it starts, and absent where the
+  // server holds none.
+  readonly readMcp?: () => McpPort | null;
 
   // The notebook, which starts after the API context. Null before it starts, and absent where the
   // server holds none.

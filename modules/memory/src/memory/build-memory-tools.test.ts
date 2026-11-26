@@ -10,6 +10,7 @@ import {
 } from '@heynixie/policy/test-utils';
 import type { ToolCallOptions, ToolRun } from '@heynixie/tools';
 import { buildToolRegistry, runToolCall } from '@heynixie/tools';
+import { parseFencedResult } from '@heynixie/tools/test-utils';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
 import { defaultGateLimits } from '../gate/default-gate-limits';
@@ -1671,7 +1672,7 @@ test('it lists a text edit proposed after a label edit at the revision it read, 
     .where('status', '=', 'pending')
     .executeTakeFirstOrThrow();
 
-  expect(result.structuredContent).toMatchObject({
+  expect(parseFencedResult(result)).toMatchObject({
     proposals: [{ itemID: item.shortID, version: 2 }],
   });
 
@@ -1936,7 +1937,7 @@ test.each([
     const entries = await readRecords(ctx.memory.log, { afterSequence: 0, limit: 1000 });
 
     expect(written.structuredContent).toMatchObject({ status: 'proposed', proposalID: shortID });
-    expect(listed.structuredContent).toMatchObject({ proposals: [{ proposalID: shortID }] });
+    expect(parseFencedResult(listed)).toMatchObject({ proposals: [{ proposalID: shortID }] });
 
     expect(entries.find((entry) => entry.record.kind === 'tool_result')?.record).toMatchObject({
       erasable: {

@@ -14,7 +14,8 @@ export interface CrashHarness {
   readonly atcURL: string | null;
 
   // the program each fetch sandbox runs in place of the fetcher, which refuses every address a
-  // test can serve; null keeps the fetcher
+  // test can serve, with the URL of the test site as its argument when there is one; null keeps the
+  // fetcher
   readonly fetchArgv: readonly string[] | null;
 
   // the fake Google site that consents, token requests and scope reads go to; null keeps Google's
@@ -44,6 +45,7 @@ export function joinCrashHarness(
 
   const link = startHarnessLink(env);
   const fetcher = env['NIXIE_TEST_FETCHER'];
+  const fetchSiteURL = env['NIXIE_TEST_FETCH_SITE_URL'];
 
   setFaultPointHandler((id, work) => link.waitAtFaultPoint(id, work));
   setWorkTracker(link.workTracker);
@@ -54,7 +56,10 @@ export function joinCrashHarness(
     atcURL: env['NIXIE_TEST_ATC_URL'] ?? null,
     googleURL: env['NIXIE_TEST_GOOGLE_URL'] ?? null,
     googleAPI: readGoogleAPI(env),
-    fetchArgv: fetcher === undefined ? null : [process.execPath, fetcher],
+    fetchArgv:
+      fetcher === undefined
+        ? null
+        : [process.execPath, fetcher, ...(fetchSiteURL === undefined ? [] : [fetchSiteURL])],
 
     // A guest leads its own process group, so it outlives a nixie that exits. A host that loses
     // nixie loses its sandboxes too, so nixie stops every process it started before it exits.

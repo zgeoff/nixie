@@ -22,8 +22,32 @@ export function decodeFetchReply(bytes: Uint8Array): FetchReply {
     };
   }
 
+  if (kind === 'body') {
+    return {
+      kind,
+      url: requireString(reply, 'url'),
+      status: requireStatus(reply),
+      contentType: requireStringOrNull(reply, 'contentType'),
+      text: requireString(reply, 'text'),
+      isTruncated: requireBoolean(reply, 'isTruncated'),
+      retryAfterMs: requireRetryAfterMs(reply),
+      isGated,
+    };
+  }
+
+  if (kind === 'package') {
+    return {
+      kind,
+      url: requireString(reply, 'url'),
+      files: requireFiles(reply),
+      isGated,
+    };
+  }
+
   if (kind !== 'page') {
-    throw new TypeError('a fetch reply needs a kind of page, image, refused or failed');
+    throw new TypeError(
+      'a fetch reply needs a kind of page, image, body, package, refused or failed',
+    );
   }
 
   return {
@@ -101,6 +125,38 @@ function requireRetryAfterMs(reply: Readonly<Record<string, unknown>>): number |
   return value;
 }
 
+// oxlint-disable-next-line zgeoff/verb-contract -- it returns a field's value, not a yes/no answer
+function requireBoolean(reply: Readonly<Record<string, unknown>>, name: string): boolean {
+  const value = reply[name];
+
+  if (typeof value !== 'boolean') {
+    throw new TypeError(`a fetch reply needs ${name}, a boolean`);
+  }
+
+  return value;
+}
+
+function requireFiles(
+  reply: Readonly<Record<string, unknown>>,
+): { readonly path: string; readonly base64: string }[] {
+  const value: unknown = reply['files'];
+
+  if (!Array.isArray(value)) {
+    throw new TypeError('a fetch reply needs files, a list of files');
+  }
+
+  return value.map((entry: unknown) => {
+    const file: Readonly<Record<string, unknown>> =
+      typeof entry === 'object' && entry !== null ? Object.fromEntries(Object.entries(entry)) : {};
+
+    if (typeof file['path'] !== 'string' || typeof file['base64'] !== 'string') {
+      throw new TypeError('a fetch reply needs each file to hold a path and base64, strings');
+    }
+
+    return { path: file['path'], base64: file['base64'] };
+  });
+}
+
 function requireStrings(reply: Readonly<Record<string, unknown>>, name: string): string[] {
   const value: unknown = reply[name];
   const items: readonly unknown[] = Array.isArray(value) ? value : [];
@@ -111,15 +167,4 @@ function requireStrings(reply: Readonly<Record<string, unknown>>, name: string):
   }
 
   return strings;
-}
-
-// oxlint-disable-next-line zgeoff/verb-contract -- it returns a field's value, not a yes/no answer
-function requireBoolean(reply: Readonly<Record<string, unknown>>, name: string): boolean {
-  const value = reply[name];
-
-  if (typeof value !== 'boolean') {
-    throw new TypeError(`a fetch reply needs ${name}, a boolean`);
-  }
-
-  return value;
 }

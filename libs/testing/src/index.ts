@@ -1,3 +1,5 @@
+export type { TarballEntry } from './test-utils/build-package-tarball';
+export { buildIntegrity, buildPackageTarball } from './test-utils/build-package-tarball';
 export type { SettleRecorder } from './wait/build-settle-recorder';
 export { buildSettleRecorder } from './wait/build-settle-recorder';
 export type { StubCheck } from './wait/build-stub-check';

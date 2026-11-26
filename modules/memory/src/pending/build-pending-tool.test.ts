@@ -3,6 +3,7 @@ import { buildShortIDFromUUID } from '@heynixie/db';
 import { readRecords } from '@heynixie/log';
 import { buildAllowingDecisionPoint } from '@heynixie/policy/test-utils';
 import { buildToolRegistry, runToolCall } from '@heynixie/tools';
+import { parseFencedResult } from '@heynixie/tools/test-utils';
 import { createFakeClock } from '@zgeoff/testing/clock';
 import { buildMockProvenance } from '../test-utils/build-mock-provenance';
 import { buildMockWriteCaller } from '../test-utils/build-mock-write-caller';
@@ -68,7 +69,7 @@ test('it lists a pending proposal from the conversation and one from a task, eac
     ctx.toolCallOptions,
   );
 
-  expect(result.structuredContent).toStrictEqual({
+  expect(parseFencedResult(result)).toStrictEqual({
     proposals: [
       {
         proposalID: buildShortIDFromUUID(own.proposalID),
@@ -122,7 +123,7 @@ test('it leaves out a proposal the owner approved and one the owner rejected', a
     ctx.toolCallOptions,
   );
 
-  expect(result.structuredContent).toStrictEqual({
+  expect(parseFencedResult(result)).toStrictEqual({
     proposals: [
       {
         proposalID: buildShortIDFromUUID(waiting.proposalID),
@@ -162,7 +163,7 @@ test('it names both proposers of a conversation write that merged into a task pr
     ctx.toolCallOptions,
   );
 
-  expect(result.structuredContent).toMatchObject({
+  expect(parseFencedResult(result)).toMatchObject({
     proposals: [
       { text: 'The owner grows tomatoes.', notedBy: ['a task noted it', 'you noted it'] },
     ],
@@ -196,7 +197,7 @@ test('it names the item that a pending edit changes by its short ID, and the ver
     ctx.toolCallOptions,
   );
 
-  expect(result.structuredContent).toStrictEqual({
+  expect(parseFencedResult(result)).toStrictEqual({
     proposals: [
       {
         proposalID: buildShortIDFromUUID(proposal.proposalID),
@@ -240,7 +241,7 @@ test('it lists a pending retirement with the text of the item it retires', async
     ctx.toolCallOptions,
   );
 
-  expect(result.structuredContent).toMatchObject({
+  expect(parseFencedResult(result)).toMatchObject({
     proposals: [
       {
         change: 'retire',
@@ -281,7 +282,7 @@ test('it lists a pending pin with the text of the item it pins', async () => {
     ctx.toolCallOptions,
   );
 
-  expect(result.structuredContent).toMatchObject({
+  expect(parseFencedResult(result)).toMatchObject({
     proposals: [
       {
         change: 'pin',
@@ -322,7 +323,7 @@ test.each([
     ctx.toolCallOptions,
   );
 
-  expect(result.structuredContent).toMatchObject({ proposals: [{ age }] });
+  expect(parseFencedResult(result)).toMatchObject({ proposals: [{ age }] });
 });
 
 test('it lists nothing when no proposal waits', async () => {
@@ -340,7 +341,7 @@ test('it lists nothing when no proposal waits', async () => {
     ctx.toolCallOptions,
   );
 
-  expect(result.structuredContent).toStrictEqual({ proposals: [] });
+  expect(parseFencedResult(result)).toStrictEqual({ proposals: [] });
 });
 
 test('it records only the proposal IDs, never the proposed text', async () => {
@@ -395,7 +396,7 @@ test('it maps the short ID of each proposal to its UUID under hidden, outside th
 
   const entries = await readRecords(ctx.memory.log, { afterSequence: 0, limit: 1000 });
 
-  expect(JSON.stringify(result.structuredContent)).not.toInclude(proposal.proposalID);
+  expect(JSON.stringify(parseFencedResult(result))).not.toInclude(proposal.proposalID);
 
   expect(entries.find((entry) => entry.record.kind === 'tool_result')?.record).toMatchObject({
     erasable: {
