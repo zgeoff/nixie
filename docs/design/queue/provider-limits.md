@@ -85,6 +85,22 @@ const spendCountsSchema = z.object({
 // spendRaiseInputSchema takes provider beside route; aboveCap and spend.limit_raised carry it too
 ```
 
+```ts
+// POST /count on the control listener sets one period's count to the dollars given, for a route or
+// a provider, never both. It corrects a count that is wrong; it never changes a limit.
+await control.setCount({
+  provider: 'openrouter',
+  period: 'month',
+  start: '2026-11-01',
+  dollars: 0,
+});
+// → 204, clearing the period's trip when the new count is under its limit in force
+//   or 409 { error: 'period_ended' } or 404 { error: 'unknown_provider' | 'unknown_route' }
+
+// contract (libs/contract): spend.setCount takes the same input, and the server records
+// spend.count_set with the target, the period, the old dollars and the new dollars.
+```
+
 ## Constraints
 
 - The config refuses a route with no `provider`, a `provider` that names no key of `providers`, a
@@ -102,10 +118,9 @@ const spendCountsSchema = z.object({
 - The override file holds a `routes` map and a `providers` map, so a route and a provider may share
   an ID. `model-gateway raise --provider <id>` writes the provider's entry.
 - The store moves from version 3 to version 4 at start, in one write. A version 2 or single-total
-  store moves through version 3 first. Each provider takes the sum of its configured routes' counts
-  for each period still under way, with no raise. When that sum is at its limit, the period trips at
-  the time of the move. A route the config dropped adds to no provider, and a provider the config
-  gains later starts at zero.
+  store moves through version 3 first. Each provider's day and month start at zero, because a
+  version 3 route count can hold the whole shared total that the move from version 2 copied into
+  every route. A provider the config gains later starts at zero too.
 - The gateway logs `limit.reached` for a provider period as it does for a route period.
 - The server holds a task that a provider's limit refused, as it holds one for a route's limit. A
   provider's trip is a stop of its own, with records that name the provider, and it stops every
@@ -114,11 +129,11 @@ const spendCountsSchema = z.object({
   currency. A route with no limit of its own shows its count and no limit.
 - A limit notice names the provider when the provider's limit refused, and the route when the
   route's did. A raise offer on a provider's refusal raises the provider.
+- The spending page shows a Reset button beside each provider's and each route's day and month. It
+  sends `spend.setCount` with zero after one confirm, as a raise does.
 - The server reads a status with no `providers`, from an older gateway, as having none. An older
   server that meets a `provider_*` counter reads the gateway as unreachable, so a release ships the
   server and the gateway together.
-- An older gateway can't read a version 4 store, so the gateway keeps a copy of the version 3 store
-  beside it when it moves, for a rollback.
 - Every gateway config in this repo gains providers: the test gateway starters, the integration
   suites, the verify harness and the preview recipe.
 - The contract change is breaking, so the PR title carries `!`.
