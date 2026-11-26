@@ -12,7 +12,7 @@ import type { DeviceToolOptions } from './device-tool-options';
 import type { PackageCallSource } from './run-package-install';
 import { listedFilesLimit, runPackageInstall } from './run-package-install';
 
-export const addPackageToolName = 'device.addPackage';
+const addPackageToolName = 'device.addPackage';
 
 // A check reads only nixie's own database, so a miss is a miss.
 const trustNegativeAfterMs = 1000;
