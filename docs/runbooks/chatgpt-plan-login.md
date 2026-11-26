@@ -151,16 +151,12 @@ answer holds no token and no email.
          chatgpt_login: true
          model: <model>
          effort: low
-         prices:
-           input: <input>
-           cache_write: <cache_write>
-           cache_write_1h: <cache_write_1h>
-           cached_input: <cached_input>
-           output: <output>
    ```
 
    Set `effort` to the reasoning effort the tasks need
-   ([model profiles](../architecture/core/model-profiles.md#harnesses)). Add nothing to nixie's
+   ([model profiles](../architecture/core/model-profiles.md#harnesses)). Set no `prices` on the
+   profile: with `spendStop` set, the nixie server refuses to start when a profile sets them, and
+   the gateway prices each request from the route's `prices` in step 3. Add nothing to nixie's
    secrets file for `deployment:<route>`. With `spendStop` set, the nixie server refuses to start
    when the secrets file has a `model_credentials` entry, and impd holds the route key
    ([credentials with a spending gateway](../architecture/core/model-profiles.md#credentials-with-a-spending-gateway)).
