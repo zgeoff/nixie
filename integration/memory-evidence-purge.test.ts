@@ -1,6 +1,11 @@
 import { expect, test } from 'bun:test';
 import type { BegunPurgeSeed } from '@heynixie/server/test-utils';
-import { readPurgeState, readPurgedItem, startInProcessNixie } from '@heynixie/server/test-utils';
+import {
+  readPurgeState,
+  readPurgedItem,
+  readStoppedProposal,
+  startInProcessNixie,
+} from '@heynixie/server/test-utils';
 import invariant from 'tiny-invariant';
 
 interface PurgeSetup {
@@ -58,6 +63,11 @@ async function setupTest(setup: PurgeSetup) {
           ].includes(kind),
         ),
     readState: () => readPurgeState(nixie),
+    readProposalState: async () => {
+      const row = await readStoppedProposal(nixie, seed.proposalID);
+
+      return row?.state ?? null;
+    },
     readItem: () => readPurgedItem(nixie, seed.itemID),
   };
 }
@@ -88,6 +98,16 @@ test('it writes the bridge version of a shared-key item before the closing recor
     'memory.evidence_purged',
     'record.forgotten',
   ]);
+});
+
+test('it lapses the pending proposal on the purged item at the start', async () => {
+  const ctx = await setupTest({ isOwned: true });
+
+  await ctx.stop();
+
+  const state = await ctx.readProposalState();
+
+  expect(state).toBe('lapsed');
 });
 
 test('it marks the purge closed and purged for the item', async () => {
