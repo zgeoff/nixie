@@ -41,6 +41,7 @@ The mistakes that cost the most time:
 
 - [Exit codes](references/exit-codes.md): when a command fails, what to do for its exit code and
   `error.code`.
+- [Read the envelope](references/read-the-envelope.md): when you read a command's output.
 - [Publish the report](references/publish.md): at step 10 of Check a change.
 - [Targets](references/targets.md): before you start or attach to a target.
 - [Edit the skill](references/edit-the-skill.md): before you edit this skill or a feature file.
@@ -123,27 +124,9 @@ The mistakes that cost the most time:
 
 ## Read the envelope
 
-Each command prints one JSON envelope as its last line, or text with `--human`. `doctor` and other
-streaming commands print JSON event lines first.
-
-Add `--brief` to print one short line and no event lines. Use it when you only need to know whether
-the command passed. The line holds:
-
-- `<command> ok=<true|false>`;
-- `error.code` and `error.message` on failure, or `data` on success, each cut at 200 characters;
-- `truncatedPath`, when the data was too large;
-- `evidence=<count>`.
-
-`--brief` leaves out `error.hint`. Run the command again without `--brief` to read the hint.
-
-Read these fields:
-
-- `ok`, then `data` on success, or `error.code`, `error.message` and `error.hint` on failure;
-- `evidence`: the files the command kept, under `.wringer/`;
-- `truncatedPath`: the file that holds `data` when it was too large to print.
-
-When a command fails, find its exit code and `error.code` in [Exit codes](references/exit-codes.md),
-and do what that row says.
+Each command prints one JSON envelope as its last line. Read `ok`, then `data` or `error`, and
+branch on the exit code and `error.code`. [Read the envelope](references/read-the-envelope.md) holds
+the fields and `--brief`.
 
 ## Targets
 
