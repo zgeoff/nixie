@@ -7,7 +7,7 @@ import { runMigrations } from '../migration/run-migrations';
 import { nixieSchema } from '../schema/nixie-schema';
 import { buildSqliteWorkerDialect } from '../sqlite/build-sqlite-worker-dialect';
 import { readRunPrefix } from '../test-utils/read-run-prefix';
-import { proposalsPromptFamilyMigration } from './0095-proposals-prompt-family-migration';
+import { proposalsPromptFamilyMigration } from './0096-proposals-prompt-family-migration';
 
 async function setupTest() {
   const stack = new AsyncDisposableStack();
@@ -39,9 +39,9 @@ async function setupTest() {
   return { db, writeRecord, migrateAgain };
 }
 
-test('it moves the schema to version 95, which the release before cannot read', () => {
-  expect(nixieSchema.migrations.indexOf(proposalsPromptFamilyMigration) + 1).toBe(95);
-  expect(nixieSchema.oldestReader).toBeGreaterThanOrEqual(95);
+test('it moves the schema to version 96, which the release before cannot read', () => {
+  expect(nixieSchema.migrations.indexOf(proposalsPromptFamilyMigration) + 1).toBe(96);
+  expect(nixieSchema.oldestReader).toBeGreaterThanOrEqual(96);
 });
 
 test('it lets a proposal take the prompt family and a same-thing key', async () => {

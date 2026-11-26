@@ -9,7 +9,7 @@ import { buildSqliteWorkerDialect } from '../sqlite/build-sqlite-worker-dialect'
 import { buildSchemaBefore } from '../test-utils/build-schema-before';
 import { readRunPrefix } from '../test-utils/read-run-prefix';
 import { gapTablesMigration } from './0057-gap-tables-migration';
-import { proposalsPromptFamilyMigration } from './0095-proposals-prompt-family-migration';
+import { proposalsPromptFamilyMigration } from './0096-proposals-prompt-family-migration';
 
 async function setupTest() {
   const stack = new AsyncDisposableStack();
