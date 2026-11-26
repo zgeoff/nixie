@@ -46,7 +46,9 @@ export async function createPeriodStore(options: PeriodStoreOptions): Promise<Pe
     if (start.kind === 'moved') {
       await writeStore(path, start.store);
 
-      options.log('store.moved', { ...start.old, lost: start.store.lost }, 'warn');
+      for (const step of start.steps) {
+        options.log('store.moved', { ...step, lost: start.store.lost }, 'warn');
+      }
     }
   } else {
     await writeStore(path, buildFreshStore(options.now(), options.zone, routeIDs, providerIDs));

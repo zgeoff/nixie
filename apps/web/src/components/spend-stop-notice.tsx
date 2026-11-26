@@ -47,7 +47,7 @@ export function SpendStopNotice(): ReactNode {
           {trip.canRaise ? (
             <RaiseRouteLimit
               display={display}
-              name={trip.provider}
+              name={`provider ${trip.provider}`}
               target={{ provider: trip.provider }}
               trip={trip}
             />
@@ -60,7 +60,7 @@ export function SpendStopNotice(): ReactNode {
           {trip.canRaise ? (
             <RaiseRouteLimit
               display={display}
-              name={trip.route}
+              name={`route ${trip.route}`}
               target={{ route: trip.route }}
               trip={trip}
             />
@@ -75,7 +75,8 @@ export function SpendStopNotice(): ReactNode {
 interface RaiseRouteLimitProps {
   readonly trip: SpendRouteTrip | SpendProviderTrip;
 
-  // the route or the provider, as the buttons name it
+  // the route or the provider with its kind, as the buttons name it, so a route and a provider of one
+  // ID get names that differ
   readonly name: string;
 
   // what the raise names, a route or a provider

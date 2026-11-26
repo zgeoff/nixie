@@ -13,8 +13,8 @@ export type StartStore =
       readonly kind: 'moved';
       readonly store: PeriodStore;
 
-      // the totals the old store held, which the gateway logs
-      readonly old: Readonly<Record<string, number>>;
+      // one entry for each step the store moved through, in order, which the gateway logs
+      readonly steps: readonly Readonly<Record<string, number>>[];
     };
 
 const limitsCountSchema = z.strictObject({
@@ -62,7 +62,7 @@ export function parseStartStore(
     return {
       kind: 'moved',
       store: buildVersion4Store(version3.data, nowMs, zone, table),
-      old: { version: 3 },
+      steps: [{ version: 3 }],
     };
   }
 
@@ -79,7 +79,7 @@ export function parseStartStore(
     return {
       kind: 'moved',
       store: buildVersion4Store(earlier, nowMs, zone, table),
-      old: { dollars: limits.data.dollars, tokens: limits.data.tokens },
+      steps: [{ dollars: limits.data.dollars, tokens: limits.data.tokens }, { version: 3 }],
     };
   }
 
@@ -105,12 +105,15 @@ export function parseStartStore(
     return {
       kind: 'moved',
       store: buildVersion4Store(earlier, nowMs, zone, table),
-      old: {
-        dayDollars: day.dollars,
-        dayTokens: day.tokens,
-        monthDollars: month.dollars,
-        monthTokens: month.tokens,
-      },
+      steps: [
+        {
+          dayDollars: day.dollars,
+          dayTokens: day.tokens,
+          monthDollars: month.dollars,
+          monthTokens: month.tokens,
+        },
+        { version: 3 },
+      ],
     };
   }
 

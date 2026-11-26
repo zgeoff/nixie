@@ -410,9 +410,9 @@ one total says nothing of a route's spend, so every route starts at zero. A vers
 split its count by route, so each route takes the whole count of each period still under way, with
 its raise and its trip. Every provider starts at zero, because a version 3 route can hold that
 shared total. The count of a route is then an upper bound, and a restart never reopens a limit. The
-lost mark and the sandboxes carry over, and the gateway logs the old totals. The gateway refuses to
-start on a store file in any other shape. A route or a provider that the config gained starts at
-zero.
+lost mark and the sandboxes carry over, and the gateway logs one `store.moved` line for each step,
+the first with the old totals. The gateway refuses to start on a store file in any other shape. A
+route or a provider that the config gained starts at zero.
 
 ### Admission and the reset
 

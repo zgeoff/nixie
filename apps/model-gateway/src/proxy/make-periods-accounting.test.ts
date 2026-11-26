@@ -339,7 +339,11 @@ test('it logs a provider limit reached again when a correction cleared the trip 
   await ctx.clearDayCount();
   await ctx.accounting.count(ctx.reply({ usage: ctx.usage(600, 500) }));
 
-  const logged = ctx.log.mock.calls.filter(([event]) => event === 'limit.reached');
+  const logged = ctx.log.mock.calls.filter(
+    ([event, fields]) =>
+      event === 'limit.reached' &&
+      z.string().parse(fields?.['trips']).includes('provider:test:day'),
+  );
 
   expect(logged).toHaveLength(2);
 });

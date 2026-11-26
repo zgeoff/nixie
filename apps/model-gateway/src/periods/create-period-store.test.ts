@@ -64,6 +64,7 @@ async function setupTest(startAt: string) {
       current = Date.parse(instant);
     },
     readFile: (): Promise<unknown> => Bun.file(path).json(),
+    readMoves: () => log.mock.calls.filter(([event]) => event === 'store.moved'),
   };
 }
 
@@ -90,7 +91,7 @@ test('it rewrites a limits count file with every route at zero and logs the old 
 
   await ctx.start(ctx.limits);
 
-  expect([await ctx.readFile(), ctx.log.mock.calls.at(-1)]).toStrictEqual([
+  expect([await ctx.readFile(), ctx.readMoves()]).toStrictEqual([
     {
       version: 4,
       lost: true,
@@ -101,7 +102,10 @@ test('it rewrites a limits count file with every route at zero and logs the old 
       },
       sandboxes: {},
     },
-    ['store.moved', { dollars: 1, tokens: 2, lost: true }, 'warn'],
+    [
+      ['store.moved', { dollars: 1, tokens: 2, lost: true }, 'warn'],
+      ['store.moved', { version: 3, lost: true }, 'warn'],
+    ],
   ]);
 });
 
@@ -131,7 +135,7 @@ test('it gives every route the whole count of a version 2 store, starts each pro
 
   await ctx.start(ctx.limits);
 
-  expect([await ctx.readFile(), ctx.log.mock.calls.at(-1)]).toStrictEqual([
+  expect([await ctx.readFile(), ctx.readMoves()]).toStrictEqual([
     {
       version: 4,
       providers: { main: { day: ctx.emptyDay, month: ctx.emptyMonth } },
@@ -150,9 +154,12 @@ test('it gives every route the whole count of a version 2 store, starts each pro
       },
     },
     [
-      'store.moved',
-      { dayDollars: 7, dayTokens: 70, monthDollars: 9, monthTokens: 90, lost: false },
-      'warn',
+      [
+        'store.moved',
+        { dayDollars: 7, dayTokens: 70, monthDollars: 9, monthTokens: 90, lost: false },
+        'warn',
+      ],
+      ['store.moved', { version: 3, lost: false }, 'warn'],
     ],
   ]);
 });
@@ -241,11 +248,21 @@ test('it gives a route no count from a version 2 period that ended before the cu
     }),
   );
 
-  const store = await ctx.start(ctx.limits);
-  const stored = await store.read();
+  await ctx.start(ctx.limits);
 
-  expect([stored.routes['plan']?.day.micros, stored.routes['plan']?.month.micros]).toStrictEqual([
-    0, 500_000_000,
+  const counted = { day: ctx.emptyDay, month: { ...ctx.emptyMonth, micros: 500_000_000 } };
+
+  expect([await ctx.readFile(), ctx.readMoves().map(([, fields]) => fields)]).toStrictEqual([
+    {
+      version: 4,
+      providers: { main: { day: ctx.emptyDay, month: ctx.emptyMonth } },
+      routes: { plan: counted, metered: counted },
+      sandboxes: {},
+    },
+    [
+      { dayDollars: 40, dayTokens: 70, monthDollars: 500, monthTokens: 90, lost: false },
+      { version: 3, lost: false },
+    ],
   ]);
 });
 
@@ -407,7 +424,7 @@ test('it moves a version 3 store to version 4 with every provider at zero and th
 
   await ctx.start(ctx.limits);
 
-  expect([await ctx.readFile(), ctx.log.mock.calls.at(-1)]).toStrictEqual([
+  expect([await ctx.readFile(), ctx.readMoves()]).toStrictEqual([
     {
       version: 4,
       lost: true,
@@ -425,7 +442,7 @@ test('it moves a version 3 store to version 4 with every provider at zero and th
       },
       lastLimitRevision: 9,
     },
-    ['store.moved', { version: 3, lost: true }, 'warn'],
+    [['store.moved', { version: 3, lost: true }, 'warn']],
   ]);
 });
 

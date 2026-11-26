@@ -163,10 +163,10 @@ test('it resets the count of a provider with one confirm, sending zero for the p
 
   const rendered = render(<SpendCounts />);
 
-  const open = await rendered.findByRole('button', { name: 'Reset today for main' });
+  const open = await rendered.findByRole('button', { name: 'Reset today for provider main' });
 
   await user.click(open);
-  await user.click(rendered.getByRole('button', { name: 'Confirm reset today for main' }));
+  await user.click(rendered.getByRole('button', { name: 'Confirm reset today for provider main' }));
 
   await waitFor(() => {
     expect(spendStore.countSets.all()).toMatchObject([
@@ -190,7 +190,7 @@ test('it closes a reset confirm that a refresh of the counts left for the day be
     </>,
   );
 
-  const open = await rendered.findByRole('button', { name: 'Reset today for main' });
+  const open = await rendered.findByRole('button', { name: 'Reset today for provider main' });
 
   await user.click(open);
 
@@ -201,7 +201,7 @@ test('it closes a reset confirm that a refresh of the counts left for the day be
   await rendered.findByText('Today: $7.00 of $100.00');
 
   expect([
-    rendered.queryByRole('button', { name: 'Confirm reset today for main' }),
+    rendered.queryByRole('button', { name: 'Confirm reset today for provider main' }),
     spendStore.countSets.all(),
   ]).toStrictEqual([null, []]);
 });
@@ -216,11 +216,48 @@ test('it closes the reset confirm once the reset succeeds and shows the new coun
 
   const rendered = render(<SpendCounts />);
 
-  const open = await rendered.findByRole('button', { name: 'Reset today for main' });
+  const open = await rendered.findByRole('button', { name: 'Reset today for provider main' });
 
   await user.click(open);
-  await user.click(rendered.getByRole('button', { name: 'Confirm reset today for main' }));
+  await user.click(rendered.getByRole('button', { name: 'Confirm reset today for provider main' }));
   await rendered.findByText('Today: $0.00 of $100.00');
 
-  expect(rendered.queryByRole('button', { name: 'Confirm reset today for main' })).toBeNull();
+  expect(
+    rendered.queryByRole('button', { name: 'Confirm reset today for provider main' }),
+  ).toBeNull();
+});
+
+test('it gives the reset button of a route and of a provider that share an ID names that differ', async () => {
+  await createDeviceSession();
+
+  await spendStore.counts.create({
+    counts: {
+      providers: [
+        {
+          provider: 'main',
+          day: { start: '2026-11-13', dollars: 30, limit: 100, tripped: false },
+          month: { start: '2026-11-01', dollars: 300, limit: 1000, tripped: false },
+        },
+      ],
+      routes: [
+        {
+          route: 'main',
+          provider: 'main',
+          day: { start: '2026-11-13', dollars: 12.4, limit: 40, tripped: false },
+          month: { start: '2026-11-01', dollars: 211.9, limit: 600, tripped: false },
+        },
+      ],
+      display: null,
+    },
+  });
+
+  const rendered = render(<SpendCounts />);
+
+  await rendered.findByRole('button', { name: 'Reset today for provider main' });
+
+  expect(
+    rendered
+      .getAllByRole('button', { name: /^Reset today for /u })
+      .map((button) => button.textContent),
+  ).toStrictEqual(['Reset today for provider main', 'Reset today for route main']);
 });

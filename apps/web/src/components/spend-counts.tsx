@@ -139,7 +139,10 @@ function ResetCount(props: ResetCountProps): ReactNode {
   // and a reset never zeroes a count the person did not see.
   const [confirmedStart, setConfirmedStart] = useState<string | null>(null);
   const isOpen = confirmedStart === props.count.start;
-  const name = 'route' in props.target ? props.target.route : props.target.provider;
+
+  const name =
+    'route' in props.target ? `route ${props.target.route}` : `provider ${props.target.provider}`;
+
   const label = props.period === 'day' ? 'today' : 'this month';
 
   if (!isOpen) {
