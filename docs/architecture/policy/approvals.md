@@ -160,20 +160,19 @@ A row that the user approved for an action carries a `call` field when `approval
 reads it. The host derives it at read time from the action the approval queued, so the card follows
 the call's own records and never the model's words.
 
-| `call.state` | Card text                  | Source                                                              |
-| ------------ | -------------------------- | ------------------------------------------------------------------- |
-| `applied`    | Approved, applied          | the action is done                                                  |
-| `failed`     | Approved, failed: <reason> | the action failed, or a stop cancelled it before an attempt started |
-| `waiting`    | Approved, waiting to run   | the action is still pending                                         |
-| `unknown`    | Approved, outcome unknown  | the action's outcome is unknown and waits on the user               |
+| `call.state` | Card text                  | Source                                                                                              |
+| ------------ | -------------------------- | --------------------------------------------------------------------------------------------------- |
+| `applied`    | Approved, applied          | the action is done                                                                                  |
+| `failed`     | Approved, failed: <reason> | the action failed, a stop cancelled it before an attempt started, or the approved row has no action |
+| `waiting`    | Approved, waiting to run   | the action is still pending                                                                         |
+| `unknown`    | Approved, outcome unknown  | the action's outcome is unknown and waits on the user                                               |
 
 The reason of a failed call is the provider's message from the outcome record, else the error text
 of the result record that the outcome names, else a plain sentence for the outcome's reason code.
 After a forget removes the erasable fields, the sentence for the code remains. The card cuts the
-reason to 300 characters. An approved action row with no action shows as failed. Memory, skill and
-rule approvals have no call, so their cards keep "Approved". A card that follows a task's thread
-reads its rows again when a record lands there, and the digest reads a departed row again every 15
-seconds while its call waits.
+reason to 300 characters. Memory, skill and rule approvals have no call, so their cards keep
+"Approved". A card that follows a task's thread reads its rows again when a record lands there, and
+the digest reads a departed row again every 15 seconds while its call waits.
 
 ## Answering an unknown outcome
 
