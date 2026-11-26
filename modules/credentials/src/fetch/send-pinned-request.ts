@@ -1,9 +1,10 @@
 import type { IncomingMessage } from 'node:http';
 import { request as requestHTTP } from 'node:http';
 import { request as requestHTTPS } from 'node:https';
-import type { LookupFunction } from 'node:net';
 import { isIP } from 'node:net';
 import { toBareHost } from '@heynixie/egress';
+import { makePinnedLookup } from './make-pinned-lookup';
+import { pickPinnedPort } from './pick-pinned-port';
 
 export interface PinnedRequest {
   readonly url: URL;
@@ -26,7 +27,7 @@ export function sendPinnedRequest(pinned: PinnedRequest): Promise<IncomingMessag
 
   const options = {
     host,
-    port: pickPort(pinned.url),
+    port: pickPinnedPort(pinned.url),
     path: `${pinned.url.pathname}${pinned.url.search}`,
     method: pinned.method,
     headers: pinned.headers,
@@ -51,24 +52,4 @@ export function sendPinnedRequest(pinned: PinnedRequest): Promise<IncomingMessag
   outgoing.end(body);
 
   return response.promise;
-}
-
-function pickPort(url: URL): number {
-  if (url.port !== '') {
-    return Number(url.port);
-  }
-
-  return url.protocol === 'https:' ? 443 : 80;
-}
-
-function makePinnedLookup(address: string): LookupFunction {
-  const family = isIP(address);
-
-  return (_hostname, lookupOptions, answer) => {
-    if (lookupOptions.all === true) {
-      answer(null, [{ address, family }]);
-    } else {
-      answer(null, address, family);
-    }
-  };
 }

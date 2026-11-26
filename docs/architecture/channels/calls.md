@@ -4,10 +4,12 @@ A call is a live voice conversation between the user and nixie. The `modules/cal
 call's state, its records, its price and the rule that a call ends when its budget runs out. It
 never talks to a speech provider. It holds the `SpeechLayer` interface, and the server passes in an
 adapter that implements it. For the whole feature, see the
-[voice design](../../design/platform/channels/voice.md). The release build of the server holds no
-speech adapter, so a release server with a `voice` config section answers `calls.start` with
-`SPEECH_UNAVAILABLE`, whatever its `provider`. Only a test build wires one, the fake that the next
-section describes.
+[voice design](../../design/platform/channels/voice.md). The server wires the
+[GPT-Live adapter](#the-gpt-live-adapter) when the config's `voice` section sets the `gpt-live`
+provider and the secrets file holds its credential. When the config has no `voice` section, calls
+are off, and `calls.start` answers `VOICE_OFF`. When the secrets file lacks the `voice` section's
+credential, the server wires no adapter, and `calls.start` answers `SPEECH_UNAVAILABLE`. A test
+build wires the fake that the next section describes in place of the adapter.
 
 ## The speech layer
 
@@ -18,15 +20,75 @@ section describes.
   session.
 - `events` takes a session ID and returns the session's stream of `SpeechEvent`s. `open` returns no
   events.
-- `answer` and `say` tell the provider what to speak, and `close` ends the session once the speech
-  layer has finished the line it is speaking, so a hang-up never cuts off the last line. The module
-  sends each answer with `final: true`.
+- `answer` and `say` tell the provider what to speak. `close` ends the session once the speech layer
+  has finished the line it is speaking, so a hang-up doesn't cut off the last line. After a time
+  limit, it ends the session anyway. The module sends each answer with `final: true`.
 - `model` names the provider's model that speaks the call. Each `call.spoke` record carries it.
 
 The package's `test-utils` holds a fake layer in memory. It records each `open`, `answer`, `say` and
 `close`, including an `open` that it refused. A test emits each `SpeechEvent` into a session by
 hand. A test build of the server wires the same fake and lets the test harness start a call and emit
 events.
+
+## The GPT-Live adapter
+
+`adapters/speech-gpt-live` implements `SpeechLayer` on OpenAI's GPT-Live. The server creates each
+session from the device's WebRTC offer and joins it on a sideband WebSocket, so the device carries
+the audio and the key never leaves the host. The adapter reaches OpenAI only through the
+[credential store](../connectors/credentials.md), through one fetcher: it creates the session, and
+its [socket opener](../connectors/credentials.md#the-socket-opener) opens the sideband. `model` is
+`gpt-live-1`, and each `call.spoke` record carries it.
+
+The adapter creates each session with these settings:
+
+- client delegation, so each request reaches nixie as a delegation event;
+- the provider's longest acknowledgement delay, with an empty thinking part sent on each delegation,
+  which keeps the speech layer silent while nixie's turn runs, so it never claims a result or
+  promises one;
+- `store: false`;
+- a data channel that lets the device neither send an event nor receive one, so the device reads no
+  instructions and sends no command.
+
+The adapter turns the provider's events into `SpeechEvent`s:
+
+| Provider                                            | Event                                                                                                                                                             |
+| --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| input transcript slices, then a short quiet gap     | `heard`, with the slices' text and their span on the session's timeline                                                                                           |
+| a delegation                                        | `heard` for the slices up to its offset, then `hand_off`. The delegation holds no request text, so the request is that speech.                                    |
+| output transcript slices, then a short quiet gap    | `spoke` with the speech layer's own small talk, never a line that the module sent through `say` or `answer`                                                       |
+| the first input slice while an answer plays         | `cut`, counted after a short wait for the last words' transcript, in characters of the sent answer. The provider reports no cut.                                  |
+| a timer, a warning time before the session's expiry | `session_ending`. The provider sends no warning, and the expiry comes from `session.started`, or the provider's standard limit after the open when it gives none. |
+| `session.closed`, or a sideband that ends           | `dropped`, unless a `close` asked for it. The module ends the call as `dropped`, which closes its session and stops its charges.                                  |
+
+The cut counts what the user heard by aligning the words that the speech layer said before the
+user's speech to the words of the sent answer, and takes the sent text up to the last aligned word.
+The speech layer paraphrases, so the count is an estimate, and the device keeps playing for a moment
+after the cut.
+
+Other rules of the adapter:
+
+- `answer` sends the whole answer as one commentary on the delegation. The provider takes at most
+  500 tokens in a commentary. The adapter counts a text's UTF-8 bytes, which are never fewer than
+  its tokens. A text past 400 bytes goes as several commentaries of at most 400 bytes each, split at
+  the end of a sentence. Every word of the text goes out in order. `final` marks the end inside
+  nixie, because the provider has no close for a delegation.
+- `say` sends a commentary with no delegation, which the speech layer words as its own. It splits a
+  long line the same way.
+- `close` waits for the line that the speech layer is speaking, for a bounded time, and then closes
+  the session. A close that nixie asked for raises no `dropped`.
+- A provider error is logged as `calls.speech_provider_error` with the session ID, and the session
+  stays open. A create request that the provider answers with 401 or 403 is
+  `VOICE_CREDENTIAL_REFUSED`, and any other failure, including a sideband that does not open in
+  time, is `SPEECH_UNAVAILABLE`.
+- Every `open` creates a session from a fresh offer of the device. The adapter holds no state across
+  sessions.
+
+The adapter's tests run against a fake GPT-Live as a loopback HTTPS and WebSocket site. The model
+API test in `evals/gpt-live/` opens 2 real sessions. In one, it says one line and one short answer,
+and checks that `session.started` gives the expiry as a number. In the other, it sends an answer of
+about 2,400 characters, which goes as 7 commentaries, and checks that GPT-Live speaks each sentence
+in order. CI holds no model credential, so a person runs it by hand with `NIXIE_SDK_CONTRACT=1` and
+`OPENAI_API_KEY` set.
 
 ## The call's states
 
@@ -129,12 +191,12 @@ with these differences:
 After a call connects, the module reads the speech session's events and writes each one to the
 call's thread:
 
-| Event      | What the module writes                                                                                                       |
-| ---------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `heard`    | An `owner_message` whose one span has the source `dictated`. It never wakes the call, because only a hand-off starts a turn. |
-| `spoke`    | Nothing yet. The module holds the line until the next hand-off.                                                              |
-| `hand_off` | The held `call.spoke` lines, then `call.handed_off`, in one transaction. The hand-off wakes the call's task.                 |
-| `cut`      | See below.                                                                                                                   |
+| Event      | What the module writes                                                                                                                              |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `heard`    | An `owner_message` whose one span has the source `dictated`. It never wakes the call, because only a hand-off starts a turn while the call is live. |
+| `spoke`    | Nothing yet. The module holds the line until the next hand-off.                                                                                     |
+| `hand_off` | The held `call.spoke` lines, then `call.handed_off`, in one transaction. The hand-off wakes the call's task.                                        |
+| `cut`      | See below.                                                                                                                                          |
 
 A `call.spoke` record wakes nothing and shows no message of its own: the turn reads each line of
 small talk beside the hand-off that follows it. The call's task runs one turn over what it has not
@@ -158,7 +220,8 @@ message, and the turn answers it with the same text as the first.
 What a `cut` event does depends on when it arrives:
 
 - Before the module sent an answer, it interrupts the call's turn and stops the hand-off's holding
-  line.
+  line. The GPT-Live adapter raises a `cut` only while an answer plays, so on GPT-Live this case
+  never arises: when the user talks over the holding line, the turn keeps running.
 - After the module sent a reply, it writes `call.heard_cut` with the reply's record and the count of
   characters heard. The next turn reads the reply split where the user stopped hearing it, both in a
   session that continues and in one that rebuilds.
@@ -196,12 +259,28 @@ $50 a month. A budget file in the definitions with the same ID replaces either. 
 not fit, the call says the `budget` line, ends with `endedBy: 'budget'` and keeps the minutes it
 charged before.
 
+## Limits of the speech layer
+
+- The speech layer's instructions hold the voice-call prompt, never a memory block. Its small talk
+  saves nothing to memory, and `dictated` text never counts as memory evidence.
+- The speech layer answers small talk only, and hands every request to nixie's turn, so Claude
+  writes each answer.
+- One call runs at a time, because nixie works for one person.
+- The user's call audio goes to OpenAI, as [decision 0014](../../decisions/0014-voice-pipeline.md)
+  accepts.
+- A changed voice, prompt or call setting applies from the next call.
+- `models.roles` is a strict object, so an older release refuses a config that sets the `call` role.
+  Remove the key before a rollback.
+
 ## Configuration
 
 Both places that hold settings are optional.
 
-- Set the `provider`, which is `gpt-live`, and the `credential`, a reference to a deployment secret,
-  in the `voice` section of the deployment config. Without the section, calls are off.
+- Set the `provider`, which is `gpt-live`, and the `credential`, a reference to a deployment secret
+  in `connector_credentials`, in the `voice` section of the deployment config. Without the section,
+  calls are off. A config whose credential the secrets file lacks starts, logs
+  `calls.speech_credential_missing` and wires no adapter. The
+  [voice setup guide](../../guides/voice-calls.md) gives the steps.
 - The `voice/` folder of the [definitions](../core/definitions.md) holds `voice.yaml`, with `voice`,
   `hold_after_ms` and `price_per_minute`, and `lines.yaml`, with the fixed lines `holding`,
   `reconnect`, `couldnt_finish` and `budget`. Every key is optional. A missing key takes the default

@@ -1,0 +1,26 @@
+{
+  "name": "@heynixie/speech-gpt-live",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsrs --fast --noEmit"
+  },
+  "dependencies": {
+    "@heynixie/calls": "workspace:*",
+    "@heynixie/clock": "workspace:*",
+    "@heynixie/logger": "workspace:*",
+    "@heynixie/wire": "workspace:*",
+    "ts-pattern": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@heynixie/egress": "workspace:*",
+    "@heynixie/testing": "workspace:*",
+    "@zgeoff/testing": "catalog:"
+  }
+}

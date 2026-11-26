@@ -20,6 +20,7 @@
     { "match": "adapters/image-gemini/**", "skills": ["verify"] },
     { "match": "adapters/image-openai/**", "skills": ["verify"] },
     { "match": "adapters/search-kagi/**", "skills": ["verify"] },
+    { "match": "adapters/speech-gpt-live/**", "skills": ["verify"] },
     { "match": "adapters/spend-model-gateway/**", "skills": ["verify"] },
     { "match": "adapters/rates-frankfurter/**", "skills": ["verify"] },
     { "match": "apps/model-gateway/**", "skills": ["verify"] },

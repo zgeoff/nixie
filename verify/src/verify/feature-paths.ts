@@ -13,6 +13,7 @@ const everyJourney = [
   'adapters/image-gemini/**',
   'adapters/image-openai/**',
   'adapters/search-kagi/**',
+  'adapters/speech-gpt-live/**',
   'adapters/spend-model-gateway/**',
   'adapters/rates-frankfurter/**',
   'apps/model-gateway/**',

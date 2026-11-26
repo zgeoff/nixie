@@ -12,13 +12,14 @@ import {
   toBareHost,
   toCaseInsensitiveForms,
 } from '@heynixie/egress';
-import { CredentialRemovedError } from '../held/credential-removed-error';
 import type { CredentialFetch, CredentialSpec, FetchOptions } from '../types';
-import { isRefusedOAuthURL } from './is-refused-oauth-url';
+import { cleanError } from './clean-error';
 import { findCredentialHeader, placeCredential } from './place-credential';
 import type { PlacedCredential } from './place-credential';
 import { readCappedBody } from './read-capped-body';
 import { readCappedStream } from './read-capped-stream';
+import { refuseOrigin } from './refuse-origin';
+import { refuseUserinfo } from './refuse-userinfo';
 import { scrubEventStream } from './scrub-event-stream';
 import { sendPinnedRequest } from './send-pinned-request';
 
@@ -82,15 +83,6 @@ export function createCredentialFetcher(
       throw cleanError(error, forms);
     }
   };
-}
-
-// A Request refuses a URL with userinfo in a TypeError of its own, so the text is checked first.
-function refuseUserinfo(text: string, subject: string): void {
-  const url = URL.parse(text);
-
-  if (url !== null && (url.username !== '' || url.password !== '')) {
-    throw new CredentialRefusalError(`${subject} holds a user name or a password`);
-  }
 }
 
 interface CredentialScrub {
@@ -189,20 +181,6 @@ async function readRequestBody(request: Request): Promise<Uint8Array | null> {
   const buffer = await request.arrayBuffer();
 
   return new Uint8Array(buffer);
-}
-
-function refuseOrigin(target: FetcherTarget, url: URL): void {
-  if (!target.origins.includes(url.origin)) {
-    throw new CredentialRefusalError(`${url.origin} is not an origin this credential may reach`);
-  }
-
-  if (url.protocol !== 'https:' && target.options.deploymentService !== true) {
-    throw new CredentialRefusalError(`${url.origin} is not an https origin`);
-  }
-
-  if (target.oauthHostnames !== undefined && isRefusedOAuthURL(url, target.oauthHostnames)) {
-    throw new CredentialRefusalError(`${url.origin}${url.pathname} is an OAuth endpoint`);
-  }
 }
 
 interface HopState {
@@ -430,26 +408,4 @@ async function readPayload(
   const raw = await reply.read();
 
   return new Blob([Buffer.from(scrubBytes(raw, forms))]);
-}
-
-// The cleaned error keeps the name and the cleaned message and drops the cause, which may hold the
-// value: a caller's abort reason reaches here too.
-function cleanError(error: unknown, forms: readonly ValueForm[]): unknown {
-  if (error instanceof CredentialRemovedError) {
-    return error;
-  }
-
-  if (error instanceof CredentialRefusalError) {
-    return new CredentialRefusalError(scrubText(error.message, forms));
-  }
-
-  if (!(error instanceof Error)) {
-    return new Error(scrubText(String(error), forms));
-  }
-
-  const cleaned = new Error(scrubText(error.message, forms));
-
-  cleaned.name = scrubText(error.name, forms);
-
-  return cleaned;
 }
