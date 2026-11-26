@@ -185,7 +185,11 @@ test('it keeps a newer limit when a raise call that timed out reaches the gatewa
   const held = Promise.withResolvers<() => Promise<Response>>();
 
   const sendOrHoldRaise = (input: string, init?: RequestInit): Promise<Response> => {
-    if (init?.method === 'PATCH' && String(init.body).includes('"dollars":4')) {
+    if (
+      init?.method === 'PATCH' &&
+      typeof init.body === 'string' &&
+      init.body.includes('"dollars":4')
+    ) {
       const { signal: _, ...unbounded } = init;
 
       held.resolve(() => keyed(input, unbounded));

@@ -35,11 +35,11 @@ therefore refuses a `default_zone` whose offset, in winter or in summer, is not 
 
 Each price that nixie counts has one source in nixie's config:
 
-| Price                  | Source                                                        | Unit                         |
-| ---------------------- | ------------------------------------------------------------- | ---------------------------- |
-| a model's tokens       | the profile's `prices`                                        | dollars per million tokens   |
-| a search               | `search.price_micros` in the server config, 12,000 by default | micros of a dollar per call  |
-| a picture of each size | `images.profiles.<id>.prices`                                 | micros of a dollar per image |
+| Price                  | Source                                                                 | Unit                         |
+| ---------------------- | ---------------------------------------------------------------------- | ---------------------------- |
+| a model's tokens       | the gateway route's table, or without a gateway the profile's `prices` | dollars per million tokens   |
+| a search               | `search.price_micros` in the server config, 12,000 by default          | micros of a dollar per call  |
+| a picture of each size | `images.profiles.<id>.prices`                                          | micros of a dollar per image |
 
 A search provider sets no price. The search tool charges `search.price_micros` to its budgets and
 records the same value as the call's cost, so the charge and the record never differ. A changed
@@ -60,8 +60,9 @@ Each count converts to whole micros, and never rounds a positive amount to nothi
 
 The `spend_ledger` table holds the money counts that nixie writes, one row per counter, unit, period
 kind and period start. A row's `ledger_key` joins the four, such as
-`budget:search-day|micros:USD|day|2026-10-16`. The row's `amount` is an integer. A projection writes
-the ledger from the `budget.charged` and `budget.credited` records on no thread, so a rebuild from
+`budget:search-day|micros:USD|day|2026-10-16`. The row's `amount` is an integer. Projections of
+records write every row: a budget's rows from the `budget.charged` and `budget.credited` records on
+no thread, and the rows of a task run and a worker run as the next paragraphs say. A rebuild from
 the records reproduces every row.
 
 A budget charge adds its amount to the row of its key, and a credit subtracts from the row its
@@ -102,9 +103,9 @@ uncredited total in micros that no row counts.
 
 ## The task meter
 
-A task run's dollars are the gateway's count of the sandboxes it used. A task keeps its sandbox
-across its task runs, and replaces it when the host loses it. The server reads a sandbox's count
-with `GET /sandboxes/<name>` and writes each read as a `task.meter_read` record:
+Behind a gateway, a task run's dollars are the gateway's count of the sandboxes it used. A task
+keeps its sandbox across its task runs, and replaces it when the host loses it. The server reads a
+sandbox's count with `GET /sandboxes/<name>` and writes each read as a `task.meter_read` record:
 
 ```text
 task.meter_read  { taskRunID, sandbox, reason, countMicros }

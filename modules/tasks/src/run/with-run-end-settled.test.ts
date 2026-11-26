@@ -172,7 +172,7 @@ test('it commits nothing of a step that lost its lease while it waited for the e
   const [settled] = await committing;
   const ended = await ctx.readKinds('task.run_ended');
 
-  const reason = settled?.status === 'rejected' ? settled.reason : null;
+  const reason: unknown = settled?.status === 'rejected' ? settled.reason : null;
 
   expect(settled?.status).toBe('rejected');
   expect(reason).toBeInstanceOf(LeaseLostError);
