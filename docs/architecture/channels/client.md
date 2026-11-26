@@ -110,8 +110,9 @@ speech layer and its state. A change of route never ends the call, and a page lo
   keeps the server's own `endedBy` and reason, such as the budget. Hang up releases the microphone
   and the peer at once, and nothing that was pending then changes the call. A refused microphone, or
   a refused start, shows what the user can do about it, and no call starts.
-- **The call bar.** On every route but the call screen, a bar shows while a call connects, is live
-  or reconnects. It holds the state, the time, mute, hang up and a link back to the call screen.
+- **The call bar.** On every route but the call screen, the device view included, a bar shows while
+  a call connects, is live or reconnects. It holds the state, the time, mute, hang up and a link
+  back to the call screen.
 - **Following the call.** While a call runs, the provider keeps the live stream open and reads
   `calls.get` under the `calls` topic. A call the server ended, such as one that ran out of budget,
   ends on the screen with the reason.
@@ -148,7 +149,8 @@ each HTML page. The page's peer then reaches `connected` only when its offer rea
 The web client holds one `live.follow` stream in each tab, above every page, so a change of route
 keeps it open. A signed-in page keeps it open, and the `/device` page, which holds a device-form
 stream of its own, never opens a page stream. The stream is a page form: it carries the records of
-the thread on screen, from the sequence that page read at, and every topic's `changed` events.
+the thread on screen, from the sequence that page read at, and every topic's `changed` events. Each
+signed-in page also keeps the tab's [device stream](#the-device-view) open.
 
 - **A topic invalidates its reads.** A `changed` event invalidates the reads under each topic's
   query-key root, so no page sets a poll on a read that a topic covers. The topic roots and their
@@ -441,6 +443,31 @@ in the browser only, because the library reads the window when it loads.
   which asks for a new ticket. A server with no computer shows no button and says it has none.
 - Leaving the page closes the socket and stops the viewer.
 
+## The device view
+
+`/device-view` shows this client's own [device](./devices.md) inside the app shell. The user opens
+it from the menu, as they open the computer page. The app adds no pop-up, badge or notice when the
+device's content changes, so what the assistant put on the screen shows only when the user opens the
+page.
+
+- **The device stream.** A `DeviceFeed` above the router follows the device form of `live.follow`
+  while any signed-in page of the tab shows, so the device is online whenever nixie is open. The
+  feed closes the stream once no signed-in page retains it, and a route change that drops one page
+  and mounts the next keeps it open. A full session follows its device stream and its conversation
+  stream on one session. A refusal ends the feed's reconnects.
+- **What it draws.** The page draws what the feed holds, in the order the screen draws it: a show,
+  the layout while a region shows content or has a background, then the idle scene. It reads only
+  the device's stream, so later UI work can show it beside the chat.
+- **Its size.** The page draws the device at the size of the page's content area, the box below the
+  app bar, and reports that size in device pixels through `devices.resize`. A stream that opens
+  while the page shows sends the same size at connect. A change of the area sends the size again
+  after a short debounce, and a failed call is sent again on the next change.
+- **During a call.** The call bar shows on this page, and its link goes back to the call screen.
+  Opening the device view, the chat or the call screen keeps the call's audio, its microphone grant
+  and its live stream.
+- **Device mode.** `/device` is a separate page, which [devices](./devices.md#device-mode)
+  describes. It holds its own device stream and shows the device full screen with no app shell.
+
 ## The handover banner
 
 While the assistant asks the user to take over the computer, every signed-in page shows a banner
@@ -531,15 +558,15 @@ setup, and `/settings/connections/<connection>` shows one connection. The return
 
 ## The app shell
 
-Every page sits in one shell, which the root route renders. Its bar holds 16 links: Conversation,
-Memory, Proposals, Mandates, Moments, Tasks, Ended runs, Files, Images, Computer, Notebook,
-Definitions, Reminders, Passkeys, Connections and Add a device. The link of the current page carries
-`aria-current="page"`, and a detail page marks its parent, so a task marks Tasks. A page with no
-entry marks nothing. Below 768px the links fold into a menu button that opens a side drawer. The
-drawer is a native modal dialog, so the rest of the page goes inert while it is open. It closes on a
-link tap, on Escape and on a tap outside it, and focus returns to the menu button. CSS alone
-switches between the bar and the button, so the server render matches the client. The conversation
-fills the height below the bar.
+Every page sits in one shell, which the root route renders. Its bar holds 20 links: Conversation,
+Call, Memory, Proposals, Mandates, Moments, Tasks, Ended runs, Files, Images, Computer, Device view,
+Notebook, Definitions, Reminders, Spending, Passkeys, Connections, MCP servers and Add a device. The
+link of the current page carries `aria-current="page"`, and a detail page marks its parent, so a
+task marks Tasks. A page with no entry marks nothing. Below 768px the links fold into a menu button
+that opens a side drawer. The drawer is a native modal dialog, so the rest of the page goes inert
+while it is open. It closes on a link tap, on Escape and on a tap outside it, and focus returns to
+the menu button. CSS alone switches between the bar and the button, so the server render matches the
+client. The conversation fills the height below the bar.
 
 ## Approvals
 

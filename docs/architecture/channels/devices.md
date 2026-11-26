@@ -1,16 +1,18 @@
 # Devices
 
-A device is a browser that shows what the assistant puts on its screen. A browser with no session
-enrols with a code and a name, and gets a device session of its own. A browser that is signed in
-names itself, and the session it holds gets a device row. The device opens the device form of the
-live stream and sends its screen size. The assistant lists devices and shows markdown or an image on
-a screen that is on. The camera, the speaker and the microphone are not built: a device record holds
-their capabilities, and every one of them stays off.
+A device is a browser that shows what the assistant puts on its screen. Every client that the user
+signs in is a device: a browser or an app with a full session holds a client device, and a browser
+with no session enrols with a device code and a name, and gets a screen device with a device session
+of its own. A client is one signed-in browser or app and its session, so ten tabs of one browser are
+one device. The device opens the device form of the live stream and sends its screen size. The
+assistant lists devices and shows markdown or an image on a screen that is on. On a call, it may put
+a long answer on the call's device. The camera, the speaker and the microphone are not built: a
+device record holds their capabilities, and every one of them stays off.
 
 The `devices` module owns the record, the screen state, the open streams and the tools. The
 [API](api.md) owns registration, enrolment and the session scope, and the [web client](client.md)
-owns device mode. Read this doc before you change the `devices` module, a device tool or device
-mode.
+owns device mode and the device view. Read this doc before you change the `devices` module, a device
+tool or device mode.
 
 ## Enrolment and the session scope
 
@@ -19,26 +21,33 @@ scope of the session it makes, on `enrolment_codes`. `sessions.enrol` takes no s
 takes the scope of its code: a device code makes only a device session, and a full code only a full
 session.
 
-A device row belongs to one session, and a session holds at most one. A device session holds its row
-from enrolment until a revoke or a sign-out removes the row. A full session holds one only after it
-registers.
+A device row belongs to one session, and a session holds exactly one, from its enrolment until a
+revoke or a sign-out removes the row. The row's `device_kind` is `client` for a full session and
+`screen` for a device session. A client device starts with its screen on, so the assistant may draw
+on it, and the user sees what it drew only when they open the
+[device view](client.md#the-device-view). A screen device starts with every capability off, and its
+screen stays off until the device switches it on. The migration that adds `device_kind` gives each
+existing full session with no row a client row, named with its label and with the screen on, and
+makes the row that `devices.register` wrote a client row that keeps its name and screen.
 
 1. A signed-in client calls `sessions.issueCode({ scope: 'device' })`, and the page `/add-device`
    shows the code. `nixie enrol-code device` issues the same code from the host.
-2. A browser with no session opens `/device`, and enrols with the code and a name. Enrolment with a
-   device code writes the `devices` row in the same transaction, with every capability off.
-3. A browser with a full session calls `devices.register({ clientActionID, name })`. The call is for
-   a `full` session only. It writes the row on the caller's own identity, with every capability off,
-   in one write transaction, and returns the device's short ID. It issues no code, makes no session
-   and never touches the cookie. A second register renames the row and returns the same ID. A retry
-   with the same client action ID and name returns the same ID, and the same ID with another name
-   gets `CLIENT_ACTION_ID_REUSED`.
+2. A browser with no session opens `/device`, and enrols with the code and a name. Enrolment writes
+   the `devices` row in the same transaction as the session, for a full code and a device code, and
+   for a cookie and a bearer session alike, so the phone app is a device too.
+3. A browser with a full session may call `devices.register({ clientActionID, name })`. The call is
+   for a `full` session only. It renames the session's row in one write transaction, leaves its
+   screen as it is, and returns the device's short ID. It writes a client row when the session holds
+   none. It issues no code, makes no session and never touches the cookie. A retry with the same
+   client action ID and name returns the same ID, and the same ID with another name gets
+   `CLIENT_ACTION_ID_REUSED`.
 4. The device switches its screen on with `devices.setCapability`. The call sets only `screen`, and
    only on the session's own device row.
 
 `live.follow` in its device form, `devices.setCapability`, `devices.readImage` and `devices.resize`
-act on the caller's own row. A full session with no row gets `NOT_A_DEVICE` and has to register
-first. A device session whose row a revoke removed gets the refusal of a missing session.
+act on the caller's own row. A full session whose row is missing gets `NOT_A_DEVICE` and may
+register to get one. A device session whose row a revoke removed gets the refusal of a missing
+session.
 
 A device session may call only `live.follow` in its device form, `devices.resize`,
 `devices.pageError`, `devices.pageEvent`, `devices.pageData`, `devices.setCapability`,
@@ -399,6 +408,23 @@ so a frame that loads again on the same stream starts from it. A layout event th
 page drops that page's messages, so a page that a replacement gives back starts with no state. A
 retained message is kept even when the device is offline, and the call then returns `OFFLINE`.
 
+## The call's device
+
+During a call, the assistant keeps its spoken reply short and may put a long answer, such as this
+week's plans, on the call's device, then say where it is. The [call](calls.md) adds no path from a
+call to the device tools: the call's turn already gets the conversation's tools, the device tools
+among them.
+
+- `devices.list` marks `onCall: true` on the one device whose session is the call's carrying session
+  while the call is `live`, and `false` on every other device, before the call is live and after it
+  ends too. The server wires the carrying session from the calls module as a `ReadCallSession`
+  dependency of the device tools, so neither module imports the other.
+- No tool takes "the call's device" as a target. The assistant passes the device's short ID from
+  `devices.list`, as for any other device.
+- The call turn's prompt tells the assistant to keep a spoken reply to about 3 sentences, and to put
+  a longer answer on the device that `devices.list` marks `onCall`. Showing anything is the
+  assistant's choice each time.
+
 ## Waking the model
 
 `devices.watch({ device, wake })` sets the list of changes that wake the model, and each call
@@ -411,21 +437,21 @@ writes nothing. A device counts as offline once it has had no open stream for
 
 ## The tools
 
-| Tool                    | What it does                                                                                                                                      |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `devices.list`          | Lists each device: `shortID`, name, screen, camera, online, `offlineSinceMs`, `wake`, pixels, `pixelRatio`, what it shows and the layout it holds |
-| `devices.watch`         | Sets which changes of a device wake the model: `online`, `offline`, both or none                                                                  |
-| `device.show`           | Shows markdown or an image, with `fit` `whole` or `fill`, for `minutes` or until the next show                                                    |
-| `device.setIdle`        | Sets the idle scene: up to 8 blocks and 20,000 characters of markdown in all                                                                      |
-| `device.layout`         | Sets the grid and its named regions, or clears the layout with `clear: true`                                                                      |
-| `device.region`         | Fills one region, for `minutes` with `then` `blank` or `previous`, or until its next call                                                         |
-| `device.layout_save`    | Saves the device's layout under a name, replacing a saved layout of that name                                                                     |
-| `device.layout_restore` | Puts a saved layout back: its grid and every region's content                                                                                     |
-| `device.layouts`        | Lists the saved names, each with the time it was saved                                                                                            |
-| `device.layout_remove`  | Deletes a saved layout                                                                                                                            |
-| `device.addPackage`     | Asks the user to approve one npm package at an exact version, then stores its files for pages to load                                             |
-| `device.sendToPage`     | Sends a message into the page of a region, and keeps it for each load of the page with `retain`                                                   |
-| `device.preview`        | Returns a picture of the screen and the errors the device reported, as [The preview](#the-preview) describes                                      |
+| Tool                    | What it does                                                                                                                                                              |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `devices.list`          | Lists each device: `shortID`, name, `deviceKind`, `onCall`, screen, camera, online, `offlineSinceMs`, `wake`, pixels, `pixelRatio`, what it shows and the layout it holds |
+| `devices.watch`         | Sets which changes of a device wake the model: `online`, `offline`, both or none                                                                                          |
+| `device.show`           | Shows markdown or an image, with `fit` `whole` or `fill`, for `minutes` or until the next show                                                                            |
+| `device.setIdle`        | Sets the idle scene: up to 8 blocks and 20,000 characters of markdown in all                                                                                              |
+| `device.layout`         | Sets the grid and its named regions, or clears the layout with `clear: true`                                                                                              |
+| `device.region`         | Fills one region, for `minutes` with `then` `blank` or `previous`, or until its next call                                                                                 |
+| `device.layout_save`    | Saves the device's layout under a name, replacing a saved layout of that name                                                                                             |
+| `device.layout_restore` | Puts a saved layout back: its grid and every region's content                                                                                                             |
+| `device.layouts`        | Lists the saved names, each with the time it was saved                                                                                                                    |
+| `device.layout_remove`  | Deletes a saved layout                                                                                                                                                    |
+| `device.addPackage`     | Asks the user to approve one npm package at an exact version, then stores its files for pages to load                                                                     |
+| `device.sendToPage`     | Sends a message into the page of a region, and keeps it for each load of the page with `retain`                                                                           |
+| `device.preview`        | Returns a picture of the screen and the errors the device reported, as [The preview](#the-preview) describes                                                              |
 
 All of them but `device.addPackage` declare the `note` effect and run direct, inside the turn. A
 `device.region` call that declares fetches also declares a `read` of each fetch's host. Each call
@@ -542,17 +568,17 @@ can draw text that it fetched.
 
 ## Device mode
 
-Device mode is the route `/device` of the web client. On load, the page calls
-`devices.setCapability` with the screen setting the browser stored, and the answer shows what the
-browser holds:
+Device mode is the route `/device` of the web client, a separate page from the
+[device view](client.md#the-device-view). On load, the page calls `devices.setCapability` with the
+screen setting the browser stored, and the answer shows what the browser holds:
 
 - A browser with no session shows the enrolment form, which makes a device session.
-- A browser with a full session and no device row shows a form that names the device and calls
-  `devices.register`. The session and its cookie stay as they were, so a chat tab in the same
-  browser keeps working.
-- A browser with a device row comes back with the screen on or off as it stored, and a button
-  switches the screen. A page that registers a device starts with the screen off, whatever the
-  browser stored before.
+- A browser with a full session shows that client's own device full screen. A browser that stored no
+  screen setting starts with the screen on, and one that stored it off starts with it off, with a
+  button that switches the screen on. A full session whose row is missing shows a form that names
+  the device and calls `devices.register`.
+- A browser with a device session comes back with the screen on or off as it stored, and starts with
+  it off when it stored nothing. A button switches the screen.
 
 With the screen on, the page opens the device form of `live.follow`. A layout draws as a CSS grid,
 and each region keeps its place as another updates. A region with a `background` draws it, with

@@ -54,8 +54,8 @@ The API reads the head of the log, then checks the session, and refuses a missin
 with a plain 401. The head comes first, so a revoke that commits after the check lies past the head,
 where the stream replays it. A `session.revoked` record that names the caller ends a page stream
 with `UNAUTHORIZED`, whether or not it sends records. A device-scope session may open the device
-form only, and the page form answers `FORBIDDEN`. A full session with no device row gets
-`NOT_A_DEVICE` from the device form.
+form only, and the page form answers `FORBIDDEN`. A full session may hold a page stream and a device
+stream at once. A full session whose device row is missing gets `NOT_A_DEVICE` from the device form.
 
 The stream answers at `/rpc/live/follow`. A content blocker's default filter list blocks a path with
 a `log` segment, so the stream has none.
