@@ -14,9 +14,11 @@ const ruleSchema = z.object({
   expiresAt: z.number().nullable(),
 });
 
-// `arrived` is the sequence of the mail's arrival record
+// `arrived` is the sequence of the mail's arrival record, and `mailbox` is the mailbox's key, so a
+// forget of one mailbox finds the wakes that show its mail
 const mailSchema = z.object({
   arrived: z.int(),
+  mailbox: z.string(),
   messageID: z.string(),
   threadID: z.string(),
   receivedAt: z.number(),
@@ -24,7 +26,6 @@ const mailSchema = z.object({
 
 const mailWokeSchema = z.object({
   taskID: z.string(),
-  mailbox: z.string(),
   rules: z.array(ruleSchema),
 
   // oldest first

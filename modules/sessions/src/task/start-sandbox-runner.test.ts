@@ -1,9 +1,12 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
+import { readSpendLedger } from '@heynixie/budgets';
 import { readLinkTarget } from '@heynixie/connectors';
 import { createTestCredentials } from '@heynixie/credentials/test-utils';
 import type { Definitions, RecordInput } from '@heynixie/log';
 import { writeRecords } from '@heynixie/log';
 import { modelsConfigSchema } from '@heynixie/models';
+import type { SpendGateway } from '@heynixie/spend';
+import { withSandboxCounts } from '@heynixie/spend';
 import { buildStubSpendGateway } from '@heynixie/spend/test-utils';
 import {
   claimTask,
@@ -11,7 +14,6 @@ import {
   readOpenRun,
   runTaskStep,
   taskLimitNoticeCodec,
-  writeFailedTurnSpend,
   writeInboxRecords,
   writeStepCommit,
   writeTaskControl,
@@ -26,6 +28,7 @@ import {
 import { waitForCondition } from '@heynixie/testing';
 import { createFakeClock } from '@zgeoff/testing/clock';
 import invariant from 'tiny-invariant';
+import { buildCountAnswer } from '../test-utils/build-count-answer';
 import { buildSeeder } from '../test-utils/build-seeder';
 import { buildStubMemory } from '../test-utils/build-stub-memory';
 import { buildStubToolEndpoint } from '../test-utils/build-stub-tool-endpoint';
@@ -41,7 +44,7 @@ import { readRunUsage } from './read-run-usage';
 import type { SandboxRunnerOptions } from './sandbox-runner-options';
 import { startSandboxRunner } from './start-sandbox-runner';
 
-async function setupTest() {
+async function setupTest(options: { readonly isGatewayMetered?: boolean } = {}) {
   const clock = createFakeClock({ startMs: 1_000_000 });
 
   const models = modelsConfigSchema.parse({
@@ -85,13 +88,34 @@ async function setupTest() {
     model_credentials: { anthropic: 'not-a-real-key', router: 'not-a-real-token' },
   });
 
+  const events: string[] = [];
+
+  // the gateway that a test passes to its runner, which the end of a task run reads through
+  const metered: { gateway: Pick<SpendGateway, 'readSandbox'> | undefined } = {
+    gateway: undefined,
+  };
+
   const host = await startTestSessionHost({
     clock,
-    runSettings: buildRunSettings({ models, credentials, hopLimit: 20 }),
+    runSettings: buildRunSettings({
+      models,
+      credentials,
+      hopLimit: 20,
+      logger: (event) => {
+        events.push(event);
+      },
+      ...(options.isGatewayMetered === true
+        ? {
+            gateway: {
+              readSandbox: (name) =>
+                metered.gateway?.readSandbox(name) ?? Promise.resolve({ kind: 'not_found' }),
+            },
+          }
+        : {}),
+    }),
   });
 
   const tools = buildStubToolEndpoint();
-  const events: string[] = [];
   const clearFetchPauses = mock<() => void>();
 
   const noMemory = buildStubMemory({
@@ -101,14 +125,19 @@ async function setupTest() {
 
   const startRunner = async (
     parts: Partial<
-      Pick<SandboxRunnerOptions, 'tools' | 'memory' | 'gateway' | 'turnInputs' | 'inStepActions'>
+      Pick<
+        SandboxRunnerOptions,
+        'tools' | 'memory' | 'gateway' | 'turnInputs' | 'inStepActions' | 'sandboxes'
+      >
     > = {},
   ) => {
+    metered.gateway = parts.gateway ?? metered.gateway;
+
     const runner = await startSandboxRunner({
       context: host.context,
       models,
       credentials,
-      sandboxes: host.sandboxes,
+      sandboxes: parts.sandboxes ?? host.sandboxes,
       images: { conversation: 'nixie-conversation-0123456789ab' },
       tools: parts.tools ?? tools.endpoint,
       memory: parts.memory ?? (() => noMemory),
@@ -700,6 +729,34 @@ test("it compacts a started task's session under the task prompt, with its name 
   ]);
 
   expect(prompts.join('')).not.toInclude('You are Pip.');
+});
+
+test('it counts the dollars of a session summary in the step end read of a task run that the runner prices', async () => {
+  const ctx = await setupTest();
+
+  await ctx.seed.meteredTask(3);
+
+  const runner = await ctx.startRunner();
+
+  ctx.guest.setContextSize(165_000);
+
+  await ctx.runNextStep(runner);
+  await ctx.runNextStep(runner);
+
+  const reads = await ctx.readKinds('task.meter_read');
+  const [summary] = await ctx.readKinds('model.session_summarized');
+
+  const ends = reads.filter((read) => read.payload['reason'] === 'step_end');
+  const summarized = summary?.payload['dollars'];
+
+  invariant(typeof summarized === 'number', 'the summary holds the dollars of its tokens');
+
+  const [first, second] = ends.map((read) => read.payload['countMicros']);
+
+  invariant(typeof first === 'number' && typeof second === 'number', 'two steps ended');
+
+  expect(summarized).toBeGreaterThan(0);
+  expect(second - first).toBeWithin(Math.floor(summarized * 1_000_000), summarized * 1_000_000 + 2);
 });
 
 test('it commits a step whose imp fails to sleep, with no step error', async () => {
@@ -1676,8 +1733,18 @@ test("it pauses a task at its dollar limit, priced on its model's profile", asyn
 
   const runner = await ctx.startRunner();
 
-  await ctx.runNextStep(runner);
-  await ctx.writeMessage(taskID, 'Only the morning tide, please.');
+  ctx.guest.addKindReplies('worker', {
+    text: 'The morning tide is at six.',
+    stopReason: 'end_turn',
+    usage: {
+      uncachedInputTokens: 1000,
+      cacheReadTokens: 0,
+      cacheWrite5mTokens: 0,
+      cacheWrite1hTokens: 0,
+      outputTokens: 0,
+    },
+  });
+
   await ctx.runNextStep(runner);
 
   const [notice] = await ctx.readKinds('task.limit_notice');
@@ -2276,6 +2343,7 @@ test('it leaves waiting after a raise a task whose turn finished its work at its
     state: 'waiting',
     isPauseRequested: false,
     limits: { turns: 25, dollars: 1 },
+    sandboxLimit: null,
   });
 });
 
@@ -2296,6 +2364,18 @@ test('it interrupts a task turn on the call that reaches its dollar limit with t
   });
 
   const runner = await ctx.startRunner();
+
+  ctx.guest.addKindReplies('worker', {
+    text: 'The morning tide is at six.',
+    stopReason: 'end_turn',
+    usage: {
+      uncachedInputTokens: 3334,
+      cacheReadTokens: 0,
+      cacheWrite5mTokens: 0,
+      cacheWrite1hTokens: 0,
+      outputTokens: 0,
+    },
+  });
 
   await ctx.runNextStep(runner);
 
@@ -2319,7 +2399,7 @@ test('it interrupts a task turn on the call that reaches its dollar limit with t
 
   expect(notice?.payload).toStrictEqual({
     taskID,
-    used: { turns: 2, dollars: expect.toBeWithin(0.03, 0.031) },
+    used: { turns: 2, dollars: expect.toBeWithin(0.039, 0.041) },
     limits: { turns: 25, dollars: 0.03 },
   });
 });
@@ -2611,165 +2691,6 @@ test('it counts once the spend of a task turn at its dollar limit whose commit l
   expect(usage.used).toStrictEqual({ turns: 0, dollars: 0.03 });
 });
 
-test('it interrupts a task turn at its own spend that, with a spend recorded after the turn started, reaches the dollar limit', async () => {
-  const ctx = await setupTest();
-  const starter = await ctx.seed.conversationStep();
-
-  const taskID = await ctx.seed.task({
-    starter: starter.claim,
-    name: 'Tide tables',
-    brief: 'Find the high tides for Saturday.',
-    options: {
-      model: 'second-look',
-      profile: 'router-b',
-      report: 'none',
-      limits: { turns: 25, dollars: 0.03 },
-    },
-  });
-
-  const runner = await ctx.startRunner();
-
-  // A brief ends its turn's batch, so the second call answers a message that lands during the turn.
-  ctx.guest.addKindReplies(
-    'worker',
-    {
-      text: 'The high tides on Saturday are at six and at half past six.',
-      usage: {
-        uncachedInputTokens: 3334,
-        cacheReadTokens: 0,
-        cacheWrite5mTokens: 0,
-        cacheWrite1hTokens: 0,
-        outputTokens: 0,
-      },
-      gate: async () => {
-        const run = await readOpenRun(ctx.context.log.writer.db, taskID);
-
-        invariant(run !== null, 'the claim opened a task run');
-
-        await writeFailedTurnSpend(ctx.context, {
-          taskID,
-          taskRunID: run.runID,
-          dollars: 0.01,
-        });
-
-        await ctx.writeMessage(taskID, 'And the evening tide?');
-
-        await waitForCondition(() =>
-          ctx.guest.received.some((entry) => entry.frame.type === 'message'),
-        );
-      },
-    },
-    {
-      text: 'The evening tide is at seven.',
-      usage: {
-        uncachedInputTokens: 3334,
-        cacheReadTokens: 0,
-        cacheWrite5mTokens: 0,
-        cacheWrite1hTokens: 0,
-        outputTokens: 0,
-      },
-      gate: () =>
-        waitForCondition(() =>
-          ctx.guest.received.some((entry) => entry.frame.type === 'interrupt'),
-        ),
-    },
-  );
-
-  await ctx.runNextStep(runner);
-
-  const [notice] = await ctx.readKinds('task.limit_notice');
-
-  expect(notice?.payload).toStrictEqual({
-    taskID,
-    used: { turns: 1, dollars: expect.toBeWithin(0.03, 0.0301) },
-    limits: { turns: 25, dollars: 0.03 },
-  });
-});
-
-test("it lowers the dollars left of a task turn by the spend of a worker that another step started, which a call's priced tokens do not count", async () => {
-  const ctx = await setupTest();
-  const starter = await ctx.seed.conversationStep();
-
-  const taskID = await ctx.seed.task({
-    starter: starter.claim,
-    name: 'Tide tables',
-    brief: 'Find the high tides for Saturday.',
-    options: {
-      model: 'second-look',
-      profile: 'router-b',
-      report: 'none',
-      limits: { turns: 25, dollars: 0.04 },
-    },
-  });
-
-  const runner = await ctx.startRunner();
-
-  ctx.guest.addKindReplies(
-    'worker',
-    {
-      text: 'The high tides on Saturday are at six and at half past six.',
-      usage: {
-        uncachedInputTokens: 3334,
-        cacheReadTokens: 0,
-        cacheWrite5mTokens: 0,
-        cacheWrite1hTokens: 0,
-        outputTokens: 0,
-      },
-      gate: async () => {
-        const run = await readOpenRun(ctx.context.log.writer.db, taskID);
-
-        invariant(run !== null, 'the claim opened a task run');
-
-        await writeRecords(ctx.context.log, [
-          {
-            kind: workerTurnEndedCodec.kind,
-            definitions: ctx.context.definitions(),
-            thread: taskID,
-            payload: workerTurnEndedCodec.encode({
-              workerRunID: crypto.randomUUID(),
-              callID: crypto.randomUUID(),
-              taskRunID: run.runID,
-              model: 'claude-test-worker',
-              profile: 'worker',
-              turn: 1,
-              inputTokens: 100,
-              outputTokens: 10,
-              cacheReadTokens: 0,
-              cacheWriteTokens: 0,
-              dollars: 0.01,
-            }),
-            erasable: { text: 'Found 3 cafes.' },
-          },
-        ]);
-
-        await ctx.writeMessage(taskID, 'And the evening tide?');
-
-        await waitForCondition(() =>
-          ctx.guest.received.some((entry) => entry.frame.type === 'message'),
-        );
-      },
-    },
-    {
-      text: 'The evening tide is at seven.',
-      usage: {
-        uncachedInputTokens: 3334,
-        cacheReadTokens: 0,
-        cacheWrite5mTokens: 0,
-        cacheWrite1hTokens: 0,
-        outputTokens: 0,
-      },
-    },
-  );
-
-  await ctx.runNextStep(runner);
-
-  const hold = ctx.steps.at(-1)?.session?.step;
-
-  invariant(hold, 'the task turn gave its step a hold');
-
-  expect(hold.readLeftDollars()).toBeCloseTo(0.04 - 2 * 0.010002 - 0.01, 6);
-});
-
 test("it counts once the spend of a worker that the turn started, in the turn's dollars left and in the task run's dollars", async () => {
   const ctx = await setupTest();
   const starter = await ctx.seed.conversationStep();
@@ -2883,7 +2804,7 @@ test("it counts once the spend of a worker that the turn started, in the turn's 
   invariant(hold, 'the task turn gave its step a hold');
 
   expect(hold.readLeftDollars()).toBeCloseTo(0.04 - 2 * 0.010002 - 0.01, 6);
-  expect(usage.used.dollars).toBeWithin(0.01, 0.02);
+  expect(usage.used.dollars).toBeWithin(0.03, 0.031);
 });
 
 test('it caps each task turn at 100 model calls', async () => {
@@ -3565,4 +3486,346 @@ test('it pins in the opening of a rebuilt session the brief ID that a carried de
   expect(briefIDs).toHaveLength(2);
   expect(briefIDs[1]).toBe(briefIDs[0]);
   expect(rebuilt).toInclude(`<task-message id="${String(briefIDs[0])}"`);
+});
+
+test('it counts the dollars of a task run as the count of its sandbox less its count at the start, and sets its ledger row with each read', async () => {
+  const ctx = await setupTest({ isGatewayMetered: true });
+  const taskID = await ctx.seed.meteredTask(3);
+
+  const gateway = buildStubSpendGateway();
+
+  gateway.readSandbox
+    .mockResolvedValueOnce(buildCountAnswer(0.5))
+    .mockResolvedValueOnce(buildCountAnswer(0.5))
+    .mockResolvedValueOnce(buildCountAnswer(0.75));
+
+  const runner = await ctx.startRunner({ gateway });
+
+  await ctx.runNextStep(runner);
+
+  const [sandbox] = await ctx.sandboxes.list(taskID);
+  const run = await readOpenRun(ctx.context.log.writer.db, taskID);
+
+  invariant(run !== null && sandbox !== undefined, 'the step opened a task run in a sandbox');
+
+  const reads = await ctx.readKinds('task.meter_read');
+  const usage = await readRunUsage(ctx.context, run);
+  const ledger = await readSpendLedger(ctx.context.log.writer.db);
+
+  expect(reads.map((read) => read.payload)).toStrictEqual([
+    { taskRunID: run.runID, sandbox: sandbox.id, reason: 'run_start', countMicros: 500_000 },
+    { taskRunID: run.runID, sandbox: sandbox.id, reason: 'step_end', countMicros: 750_000 },
+  ]);
+
+  expect(run.opened.meter).toBe('gateway');
+  expect(usage.used.dollars).toBe(0.25);
+
+  expect(ledger.filter((row) => row.counter === `task_run:${run.runID}`)).toStrictEqual([
+    {
+      counter: `task_run:${run.runID}`,
+      unit: 'micros:USD',
+      periodKind: 'none',
+      periodStart: '',
+      amount: 250_000,
+    },
+  ]);
+});
+
+test('it sets the limit of the sandbox at the start of a task run to its count plus the limit of the task run', async () => {
+  const ctx = await setupTest({ isGatewayMetered: true });
+  const taskID = await ctx.seed.meteredTask(3);
+
+  const gateway = buildStubSpendGateway();
+
+  gateway.readSandbox.mockResolvedValueOnce(buildCountAnswer(0.5));
+
+  const runner = await ctx.startRunner({ gateway });
+
+  await ctx.runNextStep(runner);
+
+  const [sandbox] = await ctx.sandboxes.list(taskID);
+
+  invariant(sandbox !== undefined, 'the step woke a sandbox');
+
+  expect(gateway.patchSandbox.mock.calls[0]).toStrictEqual([sandbox.id, { dollars: 3.5 }, 0]);
+});
+
+test('it runs no turn for a step whose read of the sandbox gets no answer, and starts it again after the delay', async () => {
+  const ctx = await setupTest({ isGatewayMetered: true });
+
+  await ctx.seed.meteredTask(3);
+
+  const gateway = buildStubSpendGateway();
+
+  gateway.readSandbox.mockResolvedValueOnce({ kind: 'unreachable', reason: 'no answer' });
+
+  const runner = await ctx.startRunner({ gateway });
+
+  const stepping = ctx.runNextStep(runner);
+
+  await waitForCondition(() => ctx.clock.delays.includes(5000));
+
+  expect(ctx.guest.turns).toHaveLength(0);
+
+  ctx.clock.advance(5000);
+
+  await stepping;
+
+  const errored = await ctx.readKinds('task.step_errored');
+  const committed = await ctx.readKinds('task.step_committed');
+
+  expect(errored).toStrictEqual([]);
+  expect(committed).toStrictEqual([]);
+
+  await ctx.runNextStep(runner);
+
+  expect(ctx.guest.turns).toHaveLength(1);
+});
+
+test('it runs no turn for a step whose sandbox did not take its limit', async () => {
+  const ctx = await setupTest({ isGatewayMetered: true });
+
+  await ctx.seed.meteredTask(3);
+
+  const gateway = buildStubSpendGateway();
+
+  gateway.patchSandbox.mockResolvedValue({ kind: 'unreachable', reason: 'no answer' });
+
+  const runner = await ctx.startRunner({ gateway });
+
+  const stepping = ctx.runNextStep(runner);
+
+  await waitForCondition(() => ctx.clock.delays.includes(5000));
+
+  ctx.clock.advance(5000);
+
+  await stepping;
+
+  const committed = await ctx.readKinds('task.step_committed');
+
+  expect(ctx.guest.turns).toHaveLength(0);
+  expect(committed).toStrictEqual([]);
+});
+
+test('it ends a step that its sandbox refused at its limit with the dollar limit of the task run', async () => {
+  const ctx = await setupTest({ isGatewayMetered: true });
+  const taskID = await ctx.seed.meteredTask(3);
+
+  const gateway = buildStubSpendGateway();
+
+  gateway.readSandbox
+    .mockResolvedValueOnce(buildCountAnswer(0))
+    .mockResolvedValueOnce(buildCountAnswer(0))
+    .mockResolvedValueOnce(
+      buildCountAnswer(2.5, { counter: 'sandbox', route: 'router-b', atMs: 9_000_000 }),
+    );
+
+  const runner = await ctx.startRunner({ gateway });
+
+  await ctx.runNextStep(runner);
+
+  const [ended] = await ctx.readKinds('task.run_ended');
+  const [limit] = await ctx.readKinds('task.limit_reached');
+
+  expect(ended?.payload).toMatchObject({ taskID, cause: 'limit', detail: { meter: 'dollars' } });
+  expect(limit?.payload).toMatchObject({ taskID });
+});
+
+test('it ends at the dollar limit a step whose guest threw after its sandbox refused a request, with no step error', async () => {
+  const ctx = await setupTest({ isGatewayMetered: true });
+  const taskID = await ctx.seed.meteredTask(3);
+
+  const gateway = buildStubSpendGateway();
+
+  gateway.readSandbox
+    .mockResolvedValueOnce(buildCountAnswer(0))
+    .mockResolvedValueOnce(buildCountAnswer(0))
+    .mockResolvedValueOnce(
+      buildCountAnswer(2.5, { counter: 'sandbox', route: 'router-b', atMs: 9_000_000 }),
+    );
+
+  ctx.guest.addKindReplies('worker', { failure: 'the guest lost its model stream' });
+
+  const runner = await ctx.startRunner({ gateway });
+
+  await ctx.runNextStep(runner);
+
+  const [ended] = await ctx.readKinds('task.run_ended');
+  const errored = await ctx.readKinds('task.step_errored');
+
+  expect(ended?.payload).toMatchObject({ taskID, cause: 'limit', detail: { meter: 'dollars' } });
+  expect(errored).toStrictEqual([]);
+});
+
+test('it holds a step whose kept sandbox the gateway cannot register, and runs no turn and records no step error', async () => {
+  const ctx = await setupTest({ isGatewayMetered: true });
+  const taskID = await ctx.seed.meteredTask(3);
+  const first = await ctx.startRunner({ gateway: buildStubSpendGateway() });
+
+  await ctx.runNextStep(first);
+  await ctx.writeMessage(taskID, 'Only the morning tide, please.');
+
+  const down = buildStubSpendGateway();
+
+  down.readSandbox.mockResolvedValueOnce({ kind: 'unreachable', reason: 'no answer' });
+
+  const restarted = await ctx.startRunner({
+    gateway: buildStubSpendGateway(),
+    sandboxes: withSandboxCounts(ctx.sandboxes, { gateway: down, log: () => {} }),
+  });
+
+  const stepping = ctx.runNextStep(restarted);
+
+  await waitForCondition(() => ctx.clock.delays.includes(5000));
+
+  const errored = await ctx.readKinds('task.step_errored');
+
+  ctx.clock.advance(5000);
+
+  await stepping;
+
+  expect(errored).toStrictEqual([]);
+  expect(ctx.guest.turns).toHaveLength(1);
+});
+
+test('it ends no step at the limit for a refusal that came before the step began', async () => {
+  const ctx = await setupTest({ isGatewayMetered: true });
+
+  await ctx.seed.meteredTask(3);
+
+  const gateway = buildStubSpendGateway();
+
+  gateway.readSandbox
+    .mockResolvedValueOnce(buildCountAnswer(0))
+    .mockResolvedValueOnce(buildCountAnswer(0))
+    .mockResolvedValueOnce(
+      buildCountAnswer(0.1, { counter: 'sandbox', route: 'router-b', atMs: 1000 }),
+    );
+
+  const runner = await ctx.startRunner({ gateway });
+
+  await ctx.runNextStep(runner);
+
+  const ended = await ctx.readKinds('task.run_ended');
+
+  expect(ended).toStrictEqual([]);
+});
+
+test('it runs no turn for a task run whose count is at its limit, and ends it at the limit', async () => {
+  const ctx = await setupTest({ isGatewayMetered: true });
+  const taskID = await ctx.seed.meteredTask(1);
+
+  const gateway = buildStubSpendGateway();
+
+  gateway.readSandbox
+    .mockResolvedValueOnce(buildCountAnswer(0))
+    .mockResolvedValueOnce(buildCountAnswer(0))
+    .mockResolvedValueOnce(buildCountAnswer(0.5))
+    .mockResolvedValueOnce(buildCountAnswer(1.5));
+
+  const runner = await ctx.startRunner({ gateway });
+
+  await ctx.runNextStep(runner);
+  await ctx.writeMessage(taskID, 'Only the morning tide, please.');
+  await ctx.runNextStep(runner);
+
+  const [ended] = await ctx.readKinds('task.run_ended');
+
+  expect(ctx.guest.turns).toHaveLength(1);
+  expect(gateway.readSandbox.mock.calls).toHaveLength(5);
+  expect(ended?.payload).toMatchObject({ cause: 'limit', used: { dollars: 1.5 } });
+});
+
+test('it holds the end of a task run, and keeps its sandbox, until the gateway answers its end read', async () => {
+  const ctx = await setupTest({ isGatewayMetered: true });
+  const taskID = await ctx.seed.meteredTask(3);
+
+  const gateway = buildStubSpendGateway();
+
+  gateway.readSandbox
+    .mockResolvedValueOnce(buildCountAnswer(0))
+    .mockResolvedValueOnce(buildCountAnswer(0))
+    .mockResolvedValueOnce(buildCountAnswer(0.5))
+    .mockResolvedValue({ kind: 'unreachable', reason: 'no answer' });
+
+  const runner = await ctx.startRunner({ gateway });
+
+  await ctx.runNextStep(runner);
+
+  const closing = writeTaskControl(ctx.context, { taskID, control: 'close' });
+
+  await waitForCondition(() => ctx.events.includes('task.meter_read_failed'));
+
+  const endedBefore = await ctx.readKinds('task.run_ended');
+  const closedBefore = await ctx.readKinds('task.closed');
+  const kept = await ctx.sandboxes.list(taskID);
+
+  gateway.readSandbox.mockResolvedValue(buildCountAnswer(0.6));
+  ctx.clock.advance(5000);
+
+  await closing;
+
+  await waitForCondition(async () => {
+    const remaining = await ctx.sandboxes.list(taskID);
+
+    return remaining.length === 0;
+  });
+
+  const reads = await ctx.readKinds('task.meter_read');
+  const [ended] = await ctx.readKinds('task.run_ended');
+
+  expect(endedBefore).toStrictEqual([]);
+  expect(closedBefore).toStrictEqual([]);
+  expect(kept).toHaveLength(1);
+
+  expect(reads.map((read) => [read.payload['reason'], read.payload['countMicros']])).toStrictEqual([
+    ['run_start', 0],
+    ['step_end', 500_000],
+    ['run_end', 600_000],
+  ]);
+
+  expect(ended?.payload).toMatchObject({ used: { dollars: 0.6 } });
+});
+
+test('it ends at its limit the task run of a step only once the gateway answers the end read', async () => {
+  const ctx = await setupTest({ isGatewayMetered: true });
+  const taskID = await ctx.seed.meteredTask(3);
+
+  const gateway = buildStubSpendGateway();
+
+  gateway.readSandbox
+    .mockResolvedValueOnce(buildCountAnswer(0))
+    .mockResolvedValueOnce(buildCountAnswer(0))
+    .mockResolvedValueOnce(
+      buildCountAnswer(2.5, { counter: 'sandbox', route: 'router-b', atMs: 9_000_000 }),
+    )
+    .mockResolvedValue({ kind: 'unreachable', reason: 'no answer' });
+
+  const runner = await ctx.startRunner({ gateway });
+
+  const stepping = ctx.runNextStep(runner);
+
+  await waitForCondition(() => ctx.events.includes('task.meter_read_failed'));
+
+  const endedBefore = await ctx.readKinds('task.run_ended');
+  const committedBefore = await ctx.readKinds('task.step_committed');
+
+  gateway.readSandbox.mockResolvedValue(buildCountAnswer(2.75));
+  ctx.clock.advance(5000);
+
+  await stepping;
+
+  const reads = await ctx.readKinds('task.meter_read');
+  const [ended] = await ctx.readKinds('task.run_ended');
+
+  expect(endedBefore).toStrictEqual([]);
+  expect(committedBefore).toStrictEqual([]);
+
+  expect(reads.map((read) => read.payload['reason'])).toStrictEqual([
+    'run_start',
+    'step_end',
+    'run_end',
+  ]);
+
+  expect(ended?.payload).toMatchObject({ taskID, cause: 'limit', used: { dollars: 2.75 } });
 });

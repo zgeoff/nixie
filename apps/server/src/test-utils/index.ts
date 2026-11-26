@@ -1,5 +1,7 @@
 export { buildTestConversationTools } from './build-test-conversation-tools';
+export { connectTestGoogle } from './connect-test-google';
 export { createTestClient } from './create-test-client';
+export { makeHasTool } from './make-has-tool';
 export type { NixieOperationArgs } from '../part/build-nixie-operation-schemas';
 export { collectUnvoidedReplies } from './collect-unvoided-replies';
 export { readDataFiles } from './read-data-files';

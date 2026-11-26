@@ -4,12 +4,13 @@ Make an OAuth client in your own Google Cloud project, register it in nixie, and
 account from Settings → Connections. nixie keeps the account's refresh token sealed in its database.
 Once you connect an account, the model can use the
 [Gmail tools](../architecture/connectors/gmail-tools.md) to search, read and label your mail, write
-drafts and send mail. The tools for [Calendar](https://linear.app/zgeoff/issue/GEO-1826) and
+drafts and send mail. It can also wake the conversation or a task when new mail matches a rule it
+sets. The tools for [Calendar](https://linear.app/zgeoff/issue/GEO-1826) and
 [Drive](https://linear.app/zgeoff/issue/GEO-1827) come later. To learn how consent, refresh and
 Forget work, read the [Google connections](../architecture/connectors/google-connections.md) doc.
 
-Settings → Connections lists 6 steps, titled like the sections of this guide from "Create a Google
-Cloud project" to "Connect an account", and fills in your page's address where a step names it.
+Settings → Connections shows the same 6 steps as this guide, from "Create a Google Cloud project" to
+"Connect an account", with your nixie address filled in where a step needs it.
 
 ## Before you start
 
@@ -95,31 +96,39 @@ scope, and a button to ask Google again. The conversation never shows that notic
   service. When you add a rule that asks first, nixie asks you. A draft stays in your account for
   you to open.
 - Before nixie sends mail to an address you haven't allowed, it waits for your answer on a card that
-  shows the account, each recipient, the subject and the whole text. A reply to the sender of the
-  mail it answers has that sender's permission. A reply to any other address waits on a card.
+  shows the account, each recipient, the subject and the whole text. The sender of a mail counts as
+  allowed for a reply to that mail, so such a reply needs no card.
 - When nixie can't tell whether a send went through, it waits 5 minutes, then looks for the mail in
   your Sent folder. When it finds the mail, the send counts as done. Otherwise nixie shows you the
   send on a card, and doesn't send it again until you answer.
+- nixie polls your account for new mail every 2 minutes by default, and keeps no record of a mail
+  that no wake rule matches. The model sets a wake rule with `gmail.wake_set`, and nixie asks you
+  first unless a rule of yours allows it. A mail that matches wakes the conversation or a task, and
+  nixie keeps only its sender and subject, until you forget the connection.
+- When nixie sends a mail, it also sets a wake rule for a reply in that thread, for 7 days by
+  default. The card shows when that rule expires.
 - A mail nixie sends carries no header with nixie's name in it.
 
 ## The unverified-app warning
 
-An account that does not own the project first sees "Google hasn't verified this app". Select
-Advanced, then continue to the app. The warning stays while the app is not verified, and a grant to
-an unverified app in production keeps working.
+When you connect an account that does not own the project, Google first shows "Google hasn't
+verified this app". Select Advanced, then continue to the app. The warning stays while the app is
+not verified. A grant to an unverified app in production keeps working.
 
 ## Forget a connection
 
 1. Open the connection from Settings → Connections.
 2. Select Forget this connection, then Forget for good.
 
-nixie revokes the grant at Google and deletes the connection's keys, so the tokens in its database
-are unreadable at once. The page then shows 3 lines:
+nixie revokes the grant at Google and ends the connection's wake rules. It erases the sender and
+subject it kept for each mail, including in the conversation's history and in logged requests. It
+deletes the connection's keys, so the tokens in the database become unreadable at once. The page
+then shows 3 lines:
 
 - Erasure: whether nixie deleted the keys.
 - Revocation: whether Google ended the grant. After "refused", Google still holds the grant. After
-  "unknown", nixie can't tell whether Google still holds it. In both cases, end it by hand as the
-  next section says.
+  "unknown", nixie can't tell whether Google still holds it. In both cases, end it by hand with the
+  steps in [Revoke a grant by hand](#revoke-a-grant-by-hand).
 - Key backups: whether a published backup set no longer holds the keys. A backup set that nixie made
   before the forget stays readable until the backup job prunes the key repository.
 

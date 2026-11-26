@@ -11,6 +11,7 @@ import { readOpenRun } from '../run/read-open-run';
 import type { RunEndCause } from '../run/run-end-cause';
 import { taskRunReportRequestedCodec } from '../run/task-run-report-requested-codec';
 import type { TaskRun } from '../run/types';
+import { withRunEndSettled } from '../run/with-run-end-settled';
 import { writeRunEndInTransaction } from '../run/write-run-end-in-transaction';
 import { taskMessageRefusedCodec } from '../task/codec/task-message-refused-codec';
 import { writeTaskMessageInTransaction } from '../task/projection/write-task-message';
@@ -31,7 +32,21 @@ import { readStepCursor } from './read-step-cursor';
 import { readStepMessaging } from './read-step-messaging';
 import { StepAlreadyCommittedError } from './step-already-committed-error';
 
-export async function writeStepCommit(
+// A commit that ends the task run waits for the gateway's answer to the end read of each of its
+// sandboxes, and the signal ends that wait.
+export function writeStepCommit(
+  context: TasksContext,
+  claim: TaskClaim,
+  stepResult: StepResult,
+  signal?: AbortSignal,
+): Promise<void> {
+  return withRunEndSettled(context, () => commitStep(context, claim, stepResult), {
+    lease: claim.lease,
+    ...(signal === undefined ? {} : { signal }),
+  });
+}
+
+async function commitStep(
   context: TasksContext,
   claim: TaskClaim,
   stepResult: StepResult,

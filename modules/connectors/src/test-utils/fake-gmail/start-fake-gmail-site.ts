@@ -1,14 +1,33 @@
 import { startTestSite } from '@heynixie/egress/test-utils';
 import type { GmailAccess, GmailDeps } from '../../google/gmail/types';
 import type { ConnectorContext } from '../../types';
+import type { FakeHold } from './build-fake-hold';
+import { buildFakeHold } from './build-fake-hold';
 import type { FakeGmail } from './create-fake-gmail';
 import { createFakeGmail } from './create-fake-gmail';
+
+interface FakeConnectionOptions {
+  readonly isPolled: boolean;
+}
 
 export interface FakeGmailSite {
   readonly gmail: FakeGmail;
   readonly origin: string;
   readonly context: ConnectorContext;
   readonly access: GmailAccess;
+
+  // a live connection besides the first, on the same account; one the poll does not cover when it
+  // is not polled
+  readonly addConnection: (connection: string, options: FakeConnectionOptions) => void;
+
+  // a forget of the connection that commits: it is no longer live
+  readonly forget: (connectionID: string) => void;
+
+  // stops the next read of the live connections after it chose them, before it answers
+  readonly holdLiveRead: () => FakeHold;
+
+  // makes the next check of a connection's liveness in a write transaction fail
+  readonly breakNextLiveProbe: () => void;
 
   // the hosts of a tool that reaches the site
   readonly hosts: GmailDeps['hosts'];
@@ -41,15 +60,57 @@ export async function startFakeGmailSite(connection = 'k3x9m2p7qa'): Promise<Fak
     fetch: sendRequest,
   };
 
+  const live: ConnectorContext[] = [context];
+  const polled: string[] = [connection];
+  const holds: FakeHold[] = [];
+  let isProbeBroken = false;
+
   return {
     gmail,
     origin,
     context,
-    access: {
-      readLiveContexts: (wanted) => {
-        const live = wanted === undefined || wanted === connection ? [context] : [];
+    addConnection: (added, options) => {
+      live.push({ ...context, connectionID: `${added}-id`, connection: added });
 
-        return Promise.resolve(live);
+      if (options.isPolled) {
+        polled.push(added);
+      }
+    },
+    forget: (connectionID) => {
+      const index = live.findIndex((entry) => entry.connectionID === connectionID);
+
+      live.splice(index, 1);
+    },
+    holdLiveRead: () => {
+      const hold = buildFakeHold('live');
+
+      holds.push(hold);
+
+      return hold;
+    },
+    breakNextLiveProbe: () => {
+      isProbeBroken = true;
+    },
+    access: {
+      readLiveContexts: async (wanted) => {
+        const chosen = live.filter((entry) => wanted === undefined || entry.connection === wanted);
+        const held = holds.shift();
+
+        if (held !== undefined) {
+          await held.arrive();
+        }
+
+        return chosen;
+      },
+      readPolledConnections: () => Promise.resolve(polled),
+      probeLive: (_tx, connectionID) => {
+        if (isProbeBroken) {
+          isProbeBroken = false;
+
+          return Promise.reject(new Error('the check of the connection failed'));
+        }
+
+        return Promise.resolve(live.some((entry) => entry.connectionID === connectionID));
       },
     },
     hosts: {

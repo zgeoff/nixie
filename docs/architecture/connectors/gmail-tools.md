@@ -1,23 +1,26 @@
 # Gmail tools
 
-The Google connector holds 8 `gmail.*` tools. They reach a connected Google account only through the
-credential store's fetcher, which adds the credential on the way out, so no tool ever holds a token.
-[Google connections](google-connections.md) covers the consent, the scopes and the connection;
-[tool calls](tool-calls.md) covers how a call and its errors reach the model. The `mail.*` tools
-belong to the assistant's own mailbox.
+The Google connector holds 11 `gmail.*` tools. They reach a connected Google account only through
+the credential store's fetcher, which adds the credential on the way out, so no tool ever holds a
+token. For the consent, the scopes and the connection, see
+[Google connections](google-connections.md); for how a call and its errors reach the model, see
+[tool calls](tool-calls.md). The `mail.*` tools belong to the assistant's own mailbox.
 
 ## The tools
 
-| Tool                    | Effect  | Runs   | Destinations                          | Reconciliation            |
-| ----------------------- | ------- | ------ | ------------------------------------- | ------------------------- |
-| `gmail.search`          | `read`  | direct | none                                  | none                      |
-| `gmail.read`            | `read`  | direct | none                                  | none                      |
-| `gmail.read_attachment` | `read`  | direct | none                                  | none                      |
-| `gmail.label`           | `write` | queued | none                                  | check `gmail.find_labels` |
-| `gmail.draft`           | `write` | queued | none                                  | check `gmail.find_draft`  |
-| `gmail.send`            | `send`  | queued | each address in `to`, `cc` and `bcc`  | check `gmail.find_sent`   |
-| `gmail.reply`           | `send`  | queued | the recipients it reads, in `prepare` | check `gmail.find_sent`   |
-| `gmail.send_draft`      | `send`  | queued | the draft's recipients, in `prepare`  | check `gmail.find_sent`   |
+| Tool                    | Effect              | Runs   | Destinations                          | Reconciliation            |
+| ----------------------- | ------------------- | ------ | ------------------------------------- | ------------------------- |
+| `gmail.search`          | `read`              | direct | none                                  | none                      |
+| `gmail.read`            | `read`              | direct | none                                  | none                      |
+| `gmail.read_attachment` | `read`              | direct | none                                  | none                      |
+| `gmail.label`           | `write`             | queued | none                                  | check `gmail.find_labels` |
+| `gmail.draft`           | `write`             | queued | none                                  | check `gmail.find_draft`  |
+| `gmail.send`            | `send`              | queued | each address in `to`, `cc` and `bcc`  | check `gmail.find_sent`   |
+| `gmail.reply`           | `send`              | queued | the recipients it reads, in `prepare` | check `gmail.find_sent`   |
+| `gmail.send_draft`      | `send`              | queued | the draft's recipients, in `prepare`  | check `gmail.find_sent`   |
+| `gmail.wake_set`        | `schedule`, `write` | queued | none                                  | none                      |
+| `gmail.wake_list`       | `read`              | direct | none                                  | none                      |
+| `gmail.wake_cancel`     | `note`              | direct | none                                  | none                      |
 
 Every Gmail tool needs the scope `gmail.modify`. Each tool is one entry of the connector's
 `actions`, so the tool filter and the notice about fewer scopes cover them with no list of their
@@ -133,13 +136,13 @@ window before the attempt, read to its last page, with the `Message-ID` and
 `X-Google-Original-Message-ID` headers of each message. Gmail can replace a `Message-ID` that a
 client set and keep the old one in `X-Google-Original-Message-ID`.
 
-| What the check sees                                             | It answers                           |
-| --------------------------------------------------------------- | ------------------------------------ |
-| Either way finds a message whose header holds the Message-ID    | found; this row wins over the others |
-| Both ways finish and find none                                  | not found                            |
-| The list holds more than 200 messages                           | inconclusive                         |
-| Any call fails, or Gmail answers in a way the check cannot read | inconclusive                         |
-| A listed message is gone when the check reads it                | inconclusive                         |
+| What the check sees                                             | It answers                                                                                     |
+| --------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| Either way finds a message whose header holds the Message-ID    | found, and wins over the rows below; inconclusive when the send's reply rule cannot be written |
+| Both ways finish and find none                                  | not found                                                                                      |
+| The list holds more than 200 messages                           | inconclusive                                                                                   |
+| Any call fails, or Gmail answers in a way the check cannot read | inconclusive                                                                                   |
+| A listed message is gone when the check reads it                | inconclusive                                                                                   |
 
 Found makes the action done, with the found message and thread as its result. Not found and
 inconclusive bring the action to the user on a card, and nothing sends again until the user answers,
@@ -148,9 +151,9 @@ trace of a sent mail, so a Sent copy deleted for good looks the same as a mail t
 
 A label change applies to every message of a thread, so `gmail.find_labels` answers found only when
 every message of each thread holds every label in `add` and none in `remove`, and inconclusive
-otherwise. A label change that it finds done answers `created: null`, because the check cannot tell
-which labels the action made. `gmail.find_draft` answers found when the account holds a draft whose
-`Message-ID` header holds the action's ID.
+otherwise. For a label change that it finds done, it answers `created: null`, because the check
+cannot tell which labels the action made. `gmail.find_draft` answers found when the account holds a
+draft whose `Message-ID` header holds the action's ID.
 
 ## Labels and drafts
 
@@ -160,6 +163,91 @@ label has makes the label, and a name in `remove` that no label has drops out. A
 has no further effect, so a retry is safe. `gmail.draft` writes a draft in the account and sends
 nothing. Both have the effect `write`, so the starter rule `allow-service-writes` covers them. A
 rule that asks, or a call that follows outside content, can still hold one on a card.
+
+## Arrivals
+
+The `trigger_sources` part builds the Gmail arrival source beside the other sources that the trigger
+core runs, with the Google hosts of the `google_tools` part. The source has the id `gmail` and the
+kind `mail`. It polls each Google connection that holds `gmail.modify` and is not waiting for a new
+consent, one at a time, every `gmail.poll_interval` (default `2m`). It reads Gmail and never reaches
+the decision point.
+
+- The first poll of a connection reads the profile's history ID and delivers no mail.
+- Each later poll reads `history.list` from the stored history ID, over every page, for added
+  messages. It reads each one in `metadata` format and drops a message labelled `SENT`, `DRAFT`,
+  `SPAM` or `TRASH`. It reads every new message whether or not a rule is live, so a rule set during
+  a poll misses nothing. The trigger core drops each arrival that no rule matches.
+- A poll is one `deliver` call, with its arrivals and the cursor of every connection. The cursor
+  moves only when the call commits. Because each poll writes the poll time into the cursor, each
+  poll leaves a `trigger.delivered` record, even with no mail.
+- When Google answers 404 for the stored history ID, the source reads the profile's history ID, and
+  only then lists the mail that arrived since a margin before the last good poll. The margin is
+  `lookbackMs` in
+  [`read-gmail-changes.ts`](../../../modules/connectors/src/google/gmail/poll/read-gmail-changes.ts).
+  A mail that arrives between the two reads is in the list or after the new cursor. The dedupe keys
+  drop each mail already recorded.
+- The source rereads the mail since each reply rule's send, so a rule still wakes on a reply that
+  arrived, and was dropped, before the rule existed. Each poll reads the connection's live reply
+  rules from the log and takes those whose IDs are not yet in `replayed` in the connection's cursor
+  entry. As a resync does, it lists the mail since the earliest start among them. The delivery that
+  commits adds the rule IDs to `replayed`. The rules live in the log and `replayed` in the cursor,
+  so a restart between setting the rule and the next poll loses nothing.
+- A failed poll keeps the cursor. The source polls again after a backoff, or after Google's retry
+  time when that is longer. The backoff doubles after each further failure up to a cap, and both
+  live in
+  [`build-poll-retry-ms.ts`](../../../modules/connectors/src/google/gmail/poll/build-poll-retry-ms.ts).
+  After 3 failed polls in a row of any polled connection it reports `unhealthy`, and it reports
+  `running` once the last poll of every polled connection succeeded. A connection that needs a new
+  consent is skipped and counts for neither. The loop never sleeps past `gmail.poll_interval`, so a
+  connection that joins the list gets its first poll within an interval while another backs off.
+- A stop aborts each request in flight through the connection's context, so a shutdown never waits
+  on Gmail, and an aborted poll doesn't count as a failure.
+- A mail's arrival ID is the connection's short ID, a dot and Google's message ID, as in the tools.
+  Its mailbox is `gmail:<connection ID>`, so a rule on one connection never matches another's mail.
+- At its next delivery, the source drops the cursor entry of each connection that is no longer live.
+
+### Wake rules
+
+`gmail.wake_set`, `gmail.wake_list` and `gmail.wake_cancel` take the same match, target, `expires`
+and `window` as [the mailbox's wake tools](../core/mailbox.md#wake-rules), with Gmail's thread ID in
+`thread`. A thread ID with the connection's prefix names the connection.
+
+- `gmail.wake_set` declares the effects `schedule` and `write`. An allow rule covers a call only
+  when it lists every effect of the call. No starter rule lists `schedule`, so a call asks the user
+  until the user adds an allow rule that lists both effects. The `write` effect queues the call, so
+  it runs as an action even under an allow rule. The rule starts when the action runs, and the
+  action fails with `TASK_ENDED` when the target task has ended by then. The tool answers
+  `BAD_DURATION` for a duration under a minute, and sets no upper limit. It answers `NOT_POLLED` for
+  a connection that the poll skips, one that lacks `gmail.modify` or needs a new consent, because a
+  rule there would never fire.
+- Each rule write checks, in its own write transaction, that the connection is still live. A call
+  that read the connection before a forget refuses once the forget lands, so no rule outlives the
+  forget.
+- `gmail.wake_list` lists every live rule of the connection, and `gmail.wake_cancel` answers
+  `UNKNOWN_RULE` for a rule of another mailbox. Neither asks.
+- `gmail.send` and `gmail.reply` take `replyWake`, as `mail.send` does: a duration, or `off`. When
+  the send is done, nixie sets a rule on the sent mail's Gmail thread that wakes the caller that
+  queued the send, from the start of the send, for `replyWake` (default `wake_rules.reply_expiry`).
+  A send that `gmail.find_sent` later finds gets the same rule, unless the rule's expiry has passed
+  by then. The result holds the rule's short ID as `replyRule`, or null. The send's card shows the
+  expiry. A send whose rule cannot be written answers `ambiguous`, so the check finds the mail and
+  writes the rule again. A check that finds the mail but cannot write its rule answers
+  `inconclusive`, so the queue never settles a send without its rule. nixie writes the rule in its
+  own transaction, before the action's outcome, because the action queue runs no connector write
+  inside the outcome's transaction. A restart between the two leaves the action unsettled, and the
+  same check replaces the rule in place, so one rule stays. A send that the user drops after such a
+  restart keeps its rule. The owner decides in [GEO-2871](https://linear.app/zgeoff/issue/GEO-2871)
+  whether it should.
+
+### Forgetting
+
+Forgetting a connection calls the trigger module's `eraseGmailMailbox` twice, once when the
+connection is hidden and once when its indexes clean. Each call ends the connection's rules as
+`connection_forgotten`, drops the matches they held, and destroys the sender and subject of every
+arrival and wake of that mailbox. A wake keeps its record, which renders each mail as forgotten. The
+forget also finds the wakes that show the connection's mail. It cleans the sessions on each wake's
+thread, as a forgotten record does, and removes every logged request on those threads, so no sender
+or subject outlives the forget in a session or in a turn input.
 
 ## Testing
 

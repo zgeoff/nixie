@@ -34,6 +34,7 @@ export type {
   RunMeterName,
   RunSettings,
   RunState,
+  SandboxMicrosRead,
   TaskRun,
   TaskRunEnded,
   TaskRunOpened,
@@ -155,10 +156,15 @@ export { taskLimitNoticeCodec } from './limit/task-limit-notice-codec';
 export { toolChangedCodec } from './inbox/tool-changed-codec';
 export { taskLimitReachedCodec } from './limit/task-limit-reached-codec';
 export { taskLimitsRaisedCodec } from './limit/task-limits-raised-codec';
-export type { FailedTurnSpend } from './task/write-failed-turn-spend';
-export { withTurnSpendOnFailure } from './task/with-turn-spend-on-failure';
-export { writeFailedTurnSpend } from './task/write-failed-turn-spend';
+export type { TaskMeterReadReason } from './run/task-meter-read-codec';
+export { taskMeterReadCodec, taskMeterReadReasons } from './run/task-meter-read-codec';
+export { readMeterReads } from './run/read-meter-reads';
+export type { MeterReadWrite } from './run/write-meter-read';
+export { withRunEndSettled } from './run/with-run-end-settled';
+export { writeMeterRead } from './run/write-meter-read';
 export type { TaskLimitRaise, TaskLimitRaiseOutcome } from './task/limit/write-task-limit-raise';
+export type { RaisedSandboxLimit } from './task/limit/types';
+export { readRaisedSandboxLimit } from './task/limit/read-raised-sandbox-limit';
 export { writeTaskLimitRaise } from './task/limit/write-task-limit-raise';
 export { readSessionBoundary } from './task/read-session-boundary';
 export { readRunningStep } from './task/read-running-step';

@@ -18,9 +18,17 @@ export interface TestCredentialGroups {
   readonly settings?: Readonly<Record<string, string>>;
 }
 
-// A real resolver and store over the groups a test names, with a resolver that finds no host.
+export interface TestCredentialSite {
+  // the certificate authority that a loopback site signs with; every host then resolves to the
+  // loopback address, and the store sends there
+  readonly ca: string;
+}
+
+// A real resolver and store over the groups a test names. Without a site, the store's resolver
+// finds no host.
 export async function createTestCredentials(
   groups: TestCredentialGroups = {},
+  site?: TestCredentialSite,
 ): Promise<TestCredentials> {
   const file: SecretsFile = {
     deployment_key: Buffer.alloc(32, 5).toString('base64'),
@@ -30,6 +38,7 @@ export async function createTestCredentials(
   };
 
   const ownValues = createOwnValueSet();
+  const hosts = site === undefined ? [] : ['127.0.0.1'];
 
   const store = createCredentialStore({
     secrets: {
@@ -37,8 +46,9 @@ export async function createTestCredentials(
       fingerprintKey: await deriveFingerprintKey(Buffer.alloc(32, 5)),
       ownValues,
     },
-    resolveHost: () => Promise.resolve([]),
+    resolveHost: () => Promise.resolve(hosts),
     denied: [],
+    ...(site === undefined ? {} : { test: { checkAddress: () => true, ca: site.ca } }),
   });
 
   return { resolveCredential: createResolver(file), store, ownValues };

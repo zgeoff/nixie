@@ -70,6 +70,7 @@ export type {
   ToolRunModel,
   ToolSession,
   ToolStepHold,
+  WorkerEnded,
   ToolVariants,
   CallCapCheck,
   PaidCallCap,

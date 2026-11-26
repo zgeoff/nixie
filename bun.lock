@@ -141,6 +141,23 @@
         "msw": "catalog:",
       },
     },
+    "adapters/speech-gpt-live": {
+      "name": "@heynixie/speech-gpt-live",
+      "version": "0.0.0",
+      "dependencies": {
+        "@heynixie/calls": "workspace:*",
+        "@heynixie/clock": "workspace:*",
+        "@heynixie/logger": "workspace:*",
+        "@heynixie/wire": "workspace:*",
+        "ts-pattern": "catalog:",
+        "zod": "catalog:",
+      },
+      "devDependencies": {
+        "@heynixie/egress": "workspace:*",
+        "@heynixie/testing": "workspace:*",
+        "@zgeoff/testing": "catalog:",
+      },
+    },
     "adapters/spend-model-gateway": {
       "name": "@heynixie/spend-model-gateway",
       "version": "0.0.0",
@@ -235,6 +252,7 @@
         "@heynixie/secret-scan": "workspace:*",
         "@heynixie/sessions": "workspace:*",
         "@heynixie/skills": "workspace:*",
+        "@heynixie/speech-gpt-live": "workspace:*",
         "@heynixie/spend": "workspace:*",
         "@heynixie/spend-model-gateway": "workspace:*",
         "@heynixie/tasks": "workspace:*",
@@ -335,16 +353,22 @@
       "version": "0.0.0",
       "dependencies": {
         "@anthropic-ai/claude-agent-sdk": "catalog:",
+        "@heynixie/calls": "workspace:*",
+        "@heynixie/clock": "workspace:*",
         "@heynixie/conversation": "workspace:*",
+        "@heynixie/credentials": "workspace:*",
+        "@heynixie/egress": "workspace:*",
         "@heynixie/memory": "workspace:*",
         "@heynixie/mock-server": "workspace:*",
         "@heynixie/models": "workspace:*",
         "@heynixie/prompts": "workspace:*",
         "@heynixie/server": "workspace:*",
         "@heynixie/sessions": "workspace:*",
+        "@heynixie/speech-gpt-live": "workspace:*",
         "@heynixie/testing": "workspace:*",
         "@heynixie/wire": "workspace:*",
         "msw": "catalog:",
+        "playwright-core": "catalog:",
         "zod": "catalog:",
       },
       "devDependencies": {
@@ -774,6 +798,7 @@
         "@heynixie/secret-scan": "workspace:*",
         "@heynixie/tasks": "workspace:*",
         "@heynixie/tools": "workspace:*",
+        "@heynixie/triggers": "workspace:*",
         "@heynixie/wire": "workspace:*",
         "kysely": "catalog:",
         "tiny-invariant": "catalog:",
@@ -1880,6 +1905,8 @@
     "@heynixie/sessions": ["@heynixie/sessions@workspace:modules/sessions"],
 
     "@heynixie/skills": ["@heynixie/skills@workspace:modules/skills"],
+
+    "@heynixie/speech-gpt-live": ["@heynixie/speech-gpt-live@workspace:adapters/speech-gpt-live"],
 
     "@heynixie/spend": ["@heynixie/spend@workspace:modules/spend"],
 

@@ -11,6 +11,7 @@ import type { PickerSettings } from './client/set-picker';
 import { forgetConnection, readConnectionForgetState } from './connection/forget-connection';
 import { listConnections } from './connection/list-connections';
 import { readConnectionContext } from './connection/read-connection-context';
+import { readConnectionStates } from './connection/read-connection-states';
 import { readHeldBackTools } from './connection/read-held-back-tools';
 import { readLiveContexts } from './connection/read-live-contexts';
 import { readSetup } from './connection/read-setup';
@@ -20,7 +21,10 @@ import { startConsent } from './consent/start-consent';
 import { sweepConsents } from './consent/sweep-consents';
 import { buildConnectionErasable } from './erasure/build-connection-erasable';
 import { connectionErasableDescriptor } from './erasure/connection-erasable-descriptor';
-import type { ConnectionErasureRequest } from './erasure/start-connection-erasure';
+import type {
+  ConnectionErasureRequest,
+  ReadConnectionWakes,
+} from './erasure/start-connection-erasure';
 import { makeSerialLock } from './make-serial-lock';
 import type { ProviderEndpoints } from './provider/google-endpoints';
 import { buildProviderEndpoints, googleEndpoints } from './provider/google-endpoints';
@@ -28,6 +32,7 @@ import { writeLostRevocations } from './revocation/write-lost-revocations';
 import type { ServiceContext } from './service-context';
 import type {
   ConnectionContext,
+  ConnectionState,
   FinishConsentInput,
   FinishConsentResult,
   ForgetConnectionResult,
@@ -55,6 +60,15 @@ export interface ConnectionsOptions {
 
   // Google's endpoints, when they differ from the connector's own
   readonly endpoints?: ProviderEndpoints;
+
+  // Erases what other modules keep of a connection, such as its wake rules and the text of its
+  // wakes. A forget calls it twice, once right after it begins and once after the keys go, so it
+  // must be safe to repeat.
+  readonly eraseDependents?: (connectionID: string) => Promise<void>;
+
+  // The wakes that show mail of a connection, read in the transaction that begins its forget, so
+  // the forget cleans the sessions and the turn inputs that hold their text.
+  readonly readWakes?: ReadConnectionWakes;
 
   // how long a consent request lives, in ms; 10 minutes by default
   readonly consentLifetimeMs?: number;
@@ -110,6 +124,9 @@ export interface Connections extends ConnectionsPort {
   // the context of each live connection, or of the one that the short ID names
   readonly readLiveContexts: (connection?: string) => Promise<ConnectionContext[]>;
 
+  // each connection that is not forgotten, with its status and granted scopes
+  readonly readStates: () => Promise<ConnectionState[]>;
+
   // the tools that the Google connector holds
   readonly actions: Connector['actions'];
 
@@ -153,6 +170,8 @@ export function startConnections(options: ConnectionsOptions): Connections {
       endpoints,
       attempted: new Set(),
       now: options.now,
+      eraseDependents: options.eraseDependents ?? (() => Promise.resolve()),
+      readWakes: options.readWakes ?? (() => Promise.resolve([])),
     }),
   });
 
@@ -191,6 +210,7 @@ export function startConnections(options: ConnectionsOptions): Connections {
     runCheck: (connectionID) => runConnectionCheck(context, connectionID),
     runDailyChecks: () => runDailyChecks(context),
     readHeldBackTools: () => readHeldBackTools(context),
+    readStates: () => readConnectionStates(context),
     readLiveContexts: (connection) => readLiveContexts(context, connection ?? null),
     actions: connector.actions,
     sweepConsents: () => sweepConsents(context),

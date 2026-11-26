@@ -7,6 +7,7 @@ import { planOutgoingMail } from './plan-outgoing-mail';
 import type { OutgoingTool } from './plan-outgoing-mail';
 import { readCallContext } from './read-call-context';
 import type { GmailDeps } from './types';
+import { writeGmailReplyRule } from './write-gmail-reply-rule';
 
 // The attempt of a send, a reply or a sent draft: plans the mail from Google and the queue, and
 // sends it with the action's Message-ID. A draft's attempt writes the draft and sends nothing.
@@ -66,11 +67,24 @@ export async function runGmailSend(
     await removeDraft(deps, context, plan.draftID).catch(() => {});
   }
 
+  const threadID = readField(sent.body, 'threadId') ?? id;
+
+  // The mail is out. A rule that cannot be written leaves the outcome open, and the check of the
+  // send finds the mail and writes the rule again.
+  const replyRule = await writeGmailReplyRule(deps, context, { attempt, threadID }).catch(
+    () => false as const,
+  );
+
+  if (replyRule === false) {
+    return { kind: 'ambiguous', reason: 'Gmail took the mail, but its reply rule was not written' };
+  }
+
   return {
     kind: 'success',
     result: {
       message: buildItemID(context.connection, id),
-      thread: buildItemID(context.connection, readField(sent.body, 'threadId') ?? id),
+      thread: buildItemID(context.connection, threadID),
+      replyRule,
     },
   };
 }

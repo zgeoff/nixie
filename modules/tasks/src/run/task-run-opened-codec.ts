@@ -25,5 +25,10 @@ export const taskRunOpenedCodec = defineRecordCodec(
     report: reportSchema,
     reportShape: reportShapeSchema.nullable(),
     limits: runLimitsSchema,
+
+    // where the task run's dollars come from: the gateway's count of its sandboxes, or the runner's
+    // pricing of the guest's call frames. A task run that began before the meter was recorded has
+    // none, and keeps the meter that priced its records.
+    meter: z.enum(['gateway', 'records']).exactOptional(),
   }),
 );

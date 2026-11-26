@@ -18,7 +18,6 @@ import { writeStepHeld } from '../step/write-step-held';
 import type { RunStep, StartedClaim, StepErrored, StepResult, TasksContext } from '../types';
 import { LeaseLostError } from '../utils/lease-lost-error';
 import { readSessionBoundary } from './read-session-boundary';
-import { withTurnSpendOnFailure } from './with-turn-spend-on-failure';
 
 export interface TaskStepOptions extends StepErrorOptions {
   readonly runStep: RunStep;
@@ -35,9 +34,11 @@ export async function runTaskStep(
   const controls = startStepControlWatch(context, claim);
 
   try {
+    const signal = AbortSignal.any([renewal.signal, controls.ended]);
+
     const failure = await tryCommitStep(context, claim, {
       ...options,
-      signal: AbortSignal.any([renewal.signal, controls.ended]),
+      signal,
       interrupt: controls.interrupted,
     });
 
@@ -48,17 +49,22 @@ export async function runTaskStep(
     const isStopped = await probeFailureOfSpendStop(context, claim, failure.error);
 
     if (isStopped) {
-      await writeStepCommit(context, claim, {
-        next: 'continue',
-        records: [],
-        acknowledged: [],
-        sessionBoundary: await readSessionBoundary(context, claim.lease.workID),
-      });
+      await writeStepCommit(
+        context,
+        claim,
+        {
+          next: 'continue',
+          records: [],
+          acknowledged: [],
+          sessionBoundary: await readSessionBoundary(context, claim.lease.workID),
+        },
+        signal,
+      );
 
       return null;
     }
 
-    return await writeStepError(context, claim, { ...options, error: failure.error });
+    return await writeStepError(context, claim, { ...options, error: failure.error }, signal);
   } catch (error) {
     if (!(error instanceof LeaseLostError)) {
       throw error;
@@ -92,18 +98,7 @@ async function tryCommitStep(
       return null;
     }
 
-    const spend =
-      result.spentDollars === undefined
-        ? null
-        : {
-            taskID: claim.lease.workID,
-            dollars: result.spentDollars,
-            ...(run === null ? {} : { taskRunID: run.runID }),
-          };
-
-    await withTurnSpendOnFailure(context, { spend, logger: options.logger }, () =>
-      writeStepCommit(context, claim, result),
-    );
+    await writeStepCommit(context, claim, result, options.signal);
 
     return null;
   } catch (error) {

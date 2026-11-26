@@ -156,6 +156,8 @@ export async function runVerifyHarness(): Promise<void> {
     ],
   });
 
+  // how far the harness moved nixie's clock, which stamps a Gmail mail so it falls after its rule
+  const advancedMs = { total: 0 };
   const server = nixie.harness.start();
   const running: RunningState = { isRunning: true };
 
@@ -252,8 +254,13 @@ export async function runVerifyHarness(): Promise<void> {
     deliverMail: async (mail) => {
       await server.request('deliverMail', mail);
     },
+    deliverGmail: (mail) => {
+      google.gmail.seed({ ...mail, sentAtMs: Date.now() + advancedMs.total });
+    },
     advanceClock: async (minutes) => {
       await nixie.harness.advance(minutes * 60_000);
+
+      advancedMs.total += minutes * 60_000;
 
       return minutes;
     },

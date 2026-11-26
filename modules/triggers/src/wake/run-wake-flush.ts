@@ -55,7 +55,13 @@ export async function runWakeFlush(core: TriggerCoreContext): Promise<number> {
 
       return mails.length === 0
         ? []
-        : [buildMailWokeInput(core, { targetTaskID: wake.targetTaskID, rules: wake.rules, mails })];
+        : [
+            buildMailWokeInput(core, {
+              targetTaskID: wake.targetTaskID,
+              rules: wake.rules,
+              mails,
+            }),
+          ];
     });
 
     await writeInboxRecordsInTransaction(tx, core, inputs);
@@ -94,6 +100,7 @@ async function readArrivals(
 
     arrivals.set(record.sequence, {
       arrived: record.sequence,
+      mailbox: arrived.mailbox,
       messageID: arrived.messageID,
       threadID: arrived.threadID,
       receivedAt: arrived.receivedAt,

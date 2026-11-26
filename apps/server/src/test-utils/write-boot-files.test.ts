@@ -318,3 +318,17 @@ test('it writes each task definition into its folder and puts the definitions at
     'Keep the note to one line.\n',
   ]);
 });
+
+test('it leaves the prices of each profile out when a gateway prices the replies', async () => {
+  const ctx = await setupTest();
+
+  await writeBootFiles(ctx.directory, 'http://127.0.0.1:4010', {
+    config: [],
+    secrets: [],
+    isGatewayPriced: true,
+  });
+
+  const text = await Bun.file(join(ctx.directory, 'config.yaml')).text();
+
+  expect(text).not.toInclude('prices:');
+});

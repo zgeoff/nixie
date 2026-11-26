@@ -2,6 +2,8 @@ import type { JSONObject, Log } from '@heynixie/log';
 import { readRecordAttachments } from '@heynixie/log';
 import type { BodyFields, BodyFieldsRequest } from '@heynixie/policy';
 import { buildGmailSendFields } from './build-gmail-send-fields';
+import { buildGmailWakeFields } from './build-gmail-wake-fields';
+import { formatCardNames } from './format-card-names';
 import { parseCardAttachment } from './gmail-card';
 import { gmailToolNames } from './gmail-tool-names';
 import { readDestinationPermissions } from './read-destination-permissions';
@@ -21,6 +23,10 @@ export async function readGmailBodyFields(
 ): Promise<BodyFields> {
   if (request.tool === gmailToolNames.label) {
     return buildLabelFields(request.input);
+  }
+
+  if (request.tool === gmailToolNames.wakeSet) {
+    return buildGmailWakeFields(request.input);
   }
 
   if (!sendTools.has(request.tool)) {
@@ -48,15 +54,7 @@ function buildLabelFields(input: JSONObject): BodyFields {
   return {
     status: 'fields',
     fields: {},
-    sentence: `Label ${String(threads)} threads: add ${formatNames(input['add'])}, remove ${formatNames(input['remove'])}`,
+    sentence: `Label ${String(threads)} threads: add ${formatCardNames(input['add'])}, remove ${formatCardNames(input['remove'])}`,
     approveLabel: 'Label',
   };
-}
-
-function formatNames(value: unknown): string {
-  const names = Array.isArray(value)
-    ? value.filter((name): name is string => typeof name === 'string')
-    : [];
-
-  return names.length === 0 ? 'none' : names.join(', ');
 }

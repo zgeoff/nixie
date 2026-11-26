@@ -40,14 +40,11 @@ flowchart LR
 | ---------------------------------------- | ----------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
 | [Wake rules and arrivals](wake-rules.md) | rules, the arrival path, windows, the flush, the wake, erasure                                  | [GEO-1827](https://linear.app/zgeoff/issue/GEO-1827) |
 | [The assistant's mailbox](mailbox.md)    | the mail host interface, the store, the `mail.*` tools with `mail.wake_*`, reply rules on sends | [GEO-2816](https://linear.app/zgeoff/issue/GEO-2816) |
-| [Gmail arrivals](gmail.md)               | the Gmail source, the `gmail.wake_*` tools, reply rules on Gmail sends                          | [GEO-1827](https://linear.app/zgeoff/issue/GEO-1827) |
 
 Build wake rules and arrivals first, against a fake source. The other parts wait on these:
 
 - the mailbox, on the choice of mail host and the
   [credentials design](https://github.com/zgeoff/nixie/pull/1414);
-- Gmail arrivals, on the [Google connection](https://linear.app/zgeoff/issue/GEO-1824) and the
-  [Gmail tools](https://linear.app/zgeoff/issue/GEO-1825);
 - forgetting a Google connection's mail, on the
   [erasure design](https://github.com/zgeoff/nixie/pull/1413).
 

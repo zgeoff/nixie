@@ -3,9 +3,11 @@ import { readRecords } from '@heynixie/log';
 import { waitFor } from '@zgeoff/testing';
 import invariant from 'tiny-invariant';
 import { connectCall } from '../connect/connect-call';
+import { runCallSweep } from '../meter/run-call-sweep';
 import { startCall } from '../start/start-call';
 import { probeStubbedCaller, startTestCalls } from '../test-utils';
 import { endCall } from '../utils/end-call';
+import { readCall } from '../utils/read-call';
 import { sendTurnAnswer } from './send-turn-answer';
 
 async function setupTest() {
@@ -491,4 +493,28 @@ test('it records the fixed line of a failed turn as speech layer speech on the c
 
   expect(spoke?.kind).toBe('call.spoke');
   expect(spoke?.erasable).toMatchObject({ fields: { text: "I couldn't finish that one." } });
+});
+
+test('it ends the call as dropped, and stops its charges, when the speech session drops', async () => {
+  const ctx = await setupTest();
+
+  ctx.speech.emit(ctx.sessionID, { kind: 'dropped' });
+
+  await waitFor(async () => {
+    const call = await readCall(ctx.writer.db, ctx.callID);
+
+    expect(call?.state).toBe('ended');
+  });
+
+  ctx.clock.advance(180_000);
+
+  await runCallSweep(ctx.context);
+
+  const call = await readCall(ctx.writer.db, ctx.callID);
+
+  expect([call?.endedBy, call?.minutes, ctx.context.sessions.has(ctx.callID)]).toStrictEqual([
+    'dropped',
+    1,
+    false,
+  ]);
 });

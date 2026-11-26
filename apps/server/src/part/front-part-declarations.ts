@@ -1,5 +1,6 @@
 import { createWatchTickets, defaultAPISettings } from '@heynixie/api';
 import { buildRunSettings } from '@heynixie/sessions';
+import { buildServerSpeech } from '../call/build-server-speech';
 import { buildServerCoding } from '../coding/build-server-coding';
 import { readDefinitionsContext } from '../definition/read-definitions-context';
 import { makeReadErasureStuckPort } from '../erasure/make-read-erasure-stuck-port';
@@ -49,6 +50,8 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
             models: options.config.models,
             credentials: options.credentials,
             hopLimit: options.config.tasks.messaging.hopLimit,
+            ...(options.spend === null ? {} : { gateway: options.spend.gateway }),
+            logger: options.log,
           }),
           runners: buildServerTaskRunners({ coding: coding?.runner.definition ?? null }),
           taskRunLimits: options.config.models.limits.taskRun.default,
@@ -58,7 +61,13 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
             messaging: buildTaskMessaging(options.config),
             speech:
               options.speech ??
-              (NIXIE_TEST_BUILD && options.harness !== undefined ? harnessSpeech : null),
+              (NIXIE_TEST_BUILD && options.harness !== undefined ? harnessSpeech : null) ??
+              buildServerSpeech({
+                voice: options.config.voice ?? null,
+                credentials: options.credentials,
+                clock: options.writer.clock,
+                logEvent: options.log,
+              }),
           },
           defaultZone: options.config.time.default_zone,
           ...(options.spend === null

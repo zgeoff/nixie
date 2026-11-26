@@ -517,3 +517,76 @@ test('it ends a fetch that waits on a refresh when a forget begins, before the p
 
   expect(result).toMatchObject({ status: 'rejected', reason: expect.any(CredentialRemovedError) });
 });
+
+test('it erases what other modules keep of a connection after the forget begins and after its keys go', async () => {
+  const erased: string[] = [];
+
+  const ctx = await setupTest({
+    eraseDependents: (connectionID) => {
+      erased.push(connectionID);
+
+      return Promise.resolve();
+    },
+  });
+
+  const connection = await ctx.seedConnection();
+
+  await ctx.connections.forget.begin(
+    { connection: connection.tokenRef.credentialID },
+    { by: 'user' },
+  );
+
+  await ctx.connections.forget.finish(connection.tokenRef.credentialID);
+
+  expect(erased).toStrictEqual([
+    connection.tokenRef.credentialID,
+    connection.tokenRef.credentialID,
+  ]);
+});
+
+test('it cleans the sessions of each wake that shows mail of a connection, and removes the requests on the wake threads, when the connection is forgotten', async () => {
+  const ctx = await setupTest({
+    readWakes: () =>
+      Promise.resolve([
+        { sequence: 41, thread: 'conversation' },
+        { sequence: 52, thread: 'task-tide' },
+      ]),
+  });
+
+  const connection = await ctx.seedConnection();
+
+  ctx.effects.seedInput('conversation', 3);
+  ctx.effects.seedInput('task-tide', 4);
+  ctx.effects.seedInput('task-bees', 0);
+
+  await ctx.connections.forget.begin(
+    { connection: connection.tokenRef.credentialID },
+    { by: 'user' },
+  );
+
+  await ctx.connections.forget.finish(connection.tokenRef.credentialID);
+
+  expect([ctx.effects.cleanedCauses, ctx.effects.readInputs()]).toStrictEqual([
+    [{ recordSequence: 41 }, { recordSequence: 52 }],
+    [['task-bees', 0]],
+  ]);
+});
+
+test('it cleans no session and removes no request when no wake shows mail of the forgotten connection', async () => {
+  const ctx = await setupTest();
+  const connection = await ctx.seedConnection();
+
+  ctx.effects.seedInput('conversation', 3);
+
+  await ctx.connections.forget.begin(
+    { connection: connection.tokenRef.credentialID },
+    { by: 'user' },
+  );
+
+  await ctx.connections.forget.finish(connection.tokenRef.credentialID);
+
+  expect([ctx.effects.cleanedCauses, ctx.effects.readInputs()]).toStrictEqual([
+    [],
+    [['conversation', 3]],
+  ]);
+});

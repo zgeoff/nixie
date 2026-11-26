@@ -65,9 +65,8 @@ export function buildWorkerRunTool(options: WorkerRunToolOptions): ToolDefinitio
             minutes: { type: 'number' },
             turns: { type: 'integer' },
             tokens: { type: 'integer' },
-            dollars: { type: 'number' },
           },
-          required: ['minutes', 'turns', 'tokens', 'dollars'],
+          required: ['minutes', 'turns', 'tokens'],
           additionalProperties: false,
         },
       },
@@ -110,7 +109,15 @@ export function buildWorkerRunTool(options: WorkerRunToolOptions): ToolDefinitio
       return result.kind === 'answered'
         ? {
             status: 'ok',
-            result: { workerRunID: result.shortID, answer: result.answer, used: result.used },
+            result: {
+              workerRunID: result.shortID,
+              answer: result.answer,
+              used: {
+                minutes: result.used.minutes,
+                turns: result.used.turns,
+                tokens: result.used.tokens,
+              },
+            },
           }
         : { status: 'error', message: result.sentence };
     },

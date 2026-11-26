@@ -2213,6 +2213,16 @@
       ],
       "additionalProperties": false
     },
+    "gmail": {
+      "type": "object",
+      "properties": {
+        "poll_interval": {
+          "default": "2m",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
     "wake_rules": {
       "type": "object",
       "properties": {
@@ -2234,6 +2244,44 @@
     "imp"
   ],
   "additionalProperties": false,
+  "anyOf": [
+    {
+      "not": {
+        "type": "object",
+        "properties": {
+          "spendStop": {}
+        },
+        "required": [
+          "spendStop"
+        ]
+      }
+    },
+    {
+      "type": "object",
+      "properties": {
+        "models": {
+          "type": "object",
+          "properties": {
+            "profiles": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "not": {
+                  "type": "object",
+                  "properties": {
+                    "prices": {}
+                  },
+                  "required": [
+                    "prices"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
   "title": "nixie deployment configuration",
   "description": "The config.yaml that nixie reads once at start, /etc/nixie/config.yaml by default"
 }

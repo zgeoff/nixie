@@ -8,16 +8,22 @@
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "catalog:",
+    "@heynixie/calls": "workspace:*",
+    "@heynixie/clock": "workspace:*",
     "@heynixie/conversation": "workspace:*",
+    "@heynixie/credentials": "workspace:*",
+    "@heynixie/egress": "workspace:*",
     "@heynixie/memory": "workspace:*",
     "@heynixie/mock-server": "workspace:*",
     "@heynixie/models": "workspace:*",
     "@heynixie/prompts": "workspace:*",
     "@heynixie/server": "workspace:*",
     "@heynixie/sessions": "workspace:*",
+    "@heynixie/speech-gpt-live": "workspace:*",
     "@heynixie/testing": "workspace:*",
     "@heynixie/wire": "workspace:*",
     "msw": "catalog:",
+    "playwright-core": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {

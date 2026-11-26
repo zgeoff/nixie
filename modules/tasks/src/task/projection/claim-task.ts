@@ -7,6 +7,8 @@ import { match } from 'ts-pattern';
 import { callRunnerKey } from '../../call/call-task-options';
 import { buildGateFilter } from '../../gate/build-gate-filter';
 import { claimLease } from '../../lease/claim-lease';
+import { RunEndUnsettledError } from '../../run/run-end-unsettled-error';
+import { settleRunEnd } from '../../run/settle-run-end';
 import { writeRunOpenInTransaction } from '../../run/write-run-open-in-transaction';
 import { buildStepWake } from '../../step/build-step-wake';
 import { taskStepStartedCodec } from '../../step/task-step-started-codec';
@@ -33,13 +35,36 @@ export interface ClaimTaskOptions {
   readonly taskID?: string;
 }
 
+// A claim that would end an idle task run waits for no gateway: it claims nothing while a sandbox of
+// that task run lacks its end read, and the next claim tries again.
+export async function claimTask(
+  context: TasksContext,
+  options: ClaimTaskOptions,
+): Promise<StartedClaim | null> {
+  for (;;) {
+    try {
+      return await claimOnce(context, options);
+    } catch (error) {
+      if (!(error instanceof RunEndUnsettledError)) {
+        throw error;
+      }
+
+      const settlement = await settleRunEnd(context, error.taskID);
+
+      if (settlement === 'waiting') {
+        return null;
+      }
+    }
+  }
+}
+
 interface StartedStep {
   readonly stepKey: string;
   readonly wake: StepWake;
   readonly startSequence: number;
 }
 
-export async function claimTask(
+async function claimOnce(
   context: TasksContext,
   options: ClaimTaskOptions,
 ): Promise<StartedClaim | null> {

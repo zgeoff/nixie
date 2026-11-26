@@ -9,7 +9,7 @@ const targetSchema = z.union([conversationTargetSchema, taskTargetSchema]);
 const wakeRuleSetSchema = z.object({
   ruleID: z.string(),
   shortID: z.string(),
-  mailbox: z.literal('mail'),
+  mailbox: z.string(),
   match: wakeMatchSchema,
   target: targetSchema,
   targetTaskID: z.string(),

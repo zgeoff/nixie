@@ -139,5 +139,6 @@ function buildDefinitionOpened(
     report: { mode, target: mode === 'none' ? null : conversationTaskID },
     reportShape: policy.reportShape,
     limits: policy.limits,
+    meter: context.runSettings.meter,
   };
 }

@@ -34,10 +34,11 @@ export function buildStubSpendGateway() {
       Promise.resolve({ kind: 'ok', value: buildMockGatewayStatus() }),
     ),
     putSandbox: mock<SpendGateway['putSandbox']>(() => Promise.resolve({ kind: 'ok' })),
+    patchSandbox: mock<SpendGateway['patchSandbox']>(() => Promise.resolve({ kind: 'ok' })),
     readSandbox: mock<SpendGateway['readSandbox']>(() =>
       Promise.resolve({
         kind: 'ok',
-        value: { dollars: 0, tokens: 0, tripped: false, lastRefusal: null },
+        value: { dollars: 0, tokens: 0, tripped: false, lastRefusal: null, limitRevision: 0 },
       }),
     ),
     removeSandbox: mock<SpendGateway['removeSandbox']>(() => Promise.resolve({ kind: 'ok' })),

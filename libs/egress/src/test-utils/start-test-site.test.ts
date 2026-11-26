@@ -86,3 +86,41 @@ test('it stops the site when the test finishes', async () => {
     expect(failed.promise).resolves.toBeTrue();
   });
 });
+
+test('it upgrades a WebSocket request and records the socket and its messages', async () => {
+  const site = await startTestSite({
+    names: ['site.test'],
+    respond: () => new Response('hello'),
+    socket: {
+      onMessage: (connection, text) => {
+        connection.send(`echo ${text}`);
+      },
+    },
+  });
+
+  const socket = new WebSocket(`wss://127.0.0.1:${String(site.port)}/live`, {
+    headers: { 'x-test': 'one' },
+    tls: { ca: site.ca, rejectUnauthorized: false },
+  });
+
+  const echoed = Promise.withResolvers<string>();
+
+  socket.addEventListener('open', () => {
+    socket.send('hi');
+  });
+
+  socket.addEventListener('message', (event) => {
+    echoed.resolve(String(event.data));
+    socket.close();
+  });
+
+  const echo = await echoed.promise;
+
+  expect(echo).toBe('echo hi');
+
+  expect(site.connections).toMatchObject([
+    { url: `https://127.0.0.1:${String(site.port)}/live`, received: ['hi'] },
+  ]);
+
+  expect(site.connections[0]?.headers['x-test']).toBe('one');
+});
