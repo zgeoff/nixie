@@ -39,10 +39,10 @@ async function setupTest(setup: PurgeSetup) {
     readKinds: (records: readonly { readonly kind: string }[]) =>
       records
         .map((record) => record.kind)
-        .slice(records.findIndex((record) => record.kind === 'memory.proposal_lapsed'))
+        .slice(records.findIndex((record) => record.kind === 'proposals.settled'))
         .filter((kind) =>
           [
-            'memory.proposal_lapsed',
+            'proposals.settled',
             'memory.version_added',
             'memory.version_keyed',
             'memory.evidence_purge_closed',
@@ -61,7 +61,7 @@ test('it finishes a begun purge at the start: the lapse, the closing record, the
   const records = await ctx.stop();
 
   expect(ctx.readKinds(records)).toStrictEqual([
-    'memory.proposal_lapsed',
+    'proposals.settled',
     'memory.evidence_purge_closed',
     'memory.labelled',
     'memory.evidence_purged',
@@ -74,7 +74,7 @@ test('it writes the bridge version of a shared-key item before the closing recor
   const records = await ctx.stop();
 
   expect(ctx.readKinds(records)).toStrictEqual([
-    'memory.proposal_lapsed',
+    'proposals.settled',
     'memory.version_added',
     'memory.version_keyed',
     'memory.evidence_purge_closed',
@@ -167,7 +167,7 @@ test('it finishes a purge that no record forget owns, and writes no record.forgo
   invariant(records.length > 0);
 
   expect(ctx.readKinds(records)).toStrictEqual([
-    'memory.proposal_lapsed',
+    'proposals.settled',
     'memory.evidence_purge_closed',
     'memory.labelled',
     'memory.evidence_purged',

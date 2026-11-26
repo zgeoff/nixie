@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { withWriteTransaction } from '@heynixie/log';
+import { readRecords, withWriteTransaction } from '@heynixie/log';
 import { seedClosedTask } from '../test-utils/seed-closed-task';
 import { seedConversationStep } from '../test-utils/seed-conversation-step';
 import { seedTask } from '../test-utils/seed-task';
@@ -14,7 +14,9 @@ async function setupTest() {
   return {
     ...tasks,
     readTarget: (thread: string) =>
-      withWriteTransaction(tasks.writer, (tx) => readSettlementTarget(tx, thread)),
+      withWriteTransaction(tasks.writer, (tx) =>
+        readSettlementTarget(tx, thread, Number.MAX_SAFE_INTEGER),
+      ),
   };
 }
 
@@ -87,4 +89,42 @@ test('it keeps each of two settlements for an open task as its own inbox record 
     'proposals.settled',
     'proposals.settled',
   ]);
+});
+
+test('it keeps the thread of a settlement that a closed task has no recipient for', async () => {
+  const ctx = await setupTest();
+  const starter = await seedConversationStep(ctx.context);
+
+  const taskID = await seedClosedTask(ctx.context, {
+    starter: starter.claim,
+    name: 'Tidy the notes',
+    brief: 'Tidy them.',
+  });
+
+  await withWriteTransaction(ctx.writer, (tx) =>
+    writeThreadRecordInTransaction(tx, ctx.context, {
+      kind: 'proposals.settled',
+      definitions: ctx.context.definitions(),
+      thread: taskID,
+      payload: {
+        proposalID: 'k3x9m2p7qa',
+        shortID: 'k3x9m2p7qa',
+        family: 'skill',
+        outcome: 'lapsed',
+        answeredBy: null,
+        usedBy: null,
+        detail: null,
+        task: null,
+        replaced: null,
+        byProposer: false,
+      },
+    }),
+  );
+
+  const settled = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['proposals.settled'],
+  });
+
+  expect(settled.map((entry) => entry.record.thread)).toStrictEqual([taskID]);
 });

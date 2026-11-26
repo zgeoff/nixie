@@ -45,7 +45,9 @@ export async function writeSettlement(
   const targets =
     proposers.length === 0
       ? [{ thread: null, task: null }]
-      : await Promise.all(proposers.map((thread) => deps.readSettlementTarget(tx, thread)));
+      : await Promise.all(
+          proposers.map((thread) => deps.readSettlementTarget(tx, thread, row.createdSequence)),
+        );
 
   for (const target of targets) {
     const erasable = {

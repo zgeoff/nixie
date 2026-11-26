@@ -156,7 +156,8 @@ export function buildProposalCoreDeps(
   return {
     config: buildApprovalsProposalConfig(context.settings),
     conversationThread: conversationTaskID,
-    readSettlementTarget: (tx, thread) => readSettlementTarget(tx, thread),
+    readSettlementTarget: (tx, thread, proposedSequence) =>
+      readSettlementTarget(tx, thread, proposedSequence),
     log: context.log,
     clock: context.clock,
     definitions: context.definitions,

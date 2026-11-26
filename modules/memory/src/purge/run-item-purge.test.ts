@@ -8,6 +8,7 @@ import {
   removeRecordKey,
 } from '@heynixie/log';
 import { readTestRecordKeyRows } from '@heynixie/log/test-utils';
+import { readProposal } from '@heynixie/proposals';
 import { startFaultPointFailure } from '@heynixie/tasks/test-utils';
 import { createFakeClock } from '@zgeoff/testing/clock';
 import { buildMockProvenance } from '../test-utils/build-mock-provenance';
@@ -43,7 +44,7 @@ async function setupTest() {
         | 'memory.evidence_purge_closed'
         | 'memory.evidence_purged'
         | 'memory.version_keyed'
-        | 'memory.proposal_lapsed'
+        | 'proposals.settled'
         | 'memory.labelled'
       )[],
     ) => {
@@ -326,13 +327,15 @@ test('it lapses each pending proposal of the item', async () => {
 
   await ctx.memory.store.purgeItemEvidence({ recordSequence, itemID: item.itemID });
 
-  const lapsed = await ctx.readKinds(['memory.proposal_lapsed']);
+  const settled = await ctx.readKinds(['proposals.settled']);
+  const row = await readProposal(ctx.memory.writer.db, proposed.proposal.proposalID);
   const pending = await ctx.memory.store.proposals.listPending();
 
-  expect(lapsed.map((record) => record.payload)).toStrictEqual([
-    { proposalID: proposed.proposal.proposalID },
-  ]);
+  expect(
+    settled.map((record) => [record.payload['proposalID'], record.payload['outcome']]),
+  ).toStrictEqual([[proposed.proposal.proposalID, 'lapsed']]);
 
+  expect(row?.state).toBe('lapsed');
   expect(pending).toStrictEqual([]);
 });
 

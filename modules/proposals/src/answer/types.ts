@@ -38,6 +38,7 @@ export interface ProposalCoreDeps {
   readonly readSettlementTarget: (
     tx: Transaction<unknown>,
     thread: string,
+    proposedSequence: number,
   ) => Promise<{ readonly thread: string; readonly task: string | null }>;
 
   // Writes a record on a row's thread. A task that is still open takes it as an inbox record.

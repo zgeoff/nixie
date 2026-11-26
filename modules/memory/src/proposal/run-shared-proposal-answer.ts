@@ -12,7 +12,11 @@ import {
   buildProposalsProjection,
   defaultProposalConfig,
 } from '@heynixie/proposals';
-import { conversationTaskID, writeThreadRecordInTransaction } from '@heynixie/tasks';
+import {
+  conversationTaskID,
+  readSettlementTarget,
+  writeThreadRecordInTransaction,
+} from '@heynixie/tasks';
 import type { Transaction } from 'kysely';
 import invariant from 'tiny-invariant';
 import { match } from 'ts-pattern';
@@ -54,7 +58,8 @@ export async function runSharedProposalAnswer(
     projection: memoryProposalsProjection,
     config: defaultProposalConfig,
     conversationThread: conversationTaskID,
-    readSettlementTarget: (_tx, thread) => Promise.resolve({ thread, task: null }),
+    readSettlementTarget: (tx, thread, proposedSequence) =>
+      readSettlementTarget(tx, thread, proposedSequence),
     readDeferContext: () => Promise.resolve({ quietHours: null, zone: 'UTC' }),
     writeThreadRecord: (tx, input) =>
       writeThreadRecordInTransaction(tx, { log: parts.context.log }, input),
