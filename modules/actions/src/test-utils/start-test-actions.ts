@@ -4,6 +4,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Log } from '@heynixie/log';
 import { logProjections, startWriter } from '@heynixie/log';
+import { mapActionProposalRecord } from '@heynixie/policy';
+import { buildProposalsProjection } from '@heynixie/proposals';
 import { tasksProjections } from '@heynixie/tasks';
 import { buildTestDefinitionStore } from '@heynixie/tasks/test-utils';
 import type { TestTasks } from '@heynixie/tasks/test-utils';
@@ -32,7 +34,12 @@ export async function startTestActions(): Promise<TestTasks> {
   const log: Log = {
     writer,
     deploymentKey,
-    projections: [...logProjections, ...tasksProjections, actionsProjection],
+    projections: [
+      ...logProjections,
+      ...tasksProjections,
+      actionsProjection,
+      buildProposalsProjection([mapActionProposalRecord]),
+    ],
   };
 
   const clock = createFakeClock({ startMs: 1_000_000 });

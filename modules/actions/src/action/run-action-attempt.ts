@@ -140,7 +140,7 @@ async function runAttempt(
   });
 
   if (step.kind !== 'go') {
-    const isWritten = await writeRefusalUnlessHeld(context, attempt, step);
+    const isWritten = await writeRefusalUnlessHeld(context, attempt, step, options.proposalConfig);
 
     if (isWritten && step.kind === 'deny' && NIXIE_TEST_BUILD) {
       await waitAtFaultPoint('attempt.result.after', {

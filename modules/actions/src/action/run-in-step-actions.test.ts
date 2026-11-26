@@ -265,11 +265,15 @@ test('it holds the action and runs no call when policy asks again of a routine a
     cause: 'always_ask',
     destinations: [],
     proposalID: 'proposal-2',
-    record: {
-      kind: 'policy.action_proposed',
+    proposal: {
       definitions: { snapshotHash: 'sha256:test' },
       thread: ctx.step.lease.workID,
-      payload: {},
+      callSequence: 1,
+      tool: 'test.send',
+      effects: ['send'],
+      cause: 'always_ask',
+      input: { to: 'team' },
+      destinations: [{ value: 'team', replyTarget: false }],
     },
   };
 

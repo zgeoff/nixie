@@ -1,5 +1,5 @@
-import type { JSONObject, RecordInput } from '@heynixie/log';
-import type { AskCause } from '@heynixie/policy';
+import type { JSONObject } from '@heynixie/log';
+import type { ActionProposalFacts, AskCause } from '@heynixie/policy';
 import type { ActionRow } from '../types';
 
 export interface AttemptCheckInput {
@@ -29,8 +29,8 @@ export type AttemptVerdict =
       readonly replyTargets?: readonly string[];
       readonly proposalID: string;
 
-      // the proposal that opens the owner's question about this action
-      readonly record: RecordInput;
+      // what the proposal that opens the owner's question about this action holds
+      readonly proposal: ActionProposalFacts;
     };
 
 export type AttemptCheck = (input: AttemptCheckInput) => Promise<AttemptVerdict>;

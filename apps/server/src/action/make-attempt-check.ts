@@ -8,7 +8,7 @@ import type {
   PolicyCall,
   PolicyDecision,
 } from '@heynixie/policy';
-import { buildActionProposalInput, makeFaultSafeDecisionPoint } from '@heynixie/policy';
+import { makeFaultSafeDecisionPoint } from '@heynixie/policy';
 import type { ToolRegistry } from '@heynixie/tools';
 import { findToolDeclaration, pickPolicyToolName } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
@@ -175,33 +175,31 @@ function buildVerdict(options: AttemptCheckOptions, facts: VerdictFacts): Attemp
   const cause: AskCause = decision.cause ?? 'no_rule';
   const action = facts.input.action;
 
-  const proposal = buildActionProposalInput({
-    definitions: options.definitions(),
-    thread: action.task_id,
-    callSequence: invariantSequence(action.call_sequence),
-    tool: facts.policyTool,
-    actionHash: action.action_hash,
-    effects: facts.declaration.effects,
-    cause,
-    input: facts.input.arguments,
-    destinations: facts.destinations,
-    content: facts.declaration.content,
-    frame: {
-      context: facts.frame.context,
-      definitionID: facts.frame.definitionID,
-      sources: facts.frame.sources,
-    },
-    deadlineAt: action.deadline_at,
-    reopen: { proposalID: facts.input.proposalID, actionID: action.action_id },
-  });
-
   return {
     kind: 'ask',
     cause,
     destinations,
     replyTargets,
     proposalID: facts.input.proposalID,
-    record: proposal.record,
+    proposal: {
+      definitions: options.definitions(),
+      thread: action.task_id,
+      callSequence: invariantSequence(action.call_sequence),
+      tool: facts.policyTool,
+      actionHash: action.action_hash,
+      effects: facts.declaration.effects,
+      cause,
+      input: facts.input.arguments,
+      destinations: facts.destinations,
+      content: facts.declaration.content,
+      frame: {
+        context: facts.frame.context,
+        definitionID: facts.frame.definitionID,
+        sources: facts.frame.sources,
+      },
+      deadlineAt: action.deadline_at,
+      reopen: { proposalID: facts.input.proposalID, actionID: action.action_id },
+    },
   };
 }
 

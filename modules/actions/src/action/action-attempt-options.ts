@@ -1,4 +1,5 @@
 import type { ConnectorLookup } from '@heynixie/connectors';
+import type { ProposalConfig } from '@heynixie/proposals';
 import type { AdmitTool } from '../types';
 import type { AttemptCheck } from './attempt-check';
 
@@ -14,4 +15,7 @@ export interface ActionAttemptOptions {
 
   // admits each attempt's call past a hold, as the start's transaction ends
   readonly admitTool?: AdmitTool;
+
+  // the lapse of each family, which a proposal that holds an action takes
+  readonly proposalConfig?: ProposalConfig | undefined;
 }

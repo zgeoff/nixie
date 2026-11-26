@@ -8,7 +8,7 @@ import {
   withWriteTransaction,
 } from '@heynixie/log';
 import { buildLogSeeder } from '@heynixie/log/test-utils';
-import { buildActionProposalInput } from '@heynixie/policy';
+import { defaultProposalConfig, readProposal } from '@heynixie/proposals';
 import { setFaultPointHandler, writeStepCommit, writeTaskControl } from '@heynixie/tasks';
 import { buildTaskSeeder, readTestLeases } from '@heynixie/tasks/test-utils';
 import invariant from 'tiny-invariant';
@@ -839,24 +839,22 @@ test('it holds an action that a rule allowed and now asks about, and runs none o
     callSequence: 1,
   });
 
-  const proposal = buildActionProposalInput({
-    definitions: ctx.definitions,
-    thread: step.lease.workID,
-    callSequence: 1,
-    tool: 'test.send',
-    effects: ['send'],
-    cause: 'ask_rule',
-    input: { to: 'team' },
-    destinations: [{ value: 'team', replyTarget: false }],
-    reopen: { proposalID: queued.actionID, actionID: queued.actionID },
-  });
-
   const verdict: AttemptVerdict = {
     kind: 'ask',
     cause: 'ask_rule',
     destinations: ['team'],
     proposalID: queued.actionID,
-    record: proposal.record,
+    proposal: {
+      definitions: ctx.definitions,
+      thread: step.lease.workID,
+      callSequence: 1,
+      tool: 'test.send',
+      effects: ['send'],
+      cause: 'ask_rule',
+      input: { to: 'team' },
+      destinations: [{ value: 'team', replyTarget: false }],
+      reopen: { proposalID: queued.actionID, actionID: queued.actionID },
+    },
   };
 
   const stub = buildStubConnector(() => ({ kind: 'success', result: {} }));
@@ -867,10 +865,12 @@ test('it holds an action that a rule allowed and now asks about, and runs none o
     connectors: new Map([['test.send', stub.connector]]),
     leaseMs: 60_000,
     checkAttempt: () => Promise.resolve(verdict),
+    proposalConfig: { lapseDays: { ...defaultProposalConfig.lapseDays, action: 7 } },
   });
 
   const held = await readTestAction(ctx.writer, queued.actionID);
   const claimed = await claimAction(ctx.context, { holder: 'runner-b', leaseMs: 60_000 });
+  const row = await readProposal(ctx.writer.db, queued.actionID);
 
   expect(stub.calls).toStrictEqual([]);
 
@@ -881,6 +881,8 @@ test('it holds an action that a rule allowed and now asks about, and runs none o
   });
 
   expect(claimed).toBeNull();
+  expect(row?.lapsesAt).toBe(ctx.clock.now() + 7 * 24 * 60 * 60 * 1000);
+  expect(row?.shortID).not.toBe(queued.actionID);
 });
 
 test('it starts no attempt and calls nothing when a hold begins after the policy check', async () => {
