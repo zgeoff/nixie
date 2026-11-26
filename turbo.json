@@ -36,7 +36,7 @@
       },
       // a core module depends only on core modules and libs, so no core module can name a feature
       "core": {
-        "dependencies": { "allow": ["core", "leaking", "lib"] }
+        "dependencies": { "allow": ["core", "lib"] }
       },
       // a core module that reaches a feature module today, directly or through the modules it
       // depends on. It has no dependency rule of its own, because turbo checks a package's
