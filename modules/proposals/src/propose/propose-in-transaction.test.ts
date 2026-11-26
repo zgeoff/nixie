@@ -2,6 +2,7 @@ import { expect, test } from 'bun:test';
 import { readRecords, withWriteTransaction } from '@heynixie/log';
 import { answerProposal } from '../answer/answer-proposal';
 import { readProposal } from '../rows/read-proposal';
+import { startShortIDDraws } from '../test-utils/start-short-id-draws';
 import { startTestProposals } from '../test-utils/start-test-proposals';
 import { createUnusedShortID, proposeInTransaction } from './propose-in-transaction';
 import type { ProposeInput } from './propose-in-transaction';
@@ -152,4 +153,15 @@ test('it draws another short ID when a draw names a proposal that exists', async
   );
 
   expect(shortID).toBe('fresh');
+});
+
+test('it draws another short ID for a new proposal when the drawn one names an existing proposal', async () => {
+  const ctx = await setupTest();
+
+  startShortIDDraws(['dup', 'dup', 'fresh']);
+
+  const first = await ctx.propose({ sameThing: null });
+  const second = await ctx.propose({ sameThing: null });
+
+  expect([first.shortID, second.shortID]).toStrictEqual(['dup', 'fresh']);
 });
