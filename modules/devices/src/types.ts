@@ -44,6 +44,19 @@ interface DeviceSavedLayoutRow {
   readonly saved_at: number;
 }
 
+interface DevicePackageRow {
+  readonly package_id: string;
+  readonly name: string;
+  readonly version: string;
+  readonly integrity: string;
+  readonly unpacked_bytes: number;
+  readonly publisher: string;
+
+  // a JSON array of the package's file paths
+  readonly files: string;
+  readonly added_sequence: number;
+}
+
 // mapped types, because Kysely's table map needs the index signature an interface lacks
 export type DeviceTables = CheckedTables<
   Readonly<{
@@ -51,6 +64,7 @@ export type DeviceTables = CheckedTables<
     device_layouts: DeviceLayoutRow;
     device_regions: DeviceRegionRow;
     device_saved_layouts: DeviceSavedLayoutRow;
+    device_packages: DevicePackageRow;
   }>
 >;
 
@@ -105,6 +119,10 @@ export interface ShownRegion {
   readonly sequence: number;
   readonly content: RegionContent;
   readonly untilMs: number | null;
+
+  // the sequence of the call that showed the content, or null for content from before declared
+  // fetches
+  readonly callSequence?: number | null;
 }
 
 export interface RegionView extends LayoutRegion {
@@ -149,4 +167,14 @@ export interface PageMessageState {
   readonly shown: string;
   readonly data: PageData;
   readonly retain: boolean;
+}
+
+// A declared fetch of a page that refreshed, as the device stream carries it.
+export interface PageDataState {
+  readonly kind: 'data';
+  readonly region: string;
+
+  // the short ID of the content that declared the fetch
+  readonly shown: string;
+  readonly url: string;
 }

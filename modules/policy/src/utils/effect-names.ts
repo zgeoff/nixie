@@ -13,6 +13,7 @@ export const effectNames = [
   'computer_take_back',
   'coding_start',
   'device',
+  'install_package',
   'policy_widen',
   'policy_narrow',
   'budget_raise',

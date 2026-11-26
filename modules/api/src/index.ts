@@ -20,6 +20,7 @@ export { readRecordForget } from './utils/read-record-forget';
 export { readRecordForgetCheck } from './record/read-record-forget-check';
 export { readRecordForgetProgress } from './record/read-record-forget-progress';
 export { runRecordForget } from './record/run-record-forget';
+export { runActionProposalAnswer } from './proposal/run-action-proposal-answer';
 export { runPendingRecordForgets } from './record/run-pending-record-forgets';
 export { updateSessionLabel } from './session/update-session-label';
 export { writeKeptSessions } from './kept/write-kept-sessions';

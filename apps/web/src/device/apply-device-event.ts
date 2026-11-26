@@ -1,15 +1,42 @@
 import type { DeviceEvent } from '@heynixie/contract';
 import type { DeviceEvents, PageDelivery } from './use-device-events';
 
+// the most refresh notices the device keeps, which a page that hears them all has read
+const noticeLimit = 100;
+
 export function applyDeviceEvent(current: DeviceEvents, event: DeviceEvent): DeviceEvents {
   if (event.kind === 'layout') {
-    return { ...current, layout: event.layout, messages: keepShownMessages(current, event.layout) };
+    return {
+      ...current,
+      layout: event.layout,
+      messages: keepShownMessages(current, event.layout),
+      notices: current.notices.filter(
+        (notice) =>
+          event.layout?.regions.some(
+            (region) => region.name === notice.region && region.shown === notice.shown,
+          ) === true,
+      ),
+    };
   }
 
   if (event.kind === 'message') {
-    const id = (current.messages.at(-1)?.id ?? 0) + 1;
+    const id = current.lastMessageID + 1;
 
-    return { ...current, messages: trimMessages([...current.messages, { ...event, id }]) };
+    return {
+      ...current,
+      lastMessageID: id,
+      messages: trimMessages([...current.messages, { ...event, id }]),
+    };
+  }
+
+  if (event.kind === 'data') {
+    const id = current.lastNoticeID + 1;
+
+    return {
+      ...current,
+      lastNoticeID: id,
+      notices: [...current.notices, { ...event, id }].slice(-noticeLimit),
+    };
   }
 
   return { ...current, event };

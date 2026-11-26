@@ -222,9 +222,9 @@ function buildFetchFrame(): Uint8Array {
 function formatReply(result: RunResult): string {
   try {
     const reply = decodeFetchReply(result.stdout.subarray(4));
-    return reply.kind === 'page' || reply.kind === 'image'
+    return reply.kind === 'page' || reply.kind === 'image' || reply.kind === 'body'
       ? `${reply.kind} ${reply.status}`
-      : `${reply.kind}: ${reply.reason}`;
+      : `${reply.kind}: ${'reason' in reply ? reply.reason : 'unpacked'}`;
   } catch {
     return `undecoded: ${result.stderr}`;
   }

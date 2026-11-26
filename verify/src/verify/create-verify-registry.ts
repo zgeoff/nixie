@@ -183,7 +183,7 @@ export function createVerifyRegistry(): Wringer {
     .action({
       name: 'layout-on-device',
       summary:
-        'Send an owner message, and queue the scripted model turn that works on the first device it lists: --step set lays its screen out in 3 regions and fills them, the first for 1 minute, and --step update replaces the text of the second region, --step save saves the layout as evening, --step change lays the screen out again in 2 regions, the second on a teal background, --step restore restores evening, and --step preview previews its screen. --text is the closing reply',
+        'Send an owner message, and queue the scripted model turn that works on the first device it lists: --step set lays its screen out in 3 regions and fills them, the first for 1 minute, and --step update replaces the text of the second region, --step save saves the layout as evening, --step change lays the screen out again in 2 regions, the second on a teal background, --step restore restores evening, --step preview previews its screen, and --step install asks for the package ripple-count 1.0.0, --step approve-install approves that held call as the owner would and returns once the package is stored, --step package fills the second region with a page that loads it and reads the declared fetch of https://tides.test/today, and --step approve approves the held device.region call as the owner would. --text is the closing reply',
       effect: 'write',
       targets: ['local'],
       input: controlRoutes.layoutOnDevice.input,

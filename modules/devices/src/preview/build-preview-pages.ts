@@ -1,3 +1,4 @@
+import { devicePagePaths } from '@heynixie/contract';
 import type { RenderFile } from '@heynixie/wire';
 import { buildPageFrame, renderOrigin } from '@heynixie/wire';
 import type { PreviewPageInput } from './types';
@@ -25,8 +26,14 @@ export function buildPreviewPages(input: PreviewPageInput): ReadonlyMap<string, 
 
     const retained = input.retained?.get(region.name);
 
+    const packageBases = (content.packages ?? []).flatMap((spec) =>
+      input.packages?.has(spec) === true ? [`${renderOrigin}packages/${spec}/`] : [],
+    );
+
     const frame = buildPageFrame({
-      html: content.html,
+      // the page names a package file by the path the device serves it at, and the render serves
+      // it under its own origin
+      html: content.html.replaceAll(devicePagePaths.packages, `${renderOrigin}packages/`),
       images: new Map(
         (content.images ?? []).map((image) => [
           image,
@@ -36,6 +43,11 @@ export function buildPreviewPages(input: PreviewPageInput): ReadonlyMap<string, 
       imageBase: `${renderOrigin}images/`,
       initialMessages: retained === undefined ? [] : [retained],
       isPolicyInline: true,
+      packageBases,
+      fetches: {
+        declared: (content.fetches ?? []).map((fetch) => fetch.url),
+        replies: input.fetchReplies?.get(region.name) ?? {},
+      },
     });
 
     pages.set(region.name, {

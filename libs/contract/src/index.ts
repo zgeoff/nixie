@@ -76,13 +76,18 @@ export {
   regionBackgroundSchema,
 } from './contract/region-background-schema';
 
+export type { PackageSpec } from './contract/package-spec';
+export { packageInputSchema, packageSpecSchema, parsePackageSpec } from './contract/package-spec';
 export type { RegionContent, RegionEventContent } from './contract/region-content-schema';
 
 export {
   clockFormats,
   regionContentSchema,
   regionEventContentSchema,
+  refreshMinutesRange,
+  regionFetchesLimit,
   regionHTMLLimit,
+  regionPackagesLimit,
   regionImagesLimit,
   regionMarkdownLimit,
 } from './contract/region-content-schema';

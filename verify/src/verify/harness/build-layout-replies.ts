@@ -20,7 +20,9 @@ export type LayoutStep =
   | 'restore'
   | 'preview'
   | 'page'
-  | 'message';
+  | 'message'
+  | 'install'
+  | 'package';
 
 // The calls of each step of the device-layout journey. Each call names the device by the ID that
 // the list result gave the model.
@@ -45,6 +47,29 @@ export function buildLayoutReplies(step: LayoutStep): readonly LayoutReply[] {
       buildRegionReply('pond', {
         kind: 'html',
         html: "<p id=\"seen\">Waiting</p><script>nixie.onMessage((data) => { document.getElementById('seen').textContent = 'Got ' + data.text; nixie.send('echo', data); });</script>",
+      }),
+    ];
+  }
+
+  if (step === 'install') {
+    return [
+      {
+        toolUse: {
+          name: 'mcp__nixie__device_addPackage',
+          input: { name: 'ripple-count', version: '1.0.0' },
+        },
+      },
+    ];
+  }
+
+  if (step === 'package') {
+    return [
+      listing,
+      buildRegionReply('pond', {
+        kind: 'html',
+        html: '<script src="/rpc/device/packages/ripple-count@1.0.0/ripples.js"></script><p id="seen">Loading</p><script>function show() { nixie.data("https://tides.test/today").then((reply) => { document.getElementById("seen").textContent = "Tide " + JSON.parse(reply.body).high + " ripples " + window.rippleCount; }, (error) => { document.getElementById("seen").textContent = "Failed " + error.code; }); } show(); nixie.onData(show);</script>',
+        packages: ['ripple-count@1.0.0'],
+        fetches: [{ url: 'https://tides.test/today' }],
       }),
     ];
   }

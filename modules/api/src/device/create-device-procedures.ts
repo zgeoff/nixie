@@ -1,6 +1,7 @@
 // oxlint-disable new-cap -- oRPC names a procedure's typed errors by their upper-case codes
 import {
   readDeviceImage,
+  readPageData,
   recordPageError,
   recordPageEvent,
   writeScreenSwitch,
@@ -97,6 +98,42 @@ export function createDeviceProcedures(context: APIContext) {
       }
 
       return {};
+    }),
+
+    pageData: apiImplementer.devices.pageData.handler(async (options) => {
+      const caller = await requireDevice(context, options.context.sessionToken, {
+        buildUnauthorized: options.errors.UNAUTHORIZED,
+        buildNotADevice: options.errors.NOT_A_DEVICE,
+      });
+
+      const read = await readPageData(
+        { log: context.log, streams: context.clients.devices, nowMs: context.clock.now() },
+        caller.device.deviceID,
+        options.input,
+      );
+
+      if (read.status === 'stale') {
+        throw options.errors.STALE();
+      }
+
+      if (read.status === 'not_declared') {
+        throw options.errors.NOT_DECLARED();
+      }
+
+      if (read.status === 'not_ready') {
+        throw options.errors.NOT_READY();
+      }
+
+      if (read.status === 'refused') {
+        throw options.errors.REFUSED();
+      }
+
+      return {
+        status: read.response.status,
+        type: read.response.type,
+        body: read.response.body,
+        fetchedAt: new Date(read.response.fetchedAtMs).toISOString(),
+      };
     }),
 
     setCapability: apiImplementer.devices.setCapability.handler(async (options) => {

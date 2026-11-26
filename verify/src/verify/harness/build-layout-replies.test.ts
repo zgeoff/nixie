@@ -180,3 +180,44 @@ test('it queues a page for the pond, and a retained message into it', () => {
     ],
   ]);
 });
+
+test('it queues a page for the pond that names the approved package and the declared fetch', () => {
+  const body = {
+    messages: [{ role: 'user', content: '{"result":{"devices":[{"shortID":"dk4m7q2w9x"}]}}' }],
+  };
+
+  const calls = buildLayoutReplies('package').map((reply) => {
+    const input = reply.toolUse.input;
+
+    return [reply.toolUse.name, typeof input === 'function' ? input(body) : input];
+  });
+
+  expect(calls).toStrictEqual([
+    ['mcp__nixie__devices_list', {}],
+    [
+      'mcp__nixie__device_region',
+      {
+        device: 'dk4m7q2w9x',
+        region: 'pond',
+        content: {
+          kind: 'html',
+          html: expect.stringContaining('/rpc/device/packages/ripple-count@1.0.0/ripples.js'),
+          packages: ['ripple-count@1.0.0'],
+          fetches: [{ url: 'https://tides.test/today' }],
+        },
+      },
+    ],
+  ]);
+});
+
+test('it queues the install of the ripple-count package', () => {
+  const calls = buildLayoutReplies('install').map((reply) => {
+    const input = reply.toolUse.input;
+
+    return [reply.toolUse.name, typeof input === 'function' ? input({ messages: [] }) : input];
+  });
+
+  expect(calls).toStrictEqual([
+    ['mcp__nixie__device_addPackage', { name: 'ripple-count', version: '1.0.0' }],
+  ]);
+});

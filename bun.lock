@@ -397,6 +397,9 @@
         "@heynixie/wire": "workspace:*",
         "entities": "catalog:",
       },
+      "devDependencies": {
+        "@heynixie/testing": "workspace:*",
+      },
     },
     "guests/render": {
       "name": "@heynixie/render",
@@ -419,6 +422,7 @@
         "@heynixie/credentials": "workspace:*",
         "@heynixie/db": "workspace:*",
         "@heynixie/definitions": "workspace:*",
+        "@heynixie/devices": "workspace:*",
         "@heynixie/egress": "workspace:*",
         "@heynixie/log": "workspace:*",
         "@heynixie/logger": "workspace:*",
@@ -835,6 +839,7 @@
         "@heynixie/connectors": "workspace:*",
         "@heynixie/contract": "workspace:*",
         "@heynixie/db": "workspace:*",
+        "@heynixie/egress": "workspace:*",
         "@heynixie/log": "workspace:*",
         "@heynixie/tools": "workspace:*",
         "@heynixie/wire": "workspace:*",

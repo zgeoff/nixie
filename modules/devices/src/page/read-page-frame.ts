@@ -1,6 +1,7 @@
-import { devicePagePaths } from '@heynixie/contract';
+import { devicePagePaths, parsePackageSpec } from '@heynixie/contract';
 import type { PageFrame } from '@heynixie/wire';
 import { buildPageFrame } from '@heynixie/wire';
+import { readDevicePackage } from '../package/read-device-packages';
 import { readPageContent } from './read-page-content';
 import type { PageRequestSource } from './types';
 
@@ -33,6 +34,8 @@ export async function readPageFrame(
     declared,
   );
 
+  const packageBases = await readPackageBases(source, shown.content.packages ?? [], origin);
+
   return buildPageFrame({
     html: shown.content.html,
     images: new Map(
@@ -44,5 +47,32 @@ export async function readPageFrame(
     imageBase: `${origin}${devicePagePaths.images}`,
     initialMessages: [],
     isPolicyInline: false,
+    packageBases,
+    fetches: { declared: (shown.content.fetches ?? []).map((fetch) => fetch.url), replies: null },
   });
+}
+
+// The address prefix of each approved package that the page names. A package that nobody approved
+// opens nothing, so a page keeps no access to code that left the approved list.
+async function readPackageBases(
+  source: PageRequestSource,
+  specs: readonly string[],
+  origin: string,
+): Promise<readonly string[]> {
+  const bases: string[] = [];
+
+  for (const spec of specs) {
+    const parsed = parsePackageSpec(spec);
+
+    const found =
+      parsed === null
+        ? null
+        : await readDevicePackage(source.log.writer.db, parsed.name, parsed.version);
+
+    if (found !== null) {
+      bases.push(`${origin}${devicePagePaths.packages}${found.name}@${found.version}/`);
+    }
+  }
+
+  return bases;
 }

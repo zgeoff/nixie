@@ -25,6 +25,7 @@ await withFetchDirectory(tmpdir(), async (directory) => {
         ? readPage(request.url, {
             ...(askHop === undefined ? {} : { askHop }),
             limits: request.limits,
+            ...(request.mode === undefined ? {} : { mode: request.mode }),
             checkAddress: makeAddressCheck(request.deniedRanges),
             resolveHost: resolveHostAddresses,
             transports,
