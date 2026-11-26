@@ -22,6 +22,14 @@ async function setupTest() {
 
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
+  const queryUtils = buildQueryUtils(client);
+
+  // a signed-in page has read the session, which is what lets the features read start
+  await queryClient.prefetchQuery({
+    ...queryUtils.sessions.list.queryOptions(),
+    staleTime: 'static',
+  });
+
   const router = createRouter({
     history: createMemoryHistory({ initialEntries: ['/'] }),
     routeTree: createRootRoute({
@@ -39,7 +47,7 @@ async function setupTest() {
     renderGate: () =>
       render(
         <QueryClientProvider client={queryClient}>
-          <NixieClientContext value={{ client, queryUtils: buildQueryUtils(client) }}>
+          <NixieClientContext value={{ client, queryUtils }}>
             <RouterProvider router={router} />
           </NixieClientContext>
         </QueryClientProvider>,

@@ -20,14 +20,6 @@ import { NixieClientContext } from '../utils/nixie-client-context';
 
 export const Route = createRootRouteWithContext<RouterContext>()({
   component: RootDocument,
-
-  // reads the features before the first render, so the page never shows the nav of a feature that is
-  // off, or mounts the call provider of a nixie with voice off, and takes it away
-  loader: async (options) => {
-    await Promise.allSettled([
-      options.context.queryClient.query(options.context.queryUtils.nixie.read.queryOptions()),
-    ]);
-  },
   head: () => ({
     links: [
       { href: styles, rel: 'stylesheet' },
