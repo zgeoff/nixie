@@ -151,9 +151,9 @@ trace of a sent mail, so a Sent copy deleted for good looks the same as a mail t
 
 A label change applies to every message of a thread, so `gmail.find_labels` answers found only when
 every message of each thread holds every label in `add` and none in `remove`, and inconclusive
-otherwise. A label change that it finds done answers `created: null`, because the check cannot tell
-which labels the action made. `gmail.find_draft` answers found when the account holds a draft whose
-`Message-ID` header holds the action's ID.
+otherwise. For a label change that it finds done, it answers `created: null`, because the check
+cannot tell which labels the action made. `gmail.find_draft` answers found when the account holds a
+draft whose `Message-ID` header holds the action's ID.
 
 ## Labels and drafts
 
@@ -213,15 +213,16 @@ and `window` as [the mailbox's wake tools](../core/mailbox.md#wake-rules), with 
 `thread`. A thread ID with the connection's prefix names the connection.
 
 - `gmail.wake_set` declares the effects `schedule` and `write`. An allow rule covers a call only
-  when it lists every effect of the call, and no starter rule lists `schedule`, so a call asks the
-  user unless the user adds an allow rule that lists both effects. Because of the effect `write`,
-  the call is queued, and it runs as an action even under an allow rule. The rule starts when the
-  action runs, and the action fails with `TASK_ENDED` when the target task has ended by then. The
-  tool answers `BAD_DURATION` for a duration under a minute, and sets no upper limit. It answers
-  `NOT_POLLED` for a connection that the poll skips, one that lacks `gmail.modify` or needs a new
-  consent, because a rule there would never fire.
-- A rule write checks in its own write transaction that the connection is still live, so a call that
-  read the connection before a forget refuses after it, and no rule outlives the forget.
+  when it lists every effect of the call. No starter rule lists `schedule`, so a call asks the user
+  until the user adds an allow rule that lists both effects. The `write` effect queues the call, so
+  it runs as an action even under an allow rule. The rule starts when the action runs, and the
+  action fails with `TASK_ENDED` when the target task has ended by then. The tool answers
+  `BAD_DURATION` for a duration under a minute, and sets no upper limit. It answers `NOT_POLLED` for
+  a connection that the poll skips, one that lacks `gmail.modify` or needs a new consent, because a
+  rule there would never fire.
+- Each rule write checks, in its own write transaction, that the connection is still live. A call
+  that read the connection before a forget refuses once the forget lands, so no rule outlives the
+  forget.
 - `gmail.wake_list` lists every live rule of the connection, and `gmail.wake_cancel` answers
   `UNKNOWN_RULE` for a rule of another mailbox. Neither asks.
 - `gmail.send` and `gmail.reply` take `replyWake`, as `mail.send` does: a duration, or `off`. When
@@ -235,8 +236,8 @@ and `window` as [the mailbox's wake tools](../core/mailbox.md#wake-rules), with 
   own transaction, before the action's outcome, because the action queue runs no connector write
   inside the outcome's transaction. A restart between the two leaves the action unsettled, and the
   same check replaces the rule in place, so one rule stays. A send that the user drops after such a
-  restart keeps its rule. Whether it should is open for the owner in
-  [GEO-2871](https://linear.app/zgeoff/issue/GEO-2871).
+  restart keeps its rule. The owner decides in [GEO-2871](https://linear.app/zgeoff/issue/GEO-2871)
+  whether it should.
 
 ### Forgetting
 

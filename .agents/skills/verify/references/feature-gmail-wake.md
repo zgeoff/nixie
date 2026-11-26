@@ -15,7 +15,7 @@ your reply, list the feature as not verified there.
 
 Before you start:
 
-- Start from an `up` that no journey but sign-in-enrol has used, because a deployment registers one
+- Start from an `up` that no journey but sign-in-enrol has used. A deployment registers only one
   OAuth client, and the counts below start at 0. After any other journey, run
   `bun verify up --restart` and `bun verify doctor` first.
 - Run [sign-in-enrol](feature-sign-in-enrol.md) first, after each `up`.
@@ -40,8 +40,8 @@ Before you start:
 
    Expect: each command exits 0.
 
-2. Script the model's next turn: it sets a wake rule for mail from the library's domain, then
-   replies. Send the message.
+2. Script the model's next turn to set a wake rule for mail from the library's domain and then
+   reply. Then send the message.
 
    ```bash
    bun verify action script-reply --text 'I will watch for the mail.' --gmail-watch '{"from":"@library.example.org"}'
