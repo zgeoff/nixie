@@ -6,10 +6,10 @@ export interface ActionMarker {
   readonly value: string;
 }
 
-export const markerPrefix = 'nixie';
+const markerPrefix = 'nixie';
 
 // the markers kept on an item, the new one included
-export const keptMarkerCount = 10;
+const keptMarkerCount = 10;
 const markerKeyPattern = /^nixie[0-9a-f]{32}$/u;
 
 export function buildActionMarker(actionID: string, queuedSeconds: number): ActionMarker {
