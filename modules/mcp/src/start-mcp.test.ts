@@ -5,7 +5,16 @@ import { startStandInMcp } from './test-utils/start-stand-in-mcp';
 async function setupTest() {
   const hold = { next: () => Promise.resolve() };
 
-  const standIn = await startStandInMcp({ holdOverrides: () => hold.next() });
+  const standIn = await startStandInMcp({
+    holdOverrides: () => hold.next(),
+    tools: [
+      { name: 'item_get', inputSchema: { type: 'object' }, annotations: { readOnlyHint: true } },
+    ],
+  });
+
+  await standIn.approveServer();
+  await standIn.signIn(standIn.mcp);
+  await standIn.test.allow('tracker.item_get');
 
   return {
     hold,
@@ -105,6 +114,42 @@ test('it waits for a direct refresh of the tool catalog before its stop returns'
   release.resolve();
 
   await Promise.all([stopping, refreshing]);
+
+  expect(order).toStrictEqual(['released', 'stopped']);
+});
+
+test('it waits for the refit that a definitions change started before its stop returns', async () => {
+  const ctx = await setupTest();
+
+  const entered = Promise.withResolvers<void>();
+  const release = Promise.withResolvers<void>();
+
+  ctx.hold.next = () => {
+    entered.resolve();
+
+    return release.promise;
+  };
+
+  ctx.publishChanged(['definitions']);
+
+  await entered.promise;
+
+  const order: string[] = [];
+
+  const stopping = (async () => {
+    await ctx.stop();
+
+    order.push('stopped');
+  })();
+
+  await new Promise((resolve) => {
+    setImmediate(resolve);
+  });
+
+  order.push('released');
+  release.resolve();
+
+  await stopping;
 
   expect(order).toStrictEqual(['released', 'stopped']);
 });

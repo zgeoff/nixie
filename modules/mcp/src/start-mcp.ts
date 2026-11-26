@@ -354,8 +354,8 @@ export function startMcp(options: McpOptions): Mcp {
   // the refreshes of the tool catalog, from a change or a caller, which a stop waits for
   const refreshes = new Set<Promise<void>>();
 
-  const refreshTools = async () => {
-    const running = tools.refresh();
+  const trackRefresh = async (run: () => Promise<void>) => {
+    const running = run();
 
     refreshes.add(running);
 
@@ -366,10 +366,13 @@ export function startMcp(options: McpOptions): Mcp {
     }
   };
 
-  const refit = async () => {
-    await refitTools(context, readOverrides);
-    await refreshTools();
-  };
+  const refreshTools = () => trackRefresh(() => tools.refresh());
+
+  const refit = () =>
+    trackRefresh(async () => {
+      await refitTools(context, readOverrides);
+      await refreshTools();
+    });
 
   const subscription = { stop: () => {} };
 

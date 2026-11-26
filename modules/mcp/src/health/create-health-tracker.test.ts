@@ -160,18 +160,33 @@ test('it keeps the grant signed in and backs off when a listing gets 401 after a
   ]).toStrictEqual(['failed', ['ok'], 1, false]);
 });
 
-test('it schedules no retry for a listing that fails after the stop', async () => {
+test('it schedules no retry for a listing that fails while the stop waits for it', async () => {
   const ctx = await setupTest();
 
   jest.useFakeTimers();
 
   onTestFinished(() => jest.useRealTimers());
 
-  await ctx.mcp.stop();
+  const entered = Promise.withResolvers<void>();
+  const release = Promise.withResolvers<void>();
 
   ctx.site.failListings(true);
 
-  await ctx.mcp.list('tracker');
+  ctx.site.onInitialize(() => {
+    entered.resolve();
+
+    return release.promise;
+  });
+
+  const listing = ctx.mcp.list('tracker');
+
+  await entered.promise;
+
+  const stopping = ctx.mcp.stop();
+
+  release.resolve();
+
+  await Promise.all([listing, stopping]);
 
   const listingsBefore = ctx.site.readListingCount();
 
