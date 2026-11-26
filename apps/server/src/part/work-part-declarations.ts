@@ -1,8 +1,7 @@
 import {
-  buildApprovalsProposalConfig,
   buildProposalCoreDeps,
   createFirstEnrolmentCode,
-  defaultPolicySettings,
+  runProposalStartChecks,
 } from '@heynixie/api';
 import { startCallSweep } from '@heynixie/calls';
 import { buildCodingSource, startCodingSweep } from '@heynixie/coding';
@@ -13,13 +12,7 @@ import {
   makeTakeoverRecords,
   resumeOpenHandover,
 } from '@heynixie/connectors';
-import {
-  checkPromptProposal,
-  makeRetireOneShot,
-  runMandateExpiry,
-  runSuggestedRuleChecks,
-  startMandateTimer,
-} from '@heynixie/definitions';
+import { checkPromptProposal, makeRetireOneShot, startMandateTimer } from '@heynixie/definitions';
 import { startDeviceWakes, startWaitingShows } from '@heynixie/devices';
 import { toErrorFields } from '@heynixie/logger';
 import { buildMailSource } from '@heynixie/mail';
@@ -397,22 +390,13 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
       const runInForceSeed = () =>
         runInForceSeedAndWake(reader.find('server_parts'), reader.find('definitions_exports'));
 
-      const rules = {
-        ...apiContext,
-        runInForceSeed,
-        proposalConfig: buildApprovalsProposalConfig(apiContext.settings),
-      };
-
-      const policy = apiContext.settings.policy ?? defaultPolicySettings;
-
       const onError = (error: unknown) => {
         parts.log('proposals.sweep_failed', toErrorFields(error));
       };
 
-      // A crash between an answer and its check, or while the release before ran, loses nothing.
-      await runSuggestedRuleChecks(rules, policy.proposedRules);
-      await runMandateExpiry(rules);
+      const started = await runProposalStartChecks(apiContext, runInForceSeed);
 
+      const rules = started.rules;
       const timer = startMandateTimer({ context: rules, clock: parts.context.clock, onError });
 
       const sweeps = startProposalSweeps({

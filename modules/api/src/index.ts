@@ -50,6 +50,7 @@ export type {
 export type { APIRecordKind } from './api/api-record-kind';
 export type { ProposalParts } from './proposal/build-proposal-core-deps';
 export { buildApprovalsProposalConfig } from './proposal/build-approvals-proposal-config';
+export { runProposalStartChecks } from './proposal/run-proposal-start-checks';
 export { buildProposalCoreDeps } from './proposal/build-proposal-core-deps';
 export { proposalsProjection } from './proposal/proposals-projection';
 export { conversationErasableDescriptor } from './erasable/conversation-erasable-descriptor';

@@ -1,11 +1,7 @@
 import { expect, test } from 'bun:test';
-import {
-  buildApprovalsProposalConfig,
-  defaultAPISettings,
-  defaultApprovalSettings,
-} from '@heynixie/api';
+import { defaultAPISettings, defaultApprovalSettings, runProposalStartChecks } from '@heynixie/api';
 import { startTestRules } from '@heynixie/api/test-utils';
-import { runSuggestedRuleChecks, writeProposedRule } from '@heynixie/definitions';
+import { writeProposedRule } from '@heynixie/definitions';
 import {
   readRecords,
   runProjectionRebuild,
@@ -24,7 +20,6 @@ async function setupTest(apiSettings = defaultAPISettings) {
   const rules = await startTestRules(apiSettings);
 
   const dayMs = 24 * 60 * 60 * 1000;
-  const settings = { approvals: 3, windowDays: 30, quietDays: 30 };
 
   const readProposedRules = async () => {
     const open = await readOpenProposals(rules.log.writer.db, rules.clock.now());
@@ -100,11 +95,11 @@ async function setupTest(apiSettings = defaultAPISettings) {
     approveSend,
     approveWithoutCheck,
     rebuild: () => runProjectionRebuild(rules.log),
-    runStartChecks: () =>
-      runSuggestedRuleChecks(
-        { ...rules.context, proposalConfig: buildApprovalsProposalConfig(rules.context.settings) },
-        settings,
-      ),
+    runStartChecks: async () => {
+      const started = await runProposalStartChecks(rules.context, rules.runInForceSeed);
+
+      return started.checked;
+    },
 
     // the lapse that the release before writes for every row of the rule change family
     writeOlderLapse: (proposalID: string) =>
