@@ -153,13 +153,15 @@ test('it shows no pop-up, badge or notice on another page when the device conten
 
 test('it reports the new size of the page area to the device when the area changes', async () => {
   const observer = registerStubResizeObserver();
-  const original = Element.prototype.getBoundingClientRect;
+  const original = Object.getOwnPropertyDescriptor(Element.prototype, 'getBoundingClientRect');
   const size = { width: 900, height: 500 };
+
+  invariant(original !== undefined, 'an element has its own measure of its box');
 
   Element.prototype.getBoundingClientRect = () => new DOMRect(0, 0, size.width, size.height);
 
   onTestFinished(() => {
-    Element.prototype.getBoundingClientRect = original;
+    Object.defineProperty(Element.prototype, 'getBoundingClientRect', original);
   });
 
   const ctx = setupTest();
