@@ -10,8 +10,10 @@ Settings → MCP servers lists each server with its state, its sign-in, its heal
 ## Before you start
 
 - An MCP server that serves Streamable HTTP over `https://`, and signs clients in with the MCP
-  standard's OAuth: the authorization code grant with PKCE. nixie offers no client secret and does
-  not register itself on the server.
+  standard's OAuth: the authorization code grant with PKCE. The server must also add the `iss`
+  parameter, set to its issuer, to the sign-in return, as RFC 9207 describes. nixie ends a sign-in
+  whose return has no `iss` or a different one. nixie offers no client secret and does not register
+  itself on the server.
 - A web address for nixie that starts with `https://`, such as `https://nixie.example.org`.
 - A browser signed in to nixie, open on that address.
 

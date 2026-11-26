@@ -3,12 +3,14 @@
 Contents: [Journey](#journey), [End state](#end-state).
 
 Settings → MCP servers lists each outside MCP server that nixie proxies, with its state, its
-sign-in, its health and its tools. The owner approves the server, presses Connect, signs in on the
+sign-in, its health and its tools. The user approves the server, presses Connect, signs in on the
 server's own page, and allows each tool the server lists.
 
 Follow the steps in [Check a change](../SKILL.md#check-a-change) for this journey. Read that section
 for the targets `local` and `preview`, the commands `up` and `done`, and the `data` field of each
 command's JSON output.
+
+When a command fails, do what its row in [Exit codes](exit-codes.md) says.
 
 Run this journey on `local` only, on an `up` of its own:
 
