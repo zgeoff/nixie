@@ -27,7 +27,6 @@ export async function readMarkedEvent(
   let pageToken: string | undefined;
 
   do {
-    // eslint-disable-next-line no-await-in-loop -- each page names the next
     const listed = await callGoogle(hosts, context, {
       path: buildEventPath(request.calendar),
       query: {

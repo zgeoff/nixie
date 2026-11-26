@@ -199,7 +199,6 @@ test('it asks Drive to export a Doc as Markdown, a Sheet as CSV and a Slides fil
   ];
 
   for (const file of files) {
-    // eslint-disable-next-line no-await-in-loop -- each read is one request in order
     await ctx.runRead({ file: `k3x9m2p7qa.${file.id}` });
   }
 

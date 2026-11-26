@@ -8,7 +8,6 @@ export async function serveFakeGoogle(
   services: readonly FakeService[],
 ): Promise<Response | null> {
   for (const service of services) {
-    // eslint-disable-next-line no-await-in-loop -- the first service that answers ends the loop
     const answered = await service.serve(request);
 
     if (answered !== null) {
