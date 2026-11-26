@@ -19,3 +19,13 @@ export function writeStoredScreen(isOn: boolean): void {
     // the page works without a stored choice
   }
 }
+
+// Whether this device ever stored its choice, which tells a client device that was never switched
+// off from a screen device that starts with the screen off.
+export function hasStoredScreen(): boolean {
+  try {
+    return globalThis.localStorage.getItem(storageKey) !== null;
+  } catch {
+    return false;
+  }
+}

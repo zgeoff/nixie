@@ -1,6 +1,8 @@
-// oxlint-disable new-cap -- oRPC names a procedure's typed errors by their upper-case codes
 import { renderSessionCookie } from '@heynixie/contract';
+// oxlint-disable new-cap -- oRPC names a procedure's typed errors by their upper-case codes
+import { ORPCError } from '@orpc/client';
 import { match } from 'ts-pattern';
+import { deviceStore } from './device-store';
 import { isForgettableKind } from './is-forgettable-kind';
 import { mockApprovalProcedures } from './mock-approval-procedures';
 import { mockCallsProcedures } from './mock-calls-procedures';
@@ -266,6 +268,15 @@ export const mockAPIRouter = os.router({
 
     list: os.sessions.list.handler((options) => {
       const current = requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+      if (
+        deviceStore.screenSessions.findFirst((query) =>
+          query.where({ sessionID: current.sessionID }),
+        ) !== undefined
+      ) {
+        throw new ORPCError('FORBIDDEN');
+      }
+
       const live = store.sessions.findMany((query) => query.where({ revokedAt: null }));
 
       return {

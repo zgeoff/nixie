@@ -1016,6 +1016,29 @@ test('it sends opened first, then the screen, on the device form of a live follo
   ]);
 });
 
+test('it lets a full session follow its device stream and its conversation stream at once', async () => {
+  const ctx = await setupTest();
+  const session = await ctx.enrol('full', 'phone');
+
+  const device = await session.client.live.follow({
+    device: { pixels: { width: 800, height: 600 } },
+  });
+
+  const page = await session.client.live.follow({});
+  const deviceOpened = await device.next();
+  const deviceScreen = await device.next();
+  const pageOpened = await page.next();
+
+  await device.return(undefined);
+  await page.return(undefined);
+
+  expect([deviceOpened.value, deviceScreen.value, pageOpened.value]).toStrictEqual([
+    { kind: 'opened' },
+    { kind: 'device', event: { kind: 'idle', scene: [] } },
+    { kind: 'opened' },
+  ]);
+});
+
 test('it refuses the page form of a live follow to a device session', async () => {
   const ctx = await setupTest();
   const device = await ctx.enrol('device', 'desk panel');

@@ -6,6 +6,7 @@ import { server } from '../mocks/server';
 import { store } from '../mocks/store';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { createFullSession } from '../test-utils/create-full-session';
+import { createScreenSession } from '../test-utils/create-screen-session';
 import { render } from '../test-utils/render';
 import { DevicePage } from './device-page';
 
@@ -32,7 +33,7 @@ test('it shows the enrolment form to a browser with no device session', async ()
 test('it starts an enrolled device with its screen off, and lets the device switch it on', async () => {
   const ctx = setupTest();
 
-  await createDeviceSession();
+  await createScreenSession();
 
   const rendered = render(<DevicePage />);
 
@@ -62,7 +63,7 @@ test('it keeps the screen on for a device that left it on', async () => {
 test('it signs the device out and shows the enrolment form', async () => {
   const ctx = setupTest();
 
-  const session = await createDeviceSession();
+  const session = await createScreenSession();
 
   const rendered = render(<DevicePage />);
 
@@ -84,7 +85,7 @@ test('it signs the device out and shows the enrolment form', async () => {
 test('it keeps the device signed in and says so when the sign out fails', async () => {
   const ctx = setupTest();
 
-  const session = await createDeviceSession();
+  const session = await createScreenSession();
 
   server.use(http.post('*/rpc/sessions/signOut', () => HttpResponse.error(), { once: true }));
 
@@ -174,4 +175,31 @@ test('it leaves the screen off after a registration, even when the browser left 
 
   expect(button).toBeVisible();
   expect(rendered.queryByTestId('screen')).toBeNull();
+});
+
+test('it shows the client device of a full session full screen, with nothing stored', async () => {
+  setupTest();
+
+  await createDeviceSession();
+
+  const rendered = render(<DevicePage />);
+
+  const heading = await rendered.findByRole('heading', { name: 'Saturday' });
+
+  expect(heading).toBeVisible();
+  expect(rendered.queryByRole('button', { name: 'Switch on screen' })).toBeNull();
+});
+
+test('it keeps the screen off for a client device that switched it off', async () => {
+  setupTest();
+
+  await createDeviceSession();
+
+  globalThis.localStorage.setItem('nixie.device.screen', 'off');
+
+  const rendered = render(<DevicePage />);
+
+  const button = await rendered.findByRole('button', { name: 'Switch on screen' });
+
+  expect(button).toBeVisible();
 });

@@ -4,6 +4,7 @@ import type { RenderResult } from '@testing-library/react';
 import { render as renderWithTestingLibrary } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { buildBrowserClient } from '../client/build-browser-client';
+import { DeviceFeedProvider } from '../device/device-feed-provider';
 import { LiveProvider } from '../live/live-provider';
 import { NixieClientContext } from '../utils/nixie-client-context';
 import type { StartTimer } from '../utils/start-platform-timer';
@@ -30,7 +31,11 @@ export function render(ui: ReactNode, options: RenderOptions = {}): RenderResult
           <LiveProvider
             {...(options.startTimer === undefined ? {} : { startTimer: options.startTimer })}
           >
-            {props.children}
+            <DeviceFeedProvider
+              {...(options.startTimer === undefined ? {} : { startTimer: options.startTimer })}
+            >
+              {props.children}
+            </DeviceFeedProvider>
           </LiveProvider>
         </NixieClientContext>
       </QueryClientProvider>

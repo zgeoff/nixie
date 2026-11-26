@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { startPlatformTimer } from '../utils/start-platform-timer';
 import { useNixieClient } from '../utils/use-nixie-client';
 import { applyDeviceEvent } from './apply-device-event';
+import { initialDeviceEvents } from './initial-device-events';
 import type { ScreenPixels } from './read-screen-pixels';
 import { readScreenPixels } from './read-screen-pixels';
 import { subscribeToDeviceEvents } from './subscribe-to-device-events';
@@ -45,16 +46,7 @@ export function useDeviceEvents(
   serverPixels: RefObject<ScreenPixels>,
 ): DeviceEvents {
   const nixie = useNixieClient();
-
-  const [events, setEvents] = useState<DeviceEvents>({
-    event: null,
-    layout: null,
-    messages: [],
-    notices: [],
-    lastMessageID: 0,
-    lastNoticeID: 0,
-    connection: 'connecting',
-  });
+  const [events, setEvents] = useState<DeviceEvents>(initialDeviceEvents);
 
   useEffect(() => {
     if (!isScreenOn) {
@@ -63,15 +55,7 @@ export function useDeviceEvents(
 
     const controller = new AbortController();
 
-    setEvents({
-      event: null,
-      layout: null,
-      messages: [],
-      notices: [],
-      lastMessageID: 0,
-      lastNoticeID: 0,
-      connection: 'connecting',
-    });
+    setEvents(initialDeviceEvents);
 
     void subscribeToDeviceEvents({
       client: nixie.client,

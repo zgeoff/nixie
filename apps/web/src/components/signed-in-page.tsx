@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { useEffect } from 'react';
 import { writeTakeOverRequest } from '../computer/write-take-over-request';
 import type { SessionState } from '../conversation/read-session-state';
+import { DeviceConnection } from '../device/device-connection';
 import { LiveConnection } from '../live/live-connection';
 import { BackupNotice } from './backup-notice';
 import { EnrolForm } from './enrol-form';
@@ -37,6 +38,7 @@ export function SignedInPage(props: SignedInPageProps): ReactNode {
   return (
     <>
       <LiveConnection />
+      <DeviceConnection />
       <BackupNotice />
       <ForgetStuckNotice />
       <PauseBanner />

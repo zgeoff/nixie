@@ -13,9 +13,9 @@ const screen = css({
   color: 'white',
   display: 'flex',
   flexDirection: 'column',
-  height: '100dvh',
+  height: '100%',
   overflow: 'hidden',
-  width: '100vw',
+  width: '100%',
 });
 
 const text = css({ fontSize: '2xl', padding: '6' });

@@ -8,7 +8,7 @@ import { css } from '../styled-system/css';
 import { useNixieClient } from '../utils/use-nixie-client';
 import { DeviceScreen } from './device-screen';
 import { FullscreenButton } from './fullscreen-button';
-import { readStoredScreen, writeStoredScreen } from './read-stored-screen';
+import { hasStoredScreen, readStoredScreen, writeStoredScreen } from './read-stored-screen';
 import { RegisterDeviceForm } from './register-device-form';
 
 type Phase =
@@ -29,9 +29,9 @@ const page = css({
   '& button': { borderColor: 'borderStrong', borderWidth: '1px', paddingBlock: '2' },
 });
 
-// Device mode: a device with a screen that the assistant puts pictures on. The page asks the server
-// to set its screen the way this device left it, which tells it what this browser holds: no session
-// shows the enrolment form, and a full session with no device shows the form that names one.
+// Device mode: this browser's device full screen. The page asks the server to set its screen the way
+// this device left it, which tells it what this browser holds: no session shows the enrolment form,
+// and a full session with no device shows the form that names one.
 export function DevicePage(): ReactNode {
   const nixie = useNixieClient();
   const navigate = useNavigate();
@@ -156,7 +156,7 @@ async function startDevice(
   signal: AbortSignal,
   setPhase: SetPhase,
 ): Promise<void> {
-  const isOn = readStoredScreen();
+  const isOn = await readScreenSwitch(client, signal);
 
   try {
     const answer = await client.devices.setCapability({ capability: 'screen', isOn }, { signal });
@@ -168,6 +168,28 @@ async function startDevice(
     }
 
     setPhase(pickRefusedPhase(error));
+  }
+}
+
+// A device left its screen as it stored it. With nothing stored, a client device shows its screen
+// and a screen device starts with it off.
+function readScreenSwitch(client: ContractClient, signal: AbortSignal): Promise<boolean> {
+  if (hasStoredScreen()) {
+    return Promise.resolve(readStoredScreen());
+  }
+
+  return probeFullSession(client, signal);
+}
+
+// A full session holds a client device, whose screen starts on, so device mode shows it as it is
+// until the device switches the screen off. A device session may not list sessions.
+async function probeFullSession(client: ContractClient, signal: AbortSignal): Promise<boolean> {
+  try {
+    await client.sessions.list({}, { signal });
+
+    return true;
+  } catch {
+    return false;
   }
 }
 

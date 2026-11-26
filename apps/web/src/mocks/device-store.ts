@@ -33,6 +33,11 @@ const sessionsWithoutDevice = new Collection({
   schema: z.object({ sessionID: z.uuid() }),
 });
 
+// the sessions of the device scope, which may call only the device procedures
+const screenSessions = new Collection({
+  schema: z.object({ sessionID: z.uuid() }),
+});
+
 // the layout the stream sends to a device, which a test sets; null sends none
 const layoutHolder: { layout: Extract<DeviceEvent, { kind: 'layout' }>['layout'] } = {
   layout: null,
@@ -50,6 +55,7 @@ export const deviceStore = {
   layoutHolder,
   messageHolder,
   sessionsWithoutDevice,
+  screenSessions,
   hasDevice: (sessionID: string): boolean =>
     sessionsWithoutDevice.findFirst((query) => query.where({ sessionID })) === undefined,
   reset: (): void => {
@@ -57,6 +63,7 @@ export const deviceStore = {
     pageErrors.clear();
     pageEvents.clear();
     sessionsWithoutDevice.clear();
+    screenSessions.clear();
 
     layoutHolder.layout = null;
     messageHolder.messages = [];

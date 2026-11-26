@@ -1,11 +1,9 @@
 import type { ReactNode } from 'react';
 import { useRef } from 'react';
 import { css } from '../styled-system/css';
+import { DeviceSurface } from './device-surface';
 import { FullscreenButton } from './fullscreen-button';
-import { LayoutView } from './layout-view';
-import { pickSurface } from './pick-surface';
 import { readScreenPixels } from './read-screen-pixels';
-import { ScreenView } from './screen-view';
 import { useDeviceEvents } from './use-device-events';
 import { useRevealOnTouch } from './use-reveal-on-touch';
 import { useScreenResize } from './use-screen-resize';
@@ -17,13 +15,7 @@ export interface DeviceScreenProps {
   readonly onSignOut: () => void;
 }
 
-// a layout that a show or the idle scene covers: it stays loaded at its size, so a page keeps running
-const covered = css({
-  inset: '0',
-  pointerEvents: 'none',
-  position: 'fixed',
-  visibility: 'hidden',
-});
+const fullViewport = css({ inset: '0', position: 'fixed' });
 
 const controls = css({
   display: 'flex',
@@ -53,21 +45,12 @@ export function DeviceScreen(props: DeviceScreenProps): ReactNode {
   useScreenResize(true, serverPixels);
 
   const touch = useRevealOnTouch();
-  const surface = pickSurface(events.event, events.layout);
 
   return (
     <>
-      {events.layout === null ? null : (
-        <div className={surface.kind === 'layout' ? undefined : covered}>
-          <LayoutView
-            layout={events.layout}
-            messages={events.messages}
-            notices={events.notices}
-            onTouch={touch.reveal}
-          />
-        </div>
-      )}
-      {surface.kind === 'layout' ? null : <ScreenView blocks={surface.blocks} />}
+      <div className={fullViewport}>
+        <DeviceSurface events={events} onTouch={touch.reveal} />
+      </div>
       <div className={controls} style={{ visibility: touch.isRevealed ? 'visible' : 'hidden' }}>
         <button onClick={props.onClose} type="button">
           Close

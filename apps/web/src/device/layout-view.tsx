@@ -25,9 +25,9 @@ const grid = css({
   backgroundColor: 'black',
   color: 'white',
   display: 'grid',
-  height: '100dvh',
+  height: '100%',
   overflow: 'hidden',
-  width: '100vw',
+  width: '100%',
 });
 
 const cell = css({ minHeight: '0', minWidth: '0', overflow: 'hidden', position: 'relative' });
