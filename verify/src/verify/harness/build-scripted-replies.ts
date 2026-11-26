@@ -433,7 +433,9 @@ function buildCalendarInviteReplies(
   ];
 }
 
-// A search of the connected Google account's files, and the creation of a text file.
+// A search of the connected Google account's files, and the creation of a text file. The create
+// reads the first file that the search's result lists, so a search that fails or lists no file
+// fails the request instead of letting the create run.
 function buildDriveCreateReplies(
   create: NonNullable<z.output<typeof controlRoutes.addReply.input>['driveCreate']>,
 ) {
@@ -442,8 +444,21 @@ function buildDriveCreateReplies(
     {
       toolUse: {
         name: 'mcp__nixie__drive_create',
-        input: { name: create.name, text: create.text, as: 'text' },
+        input: (body: ScriptedBody) => {
+          readSearchedFileID(body);
+
+          return { name: create.name, text: create.text, as: 'text' };
+        },
       },
     },
   ];
+}
+
+function readSearchedFileID(body: ScriptedBody): string {
+  const seen = JSON.stringify(body.messages);
+  const fileID = /files\\*":\[\{\\*"file\\*":\\*"(?<id>[^"\\]+)/u.exec(seen)?.groups?.['id'];
+
+  invariant(fileID !== undefined, 'the result of the search lists no file');
+
+  return fileID;
 }

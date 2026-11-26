@@ -666,20 +666,48 @@ test('it lists the events of the span, then invites the guest to the new event',
   ]);
 });
 
-test('it searches the files, then creates the text file', () => {
+test('it searches the files, then creates the text file once the search listed a file', () => {
   const replies = buildScriptedReplies({
     text: 'The file is made.',
     driveCreate: { query: 'plan', name: 'Packing list', text: 'Passport.' },
   });
 
-  expect(replies).toStrictEqual([
-    { toolUse: { name: 'mcp__nixie__drive_search', input: { query: 'plan' } } },
-    {
-      toolUse: {
-        name: 'mcp__nixie__drive_create',
-        input: { name: 'Packing list', text: 'Passport.', as: 'text' },
+  const body = {
+    messages: [
+      {
+        role: 'user',
+        content:
+          '{"result":{"files":[{"file":"d1.abc","name":"Trip plan","type":"doc"}],"next":null,"note":null}}',
       },
-    },
-    { text: 'The file is made.' },
+    ],
+  };
+
+  const inputs = replies.map((reply) => {
+    const input = 'toolUse' in reply ? reply.toolUse?.input : undefined;
+
+    return typeof input === 'function' ? input(body) : input;
+  });
+
+  expect(inputs).toStrictEqual([
+    { query: 'plan' },
+    { name: 'Packing list', text: 'Passport.', as: 'text' },
+    undefined,
   ]);
+});
+
+test.each([
+  ['an empty list', '{"result":{"files":[],"next":null,"note":"no files"}}'],
+  ['an error', '{"error":"the search failed"}'],
+])('it fails the create of a drive file when the search returned %s', (_title, content) => {
+  const replies = buildScriptedReplies({
+    text: 'The file is made.',
+    driveCreate: { query: 'plan', name: 'Packing list', text: 'Passport.' },
+  });
+
+  const [, create] = replies;
+  const input = create !== undefined && 'toolUse' in create ? create.toolUse?.input : undefined;
+
+  expect(() =>
+    typeof input === 'function' ? input({ messages: [{ role: 'user', content }] }) : null,
+  ).toThrow('lists no file');
 });

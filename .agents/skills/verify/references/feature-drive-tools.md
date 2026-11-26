@@ -46,7 +46,7 @@ Before you start:
    Expect: the snapshot's heading is `verify@example.test`, with the status "Active".
 
 2. Script the model's next turn: it searches the files for "plan", creates a text file, and then
-   answers.
+   answers. The create runs only after a search that found a file.
 
    ```bash
    bun verify action script-reply --text 'The file is made.' --drive-create '{"query":"plan","name":"Packing list","text":"Passport and charger."}'
@@ -65,22 +65,27 @@ Before you start:
 
    Expect: `conversation turn` exits 0.
 
-4. Check that the create ran once, with no card, and that the file is in the fake Drive:
+4. Check that the search found the seeded file, that the create ran once with no card, and that the
+   file is in the fake Drive:
 
    ```bash
+   bun verify model received --text 'Trip plan'
    bun verify proposals --tool drive.create --waiting none
    bun verify db query "select json_extract(payload, '$.status') as status from records where kind = 'action.outcome' and json_extract(payload, '$.tool') = 'drive.create'"
    bun verify drive files --name 'Packing list' --text 'Passport and charger.'
    ```
 
-   Expect: `proposals` exits 0. The query returns one row with `status` `done`. `drive files` exits
-   0: the fake Drive holds exactly one file named "Packing list", with that text. It fails with
-   `check-failed` for no file, for a double create and for other text.
+   Expect: `model received` exits 0, because the search's result gave the model "Trip plan". It
+   fails with `check-failed` when the search returned an error or no file. `proposals` exits 0. The
+   query returns one row with `status` `done`. `drive files` exits 0: the fake Drive holds exactly
+   one file named "Packing list", with that text. It fails with `check-failed` for no file, for a
+   double create and for other text.
 
 5. Once step 4 matches, run `bun verify done`. Expect: `ok: true`.
 
 ## End state
 
+- Step 4: the search returned the seeded "Trip plan" to the model, with no error.
 - Step 4: the create ran with no card, and its action is done.
 - Step 4: the fake Drive holds one "Packing list" with the text the model gave, beside the seeded
   "Trip plan".
