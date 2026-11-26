@@ -59,14 +59,14 @@ When the definitions export is configured, the conversation's tool endpoint also
 files the entry reads, and a reason for the user. Without the export, an approved override has no
 way into the definitions, so the model gets no tool to propose one. A proposal goes through the same
 checks as the seed's parse of the `prompts:` map, plus the rules for the files themselves: each sits
-under `prompts/`, the entry reads it, and it fits the seed's file size limit. A proposal that fails
-any check returns every problem to the model and records nothing. A proposal that passes becomes a
-record on the caller's thread with a short ID, and a proposal may replace or drop the `safety` part.
+under `prompts/`, the entry reads it, and it fits the seed's file size limit. When a proposal fails
+any check, the tool returns every problem to the model and records nothing. When it passes, the tool
+records it on the caller's thread with a short ID. A proposal may replace or drop the `safety` part.
 
 The prompts module runs the definitions parse as a check that its caller passes in, because the
 definitions module already imports the prompts module and the reverse import would form a cycle. The
 server passes the definitions module's prompt check to the tool and to the host procedures, and it
-builds the event kind that turns each opened pull request into a turn note for the same reason.
+builds the event kind that turns each opened pull request into a turn note, for the same reason.
 
 Each proposal is a row of the prompt family in the shared [approvals](../policy/approvals.md)
 lifecycle, so the user approves, declines or defers its card in the browser like any other proposal.
@@ -75,19 +75,19 @@ A prompt override always asks, so an approval in the browser takes a passkey.
 The user can also answer through the prompt host commands, which list each pending proposal beside
 the override in force and the proposal hash to answer under. Only a host approval can carry the
 user's edits to the entry and the files, and the server runs the same checks on the approved version
-as on the proposal. The server refuses an answer under another hash, to a closed proposal, and an
-approval of a proposal whose base, the override in force when the model proposed, has moved. A
-proposal with no answer lapses after the days that `approvals.lapse_days.prompt` sets, and the
-shared proposal sweep closes it.
+as on the proposal. The server refuses an answer under another hash or to a closed proposal. It also
+refuses an approval when the proposal's base, the override in force when the model proposed, has
+moved. A proposal with no answer lapses after the number of days in `approvals.lapse_days.prompt`,
+and the shared proposal sweep closes it.
 
-An approval leaves the prompt as it is in force and records the approved version as the prompt's
+An approval leaves the prompt in force unchanged and records the approved version as the prompt's
 current approval, superseding the one before. The [definitions export](./definitions.md) then opens
 a pull request on the prompt's branch with the part files and the prompt's entry in `nixie.yaml`,
 and moves `nixie.yaml` to format 3 when the base branch holds an older format. The pull request's
 body holds the reason and a note when the override replaces or drops the `safety` part. The override
 goes into force with the seed after the pull request merges and `live` is promoted. The model hears
-each answer and lapse as the shared settlement, and each opened pull request as a turn note of its
-own on the proposal's thread, which holds the pull request's URL.
+each answer and lapse as the shared settlement. It hears each opened pull request as a separate turn
+note on the proposal's thread, and the note holds the pull request's URL.
 
 ## Safety parts and the operator log
 

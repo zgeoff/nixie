@@ -22,9 +22,9 @@ the rules for ports, providers and adapters, and lists where the code departs fr
 - Search has `SearchProvider` and one real provider, so the config has no provider key for search.
 - The memory checker's model has no port: the `checker` role needs `structured-output`, and only the
   Agent SDK harness declares it.
-- The backup schedule and the definitions poll each keep their own loop on the clock. Every other
-  periodic sweep runs on `startSweep` in `libs/clock`, such as the shared proposal sweep, which
-  lapses the proposals of every family, and memory's lapse sweep.
+- The backup schedule and the definitions poll each run their own loop on the clock. Every other
+  periodic sweep, such as memory's lapse sweep, runs on `startSweep` in `libs/clock`. So does the
+  shared proposal sweep, which lapses the proposals of every family.
 - The key store and the backup target have no interface: the key store has one implementation, and
   the backup job's one client reaches each storage backend itself.
 
