@@ -20,7 +20,8 @@ import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
 
-// A database at schema 94, written through the log, then upgraded by the normal start.
+// A database at the schema just before the proposals migration, with the legacy records written
+// through the log, then upgraded by the normal start.
 type LegacyKind =
   | 'skills.write_proposed'
   | 'skills.write_approved'
@@ -151,6 +152,8 @@ async function setupTest() {
     clock,
     write,
     upgrade,
+    readPreviousMigration: () =>
+      nixieSchema.migrations[nixieSchema.migrations.indexOf(migration) - 1]?.name,
     proposals,
     writeSkillProposal: (proposalID: string, name: string) =>
       write('skills.write_proposed', 'conversation', {
@@ -286,4 +289,12 @@ test('it closes every open prompt override of one thing at the upgrade when the 
   const open = await ctx.readOpen(upgraded.log);
 
   expect(open).toStrictEqual([{ family: 'prompt', same_thing: 'compaction' }]);
+});
+
+test('it starts the upgraded database at the spending migration, the one before the proposals migration', async () => {
+  const ctx = await setupTest();
+
+  expect(ctx.readPreviousMigration()).toBe(
+    'add the provider stops, the provider holds and the provider raises of the spending stop',
+  );
 });
