@@ -106,7 +106,7 @@ speech layer and its state. A change of route never ends the call, and a page lo
   offer once the peer connection has gathered its addresses, sends it with `calls.connect` and
   applies the answer. The screen shows the connection state, the length of the call, a mute button
   that turns the microphone track off, and a hang up button that calls `calls.hangUp`. The call ends
-  with `endedBy: 'you'`. When the server had already ended the call, the reply says so, and the call
+  with `endedBy: 'you'`. When the reply shows that the server had already ended the call, the call
   keeps the server's own `endedBy` and reason, such as the budget. Hang up releases the microphone
   and the peer at once, and nothing that was pending then changes the call. A refused microphone, or
   a refused start, shows what the user can do about it, and no call starts.
@@ -118,11 +118,11 @@ speech layer and its state. A change of route never ends the call, and a page lo
 - **Reconnect.** When `calls.get` reports a `reconnect` cause, or the peer connection fails, the
   client sends an ICE-restart offer on the open peer connection, or on a new one when the old one
   failed, with a fresh `calls.connect`. A refusal, `CALL_CONNECTED` included, gets another try after
-  a pause. The call is live again only once an answer is applied and the connection is up. A call
-  that is not back within the reconnect limit, 30 seconds counted from the first loss (set as
+  a pause. The call is live again only once an answer is applied and the connection is up. When a
+  call is not back within the reconnect limit, counted from the first loss (set as
   `reconnectLimitMs` in
-  [`create-call-session.ts`](../../../apps/web/src/call/create-call-session.ts)), ends on the screen
-  as `dropped`, and the client releases the microphone and the peer, and hangs up the call on the
+  [`create-call-session.ts`](../../../apps/web/src/call/create-call-session.ts)), the client ends it
+  on the screen as `dropped`, releases the microphone and the peer, and hangs up the call on the
   server. A refusal of `CALL_NOT_FOUND` or `NOT_CARRYING_SESSION` ends it the same way at once. The
   client discards a read of the call from before a reconnect and reads again, so a finished
   reconnect does not start another. After a server restart the live stream's first open reads every

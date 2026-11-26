@@ -46,8 +46,8 @@ The adapter creates each session with these settings:
   which keeps the speech layer silent while nixie's turn runs, so it never claims a result or
   promises one;
 - `store: false`;
-- a data channel that lets the device neither send an event nor receive one, so the device reads no
-  instructions and sends no command.
+- a data channel that carries no event in either direction, so the device reads no instructions and
+  sends no command.
 
 The adapter turns the provider's events into `SpeechEvent`s:
 
@@ -167,15 +167,15 @@ a live call. It also writes the report of a call whose task stopped before its l
 ## The device
 
 The web client carries the call: the audio, the microphone and the peer connection live in the
-browser, and the server never reads them. The client's [call section](./client.md#the-call)
-describes the call screen, the call bar and the reconnect from the device's side. Three facts of it
-rest on this module:
+browser, and the server never reads them. For the call screen, the call bar and the reconnect from
+the device's side, read the client's [call section](./client.md#the-call). Three of its facts rest
+on this module:
 
 - The device ends a call it hangs up, and reads `endedBy` from the `calls.hangUp` answer, so a call
   that the server ended first shows its own reason.
-- A device that cannot bring a call back within 30 seconds of the first loss, its own limit, shows
-  it as `dropped` and hangs it up on the server, which records the end as `you` unless the sweep
-  ended it first.
+- A device that cannot bring a call back within its own reconnect limit, counted from the first
+  loss, shows it as `dropped` and hangs it up on the server, which records the end as `you` unless
+  the sweep ended it first.
 - A proposal that the call's turn makes shows as a card on the call screen of the carrying device
   only, because only that device holds the call's thread. The card stays on the approval digest, and
   nixie sends no push for it, as

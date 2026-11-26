@@ -1,9 +1,9 @@
 # Live updates
 
-A client tab holds one server-sent stream, `live.follow`, and reads again what the stream says
-changed. The stream carries the records of the one thread on screen, and a `changed` event that
-names each kind of state a commit touched, such as the pause, the task list or a backup notice. A
-device screen opens the same procedure in its own form, which carries only its screen.
+A client tab holds one server-sent stream, `live.follow`, and reads again whatever the stream
+reports as changed. The stream carries the records of the one thread on screen, and a `changed`
+event that names each kind of state a commit touched, such as the pause, the task list or a backup
+notice. A device screen opens the same procedure in its own form, which carries only its screen.
 
 A change that writes no record, or that no write makes, still reaches the tab through a topic. A
 backup notice marks its topic in the transaction that writes it, and the spend watcher publishes
@@ -13,7 +13,7 @@ ID and a closed stream misses it.
 
 Two reads change with no write and have no topic of their own, so the tab reads them again on a
 timer: the task list, at the time its own answer gives, and the stuck forgets. Roots such as
-`sessions` and `devices` have no topic at all. [Topics](#topics) explains each.
+`sessions` and `devices` have no topic at all. See [Topics](#topics) for each.
 
 ```mermaid
 flowchart LR
@@ -75,10 +75,10 @@ interval and the idle limit, and a test asserts that 3 keepalive intervals fit i
 
 ## Topics
 
-A topic is the name of one root of the web client's query keys, and each topic names a different
-root. The contract's `liveTopicSchema` lists them. A root can lack a topic: the contract test keeps
-a list of unfollowed roots, `erasure` among them. The test fails when a topic matches no root, or
-when a root has neither a topic nor a place on that list.
+A topic is the name of one root of the web client's query keys, and no two topics share a root. The
+contract's `liveTopicSchema` holds the list. A root can lack a topic, and the contract test keeps a
+list of those unfollowed roots, `erasure` among them. The test fails when a topic matches no root,
+or when a root has neither a topic nor a place on that list.
 
 | Topic         | Reads under the root                             |
 | ------------- | ------------------------------------------------ |
@@ -109,8 +109,8 @@ of a transaction, and a transaction that rolls back drops them. `publishChanged(
 announces a change that no write made. The spend watcher calls it when the stop it reads, or whether
 the gateway answers, differs from its last read.
 
-A test for each topic makes the change and asserts that an open stream receives `changed` with that
-topic.
+Each topic has a test that makes the change and asserts that an open stream receives `changed` with
+that topic.
 
 A call has no stream of its own. The `calls` topic reaches a tab through the same stream as every
 other topic, and the client reads `calls.get` again on it.

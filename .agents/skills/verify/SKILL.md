@@ -83,7 +83,7 @@ The mistakes that cost the most time:
 1. Run `bun verify report`. In `data.report.features`, a feature shows `changed: true` when a file
    that matches its `paths` in the [registry](#edit-the-skill-and-the-registry) differs from the
    default branch.
-2. Pick the target your task names, or the first launch target in the
+2. Pick the target you were asked to use, or the first launch target in the
    [targets table](references/targets.md). Run the commands in its row. `up` or `attach` points the
    commands at the app until `down` or `detach`. Expect from `up` or `attach`: `ok: true`, and the
    app's endpoints in `data.endpoints`.
@@ -92,12 +92,12 @@ The mistakes that cost the most time:
 4. Run the journey from the feature's file, which the `File` column of the features table in
    [References](#references) links. Its first line, `use --feature`, records each later command
    under that feature, and leaves the target as it is. Expect: each command exits 0. When one fails,
-   do what its row in [Exit codes](references/exit-codes.md) says.
+   follow its row in [Exit codes](references/exit-codes.md).
 5. Compare the app with the feature's end state:
    - When it matches, and no command failed with `read-only`, go on to step 6.
    - When your change broke the feature, fix the app's code. Then run `bun verify up --restart`,
      `bun verify doctor` and the journey again.
-   - When your change means to change the end state, fix the feature's file, and run
+   - When you meant your change to alter the end state, edit the feature's file and run
      `bun verify lint`. Then run the journey again.
    - In any other case, such as a `read-only` failure or a bug your change did not cause, skip
      `done`. List the feature in your reply with the end state you expected and the `data` you got.
@@ -108,9 +108,9 @@ The mistakes that cost the most time:
      a verdict for the feature that `use --feature` set.
    - `done` never reads the end state. It fails with `check-failed` until a journey command has
      succeeded after `doctor`.
-7. Repeat steps 4 to 6 for each feature with `changed: true`, and for each feature your task names,
-   in the order of the features table in [References](#references). When a feature's file says to
-   run part of its journey last, run that part after every other journey.
+7. Repeat steps 4 to 6 for each feature with `changed: true`, and for each feature you were asked to
+   check, in the order of the features table in [References](#references). Run the part of a journey
+   that its feature's file marks as last after every other journey.
 8. Run `bun verify report --human`. Expect: `verified` on each changed feature you did not skip in
    step 5. Repeat steps 4 to 6 for each `stale` feature.
 9. Push the branch, and open a PR when none exists: `publish` fails without one.
@@ -147,8 +147,7 @@ and do what that row says.
 Start a launch target's app with `bun verify up`, and stop it with `bun verify down`. Connect to an
 attach target, whose app runs apart from `bun verify`, with `attach`; `detach` leaves it running. An
 attach target runs code that was pushed or released, so your local edits never reach it. Check a
-change you are still editing on a launch target. Attach to `preview` only to check the commit you
-pushed, and to `prod` only after a release.
+change you are still editing on a launch target.
 
 Run `bun verify use --target <target>` to point every later command at a target. `use` saves the
 choice in this worktree's `.wringer/`. `--target` on one command points that command alone. A

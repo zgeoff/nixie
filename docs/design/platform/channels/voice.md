@@ -1,6 +1,6 @@
 # Voice calls
 
-- **Status:** agreed. Part of it is built: the intro below says which part.
+- **Status:** agreed. The intro below says which part is built.
 - **Work items:** [the call screen](https://linear.app/zgeoff/issue/GEO-2863),
   [nixie rings you](https://linear.app/zgeoff/issue/GEO-2864),
   [tuning on real calls](https://linear.app/zgeoff/issue/GEO-1868)
@@ -20,10 +20,9 @@ Read [Voice calls](../../../architecture/channels/calls.md) and
 [the client](../../../architecture/channels/client.md#the-call) for them. Three things are left to
 build: answering a ring, captions on the built call screen, and ringing you.
 
-This doc is for the agent that builds those three, and for the owner who reviews the design. Build
-them from the contracts and constraints below, under the work item
-[nixie rings you](https://linear.app/zgeoff/issue/GEO-2864). The work item
-[the call screen](https://linear.app/zgeoff/issue/GEO-2863) covers the screen that is already built.
+Build those three under the work item [nixie rings you](https://linear.app/zgeoff/issue/GEO-2864),
+from the contracts and constraints below. The owner reviews the design here. The screen that is
+already built belongs to the work item [the call screen](https://linear.app/zgeoff/issue/GEO-2863).
 [Tuning on real calls](https://linear.app/zgeoff/issue/GEO-1868) has a work item of its own and
 follows the build.
 
@@ -34,8 +33,8 @@ Terms:
 - **`say`** is the speech layer's method that sends one line for it to speak as its own words. It is
   not part of a hand-off's answer. [Voice calls](../../../architecture/channels/calls.md) holds its
   contract.
-- **The decision point** is the host's check that every tool call passes before it runs. It is
-  described in [the decision point](../../../architecture/policy/decision-point.md).
+- **The decision point** is the host's check that every tool call passes before it runs. Read
+  [the decision point](../../../architecture/policy/decision-point.md) for it.
 - **The carrying device** is the device that started or answered the call. It holds the call's audio
   and its call screen.
 
@@ -65,8 +64,8 @@ await nixie.calls.answer({ callID, clientActionID }); // → { callID, state: 'c
 
 The call screen shows each caption as its record arrives on nixie's live stream for the call's
 thread. It never reads a caption from the provider's data channel, which stays bound to the first
-session after a reconnect. A reconnect therefore cannot cut the captions off. Two records make the
-captions, and they need no new record kind and no new method:
+session after a reconnect. A reconnect therefore cannot cut the captions off. The captions come from
+two records, so they need no new record kind and no new method:
 
 - what you said is the dictated `owner_message` that each `heard` event becomes, as
   [Voice calls](../../../architecture/channels/calls.md) describes;
@@ -78,8 +77,8 @@ call.rang        callID, reason (erasable), deviceCount
 call.turn_timed  callID, handOffID, firstAudioMs, handOffWaitMs, cutOffByLayer, interruptedByYou
 ```
 
-- `call.rang` sits on the thread that rang, so that thread's history shows it. `call.turn_timed`
-  sits on the call's thread, beside the turns it times.
+- nixie writes `call.rang` on the thread that rang, so that thread's history shows it, and
+  `call.turn_timed` on the call's thread, beside the turns it times.
 - `reason` is the text the model passed to `tools.call.ring`. When you ask nixie to forget it, the
   record keeps its call ID and device count, and the reason shows as forgotten.
   [Erasable fields](../../../architecture/core/erasable-fields.md) explains how a field is erased.
@@ -97,9 +96,9 @@ await tools.call.ring({ reason: 'Your 3pm moved to 4pm and the venue changed' })
 ```
 
 - A ring sends a web push, "nixie is calling", to every device session with a push subscription.
-  Opening it opens the answer screen for the ringing call, which answers it with `calls.answer`. The
-  web client registers a service worker, and each device session saves its subscription with
-  `nixie.push.subscribe({ subscription, clientActionID })`.
+  Opening it shows the answer screen for the ringing call, and the screen answers with
+  `calls.answer`. The web client registers a service worker, and each device session saves its
+  subscription with `nixie.push.subscribe({ subscription, clientActionID })`.
 - A refused ring tells the model why, so it sends a message instead.
 - An unanswered ring ends after `ring_seconds` as `missed`. The outcome reaches the ringing thread
   as a wake.

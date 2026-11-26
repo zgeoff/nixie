@@ -14,8 +14,8 @@ Run this journey on `local` only, on an `up` of its own:
   voice settings that price a call at 0.05 dollars a minute, and a fake speech layer in place of the
   provider. The test build gives each page a silent microphone, because the browser that
   `bun verify` drives has none. The `call-step` action plays the speech provider.
-- On `preview`, skip this journey, and list the feature as not verified there in your reply. Only
-  the local `up` reads `NIXIE_VERIFY_CALLS`, so a preview has no fake speech layer.
+- On `preview`, skip this journey, and list the feature as not verified there in your reply. A
+  preview has no fake speech layer, because only the local `up` reads `NIXIE_VERIFY_CALLS`.
 
 Before you start:
 
@@ -65,7 +65,7 @@ Expect line, and do the same comparison.
    ```
 
    Expect: exit 0, `data.callID` is null, and `data.speech` holds one `open` call and no `answer` or
-   `say`. The `callID` is null because only the `call-step` action sets it, when it starts a call
+   `say`. The `callID` is null because the `call-step` action sets it only when it starts a call
    itself, and here the browser started the call.
 
 4. Have the speech layer hand off a request whose reply proposes a memory item, then look at the
