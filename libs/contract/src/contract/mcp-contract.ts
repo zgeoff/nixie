@@ -16,7 +16,7 @@ const mcpToolSchema = z.object({
   proposalID: z.string().nullable(),
 });
 
-export const mcpServerSchema = z.object({
+const mcpServerSchema = z.object({
   server: z.string(),
   state: z.enum(['held', 'added']),
   signIn: z.enum(['not_added', 'no_grant', 'needs_consent', 'ok']),
