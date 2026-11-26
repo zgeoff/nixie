@@ -1,6 +1,7 @@
 import { isLimitReached } from '../periods/is-limit-reached';
 import type { LimitTable } from '../periods/limit-table';
-import { pickProviderLimit, pickRouteLimit } from '../periods/pick-route-limit';
+import { pickProviderLimit } from '../periods/pick-provider-limit';
+import { pickRouteLimit } from '../periods/pick-route-limit';
 import { toDollars } from '../periods/to-dollars';
 import type { Overrides, PeriodName, PeriodStore, PeriodsConfig } from '../types';
 

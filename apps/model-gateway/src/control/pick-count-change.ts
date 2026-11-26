@@ -11,8 +11,8 @@ export interface CountSet {
   readonly dollars: number;
 }
 
-// Sets one period's count of a route or a provider to the dollars given, and changes no limit. The
-// store clears the period's trip when the new count is under its limit in force. Refuses without a
+// Sets one period's count of a route or a provider to the dollars given, and changes no limit. It
+// answers the micros the period held, so the caller can record what it replaced. Refuses without a
 // change for a target the config lacks and for a period that has ended.
 export function pickCountChange(
   store: PeriodStore,
@@ -42,6 +42,6 @@ export function pickCountChange(
     store: isProvider
       ? { ...store, providers: { ...store.providers, [id]: set } }
       : { ...store, routes: { ...store.routes, [id]: set } },
-    result: { kind: 'done' },
+    result: { kind: 'replaced', replacedMicros: periods[change.period].micros },
   };
 }

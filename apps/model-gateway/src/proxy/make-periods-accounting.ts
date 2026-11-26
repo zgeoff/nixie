@@ -1,10 +1,12 @@
 import type { Logger } from '@heynixie/logger';
 import { toErrorFields } from '@heynixie/logger';
+import type { LimitTrip } from '../periods/collect-trips';
 import { collectTrips } from '../periods/collect-trips';
 import type { LimitTable } from '../periods/limit-table';
 import { pickPeriodsRefusal } from '../periods/pick-periods-refusal';
 import type { PeriodStoreHandle } from '../types';
 import type { Accounting } from './accounting';
+import { buildTripKey } from './build-trip-key';
 import { makeLostLatch } from './make-lost-latch';
 import { pickReplyCharge } from './pick-reply-charge';
 import { renderAPIError } from './render-api-error';
@@ -102,20 +104,13 @@ export function makePeriodsAccounting(deps: PeriodsAccountingDeps): Accounting {
       );
 
       const trips = collectTrips(counted.store, deps.limits, counted.overrides);
+      const standing = buildTripKey(counted.store, trips);
 
-      const key = trips
-        .map((trip) =>
-          trip.scope === 'route'
-            ? `${trip.id}:${trip.period}`
-            : `provider:${trip.id}:${trip.period}`,
-        )
-        .join(',');
-
-      if (key !== '' && key !== tripLogged) {
-        deps.log('limit.reached', { trips: key }, 'warn');
+      if (trips.length > 0 && standing !== tripLogged) {
+        deps.log('limit.reached', { trips: renderTrips(trips) }, 'warn');
       }
 
-      tripLogged = key;
+      tripLogged = standing;
     } catch (error) {
       deps.log('counter.write_failed', toErrorFields(error), 'error');
 
@@ -124,4 +119,12 @@ export function makePeriodsAccounting(deps: PeriodsAccountingDeps): Accounting {
   };
 
   return { admit, count };
+}
+
+function renderTrips(trips: readonly LimitTrip[]): string {
+  return trips
+    .map((trip) =>
+      trip.scope === 'route' ? `${trip.id}:${trip.period}` : `provider:${trip.id}:${trip.period}`,
+    )
+    .join(',');
 }

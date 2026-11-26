@@ -48,12 +48,15 @@ const raiseBodySchema = z.strictObject({
   dollars: z.number().positive(),
 });
 
+// The most dollars a count may hold, so its micros stay an integer that the store reads back.
+const maxCountDollars = Math.floor(Number.MAX_SAFE_INTEGER / 1_000_000);
+
 const countBodySchema = z.strictObject({
   route: z.string().min(1).exactOptional(),
   provider: z.string().min(1).exactOptional(),
   period: z.enum(['day', 'month']),
   start: isoDateSchema,
-  dollars: z.number().min(0),
+  dollars: z.number().min(0).max(maxCountDollars),
 });
 
 const sandboxBodySchema = z.strictObject({ limit: sandboxLimitBodySchema.nullable() });
@@ -105,6 +108,10 @@ export function makeControlHandler(
       return Promise.resolve(Response.json({ error: 'period_ended' }, { status: 409 }));
     }
 
+    if (outcome.kind === 'done') {
+      return Promise.resolve(new Response(null, { status: 204 }));
+    }
+
     return answerStatus();
   };
 
@@ -153,8 +160,8 @@ export function makeControlHandler(
 
     const outcome = await changeStore((store) => pickCountChange(store, deps.limits, change));
 
-    if (outcome.kind === 'done') {
-      return new Response(null, { status: 204 });
+    if (outcome.kind === 'replaced') {
+      return Response.json({ replacedDollars: toDollars(outcome.replacedMicros) });
     }
 
     return answerOutcome(outcome);

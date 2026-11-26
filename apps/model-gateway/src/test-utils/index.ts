@@ -9,5 +9,6 @@ export {
   startTestModelGateway,
   testGatewayControlToken,
   testGatewayPrices,
-  testGatewayProvider,
 } from './start-test-model-gateway';
+
+export { testGatewayProvider } from './constants';

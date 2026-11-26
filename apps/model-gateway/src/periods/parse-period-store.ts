@@ -1,17 +1,8 @@
 import { z } from 'zod';
 import type { PeriodStore } from '../types';
+import { routeCountSchema } from './route-count-schema';
 import { sandboxLimitSchema } from './sandbox-limit-schema';
 import { sandboxNameSchema } from './sandbox-name-schema';
-
-const isoDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/u);
-
-export const routeCountSchema = z.strictObject({
-  start: isoDateSchema,
-  resetsAt: z.iso.datetime(),
-  micros: z.int().nonnegative(),
-  raise: z.number().nonnegative().nullable(),
-  trippedAt: z.iso.datetime().nullable(),
-});
 
 const refusalSchema = z.strictObject({
   counter: z.enum(['route_day', 'route_month', 'provider_day', 'provider_month', 'sandbox']),

@@ -1,7 +1,8 @@
 import type { Overrides, PeriodName, PeriodStore } from '../types';
 import { isLimitReached } from './is-limit-reached';
 import type { LimitTable } from './limit-table';
-import { pickProviderLimit, pickRouteLimit } from './pick-route-limit';
+import { pickProviderLimit } from './pick-provider-limit';
+import { pickRouteLimit } from './pick-route-limit';
 
 export interface LimitTrip {
   readonly scope: 'route' | 'provider';

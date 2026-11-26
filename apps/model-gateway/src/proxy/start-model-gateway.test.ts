@@ -861,7 +861,7 @@ test('it passes again once POST /count lowers the count of the provider, and its
   const passed = await gateway.send('alpha', 'bare/v1/messages');
   const status = await gateway.control('GET', '/status');
 
-  expect([refused.status, set.status, passed.status]).toStrictEqual([403, 204, 200]);
+  expect([refused.status, set.status, passed.status]).toStrictEqual([403, 200, 200]);
 
   expect(JSON.parse(status.body)).toMatchObject({
     providers: { side: { day: { tripped: false } } },

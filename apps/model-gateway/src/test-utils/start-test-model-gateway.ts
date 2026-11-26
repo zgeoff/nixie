@@ -8,6 +8,7 @@ import { writeLoginFile } from '../login/write-login-file';
 import { parsePeriodStore } from '../periods/parse-period-store';
 import { toDollars } from '../periods/to-dollars';
 import { startModelGateway } from '../proxy/start-model-gateway';
+import { testGatewayProvider } from './constants';
 
 export interface TestModelGateway {
   // stops the gateway and removes its folder
@@ -102,8 +103,6 @@ export const testGatewayPrices = {
 
 const defaultLimits = { day: 100, month: 1000 };
 const defaultProviderLimits = { day: 10_000, month: 100_000 };
-
-export const testGatewayProvider = 'test';
 
 // An in-process gateway with one route to an upstream, counting against no real budget. It stops
 // when the test ends.

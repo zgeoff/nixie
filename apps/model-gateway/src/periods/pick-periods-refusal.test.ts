@@ -19,6 +19,11 @@ interface StoreParts {
   readonly sandboxes?: PeriodStore['sandboxes'];
 }
 
+interface AskOptions {
+  readonly sandbox?: string;
+  readonly countBySandbox?: boolean;
+}
+
 function setupTest() {
   const limits: LimitTable = {
     routes: {
@@ -75,7 +80,17 @@ function setupTest() {
       countBySandbox: false,
     });
 
-  return { buildStore, ask, limits };
+  const askWith = (store: PeriodStore, route: string, options: AskOptions) =>
+    pickPeriodsRefusal({
+      store,
+      limits,
+      overrides: { routes: {}, providers: {} },
+      route,
+      sandbox: options.sandbox ?? null,
+      countBySandbox: options.countBySandbox ?? false,
+    });
+
+  return { buildStore, ask, askWith, limits };
 }
 
 test('it lets a request through while the route is under its limits', () => {
@@ -278,4 +293,71 @@ test('it refuses a route whose floating-point sum falls a hair under its day lim
     counter: 'route_day',
     route: 'plan',
   });
+});
+
+test.each([
+  [
+    'the lost mark before a route at its day limit',
+    { lost: true, plan: { day: 40 } },
+    {},
+    { status: 503 },
+  ],
+  [
+    'a sandbox the store lacks before a route at its day limit',
+    { plan: { day: 40 } },
+    { sandbox: 'ghost', countBySandbox: true },
+    { type: 'permission_error' },
+  ],
+  [
+    'the lost mark before a sandbox the store lacks',
+    { lost: true },
+    { sandbox: 'ghost', countBySandbox: true },
+    { status: 503 },
+  ],
+  [
+    'the route day before the route month',
+    { plan: { day: 40, month: 600 } },
+    {},
+    { counter: 'route_day' },
+  ],
+  [
+    'the route month before the provider day',
+    { plan: { month: 600 }, main: { day: 100 } },
+    {},
+    { counter: 'route_month' },
+  ],
+  [
+    'the route day before the provider day',
+    { plan: { day: 40 }, main: { day: 100 } },
+    {},
+    { counter: 'route_day' },
+  ],
+  [
+    'the provider day before the provider month',
+    { main: { day: 100, month: 1000 } },
+    {},
+    { counter: 'provider_day' },
+  ],
+  [
+    'the provider month before the sandbox limit',
+    {
+      main: { month: 1000 },
+      sandboxes: {
+        alpha: {
+          micros: 2_000_000,
+          tokens: 0,
+          limit: { dollars: 2, tokens: 100 },
+          lastRefusal: null,
+          limitRevision: 1,
+        },
+      },
+    },
+    { sandbox: 'alpha' },
+    { counter: 'provider_month' },
+  ],
+])('it answers %s', (_name, parts: StoreParts, options: AskOptions, expected) => {
+  const ctx = setupTest();
+  const refusal = ctx.askWith(ctx.buildStore(parts), 'plan', options);
+
+  expect(refusal).toMatchObject(expected);
 });

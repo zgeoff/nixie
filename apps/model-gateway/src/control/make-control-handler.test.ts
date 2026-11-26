@@ -249,11 +249,12 @@ test('it raises the day of the route it names and no other route', async () => {
     dollars: 60,
   });
 
-  expect(response).toMatchObject({
-    status: 200,
-    body: {
-      routes: { plan: { day: { limit: 60 } }, metered: { day: { limit: 5 } } },
-    },
+  const status = await ctx.call('GET', '/status');
+
+  expect(response).toStrictEqual({ status: 204, body: null });
+
+  expect(status.body).toMatchObject({
+    routes: { plan: { day: { limit: 60 } }, metered: { day: { limit: 5 } } },
   });
 });
 
@@ -261,14 +262,11 @@ test('it keeps the larger of 2 raises of the same day, whatever their order', as
   const ctx = await setupTest();
 
   await ctx.call('POST', '/raise', { route: 'plan', start: '2026-11-13', dollars: 70 });
+  await ctx.call('POST', '/raise', { route: 'plan', start: '2026-11-13', dollars: 60 });
 
-  const response = await ctx.call('POST', '/raise', {
-    route: 'plan',
-    start: '2026-11-13',
-    dollars: 60,
-  });
+  const status = await ctx.call('GET', '/status');
 
-  expect(response).toMatchObject({ body: { routes: { plan: { day: { limit: 70 } } } } });
+  expect(status.body).toMatchObject({ routes: { plan: { day: { limit: 70 } } } });
 });
 
 test('it refuses a raise past the route cap with a 409 and keeps the limit', async () => {
@@ -340,12 +338,13 @@ test('it raises the day of the provider it names and no route', async () => {
     dollars: 150,
   });
 
-  expect(response).toMatchObject({
-    status: 200,
-    body: {
-      providers: { main: { day: { limit: 150 } }, side: { day: { limit: 3 } } },
-      routes: { plan: { day: { limit: 40 } } },
-    },
+  const status = await ctx.call('GET', '/status');
+
+  expect(response).toStrictEqual({ status: 204, body: null });
+
+  expect(status.body).toMatchObject({
+    providers: { main: { day: { limit: 150 } }, side: { day: { limit: 3 } } },
+    routes: { plan: { day: { limit: 40 } } },
   });
 });
 
@@ -433,7 +432,7 @@ test('it lowers the count of a route with POST /count and clears its trip', asyn
 
   const status = await ctx.call('GET', '/status');
 
-  expect(response).toStrictEqual({ status: 204, body: null });
+  expect(response).toStrictEqual({ status: 200, body: { replacedDollars: 5.2 } });
 
   expect(status.body).toMatchObject({
     routes: { metered: { day: { dollars: 0, limit: 5, tripped: false, sinceMs: null } } },
@@ -454,7 +453,7 @@ test('it lowers the count of a provider with POST /count, clears its trip and le
 
   const status = await ctx.call('GET', '/status');
 
-  expect(response.status).toBe(204);
+  expect(response).toStrictEqual({ status: 200, body: { replacedDollars: 3 } });
 
   expect(status.body).toMatchObject({
     providers: { side: { day: { dollars: 1, limit: 3, tripped: false, sinceMs: null } } },
@@ -552,6 +551,29 @@ test('it refuses a negative count with a 400', async () => {
   });
 
   expect(response.status).toBe(400);
+});
+
+test.each([
+  ['the largest count that holds in micros', 9_007_199_254, 200, 9_007_199_254_000_000],
+  ['a count past what the store holds', 10_000_000_000, 400, 0],
+])('it answers POST /count for %s', async (_name, dollars, status, micros) => {
+  const ctx = await setupTest();
+
+  const response = await ctx.call('POST', '/count', {
+    route: 'plan',
+    period: 'day',
+    start: '2026-11-13',
+    dollars,
+  });
+
+  const held = await ctx.store.read();
+  const reread = await ctx.call('GET', '/status');
+
+  expect([response.status, held.routes['plan']?.day.micros, reread.status]).toStrictEqual([
+    status,
+    micros,
+    200,
+  ]);
 });
 
 test('it refuses a raise of the month with a 400', async () => {

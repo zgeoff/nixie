@@ -1,5 +1,6 @@
 export type ControlOutcome =
   | { readonly kind: 'done' }
+  | { readonly kind: 'replaced'; readonly replacedMicros: number }
   | {
       readonly kind: 'above_cap';
       readonly route: string | null;
