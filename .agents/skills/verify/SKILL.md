@@ -57,6 +57,7 @@ The mistakes that cost the most time:
 | task-control       | Pause and resume a task, and see its records agree                        | [references/feature-task-control.md](references/feature-task-control.md)             |
 | coding-session     | Start a coding session from chat                                          | [references/feature-coding-session.md](references/feature-coding-session.md)         |
 | call-hand-off      | Hand one question off in a call, and hear the holding line and the answer | [references/feature-call-hand-off.md](references/feature-call-hand-off.md)           |
+| call-screen        | Start a call from the call screen, see its proposal card, and hang up     | [references/feature-call-screen.md](references/feature-call-screen.md)               |
 | drawing            | Draw a picture, edit it, and list both                                    | [references/feature-drawing.md](references/feature-drawing.md)                       |
 | images-page        | Browse and forget images                                                  | [references/feature-images-page.md](references/feature-images-page.md)               |
 | notebook-pages     | Browse notes, open a private one, forget one                              | [references/feature-notebook-pages.md](references/feature-notebook-pages.md)         |

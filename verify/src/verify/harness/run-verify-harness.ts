@@ -15,7 +15,12 @@ import {
   startFakeGoogleSite,
 } from '@heynixie/server/test-utils';
 import type { ScriptedModel } from '@heynixie/testing';
-import { createBuiltWeb, createFrontProxy, readWebBuild } from '@heynixie/web/test-utils';
+import {
+  buildFakeMicrophoneScript,
+  createBuiltWeb,
+  createFrontProxy,
+  readWebBuild,
+} from '@heynixie/web/test-utils';
 import { approveHeldInstall } from './approve-held-install';
 import { approveHeldMcp } from './approve-held-mcp';
 import { approveHeldRegion } from './approve-held-region';
@@ -174,6 +179,9 @@ export async function runVerifyHarness(): Promise<void> {
   const front = createFrontProxy({
     apiURL: api.url,
     webURL: web.url,
+
+    // a browser that has no microphone gets a silent one, so a call can start in the browser
+    ...(isCallsOn ? { headScript: buildFakeMicrophoneScript({ answer: 'allow' }) } : {}),
     onAPIRequest: (pathname) => {
       if (pathname === '/rpc/live/follow') {
         liveOpens.count += 1;

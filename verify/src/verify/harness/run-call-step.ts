@@ -4,10 +4,19 @@ import invariant from 'tiny-invariant';
 import { z } from 'zod';
 import { isConversationTurn } from './build-scripted-replies';
 
-export const callStepSchema = z.enum(['start', 'hand-off', 'hold', 'release', 'hang-up', 'read']);
+export const callStepSchema = z.enum([
+  'start',
+  'prepare',
+  'hand-off',
+  'hold',
+  'release',
+  'propose',
+  'hang-up',
+  'read',
+]);
 
 export interface CallStepResult {
-  readonly callID: string;
+  readonly callID: string | null;
   readonly speech: { method: string; text: string | null }[];
 }
 
@@ -41,6 +50,8 @@ export async function runCallStep(
 ): Promise<CallStepResult> {
   if (step === 'start') {
     await startCall(deps, state);
+  } else if (step === 'prepare') {
+    queueConversationReplies(deps);
   } else if (step === 'hand-off') {
     await handOff(deps, state);
   } else if (step === 'hold') {
@@ -52,11 +63,11 @@ export async function runCallStep(
     state.gate?.resolve();
 
     await waitForSpeech(deps, 'answer');
+  } else if (step === 'propose') {
+    await propose(deps);
   } else if (step === 'hang-up') {
     await hangUp(deps, state);
   }
-
-  invariant(state.callID !== null, 'the call starts first');
 
   const speech = await readSpeech(deps);
 
@@ -66,16 +77,20 @@ export async function runCallStep(
 async function startCall(deps: CallStepDependencies, state: CallState): Promise<void> {
   const before = deps.model.requests.length;
 
-  // the conversation wakes on the call's records, each time with one turn of its own
-  deps.model.addReplies(
-    ...Array.from({ length: 6 }, () => ({ text: 'Noted.', when: isConversationTurn })),
-  );
+  queueConversationReplies(deps);
 
   const callID = await deps.startCall();
 
   state.callID = String(callID);
 
   await waitFor(() => deps.model.requests.length > before);
+}
+
+// the conversation wakes on the call's records, each time with one turn of its own
+function queueConversationReplies(deps: CallStepDependencies): void {
+  deps.model.addReplies(
+    ...Array.from({ length: 6 }, () => ({ text: 'Noted.', when: isConversationTurn })),
+  );
 }
 
 const pollMs = 50;
@@ -141,6 +156,27 @@ async function readSpeech(deps: CallStepDependencies): Promise<CallStepResult['s
   const calls = speechCallSchema.parse(read);
 
   return calls.map((call) => ({ method: call.method, text: call.text ?? null }));
+}
+
+// The call that the browser started holds the first speech session since the start. Its turn
+// proposes a memory item that holds no quote of the user's words, so the item waits for approval.
+async function propose(deps: CallStepDependencies): Promise<void> {
+  deps.model.addReplies(
+    {
+      toolUse: {
+        name: 'mcp__nixie__memory_remember',
+        input: {
+          text: 'The user keeps bees on the allotment.',
+          gist: 'keeps bees',
+          topic: 'allotment',
+        },
+      },
+      when: isCallTurn,
+    },
+    { text: 'I will ask you before I remember that.', when: isCallTurn },
+  );
+
+  await deps.emitSpeech({ kind: 'hand_off', handOffID: 'ask-2', request: 'Remember my bees' });
 }
 
 async function hangUp(deps: CallStepDependencies, state: CallState): Promise<void> {

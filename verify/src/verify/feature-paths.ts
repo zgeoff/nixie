@@ -29,6 +29,7 @@ export const featurePaths = {
   'task-control': [...everyJourney],
   'coding-session': [...everyJourney],
   'call-hand-off': [...everyJourney],
+  'call-screen': [...everyJourney],
   'mail-wake': [...everyJourney],
   drawing: [...everyJourney],
   'images-page': [...everyJourney],
