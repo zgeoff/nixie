@@ -5,13 +5,13 @@ Contents: [Journey](#journey), [End state](#end-state).
 With a connected Google account, the assistant lists and reads its events with the `calendar` tools.
 Each result that holds an event's words counts as outside content. An invitation, a change or a
 cancel of an event that has guests passes the decision point like any other send: when a guest has
-no permission, nixie holds the call on a card, and Google emails the guests once you approve. A call
-for an event with no guests reaches no one, and asks Google to email no one.
+no permission, nixie holds the call on a card, and Google emails the guests once the user approves.
+A call for an event with no guests reaches no one, and asks Google to email no one.
 
 Follow the steps in [Check a change](../SKILL.md#check-a-change) for this journey. Read that section
 for the commands `up` and `done`, and for the `data` field of each command's JSON output. When a
-command in a step fails, follow its row in [Exit codes](exit-codes.md), then start the journey again
-as "Before you start" describes.
+command in a step fails, follow its row in [Exit codes](exit-codes.md). When that row says to run
+the journey again, start it as "Before you start" describes.
 
 Run this journey on `local` only. There, the test build reaches Google's endpoints at a fake Google
 that the harness serves. The fake holds one event, "Team standup", and no other. `preview` and

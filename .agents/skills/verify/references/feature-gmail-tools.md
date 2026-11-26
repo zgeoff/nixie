@@ -5,8 +5,8 @@ Contents: [Journey](#journey), [End state](#end-state).
 With a connected Google account, the assistant searches and reads its mail with the `gmail` tools.
 Each result that holds a mail's words counts as outside content. A reply takes its recipients from
 the mail it answers. The send passes the decision point like any other: when a recipient has no
-permission, nixie holds the call on a card, and the mail goes out once you approve. The mail carries
-the action's ID in its `Message-ID` and in no other header.
+permission, nixie holds the call on a card, and the mail goes out once the user approves. The mail
+carries the action's ID in its `Message-ID` and in no other header.
 
 Follow the steps in [Check a change](../SKILL.md#check-a-change) for this journey. Read that section
 for the commands `up` and `done`, and for the `data` field of each command's JSON output.
