@@ -1,6 +1,6 @@
 # Provider limits
 
-- **Status:** draft
+- **Status:** agreed
 - **Work items:** [provider limits](https://linear.app/zgeoff/issue/GEO-2875)
 
 The model gateway limits spend per provider, and a model's own limit becomes optional. A provider is
