@@ -8,7 +8,7 @@ import {
   useLocation,
 } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
-import { CallProvider } from '../call/call-provider';
+import { CallGate } from '../call/call-gate';
 import { AppShell } from '../components/app-shell';
 import { LiveProvider } from '../live/live-provider';
 import { css } from '../styled-system/css';
@@ -20,6 +20,14 @@ import { NixieClientContext } from '../utils/nixie-client-context';
 
 export const Route = createRootRouteWithContext<RouterContext>()({
   component: RootDocument,
+
+  // reads the features before the first render, so the page never shows the nav of a feature that is
+  // off, or mounts the call provider of a nixie with voice off, and takes it away
+  loader: async (options) => {
+    await Promise.allSettled([
+      options.context.queryClient.query(options.context.queryUtils.nixie.read.queryOptions()),
+    ]);
+  },
   head: () => ({
     links: [
       { href: styles, rel: 'stylesheet' },
@@ -48,7 +56,7 @@ function RootDocument(): ReactNode {
       <body className={css({ fontFamily: 'sans', lineHeight: 'relaxed' })}>
         <NixieClientContext value={{ client: context.client, queryUtils: context.queryUtils }}>
           <LiveProvider>
-            <CallProvider>
+            <CallGate>
               {pathname === '/device' ? (
                 <Outlet />
               ) : (
@@ -56,7 +64,7 @@ function RootDocument(): ReactNode {
                   <Outlet />
                 </AppShell>
               )}
-            </CallProvider>
+            </CallGate>
           </LiveProvider>
         </NixieClientContext>
         <Scripts />

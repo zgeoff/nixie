@@ -1,12 +1,24 @@
+import type { FeatureID } from '@heynixie/contract';
 import { Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { useIsHydrated } from '../conversation/use-is-hydrated';
+import { isFeatureOn } from '../features/is-feature-on';
+import { useFeatures } from '../features/use-features';
 import { css } from '../styled-system/css';
+
+interface NavEntry {
+  readonly exact: boolean;
+  readonly label: string;
+  readonly to: string;
+
+  // the feature the page belongs to; the entry is hidden while that feature is off
+  readonly feature?: FeatureID;
+}
 
 const entries = [
   { exact: true, label: 'Conversation', to: '/' },
-  { exact: false, label: 'Call', to: '/call' },
+  { exact: false, label: 'Call', to: '/call', feature: 'voice' },
   { exact: false, label: 'Memory', to: '/memory' },
   { exact: false, label: 'Proposals', to: '/proposals' },
   { exact: false, label: 'Mandates', to: '/mandates' },
@@ -14,17 +26,17 @@ const entries = [
   { exact: false, label: 'Tasks', to: '/tasks' },
   { exact: false, label: 'Ended runs', to: '/tasks/ended' },
   { exact: false, label: 'Files', to: '/files' },
-  { exact: false, label: 'Images', to: '/images' },
-  { exact: false, label: 'Computer', to: '/computer' },
+  { exact: false, label: 'Images', to: '/images', feature: 'images' },
+  { exact: false, label: 'Computer', to: '/computer', feature: 'computer' },
   { exact: false, label: 'Notebook', to: '/notebook' },
   { exact: false, label: 'Definitions', to: '/definitions' },
   { exact: false, label: 'Reminders', to: '/reminders' },
-  { exact: false, label: 'Spending', to: '/spend' },
+  { exact: false, label: 'Spending', to: '/spend', feature: 'spend' },
   { exact: false, label: 'Passkeys', to: '/passkeys' },
-  { exact: false, label: 'Connections', to: '/settings/connections' },
-  { exact: false, label: 'MCP servers', to: '/settings/mcp' },
+  { exact: false, label: 'Connections', to: '/settings/connections', feature: 'google' },
+  { exact: false, label: 'MCP servers', to: '/settings/mcp', feature: 'mcp' },
   { exact: false, label: 'Add a device', to: '/add-device' },
-] as const;
+] as const satisfies readonly NavEntry[];
 
 const wideQuery = '(min-width: 768px)';
 
@@ -120,6 +132,12 @@ export interface AppShellProps {
 // handler, and a tap that early is lost.
 export function AppShell(props: AppShellProps): ReactNode {
   const isHydrated = useIsHydrated();
+  const features = useFeatures();
+
+  const shown = entries.filter(
+    (entry) => !('feature' in entry) || isFeatureOn(features, entry.feature),
+  );
+
   const dialogRef = useRef<HTMLDialogElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const [isOpen, setIsOpen] = useState(false);
@@ -159,7 +177,7 @@ export function AppShell(props: AppShellProps): ReactNode {
     <>
       <header className={bar}>
         <nav aria-label="Main" className={barNav}>
-          {entries.map((entry) => (
+          {shown.map((entry) => (
             <Link
               activeOptions={{ exact: entry.exact }}
               className={navLink}
@@ -198,7 +216,7 @@ export function AppShell(props: AppShellProps): ReactNode {
               Close
             </button>
             <nav aria-label="Main" className={drawerNav}>
-              {entries.map((entry) => (
+              {shown.map((entry) => (
                 <Link
                   activeOptions={{ exact: entry.exact }}
                   className={navLink}

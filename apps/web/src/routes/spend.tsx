@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 import { SignedInPage } from '../components/signed-in-page';
 import { SpendCounts } from '../components/spend-counts';
 import { readRouteSession } from '../conversation/read-route-session';
+import { FeatureGate } from '../features/feature-gate';
 
 export const Route = createFileRoute('/spend')({
   component: Spend,
@@ -22,7 +23,9 @@ function Spend(): ReactNode {
       }}
       session={data.session}
     >
-      <SpendCounts />
+      <FeatureGate feature="spend">
+        <SpendCounts />
+      </FeatureGate>
     </SignedInPage>
   );
 }

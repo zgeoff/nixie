@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { SignedInPage } from '../components/signed-in-page';
 import { ConnectionsPage } from '../connection/connections-page';
 import { readRouteSession, routeDataStaleTimeMs } from '../conversation/read-route-session';
+import { FeatureGate } from '../features/feature-gate';
 
 export const Route = createFileRoute('/settings/connections/')({
   component: Connections,
@@ -27,7 +28,9 @@ function Connections(): ReactNode {
       }}
       session={data.session}
     >
-      <ConnectionsPage />
+      <FeatureGate feature="google">
+        <ConnectionsPage />
+      </FeatureGate>
     </SignedInPage>
   );
 }
