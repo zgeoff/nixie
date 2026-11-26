@@ -7,6 +7,7 @@ import { readCallContext } from './read-call-context';
 import { readGmailMessage } from './read-gmail-message';
 import { stripAngleBrackets } from './strip-angle-brackets';
 import type { GmailDeps, GmailMessage } from './types';
+import { writeGmailReplyRule } from './write-gmail-reply-rule';
 
 const listWindowMs = 10 * 60 * 1000;
 
@@ -38,11 +39,19 @@ export async function checkGmailSent(
   const found = bySearch.kind === 'found' ? bySearch : bySent;
 
   if (found.kind === 'found') {
+    const threadID = found.message.threadID;
+
+    // a send of unknown outcome that the check finds gets its reply rule now
+    const replyRule = await writeGmailReplyRule(deps, context, { attempt, threadID }).catch(
+      () => null,
+    );
+
     return {
       kind: 'found',
       result: {
         message: buildItemID(context.connection, found.message.id),
-        thread: buildItemID(context.connection, found.message.threadID),
+        thread: buildItemID(context.connection, threadID),
+        replyRule,
       },
     };
   }

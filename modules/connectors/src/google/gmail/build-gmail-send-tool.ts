@@ -1,5 +1,6 @@
 import type { PrepareRefusal, Prepared, ToolDefinition } from '@heynixie/tools';
 import { z } from 'zod';
+import { describeReplyWake } from './describe-reply-wake';
 import { buildCardAttachment, formatCardFiles, joinCardList } from './gmail-card';
 import { gmailDeclarations } from './gmail-declarations';
 import { gmailToolNames } from './gmail-tool-names';
@@ -7,12 +8,16 @@ import { makeResolveGmailInput } from './make-resolve-gmail-input';
 import { normalizeAddresses } from './normalize-addresses';
 import { readCallContext } from './read-call-context';
 import { readSendFiles } from './read-send-files';
-import { newMailInputSchema, sendArgumentsSchema } from './send-arguments-schema';
+import { draftInputSchema, newMailInputSchema, sendArgumentsSchema } from './send-arguments-schema';
 import type { GmailDeps } from './types';
 
 const sentOutput = {
   type: 'object',
-  properties: { message: { type: 'string' }, thread: { type: 'string' } },
+  properties: {
+    message: { type: 'string' },
+    thread: { type: 'string' },
+    replyRule: { type: ['string', 'null'] },
+  },
   required: ['message', 'thread'],
   additionalProperties: false,
 } as const;
@@ -42,7 +47,7 @@ export function buildGmailSendTool(deps: GmailDeps, kind: NewMailKind): ToolDefi
           'sent message and its thread.'
         : 'Writes a draft mail in a connected Google account and sends nothing. The call returns ' +
           "the action's ID, and its outcome holds the draft, which gmail.send_draft sends.",
-    input: newMailInputSchema,
+    input: kind === 'send' ? newMailInputSchema : draftInputSchema,
     output: kind === 'send' ? sentOutput : draftOutput,
     declaration: kind === 'send' ? gmailDeclarations.send : gmailDeclarations.draft,
     execution: 'queued',
@@ -82,6 +87,7 @@ export function buildGmailSendTool(deps: GmailDeps, kind: NewMailKind): ToolDefi
             bcc: joinCardList(mail.bcc),
             subject: mail.subject,
             files: formatCardFiles(files.files),
+            replyWake: describeReplyWake(parsed.data.replyWake, deps.wake.replyExpiryMs),
           }),
         ],
       };

@@ -58,7 +58,11 @@ test('it finds a send by the Message-ID that the action ID makes', async () => {
 
   expect(outcome).toStrictEqual({
     kind: 'found',
-    result: { message: `k3x9m2p7qa.${seeded.id}`, thread: `k3x9m2p7qa.${seeded.threadID}` },
+    result: {
+      message: `k3x9m2p7qa.${seeded.id}`,
+      thread: `k3x9m2p7qa.${seeded.threadID}`,
+      replyRule: expect.any(String),
+    },
   });
 });
 
