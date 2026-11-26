@@ -464,57 +464,40 @@ A started task has a limit of turns and of dollars, which its start set or took 
 `models.limits.taskRun`. The limits belong to the task run, and 2 meters count a task run's use:
 
 - The turns meter counts the `model.turn_ended` records of the task run.
-- The dollars meter adds the dollars that each of those records holds, which the turn's profile
-  priced when the record was written, adds each summary of the task's session, which holds its
-  dollars too, and adds each `task.failed_turn_spent` record of the task run, which holds the
-  dollars of a turn that left no turn record. A summary counts as dollars and as no turn. A record
-  that holds no dollars is priced from its token counts with the task's profile when the meter reads
-  it.
+- The dollars meter reads the task run's `task.meter_read` records: for each sandbox the task run
+  used, the last count less the count at the task run's start, summed, plus the dollars of the task
+  run's worker runs, as [the task meter](../policy/metering.md#the-task-meter) describes. The start
+  record's `meter` names who counts: the gateway for its sandboxes, or the runner, which prices the
+  guest's call frames with the profile's `prices` when the deployment has no gateway.
 
-The config schema refuses a profile with no price table for any profile a task can run on, as
-[selectable models](./model-profiles.md#selectable-models) describes. A record sums its calls, and
-the per-call usage that the model API reports leaves out thinking tokens, so the meter prices each
-record as one call. It therefore prices every cache write at the longer lifetime's price, and a turn
-whose calls together pass a profile's long-prompt size at the long-prompt prices. The count can run
-above the spend. One exception: a summary written with no token counts adds no dollars, and the
-count of a task that has one can fall below its spend.
+A task run whose start record names no meter began before the meter reads. Its dollars meter adds
+the dollars that each turn record and each session summary of the task holds, priced when the record
+was written, and adds each `task.failed_turn_spent` record of the task run. The records stay
+readable, and nothing writes them any more.
 
-Before each step runs a turn, the runner reads both meters. When either has reached its limit, the
-step runs no turn and returns the limit as its end, and the step's commit ends the task run as
-`limit`, which writes the report, a `task.limit_reached` record, and a pause under the limit hold.
-The paused task keeps its work, and the user's raise of the limit resumes it. The starter learns of
-it through the report or the limit notice, and its model reads the task's ID and counts in a system
-message that says only the user can resume the task. The message leaves out the task's name, because
-a model wrote that name, and the model trusts a system message as nixie's own text.
+The config schema refuses a profile with no price table for a profile a task can run on when the
+deployment has no gateway, as [selectable models](./model-profiles.md#selectable-models) describes,
+and refuses a profile that sets prices beside a gateway.
 
-A turn can pass the dollar limit on its own, so the runner prices each of the turn's model calls
-with the task's profile as the guest reports it
-([model calls](./conversation-turns.md#model-calls)). When the calls and the earlier count together
-reach the dollar limit, the runner interrupts the turn
-([interrupts](./conversation-turns.md#interrupts)). The turn record prices only the calls that
-finished, so the turn's commit also carries the budget's tally as a `task.failed_turn_spent` record,
-and the limit end counts both. The count can therefore run a little above the spend. The step sleeps
-the task's imp, even with work left. A step whose guest fails after its calls reach the limit leaves
-the task to its retry, which finds the meter at the limit and runs no turn.
+Before each step runs a turn, the runner reads both meters, and reads the sandbox's count when the
+gateway counts. When either has reached its limit, the step runs no turn and returns the limit as
+its end, and the step's commit ends the task run as `limit`, which writes the report, a
+`task.limit_reached` record, and a pause under the limit hold. The paused task keeps its work, and
+the user's raise of the limit resumes it. The starter learns of it through the report or the limit
+notice, and its model reads the task's ID and counts in a system message that says only the user can
+resume the task. The message leaves out the task's name, because a model wrote that name, and the
+model trusts a system message as nixie's own text.
 
-A failed turn commits no turn record, so a step whose guest fails writes a `task.failed_turn_spent`
-record with the task run's ID and the dollars its calls spent. A step whose guest fails before any
-priced call writes none. The write checks no lease, because the calls spent the dollars whoever
-holds the lease now. The spend therefore counts toward the dollar limit, and the step's retry gets
-only the dollars that the failed turn left.
-
-A completed turn's turn record goes in with its step's commit, and the commit checks the lease
-first. When the commit fails, such as when it loses its lease, the step writes a
-`task.failed_turn_spent` record with the turn's dollars instead, so the turn's spend still counts.
-When that write fails too, the runner logs a `task.turn_spend_unrecorded` error event with the
-task's ID and the dollars, and the count leaves that spend out.
-
-A step that lost its lease can write its spend record after another claim has taken the step. On
-each priced call, the turn's budget reads the spend records written on the task since the turn's
-usage read, and lowers the dollars left by those that name the same task run. The turn therefore
-stops at the dollar limit even when that late spend lands during the turn, and another task run's
-spend never shortens it. When the read fails, the step fails, and its retry counts the task run's
-use again from the log.
+A turn can pass the dollar limit on its own. With a gateway, the sandbox's limit stops it: the
+gateway refuses the next request, and a step whose sandbox refused a request since the step began
+ends at the dollar limit. Without one, the runner prices each of the turn's model calls with the
+task's profile as the guest reports it ([model calls](./conversation-turns.md#model-calls)), and
+when the calls and the earlier count together reach the dollar limit, it interrupts the turn
+([interrupts](./conversation-turns.md#interrupts)). The count can run a little above the spend. The
+step sleeps the task's imp, even with work left. A step whose guest fails after its calls reach the
+limit leaves the task to its retry, which finds the meter at the limit and runs no turn. Each read
+at the end of a step counts the failed step's spend too, so the retry gets only the dollars that the
+failed turn left.
 
 The interrupt leaves the turn's work not done, so the task keeps that work for the raise, as
 [interrupted work](#interrupted-work) describes.
@@ -522,10 +505,12 @@ The interrupt leaves the turn's work not done, so the task keeps that work for t
 While the newest limit record on the task's thread is `task.limit_reached`, a resume or a restart of
 the task refuses. The user raises the limit with the `task-raise` host command
 ([host commands](../deployment/host-commands.md#tasks)), which writes a `task.limits_raised` record
-and resumes a paused task in one transaction. A task that the user stopped after the pause stays
-stopped, and a restart runs it under the raised limit. A raise names turns, dollars or both, and
-refuses when no value goes above the limit the task reached or one falls below it. The max of
-`models.limits.taskRun` never caps a raise, because it bounds only what a start asks for.
+and resumes a paused task in one transaction. After the commit, the command sets the limit of the
+task's sandbox to the raised limit, and tries again until the gateway takes it. A task that the user
+stopped after the pause stays stopped, and a restart runs it under the raised limit. A raise names
+turns, dollars or both, and refuses when no value goes above the limit the task reached or one falls
+below it. The max of `models.limits.taskRun` never caps a raise, because it bounds only what a start
+asks for.
 
 A raise or a restart opens a task run that carries the newest one. The totals of a piece of work are
 the limits of its first task run, or the newest raise's. A raise gives the new task run those totals

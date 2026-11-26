@@ -49,12 +49,13 @@ and the task's dollar meter sums those dollars, so a changed price never reprice
 written with no dollars, by a release before records held them, takes the profile's prices in force
 when the meter reads it.
 
-A profile that a task, a selectable model or the worker role runs on needs `prices`, with a gateway
-or without. The task's dollar limit counts each call by the profile's prices, because the task
-runner stops a task at its limit itself. The gateway's own count of a route uses the prices in the
-gateway's config. Both price a reply with `buildCallCost` from `@heynixie/models/prices`, so one
-function turns a reply's usage into dollars, and each count converts to whole micros, never rounding
-a positive amount to nothing.
+A profile that a task, a selectable model or the worker role runs on needs `prices` when the
+deployment has no gateway, because the task runner then counts the task's calls itself. With a
+gateway, a profile sets no `prices`: the gateway prices each reply with its route's table, and a
+config file that sets `prices` on a profile beside a gateway fails to load, with an error that names
+the profile. Both price a reply with `buildCallCost` from `@heynixie/models/prices`, so one function
+turns a reply's usage into dollars, and each count converts to whole micros, never rounding a
+positive amount to nothing.
 
 ## The spend ledger
 
@@ -81,10 +82,11 @@ budget may have changed its period since the charge. A rebuild reads the kept ki
 changes its period afterwards never moves the charge to another key.
 
 A task run's row, `task_run:<ID>`, and a worker run's row, `worker_run:<ID>`, sit under the period
-`none` and are set to the run's dollars in micros, rounded up, by the record that ends the run:
-`task.run_ended` for a task run, and `worker.run_ended` for a worker run, whose row in tokens is set
-too. A run ends once, so its record sets the row and never adds to it, and a rebuild reproduces it.
-The ledger reads only the run's ID and what it used from those records.
+`none` and hold the run's dollars in micros, rounded up. A worker run ends once, and
+`worker.run_ended` sets its row, with its row in tokens, so a rebuild reproduces it. A task run's
+row follows the task run's meter reads, as [the task meter](#the-task-meter) says. A task run that
+began before its start record named a meter has its row set by `task.run_ended`. The ledger reads
+only the run's ID and what it used from those records.
 
 A charge reads the budget's row, compares it with the limit, and writes its record in one
 transaction, so the ledger row and the record that causes it commit together or not at all. A paid
@@ -98,6 +100,51 @@ key when it can, and sets each row to the total of the uncredited charges with t
 rebuild does. So a period under way starts at zero for each charge with no key. The start that runs
 the migration logs `spend.ledger_uncounted` once for each budget period of those charges, with the
 uncredited total in micros that no row counts.
+
+## The task meter
+
+A task run's dollars are the gateway's count of the sandboxes it used. A task keeps its sandbox
+across its task runs, and replaces it when the host loses it. The server reads a sandbox's count
+with `GET /sandboxes/<name>` and writes each read as a `task.meter_read` record:
+
+```text
+task.meter_read  { taskRunID, sandbox, reason, countMicros }
+  reason: 'run_start' | 'step_start' | 'step_end' | 'worker_end' | 'run_end'
+```
+
+`countMicros` is the count rounded up to the micro. The task run's start record holds
+`meter: 'gateway' | 'records'`, which names who counts the task run's sandboxes.
+
+- A task run's dollars are, for each sandbox it used, the last count less the count at the task
+  run's start or at the sandbox's creation, summed, plus the dollars of its worker runs. A sandbox
+  that a read first names after the start began at zero. A count only grows, so a read that lands
+  late never lowers the sum.
+- What a task run has left is its limit less its dollars.
+- A `task.meter_read` sets its task run's ledger row to the task run's dollars, in the transaction
+  that writes the record, so a fault between the read and its row leaves both or neither. Every
+  counter has one writer: the meter read for a task run, and `worker.run_ended` for a worker run.
+- At a task run's start, the server sets the sandbox's limit to its count plus the task run's limit,
+  with `PATCH /sandboxes/<name>`. When a worker run starts, the limit drops by the worker run's
+  planned limit. When the worker run ends, the planned limit comes back and what the worker run
+  spent comes off. A worker run's planned limit is at most what the task run has left after the
+  planned limits of the worker runs already going.
+- A `task-raise` patches the sandbox's limit after its commit, and retries the patch until the
+  gateway takes it. The next task run's start sets the limit too.
+- The server reads before a step starts, after a step ends, after each worker run ends and when a
+  task run ends. When the read before a step, or the patch that follows it, gets no answer, the step
+  does not start and tries again after a wait. When any other read gets no answer, the next read
+  catches up. A task run does not end until its end read succeeds, and the task's sandbox stays
+  until then.
+- A step whose sandbox refused a request since the step began ends at the task's dollar limit. The
+  sandbox's limit stops the turn, so the runner prices no call itself.
+- A task run that has no gateway has `meter: 'records'`. The runner prices the guest's call frames
+  with the profile's price table, and writes `task.meter_read` at the same points, with its own
+  running tally under the task's ID as the sandbox.
+- A task run whose start record names no meter began before the meter reads, and keeps the meter
+  that priced its turn records until it ends.
+
+Without a gateway, nothing stops model spend outside nixie, and the deployment's provider limit is
+the only backstop, as [the spending stop](spending-stop.md) sets out.
 
 ## The display currency
 
@@ -116,10 +163,10 @@ the model never reads a rate or a dollar figure.
 | a search     | no                                 | `budget:search-day`, `budget:search-month`                                         |
 | a picture    | no                                 | `budget:image.draw-day`, `budget:image.draw-month`                                 |
 
-A model reply charges the gateway's count of its route when it arrives, and no ledger row holds it
-until the task run it belongs to ends: `task.run_ended` sets the run's row from the run's priced
-turns in its own transaction, and `worker.run_ended` does the same for a worker run. A conversation
-reply has no row, because the gateway's count of its route is the one place that holds it.
+A model reply charges the gateway's count of its route when it arrives. A task run's row follows the
+`task.meter_read` records of the task run, and a worker run's row is set when the run ends. A
+conversation reply has no row, because the gateway's count of its route is the one place that holds
+it.
 
 The gateway limits each route on its own, and no gateway limit spans routes. The spending stop reads
 the gateway's counts of the routes and the turn count: a route at its limit holds only its own work,

@@ -52,7 +52,9 @@ start of its period, the amount in micros and what the charge is for, and `budge
 one charge back. A charge is for a tool call or for an action. The `budget_charges` projection keeps
 one row per charge and marks a credited one, and the `spend_ledger` projection keeps the spent
 micros of each budget in each period, as [metering](metering.md#the-spend-ledger) describes. A
-credit changes the ledger once, so a retried transaction never gives the money back twice.
+credit changes the ledger once, so a retried transaction never gives the money back twice. A task
+run's row and a worker run's row follow their own records, as
+[the task meter](metering.md#the-task-meter) says.
 
 A charge names every budget it touches and lands in one transaction, or does not land. The writer is
 the only writer, so two charges at the same moment never both fit in the last of a budget. A charge

@@ -287,11 +287,12 @@ worker run writes the end record once, stops the worker's tool run, destroys its
 its slot. The destroy runs after the call has its result, and a destroy that fails is tried again
 before the next worker creates its sandbox. A rebuilt session leaves the worker records out.
 
-A worker's model calls count in the dollars of the caller's task run, and in no turn. Each call
-lowers the calling turn's budget at once, so a worker can end the turn at its dollar limit. A later
-step of the same task run reads the calls and the gateway excess of a worker that another step
-started as late spend. [Sandboxes](../connectors/sandboxes.md#records-and-the-restart-sweep) covers
-how the restart sweep removes the sandbox of a worker that a crash cut off.
+A worker's model calls count in the dollars of the caller's task run, and in no turn. A worker run's
+planned dollars come off the calling turn's budget while it goes, and what it charged stays off, so
+a worker can end the turn at its dollar limit. The task run's dollars add the dollars of each of its
+worker runs, whichever step started it.
+[Sandboxes](../connectors/sandboxes.md#records-and-the-restart-sweep) covers how the restart sweep
+removes the sandbox of a worker that a crash cut off.
 
 ## Timers
 

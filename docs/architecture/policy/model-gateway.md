@@ -440,6 +440,7 @@ listener serves no control path.
 | `GET /status`              | the zone, the lost mark, and for each route its day and month: start, reset time, dollars, limit in force, cap and `tripped`                                                      |
 | `POST /raise`              | raises one route's day for its start, never below that day's earlier raise; 409 `above_cap` with the route and its cap, 409 `period_ended` for another start, 404 `unknown_route` |
 | `PUT /sandboxes/<name>`    | sets the sandbox's limit, or `null` to count only, and sets its count to zero                                                                                                     |
+| `PATCH /sandboxes/<name>`  | sets the sandbox's limit whole, or `null` to count only, and keeps its count; 204, or 404 for a name the store lacks. A limit with no `tokens` sets no token limit                |
 | `GET /sandboxes/<name>`    | the sandbox's count, whether it is past its limit and its last refusal; 404 for a name the store lacks                                                                            |
 | `DELETE /sandboxes/<name>` | removes the sandbox; 204 also for a name the store lacks                                                                                                                          |
 
@@ -513,20 +514,26 @@ own profile, so a sandbox cannot send its model credential to another profile's 
 
 Before a sandbox's first model request, the server registers it with `PUT /sandboxes/<name>`:
 
-| Sandbox                                | Limit                                                    |
-| -------------------------------------- | -------------------------------------------------------- |
-| a worker run's sandbox                 | the run's planned dollars and tokens                     |
-| the conversation, a task and the check | none: the gateway counts it and sets no limit of its own |
+| Sandbox                        | Limit                                                    |
+| ------------------------------ | -------------------------------------------------------- |
+| a worker run's sandbox         | the run's planned dollars and tokens                     |
+| the conversation and the check | none: the gateway counts it and sets no limit of its own |
+| a task's sandbox               | none at registration; each task run's start sets it      |
 
 A sandbox with no limit of its own still gets the limit 403 once the day or month count reaches its
-limit.
+limit. At the start of a task run, the server sets the task's sandbox limit to its count plus the
+task run's dollar limit with `PATCH`, so the gateway ends a turn at the task's limit. While a worker
+run goes, the limit drops by the run's planned dollars, and a raise of the task's limit patches it
+after the raise commits, as [the task meter](metering.md#the-task-meter) says. A sandbox that
+reached its own limit refuses each request, and its last refusal names the counter `sandbox`.
 
 A worker run's planned limit is the worker's configured limit, held to what the calling task run has
 left, so the gateway and nixie hold one number. A registration that fails fails the sandbox's start.
-A sandbox that an earlier server process made registers the first time this process reads it, so a
-sandbox kept across a restart has its count. Once a sandbox's destroy succeeds, the server deletes
-its entry. A sandbox whose destroy fails keeps its entry, because it may still run. A delete that
-fails is logged.
+A sandbox that an earlier server process made registers the first time this process reads it: with
+`PUT` only when the gateway lacks the name, and with `PATCH` of its limit otherwise, so a sandbox
+kept across a restart keeps its count. Once a sandbox's destroy succeeds, the server deletes its
+entry. A sandbox whose destroy fails keeps its entry, because it may still run. A delete that fails
+is logged.
 
 ### Worker limits
 
