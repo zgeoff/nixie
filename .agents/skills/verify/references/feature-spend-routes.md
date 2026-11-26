@@ -60,8 +60,8 @@ Before you start:
    ```bash
    bun verify browser goto /spend
    bun verify browser snapshot
-   bun verify browser click --role button --name 'Raise the day limit of reserve'
-   bun verify browser click --role button --name 'Confirm raise of reserve'
+   bun verify browser click --role button --name 'Raise the day limit of provider reserve'
+   bun verify browser click --role button --name 'Confirm raise of provider reserve'
    bun verify browser snapshot
    bun verify action probe-route --route second
    ```
@@ -73,8 +73,8 @@ Before you start:
    the provider `reserve` with one confirm, and probe the route again:
 
    ```bash
-   bun verify browser click --role button --name 'Reset today for reserve'
-   bun verify browser click --role button --name 'Confirm reset today for reserve'
+   bun verify browser click --role button --name 'Reset today for provider reserve'
+   bun verify browser click --role button --name 'Confirm reset today for provider reserve'
    bun verify browser snapshot
    bun verify action probe-route --route second
    ```
