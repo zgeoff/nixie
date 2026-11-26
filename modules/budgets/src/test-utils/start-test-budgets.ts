@@ -9,6 +9,7 @@ import { buildBuiltInBudgets } from '../limit/build-built-in-budgets';
 import { budgetProjections } from '../projection/budget-projections';
 import type { BudgetLimit, BudgetsContext, ChargeRequest, ChargeResult } from '../types';
 import { seedBudgetInForce } from './seed-budget-in-force';
+import { seedLegacyChargeKind } from './seed-legacy-charge-kind';
 
 export interface TestBudgets {
   readonly writer: Writer;
@@ -20,6 +21,12 @@ export interface TestBudgets {
 
   // puts a budget in force as the seed does
   readonly seedBudgetInForce: (budget: BudgetLimit) => Promise<void>;
+
+  // keeps the period kind that the migration gave a charge from before the ledger, or null for none
+  readonly seedLegacyChargeKind: (
+    chargeID: string,
+    periodKind: 'day' | 'week' | 'month' | null,
+  ) => Promise<void>;
 }
 
 // A log that folds the budget records, and the context on top. The clock starts at 09:00 UTC on
@@ -54,5 +61,7 @@ export async function startTestBudgets(
         creditBudgetChargesInTransaction(tx, context, target),
       ),
     seedBudgetInForce: (budget) => seedBudgetInForce(started.writer, budget),
+    seedLegacyChargeKind: (chargeID, periodKind) =>
+      seedLegacyChargeKind(started.writer, chargeID, periodKind),
   };
 }

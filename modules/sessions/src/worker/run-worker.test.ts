@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { budgetProjections, readSpendLedger } from '@heynixie/budgets';
 import { createTestCredentials } from '@heynixie/credentials/test-utils';
 import type { JSONObject, RecordKinds } from '@heynixie/log';
 import { readRecords, writeRecords } from '@heynixie/log';
@@ -53,7 +54,7 @@ async function setupTest(config: SetupConfig = {}) {
   const host = await startTestSessionHost({
     clock,
     tools: [fetchTool],
-    projections: spendProjections,
+    projections: [...spendProjections, ...budgetProjections],
   });
 
   const prices = { input: 3, cache_write: 3.75, cache_write_1h: 6, cached_input: 0.3, output: 15 };
@@ -304,6 +305,11 @@ async function setupTest(config: SetupConfig = {}) {
       const entries = await readRecords(host.context.log, { afterSequence: 0, kinds: [...kinds] });
 
       return entries.map((entry) => entry.record);
+    },
+    readLedger: async () => {
+      const rows = await readSpendLedger(host.context.log.writer.db);
+
+      return rows.map((row) => ({ counter: row.counter, unit: row.unit, amount: row.amount }));
     },
     readOwners: async () => {
       const entries = await readRecords(host.context.log, {
@@ -939,7 +945,7 @@ test('it states the gateway numbers in the result of an answered run', async () 
 
   ctx.gateway.readSandbox.mockResolvedValue({
     kind: 'ok',
-    value: { dollars: 0.42, tokens: 7777, tripped: false },
+    value: { dollars: 0.42, tokens: 7777, tripped: false, lastRefusal: null },
   });
 
   ctx.guest.addKindReplies('worker', { text: 'Done.' });
@@ -963,7 +969,7 @@ test('it records the dollars the gateway counted beyond the priced calls of the 
 
   ctx.gateway.readSandbox.mockResolvedValue({
     kind: 'ok',
-    value: { dollars: 0.42, tokens: 7777, tripped: false },
+    value: { dollars: 0.42, tokens: 7777, tripped: false, lastRefusal: null },
   });
 
   ctx.guest.addKindReplies('worker', { text: 'Done.' });
@@ -973,6 +979,34 @@ test('it records the dollars the gateway counted beyond the priced calls of the 
   const records = await ctx.readKinds(['worker.gateway_charged']);
 
   expect(records.map((record) => record.payload['dollars'])).toStrictEqual([0.42]);
+});
+
+test('it sets the ledger rows of a run to the dollars and tokens the gateway counted, in micros', async () => {
+  const ctx = await setupTest({ isGatewayOn: true });
+
+  ctx.gateway.readSandbox.mockResolvedValue({
+    kind: 'ok',
+    value: { dollars: 0.42, tokens: 7777, tripped: false, lastRefusal: null },
+  });
+
+  ctx.guest.addKindReplies('worker', { text: 'Done.' });
+
+  await ctx.callWorker({ question: 'Which cafes are open?' });
+
+  const [ended] = await ctx.readKinds(['worker.run_ended']);
+
+  const workerRunID = ended?.payload['workerRunID'];
+
+  invariant(typeof workerRunID === 'string');
+
+  const counter = `worker_run:${workerRunID}`;
+
+  const ledger = await ctx.readLedger();
+
+  expect(ledger).toStrictEqual([
+    { counter, unit: 'micros:USD', amount: 420_000 },
+    { counter, unit: 'tokens', amount: 7777 },
+  ]);
 });
 
 test('it charges the calling task the planned dollars when the gateway does not answer the count', async () => {
@@ -1012,7 +1046,7 @@ test('it ends a run at a dollar limit when the gateway found its sandbox past it
 
   ctx.gateway.readSandbox.mockResolvedValue({
     kind: 'ok',
-    value: { dollars: 1.2, tokens: 10, tripped: true },
+    value: { dollars: 1.2, tokens: 10, tripped: true, lastRefusal: null },
   });
 
   ctx.guest.addKindReplies('worker', { text: '', stopReason: 'tool_use' });
@@ -1030,7 +1064,7 @@ test('it ends a run at a token limit when the gateway found its sandbox past it'
 
   ctx.gateway.readSandbox.mockResolvedValue({
     kind: 'ok',
-    value: { dollars: 0.01, tokens: 1500, tripped: true },
+    value: { dollars: 0.01, tokens: 1500, tripped: true, lastRefusal: null },
   });
 
   ctx.guest.addKindReplies('worker', { text: '', stopReason: 'tool_use' });

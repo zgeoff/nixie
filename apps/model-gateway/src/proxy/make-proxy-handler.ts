@@ -112,7 +112,7 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
       return renderAPIError(400, 'invalid_request_error', headerRefusal);
     }
 
-    const refusal = await accounting.admit(target.sandbox);
+    const refusal = await accounting.admit(target.routeID, target.sandbox);
 
     if (refusal !== null) {
       return refusal;

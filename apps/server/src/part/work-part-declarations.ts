@@ -360,7 +360,6 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
     start: async (reader) => {
       const parts = reader.get('server_parts');
       const spend = parts.apiContext.spend;
-      const limits = parts.config.models.limits;
 
       if (spend === undefined) {
         return;
@@ -368,13 +367,9 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
 
       const watcher = startSpendWatcher({
         context: spend,
-        limits: {
-          day: { dollars: limits.day.dollars, tokens: limits.day.tokens },
-          month: { dollars: limits.month.dollars, tokens: limits.month.tokens },
-        },
         log: parts.log,
         signal: parts.cleanup.signal,
-        isStartUnreachable: parts.isSpendUnsent,
+        isStartUnreachable: parts.isSpendUnanswered,
       });
 
       await parts.cleanup.defer(() => watcher.stop());

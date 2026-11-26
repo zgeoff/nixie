@@ -1,3 +1,4 @@
+import { readUncountedCharges } from '@heynixie/budgets';
 import type { SpeechLayer } from '@heynixie/calls';
 import type { Clock } from '@heynixie/clock';
 import type { Secrets } from '@heynixie/credentials';
@@ -15,6 +16,7 @@ import type { SandboxAdapterOptions } from '../sandbox/create-sandbox-adapter';
 import type { SandboxImages } from '../sandbox/load-sandbox-manifest';
 import type { SandboxSettings } from '../sandbox/resolve-sandbox-settings';
 import type { SpendInputs } from '../spend/create-spend-inputs';
+import { isSpendLedgerUpgrade } from '../spend/is-spend-ledger-upgrade';
 import { startSpendChecks } from '../spend/start-spend-checks';
 import type { Cleanup, ServerParts } from '../types';
 import { buildCleanup } from './build-cleanup';
@@ -77,7 +79,7 @@ export interface ServerPartsOptions extends ServerOptions {
   readonly spend: SpendInputs | null;
 
   // whether the start checks left the gateway without its limits, because it gave no answer
-  readonly isSpendUnsent: boolean;
+  readonly isSpendUnanswered: boolean;
   readonly writer: Writer;
   readonly cleanup: Cleanup;
 
@@ -109,7 +111,7 @@ export async function startServer(options: ServerOptions): Promise<Server> {
     return await startServerWork({
       ...options,
       ...inputs,
-      isSpendUnsent: spendStart === 'unsent',
+      isSpendUnanswered: spendStart === 'unanswered',
       writer,
       cleanup,
     });
@@ -144,6 +146,12 @@ async function startLoggedWriter(dataDir: string, options: LoggedWriterOptions):
     schemaTo: writer.migration.to,
     isCopied: writer.migration.copyPath !== null,
   });
+
+  if (isSpendLedgerUpgrade(writer.migration)) {
+    for (const total of await readUncountedCharges(writer.db)) {
+      options.log('spend.ledger_uncounted', { ...total }, 'warn');
+    }
+  }
 
   return writer;
 }

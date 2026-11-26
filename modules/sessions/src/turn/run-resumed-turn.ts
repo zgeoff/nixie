@@ -26,6 +26,7 @@ export async function runResumedTurn(
     inbox: step.input.inbox,
     wake: step.input.wake,
     images: step.marks.images,
+    toldWaitNotices: step.toldWaitNotices,
   });
 
   return isFull ? runRebuiltTurn(step, session, 'images') : runBoundaryTurn(step, session);
@@ -85,7 +86,13 @@ async function runBoundaryTurn(step: SessionStep, session: ResumedSession): Prom
   }
 
   const memory = { ...turn.context, invalidatedThrough: turn.invalidatedThrough };
-  const completed = { ...resumed.completed, harness: step.run.harness, memory };
+
+  const completed = {
+    ...resumed.completed,
+    harness: step.run.harness,
+    prices: step.run.profile.profile.prices,
+    memory,
+  };
 
   return runStepCommit(step, completed, () =>
     buildStepResult(source, completed, session.plan.before),

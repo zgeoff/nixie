@@ -21,10 +21,8 @@ export interface CallBudget {
   readonly getLeftDollars: () => number;
 }
 
-// A profile with no prices prices each call as nothing, so its turns never reach the budget and
-// read no late spend.
 export function createCallBudget(
-  prices: ModelPrices | null,
+  prices: ModelPrices,
   leftDollars: number,
   readLateDollars: () => Promise<number>,
 ): CallBudget {
@@ -39,10 +37,6 @@ export function createCallBudget(
 
   return {
     onCall: async (usage) => {
-      if (prices === null) {
-        return;
-      }
-
       // The cost goes in first, so a failed read still leaves the call in the turn's spend.
       spentDollars += buildCallCost(usage, prices);
 

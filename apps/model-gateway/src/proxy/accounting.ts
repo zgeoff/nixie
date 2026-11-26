@@ -30,8 +30,8 @@ export interface CountedReply {
 
 // What the handler asks of a count: whether a request may pass, and how a reply adds to it
 export interface Accounting {
-  // the refusal for a request from the sandbox, or null when it may pass
-  readonly admit: (sandbox: string | null) => Promise<Response | null>;
+  // the refusal for a request on the route from the sandbox, or null when it may pass
+  readonly admit: (route: string, sandbox: string | null) => Promise<Response | null>;
 
   // a reply that spent, or may have, with no whole usage the proxy can read, adds its estimate
   readonly count: (reply: CountedReply) => Promise<void>;

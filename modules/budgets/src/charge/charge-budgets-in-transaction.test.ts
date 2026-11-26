@@ -155,3 +155,27 @@ test('it takes the limit of a budget in force over the built-in one', async () =
 
   expect(result).toMatchObject({ error: 'budget_reached', limitMicros: 1_000_000 });
 });
+
+test('it charges past a full budget when the call has billed already', async () => {
+  const ctx = await startTestBudgets();
+
+  await ctx.charge({
+    budgetIDs: ['search-day'],
+    amountMicros: 5_000_000,
+    for: { kind: 'tool_call', id: 'call-1' },
+  });
+
+  const result = await ctx.charge({
+    budgetIDs: ['search-day'],
+    amountMicros: 25_000,
+    for: { kind: 'tool_call', id: 'call-2' },
+    overdraw: true,
+  });
+
+  const ledger = await readBudgetLedger(ctx.writer.db, ctx.context, 'search-day');
+
+  expect([result, ledger?.spentMicros]).toStrictEqual([
+    { chargeIDs: [expect.any(String)] },
+    5_025_000,
+  ]);
+});

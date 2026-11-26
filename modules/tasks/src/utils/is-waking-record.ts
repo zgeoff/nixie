@@ -11,7 +11,8 @@ export function isWakingRecord(
   }
 
   // The conversation reads the restore notice with the owner's next message, so it wakes no step.
-  if (record.kind === 'recovery.notice') {
+  // The wait notice is read with the step that the clear resumes, so it wakes no step of its own.
+  if (record.kind === 'recovery.notice' || record.kind === 'spend.wait_notice') {
     return false;
   }
 

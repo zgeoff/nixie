@@ -46,6 +46,7 @@
     "@heynixie/policy": "workspace:*",
     "@heynixie/prompts": "workspace:*",
     "@heynixie/proposals": "workspace:*",
+    "@heynixie/rates-frankfurter": "workspace:*",
     "@heynixie/reminders": "workspace:*",
     "@heynixie/retry": "workspace:*",
     "@heynixie/sandbox": "workspace:*",

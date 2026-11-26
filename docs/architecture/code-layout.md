@@ -131,7 +131,7 @@ code reach test code.
 - **Modules form no cycles.** `turbo boundaries` refuses a cycle, so a module that needs work from a
   module that depends on it takes that work through an interface the server passes in.
 
-A few imports belong to one package each:
+A few imports belong to one package each, and the Agent SDK to two:
 
 | Import                              | The packages that may import it    |
 | ----------------------------------- | ---------------------------------- |
@@ -211,6 +211,9 @@ The other packages each hold one piece the modules and apps share:
   a clock the test steps. It also holds `startSweep`, the loop that every periodic sweep runs on. A
   sweep's next pass starts one interval after the last pass ends, so passes never overlap. A wake
   starts a pass early. A failed pass goes to the sweep's `onError` while the loop goes on.
+- `libs/periods` holds `periodOf`, which works out when a day, a week or a month starts in a zone.
+  The server and the model gateway both import it, so [every counter](policy/metering.md#periods)
+  resets at the same instant.
 - `libs/retry` is the backoff that sets the wait before each retry, so every part that retries backs
   off the same way.
 - `libs/task-control` holds the transition table of the task controls, so the tasks module and the

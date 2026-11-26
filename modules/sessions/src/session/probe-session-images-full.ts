@@ -1,6 +1,7 @@
 import { isInboxRecord } from '@heynixie/tasks';
 import type { StepInput } from '@heynixie/tasks';
 import { isSilentRecord } from '../inbox/is-silent-record';
+import { isToldWaitNotice } from '../inbox/is-told-wait-notice';
 import { readInboxMessages } from '../inbox/read-inbox-messages';
 import type { ConversationRun, ImageTally } from '../types';
 import { countImages } from '../utils/count-images';
@@ -11,6 +12,9 @@ export interface SessionImages {
   readonly wake: StepInput['wake'];
 
   readonly images: ImageTally;
+
+  // the wait notices that an earlier turn's opening told, which the batch takes with no text
+  readonly toldWaitNotices: ReadonlySet<number>;
 }
 
 export async function probeSessionImagesFull(
@@ -22,7 +26,10 @@ export async function probeSessionImagesFull(
   }
 
   const firstVisible = session.inbox.find(
-    (record) => isInboxRecord(record) && !isSilentRecord(record),
+    (record) =>
+      isInboxRecord(record) &&
+      !isSilentRecord(record) &&
+      !isToldWaitNotice(record, session.toldWaitNotices),
   );
 
   if (firstVisible === undefined) {

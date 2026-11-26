@@ -12,7 +12,12 @@ import {
 } from '@heynixie/definitions';
 import type { Writer } from '@heynixie/log';
 import type { Logger } from '@heynixie/logger';
-import type { PlanLoginsHolder, SpendGateway, SpendTurnLimits } from '@heynixie/spend';
+import type {
+  DisplayRates,
+  PlanLoginsHolder,
+  SpendGateway,
+  SpendTurnLimits,
+} from '@heynixie/spend';
 import type { RunSettings, TaskLimits, TaskMessaging, TaskRunnerRegistry } from '@heynixie/tasks';
 import { readDefinitionNextFire } from '@heynixie/triggers';
 import { paidToolLimits, paidToolNames } from '../budget/paid-tool-names';
@@ -54,6 +59,7 @@ export interface ServerContextOptions {
     readonly gateway: SpendGateway;
     readonly limits: SpendTurnLimits;
     readonly planLogins: PlanLoginsHolder;
+    readonly display: DisplayRates | null;
   };
 }
 
@@ -124,6 +130,7 @@ export async function createServerContext(
               limits: options.spend.limits,
               definitions,
               planLogins: options.spend.planLogins,
+              ...(options.spend.display === null ? {} : { display: options.spend.display }),
             },
           }),
       runSettings: options.runSettings,

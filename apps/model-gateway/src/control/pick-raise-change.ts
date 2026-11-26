@@ -1,42 +1,45 @@
-import type { Measures, PeriodChange, PeriodName, PeriodStore } from '../types';
+import type { PeriodChange, PeriodStore, RouteLimits } from '../types';
 import type { ControlOutcome } from './control-outcome';
-import { isAboveCap } from './is-above-cap';
 
 export interface DayRaise {
+  readonly route: string;
   readonly start: string;
-  readonly limit: Measures;
+  readonly dollars: number;
 }
 
-// raises the day's limit for the day in force, never below an earlier raise of that day, and refuses
-// without a change past the cap or for a day that has ended
+// Raises a route's day limit for the day in force, never below an earlier raise of that day, and
+// refuses without a change past the route's cap, for a day that has ended, or for a route that has
+// no limit or no count.
 export function pickRaiseChange(
   store: PeriodStore,
-  caps: Readonly<Record<PeriodName, Measures>>,
+  limits: RouteLimits | null,
   raise: DayRaise,
 ): PeriodChange<ControlOutcome> {
-  if (isAboveCap(raise.limit, caps.day)) {
-    return { store: null, result: { kind: 'above_cap', period: 'day', cap: caps.day } };
+  const periods = Object.hasOwn(store.routes, raise.route) ? store.routes[raise.route] : undefined;
+
+  if (limits === null || periods === undefined) {
+    return { store: null, result: { kind: 'unknown_route' } };
   }
 
-  if (raise.start !== store.periods.day.start) {
+  if (raise.dollars > limits.dayCap) {
+    return { store: null, result: { kind: 'above_cap', route: raise.route, cap: limits.dayCap } };
+  }
+
+  if (raise.start !== periods.day.start) {
     return { store: null, result: { kind: 'period_ended' } };
   }
 
-  // Two raises of one day can arrive in either order, so the day keeps the larger in each measure.
-  const earlier = store.periods.day.raise;
-
-  const limit: Measures =
-    earlier === null
-      ? raise.limit
-      : {
-          dollars: Math.max(earlier.dollars, raise.limit.dollars),
-          tokens: Math.max(earlier.tokens, raise.limit.tokens),
-        };
+  // Two raises of one day can arrive in either order, so the day keeps the larger.
+  const earlier = periods.day.raise;
+  const dollars = earlier === null ? raise.dollars : Math.max(earlier, raise.dollars);
 
   return {
     store: {
       ...store,
-      periods: { ...store.periods, day: { ...store.periods.day, raise: limit } },
+      routes: {
+        ...store.routes,
+        [raise.route]: { ...periods, day: { ...periods.day, raise: dollars } },
+      },
     },
     result: { kind: 'done' },
   };

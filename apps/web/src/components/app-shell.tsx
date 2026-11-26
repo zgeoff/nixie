@@ -18,6 +18,7 @@ const entries = [
   { exact: false, label: 'Notebook', to: '/notebook' },
   { exact: false, label: 'Definitions', to: '/definitions' },
   { exact: false, label: 'Reminders', to: '/reminders' },
+  { exact: false, label: 'Spending', to: '/spend' },
   { exact: false, label: 'Passkeys', to: '/passkeys' },
   { exact: false, label: 'Connections', to: '/settings/connections' },
   { exact: false, label: 'Add a device', to: '/add-device' },

@@ -5,6 +5,7 @@ export type {
 } from './start-test-model-gateway';
 
 export {
+  createTestModelGateway,
   startTestModelGateway,
   testGatewayControlToken,
   testGatewayPrices,

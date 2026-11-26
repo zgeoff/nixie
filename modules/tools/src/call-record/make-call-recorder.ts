@@ -9,6 +9,8 @@ import type {
 import { buildActionProposalInput } from '@heynixie/policy';
 import invariant from 'tiny-invariant';
 import { countCapCalls } from '../cap/count-cap-calls';
+import { chargePaidPlanInTransaction } from '../paid/charge-paid-plan-in-transaction';
+import type { PaidGate, PaidPlan } from '../paid/types';
 import { isMemoryRuleAsk } from '../policy-call/build-memory-verdict';
 import { toStepKey } from '../policy-call/to-step-key';
 import type { ToolCallOptions } from '../run-tool-call';
@@ -53,6 +55,10 @@ interface CallPolicy {
 
   // Sealed under the call record's key, for a card to show. Only a call that asks keeps them.
   readonly attachments?: readonly Uint8Array<ArrayBuffer>[];
+
+  // what the call charges, taken in the transaction that writes the call record, unless the call is
+  // over its task run's cap
+  readonly paid?: PaidPlan;
 }
 
 interface WrittenCall {
@@ -67,6 +73,9 @@ interface WrittenCall {
   // the approved action that the call repeats: the one the decision found, or one that an approval
   // queued while the call was being written
   readonly repeatOf: OpenRepeat | null;
+
+  // whether the call's charge passed, null when the call took none
+  readonly gate: PaidGate | null;
 }
 
 interface WrittenResult {
@@ -162,9 +171,13 @@ export function makeCallRecorder(
               shortID: null,
               isCapped: true,
               repeatOf: decided?.repeatOf ?? null,
+              gate: null,
             };
           }
         }
+
+        const gate =
+          decided?.paid === undefined ? null : await chargePaidPlanInTransaction(tx, decided.paid);
 
         const cause = decided?.policy.decision.cause;
 
@@ -180,6 +193,7 @@ export function makeCallRecorder(
             shortID: null,
             isCapped: false,
             repeatOf: decided?.repeatOf ?? null,
+            gate,
           };
         }
 
@@ -203,6 +217,7 @@ export function makeCallRecorder(
             shortID: null,
             isCapped: false,
             repeatOf: open.repeat,
+            gate: null,
           };
         }
 
@@ -212,6 +227,7 @@ export function makeCallRecorder(
             shortID: open.shortID,
             isCapped: false,
             repeatOf: null,
+            gate: null,
           };
         }
 
@@ -241,6 +257,7 @@ export function makeCallRecorder(
           shortID: proposal.shortID,
           isCapped: false,
           repeatOf: null,
+          gate: null,
         };
       }),
     writeSettled: async (callSequence, raw) => {
@@ -249,6 +266,7 @@ export function makeCallRecorder(
       const writeSettled = (toWrite: Settled): Promise<number> => {
         const contentSource = pickLeastTrusted(Object.values(toWrite.sources));
         const writeBeside = toWrite.writeBeside;
+        const writeCharge = toWrite.writeCharge;
 
         return withWriteTransaction(options.log.writer, async (tx) => {
           const [written] = await writeRecordsInTransaction(tx, options.log, [
@@ -272,6 +290,7 @@ export function makeCallRecorder(
           invariant(written, 'the log wrote no record for the tool result');
 
           await writeBeside?.(tx, written.sequence);
+          await writeCharge?.(tx);
 
           return written.sequence;
         });
@@ -284,7 +303,10 @@ export function makeCallRecorder(
           throw error;
         }
 
-        const refused = buildMessage('error', error.message, { source: 'untrusted' });
+        const refused: Settled = {
+          ...buildMessage('error', error.message, { source: 'untrusted' }),
+          ...(settled.writeCharge === undefined ? {} : { writeCharge: settled.writeCharge }),
+        };
 
         return { sequence: await writeSettled(refused), settled: refused };
       }

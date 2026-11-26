@@ -21,7 +21,7 @@ export async function chargeBudgetsInTransaction(
     return facts;
   }
 
-  const refusal = pickChargeRefusal(facts, request.amountMicros);
+  const refusal = request.overdraw === true ? null : pickChargeRefusal(facts, request.amountMicros);
 
   if (refusal !== null) {
     return refusal;
@@ -30,7 +30,8 @@ export async function chargeBudgetsInTransaction(
   const charges = facts.map((fact) => ({
     chargeID: crypto.randomUUID(),
     budgetID: fact.limit.id,
-    periodStart: fact.bounds.start,
+    periodStart: fact.periodStart,
+    ledgerKey: fact.ledgerKey,
     amountMicros: request.amountMicros,
     for: { kind: request.for.kind, id: request.for.id },
   }));

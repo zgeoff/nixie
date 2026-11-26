@@ -1,5 +1,3 @@
-import type { AboveCap } from '../types';
-
 export interface StartFacts {
   // how many entries the secrets file holds under model_credentials
   readonly credentialCount: number;
@@ -27,10 +25,4 @@ export function pickStartRefusal(facts: StartFacts): string | null {
   }
 
   return null;
-}
-
-export function formatAboveCap(refused: AboveCap): string {
-  const period = refused.period === null ? 'a period' : `the ${refused.period}`;
-
-  return `the gateway refuses the configured limit of ${period}, which is above its cap of ${String(refused.cap.dollars)} dollars and ${String(refused.cap.tokens)} tokens`;
 }

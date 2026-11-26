@@ -73,10 +73,10 @@ resume, or until the user resumes that task, which then takes its inbox as it st
   [pause, stop and close](tasks.md#pause-stop-and-close) describes.
 
 A schedule fire waits while nixie is paused: the trigger core writes nothing for it and takes no
-key, so the schedule source delivers it again at its next tick. After the resume, or after you
-resume the task, the fire is late, and the catch-up rule of
+key, so the schedule source delivers it again at its next tick. After the resume, or after the user
+resumes the task, the fire is late, and the catch-up rule of
 [the schedule source](triggers.md#the-schedule-source) decides. A fire at the conversation waits
-too, though a conversation you paused yourself still takes its fires.
+too, though a conversation the user paused still takes its fires.
 
 ## The task gate
 
@@ -84,17 +84,19 @@ too, though a conversation you paused yourself still takes its fires.
 gives `open`, or a hold with the first reason that applies, in this order, and `since`, the time of
 the record that put the task in that hold:
 
-| Reason  | The task is held because                                                                   |
-| ------- | ------------------------------------------------------------------------------------------ |
-| `ended` | it is done, stopped, failed or closed                                                      |
-| `spend` | the row of the [spending stop](../policy/spending-stop.md) stands, whatever the exemptions |
-| `nixie` | nixie is paused and the task is not on the exemption list                                  |
-| `limit` | the newest limit record on its thread is `task.limit_reached`                              |
-| `task`  | its state is `paused`; a pause request counts once `task.paused` is written                |
+| Reason  | The task is held because                                                                                                          |
+| ------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `ended` | it is done, stopped, failed or closed                                                                                             |
+| `spend` | the [spending stop](../policy/spending-stop.md) stands, or the task is held on a route whose stop stands, whatever the exemptions |
+| `nixie` | nixie is paused and the task is not on the exemption list                                                                         |
+| `limit` | the newest limit record on its thread is `task.limit_reached`                                                                     |
+| `task`  | its state is `paused`; a pause request counts once `task.paused` is written                                                       |
 
-The spending stop's row lives in the log module, beside the pause tables, so the tasks module reads
-it without importing the spend module. A trip still pauses nixie, and the gate reports `spend`
-first. Each caller applies its own rule to the reasons:
+The spending stop's row, and each route's stop and the tasks held on it, live in the log module,
+beside the pause tables, so the tasks module reads them without importing the spend module. A trip
+of the turn count still pauses nixie, and the gate reports `spend` first. A route's stop pauses
+nothing: it holds only the tasks on that route, and the gate reports `spend` for them. Each caller
+applies its own rule to the reasons:
 
 | Caller         | `ended`                            | `spend`, `nixie`               | `limit`, `task`                                    |
 | -------------- | ---------------------------------- | ------------------------------ | -------------------------------------------------- |

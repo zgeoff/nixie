@@ -22,6 +22,8 @@
     { "match": "adapters/search-kagi/**", "skills": ["verify"] },
     { "match": "adapters/speech-gpt-live/**", "skills": ["verify"] },
     { "match": "adapters/spend-model-gateway/**", "skills": ["verify"] },
+    { "match": "adapters/rates-frankfurter/**", "skills": ["verify"] },
+    { "match": "apps/model-gateway/**", "skills": ["verify"] },
     { "match": "nixie-test-build.d.ts", "skills": ["verify"] },
     { "match": "bun-serve-options.d.ts", "skills": ["verify"] },
     { "match": "verify/**", "skills": ["verify"] },

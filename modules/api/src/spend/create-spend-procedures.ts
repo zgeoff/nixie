@@ -1,4 +1,4 @@
-import { readSpendStop, writeSpendRaise } from '@heynixie/spend';
+import { readSpendCounts, readSpendRoutes, readSpendStop, writeSpendRaise } from '@heynixie/spend';
 import { requireCaller } from '../memory/require-caller';
 import type { APIContext } from '../types';
 import { apiImplementer } from '../utils/api-implementer';
@@ -14,12 +14,23 @@ export function createSpendProcedures(context: APIContext) {
       await requireCaller(context, options.context.sessionToken, options.errors.UNAUTHORIZED);
 
       if (context.spend === undefined) {
-        return { state: 'clear' as const };
+        return { state: 'clear' as const, routes: [] };
       }
 
       const stop = await readSpendStop(context.spend);
+      const routes = await readSpendRoutes(context.spend);
 
-      return toSpendStopResponse(stop);
+      return toSpendStopResponse(stop, routes);
+    }),
+
+    counts: spend.counts.handler(async (options) => {
+      await requireCaller(context, options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+      if (context.spend === undefined) {
+        return { routes: [], display: null };
+      }
+
+      return readSpendCounts(context.spend);
     }),
 
     raise: spend.raise.handler(async (options) => {
@@ -33,7 +44,15 @@ export function createSpendProcedures(context: APIContext) {
         return { state: 'clear' as const };
       }
 
-      return writeSpendRaise(context.spend, { ...options.input, by: caller.identityID });
+      const input = options.input;
+
+      return writeSpendRaise(context.spend, {
+        start: input.start,
+        ...(input.route === undefined ? {} : { route: input.route }),
+        ...(input.dollars === undefined ? {} : { dollars: input.dollars }),
+        ...(input.turns === undefined ? {} : { turns: input.turns }),
+        by: caller.identityID,
+      });
     }),
   };
 }

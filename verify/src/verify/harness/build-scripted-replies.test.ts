@@ -609,3 +609,9 @@ test('it fails the open of a mail when the newest list is empty, though an older
 
   expect(() => (typeof readInput === 'function' ? readInput(body) : null)).toThrow('names no mail');
 });
+
+test('it gives the reply the output tokens that price it', () => {
+  expect(buildScriptedReplies({ text: 'The heron left.', outputTokens: 125_000 })).toStrictEqual([
+    { text: 'The heron left.', usage: { input_tokens: 10, output_tokens: 125_000 } },
+  ]);
+});

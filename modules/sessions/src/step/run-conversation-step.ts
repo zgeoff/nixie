@@ -1,14 +1,16 @@
 import { modelTurnEndedCodec } from '@heynixie/models';
-import { checkSpendTurns } from '@heynixie/spend';
+import { checkSpendTurns, holdTaskOnRefusal, holdTaskOnRoute } from '@heynixie/spend';
 import type { StepInput, StepResult } from '@heynixie/tasks';
 import {
   buildStepRunID,
+  markSpendRefusal,
   readTaskDirectory,
   readTaskGateSnapshot,
   readUnlistedProfiles,
 } from '@heynixie/tasks';
 import { match } from 'ts-pattern';
 import { runCompactionStep } from '../compaction/run-compaction-step';
+import { isToldWaitNotice } from '../inbox/is-told-wait-notice';
 import { runInboxStep } from '../inbox/run-inbox-step';
 import { canSessionTake } from '../session/can-session-take';
 import { isSessionLive } from '../session/is-session-live';
@@ -19,6 +21,7 @@ import { openStepCapture } from '../utils/open-step-capture';
 import { parseSessionBoundary } from '../utils/parse-session-boundary';
 import type { SessionMarks } from '../utils/read-session-marks';
 import { readSessionMarks } from '../utils/read-session-marks';
+import { readToldWaitNotices } from '../utils/read-told-wait-notices';
 import { isStepTurnCut } from './is-step-turn-cut';
 import { pickSessionPosition } from './pick-session-position';
 import { voidLostReplies } from './void-lost-replies';
@@ -53,6 +56,7 @@ export async function runConversationStep(
   });
 
   const calls = { count: 0 };
+  const startedAtMs = conversation.spend?.clock.now() ?? 0;
 
   const captured: ConversationRun = {
     ...conversation,
@@ -66,6 +70,14 @@ export async function runConversationStep(
 
   try {
     return await runSessionTurn(captured, input);
+  } catch (error) {
+    const isRefused = await holdTaskAfterFailure(conversation, input.taskID, startedAtMs);
+
+    if (isRefused) {
+      markSpendRefusal(error);
+    }
+
+    throw error;
   } finally {
     await capture.close({ callFrames: calls.count });
   }
@@ -80,6 +92,10 @@ async function runSpendCheck(
 ): Promise<StepResult | null> {
   if (conversation.spend !== undefined) {
     await checkSpendTurns(conversation.spend);
+  }
+
+  if (conversation.spend !== undefined) {
+    await holdTaskOnRoute(conversation.spend, input.taskID, conversation.profile.profile.id);
   }
 
   const gate = await readTaskGateSnapshot(conversation.context, input.taskID);
@@ -141,7 +157,18 @@ function runSessionTurn(conversation: ConversationRun, input: StepInput): Promis
         threshold: run.compaction.threshold,
       });
 
-      const step = { run, input, signal, definitions, skillCatalog, marks, position };
+      const toldWaitNotices = await readToldWaitNotices(run.context, input.taskID, input.inbox);
+
+      const step = {
+        run,
+        input,
+        signal,
+        definitions,
+        skillCatalog,
+        marks,
+        position,
+        toldWaitNotices,
+      };
 
       const result = await runSessionStep(step);
 
@@ -173,8 +200,13 @@ async function runSessionStep(step: SessionStep): Promise<StepResult> {
   // an approved call that no step ran has a result to read, though the inbox holds no record
   const hasApprovedCall = (await step.run.inStepActions?.probePending(step.input.taskID)) === true;
 
+  // a wait notice that an earlier turn's opening told needs no turn of its own
+  const isAllTold = step.input.inbox.every((record) =>
+    isToldWaitNotice(record, step.toldWaitNotices),
+  );
+
   if (
-    step.input.inbox.length === 0 &&
+    isAllTold &&
     !hasApprovedCall &&
     !isTaskStart(frame, step.marks) &&
     !isTaskWorkCut(frame, step.marks)
@@ -182,7 +214,7 @@ async function runSessionStep(step: SessionStep): Promise<StepResult> {
     return {
       next: 'wait',
       records: [],
-      acknowledged: [],
+      acknowledged: step.input.inbox.map((record) => record.sequence),
       sessionBoundary: step.input.sessionBoundary,
     };
   }
@@ -230,4 +262,23 @@ async function keepApprovedCallsReady(
   }
 
   return { ...result, next: 'continue' };
+}
+
+// A failed step may be the gateway's refusal at its route's limit. It holds the task on a route at
+// its limit, and answers whether the gateway refused the step, so the failure counts no step error.
+function holdTaskAfterFailure(
+  conversation: ConversationRun,
+  taskID: string,
+  startedAtMs: number,
+): Promise<boolean> {
+  if (conversation.spend === undefined) {
+    return Promise.resolve(false);
+  }
+
+  return holdTaskOnRefusal(conversation.spend, {
+    taskID,
+    route: conversation.profile.profile.id,
+    sandboxName: conversation.sandbox.id,
+    startedAtMs,
+  });
 }

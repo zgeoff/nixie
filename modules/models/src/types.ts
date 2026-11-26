@@ -54,15 +54,11 @@ export interface WorkerRunLimits {
 }
 
 interface DayLimits {
-  readonly dollars: number;
-  readonly tokens: number;
   readonly turns: number;
   readonly turnCap: number;
 }
 
 interface MonthLimits {
-  readonly dollars: number;
-  readonly tokens: number;
   readonly turns: number;
 }
 
