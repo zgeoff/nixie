@@ -28,14 +28,14 @@ change state; and the [live stream](./live-updates.md).
 - **The client header.** Every call carries a custom client header, and the API refuses a call
   without it, because a cross-site form cannot send a custom header.
 - **The live stream.** A tab holds one page-form `live.follow` stream, which carries the records of
-  the thread on screen and a `changed` event for each topic a commit touched.
-  [Live updates](./live-updates.md) describes the stream and its topics, and
-  [The live stream in the client](#the-live-stream) describes how the tab holds it. A `log_reset`
-  record on the stream means the [reset](../core/event-log.md#the-reset) removed every record before
-  it, or a reset of the conversation shredded every record before it on the thread, so the client
-  drops what it read before that record and reads its queries again. The conversation shows the
-  record as a rule across the feed with the time of the reset in the user's own time zone. The
-  server restarts after a reset, so the client reads them once more when the stream next opens.
+  the thread on screen and a `changed` event for each topic a commit touched. See
+  [Live updates](./live-updates.md) for the stream and its topics, and
+  [The live stream in the client](#the-live-stream) for how the tab holds it. A `log_reset` record
+  on the stream means the [reset](../core/event-log.md#the-reset) removed every record before it, or
+  a reset of the conversation shredded every record before it on the thread, so the client drops
+  what it read before that record and reads its queries again. The conversation shows the record as
+  a rule across the feed with the time of the reset in the user's own time zone. A reset restarts
+  the server, and the stream's next open reads every topic again.
 
 A client renders a record by its kind, and shows a kind it does not know by its name. Beside its
 kind, a record carries what a client shows of it: a message's text, the task and step of a task
@@ -119,15 +119,14 @@ speech layer and its state. A change of route never ends the call, and a page lo
 - **Reconnect.** When `calls.get` reports a `reconnect` cause, or the peer connection fails, the
   client sends an ICE-restart offer on the open peer connection, or on a new one when the old one
   failed, with a fresh `calls.connect`. A refusal, `CALL_CONNECTED` included, gets another try after
-  a pause, except the two refusals that end the call at once, named below. The call is live again
-  only once an answer is applied and the connection is up. When a call is not back within the
-  reconnect limit, counted from the first loss (set as `reconnectLimitMs` in
+  a pause. The call is live again once an answer is applied and the connection is up. When a call is
+  not back within the reconnect limit, counted from the first loss (set as `reconnectLimitMs` in
   [`create-call-session.ts`](../../../apps/web/src/call/create-call-session.ts)), the client ends it
   on the screen as `dropped`, releases the microphone and the peer, and hangs up the call on the
-  server. A refusal of `CALL_NOT_FOUND` or `NOT_CARRYING_SESSION` ends it the same way at once. The
-  client discards a read of the call from before a reconnect and reads again, so a finished
-  reconnect does not start another. After a server restart the live stream's first open reads every
-  topic again, which is how the client learns that the call waits.
+  server. A refusal of `CALL_NOT_FOUND` or `NOT_CARRYING_SESSION` gets no retry and ends the call
+  the same way at once. The client discards a read of the call from before a reconnect and reads
+  again, so a finished reconnect does not start another. After a server restart the live stream's
+  first open reads every topic again, which is how the client learns that the call waits.
 - **Approvals during a call.** The call screen lists the cards of the proposals on the call's
   thread, read through `approvals.listItems` and `approvals.readProposals`, so a card follows its
   proposal through an answer. The provider holds the IDs the screen has seen for the call's thread,
@@ -150,14 +149,14 @@ The web client holds one `live.follow` stream in each tab, above every page, so 
 keeps it open. A signed-in page keeps it open, and the `/device` page, which retains the tab's
 device feed itself, never opens a page stream. The stream is a page form: it carries the records of
 the thread on screen, from the sequence that page read at, and every topic's `changed` events. Each
-signed-in page also enters its tab in the choice of the one tab that holds the
+signed-in page also enters its tab in the choice of which tab holds the
 [device stream](#the-device-view), so a browser holds one device stream however many tabs it opens,
 the device view's tabs included. A browser limits an HTTP/1.1 origin to 6 connections, and 5 tabs
 fill the slots and queue each later request. Serve nixie over HTTP/2.
 
-- **A topic invalidates its reads.** A `changed` event invalidates the reads under each topic's
-  query-key root, so no page sets a poll on a read that a topic covers while the stream works. The
-  topic roots and their reads are in [Live updates](./live-updates.md#topics).
+- **A topic invalidates its reads.** A `changed` event invalidates the reads under its topic's
+  query-key root. While the stream works, set no poll on a read that a topic covers. See
+  [Live updates](./live-updates.md#topics) for the topic roots and their reads.
 - **A read in flight gives way to a new one.** An invalidation cancels a read of that topic that is
   in flight and reads again, so the page never keeps an answer from before the change.
 - **A first open or a reconnect invalidates every topic,** because a `changed` event carries no
@@ -653,8 +652,9 @@ empty-group text.
 
 The dashboard reads the task list again on each `changed` event of the `tasks` topic, and when the
 page comes to the front. A task that wakes on a schedule changes with no write, so no topic
-announces it. The list's answer gives that time in `changesAt`, and the dashboard reads the list
-again then. While the live stream works, this is the one timed read of a read that a topic covers.
+announces it. `tasks.list` answers with the time of the next change in `changesAt`, and the
+dashboard reads the list again then. While the live stream works, this is the one timed read of a
+read that a topic covers.
 
 Each task shows the controls that its runner offers and its state allows, as
 [controlling a task](./api.md#controlling-a-task) describes. Each control is a checked action, so a
