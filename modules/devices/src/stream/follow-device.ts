@@ -34,6 +34,19 @@ export async function* followDevice(
   options: FollowDeviceOptions,
 ): AsyncGenerator<ScreenState | LayoutState | PageMessageState | PageDataState, void, undefined> {
   const stream = options.streams.open(options.deviceID, options.pixels);
+  const closing = { isClosed: false };
+
+  // A consumer that stops reading after an abort never resumes the generator, so its finally may
+  // never run: the abort closes the stream too.
+  const closeStream = (): void => {
+    if (!closing.isClosed) {
+      closing.isClosed = true;
+
+      stream.close();
+    }
+  };
+
+  options.signal?.addEventListener('abort', closeStream, { once: true });
 
   const wake = startRecordWake({
     subscribeToChanges: (onChange) => subscribeToCommits(options.log.writer, onChange),
@@ -109,7 +122,8 @@ export async function* followDevice(
     }
   } finally {
     wake.stop();
-    stream.close();
+    options.signal?.removeEventListener('abort', closeStream);
+    closeStream();
   }
 }
 

@@ -307,6 +307,24 @@ test('#followDevice holds the device online while the stream is open and for 60 
   expect([during, inGrace]).toStrictEqual([true, true]);
 });
 
+test('#followDevice lets the device go offline 60 s after its stream stops, though nothing reads the stream again', async () => {
+  const ctx = await setupTest();
+  const device = await ctx.seed.screenOnDevice();
+
+  const events = ctx.follow(device.deviceID);
+
+  await events.next();
+
+  ctx.stop();
+  ctx.clock.advance(60_000);
+
+  await waitFor(() => {
+    expect(ctx.streams.isOnline(device.deviceID)).toBeFalse();
+  });
+
+  expect(ctx.streams.isOnline(device.deviceID)).toBeFalse();
+});
+
 test('#followDevice ends when the row of the device goes', async () => {
   const ctx = await setupTest();
   const device = await ctx.seed.screenOnDevice();
