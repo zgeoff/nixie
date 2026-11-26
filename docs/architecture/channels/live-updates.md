@@ -108,6 +108,9 @@ the gateway answers, differs from its last read.
 A test for each topic makes the change and asserts that an open stream receives `changed` with that
 topic.
 
+A call has no stream of its own. The `calls` topic reaches a tab through the same stream as every
+other topic, and the client reads `calls.get` again on it.
+
 A task that comes due on a schedule changes the task list with no write, so no topic announces it.
 `tasks.list` returns `changesAt`, the earliest next run of a listed task, and the client reads the
 list again at that time.

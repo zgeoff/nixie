@@ -1,6 +1,6 @@
 # Voice calls
 
-- **Status:** agreed
+- **Status:** agreed. Part of it is built: the intro below says which part.
 - **Work items:** [the call screen](https://linear.app/zgeoff/issue/GEO-2863),
   [nixie rings you](https://linear.app/zgeoff/issue/GEO-2864),
   [tuning on real calls](https://linear.app/zgeoff/issue/GEO-1868)
@@ -18,14 +18,23 @@ The call thread, the speech layer and its GPT-Live adapter, the hand-offs, the c
 per-minute charge, the call screen, the call bar and a call's reconnect are built. Read
 [Voice calls](../../../architecture/channels/calls.md) and
 [the client](../../../architecture/channels/client.md#the-call) for them. What is left to build is
-answering a ring, the captions on the call screen, and ringing you. Build it from the contracts and
-constraints below, under the work item [nixie rings you](https://linear.app/zgeoff/issue/GEO-2864).
+answering a ring, the captions on the call screen, and ringing you.
+
+This doc is for the agent that builds that rest, and for the owner who reviews it. Build it from the
+contracts and constraints below, under the work item
+[nixie rings you](https://linear.app/zgeoff/issue/GEO-2864). The call screen's other work item,
+[the call screen](https://linear.app/zgeoff/issue/GEO-2863), covers the built screen.
 [Tuning on real calls](https://linear.app/zgeoff/issue/GEO-1868) has a work item of its own.
 
 Terms:
 
 - **The speech layer** is GPT-Live's session: it hears you, takes turns and speaks.
 - **A hand-off** is one request that the speech layer passes to nixie's turn.
+- **`say`** is the speech layer's method that sends one line for it to speak as its own words. It is
+  not part of a hand-off's answer. [Voice calls](../../../architecture/channels/calls.md) holds its
+  contract.
+- **The decision point** is the host's check that every tool call passes before it runs. It is
+  described in [the decision point](../../../architecture/policy/decision-point.md).
 - **The carrying device** is the device that started or answered the call. It holds the call's audio
   and its call screen.
 
@@ -57,13 +66,16 @@ The call screen's captions come from nixie's live stream, because the provider's
 bound to the first session after a reconnect.
 
 ```text
-call record kinds not written yet (log module; plain payload fields only, unless marked erasable)
+call record kinds not written yet (log module; plain payload fields only, unless marked erasable, which
+[erasable fields](../../../architecture/core/erasable-fields.md) explains)
 call.rang        callID, reason (erasable), deviceCount
 call.turn_timed  callID, handOffID, firstAudioMs, handOffWaitMs, cutOffByLayer, interruptedByYou
 ```
 
-- `call.rang` sits on the thread that rang. `call.turn_timed` sits on the call's thread.
-- `call.turn_timed` holds timings and flags only, never audio or text.
+- `call.rang` sits on the thread that rang, so that thread's history shows it. `call.turn_timed`
+  sits on the call's thread, beside the turns it times.
+- `call.turn_timed` holds timings and flags only, never audio or text, so the tuning pass can read
+  it without reading what you said.
 
 ### Ringing you
 

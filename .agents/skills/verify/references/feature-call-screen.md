@@ -14,7 +14,8 @@ Run this journey on `local` only, on an `up` of its own:
   voice settings that price a call at 0.05 dollars a minute, and a fake speech layer in place of the
   provider. The test build gives each page a silent microphone, because the browser that
   `bun verify` drives has none. The `call-step` action plays the speech provider.
-- On `preview`, skip this journey, and list the feature as not verified there in your reply.
+- On `preview`, skip this journey, and list the feature as not verified there in your reply. Only
+  the local `up` reads `NIXIE_VERIFY_CALLS`, so a preview has no fake speech layer.
 
 Before you start:
 
@@ -28,7 +29,9 @@ Before you start:
 When a step exits with a code other than 0, follow the row for that code in
 [Exit codes](exit-codes.md). When a step exits 0 and its `data` differs from the Expect line,
 compare the app with the end state below, following step 5 of Check a change in the
-[verify skill](../SKILL.md#check-a-change).
+[verify skill](../SKILL.md#check-a-change). When a step says to take another snapshot, take up to 5,
+about a second apart. When the last one still lacks the Expect line, treat the step as differing
+from it, and do the same comparison.
 
 ## Journey
 

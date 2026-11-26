@@ -164,6 +164,22 @@ session is gone and ends the call when the wait runs out, and charges each furth
 a live call. It also writes the report of a call whose task stopped before its last turn, as
 [the call's last turn](#hand-offs) describes.
 
+## The device
+
+The web client carries the call: the audio, the microphone and the peer connection live in the
+browser, and the server never reads them. The client's [call section](./client.md#the-call)
+describes the call screen, the call bar and the reconnect from the device's side. Three facts of it
+rest on this module:
+
+- The device ends a call it hangs up, and reads `endedBy` from the `calls.hangUp` answer, so a call
+  that the server ended first shows its own reason.
+- A device that cannot bring a call back within the reconnect limit shows it as `dropped` and hangs
+  it up on the server, which records the end as `you` unless the sweep ended it first.
+- A proposal that the call's turn makes shows as a card on the call screen of the carrying device
+  only, because only that device holds the call's thread. The card stays on the approval digest, and
+  nixie sends no push for it, as
+  [the approvals design](../../design/platform/channels/approvals.md#during-a-voice-call) describes.
+
 ## Records
 
 Each call writes these record kinds. The model sees `call.started`, `call.answered` and `call.ended`

@@ -84,9 +84,9 @@ The mistakes that cost the most time:
    that matches its `paths` in the [registry](#edit-the-skill-and-the-registry) differs from the
    default branch.
 2. Pick the target your task names, or the first launch target in the
-   [targets table](references/targets.md). Run the commands in its row. `up` or `attach` starts a
-   run that lasts until `down` or `detach`. Expect from `up` or `attach`: `ok: true`, and the app's
-   endpoints in `data.endpoints`.
+   [targets table](references/targets.md). Run the commands in its row. `up` or `attach` points the
+   commands at the app until `down` or `detach`. Expect from `up` or `attach`: `ok: true`, and the
+   app's endpoints in `data.endpoints`.
 3. Run `bun verify doctor`. Expect: `data.passed: true`. When a check fails, fix its cause, and run
    `doctor` again.
 4. Run the journey from the feature's file in [References](#references). Its first line,
@@ -116,7 +116,7 @@ The mistakes that cost the most time:
 9. Push the branch, and open a PR when none exists: `publish` fails without one.
 10. Publish the report with [the publish steps](references/publish.md), even when you skipped a
     feature. Expect: `ok: true` and `data.local` of 0.
-11. End the run: `bun verify down` after `up`, or `bun verify detach` after `attach`.
+11. Stop using the app: `bun verify down` after `up`, or `bun verify detach` after `attach`.
 
 ## Read the envelope
 

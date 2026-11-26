@@ -106,7 +106,8 @@ speech layer and its state. A change of route never ends the call, and a page lo
   offer once the peer connection has gathered its addresses, sends it with `calls.connect` and
   applies the answer. The screen shows the connection state, the length of the call, a mute button
   that turns the microphone track off, and a hang up button that calls `calls.hangUp`, so the call
-  ends with `endedBy: 'you'`. Hang up releases the microphone and the peer at once, and nothing that
+  ends with `endedBy: 'you'`, unless the reply says the server ended it first, and then the call
+  keeps the server's reason. Hang up releases the microphone and the peer at once, and nothing that
   was pending then changes the call. A refused microphone, or a refused start, shows what the user
   can do about it, and no call starts.
 - **The call bar.** On every route but the call screen, a bar shows while a call connects, is live
@@ -118,17 +119,20 @@ speech layer and its state. A change of route never ends the call, and a page lo
   client sends an ICE-restart offer on the open peer connection, or on a new one when the old one
   failed, with a fresh `calls.connect`. A refusal, `CALL_CONNECTED` included, gets another try after
   a pause. The call is live again only once an answer is applied and the connection is up. A call
-  that is not back within the reconnect limit, counted from the first loss, ends on the screen as
-  `dropped`, and the client releases the microphone and the peer, and hangs up the call on the
+  that is not back within the reconnect limit, 30 seconds counted from the first loss (set as
+  `reconnectLimitMs` in
+  [`create-call-session.ts`](../../../apps/web/src/call/create-call-session.ts)), ends on the screen
+  as `dropped`, and the client releases the microphone and the peer, and hangs up the call on the
   server. A refusal of `CALL_NOT_FOUND` or `NOT_CARRYING_SESSION` ends it the same way at once. The
   client discards a read of the call from before a reconnect and reads again, so a finished
   reconnect does not start another. After a server restart the live stream's first open reads every
   topic again, which is how the client learns that the call waits.
 - **Approvals during a call.** The call screen lists the cards of the proposals on the call's
   thread, read through `approvals.listItems` and `approvals.readProposals`, so a card follows its
-  proposal through an answer. Only the device that carries the call has the call's thread, so the
-  card shows on its call screen and on no other device's. The card stays on the approval digest.
-  nixie sends no push for it.
+  proposal through an answer. The provider holds the IDs the screen has seen for the call's thread,
+  so leaving the screen and coming back keeps the cards. Only the device that carries the call has
+  the call's thread, so the card shows on its call screen and on no other device's. The card stays
+  on the approval digest. nixie sends no push for it.
 
 The state reads "Connected" only while the peer connection reports `connected`, and "Connecting"
 before that. A call that a hang-up, an end or a give-up closed ignores each answer that arrives
