@@ -43,4 +43,14 @@ export const lastFeatures = [
     summary: 'A Gmail mail wakes the chat when a rule matches',
     paths: featurePaths['gmail-wake'],
   },
+  {
+    name: 'calendar-tools',
+    summary: 'Read the calendar, and approve an invitation the assistant writes',
+    paths: featurePaths['calendar-tools'],
+  },
+  {
+    name: 'drive-tools',
+    summary: 'Search the files, and create a text file',
+    paths: featurePaths['drive-tools'],
+  },
 ] as const;

@@ -1,16 +1,19 @@
 # Live updates
 
-Every client tab learns of a change in one way: the tab holds one server-sent stream, `live.follow`,
-and reads again what the stream says changed. The stream carries the records of the one thread on
-screen, and a `changed` event that names each kind of state a commit touched, such as the pause, the
-task list or a backup notice. A device screen opens the same procedure in its own form, which
-carries only its screen.
+A client tab holds one server-sent stream, `live.follow`, and reads again whatever the stream
+reports as changed. The stream carries the records of the one thread on screen, and a `changed`
+event that names each kind of state a commit touched, such as the pause, the task list or a backup
+notice. A device screen opens the same procedure in its own form, which carries only its screen.
 
-A change that writes no record, or that no write makes, still reaches the tab. A backup notice marks
-its topic in the transaction that writes it, and the spend watcher publishes `spend` when the
-gateway's stop differs from its last read. The tab reads a covered read again only on its topic's
-`changed` event, with one exception: the task list also reads again at the time its own answer
-gives, because a task that wakes on a schedule changes with no write. [Topics](#topics) explains it.
+A change that writes no record, or that no write makes, still reaches the tab through a topic. A
+backup notice marks its topic in the transaction that writes it, and the spend watcher publishes
+`spend` when the gateway's stop differs from its last read. The tab reads a topic's reads again on
+its `changed` event, and reads every topic again when a stream opens, because `changed` has no event
+ID and a closed stream misses it.
+
+Two reads change with no write and have no topic of their own, so the tab reads them again on a
+timer: the task list, at the time its own answer gives, and the stuck forgets. Roots such as
+`sessions` and `devices` have no topic at all. See [Topics](#topics) for each.
 
 ```mermaid
 flowchart LR
@@ -72,9 +75,10 @@ interval and the idle limit, and a test asserts that 3 keepalive intervals fit i
 
 ## Topics
 
-A topic is a root of the web client's query keys, one to one. The contract's `liveTopicSchema` lists
-them, and a test fails when a topic names no query-key root, or when a root that a topic covers has
-no topic.
+A topic is the name of one root of the web client's query keys, and no two topics share a root. The
+contract's `liveTopicSchema` holds the list. A root can lack a topic, and the contract test keeps a
+list of those unfollowed roots, `erasure` among them. The test fails when a topic matches no root,
+or when a root has neither a topic nor a place on that list.
 
 | Topic         | Reads under the root                             |
 | ------------- | ------------------------------------------------ |
@@ -82,6 +86,7 @@ no topic.
 | `spend`       | `spend.read`                                     |
 | `backups`     | `backups.readNotice`                             |
 | `approvals`   | `approvals.listItems`, `approvals.readProposals` |
+| `calls`       | `calls.get`                                      |
 | `computer`    | `computer.readHandover`                          |
 | `tasks`       | `tasks.list`, `tasks.read`, `tasks.listEnded`    |
 | `triggers`    | `triggers.report`                                |
@@ -90,28 +95,32 @@ no topic.
 | `notebook`    | the notebook's reads                             |
 | `images`      | `images.list`                                    |
 
-Each module that owns record kinds gives the topics each kind changes, and the server registers them
-with the log through `registerRecordTopics` when it starts the writer. Every kind has an entry, an
-empty list included, and a test walks every kind the modules declare and fails on a kind with none.
-The log marks the topics of every record a transaction appends. A write that creates a task marks
-`tasks` and `definitions`, because a new task can belong to a definition. A trigger's fire or skip
-marks `tasks`, `triggers` and `definitions`, because it moves the watermark that the next run of a
-definition reads. A trigger's arm or defer marks `triggers` and `definitions` for the same reason.
+Each module that owns record kinds declares the topics each kind changes, and the server registers
+them with the log through `registerRecordTopics` when it starts the writer. Every kind has an entry,
+an empty list included, and a test walks every kind the modules declare and fails on a kind with
+none. The log marks the topics of every record a transaction appends. A write that creates a task
+marks `tasks` and `definitions`, because a new task can belong to a definition. A trigger's fire or
+skip marks `tasks`, `triggers` and `definitions`, because it moves the watermark that the next run
+of a definition reads. A trigger's arm or defer marks `triggers` and `definitions` for the same
+reason.
 
 Two other marks cover a change with no record. `markChanged(tx, topics)` adds topics to the commit
 of a transaction, and a transaction that rolls back drops them. `publishChanged(writer, topics)`
 announces a change that no write made. The spend watcher calls it when the stop it reads, or whether
 the gateway answers, differs from its last read.
 
-A test for each topic makes the change and asserts that an open stream receives `changed` with that
-topic.
+Each topic has a test that makes the change and asserts that an open stream receives `changed` with
+that topic.
 
-A task due on a schedule moves in the task list with no write, so no topic announces it.
-`tasks.list` answers `changesAt`, the earliest next run of a listed task, and the client reads the
-list again at that time.
+A call has no stream of its own. The `calls` topic reaches a tab through the same stream as every
+other topic, and the client reads `calls.get` again on it.
 
-A forget turns stuck once it stays open long enough, with no write, so the `erasure` root has no
-topic, and the web client reads `erasure.readStuck` again on a timer.
+A task that comes due on a schedule changes the task list with no write, so no topic announces it.
+`tasks.list` returns `changesAt`, the earliest next run of a listed task, and the client reads the
+list again at that time, besides reading it on the `tasks` topic.
+
+A forget turns stuck once it stays open long enough, with no write. The `erasure` root has no topic,
+and the web client reads `erasure.readStuck` again on a timer.
 
 ## The client registry
 

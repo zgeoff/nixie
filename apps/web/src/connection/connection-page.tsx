@@ -6,6 +6,7 @@ import { css } from '../styled-system/css';
 import { useNixieClient } from '../utils/use-nixie-client';
 import { ConnectButton } from './connect-button';
 import { ConnectionForget } from './connection-forget';
+import { DrivePicker } from './drive-picker';
 import { formatConnectionStatus } from './format-connection-status';
 import { MissingScopesNotice } from './missing-scopes-notice';
 
@@ -62,6 +63,7 @@ export function ConnectionPage(props: ConnectionPageProps): ReactNode {
             <dd>{connection.scopes.length === 0 ? 'none' : connection.scopes.join(', ')}</dd>
           </dl>
           <MissingScopesNotice connection={connection} />
+          <DrivePicker connection={connection} />
           <div className={section}>
             {connection.status === 'needs_consent' && connection.missing.length === 0 ? (
               <ConnectButton connection={connection.connection} label="Consent again" />

@@ -5,6 +5,8 @@ import { signedIn } from './signed-in';
 const checkedAction = signedIn.errors(reusedIDErrors);
 const callIDSchema = z.string().min(1).max(64);
 const callStateSchema = z.enum(['ringing', 'connecting', 'live', 'ended']);
+const endedBySchema = z.enum(['you', 'nixie', 'budget', 'missed', 'declined', 'dropped']);
+const reconnectCauseSchema = z.enum(['session_limit', 'dropped', 'restart']);
 
 const speechUnavailable = {
   SPEECH_UNAVAILABLE: { message: 'This nixie has no speech layer to call through', status: 503 },
@@ -28,10 +30,35 @@ export const callsContract = {
       CALL_RUNNING: { message: 'A call is already running', status: 409 },
     })
     .input(z.object({ clientActionID: z.uuid() }))
-    .output(z.object({ callID: callIDSchema, state: z.literal('connecting') })),
+    .output(
+      z.object({
+        callID: callIDSchema,
+        state: z.literal('connecting'),
+
+        // the call's own thread, which its proposals sit on
+        thread: z.string().min(1).max(200),
+      }),
+    ),
+
+  // Reads one call as the carrying device needs it: its state, who ended it, and whether it waits
+  // for a fresh `connect` because its speech session ended or went with a restart.
+  get: signedIn
+    .errors({ CALL_NOT_FOUND: { message: 'No call has this ID', status: 404 } })
+    .input(z.object({ callID: callIDSchema }))
+    .output(
+      z.object({
+        callID: callIDSchema,
+        state: callStateSchema,
+        endedBy: endedBySchema.nullable(),
+
+        // set while a live call needs a new offer from the carrying device, with the reason
+        reconnect: reconnectCauseSchema.nullable(),
+      }),
+    ),
 
   // Opens the call's speech session from the device's WebRTC offer, from the carrying session
-  // alone. The first minute of the call charges here.
+  // alone. The first minute of the call charges here. On a live call that waits for a new offer,
+  // it moves the call to the new session and charges nothing.
   connect: signedIn
     .errors({
       ...speechUnavailable,
@@ -51,9 +78,10 @@ export const callsContract = {
     .input(z.object({ callID: callIDSchema, sdpOffer: z.string().min(1).max(65_536) }))
     .output(z.object({ sdpAnswer: z.string().min(1) })),
 
-  // Ends the call from the device side. A call that has ended answers the same way.
+  // Ends the call from the device side. A call that has ended answers the same way. `endedBy` is
+  // `you` only when this request ended the call; a call the server ended first keeps its reason.
   hangUp: checkedAction
     .errors({ CALL_NOT_FOUND: { message: 'No call has this ID', status: 404 } })
     .input(z.object({ callID: callIDSchema, clientActionID: z.uuid() }))
-    .output(z.object({ callID: callIDSchema, state: callStateSchema })),
+    .output(z.object({ callID: callIDSchema, state: callStateSchema, endedBy: endedBySchema })),
 };

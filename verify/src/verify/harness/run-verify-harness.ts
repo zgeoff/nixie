@@ -15,11 +15,18 @@ import {
   startFakeGoogleSite,
 } from '@heynixie/server/test-utils';
 import type { ScriptedModel } from '@heynixie/testing';
-import { createBuiltWeb, createFrontProxy, readWebBuild } from '@heynixie/web/test-utils';
+import {
+  buildFakeMicrophoneScript,
+  buildLoopbackPeerScript,
+  createBuiltWeb,
+  createFrontProxy,
+  readWebBuild,
+} from '@heynixie/web/test-utils';
 import { approveHeldInstall } from './approve-held-install';
 import { approveHeldMcp } from './approve-held-mcp';
 import { approveHeldRegion } from './approve-held-region';
 import { buildScriptedReplies } from './build-scripted-replies';
+import { collectGuestAddresses } from './collect-guest-addresses';
 import { localMemoryConfig } from './local-memory-config';
 import { readLastModelInput } from './read-last-model-input';
 import type { CallState } from './run-call-step';
@@ -175,6 +182,14 @@ export async function runVerifyHarness(): Promise<void> {
   const front = createFrontProxy({
     apiURL: api.url,
     webURL: web.url,
+
+    // a browser that has no microphone gets a silent one, and its peer connection an end that
+    // answers, so a call can start and connect in the browser
+    ...(isCallsOn
+      ? {
+          headScript: `${buildFakeMicrophoneScript({ answer: 'allow' })}\n${buildLoopbackPeerScript()}`,
+        }
+      : {}),
     onAPIRequest: (pathname) => {
       if (pathname === '/rpc/live/follow') {
         liveOpens.count += 1;
@@ -299,6 +314,25 @@ export async function runVerifyHarness(): Promise<void> {
       };
     },
     readLiveOpens: () => liveOpens.count,
+    readCalendarWrites: () => ({
+      writes: google.calendar.writes.map((write) => {
+        const event = google.calendar.events.get(write.calendar)?.get(write.id);
+
+        return {
+          method: write.method,
+          sendUpdates: write.sendUpdates,
+          title: typeof event?.['summary'] === 'string' ? event['summary'] : '',
+          guests: collectGuestAddresses(event?.['attendees']),
+        };
+      }),
+    }),
+    readDriveFiles: () => ({
+      files: [...google.drive.files.values()].map((file) => ({
+        name: file.name,
+        mimeType: file.mimeType,
+        text: new TextDecoder().decode(file.bytes),
+      })),
+    }),
     readGmailSent: () => ({
       sent: google.gmail.sent.map((mail) => ({
         to: mail.headers.find(([name]) => name.toLowerCase() === 'to')?.[1] ?? '',

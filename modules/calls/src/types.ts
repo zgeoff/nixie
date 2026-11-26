@@ -114,9 +114,28 @@ export interface CallRuntime {
 
   // the calls whose turn asked to hang up, which end once the turn's answer is sent
   readonly hangUps: Set<string>;
+
+  // the live calls that wait for a new offer from the carrying device, by call ID
+  readonly reconnects: Map<string, ReconnectWait>;
+}
+
+export type ReconnectCause = 'session_limit' | 'dropped' | 'restart';
+
+interface ReconnectWait {
+  readonly cause: ReconnectCause;
+  readonly sinceMs: number;
+}
+
+// Where a speech event comes from: the session that made it, and the signal that ends its watch.
+export interface SpeechOrigin {
+  readonly sessionID: string;
+  readonly signal: AbortSignal;
 }
 
 export interface HandOff {
+  // the speech session that made the hand-off, which alone may take its answer
+  readonly sessionID: string;
+
   // set once the module has sent nixie's answer for the hand-off
   isAnswered: boolean;
 

@@ -5,9 +5,9 @@ account from Settings → Connections. nixie keeps the account's refresh token s
 Once you connect an account, the model can use the
 [Gmail tools](../architecture/connectors/gmail-tools.md) to search, read and label your mail, write
 drafts and send mail. It can also wake the conversation or a task when new mail matches a rule it
-sets. The tools for [Calendar](https://linear.app/zgeoff/issue/GEO-1826) and
-[Drive](https://linear.app/zgeoff/issue/GEO-1827) come later. To learn how consent, refresh and
-Forget work, read the [Google connections](../architecture/connectors/google-connections.md) doc.
+sets. With the [Calendar and Drive tools](../architecture/connectors/calendar-drive-tools.md) it can
+read and change your events and the Drive files you choose. To learn how consent, refresh and Forget
+work, read the [Google connections](../architecture/connectors/google-connections.md) doc.
 
 Settings → Connections shows the same 6 steps as this guide, from "Create a Google Cloud project" to
 "Connect an account", with your nixie address filled in where a step needs it.
@@ -91,7 +91,8 @@ scope, and a button to ask Google again. The conversation never shows that notic
 ## What the assistant does with your mail
 
 - nixie searches and reads your mail without asking you. It asks Gmail at each call and keeps no
-  copy of your mail beyond what a call returned.
+  copy of your mail beyond what a call returned. The one exception is the sender and subject of a
+  mail that matches a wake rule, described below.
 - nixie labels mail and writes drafts without asking you, because a starter rule allows writes to a
   service. When you add a rule that asks first, nixie asks you. A draft stays in your account for
   you to open.
@@ -108,6 +109,26 @@ scope, and a button to ask Google again. The conversation never shows that notic
 - When nixie sends a mail, it also sets a wake rule for a reply in that thread, for 7 days by
   default. The card shows when that rule expires.
 - A mail nixie sends carries no header with nixie's name in it.
+
+## What the assistant does with your calendar and Drive
+
+- nixie reads your calendars and events without asking you, and asks Google at each call.
+- nixie adds, changes and cancels an event that has no guest without asking you, because a starter
+  rule allows writes to a service. Google emails no one for these.
+- Before nixie invites, changes or cancels an event with guests, or answers an invitation, it asks
+  you on a card that shows the event and each guest, unless your policy already allows the
+  destinations, such as the organizer of an event you answer. Google emails the guests only after
+  you approve or the policy allows it. nixie never changes an event that someone else organizes,
+  apart from your answer to its invitation.
+- nixie sees only the Drive files that you choose and the files it makes. To choose files, select
+  Choose Drive files on a connection's page and pick them in Google's window. The button needs the
+  picker key and the project number from your client. The page lists each file that nixie cannot
+  see, which is usually a file chosen under another Google account.
+- nixie creates a Drive file in your My Drive, shared with no one. It replaces the content of a file
+  it can see only when no one else can read the file.
+- When nixie can't tell whether an event or file change went through, it waits 5 minutes, then looks
+  for it. A change to an event with guests that it can't find goes to you on a card, and nixie
+  doesn't send it again until you answer.
 
 ## The unverified-app warning
 
@@ -138,3 +159,26 @@ To use the account again, consent again.
 
 After a Forget whose revocation reads "refused" or "unknown", open your Google Account's third-party
 access page, find the app by the name you gave it, and remove its access.
+
+## What a change to this guide must keep true
+
+Change this guide only together with the code that makes these facts true, and keep the matching
+steps in Settings → Connections the same.
+
+- nixie's address starts with `https://`, has a domain name and matches the OAuth client exactly,
+  because Google checks it.
+- The only authorised redirect URI is the nixie address plus `/connections/google/return`.
+- The app is published to production, because testing status ends each consent after 7 days.
+- One Google Cloud project serves one nixie, because a revocation reaches every client of a project.
+- All 4 APIs are on, or the scope shows as missing.
+- Remove the client is refused while a connection that is not forgotten uses it.
+- Reads need no card. A send to an address you haven't allowed, and a Calendar change with guests or
+  an answer to an invitation that your policy doesn't allow, wait for your answer on a card.
+- nixie never changes an event that someone else organizes, apart from your answer to its
+  invitation. It replaces a Drive file's content only when no one else can read the file.
+- After a send or change whose outcome is unclear, nixie waits 5 minutes and looks for it. A change
+  to an event with guests that it can't find goes to you on a card and isn't sent again until you
+  answer.
+- The poll interval is 2 minutes and the wake rule after a send lasts 7 days, both by default.
+- Forget revokes the grant, ends the wake rules, erases the kept sender and subject, deletes the
+  keys, and reports Erasure, Revocation and Key backups.

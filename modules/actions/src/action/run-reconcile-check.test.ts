@@ -268,6 +268,25 @@ test('it hands the check the snapshot that the queued call was recorded under', 
   expect(stub.checks.map((check) => check.snapshotHash)).toStrictEqual(['sha256:test']);
 });
 
+test('it hands the check the time the queue recorded the action, as it did the attempt', async () => {
+  const ctx = await setupTest();
+
+  const stub = buildStubConnector(() => ({ kind: 'ambiguous', reason: 'timed out' }), {
+    reconcile: { kind: 'check', tool: 'test.send' },
+    answerCheck: () => ({ kind: 'inconclusive' }),
+  });
+
+  await ctx.runNext(stub.connector);
+
+  ctx.clock.advance(60_000);
+
+  await ctx.runNext(stub.connector);
+
+  expect(stub.checks.map((check) => check.queuedAt)).toStrictEqual(
+    stub.calls.map((call) => call.queuedAt),
+  );
+});
+
 test('it retries the send when the check does not find it', async () => {
   const ctx = await setupTest();
 

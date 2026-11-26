@@ -632,3 +632,82 @@ test('it gives the reply the output tokens that price it', () => {
     { text: 'The heron left.', usage: { input_tokens: 10, output_tokens: 125_000 } },
   ]);
 });
+
+test('it lists the events of the span, then invites the guest to the new event', () => {
+  const replies = buildScriptedReplies({
+    text: 'The invitation waits for your approval.',
+    calendarInvite: {
+      title: 'Lunch',
+      start: '2026-12-02T12:00:00+11:00',
+      end: '2026-12-02T13:00:00+11:00',
+      guest: 'lee@example.org',
+    },
+  });
+
+  expect(replies).toStrictEqual([
+    {
+      toolUse: {
+        name: 'mcp__nixie__calendar_list_events',
+        input: { from: '2026-12-02T12:00:00+11:00', to: '2026-12-02T13:00:00+11:00' },
+      },
+    },
+    {
+      toolUse: {
+        name: 'mcp__nixie__calendar_create_event_with_guests',
+        input: {
+          title: 'Lunch',
+          start: '2026-12-02T12:00:00+11:00',
+          end: '2026-12-02T13:00:00+11:00',
+          guests: ['lee@example.org'],
+        },
+      },
+    },
+    { text: 'The invitation waits for your approval.' },
+  ]);
+});
+
+test('it searches the files, then creates the text file once the search listed a file', () => {
+  const replies = buildScriptedReplies({
+    text: 'The file is made.',
+    driveCreate: { query: 'plan', name: 'Packing list', text: 'Passport.' },
+  });
+
+  const body = {
+    messages: [
+      {
+        role: 'user',
+        content:
+          '{"result":{"files":[{"file":"d1.abc","name":"Trip plan","type":"doc"}],"next":null,"note":null}}',
+      },
+    ],
+  };
+
+  const inputs = replies.map((reply) => {
+    const input = 'toolUse' in reply ? reply.toolUse?.input : undefined;
+
+    return typeof input === 'function' ? input(body) : input;
+  });
+
+  expect(inputs).toStrictEqual([
+    { query: 'plan' },
+    { name: 'Packing list', text: 'Passport.', as: 'text' },
+    undefined,
+  ]);
+});
+
+test.each([
+  ['an empty list', '{"result":{"files":[],"next":null,"note":"no files"}}'],
+  ['an error', '{"error":"the search failed"}'],
+])('it fails the create of a drive file when the search returned %s', (_title, content) => {
+  const replies = buildScriptedReplies({
+    text: 'The file is made.',
+    driveCreate: { query: 'plan', name: 'Packing list', text: 'Passport.' },
+  });
+
+  const [, create] = replies;
+  const input = create !== undefined && 'toolUse' in create ? create.toolUse?.input : undefined;
+
+  expect(() =>
+    typeof input === 'function' ? input({ messages: [{ role: 'user', content }] }) : null,
+  ).toThrow('lists no file');
+});

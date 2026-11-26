@@ -79,7 +79,12 @@ export function buildFakeSpeechLayer(): FakeSpeechLayer {
       sessions.set(sessionID, { queue: [], waiters: [], isClosed: false });
       calls.push({ method: 'open', input, sessionID });
 
-      return Promise.resolve({ sdpAnswer: `fake-answer-${sessions.size}`, sessionID });
+      return Promise.resolve({
+        sdpAnswer: input.sdpOffer.startsWith('v=0')
+          ? toMirroredAnswer(input.sdpOffer)
+          : `fake-answer-${sessions.size}`,
+        sessionID,
+      });
     },
     answer: (sessionID, handOffID, text, final) => {
       calls.push({ method: 'answer', sessionID, handOffID, text, final });
@@ -108,6 +113,12 @@ export function buildFakeSpeechLayer(): FakeSpeechLayer {
     },
     events: (sessionID) => streamEvents(sessions.get(sessionID)),
   };
+}
+
+// A browser's offer, answered as the same peer in the active role. A browser applies it without
+// error, so a call screen under test can run a real peer connection, which never carries audio.
+function toMirroredAnswer(sdpOffer: string): string {
+  return sdpOffer.replaceAll('a=setup:actpass', 'a=setup:active');
 }
 
 async function* streamEvents(session: Session | undefined): AsyncGenerator<SpeechEvent> {

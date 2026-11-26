@@ -95,6 +95,54 @@ was read at, and a dropped stream reconnects from the last sequence it delivered
 drops the page with the stream's records, so a return reads a fresh page and never shows the text of
 a message forgotten in between.
 
+## The call
+
+The web client starts, holds and ends a voice call, which [Voice calls](./calls.md) describes on the
+server. A `CallProvider` above the router holds the call: its microphone, its peer connection to the
+speech layer and its state. A change of route never ends the call, and a page load does.
+
+- **The call screen, `/call`.** It starts a call. The browser asks for the microphone with echo
+  cancellation, noise suppression and gain control on, then the client calls `calls.start`, makes an
+  offer once the peer connection has gathered its addresses, sends it with `calls.connect` and
+  applies the answer. The screen shows the connection state, the length of the call, a mute button
+  that turns the microphone track off, and a hang up button that calls `calls.hangUp`. The call ends
+  with `endedBy: 'you'`. When the reply shows that the server had already ended the call, the call
+  keeps the server's own `endedBy` and reason, such as the budget. Hang up releases the microphone
+  and the peer at once, and nothing that was pending then changes the call. A refused microphone, or
+  a refused start, shows what the user can do about it, and no call starts.
+- **The call bar.** On every route but the call screen, a bar shows while a call connects, is live
+  or reconnects. It holds the state, the time, mute, hang up and a link back to the call screen.
+- **Following the call.** While a call runs, the provider keeps the live stream open and reads
+  `calls.get` under the `calls` topic. A call the server ended, such as one that ran out of budget,
+  ends on the screen with the reason.
+- **Reconnect.** When `calls.get` reports a `reconnect` cause, or the peer connection fails, the
+  client sends an ICE-restart offer on the open peer connection, or on a new one when the old one
+  failed, with a fresh `calls.connect`. A refusal, `CALL_CONNECTED` included, gets another try after
+  a pause. The call is live again only once an answer is applied and the connection is up. When a
+  call is not back within the reconnect limit, counted from the first loss (set as
+  `reconnectLimitMs` in
+  [`create-call-session.ts`](../../../apps/web/src/call/create-call-session.ts)), the client ends it
+  on the screen as `dropped`, releases the microphone and the peer, and hangs up the call on the
+  server. A refusal of `CALL_NOT_FOUND` or `NOT_CARRYING_SESSION` ends it the same way at once. The
+  client discards a read of the call from before a reconnect and reads again, so a finished
+  reconnect does not start another. After a server restart the live stream's first open reads every
+  topic again, which is how the client learns that the call waits.
+- **Approvals during a call.** The call screen lists the cards of the proposals on the call's
+  thread, read through `approvals.listItems` and `approvals.readProposals`, so a card follows its
+  proposal through an answer. The provider holds the IDs the screen has seen for the call's thread,
+  so leaving the screen and coming back keeps the cards. Only the device that carries the call has
+  the call's thread, so the card shows on its call screen and on no other device's. The card stays
+  on the approval digest. nixie sends no push for it.
+
+The state reads "Connected" only while the peer connection reports `connected`, and "Connecting"
+before that. A call that a hang-up, an end or a give-up closed ignores each answer that arrives
+later, and a page that goes away with the call open stops the microphone and the peer.
+
+The microphone and the peer connection come from a `CallEnvironment`, so a test gives the client a
+stand-in for each. A browser suite gives the page a silent microphone, and a second peer connection
+in the page that answers the first, through scripts that the test front proxy puts at the head of
+each HTML page. The page's peer then reaches `connected` only when its offer really works.
+
 ## The live stream
 
 The web client holds one `live.follow` stream in each tab, above every page, so a change of route

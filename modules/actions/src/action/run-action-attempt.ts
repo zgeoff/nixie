@@ -252,6 +252,7 @@ async function runConnector(
       destinations: call.destinations,
       replyTargets: call.replyTargets,
       attemptStartedAt: call.startedAt,
+      queuedAt: call.queued.queuedAtMs,
       actionHash: attempt.action.action_hash,
       deadlineAt: attempt.action.deadline_at,
     });

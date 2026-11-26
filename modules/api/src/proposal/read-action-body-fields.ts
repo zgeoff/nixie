@@ -1,4 +1,4 @@
-import { readGmailBodyFields } from '@heynixie/connectors';
+import { readGoogleBodyFields } from '@heynixie/connectors';
 import type { Log } from '@heynixie/log';
 import { readMailBodyFields } from '@heynixie/mail';
 import type { BodyFields, BodyFieldsRequest } from '@heynixie/policy';
@@ -16,6 +16,7 @@ export async function readActionBodyFields(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   request: BodyFieldsRequest,
   mail: APISettings['mail'],
+  defaultZone: string,
 ): Promise<BodyFields> {
   const sends =
     mail === undefined
@@ -26,10 +27,10 @@ export async function readActionBodyFields(
     return sends;
   }
 
-  const gmail = await readGmailBodyFields(log, request);
+  const google = await readGoogleBodyFields(log, request, defaultZone);
 
-  if (gmail.status !== 'none') {
-    return gmail;
+  if (google.status !== 'none') {
+    return google;
   }
 
   const forget = await readForgetBodyFields(log, request);

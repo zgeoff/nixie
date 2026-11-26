@@ -1,6 +1,6 @@
 import { match } from 'ts-pattern';
-import type { Call, CallsContext, HandOff, SpeechEvent } from '../types';
-import { endCall } from '../utils/end-call';
+import type { Call, CallsContext, HandOff, SpeechEvent, SpeechOrigin } from '../types';
+import { startReconnectWait } from '../utils/start-reconnect-wait';
 import { startHoldingLine } from './start-holding-line';
 import { writeHandOff } from './write-hand-off';
 import { writeHeardCut } from './write-heard-cut';
@@ -8,12 +8,12 @@ import { writeHeardLine } from './write-heard-line';
 
 // Takes one event of the call's speech session into the call's thread: a `heard` line is the user's
 // message, small talk waits for the next hand-off, a hand-off starts the turn, a cut interrupts it
-// or marks the reply, and a dropped session ends the call.
+// or marks the reply, and a dropped session or one near its limit waits for the device's new offer.
 export function runSpeechEvent(
   context: CallsContext,
   call: Call,
   event: SpeechEvent,
-  signal: AbortSignal,
+  origin: SpeechOrigin,
 ): Promise<void> {
   return match(event)
     .with({ kind: 'heard' }, (heard) => writeHeardLine(context, call, heard.text))
@@ -27,11 +27,20 @@ export function runSpeechEvent(
 
       return Promise.resolve();
     })
-    .with({ kind: 'hand_off' }, (handOff) => runHandOff(context, call, handOff, signal))
+    .with({ kind: 'hand_off' }, (handOff) => runHandOff(context, call, handOff, origin))
     .with({ kind: 'cut' }, (cut) => runCut(context, call, cut))
-    .with({ kind: 'session_ending' }, () => Promise.resolve())
-    .with({ kind: 'dropped' }, async () => {
-      await endCall(context, call.callID, 'dropped');
+    .with({ kind: 'session_ending' }, () => {
+      startReconnectWait(context, call.callID, 'session_limit');
+
+      return Promise.resolve();
+    })
+    .with({ kind: 'dropped' }, () => {
+      // the carrying device gets 30 s to send a new offer before the sweep ends the call
+      context.sessions.delete(call.callID);
+
+      startReconnectWait(context, call.callID, 'dropped');
+
+      return Promise.resolve();
     })
     .exhaustive();
 }
@@ -40,7 +49,7 @@ async function runHandOff(
   context: CallsContext,
   call: Call,
   handOff: Extract<SpeechEvent, { kind: 'hand_off' }>,
-  signal: AbortSignal,
+  origin: SpeechOrigin,
 ): Promise<void> {
   const smallTalk = context.runtime.smallTalk.get(call.callID) ?? [];
 
@@ -50,7 +59,13 @@ async function runHandOff(
 
   const holding = new AbortController();
 
-  handOffs.set(handOff.handOffID, { isAnswered: false, replyRecordID: null, holding });
+  handOffs.set(handOff.handOffID, {
+    sessionID: origin.sessionID,
+    isAnswered: false,
+    replyRecordID: null,
+    holding,
+  });
+
   context.runtime.handOffs.set(call.callID, handOffs);
 
   await writeHandOff(context, call, {
@@ -64,7 +79,7 @@ async function runHandOff(
     context,
     call,
     handOff.handOffID,
-    AbortSignal.any([signal, holding.signal]),
+    AbortSignal.any([origin.signal, holding.signal]),
   );
 }
 

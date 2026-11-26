@@ -1,6 +1,10 @@
-import { expect, test } from 'bun:test';
-import { readCall } from '@heynixie/calls';
+import { expect, onTestFinished, test } from 'bun:test';
+import { readCall, startCall } from '@heynixie/calls';
 import { registerFaultPointAction } from '@heynixie/memory/test-utils';
+import invariant from 'tiny-invariant';
+import { z } from 'zod';
+import { runComputerAction } from '../computer/run-computer-action';
+import { verifySessionToken } from '../session/verify-session-token';
 import { buildTestClient } from '../test-utils/build-test-client';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { startTestAPI } from '../test-utils/start-test-api';
@@ -17,7 +21,11 @@ test('#calls.start opens a call that the calling session carries', async () => {
   const ctx = await setupTest();
   const started = await ctx.client.calls.start({ clientActionID: crypto.randomUUID() });
 
-  expect(started).toStrictEqual({ callID: expect.any(String), state: 'connecting' });
+  expect(started).toStrictEqual({
+    callID: expect.any(String),
+    state: 'connecting',
+    thread: expect.any(String),
+  });
 });
 
 test('#calls.start answers a retry of one action ID with the same call', async () => {
@@ -113,6 +121,82 @@ test('#calls.connect answers the offer of the carrying session', async () => {
   expect(connected).toStrictEqual({ sdpAnswer: 'fake-answer-1' });
 });
 
+test('#calls.get reads a live call as one that waits for no offer', async () => {
+  const ctx = await setupTest();
+  const started = await ctx.client.calls.start({ clientActionID: crypto.randomUUID() });
+
+  await ctx.client.calls.connect({ callID: started.callID, sdpOffer: 'offer' });
+
+  const connected = await ctx.client.calls.get({ callID: started.callID });
+
+  expect(connected).toStrictEqual({
+    callID: started.callID,
+    state: 'live',
+    endedBy: null,
+    reconnect: null,
+  });
+});
+
+test('#calls.start answers a retry of a call started before the call screen with the thread of the call', async () => {
+  const ctx = await setupTest();
+
+  const clientActionID = crypto.randomUUID();
+
+  const caller = await verifySessionToken(ctx.context, ctx.owner.token);
+
+  const calls = ctx.calls?.context;
+
+  invariant(caller !== null && calls !== undefined, 'the owner session verifies');
+
+  const earlier = await runComputerAction(
+    ctx.context,
+    caller,
+    { procedure: 'calls.start', clientActionID, input: {} },
+    async () => {
+      const result = await startCall(calls, { carryingSession: caller.identityID });
+
+      invariant(result.status === 'started', 'the test call starts');
+
+      return { callID: result.callID };
+    },
+  );
+
+  invariant(earlier.status === 'done', 'the earlier start finished');
+
+  const call = await readCall(ctx.writer.db, z.string().parse(earlier.result['callID']));
+  const retry = await ctx.client.calls.start({ clientActionID });
+
+  invariant(call !== null, 'the earlier start made a call');
+
+  expect(retry).toStrictEqual({ callID: call.callID, state: 'connecting', thread: call.taskID });
+});
+
+test('#calls.get reads who ended a call', async () => {
+  const ctx = await setupTest();
+  const started = await ctx.client.calls.start({ clientActionID: crypto.randomUUID() });
+
+  await ctx.client.calls.hangUp({ callID: started.callID, clientActionID: crypto.randomUUID() });
+
+  const ended = await ctx.client.calls.get({ callID: started.callID });
+
+  expect(ended).toStrictEqual({
+    callID: started.callID,
+    state: 'ended',
+    endedBy: 'you',
+    reconnect: null,
+  });
+});
+
+test('#calls.get refuses a call that does not exist', async () => {
+  const ctx = await setupTest();
+
+  const refused = ctx.client.calls.get({ callID: 'nothing' });
+
+  await Promise.allSettled([refused]);
+
+  expect(refused).rejects.toMatchObject({ code: 'CALL_NOT_FOUND' });
+});
+
 test('#calls.connect refuses a session that does not carry the call', async () => {
   const ctx = await setupTest();
   const started = await ctx.client.calls.start({ clientActionID: crypto.randomUUID() });
@@ -149,7 +233,54 @@ test('#calls.hangUp ends the call, and answers a retry the same way', async () =
     clientActionID: crypto.randomUUID(),
   });
 
-  expect(again).toStrictEqual({ callID: started.callID, state: 'ended' });
+  expect(again).toStrictEqual({ callID: started.callID, state: 'ended', endedBy: 'you' });
+});
+
+test('it signals a dropped speech session on the live stream, and a new offer sent after the signal reconnects the call', async () => {
+  const ctx = await setupTest();
+  const started = await ctx.client.calls.start({ clientActionID: crypto.randomUUID() });
+
+  await ctx.client.calls.connect({ callID: started.callID, sdpOffer: 'offer' });
+
+  const stream = await ctx.client.live.follow({});
+
+  onTestFinished(() => stream.return(undefined));
+
+  const opened = await stream.next();
+
+  invariant(ctx.calls !== null, 'the test turns calls on');
+
+  ctx.calls.speech.emit('fake-session-1', { kind: 'dropped' });
+
+  let signalled = false;
+
+  while (!signalled) {
+    const event = await stream.next();
+
+    if (event.done === true) {
+      break;
+    }
+
+    signalled = event.value.kind === 'changed' && event.value.topics.includes('calls');
+  }
+
+  expect(signalled).toBe(true);
+
+  const waiting = await ctx.client.calls.get({ callID: started.callID });
+  const answer = await ctx.client.calls.connect({ callID: started.callID, sdpOffer: 'offer-2' });
+  const after = await ctx.client.calls.get({ callID: started.callID });
+
+  expect({
+    opened: opened.value,
+    waiting: waiting.reconnect,
+    answer,
+    after: after.reconnect,
+  }).toStrictEqual({
+    opened: { kind: 'opened' },
+    waiting: 'dropped',
+    answer: { sdpAnswer: 'fake-answer-2' },
+    after: null,
+  });
 });
 
 test('#calls.hangUp refuses a call that does not exist', async () => {
