@@ -35,6 +35,9 @@ export interface LabelWrite {
   readonly approval?: {
     readonly envelope: Approval;
     readonly record: RecordInput;
+
+    // runs in the same transaction, after the approval record and the write it approves
+    readonly writeSettlement?: (tx: Transaction<unknown>) => Promise<void>;
   };
 }
 
@@ -77,6 +80,8 @@ export async function writeLabelsInTransaction(
     ...(write.approval === undefined ? [] : [write.approval.record]),
     labelled,
   ]);
+
+  await write.approval?.writeSettlement?.(tx);
 
   parts.labels.set(write.itemID, write.labels);
 

@@ -38,7 +38,7 @@ export function mapSkillProposalRecord(record: EnvelopeRecord): ProposalChange |
       type: 'close',
       proposalID: approved.proposalID,
       state: 'approved',
-      usedBy: null,
+      usedBy: approved.approvalID ?? null,
       answeredBy: approved.identityID ?? null,
     };
   }

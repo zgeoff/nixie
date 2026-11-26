@@ -1,5 +1,6 @@
 import { runPendingRecordForgets } from '@heynixie/api';
 import { startMemory } from '../cli/start-memory';
+import { buildProposalConfig } from '../deployment/build-proposal-config';
 import { startErasureRunner } from '../erasure/start-erasure-runner';
 import { startErasureWatch } from '../erasure/start-erasure-watch';
 import { runTurnInputForget } from '../turn/run-turn-input-forget';
@@ -45,7 +46,12 @@ export const memoryPartDeclarations: readonly AnyPartDeclaration<ServerPartValue
     needs: ['inputs', 'server_parts', 'connections'],
     uses: ['tools'],
     start: makeRetriedStart('mcp', (parts, reader) =>
-      startMcpPart(parts, reader.get('inputs').options.config.mcp, reader),
+      startMcpPart(
+        parts,
+        reader.get('inputs').options.config.mcp,
+        reader,
+        buildProposalConfig(reader.get('inputs').options.config),
+      ),
     ),
   },
   {

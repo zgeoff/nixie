@@ -17,6 +17,7 @@ import { z } from 'zod';
 
 type LegacyKind =
   | 'skills.write_proposed'
+  | 'skills.write_approved'
   | 'prompts.override_proposed'
   | 'prompts.override_approved'
   | 'prompts.override_rejected';
@@ -93,7 +94,10 @@ async function setupTest() {
           buildProposalsProjection([mapSkillProposalRecord, mapPromptProposalRecord]),
         ],
       }),
-    forgetSameThing: () => sql`update proposals set same_thing = null`.execute(base.log.writer.db),
+    forgetSkillKeys: () =>
+      sql`update proposals set same_thing = null, used_by = null where family = 'skill'`.execute(
+        base.log.writer.db,
+      ),
   };
 }
 
@@ -102,6 +106,11 @@ test('it gives an upgraded database the same rows as a rebuild, down to the appr
 
   await ctx.writeSkillProposal('skill-1', 'notes');
   await ctx.writePromptProposal('prompt-1', 'compaction', 'conversation');
+
+  await ctx.write('skills.write_approved', 'conversation', {
+    proposalID: 'skill-1',
+    approvalID: 'skill-approval-1',
+  });
 
   await ctx.write('prompts.override_approved', 'conversation', {
     proposalID: 'prompt-1',
@@ -115,7 +124,7 @@ test('it gives an upgraded database the same rows as a rebuild, down to the appr
   await ctx.writePromptProposal('prompt-2', 'session', 'conversation');
   await ctx.writePromptProposal('prompt-3', 'compaction', 'task-1');
   await ctx.write('prompts.override_rejected', 'task-1', { proposalID: 'prompt-3' });
-  await ctx.forgetSameThing();
+  await ctx.forgetSkillKeys();
   await ctx.runMigration();
 
   const migrated = await ctx.readRows();
@@ -128,14 +137,14 @@ test('it gives an upgraded database the same rows as a rebuild, down to the appr
 
   const usedBy = await ctx.readUsedBy();
 
-  expect(usedBy).toStrictEqual([null, 'approval-1', null, null]);
+  expect(usedBy).toStrictEqual(['skill-approval-1', 'approval-1', null, null]);
 });
 
 test('it replaces a skill proposal that was open at the upgrade when the same change comes again', async () => {
   const ctx = await setupTest();
 
   await ctx.writeSkillProposal('skill-1', 'notes');
-  await ctx.forgetSameThing();
+  await ctx.forgetSkillKeys();
   await ctx.runMigration();
 
   await withWriteTransaction(ctx.log.writer, (tx) =>

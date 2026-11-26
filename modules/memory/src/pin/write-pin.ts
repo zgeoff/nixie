@@ -57,6 +57,8 @@ export function writePin(
               },
             ]),
       ]);
+
+      await approval?.writeSettlement?.(tx);
     }),
   );
 }

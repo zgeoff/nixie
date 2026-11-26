@@ -192,7 +192,6 @@ function buildVerdict(options: AttemptCheckOptions, facts: VerdictFacts): Attemp
       sources: facts.frame.sources,
     },
     deadlineAt: action.deadline_at,
-    now: options.clock.now(),
     reopen: { proposalID: facts.input.proposalID, actionID: action.action_id },
   });
 

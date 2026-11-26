@@ -4,6 +4,7 @@ export type {
 } from './action/build-action-proposal-input';
 
 export { buildActionProposalInput } from './action/build-action-proposal-input';
+export { writeActionProposal } from './action/write-action-proposal';
 export type { ConsentFacts, ConsentOptions } from './consent/check-consent';
 export { applyEffectOverride } from './effect/apply-effect-override';
 export type { EffectOverrideResult } from './effect/apply-effect-override';

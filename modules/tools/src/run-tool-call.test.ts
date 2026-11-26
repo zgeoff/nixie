@@ -5,11 +5,13 @@ import { readRecordAttachments, readRecords, writeRecordsInTransaction } from '@
 import type { EffectDeclaration, RuleEntry } from '@heynixie/policy';
 import { buildActionHash } from '@heynixie/policy';
 import { readStarterDecisionPoint, readStarterRules } from '@heynixie/policy/test-utils';
+import type { ProposalConfig } from '@heynixie/proposals';
+import { defaultProposalConfig } from '@heynixie/proposals';
 import { waitForCondition } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import { buildToolRegistry } from './build-tool-registry';
+import type { ToolCallOptions } from './call-record/tool-call-options';
 import { findToolDeclaration } from './policy-call/find-tool-declaration';
-import type { ToolCallOptions } from './run-tool-call';
 import { runToolCall } from './run-tool-call';
 import { buildCountingCallCap } from './test-utils/build-counting-call-cap';
 import { buildMockToolDefinition } from './test-utils/build-mock-tool-definition';
@@ -34,6 +36,8 @@ interface SetupConfig {
   readonly snapshotTools?: ReadonlyMap<string, EffectDeclaration>;
 
   readonly ownValues?: () => readonly string[];
+
+  readonly proposalConfig?: ProposalConfig;
 }
 
 async function setupTest(config: SetupConfig) {
@@ -73,6 +77,7 @@ async function setupTest(config: SetupConfig) {
     definitions: () => ({ snapshotHash: 'sha256:test' }),
     queue: queue.queue,
     queuedWaitMs: 10_000,
+    proposalConfig: config.proposalConfig,
     budgets,
     ...(config.ownValues === undefined ? {} : { readOwnValues: config.ownValues }),
   };
@@ -878,7 +883,7 @@ test('it hashes the action proposal of an ask over the whole input, whatever the
 
   const entries = await readRecords(ctx.log, { afterSequence: 0 });
 
-  expect(entries[1]?.record).toMatchObject({
+  expect(entries[2]?.record).toMatchObject({
     kind: 'policy.action_proposed',
     erasable: { status: 'readable', fields: { input: { query: 'old' } } },
   });
@@ -1352,6 +1357,7 @@ test('it writes one action proposal beside the call of an ask, and tells the mod
 
   expect(entries.map((entry) => entry.record.kind)).toStrictEqual([
     'tool_called',
+    'proposals.proposed',
     'policy.action_proposed',
     'tool_result',
   ]);
@@ -1403,7 +1409,7 @@ test('it records an ask with the cause, the proposal and a queued result with no
 
   expect(entries[0]?.record.promptCause).toBeNull();
 
-  expect(entries[1]?.record).toMatchObject({
+  expect(entries[2]?.record).toMatchObject({
     kind: 'policy.action_proposed',
     parent: 1,
     promptCause: 'ask_rule',
@@ -1411,7 +1417,7 @@ test('it records an ask with the cause, the proposal and a queued result with no
     erasable: { status: 'readable', fields: { input: { query: 'old' }, destinations: [] } },
   });
 
-  expect(entries[2]?.record.payload).toMatchObject({ outcome: 'queued', actionID: null });
+  expect(entries[3]?.record.payload).toMatchObject({ outcome: 'queued', actionID: null });
 });
 
 test('it denies a call with a fault when the decision point runs past its deadline', async () => {
@@ -2231,6 +2237,7 @@ test('it writes an action proposal for an ask rule on note when the snapshot dec
 
   expect(entries.map((entry) => entry.record.kind)).toStrictEqual([
     'tool_called',
+    'proposals.proposed',
     'policy.action_proposed',
     'tool_result',
   ]);
@@ -2274,6 +2281,7 @@ test('it holds a re-file that no rule allows as one action proposal, and stores 
 
   expect(entries.map((entry) => entry.record.kind)).toStrictEqual([
     'tool_called',
+    'proposals.proposed',
     'policy.action_proposed',
     'tool_result',
   ]);
@@ -2803,11 +2811,44 @@ test('it lapses the proposal of an ask at the deadline of the call when that com
 
   const entries = await readRecords(ctx.log, { afterSequence: 0 });
 
-  const proposed = entries.find((entry) => entry.record.kind === 'policy.action_proposed');
+  const proposed = entries.find((entry) => entry.record.kind === 'proposals.proposed');
   const deadlineAt = proposed?.record.payload['deadlineAt'];
 
   expect(proposed?.record.payload['lapsesAt']).toBe(deadlineAt);
   expect(typeof deadlineAt).toBe('number');
+});
+
+test('it gives the proposal of an ask the lapse that the config sets for actions', async () => {
+  const ctx = await setupTest({
+    tools: [
+      buildMockToolDefinition({
+        name: 'files_delete',
+        execution: 'queued',
+        declaration: { effects: ['delete'] },
+      }),
+    ],
+    proposalConfig: { lapseDays: { ...defaultProposalConfig.lapseDays, action: 1 } },
+  });
+
+  await runToolCall(
+    { tool: 'files_delete', input: { query: 'old' }, toolUseID: 'toolu_9' },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      logThread: 'task-1',
+      tools: ['files_delete'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  const entries = await readRecords(ctx.log, { afterSequence: 0, kinds: ['proposals.proposed'] });
+
+  const [proposed] = entries;
+
+  expect(proposed?.record.payload['lapsesAt']).toBe(
+    (proposed?.record.recordedAt.getTime() ?? 0) + 24 * 60 * 60 * 1000,
+  );
 });
 
 test('it returns the error of a deadline that cannot resolve, and never asks the decision point', async () => {
@@ -3135,7 +3176,7 @@ test('it records a variant call and its proposal, naming the tool in the call an
     decision: { outcome: 'ask', rule: { id: 'ask-risky', revision: 1 } },
   });
 
-  expect(entries[1]?.record).toMatchObject({
+  expect(entries[2]?.record).toMatchObject({
     kind: 'policy.action_proposed',
     payload: { tool: 'jobs_start/risky', effects: ['note'] },
     erasable: { status: 'readable', fields: { input: { kind: 'risky', query: 'a' } } },

@@ -96,3 +96,13 @@ test('it gives the replaced short ID in the settlement of the replacement', asyn
 
   expect(last).toMatchObject({ proposalID: second.proposalID, replaced: first.shortID });
 });
+
+test('it resolves a short ID that 2 rows share to the newest row, and a proposal ID to its own row', async () => {
+  const ctx = await setupTest();
+  const older = await ctx.propose({ shortID: 'S7', sameThing: null });
+  const newer = await ctx.propose({ shortID: 'S7', sameThing: null });
+  const byShortID = await ctx.read('S7');
+  const byOlderID = await ctx.read(older.proposalID);
+
+  expect([byShortID?.id, byOlderID?.id]).toStrictEqual([newer.proposalID, older.proposalID]);
+});

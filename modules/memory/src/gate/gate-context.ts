@@ -4,7 +4,7 @@ import type { RuleSource } from '@heynixie/policy';
 import type { PromptOverrides } from '@heynixie/prompts';
 import type { RunCheck } from '@heynixie/sessions';
 import type { MemoryWriteVerdict } from '@heynixie/tools';
-import type { Selectable } from 'kysely';
+import type { Selectable, Transaction } from 'kysely';
 import type { FoldOrderRequest } from '../fold/write-fold-order';
 import type {
   RetopicPlan,
@@ -295,6 +295,10 @@ export interface ProposalAnswer {
   readonly ignoreCloseMatch?: boolean;
 
   readonly writeInTransaction?: WriteInTransaction;
+
+  // Runs after the approved write, in its transaction, with the ID of the approval it made. The
+  // settlement of the shared proposal row is written here, so it names the approval.
+  readonly writeSettlement?: (tx: Transaction<unknown>, approvalID: string) => Promise<void>;
 }
 
 export interface ProposalRejection {

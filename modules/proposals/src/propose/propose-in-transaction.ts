@@ -128,7 +128,7 @@ async function withdrawSameThing(
 }
 
 // A new short ID differs from that of every proposal ever made, open or settled.
-async function createUnusedShortID(tx: Transaction<unknown>): Promise<string> {
+export async function createUnusedShortID(tx: Transaction<unknown>): Promise<string> {
   const shortID = createShortID();
 
   const clash = await tx

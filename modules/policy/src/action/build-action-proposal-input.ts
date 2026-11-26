@@ -5,7 +5,6 @@ import type { AskCause, CallDestination, Effect, PolicyCall } from '../types';
 import { actionProposedCodec } from './action-proposed-codec';
 import { buildActionHash } from './build-action-hash';
 import { buildGapGroupHash } from './build-gap-group-hash';
-import { pickActionLapse } from './pick-action-lapse';
 
 export interface ActionProposalFacts {
   readonly definitions: Definitions;
@@ -35,7 +34,9 @@ export interface ActionProposalFacts {
 
   // the time after which the action must not start; the proposal lapses no later than it
   readonly deadlineAt?: number | null;
-  readonly now?: number;
+
+  // the short ID the proposal takes; drawn when absent
+  readonly shortID?: string;
 
   // the step of the task that made the call, which an approved action queues under
   readonly stepKey?: string;
@@ -51,12 +52,16 @@ export interface ActionProposalFacts {
 
 export interface ActionProposalInput {
   readonly record: RecordInput;
+  readonly proposalID: string;
   readonly shortID: string;
+  readonly riskClass: 'routine' | 'always_ask';
+  readonly actionHash: string;
+  readonly ruleHash: string | null;
 }
 
 // The record of an ask. Its input and destinations are erasable, so a forget removes them.
 export function buildActionProposalInput(facts: ActionProposalFacts): ActionProposalInput {
-  const shortID = createShortID();
+  const shortID = facts.shortID ?? createShortID();
   const isRuleOffered = facts.cause === 'outside_steering' || facts.cause === 'no_rule';
 
   const alwaysAllow = isRuleOffered
@@ -84,6 +89,18 @@ export function buildActionProposalInput(facts: ActionProposalFacts): ActionProp
         }
       : {};
 
+  const proposalID = facts.reopen?.proposalID ?? crypto.randomUUID();
+  const riskClass = facts.cause === 'always_ask' ? 'always_ask' : 'routine';
+
+  const actionHash =
+    facts.actionHash ??
+    buildActionHash({
+      tool: facts.tool,
+      input: facts.input,
+      destinations: facts.destinations.map((destination) => destination.value),
+      deadlineAt: facts.deadlineAt ?? null,
+    });
+
   const record: RecordInput = {
     kind: actionProposedCodec.kind,
     definitions: facts.definitions,
@@ -91,21 +108,14 @@ export function buildActionProposalInput(facts: ActionProposalFacts): ActionProp
     parent: facts.callSequence,
     promptCause: facts.cause,
     payload: actionProposedCodec.encode({
-      proposalID: facts.reopen?.proposalID ?? crypto.randomUUID(),
+      proposalID,
       shortID,
       callSequence: facts.callSequence,
       tool: facts.tool,
       effects: [...facts.effects],
-      actionHash:
-        facts.actionHash ??
-        buildActionHash({
-          tool: facts.tool,
-          input: facts.input,
-          destinations: facts.destinations.map((destination) => destination.value),
-          deadlineAt: facts.deadlineAt ?? null,
-        }),
+      actionHash,
       cause: facts.cause,
-      riskClass: facts.cause === 'always_ask' ? 'always_ask' : 'routine',
+      riskClass,
       rule: alwaysAllow === null ? null : { hash: alwaysAllow.hash },
       ...gap,
       ...(facts.reopen === undefined ? {} : { actionID: facts.reopen.actionID }),
@@ -115,9 +125,9 @@ export function buildActionProposalInput(facts: ActionProposalFacts): ActionProp
         : { expectWindow: JSON.stringify(facts.expectWindow) }),
       ...(facts.stepKey === undefined ? {} : { stepKey: facts.stepKey }),
       ...(facts.budgetReached === undefined ? {} : { budgetReached: facts.budgetReached }),
-      ...(facts.deadlineAt === undefined || facts.deadlineAt === null || facts.now === undefined
+      ...(facts.deadlineAt === undefined || facts.deadlineAt === null
         ? {}
-        : { deadlineAt: facts.deadlineAt, lapsesAt: pickActionLapse(facts.now, facts.deadlineAt) }),
+        : { deadlineAt: facts.deadlineAt }),
     }),
     erasable: {
       ...(alwaysAllow === null
@@ -135,5 +145,12 @@ export function buildActionProposalInput(facts: ActionProposalFacts): ActionProp
     },
   };
 
-  return { record, shortID };
+  return {
+    record,
+    proposalID,
+    shortID,
+    riskClass,
+    actionHash,
+    ruleHash: alwaysAllow === null ? null : alwaysAllow.hash,
+  };
 }

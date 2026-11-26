@@ -432,6 +432,7 @@ export async function startConversationEndpoint(
     queue: tools.queue,
     readOwnValues: tools.readOwnValues,
     readHeldBackTools: tools.readHeldBackTools,
+    proposalConfig: buildProposalConfig(options.config),
     ...(options.context.budgets === undefined ? {} : { budgets: options.context.budgets }),
   });
 

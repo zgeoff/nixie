@@ -30,18 +30,12 @@ export async function writeDefer(
 
   const returnAt = pickReturnAt(deferUntil, context.quietHours, context.zone);
 
-  const lapsesAt = Math.min(
-    row.deadlineAt ?? Number.POSITIVE_INFINITY,
-    Math.max(
-      row.lapsesAt,
-      pickLapsesAt(deps.config, request.handler, {
-        family: row.family,
-        cause: row.cause,
-        fromMs: returnAt,
-        deadlineAt: row.deadlineAt,
-      }),
-    ),
-  );
+  const lapsesAt = pickLapsesAt(deps.config, request.handler, {
+    family: row.family,
+    cause: row.cause,
+    fromMs: returnAt,
+    deadlineAt: row.deadlineAt,
+  });
 
   await deps.writeThreadRecord(tx, {
     kind: proposalsDeferredCodec.kind,

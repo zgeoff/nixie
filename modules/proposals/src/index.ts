@@ -66,7 +66,7 @@ export { proposalRecordTopics } from './records/proposal-record-topics';
 export { proposalsProposedCodec } from './records/proposals-proposed-codec';
 export { proposalsSettledCodec } from './records/proposals-settled-codec';
 export type { ProposeInput, Proposed } from './propose/propose-in-transaction';
-export { proposeInTransaction } from './propose/propose-in-transaction';
+export { createUnusedShortID, proposeInTransaction } from './propose/propose-in-transaction';
 export type { Withdrawal, WithdrawOptions } from './propose/withdraw-in-transaction';
 export { withdrawInTransaction } from './propose/withdraw-in-transaction';
 export { pickLapsesAt } from './propose/pick-lapses-at';

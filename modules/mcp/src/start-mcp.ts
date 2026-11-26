@@ -2,7 +2,7 @@ import type { ActionConnector } from '@heynixie/connectors';
 import type { CredentialStore, HeldBackend } from '@heynixie/credentials';
 import type { Definitions, JSONObject, Log } from '@heynixie/log';
 import { publishChanged, subscribeToChanged } from '@heynixie/log';
-import type { ProposalKindHandler } from '@heynixie/proposals';
+import type { ProposalConfig, ProposalKindHandler } from '@heynixie/proposals';
 import { renderChangedSentence } from '@heynixie/tools';
 import { buildActionConnector } from './call/build-action-connector';
 import { pickCallGate } from './call/pick-call-gate';
@@ -57,6 +57,9 @@ export interface McpOptions {
 
   // a refresh that a change started and that failed, with nobody waiting on it
   readonly onRefreshFailed: (error: unknown) => void;
+
+  // the lapse of each family, as the server config sets it
+  readonly proposalConfig?: ProposalConfig | undefined;
 }
 
 export type ListResult =
@@ -137,6 +140,7 @@ export function startMcp(options: McpOptions): Mcp {
     log: options.log,
     definitions: options.definitions,
     now: options.now,
+    proposalConfig: options.proposalConfig,
   };
 
   const timeoutMs = options.listingTimeoutSeconds * 1000;

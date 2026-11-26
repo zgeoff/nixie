@@ -1,7 +1,8 @@
 import { chargeBudgetsInTransaction, formatBudgetReached } from '@heynixie/budgets';
 import type { BudgetsContext } from '@heynixie/budgets';
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
-import { buildActionProposalInput } from '@heynixie/policy';
+import { buildActionHash as buildPolicyActionHash, writeActionProposal } from '@heynixie/policy';
+import type { ProposalConfig } from '@heynixie/proposals';
 import { readOpenProposals } from '@heynixie/proposals';
 import { requireLease, waitAtFaultPoint } from '@heynixie/tasks';
 import type { TasksContext } from '@heynixie/tasks';
@@ -27,6 +28,7 @@ export interface AskedAction {
 export async function createAllowedAction(
   context: TasksContext,
   call: AllowedCall,
+  proposalConfig?: ProposalConfig,
 ): Promise<QueuedAction | AskedAction> {
   if (call.decision.outcome !== 'allow') {
     throw new Error(`a call the decision point answered ${call.decision.outcome} queues nothing`);
@@ -52,7 +54,7 @@ export async function createAllowedAction(
     const reached = await chargeLift(tx, context.budgets, call, actionID);
 
     if (reached !== null) {
-      return writeBudgetAsk(tx, context, call, reached);
+      return writeBudgetAsk(tx, { context, proposalConfig }, call, reached);
     }
 
     await writeRecordsInTransaction(tx, context.log, [
@@ -147,28 +149,26 @@ async function chargeLift(
     : `the budget ${charged.budgetID} is not in force.`;
 }
 
+interface BudgetAskWriter {
+  readonly context: TasksContext;
+  readonly proposalConfig: ProposalConfig | undefined;
+}
+
 async function writeBudgetAsk(
   tx: Transaction<unknown>,
-  context: TasksContext,
+  writer: BudgetAskWriter,
   call: AllowedCall,
   budgetReached: string,
 ): Promise<AskedAction> {
   invariant(call.callSequence !== undefined, 'a call that a lift allowed has its call record');
 
-  const proposal = buildActionProposalInput({
-    definitions: context.definitions(),
-    thread: call.step.lease.workID,
-    callSequence: call.callSequence,
+  const context = writer.context;
+
+  const actionHash = buildPolicyActionHash({
     tool: call.tool,
-    effects: call.effects ?? [],
-    cause: 'always_ask',
     input: call.arguments,
-    destinations: call.destinations ?? [],
-    content: call.content ?? [],
+    destinations: (call.destinations ?? []).map((destination) => destination.value),
     deadlineAt: call.deadlineAt ?? null,
-    now: context.clock.now(),
-    stepKey: call.step.stepKey,
-    budgetReached,
   });
 
   const open = await readOpenProposals(tx, context.clock.now());
@@ -178,14 +178,36 @@ async function writeBudgetAsk(
     (row) =>
       row.family === 'action' &&
       row.thread === call.step.lease.workID &&
-      row.actionHash === proposal.record.payload?.['actionHash'],
+      row.actionHash === actionHash,
   );
 
   if (asked !== undefined) {
     return { shortID: asked.shortID };
   }
 
-  await writeRecordsInTransaction(tx, context.log, [proposal.record]);
+  const shortID = await writeActionProposal(
+    tx,
+    {
+      log: context.log,
+      clock: context.clock,
+      definitions: context.definitions,
+      proposalConfig: writer.proposalConfig,
+    },
+    {
+      definitions: context.definitions(),
+      thread: call.step.lease.workID,
+      callSequence: call.callSequence,
+      tool: call.tool,
+      effects: call.effects ?? [],
+      cause: 'always_ask',
+      input: call.arguments,
+      destinations: call.destinations ?? [],
+      content: call.content ?? [],
+      deadlineAt: call.deadlineAt ?? null,
+      stepKey: call.step.stepKey,
+      budgetReached,
+    },
+  );
 
-  return { shortID: proposal.shortID };
+  return { shortID };
 }

@@ -61,18 +61,26 @@ export const proposalsPromptFamilyMigration: Migration = {
     await sql`create index if not exists proposals_by_same_thing
       on proposals (family, thread, same_thing) where same_thing is not null`.execute(tx);
 
-    await backfillSkillSameThing(tx);
+    await backfillSkillRows(tx);
     await backfillPromptProposals(tx);
   },
 };
 
 // A skill proposal replaces the open one of the same skill from the same thread, so the rows that
 // exist before this migration take the skill's name as their key, as the proposals projection does.
-async function backfillSkillSameThing(tx: Transaction<unknown>): Promise<void> {
+// An approved row takes the ID of its approval as well.
+async function backfillSkillRows(tx: Transaction<unknown>): Promise<void> {
   await sql`update proposals set same_thing = (
       select json_extract(records.payload, '$.name') from records
       where records.kind = 'skills.write_proposed' and records.sequence = proposals.created_sequence
     ) where family = 'skill' and same_thing is null`.execute(tx);
+
+  // The approval record of a skill names the approval that the row's used_by holds.
+  await sql`update proposals set used_by = (
+      select json_extract(records.payload, '$.approvalID') from records
+      where records.kind = 'skills.write_approved'
+        and json_extract(records.payload, '$.proposalID') = proposals.proposal_id
+    ) where family = 'skill' and state = 'approved' and used_by is null`.execute(tx);
 }
 
 const recordSchema = z.object({

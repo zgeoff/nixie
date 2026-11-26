@@ -124,13 +124,10 @@ async function writeAnswer(
 
     // A caller that answers through the shared path settles in its own callback, after its own
     // guard, so settling here would close the row under that guard.
-    if (request.answer.writeInTransaction === undefined) {
+    if (request.answer.writeInTransaction === undefined && request.choice === 'decline') {
       await run.settle(tx, {
         status: 'done',
-        result: {
-          proposalID: row.id,
-          state: request.choice === 'decline' ? 'declined' : 'approved',
-        },
+        result: { proposalID: row.id, state: 'declined' },
         usedBy: null,
         detail: null,
         otherThreads: await readMergedThreads(tx, row.id),
@@ -156,7 +153,29 @@ async function writeAnswer(
     };
   }
 
-  const result = await writeProposalApproval(parts, { ...request.answer, writeInTransaction });
+  const writeSettlement = async (tx: Transaction<unknown>, approvalID: string) => {
+    if (request.answer.writeSettlement !== undefined) {
+      await request.answer.writeSettlement(tx, approvalID);
+
+      return;
+    }
+
+    if (request.answer.writeInTransaction === undefined) {
+      await run.settle(tx, {
+        status: 'done',
+        result: { proposalID: row.id, state: 'approved' },
+        usedBy: approvalID,
+        detail: null,
+        otherThreads: await readMergedThreads(tx, row.id),
+      });
+    }
+  };
+
+  const result = await writeProposalApproval(parts, {
+    ...request.answer,
+    writeInTransaction,
+    writeSettlement,
+  });
 
   answerRun.applied.result = result;
 

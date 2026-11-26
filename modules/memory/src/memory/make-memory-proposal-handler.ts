@@ -100,7 +100,11 @@ export function makeMemoryProposalHandler(
 
       const isLapsed = await store.proposals.lapseProposal({
         proposalID: row.id,
-        writeInTransaction: (tx) => settleInTransaction(run, tx, row, 'lapsed'),
+        writeInTransaction: async (tx) => {
+          await run.guard(tx);
+
+          await settleInTransaction(run, tx, row, { outcome: 'lapsed', usedBy: null });
+        },
       });
 
       return isLapsed
@@ -153,7 +157,11 @@ async function applyAnswer(
         actionHash: row.actionHash,
         ...(answer.note === undefined ? {} : { reason: answer.note }),
         identityID: answer.identityID,
-        writeInTransaction: (tx) => settleInTransaction(run, tx, row, 'declined'),
+        writeInTransaction: async (tx) => {
+          await run.guard(tx);
+
+          await settleInTransaction(run, tx, row, { outcome: 'declined', usedBy: null });
+        },
       });
 
       return doneWith(row, 'declined', []);
@@ -170,7 +178,9 @@ async function applyAnswer(
       ...(memory?.ignoreCloseMatch === undefined
         ? {}
         : { ignoreCloseMatch: memory.ignoreCloseMatch }),
-      writeInTransaction: (tx) => settleInTransaction(run, tx, row, 'approved'),
+      writeInTransaction: (tx) => run.guard(tx),
+      writeSettlement: (tx, approvalID) =>
+        settleInTransaction(run, tx, row, { outcome: 'approved', usedBy: approvalID }),
     });
 
     return approved.status === 'close_match'
@@ -193,18 +203,25 @@ async function applyAnswer(
   }
 }
 
-// Settles the proposal inside memory's own transaction, after the shared guard.
+interface Settlement {
+  readonly outcome: 'approved' | 'declined' | 'lapsed';
+  readonly usedBy: string | null;
+}
+
+// Settles the proposal inside memory's own transaction. An approval settles after its write, so
+// the settlement names the approval it made.
 async function settleInTransaction(
   run: ApplyRun,
   tx: Transaction<unknown>,
   row: SharedProposal,
-  outcome: 'approved' | 'declined' | 'lapsed',
+  settlement: Settlement,
 ): Promise<void> {
-  await run.guard(tx);
-
   const threads = await readMergedThreads(tx, row.id);
 
-  await run.settle(tx, doneWith(row, outcome, threads));
+  await run.settle(tx, {
+    ...doneWith(row, settlement.outcome, threads),
+    usedBy: settlement.usedBy,
+  });
 }
 
 function doneWith(

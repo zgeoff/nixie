@@ -109,7 +109,6 @@ async function setupTest() {
         cause: 'no_rule',
         input: { to: 'harbour@example.test' },
         destinations: [],
-        now: Date.parse('2027-03-09T03:00:00Z'),
       }).record,
     ]);
 
