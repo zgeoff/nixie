@@ -9,6 +9,7 @@ import { readScreenState } from '../screen/read-screen-state';
 import type {
   LayoutState,
   LayoutView,
+  PageDataState,
   PageMessageState,
   ScreenPixels,
   ScreenState,
@@ -31,7 +32,7 @@ export interface FollowDeviceOptions {
 // nothing. A message into a page follows the state it was sent against.
 export async function* followDevice(
   options: FollowDeviceOptions,
-): AsyncGenerator<ScreenState | LayoutState | PageMessageState, void, undefined> {
+): AsyncGenerator<ScreenState | LayoutState | PageMessageState | PageDataState, void, undefined> {
   const stream = options.streams.open(options.deviceID, options.pixels);
 
   const wake = startRecordWake({
@@ -46,6 +47,7 @@ export async function* followDevice(
       // read before the state, so a message sent after a commit never reaches the device ahead of
       // the layout that holds its content
       const queued = stream.readMessages();
+      const notices = stream.readNotices();
 
       wake.reset();
 
@@ -92,6 +94,10 @@ export async function* followDevice(
 
       for (const message of messages) {
         yield { kind: 'message', ...message };
+      }
+
+      for (const notice of notices) {
+        yield { kind: 'data', ...notice };
       }
 
       await waitForChange(

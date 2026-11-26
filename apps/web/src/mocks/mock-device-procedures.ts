@@ -74,6 +74,16 @@ export const mockDeviceProcedures = {
     return {};
   }),
 
+  pageData: os.devices.pageData.handler((options) => {
+    const session = requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+    if (!deviceStore.hasDevice(session.sessionID)) {
+      throw options.errors.NOT_A_DEVICE();
+    }
+
+    throw options.errors.NOT_DECLARED();
+  }),
+
   setCapability: os.devices.setCapability.handler((options) => {
     const session = requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
 

@@ -26,6 +26,8 @@
     // import reaches either
     "apps/backup-job": { "entry": ["src/main.ts", "src/test-utils/run-stub-*.ts"] },
     "libs/testing": { "entry": ["src/test-utils/run-stub-*.ts"] },
+    // the stub fetcher in the server's test utils spawns the site fetcher, so no import reaches it
+    "guests/fetch": { "entry": ["src/main.ts", "src/test-utils/run-site-fetcher.ts"] },
     // the image build and `bun run models` run the pinned download by its path, so no import
     // reaches it
     "adapters/encoder-onnx": { "entry": ["src/run-pinned-download.ts"] },

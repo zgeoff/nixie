@@ -7,7 +7,7 @@ import { runMigrations } from '../migration/run-migrations';
 import { nixieSchema } from '../schema/nixie-schema';
 import { buildSqliteWorkerDialect } from '../sqlite/build-sqlite-worker-dialect';
 import { readRunPrefix } from '../test-utils/read-run-prefix';
-import { proposalsMcpFamilyMigration } from './0092-proposals-mcp-family-migration';
+import { proposalsMcpFamilyMigration } from './0093-proposals-mcp-family-migration';
 
 async function setupTest() {
   const stack = new AsyncDisposableStack();
@@ -30,9 +30,9 @@ async function setupTest() {
   return { db };
 }
 
-test('it moves the schema to version 92, which the release before cannot read', () => {
-  expect(nixieSchema.migrations.indexOf(proposalsMcpFamilyMigration) + 1).toBe(92);
-  expect(nixieSchema.oldestReader).toBeGreaterThanOrEqual(92);
+test('it moves the schema to version 93, which the release before cannot read', () => {
+  expect(nixieSchema.migrations.indexOf(proposalsMcpFamilyMigration) + 1).toBe(93);
+  expect(nixieSchema.oldestReader).toBeGreaterThanOrEqual(93);
 });
 
 test('it lets a proposal take the mcp family', async () => {

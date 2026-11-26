@@ -23,6 +23,7 @@ export const webFetchConfigSchema = z
     secret_typed_url_covers: z
       .enum(['named_url', 'redirects'])
       .default(webFetchDefaults.secretTypedURLCovers),
+    package_registry: z.url().default(webFetchDefaults.packageRegistry),
     secret_own_values: z
       .array(z.enum(secretsEntryNames))
       .default([...webFetchDefaults.secretOwnValues]),
@@ -47,6 +48,7 @@ export const webFetchConfigSchema = z
       backoffWaitMs: config.backoff_wait_ms,
     },
     secretTypedURLCovers: config.secret_typed_url_covers,
+    packageRegistry: config.package_registry.replace(/\/+$/u, ''),
     secretOwnValues: config.secret_own_values,
     secretOwnValueMinChars: config.secret_own_value_min_chars,
   }));

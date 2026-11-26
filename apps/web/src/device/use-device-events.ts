@@ -8,10 +8,13 @@ import type { ScreenPixels } from './read-screen-pixels';
 import { readScreenPixels } from './read-screen-pixels';
 import { subscribeToDeviceEvents } from './subscribe-to-device-events';
 
-export type ScreenEvent = Exclude<DeviceEvent, { kind: 'layout' | 'message' }>;
+export type ScreenEvent = Exclude<DeviceEvent, { kind: 'layout' | 'message' | 'data' }>;
 
 // a message that the assistant sent into a page, numbered in the order the stream sent it
 export type PageDelivery = Extract<DeviceEvent, { kind: 'message' }> & { readonly id: number };
+
+// a refresh of a declared fetch of a page, numbered in the order the stream sent it
+export type PageDataNotice = Extract<DeviceEvent, { kind: 'data' }> & { readonly id: number };
 
 export type DeviceLayout = Extract<DeviceEvent, { kind: 'layout' }>['layout'];
 
@@ -24,6 +27,14 @@ export interface DeviceEvents {
 
   // each message since the stream opened, which a page takes when its frame is ready
   readonly messages: readonly PageDelivery[];
+
+  // each refresh of a declared fetch since the stream opened, which a page hears as onData
+  readonly notices: readonly PageDataNotice[];
+
+  // the numbers of the newest message and refresh the stream sent, which survive the removal of
+  // that message or refresh, so the next one never takes a number that a frame already heard
+  readonly lastMessageID: number;
+  readonly lastNoticeID: number;
   readonly connection: 'connecting' | 'open' | 'lost' | 'refused';
 }
 
@@ -39,6 +50,9 @@ export function useDeviceEvents(
     event: null,
     layout: null,
     messages: [],
+    notices: [],
+    lastMessageID: 0,
+    lastNoticeID: 0,
     connection: 'connecting',
   });
 
@@ -49,7 +63,15 @@ export function useDeviceEvents(
 
     const controller = new AbortController();
 
-    setEvents({ event: null, layout: null, messages: [], connection: 'connecting' });
+    setEvents({
+      event: null,
+      layout: null,
+      messages: [],
+      notices: [],
+      lastMessageID: 0,
+      lastNoticeID: 0,
+      connection: 'connecting',
+    });
 
     void subscribeToDeviceEvents({
       client: nixie.client,

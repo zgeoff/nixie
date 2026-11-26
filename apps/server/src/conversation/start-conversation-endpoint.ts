@@ -2,6 +2,7 @@ import { join } from 'node:path';
 import type { ErasureStuckPort } from '@heynixie/api';
 import type { CallsContext } from '@heynixie/calls';
 import type {
+  ActionConnector,
   ImageProvider,
   ImagesConfig,
   RenderSandbox,
@@ -21,8 +22,14 @@ import {
   buildTasksDefinitionsTool,
   checkPromptProposal,
 } from '@heynixie/definitions';
-import type { DeviceStreams } from '@heynixie/devices';
-import { buildDeviceTools } from '@heynixie/devices';
+import type { DeviceStreams, DeviceToolOptions } from '@heynixie/devices';
+import {
+  buildDevicePackageConnector,
+  buildDeviceTools,
+  restoreDevicePackages,
+  startPageFetches,
+} from '@heynixie/devices';
+import { toErrorFields } from '@heynixie/logger';
 import { buildMcpServersTool, findServerIDClash } from '@heynixie/mcp';
 import type { Mcp } from '@heynixie/mcp';
 import type { ConversationMemoryStore } from '@heynixie/memory';
@@ -55,8 +62,15 @@ import {
   buildTasksRunsTool,
   readTaskNames,
 } from '@heynixie/tasks';
-import type { ActionQueue, ToolDefinition, ToolEndpoint, ToolSource } from '@heynixie/tools';
+import type {
+  ActionQueue,
+  ToolDefinition,
+  ToolEndpoint,
+  ToolRegistry,
+  ToolSource,
+} from '@heynixie/tools';
 import { buildToolRegistry, findToolDeclaration, startToolEndpoint } from '@heynixie/tools';
+import { readActionCallSource } from '../action/read-action-call-source';
 import { buildContactTool } from '../cli/build-contact-tool';
 import { buildForgetRetryTool } from '../forget/build-forget-retry-tool';
 import { buildForgetStuckTool } from '../forget/build-forget-stuck-tool';
@@ -70,6 +84,8 @@ import type { DecisionPointFactory } from '../utils/make-server-decisions';
 import { buildConversationMemoryTools } from './build-conversation-memory-tools';
 import { buildConversationSkillTools } from './build-conversation-skill-tools';
 import { buildConversationTools } from './build-conversation-tools';
+import type { DeviceFetchingOptions } from './make-device-fetching';
+import { makeDeviceFetching } from './make-device-fetching';
 
 interface ConversationSearch {
   readonly provider: SearchProvider;
@@ -112,6 +128,12 @@ export interface ConversationEndpointTools {
   // the open streams of each device, which the API's device calls share
   readonly deviceStreams: DeviceStreams;
 
+  // the fetch sandbox, backoff and registry that device pages reach the web through
+  readonly deviceFetch: Pick<
+    DeviceFetchingOptions,
+    'fetch' | 'registry' | 'backoff' | 'checkAddress' | 'findSecret' | 'logger'
+  >;
+
   // absent when the deployment sets no worker role
   readonly worker: WorkerTool | null;
 
@@ -153,6 +175,9 @@ export interface ConversationEndpoint {
   readonly endpoint: ToolEndpoint;
   readonly definitions: readonly ToolDefinition[];
   readonly taskBounds: TaskStartBounds;
+
+  // the action queue's connectors for the queued tools that only the endpoint can build
+  readonly connectors: ReadonlyMap<string, ActionConnector>;
 }
 
 export async function startConversationEndpoint(
@@ -293,11 +318,24 @@ export async function startConversationEndpoint(
           providers: tools.images.providers,
         });
 
-  const devices = buildDeviceTools({
+  const registryHolder: { current: ToolRegistry | null } = { current: null };
+
+  const fetching = makeDeviceFetching({
+    ...tools.deviceFetch,
+    log: options.context.log,
+    definitions: options.context.definitions,
+    clock: options.context.clock,
+    makeDecide: tools.makeDecide,
+    findDeclaration: (name) =>
+      registryHolder.current === null ? null : findToolDeclaration(registryHolder.current, name),
+  });
+
+  const deviceOptions: DeviceToolOptions = {
     log: options.context.log,
     definitions: options.context.definitions,
     clock: options.context.clock,
     streams: tools.deviceStreams,
+    fetching,
     ...(tools.render === null
       ? {}
       : {
@@ -306,7 +344,13 @@ export async function startConversationEndpoint(
             timeZone: options.config.time.default_zone,
           },
         }),
-  });
+  };
+
+  const devices = buildDeviceTools(deviceOptions);
+
+  const packageConnector = buildDevicePackageConnector(deviceOptions, (actionID) =>
+    readActionCallSource(options.context.log, actionID),
+  );
 
   const worker = tools.worker === null ? [] : [tools.worker.buildTool(bounds)];
 
@@ -372,6 +416,8 @@ export async function startConversationEndpoint(
     tools.toolSources,
   );
 
+  registryHolder.current = registry;
+
   const endpoint = await startToolEndpoint({
     socketDir: join(options.config.server.dataDir, 'run', 'tools'),
     registry,
@@ -387,5 +433,32 @@ export async function startConversationEndpoint(
 
   await options.cleanup.defer(() => endpoint.stop());
 
-  return { endpoint, definitions: [...definitions, ...tools.testTools], taskBounds: bounds };
+  // the fetches that device pages declare run while the tools are up, and an approved package that
+  // lost its files comes back from the registry
+  const stopFetches = startPageFetches({
+    log: options.context.log,
+    clock: options.context.clock,
+    streams: tools.deviceStreams,
+    fetching,
+    onFailure: (error) => {
+      options.log('devices.fetch_failed', toErrorFields(error), 'error');
+    },
+  });
+
+  await options.cleanup.defer(stopFetches);
+
+  void restoreDevicePackages({
+    log: options.context.log,
+    fetching,
+    onFailure: (error) => {
+      options.log('devices.package_restore_failed', toErrorFields(error), 'error');
+    },
+  });
+
+  return {
+    endpoint,
+    definitions: [...definitions, ...tools.testTools],
+    taskBounds: bounds,
+    connectors: new Map([['device.addPackage', packageConnector]]),
+  };
 }

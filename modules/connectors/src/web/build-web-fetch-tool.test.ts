@@ -3,7 +3,7 @@ import { writeRecords } from '@heynixie/log';
 import { waitForCondition } from '@heynixie/testing';
 import type { ToolImage } from '@heynixie/tools';
 import { buildToolRegistry } from '@heynixie/tools';
-import type { FetchReply } from '@heynixie/wire';
+import type { PageReply } from '@heynixie/wire';
 import { createFakeClock } from '@zgeoff/testing/clock';
 import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
@@ -106,7 +106,7 @@ test('it returns the page the fetch sandbox reads at the URL as the typed result
 test("it writes each link in the page's text as an ID the session numbers from 1", async () => {
   const ctx = await setupTest();
 
-  const reply: FetchReply = {
+  const reply: PageReply = {
     kind: 'page',
     retryAfterMs: null,
     isGated: true,
@@ -175,7 +175,7 @@ test("it writes each link in the page's text as an ID the session numbers from 1
 test('it gives a URL one ID across the pages of one session', async () => {
   const ctx = await setupTest();
 
-  const pages: Readonly<Record<string, FetchReply>> = {
+  const pages: Readonly<Record<string, PageReply>> = {
     'https://bakery.test/news': {
       kind: 'page',
       retryAfterMs: null,
@@ -271,7 +271,7 @@ test('it gives a URL one ID across the pages of one session', async () => {
 test('it shows the host and path, with no query string, only for a link that leaves the page site', async () => {
   const ctx = await setupTest();
 
-  const reply: FetchReply = {
+  const reply: PageReply = {
     kind: 'page',
     retryAfterMs: null,
     isGated: true,
@@ -344,7 +344,7 @@ test('it shows the host and path, with no query string, only for a link that lea
 test('it fetches the page a link ID names, and returns the URL the fetch ended at', async () => {
   const ctx = await setupTest();
 
-  const pages: Readonly<Record<string, FetchReply>> = {
+  const pages: Readonly<Record<string, PageReply>> = {
     'https://bakery.test/news': {
       kind: 'page',
       retryAfterMs: null,
@@ -465,7 +465,7 @@ test("it fetches the URL of a search hit by the hit's link ID", async () => {
     },
   );
 
-  const readPage = mock<(url: string) => Promise<FetchReply>>((url) =>
+  const readPage = mock<(url: string) => Promise<PageReply>>((url) =>
     Promise.resolve({
       kind: 'page',
       retryAfterMs: null,
@@ -530,7 +530,7 @@ test.each([
 ])('it reads %p as the ID of link 1', async (link) => {
   const ctx = await setupTest();
 
-  const readPage = mock<(url: string) => Promise<FetchReply>>(() =>
+  const readPage = mock<(url: string) => Promise<PageReply>>(() =>
     Promise.resolve({
       kind: 'page',
       retryAfterMs: null,
@@ -593,7 +593,7 @@ test.each([
 test('it reads the whole tag of a link to an IPv6 host, as a page showed it, as that link', async () => {
   const ctx = await setupTest();
 
-  const readPage = mock<(url: string) => Promise<FetchReply>>(() =>
+  const readPage = mock<(url: string) => Promise<PageReply>>(() =>
     Promise.resolve({
       kind: 'page',
       retryAfterMs: null,
@@ -663,7 +663,7 @@ test('it reads the whole tag of a link to an IPv6 host, as a page showed it, as 
 test('it refuses the ID of a link an earlier session numbered, and fetches nothing', async () => {
   const ctx = await setupTest();
 
-  const readPage = mock<(url: string) => Promise<FetchReply>>(() =>
+  const readPage = mock<(url: string) => Promise<PageReply>>(() =>
     Promise.resolve({
       kind: 'page',
       retryAfterMs: null,
@@ -742,7 +742,7 @@ test('it refuses the ID of a link an earlier session numbered, and fetches nothi
 test('it refuses a page whose session a forget ended while it was fetched, and stores no link or page', async () => {
   const ctx = await setupTest();
 
-  const reply: FetchReply = {
+  const reply: PageReply = {
     kind: 'page',
     retryAfterMs: null,
     isGated: true,
@@ -755,7 +755,7 @@ test('it refuses a page whose session a forget ended while it was fetched, and s
     blocked: null,
   };
 
-  const fetched = Promise.withResolvers<FetchReply>();
+  const fetched = Promise.withResolvers<PageReply>();
   const readPage = mock(() => fetched.promise);
 
   const tool = buildWebFetchTool(readPage, {
@@ -825,7 +825,7 @@ test('it refuses a page whose session a forget ended while it was fetched, and s
 test("it numbers a new session's links from 1 again", async () => {
   const ctx = await setupTest();
 
-  const reply: FetchReply = {
+  const reply: PageReply = {
     kind: 'page',
     retryAfterMs: null,
     isGated: true,
@@ -854,7 +854,7 @@ test("it numbers a new session's links from 1 again", async () => {
     clock: ctx.clock,
   });
 
-  const otherReply: FetchReply = {
+  const otherReply: PageReply = {
     kind: 'page',
     retryAfterMs: null,
     isGated: true,
@@ -941,7 +941,7 @@ test("it numbers a new session's links from 1 again", async () => {
 test('it keys the links of a call under the run token by the run', async () => {
   const ctx = await setupTest();
 
-  const readPage = mock<(url: string) => Promise<FetchReply>>(() =>
+  const readPage = mock<(url: string) => Promise<PageReply>>(() =>
     Promise.resolve({
       kind: 'page',
       retryAfterMs: null,
@@ -1110,7 +1110,7 @@ test('it cuts the link text of a long page full of links from about 42,000 chara
     .map((_, index) => `Station ${index} readings \u{E000}${index}\u{E001}`)
     .join('\n');
 
-  const reply: FetchReply = {
+  const reply: PageReply = {
     kind: 'page',
     retryAfterMs: null,
     isGated: true,
@@ -1259,7 +1259,7 @@ test('it returns the reason the bot protection blocked a page in a result the sc
 test('it returns a page result that the registry checks against the output schema', async () => {
   const ctx = await setupTest();
 
-  const reply: FetchReply = {
+  const reply: PageReply = {
     kind: 'page',
     retryAfterMs: null,
     isGated: true,
@@ -1348,7 +1348,7 @@ test.each([
 test('it returns a binary page with no text', async () => {
   const ctx = await setupTest();
 
-  const reply: FetchReply = {
+  const reply: PageReply = {
     kind: 'page',
     retryAfterMs: null,
     isGated: true,
@@ -1709,7 +1709,7 @@ test('it fits every part, once its links read as tags, in the text limit, and ne
       : `https://harbour.test/piers/pier-${index}`,
   );
 
-  const reply: FetchReply = {
+  const reply: PageReply = {
     kind: 'page',
     retryAfterMs: null,
     isGated: true,
@@ -1809,7 +1809,7 @@ test('it fits every part, once its links read as tags, in the text limit, and ne
 test('it fetches the page again for a url with a part, and returns that part', async () => {
   const ctx = await setupTest();
 
-  const readPage = mock<(url: string) => Promise<FetchReply>>(() =>
+  const readPage = mock<(url: string) => Promise<PageReply>>(() =>
     Promise.resolve({
       kind: 'page',
       retryAfterMs: null,
@@ -1950,7 +1950,7 @@ test('it refuses a part past the end of a page, and names its count of parts', a
 test('it returns the part that holds the first match of find, with every match, and fetches nothing', async () => {
   const ctx = await setupTest();
 
-  const readPage = mock<(url: string) => Promise<FetchReply>>(() =>
+  const readPage = mock<(url: string) => Promise<PageReply>>(() =>
     Promise.resolve({
       kind: 'page',
       retryAfterMs: null,
@@ -2235,7 +2235,7 @@ test('it refuses the page ID of an earlier session, and never returns another pa
 test("it refuses a page ID the store limit removed, once the session's newer pages filled it", async () => {
   const ctx = await setupTest();
 
-  const pages: Readonly<Record<string, FetchReply>> = {
+  const pages: Readonly<Record<string, PageReply>> = {
     'https://harbour.test/a': {
       kind: 'page',
       retryAfterMs: null,
@@ -3109,7 +3109,7 @@ test('it fetches the rewritten URL for a link ID whose target a rule matches', a
 test('it returns the stored page for a link call inside the cache time, and fetches it again with fresh true', async () => {
   const ctx = await setupTest();
 
-  const readPage = mock((url: string): Promise<FetchReply> =>
+  const readPage = mock((url: string): Promise<PageReply> =>
     Promise.resolve({
       kind: 'page',
       retryAfterMs: null,

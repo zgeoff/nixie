@@ -43,6 +43,7 @@ export async function readRegionState(
 interface ShownPayload {
   readonly shownID: string;
   readonly until: number | null;
+  readonly call: number | null;
 }
 
 async function readShown(
@@ -62,6 +63,7 @@ async function readShown(
     sequence,
     content: parsed.data,
     untilMs: payload.until,
+    callSequence: payload.call,
   };
 }
 

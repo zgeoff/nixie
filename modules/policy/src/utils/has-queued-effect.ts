@@ -7,6 +7,7 @@ const queuedEffects: ReadonlySet<Effect> = new Set([
   'spend',
   'device',
   'computer_run',
+  'install_package',
 ]);
 
 // A tool whose effects reach outside nixie, or remove its own records for good, runs queued as an action, and every other tool runs

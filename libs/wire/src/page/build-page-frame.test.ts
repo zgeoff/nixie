@@ -10,6 +10,8 @@ function setupTest() {
         imageBase: 'https://nixie.test/rpc/device/images/',
         initialMessages: [],
         isPolicyInline: false,
+        packageBases: [],
+        fetches: { declared: [], replies: null },
       }),
   };
 }
@@ -66,6 +68,8 @@ test('#buildPageFrame puts the policy in a meta tag, with no sandbox directive, 
     imageBase: 'http://nixie-render.invalid/images/',
     initialMessages: [],
     isPolicyInline: true,
+    packageBases: [],
+    fetches: { declared: [], replies: null },
   });
 
   expect(frame.document).toContain(
@@ -80,7 +84,53 @@ test('#buildPageFrame hands the page its retained message as its first message',
     imageBase: 'http://nixie-render.invalid/images/',
     initialMessages: [{ ripples: 3 }],
     isPolicyInline: true,
+    packageBases: [],
+    fetches: { declared: [], replies: null },
   });
 
   expect(frame.document).toContain('var buffer = [{"ripples":3}];');
+});
+
+test('#buildPageFrame opens script, style and font loading to the packages the page names only', () => {
+  const frame = buildPageFrame({
+    html: '<p></p>',
+    images: new Map(),
+    imageBase: 'https://nixie.test/rpc/device/images/',
+    initialMessages: [],
+    isPolicyInline: false,
+    packageBases: ['https://nixie.test/rpc/device/packages/chart.js@4.4.6/'],
+    fetches: { declared: [], replies: null },
+  });
+
+  const directives = frame.policy.split('; ');
+
+  expect(directives).toContain(
+    "script-src 'unsafe-inline' https://nixie.test/rpc/device/packages/chart.js@4.4.6/",
+  );
+
+  expect(directives).toContain(
+    "style-src 'unsafe-inline' https://nixie.test/rpc/device/packages/chart.js@4.4.6/",
+  );
+
+  expect(directives).toContain(
+    'font-src https://nixie.test/rpc/device/packages/chart.js@4.4.6/ data:',
+  );
+
+  expect(directives).toContain("connect-src 'none'");
+});
+
+test('#buildPageFrame names the declared fetches in the bridge', () => {
+  const frame = buildPageFrame({
+    html: '<p></p>',
+    images: new Map(),
+    imageBase: 'https://nixie.test/rpc/device/images/',
+    initialMessages: [],
+    isPolicyInline: false,
+    packageBases: [],
+    fetches: { declared: ['https://tides.example/a'], replies: null },
+  });
+
+  expect(frame.document).toContain(
+    'var fetches = {"declared":["https://tides.example/a"],"replies":null};',
+  );
 });

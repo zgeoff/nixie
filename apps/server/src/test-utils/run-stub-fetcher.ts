@@ -11,27 +11,80 @@ import {
 } from '@heynixie/wire';
 
 // Stands in for the fetch guest in a test sandbox, because the guest refuses every address a test
-// can serve. A request that holds HTML makes no network request, so the real guest answers it.
-const decode = makeFrameDecoder(maxFetchRequestBytes);
+// can serve. A request for a body or a package goes to the real reader on the test site that the
+// first argument names, and a request that holds HTML goes to the real guest.
 const guestEntry = join(import.meta.dir, '../../../../guests/fetch/src/main.ts');
 
-let reply: FetchReply = {
-  kind: 'failed',
-  reason: 'the stub fetcher read no request',
-  isGated: false,
-};
+const siteEntry = join(
+  import.meta.dir,
+  '../../../../guests/fetch/src/test-utils/run-site-fetcher.ts',
+);
 
-for await (const chunk of Bun.stdin.stream()) {
-  const [message] = decode(chunk);
+const [siteURL] = Bun.argv.slice(2);
 
-  if (message !== undefined) {
-    reply = await answerRequest(decodeFetchRequest(message));
+await runStub();
 
-    break;
-  }
+interface PipedInput {
+  readonly read: () => Promise<{ readonly done: boolean; readonly value?: Uint8Array | undefined }>;
 }
 
-process.stdout.write(encodeFrame(encodeFetchMessage(reply)));
+interface PipedOutput {
+  readonly write: (bytes: Uint8Array) => unknown;
+  readonly flush: () => unknown;
+}
+
+async function runStub(): Promise<void> {
+  const reader = Bun.stdin.stream().getReader();
+
+  const first = await reader.read();
+
+  const asked = first.value === undefined ? null : readRequest(first.value);
+
+  if (first.value === undefined || asked === null) {
+    const failure: FetchReply = {
+      kind: 'failed',
+      reason: 'the stub fetcher read no request',
+      isGated: false,
+    };
+
+    process.stdout.write(encodeFrame(encodeFetchMessage(failure)));
+  } else if (asked.mode === undefined) {
+    const reply = await answerRequest(asked);
+
+    process.stdout.write(encodeFrame(encodeFetchMessage(reply)));
+  } else {
+    await relayToSite(first.value, reader);
+  }
+
+  await reader.cancel();
+}
+
+function readRequest(bytes: Uint8Array): FetchRequest | null {
+  const [frame] = makeFrameDecoder(maxFetchRequestBytes)(bytes);
+
+  return frame === undefined ? null : decodeFetchRequest(frame);
+}
+
+// Passes the whole conversation on to the site's reader, hop frames included.
+async function relayToSite(firstBytes: Uint8Array, input: PipedInput): Promise<void> {
+  const site = Bun.spawn(
+    [process.execPath, siteEntry, ...(siteURL === undefined ? [] : [siteURL])],
+    { stdin: 'pipe', stdout: 'inherit', stderr: 'inherit' },
+  );
+
+  void site.stdin.write(firstBytes);
+  void site.stdin.flush();
+  void pipeRest(input, site.stdin);
+
+  await site.exited;
+}
+
+async function pipeRest(input: PipedInput, output: PipedOutput): Promise<void> {
+  for (let next = await input.read(); next.value !== undefined; next = await input.read()) {
+    output.write(next.value);
+    output.flush();
+  }
+}
 
 async function answerRequest(request: FetchRequest): Promise<FetchReply> {
   if (request.html !== undefined) {

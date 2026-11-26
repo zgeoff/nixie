@@ -76,6 +76,7 @@ test('it reads every section, with the default of each setting the file leaves o
       cacheMs: 300_000,
       backoff: { backoffMs: 30_000, backoffCapMs: 300_000, backoffWaitMs: 5000 },
       secretTypedURLCovers: 'redirects',
+      packageRegistry: 'https://registry.npmjs.org',
       secretOwnValues: [
         'deployment_key',
         'impd_token',

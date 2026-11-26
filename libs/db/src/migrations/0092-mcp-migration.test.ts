@@ -7,7 +7,7 @@ import { runMigrations } from '../migration/run-migrations';
 import { nixieSchema } from '../schema/nixie-schema';
 import { buildSqliteWorkerDialect } from '../sqlite/build-sqlite-worker-dialect';
 import { readRunPrefix } from '../test-utils/read-run-prefix';
-import { mcpMigration } from './0091-mcp-migration';
+import { mcpMigration } from './0092-mcp-migration';
 
 async function setupTest() {
   const stack = new AsyncDisposableStack();
@@ -30,8 +30,8 @@ async function setupTest() {
   return { db };
 }
 
-test('it moves the schema to version 91', () => {
-  expect(nixieSchema.migrations.indexOf(mcpMigration) + 1).toBe(91);
+test('it moves the schema to version 92', () => {
+  expect(nixieSchema.migrations.indexOf(mcpMigration) + 1).toBe(92);
 });
 
 test('it creates the tables of the servers, their tools and the tool forms', async () => {

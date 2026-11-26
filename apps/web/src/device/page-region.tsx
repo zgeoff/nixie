@@ -1,9 +1,12 @@
+import type { ContractClient } from '@heynixie/contract';
 import { devicePagePaths } from '@heynixie/contract';
+import { ORPCError } from '@orpc/client';
 import type { ReactNode } from 'react';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { css } from '../styled-system/css';
+import { useNixieClient } from '../utils/use-nixie-client';
 import { parseFrameMessage } from './parse-frame-message';
-import type { PageDelivery } from './use-device-events';
+import type { PageDataNotice, PageDelivery } from './use-device-events';
 import { useSendPageEvent } from './use-send-page-event';
 
 export interface PageRegionProps {
@@ -17,6 +20,9 @@ export interface PageRegionProps {
 
   // each message that the assistant sent since the stream opened, oldest first
   readonly messages: readonly PageDelivery[];
+
+  // each refresh of a declared fetch since the stream opened
+  readonly notices: readonly PageDataNotice[];
   readonly onFail: (message: string) => void;
 
   // called when the page's frame sees a touch or a pointer move, which never reaches this page
@@ -33,6 +39,9 @@ export function PageRegion(props: PageRegionProps): ReactNode {
   const [readyCount, setReadyCount] = useState(0);
   const delivered = useRef({ messageID: 0, readyCount: 0 });
   const sendEvent = useSendPageEvent();
+  const nixie = useNixieClient();
+  const heardNotice = useRef(0);
+  const client = nixie.client;
   const region = props.region;
   const shown = props.shown;
   const onFail = props.onFail;
@@ -61,6 +70,8 @@ export function PageRegion(props: PageRegionProps): ReactNode {
         setReadyCount((count) => count + 1);
       } else if (message.type === 'touch') {
         onTouch?.();
+      } else if (message.type === 'data') {
+        void answerData(client, frame.current?.contentWindow, { region, shown, ...message });
       } else if (message.type === 'error') {
         onFail(message.message);
       } else {
@@ -73,7 +84,7 @@ export function PageRegion(props: PageRegionProps): ReactNode {
     return () => {
       window.removeEventListener('message', listen);
     };
-  }, [region, shown, onFail, onTouch, sendEvent]);
+  }, [region, shown, onFail, onTouch, sendEvent, client]);
 
   useEffect(() => {
     const target = frame.current?.contentWindow;
@@ -102,6 +113,22 @@ export function PageRegion(props: PageRegionProps): ReactNode {
     delivered.current = { messageID: mine.at(-1)?.id ?? delivered.current.messageID, readyCount };
   }, [readyCount, props.messages, region, shown]);
 
+  useEffect(() => {
+    const target = frame.current?.contentWindow;
+
+    if (readyCount === 0 || target === null || target === undefined) {
+      return;
+    }
+
+    for (const notice of props.notices) {
+      if (notice.id > heardNotice.current && notice.region === region && notice.shown === shown) {
+        target.postMessage({ nixie: true, type: 'data-changed', url: notice.url }, '*');
+      }
+    }
+
+    heardNotice.current = props.notices.at(-1)?.id ?? heardNotice.current;
+  }, [readyCount, props.notices, region, shown]);
+
   return (
     <iframe
       className={frameStyle}
@@ -113,4 +140,38 @@ export function PageRegion(props: PageRegionProps): ReactNode {
       title={`Page ${region}`}
     />
   );
+}
+
+interface DataAsk {
+  readonly region: string;
+  readonly shown: string;
+  readonly id: number;
+  readonly url: string;
+}
+
+// Answers a page's nixie.data from the server's last response of the fetch the page declared. The
+// frame has no network, so the device page makes the call, and the reply goes back by postMessage
+// with the code of the refusal when there is none.
+async function answerData(
+  client: ContractClient,
+  target: Window | null | undefined,
+  ask: DataAsk,
+): Promise<void> {
+  const reply = await readData(client, ask);
+
+  target?.postMessage({ nixie: true, type: 'data-result', id: ask.id, ...reply }, '*');
+}
+
+async function readData(
+  client: ContractClient,
+  ask: DataAsk,
+): Promise<{ ok: true; value: unknown } | { ok: false; code: string }> {
+  try {
+    return {
+      ok: true,
+      value: await client.devices.pageData({ region: ask.region, shown: ask.shown, url: ask.url }),
+    };
+  } catch (error) {
+    return { ok: false, code: error instanceof ORPCError ? String(error.code) : 'REFUSED' };
+  }
 }

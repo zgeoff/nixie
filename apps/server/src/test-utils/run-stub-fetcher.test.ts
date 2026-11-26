@@ -1,4 +1,4 @@
-import { expect, test } from 'bun:test';
+import { expect, onTestFinished, test } from 'bun:test';
 import { join } from 'node:path';
 import {
   decodeFetchReply,
@@ -149,4 +149,56 @@ test('it reads the HTML of a request with the real guest and makes no request', 
   const replies = makeFrameDecoder(100_000)(stdout).map((message) => decodeFetchReply(message));
 
   expect(replies).toMatchObject([{ kind: 'page', links: ['https://pier.test/reset'] }]);
+});
+
+function setupTest() {
+  return {
+    startSite: (respond: (url: URL) => Response) => {
+      const hits: string[] = [];
+
+      const site = Bun.serve({
+        hostname: '127.0.0.1',
+        port: 0,
+        routes: {
+          '/*': (request) => {
+            hits.push(new URL(request.url).pathname);
+
+            return respond(new URL(request.url));
+          },
+        },
+      });
+
+      onTestFinished(() => site.stop(true));
+
+      return { siteURL: `http://127.0.0.1:${String(site.port)}/`, hits };
+    },
+  };
+}
+
+test('it passes a body request on to the real reader of the test site', async () => {
+  const ctx = setupTest();
+  const site = ctx.startSite(() => Response.json({ high: '14:05' }));
+
+  const child = Bun.spawn(
+    [process.execPath, join(import.meta.dir, 'run-stub-fetcher.ts'), site.siteURL],
+    {
+      stdin: encodeFrame(
+        encodeFetchMessage({
+          url: 'https://tides.test/today',
+          limits: { bodyBytes: 100, timeoutMs: 5000, redirects: 3, textBytes: 100, imageBytes: 0 },
+          deniedRanges: [],
+          hops: 'none',
+          mode: { kind: 'body' },
+        }),
+      ),
+      stdout: 'pipe',
+    },
+  );
+
+  const stdout = await new Response(child.stdout).bytes();
+
+  const replies = makeFrameDecoder(100_000)(stdout).map((message) => decodeFetchReply(message));
+
+  expect(replies).toMatchObject([{ kind: 'body', status: 200, text: '{"high":"14:05"}' }]);
+  expect(site.hits).toStrictEqual(['/today']);
 });

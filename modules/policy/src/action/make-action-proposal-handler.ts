@@ -80,6 +80,9 @@ export type BodyFields =
 
       // the desktop picture and click point of a screen click, which the card marks
       readonly screen?: { readonly x: number; readonly y: number; readonly picture: string };
+
+      // the package that a package install adds
+      readonly package?: ProposalBody['package'];
     }
   | { readonly status: 'unreadable' };
 
@@ -256,6 +259,7 @@ function toBody(
     ruleSentence: erasable.ruleSentence ?? null,
     ...(extra.status === 'fields' && extra.images !== undefined ? { images: extra.images } : {}),
     ...(extra.status === 'fields' && extra.screen !== undefined ? { screen: extra.screen } : {}),
+    ...(extra.status === 'fields' && extra.package !== undefined ? { package: extra.package } : {}),
     approveLabel:
       (extra.status === 'fields' ? extra.approveLabel : undefined) ??
       buildActionApproveLabel(payload.tool, destinations[0]),

@@ -100,5 +100,5 @@ test('it loads the released migrations from their files in released order, each 
 });
 
 test('it holds the proposals rebuild migration as the oldest reader', () => {
-  expect(nixieSchema.oldestReader).toBe(92);
+  expect(nixieSchema.oldestReader).toBe(93);
 });
