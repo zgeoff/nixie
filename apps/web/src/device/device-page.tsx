@@ -205,7 +205,9 @@ async function signOutDevice(
   setPhase: SetPhase,
 ): Promise<void> {
   try {
-    await hangUp();
+    // the hang-up releases the microphone before it asks the server, and a refused request must
+    // not keep the person signed in
+    await hangUp().catch(() => {});
 
     await client.sessions.signOut({});
   } catch (error) {

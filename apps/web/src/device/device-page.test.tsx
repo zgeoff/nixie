@@ -14,7 +14,7 @@ import { CallEnvironmentContext } from '../call/call-environment';
 import { CallProvider } from '../call/call-provider';
 import { CallScreen } from '../call/call-screen';
 import { deviceStore } from '../mocks/device-store';
-import { mockLive } from '../mocks/mock-live';
+import { endMockDeviceStreams, mockLive } from '../mocks/mock-live';
 import { server } from '../mocks/server';
 import { store } from '../mocks/store';
 import { buildStubCallEnvironment } from '../test-utils/build-stub-call-environment';
@@ -147,6 +147,33 @@ test('it keeps the stream of a client device open while its screen is off', asyn
   });
 });
 
+test('it drops what the full-screen device showed once its session is revoked', async () => {
+  const ctx = setupTest();
+
+  const session = await createScreenSession();
+
+  await deviceStore.screenSwitches.create({ sessionID: session.sessionID, isOn: true });
+
+  const rendered = ctx.mount();
+
+  await rendered.findByRole('heading', { name: 'Saturday' });
+
+  await store.sessions.update(session, {
+    data(draft) {
+      draft.revokedAt = new Date();
+    },
+  });
+
+  endMockDeviceStreams();
+
+  await waitFor(
+    () => {
+      expect(rendered.queryByRole('heading', { name: 'Saturday' })).toBeNull();
+    },
+    { timeout: 10_000 },
+  );
+});
+
 test('it signs the device out and shows the enrolment form', async () => {
   const ctx = setupTest();
 
@@ -210,6 +237,45 @@ test('it ends a live call and stops its microphone before it signs the device ou
     ctx.stub.stoppedTracks(),
     rendered.queryByRole('region', { name: 'Call in progress' }),
   ]).toStrictEqual([1, null]);
+});
+
+test('it signs the device out when the hang-up request of a live call fails', async () => {
+  const ctx = setupTest('/call');
+
+  const session = await createDeviceSession();
+
+  await deviceStore.screenSwitches.create({ sessionID: session.sessionID, isOn: false });
+
+  server.use(
+    http.post('*/rpc/calls/start', () =>
+      HttpResponse.json({ json: { callID: 'c1', state: 'connecting', thread: 't1' }, meta: [] }),
+    ),
+    http.post('*/rpc/calls/connect', () =>
+      HttpResponse.json({ json: { sdpAnswer: 'answer-1' }, meta: [] }),
+    ),
+    http.post('*/rpc/calls/get', () =>
+      HttpResponse.json({
+        json: { callID: 'c1', state: 'live', endedBy: null, reconnect: null },
+        meta: [],
+      }),
+    ),
+    http.post('*/rpc/calls/hangUp', () => HttpResponse.error()),
+  );
+
+  const rendered = ctx.mount();
+
+  const start = await rendered.findByRole('button', { name: 'Start a call' });
+
+  await ctx.user.click(start);
+  await rendered.findByRole('button', { name: /hang up/iu });
+  await ctx.openDevicePage();
+
+  const signOut = await rendered.findByRole('button', { name: 'Sign out' });
+
+  await ctx.user.click(signOut);
+  await rendered.findByRole('heading', { name: 'Enrol this browser' });
+
+  expect(ctx.stub.stoppedTracks()).toBe(1);
 });
 
 test('it keeps the device signed in and says so when the sign out fails', async () => {

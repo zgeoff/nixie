@@ -32,6 +32,11 @@ export const mockLive = {
   get deviceOpenedCount(): number {
     return deviceStreams.opened;
   },
+
+  // starts the peak again from the streams open now, so a test counts only the overlap it causes
+  restartPeak: (): void => {
+    streams.peak = streams.opened - streams.closed;
+  },
   get openedThreads(): readonly (string | undefined)[] {
     return openedThreads;
   },

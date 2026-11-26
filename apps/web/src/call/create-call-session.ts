@@ -341,7 +341,21 @@ export function createCallSession(dependencies: CallSessionDependencies): CallSe
   const hangUp = async (): Promise<void> => {
     const callID = snapshot.callID;
 
-    if (callID === null || snapshot.phase === 'ended' || hasHungUp) {
+    if (callID === null) {
+      // a call that has no ID yet: its microphone closes now, and a start that is still pending
+      // finds the call changed and ends the call it opens
+      if (snapshot.phase === 'asking' || snapshot.phase === 'starting') {
+        release();
+
+        snapshot = idleSnapshot;
+
+        change({});
+      }
+
+      return;
+    }
+
+    if (snapshot.phase === 'ended' || hasHungUp) {
       return;
     }
 

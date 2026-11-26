@@ -8,7 +8,7 @@ import { nixieSchema } from '../schema/nixie-schema';
 import { SchemaTooNewError } from '../schema/schema-too-new-error';
 import { buildSqliteWorkerDialect } from '../sqlite/build-sqlite-worker-dialect';
 import { readRunPrefix } from '../test-utils/read-run-prefix';
-import { clientDevicesMigration } from './0095-client-devices-migration';
+import { clientDevicesMigration } from './0096-client-devices-migration';
 
 interface IdentityRow {
   readonly id: string;
@@ -59,7 +59,7 @@ async function setupTest() {
     upgrade: () => runMigrations(db, { schema: nixieSchema, copyDir: directory }),
     startPreviousRelease: () =>
       runMigrations(db, {
-        schema: { migrations: nixieSchema.migrations.slice(0, 94), oldestReader: 0 },
+        schema: { migrations: nixieSchema.migrations.slice(0, 95), oldestReader: 0 },
         copyDir: directory,
       }),
     runAgain: () => db.transaction().execute((tx) => clientDevicesMigration.up(tx)),
@@ -88,9 +88,9 @@ async function setupTest() {
   };
 }
 
-test('it registers as migration 95, which the release before cannot read', () => {
-  expect(nixieSchema.migrations.indexOf(clientDevicesMigration) + 1).toBe(95);
-  expect(nixieSchema.oldestReader).toBeGreaterThanOrEqual(95);
+test('it registers as migration 96, which the release before cannot read', () => {
+  expect(nixieSchema.migrations.indexOf(clientDevicesMigration) + 1).toBe(96);
+  expect(nixieSchema.oldestReader).toBeGreaterThanOrEqual(96);
 });
 
 test('it gives a full session with no row a client row named with its label and the screen on', async () => {

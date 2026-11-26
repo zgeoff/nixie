@@ -67,7 +67,12 @@ export function useDeviceEvents(
         return pixels;
       },
       onConnection: (connection) => {
-        setEvents((current) => ({ ...current, connection }));
+        // a refusal means the session is gone, so the device keeps nothing it showed
+        setEvents((current) =>
+          connection === 'refused'
+            ? { ...initialDeviceEvents, connection }
+            : { ...current, connection },
+        );
       },
       onEvent: (event) => {
         setEvents((current) => applyDeviceEvent(current, event));

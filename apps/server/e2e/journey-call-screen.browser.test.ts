@@ -249,12 +249,22 @@ test('it keeps the call live on the device route, which has no app shell, and sh
   await ctx.view.evaluate("window.__TSR_ROUTER__.navigate({ to: '/call' })");
   await ctx.waitForConnected();
 
-  const records = await ctx.nixie.readRecords();
+  const recordsBefore = await ctx.nixie.readRecords();
 
-  expect(records.filter((record) => record.kind === 'call.ended')).toStrictEqual([]);
+  // another client ends the call, so only the page's own live stream can tell the page
+  const started = await ctx.nixie.waitForRecord((record) => record.kind === 'call.started');
+
+  await ctx.api.client.calls.hangUp({
+    callID: z.string().parse(started.payload['callID']),
+    clientActionID: crypto.randomUUID(),
+  });
+
+  await waitForPage(ctx.view, "document.body.innerText.includes('You hung up.')", 8000);
+
+  expect(recordsBefore.filter((record) => record.kind === 'call.ended')).toStrictEqual([]);
 });
 
-test('it keeps the call live on the device view, whose size leaves room for the call bar, and ends it from the bar there', async () => {
+test('it keeps the call live on the device view, whose size leaves room for the call bar, and hears the call end there', async () => {
   const ctx = await setupTest();
 
   await ctx.startCall();
@@ -277,13 +287,22 @@ test('it keeps the call live on the device view, whose size leaves room for the 
 
   const requests: unknown = await ctx.view.evaluate('window.microphoneRequests');
 
-  await ctx.view.click('[aria-label="Call in progress"] button[name="hang-up"]');
+  // another client ends the call, so only the page's own live stream can tell the page
+  const started = await ctx.nixie.waitForRecord((record) => record.kind === 'call.started');
 
-  const ended = await ctx.nixie.waitForRecord((record) => record.kind === 'call.ended');
+  await ctx.api.client.calls.hangUp({
+    callID: z.string().parse(started.payload['callID']),
+    clientActionID: crypto.randomUUID(),
+  });
 
-  expect([requests, ended.payload['endedBy']]).toStrictEqual([
-    ['{"audio":{"echoCancellation":true,"noiseSuppression":true,"autoGainControl":true}}'],
-    'you',
+  await waitForPage(
+    ctx.view,
+    'document.querySelector(\'[aria-label="Call in progress"]\') === null',
+    8000,
+  );
+
+  expect(requests).toStrictEqual([
+    '{"audio":{"echoCancellation":true,"noiseSuppression":true,"autoGainControl":true}}',
   ]);
 });
 

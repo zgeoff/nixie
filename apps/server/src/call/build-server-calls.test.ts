@@ -299,6 +299,33 @@ test('it marks no device onCall in devices.list while the call is still connecti
   });
 });
 
+test('it marks no device onCall in devices.list once the call has ended', async () => {
+  const ctx = await setupTest();
+  const callID = await ctx.startLiveCall();
+
+  await waitForCondition(() =>
+    ctx.nixie.guest.received.some(
+      (received) => received.frame.type === 'turn' && received.owner === 'conversation',
+    ),
+  );
+
+  await ctx.api.client.calls.hangUp({ callID, clientActionID: crypto.randomUUID() });
+  await ctx.waitForConversationRecord((record) => record.kind === 'call.ended');
+
+  ctx.nixie.guest.addReplies({ toolUse: { name: 'devices.list', input: {} } }, { text: 'Listed.' });
+
+  await sendClientMessage(ctx.api.client, { text: 'Which devices do I have?' }, 'Listed.');
+
+  const listed = ctx.nixie.toolResults.findLast((result) => result.name === 'devices.list');
+  const devices: unknown = JSON.parse(listed?.result ?? '{}');
+
+  expect(devices).toMatchObject({
+    structuredContent: {
+      devices: [expect.objectContaining({ name: 'laptop', onCall: false })],
+    },
+  });
+});
+
 test('it runs no compaction on the call thread when a call turn ends past the threshold', async () => {
   const ctx = await setupTest();
 
