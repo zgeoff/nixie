@@ -1,4 +1,5 @@
 import type { Clock } from '@heynixie/clock';
+import { createShortID } from '@heynixie/db';
 import type { Definitions, Log } from '@heynixie/log';
 import { writeRecordsInTransaction } from '@heynixie/log';
 import type { ProposalConfig } from '@heynixie/proposals';
@@ -23,7 +24,10 @@ export async function writeActionProposal(
   writer: ActionProposalWriter,
   facts: ActionProposalFacts,
 ): Promise<string> {
-  const proposal = buildActionProposalInput({ ...facts, shortID: await createUnusedShortID(tx) });
+  const proposal = buildActionProposalInput({
+    ...facts,
+    shortID: await createUnusedShortID(tx, createShortID),
+  });
 
   await proposeInTransaction(
     buildProposeDeps({

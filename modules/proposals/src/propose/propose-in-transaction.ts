@@ -54,7 +54,9 @@ export async function proposeInTransaction(
 ): Promise<Proposed> {
   const replaced = await withdrawSameThing(deps, tx, input);
 
-  const shortID = input.shortID === undefined ? await createUnusedShortID(tx) : input.shortID;
+  const shortID =
+    input.shortID === undefined ? await createUnusedShortID(tx, createShortID) : input.shortID;
+
   const proposalID = input.proposalID ?? crypto.randomUUID();
 
   const handler =
@@ -130,9 +132,13 @@ async function withdrawSameThing(
   return withdrawn[0] ?? null;
 }
 
-// A new short ID differs from that of every proposal ever made, open or settled.
-export async function createUnusedShortID(tx: Transaction<unknown>): Promise<string> {
-  const shortID = createShortID();
+// A new short ID differs from that of every proposal ever made, open or settled. A draw that names
+// an existing proposal is drawn again.
+export async function createUnusedShortID(
+  tx: Transaction<unknown>,
+  drawShortID: () => string,
+): Promise<string> {
+  const shortID = drawShortID();
 
   const clash = await tx
     .$extendTables<ProposalTables>()
@@ -141,5 +147,5 @@ export async function createUnusedShortID(tx: Transaction<unknown>): Promise<str
     .where('short_id', '=', shortID)
     .executeTakeFirst();
 
-  return clash === undefined ? shortID : createUnusedShortID(tx);
+  return clash === undefined ? shortID : createUnusedShortID(tx, drawShortID);
 }
