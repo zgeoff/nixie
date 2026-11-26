@@ -5,9 +5,11 @@ call's state, its records, its price and the rule that a call ends when its budg
 never talks to a speech provider. It holds the `SpeechLayer` interface, and the server passes in an
 adapter that implements it. For the whole feature, see the
 [voice design](../../design/platform/channels/voice.md). The server wires the
-[GPT-Live adapter](#the-gpt-live-adapter) when the config sets the `gpt-live` voice provider and the
-secrets file holds its credential. Without either, `calls.start` answers `SPEECH_UNAVAILABLE`. A
-test build wires the fake that the next section describes in place of the adapter.
+[GPT-Live adapter](#the-gpt-live-adapter) when the config's `voice` section sets the `gpt-live`
+provider and the secrets file holds its credential. A config with no `voice` section turns calls
+off, and `calls.start` answers `VOICE_OFF`. A `voice` section whose credential the secrets file
+lacks wires no adapter, and `calls.start` answers `SPEECH_UNAVAILABLE`. A test build wires the fake
+that the next section describes in place of the adapter.
 
 ## The speech layer
 
@@ -82,9 +84,11 @@ Other rules of the adapter:
   sessions.
 
 The adapter's tests run against a fake GPT-Live as a loopback HTTPS and WebSocket site. The model
-API test in `evals/gpt-live/` opens a real session, and says one line and one answer on it. CI holds
-no model credential, so a person runs it by hand with `NIXIE_SDK_CONTRACT=1` and `OPENAI_API_KEY`
-set.
+API test in `evals/gpt-live/` opens real sessions. In one, it says one line and one short answer,
+and checks that `session.started` gives the expiry as a number. In the other, it sends an answer of
+about 2,400 characters, which goes as 7 commentaries, and checks that GPT-Live speaks each sentence
+in order. CI holds no model credential, so a person runs it by hand with `NIXIE_SDK_CONTRACT=1` and
+`OPENAI_API_KEY` set.
 
 ## The call's states
 

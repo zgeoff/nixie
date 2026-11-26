@@ -1,23 +1,23 @@
 # The credential store
 
-Every credential that a tool, a connector or a model uses on the user's behalf comes from one place,
-the credential store. Before you add a connector that calls an outside service, or a config key that
-names a credential, [register](#bindings-and-the-removal-counter) the credential and reach the
-service through the store's [fetcher](#the-fetcher) or a [grant](#grants).
+Every credential that a tool, a connector or a model uses on the user's behalf goes through one
+place, the credential store. Before you add a connector that calls an outside service, or a config
+key that names a credential, [register](#bindings-and-the-removal-counter) the credential and reach
+the service through the store's [fetcher](#the-fetcher) or a [grant](#grants).
 
 A part of nixie names a credential by a reference, a resolver turns the reference into an entry, and
 the store serves the entry: a fetcher makes a request to an outside service with the value added on
-the host, and a grant passes the value through the sandbox adapter to a sandbox's broker for one
-host. No tool or connector ever holds a value. A credential's value never enters a tool result, a
+the host, and a grant gives a sandbox's broker the credential for one host, through the sandbox
+adapter. No tool or connector ever holds a value. A credential's value never enters a tool result, a
 prompt, a log line, a record or an error message. The one exception is the user's name and pronouns,
 which the prompt shows. [A few secrets](#references-and-the-resolver) stay outside the store.
 
 A release server's store reads the secrets file, which the
 [server](../deployment/server.md#configuration-and-secrets) decrypts at start, and a held backend
-over [the credential database](credential-database.md). The secrets file holds the search, image and
-model credentials, the spend gateway's token, and the user's name and pronouns, settings the prompt
-shows by design. The held backend holds the [OAuth tokens](#oauth-tokens) that nixie changes at
-runtime. Every build of the server runs both.
+over [the credential database](credential-database.md). The secrets file holds the search, image,
+speech and model credentials, the spend gateway's token, and the user's name and pronouns, settings
+the prompt shows by design. The held backend holds the [OAuth tokens](#oauth-tokens) that nixie
+changes at runtime. Every build of the server runs both.
 
 ```mermaid
 flowchart LR
@@ -181,14 +181,14 @@ from the provider's token URL over the checked connection.
 
 ### Records
 
-| Record                         | Written                                                                                 |
-| ------------------------------ | --------------------------------------------------------------------------------------- |
-| `credential.refresh_started`   | before the request leaves; it holds the credential, the new key and the removal counter |
-| `credential.refresh_saved`     | with the save; it holds the new access token's fingerprint                              |
-| `credential.refresh_failed`    | after a refresh that gave no token                                                      |
-| `credential.refresh_discarded` | after a removal moved the counter; it records whether revoking worked                   |
-| `credential.refresh_lost`      | at start, for a refresh that sent and never saved                                       |
-| `credential.status_changed`    | when a credential's status or reason changes                                            |
+| Record                         | Written                                                                                      |
+| ------------------------------ | -------------------------------------------------------------------------------------------- |
+| `credential.refresh_started`   | before the request leaves; it holds the credential, the new key's ID and the removal counter |
+| `credential.refresh_saved`     | with the save; it holds the new access token's fingerprint                                   |
+| `credential.refresh_failed`    | after a refresh that gave no token                                                           |
+| `credential.refresh_discarded` | after a removal moved the counter; it records whether revoking worked                        |
+| `credential.refresh_lost`      | at start, for a refresh that sent and never saved                                            |
+| `credential.status_changed`    | when a credential's status or reason changes                                                 |
 
 A record holds a credential's ID and a fingerprint, never a token, a client secret or a key. Every
 kind has an entry, with no live topic, in `credentialRecordTopics`, which the server registers.
@@ -251,13 +251,14 @@ holds as its own. Each scan reads the set when it runs and keeps its own filter:
 ## Tests
 
 `startFakeOAuthProvider` in `test-utils` runs a provider's token and revoke endpoints as a real
-HTTPS site on the loopback address, which a test reaches through the pinned connection. The crash
-suite `recover-credential-refresh.test.ts` in the server's `e2e/` folder starts nixie, begins a
-refresh against a provider that never answers, kills the process with `SIGKILL`, starts it again on
-the same data directory, and checks that the credential is `needs_consent`. A second test holds the
-process at the fault point `credential.refresh.token_saved`, after the transaction that commits the
-token and its `credential.refresh_saved` record, kills it there, and checks that the restart finds
-both and leaves the credential `active`.
+HTTPS site on the loopback address. A test reaches it through the pinned connection, because the
+test passes the store an address check of its own, which lets the loopback address through. The
+crash suite `recover-credential-refresh.test.ts` in the server's `e2e/` folder starts nixie, begins
+a refresh against a provider that never answers, kills the process with `SIGKILL`, starts it again
+on the same data directory, and checks that the credential is `needs_consent`. A second test holds
+the process at the fault point `credential.refresh.token_saved`, after the transaction that commits
+the token and its `credential.refresh_saved` record, kills it there, and checks that the restart
+finds both and leaves the credential `active`.
 
 Plant a fake value in the secrets file and assert that it appears in no tool result, no log line, no
 record and no error. `createTestCredentials` in the module's `test-utils` builds a resolver and a

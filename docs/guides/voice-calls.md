@@ -48,7 +48,8 @@ reaches OpenAI only from the host.
    nixie has no default price, and a call refuses to start until you set one. Take the figure from
    OpenAI's [GPT-Live model page](https://developers.openai.com/api/docs/models/gpt-live-1).
 
-3. Merge the definitions change, and restart nixie.
+3. Merge the definitions change. Then restart nixie, which reads the deployment config and the
+   secrets file only at start.
 
 Expect: `calls.start` no longer answers `SPEECH_UNAVAILABLE`. When the secrets file has no `speech`
 entry, nixie starts anyway, logs `calls.speech_credential_missing`, and keeps answering
@@ -56,9 +57,9 @@ entry, nixie starts anyway, logs `calls.speech_credential_missing`, and keeps an
 
 ## Change the voice or the lines
 
-Set `voice` in `voice/voice.yaml` to one of OpenAI's voice names, such as `marin`. Set the holding
-line, the reconnect line and the other fixed lines in `voice/lines.yaml`. A changed voice or line
-applies from the next call.
+In `voice/voice.yaml` in your definitions repo, set the `voice` key to one of OpenAI's voice names,
+such as `marin`. Set the holding line, the reconnect line and the other fixed lines in
+`voice/lines.yaml`. A changed voice or line applies from the next call.
 
 ## When the key stops working
 

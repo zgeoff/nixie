@@ -16,7 +16,9 @@ the conversation when it ends.
 
 The call thread, the speech layer and its GPT-Live adapter, the hand-offs, the call records and the
 per-minute charge are built: [Voice calls](../../../architecture/channels/calls.md) describes them.
-This design holds what is left: the device's side of a call, ringing you, and tuning.
+This design holds what is left to build: the device's side of a call, and ringing you. Each work
+item above builds one part of it from the contracts and constraints below. Tuning the speech layer
+on real calls is a work item of its own.
 
 Terms:
 
@@ -49,12 +51,12 @@ flowchart LR
 await nixie.calls.answer({ callID, clientActionID }); // → { callID, state: 'connecting' }
 ```
 
-Every new speech-layer session needs a fresh offer from the device. When the session limit is near,
-a session drops or the server restarts, the server sends `call.reconnect` on the device's live
-stream. The device makes an ICE-restart offer on its open peer connection, so the microphone grant
-and the audio path stay, and sends it with a fresh `calls.connect`. The old session then closes
-itself. After a restart, the device reconnects on its own when its live stream returns. The calls
-module keeps the call for 30 s while it waits.
+Every new speech-layer session needs a fresh offer from the device. When the session limit is near
+or a session drops, the server sends `call.reconnect` on the device's live stream. The device makes
+an ICE-restart offer on its open peer connection, so the microphone grant and the audio path stay,
+and sends it with a fresh `calls.connect`. The old session then closes itself. After a server
+restart, no `call.reconnect` comes: the device makes the same offer on its own when its live stream
+returns. The calls module keeps the call for 30 s while it waits.
 
 The call screen's captions come from nixie's live stream, because the provider's data channel stays
 bound to the first session after a reconnect.

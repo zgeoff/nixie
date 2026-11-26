@@ -1,13 +1,13 @@
 # Code layout
 
-nixie's code is one Bun workspace of packages under the `@heynixie/` scope, in 5 folders by trust
-zone and role. The server is one deployable that composes many module packages, and the programs
-that run inside a sandbox live in their own folder, so a boundary check stops sandbox code from
-importing the trusted core. Package boundaries are the module boundaries: a package exposes only its
-entry points, and a tag rule decides which kinds of package may depend on which. The database adds
-no boundary of its own: every module reads and writes it through the one writer.
-[The server](deployment/server.md) covers how the composition root wires the packages at start, and
-[the release pipeline](deployment/release-pipeline.md) covers the images built from them.
+nixie's code is one Bun workspace of packages under the `@heynixie/` scope, and its product code
+sits in 5 folders by trust zone and role. The server is one deployable that composes many module
+packages, and the programs that run inside a sandbox live in their own folder, so a boundary check
+stops sandbox code from importing the trusted core. Package boundaries are the module boundaries: a
+package exposes only its entry points, and a tag rule decides which kinds of package may depend on
+which. The database adds no boundary of its own: every module reads and writes it through the one
+writer. [The server](deployment/server.md) covers how the composition root wires the packages at
+start, and [the release pipeline](deployment/release-pipeline.md) covers the images built from them.
 
 ## The folders
 
@@ -56,13 +56,14 @@ Every package name is `@heynixie/` plus its folder name, and every package is pr
 Pulumi component and the API contract, which each release
 [publishes to npm](deployment/release-pipeline.md#build-settings-and-publishing). The Pulumi
 component declares the Pulumi SDKs as peer dependencies with a range, because a deployment's own
-Pulumi program supplies them. That is the one exception to the catalog rule below, and the catalog
-pins the versions the component's tests run against. A library package is consumed as source: its
-`exports` map points at `./src/index.ts`, and nothing builds it before use. A package whose helpers
-other packages' tests use exports them as a second entry, `./test-utils`. A package that nothing
-imports, such as the fetch guest or the root suites, has no `exports` map. An `exports` map refuses
-every subpath it does not list, and `turbo boundaries` refuses a relative path into another package,
-so no package imports another package's internal files.
+Pulumi program supplies them. Outside the spikes, which stand apart from these rules, that is the
+one exception to the catalog rule below, and the catalog pins the versions the component's tests run
+against. A library package is consumed as source: its `exports` map points at `./src/index.ts`, and
+nothing builds it before use. A package whose helpers other packages' tests use exports them as a
+second entry, `./test-utils`. A package that nothing imports, such as the fetch guest or the root
+suites, has no `exports` map. An `exports` map refuses every subpath it does not list, and
+`turbo boundaries` refuses a relative path into another package, so no package but a spike imports
+another package's internal files.
 
 Every external version lives once, in the root `workspaces.catalog`. A package writes `"catalog:"`
 for an external dependency and `"workspace:*"` for an internal one, and pins no version itself. The
@@ -140,10 +141,10 @@ A few imports belong to one package each, and the Agent SDK to two:
 | `bun:sqlite` and the Kysely dialect | `libs/db`                          |
 | ONNX Runtime and its tokenizer      | `adapters/encoder-onnx`            |
 
-The `zgeoff/import-zones` lint rule refuses each of these imports outside its one package. The Agent
-SDK has one exception: the SDK contract suite and the memory checker's eval in `evals/` drive the
-SDK itself, to check the behaviours nixie relies on, so the rule lets them import it. The rule
-covers `bun:sqlite`, which Bun provides with no declared dependency. Lint also refuses `require`,
+The `zgeoff/import-zones` lint rule refuses each of these imports outside the packages the table
+names. The Agent SDK has two because the SDK contract suite and the memory checker's eval in
+`evals/` drive the SDK itself, to check the behaviours nixie relies on. The rule covers
+`bun:sqlite`, which Bun provides with no declared dependency. Lint also refuses `require`,
 `import.meta.require`, `node:module` and any `import()` whose specifier the rule cannot read, so no
 import escapes the zones. The zones exist because the Agent SDK runs only inside a sandbox
 ([0003](../decisions/0003-sdk-placement.md)) and one package owns each outside system.
