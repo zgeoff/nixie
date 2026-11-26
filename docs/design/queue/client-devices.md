@@ -6,12 +6,12 @@
 
 Every client you sign in is a device, so the assistant can show something on the screen you're
 using. A client is one signed-in browser or app and its session, so ten tabs of one browser are one
-device. On a call, the assistant keeps its spoken reply short and puts a long answer, such as this
-week's plans, on the call's device, then says "I've put that on your screen". You open the device
-view from the app's navigation and go back to the call, which stays live the whole time.
+device. On a call, the assistant keeps its spoken reply short. It may put a long answer, such as
+this week's plans, on the call's device, then say "I've put that on your screen". You open the
+device view from the app's navigation and go back to the call, which stays live the whole time.
 
 A real GPT-Live session summarised or cut short a 2,400-character answer in 3 of 3 tries, and short
-answers worked every time. The server needs no new call machinery for this: the call's turn already
+answers worked every time. Add no new path from a call to the device tools: the call's turn already
 gets the conversation's tools, the device tools among them. Build it from this doc, the
 [devices architecture](../../architecture/channels/devices.md) and the
 [calls architecture](../../architecture/channels/calls.md).
@@ -97,8 +97,9 @@ call turn's prompt (calls module), one added rule. The speech layer's own prompt
   that size through `devices.resize`.
 - Opening the device view, the chat or the call screen during a call keeps the call's audio, its
   microphone grant and its live stream. Only a hang-up, a call end or a sign-out ends the call.
-- On a full session's browser, `/device` shows that client's own device full screen. On a browser
-  with no session, it keeps the enrolment form for a screen device.
+- Device mode, the route `/device`, is a separate page from the device view. On a full session's
+  browser, it shows that client's own device full screen. On a browser with no session, it keeps the
+  enrolment form for a screen device.
 - A full session follows its device stream and its conversation stream on one session.
 
 ## Builder decides
