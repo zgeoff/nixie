@@ -112,9 +112,23 @@ type WakeMailSource = { source: string; key: string }; // triggers; replaces { k
   keeps its records, and turning it on again finds them as it left them.
 - A core part never lists a feature part in `needs`. A feature part may need another feature's part,
   and declares that feature in `requires`; the config load fails when a required feature is off.
-- Only these places name a feature or an outside service: the composition root, the feature's own
-  packages, `featureIDs` in the contract, and the web client's feature checks. A test in
-  `apps/server` fails when any other module or the contract names one.
+- Two checks keep a feature from leaking into the core, and both run in CI on every PR:
+  - **Names.** Only these places name a feature or an outside service: the composition root, the
+    feature's own packages, `featureIDs` in the contract, and the web client's feature checks. A
+    test in `apps/server` fails when any other module or the contract names one. It reads the names
+    from `featureIDs` and the adapter folder names, so a new feature or adapter needs no edit to the
+    test.
+  - **Imports.** `turbo boundaries` splits today's `module` tag into `core` and `feature`. A `core`
+    module depends only on `core` modules and libs. A `feature` module may depend on `core` modules,
+    libs and the features it `requires`. Adapters and apps keep their rules.
+- Each check fails with a message that names the file, the name or import it found, and the fix:
+  move the code into the feature's package, or fill a core list from the composition root.
+- An exception is rare and visible: it is an entry in the ports doc's list of places the code breaks
+  a rule, with its reason, and a per-package override that the check reads. A PR that adds one says
+  so in its description. Before the retrofit lands, each existing leak is such an exception, so the
+  checks pass from the day they land and each retrofit removes its own entries.
+- Tests and test utilities follow the import rule too. A test that needs a core module and a feature
+  together lives in `integration/` or in an app's e2e suite.
 - Each outside service is an adapter named `<interface>-<system>`. Google's code moves out of the
   connectors module into a `connector-google` adapter behind a `Connector` interface that the
   connections module owns.
@@ -137,7 +151,9 @@ type WakeMailSource = { source: string; key: string }; // triggers; replaces { k
 
 ## Builder decides
 
-- How the naming test lists the allowed files.
+- How the naming test lists the allowed files, and how a per-package override is written, from what
+  `turbo boundaries` offers.
+- Which modules take the `feature` tag, from the feature table above.
 - The error wording of `FEATURE_OFF` and of a config load that fails for a required feature.
 - The names of the core list types and where each is filled.
 - The wording of the page that says a feature is off.
