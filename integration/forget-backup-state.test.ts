@@ -76,6 +76,7 @@ async function setupTest() {
     settings: defaultAPISettings,
     readSessionCleanup: () => null,
     readZone: () => Promise.resolve('UTC'),
+    features: [],
     passkeys: createPasskeyState(),
     clients: createClientRegistry({ clock }),
   };

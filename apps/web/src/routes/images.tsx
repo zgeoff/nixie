@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 import { ImageGallery } from '../components/image-gallery';
 import { SignedInPage } from '../components/signed-in-page';
 import { readRouteSession } from '../conversation/read-route-session';
+import { FeatureGate } from '../features/feature-gate';
 
 interface ImagesSearch {
   readonly all?: true | undefined;
@@ -37,19 +38,21 @@ function Images(): ReactNode {
       }}
       session={data.session}
     >
-      <ImageGallery
-        isAll={search.all === true}
-        onAllChange={(isAll) => {
-          void navigate({ search: makeAllSearch(isAll) });
-        }}
-        onClose={() => {
-          void navigate({ search: makeImageSearch(undefined) });
-        }}
-        onOpen={(image) => {
-          void navigate({ search: makeImageSearch(image) });
-        }}
-        openImage={search.image}
-      />
+      <FeatureGate feature="images">
+        <ImageGallery
+          isAll={search.all === true}
+          onAllChange={(isAll) => {
+            void navigate({ search: makeAllSearch(isAll) });
+          }}
+          onClose={() => {
+            void navigate({ search: makeImageSearch(undefined) });
+          }}
+          onOpen={(image) => {
+            void navigate({ search: makeImageSearch(image) });
+          }}
+          openImage={search.image}
+        />
+      </FeatureGate>
     </SignedInPage>
   );
 }

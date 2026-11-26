@@ -9,6 +9,7 @@ import { connectionsContract } from './connections-contract';
 import { definitionsContract } from './definitions-contract';
 import { devicesContract } from './devices-contract';
 import { erasureContract } from './erasure-contract';
+import { featureIDs } from './feature-ids';
 import { followLive } from './follow-live';
 import { forgetBackupSchema } from './forget-backup-schema';
 import { imageNotFoundError } from './image-not-found-error';
@@ -125,6 +126,11 @@ const backupNoticeSchema = z.object({
   cause: z.enum(['failed', 'missing']),
   sequence: z.int().positive(),
   raisedAt: z.date(),
+});
+
+const nixieReadSchema = z.object({
+  paused: pauseStateSchema,
+  features: z.array(z.enum(featureIDs)),
 });
 
 export const contract = {
@@ -342,7 +348,7 @@ export const contract = {
       ),
   },
   nixie: {
-    read: signedIn.output(z.object({ paused: pauseStateSchema })),
+    read: signedIn.output(nixieReadSchema),
     pause: nixieControl,
     resume: nixieControl.errors(spendStopErrors),
   },

@@ -144,6 +144,7 @@ test('it forgets a connection and shows the erasure, the revocation and the key 
     "[...document.querySelectorAll('button')].some((button) => button.innerText === 'Forget this connection' && !button.disabled)",
   );
 
+  await ctx.waitForPage('document.querySelector(\'section[aria-label="Drive files"]\') !== null');
   await ctx.clickAt('main button');
 
   await ctx.waitForPage(

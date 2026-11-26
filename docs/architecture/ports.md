@@ -6,9 +6,7 @@ the rules for ports, providers and adapters, and lists where the code departs fr
 
 ## The terms
 
-- A **port** is an interface that one module owns and that has a second real provider in sight. A
-  second provider is in sight when it is built, or when a design, a decision record or a tracker
-  issue plans it.
+- A **port** is an interface that one module owns and that a provider implements.
 - A **provider** is one implementation of an interface. A real provider does the work in a release.
   A fake provider stands in for it in a test.
 - An **adapter** is a provider that reaches a system outside nixie from the server, as a package of
@@ -16,10 +14,15 @@ the rules for ports, providers and adapters, and lists where the code departs fr
 
 ## When a port fits
 
-- A port exists only when a second real provider is in sight, because with one provider a provider
-  key in the config selects nothing. A key that picks a test-only provider is allowed under rule 7:
-  the sandbox config's `adapter` key, `imp` or `test`, is one.
-- Search has `SearchProvider` and one real provider, so the config has no provider key for search.
+- An outside service that the server reaches plugs in as an adapter behind an interface that a nixie
+  module owns, and nixie's core never names an outside service or an optional feature. Each optional
+  feature is on only when its section is in the deployment config, and the config key of a feature
+  that is off leaves no trace in nixie. A key that picks a test-only provider is allowed under rule
+  7: the sandbox config's `adapter` key, `imp` or `test`, is one.
+  [Feature switches](deployment/server.md#feature-switches) covers the switches and the two checks
+  that hold the rule.
+- Search has `SearchProvider` and one real provider, so the config has no provider key for search,
+  and its `search` section turns the feature on.
 - The memory checker's model has no port: the `checker` role needs `structured-output`, and only the
   Agent SDK harness declares it.
 - The backup schedule and the definitions poll each run their own loop on the clock. Every other
@@ -89,3 +92,56 @@ The code breaks a rule in these places. New code follows the rules.
 
 The wire lib's `harnessIDs` is a second list of the models module's `harnesses`, which rule 10
 allows: a test in the models module fails when the two lists differ.
+
+The places in this table name a feature ID or an outside service in a core module, or make a core
+module depend on a feature module. Each row comes from the entries in
+`apps/server/src/leak/leak-exceptions.ts`, and those entries go when the row's work item lands.
+
+| Place                 | Names or depends on                                                                             | Work item                                            |
+| --------------------- | ----------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| `libs/contract`       | `computer`, `code`                                                                              | [GEO-2878](https://linear.app/zgeoff/issue/GEO-2878) |
+| `libs/contract`       | `google`                                                                                        | [GEO-2879](https://linear.app/zgeoff/issue/GEO-2879) |
+| `libs/contract`       | `devices`, `voice`                                                                              | [GEO-2880](https://linear.app/zgeoff/issue/GEO-2880) |
+| `libs/contract`       | `images`, `mcp`, `spend`                                                                        | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
+| `modules/actions`     | the connectors module                                                                           | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
+| `modules/api`         | `computer`, `code`                                                                              | [GEO-2878](https://linear.app/zgeoff/issue/GEO-2878) |
+| `modules/api`         | `google`                                                                                        | [GEO-2879](https://linear.app/zgeoff/issue/GEO-2879) |
+| `modules/api`         | `devices`, `voice`; the calls and devices modules                                               | [GEO-2880](https://linear.app/zgeoff/issue/GEO-2880) |
+| `modules/api`         | `coding`, `images`, `mail`, `mcp`, `spend`; the coding, connectors, mail, MCP and spend modules | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
+| `modules/budgets`     | `spend`                                                                                         | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
+| `modules/connections` | `google`; the connectors module                                                                 | [GEO-2879](https://linear.app/zgeoff/issue/GEO-2879) |
+| `modules/credentials` | `atc`                                                                                           | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
+| `modules/definitions` | `voice`; the calls module                                                                       | [GEO-2880](https://linear.app/zgeoff/issue/GEO-2880) |
+| `modules/definitions` | `mcp`                                                                                           | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
+| `modules/log`         | `code`                                                                                          | [GEO-2878](https://linear.app/zgeoff/issue/GEO-2878) |
+| `modules/log`         | `coding`, `spend`                                                                               | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
+| `modules/models`      | `images`, `openai`                                                                              | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
+| `modules/policy`      | `code`                                                                                          | [GEO-2878](https://linear.app/zgeoff/issue/GEO-2878) |
+| `modules/policy`      | `coding`, `mcp`, `spend`                                                                        | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
+| `modules/proposals`   | `mcp`                                                                                           | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
+| `modules/sandbox`     | `code`, `computer`                                                                              | [GEO-2878](https://linear.app/zgeoff/issue/GEO-2878) |
+| `modules/sandbox`     | `coding`                                                                                        | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
+| `modules/sessions`    | `computer`                                                                                      | [GEO-2878](https://linear.app/zgeoff/issue/GEO-2878) |
+| `modules/sessions`    | `voice`; the calls and devices modules                                                          | [GEO-2880](https://linear.app/zgeoff/issue/GEO-2880) |
+| `modules/sessions`    | `images`, `mail`, `mcp`, `spend`; the connectors and spend modules                              | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
+| `modules/skills`      | `github`                                                                                        | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
+| `modules/tasks`       | `code`                                                                                          | [GEO-2878](https://linear.app/zgeoff/issue/GEO-2878) |
+| `modules/tasks`       | `mail`, `spend`                                                                                 | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
+| `modules/tools`       | `mcp`                                                                                           | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
+| `modules/triggers`    | `mail`                                                                                          | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
+
+The connections module owns the core `Connector` interface. It depends on the connectors module only
+for Google's code, which moves into a `connector-google` adapter in
+[GEO-2879](https://linear.app/zgeoff/issue/GEO-2879).
+
+The memory, notebook and skills modules reach a feature module only through another leaking module,
+such as the sessions module. They have no import entry, and carry the `leaking` tag until the
+entries of the modules they depend on go.
+
+These ordinary words match a feature ID, but none of them means the code feature or the web search
+feature. Each one stays, with its reason in the exceptions file:
+
+- `code` for the sign-in and enrolment codes in `libs/contract` and `modules/api`, the OAuth code
+  verifier in `modules/credentials`, and the OAuth authorization code in `modules/connections`;
+- `search` for the search mode of the memory view, of memory recall in `modules/memory` and
+  `modules/sessions`, and of the note index in `modules/notebook`.

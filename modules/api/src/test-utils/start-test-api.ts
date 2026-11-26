@@ -119,6 +119,9 @@ interface TestAPIOptions {
 
   // gives the context a calls module on a fake speech layer, set up as the options say
   readonly calls?: TestCallsOptions;
+
+  // the features that nixie.read reports as on, none when unset
+  readonly features?: APIContext['features'];
 }
 
 export async function startTestAPI(
@@ -181,6 +184,7 @@ export async function startTestAPI(
     spendGateway: options.isSpendOn === true ? spendGateway : null,
     isGatewayMetered: options.isGatewayMetered === true,
     calls: options.calls ?? null,
+    features: options.features ?? [],
   });
 
   const context = created.context;
@@ -241,6 +245,7 @@ interface TestContextDeps {
   readonly spendGateway: ReturnType<typeof buildStubSpendGateway> | null;
   readonly isGatewayMetered: boolean;
   readonly calls: TestCallsOptions | null;
+  readonly features: APIContext['features'];
 }
 
 async function createTestContext(
@@ -322,6 +327,7 @@ async function createTestContext(
     readDefinitionVersion: readStoredVersion,
     runners: buildTestTaskRunners(),
     settings,
+    features: deps.features,
     passkeys: createPasskeyState(),
     clients: createClientRegistry({ clock }),
 

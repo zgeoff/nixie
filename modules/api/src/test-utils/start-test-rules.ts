@@ -102,6 +102,7 @@ export async function startTestRules(settings: APIContext['settings'] = defaultA
     ...buildTestDefinitionReaders(),
     runners: buildTestTaskRunners(),
     settings,
+    features: [],
     passkeys: createPasskeyState(),
     clients: createClientRegistry({ clock }),
     readZone: () => Promise.resolve('Australia/Sydney'),

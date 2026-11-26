@@ -13,11 +13,16 @@ import { createCallSession } from './create-call-session';
 
 export interface CallProviderProps {
   readonly children: ReactNode;
+
+  // whether the voice feature is on; while it is off the provider offers no call, and renders no
+  // audio, call bar or live reads
+  readonly isOn: boolean;
   readonly startTimer?: StartTimer;
 }
 
 // Holds the call's peer connection, microphone and live reads above the router, so a route change
-// never ends the call, and shows the call bar on every route while a call is live.
+// never ends the call, and shows the call bar on every route while a call is live. It renders its
+// children in the same place whether voice is on or off, so the answer never remounts the page.
 export function CallProvider(props: CallProviderProps): ReactNode {
   const nixie = useNixieClient();
   const environment = use(CallEnvironmentContext);
@@ -71,10 +76,12 @@ export function CallProvider(props: CallProviderProps): ReactNode {
   }, [session, viewData, viewUpdatedAtMs, isFollowing, phase, reconnectedAtMs]);
 
   return (
-    <CallContext value={{ session, snapshot, seenProposals, setSeenProposals }}>
-      {isFollowing ? <FollowedCall /> : null}
-      <Speaker stream={snapshot.remoteStream} />
-      <CallBar />
+    <CallContext
+      value={props.isOn ? { session, snapshot, seenProposals, setSeenProposals } : undefined}
+    >
+      {props.isOn && isFollowing ? <FollowedCall /> : null}
+      {props.isOn ? <Speaker stream={snapshot.remoteStream} /> : null}
+      {props.isOn ? <CallBar /> : null}
       {props.children}
     </CallContext>
   );

@@ -6,8 +6,10 @@ import { buildMockCodexProfile } from '@heynixie/models/test-utils';
 import { loadDeploymentConfig } from '../deployment/load-deployment-config';
 import { writeBootFiles } from '../test-utils/write-boot-files';
 import type { BootFileExtras } from '../test-utils/write-boot-files';
+import type { AnyPartDeclaration } from '../types';
 import { listImageNeeds } from './list-image-needs';
 import { serverPartDeclarations } from './server-part-declarations';
+import type { ServerPartValues } from './server-part-values';
 
 async function setupTest() {
   const directory = await mkdtemp(join(tmpdir(), 'nixie-image-needs-'));
@@ -105,4 +107,43 @@ test('it needs the codex image for a system task profile on the codex harness', 
     { key: 'conversation', neededBy: 'the profile scripted on the agent-sdk harness' },
     { key: 'codex', neededBy: 'the profile task-codex on the codex harness' },
   ]);
+});
+
+test('it needs no image for a part whose feature is off', async () => {
+  const ctx = await setupTest();
+  const config = await ctx.loadConfig({});
+
+  const declarations: AnyPartDeclaration<ServerPartValues>[] = [
+    {
+      name: 'computer',
+      feature: 'voice',
+      needs: [],
+      images: () => ['computer'],
+      start: () => Promise.reject(new Error('never started')),
+    },
+  ];
+
+  expect(listImageNeeds(config, declarations)).toStrictEqual([
+    { key: 'conversation', neededBy: 'the profile scripted on the agent-sdk harness' },
+  ]);
+});
+
+test('it fails when a part requires a feature that is off', async () => {
+  const ctx = await setupTest();
+  const config = await ctx.loadConfig({});
+
+  const declarations: AnyPartDeclaration<ServerPartValues>[] = [
+    {
+      name: 'computer',
+      feature: 'computer',
+      requires: ['voice'],
+      needs: [],
+      start: () => Promise.reject(new Error('never started')),
+    },
+  ];
+
+  expect(() => listImageNeeds(config, declarations)).toThrowWithMessage(
+    Error,
+    /computer feature requires the voice feature, which is off/u,
+  );
 });

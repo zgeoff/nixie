@@ -21,7 +21,7 @@ import { useCallApprovals } from './use-call-approvals';
 function setupTest() {
   const rootRoute = createRootRoute({
     component: () => (
-      <CallProvider>
+      <CallProvider isOn>
         <Outlet />
       </CallProvider>
     ),

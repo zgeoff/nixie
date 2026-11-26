@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { SignedInPage } from '../components/signed-in-page';
 import { ConnectionPage } from '../connection/connection-page';
 import { readRouteSession, routeDataStaleTimeMs } from '../conversation/read-route-session';
+import { FeatureGate } from '../features/feature-gate';
 
 export const Route = createFileRoute('/settings/connections/$connection')({
   component: Connection,
@@ -28,7 +29,9 @@ function Connection(): ReactNode {
       }}
       session={data.session}
     >
-      <ConnectionPage connection={params.connection} key={params.connection} />
+      <FeatureGate feature="google">
+        <ConnectionPage connection={params.connection} key={params.connection} />
+      </FeatureGate>
     </SignedInPage>
   );
 }

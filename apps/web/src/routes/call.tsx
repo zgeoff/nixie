@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 import { CallScreen } from '../call/call-screen';
 import { SignedInPage } from '../components/signed-in-page';
 import { readRouteSession } from '../conversation/read-route-session';
+import { FeatureGate } from '../features/feature-gate';
 
 export const Route = createFileRoute('/call')({
   component: Call,
@@ -22,7 +23,9 @@ function Call(): ReactNode {
       }}
       session={data.session}
     >
-      <CallScreen />
+      <FeatureGate feature="voice">
+        <CallScreen />
+      </FeatureGate>
     </SignedInPage>
   );
 }

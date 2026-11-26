@@ -21,7 +21,7 @@ export function createNixieProcedures(context: APIContext) {
 
       const paused = toPauseState(pause);
 
-      return { paused: toPauseResponse(paused) };
+      return { paused: toPauseResponse(paused), features: [...context.features] };
     }),
 
     pause: nixie.pause.handler((options) => runControl(context, 'pause', options)),

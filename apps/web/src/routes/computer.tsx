@@ -8,6 +8,7 @@ import { SignedInPage } from '../components/signed-in-page';
 import { loadNoVNCViewer } from '../computer/load-novnc-viewer';
 import { readTakeOverRequest } from '../computer/read-take-over-request';
 import { readRouteSession } from '../conversation/read-route-session';
+import { FeatureGate } from '../features/feature-gate';
 
 export const Route = createFileRoute('/computer')({
   component: Computer,
@@ -26,7 +27,9 @@ function Computer(): ReactNode {
       }}
       session={data.session}
     >
-      <ComputerView loadViewer={loadNoVNCViewer} startsTakeOver={startsTakeOver} />
+      <FeatureGate feature="computer">
+        <ComputerView loadViewer={loadNoVNCViewer} startsTakeOver={startsTakeOver} />
+      </FeatureGate>
     </SignedInPage>
   );
 }
