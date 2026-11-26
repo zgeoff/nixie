@@ -93,17 +93,55 @@ The code breaks a rule in these places. New code follows the rules.
 The wire lib's `harnessIDs` is a second list of the models module's `harnesses`, which rule 10
 allows: a test in the models module fails when the two lists differ.
 
-These places name a feature or an outside service in a core module, or depend on a feature module
-from one. Each is an entry in `apps/server/src/leak/leak-exceptions.ts`, and the retrofit of its
-feature removes it:
+The places in this table name a feature ID or an outside service in a core module, or make a core
+module depend on a feature module. Each row comes from the entries in
+`apps/server/src/leak/leak-exceptions.ts`, and those entries go when the row's work item lands.
 
-- Core modules that name a feature ID or the system of an adapter: `libs/contract`, and the modules
-  `api`, `budgets`, `definitions`, `log`, `models`, `policy`, `proposals`, `sandbox`, `sessions`,
-  `tasks`, `tools` and `triggers` hold such names, which the retrofits of the computer and code,
-  Google, calls and devices, and MCP, spend and images remove.
-- Ordinary words that match a feature ID and stay, each with its reason in the exceptions file: the
-  sign-in and enrolment codes, the OAuth code verifier, and the search mode of memory recall and the
-  note index, which are not the code or web search features.
-- Core modules that depend on a feature module: `actions` on connectors; `api` on calls, coding,
-  connections, connectors, devices, mail, MCP and spend; `definitions` on calls; and `sessions` on
-  calls, connectors, devices and spend.
+| Place                 | Names or depends on                                                                             | Work item                                            |
+| --------------------- | ----------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| `libs/contract`       | `computer`, `code`                                                                              | [GEO-2878](https://linear.app/zgeoff/issue/GEO-2878) |
+| `libs/contract`       | `google`                                                                                        | [GEO-2879](https://linear.app/zgeoff/issue/GEO-2879) |
+| `libs/contract`       | `devices`, `voice`                                                                              | [GEO-2880](https://linear.app/zgeoff/issue/GEO-2880) |
+| `libs/contract`       | `images`, `mcp`, `spend`                                                                        | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
+| `modules/actions`     | the connectors module                                                                           | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
+| `modules/api`         | `computer`, `code`                                                                              | [GEO-2878](https://linear.app/zgeoff/issue/GEO-2878) |
+| `modules/api`         | `google`                                                                                        | [GEO-2879](https://linear.app/zgeoff/issue/GEO-2879) |
+| `modules/api`         | `devices`, `voice`; the calls and devices modules                                               | [GEO-2880](https://linear.app/zgeoff/issue/GEO-2880) |
+| `modules/api`         | `coding`, `images`, `mail`, `mcp`, `spend`; the coding, connectors, mail, MCP and spend modules | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
+| `modules/budgets`     | `spend`                                                                                         | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
+| `modules/connections` | `google`; the connectors module                                                                 | [GEO-2879](https://linear.app/zgeoff/issue/GEO-2879) |
+| `modules/credentials` | `atc`                                                                                           | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
+| `modules/definitions` | `voice`; the calls module                                                                       | [GEO-2880](https://linear.app/zgeoff/issue/GEO-2880) |
+| `modules/definitions` | `mcp`                                                                                           | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
+| `modules/log`         | `code`                                                                                          | [GEO-2878](https://linear.app/zgeoff/issue/GEO-2878) |
+| `modules/log`         | `coding`, `spend`                                                                               | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
+| `modules/models`      | `images`, `openai`                                                                              | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
+| `modules/policy`      | `code`                                                                                          | [GEO-2878](https://linear.app/zgeoff/issue/GEO-2878) |
+| `modules/policy`      | `coding`, `mcp`, `spend`                                                                        | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
+| `modules/proposals`   | `mcp`                                                                                           | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
+| `modules/sandbox`     | `code`, `computer`                                                                              | [GEO-2878](https://linear.app/zgeoff/issue/GEO-2878) |
+| `modules/sandbox`     | `coding`                                                                                        | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
+| `modules/sessions`    | `computer`                                                                                      | [GEO-2878](https://linear.app/zgeoff/issue/GEO-2878) |
+| `modules/sessions`    | `voice`; the calls and devices modules                                                          | [GEO-2880](https://linear.app/zgeoff/issue/GEO-2880) |
+| `modules/sessions`    | `images`, `mail`, `mcp`, `spend`; the connectors and spend modules                              | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
+| `modules/skills`      | `github`                                                                                        | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
+| `modules/tasks`       | `code`                                                                                          | [GEO-2878](https://linear.app/zgeoff/issue/GEO-2878) |
+| `modules/tasks`       | `mail`, `spend`                                                                                 | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
+| `modules/tools`       | `mcp`                                                                                           | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
+| `modules/triggers`    | `mail`                                                                                          | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
+
+The connections module owns the core `Connector` interface. It depends on the connectors module only
+for Google's code, which moves into a `connector-google` adapter in
+[GEO-2879](https://linear.app/zgeoff/issue/GEO-2879).
+
+The memory, notebook and skills modules reach a feature module only through another leaking module,
+such as the sessions module. They have no import entry, and carry the `leaking` tag until the
+entries of the modules they depend on go.
+
+These ordinary words match a feature ID, but none of them means the code feature or the web search
+feature. Each one stays, with its reason in the exceptions file:
+
+- `code` for the sign-in and enrolment codes in `libs/contract` and `modules/api`, the OAuth code
+  verifier in `modules/credentials`, and the OAuth authorization code in `modules/connections`;
+- `search` for the search mode of the memory view, of memory recall in `modules/memory` and
+  `modules/sessions`, and of the note index in `modules/notebook`.

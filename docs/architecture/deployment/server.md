@@ -104,37 +104,6 @@ part starts, and the error names the parts. A part that reads a used part before
 absent: the API leaves a forget pending until the conversation's session cleanup is ready, and a
 memory host command answers that memory has not started.
 
-## Feature switches
-
-A feature is an optional part of nixie, such as the computer, calls or Google. Each is on only when
-its section is in the deployment config. A feature that is off starts none of its parts, needs none
-of its images and offers none of its tools or pages.
-[The design](../../design/queue/feature-switches.md) holds the full rules, and
-[the ports doc](../ports.md) lists the places where the code still breaks them.
-
-- `featureIDs` in `libs/contract` is the one list of features. Every union and schema that names a
-  feature derives from it.
-- `listFeaturesOn` in `apps/server` works out the features that are on from the config. It is the
-  only place that maps a config section to a feature, and `nixie.read` reports its answer to the web
-  client.
-- A part declaration sets `feature` to the feature it belongs to, and `requires` to the other
-  features whose parts it needs. The part plan leaves out each part whose feature is off, and the
-  images of that part. `parts.find` answers null for a part left out, so a core part lists a feature
-  part in `uses` and never in `needs`. The plan fails at config load, naming both features, when a
-  part requires a feature that is off, and when a core part lists a feature part in `needs`.
-- `FEATURE_OFF` is the typed error that the procedures of a feature that is off answer.
-  `requireFeature` in `modules/api` is the one guard that throws it.
-- Two checks keep a feature from leaking into a core module. The names check, a test in
-  `apps/server`, fails when a core module or the contract holds a feature ID or the outside-service
-  name of an adapter, as an identifier or a string literal. A string that is the operand of `in` or
-  the key of an indexed access is not a hit. The imports check is `turbo boundaries`, which splits
-  the `module` tag into `core` and `feature`: a `core` module depends only on `core` modules and
-  libs.
-- `apps/server/src/leak/leak-exceptions.ts` lists each leak that the code still holds, with the work
-  item whose retrofit removes it. Both checks read it, and a test fails when an exception matches
-  nothing. A module that reaches a feature module today carries the `leaking` tag in place of
-  `core`, and the retrofit that removes its last leak changes the tag back.
-
 A start whose database already holds a seed never waits on the definitions. When its seed is
 refused, the runners start on the definitions in force, the definitions part stays unready, and the
 definitions poll probes again after a short wait instead of a full interval. The wait doubles after
@@ -142,6 +111,50 @@ each failed probe or refused seed, up to the interval. A refused seed clears the
 so the next probe seeds whatever revision it finds, the last good one included, and a seed that
 applies clears the refusal. A definitions checkout that lands a moment after nixie starts, as a sync
 sidecar's first checkout can, therefore seeds within seconds.
+
+## Feature switches
+
+A feature is an optional part of nixie, such as the computer, calls or Google. Each is on only when
+its section is in the deployment config. A feature that is off starts none of its parts, needs none
+of its images and offers none of its tools or pages. Read
+[the design](../../design/queue/feature-switches.md) for the full rules, and
+[the ports doc](../ports.md) for the places where the code still breaks them.
+
+- `featureIDs` in `libs/contract` is the one list of features. Derive every union and schema that
+  names a feature from it.
+- `listFeaturesOn` in `apps/server` works out the features that are on from the config. It is the
+  only place that maps a config section to a feature, and `nixie.read` reports its answer to the web
+  client.
+- Set `feature` on a part declaration to the feature it belongs to, and `requires` to the other
+  features whose parts it needs. The part plan leaves out each part whose feature is off, and the
+  images of that part. `parts.find` answers null for a part left out, so list a feature part in a
+  core part's `uses`, never its `needs`. The plan fails at config load, with a message that names
+  each feature involved, when:
+  - a part requires a feature that is off;
+  - a feature part lists another feature's part in `needs` without that feature in its `requires`;
+  - a core part lists a feature part in `needs`.
+- A procedure of a feature that is off answers `FEATURE_OFF`, a typed error. `requireFeature` in
+  `modules/api` is the one guard that throws it.
+- The leak test in `apps/server/src/leak/` runs these checks to keep each feature out of the core:
+  - The names check fails when a core module or the contract holds a feature ID or the name of an
+    adapter's outside service, as an identifier or a string literal. The TypeScript compiler parses
+    each file, so comments, regex literals and JSX text never count. A string that is the operand of
+    `in` or the key of an indexed access is not a hit. An adapter's service is the last word of its
+    folder name, such as `github` from `definitions-repo-github`. The check takes 2 services from an
+    override instead: `gpt-live` for `speech-gpt-live`, and `model-gateway` for
+    `spend-model-gateway`, because the model gateway is core.
+  - The imports check fails when a module that is not tagged `feature` depends on one that is.
+- List each leak that the code still holds in `apps/server/src/leak/leak-exceptions.ts`, with the
+  work item whose retrofit removes it. Only the leak test reads the file, and the test fails when an
+  exception matches nothing.
+- `turbo boundaries` reads no exceptions. It checks each module's tags in its `turbo.json` against
+  the root `turbo.json`:
+  - A `core` module depends only on `core` modules and libs.
+  - A `feature` module depends on `core`, `leaking` and `feature` modules and libs.
+  - A `leaking` module is a core module that reaches a feature module today, directly or through
+    another `leaking` module. turbo checks every dependency down the tree and cannot take a rule for
+    each leak, so the tag sets no allow list. The tag only denies apps, adapters, guests and the
+    other outer packages. When a retrofit removes a module's last leak, tag the module `core` again.
 
 ## Health
 
