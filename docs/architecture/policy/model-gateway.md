@@ -358,12 +358,12 @@ last whole count. It adds one reply at a time, so two replies that end together 
 
 ## The periods
 
-The gateway counts the day and the month of each route in US dollars, and limits each route on its
-own. No limit spans routes, and no route limit is in tokens. Each period resets at local midnight in
-`periods.zone`, an IANA zone that equals the deployment's default time zone, and
-[`periodOf`](metering.md#periods) works out each start. The route's limits and the cap above its day
-limit sit in the gateway's own config, so code in the deployment cannot lower a limit or move a cap.
-It can only raise a day's limit within the cap, with `POST /raise`.
+The gateway counts each route's spend per day and per month in US dollars, and limits each route on
+its own. No route limit is in tokens. Each period resets at local midnight in `periods.zone`, an
+IANA zone that equals the deployment's default time zone, and [`periodOf`](metering.md#periods)
+works out each start. Each route's limits and the cap above its day limit sit in the gateway's own
+config, so code in the deployment cannot lower a limit or move a cap. That code can only raise a
+day's limit within the cap, with `POST /raise`.
 
 ```yaml
 periods:
@@ -521,28 +521,29 @@ Before a sandbox's first model request, the server registers it with `PUT /sandb
 | the conversation and the consent checker | none: the gateway counts it and sets no limit of its own |
 | a task's sandbox                         | none at registration; each task run's start sets it      |
 
-The gateway still answers a sandbox with no limit of its own with the limit 403 once its route's day
-or month count reaches that period's limit. At the start of a task run, the server uses `PATCH` to
-set the limit of the task's sandbox to the sandbox's count plus the task run's dollar limit, so the
-gateway ends a turn at the task's limit. While a worker run goes, that limit is lower by the run's
-planned dollars, and the server patches it after a raise of the task's limit commits, as
-[the task meter](metering.md#the-task-meter) says. Once a sandbox reaches its own limit, the gateway
-refuses each of its requests, and its last refusal names the counter `sandbox`.
+A sandbox with no limit of its own still gets the limit 403 once its route's day or month count
+reaches that period's limit. At the start of a task run, the server uses `PATCH` to set the limit of
+the task's sandbox to the sandbox's count plus the task run's dollar limit, so the gateway ends a
+turn at the task's limit. While a worker run is under way, that limit is lower by the run's planned
+dollars. The server patches the limit after a raise of the task's limit commits;
+[the task meter](metering.md#the-task-meter) has the details. Once a sandbox reaches its own limit,
+the gateway refuses each of its requests, and the sandbox's last refusal names the counter
+`sandbox`.
 
-Each `PUT` or `PATCH` of a sandbox's limit gives it a `limitRevision` higher than any the store has
-given, to this name or to a sandbox it has removed. The server patches a task's sandbox with the
-revision it read just before, so a patch whose call timed out and that reaches the gateway after a
-newer one gets 409 and leaves the newer limit in force. On a 409, the server reads the sandbox again
-and patches on the new revision. It holds the sandbox's lock from that read through every retry of a
-step's patch, so no newer limit of its own lands in between.
+The gateway gives each `PUT` or `PATCH` of a sandbox's limit a `limitRevision` higher than any it
+has given before, to this name or to a sandbox it has removed. The server patches a task's sandbox
+with the revision it read just before. A patch whose call timed out and that reaches the gateway
+after a newer one then gets 409, and the newer limit stays in force. On a 409, the server reads the
+sandbox again and patches on the new revision. It holds the sandbox's lock from that read through
+every retry of a step's patch, so no newer limit of its own lands in between.
 
 A worker run's planned limit is the worker's configured limit, held to what the calling task run has
 left. The gateway and nixie use that same number. When a registration fails, the sandbox fails to
-start. The server registers a sandbox that an earlier server process made the first time it reads
-that sandbox: with `PUT` only when the gateway lacks the name, and with `PATCH` of its limit
-otherwise, so a sandbox kept across a restart keeps its count. Once a sandbox's destroy succeeds,
-the server deletes its entry. When the destroy fails, the server keeps the entry, because the
-sandbox may still run. The server logs a delete that fails.
+start. When the server first reads a sandbox that an earlier server process made, it registers that
+sandbox: with `PUT` only when the gateway lacks the name, and with `PATCH` of its limit otherwise,
+so a sandbox kept across a restart keeps its count. Once a sandbox's destroy succeeds, the server
+deletes its entry. When the destroy fails, the server keeps the entry, because the sandbox may still
+run. The server logs a delete that fails.
 
 ### Worker limits
 

@@ -271,10 +271,10 @@ paused or stopped keeps its state.
 ## Task runs
 
 A task run is one stretch of a started task's work that ends in one report. A claim opens a task run
-when the task has none open and a waking message, a raise or a restart is waiting, and the task run
-ends when the task reports, reaches a limit, stops, closes or fails, or when a claim ends an idle
-task run. The 3 records `task.run_opened`, `task.run_report_requested` and `task.run_ended` hold it,
-and the `task_runs` projection folds them into one row per task run, with the open task run in the
+when the task has none open and a waking message, a raise or a restart is waiting. The task run ends
+when the task reports, reaches a limit, stops, closes or fails, or when a claim ends an idle task
+run. The records `task.run_opened`, `task.run_report_requested` and `task.run_ended` hold it, and
+the `task_runs` projection folds them into one row per task run, with the open task run in the
 unique `task_runs_open` index.
 
 A definition's task opens its task runs on a fire, as
@@ -287,20 +287,19 @@ so a crash after an action ran and a rerun of the step give exactly one report.
 
 A record belongs to a task run by the `taskRunID` it carries, or, for a record with none, by its
 place between the opening and the end of a task run. nixie writes a tool call's records and each
-`task.meter_read` with no lease check, so a step's call or read can land after its task run ended,
-and each of these records carries the ID. A failed turn's spend record from an older release carries
-it too. A record that lands between one task run's end and the next one's opening, such as a message
-after a report, belongs to no task run until a claim opens one for it. Every count of a task run's
-use reads its records through one function, so the meters and the caps agree.
+`task.meter_read` with no lease check, so a step's call or read can land after its task run ended.
+Each of these records carries the ID for that reason. A failed turn's spend record from an older
+release carries it too. A record that lands between one task run's end and the next one's opening,
+such as a message after a report, belongs to no task run until a claim opens one for it. Every count
+of a task run's use reads its records through one function, so the meters and the caps agree.
 
-Each tool call in a task run carries the ID, and a tool can have a cap of calls per task run: a call
-past the cap is a `tool_result` with the outcome `denied` and no decision, and a call that was
-invalid, denied, failed or errored never counts toward it. The cap needs no approval, because it
-only narrows what a task run may do. A call counts when its outcome is `result`, `queued` or
-`unknown`, or while it has not returned, and the tools module counts by `taskRunID` alone, so it
-imports nothing from the tasks module. A carried task run takes the caps of the first task run, and
-each cap counts only the carried task run's own calls. A call cap denies the call and never pauses
-the task.
+Each tool call in a task run carries the ID, and a tool can have a cap of calls per task run. A call
+past the cap is a `tool_result` with the outcome `denied` and no decision. The cap needs no
+approval, because it only narrows what a task run may do. A call counts when its outcome is
+`result`, `queued` or `unknown`, or while it has not returned. A call that was invalid, denied,
+failed or errored never counts. The tools module counts by `taskRunID` alone, so it imports nothing
+from the tasks module. A carried task run takes the caps of the first task run, and each cap counts
+only the carried task run's own calls. A call cap denies the call and never pauses the task.
 
 ### Opening a task run
 
@@ -359,7 +358,7 @@ a report request runs no further model turn, so when the lease of a step that ca
 expires, the rerun does no work and its commit sends the first summary and fields under the first
 report ID.
 
-The same function delivers the report as the first row that applies sets out:
+The same function delivers the report by the first row that applies:
 
 | The case                                    | What nixie writes                               | Delivery    |
 | ------------------------------------------- | ----------------------------------------------- | ----------- |

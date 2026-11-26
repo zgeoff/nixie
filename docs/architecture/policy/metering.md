@@ -43,11 +43,11 @@ Each price that nixie counts has one source in nixie's config:
 
 A search provider sets no price. The search tool charges `search.price_micros` to its budgets and
 records the same value as the call's cost, so the charge and the record never differ. A changed
-price applies to the calls after the process that holds it reads it. A turn record and a session
+price applies to each call after the process reads the new price. A turn record and a session
 summary record hold the dollars of their tokens at the profile's prices when the record was written.
-The task's dollar meter sums those dollars, so a changed price never reprices them. A record written
-with no dollars, by a release before records held them, takes the profile's prices in force when the
-meter reads it.
+The task's dollar meter sums those dollars, so a changed price never reprices them. The meter prices
+a record written with no dollars, by a release before records held them, at the profile's prices in
+force when it reads the record.
 
 Without a gateway, set `prices` on each profile that a task, a selectable model or the worker role
 runs on, because the task runner then counts the task's calls itself. With a gateway, set no
@@ -61,15 +61,15 @@ Each count converts to whole micros, and never rounds a positive amount to nothi
 The `spend_ledger` table holds the money counts that nixie writes, one row per counter, unit, period
 kind and period start. A row's `ledger_key` joins the four, such as
 `budget:search-day|micros:USD|day|2026-10-16`. The row's `amount` is an integer. Projections of
-records write every row: a budget's rows from the `budget.charged` and `budget.credited` records on
-no thread, and the rows of a task run and a worker run as the next paragraphs say. A rebuild from
-the records reproduces every row.
+records write every row. A budget's rows come from the `budget.charged` and `budget.credited`
+records on no thread, and the rows of a task run and a worker run come from the records in the next
+paragraphs. A rebuild from the records reproduces every row.
 
 A budget charge adds its amount to the row of its key, and a credit subtracts from the row its
 charge added to. The charge record holds its `ledgerKey`, and the `budget_charges` projection keeps
 it, so a credit lands on the charge's row even when the budget's period has changed since. A charge
-recorded before the ledger holds no key. Its key comes from the period kind that the migration kept
-for it in `legacy_charge_kinds`. The migration keeps a kind only when the old rows prove it:
+recorded before the ledger existed has no key. Its key comes from the period kind that the migration
+kept for it in `legacy_charge_kinds`. The migration keeps a kind only when the old rows prove it:
 
 - The charge's record comes after the last change of its budget in force, which
   `budgets_in_force.updated_sequence` holds, so the charge took the period now in force.
@@ -83,17 +83,17 @@ budget that changes its period afterwards never moves the charge to another key.
 
 A task run's row, `task_run:<ID>`, and a worker run's row, `worker_run:<ID>`, sit under the period
 `none` and hold the run's dollars in micros, rounded up. A worker run ends once, and
-`worker.run_ended` sets its row, with its row in tokens, so a rebuild reproduces it. A task run's
-row follows the task run's meter reads, as [the task meter](#the-task-meter) says. A task run that
-began before its start record named a meter and has no meter read has its row set by
-`task.run_ended`. The ledger reads only the run's ID and what it used from those records.
+`worker.run_ended` sets both its row in micros and its row in tokens, so a rebuild reproduces them.
+A task run's row follows the task run's meter reads, as [the task meter](#the-task-meter) says. For
+an older task run, whose start record names no meter and which has no meter read, `task.run_ended`
+sets the row. The ledger reads only the run's ID and what it used from those records.
 
 A charge reads the budget's row, compares it with the limit, and writes its record in one
 transaction, so the ledger row and the record that causes it commit together or not at all. A paid
 tool's charge commits in the transaction that writes the call's `tool_called` record, and its credit
 commits in the transaction that writes the `tool_result` record, so a fault between the two leaves a
 call with its charge or with neither, and a result with its credit or with neither. Only the log
-writer writes, so two charges never both fit in the last of a budget.
+writer writes, so two charges never both fit in what is left of a budget.
 
 A migration replaces the `budget_ledger` table with `spend_ledger`. It gives each earlier charge its
 key when it can, and sets each row to the total of the uncredited charges with that key, as a
@@ -116,9 +116,9 @@ task.meter_read  { taskRunID, sandbox, reason, countMicros }
 `meter: 'gateway' | 'records'`, which names who counts the task run's sandboxes.
 
 - A task run's dollars are, for each sandbox it used, the last count less the count at the task
-  run's start or at the sandbox's creation, summed, plus the dollars of its worker runs. A sandbox
-  that a read first names after the start began at zero. A count only grows, so a read that lands
-  late never lowers the sum.
+  run's start or at the sandbox's creation, summed, plus the dollars of its worker runs. When a read
+  first names a sandbox after the task run's start, that sandbox's count began at zero. A count only
+  grows, so a read that lands late never lowers the sum.
 - What a task run has left is its limit less its dollars.
 - A `task.meter_read` sets its task run's ledger row to the task run's dollars, in the transaction
   that writes the record, so a fault between the read and its row leaves both or neither. Every
@@ -144,8 +144,8 @@ task.meter_read  { taskRunID, sandbox, reason, countMicros }
 - Every patch of a task's sandbox names the `limitRevision` that the server read just before it, as
   [the count of a sandbox](model-gateway.md#the-count-of-a-sandbox) says. A call that timed out and
   reaches the gateway after a newer patch changes nothing, so it never puts back an older limit.
-- When a task run ends, each pass that settles it reads every sandbox again, because a sandbox that
-  answered in a pass that then waited for another can spend before the next pass.
+- When a task run ends, each pass that settles it reads every sandbox again. A sandbox that answered
+  in a pass that then waited on another sandbox can spend more before the next pass.
 - A limit of zero dollars is a valid sandbox limit: the gateway accepts it and refuses every
   request.
 - A step whose sandbox refused a request since the step began ends at the task's dollar limit. The

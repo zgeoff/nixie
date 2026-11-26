@@ -168,22 +168,22 @@ waits, the step's lease lapses and the step runs again.
 
 A guest reads one `turn` frame and writes guest frames. It connects to the frame's tool route over
 HTTP MCP with the step token, and sends the model's tool-use ID under the record's `_meta` key on
-each tool call. It sends one `assistant` frame as each model message completes, one `call` frame per
-model API call before the next frame, and a `read` frame that lists the input messages the model
-received, and the read cursor moves only over those. It stops at `limits.modelCalls` and ends with
-the outcome `limit`, stops the loop on an `interrupt` frame and sends `ended` for the turn so far,
-and on a `purge` frame removes every file the loop holds of a session and sends `purged`. When nixie
-forgets a memory item, the session cleanup sends a `purge` frame to the guest of each open task that
-reads memory, on every harness. A guest sends `failed` and never `ended` after it: with
-`tools_not_connected` when the tool server is not connected, `model_auth` or `model_api` when the
-model API refuses, and `error` when the loop errors or its stream closes. A call frame holds its
+each tool call. It sends one `assistant` frame as each model message completes, and one `call` frame
+per model API call before the next frame. It sends a `read` frame that lists the input messages the
+model received, and the read cursor moves only over those. It stops at `limits.modelCalls` and ends
+with the outcome `limit`. On an `interrupt` frame it stops the loop and sends `ended` for the turn
+so far. On a `purge` frame it removes every file the loop holds of a session and sends `purged`.
+When nixie forgets a memory item, the session cleanup sends a `purge` frame to the guest of each
+open task that reads memory, on every harness. A guest sends `failed` and never `ended` after it:
+with `tools_not_connected` when the tool server is not connected, `model_auth` or `model_api` when
+the model API refuses, and `error` when the loop errors or its stream closes. A call frame holds its
 usage in one schema, and the turn's usage is their sum. Without a gateway, the host prices each call
 frame with the profile's price table. Each step starts the guest, runs one turn and ends the guest.
 A guest resumes, takes live messages and compacts only when its harness declares the capability.
 
 ### Turn outcomes and the session position
 
-Every guest ends a turn with an `ended` frame that carries an `outcome`, which its guest maps from
+Every guest ends a turn with an `ended` frame that carries an `outcome`, which the guest maps from
 its runtime's own words:
 
 | Outcome       | Meaning                                           |

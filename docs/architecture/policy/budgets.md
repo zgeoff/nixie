@@ -47,19 +47,19 @@ keeps the rule store.
 
 ## The ledger
 
-The ledger comes from two record kinds, neither on a thread. `budget.charged` holds the budget, the
-start of its period, the amount in micros and what the charge is for, and `budget.credited` refunds
-one charge. A charge is for a tool call or for an action. The `budget_charges` projection keeps one
-row per charge and marks a credited one, and the `spend_ledger` projection keeps the spent micros of
-each budget in each period, as [metering](metering.md#the-spend-ledger) describes. A credit changes
-the ledger once, so a retried transaction never gives the money back twice. A task run's row and a
-worker run's row follow their own records, as [the task meter](metering.md#the-task-meter)
-describes.
+nixie builds the ledger from the records `budget.charged` and `budget.credited`, which sit on no
+thread. `budget.charged` holds the budget, the start of its period, the amount in micros and what
+the charge is for: a tool call or an action. `budget.credited` refunds one charge. The
+`budget_charges` projection keeps one row per charge and marks a credited one, and the
+`spend_ledger` projection keeps the spent micros of each budget in each period, as
+[metering](metering.md#the-spend-ledger) describes. A credit changes the ledger once, so a retried
+transaction never gives the money back twice. A task run's row and a worker run's row follow their
+own records, as [the task meter](metering.md#the-task-meter) describes.
 
 A charge lists every budget it touches and lands in one transaction, or does not land. Every write
 goes through the one writer, so two charges at the same moment never both fit in a budget's last
 room. A charge that does not fit returns the first budget without room, with what it spent, its
-limit and its reset. The charge of an approved paid call is the one exception, as
+limit and its reset. Only the charge of an approved paid call can take a budget past its limit, as
 [paid tools](#paid-tools) describes.
 
 ## Paid tools

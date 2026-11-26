@@ -20,7 +20,7 @@ Two people take part:
 ## Before you start
 
 Check that both configs have the sections the plan route needs. When one lacks a section, set it up
-first with the doc that the item links.
+first with the doc that its item links to.
 
 - nixie's `config.yaml` has a `spendStop` section. With it, nixie sends every model request through
   the gateway and reads the gateway's status
