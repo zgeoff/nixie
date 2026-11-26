@@ -6,6 +6,7 @@ import type { StartTimer } from '../utils/start-platform-timer';
 import { startPlatformTimer } from '../utils/start-platform-timer';
 import { useNixieClient } from '../utils/use-nixie-client';
 import { CallBar } from './call-bar';
+import type { SeenProposals } from './call-context';
 import { CallContext } from './call-context';
 import { CallEnvironmentContext } from './call-environment';
 import { createCallSession } from './create-call-session';
@@ -25,6 +26,8 @@ export function CallProvider(props: CallProviderProps): ReactNode {
   const [session] = useState(() =>
     createCallSession({ calls: nixie.client.calls, environment, startTimer, now: Date.now }),
   );
+
+  const [seenProposals, setSeenProposals] = useState<SeenProposals>({ thread: null, ids: [] });
 
   useEffect(() => session.dispose, [session]);
 
@@ -68,7 +71,7 @@ export function CallProvider(props: CallProviderProps): ReactNode {
   }, [session, viewData, viewUpdatedAtMs, isFollowing, phase, reconnectedAtMs]);
 
   return (
-    <CallContext value={{ session, snapshot }}>
+    <CallContext value={{ session, snapshot, seenProposals, setSeenProposals }}>
       {isFollowing ? <FollowedCall /> : null}
       <Speaker stream={snapshot.remoteStream} />
       <CallBar />

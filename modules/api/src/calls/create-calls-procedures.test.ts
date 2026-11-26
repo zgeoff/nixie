@@ -1,4 +1,4 @@
-import { expect, test } from 'bun:test';
+import { expect, onTestFinished, test } from 'bun:test';
 import { readCall, startCall } from '@heynixie/calls';
 import { registerFaultPointAction } from '@heynixie/memory/test-utils';
 import invariant from 'tiny-invariant';
@@ -234,6 +234,48 @@ test('#calls.hangUp ends the call, and answers a retry the same way', async () =
   });
 
   expect(again).toStrictEqual({ callID: started.callID, state: 'ended' });
+});
+
+test('it signals a dropped speech session on the live stream, and a new offer sent after the signal reconnects the call', async () => {
+  const ctx = await setupTest();
+  const started = await ctx.client.calls.start({ clientActionID: crypto.randomUUID() });
+
+  await ctx.client.calls.connect({ callID: started.callID, sdpOffer: 'offer' });
+
+  const stream = await ctx.client.live.follow({});
+
+  onTestFinished(() => stream.return(undefined));
+
+  const opened = await stream.next();
+
+  invariant(ctx.calls !== null, 'the test turns calls on');
+
+  ctx.calls.speech.emit('fake-session-1', { kind: 'dropped' });
+
+  let signalled = false;
+
+  while (!signalled) {
+    const event = await stream.next();
+
+    signalled =
+      event.done !== true && event.value.kind === 'changed' && event.value.topics.includes('calls');
+  }
+
+  const waiting = await ctx.client.calls.get({ callID: started.callID });
+  const answer = await ctx.client.calls.connect({ callID: started.callID, sdpOffer: 'offer-2' });
+  const after = await ctx.client.calls.get({ callID: started.callID });
+
+  expect({
+    opened: opened.value,
+    waiting: waiting.reconnect,
+    answer,
+    after: after.reconnect,
+  }).toStrictEqual({
+    opened: { kind: 'opened' },
+    waiting: 'dropped',
+    answer: { sdpAnswer: 'fake-answer-2' },
+    after: null,
+  });
 });
 
 test('#calls.hangUp refuses a call that does not exist', async () => {

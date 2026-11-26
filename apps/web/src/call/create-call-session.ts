@@ -176,7 +176,7 @@ export function createCallSession(dependencies: CallSessionDependencies): CallSe
   // Sends a new offer on the open peer connection, so the microphone and the audio path stay. The
   // call is given up when the connection is not back within the limit.
   const reconnect = async (): Promise<void> => {
-    if (isReconnecting || snapshot.callID === null || snapshot.phase === 'ended') {
+    if (hasHungUp || isReconnecting || snapshot.callID === null || snapshot.phase === 'ended') {
       return;
     }
 
@@ -337,6 +337,8 @@ export function createCallSession(dependencies: CallSessionDependencies): CallSe
     });
   };
 
+  const hasEnded = (): boolean => snapshot.phase === 'ended';
+
   const hangUp = async (): Promise<void> => {
     const callID = snapshot.callID;
 
@@ -353,7 +355,10 @@ export function createCallSession(dependencies: CallSessionDependencies): CallSe
     try {
       await dependencies.calls.hangUp({ callID, clientActionID: crypto.randomUUID() });
     } finally {
-      finish('you');
+      // an end that the server reported meanwhile, a budget stop included, keeps its own reason
+      if (!hasEnded()) {
+        finish('you');
+      }
     }
   };
 
@@ -394,7 +399,7 @@ export function createCallSession(dependencies: CallSessionDependencies): CallSe
           }
         })
         .with({ state: 'live', reconnect: P.not(null) }, () => {
-          if (snapshot.phase === 'live') {
+          if (snapshot.phase === 'live' && !hasHungUp) {
             void reconnect();
           }
         })

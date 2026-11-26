@@ -534,3 +534,68 @@ test('#observe notes when the reconnect finished, so a read of the call from bef
   ctx.peers[0]?.emitConnectionState('connected');
   expect([before, ctx.session.getSnapshot().reconnectedAtMs]).toStrictEqual([null, 1000]);
 });
+
+test('#observe ignores a replaced peer that reports connected, and keeps the limit armed', async () => {
+  const ctx = setupTest();
+
+  await ctx.session.start();
+
+  ctx.peers[0]?.emitConnectionState('failed');
+
+  await waitFor(() => {
+    expect(ctx.peers[1]?.answers).toHaveLength(1);
+  });
+
+  ctx.peers[0]?.emitConnectionState('connected');
+  const afterOldPeer = ctx.session.getSnapshot().phase;
+
+  ctx.timer.advance(30_000);
+
+  expect([
+    afterOldPeer,
+    ctx.session.getSnapshot().phase,
+    ctx.session.getSnapshot().endedBy,
+  ]).toStrictEqual(['reconnecting', 'ended', 'dropped']);
+});
+
+test('#hangUp starts no reconnect when the server reports a dropped session while the hang-up runs', async () => {
+  const heldHangUp = Promise.withResolvers<void>();
+  const ctx = setupTest({ heldHangUp: heldHangUp.promise });
+
+  await ctx.session.start();
+
+  const hangingUp = ctx.session.hangUp();
+
+  ctx.session.observe({ state: 'live', endedBy: null, reconnect: 'dropped' });
+  heldHangUp.resolve();
+
+  await hangingUp;
+
+  ctx.session.observe({ state: 'live', endedBy: null, reconnect: 'dropped' });
+
+  expect({
+    connects: ctx.readCalls().connects,
+    offers: ctx.peers[0]?.offers,
+    endedBy: ctx.session.getSnapshot().endedBy,
+  }).toStrictEqual({
+    connects: ['offer-1'],
+    offers: [{ isRestart: false }],
+    endedBy: 'you',
+  });
+});
+
+test('#hangUp keeps the reason the server gave for an end that came while the hang-up ran', async () => {
+  const heldHangUp = Promise.withResolvers<void>();
+  const ctx = setupTest({ heldHangUp: heldHangUp.promise });
+
+  await ctx.session.start();
+
+  const hangingUp = ctx.session.hangUp();
+
+  ctx.session.observe({ state: 'ended', endedBy: 'budget', reconnect: null });
+  heldHangUp.resolve();
+
+  await hangingUp;
+
+  expect(ctx.session.getSnapshot().endedBy).toBe('budget');
+});

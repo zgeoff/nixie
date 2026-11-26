@@ -424,9 +424,8 @@ test('it moves a live call to a new session on a new offer after the speech sess
 
   ctx.speech.emit('fake-session-1', { kind: 'dropped' });
 
-  await signal;
-
-  const waiting = await readCallView(ctx.context, callID);
+  // the device reads the call on the signal, and sends its new offer only to a call that waits
+  const waiting = await signal.then(() => readCallView(ctx.context, callID));
 
   expect(waiting?.reconnect).toBe('dropped');
 

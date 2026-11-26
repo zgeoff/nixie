@@ -3,23 +3,30 @@ interface ListedProposal {
   readonly proposal: { readonly proposalID: string; readonly thread: string | null };
 }
 
-// the most proposals one read takes
-const readLimit = 100;
+// the most settled proposals the collection keeps beside the open ones
+const settledLimit = 100;
 
-// The proposal IDs the call screen has seen so far, with those of the listed proposals that sit on
-// the call's thread added in the order they come. Another thread's proposal never joins.
+// The proposal IDs seen so far, with the listed ones on the call's thread added in order. A proposal
+// that left the list has settled, and only the newest settled ones stay past the limit, so a card
+// that is still open is never dropped.
 export function collectCallProposalIDs(
   seenIDs: readonly string[],
   listed: readonly ListedProposal[],
   thread: string,
 ): readonly string[] {
-  const ids = new Set(seenIDs);
+  const open = new Set<string>();
 
   for (const item of listed) {
     if (item.proposal.thread === thread) {
-      ids.add(item.proposal.proposalID);
+      open.add(item.proposal.proposalID);
     }
   }
 
-  return [...ids].slice(-readLimit);
+  const ids = new Set([...seenIDs, ...open]);
+
+  const settled = [...ids].filter((id) => !open.has(id)).slice(-settledLimit);
+
+  const kept = new Set(settled);
+
+  return [...ids].filter((id) => open.has(id) || kept.has(id));
 }
