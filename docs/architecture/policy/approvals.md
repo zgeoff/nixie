@@ -2,15 +2,16 @@
 
 Every proposal that waits for the user's answer, whatever it proposes, has one row in the
 `proposals` table and one answer path. A proposal is a tool call that policy holds, a memory write,
-a skill change or a rule change. A client lists the rows, shows each with the choices the host
-offers, and sends one answer. The host checks the answer the same way for every kind.
+a skill change, a rule change, an MCP server change or a prompt override. A client lists the rows,
+shows each with the choices the host offers, and sends one answer. The host checks the answer the
+same way for every kind.
 
 ## The shared row
 
 Each kind keeps its own records and its own projection. A second projection folds those records, and
-3 records of the approvals module, into the `proposals` row: its kind, risk class, action hash, rule
+3 records of the proposals module, into the `proposals` row: its kind, risk class, action hash, rule
 hash, cause, state, lapse time and defer fields. A kind module reads only its own payloads and says
-what each means for the row, so the approvals module imports no kind module and the row rebuilds
+what each means for the row, so the proposals module imports no kind module and the row rebuilds
 from the log. The migration that creates the table folds the records that already exist, and a test
 holds that fold equal to the live one.
 
@@ -41,19 +42,20 @@ Every family goes through the same steps, in the proposals module:
    key: the core withdraws the old one in the same transaction. A proposal with no proposer, and a
    family with no key (memory, action), never replaces.
 3. One sweep lapses the open rows of every family once their lapse passes, through each family's
-   `discard`. A row whose family has no handler stays open. A family that owns its transaction, such
-   as memory, lapses one row at a time in its own.
+   `discard`. A row whose family has no handler stays open. The sweep hands each row of a family
+   that owns its transaction, such as memory, to that family, which lapses it in a transaction of
+   its own.
 4. An approve or a discard that succeeds writes `proposals.settled` in the same transaction, on the
    thread of each proposer. A refusal writes none, and the row stays open.
 5. Each proposer hears the settlement. A conversation reads it in the note of its next turn, and a
    task reads it as an inbox record that wakes it. A task gets no inbox record for an action's
-   settlement, and hears `action.outcome` instead. A proposer's own withdrawal writes
-   `proposals.settled` and leaves the settlement out of the note, because the withdraw call's result
-   holds the outcome. A finished task takes no input, so its settlement goes to the report target of
-   the task run that opened or merged into the proposal, else to the task's starter, and carries the
-   task's ID. When a finished task has neither, its settlement stays on its own thread as a plain
-   record that wakes nothing, so its audit thread stays whole. Settlements that land in one batch
-   read as one message.
+   settlement, and hears `action.outcome` instead. When a proposer's own withdrawal closes the row,
+   that proposer's note leaves the settlement out, because the withdraw call's result holds the
+   outcome. A finished task takes no input, so its settlement goes to the report target of the task
+   run that opened or merged into the proposal, else to the task's starter, and carries the task's
+   ID. When a finished task has neither, its settlement stays on its own thread as a plain record
+   that wakes nothing, so its audit thread stays whole. Settlements that land in one batch read as
+   one message.
 
 Every close of a row goes through the lifecycle, so each writes `proposals.settled`: an answer, a
 lapse, a proposer's withdrawal, a decline of an ask that withdraws the suggested rule resting on it,
@@ -107,9 +109,9 @@ with its time, the reason it came to the user and its risk class. Items list old
 item has no fields when a forget removed the arguments. The list sits apart so that a client of the
 release before still reads every row it knows.
 
-Every group but routine lists its oldest row first. The call leaves out a closed row, a row past its
-lapse and a row whose body is gone. A row whose kind has no handler, such as after a rollback of
-that kind, stays out of the list and refuses every answer as not allowed.
+Within each risk class, every group but routine lists its oldest row first. The call leaves out a
+closed row, a row past its lapse and a row whose body is gone. A row whose kind has no handler, such
+as after a rollback of that kind, stays out of the list and refuses every answer as not allowed.
 
 `approvals.readProposals` takes up to 100 proposal IDs, full or short, and returns each row in any
 state with its body, its task, the device name of the identity that answered it and whether the
