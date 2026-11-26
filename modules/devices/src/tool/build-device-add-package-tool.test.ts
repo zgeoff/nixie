@@ -100,7 +100,8 @@ async function setupTest() {
         callSequence,
 
         // what the action queue does once the owner approved: it runs the connector on the action
-        approve: () => connector.run(attempt),
+        approve: (number = 1, destinations: string[] = ['registry.test']) =>
+          connector.run({ ...attempt, attempt: number, destinations }),
         check: () => {
           invariant(connector.check, 'the package connector checks an unknown outcome');
 
@@ -324,4 +325,51 @@ test('it answers a known package, and keeps the files, when an install runs for 
     expect.objectContaining({ kind: 'success' }),
     { kind: 'refused', reason: expect.stringMatching(/^PACKAGE_KNOWN: /u) },
   ]);
+});
+
+test('it answers success when the owner retries an install that went through', async () => {
+  const ctx = await setupTest();
+
+  ctx.site.addPackage('chart.js@4.4.6', { files: { 'dist/chart.js': 'var Chart = 1;' } });
+
+  const asked = await ctx.ask({ name: 'chart.js', version: '4.4.6' });
+
+  await asked.approve();
+
+  const retried = await asked.approve(2);
+
+  expect(retried).toStrictEqual({
+    kind: 'success',
+    result: { package: 'chart.js@4.4.6', files: ['dist/chart.js'], fileCount: 1 },
+  });
+});
+
+test('it refuses to install from a registry that the owner did not approve', async () => {
+  const ctx = await setupTest();
+
+  ctx.site.addPackage('chart.js@4.4.6', { files: { 'dist/chart.js': 'var Chart = 1;' } });
+
+  const asked = await ctx.ask({ name: 'chart.js', version: '4.4.6' });
+  const approved = await asked.approve(1, ['mirror.test']);
+  const stored = await readDevicePackage(ctx.log.writer.db, 'chart.js', '4.4.6');
+
+  expect(approved).toStrictEqual({ kind: 'refused', reason: expect.stringContaining('registry') });
+  expect(stored).toBeNull();
+});
+
+test('it lists the files of a recovered install in the order of a normal one', async () => {
+  const ctx = await setupTest();
+
+  ctx.site.addPackage('chart.js@4.4.6', { files: { 'z.js': '1', 'a.js': '2' } });
+
+  const asked = await ctx.ask({ name: 'chart.js', version: '4.4.6' });
+
+  await asked.approve();
+
+  const checked = await asked.check();
+
+  expect(checked).toStrictEqual({
+    kind: 'found',
+    result: { package: 'chart.js@4.4.6', files: ['a.js', 'z.js'], fileCount: 2 },
+  });
 });

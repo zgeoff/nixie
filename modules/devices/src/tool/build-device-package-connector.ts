@@ -38,29 +38,30 @@ export function buildDevicePackageConnector(
         return { kind: 'refused', reason: 'the action holds no call of device.addPackage' };
       }
 
+      const registryHost = options.fetching && new URL(options.fetching.registry).host;
+
+      if (registryHost !== undefined && !attempt.destinations.includes(registryHost)) {
+        return {
+          kind: 'refused',
+          reason: `the registry ${registryHost} is not one the owner approved`,
+        };
+      }
+
+      // A later attempt belongs to an action that ran before, so a package of its card that is
+      // stored already is its own install, and the run answers it as the check would.
+      if (attempt.attempt > 1) {
+        const installed = await readInstalled(options, readSource, attempt);
+
+        if (installed.kind === 'found') {
+          return { kind: 'success', result: installed.result };
+        }
+      }
+
       const outcome = await runPackageInstall(options, attempt.arguments, source);
 
       return toProviderResponse(outcome);
     },
     check: (attempt) => readInstalled(options, readSource, attempt),
-  };
-}
-
-function toProviderResponse(outcome: ToolOutcome): ProviderResponse {
-  if (outcome.status === 'error') {
-    return { kind: 'refused', reason: outcome.message };
-  }
-
-  if (outcome.refusalCode === undefined) {
-    return { kind: 'success', result: outcome.result };
-  }
-
-  const message = outcome.result['message'];
-
-  return {
-    kind: 'refused',
-    reason:
-      typeof message === 'string' ? `${outcome.refusalCode}: ${message}` : outcome.refusalCode,
   };
 }
 
@@ -93,8 +94,26 @@ async function readInstalled(
     kind: 'found',
     result: {
       package: `${stored.name}@${stored.version}`,
-      files: stored.files.slice(0, listedFilesLimit),
+      files: stored.files.toSorted().slice(0, listedFilesLimit),
       fileCount: stored.files.length,
     },
+  };
+}
+
+function toProviderResponse(outcome: ToolOutcome): ProviderResponse {
+  if (outcome.status === 'error') {
+    return { kind: 'refused', reason: outcome.message };
+  }
+
+  if (outcome.refusalCode === undefined) {
+    return { kind: 'success', result: outcome.result };
+  }
+
+  const message = outcome.result['message'];
+
+  return {
+    kind: 'refused',
+    reason:
+      typeof message === 'string' ? `${outcome.refusalCode}: ${message}` : outcome.refusalCode,
   };
 }
