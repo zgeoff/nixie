@@ -15,7 +15,7 @@ interface MailRun {
   // ends the sleep between 2 reads, for a hint from the host
   wake: () => void;
 
-  // a hint came after the latest read began, so the mail it tells of may be past what that read saw
+  // a hint came after the latest host read began, so the mail it tells of may be past what it saw
   isHinted: boolean;
 }
 
@@ -65,8 +65,6 @@ async function runMailLoop(run: MailRun): Promise<void> {
     let delayMs = run.context.settings.hostPollIntervalMs;
     let isHintable = true;
 
-    run.isHinted = false;
-
     try {
       const read = await withHostLock(run.host, () => readHostOnce(run));
 
@@ -115,6 +113,8 @@ async function readHostOnce(run: MailRun): Promise<HostRead> {
 
     await run.trigger.deliver({ cursor: run.cursor, events: [] });
   }
+
+  run.isHinted = false;
 
   const changes = await run.host.readChanges(run.cursor);
 
