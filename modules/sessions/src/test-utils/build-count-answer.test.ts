@@ -9,7 +9,7 @@ test('it answers a read with the dollars and no refusal', () => {
 });
 
 test('it carries the refusal it is given', () => {
-  const refusal = { counter: 'sandbox', route: 'router-b', atMs: 9 } as const;
+  const refusal = { counter: 'sandbox', route: 'router-b', provider: 'main', atMs: 9 } as const;
 
   expect(buildCountAnswer(1, refusal).value.lastRefusal).toStrictEqual(refusal);
 });

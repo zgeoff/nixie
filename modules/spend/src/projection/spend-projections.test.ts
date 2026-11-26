@@ -29,10 +29,11 @@ async function setupTest() {
   };
 }
 
-test('it lists the 3 projections by their tables', () => {
+test('it lists the 4 projections by their tables', () => {
   expect(spendProjections.map((projection) => projection.table)).toStrictEqual([
     'spend_raises',
     'spend_route_raises',
+    'spend_provider_raises',
     'spend_turns',
   ]);
 });

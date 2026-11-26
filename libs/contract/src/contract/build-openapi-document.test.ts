@@ -18,3 +18,28 @@ test('it builds the same document from the same contract', async () => {
 
   expect(first).toStrictEqual(second);
 });
+
+test('it publishes the count change as a route shape or a provider shape and no other', async () => {
+  const document = await buildOpenAPIDocument();
+
+  expect(document).toMatchObject({
+    paths: {
+      '/spend/setCount': {
+        post: {
+          requestBody: {
+            content: {
+              'application/json': {
+                schema: {
+                  anyOf: [
+                    { required: expect.arrayContaining(['route']), additionalProperties: false },
+                    { required: expect.arrayContaining(['provider']), additionalProperties: false },
+                  ],
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+});

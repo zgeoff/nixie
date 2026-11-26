@@ -3,24 +3,26 @@ import type { Logger } from '@heynixie/logger';
 import { toErrorFields } from '@heynixie/logger';
 import { z } from 'zod';
 import type { PlanLogin } from '../login/create-plan-login';
-import type { RouteLimitsByID } from '../periods/collect-trips';
 import { isSandboxLimitReached } from '../periods/is-sandbox-limit-reached';
+import type { LimitTable } from '../periods/limit-table';
 import { sandboxNameSchema } from '../periods/sandbox-name-schema';
 import { toDollars } from '../periods/to-dollars';
 import type { PeriodChange, PeriodStore, PeriodStoreHandle, PeriodsConfig } from '../types';
 import { buildStatus } from './build-status';
 import type { ControlOutcome } from './control-outcome';
+import { pickCountChange } from './pick-count-change';
 import { pickRaiseChange } from './pick-raise-change';
 import { pickSandboxLimitChange } from './pick-sandbox-limit-change';
 import { pickSandboxRemoveChange } from './pick-sandbox-remove-change';
 import { pickSandboxSetChange } from './pick-sandbox-set-change';
+import type { LimitTarget } from './types';
 
 export interface ControlHandlerDeps {
   readonly store: PeriodStoreHandle;
   readonly config: PeriodsConfig;
 
-  // the limits of each configured route
-  readonly limits: RouteLimitsByID;
+  // the limits of each configured route and provider
+  readonly limits: LimitTable;
 
   // the plan login of each plan route, by route ID
   readonly logins: Readonly<Record<string, PlanLogin>>;
@@ -36,10 +38,25 @@ const sandboxLimitBodySchema = z.strictObject({
   tokens: z.number().positive().exactOptional(),
 });
 
+const isoDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/u);
+
+// a route or a provider, which readTarget checks is exactly one
 const raiseBodySchema = z.strictObject({
-  route: z.string().min(1),
-  start: z.string().regex(/^\d{4}-\d{2}-\d{2}$/u),
+  route: z.string().min(1).exactOptional(),
+  provider: z.string().min(1).exactOptional(),
+  start: isoDateSchema,
   dollars: z.number().positive(),
+});
+
+// The most dollars a count may hold, so its micros stay an integer that the store reads back.
+const maxCountDollars = Math.floor(Number.MAX_SAFE_INTEGER / 1_000_000);
+
+const countBodySchema = z.strictObject({
+  route: z.string().min(1).exactOptional(),
+  provider: z.string().min(1).exactOptional(),
+  period: z.enum(['day', 'month']),
+  start: isoDateSchema,
+  dollars: z.number().min(0).max(maxCountDollars),
 });
 
 const sandboxBodySchema = z.strictObject({ limit: sandboxLimitBodySchema.nullable() });
@@ -62,10 +79,25 @@ export function makeControlHandler(
     if (outcome.kind === 'above_cap') {
       return Promise.resolve(
         Response.json(
-          { error: 'above_cap', route: outcome.route, cap: outcome.cap },
+          {
+            error: 'above_cap',
+            route: outcome.route,
+            provider: outcome.provider,
+            cap: outcome.cap,
+          },
           { status: 409 },
         ),
       );
+    }
+
+    if (outcome.kind === 'no_route_limit') {
+      return Promise.resolve(
+        Response.json({ error: 'no_route_limit', route: outcome.route }, { status: 409 }),
+      );
+    }
+
+    if (outcome.kind === 'unknown_provider') {
+      return Promise.resolve(Response.json({ error: 'unknown_provider' }, { status: 404 }));
     }
 
     if (outcome.kind === 'unknown_route') {
@@ -74,6 +106,10 @@ export function makeControlHandler(
 
     if (outcome.kind === 'period_ended') {
       return Promise.resolve(Response.json({ error: 'period_ended' }, { status: 409 }));
+    }
+
+    if (outcome.kind === 'done') {
+      return Promise.resolve(new Response(null, { status: 204 }));
     }
 
     return answerStatus();
@@ -89,13 +125,44 @@ export function makeControlHandler(
       return renderInvalid(body.message);
     }
 
-    const raise = body.data;
+    const target = readTarget(body.data);
 
-    const limits = Object.hasOwn(deps.limits, raise.route)
-      ? (deps.limits[raise.route] ?? null)
-      : null;
+    if (target === null) {
+      return Response.json({ error: 'bad_target' }, { status: 400 });
+    }
 
-    const outcome = await changeStore((store) => pickRaiseChange(store, limits, raise));
+    const raise = { target, start: body.data.start, dollars: body.data.dollars };
+
+    const outcome = await changeStore((store) => pickRaiseChange(store, deps.limits, raise));
+
+    return answerOutcome(outcome);
+  };
+
+  const answerCount = async (request: Request): Promise<Response> => {
+    const body = await readBody(request, countBodySchema);
+
+    if (body.kind === 'invalid') {
+      return renderInvalid(body.message);
+    }
+
+    const target = readTarget(body.data);
+
+    if (target === null) {
+      return Response.json({ error: 'bad_target' }, { status: 400 });
+    }
+
+    const change = {
+      target,
+      period: body.data.period,
+      start: body.data.start,
+      dollars: body.data.dollars,
+    };
+
+    const outcome = await changeStore((store) => pickCountChange(store, deps.limits, change));
+
+    if (outcome.kind === 'replaced') {
+      return Response.json({ replacedDollars: toDollars(outcome.replacedMicros) });
+    }
 
     return answerOutcome(outcome);
   };
@@ -189,6 +256,10 @@ export function makeControlHandler(
       return request.method === 'POST' ? answerRaise(request) : renderMethodNotAllowed();
     }
 
+    if (pathname === '/count') {
+      return request.method === 'POST' ? answerCount(request) : renderMethodNotAllowed();
+    }
+
     const sandbox = /^\/sandboxes\/(?<name>[^/]+)$/u.exec(pathname)?.groups?.['name'];
 
     return sandbox === undefined
@@ -237,6 +308,22 @@ async function readBody<T>(request: Request, schema: z.ZodType<T>): Promise<Body
 
 function renderInvalid(message: string): Response {
   return Response.json({ error: 'invalid_request', message }, { status: 400 });
+}
+
+interface TargetBody {
+  readonly route?: string;
+  readonly provider?: string;
+}
+
+// the one target a body names, or null when it names both or neither
+function readTarget(body: TargetBody): LimitTarget | null {
+  if ((body.route === undefined) === (body.provider === undefined)) {
+    return null;
+  }
+
+  return body.route === undefined
+    ? { kind: 'provider', id: body.provider ?? '' }
+    : { kind: 'route', id: body.route };
 }
 
 function decodeSegment(segment: string): string {

@@ -14,5 +14,9 @@ export const logRecordTopics = {
   'spend.route_restated': ['spend', 'tasks'],
   'spend.route_cleared': ['spend', 'tasks'],
   'spend.route_held': ['spend', 'tasks'],
+  'spend.provider_stopped': ['spend', 'tasks'],
+  'spend.provider_restated': ['spend', 'tasks'],
+  'spend.provider_cleared': ['spend', 'tasks'],
+  'spend.provider_held': ['spend', 'tasks'],
   'spend.wait_notice': ['tasks'],
 } as const satisfies RecordTopics;

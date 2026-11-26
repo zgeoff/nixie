@@ -1,11 +1,14 @@
 import { writeRecords } from '@heynixie/log';
-import type { WorkerDeps, WorkerEnd, WorkerPlan, WorkerRunNames } from './types';
+import type { WorkerDeps, WorkerEnd, WorkerPlan, WorkerRefusal, WorkerRunNames } from './types';
 import { workerRunEndedCodec } from './worker-run-ended-codec';
 import type { WorkerUsed } from './worker-used';
 
 export interface WorkerRunEnd {
   readonly end: WorkerEnd;
   readonly used: WorkerUsed;
+
+  // the route or provider limit that refused the run, null for a run the gateway never refused
+  readonly refusal: WorkerRefusal | null;
 }
 
 // Written after the run's turn records. A failure's detail is erasable, because a service or the
@@ -36,6 +39,7 @@ export async function writeWorkerRunEnded(
         profile: names.profile,
         outcome: end.outcome,
         ...(end.outcome === 'limit' ? { limit: end.limit } : {}),
+        ...ended.refusal,
         used: ended.used,
       }),
       ...(detail === null ? {} : { erasable: { detail } }),

@@ -1,7 +1,11 @@
 import { expect, test } from 'bun:test';
 import { readRecords, withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
-import { spendLimitRaisedCodec } from '@heynixie/spend';
-import { buildMockGatewayStatus, buildTrippedGatewayStatus } from '@heynixie/spend/test-utils';
+import { spendCountSetCodec, spendLimitRaisedCodec } from '@heynixie/spend';
+import {
+  buildMockGatewayStatus,
+  buildProviderTrippedGatewayStatus,
+  buildTrippedGatewayStatus,
+} from '@heynixie/spend/test-utils';
 import { createFakeClock } from '@zgeoff/testing/clock';
 import { buildTestClient } from '../test-utils/build-test-client';
 import { createDeviceSession } from '../test-utils/create-device-session';
@@ -45,7 +49,7 @@ test('#spend.read gives clear with no route and calls no gateway when the config
   const read = await ctx.client.spend.read({});
 
   expect([read, ctx.spendGateway.readStatus.mock.calls]).toStrictEqual([
-    { state: 'clear', routes: [] },
+    { state: 'clear', routes: [], providers: [] },
     [],
   ]);
 });
@@ -55,7 +59,7 @@ test('#spend.counts gives no route and no display, and calls no gateway when the
   const counts = await ctx.client.spend.counts({});
 
   expect([counts, ctx.spendGateway.readStatus.mock.calls]).toStrictEqual([
-    { routes: [], display: null },
+    { providers: [], routes: [], display: null },
     [],
   ]);
 });
@@ -68,16 +72,25 @@ test('#spend.counts gives each route its day and month count in US dollars, with
   const counts = await ctx.client.spend.counts({});
 
   expect(counts).toStrictEqual({
+    providers: [
+      {
+        provider: 'main',
+        day: { start: '2026-11-13', dollars: 0, limit: 100, tripped: false },
+        month: { start: '2026-11-01', dollars: 0, limit: 1000, tripped: false },
+      },
+    ],
     routes: [
       {
         route: 'plan',
-        day: { dollars: 41.2, limit: 40, tripped: true },
-        month: { dollars: 0, limit: 600, tripped: false },
+        provider: 'main',
+        day: { start: '2026-11-13', dollars: 41.2, limit: 40, tripped: true },
+        month: { start: '2026-11-01', dollars: 0, limit: 600, tripped: false },
       },
       {
         route: 'metered',
-        day: { dollars: 0, limit: 5, tripped: false },
-        month: { dollars: 0, limit: 600, tripped: false },
+        provider: 'main',
+        day: { start: '2026-11-13', dollars: 0, limit: 5, tripped: false },
+        month: { start: '2026-11-01', dollars: 0, limit: 600, tripped: false },
       },
     ],
     display: { currency: 'AUD', rate: 1.52 },
@@ -113,6 +126,7 @@ test('#spend.read lists the route at its day limit and leaves nixie clear', asyn
 
   expect(read).toStrictEqual({
     state: 'clear',
+    providers: [],
     routes: [
       {
         route: 'plan',
@@ -145,6 +159,7 @@ test('#spend.read gives the trip of the turn count with its limit, its count and
     canRaise: true,
     cap: 5,
     routes: [],
+    providers: [],
   });
 });
 
@@ -155,14 +170,19 @@ test('#spend.read gives unreachable when the gateway does not answer', async () 
 
   const read = await ctx.client.spend.read({});
 
-  expect(read).toStrictEqual({ state: 'unreachable', routes: [] });
+  expect(read).toStrictEqual({ state: 'unreachable', routes: [], providers: [] });
 });
 
 test('#spend.raise lifts a route with one call, and writes the session as the actor', async () => {
   const ctx = await setupTest({ isSpendOn: true });
 
   ctx.spendGateway.readStatus.mockResolvedValue({ kind: 'ok', value: buildTrippedGatewayStatus() });
-  ctx.spendGateway.postRaise.mockResolvedValue({ kind: 'ok', value: buildMockGatewayStatus() });
+
+  ctx.spendGateway.postRaise.mockImplementation(() => {
+    ctx.spendGateway.readStatus.mockResolvedValue({ kind: 'ok', value: buildMockGatewayStatus() });
+
+    return Promise.resolve({ kind: 'ok' });
+  });
 
   const raised = await ctx.client.spend.raise({ start: '2026-11-13', route: 'plan', dollars: 60 });
 
@@ -174,7 +194,7 @@ test('#spend.raise lifts a route with one call, and writes the session as the ac
   expect(raised).toStrictEqual({ state: 'clear' });
 
   expect(ctx.spendGateway.postRaise.mock.calls).toStrictEqual([
-    [{ route: 'plan', start: '2026-11-13', dollars: 60 }],
+    [{ target: { kind: 'route', id: 'plan' }, start: '2026-11-13', dollars: 60 }],
   ]);
 
   expect(records.map((entry) => spendLimitRaisedCodec.decode(entry.record.payload))).toStrictEqual([
@@ -190,7 +210,7 @@ test('#spend.raise answers above_cap with the route and its cap, and writes noth
   const raised = await ctx.client.spend.raise({ start: '2026-11-13', route: 'plan', dollars: 90 });
 
   expect([raised, ctx.spendGateway.postRaise.mock.calls]).toStrictEqual([
-    { error: 'above_cap', measure: 'dollars', route: 'plan', cap: 80 },
+    { error: 'above_cap', measure: 'dollars', route: 'plan', provider: null, cap: 80 },
     [],
   ]);
 });
@@ -200,6 +220,136 @@ test('#spend.raise answers unknown_route for a route the gateway does not hold',
   const raised = await ctx.client.spend.raise({ start: '2026-11-13', route: 'ghost', dollars: 5 });
 
   expect(raised).toStrictEqual({ error: 'unknown_route' });
+});
+
+test('#spend.read lists the provider at its day limit with its routes and leaves nixie clear', async () => {
+  const ctx = await setupTest({ isSpendOn: true });
+
+  ctx.spendGateway.readStatus.mockResolvedValue({
+    kind: 'ok',
+    value: buildProviderTrippedGatewayStatus(),
+  });
+
+  const read = await ctx.client.spend.read({});
+
+  expect(read).toStrictEqual({
+    state: 'clear',
+    routes: [],
+    providers: [
+      {
+        provider: 'main',
+        routes: ['plan', 'metered'],
+        period: 'day',
+        start: '2026-11-13',
+        limit: 100,
+        spent: 101.5,
+        at: new Date('2026-11-13T08:42:07Z'),
+        resetsAt: new Date('2026-11-14T00:00:00Z'),
+        canRaise: true,
+        cap: 200,
+      },
+    ],
+  });
+});
+
+test('#spend.raise lifts a provider with one call, and writes the provider on the record', async () => {
+  const ctx = await setupTest({ isSpendOn: true });
+
+  ctx.spendGateway.readStatus.mockResolvedValue({
+    kind: 'ok',
+    value: buildProviderTrippedGatewayStatus(),
+  });
+
+  ctx.spendGateway.postRaise.mockImplementation(() => {
+    ctx.spendGateway.readStatus.mockResolvedValue({ kind: 'ok', value: buildMockGatewayStatus() });
+
+    return Promise.resolve({ kind: 'ok' });
+  });
+
+  const raised = await ctx.client.spend.raise({
+    start: '2026-11-13',
+    provider: 'main',
+    dollars: 150,
+  });
+
+  const records = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['spend.limit_raised'],
+  });
+
+  expect(raised).toStrictEqual({ state: 'clear' });
+
+  expect(records.map((entry) => spendLimitRaisedCodec.decode(entry.record.payload))).toStrictEqual([
+    { start: '2026-11-13', provider: 'main', dollars: 150, by: ctx.laptop.caller.identityID },
+  ]);
+});
+
+test('#spend.raise refuses a raise that names both a route and a provider', async () => {
+  const ctx = await setupTest({ isSpendOn: true });
+
+  const raised = ctx.client.spend.raise({
+    start: '2026-11-13',
+    route: 'plan',
+    provider: 'main',
+    dollars: 60,
+  });
+
+  await Promise.allSettled([raised]);
+
+  expect(raised).rejects.toBeDefined();
+});
+
+test('#spend.setCount resets a count, records it with the session as the actor and clears the stop', async () => {
+  const ctx = await setupTest({ isSpendOn: true });
+
+  ctx.spendGateway.readStatus.mockResolvedValue({
+    kind: 'ok',
+    value: buildProviderTrippedGatewayStatus(),
+  });
+
+  ctx.spendGateway.postCount.mockImplementation(() => {
+    ctx.spendGateway.readStatus.mockResolvedValue({ kind: 'ok', value: buildMockGatewayStatus() });
+
+    return Promise.resolve({ kind: 'ok', value: { replacedDollars: 101.5 } });
+  });
+
+  const set = await ctx.client.spend.setCount({
+    provider: 'main',
+    period: 'day',
+    start: '2026-11-13',
+    dollars: 0,
+  });
+
+  const records = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['spend.count_set'],
+  });
+
+  expect(set).toStrictEqual({ state: 'clear' });
+
+  expect(records.map((entry) => spendCountSetCodec.decode(entry.record.payload))).toStrictEqual([
+    {
+      provider: 'main',
+      period: 'day',
+      start: '2026-11-13',
+      from: 101.5,
+      to: 0,
+      by: ctx.laptop.caller.identityID,
+    },
+  ]);
+});
+
+test('#spend.setCount gives clear and calls no gateway when the config sets no spendStop', async () => {
+  const ctx = await setupTest({ isSpendOn: false });
+
+  const set = await ctx.client.spend.setCount({
+    route: 'plan',
+    period: 'day',
+    start: '2026-11-13',
+    dollars: 0,
+  });
+
+  expect([set, ctx.spendGateway.postCount.mock.calls]).toStrictEqual([{ state: 'clear' }, []]);
 });
 
 test('#spend.raise gives clear and calls no gateway when the config sets no spendStop', async () => {

@@ -35,6 +35,7 @@ function setupTest() {
     api: 'openai-responses',
     upstream: 'https://chatgpt.example.com',
     model: 'model-o',
+    provider: 'test',
     providerPin: null,
     prices: { input: 1, cacheWrite: 1, cacheWrite1h: 1, cachedInput: 1, output: 1 },
     maxOutputTokens: 1000,

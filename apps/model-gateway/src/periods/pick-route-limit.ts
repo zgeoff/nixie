@@ -1,32 +1,17 @@
-import type { Overrides, PeriodName, PeriodStore } from '../types';
-import type { RouteLimitsByID } from './collect-trips';
-import { pickDayLimit } from './pick-day-limit';
+import { pickLimit } from './pick-limit';
+import type { PeriodLimitAsk } from './types';
 
-export interface RouteLimitAsk {
-  readonly store: PeriodStore;
-  readonly limits: RouteLimitsByID;
-  readonly overrides: Overrides;
-  readonly route: string;
-  readonly period: PeriodName;
-}
+// The limit in force of a route's period, or null for a route with no limit of its own
+export function pickRouteLimit(ask: PeriodLimitAsk): number | null {
+  const configured = Object.hasOwn(ask.limits.routes, ask.id) ? ask.limits.routes[ask.id] : null;
 
-// The limit in force of a route's period, or null for a route with no limit
-export function pickRouteLimit(ask: RouteLimitAsk): number | null {
-  const configured = Object.hasOwn(ask.limits, ask.route) ? ask.limits[ask.route] : null;
-
-  const count = Object.hasOwn(ask.store.routes, ask.route)
-    ? ask.store.routes[ask.route]?.[ask.period]
+  const count = Object.hasOwn(ask.store.routes, ask.id)
+    ? ask.store.routes[ask.id]?.[ask.period]
     : undefined;
 
-  if (configured === null || configured === undefined || count === undefined) {
-    return null;
-  }
+  const override = Object.hasOwn(ask.overrides.routes, ask.id)
+    ? ask.overrides.routes[ask.id]
+    : undefined;
 
-  if (ask.period === 'month') {
-    return configured.month;
-  }
-
-  const override = Object.hasOwn(ask.overrides, ask.route) ? ask.overrides[ask.route] : undefined;
-
-  return pickDayLimit(configured, count, override);
+  return pickLimit(configured, count, override, ask.period);
 }

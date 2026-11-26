@@ -16,7 +16,13 @@ export function buildMockGatewayStatus(overrides: Partial<GatewayStatus> = {}): 
   return {
     zone: 'UTC',
     lost: false,
-    routes: { plan: { day, month }, metered: { day: { ...day, limit: 5, cap: 10 }, month } },
+    providers: {
+      main: { day: { ...day, limit: 100, cap: 200 }, month: { ...month, limit: 1000 } },
+    },
+    routes: {
+      plan: { provider: 'main', day, month },
+      metered: { provider: 'main', day: { ...day, limit: 5, cap: 10 }, month },
+    },
     ...overrides,
   };
 }
@@ -30,8 +36,9 @@ export function buildStubSpendGateway() {
     readChatGPTLogins: mock<SpendGateway['readChatGPTLogins']>(() =>
       Promise.resolve({ kind: 'ok', value: {} }),
     ),
-    postRaise: mock<SpendGateway['postRaise']>(() =>
-      Promise.resolve({ kind: 'ok', value: buildMockGatewayStatus() }),
+    postRaise: mock<SpendGateway['postRaise']>(() => Promise.resolve({ kind: 'ok' })),
+    postCount: mock<SpendGateway['postCount']>(() =>
+      Promise.resolve({ kind: 'ok', value: { replacedDollars: 0 } }),
     ),
     putSandbox: mock<SpendGateway['putSandbox']>(() => Promise.resolve({ kind: 'ok' })),
     patchSandbox: mock<SpendGateway['patchSandbox']>(() => Promise.resolve({ kind: 'ok' })),

@@ -38,6 +38,8 @@ import { reusedIDErrors } from './reused-id-errors';
 import { ruleContract } from './rule-contract';
 import { sequenceSchema } from './sequence-schema';
 import { signedIn } from './signed-in';
+import { spendSetCountInputSchema } from './spend-set-count-input-schema';
+import { spendSetCountOutputSchema } from './spend-set-count-output-schema';
 import {
   spendCountsSchema,
   spendRaiseInputSchema,
@@ -348,6 +350,7 @@ export const contract = {
     read: signedIn.output(spendStopSchema),
     counts: signedIn.output(spendCountsSchema),
     raise: signedIn.input(spendRaiseInputSchema).output(spendRaiseOutputSchema),
+    setCount: signedIn.input(spendSetCountInputSchema).output(spendSetCountOutputSchema),
   },
   recovery: {
     read: signedIn.output(z.object({ recovery: recoverySchema })),

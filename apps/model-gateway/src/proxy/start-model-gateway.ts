@@ -7,6 +7,7 @@ import type { PlanLogin } from '../login/create-plan-login';
 import { createPlanLogin } from '../login/create-plan-login';
 import { makeOverrideReader } from '../override/make-override-reader';
 import { createPeriodStore } from '../periods/create-period-store';
+import { buildLimitTable } from '../periods/limit-table';
 import type { PeriodsConfig, ProxyConfig } from '../types';
 import { createCaptureSpool } from '../usage/create-capture-spool';
 import { loadProxyConfig } from './load-proxy-config';
@@ -97,6 +98,7 @@ export async function startModelGateway(options: ModelGatewayOptions): Promise<M
 
   options.log('proxy.started', {
     port: server.port ?? config.listen.port,
+    providers: Object.keys(config.providers).join(','),
     routes: Object.keys(config.routes).join(','),
     capture: capture !== null,
   });
@@ -179,9 +181,7 @@ async function startPeriodsCounting(
   periods: PeriodsConfig,
   deps: PeriodsCountingDeps,
 ): Promise<Counting> {
-  const limits = Object.fromEntries(
-    Object.entries(config.routes).map(([id, route]) => [id, route.limits]),
-  );
+  const limits = buildLimitTable(config);
 
   const store = await createPeriodStore({
     path: config.store,

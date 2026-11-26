@@ -3617,7 +3617,12 @@ test('it ends a step that its sandbox refused at its limit with the dollar limit
     .mockResolvedValueOnce(buildCountAnswer(0))
     .mockResolvedValueOnce(buildCountAnswer(0))
     .mockResolvedValueOnce(
-      buildCountAnswer(2.5, { counter: 'sandbox', route: 'router-b', atMs: 9_000_000 }),
+      buildCountAnswer(2.5, {
+        counter: 'sandbox',
+        route: 'router-b',
+        provider: 'main',
+        atMs: 9_000_000,
+      }),
     );
 
   const runner = await ctx.startRunner({ gateway });
@@ -3641,7 +3646,12 @@ test('it ends at the dollar limit a step whose guest threw after its sandbox ref
     .mockResolvedValueOnce(buildCountAnswer(0))
     .mockResolvedValueOnce(buildCountAnswer(0))
     .mockResolvedValueOnce(
-      buildCountAnswer(2.5, { counter: 'sandbox', route: 'router-b', atMs: 9_000_000 }),
+      buildCountAnswer(2.5, {
+        counter: 'sandbox',
+        route: 'router-b',
+        provider: 'main',
+        atMs: 9_000_000,
+      }),
     );
 
   ctx.guest.addKindReplies('worker', { failure: 'the guest lost its model stream' });
@@ -3699,7 +3709,12 @@ test('it ends no step at the limit for a refusal that came before the step began
     .mockResolvedValueOnce(buildCountAnswer(0))
     .mockResolvedValueOnce(buildCountAnswer(0))
     .mockResolvedValueOnce(
-      buildCountAnswer(0.1, { counter: 'sandbox', route: 'router-b', atMs: 1000 }),
+      buildCountAnswer(0.1, {
+        counter: 'sandbox',
+        route: 'router-b',
+        provider: 'main',
+        atMs: 1000,
+      }),
     );
 
   const runner = await ctx.startRunner({ gateway });
@@ -3797,7 +3812,12 @@ test('it ends at its limit the task run of a step only once the gateway answers 
     .mockResolvedValueOnce(buildCountAnswer(0))
     .mockResolvedValueOnce(buildCountAnswer(0))
     .mockResolvedValueOnce(
-      buildCountAnswer(2.5, { counter: 'sandbox', route: 'router-b', atMs: 9_000_000 }),
+      buildCountAnswer(2.5, {
+        counter: 'sandbox',
+        route: 'router-b',
+        provider: 'main',
+        atMs: 9_000_000,
+      }),
     )
     .mockResolvedValue({ kind: 'unreachable', reason: 'no answer' });
 

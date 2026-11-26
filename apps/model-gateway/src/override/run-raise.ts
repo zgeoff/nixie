@@ -7,13 +7,15 @@ import { writeOverride } from './write-override';
 
 export interface RaiseOptions {
   readonly configPath: string;
-  readonly route: string;
+
+  // a route or a provider, never both
+  readonly target: { readonly kind: 'route' | 'provider'; readonly id: string };
   readonly dollars: number;
   readonly now: () => number;
 }
 
-// The host command: writes the route's day limit for the day in force in the config's zone, keeps
-// the other routes' overrides, and returns what it wrote. The limit may pass the cap, because only
+// The host command: writes a route's or a provider's day limit for the day in force in the config's
+// zone, keeps every other entry, and returns what it wrote. The limit may pass the cap, because only
 // a host command writes it.
 export async function runRaise(options: RaiseOptions): Promise<DayOverride> {
   const config = await loadProxyConfig(options.configPath);
@@ -24,11 +26,18 @@ export async function runRaise(options: RaiseOptions): Promise<DayOverride> {
     );
   }
 
+  const kind = options.target.kind;
+  const id = options.target.id;
+
+  if (kind === 'provider' && !Object.hasOwn(config.providers, id)) {
+    throw new Error(`the config names no provider ${id}`);
+  }
+
   if (
-    !Object.hasOwn(config.routes, options.route) ||
-    config.routes[options.route]?.limits === null
+    kind === 'route' &&
+    (!Object.hasOwn(config.routes, id) || config.routes[id]?.limits === null)
   ) {
-    throw new Error(`the config names no limits for the route ${options.route}`);
+    throw new Error(`the config names no limits for the route ${id}`);
   }
 
   if (!Number.isFinite(options.dollars) || options.dollars <= 0) {
@@ -47,10 +56,14 @@ export async function runRaise(options: RaiseOptions): Promise<DayOverride> {
   await withOverrideLock(path, async () => {
     const earlier = await readOverride(path);
 
-    await writeOverride(path, {
-      ...(earlier.kind === 'found' ? earlier.overrides : {}),
-      [options.route]: override,
-    });
+    const held = earlier.kind === 'found' ? earlier.overrides : { routes: {}, providers: {} };
+
+    const written =
+      kind === 'route'
+        ? { ...held, routes: { ...held.routes, [id]: override } }
+        : { ...held, providers: { ...held.providers, [id]: override } };
+
+    await writeOverride(path, written);
   });
 
   return override;

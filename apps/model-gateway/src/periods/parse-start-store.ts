@@ -1,10 +1,11 @@
-import invariant from 'tiny-invariant';
 import { z } from 'zod';
-import type { PeriodStore, RouteCount } from '../types';
-import { buildFreshStore } from './build-fresh-store';
+import type { PeriodStore } from '../types';
+import { buildVersion3Store } from './build-version-3-store';
+import { buildVersion4Store } from './build-version-4-store';
+import type { LimitTable } from './limit-table';
 import { parsePeriodStore } from './parse-period-store';
 import { sandboxNameSchema } from './sandbox-name-schema';
-import { toMicros } from './to-micros';
+import { version3StoreSchema } from './version-3-store-schema';
 
 export type StartStore =
   | { readonly kind: 'routes'; readonly store: PeriodStore }
@@ -12,8 +13,8 @@ export type StartStore =
       readonly kind: 'moved';
       readonly store: PeriodStore;
 
-      // the totals the old store held, which the gateway logs
-      readonly old: Readonly<Record<string, number>>;
+      // one entry for each step the store moved through, in order, which the gateway logs
+      readonly steps: readonly Readonly<Record<string, number>>[];
     };
 
 const limitsCountSchema = z.strictObject({
@@ -45,87 +46,76 @@ const periodsCountSchema = z.looseObject({
   sandboxes: z.record(sandboxNameSchema, legacySandboxSchema),
 });
 
-// A count of one total starts every route at zero. A version 2 store did not split its count by
-// route, so every route takes the whole count of each period under way, which never reopens a
-// limit. The lost mark and the sandboxes carry over. Any other shape throws.
+// A store older than version 3 moves through version 3 first, then every store of version 3 moves
+// to version 4, so the two steps run once each and in that order. Any other shape of a store that
+// is not version 4 throws.
 export function parseStartStore(
   stored: unknown,
   nowMs: number,
   zone: string,
-  routeIDs: readonly string[],
+  table: LimitTable,
 ): StartStore {
-  const fresh = buildFreshStore(nowMs, zone, routeIDs);
-  const limits = limitsCountSchema.safeParse(stored);
+  const routeIDs = Object.keys(table.routes);
+  const version3 = version3StoreSchema.safeParse(stored);
 
-  if (limits.success) {
+  if (version3.success) {
     return {
       kind: 'moved',
-      store: { ...fresh, lost: limits.data.lost === true },
-      old: { dollars: limits.data.dollars, tokens: limits.data.tokens },
+      store: buildVersion4Store(version3.data, nowMs, zone, table),
+      steps: [{ version: 3 }],
     };
   }
 
-  const earlier = periodsCountSchema.safeParse(stored);
+  const limits = limitsCountSchema.safeParse(stored);
 
-  if (earlier.success) {
-    const periods = earlier.data.periods;
-    const sandboxes = earlier.data.sandboxes;
-
-    const routes = Object.fromEntries(
-      routeIDs.map((routeID) => [
-        routeID,
-        {
-          day: carryCount(fresh.routes[routeID]?.day, periods.day),
-          month: carryCount(fresh.routes[routeID]?.month, periods.month),
-        },
-      ]),
+  if (limits.success) {
+    const earlier = buildVersion3Store(
+      { kind: 'total', lost: limits.data.lost === true },
+      nowMs,
+      zone,
+      routeIDs,
     );
 
     return {
       kind: 'moved',
-      store: {
-        ...fresh,
-        routes,
-        lost: earlier.data.lost === true,
-        sandboxes: Object.fromEntries(
-          Object.entries(sandboxes).map(([name, held]) => [
-            name,
-            {
-              micros: toMicros(held.dollars),
-              tokens: held.tokens,
-              limit: held.limit,
-              lastRefusal: null,
-              limitRevision: 0,
-            },
-          ]),
-        ),
+      store: buildVersion4Store(earlier, nowMs, zone, table),
+      steps: [{ dollars: limits.data.dollars, tokens: limits.data.tokens }, { version: 3 }],
+    };
+  }
+
+  const periods = periodsCountSchema.safeParse(stored);
+
+  if (periods.success) {
+    const day = periods.data.periods.day;
+    const month = periods.data.periods.month;
+
+    const earlier = buildVersion3Store(
+      {
+        kind: 'periods',
+        lost: periods.data.lost === true,
+        day,
+        month,
+        sandboxes: periods.data.sandboxes,
       },
-      old: {
-        dayDollars: periods.day.dollars,
-        dayTokens: periods.day.tokens,
-        monthDollars: periods.month.dollars,
-        monthTokens: periods.month.tokens,
-      },
+      nowMs,
+      zone,
+      routeIDs,
+    );
+
+    return {
+      kind: 'moved',
+      store: buildVersion4Store(earlier, nowMs, zone, table),
+      steps: [
+        {
+          dayDollars: day.dollars,
+          dayTokens: day.tokens,
+          monthDollars: month.dollars,
+          monthTokens: month.tokens,
+        },
+        { version: 3 },
+      ],
     };
   }
 
   return { kind: 'routes', store: parsePeriodStore(stored) };
-}
-
-type LegacyPeriod = z.infer<typeof legacyPeriodSchema>;
-
-// The earlier count joins the period that is under way, and an earlier period has ended.
-function carryCount(current: RouteCount | undefined, earlier: LegacyPeriod): RouteCount {
-  invariant(current, 'a fresh store holds each route');
-
-  if (earlier.start !== current.start) {
-    return current;
-  }
-
-  return {
-    ...current,
-    micros: toMicros(earlier.dollars),
-    raise: earlier.raise?.dollars ?? null,
-    trippedAt: earlier.trippedAt ?? null,
-  };
 }

@@ -51,6 +51,13 @@ export interface WorkerRunNames {
   readonly profile: string;
 }
 
+// the route or provider limit of the gateway that refused a worker's model request
+export interface WorkerRefusal {
+  readonly counter: string;
+  readonly route: string;
+  readonly provider: string;
+}
+
 export type WorkerEnd =
   | { readonly outcome: 'answered'; readonly answer: string }
   | {

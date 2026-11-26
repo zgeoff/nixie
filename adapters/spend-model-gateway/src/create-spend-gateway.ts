@@ -2,16 +2,18 @@ import type {
   AboveCap,
   Done,
   GatewayStatus,
+  NoRouteLimit,
   NotFound,
   PlanLoginStatus,
   SandboxCount,
   SpendGateway,
   Unreachable,
 } from '@heynixie/spend';
-import type { z } from 'zod';
+import { z } from 'zod';
 import { aboveCapSchema } from './above-cap-schema';
 import { chatgptLoginsSchema } from './chatgpt-logins-schema';
 import { gatewayStatusSchema } from './gateway-status-schema';
+import { noRouteLimitSchema } from './no-route-limit-schema';
 import { periodEndedSchema } from './period-ended-schema';
 import { revisionChangedSchema } from './revision-changed-schema';
 import { sandboxCountSchema } from './sandbox-count-schema';
@@ -31,6 +33,7 @@ interface Answer {
 }
 
 const defaultTimeoutMs = 5000;
+const countReplacedSchema = z.strictObject({ replacedDollars: z.number().nonnegative() });
 
 export function createSpendGateway(options: SpendGatewayOptions): SpendGateway {
   const origin = options.url.replace(/\/+$/u, '');
@@ -70,7 +73,7 @@ export function createSpendGateway(options: SpendGatewayOptions): SpendGateway {
     },
     postRaise: async (raise) => {
       const answer = await send('POST', '/raise', {
-        route: raise.route,
+        [raise.target.kind]: raise.target.id,
         start: raise.start,
         dollars: raise.dollars,
       });
@@ -79,7 +82,31 @@ export function createSpendGateway(options: SpendGatewayOptions): SpendGateway {
         return { kind: 'period_ended' };
       }
 
-      return parseAboveCap(answer) ?? parseStatusAnswer(answer);
+      if (!isUnreachable(answer) && answer.status === 404) {
+        return { kind: 'not_found' };
+      }
+
+      return parseNoRouteLimit(answer) ?? parseAboveCap(answer) ?? parseNoContent(answer);
+    },
+    postCount: async (change) => {
+      const answer = await send('POST', '/count', {
+        [change.target.kind]: change.target.id,
+        period: change.period,
+        start: change.start,
+        dollars: change.dollars,
+      });
+
+      if (isPeriodEnded(answer)) {
+        return { kind: 'period_ended' };
+      }
+
+      if (!isUnreachable(answer) && answer.status === 404) {
+        return { kind: 'not_found' };
+      }
+
+      const parsed = parseBody(answer, countReplacedSchema);
+
+      return parsed.kind === 'ok' ? { kind: 'ok', value: parsed.value } : parsed;
     },
     putSandbox: async (name, limit) => {
       const answer = await send('PUT', `/sandboxes/${encodeURIComponent(name)}`, { limit });
@@ -184,6 +211,16 @@ function isPeriodEnded(answer: Answer | Unreachable): boolean {
   );
 }
 
+function parseNoRouteLimit(answer: Answer | Unreachable): NoRouteLimit | null {
+  if (isUnreachable(answer) || answer.status !== 409) {
+    return null;
+  }
+
+  const parsed = noRouteLimitSchema.safeParse(answer.body);
+
+  return parsed.success ? { kind: 'no_route_limit', route: parsed.data.route } : null;
+}
+
 function parseAboveCap(answer: Answer | Unreachable): AboveCap | null {
   if (isUnreachable(answer) || answer.status !== 409) {
     return null;
@@ -195,7 +232,12 @@ function parseAboveCap(answer: Answer | Unreachable): AboveCap | null {
     return null;
   }
 
-  return { kind: 'above_cap', route: parsed.data.route, cap: parsed.data.cap };
+  return {
+    kind: 'above_cap',
+    route: parsed.data.route,
+    provider: parsed.data.provider,
+    cap: parsed.data.cap,
+  };
 }
 
 function parseNoContent(answer: Answer | Unreachable): Done | Unreachable {
