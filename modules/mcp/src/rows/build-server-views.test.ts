@@ -13,6 +13,7 @@ function setupTest() {
         tools: [],
         signIns: new Map(),
         getHealth: () => initialHealth,
+        openProposalIDs: new Set<string>(),
         ...input,
       }),
   };
@@ -73,5 +74,23 @@ test('it carries the last error of an unhealthy server and the tools of each ser
       nextTryAtMs: 5000,
       tools: [{ tool: 'tracker.item_get', state: 'exposed' }],
     },
+  ]);
+});
+
+test('it carries the proposal of a row only while that proposal is open', () => {
+  const ctx = setupTest();
+
+  const views = ctx.read({
+    servers: [buildServerRow({ proposal_id: 'p-server' })],
+    tools: [
+      buildToolRow({ tool: 'tracker.open', proposal_id: 'p-open' }),
+      buildToolRow({ tool: 'tracker.closed', proposal_id: 'p-closed' }),
+    ],
+    openProposalIDs: new Set(['p-open']),
+  });
+
+  expect([views[0]?.proposalID, views[0]?.tools.map((tool) => tool.proposalID)]).toStrictEqual([
+    null,
+    ['p-open', null],
   ]);
 });

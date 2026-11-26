@@ -20,10 +20,10 @@ import type { AllowResult } from './proposal/allow-tool';
 import { makeMcpProposalHandler } from './proposal/make-mcp-proposal-handler';
 import { createToolCatalog } from './registry/create-tool-catalog';
 import type { ToolCatalog } from './registry/create-tool-catalog';
-import { buildServerViews } from './rows/build-server-views';
 import type { McpServerView } from './rows/build-server-views';
 import type { McpServerRow, McpToolRow } from './rows/mcp-tables';
 import { readServerRows } from './rows/read-server-rows';
+import { readServerViews } from './rows/read-server-views';
 import { readToolRows } from './rows/read-tool-rows';
 import { createSignIn } from './signin/create-sign-in';
 import type { ConnectResult, FinishInput, FinishResult } from './signin/create-sign-in';
@@ -535,14 +535,12 @@ export function startMcp(options: McpOptions): Mcp {
     readServers: () => readServerRows(options.log.writer.db),
     readHealth: health.read,
     readTools: (serverID) => readToolRows(options.log.writer.db, serverID),
-    readServerViews: async () => {
-      const [servers, rows] = await Promise.all([
-        readServerRows(options.log.writer.db),
-        readToolRows(options.log.writer.db),
-      ]);
-
-      return buildServerViews({ servers, tools: rows, signIns, getHealth: health.read });
-    },
+    readServerViews: () =>
+      readServerViews(options.log.writer.db, {
+        nowMs: options.now(),
+        signIns,
+        getHealth: health.read,
+      }),
     readSummaries: async () => {
       const [servers, rows] = await Promise.all([
         readServerRows(options.log.writer.db),

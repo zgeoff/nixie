@@ -33,6 +33,9 @@ export interface ServerViewInput {
   // whether the newest listing of each server found its grant signed in
   readonly signIns: ReadonlyMap<string, 'ok' | 'needs_sign_in'>;
   readonly getHealth: (serverID: string) => ServerHealth;
+
+  // the proposals still open; a lapsed or answered one is no proposal that a row waits on
+  readonly openProposalIDs: ReadonlySet<string>;
 }
 
 // Every server that is not removed. A server that waits for approval has no sign-in. An added
@@ -55,14 +58,14 @@ export function buildServerViews(input: ServerViewInput): McpServerView[] {
         lastError: health.isUnhealthy ? health.lastError : null,
         nextTryAtMs: health.isUnhealthy ? health.nextTryAtMs : null,
         url: server.url,
-        proposalID: server.proposal_id,
+        proposalID: pickOpen(input.openProposalIDs, server.proposal_id),
         tools: input.tools
           .filter((row) => row.server_id === server.server_id)
           .map((row) => ({
             tool: row.tool,
             state: row.state,
             hiddenReason: row.hidden_reason,
-            proposalID: row.proposal_id,
+            proposalID: pickOpen(input.openProposalIDs, row.proposal_id),
           })),
       },
     ];
@@ -82,4 +85,8 @@ function pickSignIn(
   }
 
   return listed === 'needs_sign_in' ? 'needs_consent' : 'ok';
+}
+
+function pickOpen(open: ReadonlySet<string>, proposalID: string | null): string | null {
+  return proposalID !== null && open.has(proposalID) ? proposalID : null;
 }

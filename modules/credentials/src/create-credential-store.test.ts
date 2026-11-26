@@ -231,7 +231,10 @@ test('it refuses http to a host that a pairing names when the host is not loopba
     pairing: { host: 'paired.example.test', range: '127.0.0.0/8' },
   });
 
-  expect(fetchWith('http://paired.example.test/x')).rejects.toThrow(CredentialRefusalError);
+  expect(fetchWith('http://paired.example.test/x')).rejects.toThrowWithMessage(
+    CredentialRefusalError,
+    'http://paired.example.test is not an https origin',
+  );
 });
 
 test.each(['Authorization', 'proxy-authorization', 'Cookie', 'X-Api-Key'])(
