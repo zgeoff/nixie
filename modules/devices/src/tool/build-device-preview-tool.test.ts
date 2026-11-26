@@ -540,6 +540,7 @@ test('it marks the picture and the errors as outside content, because a page can
     definitions: ctx.definitions,
     clock: ctx.clock,
     streams: ctx.streams,
+    readCallSession: ctx.readCallSession,
   }).find((candidate) => candidate.name === 'device.preview');
 
   expect([tool?.declaration.results['picture'], tool?.declaration.results['errors']]).toStrictEqual(

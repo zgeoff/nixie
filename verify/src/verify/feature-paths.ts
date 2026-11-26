@@ -30,6 +30,8 @@ export const featurePaths = {
   'coding-session': [...everyJourney],
   'call-hand-off': [...everyJourney],
   'call-screen': [...everyJourney],
+  'call-device-show': [...everyJourney],
+  'device-view': [...everyJourney],
   'mail-wake': [...everyJourney],
   drawing: [...everyJourney],
   'images-page': [...everyJourney],

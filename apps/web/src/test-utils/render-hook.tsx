@@ -4,6 +4,7 @@ import type { RenderHookResult } from '@testing-library/react';
 import { renderHook as renderHookWithTestingLibrary } from '@testing-library/react';
 import type { PropsWithChildren } from 'react';
 import { buildBrowserClient } from '../client/build-browser-client';
+import { DeviceFeedProvider } from '../device/device-feed-provider';
 import { LiveProvider } from '../live/live-provider';
 import { NixieClientContext } from '../utils/nixie-client-context';
 import type { StartTimer } from '../utils/start-platform-timer';
@@ -28,7 +29,11 @@ export function renderHook<Result>(
           <LiveProvider
             {...(options.startTimer === undefined ? {} : { startTimer: options.startTimer })}
           >
-            {props.children}
+            <DeviceFeedProvider
+              {...(options.startTimer === undefined ? {} : { startTimer: options.startTimer })}
+            >
+              {props.children}
+            </DeviceFeedProvider>
           </LiveProvider>
         </NixieClientContext>
       </QueryClientProvider>

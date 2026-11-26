@@ -90,17 +90,20 @@ Expect line, and do the same comparison.
    Expect: the snapshot holds the region "Call in progress" with the text "On a call", the buttons
    "Mute" and "Hang up" and the link "Back to the call".
 
-6. Go back to the call, hang up, and read how the call ended.
+6. End the call from the speech provider's side while the other page shows, then go back to the call
+   and read how the call ended.
 
    ```bash
-   bun verify browser click --role link --name 'Back to the call'
-   bun verify browser click --role button --name 'Hang up'
+   bun verify action call-step --step hang-up
+   bun verify browser snapshot
+   bun verify browser click --role link --name Call
    bun verify browser snapshot
    bun verify db query "select json_extract(payload, '$.endedBy') as endedBy from records where kind = 'call.ended'"
    ```
 
-   Expect: the snapshot holds "You hung up." and a button "Start another call". The query returns
-   one row, whose `endedBy` is `you`.
+   Expect: the first snapshot no longer holds the region "Call in progress", because the page heard
+   the end over its live stream with no click. The second snapshot holds "You hung up." and a button
+   "Start another call". The query returns one row, whose `endedBy` is `you`.
 
 ## End state
 

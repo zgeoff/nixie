@@ -9,6 +9,9 @@ import type { CheckedTables } from '@heynixie/db';
 
 export type DeviceCapability = 'screen' | 'camera' | 'speaker' | 'microphone';
 
+// client: a full session's own device; screen: a device that enrolled with a device code
+export type DeviceKind = 'client' | 'screen';
+
 export type DeviceCapabilities = Readonly<Record<DeviceCapability, boolean>>;
 
 export interface DeviceRow {
@@ -19,6 +22,7 @@ export interface DeviceRow {
   readonly shown_sequence: number | null;
   readonly idle_sequence: number | null;
   readonly updated_at: number;
+  readonly device_kind: DeviceKind;
 }
 
 interface DeviceLayoutRow {
@@ -72,6 +76,7 @@ export interface Device {
   readonly deviceID: string;
   readonly identityID: string;
   readonly name: string;
+  readonly deviceKind: DeviceKind;
   readonly capabilities: DeviceCapabilities;
   readonly shownSequence: number | null;
   readonly idleSequence: number | null;

@@ -43,13 +43,16 @@ Before you start:
    ```bash
    bun verify browser type --role textbox --name 'Client ID' --value 'verify-client.apps.test'
    bun verify browser type --label 'Client secret' --value 'verify-secret-value'
+   bun verify browser type --label 'Picker API key (optional)' --value 'verify-picker-key'
+   bun verify browser type --label 'Project number (optional)' --value '123456789012'
    bun verify browser click --role button --name 'Register the client'
    bun verify browser snapshot --until-text 'Secret fingerprint'
    ```
 
    Expect: the region "Registered OAuth client" shows a redirect URI that ends in
-   `/connections/google/return` and a secret fingerprint. The text `verify-secret-value` appears
-   nowhere on the page. The button "Connect a Google account" is enabled.
+   `/connections/google/return`, a secret fingerprint, the picker key `verify-picker-key` and the
+   project number `123456789012`. The text `verify-secret-value` appears nowhere on the page. The
+   button "Connect a Google account" is enabled.
 
 3. Press Connect. The browser goes to the fake Google, which sends it back to nixie's return route:
 
@@ -104,8 +107,8 @@ Before you start:
 
 - Step 1: the page lists the 6 setup steps in order, and Connect stays disabled until a client is
   registered.
-- Step 2: the registered client shows its redirect URI and a fingerprint of the secret. The page
-  never shows the secret.
+- Step 2: the registered client shows its redirect URI, a fingerprint of the secret, and the picker
+  key and project number you gave it. The secret appears nowhere on the page.
 - Step 3: the consent comes back through the return route to the connection's page, with the account
   from the ID token, the status "Active" and no missing scopes.
 - Step 5: the Forget status shows the erasure and the revocation apart from the key backups. The row

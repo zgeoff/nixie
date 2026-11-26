@@ -223,6 +223,7 @@ export interface NixieTables {
     readonly shown_sequence: number | null;
     readonly idle_sequence: number | null;
     readonly updated_at: number;
+    readonly device_kind: string;
   };
   readonly enrolment_codes: {
     readonly code_hash: string;

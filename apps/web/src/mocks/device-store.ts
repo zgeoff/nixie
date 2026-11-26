@@ -33,6 +33,17 @@ const sessionsWithoutDevice = new Collection({
   schema: z.object({ sessionID: z.uuid() }),
 });
 
+// the sessions of the device scope, which may call only the device procedures
+const screenSessions = new Collection({
+  schema: z.object({ sessionID: z.uuid() }),
+});
+
+// the screen state of a session's device once the device or a test sets it: a screen device starts
+// off and every other device starts on
+const screenSwitches = new Collection({
+  schema: z.object({ sessionID: z.uuid(), isOn: z.boolean() }),
+});
+
 // the layout the stream sends to a device, which a test sets; null sends none
 const layoutHolder: { layout: Extract<DeviceEvent, { kind: 'layout' }>['layout'] } = {
   layout: null,
@@ -50,13 +61,20 @@ export const deviceStore = {
   layoutHolder,
   messageHolder,
   sessionsWithoutDevice,
+  screenSessions,
+  screenSwitches,
   hasDevice: (sessionID: string): boolean =>
     sessionsWithoutDevice.findFirst((query) => query.where({ sessionID })) === undefined,
+  readScreen: (sessionID: string): boolean =>
+    screenSwitches.findFirst((query) => query.where({ sessionID }))?.isOn ??
+    screenSessions.findFirst((query) => query.where({ sessionID })) === undefined,
   reset: (): void => {
     resizes.clear();
     pageErrors.clear();
     pageEvents.clear();
     sessionsWithoutDevice.clear();
+    screenSessions.clear();
+    screenSwitches.clear();
 
     layoutHolder.layout = null;
     messageHolder.messages = [];

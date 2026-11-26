@@ -27,15 +27,15 @@ change state; and the [live stream](./live-updates.md).
   so a retried bearer enrolment receives a fresh token for the same session.
 - **The client header.** Every call carries a custom client header, and the API refuses a call
   without it, because a cross-site form cannot send a custom header.
-- **The live stream.** A tab holds one `live.follow` stream, which carries the records of the thread
-  on screen and a `changed` event for each topic a commit touched. [Live updates](./live-updates.md)
-  describes the stream and its topics, and [The live stream in the client](#the-live-stream)
-  describes how the tab holds it. A `log_reset` record on the stream means the
-  [reset](../core/event-log.md#the-reset) removed every record before it, or a reset of the
-  conversation shredded every record before it on the thread, so the client drops what it read
-  before that record and reads its queries again. The conversation shows the record as a rule across
-  the feed with the time of the reset in the user's own time zone. The server restarts after a
-  reset, so the client reads them once more when the stream next opens.
+- **The live stream.** A tab holds one page-form `live.follow` stream, which carries the records of
+  the thread on screen and a `changed` event for each topic a commit touched. See
+  [Live updates](./live-updates.md) for the stream and its topics, and
+  [The live stream in the client](#the-live-stream) for how the tab holds it. A `log_reset` record
+  on the stream means the [reset](../core/event-log.md#the-reset) removed every record before it, or
+  a reset of the conversation shredded every record before it on the thread, so the client drops
+  what it read before that record and reads its queries again. The conversation shows the record as
+  a rule across the feed with the time of the reset in the user's own time zone. A reset restarts
+  the server, and the stream's next open reads every topic again.
 
 A client renders a record by its kind, and shows a kind it does not know by its name. Beside its
 kind, a record carries what a client shows of it: a message's text, the task and step of a task
@@ -110,23 +110,23 @@ speech layer and its state. A change of route never ends the call, and a page lo
   keeps the server's own `endedBy` and reason, such as the budget. Hang up releases the microphone
   and the peer at once, and nothing that was pending then changes the call. A refused microphone, or
   a refused start, shows what the user can do about it, and no call starts.
-- **The call bar.** On every route but the call screen, a bar shows while a call connects, is live
-  or reconnects. It holds the state, the time, mute, hang up and a link back to the call screen.
+- **The call bar.** On every route but the call screen, the device view included, a bar shows while
+  a call connects, is live or reconnects. It holds the state, the time, mute, hang up and a link
+  back to the call screen.
 - **Following the call.** While a call runs, the provider keeps the live stream open and reads
   `calls.get` under the `calls` topic. A call the server ended, such as one that ran out of budget,
   ends on the screen with the reason.
 - **Reconnect.** When `calls.get` reports a `reconnect` cause, or the peer connection fails, the
   client sends an ICE-restart offer on the open peer connection, or on a new one when the old one
   failed, with a fresh `calls.connect`. A refusal, `CALL_CONNECTED` included, gets another try after
-  a pause. The call is live again only once an answer is applied and the connection is up. When a
-  call is not back within the reconnect limit, counted from the first loss (set as
-  `reconnectLimitMs` in
+  a pause. The call is live again once an answer is applied and the connection is up. When a call is
+  not back within the reconnect limit, counted from the first loss (set as `reconnectLimitMs` in
   [`create-call-session.ts`](../../../apps/web/src/call/create-call-session.ts)), the client ends it
   on the screen as `dropped`, releases the microphone and the peer, and hangs up the call on the
-  server. A refusal of `CALL_NOT_FOUND` or `NOT_CARRYING_SESSION` ends it the same way at once. The
-  client discards a read of the call from before a reconnect and reads again, so a finished
-  reconnect does not start another. After a server restart the live stream's first open reads every
-  topic again, which is how the client learns that the call waits.
+  server. A refusal of `CALL_NOT_FOUND` or `NOT_CARRYING_SESSION` gets no retry and ends the call
+  the same way at once. The client discards a read of the call from before a reconnect and reads
+  again, so a finished reconnect does not start another. After a server restart the live stream's
+  first open reads every topic again, which is how the client learns that the call waits.
 - **Approvals during a call.** The call screen lists the cards of the proposals on the call's
   thread, read through `approvals.listItems` and `approvals.readProposals`, so a card follows its
   proposal through an answer. The provider holds the IDs the screen has seen for the call's thread,
@@ -146,13 +146,17 @@ each HTML page. The page's peer then reaches `connected` only when its offer rea
 ## The live stream
 
 The web client holds one `live.follow` stream in each tab, above every page, so a change of route
-keeps it open. A signed-in page keeps it open, and the `/device` page, which holds a device-form
-stream of its own, never opens a page stream. The stream is a page form: it carries the records of
-the thread on screen, from the sequence that page read at, and every topic's `changed` events.
+keeps it open. A signed-in page keeps it open, and the `/device` page, which retains the tab's
+device feed itself, never opens a page stream. The stream is a page form: it carries the records of
+the thread on screen, from the sequence that page read at, and every topic's `changed` events. Each
+signed-in page also enters its tab in the choice of which tab holds the
+[device stream](#the-device-view), so a browser holds one device stream however many tabs it opens,
+the device view's tabs included. A browser limits an HTTP/1.1 origin to 6 connections, and 5 tabs
+fill the slots and queue each later request. Serve nixie over HTTP/2.
 
-- **A topic invalidates its reads.** A `changed` event invalidates the reads under each topic's
-  query-key root, so no page sets a poll on a read that a topic covers. The topic roots and their
-  reads are in [Live updates](./live-updates.md#topics).
+- **A topic invalidates its reads.** A `changed` event invalidates the reads under its topic's
+  query-key root. While the stream works, set no poll on a read that a topic covers. See
+  [Live updates](./live-updates.md#topics) for the topic roots and their reads.
 - **A read in flight gives way to a new one.** An invalidation cancels a read of that topic that is
   in flight and reads again, so the page never keeps an answer from before the change.
 - **A first open or a reconnect invalidates every topic,** because a `changed` event carries no
@@ -441,6 +445,49 @@ in the browser only, because the library reads the window when it loads.
   which asks for a new ticket. A server with no computer shows no button and says it has none.
 - Leaving the page closes the socket and stops the viewer.
 
+## The device view
+
+`/device-view` shows this client's own [device](./devices.md) inside the app shell. The user opens
+it from the menu, as they open the computer page. The app adds no pop-up, badge or notice when the
+device's content changes, so what the assistant put on the screen shows only when the user opens the
+page.
+
+- **The device stream.** A `DeviceFeed` above the router follows the device form of `live.follow`
+  while it is retained. One tab of the browser retains it, and sends what the feed holds to every
+  other tab over a `BroadcastChannel`, so the device is online whenever nixie is open and each tab
+  draws the same device. Each signed-in page enters its tab in that choice, and the tab keeps its
+  place across a route change.
+  - A browser lock picks the tab, and the next waiting tab takes over when the holder closes.
+  - Without a lock manager, such as on a page served over plain HTTP, the tabs pick one over the
+    channel. A tab that hears no holder within a short wait takes the stream, and of two tabs that
+    take it at once, the one with the smaller tab ID keeps it. Each other tab asks every few seconds
+    whether the holder is still there, and takes the stream when no answer comes, as after the
+    holder's tab crashed. The waits are set in
+    [`hold-device-stream-as-leader.ts`](../../../apps/web/src/device/hold-device-stream-as-leader.ts).
+  - A browser with no channel between its tabs retains the feed in each tab.
+
+  The feed closes the stream once nothing retains it. A full session follows its device stream and
+  its conversation stream on one session. A refusal ends the feed's reconnects and drops what the
+  feed held, in the holder's tab and in each tab that shows its copy, so a revoked tab shows nothing
+  the device showed.
+
+- **What it draws.** The page draws what the feed holds, in the order the screen draws it: a show,
+  the layout while a region shows content or has a background, then the idle scene. It reads only
+  the device's stream, so later UI work can show it beside the chat.
+- **Its size.** The page draws the device at the size of the window below everything above it: the
+  app bar, the call bar and each banner. It reports that size in device pixels through
+  `devices.resize`, and again each time a stream opens, because a stream that another tab opens sets
+  a size of its own. A change of the area sends the size again after a short debounce, and a failed
+  call is sent again on the next change.
+- **During a call.** The call bar shows on this page, and its link goes back to the call screen.
+  Opening the device view, the chat or the call screen keeps the call's audio, its microphone grant
+  and its live stream.
+- **Device mode.** `/device` is a separate page, which [devices](./devices.md#device-mode)
+  describes. It shows the device full screen with no app shell, from the same feed as the device
+  view, and keeps the stream open whether the screen is on or off. A stream that the view or the
+  full-screen page opened keeps the size that page reported until it closes. Its sign-out ends a
+  live call first, and the server ends the call a session carries when that session signs out.
+
 ## The handover banner
 
 While the assistant asks the user to take over the computer, every signed-in page shows a banner
@@ -531,15 +578,15 @@ setup, and `/settings/connections/<connection>` shows one connection. The return
 
 ## The app shell
 
-Every page sits in one shell, which the root route renders. Its bar holds 16 links: Conversation,
-Memory, Proposals, Mandates, Moments, Tasks, Ended runs, Files, Images, Computer, Notebook,
-Definitions, Reminders, Passkeys, Connections and Add a device. The link of the current page carries
-`aria-current="page"`, and a detail page marks its parent, so a task marks Tasks. A page with no
-entry marks nothing. Below 768px the links fold into a menu button that opens a side drawer. The
-drawer is a native modal dialog, so the rest of the page goes inert while it is open. It closes on a
-link tap, on Escape and on a tap outside it, and focus returns to the menu button. CSS alone
-switches between the bar and the button, so the server render matches the client. The conversation
-fills the height below the bar.
+Every page sits in one shell, which the root route renders. Its bar holds 20 links: Conversation,
+Call, Memory, Proposals, Mandates, Moments, Tasks, Ended runs, Files, Images, Computer, Device view,
+Notebook, Definitions, Reminders, Spending, Passkeys, Connections, MCP servers and Add a device. The
+link of the current page carries `aria-current="page"`, and a detail page marks its parent, so a
+task marks Tasks. A page with no entry marks nothing. Below 768px the links fold into a menu button
+that opens a side drawer. The drawer is a native modal dialog, so the rest of the page goes inert
+while it is open. It closes on a link tap, on Escape and on a tap outside it, and focus returns to
+the menu button. CSS alone switches between the bar and the button, so the server render matches the
+client. The conversation fills the height below the bar.
 
 ## Approvals
 
@@ -605,8 +652,9 @@ empty-group text.
 
 The dashboard reads the task list again on each `changed` event of the `tasks` topic, and when the
 page comes to the front. A task that wakes on a schedule changes with no write, so no topic
-announces it. The list's answer gives that time in `changesAt`, and the dashboard reads the list
-again then. This is the one timed read of a read that a topic covers.
+announces it. `tasks.list` answers with the time of the next change in `changesAt`, and the
+dashboard reads the list again then. While the live stream works, this is the one timed read of a
+read that a topic covers.
 
 Each task shows the controls that its runner offers and its state allows, as
 [controlling a task](./api.md#controlling-a-task) describes. Each control is a checked action, so a

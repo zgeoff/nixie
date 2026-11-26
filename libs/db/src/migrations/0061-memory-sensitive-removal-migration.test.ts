@@ -11,7 +11,7 @@ import { buildSqliteWorkerDialect } from '../sqlite/build-sqlite-worker-dialect'
 import { buildSchemaBefore } from '../test-utils/build-schema-before';
 import { readRunPrefix } from '../test-utils/read-run-prefix';
 import { memorySensitiveRemovalMigration } from './0061-memory-sensitive-removal-migration';
-import { proposalsPromptFamilyMigration } from './0096-proposals-prompt-family-migration';
+import { proposalsPromptFamilyMigration } from './0097-proposals-prompt-family-migration';
 
 interface TaskSequences {
   readonly created: number;

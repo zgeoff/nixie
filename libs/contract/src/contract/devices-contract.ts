@@ -170,8 +170,9 @@ export const devicesContract = {
       }),
     ),
 
+  // A call with no isOn changes nothing and answers the capability as the device holds it.
   setCapability: ownDevice
-    .input(z.object({ capability: z.enum(['screen']), isOn: z.boolean() }))
+    .input(z.object({ capability: z.enum(['screen']), isOn: z.boolean().exactOptional() }))
     .output(z.object({ screen: z.enum(['on', 'off']) })),
 
   readImage: ownDevice

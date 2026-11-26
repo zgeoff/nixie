@@ -264,6 +264,14 @@ export async function runVerifyHarness(): Promise<void> {
           emitSpeech: (event) =>
             server.request('emitSpeech', { sessionID: 'fake-session-1', event }),
           readSpeechCalls: () => server.request('readSpeechCalls', null),
+          readStartedCallID: async () => {
+            const records = await nixie.readRecords();
+
+            return (
+              records.findLast((record) => record.kind === 'call.started')?.payload['callID'] ??
+              null
+            );
+          },
         },
         callState,
         call.step,

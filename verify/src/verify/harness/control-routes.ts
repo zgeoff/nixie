@@ -152,7 +152,11 @@ export const controlRoutes = {
   showOnDevice: {
     method: 'POST',
     path: '/control/show-on-device',
-    input: z.strictObject({ fit: z.enum(['whole', 'fill']), text: z.string().min(1) }),
+    input: z.strictObject({
+      fit: z.enum(['whole', 'fill']),
+      text: z.string().min(1),
+      device: z.string().min(1).optional(),
+    }),
     output: z.strictObject({ replies: z.int().positive() }),
   },
   layoutOnDevice: {

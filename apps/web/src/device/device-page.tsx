@@ -3,12 +3,13 @@ import { ORPCError } from '@orpc/client';
 import { useNavigate } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
+import { useCall } from '../call/call-context';
 import { EnrolForm } from '../components/enrol-form';
 import { css } from '../styled-system/css';
 import { useNixieClient } from '../utils/use-nixie-client';
+import { DeviceConnection } from './device-connection';
 import { DeviceScreen } from './device-screen';
 import { FullscreenButton } from './fullscreen-button';
-import { readStoredScreen, writeStoredScreen } from './read-stored-screen';
 import { RegisterDeviceForm } from './register-device-form';
 
 type Phase =
@@ -29,12 +30,13 @@ const page = css({
   '& button': { borderColor: 'borderStrong', borderWidth: '1px', paddingBlock: '2' },
 });
 
-// Device mode: a device with a screen that the assistant puts pictures on. The page asks the server
-// to set its screen the way this device left it, which tells it what this browser holds: no session
-// shows the enrolment form, and a full session with no device shows the form that names one.
+// Device mode: this browser's device full screen. The page asks the server for the screen of its
+// device as it is, which tells it what this browser holds: no session shows the enrolment form, and
+// a full session with no device shows the form that names one.
 export function DevicePage(): ReactNode {
   const nixie = useNixieClient();
   const navigate = useNavigate();
+  const call = useCall();
   const [phase, setPhase] = useState<Phase>({ kind: 'checking' });
   const [attempt, setAttempt] = useState(0);
 
@@ -53,7 +55,7 @@ export function DevicePage(): ReactNode {
   };
 
   const signOut = (): void => {
-    void signOutDevice(nixie.client, setPhase);
+    void signOutDevice(nixie.client, call.session.hangUp, setPhase);
   };
 
   if (phase.kind === 'checking') {
@@ -79,8 +81,7 @@ export function DevicePage(): ReactNode {
     return (
       <RegisterDeviceForm
         onRegistered={() => {
-          writeStoredScreen(false);
-          setPhase({ kind: 'ready', isScreenOn: false });
+          setAttempt((count) => count + 1);
         }}
       />
     );
@@ -115,22 +116,26 @@ export function DevicePage(): ReactNode {
 
   if (phase.isScreenOn) {
     return (
-      <DeviceScreen
-        onClose={() => {
-          void closeDeviceScreen(async () => {
-            await navigate({ to: '/' });
-          });
-        }}
-        onSwitchOff={() => {
-          setScreen(false);
-        }}
-        onSignOut={signOut}
-      />
+      <>
+        <DeviceConnection />
+        <DeviceScreen
+          onClose={() => {
+            void closeDeviceScreen(async () => {
+              await navigate({ to: '/' });
+            });
+          }}
+          onSwitchOff={() => {
+            setScreen(false);
+          }}
+          onSignOut={signOut}
+        />
+      </>
     );
   }
 
   return (
     <main className={page}>
+      <DeviceConnection />
       <h1>Device mode</h1>
       <p>The screen of this device is off, so the assistant cannot show anything on it.</p>
       <button
@@ -156,10 +161,8 @@ async function startDevice(
   signal: AbortSignal,
   setPhase: SetPhase,
 ): Promise<void> {
-  const isOn = readStoredScreen();
-
   try {
-    const answer = await client.devices.setCapability({ capability: 'screen', isOn }, { signal });
+    const answer = await client.devices.setCapability({ capability: 'screen' }, { signal });
 
     setPhase({ kind: 'ready', isScreenOn: answer.screen === 'on' });
   } catch (error) {
@@ -192,15 +195,22 @@ async function switchScreen(
   try {
     const answer = await client.devices.setCapability({ capability: 'screen', isOn });
 
-    writeStoredScreen(answer.screen === 'on');
     setPhase({ kind: 'ready', isScreenOn: answer.screen === 'on' });
   } catch {
     setPhase({ kind: 'failed' });
   }
 }
 
-async function signOutDevice(client: ContractClient, setPhase: SetPhase): Promise<void> {
+async function signOutDevice(
+  client: ContractClient,
+  hangUp: () => Promise<void>,
+  setPhase: SetPhase,
+): Promise<void> {
   try {
+    // the hang-up releases the microphone before it asks the server, and a refused request must
+    // not keep the person signed in
+    await hangUp().catch(() => {});
+
     await client.sessions.signOut({});
   } catch (error) {
     // a session that is already gone is signed out

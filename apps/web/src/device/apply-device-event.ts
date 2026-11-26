@@ -1,5 +1,5 @@
 import type { DeviceEvent } from '@heynixie/contract';
-import type { DeviceEvents, PageDelivery } from './use-device-events';
+import type { DeviceEvents, PageDelivery } from './types';
 
 // the most refresh notices the device keeps, which a page that hears them all has read
 const noticeLimit = 100;

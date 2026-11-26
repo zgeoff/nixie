@@ -17,6 +17,8 @@ test('it lists an enrolled device with its screen off and nothing it shows', asy
         {
           shortID: device.deviceID,
           name: 'desk panel',
+          deviceKind: 'screen',
+          onCall: false,
           screen: 'off',
           camera: 'off',
           online: false,
@@ -51,6 +53,8 @@ test('it gives an online device its size and what it shows', async () => {
         {
           shortID: device.deviceID,
           name: 'desk panel',
+          deviceKind: 'screen',
+          onCall: false,
           screen: 'on',
           camera: 'off',
           online: true,
@@ -162,4 +166,52 @@ test('it keeps a device online in the list for 60 s after its last connection cl
   const listed = await ctx.call('devices.list', {});
 
   expect(listed).toMatchObject({ result: { devices: [{ online: true }] } });
+});
+
+test('it lists a client device and a screen device by their kind', async () => {
+  const ctx = await setupTest();
+  const client = await ctx.seed.device({ name: 'kitchen laptop', deviceKind: 'client' });
+  const screen = await ctx.seed.device({ name: 'hall panel', deviceKind: 'screen' });
+  const listed = await ctx.call('devices.list', {});
+
+  expect(listed).toStrictEqual({
+    status: 'ok',
+    result: {
+      devices: expect.toIncludeSameMembers([
+        expect.objectContaining({ shortID: client.deviceID, deviceKind: 'client' }),
+        expect.objectContaining({ shortID: screen.deviceID, deviceKind: 'screen' }),
+      ]),
+    },
+  });
+});
+
+test('it marks only the device of the call-carrying session onCall', async () => {
+  const ctx = await setupTest();
+  const carrier = await ctx.seed.device({ name: 'kitchen laptop', deviceKind: 'client' });
+  const other = await ctx.seed.device({ name: 'hall panel', deviceKind: 'screen' });
+
+  ctx.setCallSession(carrier.identityID);
+
+  const listed = await ctx.call('devices.list', {});
+
+  expect(listed).toStrictEqual({
+    status: 'ok',
+    result: {
+      devices: expect.toIncludeSameMembers([
+        expect.objectContaining({ shortID: carrier.deviceID, onCall: true }),
+        expect.objectContaining({ shortID: other.deviceID, onCall: false }),
+      ]),
+    },
+  });
+});
+
+test('it marks no device onCall while no call is live', async () => {
+  const ctx = await setupTest();
+  const device = await ctx.seed.device({ name: 'kitchen laptop', deviceKind: 'client' });
+  const listed = await ctx.call('devices.list', {});
+
+  expect(listed).toStrictEqual({
+    status: 'ok',
+    result: { devices: [expect.objectContaining({ shortID: device.deviceID, onCall: false })] },
+  });
 });

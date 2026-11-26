@@ -39,10 +39,12 @@ test('it holds one stream on a thread page, and overlaps two while it switches t
   await waitFor(
     () => {
       expect(mockLive.openedThreads).toContain('conversation');
-      expect(mockLive.openCount).toBe(1);
+      expect([mockLive.openCount, mockLive.deviceOpenCount]).toStrictEqual([1, 1]);
     },
     { timeout: 10_000 },
   );
+
+  mockLive.restartPeak();
 
   await ctx.view.click('a[href="/tasks"]');
 
@@ -80,6 +82,8 @@ test('it opens no stream for topics alone while a page of another thread reads, 
   ctx.api.delayPath('/rpc/conversation/read', 500);
 
   const openedBefore = mockLive.openedThreads.length;
+
+  mockLive.restartPeak();
 
   // a step of the router within the page, with no page between the two threads
   await ctx.view.evaluate(
