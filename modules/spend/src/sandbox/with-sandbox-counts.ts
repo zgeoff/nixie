@@ -1,7 +1,7 @@
 import type { Logger } from '@heynixie/logger';
 import type { Sandbox, SandboxAdapter, SandboxSpec } from '@heynixie/sandbox';
 import { sandboxKinds, workerRunOwnerPrefix } from '@heynixie/sandbox';
-import type { Done, NotFound, SpendGateway, Unreachable } from '../types';
+import type { Done, NotFound, RevisionChanged, SpendGateway, Unreachable } from '../types';
 import { SandboxCountsUnreachableError } from './sandbox-counts-unreachable-error';
 
 export interface SandboxCountsOptions {
@@ -109,7 +109,7 @@ function isCounted(spec: SandboxSpec): boolean {
 async function registerKept(
   gateway: SpendGateway,
   name: string,
-): Promise<Done | NotFound | Unreachable> {
+): Promise<Done | NotFound | RevisionChanged | Unreachable> {
   const read = await gateway.readSandbox(name);
 
   if (read.kind === 'not_found') {

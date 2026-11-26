@@ -32,7 +32,61 @@ test('it sets the limit with one call when the gateway answers', async () => {
   const outcome = await ctx.patch();
 
   expect(outcome).toBe('set');
-  expect(ctx.gateway.patchSandbox.mock.calls).toStrictEqual([['sandbox-1', { dollars: 4 }]]);
+  expect(ctx.gateway.patchSandbox.mock.calls).toStrictEqual([['sandbox-1', { dollars: 4 }, 0]]);
+});
+
+test('it patches on the revision that the gateway holds for the sandbox when it checks', async () => {
+  const ctx = await setupTest();
+
+  ctx.gateway.readSandbox.mockResolvedValue({
+    kind: 'ok',
+    value: { dollars: 0, tokens: 0, tripped: false, lastRefusal: null, limitRevision: 7 },
+  });
+
+  await ctx.patch();
+
+  expect(ctx.gateway.patchSandbox.mock.calls).toStrictEqual([['sandbox-1', { dollars: 4 }, 7]]);
+});
+
+test('it reads the sandbox again and goes again at once when a newer write changed the revision', async () => {
+  const ctx = await setupTest();
+
+  ctx.gateway.readSandbox
+    .mockResolvedValueOnce({
+      kind: 'ok',
+      value: { dollars: 0, tokens: 0, tripped: false, lastRefusal: null, limitRevision: 1 },
+    })
+    .mockResolvedValueOnce({
+      kind: 'ok',
+      value: { dollars: 0, tokens: 0, tripped: false, lastRefusal: null, limitRevision: 2 },
+    });
+
+  ctx.gateway.patchSandbox.mockResolvedValueOnce({ kind: 'revision_changed' });
+
+  const outcome = await ctx.patch();
+
+  expect(outcome).toBe('set');
+
+  expect(ctx.gateway.patchSandbox.mock.calls).toStrictEqual([
+    ['sandbox-1', { dollars: 4 }, 1],
+    ['sandbox-1', { dollars: 4 }, 2],
+  ]);
+});
+
+test('it goes again after the retry delay when the gateway did not answer the read of the sandbox', async () => {
+  const ctx = await setupTest();
+
+  ctx.gateway.readSandbox.mockResolvedValueOnce({ kind: 'unreachable', reason: 'no answer' });
+
+  const patching = ctx.patch();
+
+  await waitForCondition(() => ctx.clock.countPending() === 1);
+
+  ctx.clock.advance(5000);
+
+  const outcome = await patching;
+
+  expect(outcome).toBe('set');
 });
 
 test('it goes again after the retry delay when the gateway did not answer', async () => {
@@ -71,8 +125,8 @@ test('it sets the limit as it stands at the retry, and not the one it began with
   await patching;
 
   expect(ctx.gateway.patchSandbox.mock.calls).toStrictEqual([
-    ['sandbox-1', { dollars: 4 }],
-    ['sandbox-1', { dollars: 3 }],
+    ['sandbox-1', { dollars: 4 }, 0],
+    ['sandbox-1', { dollars: 3 }, 0],
   ]);
 });
 

@@ -1,6 +1,7 @@
 import type { Logger } from '@heynixie/logger';
 import type { SandboxLimit, SpendContext } from '../types';
 import { withSandboxLimitLock } from './with-sandbox-limit-lock';
+import { writeSandboxLimit } from './write-sandbox-limit';
 
 export interface SandboxLimitPatch {
   readonly sandbox: string;
@@ -22,9 +23,9 @@ export interface PatchLimitOptions {
 // took it.
 export type PatchLimitOutcome = 'set' | 'gone' | 'stale' | 'stopped';
 
-// Sets a sandbox's limit and goes again until the gateway takes it, because a limit that stays lower
-// than the task run's would refuse the task's next request. Each call checks the limit and sends it
-// under the sandbox's limit lock, so a limit that a step sets meanwhile lands after it.
+// Goes again until the gateway takes the limit, because a limit below the task run's would refuse
+// its next request. Each call checks and sends under the sandbox's lock, on the revision it read, so
+// a step's limit lands after it, and a call that timed out and lands late changes nothing.
 export async function patchLimitUntilSet(
   context: Pick<SpendContext, 'gateway' | 'clock'>,
   patch: SandboxLimitPatch,
@@ -38,7 +39,7 @@ export async function patchLimitUntilSet(
         return null;
       }
 
-      return context.gateway.patchSandbox(patch.sandbox, current.limit);
+      return writeSandboxLimit(context.gateway, patch.sandbox, current.limit);
     });
 
     if (answer === null) {
@@ -53,6 +54,10 @@ export async function patchLimitUntilSet(
 
     if (answer.kind === 'not_found') {
       return 'gone';
+    }
+
+    if (answer.kind === 'revision_changed') {
+      continue;
     }
 
     options.logger(

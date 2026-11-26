@@ -435,14 +435,14 @@ A second listener on `control.listen` serves the server alone. It answers 401 to
 `Authorization: Bearer <token>`, with the token read from `control.tokenFile` at start. The model
 listener serves no control path.
 
-| Call                       | Effect                                                                                                                                                                                                   |
-| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GET /status`              | the zone, the lost mark, and for each route its day and month: start, reset time, dollars, limit in force, cap and `tripped`                                                                             |
-| `POST /raise`              | raises one route's day for its start, never below that day's earlier raise; 409 `above_cap` with the route and its cap, 409 `period_ended` for another start, 404 `unknown_route`                        |
-| `PUT /sandboxes/<name>`    | sets the sandbox's limit, or `null` to count only, and sets its count to zero                                                                                                                            |
-| `PATCH /sandboxes/<name>`  | sets the sandbox's limit whole, or `null` to count only, and keeps its count; 204, or 404 for a name the store lacks. A limit with no `tokens` sets no token limit; a limit of 0 dollars refuses at once |
-| `GET /sandboxes/<name>`    | the sandbox's count, whether it is past its limit and its last refusal; 404 for a name the store lacks                                                                                                   |
-| `DELETE /sandboxes/<name>` | removes the sandbox; 204 also for a name the store lacks                                                                                                                                                 |
+| Call                       | Effect                                                                                                                                                                                                                                                                                   |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /status`              | the zone, the lost mark, and for each route its day and month: start, reset time, dollars, limit in force, cap and `tripped`                                                                                                                                                             |
+| `POST /raise`              | raises one route's day for its start, never below that day's earlier raise; 409 `above_cap` with the route and its cap, 409 `period_ended` for another start, 404 `unknown_route`                                                                                                        |
+| `PUT /sandboxes/<name>`    | sets the sandbox's limit, or `null` to count only, and sets its count to zero                                                                                                                                                                                                            |
+| `PATCH /sandboxes/<name>`  | sets the sandbox's limit whole, or `null` to count only, and keeps its count; 204, or 404 for a name the store lacks. A limit with no `tokens` sets no token limit; a limit of 0 dollars refuses at once. With a `revision`, 409 `revision_changed` once the limit's revision is another |
+| `GET /sandboxes/<name>`    | the sandbox's count, whether it is past its limit, its last refusal and its `limitRevision`; 404 for a name the store lacks                                                                                                                                                              |
+| `DELETE /sandboxes/<name>` | removes the sandbox; 204 also for a name the store lacks                                                                                                                                                                                                                                 |
 
 A refused call changes nothing. A raise body is `{ route, start, dollars }`, and the raise is for
 the day only: the month's limit moves only in the gateway's config. A period's `tripped` is true
@@ -526,6 +526,11 @@ task run's dollar limit with `PATCH`, so the gateway ends a turn at the task's l
 run goes, the limit drops by the run's planned dollars, and a raise of the task's limit patches it
 after the raise commits, as [the task meter](metering.md#the-task-meter) says. A sandbox that
 reached its own limit refuses each request, and its last refusal names the counter `sandbox`.
+
+Each `PUT` or `PATCH` of a sandbox's limit adds one to its `limitRevision`. The server patches a
+task's sandbox with the revision it read just before, so a patch whose call timed out and that
+reaches the gateway after a newer one gets 409 and leaves the newer limit in force. The server then
+reads the sandbox again and decides the limit afresh.
 
 A worker run's planned limit is the worker's configured limit, held to what the calling task run has
 left, so the gateway and nixie hold one number. A registration that fails fails the sandbox's start.

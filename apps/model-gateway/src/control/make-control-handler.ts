@@ -44,6 +44,11 @@ const raiseBodySchema = z.strictObject({
 
 const sandboxBodySchema = z.strictObject({ limit: sandboxLimitBodySchema.nullable() });
 
+const sandboxPatchBodySchema = z.strictObject({
+  limit: sandboxLimitBodySchema.nullable(),
+  revision: z.int().nonnegative().exactOptional(),
+});
+
 export function makeControlHandler(
   deps: ControlHandlerDeps,
 ): (request: Request) => Promise<Response> {
@@ -109,6 +114,7 @@ export function makeControlHandler(
       tokens: held?.tokens ?? 0,
       tripped: held !== undefined && isSandboxLimitReached(held),
       lastRefusal: held?.lastRefusal ?? null,
+      limitRevision: held?.limitRevision ?? 0,
     });
   };
 
@@ -132,18 +138,22 @@ export function makeControlHandler(
     }
 
     if (request.method === 'PATCH') {
-      const body = await readBody(request, sandboxBodySchema);
+      const body = await readBody(request, sandboxPatchBodySchema);
 
       if (body.kind === 'invalid') {
         return renderInvalid(body.message);
       }
 
       const outcome = await changeStore((store) =>
-        pickSandboxLimitChange(store, name.data, body.data.limit),
+        pickSandboxLimitChange(store, name.data, body.data),
       );
 
-      return outcome.kind === 'unknown_sandbox'
-        ? Response.json({ error: 'not_found' }, { status: 404 })
+      if (outcome.kind === 'unknown_sandbox') {
+        return Response.json({ error: 'not_found' }, { status: 404 });
+      }
+
+      return outcome.kind === 'revision_changed'
+        ? Response.json({ error: 'revision_changed' }, { status: 409 })
         : new Response(null, { status: 204 });
     }
 

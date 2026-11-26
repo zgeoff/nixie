@@ -152,6 +152,9 @@ export interface SandboxCount {
   readonly tokens: number;
   readonly tripped: boolean;
   readonly lastRefusal: SandboxRefusal | null;
+
+  // goes up by one at each write of the sandbox's limit
+  readonly limitRevision: number;
 }
 
 // A sandbox's own limit in the gateway. A limit with no tokens sets no token limit.
@@ -187,6 +190,11 @@ export interface NotFound {
   readonly kind: 'not_found';
 }
 
+// A write of the sandbox's limit landed after the read that a conditional patch named
+export interface RevisionChanged {
+  readonly kind: 'revision_changed';
+}
+
 export type Done<Value = undefined> = Value extends undefined
   ? { readonly kind: 'ok' }
   : { readonly kind: 'ok'; readonly value: Value };
@@ -207,11 +215,13 @@ export interface SpendGateway {
   // sets the sandbox's limit, or null to count only, and sets its count to zero
   readonly putSandbox: (name: string, limit: Measures | null) => Promise<Done | Unreachable>;
 
-  // sets the sandbox's limit whole, or null to count only, and keeps its count
+  // sets the sandbox's limit whole, or null to count only, and keeps its count. With a revision,
+  // the gateway sets it only while the limit's revision is still that one.
   readonly patchSandbox: (
     name: string,
     limit: SandboxLimit | null,
-  ) => Promise<Done | NotFound | Unreachable>;
+    revision?: number,
+  ) => Promise<Done | NotFound | RevisionChanged | Unreachable>;
 
   readonly readSandbox: (name: string) => Promise<Done<SandboxCount> | NotFound | Unreachable>;
   readonly removeSandbox: (name: string) => Promise<Done | Unreachable>;

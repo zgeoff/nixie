@@ -249,7 +249,7 @@ test('#raise sets the limit of the sandbox the gateway counts for the task, afte
   await waitForCondition(() => ctx.spendGateway.patchSandbox.mock.calls.length === 1);
 
   expect(ctx.spendGateway.patchSandbox.mock.calls).toStrictEqual([
-    ['sandbox-1', { dollars: 3.25 }],
+    ['sandbox-1', { dollars: 3.25 }, 0],
   ]);
 });
 
@@ -289,8 +289,8 @@ test('#raise sets the limit again after the gateway did not answer the first cal
   expect(raised).toMatchObject({ state: 'ready', dollars: 3 });
 
   expect(ctx.spendGateway.patchSandbox.mock.calls).toStrictEqual([
-    ['sandbox-1', { dollars: 3.25 }],
-    ['sandbox-1', { dollars: 3.25 }],
+    ['sandbox-1', { dollars: 3.25 }, 0],
+    ['sandbox-1', { dollars: 3.25 }, 0],
   ]);
 });
 
@@ -336,7 +336,7 @@ test('#raise sets no limit on the retry once a step has read the sandbox again a
   await waitForCondition(() => ctx.logged.some((line) => line.includes('sandbox_limit_stale')));
 
   expect(ctx.spendGateway.patchSandbox.mock.calls).toStrictEqual([
-    ['sandbox-1', { dollars: 3.25 }],
+    ['sandbox-1', { dollars: 3.25 }, 0],
   ]);
 });
 

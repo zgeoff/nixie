@@ -8,7 +8,32 @@ test('it patches the limit once when the gateway answers', async () => {
   const isPatched = await patchSandboxLimit(gateway, 's1', { dollars: 2 });
 
   expect(isPatched).toBe(true);
-  expect(gateway.patchSandbox.mock.calls).toStrictEqual([['s1', { dollars: 2 }]]);
+  expect(gateway.patchSandbox.mock.calls).toStrictEqual([['s1', { dollars: 2 }, 0]]);
+});
+
+test('it patches on the revision it read, and goes again when a newer write changed it', async () => {
+  const gateway = buildStubSpendGateway();
+
+  gateway.readSandbox
+    .mockResolvedValueOnce({
+      kind: 'ok',
+      value: { dollars: 0, tokens: 0, tripped: false, lastRefusal: null, limitRevision: 4 },
+    })
+    .mockResolvedValueOnce({
+      kind: 'ok',
+      value: { dollars: 0, tokens: 0, tripped: false, lastRefusal: null, limitRevision: 5 },
+    });
+
+  gateway.patchSandbox.mockResolvedValueOnce({ kind: 'revision_changed' });
+
+  const isPatched = await patchSandboxLimit(gateway, 's1', { dollars: 2 });
+
+  expect(isPatched).toBe(true);
+
+  expect(gateway.patchSandbox.mock.calls).toStrictEqual([
+    ['s1', { dollars: 2 }, 4],
+    ['s1', { dollars: 2 }, 5],
+  ]);
 });
 
 test('it goes again after a call the gateway did not answer', async () => {

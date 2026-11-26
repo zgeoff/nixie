@@ -16,6 +16,7 @@ export type { SandboxLimitFacts } from './limit/pick-sandbox-limit';
 export { pickSandboxLimit } from './limit/pick-sandbox-limit';
 export { patchLimitUntilSet } from './limit/patch-limit-until-set';
 export { withSandboxLimitLock } from './limit/with-sandbox-limit-lock';
+export { writeSandboxLimit } from './limit/write-sandbox-limit';
 export { holdTaskOnRefusal } from './route/hold-task-on-refusal';
 export { holdTaskOnRoute } from './route/hold-task-on-route';
 export { settleRouteStops } from './stop/settle-route-stops';
@@ -66,6 +67,7 @@ export type {
   PeriodEnded,
   PeriodName,
   RefusalCounter,
+  RevisionChanged,
   RoutePeriodStatus,
   RouteStatus,
   RouteTrip,

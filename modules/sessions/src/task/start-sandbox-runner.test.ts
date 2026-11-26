@@ -3496,6 +3496,7 @@ test('it counts the dollars of a task run as the count of its sandbox less its c
 
   gateway.readSandbox
     .mockResolvedValueOnce(buildCountAnswer(0.5))
+    .mockResolvedValueOnce(buildCountAnswer(0.5))
     .mockResolvedValueOnce(buildCountAnswer(0.75));
 
   const runner = await ctx.startRunner({ gateway });
@@ -3546,7 +3547,7 @@ test('it sets the limit of the sandbox at the start of a task run to its count p
 
   invariant(sandbox !== undefined, 'the step woke a sandbox');
 
-  expect(gateway.patchSandbox.mock.calls[0]).toStrictEqual([sandbox.id, { dollars: 3.5 }]);
+  expect(gateway.patchSandbox.mock.calls[0]).toStrictEqual([sandbox.id, { dollars: 3.5 }, 0]);
 });
 
 test('it runs no turn for a step whose read of the sandbox gets no answer, and starts it again after the delay', async () => {
@@ -3614,6 +3615,7 @@ test('it ends a step that its sandbox refused at its limit with the dollar limit
 
   gateway.readSandbox
     .mockResolvedValueOnce(buildCountAnswer(0))
+    .mockResolvedValueOnce(buildCountAnswer(0))
     .mockResolvedValueOnce(
       buildCountAnswer(2.5, { counter: 'sandbox', route: 'router-b', atMs: 9_000_000 }),
     );
@@ -3636,6 +3638,7 @@ test('it ends at the dollar limit a step whose guest threw after its sandbox ref
   const gateway = buildStubSpendGateway();
 
   gateway.readSandbox
+    .mockResolvedValueOnce(buildCountAnswer(0))
     .mockResolvedValueOnce(buildCountAnswer(0))
     .mockResolvedValueOnce(
       buildCountAnswer(2.5, { counter: 'sandbox', route: 'router-b', atMs: 9_000_000 }),
@@ -3694,6 +3697,7 @@ test('it ends no step at the limit for a refusal that came before the step began
 
   gateway.readSandbox
     .mockResolvedValueOnce(buildCountAnswer(0))
+    .mockResolvedValueOnce(buildCountAnswer(0))
     .mockResolvedValueOnce(
       buildCountAnswer(0.1, { counter: 'sandbox', route: 'router-b', atMs: 1000 }),
     );
@@ -3715,6 +3719,7 @@ test('it runs no turn for a task run whose count is at its limit, and ends it at
 
   gateway.readSandbox
     .mockResolvedValueOnce(buildCountAnswer(0))
+    .mockResolvedValueOnce(buildCountAnswer(0))
     .mockResolvedValueOnce(buildCountAnswer(0.5))
     .mockResolvedValueOnce(buildCountAnswer(1.5));
 
@@ -3727,7 +3732,7 @@ test('it runs no turn for a task run whose count is at its limit, and ends it at
   const [ended] = await ctx.readKinds('task.run_ended');
 
   expect(ctx.guest.turns).toHaveLength(1);
-  expect(gateway.readSandbox.mock.calls).toHaveLength(4);
+  expect(gateway.readSandbox.mock.calls).toHaveLength(5);
   expect(ended?.payload).toMatchObject({ cause: 'limit', used: { dollars: 1.5 } });
 });
 
@@ -3738,6 +3743,7 @@ test('it holds the end of a task run, and keeps its sandbox, until the gateway a
   const gateway = buildStubSpendGateway();
 
   gateway.readSandbox
+    .mockResolvedValueOnce(buildCountAnswer(0))
     .mockResolvedValueOnce(buildCountAnswer(0))
     .mockResolvedValueOnce(buildCountAnswer(0.5))
     .mockResolvedValue({ kind: 'unreachable', reason: 'no answer' });
@@ -3788,6 +3794,7 @@ test('it ends at its limit the task run of a step only once the gateway answers 
   const gateway = buildStubSpendGateway();
 
   gateway.readSandbox
+    .mockResolvedValueOnce(buildCountAnswer(0))
     .mockResolvedValueOnce(buildCountAnswer(0))
     .mockResolvedValueOnce(
       buildCountAnswer(2.5, { counter: 'sandbox', route: 'router-b', atMs: 9_000_000 }),

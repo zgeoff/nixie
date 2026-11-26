@@ -429,7 +429,7 @@ test('it registers a sandbox with a limit and a zero count', async () => {
 
   expect(get).toStrictEqual({
     status: 200,
-    body: { dollars: 0, tokens: 0, tripped: false, lastRefusal: null },
+    body: { dollars: 0, tokens: 0, tripped: false, lastRefusal: null, limitRevision: 1 },
   });
 });
 
@@ -447,6 +447,7 @@ test('it sets the count of a sandbox that it already holds back to zero', async 
     tokens: 0,
     tripped: false,
     lastRefusal: null,
+    limitRevision: 2,
   });
 });
 
@@ -463,6 +464,7 @@ test('it reports a sandbox past its limit as tripped', async () => {
     tokens: 10,
     tripped: true,
     lastRefusal: null,
+    limitRevision: 1,
   });
 });
 
@@ -479,6 +481,7 @@ test('it reports a sandbox with no limit as never tripped', async () => {
     tokens: 10,
     tripped: false,
     lastRefusal: null,
+    limitRevision: 1,
   });
 });
 
@@ -538,6 +541,7 @@ test('it sets the limit of a sandbox whole with a patch and keeps its count', as
     tokens: 40,
     tripped: true,
     lastRefusal: { counter: 'route_day', route: 'plan', atMs: 99 },
+    limitRevision: 2,
   });
 });
 
@@ -550,7 +554,61 @@ test('it takes a patched limit of zero dollars and refuses the sandbox at once',
   const get = await ctx.call('GET', '/sandboxes/alpha');
 
   expect(patch).toStrictEqual({ status: 204, body: null });
-  expect(get.body).toStrictEqual({ dollars: 0, tokens: 0, tripped: true, lastRefusal: null });
+
+  expect(get.body).toStrictEqual({
+    dollars: 0,
+    tokens: 0,
+    tripped: true,
+    lastRefusal: null,
+    limitRevision: 2,
+  });
+});
+
+test('it sets a patched limit that names the revision the sandbox holds', async () => {
+  const ctx = await setupTest();
+
+  await ctx.call('PUT', '/sandboxes/alpha', { limit: null });
+
+  const patch = await ctx.call('PATCH', '/sandboxes/alpha', {
+    limit: { dollars: 0 },
+    revision: 1,
+  });
+
+  const get = await ctx.call('GET', '/sandboxes/alpha');
+
+  expect(patch).toStrictEqual({ status: 204, body: null });
+  expect(get.body).toMatchObject({ tripped: true, limitRevision: 2 });
+});
+
+test('it refuses with a 409 a patch that names a revision a newer write replaced, and keeps the newer limit', async () => {
+  const ctx = await setupTest();
+
+  await ctx.call('PUT', '/sandboxes/alpha', { limit: null });
+  await ctx.call('PATCH', '/sandboxes/alpha', { limit: { dollars: 0 }, revision: 1 });
+
+  const late = await ctx.call('PATCH', '/sandboxes/alpha', {
+    limit: { dollars: 4 },
+    revision: 1,
+  });
+
+  const get = await ctx.call('GET', '/sandboxes/alpha');
+
+  expect(late).toStrictEqual({ status: 409, body: { error: 'revision_changed' } });
+  expect(get.body).toMatchObject({ tripped: true, limitRevision: 2 });
+});
+
+test('it goes on from the revision of the entry that a registration replaces', async () => {
+  const ctx = await setupTest();
+
+  await ctx.call('PUT', '/sandboxes/alpha', { limit: null });
+  await ctx.call('PUT', '/sandboxes/alpha', { limit: null });
+
+  const late = await ctx.call('PATCH', '/sandboxes/alpha', {
+    limit: { dollars: 4 },
+    revision: 1,
+  });
+
+  expect(late).toStrictEqual({ status: 409, body: { error: 'revision_changed' } });
 });
 
 test('it rejects a patched limit below zero dollars', async () => {

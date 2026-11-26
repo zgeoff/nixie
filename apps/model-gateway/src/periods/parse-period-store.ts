@@ -24,6 +24,7 @@ const sandboxCountSchema = z.strictObject({
   tokens: z.number().nonnegative(),
   limit: sandboxLimitSchema.nullable(),
   lastRefusal: refusalSchema.nullable().default(null),
+  limitRevision: z.int().nonnegative().default(0),
 });
 
 const periodStoreSchema = z.strictObject({

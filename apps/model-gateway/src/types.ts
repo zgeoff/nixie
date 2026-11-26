@@ -139,6 +139,9 @@ interface SandboxCount {
   // null counts only
   readonly limit: SandboxLimit | null;
   readonly lastRefusal: Refusal | null;
+
+  // goes up by one at each write of the limit, so a conditional patch can tell a newer write
+  readonly limitRevision: number;
 }
 
 export interface PeriodStore {

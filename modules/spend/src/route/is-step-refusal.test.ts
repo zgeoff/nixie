@@ -9,6 +9,7 @@ function setupTest() {
       tokens: 0,
       tripped: false,
       lastRefusal,
+      limitRevision: 0,
     }),
   };
 }

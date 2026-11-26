@@ -129,6 +129,7 @@ test('it moves a task run from before the meter reads to the gateway, and keeps 
 
   ctx.gateway.readSandbox
     .mockResolvedValueOnce(buildCountAnswer(2))
+    .mockResolvedValueOnce(buildCountAnswer(2))
     .mockResolvedValueOnce(buildCountAnswer(2.25));
 
   const meter = ctx.meter(ctx.legacyRun);
@@ -157,7 +158,7 @@ test('it sets the sandbox limit of a moved task run from what its records leave 
 
   await ctx.meter(ctx.legacyRun).begin('sandbox-1');
 
-  expect(ctx.gateway.patchSandbox.mock.calls).toStrictEqual([['sandbox-1', { dollars: 4.5 }]]);
+  expect(ctx.gateway.patchSandbox.mock.calls).toStrictEqual([['sandbox-1', { dollars: 4.5 }, 0]]);
 });
 
 test('it writes only the sandbox read for a task run from before the reads whose records hold no dollars', async () => {

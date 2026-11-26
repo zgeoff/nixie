@@ -139,6 +139,11 @@ task.meter_read  { taskRunID, sandbox, reason, countMicros }
   at its last count. The task's sandbox stays until the task run ends.
 - A `task-raise` patch reads the limit as the log stands before each try, and stops once a step has
   read the sandbox again and set its own limit, so a late retry never lowers a newer limit.
+- Every patch of a task's sandbox names the `limitRevision` that the server read just before it, as
+  [the count of a sandbox](model-gateway.md#the-count-of-a-sandbox) says. A call that timed out and
+  reaches the gateway after a newer patch changes nothing, so it never puts back an older limit.
+- When a task run ends, each pass that settles it reads every sandbox again, because a sandbox that
+  answered in a pass that then waited for another can spend before the next pass.
 - A limit of zero dollars is a valid sandbox limit: the gateway accepts it and refuses every
   request.
 - A step whose sandbox refused a request since the step began ends at the task's dollar limit. The

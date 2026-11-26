@@ -4,6 +4,6 @@ import type { SandboxCount } from '@heynixie/spend';
 export function buildCountAnswer(dollars: number, lastRefusal: SandboxCount['lastRefusal'] = null) {
   return {
     kind: 'ok' as const,
-    value: { dollars, tokens: 0, tripped: false, lastRefusal },
+    value: { dollars, tokens: 0, tripped: false, lastRefusal, limitRevision: 0 },
   };
 }

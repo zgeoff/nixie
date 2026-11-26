@@ -286,11 +286,12 @@ its limits. A raise or a restart opens a task run that carries the one before it
 so a crash after an action ran and a rerun of the step give exactly one report.
 
 A record belongs to a task run by the `taskRunID` it carries, or, for a record with none, by its
-place between the opening and the end of a task run. Only a tool call's records and a failed turn's
-spend record can land after their task run ended, because a step writes them with no lease check, so
-only they carry the ID. A record that lands between one task run's end and the next one's opening,
-such as a message after a report, belongs to no task run until a claim opens one for it. Every count
-of a task run's use reads its records through one function, so the meters and the caps agree.
+place between the opening and the end of a task run. A step writes a tool call's records and each
+`task.meter_read` with no lease check, so they can land after their task run ended, and they carry
+the ID. A failed turn's spend record from an older release carries it too. A record that lands
+between one task run's end and the next one's opening, such as a message after a report, belongs to
+no task run until a claim opens one for it. Every count of a task run's use reads its records
+through one function, so the meters and the caps agree.
 
 Each tool call in a task run carries the ID, and a tool can have a cap of calls per task run: a call
 past the cap is a `tool_result` with the outcome `denied` and no decision, and a call that was

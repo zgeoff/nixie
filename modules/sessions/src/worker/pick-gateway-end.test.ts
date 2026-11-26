@@ -4,27 +4,27 @@ import { pickGatewayEnd } from './pick-gateway-end';
 test.each([
   [
     { outcome: 'model_failed', detail: 'a 403' },
-    { dollars: 2.1, tokens: 10, tripped: true, lastRefusal: null },
+    { dollars: 2.1, tokens: 10, tripped: true, lastRefusal: null, limitRevision: 0 },
     'dollars',
   ],
   [
     { outcome: 'model_failed', detail: 'a 403' },
-    { dollars: 0.5, tokens: 2_000_000, tripped: true, lastRefusal: null },
+    { dollars: 0.5, tokens: 2_000_000, tripped: true, lastRefusal: null, limitRevision: 0 },
     'tokens',
   ],
   [
     { outcome: 'no_answer' },
-    { dollars: 2, tokens: 10, tripped: true, lastRefusal: null },
+    { dollars: 2, tokens: 10, tripped: true, lastRefusal: null, limitRevision: 0 },
     'dollars',
   ],
   [
     { outcome: 'limit', limit: 'turns' },
-    { dollars: 0.5, tokens: 2_000_000, tripped: true, lastRefusal: null },
+    { dollars: 0.5, tokens: 2_000_000, tripped: true, lastRefusal: null, limitRevision: 0 },
     'tokens',
   ],
   [
     { outcome: 'interrupted' },
-    { dollars: 0.5, tokens: 2_000_000, tripped: true, lastRefusal: null },
+    { dollars: 0.5, tokens: 2_000_000, tripped: true, lastRefusal: null, limitRevision: 0 },
     'tokens',
   ],
 ] as const)('it ends %j at a gateway trip as a %s limit', (end, count, limit) => {
@@ -41,7 +41,7 @@ test.each([
   expect(
     pickGatewayEnd(
       end,
-      { dollars: 3, tokens: 1, tripped: true, lastRefusal: null },
+      { dollars: 3, tokens: 1, tripped: true, lastRefusal: null, limitRevision: 0 },
       { dollars: 2 },
     ),
   ).toStrictEqual(end);
@@ -51,7 +51,7 @@ test('it keeps the end when the sandbox is under its limit', () => {
   expect(
     pickGatewayEnd(
       { outcome: 'no_answer' },
-      { dollars: 1, tokens: 1, tripped: false, lastRefusal: null },
+      { dollars: 1, tokens: 1, tripped: false, lastRefusal: null, limitRevision: 0 },
       { dollars: 2 },
     ),
   ).toStrictEqual({ outcome: 'no_answer' });

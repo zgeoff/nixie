@@ -474,6 +474,7 @@ async function readGatewayCount(
     tokens: Math.max(plan.limits.tokens, run.tally.tokens),
     tripped: false,
     lastRefusal: null,
+    limitRevision: 0,
   };
 }
 
