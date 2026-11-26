@@ -6,10 +6,10 @@ never talks to a speech provider. It holds the `SpeechLayer` interface, and the 
 adapter that implements it. For the whole feature, see the
 [voice design](../../design/platform/channels/voice.md). The server wires the
 [GPT-Live adapter](#the-gpt-live-adapter) when the config's `voice` section sets the `gpt-live`
-provider and the secrets file holds its credential. A config with no `voice` section turns calls
-off, and `calls.start` answers `VOICE_OFF`. A `voice` section whose credential the secrets file
-lacks wires no adapter, and `calls.start` answers `SPEECH_UNAVAILABLE`. A test build wires the fake
-that the next section describes in place of the adapter.
+provider and the secrets file holds its credential. When the config has no `voice` section, calls
+are off, and `calls.start` answers `VOICE_OFF`. When the secrets file lacks the `voice` section's
+credential, the server wires no adapter, and `calls.start` answers `SPEECH_UNAVAILABLE`. A test
+build wires the fake that the next section describes in place of the adapter.
 
 ## The speech layer
 
@@ -21,8 +21,8 @@ that the next section describes in place of the adapter.
 - `events` takes a session ID and returns the session's stream of `SpeechEvent`s. `open` returns no
   events.
 - `answer` and `say` tell the provider what to speak. `close` ends the session once the speech layer
-  has finished the line it is speaking, or once a time limit passes, so a hang-up never cuts off the
-  last line. The module sends each answer with `final: true`.
+  has finished the line it is speaking, so a hang-up doesn't cut off the last line. After a time
+  limit, it ends the session anyway. The module sends each answer with `final: true`.
 - `model` names the provider's model that speaks the call. Each `call.spoke` record carries it.
 
 The package's `test-utils` holds a fake layer in memory. It records each `open`, `answer`, `say` and
@@ -69,7 +69,7 @@ Other rules of the adapter:
 
 - `answer` sends the whole answer as one commentary on the delegation. The provider takes at most
   500 tokens in a commentary. The adapter counts a text's UTF-8 bytes, which are never fewer than
-  its tokens, so a text past 400 bytes goes as several commentaries of 400 bytes at most, split at
+  its tokens. A text past 400 bytes goes as several commentaries of at most 400 bytes each, split at
   the end of a sentence. Every word of the text goes out in order. `final` marks the end inside
   nixie, because the provider has no close for a delegation.
 - `say` sends a commentary with no delegation, which the speech layer words as its own. It splits a
@@ -84,7 +84,7 @@ Other rules of the adapter:
   sessions.
 
 The adapter's tests run against a fake GPT-Live as a loopback HTTPS and WebSocket site. The model
-API test in `evals/gpt-live/` opens real sessions. In one, it says one line and one short answer,
+API test in `evals/gpt-live/` opens 2 real sessions. In one, it says one line and one short answer,
 and checks that `session.started` gives the expiry as a number. In the other, it sends an answer of
 about 2,400 characters, which goes as 7 commentaries, and checks that GPT-Live speaks each sentence
 in order. CI holds no model credential, so a person runs it by hand with `NIXIE_SDK_CONTRACT=1` and
@@ -221,7 +221,7 @@ What a `cut` event does depends on when it arrives:
 
 - Before the module sent an answer, it interrupts the call's turn and stops the hand-off's holding
   line. The GPT-Live adapter raises a `cut` only while an answer plays, so on GPT-Live this case
-  never arises, and talking over the holding line leaves the turn running.
+  never arises: when the user talks over the holding line, the turn keeps running.
 - After the module sent a reply, it writes `call.heard_cut` with the reply's record and the count of
   characters heard. The next turn reads the reply split where the user stopped hearing it, both in a
   session that continues and in one that rebuilds.

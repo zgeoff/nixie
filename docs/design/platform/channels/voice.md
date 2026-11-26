@@ -16,9 +16,11 @@ posts a summary to the conversation when it ends.
 
 The call thread, the speech layer and its GPT-Live adapter, the hand-offs, the call records and the
 per-minute charge are built: [Voice calls](../../../architecture/channels/calls.md) describes them.
-This design holds what is left to build: the device's side of a call, and ringing you. The call
-screen and nixie rings you are the work items that build it, from the contracts and constraints
-below. Tuning the speech layer on real calls is a work item of its own.
+This design holds what is left to build: the device's side of a call, and ringing you. The work
+items [the call screen](https://linear.app/zgeoff/issue/GEO-2863) and
+[nixie rings you](https://linear.app/zgeoff/issue/GEO-2864) build it from the contracts and
+constraints below. [Tuning on real calls](https://linear.app/zgeoff/issue/GEO-1868) has a work item
+of its own.
 
 Terms:
 
@@ -55,8 +57,8 @@ Every new speech-layer session needs a fresh offer from the device. When the ses
 or a session drops, the server sends `call.reconnect` on the device's live stream. The device makes
 an ICE-restart offer on its open peer connection, so the microphone grant and the audio path stay,
 and sends it with a fresh `calls.connect`. The old session then closes itself. After a server
-restart, no `call.reconnect` comes: the device makes the same offer on its own when its live stream
-returns. The calls module keeps the call for 30 s while it waits.
+restart, the server sends no `call.reconnect`, and the device makes the same offer on its own when
+its live stream returns. The calls module keeps the call for 30 s while it waits.
 
 The call screen's captions come from nixie's live stream, because the provider's data channel stays
 bound to the first session after a reconnect.
