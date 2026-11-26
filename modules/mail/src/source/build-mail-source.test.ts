@@ -340,7 +340,12 @@ test('it reads the host at once when the host gives a hint', async () => {
   const ctx = await setupTest();
 
   await ctx.startSource();
-  await ctx.waitForCursor(0);
+
+  await waitFor(() => {
+    expect(ctx.clock.readNextDueMs()).toBe(
+      ctx.clock.now() + ctx.context.settings.hostPollIntervalMs,
+    );
+  });
 
   ctx.host.deliver({ from: 'hello@library.example.org', subject: 'Hint', text: 'Hello.' });
 

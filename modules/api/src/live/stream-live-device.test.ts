@@ -62,7 +62,7 @@ async function setupTest() {
 test.each([
   {
     when: 'once it opened',
-    stop: async (events: AsyncGenerator<unknown>, stopping: AbortController) => {
+    stop: async (events: AsyncGenerator, stopping: AbortController) => {
       await events.next();
 
       stopping.abort();
@@ -70,7 +70,7 @@ test.each([
   },
   {
     when: 'before it opened',
-    stop: async (events: AsyncGenerator<unknown>, stopping: AbortController) => {
+    stop: async (events: AsyncGenerator, stopping: AbortController) => {
       stopping.abort();
 
       await events.next();
@@ -89,7 +89,10 @@ test.each([
     const openEvents = ctx.follow(open);
 
     onTestFinished(() => openEvents.return(undefined));
-    onTestFinished(() => stopping.abort());
+
+    onTestFinished(() => {
+      stopping.abort();
+    });
 
     await openEvents.next();
 
