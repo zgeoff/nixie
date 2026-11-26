@@ -50,6 +50,24 @@ Every family goes through the same steps, in the proposals module:
    the task hears `action.outcome`. A proposer's own withdrawal writes the record and leaves out the
    note, because the call's result holds the outcome.
 
+Every close of a row goes through the lifecycle, so each writes `proposals.settled`: an answer, a
+lapse, a proposer's withdrawal, a decline of an ask that withdraws the suggested rule resting on it,
+the seed that withdraws the pending rule changes it applies, and the purge of a memory item that
+lapses its pending proposals. A proposal that nixie makes on its own, such as a suggested rule, has
+no proposer, so its settlement has no thread.
+
+A proposal's short ID comes from `createShortID` with a check against every earlier row, for every
+family. A call by short ID finds the newest row that holds it, and a call by proposal ID finds that
+row, so the approval card, which sends the proposal ID, still answers an older row that shares a
+short ID. Rows made before the lifecycle keep the short IDs they hold.
+
+The model lists and withdraws its proposals with 2 tools. `proposals.pending` lists the open rows
+that the caller proposed, and those of the tasks the caller started itself, closed tasks included: a
+memory row shows its change, gist, topic, reason and, on request, its text, and any other row shows
+the card's sentence. `proposals.withdraw` withdraws an open row that the caller proposed, or that it
+merged a memory proposal into, and reports a row that closed already. A merged proposer's withdrawal
+withdraws the whole proposal, and every other proposer hears the settlement.
+
 A family's handler supplies `lapseIntervalMs(config, cause)`, which reads `approvals.lapse_days`
 from the server config, and `discard`, which undoes what the proposal held for a decline, a lapse or
 a withdrawal. A cause that lapses only at its deadline, such as a mandate, returns no interval.
@@ -60,6 +78,10 @@ config holds it.
 A prompt override takes the `prompt` family, risk class `always_ask`, so approving it needs a
 passkey. Its action hash is the override's hash, and `readHashes` folds in the base it replaces, so
 an approval after the override in force moved is refused as a conflict.
+
+A rollback past the release that ships the lifecycle needs a restore from a backup taken before the
+upgrade: the upgrade drops the memory table's `status` and `lapse_at` columns and renames the
+suggested-rule tables.
 
 ## Listing and reading
 
@@ -157,11 +179,10 @@ same action is refused as not allowed. The host's own route needs no passkey.
 
 A defer sets the row to deferred and records the user's note, if any, as a message on the task. The
 return time is the asked time, or the end of the quiet hours the asked time falls in, read in the
-zone of the user's messages. The row lapses at the later of its old lapse and the return time plus
-the kind's lapse interval, and never after the proposal's own deadline. A timer returns each
-deferred row once its return time passes and writes a returned record. A row that was answered,
-lapsed or deferred again in between never returns, because the timer reads the row again in its
-write transaction.
+zone of the user's messages. The row lapses at the return time plus the kind's lapse interval, and
+never after the proposal's own deadline. A timer returns each deferred row once its return time
+passes and writes a returned record. A row that was answered, lapsed or deferred again in between
+never returns, because the timer reads the row again in its write transaction.
 
 The deployment configuration sets `quiet_hours`, and `approvals.defer` sets the default minutes and
 the evening and morning times that clients offer.
