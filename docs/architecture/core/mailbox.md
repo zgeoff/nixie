@@ -189,6 +189,9 @@ Mail is silent by default. A mail that no rule matches writes no record in the t
 
 ## The arrival path
 
+A rule names one mailbox: the assistant's own, or one Gmail connection, whose
+[arrivals](../connectors/gmail-tools.md#arrivals) take the same path.
+
 The trigger core takes a mail arrival in the same write transaction as the rest of a batch, and
 drops it when the dedupe key is held. Then it reads the live rules and matches the mail:
 
@@ -221,4 +224,3 @@ The [mail design](../../design/queue/mail/README.md) covers the rest, and
 [the mail issue](https://linear.app/zgeoff/issue/GEO-2816) tracks it.
 
 - A mail host other than the host in memory, so a release build has no mailbox.
-- The Gmail mailbox.

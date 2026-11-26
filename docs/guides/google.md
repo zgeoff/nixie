@@ -4,7 +4,8 @@ Make an OAuth client in your own Google Cloud project, register it in nixie, and
 account from Settings → Connections. nixie keeps the account's refresh token sealed in its database.
 Once you connect an account, the model can use the
 [Gmail tools](../architecture/connectors/gmail-tools.md) to search, read and label your mail, write
-drafts and send mail. The tools for [Calendar](https://linear.app/zgeoff/issue/GEO-1826) and
+drafts and send mail, and wake the conversation or a task when new mail matches a rule it sets. The
+tools for [Calendar](https://linear.app/zgeoff/issue/GEO-1826) and
 [Drive](https://linear.app/zgeoff/issue/GEO-1827) come later. To learn how consent, refresh and
 Forget work, read the [Google connections](../architecture/connectors/google-connections.md) doc.
 
@@ -100,6 +101,12 @@ scope, and a button to ask Google again. The conversation never shows that notic
 - When nixie can't tell whether a send went through, it waits 5 minutes, then looks for the mail in
   your Sent folder. When it finds the mail, the send counts as done. Otherwise nixie shows you the
   send on a card, and doesn't send it again until you answer.
+- nixie polls your account for new mail every 2 minutes by default, and keeps no record of a mail
+  that no wake rule matches. The model sets a rule with `gmail.wake_set`, which asks you first
+  unless a rule of yours allows it. A mail that matches wakes the conversation or a task, and the
+  record keeps only the sender and subject, until you forget the connection.
+- A mail nixie sends also sets a rule that wakes it on a reply in that thread, for 7 days by
+  default. The card shows the rule's expiry.
 - A mail nixie sends carries no header with nixie's name in it.
 
 ## The unverified-app warning
@@ -113,8 +120,9 @@ an unverified app in production keeps working.
 1. Open the connection from Settings → Connections.
 2. Select Forget this connection, then Forget for good.
 
-nixie revokes the grant at Google and deletes the connection's keys, so the tokens in its database
-are unreadable at once. The page then shows 3 lines:
+nixie revokes the grant at Google, ends the connection's wake rules, erases the sender and subject
+it kept of its mail, and deletes the connection's keys, so the tokens in its database are unreadable
+at once. The page then shows 3 lines:
 
 - Erasure: whether nixie deleted the keys.
 - Revocation: whether Google ended the grant. After "refused", Google still holds the grant. After
