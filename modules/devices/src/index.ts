@@ -36,6 +36,8 @@ export type { PageErrorReport } from './preview/record-page-error';
 export { recordPageError } from './preview/record-page-error';
 export type { DevicePreviewOptions } from './tool/device-tool-options';
 export { buildDeviceTools } from './tool/build-device-tools';
+export { buildDevicePackageConnector } from './tool/build-device-package-connector';
+export type { PackageCallSource } from './tool/run-package-install';
 export { devicesRecordTopics } from './record/devices-record-topics';
 export type { PageEventReport, PageEventSink } from './page/record-page-event';
 export { recordPageEvent } from './page/record-page-event';

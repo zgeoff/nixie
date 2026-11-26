@@ -1,18 +1,10 @@
-import { packageInputSchema } from '@heynixie/contract';
 import type { ToolDefinition } from '@heynixie/tools';
-import { z } from 'zod';
 import { buildTarballURL } from '../package/build-tarball-url';
-import { downloadPackage, maxPackageBytes } from '../package/download-package';
-import { readPackageCard, toPackageCardBytes } from '../package/package-card';
-import { readDevicePackage } from '../package/read-device-packages';
-import { readPackageMetadata } from '../package/read-package-metadata';
-import type { PackageMetadata } from '../package/types';
-import { writeDevicePackage } from '../package/write-device-package';
+import { toPackageCardBytes } from '../package/package-card';
 import type { DeviceToolOptions } from './device-tool-options';
+import { readAddPackageCall } from './read-add-package-call';
 import { refuseDevice } from './refuse-device';
-
-// the most file paths that a result lists
-const listedFilesLimit = 200;
+import { runPackageInstall } from './run-package-install';
 
 const packageOutput = {
   type: 'object',
@@ -91,115 +83,10 @@ export function buildDeviceAddPackageTool(options: DeviceToolOptions): ToolDefin
         attachments: [toPackageCardBytes(metadata)],
       };
     },
-    run: async (call, context) => {
-      const found = await readAddPackageCall(options, call.input);
-
-      if (found.status === 'invalid') {
-        return { status: 'error', message: found.message };
-      }
-
-      if (found.status === 'refused') {
-        return { status: 'ok', ...found.result };
-      }
-
-      const approved = await readPackageCard(options.log, context.callSequence);
-
-      if (approved === null) {
-        return { status: 'error', message: 'the call holds no card of the approved package' };
-      }
-
-      if (approved.integrity !== found.metadata.integrity) {
-        return { status: 'ok', ...refuseDevice('INTEGRITY_CHANGED') };
-      }
-
-      const download = await downloadPackage(found.fetching, {
-        name: approved.name,
-        version: approved.version,
-        integrity: approved.integrity,
-      });
-
-      if (download.status === 'failed') {
-        return { status: 'ok', ...refuseDevice('REGISTRY_UNAVAILABLE', download.reason) };
-      }
-
-      if (download.status === 'refused') {
-        return { status: 'ok', ...refuseDevice('BAD_PACKAGE', download.reason) };
-      }
-
-      const outcome = await writeDevicePackage(options, {
-        name: approved.name,
-        version: approved.version,
-        integrity: approved.integrity,
-        publisher: approved.publisher,
-        files: download.files,
+    run: (call, context) =>
+      runPackageInstall(options, call.input, {
+        callSequence: context.callSequence,
         thread: context.run.thread,
-      });
-
-      if (outcome === 'known') {
-        return { status: 'ok', ...refuseDevice('PACKAGE_KNOWN') };
-      }
-
-      const paths = download.files.map((file) => file.path).toSorted();
-
-      return {
-        status: 'ok',
-        result: {
-          package: `${approved.name}@${approved.version}`,
-          files: paths.slice(0, listedFilesLimit),
-          fileCount: paths.length,
-        },
-      };
-    },
+      }),
   };
-}
-
-type AddPackageCall =
-  | { readonly status: 'invalid'; readonly message: string }
-  | { readonly status: 'refused'; readonly result: ReturnType<typeof refuseDevice> }
-  | {
-      readonly status: 'ready';
-      readonly fetching: NonNullable<DeviceToolOptions['fetching']>;
-      readonly metadata: PackageMetadata;
-    };
-
-// What a package call needs as of now: the package the call names, and what the registry says of
-// it. The registry is read each time, so a call that waited for approval meets the hash of the day.
-async function readAddPackageCall(
-  options: DeviceToolOptions,
-  input: unknown,
-): Promise<AddPackageCall> {
-  const parsed = packageInputSchema.safeParse(input);
-
-  if (!parsed.success) {
-    return { status: 'invalid', message: z.prettifyError(parsed.error) };
-  }
-
-  const fetching = options.fetching;
-
-  if (fetching === undefined) {
-    return { status: 'refused', result: refuseDevice('PACKAGES_UNAVAILABLE') };
-  }
-
-  const name = parsed.data.name;
-  const version = parsed.data.version;
-
-  if ((await readDevicePackage(options.log.writer.db, name, version)) !== null) {
-    return { status: 'refused', result: refuseDevice('PACKAGE_KNOWN') };
-  }
-
-  const read = await readPackageMetadata(fetching, name, version);
-
-  if (read.status === 'unknown') {
-    return { status: 'refused', result: refuseDevice('UNKNOWN_PACKAGE') };
-  }
-
-  if (read.status === 'failed') {
-    return { status: 'refused', result: refuseDevice('REGISTRY_UNAVAILABLE', read.reason) };
-  }
-
-  if ((read.metadata.unpackedBytes ?? 0) > maxPackageBytes) {
-    return { status: 'refused', result: refuseDevice('TOO_BIG') };
-  }
-
-  return { status: 'ready', fetching, metadata: read.metadata };
 }

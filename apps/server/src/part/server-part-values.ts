@@ -1,6 +1,6 @@
 import type { CleanupRecordSessions, HostBackups } from '@heynixie/api';
 import type { Connections } from '@heynixie/connections';
-import type { ComputerTools, RenderSandbox } from '@heynixie/connectors';
+import type { ActionConnector, ComputerTools, RenderSandbox } from '@heynixie/connectors';
 import type { DefinitionsExportSweep, SeedResult } from '@heynixie/definitions';
 import type { ErasureRunnerControl } from '@heynixie/log';
 import type { StartedMemoryStore } from '@heynixie/memory';
@@ -33,7 +33,9 @@ export interface ServerPartValues {
   readonly code_run: CodeRunPart;
   readonly worker: WorkerTool | null;
   readonly actions: Tools['actions'];
-  readonly tool_endpoint: Pick<Tools, 'definitions' | 'endpoint' | 'taskBounds'>;
+  readonly tool_endpoint: Pick<Tools, 'definitions' | 'endpoint' | 'taskBounds'> & {
+    readonly connectors: ReadonlyMap<string, ActionConnector>;
+  };
   readonly tools: Tools;
   readonly api_gate: APIGate;
   readonly http: number;

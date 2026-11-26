@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import type { ActionAttempt } from '@heynixie/connectors';
 import type { JSONObject } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
 import { buildActionHash } from '@heynixie/policy';
@@ -9,6 +10,7 @@ import invariant from 'tiny-invariant';
 import { readPackageCard } from '../package/package-card';
 import { readDevicePackage } from '../package/read-device-packages';
 import { startTestDevices, testRegistry } from '../test-utils';
+import { buildDevicePackageConnector } from './build-device-package-connector';
 import { buildDeviceTools } from './build-device-tools';
 
 async function setupTest() {
@@ -23,9 +25,6 @@ async function setupTest() {
   };
 
   const tools = buildDeviceTools(options);
-  const addPackageTool = tools.find((tool) => tool.name === 'device.addPackage');
-
-  invariant(addPackageTool, 'the device tools hold device.addPackage');
 
   const run: ToolRun = {
     runID: 'run-1',
@@ -80,16 +79,33 @@ async function setupTest() {
       const callSequence = called?.record.sequence ?? 0;
       const isReady = 'destinations' in prepared;
 
+      const connector = buildDevicePackageConnector(options, () =>
+        Promise.resolve({ callSequence, thread: run.thread }),
+      );
+
+      // the attempt the action queue hands the connector for the approved call
+      const attempt: ActionAttempt = {
+        actionID: 'action-1',
+        tool: 'device.addPackage',
+        arguments: input,
+        attempt: 1,
+        idempotencyKey: 'action-1:1',
+        destinations: ['registry.test'],
+        actionHash: 'sha256:test',
+        deadlineAt: null,
+      };
+
       return {
         prepared,
         callSequence,
 
-        // what the action queue does once the owner approved: it runs the tool on the stored call
-        approve: () =>
-          addPackageTool.run(
-            { callID: 'call-1', tool: 'device.addPackage', input, toolUseID: 'toolu_1' },
-            { callSequence, run },
-          ),
+        // what the action queue does once the owner approved: it runs the connector on the action
+        approve: () => connector.run(attempt),
+        check: () => {
+          invariant(connector.check, 'the package connector checks an unknown outcome');
+
+          return connector.check(attempt);
+        },
         hash: () =>
           buildActionHash({
             tool: 'device.addPackage',
@@ -146,12 +162,40 @@ test('it stores the files of the package once the owner approves, and lists them
   const approved = await asked.approve();
   const stored = await readDevicePackage(ctx.log.writer.db, 'chart.js', '4.4.6');
 
-  expect(approved).toMatchObject({
-    status: 'ok',
+  expect(approved).toStrictEqual({
+    kind: 'success',
     result: { package: 'chart.js@4.4.6', files: ['dist/chart.js', 'package.json'], fileCount: 2 },
   });
 
   expect(stored?.files).toStrictEqual(['dist/chart.js', 'package.json']);
+});
+
+test('it finds the install of an approved call whose outcome is unknown once the package is stored', async () => {
+  const ctx = await setupTest();
+
+  ctx.site.addPackage('chart.js@4.4.6', { files: { 'dist/chart.js': 'var Chart = 1;' } });
+
+  const asked = await ctx.ask({ name: 'chart.js', version: '4.4.6' });
+
+  await asked.approve();
+
+  const checked = await asked.check();
+
+  expect(checked).toStrictEqual({
+    kind: 'found',
+    result: { package: 'chart.js@4.4.6', files: ['dist/chart.js'], fileCount: 1 },
+  });
+});
+
+test('it finds no install of an approved call that stored nothing', async () => {
+  const ctx = await setupTest();
+
+  ctx.site.addPackage('chart.js@4.4.6', { files: { 'dist/chart.js': 'var Chart = 1;' } });
+
+  const asked = await ctx.ask({ name: 'chart.js', version: '4.4.6' });
+  const checked = await asked.check();
+
+  expect(checked).toStrictEqual({ kind: 'not_found' });
 });
 
 test('it keeps the card of the package beside the call, so the owner sees the hash that the run checks', async () => {
@@ -188,7 +232,11 @@ test('it stores nothing when the registry holds other files than the ones the ow
   const approved = await asked.approve();
   const stored = await readDevicePackage(ctx.log.writer.db, 'chart.js', '4.4.6');
 
-  expect(approved).toMatchObject({ status: 'ok', refusalCode: 'INTEGRITY_CHANGED' });
+  expect(approved).toStrictEqual({
+    kind: 'refused',
+    reason: expect.stringMatching(/^INTEGRITY_CHANGED: /u),
+  });
+
   expect(stored).toBeNull();
 });
 
@@ -272,9 +320,8 @@ test('it answers a known package, and keeps the files, when an install runs for 
   const second = await ctx.ask({ name: 'chart.js', version: '4.4.6' });
   const [firstRun, secondRun] = await Promise.all([first.approve(), second.approve()]);
 
-  expect([firstRun, secondRun].map((run) => run.status)).toStrictEqual(['ok', 'ok']);
-
-  expect([firstRun, secondRun]).toContainEqual(
-    expect.objectContaining({ result: expect.objectContaining({ refused: 'PACKAGE_KNOWN' }) }),
-  );
+  expect([firstRun, secondRun]).toIncludeSameMembers([
+    expect.objectContaining({ kind: 'success' }),
+    { kind: 'refused', reason: expect.stringMatching(/^PACKAGE_KNOWN: /u) },
+  ]);
 });

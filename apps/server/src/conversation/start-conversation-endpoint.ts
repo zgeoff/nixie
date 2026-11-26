@@ -2,6 +2,7 @@ import { join } from 'node:path';
 import type { ErasureStuckPort } from '@heynixie/api';
 import type { CallsContext } from '@heynixie/calls';
 import type {
+  ActionConnector,
   ImageProvider,
   ImagesConfig,
   RenderSandbox,
@@ -21,8 +22,13 @@ import {
   buildTasksDefinitionsTool,
   checkPromptProposal,
 } from '@heynixie/definitions';
-import type { DeviceStreams } from '@heynixie/devices';
-import { buildDeviceTools, restoreDevicePackages, startPageFetches } from '@heynixie/devices';
+import type { DeviceStreams, DeviceToolOptions } from '@heynixie/devices';
+import {
+  buildDevicePackageConnector,
+  buildDeviceTools,
+  restoreDevicePackages,
+  startPageFetches,
+} from '@heynixie/devices';
 import { toErrorFields } from '@heynixie/logger';
 import type { ConversationMemoryStore } from '@heynixie/memory';
 import {
@@ -56,6 +62,7 @@ import {
 } from '@heynixie/tasks';
 import type { ActionQueue, ToolDefinition, ToolEndpoint, ToolRegistry } from '@heynixie/tools';
 import { buildToolRegistry, findToolDeclaration, startToolEndpoint } from '@heynixie/tools';
+import { readActionCallSource } from '../action/read-action-call-source';
 import { buildContactTool } from '../cli/build-contact-tool';
 import { buildForgetRetryTool } from '../forget/build-forget-retry-tool';
 import { buildForgetStuckTool } from '../forget/build-forget-stuck-tool';
@@ -150,6 +157,9 @@ export interface ConversationEndpoint {
   readonly endpoint: ToolEndpoint;
   readonly definitions: readonly ToolDefinition[];
   readonly taskBounds: TaskStartBounds;
+
+  // the action queue's connectors for the queued tools that only the endpoint can build
+  readonly connectors: ReadonlyMap<string, ActionConnector>;
 }
 
 export async function startConversationEndpoint(
@@ -301,7 +311,7 @@ export async function startConversationEndpoint(
       registryHolder.current === null ? null : findToolDeclaration(registryHolder.current, name),
   });
 
-  const devices = buildDeviceTools({
+  const deviceOptions: DeviceToolOptions = {
     log: options.context.log,
     definitions: options.context.definitions,
     clock: options.context.clock,
@@ -315,7 +325,13 @@ export async function startConversationEndpoint(
             timeZone: options.config.time.default_zone,
           },
         }),
-  });
+  };
+
+  const devices = buildDeviceTools(deviceOptions);
+
+  const packageConnector = buildDevicePackageConnector(deviceOptions, (actionID) =>
+    readActionCallSource(options.context.log, actionID),
+  );
 
   const worker = tools.worker === null ? [] : [tools.worker.buildTool(bounds)];
 
@@ -403,5 +419,10 @@ export async function startConversationEndpoint(
     },
   });
 
-  return { endpoint, definitions: [...definitions, ...tools.testTools], taskBounds: bounds };
+  return {
+    endpoint,
+    definitions: [...definitions, ...tools.testTools],
+    taskBounds: bounds,
+    connectors: new Map([['device.addPackage', packageConnector]]),
+  };
 }
