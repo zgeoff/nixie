@@ -14,7 +14,7 @@ the model makes, nixie holds the call until you answer it:
   whose `family` is `action`.
 
 When you approve the call, its row's `state` becomes `approved`, and nixie adds a
-`policy.action_answered` record. nixie starts no model turn for that record and shows the model no
+`proposals.settled` record. nixie starts no model turn for that record and shows the model no
 message. nixie then runs the call, adds an `action.outcome` record, and starts one model turn for
 it. In that turn the model reads the outcome and the time you approved the call. When someone
 declines a call, nixie starts a model turn that shows the model the decline and its reason. The test
@@ -113,13 +113,14 @@ Before you start:
    ```bash
    bun verify proposals --tool memory.export --waiting none
    bun verify db query "select state from proposals where family = 'action'"
-   bun verify db query "select json_extract(payload, '$.answer') as answer from records where kind = 'policy.action_answered'"
+   bun verify db query "select json_extract(payload, '$.outcome') as outcome, json_extract(payload, '$.family') as family from records where kind = 'proposals.settled' and json_extract(payload, '$.family') = 'action'"
    ```
 
    Expect: `proposals` exits 0. The first query returns one row with `state` `approved`. The second
-   returns one row with `answer` `approved`.
+   returns one row with `outcome` `approved` and `family` `action`.
 
 ## End state
 
 - Step 3: nixie held one call of `memory.export`. Its result had the outcome `queued` and no action.
-- Step 7: no call is held. The call's row in `proposals` and its answer record both say `approved`.
+- Step 7: no call is held. The call's row in `proposals` and its `proposals.settled` record both say
+  `approved`.

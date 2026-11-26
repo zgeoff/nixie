@@ -1,3 +1,4 @@
+import { buildProposalCoreDeps } from '@heynixie/api';
 import {
   buildTimeTool,
   buildWebFetchTool,
@@ -62,6 +63,17 @@ export function buildTestConversationTools(reply: PageReply): TestConversationTo
           clock: context.clock,
           ownerName: null,
           defaultZone: 'UTC',
+          proposals: {
+            log: context.log,
+            clock: context.clock,
+            readMemory: () => stores.current,
+            readTaskNames: () => readTaskNames(context),
+            readCore: () =>
+              buildProposalCoreDeps(context, {
+                readMemory: () => null,
+                runInForceSeed: () => Promise.resolve(),
+              }),
+          },
         },
       );
 

@@ -28,14 +28,14 @@ export { MemoryItemNotFoundError } from './utils/error/memory-item-not-found-err
 export { MemoryStateError } from './utils/error/memory-state-error';
 export type { ForgetFloorCause } from './forget/read-forget-floor';
 export { readForgetFloor } from './forget/read-forget-floor';
-export type { AnswerQuoteSource, ProposalAnswerEvent } from './proposal/build-proposal-answer-kind';
-export { buildProposalAnswerKind } from './proposal/build-proposal-answer-kind';
 export { buildMemoryChangeKind } from './memory/build-memory-change-kind';
 export type { HostMemory, HostMemoryStore } from './memory/build-host-memory';
 export { buildHostMemory } from './memory/build-host-memory';
 export type { LapseSweep } from './lapse/start-lapse-sweep';
 export { startLapseSweep } from './lapse/start-lapse-sweep';
 export { buildProposalMergeKind } from './proposal/build-proposal-merge-kind';
+export { readMergedStakes } from './proposal/read-merged-stakes';
+export { readMergedProposalIDs } from './proposal/read-merged-proposal-ids';
 export type { VersionTextResult } from './version/read-version-texts';
 export { readVersionTexts } from './version/read-version-texts';
 export { PinnedCoreFullError } from './utils/error/pinned-core-full-error';

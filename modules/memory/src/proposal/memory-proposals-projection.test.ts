@@ -38,10 +38,8 @@ test('it folds a proposal record whose review reason a later release wrote, keep
   const rows = await memory.log.writer.db
     .$extendTables<MemoryTables>()
     .selectFrom('memory_proposals')
-    .select(['proposal_id', 'review_reason', 'status'])
+    .select(['proposal_id', 'review_reason'])
     .execute();
 
-  expect(rows).toStrictEqual([
-    { proposal_id: 'proposal-a', review_reason: 'quote_too_old', status: 'pending' },
-  ]);
+  expect(rows).toStrictEqual([{ proposal_id: 'proposal-a', review_reason: 'quote_too_old' }]);
 });

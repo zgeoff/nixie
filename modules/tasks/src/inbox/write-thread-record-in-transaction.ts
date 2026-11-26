@@ -32,6 +32,13 @@ export async function writeThreadRecordInTransaction(
     return;
   }
 
+  // A settlement with no recipient keeps its thread, so the proposal's audit trail stays whole.
+  if (isFinishedState(task.state) && input.kind === 'proposals.settled') {
+    await writeRecordsInTransaction(tx, context.log, [input]);
+
+    return;
+  }
+
   if (isFinishedState(task.state)) {
     const { thread: _thread, ...unthreaded } = input;
 

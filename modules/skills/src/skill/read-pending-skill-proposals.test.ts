@@ -10,9 +10,11 @@ import {
 } from '@heynixie/definitions';
 import { buildTestTaskSeed } from '@heynixie/definitions/test-utils';
 import { startWriter, withWriteTransaction, writeRecords } from '@heynixie/log';
+import { buildProposalsProjection } from '@heynixie/proposals';
 import { createFakeClock } from '@zgeoff/testing/clock';
 import invariant from 'tiny-invariant';
 import { skillsWriteProposedCodec } from '../write/skills-write-proposed-codec';
+import { mapSkillProposalRecord } from './map-skill-proposal-record';
 import { readPendingSkillProposals } from './read-pending-skill-proposals';
 
 async function setupTest() {
@@ -39,7 +41,11 @@ async function setupTest() {
 
   return {
     root,
-    log: { writer, deploymentKey, projections: [] },
+    log: {
+      writer,
+      deploymentKey,
+      projections: [buildProposalsProjection([mapSkillProposalRecord])],
+    },
     source: createPathSource({ directory: root }),
   };
 }

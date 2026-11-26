@@ -3,6 +3,7 @@ import type { Kysely } from 'kysely';
 import { sql } from 'kysely';
 import { buildPurgeKey } from '../item-key/build-purge-key';
 import type { MemoryItemRow, MemoryTables, MemoryVersionRow, PurgeRequest } from '../types';
+import { buildProposalStateFilter } from '../utils/build-proposal-state-filter';
 
 interface KeyRow {
   readonly key_id: string;
@@ -59,7 +60,12 @@ export async function readPurgeFacts(
       .execute(),
     tables
       .selectFrom('memory_proposals')
-      .select(['proposal_id', 'status', 'thread'])
+      .select([
+        'proposal_id',
+        'thread',
+        buildProposalStateFilter({ state: 'open' }).as('is_open'),
+        buildProposalStateFilter({ state: 'declined' }).as('is_declined'),
+      ])
       .where('item_id', '=', itemID)
       .execute(),
   ]);
@@ -84,11 +90,11 @@ export async function readPurgeFacts(
     currentVersion: currentVersion ?? null,
     keyRows,
     pendingProposals: proposals
-      .filter((proposal) => proposal.status === 'pending')
+      .filter((proposal) => proposal.is_open)
       .map((proposal) => ({ proposalID: proposal.proposal_id, thread: proposal.thread })),
     rejectionKeyIDs: await readRejectionKeyIDs(
       db,
-      proposals.filter((proposal) => proposal.status === 'rejected').map((row) => row.proposal_id),
+      proposals.filter((proposal) => proposal.is_declined).map((row) => row.proposal_id),
     ),
   };
 }
@@ -105,7 +111,7 @@ async function readRejectionKeyIDs(
     .$extendTables<LogTables>()
     .selectFrom('records')
     .select('key_id')
-    .where('kind', '=', 'memory.proposal_rejected')
+    .where('kind', 'in', ['memory.proposal_rejected', 'proposals.settled'])
     .where(sql`json_extract(payload, '$.proposalID')`, 'in', proposalIDs)
     .where('key_id', 'is not', null)
     .execute();

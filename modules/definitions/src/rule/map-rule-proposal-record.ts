@@ -1,6 +1,5 @@
 import type { EnvelopeRecord } from '@heynixie/log';
 import type { ClosedProposalState, ProposalChange } from '@heynixie/proposals';
-import { proposalLapseMs } from '@heynixie/proposals';
 import { z } from 'zod';
 import { rulesChangeApprovedCodec } from '../change/rules-change-approved-codec';
 import { rulesChangeLapsedCodec } from '../change/rules-change-lapsed-codec';
@@ -8,6 +7,8 @@ import { rulesChangeRejectedCodec } from '../change/rules-change-rejected-codec'
 import { ruleProposalSchema } from '../utils/rule-proposal-schema';
 import { rulesChangeWithdrawnCodec } from '../utils/rules-change-withdrawn-codec';
 
+// the lapse that every record written before the config set one carried
+const legacyLapseMs = 14 * 24 * 60 * 60 * 1000;
 const closedSchema = z.object({ proposalID: z.string(), identityID: z.string().optional() });
 
 const closingCodecs = [
@@ -33,7 +34,7 @@ export function mapRuleProposalRecord(record: EnvelopeRecord): ProposalChange | 
         ruleHash: null,
         cause: 'rule_widening',
         taskID: null,
-        lapsesAt: record.recordedAt.getTime() + proposalLapseMs,
+        lapsesAt: record.recordedAt.getTime() + legacyLapseMs,
         deadlineAt: null,
       },
     };

@@ -196,9 +196,10 @@ force.
 When the user approves the same kind of call often enough within a window and declines none, nixie
 proposes the narrowest allow rule that covers those calls. The `policy.proposed_rules` settings set
 the counts and the window. A call that no rule matches asks with the cause `no_rule`, and the user's
-answer to that action proposal joins a gap group. The group's key is the tool with its variant, the
-context and the sorted destinations, hashed with SHA-256. The `gap_answers` and `gap_groups`
-projections hold the group hash, each answer and its time, and never a destination or an argument.
+answer to that action proposal joins a suggested-rule group. The group's key is the tool with its
+variant, the context and the sorted destinations, hashed with SHA-256. The `suggested_rule_answers`
+and `suggested_rule_groups` projections hold the group hash, each answer and its time, and never a
+destination or an argument.
 
 After each answer that joins a group, the rule store checks the group in a transaction of its own,
 and proposes a rule when all of these hold:

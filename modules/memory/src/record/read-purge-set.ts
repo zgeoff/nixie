@@ -1,6 +1,7 @@
 import type { Kysely } from 'kysely';
 import { sql } from 'kysely';
 import type { MemoryState, MemoryTables } from '../types';
+import { buildProposalStateFilter } from '../utils/build-proposal-state-filter';
 
 // Reads each item in one of the given states whose evidence quotes the record, and each item that only
 // a pending new-item proposal quoting the record names.
@@ -24,14 +25,12 @@ export async function readPurgeSet(
       .execute(),
     tables
       .selectFrom('memory_proposals')
-      .select(['item_id', 'status'])
+      .select(['item_id', buildProposalStateFilter({ state: 'open' }).as('is_open')])
       .where((eb) => eb(sql`json_extract(evidence, '$.recordSequence')`, '=', recordSequence))
       .execute(),
   ]);
 
-  const pendingIDs = new Set(
-    proposals.filter((row) => row.status === 'pending').map((row) => row.item_id),
-  );
+  const pendingIDs = new Set(proposals.filter((row) => row.is_open).map((row) => row.item_id));
 
   const candidates = [
     ...new Set([...versions.map((row) => row.item_id), ...proposals.map((row) => row.item_id)]),

@@ -1,8 +1,9 @@
-import { writeRecords } from '@heynixie/log';
+import { withWriteTransaction, writeRecords } from '@heynixie/log';
 import invariant from 'tiny-invariant';
 import { promptsOverrideProposedCodec } from '../override/prompts-override-proposed-codec';
 import { buildPromptProposalHash } from '../prompt/build-prompt-proposal-hash';
-import { writePromptProposalAnswer } from '../prompt/write-prompt-proposal-answer';
+import { writePromptApproval } from '../prompt/make-prompt-proposal-handler';
+import { readPromptProposals } from '../prompt/read-prompt-proposals';
 import type { PromptID } from '../types';
 import type { PromptSeederDeps } from './prompt-seeder-deps';
 
@@ -46,18 +47,23 @@ export async function seedPromptApproval(
     },
   ]);
 
-  const result = await writePromptProposalAnswer(
-    {
-      log: deps.log,
-      clock: deps.clock,
-      definitions: deps.definitions,
-      readInForce: () => null,
-      checkProposal: () => [],
-    },
-    { answer: 'approve', proposalID, proposalHash },
-  );
+  const approvalID = await withWriteTransaction(deps.log.writer, async (tx) => {
+    const [state] = await readPromptProposals(tx, [proposalID]);
 
-  invariant(result.status === 'approved', 'the pending proposal approves');
+    invariant(state, 'the proposal was written');
 
-  return { approvalID: result.approvalID, proposalID, promptID };
+    return writePromptApproval(
+      tx,
+      {
+        log: deps.log,
+        clock: deps.clock,
+        definitions: deps.definitions,
+        readInForce: () => null,
+        checkProposal: () => [],
+      },
+      { state, entry, files, identityID: 'owner' },
+    );
+  });
+
+  return { approvalID, proposalID, promptID };
 }

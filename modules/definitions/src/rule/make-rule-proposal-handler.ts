@@ -1,4 +1,3 @@
-import { writeRecordsInTransaction } from '@heynixie/log';
 import type {
   ApplyOutcome,
   ApplyRun,
@@ -6,19 +5,20 @@ import type {
   ProposalKindHandler,
   SharedProposal,
 } from '@heynixie/proposals';
-import { proposalLapseMs } from '@heynixie/proposals';
+import { buildDiscardedOutcome } from '@heynixie/proposals';
 import type { Transaction } from 'kysely';
 import invariant from 'tiny-invariant';
-import { rulesChangeLapsedCodec } from '../change/rules-change-lapsed-codec';
 import type { RuleContext } from '../runtime/write-runtime-rule';
 import type { DefinitionsTables } from '../types';
 import { readRuleProposals } from './read-rule-proposals';
-import { writeRuleProposalDecision } from './write-rule-proposal-answer';
+import { writeRuleProposalDecision } from './write-rule-proposal-decision';
+
+const dayMs = 24 * 60 * 60 * 1000;
 
 export function makeRuleProposalHandler(context: RuleContext): ProposalKindHandler {
   return {
     family: 'rule_change',
-    lapseIntervalMs: proposalLapseMs,
+    lapseIntervalMs: (config) => config.lapseDays.rule_change * dayMs,
     ownsTransaction: false,
     readBodies: async (db, rows) => {
       const states = await readRuleProposals(db);
@@ -52,16 +52,7 @@ export function makeRuleProposalHandler(context: RuleContext): ProposalKindHandl
     },
     readHashes: (_db, row) => Promise.resolve({ action: row.actionHash, rule: null }),
     approve: (run, row, answer) => writeAnswer(context, run, row, answer),
-    decline: (run, row, answer) => writeAnswer(context, run, row, answer),
-    lapse: async (tx, row) => {
-      await writeRecordsInTransaction(tx, context.log, [
-        {
-          kind: rulesChangeLapsedCodec.kind,
-          definitions: context.definitions(),
-          payload: rulesChangeLapsedCodec.encode({ proposalID: row.id }),
-        },
-      ]);
-    },
+    discard: (_run, row, outcome) => Promise.resolve(buildDiscardedOutcome(row, outcome)),
   };
 }
 
@@ -81,9 +72,7 @@ async function writeAnswer(
 
   invariant(state, 'a rule change proposal has its record');
 
-  const isDeclined = answer.choice === 'decline';
-
-  if (!isDeclined && !(await probeBaseCurrent(tx, state.proposal))) {
+  if (!(await probeBaseCurrent(tx, state.proposal))) {
     return {
       status: 'refused',
       refusal: {
@@ -95,21 +84,19 @@ async function writeAnswer(
 
   await writeRuleProposalDecision(tx, context, {
     proposal: state.proposal,
-    outcome: isDeclined ? 'rejected' : 'approved',
-    reason: answer.note ?? '',
+    outcome: 'approved',
     identityID: answer.identityID,
   });
 
   return {
     status: 'done',
-    result: { proposalID: row.id, state: isDeclined ? 'declined' : 'approved' },
-    ...(isDeclined
-      ? {}
-      : {
-          afterCommit: async () => {
-            await context.runInForceSeed();
-          },
-        }),
+    result: { proposalID: row.id, state: 'approved' },
+    usedBy: null,
+    detail: null,
+    otherStakes: [],
+    afterCommit: async () => {
+      await context.runInForceSeed();
+    },
   };
 }
 

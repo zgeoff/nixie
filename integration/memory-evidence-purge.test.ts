@@ -1,6 +1,11 @@
 import { expect, test } from 'bun:test';
 import type { BegunPurgeSeed } from '@heynixie/server/test-utils';
-import { readPurgeState, readPurgedItem, startInProcessNixie } from '@heynixie/server/test-utils';
+import {
+  readPurgeState,
+  readPurgedItem,
+  readStoppedProposal,
+  startInProcessNixie,
+} from '@heynixie/server/test-utils';
 import invariant from 'tiny-invariant';
 
 interface PurgeSetup {
@@ -39,10 +44,16 @@ async function setupTest(setup: PurgeSetup) {
     readKinds: (records: readonly { readonly kind: string }[]) =>
       records
         .map((record) => record.kind)
-        .slice(records.findIndex((record) => record.kind === 'memory.proposal_lapsed'))
+        .slice(
+          records.findIndex(
+            (record) =>
+              record.kind === 'proposals.settled' || record.kind === 'memory.proposal_lapsed',
+          ),
+        )
         .filter((kind) =>
           [
             'memory.proposal_lapsed',
+            'proposals.settled',
             'memory.version_added',
             'memory.version_keyed',
             'memory.evidence_purge_closed',
@@ -52,6 +63,11 @@ async function setupTest(setup: PurgeSetup) {
           ].includes(kind),
         ),
     readState: () => readPurgeState(nixie),
+    readProposalState: async () => {
+      const row = await readStoppedProposal(nixie, seed.proposalID);
+
+      return row?.state ?? null;
+    },
     readItem: () => readPurgedItem(nixie, seed.itemID),
   };
 }
@@ -61,7 +77,7 @@ test('it finishes a begun purge at the start: the lapse, the closing record, the
   const records = await ctx.stop();
 
   expect(ctx.readKinds(records)).toStrictEqual([
-    'memory.proposal_lapsed',
+    'proposals.settled',
     'memory.evidence_purge_closed',
     'memory.labelled',
     'memory.evidence_purged',
@@ -74,7 +90,7 @@ test('it writes the bridge version of a shared-key item before the closing recor
   const records = await ctx.stop();
 
   expect(ctx.readKinds(records)).toStrictEqual([
-    'memory.proposal_lapsed',
+    'proposals.settled',
     'memory.version_added',
     'memory.version_keyed',
     'memory.evidence_purge_closed',
@@ -82,6 +98,16 @@ test('it writes the bridge version of a shared-key item before the closing recor
     'memory.evidence_purged',
     'record.forgotten',
   ]);
+});
+
+test('it lapses the pending proposal on the purged item at the start', async () => {
+  const ctx = await setupTest({ isOwned: true });
+
+  await ctx.stop();
+
+  const state = await ctx.readProposalState();
+
+  expect(state).toBe('lapsed');
 });
 
 test('it marks the purge closed and purged for the item', async () => {
@@ -167,7 +193,7 @@ test('it finishes a purge that no record forget owns, and writes no record.forgo
   invariant(records.length > 0);
 
   expect(ctx.readKinds(records)).toStrictEqual([
-    'memory.proposal_lapsed',
+    'proposals.settled',
     'memory.evidence_purge_closed',
     'memory.labelled',
     'memory.evidence_purged',

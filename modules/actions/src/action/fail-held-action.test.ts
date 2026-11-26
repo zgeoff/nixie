@@ -1,6 +1,5 @@
 import { expect, test } from 'bun:test';
 import { readRecords, withWriteTransaction } from '@heynixie/log';
-import { buildActionProposalInput } from '@heynixie/policy';
 import { buildStubConnector } from '../test-utils/build-stub-connector';
 import { claimTestAction } from '../test-utils/claim-test-action';
 import { createTestStep } from '../test-utils/create-test-step';
@@ -36,7 +35,7 @@ async function setupTest() {
         cause: 'ask_rule',
         destinations: ['team'],
         proposalID: queued.actionID,
-        record: buildActionProposalInput({
+        proposal: {
           definitions: { snapshotHash: 'sha256:test' },
           thread: step.lease.workID,
           callSequence: 1,
@@ -46,7 +45,7 @@ async function setupTest() {
           input: { to: 'team' },
           destinations: [{ value: 'team', replyTarget: false }],
           reopen: { proposalID: queued.actionID, actionID: queued.actionID },
-        }).record,
+        },
       }),
   });
 

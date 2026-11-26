@@ -25,6 +25,7 @@ export async function writeProposalRecord(
   tx: Transaction<unknown>,
   parts: StoreParts,
   pending: PendingProposal,
+  lapseAt: number,
 ): Promise<void> {
   const plan = pending.plan;
 
@@ -41,5 +42,9 @@ export async function writeProposalRecord(
     throw new ProposalCapError(limits.proposalCap);
   }
 
-  await writeRecordsInTransaction(tx, parts.context.log, buildProposalRecords(parts, pending));
+  await writeRecordsInTransaction(
+    tx,
+    parts.context.log,
+    buildProposalRecords(parts, pending, lapseAt),
+  );
 }

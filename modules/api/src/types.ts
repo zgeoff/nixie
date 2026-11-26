@@ -22,7 +22,7 @@ import type {
 } from '@heynixie/memory';
 import type { NotebookStore } from '@heynixie/notebook';
 import type { PromptsInForce } from '@heynixie/prompts';
-import type { QuietHours } from '@heynixie/proposals';
+import type { ProposalConfig, QuietHours } from '@heynixie/proposals';
 import type { SpendContext } from '@heynixie/spend';
 import type { TaskProfile, TasksContext } from '@heynixie/tasks';
 import type { ReadZone } from '@heynixie/triggers';
@@ -58,6 +58,9 @@ export interface APISettings {
     readonly morningAt: string;
     readonly quietHours: QuietHours | null;
     readonly defaultZone: string;
+
+    // the days a proposal of each family waits before it lapses
+    readonly lapseDays: ProposalConfig['lapseDays'];
   };
 
   // what the card of a mail send shows of the reply rule that the send sets; absent without a mailbox
@@ -231,7 +234,7 @@ export type ViewMemoryStore = Pick<
   | 'forgetRetired'
   | 'finishForgets'
 > & {
-  readonly proposals: Pick<MemoryProposals, 'approve' | 'reject'>;
+  readonly proposals: Pick<MemoryProposals, 'approve' | 'reject' | 'lapseProposal'>;
   readonly moments: Pick<
     MomentStore,
     | 'keep'

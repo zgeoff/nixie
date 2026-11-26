@@ -1,5 +1,6 @@
 import { join } from 'node:path';
 import type { ErasureStuckPort } from '@heynixie/api';
+import { buildProposalCoreDeps } from '@heynixie/api';
 import type { CallsContext } from '@heynixie/calls';
 import type {
   ActionConnector,
@@ -73,6 +74,7 @@ import { buildToolRegistry, findToolDeclaration, startToolEndpoint } from '@heyn
 import { readActionCallSource } from '../action/read-action-call-source';
 import { makeReadCallSession } from '../call/make-read-call-session';
 import { buildContactTool } from '../cli/build-contact-tool';
+import { buildProposalConfig } from '../deployment/build-proposal-config';
 import { buildForgetRetryTool } from '../forget/build-forget-retry-tool';
 import { buildForgetStuckTool } from '../forget/build-forget-stuck-tool';
 import { buildMandateTool } from '../rule/build-mandate-tool';
@@ -203,6 +205,7 @@ export async function startConversationEndpoint(
       relatedMemory,
       log: options.context.log,
       clock: options.context.clock,
+      proposalConfig: buildProposalConfig(options.config),
       readInForce: tools.readInForce,
       refreshDefinitions: tools.refreshDefinitions,
       runInForceSeed: tools.runInForceSeed,
@@ -212,6 +215,8 @@ export async function startConversationEndpoint(
 
   const promptContext = {
     log: options.context.log,
+    clock: options.context.clock,
+    proposalConfig: buildProposalConfig(options.config),
     readInForce: tools.readInForce,
     checkProposal: checkPromptProposal,
   };
@@ -229,6 +234,21 @@ export async function startConversationEndpoint(
     clock: options.context.clock,
     ownerName: options.config.owner.name,
     defaultZone: options.config.time.default_zone,
+    proposals: {
+      log: options.context.log,
+      clock: options.context.clock,
+      readMemory: tools.readStore,
+      readTaskNames: () => readTaskNames(options.context),
+      readCore: () =>
+        buildProposalCoreDeps(options.context, {
+          readMemory: () => null,
+          findPrompts: () => ({
+            readInForce: tools.readInForce,
+            checkProposal: checkPromptProposal,
+          }),
+          runInForceSeed: () => Promise.resolve(),
+        }),
+    },
   };
 
   const notebook = buildNotebookTools(() => {
@@ -389,6 +409,7 @@ export async function startConversationEndpoint(
     buildContactTool(options.context, tools.refreshDefinitions),
     buildMandateTool({
       context: options.context,
+      proposalConfig: buildProposalConfig(options.config),
       maxHours: options.config.policy.mandates.maxHours,
       defaultZone: options.config.time.default_zone,
     }),
@@ -430,6 +451,7 @@ export async function startConversationEndpoint(
     queue: tools.queue,
     readOwnValues: tools.readOwnValues,
     readHeldBackTools: tools.readHeldBackTools,
+    proposalConfig: buildProposalConfig(options.config),
     ...(options.context.budgets === undefined ? {} : { budgets: options.context.budgets }),
   });
 

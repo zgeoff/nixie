@@ -3,6 +3,7 @@ import { writeRecordsInTransaction } from '@heynixie/log';
 import type { EffectOverride, McpOverrides } from '@heynixie/policy';
 import type { Transaction } from 'kysely';
 import invariant from 'tiny-invariant';
+import { withdrawRuleProposal } from '../proposed-rule/withdraw-rule-proposal';
 import type { RuleStoreWrite, WrittenRules } from '../rule/write-rule-store';
 import { writeRuleStore } from '../rule/write-rule-store';
 import { buildSkillChanges } from '../skill/build-skill-changes';
@@ -19,7 +20,6 @@ import type {
 } from '../types';
 import type { BudgetSeedPlan } from '../utils/build-budget-seed-plan';
 import type { SkillOverlay } from '../utils/build-skill-overlay';
-import { rulesChangeWithdrawnCodec } from '../utils/rules-change-withdrawn-codec';
 import { toMcpOverridesForm } from '../utils/to-mcp-overrides-form';
 import { writeBudgetsInForce } from '../utils/write-budgets-in-force';
 
@@ -84,6 +84,19 @@ export async function writeSeed(
   const rules = await writeRuleStore(tx, plan.rules);
 
   await writeSnapshotRules(tx, plan.built.snapshotHash, rules);
+
+  const definitions = {
+    snapshotHash: plan.built.snapshotHash,
+    personaVersion: plan.built.personaVersion,
+  };
+
+  for (const proposalID of plan.withdrawnProposalIDs) {
+    await withdrawRuleProposal(
+      tx,
+      { log, clock: log.writer.clock, definitions: () => definitions },
+      proposalID,
+    );
+  }
 
   const record = await writeSeedRecord(tx, log, plan, rules);
 
@@ -256,7 +269,6 @@ async function writeSeedRecord(
         },
       },
     },
-    ...buildProposalRecords(plan),
     ...plan.taskRecords,
   ]);
 
@@ -267,19 +279,6 @@ async function writeSeedRecord(
 
 function toSkillRef(skill: SkillRef): SkillRef {
   return { name: skill.name, skillHash: skill.skillHash, origin: skill.origin };
-}
-
-function buildProposalRecords(plan: SeedPlan): readonly RecordInput[] {
-  const definitions = {
-    snapshotHash: plan.built.snapshotHash,
-    personaVersion: plan.built.personaVersion,
-  };
-
-  return plan.withdrawnProposalIDs.map((proposalID) => ({
-    kind: rulesChangeWithdrawnCodec.kind,
-    definitions,
-    payload: rulesChangeWithdrawnCodec.encode({ proposalID, replacedBy: null }),
-  }));
 }
 
 async function writeSeedRow(tx: Transaction<unknown>, inForce: DefinitionsInForce): Promise<void> {

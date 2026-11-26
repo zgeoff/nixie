@@ -1,9 +1,7 @@
 import { expect, test } from 'bun:test';
-import { withWriteTransaction } from '@heynixie/log';
-import { readProposal } from '@heynixie/proposals';
+import { readProposal, runProposalLapses } from '@heynixie/proposals';
 import invariant from 'tiny-invariant';
 import { initialHealth } from '../health/types';
-import { makeMcpProposalHandler } from '../proposal/make-mcp-proposal-handler';
 import { buildServerFacts } from '../test-utils/build-server-facts';
 import { buildToolForm } from '../test-utils/build-tool-form';
 import { startTestMcp } from '../test-utils/start-test-mcp';
@@ -28,18 +26,11 @@ async function setupTest() {
       return views[0]?.tools.map((tool) => tool.proposalID);
     },
     lapse: async (proposalID: string) => {
-      const handler = makeMcpProposalHandler({
-        ...mcp.context,
-        removeCredentials: () => Promise.resolve(),
-      });
-
       const proposal = await readProposal(mcp.log.writer.db, proposalID);
 
       invariant(proposal, 'the proposal exists');
 
-      await withWriteTransaction(mcp.log.writer, async (tx) => {
-        await handler.lapse(tx, proposal);
-      });
+      await runProposalLapses({ ...mcp.deps, clock: { now: () => proposal.lapsesAt } });
     },
   };
 }

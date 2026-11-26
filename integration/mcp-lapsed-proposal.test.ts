@@ -1,7 +1,6 @@
 import { expect, test } from 'bun:test';
-import { withWriteTransaction } from '@heynixie/log';
 import { startStandInMcp } from '@heynixie/mcp/test-utils';
-import { readProposal } from '@heynixie/proposals';
+import { readProposal, runProposalLapses } from '@heynixie/proposals';
 import { describeToolState } from '@heynixie/web/describe-tool-state';
 import invariant from 'tiny-invariant';
 
@@ -38,8 +37,9 @@ async function setupTest() {
 
       invariant(proposal, 'the proposal exists');
 
-      await withWriteTransaction(standIn.test.log.writer, async (tx) => {
-        await standIn.mcp.makeProposalHandler().lapse(tx, proposal);
+      await runProposalLapses({
+        ...standIn.test.deps,
+        clock: { now: () => proposal.lapsesAt },
       });
     },
   };

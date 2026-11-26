@@ -1,6 +1,8 @@
 import type { JSONObject } from '@heynixie/log';
 import { removeRecordKey, withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
+import { buildProposeDeps, proposeInTransaction, readProposal } from '@heynixie/proposals';
 import type { Transaction } from 'kysely';
+import invariant from 'tiny-invariant';
 import { requireUnforgottenQuote } from '../evidence/require-unforgotten-quote';
 import type { ReviewReason, WriteCaller } from '../gate/gate-context';
 import { createSealedProposal } from '../proposal/create-sealed-proposal';
@@ -55,6 +57,9 @@ export interface ProposalPlan {
 
 export interface WrittenProposal {
   readonly proposalID: string;
+
+  // the short ID of the shared row, which is the open proposal's when this one merged into it
+  readonly shortID: string;
   readonly merged: boolean;
 }
 
@@ -129,7 +134,11 @@ async function writePendingMerge(
     buildMergeRecord(parts, { proposal: match, plan }),
   ]);
 
-  return { proposalID: match.proposal_id, merged: true };
+  const open = await readProposal(tx, match.proposal_id);
+
+  invariant(open, 'a pending memory proposal has its shared row');
+
+  return { proposalID: match.proposal_id, shortID: open.shortID, merged: true };
 }
 
 interface KeyedPendingProposal {
@@ -159,7 +168,32 @@ async function writeProposalOrMerge(
     return merged;
   }
 
-  await writeProposalRecord(tx, parts, pending);
+  const gate = parts.context.gate;
 
-  return { proposalID: pending.sealed.proposalID, merged: false };
+  const proposed = await proposeInTransaction(
+    buildProposeDeps({
+      log: parts.context.log,
+      clock: gate.clock,
+      definitions: parts.context.definitions,
+    }),
+    tx,
+    {
+      proposalID: pending.sealed.proposalID,
+      family: 'memory',
+      kind: 'memory_write',
+      cause: pending.plan.reason,
+      riskClass: 'routine',
+      actionHash: pending.sealed.actionHash,
+      ruleHash: null,
+      thread: pending.plan.caller.thread,
+      taskID: pending.plan.caller.taskID,
+      deadlineAt: pending.plan.until ?? null,
+      sameThing: null,
+      intervalMs: gate.limits.proposalLapseMs,
+    },
+  );
+
+  await writeProposalRecord(tx, parts, pending, proposed.lapsesAt);
+
+  return { proposalID: pending.sealed.proposalID, shortID: proposed.shortID, merged: false };
 }

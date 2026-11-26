@@ -1,10 +1,11 @@
-import { buildShortIDFromUUID } from '@heynixie/db';
 import type { Log } from '@heynixie/log';
+import type { ProposalTables } from '@heynixie/proposals';
 import type { EventKind, NotedEvent, TurnNoteRange } from '@heynixie/sessions';
 import type { MemoryTables, ProposalOrigin } from '../types';
 
 export interface ProposalMergeEvent {
   readonly proposalID: string;
+  readonly shortID: string;
   readonly origin: ProposalOrigin;
 }
 
@@ -22,7 +23,7 @@ export function buildProposalMergeKind(log: Pick<Log, 'writer'>): EventKind<Prop
       return rows.map((row): NotedEvent<ProposalMergeEvent> => ({
         sequence: row.sequence,
         at: row.recorded_at,
-        detail: { proposalID: row.proposal_id, origin: row.origin },
+        detail: { proposalID: row.proposal_id, shortID: row.short_id, origin: row.origin },
       }));
     },
     render: (detail, settings) => {
@@ -33,13 +34,14 @@ export function buildProposalMergeKind(log: Pick<Log, 'writer'>): EventKind<Prop
           ? (settings.ownerName ?? 'The owner')
           : proposerWords[detail.origin];
 
-      return `${proposer} proposed the same memory again; it merged into your pending memory proposal ${buildShortIDFromUUID(detail.proposalID)}, which still waits for ${owner}'s review.`;
+      return `${proposer} proposed the same memory again; it merged into your pending memory proposal ${detail.shortID}, which still waits for ${owner}'s review.`;
     },
   };
 }
 
 interface MergeRow {
   readonly proposal_id: string;
+  readonly short_id: string;
   readonly origin: ProposalOrigin;
   readonly sequence: number;
   readonly recorded_at: number;
@@ -50,14 +52,16 @@ function readOutsideMerges(
   range: TurnNoteRange,
 ): Promise<readonly MergeRow[]> {
   return log.writer.db
-    .$extendTables<MemoryTables>()
+    .$extendTables<MemoryTables & ProposalTables>()
     .selectFrom('memory_proposal_merges')
     .innerJoin(
       'memory_proposals',
       'memory_proposals.proposal_id',
       'memory_proposal_merges.proposal_id',
     )
+    .innerJoin('proposals', 'proposals.proposal_id', 'memory_proposals.proposal_id')
     .select([
+      'proposals.short_id',
       'memory_proposal_merges.proposal_id',
       'memory_proposal_merges.origin',
       'memory_proposal_merges.sequence',
@@ -66,7 +70,7 @@ function readOutsideMerges(
     .where('memory_proposal_merges.sequence', '>', range.after)
     .where('memory_proposal_merges.sequence', '<=', range.through)
     .where('memory_proposals.origin', '=', 'conversation')
-    .where('memory_proposals.status', '=', 'pending')
+    .where('proposals.state', 'in', ['pending', 'deferred'])
     .where('memory_proposal_merges.origin', '!=', 'conversation')
     .orderBy('memory_proposal_merges.sequence')
     .execute();

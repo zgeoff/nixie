@@ -5,8 +5,9 @@ import { join } from 'node:path';
 import type { Log } from '@heynixie/log';
 import { logProjections, readRecords, startWriter, writeRecordsInTransaction } from '@heynixie/log';
 import type { McpToolOverride } from '@heynixie/policy';
-import type { AnswerOutcome, ProposalKindHandler } from '@heynixie/proposals';
+import type { AnswerOutcome, ProposalCoreDeps, ProposalKindHandler } from '@heynixie/proposals';
 import { answerProposal, buildProposalsProjection, readProposal } from '@heynixie/proposals';
+import { buildMockSettlementDeps } from '@heynixie/proposals/test-utils';
 import { createFakeClock } from '@zgeoff/testing/clock';
 import invariant from 'tiny-invariant';
 import { applyListing } from '../listing/apply-listing';
@@ -40,6 +41,7 @@ export interface TestMcpOptions {
 }
 
 export interface TestMcp {
+  readonly deps: ProposalCoreDeps;
   readonly log: Log;
   readonly clock: ReturnType<typeof createFakeClock>;
   readonly context: McpContext;
@@ -126,6 +128,7 @@ export async function startTestMcp(options: TestMcpOptions = {}): Promise<TestMc
       return new Map([['mcp' as const, options.readHandler?.() ?? defaultHandler]]);
     },
     readDeferContext: () => Promise.resolve({ quietHours: null, zone: 'UTC' }),
+    ...buildMockSettlementDeps(),
     writeThreadRecord: async (
       tx: Parameters<typeof writeRecordsInTransaction>[0],
       input: Parameters<typeof writeRecordsInTransaction>[2][number],
@@ -150,6 +153,7 @@ export async function startTestMcp(options: TestMcpOptions = {}): Promise<TestMc
     log,
     clock,
     context,
+    deps,
     moveSnapshot: (snapshotHash) => {
       snapshot.hash = snapshotHash;
     },

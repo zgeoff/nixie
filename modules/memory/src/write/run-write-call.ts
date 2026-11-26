@@ -1,4 +1,3 @@
-import { buildShortIDFromUUID } from '@heynixie/db';
 import type { ToolOutcome } from '@heynixie/tools';
 import type { ModelWriteStore, WriteOutcome } from '../gate/gate-context';
 import type { ItemIDStore } from '../types';
@@ -14,12 +13,12 @@ export async function runWriteCall(
     const outcome = await call();
 
     if (outcome.status === 'proposed') {
-      const shortID = buildShortIDFromUUID(outcome.proposalID);
+      const { shortID, ...shown } = outcome;
 
       return {
         status: 'ok',
         result: {
-          ...outcome,
+          ...shown,
           proposalID: shortID,
           reason: memory.renderReviewReason(outcome.reason),
         },

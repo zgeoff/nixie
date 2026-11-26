@@ -143,7 +143,7 @@ test('it rejects a proposal with your reason, which the next turn reads in its e
   });
 
   expect(ctx.guest.turns.at(-1)?.input).toMatchObject([
-    { text: expect.toInclude('Reason: "only tried it once".') },
+    { text: expect.toInclude('was declined: only tried it once') },
   ]);
 });
 

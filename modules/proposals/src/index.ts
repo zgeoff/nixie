@@ -10,9 +10,7 @@ export type {
 
 export { answerProposal } from './answer/answer-proposal';
 export { approvalsConfigSchema, quietHoursSchema } from './settings/approvals-config-schema';
-export { buildProposalOutcomes } from './build-proposal-outcomes';
 export { buildProposalsProjection } from './rows/build-proposals-projection';
-export { canMoveProposal } from './can-move-proposal';
 export { pickPasskeyChoices } from './answer/pick-passkey-choices';
 export { pickProposalChoices } from './answer/pick-proposal-choices';
 export type { QuietHours } from './sweeps/pick-return-at';
@@ -26,10 +24,14 @@ export type {
 
 export type {
   AnswerResult,
+  ClosedResult,
   ApplyOutcome,
   ApplyRun,
   ProposalAnswerInput,
   ProposalBody,
+  ProposalConfig,
+  DiscardOutcome,
+  DoneOutcome,
   ProposalChoice,
   ProposalHashes,
   ProposalKindHandler,
@@ -37,9 +39,8 @@ export type {
   SharedProposal,
 } from './answer/proposal-kind-handler';
 
-export { proposalLapseMs } from './proposal-lapse-ms';
-
 export type {
+  ProposalTables,
   ProposalFamily,
   ProposalKind,
   ProposalRiskClass,
@@ -59,8 +60,38 @@ export { readProposalsByID } from './rows/read-proposals-by-id';
 export { readProposalLapses } from './rows/read-proposal-lapses';
 export { runProposalLapses } from './sweeps/run-proposal-lapses';
 export { runProposalReturns } from './sweeps/run-proposal-returns';
-export type { ProposalContext, ProposalOutcome, ProposalState, ProposalStatus } from './types';
-export type { ProposalLapseSource } from './write-proposal-lapses';
-export { writeProposalLapses } from './write-proposal-lapses';
+
+export type {
+  ProposalContext,
+  ProposalOutcome,
+  ProposalStake,
+  ProposalState,
+  ProposalStatus,
+} from './types';
+
 export { pickNextMidnight } from './sweeps/pick-next-midnight';
 export { proposalRecordTopics } from './records/proposal-record-topics';
+export { proposalsProposedCodec } from './records/proposals-proposed-codec';
+export { proposalsSettledCodec } from './records/proposals-settled-codec';
+export type { ProposeInput, Proposed } from './propose/propose-in-transaction';
+export { createUnusedShortID, proposeInTransaction } from './propose/propose-in-transaction';
+
+export type {
+  StakeWithdrawal,
+  StakeWithdrawalResult,
+} from './propose/withdraw-stake-in-transaction';
+
+export { withdrawStakeInTransaction } from './propose/withdraw-stake-in-transaction';
+export { proposalsProposerLeftCodec } from './records/proposals-proposer-left-codec';
+export { readLeftThreads } from './rows/read-left-threads';
+export { readLeftProposalIDs } from './rows/read-left-proposal-ids';
+export type { Withdrawal, WithdrawOptions } from './propose/withdraw-in-transaction';
+export { withdrawInTransaction } from './propose/withdraw-in-transaction';
+export { pickLapsesAt } from './propose/pick-lapses-at';
+export type { SettlementFacts } from './propose/write-settlement';
+export { writeSettlement } from './propose/write-settlement';
+export type { ProposeDeps } from './answer/types';
+export type { ProposeDepsBase } from './propose/build-propose-deps';
+export { buildProposeDeps, defaultProposalConfig } from './propose/build-propose-deps';
+export { buildDiscardedOutcome } from './propose/build-discarded-outcome';
+export { readProposalStates } from './rows/read-proposal-states';

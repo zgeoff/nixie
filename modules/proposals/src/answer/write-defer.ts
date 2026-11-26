@@ -1,4 +1,5 @@
 import type { Transaction } from 'kysely';
+import { pickLapsesAt } from '../propose/pick-lapses-at';
 import { proposalsDeferredCodec } from '../records/proposals-deferred-codec';
 import { pickReturnAt } from '../sweeps/pick-return-at';
 import type {
@@ -29,10 +30,12 @@ export async function writeDefer(
 
   const returnAt = pickReturnAt(deferUntil, context.quietHours, context.zone);
 
-  const lapsesAt = Math.min(
-    row.deadlineAt ?? Number.POSITIVE_INFINITY,
-    Math.max(row.lapsesAt, returnAt + request.handler.lapseIntervalMs),
-  );
+  const lapsesAt = pickLapsesAt(deps.config, request.handler, {
+    family: row.family,
+    cause: row.cause,
+    fromMs: returnAt,
+    deadlineAt: row.deadlineAt,
+  });
 
   await deps.writeThreadRecord(tx, {
     kind: proposalsDeferredCodec.kind,

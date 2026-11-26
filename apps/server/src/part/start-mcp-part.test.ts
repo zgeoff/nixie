@@ -1,6 +1,7 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { readRecords } from '@heynixie/log';
 import { startStandInMcp } from '@heynixie/mcp/test-utils';
+import { defaultProposalConfig, readProposal } from '@heynixie/proposals';
 import type { TasksContext } from '@heynixie/tasks';
 import { tasksProjections } from '@heynixie/tasks';
 import {
@@ -10,6 +11,7 @@ import {
   seedDefinitionTask,
   seedOpenDefinitionRun,
 } from '@heynixie/tasks/test-utils';
+import invariant from 'tiny-invariant';
 import { startMcpPart } from './start-mcp-part';
 
 async function setupTest() {
@@ -55,6 +57,7 @@ async function setupTest() {
       servers: { tracker: standIn.facts },
     },
     { find: () => null },
+    { lapseDays: { ...defaultProposalConfig.lapseDays, mcp: 2 } },
   );
 
   return {
@@ -100,4 +103,18 @@ test('it leaves a change note in the conversation and in each task whose run hol
   const notes = await ctx.readNotes();
 
   expect(notes).toStrictEqual(['conversation', chase]);
+});
+
+test('it lapses an allow proposal of a tool after the days that the config sets for the family', async () => {
+  const ctx = await setupTest();
+
+  await ctx.part.list('tracker');
+
+  const allowed = await ctx.part.allow('tracker.item_get');
+
+  invariant(allowed.status === 'proposed');
+
+  const row = await readProposal(ctx.test.log.writer.db, allowed.proposalID);
+
+  expect(row?.lapsesAt).toBe(ctx.test.clock.now() + 2 * 24 * 60 * 60 * 1000);
 });

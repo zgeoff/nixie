@@ -1,11 +1,8 @@
 import { expect, test } from 'bun:test';
-import { buildShortIDFromUUID } from '@heynixie/db';
 import { readRecords, writeRecords } from '@heynixie/log';
 import { buildEventRegistry, readEventsNote } from '@heynixie/sessions';
 import { createFakeClock } from '@zgeoff/testing/clock';
 import invariant from 'tiny-invariant';
-import { buildProposalAnswerKind } from '../proposal/build-proposal-answer-kind';
-import { createProposal } from '../test-utils/create-proposal';
 import { readItemShortID } from '../test-utils/read-item-short-id';
 import { seedBegunPurge } from '../test-utils/seed-begun-purge';
 import { startTestMemory } from '../test-utils/start-test-memory';
@@ -303,57 +300,6 @@ test('it recalls only the items the block lists, and counts the rest past its ca
       ),
       isTurnNote: true,
     },
-  ]);
-});
-
-test('it leaves items a forget began out before the cap, so a later event still lists', async () => {
-  const ctx = await setupTest();
-
-  const items = await Array.fromAsync(
-    Array.from({ length: 10 }, (_, index) => `Keeps hive number ${String(index + 1)}`),
-    (text) =>
-      ctx.memory.store.remember({
-        text,
-        provenance: {
-          origin: 'owner',
-          source: 'owner',
-          taskID: null,
-          proposalID: null,
-          checks: null,
-        },
-      }),
-  );
-
-  await writeRecords(
-    ctx.memory.log,
-    items.map((item) => ({
-      kind: 'memory.forget_started',
-      definitions: { snapshotHash: 'sha256:test' },
-      payload: { itemID: item.itemID, version: 1, evidenceSequences: [] },
-    })),
-  );
-
-  const proposal = await createProposal(ctx.memory.store, { text: 'Avery has two cats.' });
-
-  await ctx.memory.store.proposals.approve({
-    proposalID: proposal.proposalID,
-    actionHash: proposal.actionHash,
-    identityID: 'identity-1',
-  });
-
-  const note = await readEventsNote(
-    buildEventRegistry([
-      buildMemoryChangeKind(ctx.memory.log, ctx.memory.store),
-      buildProposalAnswerKind(ctx.memory.log, ctx.memory.store),
-    ]),
-    { after: 0, through: 1000 },
-    { ownerName: 'Avery', timeZone: 'UTC' },
-  );
-
-  expect(note?.split('\n').slice(1)).toStrictEqual([
-    expect.toEndWith(
-      ` · Avery approved your memory proposal ${buildShortIDFromUUID(proposal.proposalID)}: "Avery has two cats."`,
-    ),
   ]);
 });
 

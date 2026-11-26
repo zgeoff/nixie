@@ -3,9 +3,11 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { startWriter, writeRecords } from '@heynixie/log';
+import { buildProposalsProjection } from '@heynixie/proposals';
 import { createFakeClock } from '@zgeoff/testing/clock';
 import { promptsOverrideProposedCodec } from '../override/prompts-override-proposed-codec';
 import { buildPromptOverrideHash } from './build-prompt-override-hash';
+import { mapPromptProposalRecord } from './map-prompt-proposal-record';
 import { readPendingPromptProposals } from './read-pending-prompt-proposals';
 
 async function setupTest() {
@@ -26,7 +28,13 @@ async function setupTest() {
     'unwrapKey',
   ]);
 
-  return { log: { writer, deploymentKey, projections: [] } };
+  return {
+    log: {
+      writer,
+      deploymentKey,
+      projections: [buildProposalsProjection([mapPromptProposalRecord])],
+    },
+  };
 }
 
 test('it lists a pending proposal with its lapse time and the override in force for its prompt', async () => {

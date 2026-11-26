@@ -146,6 +146,7 @@ test('it proposes a write that cites no quote', async () => {
   expect(outcome).toStrictEqual({
     status: 'proposed',
     proposalID: expect.toBeString(),
+    shortID: expect.toBeString(),
     reason: 'no_quote',
     merged: false,
   });
@@ -1443,6 +1444,7 @@ test("it merges a task's write into the conversation's pending proposal of the s
   expect(second).toStrictEqual({
     status: 'proposed',
     proposalID: first.proposalID,
+    shortID: first.shortID,
     reason: 'no_quote',
     merged: true,
   });
@@ -1534,6 +1536,7 @@ test('it keeps the same text under another subject as a proposal of its own, and
   expect(again).toStrictEqual({
     status: 'proposed',
     proposalID: shared.proposalID,
+    shortID: shared.shortID,
     reason: 'no_quote',
     merged: true,
   });
@@ -1582,6 +1585,7 @@ test('it keeps an edit that moves its item to another subject apart from the sam
   expect(again).toStrictEqual({
     status: 'proposed',
     proposalID: moved.proposalID,
+    shortID: moved.shortID,
     reason: 'no_quote',
     merged: true,
   });
@@ -1678,6 +1682,7 @@ test('it proposes a write from a photo that cites no quote with the photo reason
   expect(outcome).toStrictEqual({
     status: 'proposed',
     proposalID: expect.toBeString(),
+    shortID: expect.toBeString(),
     reason: 'from_photo',
     merged: false,
   });
@@ -1770,6 +1775,7 @@ test('it merges a write from a photo into the pending proposal of the same text 
   expect(second).toStrictEqual({
     status: 'proposed',
     proposalID: first.proposalID,
+    shortID: first.shortID,
     reason: 'from_photo',
     merged: true,
   });
@@ -2110,6 +2116,7 @@ test("it reads the quote window of a write on the caller's own thread, not its l
   expect(outcome).toStrictEqual({
     status: 'proposed',
     proposalID: expect.toBeString(),
+    shortID: expect.toBeString(),
     merged: false,
     reason: 'no_quote',
   });

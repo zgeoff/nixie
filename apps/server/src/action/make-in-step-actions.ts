@@ -2,6 +2,7 @@ import { probeInStepActionPending, runInStepActions } from '@heynixie/actions';
 import { codingActionDeclarations } from '@heynixie/coding';
 import type { InStepActions } from '@heynixie/sessions';
 import { buildToolRegistry } from '@heynixie/tools';
+import { buildProposalConfig } from '../deployment/build-proposal-config';
 import type { ServerParts } from '../types';
 import { makeAttemptCheck } from './make-attempt-check';
 
@@ -25,6 +26,7 @@ export function makeInStepActions(parts: ServerParts): InStepActions {
       const settled = await runInStepActions(parts.context, request.lease, {
         checkAttempt,
         runCall: request.runCall,
+        proposalConfig: buildProposalConfig(parts.config),
         ...(parts.tools.actions.readHeldToolPrefixes === undefined
           ? {}
           : { readHeldToolPrefixes: parts.tools.actions.readHeldToolPrefixes }),

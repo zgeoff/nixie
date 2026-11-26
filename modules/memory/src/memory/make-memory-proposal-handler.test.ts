@@ -1,7 +1,8 @@
 import { expect, test } from 'bun:test';
-import { writeRecordsInTransaction } from '@heynixie/log';
+import { readRecords, runProjectionRebuild, writeRecordsInTransaction } from '@heynixie/log';
 import type { ProposalAnswerInput } from '@heynixie/proposals';
-import { answerProposal, buildProposalsProjection } from '@heynixie/proposals';
+import { answerProposal, buildProposalsProjection, readProposal } from '@heynixie/proposals';
+import { buildMockSettlementDeps } from '@heynixie/proposals/test-utils';
 import { createFakeClock } from '@zgeoff/testing/clock';
 import invariant from 'tiny-invariant';
 import { mapMemoryProposalRecord } from '../proposal/map-memory-proposal-record';
@@ -28,7 +29,6 @@ async function setupTest() {
   const handlerOptions = {
     log: memory.log,
     definitions: () => ({ snapshotHash: 'sha256:test' }),
-    lapseIntervalMs: 14 * 24 * 60 * 60 * 1000,
   };
 
   const deps = {
@@ -39,6 +39,7 @@ async function setupTest() {
       ['memory' as const, makeMemoryProposalHandler({ ...handlerOptions, readStore: () => port })],
     ]),
     projection: buildProposalsProjection([mapMemoryProposalRecord]),
+    ...buildMockSettlementDeps(),
     readDeferContext: () => Promise.resolve({ quietHours: null, zone: 'UTC' }),
     writeThreadRecord: async (
       tx: Parameters<typeof writeRecordsInTransaction>[0],
@@ -50,6 +51,16 @@ async function setupTest() {
 
   return {
     memory,
+    readRebuiltRow: async (proposalID: string) => {
+      await runProjectionRebuild(memory.log);
+
+      return readProposal(memory.log.writer.db, proposalID);
+    },
+    readOutcomeRecords: () =>
+      readRecords(memory.log, {
+        afterSequence: 0,
+        kinds: ['memory.approval_recorded', 'proposals.settled'],
+      }),
     answer: (input: ProposalAnswerInput) => answerProposal(deps, input, { family: 'memory' }),
     answerBeforeStart: (input: ProposalAnswerInput) =>
       answerProposal(
@@ -87,6 +98,33 @@ test('it applies an approved memory proposal through the shared answer path', as
   });
 
   expect(pending).toStrictEqual([]);
+});
+
+test('it settles an approval after its write, and the record and a rebuilt row both name the approval', async () => {
+  const ctx = await setupTest();
+  const proposal = await createProposal(ctx.memory.store, { text: 'Swims at the lido on Fridays' });
+
+  await ctx.answer({
+    proposalID: proposal.proposalID,
+    actionHash: proposal.actionHash,
+    choice: 'approve',
+    identityID: 'identity-1',
+  });
+
+  const records = await ctx.readOutcomeRecords();
+  const row = await ctx.readRebuiltRow(proposal.proposalID);
+
+  const [approval, settled] = records.map((entry) => entry.record);
+
+  expect(records.map((entry) => entry.record.kind)).toStrictEqual([
+    'memory.approval_recorded',
+    'proposals.settled',
+  ]);
+
+  expect([settled?.payload['usedBy'], row?.usedBy]).toStrictEqual([
+    approval?.payload['approvalID'],
+    approval?.payload['approvalID'],
+  ]);
 });
 
 test('it declines a memory proposal, which leaves the pending list', async () => {

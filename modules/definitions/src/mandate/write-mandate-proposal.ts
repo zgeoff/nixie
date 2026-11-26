@@ -1,6 +1,7 @@
 import { createShortID } from '@heynixie/db';
 import { writeRecordsInTransaction } from '@heynixie/log';
-import type { ProposalContext } from '@heynixie/proposals';
+import type { ProposalConfig, ProposalContext } from '@heynixie/proposals';
+import { buildProposeDeps, proposeInTransaction } from '@heynixie/proposals';
 import type { Transaction } from 'kysely';
 import { describeMandate } from './describe-mandate';
 import type { MandateInput } from './mandate-input-schema';
@@ -33,7 +34,7 @@ export type MandateProposalResult =
 // turn down leaves nothing in a plain column.
 export async function writeMandateProposal(
   tx: Transaction<unknown>,
-  context: ProposalContext,
+  context: ProposalContext & { readonly proposalConfig?: ProposalConfig | undefined },
   options: MandateProposalOptions,
   proposal: MandateProposal,
 ): Promise<MandateProposalResult> {
@@ -51,16 +52,32 @@ export async function writeMandateProposal(
   }
 
   const facts = describeMandate(mandateID, picked.expires, picked.rules);
-  const proposalID = crypto.randomUUID();
-  const shortID = createShortID();
+
+  const proposed = await proposeInTransaction(
+    buildProposeDeps({ ...context, config: context.proposalConfig }),
+    tx,
+    {
+      family: 'rule_change',
+      kind: 'internal_change',
+      cause: 'mandate',
+      riskClass: facts.riskClass,
+      actionHash: facts.actionHash,
+      ruleHash: null,
+      thread: null,
+      taskID: null,
+      deadlineAt: picked.expires,
+      sameThing: null,
+      intervalMs: null,
+    },
+  );
 
   await writeRecordsInTransaction(tx, context.log, [
     {
       kind: mandateProposedCodec.kind,
       definitions: context.definitions(),
       payload: mandateProposedCodec.encode({
-        proposalID,
-        shortID,
+        proposalID: proposed.proposalID,
+        shortID: proposed.shortID,
         mandateID,
         ruleHashes: facts.ruleHashes,
         actionHash: facts.actionHash,
@@ -74,8 +91,8 @@ export async function writeMandateProposal(
 
   return {
     status: 'proposed',
-    proposalID,
-    shortID,
+    proposalID: proposed.proposalID,
+    shortID: proposed.shortID,
     mandateID,
     expires: picked.expires,
     sentences: facts.sentences,

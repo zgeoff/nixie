@@ -3,7 +3,7 @@ import { mandateInputSchema, writeMandateProposal } from '@heynixie/definitions'
 import type { MandateRefusal } from '@heynixie/definitions';
 import { withWriteTransaction } from '@heynixie/log';
 import { listUncoveredMemoryWrites } from '@heynixie/policy';
-import type { ProposalContext } from '@heynixie/proposals';
+import type { ProposalConfig, ProposalContext } from '@heynixie/proposals';
 import type { ToolDefinition } from '@heynixie/tools';
 import { match } from 'ts-pattern';
 import { z } from 'zod';
@@ -42,6 +42,7 @@ export function buildMandateDescription(maxHours: number): string {
 
 export interface MandateToolOptions {
   readonly context: ProposalContext;
+  readonly proposalConfig?: ProposalConfig | undefined;
   readonly maxHours: number;
   readonly defaultZone: string;
 }
@@ -104,7 +105,7 @@ export function buildMandateTool(options: MandateToolOptions): ToolDefinition {
       const proposed = await withWriteTransaction(context.log.writer, (tx) =>
         writeMandateProposal(
           tx,
-          context,
+          { ...context, proposalConfig: options.proposalConfig },
           {
             maxHours: options.maxHours,
             readZone: async (reader) => {

@@ -3,8 +3,20 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { checkSkillFiles, writeWrittenSkill } from '@heynixie/definitions';
-import { readRecords, startWriter, withWriteTransaction, writeRecords } from '@heynixie/log';
-import { skillsWriteProposedCodec } from '@heynixie/skills';
+import {
+  readRecords,
+  startWriter,
+  withWriteTransaction,
+  writeRecords,
+  writeRecordsInTransaction,
+} from '@heynixie/log';
+import {
+  buildProposalsProjection,
+  buildProposeDeps,
+  proposeInTransaction,
+  readProposal,
+} from '@heynixie/proposals';
+import { mapSkillProposalRecord, skillsWriteProposedCodec } from '@heynixie/skills';
 import { createRouterClient } from '@orpc/server';
 import { createFakeClock } from '@zgeoff/testing/clock';
 import invariant from 'tiny-invariant';
@@ -28,7 +40,12 @@ async function setupTest() {
     'unwrapKey',
   ]);
 
-  const log = { writer, deploymentKey, projections: [] };
+  const log = {
+    writer,
+    deploymentKey,
+    projections: [buildProposalsProjection([mapSkillProposalRecord])],
+  };
+
   const clock = createFakeClock({ startMs: Date.UTC(2026, 2, 3, 10, 0) });
   const runInForceSeed = mock(() => Promise.resolve());
 
@@ -41,7 +58,55 @@ async function setupTest() {
     }),
   );
 
-  return { log, client, runInForceSeed };
+  const deps = buildProposeDeps({
+    log,
+    clock,
+    definitions: () => ({ snapshotHash: 'snapshot-a' }),
+  });
+
+  // a proposal the way the skill write tool opens it, whose row ID differs from its short ID
+  const propose = (skillHash: string, files: { path: string; text: string }[]) =>
+    withWriteTransaction(writer, async (tx) => {
+      const created = await proposeInTransaction(deps, tx, {
+        family: 'skill',
+        kind: 'internal_change',
+        cause: 'skill_write',
+        riskClass: 'routine',
+        actionHash: skillHash,
+        ruleHash: null,
+        thread: 'conversation',
+        taskID: null,
+        deadlineAt: null,
+        sameThing: 'star-chart',
+      });
+
+      await writeRecordsInTransaction(tx, log, [
+        {
+          kind: 'skills.write_proposed',
+          thread: 'conversation',
+          definitions: { snapshotHash: 'snapshot-a' },
+          payload: skillsWriteProposedCodec.encode({
+            proposalID: created.proposalID,
+            name: 'star-chart',
+            skillHash,
+            baseHash: null,
+            files,
+            untypedToken: null,
+            provenance: { runID: 'run-2', callID: 'call-2', profile: 'standard' },
+          }),
+        },
+      ]);
+
+      return created;
+    });
+
+  return {
+    log,
+    client,
+    runInForceSeed,
+    propose,
+    readRow: (proposalID: string) => readProposal(writer.db, proposalID),
+  };
 }
 
 test('#list lists each pending proposal with its files, its token check and the hash an answer binds to', async () => {
@@ -146,6 +211,35 @@ test('#approve records the approval that names you, then seeds the written skill
   ]);
 
   expect(ctx.runInForceSeed).toHaveBeenCalledOnce();
+});
+
+test('#approve answers a proposal by its short ID and reads the approval of its row', async () => {
+  const ctx = await setupTest();
+
+  const files = [
+    { path: 'SKILL.md', text: '---\nname: star-chart\ndescription: Reads a star chart.\n---\n' },
+  ];
+
+  const skill = checkSkillFiles('star-chart', files);
+
+  invariant('skillHash' in skill);
+
+  const proposed = await ctx.propose(skill.skillHash, files);
+
+  const approved = await ctx.client.approve({
+    proposalID: proposed.shortID,
+    skillHash: skill.skillHash,
+  });
+
+  const row = await ctx.readRow(proposed.proposalID);
+
+  expect(approved).toStrictEqual({
+    proposalID: proposed.shortID,
+    approvalID: expect.toBeString(),
+    skillHash: skill.skillHash,
+  });
+
+  expect([row?.state, row?.usedBy]).toStrictEqual(['approved', approved.approvalID]);
 });
 
 test('#approve refuses edited files that fail the seed checks with their code', async () => {
@@ -275,11 +369,14 @@ test('#reject records the rejection with your reason', async () => {
 
   const records = await readRecords(ctx.log, {
     afterSequence: 0,
-    kinds: ['skills.write_rejected'],
+    kinds: ['proposals.settled'],
   });
 
   expect(records.map((entry) => entry.record.erasable)).toStrictEqual([
-    { status: 'readable', fields: { reason: 'the star maps come from a feed' } },
+    {
+      status: 'readable',
+      fields: { reason: 'the star maps come from a feed', sentence: 'Write the skill star-chart.' },
+    },
   ]);
 });
 

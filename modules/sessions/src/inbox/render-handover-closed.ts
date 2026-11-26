@@ -21,7 +21,7 @@ export function renderHandoverClosed(
   return renderSystemMessage({
     type: 'computer',
     at: formatMessageTime(record.recordedAt, null, times),
-    body: `[#${closed.shortID}] ${text}`,
+    body: `[#${String(record.sequence)}] ${text}`,
   });
 }
 

@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import { readBudgetLedger } from '@heynixie/budgets';
 import { readRecords, withWriteTransaction } from '@heynixie/log';
-import { buildActionProposalInput } from '@heynixie/policy';
+import type { ActionProposalFacts } from '@heynixie/policy';
 import { writeStepCommit } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
 import { buildMockLiftedCall } from '../test-utils/build-mock-lifted-call';
@@ -75,7 +75,7 @@ async function setupTest() {
       return stub;
     },
     buildProposal: (cause: 'always_ask' | 'ask_rule', actionID: string, proposalID: string) =>
-      buildActionProposalInput({
+      ({
         definitions: { snapshotHash: 'sha256:test' },
         thread: taskID,
         callSequence: 1,
@@ -85,7 +85,7 @@ async function setupTest() {
         input: { to: 'team' },
         destinations: [{ value: 'team', replyTarget: false }],
         reopen: { proposalID, actionID },
-      }).record,
+      }) satisfies ActionProposalFacts,
   };
 }
 
@@ -184,7 +184,7 @@ test('it releases the action a proposal held, and runs it once', async () => {
     cause: 'ask_rule',
     destinations: ['team'],
     proposalID: queued.actionID,
-    record: ctx.buildProposal('ask_rule', queued.actionID, queued.actionID),
+    proposal: ctx.buildProposal('ask_rule', queued.actionID, queued.actionID),
   }));
 
   const releasedID = await ctx.approve({ proposalID: queued.actionID });
@@ -213,7 +213,7 @@ test('it holds an approved action that falls in the always-ask set under a new p
       cause: 'always_ask',
       destinations: ['team'],
       proposalID,
-      record: ctx.buildProposal('always_ask', actionID, proposalID),
+      proposal: ctx.buildProposal('always_ask', actionID, proposalID),
     };
   });
 
@@ -234,7 +234,7 @@ test('it runs an approved action that a rule only asks about again', async () =>
     cause: 'ask_rule',
     destinations: ['team'],
     proposalID,
-    record: ctx.buildProposal('ask_rule', actionID, proposalID),
+    proposal: ctx.buildProposal('ask_rule', actionID, proposalID),
   }));
 
   expect(stub.calls).toHaveLength(1);
@@ -249,7 +249,7 @@ test('it leaves a held action unclaimed until its proposal is answered', async (
     cause: 'ask_rule',
     destinations: ['team'],
     proposalID: queued.actionID,
-    record: ctx.buildProposal('ask_rule', queued.actionID, queued.actionID),
+    proposal: ctx.buildProposal('ask_rule', queued.actionID, queued.actionID),
   }));
 
   const claimed = await claimAction(ctx.context, { holder: 'runner-b', leaseMs: 60_000 });
@@ -280,7 +280,7 @@ test('it credits the lift charge of a held action that is approved past its dead
         cause: 'always_ask',
         destinations: [],
         proposalID: queued.actionID,
-        record: buildActionProposalInput({
+        proposal: {
           definitions: { snapshotHash: 'sha256:test' },
           thread: step.lease.workID,
           callSequence: 1,
@@ -290,7 +290,7 @@ test('it credits the lift charge of a held action that is approved past its dead
           input: { amount: 6 },
           destinations: [],
           reopen: { proposalID: queued.actionID, actionID: queued.actionID },
-        }).record,
+        },
       }),
   });
 

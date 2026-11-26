@@ -33,6 +33,7 @@ test('it starts a store over a log that folds the memory projections, with no re
     'moment_reflections',
     'moment_links',
     'moment_texts',
+    'proposals',
   ]);
 
   expect(records).toStrictEqual([]);

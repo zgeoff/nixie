@@ -9,25 +9,25 @@ the rules for ports, providers and adapters, and lists where the code departs fr
 - A **port** is an interface that one module owns and that a provider implements.
 - A **provider** is one implementation of an interface. A real provider does the work in a release.
   A fake provider stands in for it in a test.
-- An **adapter** is a provider that reaches a system outside nixie, as a package of its own. An
-  outside native runtime, such as the ONNX runtime, counts as an outside system.
+- An **adapter** is a provider that reaches a system outside nixie from the server, as a package of
+  its own. An outside native runtime, such as the ONNX runtime, counts as an outside system.
 
 ## When a port fits
 
-- An outside service that the server reaches plugs in as an adapter behind an interface that a nixie
-  module owns, and nixie's core never names an outside service or an optional feature. Each optional
-  feature is on only when its section is in the deployment config, and the config key of a feature
-  that is off leaves no trace in nixie. A key that picks a test-only provider is allowed under rule
-  7: the sandbox config's `adapter` key, `imp` or `test`, is one.
-  [Feature switches](deployment/server.md#feature-switches) covers the switches and the two checks
-  that hold the rule.
+- Plug each outside service that the server reaches in as an adapter, behind an interface that a
+  nixie module owns. nixie's core never names an outside service or an optional feature. Each
+  optional feature is on only when its section is in the deployment config, and the config key of a
+  feature that is off leaves no trace in nixie. A key that picks a test-only provider is allowed
+  under rule 7: the sandbox config's `adapter` key, `imp` or `test`, is one. Read
+  [Feature switches](deployment/server.md#feature-switches) for the switches and the two checks that
+  hold the rule.
 - Search has `SearchProvider` and one real provider, so the config has no provider key for search,
   and its `search` section turns the feature on.
 - The memory checker's model has no port: the `checker` role needs `structured-output`, and only the
   Agent SDK harness declares it.
-- The backup schedule and the definitions poll each keep their own loop on the clock. Every other
-  periodic sweep, such as the lapse sweeps of prompts, proposals and memory, runs on `startSweep` in
-  `libs/clock`.
+- The backup schedule and the definitions poll each run their own loop on the clock. Every other
+  periodic sweep, such as memory's lapse sweep, runs on `startSweep` in `libs/clock`. So does the
+  shared proposal sweep, which lapses the proposals of every family.
 - The key store and the backup target have no interface: the key store has one implementation, and
   the backup job's one client reaches each storage backend itself.
 
@@ -36,12 +36,12 @@ the rules for ports, providers and adapters, and lists where the code departs fr
 1. The module that calls an interface owns its type. When the caller cannot depend on the provider's
    module, the composition root passes the provider in, as for `ConversationMemory` and `ReadPage`.
    The caller states what it needs, so a provider changes without a change to the caller.
-2. A provider that reaches an outside system is an adapter package named `<interface>-<system>`, for
-   any interface a module owns. A provider that reaches nothing outside lives in its module. One
-   package then holds all of nixie's code for one outside system. A provider that reaches its system
-   from inside a sandbox is a guest: its contract is its message types in the wire lib, and its
-   host-side record lives in the module that owns the interface. A guest imports only libs, so it
-   cannot import a module's interface.
+2. A provider that reaches an outside system from the server is an adapter package named
+   `<interface>-<system>`, for any interface a module owns. A provider that reaches nothing outside
+   lives in its module. One package then holds all of nixie's code for one outside system. A
+   provider that reaches its system from inside a sandbox is a guest: its contract is its message
+   types in the wire lib, and its host-side record lives in the module that owns the interface. A
+   guest imports only libs, so it cannot import a module's interface.
 3. An adapter imports only the module that owns its interface, plus libs, and review enforces it,
    because the boundary tags allow any module. An adapter that imports a second module ties 2
    domains together through an outside system.

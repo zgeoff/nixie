@@ -1,18 +1,22 @@
 import type { Definitions, Log } from '@heynixie/log';
-import { writeRecordsInTransaction } from '@heynixie/log';
 import type {
   ApplyOutcome,
   ApplyRun,
+  DoneOutcome,
   ProposalAnswerInput,
   ProposalKindHandler,
+  ProposalStake,
   SharedProposal,
 } from '@heynixie/proposals';
+import type { Transaction } from 'kysely';
+import invariant from 'tiny-invariant';
 import type { MemoryProposals } from '../gate/gate-context';
 import { pickProposalRefusal } from '../proposal/pick-proposal-refusal';
+import { readMergedStakes } from '../proposal/read-merged-stakes';
 import type { MemoryTables } from '../types';
 
 export interface MemoryAnswerPort {
-  readonly proposals: Pick<MemoryProposals, 'approve' | 'reject'>;
+  readonly proposals: Pick<MemoryProposals, 'approve' | 'reject' | 'lapseProposal'>;
   readonly readTexts: () => Promise<ReadonlyMap<string, string>>;
 }
 
@@ -22,8 +26,9 @@ export interface MemoryProposalHandlerOptions {
 
   // null while the memory store has not started
   readonly readStore: () => MemoryAnswerPort | null;
-  readonly lapseIntervalMs: number;
 }
+
+const dayMs = 24 * 60 * 60 * 1000;
 
 // Memory writes its own versions in transactions of its own, so the shared path hands it the
 // guard to run inside them.
@@ -32,7 +37,7 @@ export function makeMemoryProposalHandler(
 ): ProposalKindHandler {
   return {
     family: 'memory',
-    lapseIntervalMs: options.lapseIntervalMs,
+    lapseIntervalMs: (config) => config.lapseDays.memory * dayMs,
     ownsTransaction: true,
     readBodies: async (_db, rows) => {
       const read = await options.readStore()?.readTexts();
@@ -81,16 +86,40 @@ export function makeMemoryProposalHandler(
       return { action: isMoved ? `${row.actionHash}:moved` : row.actionHash, rule: null };
     },
     approve: (run, row, answer) => applyAnswer(options, run, row, answer),
-    decline: (run, row, answer) => applyAnswer(options, run, row, answer),
-    lapse: async (tx, row) => {
-      await writeRecordsInTransaction(tx, options.log, [
-        {
-          kind: 'memory.proposal_lapsed',
-          definitions: options.definitions(),
-          ...(row.thread === null ? {} : { thread: row.thread }),
-          payload: { proposalID: row.id },
+    discard: async (run, row, outcome, answer) => {
+      if (outcome === 'declined' && answer !== null) {
+        return applyAnswer(options, run, row, answer);
+      }
+
+      if (outcome === 'withdrawn') {
+        invariant(run.tx, 'a withdrawal runs in the transaction of the caller that withdraws');
+
+        const merged = await readMergedStakes(run.tx, row.id);
+
+        return doneWith(row, 'withdrawn', merged);
+      }
+
+      const store = options.readStore();
+
+      if (store === null) {
+        return {
+          status: 'refused',
+          refusal: { error: 'NOT_ALLOWED', reason: 'memory_not_started' },
+        };
+      }
+
+      const isLapsed = await store.proposals.lapseProposal({
+        proposalID: row.id,
+        writeInTransaction: async (tx) => {
+          await run.guard(tx);
+
+          await settleInTransaction(run, tx, row, { outcome: 'lapsed', usedBy: null });
         },
-      ]);
+      });
+
+      return isLapsed
+        ? doneWith(row, 'lapsed', [])
+        : { status: 'refused', refusal: { error: 'CLOSED', state: 'lapsed' } };
     },
   };
 }
@@ -138,10 +167,14 @@ async function applyAnswer(
         actionHash: row.actionHash,
         ...(answer.note === undefined ? {} : { reason: answer.note }),
         identityID: answer.identityID,
-        writeInTransaction: run.guard,
+        writeInTransaction: async (tx) => {
+          await run.guard(tx);
+
+          await settleInTransaction(run, tx, row, { outcome: 'declined', usedBy: null });
+        },
       });
 
-      return { status: 'done', result: { proposalID: row.id, state: 'declined' } };
+      return doneWith(row, 'declined', []);
     }
 
     const memory = answer.memory;
@@ -155,15 +188,20 @@ async function applyAnswer(
       ...(memory?.ignoreCloseMatch === undefined
         ? {}
         : { ignoreCloseMatch: memory.ignoreCloseMatch }),
-      writeInTransaction: run.guard,
+      writeInTransaction: (tx) => run.guard(tx),
+      writeSettlement: (tx, approvalID) =>
+        settleInTransaction(run, tx, row, { outcome: 'approved', usedBy: approvalID }),
     });
 
     return approved.status === 'close_match'
       ? {
           status: 'done',
           result: { proposalID: row.id, state: 'pending', closeMatch: approved.item },
+          usedBy: null,
+          detail: null,
+          otherStakes: [],
         }
-      : { status: 'done', result: { proposalID: row.id, state: 'approved' } };
+      : doneWith(row, 'approved', []);
   } catch (error) {
     const refusal = pickProposalRefusal(error, row);
 
@@ -173,4 +211,39 @@ async function applyAnswer(
 
     return { status: 'refused', refusal };
   }
+}
+
+interface Settlement {
+  readonly outcome: 'approved' | 'declined' | 'lapsed';
+  readonly usedBy: string | null;
+}
+
+// Settles the proposal inside memory's own transaction. An approval settles after its write, so
+// the settlement names the approval it made.
+async function settleInTransaction(
+  run: ApplyRun,
+  tx: Transaction<unknown>,
+  row: SharedProposal,
+  settlement: Settlement,
+): Promise<void> {
+  const stakes = await readMergedStakes(tx, row.id);
+
+  await run.settle(tx, {
+    ...doneWith(row, settlement.outcome, stakes),
+    usedBy: settlement.usedBy,
+  });
+}
+
+function doneWith(
+  row: SharedProposal,
+  outcome: 'approved' | 'declined' | 'lapsed' | 'withdrawn',
+  otherStakes: readonly ProposalStake[],
+): DoneOutcome {
+  return {
+    status: 'done',
+    result: { proposalID: row.id, state: outcome },
+    usedBy: null,
+    detail: null,
+    otherStakes,
+  };
 }

@@ -15,8 +15,14 @@ export type { PromptApproval } from './prompt/read-prompt-approval';
 export { readPromptApproval } from './prompt/read-prompt-approval';
 export { renderPrompt } from './prompt/render-prompt';
 export { renderPromptProposalAnswer } from './prompt/render-prompt-proposal-answer';
-export type { PromptLapseSweepOptions } from './prompt/start-prompt-lapse-sweep';
-export { startPromptLapseSweep } from './prompt/start-prompt-lapse-sweep';
+
+export {
+  makePromptProposalHandler,
+  writePromptApproval,
+} from './prompt/make-prompt-proposal-handler';
+
+export { readPromptProposals } from './prompt/read-prompt-proposals';
+export { mapPromptProposalRecord } from './prompt/map-prompt-proposal-record';
 
 export type {
   CheckPromptProposal,
@@ -42,5 +48,4 @@ export type {
 export { untilConventions } from './prompt/until-conventions';
 export type { PromptExport } from './prompt/write-prompt-export-record';
 export { writePromptExportRecord } from './prompt/write-prompt-export-record';
-export { writePromptProposalAnswer } from './prompt/write-prompt-proposal-answer';
 export { promptsRecordTopics } from './prompt/prompts-record-topics';

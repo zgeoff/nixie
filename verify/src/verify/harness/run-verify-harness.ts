@@ -26,6 +26,7 @@ import { approveHeldInstall } from './approve-held-install';
 import { approveHeldMcp } from './approve-held-mcp';
 import { approveHeldRegion } from './approve-held-region';
 import { buildScriptedReplies } from './build-scripted-replies';
+import { collectActionProposals } from './collect-action-proposals';
 import { collectGuestAddresses } from './collect-guest-addresses';
 import { localMemoryConfig } from './local-memory-config';
 import { readLastModelInput } from './read-last-model-input';
@@ -310,16 +311,7 @@ export async function runVerifyHarness(): Promise<void> {
       const listed = await api.client.approvals.listItems();
       const records = await nixie.readRecords();
 
-      return {
-        proposals: listed.items.flatMap((item) => {
-          const record = records.find((entry) => entry.sequence === item.proposal.sequence);
-          const tool = record?.payload['tool'];
-
-          return item.proposal.kind === 'action' && typeof tool === 'string'
-            ? [{ proposalID: item.proposal.proposalID, tool }]
-            : [];
-        }),
-      };
+      return { proposals: collectActionProposals(listed.items, records) };
     },
     readLiveOpens: () => liveOpens.count,
     readCalendarWrites: () => ({

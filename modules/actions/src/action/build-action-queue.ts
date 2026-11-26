@@ -1,3 +1,4 @@
+import type { ProposalConfig } from '@heynixie/proposals';
 import { readOpenProposals } from '@heynixie/proposals';
 import type { RunStep, TaskClaim, TasksContext } from '@heynixie/tasks';
 import { buildStepRunID } from '@heynixie/tasks';
@@ -15,6 +16,9 @@ export interface ActionQueueBridge {
 
 export interface ActionQueueOptions {
   readonly ownerName: string | null;
+
+  // the lapse of each family, as the server config sets it; the defaults apply when absent
+  readonly proposalConfig?: ProposalConfig | undefined;
 }
 
 export function buildActionQueue(
@@ -38,18 +42,22 @@ export function buildActionQueue(
           );
         }
 
-        const queued = await createAllowedAction(context, {
-          step,
-          tool: action.call.tool,
-          actionHash: action.actionHash,
-          arguments: action.call.input,
-          decision: action.decision,
-          callSequence: action.callSequence,
-          deadlineAt: action.deadlineAt,
-          effects: action.effects,
-          destinations: action.destinations ?? [],
-          content: action.content ?? [],
-        });
+        const queued = await createAllowedAction(
+          context,
+          {
+            step,
+            tool: action.call.tool,
+            actionHash: action.actionHash,
+            arguments: action.call.input,
+            decision: action.decision,
+            callSequence: action.callSequence,
+            deadlineAt: action.deadlineAt,
+            effects: action.effects,
+            destinations: action.destinations ?? [],
+            content: action.content ?? [],
+          },
+          options?.proposalConfig,
+        );
 
         return 'shortID' in queued
           ? { status: 'asked', shortID: queued.shortID }

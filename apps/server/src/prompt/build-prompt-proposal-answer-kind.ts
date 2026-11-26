@@ -11,7 +11,6 @@ export function buildPromptProposalAnswerKind(
   return {
     name: 'prompt_proposal_answer',
     read: (range) => readPromptProposalAnswers(log, thread, range),
-    render: (detail, settings) =>
-      renderPromptProposalAnswer(detail, { ownerName: settings.ownerName }),
+    render: (detail) => renderPromptProposalAnswer(detail),
   };
 }

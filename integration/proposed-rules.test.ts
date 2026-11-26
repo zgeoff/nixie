@@ -1,7 +1,13 @@
 import { expect, test } from 'bun:test';
+import { defaultAPISettings, defaultApprovalSettings, runProposalStartChecks } from '@heynixie/api';
 import { startTestRules } from '@heynixie/api/test-utils';
-import { runGapChecks, writeProposedRule } from '@heynixie/definitions';
-import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
+import { writeProposedRule } from '@heynixie/definitions';
+import {
+  readRecords,
+  runProjectionRebuild,
+  withWriteTransaction,
+  writeRecordsInTransaction,
+} from '@heynixie/log';
 import {
   answerProposal,
   readOpenProposals,
@@ -10,11 +16,10 @@ import {
 } from '@heynixie/proposals';
 import invariant from 'tiny-invariant';
 
-async function setupTest() {
-  const rules = await startTestRules();
+async function setupTest(apiSettings = defaultAPISettings) {
+  const rules = await startTestRules(apiSettings);
 
   const dayMs = 24 * 60 * 60 * 1000;
-  const settings = { approvals: 3, windowDays: 30, quietDays: 30 };
 
   const readProposedRules = async () => {
     const open = await readOpenProposals(rules.log.writer.db, rules.clock.now());
@@ -55,7 +60,13 @@ async function setupTest() {
               const applied = await action.approve(...args);
 
               return applied.status === 'done'
-                ? { status: 'done' as const, result: applied.result }
+                ? {
+                    status: 'done' as const,
+                    result: applied.result,
+                    usedBy: applied.usedBy,
+                    detail: applied.detail,
+                    otherStakes: applied.otherStakes,
+                  }
                 : applied;
             },
           },
@@ -83,7 +94,12 @@ async function setupTest() {
     readProposedRules,
     approveSend,
     approveWithoutCheck,
-    runStartChecks: () => runGapChecks(rules.context, settings),
+    rebuild: () => runProjectionRebuild(rules.log),
+    runStartChecks: async () => {
+      const started = await runProposalStartChecks(rules.context, rules.runInForceSeed);
+
+      return started.checked;
+    },
 
     // the lapse that the release before writes for every row of the rule change family
     writeOlderLapse: (proposalID: string) =>
@@ -138,6 +154,47 @@ test('it gives the proposed rule the always-ask risk class and no deadline', asy
   const [proposed] = await ctx.readProposedRules();
 
   expect([proposed?.row.riskClass, proposed?.row.deadlineAt]).toStrictEqual(['always_ask', null]);
+});
+
+test('it lapses a rule proposed by an answer after the configured days', async () => {
+  const ctx = await setupTest({
+    ...defaultAPISettings,
+    approvals: {
+      ...defaultApprovalSettings,
+      lapseDays: { ...defaultApprovalSettings.lapseDays, rule_change: 5 },
+    },
+  });
+
+  await ctx.approveSend();
+  await ctx.approveSend();
+  await ctx.approveSend();
+
+  const [proposed] = await ctx.readProposedRules();
+
+  invariant(proposed, 'the third approval proposed a rule');
+
+  expect(proposed.row.lapsesAt - proposed.row.createdAt).toBe(5 * ctx.dayMs);
+});
+
+test('it lapses a rule proposed by a start check after the configured days', async () => {
+  const ctx = await setupTest({
+    ...defaultAPISettings,
+    approvals: {
+      ...defaultApprovalSettings,
+      lapseDays: { ...defaultApprovalSettings.lapseDays, rule_change: 9 },
+    },
+  });
+
+  await ctx.approveSend();
+  await ctx.approveSend();
+  await ctx.approveWithoutCheck('sam@example.org');
+  await ctx.runStartChecks();
+
+  const [proposed] = await ctx.readProposedRules();
+
+  invariant(proposed, 'the start check proposed a rule');
+
+  expect(proposed.row.lapsesAt - proposed.row.createdAt).toBe(9 * ctx.dayMs);
 });
 
 test('it proposes nothing after 2 approved calls', async () => {
@@ -397,6 +454,39 @@ test('it checks no group again at start once its last answer was checked', async
   const checked = await ctx.runStartChecks();
 
   expect(checked).toBe(0);
+});
+
+test('it names the rule that an approval put in force on the row, the settlement and a rebuilt row', async () => {
+  const ctx = await setupTest();
+
+  await ctx.approveSend();
+  await ctx.approveSend();
+  await ctx.approveSend();
+
+  const [proposed] = await ctx.readProposedRules();
+
+  invariant(proposed, 'the 3 approvals opened a proposal');
+
+  await ctx.answer(proposed.row.id, 'approve');
+
+  const live = await readProposal(ctx.log.writer.db, proposed.row.id);
+
+  const settled = await readRecords(ctx.log, {
+    afterSequence: 0,
+    kinds: ['proposals.settled'],
+  });
+
+  await ctx.rebuild();
+
+  const rebuilt = await readProposal(ctx.log.writer.db, proposed.row.id);
+
+  const settlements = settled
+    .map((entry) => entry.record.payload)
+    .filter((payload) => payload['proposalID'] === proposed.row.id)
+    .map((payload) => payload['usedBy']);
+
+  expect(live?.usedBy).toStartWith('proposed-');
+  expect([settlements, rebuilt?.usedBy]).toStrictEqual([[live?.usedBy], live?.usedBy]);
 });
 
 test('it puts the approved rule in force with the reason that the export carries', async () => {

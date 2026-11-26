@@ -4,6 +4,7 @@ export type {
 } from './action/build-action-proposal-input';
 
 export { buildActionProposalInput } from './action/build-action-proposal-input';
+export { writeActionProposal } from './action/write-action-proposal';
 export type { ConsentFacts, ConsentOptions } from './consent/check-consent';
 export { applyEffectOverride } from './effect/apply-effect-override';
 export type { EffectOverrideResult } from './effect/apply-effect-override';
@@ -17,7 +18,6 @@ export type { PendingActionProposal } from './action/read-pending-action-proposa
 export { readPendingActionProposals } from './action/read-pending-action-proposals';
 export type { ActionProposalState } from './action/read-action-proposals';
 export { readActionProposals } from './action/read-action-proposals';
-export { writeActionProposalLapses } from './action/write-action-proposal-lapses';
 export { knownContactsProjection } from './contact/known-contacts-projection';
 export type { KnownContactEntry } from './contact/read-known-contacts';
 export { readKnownContactIDs, readKnownContacts } from './contact/read-known-contacts';
@@ -140,8 +140,8 @@ export { makeActionProposalHandler } from './action/make-action-proposal-handler
 export { mapActionProposalRecord } from './action/map-action-proposal-record';
 export { buildActionHash } from './action/build-action-hash';
 export { alwaysAskEffects } from './effect/always-ask-effects';
-export type { GapGroupKey } from './action/build-gap-group-hash';
-export { buildGapGroupHash } from './action/build-gap-group-hash';
+export type { SuggestedRuleGroupKey } from './action/build-suggested-rule-group-hash';
+export { buildSuggestedRuleGroupHash } from './action/build-suggested-rule-group-hash';
 export { destinationPatternSchema } from './rule/destination-pattern-schema';
 export { ruleBodySchema } from './rule/rule-body-schema';
 export { ruleObjectSchema } from './rule/rule-body-schema';

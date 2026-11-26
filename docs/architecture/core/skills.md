@@ -67,7 +67,6 @@ The Effect column gives the effect each tool declares, which rules match on, as
 | `skill_reload`     | `note`  | The named skill's old and new version                        |
 | `skill_reload_all` | `note`  | The old and new version of each skill on the list or the pin |
 | `skill_write`      | `note`  | Applied, or the proposal's short ID, pending approval        |
-| `skill_pending`    | `read`  | Each skill proposal that waits for the user's answer         |
 | `skill_vendor`     | `fetch` | The URL of the pull request that adds a published skill      |
 
 `skill_read` serves the pinned version. Without a path, it returns the instructions without their
@@ -129,36 +128,31 @@ The server refuses an answer when the diff the user read no longer shows what th
 - an answer to a proposal whose base is no longer the version in force.
 
 The server records nothing for a refused answer, and the listing shows a proposal whose base moved
-as stale. The server closes a proposal with a record on the thread of the task that wrote it:
+as stale. The proposal is one row of [the shared row](../policy/approvals.md#the-shared-row), and
+[one lifecycle](../policy/approvals.md#one-lifecycle) moves it. The server closes it with a
+`proposals.settled` record on the thread of the task that wrote it, in the transaction that moves
+the row:
 
-- **Approval.** The record names the user as approver. In the same transaction, the server runs the
-  seed checks on the files again and stores the skill in
+- **Approval.** The server runs the seed checks on the files again, writes a `skills.write_approved`
+  record that names the user as approver, and stores the skill in
   [the store of written skills](./definitions.md#skills-that-nixie-wrote), under a new ID in its
   `approval_id` column. The server then runs a seed of the definitions in force, which puts the
   skill in force for the next task. The user may approve edited files in place of the proposal's,
   and the record notes that they are edited. nixie then
   [exports the skill](./definitions.md#the-export-to-the-definitions-repo) to the user's definitions
   repo as a pull request.
-- **Rejection.** The record holds the user's reason in its [erasable fields](./erasable-fields.md).
-- **Lapse.** A proposal with no answer lapses at its lapse time, a fixed time after the proposal,
-  which [the shared row](../policy/approvals.md#the-shared-row) holds. An hourly sweep records each
-  lapse, and the listing leaves out a proposal past its lapse time before the sweep reaches it.
+- **Rejection.** The settlement holds the user's reason in its
+  [erasable fields](./erasable-fields.md).
+- **Lapse.** A proposal with no answer lapses after `approvals.lapse_days.skill` days, 14 by
+  default. One sweep lapses the open rows of every family.
+- **Withdrawal.** A `skill_write` of a skill name that has an open proposal from the same task
+  withdraws that proposal, and the result names the short ID it replaced.
 
-A proposal moves once, from pending to approved, rejected or lapsed. `modules/proposals` holds those
-moves, the lapse time and the sweep for any kind of proposal, and `modules/skills` gives it the
-records that each skill proposal's move reads and writes.
-
-`skill_pending` lists the pending proposals to the model, oldest first, so the model knows what it
-proposed after a compaction drops the turn it proposed in, and never proposes a skill that already
-waits. Each entry gives the proposal's short ID, the skill's name, whether it is a new skill or a
-new version and the version it replaces, and its age. The tool lists and never answers, because only
-the user approves or rejects a proposal. The model wrote each name, so the result counts as
-untrusted, as `memory.pending` does in [the memory store](../memory/store.md#the-models-tools).
-
-In the conversation's next turn, the server names each of its proposals that closed, with the reason
-for a rejection, so the model learns why the user turned a skill down. For an approval, the server
-tells the model to reload the skill, because the conversation's pin holds the versions it started
-with.
+In the next turn of the conversation, and in the inbox of a task, the model reads each settlement:
+the reason for a rejection, the short ID that a replacement took over, and for an approval an
+instruction to call `skill_reload`, because the conversation's pin holds the versions it started
+with. The model has no tool that lists its pending proposals; the settlement tells it what happened
+to each.
 
 ### Writes under a rule
 

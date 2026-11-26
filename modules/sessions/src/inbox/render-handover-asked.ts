@@ -1,4 +1,4 @@
-import { handoverAskedCodec, handoverAskedFieldsSchema } from '@heynixie/connectors';
+import { handoverAskedFieldsSchema } from '@heynixie/connectors';
 import type { LogRecord } from '@heynixie/log';
 import { mintBlockID, renderSystemMessage } from '@heynixie/wire';
 import { formatMessageTime } from '../message/format-message-time';
@@ -14,8 +14,7 @@ export function renderHandoverAsked(
   ownerName: string | null,
   mint: () => string = mintBlockID,
 ): string {
-  const shortID = handoverAskedCodec.decode(record.payload).shortID;
-  const first = `[#${shortID}] You asked ${ownerName ?? 'the user'} to take over the computer.`;
+  const first = `[#${String(record.sequence)}] You asked ${ownerName ?? 'the user'} to take over the computer.`;
   const reason = findReason(record);
 
   return renderSystemMessage({

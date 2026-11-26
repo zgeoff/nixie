@@ -6,8 +6,10 @@ import { Kysely, sql } from 'kysely';
 import { runMigrations } from '../migration/run-migrations';
 import { nixieSchema } from '../schema/nixie-schema';
 import { buildSqliteWorkerDialect } from '../sqlite/build-sqlite-worker-dialect';
+import { buildSchemaBefore } from '../test-utils/build-schema-before';
 import { readRunPrefix } from '../test-utils/read-run-prefix';
 import { gapTablesMigration } from './0057-gap-tables-migration';
+import { proposalsPromptFamilyMigration } from './0097-proposals-prompt-family-migration';
 
 async function setupTest() {
   const stack = new AsyncDisposableStack();
@@ -25,7 +27,10 @@ async function setupTest() {
 
   stack.defer(() => db.destroy());
 
-  await runMigrations(db, { schema: nixieSchema, copyDir: directory });
+  await runMigrations(db, {
+    schema: buildSchemaBefore(nixieSchema, proposalsPromptFamilyMigration),
+    copyDir: directory,
+  });
 
   return { db };
 }

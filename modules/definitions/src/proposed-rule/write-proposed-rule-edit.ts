@@ -1,11 +1,11 @@
-import { writeRecordsInTransaction } from '@heynixie/log';
 import { ruleBodySchema } from '@heynixie/policy';
 import type { ProposalContext, SharedProposalState } from '@heynixie/proposals';
-import { proposalsWithdrawnCodec, readProposal } from '@heynixie/proposals';
+import { readProposal } from '@heynixie/proposals';
 import type { Transaction } from 'kysely';
 import invariant from 'tiny-invariant';
 import { readProposalRecords } from '../utils/read-proposal-records';
 import { ruleProposedCodec } from './rule-proposed-codec';
+import { withdrawRuleProposal } from './withdraw-rule-proposal';
 import { writeProposedRule } from './write-proposed-rule';
 
 export interface ProposedRuleEditRequest {
@@ -63,13 +63,7 @@ export async function writeProposedRuleEdit(
 
   const proposed = ruleProposedCodec.decode(record.payload);
 
-  await writeRecordsInTransaction(tx, context.log, [
-    {
-      kind: proposalsWithdrawnCodec.kind,
-      definitions: context.definitions(),
-      payload: proposalsWithdrawnCodec.encode({ proposalID: row.id }),
-    },
-  ]);
+  await withdrawRuleProposal(tx, context, row.id);
 
   const written = await writeProposedRule(tx, context, {
     groupHash: proposed.groupHash,

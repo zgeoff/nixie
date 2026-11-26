@@ -1,5 +1,6 @@
 import { readItemKeys } from '../item-key/read-item-keys';
 import type { MemoryTables, StoreParts } from '../types';
+import { buildProposalStateFilter } from '../utils/build-proposal-state-filter';
 import { decodeProposalText } from '../utils/decode-proposal-text';
 
 export function readRejectedEdits(
@@ -22,7 +23,7 @@ export function readRejectedEdits(
         'memory_proposals.created_sequence',
       ])
       .where('memory_proposals.proposal_id', 'in', proposalIDs)
-      .where('memory_proposals.status', '=', 'rejected')
+      .where(buildProposalStateFilter({ state: 'declined' }, 'memory_proposals.proposal_id'))
       .where('memory_proposals.origin', '=', 'conversation')
       .where('memory_proposals.is_new_item', '=', 0)
       .where('memory_items.state', 'in', ['active', 'retired'])

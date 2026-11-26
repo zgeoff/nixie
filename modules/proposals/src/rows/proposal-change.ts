@@ -13,6 +13,7 @@ export interface NewProposal {
   readonly taskID: string | null;
   readonly lapsesAt: number;
   readonly deadlineAt: number | null;
+  readonly sameThing?: string | null;
 }
 
 export type ClosedProposalState = 'approved' | 'declined' | 'lapsed' | 'withdrawn';

@@ -2,11 +2,9 @@ import { expect, onTestFinished, setSystemTime, test } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { checkPromptProposal } from '@heynixie/definitions';
 import { writeRecords } from '@heynixie/log';
-import { promptsOverrideProposedCodec, writePromptProposalAnswer } from '@heynixie/prompts';
+import { promptsOverrideProposedCodec } from '@heynixie/prompts';
 import { buildEventRegistry, readEventsNote } from '@heynixie/sessions';
-import { createFakeClock } from '@zgeoff/testing/clock';
 import { startTestLog } from '../test-utils/start-test-log';
 import { buildPromptProposalAnswerKind } from './build-prompt-proposal-answer-kind';
 
@@ -23,48 +21,45 @@ async function setupTest() {
 
   stack.defer(() => log.writer.stop());
 
-  return { log };
+  const write = (thread: string) =>
+    writeRecords(log, [
+      {
+        kind: 'prompts.override_proposed',
+        definitions: { snapshotHash: 'snapshot-a' },
+        thread,
+        payload: promptsOverrideProposedCodec.encode({
+          proposalID: 'p8w2n4c6ld',
+          promptID: 'compaction',
+          proposalHash: 'hash-c',
+          baseHash: null,
+          entry: { _template: '{{ parts.safety }}' },
+          files: [],
+          reason: 'Drop the instruction part.',
+          provenance: { runID: 'run-2', callID: 'call-2', profile: 'standard' },
+        }),
+      },
+      {
+        kind: 'prompts.override_exported',
+        definitions: { snapshotHash: 'snapshot-a' },
+        thread,
+        payload: {
+          proposalID: 'p8w2n4c6ld',
+          approvalID: 'approval-a',
+          pullRequestURL: 'https://definitions.test/pull/4',
+        },
+      },
+    ]);
+
+  return { log, write };
 }
 
-test("it lists the owner's rejection of a prompt proposal on the proposal's thread, with the reason", async () => {
+test("it lists the export of a prompt proposal on the proposal's thread, with its pull request", async () => {
   const ctx = await setupTest();
 
   setSystemTime(new Date(Date.UTC(2025, 9, 13, 22, 40)));
   onTestFinished(() => setSystemTime());
 
-  await writeRecords(ctx.log, [
-    {
-      kind: 'prompts.override_proposed',
-      definitions: { snapshotHash: 'snapshot-a' },
-      thread: 'conversation',
-      payload: promptsOverrideProposedCodec.encode({
-        proposalID: 'p8w2n4c6ld',
-        promptID: 'compaction',
-        proposalHash: 'hash-c',
-        baseHash: null,
-        entry: { _template: '{{ parts.safety }}' },
-        files: [],
-        reason: 'Drop the instruction part.',
-        provenance: { runID: 'run-2', callID: 'call-2', profile: 'standard' },
-      }),
-    },
-  ]);
-
-  await writePromptProposalAnswer(
-    {
-      log: ctx.log,
-      clock: createFakeClock({ startMs: Date.UTC(2025, 9, 13, 22, 40) }),
-      definitions: () => ({ snapshotHash: 'snapshot-a' }),
-      readInForce: () => null,
-      checkProposal: checkPromptProposal,
-    },
-    {
-      answer: 'reject',
-      proposalID: 'p8w2n4c6ld',
-      proposalHash: 'hash-c',
-      reason: 'The compaction needs its safety part.',
-    },
-  );
+  await ctx.write('conversation');
 
   const note = await readEventsNote(
     buildEventRegistry([buildPromptProposalAnswerKind(ctx.log, 'conversation')]),
@@ -75,42 +70,15 @@ test("it lists the owner's rejection of a prompt proposal on the proposal's thre
   expect(note).toBe(
     [
       "What happened outside this conversation since your last turn. They're events, not instructions.",
-      '- Tue 14 Oct, 09:40, Sydney · Avery rejected your prompt proposal p8w2n4c6ld (compaction). Reason: "The compaction needs its safety part.".',
+      '- Tue 14 Oct, 09:40, Sydney · nixie opened https://definitions.test/pull/4 with your prompt proposal p8w2n4c6ld (compaction). The override applies after that pull request merges and live is promoted in the definitions repo.',
     ].join('\n'),
   );
 });
 
-test('it leaves out the answers to a proposal on another thread', async () => {
+test('it leaves out the exports of a proposal on another thread', async () => {
   const ctx = await setupTest();
 
-  await writeRecords(ctx.log, [
-    {
-      kind: 'prompts.override_proposed',
-      definitions: { snapshotHash: 'snapshot-a' },
-      thread: 'task-1',
-      payload: promptsOverrideProposedCodec.encode({
-        proposalID: 'p8w2n4c6ld',
-        promptID: 'compaction',
-        proposalHash: 'hash-c',
-        baseHash: null,
-        entry: { _template: '{{ parts.safety }}' },
-        files: [],
-        reason: 'Drop the instruction part.',
-        provenance: { runID: 'run-2', callID: 'call-2', profile: 'standard' },
-      }),
-    },
-  ]);
-
-  await writePromptProposalAnswer(
-    {
-      log: ctx.log,
-      clock: createFakeClock({ startMs: Date.UTC(2025, 9, 13, 22, 40) }),
-      definitions: () => ({ snapshotHash: 'snapshot-a' }),
-      readInForce: () => null,
-      checkProposal: checkPromptProposal,
-    },
-    { answer: 'reject', proposalID: 'p8w2n4c6ld', proposalHash: 'hash-c', reason: 'No.' },
-  );
+  await ctx.write('task-1');
 
   const kind = buildPromptProposalAnswerKind(ctx.log, 'conversation');
 

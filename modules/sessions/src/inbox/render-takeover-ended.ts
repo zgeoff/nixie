@@ -30,7 +30,7 @@ export function renderTakeoverEnded(
   return renderSystemMessage({
     type: 'computer',
     at: formatMessageTime(record.recordedAt, null, times),
-    body: [`[#${ended.shortID}] ${first}`, ...renderSeen(fields, mint)].join('\n'),
+    body: [`[#${String(record.sequence)}] ${first}`, ...renderSeen(fields, mint)].join('\n'),
   });
 }
 

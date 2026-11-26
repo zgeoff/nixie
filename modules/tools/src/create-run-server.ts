@@ -1,6 +1,6 @@
 import { JSON_OBJECT_SCHEMA } from '@heynixie/log';
 import { Server } from '@modelcontextprotocol/server';
-import type { ToolCallOptions } from './run-tool-call';
+import type { ToolCallOptions } from './call-record/tool-call-options';
 import { runToolCall } from './run-tool-call';
 import type { GuestToolRun } from './types';
 

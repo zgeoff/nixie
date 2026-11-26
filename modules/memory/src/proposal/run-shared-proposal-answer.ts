@@ -1,4 +1,3 @@
-import { writeRecordsInTransaction } from '@heynixie/log';
 import type {
   ApplyOutcome,
   ApplyRun,
@@ -8,7 +7,16 @@ import type {
   SharedProposal,
   SharedProposalState,
 } from '@heynixie/proposals';
-import { answerProposal, buildProposalsProjection } from '@heynixie/proposals';
+import {
+  answerProposal,
+  buildProposalsProjection,
+  defaultProposalConfig,
+} from '@heynixie/proposals';
+import {
+  conversationTaskID,
+  readSettlementTarget,
+  writeThreadRecordInTransaction,
+} from '@heynixie/tasks';
 import type { Transaction } from 'kysely';
 import invariant from 'tiny-invariant';
 import { match } from 'ts-pattern';
@@ -18,6 +26,7 @@ import { MemoryProposalNotFoundError } from '../utils/error/memory-proposal-not-
 import { ProposalClosedError } from '../utils/error/proposal-closed-error';
 import { ProposalHashError } from '../utils/error/proposal-hash-error';
 import { mapMemoryProposalRecord } from './map-memory-proposal-record';
+import { readMergedStakes } from './read-merged-stakes';
 import { writeProposalApproval } from './write-proposal-approval';
 import { writeProposalRejection } from './write-proposal-rejection';
 
@@ -47,10 +56,13 @@ export async function runSharedProposalAnswer(
     definitions: parts.context.definitions,
     handlers: new Map([['memory', handler]]),
     projection: memoryProposalsProjection,
+    config: defaultProposalConfig,
+    conversationThread: conversationTaskID,
+    readSettlementTarget: (tx, thread, proposedSequence) =>
+      readSettlementTarget(tx, thread, proposedSequence),
     readDeferContext: () => Promise.resolve({ quietHours: null, zone: 'UTC' }),
-    writeThreadRecord: async (tx, input) => {
-      await writeRecordsInTransaction(tx, parts.context.log, [input]);
-    },
+    writeThreadRecord: (tx, input) =>
+      writeThreadRecordInTransaction(tx, { log: parts.context.log }, input),
   };
 
   const answer = request.answer;
@@ -62,6 +74,9 @@ export async function runSharedProposalAnswer(
       actionHash: answer.actionHash,
       choice: request.choice,
       identityID: answer.identityID,
+      ...(request.choice === 'decline' && request.answer.reason !== undefined
+        ? { note: request.answer.reason }
+        : {}),
     },
     { family: 'memory' },
   ).catch((error: unknown) => {
@@ -91,13 +106,12 @@ function buildAnswerHandler(answerRun: SharedAnswerRun): ProposalKindHandler {
 
   return {
     family: 'memory',
-    lapseIntervalMs: 0,
+    lapseIntervalMs: () => null,
     ownsTransaction: true,
     readBodies: () => Promise.resolve(new Map()),
     readHashes: (_db, row) => Promise.resolve({ action: row.actionHash, rule: null }),
     approve: apply,
-    decline: apply,
-    lapse: () => Promise.resolve(),
+    discard: apply,
   };
 }
 
@@ -113,6 +127,18 @@ async function writeAnswer(
   const writeInTransaction = async (tx: Transaction<unknown>) => {
     await run.guard(tx);
 
+    // A caller that answers through the shared path settles in its own callback, after its own
+    // guard, so settling here would close the row under that guard.
+    if (request.answer.writeInTransaction === undefined && request.choice === 'decline') {
+      await run.settle(tx, {
+        status: 'done',
+        result: { proposalID: row.id, state: 'declined' },
+        usedBy: null,
+        detail: null,
+        otherStakes: await readMergedStakes(tx, row.id),
+      });
+    }
+
     try {
       await request.answer.writeInTransaction?.(tx);
     } catch (error) {
@@ -123,16 +149,56 @@ async function writeAnswer(
   if (request.choice === 'decline') {
     await writeProposalRejection(parts, { ...request.answer, writeInTransaction });
 
-    return { status: 'done', result: { proposalID: row.id, state: 'declined' } };
+    return {
+      status: 'done',
+      result: { proposalID: row.id, state: 'declined' },
+      usedBy: null,
+      detail: null,
+      otherStakes: [],
+    };
   }
 
-  const result = await writeProposalApproval(parts, { ...request.answer, writeInTransaction });
+  const writeSettlement = async (tx: Transaction<unknown>, approvalID: string) => {
+    if (request.answer.writeSettlement !== undefined) {
+      await request.answer.writeSettlement(tx, approvalID);
+
+      return;
+    }
+
+    if (request.answer.writeInTransaction === undefined) {
+      await run.settle(tx, {
+        status: 'done',
+        result: { proposalID: row.id, state: 'approved' },
+        usedBy: approvalID,
+        detail: null,
+        otherStakes: await readMergedStakes(tx, row.id),
+      });
+    }
+  };
+
+  const result = await writeProposalApproval(parts, {
+    ...request.answer,
+    writeInTransaction,
+    writeSettlement,
+  });
 
   answerRun.applied.result = result;
 
   return result.status === 'close_match'
-    ? { status: 'done', result: { proposalID: row.id, state: 'pending', closeMatch: result.item } }
-    : { status: 'done', result: { proposalID: row.id, state: 'approved' } };
+    ? {
+        status: 'done',
+        result: { proposalID: row.id, state: 'pending', closeMatch: result.item },
+        usedBy: null,
+        detail: null,
+        otherStakes: [],
+      }
+    : {
+        status: 'done',
+        result: { proposalID: row.id, state: 'approved' },
+        usedBy: null,
+        detail: null,
+        otherStakes: [],
+      };
 }
 
 const memoryStatuses: Readonly<Record<SharedProposalState, string>> = {

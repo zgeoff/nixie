@@ -351,7 +351,7 @@ function setupTest() {
       'tasks.list',
       'task.message',
       'memory.recall',
-      'memory.pending',
+      'proposals.pending',
       'memory.remember',
       'memory.edit',
       'moment.edit',
@@ -392,7 +392,7 @@ test('it gives a task that reads memory each memory write tool that the start na
       'task.report',
       'memory.recall',
       'memory.edit',
-      'memory.pending',
+      'proposals.pending',
     ]),
   });
 });
@@ -414,7 +414,7 @@ test('it gives a task that reads memory a moment write tool that the start names
       'task.report',
       'moment.edit',
       'memory.recall',
-      'memory.pending',
+      'proposals.pending',
     ]),
   });
 });
@@ -436,7 +436,7 @@ test('it plans a memory write tool that the start names by its SDK name under th
       'task.report',
       'memory.edit',
       'memory.recall',
-      'memory.pending',
+      'proposals.pending',
     ]),
   });
 });
@@ -496,7 +496,7 @@ test('it lists each memory write tool that the starter holds as accepted when th
         'tasks.list',
         'task.message',
         'memory.recall',
-        'memory.pending',
+        'proposals.pending',
         'memory.remember',
         'memory.edit',
         'moment.edit',
@@ -515,7 +515,7 @@ test('it gives a task that reads memory no write tool when the start names none'
       'task.message',
       'task.report',
       'memory.recall',
-      'memory.pending',
+      'proposals.pending',
     ]),
   });
 });

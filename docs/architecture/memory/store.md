@@ -629,7 +629,6 @@ then runs as in a bulk forget of retired items.
 | Tool              | Effect         | Does                                                            |
 | ----------------- | -------------- | --------------------------------------------------------------- |
 | `memory.recall`   | `read`         | Recalls items by query, by ID, by topic or a page at a time     |
-| `memory.pending`  | `read`         | Lists the proposals that wait for the user's review             |
 | `memory.usage`    | `read`         | Lists the unpinned active items that no search or push surfaced |
 | `memory.remember` | `memory_write` | Creates an item, with a quote or a photo as its source          |
 | `memory.edit`     | `memory_write` | Edits an item at a revision it read, with a quote               |
@@ -663,13 +662,19 @@ line names the version that replaced or retired it. A stale revision, a missing 
 state returns to the model as the tool's refusal, so the model reads the item again. The model can
 retire, pin and unpin an item and can never restore, undo or forget one ([pins](./writes.md#pins)).
 
-`memory.pending` lists every pending proposal, the model's own and a task's, so the model knows what
-it proposed after a compaction drops the turn it proposed in, and never proposes a change that
-already waits. Each entry gives the proposal's short ID, text, review reason, age, and who noted it.
-The tool lists and never answers, because only the user approves or rejects a proposal. nixie marks
-its result as untrusted content, as it marks a recall result.
+`proposals.pending` lists the pending proposals of the model and of the tasks it started, so the
+model knows what it proposed after a compaction drops the turn it proposed in, and never proposes a
+change that already waits ([approvals](../policy/approvals.md#one-lifecycle)). A memory proposal
+shows its change, gist, topic and review reason, and its text on request. The tool lists and never
+answers, because only the user approves or rejects a proposal. nixie marks its result as untrusted
+content, as it marks a recall result.
+
+A memory proposal holds its sealed body and its merges in `memory_proposals`. Its state and its
+lapse live in the shared row, and its short ID comes from that row. When a proposal merges into an
+open one, the merged proposer hears the settlement of the open one, and the short ID that the write
+returns is the open proposal's.
 
 The records of a memory tool call never hold an item's text, so a forget leaves no readable copy in
 them. A recall's result record lists only the items and versions it returned, and a pending call's
-only the proposal IDs. Each call record leaves out the free text the model wrote, the search words,
-the memory text and both quotes, because the model can copy an item's text into any of them.
+only the short IDs. Each call record leaves out the free text the model wrote, the search words, the
+memory text and both quotes, because the model can copy an item's text into any of them.

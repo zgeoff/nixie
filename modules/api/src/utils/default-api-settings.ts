@@ -1,3 +1,4 @@
+import { defaultProposalConfig } from '@heynixie/proposals';
 import { conversationTaskID } from '@heynixie/tasks';
 import type { APISettings } from '../types';
 
@@ -7,6 +8,7 @@ export const defaultApprovalSettings = {
   morningAt: '08:00',
   quietHours: null,
   defaultZone: 'Australia/Sydney',
+  lapseDays: defaultProposalConfig.lapseDays,
 } as const;
 
 export const defaultPolicySettings = {

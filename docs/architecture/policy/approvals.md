@@ -1,26 +1,26 @@
 # Approvals
 
-Every proposal that waits for the user's answer, whatever it proposes, has one row in the
-`proposals` table and one answer path. A proposal is a tool call that policy holds, a memory write,
-a skill change or a rule change. A client lists the rows, shows each with the choices the host
-offers, and sends one answer. The host checks the answer the same way for every kind.
+Every proposal that waits for the user's answer has one row in the `proposals` table. A proposal is
+a tool call that policy holds, a memory write, a skill change, a rule change, an MCP server change
+or a prompt override. A client lists the rows, shows each with the choices the host offers, and
+sends one answer. The host checks the answer the same way for every kind.
 
 ## The shared row
 
 Each kind keeps its own records and its own projection. A second projection folds those records, and
-3 records of the approvals module, into the `proposals` row: its kind, risk class, action hash, rule
+3 records of the proposals module, into the `proposals` row: its kind, risk class, action hash, rule
 hash, cause, state, lapse time and defer fields. A kind module reads only its own payloads and says
-what each means for the row, so the approvals module imports no kind module and the row rebuilds
+what each means for the row, so the proposals module imports no kind module and the row rebuilds
 from the log. The migration that creates the table folds the records that already exist, and a test
 holds that fold equal to the live one.
 
-A row's family is `action`, `memory`, `skill` or `rule_change`. A `rule_change` row takes one of 3
-causes, and its cause picks the handler: `rule_widening` for a change from the definitions repo, and
-`proposed_rule` and `mandate`, which the [rules](rules.md#proposed-rules) doc covers. The 3 share
-one family so the release before still reads the proposals table. That release lapses every
-`rule_change` row with `rules.change_lapsed`, and refuses an answer to a row it has no record for.
-The host's rule answer route answers only a `rule_widening` row, because the other 2 take the
-passkey.
+A row's family is `action`, `memory`, `skill`, `rule_change`, `mcp` or `prompt`. A `rule_change` row
+takes one of 3 causes, and its cause picks the handler: `rule_widening` for a change from the
+definitions repo, and `proposed_rule` and `mandate`, which the [rules](rules.md#proposed-rules) doc
+covers. The 3 share one family so the release before still reads the proposals table. That release
+lapses every `rule_change` row with `rules.change_lapsed`, and refuses an answer to a row it has no
+record for. The host's rule answer route answers only a `rule_widening` row, because the other 2
+take the passkey.
 
 A closed row never reopens. A row is pending, deferred, approved, declined, lapsed or withdrawn.
 
@@ -28,6 +28,68 @@ The row names the identity that answered it in `answered_by`, set when the kind'
 folds in. An approve, an always allow and a decline set it, and a defer does not, because a deferred
 row is still open. A lapse and a withdrawal set none. A migration backfills the column from the same
 records, and a test holds the backfill equal to the fold.
+
+## One lifecycle
+
+Every family goes through the same steps, in the proposals module:
+
+1. `proposeInTransaction` draws the short ID and writes `proposals.proposed`, which creates the row.
+   The family writes its body record, such as `skills.write_proposed`, in the same transaction, with
+   the same proposal ID. A body record creates a row only when no `proposals.proposed` came before
+   it, so a log written before the lifecycle rebuilds to one row per proposal.
+2. A proposal replaces an open one of the same family, the same proposer and the same `sameThing`
+   key: the core withdraws the old one in the same transaction. A proposal with no proposer, and a
+   family with no key (memory, action), never replaces.
+3. One sweep lapses the open rows of every family once their lapse time passes, through each
+   family's `discard`. A row whose family has no handler stays open. When a family's writes open
+   their own transaction, as memory's do, the sweep hands each of its rows to that family, which
+   lapses the row in a transaction of its own.
+4. An approve or a discard that succeeds writes `proposals.settled` in the same transaction, on the
+   thread of each proposer. A refusal writes none, and the row stays open.
+5. Each proposer hears the settlement. A conversation reads it in the note of its next turn, and a
+   task reads it as an inbox record that wakes it. A task gets no inbox record for an action's
+   settlement, and hears `action.outcome` instead. When a proposer's own withdrawal closes the row,
+   that proposer's note leaves the settlement out, because the withdraw call's result holds the
+   outcome. A finished task takes no input, so its settlement goes to the report target of the task
+   run that opened or merged into the proposal, or else to the task's starter. That settlement
+   carries the task's ID. When a finished task has neither, its settlement stays on its own thread
+   as a plain record that wakes nothing, so its audit thread stays whole. Settlements that land in
+   one batch read as one message.
+
+Every close of a row goes through the lifecycle, so each writes `proposals.settled`: an answer, a
+lapse, a proposer's withdrawal, a decline of an ask that withdraws the suggested rule resting on it,
+the seed that withdraws the pending rule changes it applies, and the purge of a memory item that
+lapses its pending proposals. A proposal that nixie makes on its own, such as a suggested rule, has
+no proposer, so its settlement has no thread.
+
+A proposal's short ID comes from `createShortID` with a check against every earlier row, for every
+family. A call by short ID finds the newest row that holds it, and a call by proposal ID finds that
+row, so the approval card, which sends the proposal ID, still answers an older row that shares a
+short ID. Rows made before the lifecycle keep the short IDs they hold.
+
+The model lists and withdraws its proposals with 2 tools. `proposals.pending` lists the open rows
+that the caller proposed, and those of the tasks the caller started itself, closed tasks included: a
+memory row shows its change, gist, topic, reason and, on request, its text, and any other row shows
+the card's sentence. `proposals.withdraw` withdraws the caller's own stake in an open row, one that
+it proposed or that it merged a memory proposal into, and reports a row that closed already. The row
+stays open for the other proposers, and `proposals.proposer_left` records that this proposer no
+longer holds a stake. The last proposer to withdraw closes the row, and the settlement reaches no
+thread of a proposer that left.
+
+A family's handler supplies `lapseIntervalMs(config, cause)`, which reads `approvals.lapse_days`
+from the server config, and `discard`, which undoes what the proposal held for a decline, a lapse or
+a withdrawal. A cause that lapses only at its deadline, such as a mandate, returns no interval.
+`approvals.lapse_days` holds the days per family: 3 for an action and 14 for each other family. The
+key `memory.proposal_lapse_days` is no longer accepted, and the server refuses to start while a
+config holds it.
+
+A prompt override takes the `prompt` family, risk class `always_ask`, so approving it needs a
+passkey. Its action hash is the override's hash, and `readHashes` folds in the base it replaces, so
+an approval after the override in force moved is refused as a conflict.
+
+A rollback past the release that ships the lifecycle needs a restore from a backup taken before the
+upgrade: the upgrade drops the memory table's `status` and `lapse_at` columns and renames the
+suggested-rule tables.
 
 ## Listing and reading
 
@@ -46,9 +108,10 @@ with its time, the reason it came to the user and its risk class. Items list old
 item has no fields when a forget removed the arguments. The list sits apart so that a client of the
 release before still reads every row it knows.
 
-Every group but routine lists its oldest row first. The call leaves out a closed row, a row past its
-lapse and a row whose body is gone. A row whose kind has no handler, such as after a rollback of
-that kind, stays out of the list and refuses every answer as not allowed.
+Within each risk class, every group but routine lists its oldest row first. The call leaves out a
+closed row, a row past its lapse time and a row whose body is gone. A row whose kind has no handler,
+such as after a rollback of that kind, stays out of the list, and the host refuses every answer to
+it as not allowed.
 
 `approvals.readProposals` takes up to 100 proposal IDs, full or short, and returns each row in any
 state with its body, its task, the device name of the identity that answered it and whether the
@@ -97,20 +160,19 @@ A row that the user approved for an action carries a `call` field when `approval
 reads it. The host derives it at read time from the action the approval queued, so the card follows
 the call's own records and never the model's words.
 
-| `call.state` | Card text                  | Source                                                              |
-| ------------ | -------------------------- | ------------------------------------------------------------------- |
-| `applied`    | Approved, applied          | the action is done                                                  |
-| `failed`     | Approved, failed: <reason> | the action failed, or a stop cancelled it before an attempt started |
-| `waiting`    | Approved, waiting to run   | the action is still pending                                         |
-| `unknown`    | Approved, outcome unknown  | the action's outcome is unknown and waits on the user               |
+| `call.state` | Card text                  | Source                                                                                              |
+| ------------ | -------------------------- | --------------------------------------------------------------------------------------------------- |
+| `applied`    | Approved, applied          | the action is done                                                                                  |
+| `failed`     | Approved, failed: <reason> | the action failed, a stop cancelled it before an attempt started, or the approved row has no action |
+| `waiting`    | Approved, waiting to run   | the action is still pending                                                                         |
+| `unknown`    | Approved, outcome unknown  | the action's outcome is unknown and waits on the user                                               |
 
-The reason of a failed call is the provider's message from the outcome record, else the error text
-of the result record that the outcome names, else a plain sentence for the outcome's reason code.
+A failed call's reason is the provider's message from the outcome record, or else the error text of
+the result record that the outcome names, or else a plain sentence for the outcome's reason code.
 After a forget removes the erasable fields, the sentence for the code remains. The card cuts the
-reason to 300 characters. An approved action row with no action shows as failed. Memory, skill and
-rule approvals have no call, so their cards keep "Approved". A card that follows a task's thread
-reads its rows again when a record lands there, and the digest reads a departed row again every 15
-seconds while its call waits.
+reason to 300 characters. Memory, skill and rule approvals have no call, so their cards show only
+"Approved". A card that follows a task's thread reads its rows again when a record lands there, and
+the digest reads a row that has left the list again while its call waits.
 
 ## Answering an unknown outcome
 
@@ -125,11 +187,10 @@ same action is refused as not allowed. The host's own route needs no passkey.
 
 A defer sets the row to deferred and records the user's note, if any, as a message on the task. The
 return time is the asked time, or the end of the quiet hours the asked time falls in, read in the
-zone of the user's messages. The row lapses at the later of its old lapse and the return time plus
-the kind's lapse interval, and never after the proposal's own deadline. A timer returns each
-deferred row once its return time passes and writes a returned record. A row that was answered,
-lapsed or deferred again in between never returns, because the timer reads the row again in its
-write transaction.
+zone of the user's messages. The row lapses at the return time plus the kind's lapse interval, and
+never after the proposal's own deadline. A timer returns each deferred row once its return time
+passes and writes a returned record. A row that was answered, lapsed or deferred again in between
+never returns, because the timer reads the row again in its write transaction.
 
 The deployment configuration sets `quiet_hours`, and `approvals.defer` sets the default minutes and
 the evening and morning times that clients offer.

@@ -9,6 +9,7 @@ export function buildApprovalExtras(
   answer: ProposalAnswer,
 ): VersionExtras {
   const approvalID = crypto.randomUUID();
+  const writeSettlement = answer.writeSettlement;
   const approval = { proposalID: row.proposal_id, approvalID, actionHash: row.action_hash };
 
   return {
@@ -24,6 +25,9 @@ export function buildApprovalExtras(
       : { writeInTransaction: answer.writeInTransaction }),
     approval: {
       envelope: approval,
+      ...(writeSettlement === undefined
+        ? {}
+        : { writeSettlement: (tx) => writeSettlement(tx, approvalID) }),
       record: {
         kind: 'memory.approval_recorded',
         definitions: parts.context.definitions(),

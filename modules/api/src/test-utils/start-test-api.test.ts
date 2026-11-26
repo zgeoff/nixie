@@ -48,6 +48,7 @@ test('it serves the memory store the test sets', async () => {
     proposals: {
       approve: () => Promise.reject(new Error('no answer runs here')),
       reject: () => Promise.reject(new Error('no answer runs here')),
+      lapseProposal: () => Promise.reject(new Error('no lapse runs here')),
     },
     moments: {
       keep: () => Promise.reject(new Error('no change runs here')),

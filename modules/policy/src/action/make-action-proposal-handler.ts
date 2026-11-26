@@ -1,10 +1,12 @@
-import type { Definitions, JSONObject, Log, LogRecord, RecordInput } from '@heynixie/log';
-import {
-  JSON_OBJECT_SCHEMA,
-  parseJSONObject,
-  readRecords,
-  writeRecordsInTransaction,
+import type {
+  Definitions,
+  JSONObject,
+  Log,
+  LogRecord,
+  LogTables,
+  RecordInput,
 } from '@heynixie/log';
+import { JSON_OBJECT_SCHEMA, parseJSONObject, readRecords } from '@heynixie/log';
 import type {
   ApplyOutcome,
   ApplyRun,
@@ -14,15 +16,15 @@ import type {
   ProposalRefusal,
   SharedProposal,
 } from '@heynixie/proposals';
+import { buildDiscardedOutcome } from '@heynixie/proposals';
 import type { Transaction } from 'kysely';
+import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
 import { ruleBodySchema } from '../rule/rule-body-schema';
 import type { Rule } from '../types';
 import { hasQueuedEffect } from '../utils/has-queued-effect';
 import { actionAnsweredCodec } from './action-answered-codec';
-import { actionLapsedCodec } from './action-lapsed-codec';
-import { actionProposalLapseMs } from './action-proposal-lapse-ms';
 import { actionProposedCodec } from './action-proposed-codec';
 import { buildActionHash } from './build-action-hash';
 import { buildActionProposalSentence } from './build-action-proposal-sentence';
@@ -113,7 +115,7 @@ export interface ActionHandlerDeps {
   readonly failHeld: (
     tx: Transaction<unknown>,
     row: SharedProposal,
-    reason: 'declined' | 'lapsed',
+    reason: 'declined' | 'lapsed' | 'withdrawn',
   ) => Promise<void>;
 
   // runs after the answer commits, so a rule takes effect at once
@@ -121,16 +123,21 @@ export interface ActionHandlerDeps {
 
   // Runs in the answer's transaction for a Decline of a no_rule ask, which ends the habit that the
   // group's open proposed rule rests on.
-  readonly writeGapDecline: (tx: Transaction<unknown>, groupHash: string) => Promise<void>;
+  readonly writeSuggestedRuleDecline: (
+    tx: Transaction<unknown>,
+    groupHash: string,
+  ) => Promise<void>;
 
   // Runs after the commit of an Approve or Decline of a no_rule ask, to check the group.
-  readonly runGapCheck: (groupHash: string) => Promise<void>;
+  readonly runSuggestedRuleCheck: (groupHash: string) => Promise<void>;
 }
+
+const dayMs = 24 * 60 * 60 * 1000;
 
 export function makeActionProposalHandler(deps: ActionHandlerDeps): ProposalKindHandler {
   return {
     family: 'action',
-    lapseIntervalMs: actionProposalLapseMs,
+    lapseIntervalMs: (config) => config.lapseDays.action * dayMs,
     ownsTransaction: false,
     readBodies: async (db, rows) => {
       const records = await readProposedRecords(deps, db, rows);
@@ -141,51 +148,72 @@ export function makeActionProposalHandler(deps: ActionHandlerDeps): ProposalKind
 
       return new Map(bodies);
     },
+
+    // reads only the proposal's own record: a tool's extra card fields read on another connection
+    readSentence: (tx, row) => readSentence(deps, tx, row),
     readHashes: (_db, row) => Promise.resolve({ action: row.actionHash, rule: row.ruleHash }),
     approve: (run, row, answer) => writeAnswer(deps, run, row, answer),
-    decline: (run, row, answer) => writeAnswer(deps, run, row, answer),
-    lapse: async (tx, row) => {
-      await writeRecordsInTransaction(tx, deps.log, [
-        {
-          kind: actionLapsedCodec.kind,
-          definitions: deps.definitions(),
-          ...(row.thread === null ? {} : { thread: row.thread }),
-          payload: actionLapsedCodec.encode({ proposalID: row.id }),
-        },
-      ]);
+    discard: async (run, row, outcome, answer) => {
+      if (outcome === 'declined' && answer !== null) {
+        return writeAnswer(deps, run, row, answer);
+      }
 
-      await deps.failHeld(tx, row, 'lapsed');
+      invariant(run.tx, 'a held action fails in the transaction that the core opens');
+
+      await deps.failHeld(run.tx, row, outcome);
+
+      return buildDiscardedOutcome(row, outcome);
     },
   };
 }
 
-function readProposedRecords(
+const bodyIDSchema = z.object({ proposalID: z.string() });
+
+// The record that holds each row's body, keyed by the row's created sequence. The body record
+// follows the one that created the row, and names the row's ID.
+async function readProposedRecords(
   deps: ActionHandlerDeps,
   db: Parameters<ProposalKindHandler['readBodies']>[0],
   rows: readonly SharedProposal[],
 ): Promise<ReadonlyMap<number, LogRecord>> {
-  return readRecordsBySequence(
-    deps,
-    db,
-    rows.map((row) => row.createdSequence),
-  );
-}
-
-async function readRecordsBySequence(
-  deps: ActionHandlerDeps,
-  db: Parameters<ProposalKindHandler['readBodies']>[0],
-  sequences: readonly number[],
-): Promise<ReadonlyMap<number, LogRecord>> {
-  if (sequences.length === 0) {
+  if (rows.length === 0) {
     return new Map();
   }
 
+  const found = await db
+    .$extendTables<LogTables>()
+    .selectFrom('records')
+    .select(['sequence', 'payload'])
+    .where('kind', '=', actionProposedCodec.kind)
+    .where(
+      sql`json_extract(payload, '$.proposalID')`,
+      'in',
+      rows.map((row) => row.id),
+    )
+    .execute();
+
   const read = await readRecords(
     { ...deps.log, writer: { ...deps.log.writer, db } },
-    { afterSequence: 0, sequences: [...sequences], limit: sequences.length },
+    { afterSequence: 0, sequences: found.map((entry) => entry.sequence), limit: found.length },
   );
 
-  return new Map(read.map((entry) => [entry.record.sequence, entry.record]));
+  const bySequence = new Map(read.map((entry) => [entry.record.sequence, entry.record]));
+
+  const sequenceByID = new Map(
+    found.map((entry) => [
+      bodyIDSchema.parse(JSON.parse(entry.payload)).proposalID,
+      entry.sequence,
+    ]),
+  );
+
+  return new Map(
+    rows.flatMap((row) => {
+      const sequence = sequenceByID.get(row.id);
+      const record = sequence === undefined ? undefined : bySequence.get(sequence);
+
+      return record === undefined ? [] : [[row.createdSequence, record] as const];
+    }),
+  );
 }
 
 async function readBody(
@@ -278,6 +306,26 @@ function buildActionApproveLabel(tool: string, destination: string | undefined):
   return destination === undefined ? `Run ${tool}` : `Run ${tool} to ${destination}`;
 }
 
+async function readSentence(
+  deps: ActionHandlerDeps,
+  db: Parameters<ProposalKindHandler['readBodies']>[0],
+  row: SharedProposal,
+): Promise<string | null> {
+  const records = await readProposedRecords(deps, db, [row]);
+
+  const record = records.get(row.createdSequence);
+  const erasable = record === undefined ? null : findErasable(record);
+
+  if (record === undefined || erasable === null) {
+    return null;
+  }
+
+  const payload = actionProposedCodec.decode(record.payload);
+  const destinations = erasable.destinations.map((destination) => destination.value);
+
+  return buildActionProposalSentence(payload.tool, payload.effects, destinations);
+}
+
 async function writeAnswer(
   deps: ActionHandlerDeps,
   run: ApplyRun,
@@ -333,12 +381,12 @@ async function writeAnswer(
   });
 
   if (isDeclined && groupHash !== undefined) {
-    await deps.writeGapDecline(tx, groupHash);
+    await deps.writeSuggestedRuleDecline(tx, groupHash);
   }
 
-  const afterGap = async (): Promise<void> => {
+  const afterSuggestedRule = async (): Promise<void> => {
     if (groupHash !== undefined) {
-      await deps.runGapCheck(groupHash);
+      await deps.runSuggestedRuleCheck(groupHash);
     }
   };
 
@@ -346,7 +394,10 @@ async function writeAnswer(
     return {
       status: 'done',
       result: { proposalID: row.id, state: 'declined' },
-      afterCommit: afterGap,
+      usedBy: null,
+      detail: null,
+      otherStakes: [],
+      afterCommit: afterSuggestedRule,
     };
   }
 
@@ -354,7 +405,10 @@ async function writeAnswer(
     return {
       status: 'done',
       result: { proposalID: row.id, state: 'approved' },
-      afterCommit: afterGap,
+      usedBy: queued?.status === 'queued' ? queued.actionID : null,
+      detail: null,
+      otherStakes: [],
+      afterCommit: afterSuggestedRule,
     };
   }
 
@@ -367,6 +421,9 @@ async function writeAnswer(
   return {
     status: 'done',
     result: { proposalID: row.id, state: 'approved', rule: { id: rule.ruleID, revision: 1 } },
+    usedBy: queued?.status === 'queued' ? queued.actionID : null,
+    detail: null,
+    otherStakes: [],
     afterCommit: async () => {
       await deps.runAfterRule();
     },

@@ -1,6 +1,5 @@
 import { expect, test } from 'bun:test';
 import { readRecordEvents } from '@heynixie/api/test-utils';
-import { buildShortIDFromUUID } from '@heynixie/db';
 import { waitForCondition } from '@heynixie/testing';
 import { parseFencedResult } from '@heynixie/tools/test-utils';
 import invariant from 'tiny-invariant';
@@ -107,7 +106,7 @@ test('it offers the memory tools, web fetch, the time tool and the log reader to
   expect(names).toIncludeAllMembers([
     'memory.remember',
     'memory.recall',
-    'memory.pending',
+    'proposals.pending',
     'memory.retire',
     'moment.keep',
     'moment.read',
@@ -498,7 +497,7 @@ test('it lists the proposal the model made when the model calls the pending tool
       },
     },
     { text: 'Noted.' },
-    { toolUse: { name: 'memory.pending', input: {} } },
+    { toolUse: { name: 'proposals.pending', input: { text: true } } },
     { text: 'One proposal waits.' },
   );
 
@@ -517,25 +516,28 @@ test('it lists the proposal the model made when the model calls the pending tool
   const textBlock = z.object({ type: z.literal('text'), text: z.string() });
   const answer = z.object({ content: z.array(textBlock) }).parse(JSON.parse(pending.result));
 
-  expect(pending.name).toBe('memory.pending');
+  expect(pending.name).toBe('proposals.pending');
 
   expect(parseFencedResult(answer)).toMatchObject({
     proposals: [
       {
-        proposalID: expect.toBeString(),
-        change: 'new',
+        shortID: expect.toBeString(),
+        family: 'memory',
+        task: null,
+        state: 'pending',
+        lapsesAt: expect.toBeString(),
+        change: 'add',
+        gist: 'a gist',
+        topic: 'a topic',
         text: 'Keeps two cats',
-        notedBy: ['you noted it'],
-        subject: 'owner',
-        reason: 'no_quote',
-        age: 'under a minute',
+        reason: expect.toStartWith('no_quote'),
       },
     ],
   });
 
   expect(records.findLast((record) => record.kind === 'tool_result')?.toolCall).toMatchObject({
     outcome: 'result',
-    content: { result: { proposals: [{ proposalID: expect.toBeString() }] } },
+    content: { result: { proposals: [{ shortID: expect.toBeString() }] } },
   });
 });
 
@@ -840,7 +842,7 @@ test('it shows the conversation your reason for a proposal you rejected in the w
   expect(ctx.guest.turns.at(-1)?.input).toMatchObject([
     {
       text: expect.toInclude(
-        `rejected your memory proposal ${buildShortIDFromUUID(proposal.proposalID)}. Reason: "only on weekends, not every day".`,
+        `Your memory proposal ${proposal.shortID} was declined: only on weekends, not every day`,
       ),
     },
   ]);

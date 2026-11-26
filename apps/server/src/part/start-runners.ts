@@ -7,6 +7,7 @@ import { startTaskClaimPools } from '@heynixie/tasks';
 import { buildToolRegistry } from '@heynixie/tools';
 import { makeAttemptCheck } from '../action/make-attempt-check';
 import { makeConversationFailureMarker } from '../conversation/make-conversation-failure-marker';
+import { buildProposalConfig } from '../deployment/build-proposal-config';
 import type { ServerParts } from '../types';
 import { makeLazyToolSource } from './make-lazy-tool-source';
 import { makeStepErrorLogger } from './make-step-error-logger';
@@ -65,6 +66,7 @@ export async function startRunners(
       registry,
       findRunnerDeclaration: (tool) => codingActionDeclarations.get(tool) ?? null,
     }),
+    proposalConfig: buildProposalConfig(parts.config),
     onError,
     size: parts.config.actions.runners,
   });

@@ -1,7 +1,7 @@
 export { buildShortIDFromUUID } from './build-short-id-from-uuid';
 export { closeToOlderReaders } from './migration/close-to-older-readers';
 export { createDatabaseCopy } from './database/create-database-copy';
-export { createShortID } from './migration/create-short-id';
+export { createShortID, setShortIDDrawer } from './migration/create-short-id';
 export { DatabaseError } from './database/database-error';
 export { migrationsPlugin } from './migration/migrations-plugin';
 export { nixieSchema } from './schema/nixie-schema';

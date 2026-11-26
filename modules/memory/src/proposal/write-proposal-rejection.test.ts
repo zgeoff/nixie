@@ -1,11 +1,11 @@
 import { expect, test } from 'bun:test';
 import { readRecordKeys, readRecords } from '@heynixie/log';
+import { readProposal } from '@heynixie/proposals';
 import invariant from 'tiny-invariant';
 import { buildMockProvenance } from '../test-utils/build-mock-provenance';
 import { buildMockWriteCaller } from '../test-utils/build-mock-write-caller';
 import { createProposal } from '../test-utils/create-proposal';
 import { startTestMemory } from '../test-utils/start-test-memory';
-import type { MemoryTables } from '../types';
 
 test('it leaves the pinned core and the item as they were when you reject a pin', async () => {
   const memory = await startTestMemory();
@@ -59,16 +59,10 @@ test('it rejects a proposal and drops the key of the item it would have created'
     identityID: 'identity-1',
   });
 
-  const row = await memory.writer.db
-    .$extendTables<MemoryTables>()
-    .selectFrom('memory_proposals')
-    .select('status')
-    .where('proposal_id', '=', pending.proposalID)
-    .executeTakeFirstOrThrow();
-
+  const row = await readProposal(memory.writer.db, pending.proposalID);
   const keys = await readRecordKeys(memory.log, [pending.itemID]);
 
-  expect(row.status).toBe('rejected');
+  expect(row?.state).toBe('declined');
   expect(keys.get(pending.itemID)).toBeUndefined();
 });
 
@@ -85,7 +79,7 @@ test('it keeps your reason in the erasable fields of the rejection record', asyn
 
   const records = await readRecords(memory.log, {
     afterSequence: 0,
-    kinds: ['memory.proposal_rejected'],
+    kinds: ['proposals.settled'],
   });
 
   expect(records.map((entry) => entry.record.erasable)).toStrictEqual([
@@ -105,7 +99,7 @@ test('it writes no erasable fields for a rejection with no reason', async () => 
 
   const records = await readRecords(memory.log, {
     afterSequence: 0,
-    kinds: ['memory.proposal_rejected'],
+    kinds: ['proposals.settled'],
   });
 
   expect(records.map((entry) => entry.record.erasable)).toStrictEqual([{ status: 'none' }]);
@@ -123,7 +117,7 @@ test('it keeps your reason after the rejection removes the key of the item it wo
   });
 
   const [records, keys] = await Promise.all([
-    readRecords(memory.log, { afterSequence: 0, kinds: ['memory.proposal_rejected'] }),
+    readRecords(memory.log, { afterSequence: 0, kinds: ['proposals.settled'] }),
     readRecordKeys(memory.log, [proposal.itemID]),
   ]);
 

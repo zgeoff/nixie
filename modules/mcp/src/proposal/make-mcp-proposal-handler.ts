@@ -1,10 +1,8 @@
-import { writeRecordsInTransaction } from '@heynixie/log';
 import { findMcpToolOverride } from '@heynixie/policy';
 import type { ProposalBody, ProposalKindHandler } from '@heynixie/proposals';
-import { proposalLapseMs } from '@heynixie/proposals';
+import { buildDiscardedOutcome } from '@heynixie/proposals';
 import invariant from 'tiny-invariant';
 import { buildOperationHash } from '../operation/build-operation-hash';
-import { mcpLapsedCodec } from '../record/mcp-lapsed-codec';
 import { readFormsByHash } from '../rows/read-forms-by-hash';
 import type { McpOperation } from '../types';
 import { answerMcpProposal } from './answer-mcp-proposal';
@@ -12,13 +10,15 @@ import type { AnswerContext } from './answer-mcp-proposal';
 import { buildMcpProposalBody } from './build-mcp-proposal-body';
 import { readOperation } from './read-operation';
 
+const dayMs = 24 * 60 * 60 * 1000;
+
 // The handler of the mcp family. It recomputes the operation from the facts and the tool's latest
 // hash at each answer, so an answer from a card that showed older facts or an older form fails as
 // a conflict.
 export function makeMcpProposalHandler(context: AnswerContext): ProposalKindHandler {
   return {
     family: 'mcp',
-    lapseIntervalMs: proposalLapseMs,
+    lapseIntervalMs: (config) => config.lapseDays.mcp * dayMs,
     ownsTransaction: false,
     readBodies: async (db, rows) => {
       const bodies = new Map<string, ProposalBody | null>();
@@ -32,6 +32,13 @@ export function makeMcpProposalHandler(context: AnswerContext): ProposalKindHand
 
       return bodies;
     },
+    readSentence: async (db, row) => {
+      const operation = await readOperation(db, row.id);
+
+      return operation === null
+        ? null
+        : buildMcpProposalBody(operation, { allowed: null, proposed: null }).sentence;
+    },
     readHashes: async (db, row) => {
       const operation = await readOperation(db, row.id);
 
@@ -44,19 +51,14 @@ export function makeMcpProposalHandler(context: AnswerContext): ProposalKindHand
 
       return answerMcpProposal(context, run.tx, { row, answer });
     },
-    decline: (run, row, answer) => {
+    discard: (run, row, outcome, answer) => {
+      if (outcome !== 'declined' || answer === null) {
+        return Promise.resolve(buildDiscardedOutcome(row, outcome));
+      }
+
       invariant(run.tx, 'an mcp proposal answers in the transaction that the core opens');
 
       return answerMcpProposal(context, run.tx, { row, answer });
-    },
-    lapse: async (tx, row) => {
-      await writeRecordsInTransaction(tx, context.log, [
-        {
-          kind: mcpLapsedCodec.kind,
-          definitions: context.definitions(),
-          payload: mcpLapsedCodec.encode({ proposalID: row.id }),
-        },
-      ]);
     },
   };
 }

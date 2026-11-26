@@ -1,9 +1,11 @@
 import type { EnvelopeRecord } from '@heynixie/log';
 import type { ProposalChange } from '@heynixie/proposals';
-import { proposalLapseMs } from '@heynixie/proposals';
 import { ruleAnsweredCodec } from './rule-answered-codec';
 import { ruleLapsedCodec } from './rule-lapsed-codec';
 import { ruleProposedCodec } from './rule-proposed-codec';
+
+// the lapse that every record written before the config set one carried
+const legacyLapseMs = 14 * 24 * 60 * 60 * 1000;
 
 export function mapProposedRuleRecord(record: EnvelopeRecord): ProposalChange | null {
   if (record.kind === ruleProposedCodec.kind) {
@@ -21,7 +23,7 @@ export function mapProposedRuleRecord(record: EnvelopeRecord): ProposalChange | 
         ruleHash: null,
         cause: 'proposed_rule',
         taskID: null,
-        lapsesAt: record.recordedAt.getTime() + proposalLapseMs,
+        lapsesAt: record.recordedAt.getTime() + legacyLapseMs,
         deadlineAt: null,
       },
     };
@@ -34,7 +36,7 @@ export function mapProposedRuleRecord(record: EnvelopeRecord): ProposalChange | 
       type: 'close',
       proposalID: answered.proposalID,
       state: answered.answer === 'approved' ? 'approved' : 'declined',
-      usedBy: null,
+      usedBy: answered.ruleID ?? null,
       answeredBy: answered.identityID ?? null,
     };
   }

@@ -5,6 +5,7 @@ import type { Logger } from '@heynixie/logger';
 import type { Mcp, McpConfig } from '@heynixie/mcp';
 import { makeToolChangeNotifier, startMcp } from '@heynixie/mcp';
 import type { ModelCredentials } from '@heynixie/models';
+import type { ProposalConfig } from '@heynixie/proposals';
 import type { TasksContext } from '@heynixie/tasks';
 import { toSDKToolName } from '@heynixie/tools';
 import type { Cleanup, PartReader } from '../types';
@@ -27,6 +28,7 @@ export async function startMcpPart(
   parts: McpPartParts,
   config: McpConfig,
   reader: Pick<PartReader<ServerPartValues>, 'find'>,
+  proposalConfig: ProposalConfig,
 ): Promise<Mcp> {
   const mcp = startMcp({
     log: parts.context.log,
@@ -46,6 +48,7 @@ export async function startMcpPart(
 
       return { definitionsHash, servers: await readSnapshotMcpOverrides(db, definitionsHash) };
     },
+    proposalConfig,
     servers: config.servers,
     listingTimeoutSeconds: config.listingTimeoutSeconds,
     takenModelNames: () =>

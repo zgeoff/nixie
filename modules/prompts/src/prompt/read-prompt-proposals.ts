@@ -1,9 +1,8 @@
 import type { LogTables } from '@heynixie/log';
+import { readProposalStates } from '@heynixie/proposals';
 import type { Kysely } from 'kysely';
 import { sql } from 'kysely';
-import invariant from 'tiny-invariant';
 import type { PromptProposalState } from '../types';
-import { promptProposalOutcomes } from './prompt-proposal-outcomes';
 import { promptProposalSchema } from './prompt-proposal-schema';
 
 const proposalIDColumn = sql`json_extract(payload, '$.proposalID')`;
@@ -32,31 +31,21 @@ export async function readPromptProposals(
     return [];
   }
 
-  const closing = await records
-    .selectFrom('records')
-    .select(['kind', proposalIDColumn.as('proposal_id')])
-    .where('kind', 'in', [...promptProposalOutcomes.keys()])
-    .where(
-      proposalIDColumn,
-      'in',
-      proposed.map((row) => row.proposal_id),
-    )
-    .execute();
-
-  const closed = new Map(
-    closing.map((row) => {
-      const outcome = promptProposalOutcomes.get(row.kind);
-
-      invariant(outcome, 'the closing read takes only the kinds that map to an outcome');
-
-      return [row.proposal_id, outcome];
-    }),
+  const states = await readProposalStates(
+    db,
+    proposed.map((row) => String(row.proposal_id)),
   );
 
   return proposed.map((row) => ({
     proposal: promptProposalSchema.parse(JSON.parse(row.payload)),
     thread: row.thread,
     proposedAt: row.recorded_at,
-    outcome: closed.get(row.proposal_id) ?? null,
+    outcome: toOutcome(states.get(String(row.proposal_id))),
   }));
+}
+
+function toOutcome(state: string | undefined): PromptProposalState['outcome'] {
+  return state === 'approved' || state === 'declined' || state === 'lapsed' || state === 'withdrawn'
+    ? state
+    : null;
 }

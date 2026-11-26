@@ -1,10 +1,12 @@
 import type { EnvelopeRecord } from '@heynixie/log';
 import type { ProposalChange } from '@heynixie/proposals';
-import { proposalLapseMs } from '@heynixie/proposals';
 import { skillsWriteApprovedCodec } from '../write/skills-write-approved-codec';
 import { skillsWriteLapsedCodec } from '../write/skills-write-lapsed-codec';
 import { skillsWriteProposedCodec } from '../write/skills-write-proposed-codec';
 import { skillsWriteRejectedCodec } from '../write/skills-write-rejected-codec';
+
+// the lapse that every record written before the config set one carried
+const legacyLapseMs = 14 * 24 * 60 * 60 * 1000;
 
 export function mapSkillProposalRecord(record: EnvelopeRecord): ProposalChange | null {
   if (record.kind === skillsWriteProposedCodec.kind) {
@@ -22,8 +24,9 @@ export function mapSkillProposalRecord(record: EnvelopeRecord): ProposalChange |
         ruleHash: null,
         cause: 'skill_write',
         taskID: null,
-        lapsesAt: record.recordedAt.getTime() + proposalLapseMs,
+        lapsesAt: record.recordedAt.getTime() + legacyLapseMs,
         deadlineAt: null,
+        sameThing: proposed.name,
       },
     };
   }
@@ -35,7 +38,7 @@ export function mapSkillProposalRecord(record: EnvelopeRecord): ProposalChange |
       type: 'close',
       proposalID: approved.proposalID,
       state: 'approved',
-      usedBy: null,
+      usedBy: approved.approvalID ?? null,
       answeredBy: approved.identityID ?? null,
     };
   }

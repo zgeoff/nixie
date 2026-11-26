@@ -6,14 +6,14 @@ import type {
   PolicyCall,
   PolicyDecision,
 } from '@heynixie/policy';
-import { buildActionProposalInput } from '@heynixie/policy';
+import { writeActionProposal } from '@heynixie/policy';
 import invariant from 'tiny-invariant';
+import type { ToolCallOptions } from '../call-record/tool-call-options';
 import { countCapCalls } from '../cap/count-cap-calls';
 import { chargePaidPlanInTransaction } from '../paid/charge-paid-plan-in-transaction';
 import type { PaidGate, PaidPlan } from '../paid/types';
 import { isMemoryRuleAsk } from '../policy-call/build-memory-verdict';
 import { toStepKey } from '../policy-call/to-step-key';
-import type { ToolCallOptions } from '../run-tool-call';
 import { buildMessage } from '../settle/build-message';
 import { removeOwnValues } from '../settle/remove-own-values';
 import type { Settled } from '../settle/types';
@@ -235,30 +235,36 @@ export function makeCallRecorder(
           };
         }
 
-        const proposal = buildActionProposalInput({
-          definitions,
-          thread: run.thread,
-          callSequence: written.sequence,
-          tool: decided.policyTool,
-          actionHash: decided.actionHash,
-          expectURL: decided.expectURL,
-          expectWindow: decided.expectWindow,
-          effects: declaration.effects,
-          cause,
-          input: call.input,
-          destinations,
-          content: declaration.content,
-          frame: decided.frame,
-          deadlineAt: decided.deadlineAt,
-          now: options.log.writer.clock.now(),
-          ...(run.stepRunID === undefined ? {} : { stepKey: toStepKey(run.stepRunID) }),
-        });
-
-        await writeRecordsInTransaction(tx, options.log, [proposal.record]);
+        const shortID = await writeActionProposal(
+          tx,
+          {
+            log: options.log,
+            clock: options.log.writer.clock,
+            definitions: options.definitions,
+            proposalConfig: options.proposalConfig,
+          },
+          {
+            definitions,
+            thread: run.thread,
+            callSequence: written.sequence,
+            tool: decided.policyTool,
+            actionHash: decided.actionHash,
+            expectURL: decided.expectURL,
+            expectWindow: decided.expectWindow,
+            effects: declaration.effects,
+            cause,
+            input: call.input,
+            destinations,
+            content: declaration.content,
+            frame: decided.frame,
+            deadlineAt: decided.deadlineAt,
+            ...(run.stepRunID === undefined ? {} : { stepKey: toStepKey(run.stepRunID) }),
+          },
+        );
 
         return {
           sequence: written.sequence,
-          shortID: proposal.shortID,
+          shortID,
           isCapped: false,
           repeatOf: null,
           gate: null,

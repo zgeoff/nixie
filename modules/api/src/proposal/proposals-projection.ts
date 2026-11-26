@@ -6,6 +6,7 @@ import {
 import { mapMcpProposalRecord } from '@heynixie/mcp';
 import { mapMemoryProposalRecord } from '@heynixie/memory';
 import { mapActionProposalRecord } from '@heynixie/policy';
+import { mapPromptProposalRecord } from '@heynixie/prompts';
 import { buildProposalsProjection } from '@heynixie/proposals';
 import { mapSkillProposalRecord } from '@heynixie/skills';
 
@@ -18,4 +19,5 @@ export const proposalsProjection = buildProposalsProjection([
   mapProposedRuleRecord,
   mapMandateRecord,
   mapMcpProposalRecord,
+  mapPromptProposalRecord,
 ]);

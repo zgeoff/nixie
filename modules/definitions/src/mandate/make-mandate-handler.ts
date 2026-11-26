@@ -9,14 +9,13 @@ import type {
   ProposalKindHandler,
   SharedProposal,
 } from '@heynixie/proposals';
+import { buildDiscardedOutcome } from '@heynixie/proposals';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
 import type { RuleContext } from '../runtime/write-runtime-rule';
 import { writeRuntimeRuleInTransaction } from '../runtime/write-runtime-rule';
-import { buildMemoryGapFields } from '../utils/build-memory-gap-fields';
+import { buildMemorySuggestedRuleFields } from '../utils/build-memory-suggested-rule-fields';
 import { readProposalRecords } from '../utils/read-proposal-records';
-import { mandateDeclinedCodec } from './mandate-declined-codec';
-import { mandateLapsedCodec } from './mandate-lapsed-codec';
 import { mandateProposedCodec } from './mandate-proposed-codec';
 import { mandateStartedCodec } from './mandate-started-codec';
 
@@ -24,7 +23,7 @@ import { mandateStartedCodec } from './mandate-started-codec';
 export function makeMandateHandler(context: RuleContext): ProposalKindHandler {
   return {
     family: 'rule_change',
-    lapseIntervalMs: 0,
+    lapseIntervalMs: () => null,
     ownsTransaction: false,
     readBodies: async (db, rows) => {
       const records = await readProposalRecords(context.log, db, rows);
@@ -33,31 +32,7 @@ export function makeMandateHandler(context: RuleContext): ProposalKindHandler {
     },
     readHashes: (_db, row) => Promise.resolve({ action: row.actionHash, rule: null }),
     approve: (run, row, answer) => writeApproval(context, run, row, answer),
-    decline: async (run, row, answer) => {
-      invariant(run.tx, 'a mandate answers in the transaction that the core opens');
-
-      await writeRecordsInTransaction(run.tx, context.log, [
-        {
-          kind: mandateDeclinedCodec.kind,
-          definitions: context.definitions(),
-          payload: mandateDeclinedCodec.encode({
-            proposalID: row.id,
-            identityID: answer.identityID,
-          }),
-        },
-      ]);
-
-      return { status: 'done', result: { proposalID: row.id, state: 'declined' } };
-    },
-    lapse: async (tx, row) => {
-      await writeRecordsInTransaction(tx, context.log, [
-        {
-          kind: mandateLapsedCodec.kind,
-          definitions: context.definitions(),
-          payload: mandateLapsedCodec.encode({ proposalID: row.id }),
-        },
-      ]);
-    },
+    discard: (_run, row, outcome) => Promise.resolve(buildDiscardedOutcome(row, outcome)),
   };
 }
 
@@ -79,7 +54,7 @@ function toBody(record: LogRecord | undefined): ProposalBody | null {
       title: erasable.title,
       ends: new Date(proposed.expires).toISOString(),
       ...Object.fromEntries(sentences.map((sentence, index) => [`rule ${index + 1}`, sentence])),
-      ...buildMemoryGapFields(rules),
+      ...buildMemorySuggestedRuleFields(rules),
     },
     ruleSentence: null,
     approveLabel: 'Start the mandate',
@@ -145,6 +120,9 @@ async function writeApproval(
   return {
     status: 'done',
     result: { proposalID: row.id, state: 'approved' },
+    usedBy: proposed.mandateID,
+    detail: null,
+    otherStakes: [],
     afterCommit: async () => {
       await context.runInForceSeed();
     },

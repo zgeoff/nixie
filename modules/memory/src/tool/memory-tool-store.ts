@@ -1,7 +1,6 @@
-import type { ModelWriteStore } from '../gate/gate-context';
+import type { MemoryProposals, ModelWriteStore } from '../gate/gate-context';
 import type { StartedMemoryStore } from '../memory/start-memory-store';
 import type { MomentStore } from '../moment/store/build-moment-store';
-import type { PendingToolStore } from '../pending/build-pending-tool';
 import type { ItemIDStore } from '../types';
 
 // Only the client destroys a moment, so the model's tools reach every moment call but the destroy
@@ -16,8 +15,7 @@ export type MemoryToolStore = Pick<
   'recall' | 'readTopicLines' | 'readTopicCounts' | 'readUsage' | 'readSavedTimes' | 'readUsageList'
 > & {
   readonly moments: MomentToolStore;
-} & PendingToolStore &
-  ModelWriteStore &
+} & { readonly proposals: Pick<MemoryProposals, 'listPending'> } & ModelWriteStore &
   ItemIDStore;
 
 // The store the conversation holds: the model's tools, and the lookup that other modules' tools use.

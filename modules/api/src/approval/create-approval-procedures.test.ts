@@ -5,15 +5,28 @@ import type { ApprovedCall } from '@heynixie/actions';
 import { claimAction, runActionAttempt } from '@heynixie/actions';
 import type { ProviderResponse } from '@heynixie/connectors';
 import { encodeTestImage, seedImage } from '@heynixie/connectors/test-utils';
-import { createPathSource, runSeed } from '@heynixie/definitions';
+import { checkPromptProposal, createPathSource, runSeed } from '@heynixie/definitions';
 import { buildTestTaskSeed, seedLegacyRuleProposal } from '@heynixie/definitions/test-utils';
 import type { LogTables } from '@heynixie/log';
-import { readRecords, removeRecordKey, writeRecords } from '@heynixie/log';
+import {
+  readRecords,
+  removeRecordKey,
+  withWriteTransaction,
+  writeRecords,
+  writeRecordsInTransaction,
+} from '@heynixie/log';
 import { defaultGateLimits, defaultOwnerPronouns, startMemoryStore } from '@heynixie/memory';
 import { buildMockWriteCaller } from '@heynixie/memory/test-utils';
 import type { Effect } from '@heynixie/policy';
 import { buildActionProposalInput } from '@heynixie/policy';
-import { readProposal, runProposalLapses, runProposalReturns } from '@heynixie/proposals';
+import { promptsOverrideProposedCodec } from '@heynixie/prompts';
+import {
+  buildProposeDeps,
+  proposeInTransaction,
+  readProposal,
+  runProposalLapses,
+  runProposalReturns,
+} from '@heynixie/proposals';
 import { createConversationTask, readInbox, writeTaskControl } from '@heynixie/tasks';
 import { toolCalledCodec } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
@@ -21,8 +34,14 @@ import { buildProposalCoreDeps } from '../proposal/build-proposal-core-deps';
 import { buildTestClient } from '../test-utils/build-test-client';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { seedPackageCard } from '../test-utils/seed-package-card';
+import { seedPasskey } from '../test-utils/seed-passkey';
 import { seedScreenClickCard } from '../test-utils/seed-screen-click-card';
 import { startTestAPI } from '../test-utils/start-test-api';
+
+interface PasskeyTarget {
+  readonly proposalID: string;
+  readonly actionHash: string;
+}
 
 async function setupTest() {
   const api = await startTestAPI();
@@ -79,8 +98,69 @@ async function setupTest() {
   const laptop = await createDeviceSession(api.context, 'laptop');
 
   const client = buildTestClient(api.url, laptop.token);
+  const origin = 'https://nixie.example.org';
+  const passkeyClient = buildTestClient(api.url, laptop.token, origin);
+
+  // the prompts in force, with a counter for the exports they wake
+  const exports = { woken: 0 };
+
+  const proposePrompt = (proposalHash: string) =>
+    withWriteTransaction(api.context.log.writer, async (tx) => {
+      const created = await proposeInTransaction(buildProposeDeps(api.context), tx, {
+        family: 'prompt',
+        kind: 'internal_change',
+        cause: 'prompt_override',
+        riskClass: 'always_ask',
+        actionHash: proposalHash,
+        ruleHash: null,
+        thread: 'conversation',
+        taskID: null,
+        deadlineAt: null,
+        sameThing: 'compaction',
+      });
+
+      await writeRecordsInTransaction(tx, api.context.log, [
+        {
+          kind: 'prompts.override_proposed',
+          thread: 'conversation',
+          definitions: api.context.definitions(),
+          payload: promptsOverrideProposedCodec.encode({
+            proposalID: created.proposalID,
+            promptID: 'compaction',
+            proposalHash,
+            baseHash: null,
+            entry: { _template: '{{ parts.safety }}' },
+            files: [],
+            reason: 'Keep the safety part.',
+            provenance: { runID: 'run-1', callID: 'call-1', profile: 'standard' },
+          }),
+        },
+      ]);
+
+      return created;
+    });
+
+  // answers an always-ask row with an assertion of a passkey that the laptop registered
+  const answerWithPasskey = async (target: PasskeyTarget) => {
+    const seeded = await seedPasskey(api.context, { caller: laptop.caller });
+
+    const answer = { ...target, choice: 'approve' as const };
+
+    const issued = await passkeyClient.passkeys.challenge({ for: { kind: 'answer', ...answer } });
+    const passkey = await seeded.authenticator.assert(issued.options, { origin });
+
+    return passkeyClient.approvals.answerProposal({
+      ...answer,
+      clientActionID: crypto.randomUUID(),
+      passkey,
+    });
+  };
 
   return {
+    laptop,
+    exports,
+    proposePrompt,
+    answerWithPasskey,
     api,
     memory,
     url: api.url,
@@ -184,6 +264,88 @@ test('#approvals.answerProposal refuses a stale hash with CONFLICT and keeps the
   const after = await ctx.client.approvals.listItems();
 
   expect(after.items).toHaveLength(1);
+});
+
+test('#approvals.answerProposal approves a prompt override with the browser channel and the device identity, and wakes the export at once', async () => {
+  const ctx = await setupTest();
+
+  ctx.api.setPrompts({
+    readInForce: () => null,
+    checkProposal: checkPromptProposal,
+    wakeExports: () => {
+      ctx.exports.woken += 1;
+    },
+  });
+
+  const proposed = await ctx.proposePrompt('hash-c');
+
+  await ctx.answerWithPasskey({ proposalID: proposed.shortID, actionHash: 'hash-c' });
+
+  const approved = await readRecords(ctx.api.context.log, {
+    afterSequence: 0,
+    kinds: ['prompts.override_approved'],
+  });
+
+  const row = await readProposal(ctx.api.context.log.writer.db, proposed.proposalID);
+
+  expect(approved.map((entry) => entry.record.payload)).toMatchObject([
+    { proposalID: proposed.proposalID, channel: 'browser', approver: 'owner' },
+  ]);
+
+  expect([ctx.exports.woken, row?.state]).toStrictEqual([1, 'approved']);
+  expect(row?.answeredBy).toBe(ctx.laptop.caller.identityID);
+});
+
+test('#approvals.answerProposal refuses a prompt override approval once the override in force moved past its base with CONFLICT', async () => {
+  const ctx = await setupTest();
+
+  ctx.api.setPrompts({
+    readInForce: () => ({
+      snapshotHash: 'snapshot-b',
+      personaVersion: 'persona-a',
+      prompts: { compaction: { parts: { safety: 'Answer in one line.' }, template: null } },
+    }),
+    checkProposal: checkPromptProposal,
+    wakeExports: () => {},
+  });
+
+  const proposed = await ctx.proposePrompt('hash-c');
+
+  const answer = ctx.answerWithPasskey({ proposalID: proposed.shortID, actionHash: 'hash-c' });
+
+  await Promise.allSettled([answer]);
+
+  const row = await readProposal(ctx.api.context.log.writer.db, proposed.proposalID);
+
+  expect(answer).rejects.toMatchObject({ code: 'CONFLICT' });
+  expect(row?.state).toBe('pending');
+});
+
+test('#approvals.answerProposal declines a prompt override whose base the override in force moved past', async () => {
+  const ctx = await setupTest();
+
+  ctx.api.setPrompts({
+    readInForce: () => ({
+      snapshotHash: 'snapshot-b',
+      personaVersion: 'persona-a',
+      prompts: { compaction: { parts: { safety: 'Answer in one line.' }, template: null } },
+    }),
+    checkProposal: checkPromptProposal,
+    wakeExports: () => {},
+  });
+
+  const proposed = await ctx.proposePrompt('hash-c');
+
+  await ctx.client.approvals.answerProposal({
+    proposalID: proposed.shortID,
+    actionHash: 'hash-c',
+    choice: 'decline',
+    clientActionID: crypto.randomUUID(),
+  });
+
+  const row = await readProposal(ctx.api.context.log.writer.db, proposed.proposalID);
+
+  expect(row?.state).toBe('declined');
 });
 
 test('#approvals.answerProposal refuses always allow on a rule change with NOT_ALLOWED', async () => {
@@ -466,7 +628,7 @@ test('#approvals.answerProposal puts the note of a declined memory proposal in t
 
   const read = await readRecords(ctx.api.context.log, {
     afterSequence: 0,
-    kinds: ['memory.proposal_rejected'],
+    kinds: ['proposals.settled'],
     limit: 10,
   });
 

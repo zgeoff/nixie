@@ -11,6 +11,7 @@ import { seedDefinitionConflict } from './seed-definition-conflict';
 import { seedHeldTasks } from './seed-held-tasks';
 import { seedOpenTakeover } from './seed-open-takeover';
 import { seedRuleConflict } from './seed-rule-conflict';
+import { seedUncheckedRuleApprovals } from './seed-unchecked-rule-approvals';
 import { startDataLog } from './start-data-log';
 import type { BootFiles } from './write-boot-files';
 
@@ -36,6 +37,7 @@ export function buildBootSeeder(files: BootSeederFiles) {
     heldTasks: () => seedHeldTasks(files),
     openTakeover: () => seedOpenTakeover(files),
     ruleConflict: () => seedRuleConflict(files),
+    uncheckedRuleApprovals: () => seedUncheckedRuleApprovals(files),
     definitionConflict: () => seedDefinitionConflict(files),
     driftedTask: (taskID: string) =>
       runInDataLog(files, (context) => buildTaskSeeder({ context }).driftedTask(taskID)),

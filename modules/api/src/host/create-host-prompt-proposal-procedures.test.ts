@@ -3,9 +3,25 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { checkPromptProposal } from '@heynixie/definitions';
-import { readRecords, startWriter, writeRecords } from '@heynixie/log';
+import {
+  readRecords,
+  startWriter,
+  withWriteTransaction,
+  writeRecords,
+  writeRecordsInTransaction,
+} from '@heynixie/log';
 import type { PromptsInForce } from '@heynixie/prompts';
-import { promptsOverrideProposedCodec, readPromptApproval } from '@heynixie/prompts';
+import {
+  mapPromptProposalRecord,
+  promptsOverrideProposedCodec,
+  readPromptApproval,
+} from '@heynixie/prompts';
+import {
+  buildProposalsProjection,
+  buildProposeDeps,
+  proposeInTransaction,
+  readProposal,
+} from '@heynixie/proposals';
 import { createRouterClient } from '@orpc/server';
 import { createFakeClock } from '@zgeoff/testing/clock';
 import { createHostPromptProposalProcedures } from './create-host-prompt-proposal-procedures';
@@ -28,7 +44,12 @@ async function setupTest() {
     'unwrapKey',
   ]);
 
-  const log = { writer, deploymentKey, projections: [] };
+  const log = {
+    writer,
+    deploymentKey,
+    projections: [buildProposalsProjection([mapPromptProposalRecord])],
+  };
+
   const clock = createFakeClock({ startMs: Date.UTC(2026, 2, 3, 10, 0) });
   const wakeExports = mock(() => {});
 
@@ -44,7 +65,56 @@ async function setupTest() {
       }),
     );
 
-  return { log, createClient, wakeExports };
+  const deps = buildProposeDeps({
+    log,
+    clock,
+    definitions: () => ({ snapshotHash: 'snapshot-a' }),
+  });
+
+  // a proposal the way the prompt write tool opens it, whose row ID differs from its short ID
+  const propose = (proposalHash: string) =>
+    withWriteTransaction(writer, async (tx) => {
+      const created = await proposeInTransaction(deps, tx, {
+        family: 'prompt',
+        kind: 'internal_change',
+        cause: 'prompt_override',
+        riskClass: 'always_ask',
+        actionHash: proposalHash,
+        ruleHash: null,
+        thread: 'conversation',
+        taskID: null,
+        deadlineAt: null,
+        sameThing: 'compaction',
+      });
+
+      await writeRecordsInTransaction(tx, log, [
+        {
+          kind: 'prompts.override_proposed',
+          thread: 'conversation',
+          definitions: { snapshotHash: 'snapshot-a' },
+          payload: promptsOverrideProposedCodec.encode({
+            proposalID: created.proposalID,
+            promptID: 'compaction',
+            proposalHash,
+            baseHash: null,
+            entry: { _template: '{{ parts.instruction }}\n{{ parts.safety }}' },
+            files: [],
+            reason: 'Keep both parts on their own lines.',
+            provenance: { runID: 'run-2', callID: 'call-2', profile: 'standard' },
+          }),
+        },
+      ]);
+
+      return created;
+    });
+
+  return {
+    log,
+    createClient,
+    wakeExports,
+    propose,
+    readRow: (proposalID: string) => readProposal(writer.db, proposalID),
+  };
 }
 
 test('#list lists each pending proposal with its files, its reason, the override in force and the hash an answer binds to', async () => {
@@ -141,6 +211,28 @@ test('#approve records the approval that names you, then wakes the definitions e
   ]);
 
   expect(ctx.wakeExports).toHaveBeenCalledOnce();
+});
+
+test('#approve answers a proposal by its short ID and reads the approval of its row', async () => {
+  const ctx = await setupTest();
+
+  const proposalHash = 'hash-c';
+
+  const proposed = await ctx.propose(proposalHash);
+
+  const result = await ctx
+    .createClient(null)
+    .approve({ proposalID: proposed.shortID, proposalHash });
+
+  const row = await ctx.readRow(proposed.proposalID);
+
+  expect(result).toStrictEqual({
+    proposalID: proposed.shortID,
+    approvalID: expect.toBeString(),
+    proposalHash: expect.stringMatching(/^[0-9a-f]{64}$/u),
+  });
+
+  expect([row?.state, row?.usedBy]).toStrictEqual(['approved', result.approvalID]);
 });
 
 test('#approve stores the edited files in place of the proposed ones, and records the edit', async () => {
@@ -286,13 +378,19 @@ test('#reject records the rejection with your reason', async () => {
 
   const records = await readRecords(ctx.log, {
     afterSequence: 0,
-    kinds: ['prompts.override_rejected'],
+    kinds: ['proposals.settled'],
   });
 
   expect(result).toStrictEqual({ proposalID: 'p8w2n4c6ld' });
 
   expect(records.map((entry) => entry.record.erasable)).toStrictEqual([
-    { status: 'readable', fields: { reason: 'The compaction needs its safety part.' } },
+    {
+      status: 'readable',
+      fields: {
+        reason: 'The compaction needs its safety part.',
+        sentence: 'Override the prompt compaction.',
+      },
+    },
   ]);
 });
 
@@ -343,7 +441,7 @@ test('#reject refuses an answer under another proposal hash with its code', asyn
       reason: {
         code: 'PROPOSAL_HASH',
         status: 409,
-        message: 'the answer to prompt proposal p8w2n4c6ld names another proposal hash',
+        message: 'the prompt proposal p8w2n4c6ld cannot take this answer',
       },
     },
   ]);
@@ -386,7 +484,7 @@ test('#approve refuses a proposal that a rejection closed with its code', async 
       reason: {
         code: 'PROPOSAL_CLOSED',
         status: 409,
-        message: 'prompt proposal p8w2n4c6ld is rejected, so it takes no answer',
+        message: 'the prompt proposal p8w2n4c6ld cannot take this answer',
       },
     },
   ]);

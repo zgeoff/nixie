@@ -1,0 +1,51 @@
+import { expect, test } from 'bun:test';
+import { buildSuggestedRuleGroupHash } from './build-suggested-rule-group-hash';
+
+test('it hashes the same group alike whatever the order and duplicates of its destinations', () => {
+  const first = buildSuggestedRuleGroupHash({
+    tool: 'mail.send',
+    context: 'task',
+    destinations: ['sam@example.org', 'kim@example.org'],
+  });
+
+  const second = buildSuggestedRuleGroupHash({
+    tool: 'mail.send',
+    context: 'task',
+    destinations: ['kim@example.org', 'sam@example.org', 'kim@example.org'],
+  });
+
+  expect(first).toBe(second);
+});
+
+test('it hashes destinations that differ only in Unicode form alike', () => {
+  const composed = buildSuggestedRuleGroupHash({
+    tool: 'mail.send',
+    context: 'task',
+    destinations: ['rené@example.org'],
+  });
+
+  const decomposed = buildSuggestedRuleGroupHash({
+    tool: 'mail.send',
+    context: 'task',
+    destinations: ['rené@example.org'],
+  });
+
+  expect(composed).toBe(decomposed);
+});
+
+test.each([
+  ['a tool variant', { tool: 'task.start/atc', context: 'task' as const, destinations: [] }],
+  ['another context', { tool: 'task.start', context: 'conversation' as const, destinations: [] }],
+  [
+    'a destination',
+    { tool: 'task.start', context: 'task' as const, destinations: ['a@example.org'] },
+  ],
+])('it hashes a group with %s apart from the plain one', (_name, key) => {
+  const plain = buildSuggestedRuleGroupHash({
+    tool: 'task.start',
+    context: 'task',
+    destinations: [],
+  });
+
+  expect(buildSuggestedRuleGroupHash(key)).not.toBe(plain);
+});

@@ -117,6 +117,7 @@ test.each([
     expect(outcome).toMatchObject({ status: 'proposed', reason: 'labels' });
 
     expect(after.map((entry) => entry.record.kind)).toIncludeSameMembers([
+      'proposals.proposed',
       'memory.proposed',
       'memory.proposal_labelled',
     ]);

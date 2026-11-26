@@ -1,7 +1,7 @@
 import invariant from 'tiny-invariant';
 import type { MemoryProposals } from '../gate/gate-context';
 import { readPendingProposals } from '../proposal/read-pending-proposals';
-import { runProposalLapses } from '../proposal/run-proposal-lapses';
+import { runProposalLapses, writeProposalLapse } from '../proposal/run-proposal-lapses';
 import { runSharedProposalAnswer } from '../proposal/run-shared-proposal-answer';
 import type { StoreParts } from '../types';
 import { readRejectedEdits } from './read-rejected-edits';
@@ -19,6 +19,7 @@ export function buildMemoryProposals(parts: StoreParts): MemoryProposals {
     reject: async (rejection) => {
       await runSharedProposalAnswer(parts, { choice: 'decline', answer: rejection });
     },
+    lapseProposal: (lapse) => writeProposalLapse(parts, lapse),
     lapse: () => runProposalLapses(parts),
     readRejectedEdits: (proposalIDs) => readRejectedEdits(parts, proposalIDs),
   };

@@ -5,22 +5,29 @@ import {
   makeProposedRuleHandler,
   makeRuleChangeHandler,
   makeRuleProposalHandler,
-  runGapCheck,
-  writeGapWithdrawal,
+  runSuggestedRuleCheck,
   writeRuntimeRuleInTransaction,
+  writeSuggestedRuleWithdrawal,
 } from '@heynixie/definitions';
 import type { RecordInput } from '@heynixie/log';
 import { makeMcpProposalHandler } from '@heynixie/mcp';
 import type { McpPort } from '@heynixie/mcp';
 import { makeMemoryProposalHandler } from '@heynixie/memory';
 import { makeActionProposalHandler } from '@heynixie/policy';
+import type { PromptAnswerContext } from '@heynixie/prompts';
+import { makePromptProposalHandler } from '@heynixie/prompts';
 import type { ProposalContext, ProposalCoreDeps, ProposalKindHandler } from '@heynixie/proposals';
 import { makeSkillProposalHandler } from '@heynixie/skills';
-import { writeThreadRecordInTransaction } from '@heynixie/tasks';
+import {
+  conversationTaskID,
+  readSettlementTarget,
+  writeThreadRecordInTransaction,
+} from '@heynixie/tasks';
 import type { Transaction } from 'kysely';
 import invariant from 'tiny-invariant';
 import type { APISettings, ReadViewMemory } from '../types';
 import { defaultApprovalSettings, defaultPolicySettings } from '../utils/default-api-settings';
+import { buildApprovalsProposalConfig } from './build-approvals-proposal-config';
 import { proposalsProjection } from './proposals-projection';
 import { readActionBodyFields } from './read-action-body-fields';
 
@@ -34,10 +41,14 @@ export type ProposalAPIContext = ProposalContext & {
 export interface ProposalParts {
   readonly readMemory: ReadViewMemory;
 
+  // the prompts in force and their check, which a prompt override answers against; with none, an
+  // override waits for a release that has them
+  readonly findPrompts?:
+    | (() => Pick<PromptAnswerContext, 'readInForce' | 'checkProposal' | 'wakeExports'> | null)
+    | undefined;
+
   readonly runInForceSeed: () => Promise<unknown>;
 }
-
-const memoryLapseMs = 14 * 24 * 60 * 60 * 1000;
 
 // The kinds of proposals and what each needs from the server. A kind with no part to run, such as
 // memory before it starts, refuses its answers.
@@ -45,7 +56,7 @@ export function buildProposalCoreDeps(
   context: ProposalAPIContext,
   parts: ProposalParts,
 ): ProposalCoreDeps {
-  const gapSettings =
+  const suggestedRuleSettings =
     context.settings?.policy?.proposedRules ?? defaultPolicySettings.proposedRules;
 
   const writeThreadRecord = (tx: Transaction<unknown>, input: RecordInput) =>
@@ -74,13 +85,18 @@ export function buildProposalCoreDeps(
         });
       },
       runAfterRule: parts.runInForceSeed,
-      writeGapDecline: (tx, groupHash) => writeGapWithdrawal(tx, context, groupHash),
-      runGapCheck: (groupHash) => runGapCheck(context, gapSettings, groupHash),
+      writeSuggestedRuleDecline: (tx, groupHash) =>
+        writeSuggestedRuleWithdrawal(tx, context, groupHash),
+      runSuggestedRuleCheck: (groupHash) =>
+        runSuggestedRuleCheck(
+          { ...context, proposalConfig: buildApprovalsProposalConfig(context.settings) },
+          suggestedRuleSettings,
+          groupHash,
+        ),
     }),
     makeMemoryProposalHandler({
       log: context.log,
       definitions: context.definitions,
-      lapseIntervalMs: memoryLapseMs,
       readStore: () => {
         const store = parts.readMemory();
 
@@ -108,6 +124,7 @@ export function buildProposalCoreDeps(
         await port.forgetGrants(credentialIDs);
       },
     }),
+    ...buildPromptHandlers(context, parts),
     makeSkillProposalHandler({
       log: context.log,
       clock: context.clock,
@@ -128,7 +145,7 @@ export function buildProposalCoreDeps(
         clock: context.clock,
         definitions: context.definitions,
         runInForceSeed: parts.runInForceSeed,
-        settings: gapSettings,
+        settings: suggestedRuleSettings,
       }),
       mandate: makeMandateHandler({
         log: context.log,
@@ -142,6 +159,10 @@ export function buildProposalCoreDeps(
   const settings = context.settings?.approvals ?? defaultApprovalSettings;
 
   return {
+    config: buildApprovalsProposalConfig(context.settings),
+    conversationThread: conversationTaskID,
+    readSettlementTarget: (tx, thread, proposedSequence) =>
+      readSettlementTarget(tx, thread, proposedSequence),
     log: context.log,
     clock: context.clock,
     definitions: context.definitions,
@@ -154,4 +175,22 @@ export function buildProposalCoreDeps(
     },
     writeThreadRecord,
   };
+}
+
+function buildPromptHandlers(
+  context: ProposalAPIContext,
+  parts: ProposalParts,
+): readonly ProposalKindHandler[] {
+  const prompts = parts.findPrompts?.() ?? null;
+
+  return prompts === null
+    ? []
+    : [
+        makePromptProposalHandler({
+          log: context.log,
+          clock: context.clock,
+          definitions: context.definitions,
+          ...prompts,
+        }),
+      ];
 }

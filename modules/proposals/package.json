@@ -15,6 +15,7 @@
     "@heynixie/db": "workspace:*",
     "@heynixie/log": "workspace:*",
     "kysely": "catalog:",
+    "tiny-invariant": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {

@@ -1,7 +1,7 @@
 import { formatGap } from '../message/format-gap';
 import type { TurnGaps } from '../types';
 
-export interface TurnGapFacts {
+export interface TurnSuggestedRuleFacts {
   // when the turn starts
   readonly startedAtMs: number;
 
@@ -16,7 +16,7 @@ export interface TurnGapFacts {
   readonly ownerLastWroteAtMs: number | null;
 }
 
-export function buildTurnGaps(facts: TurnGapFacts): TurnGaps {
+export function buildTurnGaps(facts: TurnSuggestedRuleFacts): TurnGaps {
   return {
     sinceYourLastTurn:
       facts.lastTurnEndedAtMs === null

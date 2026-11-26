@@ -7,6 +7,7 @@ import { addComputerConnector } from '../computer/add-computer-connector';
 import { startConversationEndpoint } from '../conversation/start-conversation-endpoint';
 import { readDefinitionsContext } from '../definition/read-definitions-context';
 import { refreshDefinitions } from '../definition/refresh-definitions';
+import { buildProposalConfig } from '../deployment/build-proposal-config';
 import { makeReadErasureStuckPort } from '../erasure/make-read-erasure-stuck-port';
 import { addLogForget } from '../forget/add-log-forget';
 import { buildLogForgetTool } from '../forget/build-log-forget-tool';
@@ -129,6 +130,7 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
       const actions = buildActions(apiContext, {
         log: options.log,
         ownerName: options.config.owner.name,
+        proposalConfig: buildProposalConfig(options.config),
         testProviderURL: NIXIE_TEST_BUILD ? (options.harness?.providerURL ?? null) : null,
       });
 

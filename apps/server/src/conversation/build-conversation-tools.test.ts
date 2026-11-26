@@ -2,6 +2,7 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { buildProposalCoreDeps } from '@heynixie/api';
 import { buildTimeTool } from '@heynixie/connectors';
 import { buildLogReadImageTool, buildLogReadTool } from '@heynixie/memory';
 import { buildPolicyCall, readStarterDecisionPoint } from '@heynixie/policy/test-utils';
@@ -32,6 +33,21 @@ async function setupTest() {
 
   return {
     log,
+    proposals: {
+      log,
+      clock: { now: () => Date.parse('2026-10-13T22:30:15.000Z') },
+      readMemory: () => null,
+      readTaskNames: () => Promise.resolve(new Map<string, string>()),
+      readCore: () =>
+        buildProposalCoreDeps(
+          {
+            log,
+            clock: { now: () => Date.parse('2026-10-13T22:30:15.000Z') },
+            definitions: () => ({ snapshotHash: 'sha256:test' }),
+          },
+          { readMemory: () => null, runInForceSeed: () => Promise.resolve() },
+        ),
+    },
     logReaders: [
       buildLogReadTool(log, () => Promise.resolve(new Map())),
       buildLogReadImageTool(log),
@@ -39,7 +55,7 @@ async function setupTest() {
   };
 }
 
-test('it lists the web fetch tool, the time tool, the log readers, the skill tools, the prompt reader and the 15 memory tools', async () => {
+test('it lists the web fetch tool, the time tool, the log readers, the skill tools, the prompt reader and the 16 memory and proposal tools', async () => {
   const ctx = await setupTest();
 
   const definitions = buildConversationTools(
@@ -85,6 +101,7 @@ test('it lists the web fetch tool, the time tool, the log readers, the skill too
       clock: { now: () => Date.parse('2026-10-13T22:30:15.000Z') },
       ownerName: null,
       defaultZone: 'Australia/Sydney',
+      proposals: ctx.proposals,
     },
   );
 
@@ -97,11 +114,9 @@ test('it lists the web fetch tool, the time tool, the log readers, the skill too
     'skill_reload',
     'skill_reload_all',
     'skill_write',
-    'skill_pending',
     'prompt_read',
     'memory.recall',
     'memory.usage',
-    'memory.pending',
     'memory.remember',
     'memory.edit',
     'memory.retire',
@@ -116,6 +131,8 @@ test('it lists the web fetch tool, the time tool, the log readers, the skill too
     'moment.retire',
     'moment.find',
     'moment.read',
+    'proposals.pending',
+    'proposals.withdraw',
   ]);
 });
 
@@ -216,6 +233,7 @@ test('it fails a memory call that runs before the memory store starts', async ()
       clock: { now: () => Date.parse('2026-10-13T22:30:15.000Z') },
       ownerName: null,
       defaultZone: 'Australia/Sydney',
+      proposals: ctx.proposals,
     },
   );
 
@@ -278,6 +296,7 @@ test('it allows the time tool, the log reader and each memory tool but export an
         clock: { now: () => Date.parse('2026-10-13T22:30:15.000Z') },
         ownerName: null,
         defaultZone: 'Australia/Sydney',
+        proposals: ctx.proposals,
       },
     ),
     {
@@ -307,7 +326,7 @@ test('it allows the time tool, the log reader and each memory tool but export an
     'log.read_image',
     'memory.recall',
     'memory.usage',
-    'memory.pending',
+    'proposals.pending',
     'memory.remember',
     'memory.edit',
     'memory.retire',
@@ -381,6 +400,7 @@ test('it offers no tool that takes an action hash, which only the owner approves
       clock: { now: () => Date.parse('2026-10-13T22:30:15.000Z') },
       ownerName: null,
       defaultZone: 'Australia/Sydney',
+      proposals: ctx.proposals,
     },
   );
 
@@ -433,6 +453,7 @@ test('it asks about a model call to memory.export under the starter rules, so no
         clock: { now: () => Date.parse('2026-10-13T22:30:15.000Z') },
         ownerName: null,
         defaultZone: 'Australia/Sydney',
+        proposals: ctx.proposals,
       },
     ),
   );

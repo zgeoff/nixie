@@ -8,6 +8,7 @@ import {
   removeRecordKey,
 } from '@heynixie/log';
 import { readTestRecordKeyRows } from '@heynixie/log/test-utils';
+import { readProposal } from '@heynixie/proposals';
 import { startFaultPointFailure } from '@heynixie/tasks/test-utils';
 import { createFakeClock } from '@zgeoff/testing/clock';
 import { buildMockProvenance } from '../test-utils/build-mock-provenance';
@@ -43,6 +44,7 @@ async function setupTest() {
         | 'memory.evidence_purge_closed'
         | 'memory.evidence_purged'
         | 'memory.version_keyed'
+        | 'proposals.settled'
         | 'memory.proposal_lapsed'
         | 'memory.labelled'
       )[],
@@ -326,13 +328,19 @@ test('it lapses each pending proposal of the item', async () => {
 
   await ctx.memory.store.purgeItemEvidence({ recordSequence, itemID: item.itemID });
 
-  const lapsed = await ctx.readKinds(['memory.proposal_lapsed']);
+  const outcomes = await ctx.readKinds(['proposals.settled', 'memory.proposal_lapsed']);
+  const row = await readProposal(ctx.memory.writer.db, proposed.proposal.proposalID);
   const pending = await ctx.memory.store.proposals.listPending();
 
-  expect(lapsed.map((record) => record.payload)).toStrictEqual([
-    { proposalID: proposed.proposal.proposalID },
-  ]);
+  expect(
+    outcomes.map((record) => [
+      record.kind,
+      record.payload['proposalID'],
+      record.payload['outcome'],
+    ]),
+  ).toStrictEqual([['proposals.settled', proposed.proposal.proposalID, 'lapsed']]);
 
+  expect(row?.state).toBe('lapsed');
   expect(pending).toStrictEqual([]);
 });
 
@@ -357,11 +365,15 @@ test('it lapses a pending proposal for a new item and deletes its key', async ()
 
   const keys = await readRecordKeys(ctx.memory.log, [quoted.proposal.itemID]);
   const [closed] = await ctx.readKinds(['memory.evidence_purge_closed']);
+  const outcomes = await ctx.readKinds(['proposals.settled', 'memory.proposal_lapsed']);
+  const row = await readProposal(ctx.memory.writer.db, quoted.proposal.proposalID);
   const pending = await ctx.memory.store.proposals.listPending();
 
   expect(result).toBe('purged');
   expect(keys.has(quoted.proposal.itemID)).toBe(false);
   expect(pending).toStrictEqual([]);
+  expect(outcomes.map((record) => record.kind)).toStrictEqual(['proposals.settled']);
+  expect(row?.state).toBe('lapsed');
 
   expect(closed?.payload).toMatchObject({
     closedKeyIDs: [quoted.proposal.itemID],

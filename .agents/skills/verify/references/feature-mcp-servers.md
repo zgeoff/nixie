@@ -90,6 +90,8 @@ Before you start:
    bun verify browser snapshot --until-text 'Allowed'
    bun verify browser screenshot
    bun verify db query "select state from mcp_servers"
+   bun verify db query "select json_extract(payload, '$.outcome') as outcome from records where kind = 'proposals.settled' and json_extract(payload, '$.family') = 'mcp'"
+   bun verify db query "select state from proposals where family = 'mcp'"
    ```
 
    Expect: the first snapshot lists "Allow the tool tracker.lookup in the form the server lists
@@ -97,7 +99,9 @@ Before you start:
    `newForm`, whose JSON holds the name `lookup`, the description "Look up an issue by its number"
    and the input property `number`, the fields `effects` `read` and `declaredBy` "the tool
    annotations", and a button "Allow the tool". `approve-held-mcp` returns `data.approved` of 1. The
-   last snapshot shows "tracker.lookup Allowed". The query lists one row, `added`. The screenshot is
+   last snapshot shows "tracker.lookup Allowed". The first query lists one row, `added`. The second
+   lists the `approved` settlement of each `mcp` proposal, one for the server of step 2 and one for
+   the tool. The third lists the same 2 rows of `proposals`, each `approved`. The screenshot is
    evidence for the reviewer.
 
 ## End state

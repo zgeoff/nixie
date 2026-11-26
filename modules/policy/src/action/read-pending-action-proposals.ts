@@ -2,7 +2,6 @@ import type { Log, LogRecord } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
 import { readProposalLapses } from '@heynixie/proposals';
 import { z } from 'zod';
-import { actionProposalLapseMs } from './action-proposal-lapse-ms';
 import type { ActionProposalState } from './read-action-proposals';
 import { readActionProposals } from './read-action-proposals';
 
@@ -25,7 +24,7 @@ export async function readPendingActionProposals(
   );
 
   const lapseOf = (entry: ActionProposalState): number =>
-    lapses.get(entry.proposalID) ?? entry.proposedAt + actionProposalLapseMs;
+    lapses.get(entry.proposalID) ?? entry.proposedAt;
 
   const pending = proposals.filter((entry) => entry.outcome === null && lapseOf(entry) > now);
 

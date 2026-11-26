@@ -33,7 +33,9 @@ export function createHostSkillProposalProcedures(context: SkillAnswerContext) {
 
       await throwSkillRefusal(context, settled, input, options.errors);
 
-      const approval = await readSkillApproval(context, input.proposalID);
+      invariant(settled.status === 'answered', 'a refusal threw');
+
+      const approval = await readSkillApproval(context, settled.result.proposalID);
 
       return { proposalID: input.proposalID, ...approval };
     }),

@@ -75,6 +75,9 @@ export interface VersionPlan {
   readonly approval?: {
     readonly envelope: Approval;
     readonly record: RecordInput;
+
+    // runs in the same transaction, after the approval record and the write it approves
+    readonly writeSettlement?: WriteInTransaction;
   };
 }
 
@@ -167,6 +170,8 @@ export async function writeVersionInTransaction(
       ...(plan.provenance.thread === undefined ? {} : { thread: plan.provenance.thread }),
     });
   }
+
+  await plan.approval?.writeSettlement?.(tx);
 
   return { ref, revision, next };
 }

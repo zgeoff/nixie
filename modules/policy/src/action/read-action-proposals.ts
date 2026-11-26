@@ -1,8 +1,7 @@
 import type { JSONValue, LogTables } from '@heynixie/log';
+import { readProposalStates } from '@heynixie/proposals';
 import type { Kysely } from 'kysely';
 import { z } from 'zod';
-import { actionAnsweredCodec } from './action-answered-codec';
-import { actionLapsedCodec } from './action-lapsed-codec';
 import { actionProposedCodec } from './action-proposed-codec';
 
 type ActionProposalOutcome = 'approved' | 'declined' | 'lapsed';
@@ -36,13 +35,10 @@ export async function readActionProposals(
     return [];
   }
 
-  const closing = await records
-    .selectFrom('records')
-    .select(['kind', 'payload'])
-    .where('kind', 'in', [actionAnsweredCodec.kind, actionLapsedCodec.kind])
-    .execute();
-
-  const outcomes = new Map(closing.map((row) => readOutcome(row.kind, row.payload)));
+  const states = await readProposalStates(
+    db,
+    proposed.map((row) => actionProposedCodec.decode(parsePayload(row.payload)).proposalID),
+  );
 
   return proposed.map((row) => {
     const payload = actionProposedCodec.decode(parsePayload(row.payload));
@@ -57,21 +53,15 @@ export async function readActionProposals(
       effects: payload.effects,
       cause: payload.cause,
       proposedAt: row.recorded_at,
-      outcome: outcomes.get(payload.proposalID) ?? null,
+      outcome: toOutcome(states.get(payload.proposalID)),
     };
   });
 }
 
-function readOutcome(kind: string, payload: string): readonly [string, ActionProposalOutcome] {
-  if (kind === actionLapsedCodec.kind) {
-    return [actionLapsedCodec.decode(parsePayload(payload)).proposalID, 'lapsed'];
-  }
-
-  const answered = actionAnsweredCodec.decode(parsePayload(payload));
-
-  return [answered.proposalID, answered.answer];
-}
-
 function parsePayload(payload: string): Readonly<Record<string, JSONValue>> {
   return z.record(z.string(), z.json()).parse(JSON.parse(payload));
+}
+
+function toOutcome(state: string | undefined): ActionProposalOutcome | null {
+  return state === 'approved' || state === 'declined' || state === 'lapsed' ? state : null;
 }

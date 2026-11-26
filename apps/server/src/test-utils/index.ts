@@ -34,6 +34,7 @@ export { readReleaseStartOutcome } from './read-release-start-outcome';
 export { startWebFetch } from '../part/start-web-fetch';
 export { readPurgeState } from './read-purge-state';
 export { readPurgedItem } from './read-purged-item';
+export { readStoppedProposal } from './read-stopped-proposal';
 export { readSurvivingKeyIDs } from './read-surviving-key-ids';
 export type { BegunPurgeSeed } from './seed-begun-purge';
 export { seedBegunPurge } from './seed-begun-purge';

@@ -4,7 +4,7 @@ import type { RuleSource } from '@heynixie/policy';
 import type { PromptOverrides } from '@heynixie/prompts';
 import type { RunCheck } from '@heynixie/sessions';
 import type { MemoryWriteVerdict } from '@heynixie/tools';
-import type { Selectable } from 'kysely';
+import type { Selectable, Transaction } from 'kysely';
 import type { FoldOrderRequest } from '../fold/write-fold-order';
 import type {
   RetopicPlan,
@@ -160,6 +160,7 @@ export type WriteOutcome =
   | {
       readonly status: 'proposed';
       readonly proposalID: string;
+      readonly shortID: string;
       readonly reason: ReviewReason;
       readonly merged: boolean;
     };
@@ -253,6 +254,8 @@ export interface MemoryProposal {
   readonly origin: ProposalOrigin;
   readonly source: ContentSource;
   readonly createdAt: number;
+
+  // the lapse that the shared proposal row holds
   readonly lapseAt: number;
 
   readonly sources: readonly ProposalSource[];
@@ -295,6 +298,10 @@ export interface ProposalAnswer {
   readonly ignoreCloseMatch?: boolean;
 
   readonly writeInTransaction?: WriteInTransaction;
+
+  // Runs after the approved write, in its transaction, with the ID of the approval it made. The
+  // settlement of the shared proposal row is written here, so it names the approval.
+  readonly writeSettlement?: (tx: Transaction<unknown>, approvalID: string) => Promise<void>;
 }
 
 export interface ProposalRejection {
@@ -320,11 +327,20 @@ export interface PendingFilter {
   readonly subjects?: readonly MemorySubject[];
 }
 
+export interface ProposalLapse {
+  readonly proposalID: string;
+  readonly writeInTransaction: WriteInTransaction;
+}
+
 export interface MemoryProposals {
   readonly listPending: (filter?: PendingFilter) => Promise<readonly MemoryProposal[]>;
   readonly approve: (answer: ProposalAnswer) => Promise<ApprovalResult>;
   readonly reject: (rejection: ProposalRejection) => Promise<void>;
 
+  // Lapses one due proposal in a transaction of its own, which calls writeInTransaction first.
+  readonly lapseProposal: (lapse: ProposalLapse) => Promise<boolean>;
+
+  // closes the keys of the proposals that closed, which the sweep runs after a commit
   readonly lapse: () => Promise<number>;
 
   readonly readRejectedEdits: (
@@ -358,7 +374,6 @@ export interface MemoryProposalTable {
   readonly is_pinned: number;
 
   readonly review_reason: string;
-  readonly status: 'pending' | 'consumed' | 'rejected' | 'lapsed';
   readonly action_hash: string;
   readonly sealed: string;
   readonly evidence: string | null;
@@ -372,7 +387,6 @@ export interface MemoryProposalTable {
   readonly notice_key: string | null;
   readonly created_sequence: number;
   readonly created_at: number;
-  readonly lapse_at: number;
   readonly resolved_sequence: number | null;
 
   readonly kind: 'fact' | 'self';

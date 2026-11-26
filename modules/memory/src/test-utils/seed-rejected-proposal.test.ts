@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { readProposal } from '@heynixie/proposals';
 import { createFakeClock } from '@zgeoff/testing/clock';
 import type { MemoryTables } from '../types';
 import { buildMockWriteCaller } from './build-mock-write-caller';
@@ -18,13 +19,9 @@ async function setupTest() {
 test('it leaves the proposal in the rejected status', async () => {
   const ctx = await setupTest();
   const proposal = await seedRejectedProposal(ctx);
+  const row = await readProposal(ctx.log.writer.db, proposal.proposalID);
 
-  const row = await ctx.db
-    .selectFrom('memory_proposals')
-    .select(['proposal_id', 'status'])
-    .executeTakeFirstOrThrow();
-
-  expect(row).toStrictEqual({ proposal_id: proposal.proposalID, status: 'rejected' });
+  expect(row?.state).toBe('declined');
 });
 
 // the rejection shreds the proposal's text, so the test checks the caller override that outlives it

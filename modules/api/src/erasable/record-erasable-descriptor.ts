@@ -34,6 +34,7 @@ export const recordErasableDescriptor = {
       'policy.contact_marked_known',
       'prompts.override_rejected',
       'proposals.deferred',
+      'proposals.settled',
       'rules.mandate_proposed',
       'rules.rule_proposed',
       'session.enrolled',

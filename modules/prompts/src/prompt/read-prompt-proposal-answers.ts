@@ -5,7 +5,6 @@ import { z } from 'zod';
 import { promptsOverrideApprovedCodec } from '../override/prompts-override-approved-codec';
 import { promptsOverrideExportedCodec } from '../override/prompts-override-exported-codec';
 import type { PromptProposalAnswerEvent, PromptProposalStep } from '../types';
-import { promptProposalOutcomes } from './prompt-proposal-outcomes';
 import { readPromptProposals } from './read-prompt-proposals';
 
 export interface PromptAnswerRange {
@@ -21,8 +20,9 @@ export interface NotedPromptAnswer {
 
 const closingPayload = z.object({ proposalID: z.string() });
 
+// An approval, a decline and a lapse reach the proposer as a settlement. The export that follows an
+// approval is a note of its own.
 const answerSteps: ReadonlyMap<RecordKind, PromptProposalStep> = new Map([
-  ...promptProposalOutcomes,
   ['prompts.override_exported', 'exported'],
 ]);
 

@@ -1,34 +1,42 @@
-import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
-import type { MemoryTables, StoreParts } from '../types';
+import { withWriteTransaction } from '@heynixie/log';
+import type { ProposalTables } from '@heynixie/proposals';
+import type { ProposalLapse } from '../gate/gate-context';
+import type { StoreParts } from '../types';
 import { removeClosedProposalKeys } from '../utils/key/remove-closed-proposal-keys';
 
-export async function runProposalLapses(parts: StoreParts): Promise<number> {
+// The shared sweep lapses a proposal. This one closes the keys of the proposals that closed.
+export function runProposalLapses(parts: StoreParts): Promise<number> {
+  return removeClosedProposalKeys(parts);
+}
+
+// Lapses one proposal that is still due, in a transaction of its own. A proposal that was answered
+// or deferred in between stays as it is.
+export async function writeProposalLapse(
+  parts: StoreParts,
+  lapse: ProposalLapse,
+): Promise<boolean> {
   const log = parts.context.log;
 
-  const due = await withWriteTransaction(log.writer, async (tx) => {
-    const rows = await tx
-      .$extendTables<MemoryTables>()
-      .selectFrom('memory_proposals')
-      .select(['proposal_id', 'thread'])
-      .where('status', '=', 'pending')
-      .where('lapse_at', '<=', parts.context.gate.clock.now())
-      .execute();
+  const isLapsed = await withWriteTransaction(log.writer, async (tx) => {
+    const row = await tx
+      .$extendTables<ProposalTables>()
+      .selectFrom('proposals')
+      .select(['proposal_id'])
+      .where('proposal_id', '=', lapse.proposalID)
+      .where('state', 'in', ['pending', 'deferred'])
+      .where('lapses_at', '<=', parts.context.gate.clock.now())
+      .executeTakeFirst();
 
-    await writeRecordsInTransaction(
-      tx,
-      log,
-      rows.map((row) => ({
-        kind: 'memory.proposal_lapsed',
-        definitions: parts.context.definitions(),
-        ...(row.thread === null ? {} : { thread: row.thread }),
-        payload: { proposalID: row.proposal_id },
-      })),
-    );
+    if (row === undefined) {
+      return false;
+    }
 
-    return rows;
+    await lapse.writeInTransaction(tx);
+
+    return true;
   });
 
   await removeClosedProposalKeys(parts);
 
-  return due.length;
+  return isLapsed;
 }

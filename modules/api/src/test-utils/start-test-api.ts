@@ -8,7 +8,11 @@ import type { TestCallsContext, TestCallsOptions } from '@heynixie/calls/test-ut
 import { buildTestCallsContext } from '@heynixie/calls/test-utils';
 import type { Clock } from '@heynixie/clock';
 import type { ConnectionsPort } from '@heynixie/connections';
-import { readDefinitionNotices, readDefinitionVersion } from '@heynixie/definitions';
+import {
+  checkPromptProposal,
+  readDefinitionNotices,
+  readDefinitionVersion,
+} from '@heynixie/definitions';
 import { definitionTaskProjections } from '@heynixie/definitions/test-utils';
 import type { Writer } from '@heynixie/log';
 import { logProjections, registerRecordTopics, startWriter } from '@heynixie/log';
@@ -36,6 +40,7 @@ import { createWatchTickets } from '../computer/create-watch-tickets';
 import { collectModuleRecordTopicMaps } from '../live/collect-module-record-topic-maps';
 import { createClientRegistry } from '../live/create-client-registry';
 import { createPasskeyState } from '../passkey/passkey-state';
+import type { ProposalParts } from '../proposal/build-proposal-core-deps';
 import { proposalsProjection } from '../proposal/proposals-projection';
 import type {
   CleanupRecordSessions,
@@ -47,12 +52,17 @@ import { defaultAPISettings } from '../utils/default-api-settings';
 
 type APIContext = Parameters<typeof createAPIApp>[0];
 
-type ViewMemoryStore = NonNullable<ReturnType<Parameters<typeof createAPIApp>[1]>>;
+type ViewMemoryStore = NonNullable<ReturnType<Parameters<typeof createAPIApp>[1]['readMemory']>>;
+
+type FoundPrompts = NonNullable<ReturnType<NonNullable<ProposalParts['findPrompts']>>>;
 
 interface TestAPI {
   readonly dataDir: string;
 
   readonly setMemory: (store: ViewMemoryStore) => void;
+
+  // the prompts in force and their check, which a running nixie sets once its definitions start
+  readonly setPrompts: (prompts: FoundPrompts) => void;
 
   readonly setNotebook: (store: ViewNotebookStore) => void;
 
@@ -192,6 +202,7 @@ export async function startTestAPI(
     definitionStore,
     url: served.url,
     setMemory: served.setMemory,
+    setPrompts: served.setPrompts,
     setNotebook: (store) => {
       notebook.store = store;
     },
@@ -339,14 +350,28 @@ function readTestDefinitions() {
 
 function startTestApp(
   context: APIContext,
-): Pick<TestAPI, 'url' | 'setMemory'> & { readonly stop: () => Promise<void> } {
+): Pick<TestAPI, 'url' | 'setMemory' | 'setPrompts'> & { readonly stop: () => Promise<void> } {
   const memory: { store: ViewMemoryStore | null } = { store: null };
+
+  const prompts: { found: FoundPrompts } = {
+    found: { readInForce: () => null, checkProposal: checkPromptProposal, wakeExports: () => {} },
+  };
 
   // The device API's tests check the answer, and the definitions' own tests check the seed after it.
   const app = createAPIApp(
     context,
-    () => memory.store,
-    () => Promise.resolve(),
+    {
+      readMemory: () => memory.store,
+      findPrompts: () => ({
+        readInForce: () => prompts.found.readInForce(),
+        checkProposal: (...args: Parameters<FoundPrompts['checkProposal']>) =>
+          prompts.found.checkProposal(...args),
+        wakeExports: () => {
+          prompts.found.wakeExports?.();
+        },
+      }),
+      runInForceSeed: () => Promise.resolve(),
+    },
     () => null,
   );
 
@@ -372,6 +397,9 @@ function startTestApp(
     url: `http://127.0.0.1:${server.port}`,
     setMemory: (store) => {
       memory.store = store;
+    },
+    setPrompts: (found) => {
+      prompts.found = found;
     },
   };
 }

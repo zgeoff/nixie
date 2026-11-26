@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { readProposal } from '@heynixie/proposals';
 import { createFakeClock } from '@zgeoff/testing/clock';
 import type { MemoryTables } from '../types';
 import { seedProposal } from './seed-proposal';
@@ -17,12 +18,8 @@ async function setupTest() {
 test('it leaves a pending proposal with the text it is given', async () => {
   const ctx = await setupTest();
   const proposal = await seedProposal(ctx, { text: 'Keeps bees' });
+  const row = await readProposal(ctx.log.writer.db, proposal.proposalID);
 
-  const row = await ctx.db
-    .selectFrom('memory_proposals')
-    .select(['proposal_id', 'status'])
-    .executeTakeFirstOrThrow();
-
-  expect(row).toStrictEqual({ proposal_id: proposal.proposalID, status: 'pending' });
+  expect(row?.state).toBe('pending');
   expect(proposal.text).toBe('Keeps bees');
 });

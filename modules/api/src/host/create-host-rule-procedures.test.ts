@@ -2,9 +2,16 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createPathSource, runInForceSeed, runSeed, writeRuntimeRule } from '@heynixie/definitions';
+import {
+  createPathSource,
+  mapRuleProposalRecord,
+  runInForceSeed,
+  runSeed,
+  writeRuntimeRule,
+} from '@heynixie/definitions';
 import { buildTestTaskSeed, seedLegacyRuleProposal } from '@heynixie/definitions/test-utils';
 import { startWriter } from '@heynixie/log';
+import { buildProposalsProjection } from '@heynixie/proposals';
 import { createRouterClient } from '@orpc/server';
 import { createFakeClock } from '@zgeoff/testing/clock';
 import { createHostRuleProcedures } from './create-host-rule-procedures';
@@ -36,7 +43,11 @@ async function setupTest() {
     'unwrapKey',
   ]);
 
-  const log = { writer, deploymentKey, projections: [] };
+  const log = {
+    writer,
+    deploymentKey,
+    projections: [buildProposalsProjection([mapRuleProposalRecord])],
+  };
 
   const context = {
     log,

@@ -23,6 +23,7 @@ test('it builds a pending routine action proposal by default', () => {
     deferGeneration: 0,
     deferUntil: null,
     returnAt: null,
+    sameThing: null,
   });
 });
 

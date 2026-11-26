@@ -1,6 +1,6 @@
-import { expect, test } from 'bun:test';
+import { expect, onTestFinished, test } from 'bun:test';
 import { isCuid } from '@paralleldrive/cuid2';
-import { createShortID } from './create-short-id';
+import { createShortID, setShortIDDrawer } from './create-short-id';
 
 test('it makes a 10-character cuid2', () => {
   const id = createShortID();
@@ -11,4 +11,16 @@ test('it makes a 10-character cuid2', () => {
 
 test('it makes a different ID at each call', () => {
   expect(createShortID()).not.toBe(createShortID());
+});
+
+test('it makes the IDs that a test drawer gives until the test ends', () => {
+  const draws = ['first-draw', 'second-draw'];
+
+  setShortIDDrawer(() => draws.shift() ?? 'none');
+
+  onTestFinished(() => {
+    setShortIDDrawer(null);
+  });
+
+  expect([createShortID(), createShortID()]).toStrictEqual(['first-draw', 'second-draw']);
 });

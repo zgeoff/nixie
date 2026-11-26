@@ -99,3 +99,12 @@ test('it refuses a trigger similarity floor above 1', () => {
 
   expect(result.error?.issues).toPartiallyContain({ path: ['trigger_min_similarity'] });
 });
+
+test('it refuses the lapse key that moved to the approvals section, and names the new key', () => {
+  const result = memoryConfigSchema.safeParse({ proposal_lapse_days: 7 });
+
+  expect(result.error?.issues).toPartiallyContain({
+    path: ['proposal_lapse_days'],
+    message: 'moved to approvals.lapse_days.memory',
+  });
+});

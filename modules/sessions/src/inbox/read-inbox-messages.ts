@@ -45,7 +45,8 @@ export interface InboxMessages {
   readonly records: readonly LogRecord[];
   readonly messages: readonly InboxMessage[];
 
-  // the records among them that render no message
+  // the records among them that render no message of their own, which the host acknowledges itself:
+  // the silent ones, and every settlement after the first that its note carries
   readonly silent: readonly LogRecord[];
 }
 
@@ -58,12 +59,10 @@ export async function readInboxMessages(
   const messages: InboxMessage[] = [];
   const silent: LogRecord[] = [];
   let spent: ImageTally = { bytes: 0, count: 0 };
+  const groups = groupSettlements(records.filter((record) => isInboxRecord(record)));
 
-  for (const record of records) {
-    // A kind that no module registers is passed over, as the live inbox does.
-    if (!isInboxRecord(record)) {
-      continue;
-    }
+  for (const group of groups) {
+    const [record] = group;
 
     if (isSilentRecord(record) || isToldWaitNotice(record, read.toldWaitNotices ?? noneTold)) {
       taken.push(record);
@@ -73,29 +72,65 @@ export async function readInboxMessages(
 
     const gaps = messages.length === 0 ? await read.gaps?.(record) : undefined;
 
-    const message = await readInboxMessage(context, record, read, gaps);
+    const message = await readInboxMessage(context, record, read, { gaps, settled: group });
 
     const images = countImages(message);
 
     if (messages.length > 0 && isPastImageBudget(spent, images, read.imageBudget)) {
-      return { records: taken, messages, silent };
+      return { records: sortBySequence(taken), messages, silent };
     }
 
     spent = mergeImageTallies(spent, images);
 
-    taken.push(record);
+    const [, ...followers] = group;
+
+    taken.push(...group);
+    silent.push(...followers);
     messages.push(message);
   }
 
-  return { records: taken, messages, silent };
+  return { records: sortBySequence(taken), messages, silent };
+}
+
+// The settlements that land before a wake read as one note, so all of them are one group, even when
+// an owner message sits between them. The note stands where the first settlement stands. Any other
+// record is a group of its own.
+function groupSettlements(
+  records: readonly LogRecord[],
+): readonly (readonly [LogRecord, ...LogRecord[]])[] {
+  const groups: [LogRecord, ...LogRecord[]][] = [];
+  let note: [LogRecord, ...LogRecord[]] | undefined;
+
+  for (const record of records) {
+    if (record.kind !== 'proposals.settled') {
+      groups.push([record]);
+    } else if (note === undefined) {
+      note = [record];
+
+      groups.push(note);
+    } else {
+      note.push(record);
+    }
+  }
+
+  return groups;
+}
+
+interface MessageExtra {
+  readonly gaps: TurnGaps | undefined;
+
+  // the records the message stands for, the first being the one it reads
+  readonly settled: readonly [LogRecord, ...LogRecord[]];
 }
 
 async function readInboxMessage(
   context: InboxContext,
   record: LogRecord,
   read: Pick<InboxRead, 'times' | 'view' | 'replies'>,
-  gaps: TurnGaps | undefined,
+  extra: MessageExtra,
 ): Promise<InboxMessage> {
+  const gaps = extra.gaps;
+
   const reminder = await readReminder(context, record, read.times.defaultZone);
 
   const result = await readActionResult(
@@ -116,6 +151,7 @@ async function readInboxMessage(
       approvedAt,
       cut,
       smallTalk,
+      settled: extra.settled,
       ...(gaps === undefined ? {} : { gaps }),
     });
   }
@@ -133,4 +169,8 @@ async function readInboxMessage(
     cut,
     ...(gaps === undefined ? {} : { gaps }),
   });
+}
+
+function sortBySequence(records: readonly LogRecord[]): readonly LogRecord[] {
+  return records.toSorted((first, second) => first.sequence - second.sequence);
 }

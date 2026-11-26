@@ -5,8 +5,8 @@ import type { Logger } from '@heynixie/logger';
 import { findWorkerRunID } from '@heynixie/sandbox';
 import { createMcpHandler } from '@modelcontextprotocol/server';
 import { runApprovedCall } from './approved-call/run-approved-call';
+import type { ToolCallOptions } from './call-record/tool-call-options';
 import { createRunServer } from './create-run-server';
-import type { ToolCallOptions } from './run-tool-call';
 import { collectHeldToolNames } from './tool-name/collect-held-tool-names';
 import type { GuestToolRun, RunEndpoint, ToolEndpoint } from './types';
 

@@ -26,7 +26,16 @@ test('it holds an action that a rule allowed when it now asks', () => {
     cause: 'ask_rule',
     destinations: ['team'],
     proposalID: 'proposal-1',
-    record: { kind: 'recovery.started', definitions: { snapshotHash: 'sha256:x' } },
+    proposal: {
+      definitions: { snapshotHash: 'sha256:x' },
+      thread: 'task-1',
+      callSequence: 1,
+      tool: 'test.send',
+      effects: ['send'],
+      cause: 'ask_rule',
+      input: { to: 'team' },
+      destinations: [{ value: 'team', replyTarget: false }],
+    },
   };
 
   expect(pickAttemptStep(verdict, { is_approved: 0, risk_class: 'routine' })).toStrictEqual({
@@ -41,7 +50,16 @@ test('it holds an approved routine action that now falls in the always-ask set',
     cause: 'always_ask',
     destinations: ['team'],
     proposalID: 'proposal-1',
-    record: { kind: 'recovery.started', definitions: { snapshotHash: 'sha256:x' } },
+    proposal: {
+      definitions: { snapshotHash: 'sha256:x' },
+      thread: 'task-1',
+      callSequence: 1,
+      tool: 'test.send',
+      effects: ['send'],
+      cause: 'ask_rule',
+      input: { to: 'team' },
+      destinations: [{ value: 'team', replyTarget: false }],
+    },
   };
 
   expect(pickAttemptStep(verdict, { is_approved: 1, risk_class: 'routine' })).toStrictEqual({
@@ -56,7 +74,16 @@ test('it goes ahead with an approved routine action that a rule only asks about'
     cause: 'ask_rule',
     destinations: ['team'],
     proposalID: 'proposal-1',
-    record: { kind: 'recovery.started', definitions: { snapshotHash: 'sha256:x' } },
+    proposal: {
+      definitions: { snapshotHash: 'sha256:x' },
+      thread: 'task-1',
+      callSequence: 1,
+      tool: 'test.send',
+      effects: ['send'],
+      cause: 'ask_rule',
+      input: { to: 'team' },
+      destinations: [{ value: 'team', replyTarget: false }],
+    },
   };
 
   expect(pickAttemptStep(verdict, { is_approved: 1, risk_class: 'routine' })).toStrictEqual({
@@ -72,7 +99,16 @@ test('it goes ahead with an action approved under the always-ask class', () => {
     cause: 'always_ask',
     destinations: ['team'],
     proposalID: 'proposal-1',
-    record: { kind: 'recovery.started', definitions: { snapshotHash: 'sha256:x' } },
+    proposal: {
+      definitions: { snapshotHash: 'sha256:x' },
+      thread: 'task-1',
+      callSequence: 1,
+      tool: 'test.send',
+      effects: ['send'],
+      cause: 'ask_rule',
+      input: { to: 'team' },
+      destinations: [{ value: 'team', replyTarget: false }],
+    },
   };
 
   expect(pickAttemptStep(verdict, { is_approved: 1, risk_class: 'always_ask' })).toStrictEqual({
@@ -89,7 +125,16 @@ test('it keeps the reply targets of an approved action that goes ahead', () => {
     destinations: ['sam@example.org', 'kim@example.org'],
     replyTargets: ['sam@example.org'],
     proposalID: 'proposal-1',
-    record: { kind: 'recovery.started', definitions: { snapshotHash: 'sha256:x' } },
+    proposal: {
+      definitions: { snapshotHash: 'sha256:x' },
+      thread: 'task-1',
+      callSequence: 1,
+      tool: 'test.send',
+      effects: ['send'],
+      cause: 'ask_rule',
+      input: { to: 'team' },
+      destinations: [{ value: 'team', replyTarget: false }],
+    },
   };
 
   expect(pickAttemptStep(verdict, { is_approved: 1, risk_class: 'routine' })).toStrictEqual({

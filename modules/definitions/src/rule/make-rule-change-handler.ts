@@ -1,20 +1,19 @@
 import type { ProposalBody, ProposalKindHandler, SharedProposal } from '@heynixie/proposals';
-import { proposalLapseMs } from '@heynixie/proposals';
 
 type RuleChangeCause = 'rule_widening' | 'proposed_rule' | 'mandate';
 
 export type RuleChangeHandlers = Readonly<Record<RuleChangeCause, ProposalKindHandler>>;
 
 // Every rule change shares one family, so the proposals table keeps its family check and the release
-// before still reads it. The row's cause picks the handler. A mandate's row lapses at its deadline,
-// which caps every lapse a defer sets, so one interval serves all three.
+// before still reads it. The row's cause picks the handler, and with it the lapse.
 export function makeRuleChangeHandler(handlers: RuleChangeHandlers): ProposalKindHandler {
   const pickHandler = (row: Pick<SharedProposal, 'cause'>): ProposalKindHandler =>
     isRuleChangeCause(row.cause) ? handlers[row.cause] : handlers.rule_widening;
 
   return {
     family: 'rule_change',
-    lapseIntervalMs: proposalLapseMs,
+    lapseIntervalMs: (config, cause) =>
+      isRuleChangeCause(cause) ? handlers[cause].lapseIntervalMs(config, cause) : null,
     ownsTransaction: false,
     readBodies: async (db, rows) => {
       const bodies = new Map<string, ProposalBody | null>();
@@ -34,8 +33,7 @@ export function makeRuleChangeHandler(handlers: RuleChangeHandlers): ProposalKin
     },
     readHashes: (db, row) => pickHandler(row).readHashes(db, row),
     approve: (run, row, answer) => pickHandler(row).approve(run, row, answer),
-    decline: (run, row, answer) => pickHandler(row).decline(run, row, answer),
-    lapse: (tx, row) => pickHandler(row).lapse(tx, row),
+    discard: (run, row, outcome, answer) => pickHandler(row).discard(run, row, outcome, answer),
   };
 }
 

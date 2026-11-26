@@ -1550,10 +1550,8 @@
           "maximum": 9007199254740991
         },
         "proposal_lapse_days": {
-          "default": 14,
-          "type": "integer",
-          "exclusiveMinimum": 0,
-          "maximum": 9007199254740991
+          "description": "Moved: set approvals.lapse_days.memory.",
+          "not": {}
         },
         "proposal_cap": {
           "default": 10,
@@ -1811,6 +1809,14 @@
           "evening_at": "18:00",
           "morning_at": "08:00"
         },
+        "lapse_days": {
+          "action": 3,
+          "memory": 14,
+          "skill": 14,
+          "rule_change": 14,
+          "prompt": 14,
+          "mcp": 14
+        },
         "passkey_window_minutes": 10
       },
       "type": "object",
@@ -1841,6 +1847,62 @@
               "description": "\"Tomorrow morning\" means this time.",
               "type": "string",
               "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$"
+            }
+          },
+          "additionalProperties": false
+        },
+        "lapse_days": {
+          "default": {
+            "action": 3,
+            "memory": 14,
+            "skill": 14,
+            "rule_change": 14,
+            "prompt": 14,
+            "mcp": 14
+          },
+          "type": "object",
+          "properties": {
+            "action": {
+              "default": 3,
+              "description": "Days a held action waits before it lapses.",
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 9007199254740991
+            },
+            "memory": {
+              "default": 14,
+              "description": "Days a memory proposal waits before it lapses.",
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 9007199254740991
+            },
+            "skill": {
+              "default": 14,
+              "description": "Days a skill write waits before it lapses.",
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 9007199254740991
+            },
+            "rule_change": {
+              "default": 14,
+              "description": "Days a rule change waits before it lapses. A rule widening and a suggested rule use it; a mandate lapses at its deadline only.",
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 9007199254740991
+            },
+            "prompt": {
+              "default": 14,
+              "description": "Days a prompt override waits before it lapses.",
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 9007199254740991
+            },
+            "mcp": {
+              "default": 14,
+              "description": "Days an MCP proposal waits before it lapses.",
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 9007199254740991
             }
           },
           "additionalProperties": false

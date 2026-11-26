@@ -1,17 +1,19 @@
 import type { JSONObject } from '@heynixie/log';
+import { withWriteTransaction } from '@heynixie/log';
+import type { ProposalConfig } from '@heynixie/proposals';
 import type { Lease, TasksContext } from '@heynixie/tasks';
-import { waitAtFaultPoint } from '@heynixie/tasks';
+import { requireLease, waitAtFaultPoint } from '@heynixie/tasks';
 import type { ApprovedCallRequest, ApprovedReply, ApprovedRun } from '@heynixie/tools';
 import type { ActionRow, ActionsTables, AdmitTool, OutcomeReason } from '../types';
 import type { AttemptCheck } from './attempt-check';
 import { buildCancelledCheck } from './build-cancelled-check';
 import { buildHeldCheck } from './build-held-check';
-import { buildRefusalRecords } from './build-refusal-records';
 import { buildUnknownRecords } from './build-unknown-records';
 import type { Attempt, Settlement } from './leased-records';
 import { buildOutcomeRecord, readQueuedCall, writeLeasedRecords } from './leased-records';
 import { readAttemptStep } from './read-attempt-step';
 import { isPastDeadline, writeAttemptStarted } from './write-attempt-started';
+import { writeRefusalInTransaction } from './write-refusal-in-transaction';
 
 export interface InStepActionsOptions {
   // Decides the call again before it runs, as an attempt of the action runner does. With none,
@@ -26,6 +28,9 @@ export interface InStepActionsOptions {
 
   // admits each call past a hold, as its attempt's start ends
   readonly admitTool?: AdmitTool;
+
+  // the lapse of each family, which a proposal that holds an action takes
+  readonly proposalConfig?: ProposalConfig | undefined;
 }
 
 // An action the step settled: the outcome record it wrote, and what its call returned, which no
@@ -130,9 +135,14 @@ async function runInStepAction(
   const step = await readAttemptStep(options.checkAttempt, { action, arguments: args });
 
   if (step.kind !== 'go') {
-    const [sequence] = await writeLeasedRecords(context, attempt.lease, {
-      records: buildRefusalRecords(context, attempt, step),
-      reset: false,
+    const [sequence] = await withWriteTransaction(context.log.writer, async (tx) => {
+      await requireLease(tx, attempt.lease, context.clock.now());
+
+      return writeRefusalInTransaction(tx, context, {
+        attempt,
+        step,
+        proposalConfig: options.proposalConfig,
+      });
     });
 
     return step.kind === 'deny' && sequence !== undefined

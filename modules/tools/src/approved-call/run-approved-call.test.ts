@@ -6,8 +6,8 @@ import { readRecords } from '@heynixie/log';
 import { buildActionHash } from '@heynixie/policy';
 import { readStarterDecisionPoint } from '@heynixie/policy/test-utils';
 import { buildToolRegistry } from '../build-tool-registry';
+import type { ToolCallOptions } from '../call-record/tool-call-options';
 import { findToolDeclaration } from '../policy-call/find-tool-declaration';
-import type { ToolCallOptions } from '../run-tool-call';
 import { runToolCall } from '../run-tool-call';
 import { buildMockToolDefinition } from '../test-utils/build-mock-tool-definition';
 import { buildMockVariantToolDefinition } from '../test-utils/build-mock-variant-tool-definition';
@@ -149,11 +149,11 @@ test('it writes the result as the call answers under the approval, naming the ac
   const records = await ctx.readRecords();
 
   const [called] = records;
-  const result = records.at(3);
+  const result = records.at(4);
 
   expect(approved).toStrictEqual({
     status: 'done',
-    resultSequence: 4,
+    resultSequence: 5,
     result: { text: 'wiped' },
     images: [],
   });
@@ -179,9 +179,9 @@ test('it fails the call of a tool that errored, and writes the error as the resu
   const approved = await ctx.approve({});
   const records = await ctx.readRecords();
 
-  expect(approved).toStrictEqual({ status: 'failed', resultSequence: 4 });
+  expect(approved).toStrictEqual({ status: 'failed', resultSequence: 5 });
 
-  expect(records[3]).toMatchObject({
+  expect(records[4]).toMatchObject({
     contentSource: 'untrusted',
     payload: { outcome: 'error', actionID: 'proposal-1' },
     erasable: { status: 'readable', fields: { message: 'the file service said no' } },
@@ -199,7 +199,7 @@ test('it reports the call refused, with its code and result, when the tool marks
 
   expect(approved).toStrictEqual({
     status: 'refused',
-    resultSequence: 4,
+    resultSequence: 5,
     code: 'NOTHING_FOUND',
     result: { text: 'nothing to wipe' },
     images: [],
@@ -216,6 +216,7 @@ test('it runs nothing when the arguments differ from the approved call', async (
 
   expect(records.map((record) => record.kind)).toStrictEqual([
     'tool_called',
+    'proposals.proposed',
     'policy.action_proposed',
     'tool_result',
   ]);
@@ -367,7 +368,7 @@ test('it keeps the charge of an approved call whose result the log refuses', asy
   const day = await readBudgetLedger(ctx.log.writer.db, ctx.budgets, 'notes_wipe-day');
 
   expect([approved, day?.spentMicros]).toStrictEqual([
-    { status: 'failed', resultSequence: 4 },
+    { status: 'failed', resultSequence: 5 },
     40_000,
   ]);
 });
@@ -376,7 +377,7 @@ test('it refuses the approved call of a paid tool whose budget is full, and runs
   const ctx = await setupTest(undefined, { priceMicros: 6_000_000 });
   const approved = await ctx.approve({});
 
-  expect(approved).toStrictEqual({ status: 'failed', resultSequence: 4 });
+  expect(approved).toStrictEqual({ status: 'failed', resultSequence: 5 });
   expect(ctx.contexts).toStrictEqual([]);
 });
 
@@ -389,7 +390,7 @@ test('it fails an approved call whose tool reported its own failure, and never c
 
   const approved = await ctx.approve({});
 
-  expect(approved).toStrictEqual({ status: 'failed', resultSequence: 4 });
+  expect(approved).toStrictEqual({ status: 'failed', resultSequence: 5 });
 });
 
 test('it runs nothing for an approved call whose tool changed its pin after the call', async () => {

@@ -1,4 +1,3 @@
-import { takeoverStartedCodec } from '@heynixie/connectors';
 import type { LogRecord } from '@heynixie/log';
 import { renderSystemMessage } from '@heynixie/wire';
 import { formatMessageTime } from '../message/format-message-time';
@@ -12,13 +11,11 @@ export function renderTakeoverStarted(
   times: MessageTimeOptions,
   ownerName: string | null,
 ): string {
-  const shortID = takeoverStartedCodec.decode(record.payload).shortID;
-
   return renderSystemMessage({
     type: 'computer',
     at: formatMessageTime(record.recordedAt, null, times),
     body:
-      `[#${shortID}] ${capitalizeFirst(ownerName ?? 'the user')} took over the computer. You can ` +
+      `[#${String(record.sequence)}] ${capitalizeFirst(ownerName ?? 'the user')} took over the computer. You can ` +
       'read the screen and your tabs; your clicks, typing and commands wait until it comes back.',
   });
 }

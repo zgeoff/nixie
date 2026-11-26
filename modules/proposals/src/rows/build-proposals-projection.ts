@@ -1,7 +1,9 @@
 import type { Projection } from '@heynixie/log';
 import type { Transaction } from 'kysely';
 import { proposalsDeferredCodec } from '../records/proposals-deferred-codec';
+import { proposalsProposedCodec } from '../records/proposals-proposed-codec';
 import { proposalsReturnedCodec } from '../records/proposals-returned-codec';
+import { proposalsSettledCodec } from '../records/proposals-settled-codec';
 import { proposalsWithdrawnCodec } from '../records/proposals-withdrawn-codec';
 import type { ProposalChange, ProposalRecordMapper } from './proposal-change';
 import type { ProposalTables } from './proposal-tables';
@@ -14,6 +16,48 @@ export function buildProposalsProjection(mappers: readonly ProposalRecordMapper[
     keyColumn: 'proposal_id',
     fold: async (tx, record) => {
       const db = tx.$extendTables<ProposalTables>();
+
+      if (record.kind === 'proposals.proposed') {
+        const proposed = proposalsProposedCodec.decode(record.payload);
+
+        await writeChange(
+          tx,
+          {
+            type: 'create',
+            proposal: {
+              id: proposed.proposalID,
+              shortID: proposed.shortID,
+              family: proposed.family,
+              kind: proposed.kind,
+              riskClass: proposed.riskClass,
+              actionHash: proposed.actionHash,
+              ruleHash: proposed.ruleHash,
+              cause: proposed.cause,
+              taskID: proposed.taskID,
+              lapsesAt: proposed.lapsesAt,
+              deadlineAt: proposed.deadlineAt,
+              sameThing: proposed.sameThing,
+            },
+          },
+          record,
+        );
+
+        return [proposed.proposalID];
+      }
+
+      if (record.kind === 'proposals.settled') {
+        const settled = proposalsSettledCodec.decode(record.payload);
+
+        await writeChange(tx, {
+          type: 'close',
+          proposalID: settled.proposalID,
+          state: settled.outcome,
+          usedBy: settled.usedBy,
+          answeredBy: settled.answeredBy,
+        });
+
+        return [settled.proposalID];
+      }
 
       if (record.kind === 'proposals.deferred') {
         const deferred = proposalsDeferredCodec.decode(record.payload);
@@ -116,6 +160,7 @@ async function writeChange(
         defer_generation: 0,
         defer_until: null,
         return_at: null,
+        same_thing: proposal.sameThing ?? null,
       })
       .onConflict((conflict) => conflict.doNothing())
       .execute();

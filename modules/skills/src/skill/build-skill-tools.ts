@@ -1,6 +1,5 @@
 import type { ToolDefinition } from '@heynixie/tools';
 import type { SkillToolsContext } from '../types';
-import { buildSkillPendingTool } from './build-skill-pending-tool';
 import { buildSkillReadTool } from './build-skill-read-tool';
 import { buildSkillReloadAllTool } from './build-skill-reload-all-tool';
 import { buildSkillReloadTool } from './build-skill-reload-tool';
@@ -12,6 +11,5 @@ export function buildSkillTools(context: SkillToolsContext): readonly ToolDefini
     buildSkillReloadTool(context),
     buildSkillReloadAllTool(context),
     buildSkillWriteTool(context),
-    buildSkillPendingTool(context),
   ];
 }

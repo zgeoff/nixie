@@ -107,8 +107,8 @@ test('it lists a skill proposal, rejects it with your reason, and the next turn 
 
   expect(ctx.guest.turns.at(-1)?.input).toMatchObject([
     {
-      text: expect.toInclude(
-        `rejected your skill proposal ${proposalID} (tide-tables). Reason: "the tide tables come from a feed".`,
+      text: expect.stringMatching(
+        /Your skill write [a-z0-9]{10} \(Write the skill tide-tables\.\) was declined: the tide tables come from a feed/u,
       ),
     },
   ]);

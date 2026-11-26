@@ -7,7 +7,13 @@ export { createWatchTickets } from './computer/create-watch-tickets';
 export { createEnrolmentCode } from './enrolment/create-enrolment-code';
 export { createFirstEnrolmentCode } from './enrolment/create-first-enrolment-code';
 export { createPasskeyState } from './passkey/passkey-state';
-export { defaultAPISettings, defaultPolicySettings } from './utils/default-api-settings';
+
+export {
+  defaultAPISettings,
+  defaultApprovalSettings,
+  defaultPolicySettings,
+} from './utils/default-api-settings';
+
 export { makeHostResponder } from './host/make-host-responder';
 export { readForgetBackupState } from './forget/read-forget-backup-state';
 export type { KeptSession } from './kept/read-kept-sessions';
@@ -43,6 +49,8 @@ export type {
 
 export type { APIRecordKind } from './api/api-record-kind';
 export type { ProposalParts } from './proposal/build-proposal-core-deps';
+export { buildApprovalsProposalConfig } from './proposal/build-approvals-proposal-config';
+export { runProposalStartChecks } from './proposal/run-proposal-start-checks';
 export { buildProposalCoreDeps } from './proposal/build-proposal-core-deps';
 export { proposalsProjection } from './proposal/proposals-projection';
 export { conversationErasableDescriptor } from './erasable/conversation-erasable-descriptor';

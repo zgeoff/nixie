@@ -34,6 +34,7 @@ test('it proposes a self-note with the self-note reason, even when typed words b
   expect(outcome).toStrictEqual({
     status: 'proposed',
     proposalID: expect.toBeString(),
+    shortID: expect.toBeString(),
     reason: 'self_note',
     merged: false,
   });

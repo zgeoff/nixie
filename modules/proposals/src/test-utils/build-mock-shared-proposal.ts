@@ -25,6 +25,7 @@ export function buildMockSharedProposal(overrides: Partial<SharedProposal> = {})
     deferGeneration: 0,
     deferUntil: null,
     returnAt: null,
+    sameThing: null,
     ...overrides,
   };
 }

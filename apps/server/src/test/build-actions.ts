@@ -2,6 +2,7 @@ import type { ActionQueueBridge, AdmitTool } from '@heynixie/actions';
 import { buildActionQueue } from '@heynixie/actions';
 import type { ActionConnector } from '@heynixie/connectors';
 import type { Logger } from '@heynixie/logger';
+import type { ProposalConfig } from '@heynixie/proposals';
 import type { TasksContext } from '@heynixie/tasks';
 import { buildTestSendTool, testSendKinds } from '../utils/build-test-send-tool';
 import type { LogConnector } from './build-log-connector';
@@ -25,6 +26,9 @@ export interface ActionsOptions {
   // the owner's name from the config, which the model reads in the question about an unknown outcome
   readonly ownerName: string | null;
 
+  // the lapse of each family, as the server config sets it
+  readonly proposalConfig?: ProposalConfig | undefined;
+
   readonly testProviderURL: string | null;
 }
 
@@ -43,7 +47,10 @@ export function buildActions(context: TasksContext, options: ActionsOptions): Ac
   }
 
   return {
-    ...buildActionQueue(context, { ownerName: options.ownerName }),
+    ...buildActionQueue(context, {
+      ownerName: options.ownerName,
+      proposalConfig: options.proposalConfig,
+    }),
     logConnector,
     connectors,
   };

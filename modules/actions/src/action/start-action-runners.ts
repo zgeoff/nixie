@@ -1,5 +1,6 @@
 import type { ConnectorLookup } from '@heynixie/connectors';
 import { subscribeToRecordCommits } from '@heynixie/log';
+import type { ProposalConfig } from '@heynixie/proposals';
 import type { ClaimPool, TasksContext } from '@heynixie/tasks';
 import { startClaimPool } from '@heynixie/tasks';
 import type { AdmitTool } from '../types';
@@ -19,6 +20,9 @@ export interface ActionRunnersOptions {
 
   // see ActionAttemptOptions
   readonly admitTool?: AdmitTool;
+
+  // see ActionAttemptOptions
+  readonly proposalConfig?: ProposalConfig | undefined;
 
   readonly size?: number;
   readonly holder?: string;
@@ -57,6 +61,7 @@ export function startActionRunners(
           ? {}
           : { readHeldToolPrefixes: options.readHeldToolPrefixes }),
         ...(options.admitTool === undefined ? {} : { admitTool: options.admitTool }),
+        proposalConfig: options.proposalConfig,
       }),
     onError: options.onError,
   });

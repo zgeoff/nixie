@@ -10,7 +10,7 @@ import {
 import { codingActionDeclarations, codingDeclarations } from '@heynixie/coding';
 import { parseJSONObject, readRecords, withWriteTransaction, writeRecords } from '@heynixie/log';
 import type { EffectDeclaration, RuleEntry } from '@heynixie/policy';
-import { actionProposedCodec, makeDecisionPoint } from '@heynixie/policy';
+import { actionProposedCodec, buildActionProposalInput, makeDecisionPoint } from '@heynixie/policy';
 import { readStarterRules } from '@heynixie/policy/test-utils';
 import type { ApprovedCallRequest, ToolDefinition } from '@heynixie/tools';
 import { buildToolRegistry, toolCalledCodec } from '@heynixie/tools';
@@ -196,9 +196,11 @@ test('it gives the proposal of an allowed action that no rule now steers the fra
     proposalID: action.action_id,
   });
 
-  invariant(verdict.kind === 'ask' && verdict.record.payload, 'no rule allows the call now');
+  invariant(verdict.kind === 'ask', 'no rule allows the call now');
 
-  const proposed = actionProposedCodec.decode(verdict.record.payload);
+  const proposed = actionProposedCodec.decode(
+    buildActionProposalInput(verdict.proposal).record.payload ?? {},
+  );
 
   expect({
     cause: proposed.cause,
@@ -389,14 +391,16 @@ test('it decides a runner action under its own tool with the task as caller, and
     proposalID: action.action_id,
   });
 
-  invariant(verdict.kind === 'ask' && verdict.record.payload, 'the stop asks under the ask rule');
+  invariant(verdict.kind === 'ask', 'the stop asks under the ask rule');
 
-  const proposed = actionProposedCodec.decode(verdict.record.payload);
+  const proposed = actionProposedCodec.decode(
+    buildActionProposalInput(verdict.proposal).record.payload ?? {},
+  );
 
   expect({
     cause: verdict.cause,
     destinations: verdict.destinations,
-    parent: verdict.record.parent,
+    parent: buildActionProposalInput(verdict.proposal).record.parent,
     tool: proposed.tool,
     callSequence: proposed.callSequence,
     proposedCause: proposed.cause,
@@ -515,7 +519,10 @@ test('it holds a steer that a step queued at the destination limits, when an all
     proposalID: action.action_id,
   });
 
-  invariant(verdict.kind === 'ask' && verdict.record.payload, 'the steer asks');
+  invariant(verdict.kind === 'ask', 'the steer asks');
 
-  expect(actionProposedCodec.decode(verdict.record.payload).cause).toBe('outside_steering');
+  expect(
+    actionProposedCodec.decode(buildActionProposalInput(verdict.proposal).record.payload ?? {})
+      .cause,
+  ).toBe('outside_steering');
 });

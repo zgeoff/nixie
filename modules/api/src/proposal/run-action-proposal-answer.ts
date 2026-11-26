@@ -1,10 +1,7 @@
-import type {
-  ActionProposalAnswer,
-  ActionProposalResult,
-} from '../utils/write-action-proposal-answer';
 import type { LegacyCaller } from './answer-legacy-proposal';
 import { answerLegacyProposal } from './answer-legacy-proposal';
 import type { ProposalAPIContext } from './build-proposal-core-deps';
+import type { ActionProposalAnswer, ActionProposalResult } from './types';
 
 // An answer lands in the inbox of the task that asked, so the task hears it. An approval runs
 // nothing yet.
