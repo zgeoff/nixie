@@ -1,6 +1,6 @@
 # Feature switches
 
-- **Status:** draft
+- **Status:** agreed
 - **Decision records:** [0057](../../decisions/0057-every-optional-feature-has-a-switch.md)
 - **Work items:** [feature switches](https://linear.app/zgeoff/issue/GEO-2877)
 
